@@ -8,8 +8,17 @@ wfmain::wfmain(QWidget *parent) :
     ui(new Ui::wfmain)
 {
     ui->setupUi(this);
+    theParent = parent;
     plot = ui->plot; // rename it waterfall.
     wf = ui->waterfall;
+    tracer = new QCPItemTracer(plot);
+    //tracer->setGraphKey(5.5);
+    tracer->setInterpolating(true);
+    tracer->setStyle(QCPItemTracer::tsPlus);
+
+    tracer->setPen(QPen(Qt::green));
+    tracer->setBrush(Qt::green);
+    tracer->setSize(7);
 
     spectWidth = 475; // fixed for now
     wfLength = 160; // fixed for now
@@ -36,6 +45,8 @@ wfmain::wfmain(QWidget *parent) :
 
     edges << "1" << "2" << "3"; // yep
     ui->scopeEdgeCombo->insertItems(0,edges);
+
+    ui->splitter->setHandleWidth(5);
 
     // comm = new commHandler();
     rig = new rigCommander();
@@ -72,6 +83,7 @@ wfmain::wfmain(QWidget *parent) :
     ui->plot->addGraph(); // primary
     ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first?
     ui->waterfall->addGraph();
+    tracer->setGraph(plot->graph(0));
 
 
 
@@ -105,12 +117,18 @@ wfmain::wfmain(QWidget *parent) :
     delayedCommand->setSingleShot(true);
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
 
+
 }
 
 wfmain::~wfmain()
 {
     // rigThread->quit();
     delete ui;
+}
+
+void wfmain::setDarkTheme(bool dark)
+{
+    //theParent->setStyle();
 }
 
 void wfmain::runDelayedCommand()
@@ -133,6 +151,7 @@ void wfmain::receiveFreq(double freqMhz)
 {
     //qDebug() << "Frequency: " << freqMhz;
     ui->freqLabel->setText(QString("%1").arg(freqMhz, 0, 'f'));
+    this->freqMhz = freqMhz;
 }
 
 void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq)
@@ -186,6 +205,10 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
     //ui->qcp->addGraph();
     plot->graph(0)->setData(x,y);
+    if((freqMhz < endFreq) && (freqMhz > startFreq))
+    {
+        tracer->setGraphKey(freqMhz);
+    }
     if(drawPeaks)
     {
         plot->graph(1)->setData(x,y2); // peaks

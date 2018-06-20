@@ -106,7 +106,7 @@ void rigCommander::setScopeSpan(char span)
     // See ICD, page 165, "19-12".
     // 2.5k = 0
     // 5k = 2, etc.
-    if((span <1 ) || (span >7))
+    if((span <0 ) || (span >7))
             return;
 
     QByteArray payload;
@@ -172,7 +172,7 @@ void rigCommander::setFrequency(double freq)
     cmdPayload.append(freqPayload);
     cmdPayload.prepend('\x00');
 
-    printHex(cmdPayload, false, true);
+    //printHex(cmdPayload, false, true);
     prepDataAndSend(cmdPayload);
 }
 

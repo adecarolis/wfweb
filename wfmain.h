@@ -98,7 +98,11 @@ private:
     Ui::wfmain *ui;
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
+    QCPItemTracer * tracer; // marker of current frequency
     //commHandler *comm;
+    void setDarkTheme(bool dark);
+    QWidget * theParent;
+
     rigCommander * rig;
     QThread * rigThread;
     QCPColorMap * colorMap;
@@ -127,6 +131,7 @@ private:
 
     double oldLowerFreq;
     double oldUpperFreq;
+    double freqMhz;
     enum cmds {cmdGetFreq, cmdGetMode, cmdGetDataMode};
     cmds cmdOut;
 

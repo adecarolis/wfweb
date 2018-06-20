@@ -20,7 +20,6 @@ commHandler::commHandler()
     openPort();
 
     connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
-
 }
 
 commHandler::~commHandler()
