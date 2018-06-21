@@ -1,27 +1,27 @@
 # wfview
 Open Source IC-7300 Visualizer and Controller, including waterfall view
 
-###Requirements:
+### Requirements:
 1. gcc
 2. qmake
 3. qt5 (proably the package named "qt5-default")
 4. libqt5serialport5-dev
 5. libqcustomplot-dev 
 
-###Rig setting:
+### Rig setting:
 1. Use default CI-V address (0x94)
 2. Baud rate 115200
 3. Turn on the bandscope on the rig screen
 
 * The program currently assumes the device is on /dev/ttyUSB0. Make sure the port is writable by your username. 
 
-###Features:
+### Features:
 1. Plot bandscope and bandscope waterfall. Optionally, also plot a "peak hold". 
 2. Double-elick anywhere on the bandscope or waterfall to tune the radio. 
 3. Entry of frequency is permitted under the "Frequency" tab
 4. Bandscope parameters (span and mode) are adjustable. 
 
-###TODO:
+### TODO:
 1. Carefully build comm port traffic into messages. Reject corrupted messages earlier in the chain. 
 2. Impliment "dark mode" in plot and UI elements. 
 3. Impliment band presets per the "Band" tab (currently does nothing)
