@@ -8,7 +8,7 @@ Open Source Icom IC-7300 Visualizer and Controller, including waterfall view. Wi
 4. Bandscope parameters (span and mode) are adjustable. 
 
 ### Build Requirements:
-1. gcc / g++ / gdb / make
+1. gcc / g++ / make
 2. qmake
 3. qt5 (proably the package named "qt5-default")
 4. libqt5serialport5-dev
@@ -16,7 +16,7 @@ Open Source Icom IC-7300 Visualizer and Controller, including waterfall view. Wi
 
 ### Recommended:
 * Debian-based Linux system (Debian Linux, Linux Mint, Ubuntu, etc).
-* QT Creator for building, designing, and debugging
+* QT Creator for building, designing, and debugging w/gdb
 
 ### Build directions:
 1. clone this repository into a new folder
