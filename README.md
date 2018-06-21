@@ -22,8 +22,8 @@ Open Source Icom IC-7300 Visualizer and Controller, including waterfall view. Wi
 1. clone this repository into a new folder
 2. make a directory to build the code in (mkdir build)
 3. Run qmake to configure the build:
-  1. cd build
-  2. qmake ../wfview/wfview.pro
+  * cd build
+  * qmake ../wfview/wfview.pro
 4. Compile by running make.
 
 ### Rig setting:
