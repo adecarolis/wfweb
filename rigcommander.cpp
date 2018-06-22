@@ -243,91 +243,126 @@ void rigCommander::handleNewData(const QByteArray &data)
     parseData(data);
 }
 
-void rigCommander::parseData(QByteArray data)
+void rigCommander::parseData(QByteArray dataInput)
 {
+    // TODO: Clean this up.
+    // It finally works very nicely, needs to be streamlined.
+    //
 
-    // Data echo'd back from the rig start with this:
-    // fe fe 94 e0 ...... fd
+    int index = 0;
+    volatile int count = 0; // debug purposes
 
-    // Data from the rig that is not an echo start with this:
-    // fe fe e0 94 ...... fd (for example, a reply to a query)
-
-    // Data from the rig that was not asked for is sent to controller 0x00:
-    // fe fe 00 94 ...... fd (for example, user rotates the tune control or changes the mode)
-
-    //qDebug() << "Data received: ";
-    //printHex(data, false, true);
-    if(data.length() < 4)
+    // use this:
+    QList <QByteArray> dataList = dataInput.split('\xFD');
+    QByteArray data;
+    // qDebug() << "data list has this many elements: " << dataList.size();
+    if (dataList.last().isEmpty())
     {
-        if(data.length())
+        dataList.removeLast(); // if the original ended in FD, then there is a blank entry at the end.
+    }
+    // Only thing is, each frame is missing '\xFD' at the end. So append! Keeps the frames intact.
+    for(index = 0; index < dataList.count(); index++)
+    {
+        data = dataList[index];
+        data.append('\xFD'); // because we expect it to be there.
+    // foreach(listitem)
+    // listitem.append('\xFD');
+    // continue parsing...
+
+        count++;
+        // Data echo'd back from the rig start with this:
+        // fe fe 94 e0 ...... fd
+
+        // Data from the rig that is not an echo start with this:
+        // fe fe e0 94 ...... fd (for example, a reply to a query)
+
+        // Data from the rig that was not asked for is sent to controller 0x00:
+        // fe fe 00 94 ...... fd (for example, user rotates the tune control or changes the mode)
+
+        //qDebug() << "Data received: ";
+        //printHex(data, false, true);
+        if(data.length() < 4)
         {
-            qDebug() << "Data length too short: " << data.length() << " bytes. Data:";
-            printHex(data, false, true);
+            if(data.length())
+            {
+                // Finally this almost never happens
+                qDebug() << "Data length too short: " << data.length() << " bytes. Data:";
+                printHex(data, false, true);
+            }
+            // no
+            //return;
+            // maybe:
+            // continue;
         }
-        return;
-    }
 
-    if(!data.startsWith("\xFE\xFE"))
-    {
-        qDebug() << "Warning: Invalid data received, did not start with FE FE.";
-        // find 94 e0 and shift over,
-        // or look inside for a second FE FE
-        // Often a local echo will miss a few bytes at the beginning.
-        if(data.startsWith('\xFE'))
+        if(!data.startsWith("\xFE\xFE"))
         {
-            data.prepend('\xFE');
-            qDebug() << "Warning: Working with prepended data stream.";
-            parseData(payloadIn);
-            return;
-        } else {
-            qDebug() << "Error: Could not reconstruct corrupted data: ";
-            printHex(data, false, true);
-            // data.right(data.length() - data.find('\xFE\xFE'));
-            // if found do not return and keep going.
-            return;
+            qDebug() << "Warning: Invalid data received, did not start with FE FE.";
+            // find 94 e0 and shift over,
+            // or look inside for a second FE FE
+            // Often a local echo will miss a few bytes at the beginning.
+            if(data.startsWith('\xFE'))
+            {
+                data.prepend('\xFE');
+                qDebug() << "Warning: Working with prepended data stream.";
+                parseData(payloadIn);
+                return;
+            } else {
+                qDebug() << "Error: Could not reconstruct corrupted data: ";
+                printHex(data, false, true);
+                // data.right(data.length() - data.find('\xFE\xFE'));
+                // if found do not return and keep going.
+                return;
+            }
+        }
+
+        if((unsigned char)data[02] == civAddr)
+        {
+            // data is or begins with an echoback from what we sent
+            // find the first 'fd' and cut it. Then continue.
+            //payloadIn = data.right(data.length() - data.indexOf('\xfd')-1);
+            // qDebug() << "[FOUND] Trimmed off echo:";
+            //printHex(payloadIn, false, true);
+            //parseData(payloadIn);
+            //return;
+        }
+
+        switch(data[02])
+        {
+            //    case civAddr: // can't have a variable here :-(
+            //        // data is or begins with an echoback from what we sent
+            //        // find the first 'fd' and cut it. Then continue.
+            //        payloadIn = data.right(data.length() - data.indexOf('\xfd')-1);
+            //        //qDebug() << "Trimmed off echo:";
+            //        //printHex(payloadIn, false, true);
+            //        parseData(payloadIn);
+            //        break;
+            case '\xE0':
+                // data is a reply to some query we sent
+                // extract the payload out and parse.
+                // payload = getpayload(data); // or something
+                // parse (payload); // recursive ok?
+                payloadIn = data.right(data.length() - 4);
+                parseCommand();
+                break;
+            case '\x00':
+                // data send initiated by the rig due to user control
+                // extract the payload out and parse.
+                payloadIn = data.right(data.length() - 4);
+                parseCommand();
+                break;
+            default:
+                // could be for other equipment on the CIV network.
+                // just drop for now.
+                break;
         }
     }
-
-    if((unsigned char)data[02] == civAddr)
+    /*
+    if(dataList.length() > 1)
     {
-        // data is or begins with an echoback from what we sent
-        // find the first 'fd' and cut it. Then continue.
-        payloadIn = data.right(data.length() - data.indexOf('\xfd')-1);
-        //qDebug() << "Trimmed off echo:";
-        //printHex(payloadIn, false, true);
-        parseData(payloadIn);
-        return;
+        qDebug() << "Recovered " << count << " frames from single data with size" << dataList.count();
     }
-
-    switch(data[02])
-    {
-//    case civAddr: // can't have a variable here :-(
-//        // data is or begins with an echoback from what we sent
-//        // find the first 'fd' and cut it. Then continue.
-//        payloadIn = data.right(data.length() - data.indexOf('\xfd')-1);
-//        //qDebug() << "Trimmed off echo:";
-//        //printHex(payloadIn, false, true);
-//        parseData(payloadIn);
-//        break;
-    case '\xE0':
-        // data is a reply to some query we sent
-        // extract the payload out and parse.
-        // payload = getpayload(data); // or something
-        // parse (payload); // recursive ok?
-        payloadIn = data.right(data.length() - 4);
-        parseCommand();
-        break;
-    case '\x00':
-        // data send initiated by the rig due to user control
-        // extract the payload out and parse.
-        payloadIn = data.right(data.length() - 4);
-        parseCommand();
-        break;
-    default:
-        // could be for other equipment on the CIV network.
-        // just drop for now.
-        break;
-    }
+    */
 }
 
 void rigCommander::parseCommand()
@@ -373,6 +408,8 @@ void rigCommander::parseCommand()
             printHex(payloadIn, false, true);
             break;
     }
+    // is any payload left?
+
 }
 
 void rigCommander::parseSpectrum()

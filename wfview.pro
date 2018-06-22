@@ -20,6 +20,9 @@ QMAKE_CXXFLAGS += -march=native
 DEFINES += QT_DEPRECATED_WARNINGS
 DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 
+RESOURCES += qdarkstyle/style.qrc
+
+
 #CONFIG(debug, release|debug) {
 #  win32:QCPLIB = qcustomplotd1
 #  else: QCPLIB = qcustomplotd

@@ -126,9 +126,78 @@ wfmain::~wfmain()
     delete ui;
 }
 
-void wfmain::setDarkTheme(bool dark)
+void wfmain::on_useDarkThemeChk_clicked(bool checked)
 {
-    //theParent->setStyle();
+    setAppTheme(checked);
+    setPlotTheme(wf, checked);
+    setPlotTheme(plot, checked);
+
+}
+
+void wfmain::setAppTheme(bool isDark)
+{
+    if(isDark)
+    {
+        QFile f(":qdarkstyle/style.qss");
+        if (!f.exists())
+        {
+            printf("Unable to set stylesheet, file not found\n");
+        }
+        else
+        {
+            f.open(QFile::ReadOnly | QFile::Text);
+            QTextStream ts(&f);
+            qApp->setStyleSheet(ts.readAll());
+        }
+    } else {
+        qApp->setStyleSheet("");
+    }
+
+}
+
+void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
+{
+    if(isDark)
+    {
+        plot->setBackground(QColor(0,0,0,255));
+        plot->xAxis->grid()->setPen(QColor(75,75,75,255));
+        plot->yAxis->grid()->setPen(QColor(75,75,75,255));
+
+        plot->legend->setTextColor(QColor(255,255,255,255));
+        plot->legend->setBorderPen(QColor(255,255,255,255));
+        plot->legend->setBrush(QColor(0,0,0,200));
+
+        plot->xAxis->setTickLabelColor(Qt::white);
+        plot->xAxis->setLabelColor(Qt::white);
+        plot->yAxis->setTickLabelColor(Qt::white);
+        plot->yAxis->setLabelColor(Qt::white);
+        plot->xAxis->setBasePen(QPen(Qt::white));
+        plot->xAxis->setTickPen(QPen(Qt::white));
+        plot->yAxis->setBasePen(QPen(Qt::white));
+        plot->yAxis->setTickPen(QPen(Qt::white));
+        plot->graph(0)->setPen(QPen(Qt::lightGray)); // magenta, yellow, green, lightGray
+    } else {
+        plot->setBackground(QColor(255,255,255,255));
+
+        plot->xAxis->grid()->setPen(QColor(200,200,200,255));
+        plot->yAxis->grid()->setPen(QColor(200,200,200,255));
+
+        plot->legend->setTextColor(QColor(0,0,0,255));
+        plot->legend->setBorderPen(QColor(0,0,0,255));
+        plot->legend->setBrush(QColor(255,255,255,200));
+
+        plot->xAxis->setTickLabelColor(Qt::black);
+        plot->xAxis->setLabelColor(Qt::black);
+        plot->yAxis->setTickLabelColor(Qt::black);
+        plot->yAxis->setLabelColor(Qt::black);
+        plot->xAxis->setBasePen(QPen(Qt::black));
+        plot->xAxis->setTickPen(QPen(Qt::black));
+        plot->yAxis->setBasePen(QPen(Qt::black));
+        plot->yAxis->setTickPen(QPen(Qt::black));
+        plot->graph(0)->setPen(QPen(Qt::blue));
+
+    }
+
 }
 
 void wfmain::runDelayedCommand()
@@ -170,7 +239,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     //qDebug() << "Spectrum data received at UI! Length: " << specLen;
     if(specLen != 475)
     {
-        //qDebug () << "Unusual spectrum: length: " << specLen;
+        qDebug () << "Unusual spectrum: length: " << specLen;
         if(specLen > 475)
         {
             specLen = 475;
@@ -508,3 +577,5 @@ void wfmain::on_modeSelectCombo_currentIndexChanged(int index)
         }
     }
 }
+
+

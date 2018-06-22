@@ -94,13 +94,16 @@ private slots:
 
     void on_modeSelectCombo_currentIndexChanged(int index);
 
+    void on_useDarkThemeChk_clicked(bool checked);
+
 private:
     Ui::wfmain *ui;
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
     QCPItemTracer * tracer; // marker of current frequency
     //commHandler *comm;
-    void setDarkTheme(bool dark);
+    void setAppTheme(bool isDark);
+    void setPlotTheme(QCustomPlot *plot, bool isDark);
     QWidget * theParent;
 
     rigCommander * rig;

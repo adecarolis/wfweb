@@ -50,10 +50,13 @@ private:
     QSerialPort *port;
     qint32 baudrate;
     unsigned char stopbits;
+    bool rolledBack;
 
 
     bool isConnected; // port opened
     mutable QMutex mutex;
+    void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
+
 };
 
 #endif // COMMHANDLER_H
