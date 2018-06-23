@@ -18,7 +18,7 @@ wfmain::wfmain(QWidget *parent) :
 
     tracer->setPen(QPen(Qt::green));
     tracer->setBrush(Qt::green);
-    tracer->setSize(7);
+    tracer->setSize(20);
 
     spectWidth = 475; // fixed for now
     wfLength = 160; // fixed for now
@@ -32,7 +32,7 @@ wfmain::wfmain(QWidget *parent) :
         wfimage.append(empty);
     }
 
-
+    // TODO: FM is missing, should be where CW is, all other modes get +1?
     //          0      1        2         3       4
     modes << "LSB" << "USB" << "AM" << "CW" << "RTTY";
     //          5      6        7         8       9
@@ -117,6 +117,7 @@ wfmain::wfmain(QWidget *parent) :
     delayedCommand->setSingleShot(true);
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
 
+    getInitialRigState();
 
 }
 
@@ -125,6 +126,23 @@ wfmain::~wfmain()
     // rigThread->quit();
     delete ui;
 }
+
+void wfmain::getInitialRigState()
+{
+    // Things to get:
+    // Freq, Mode, Scope cent/fixed, scope span, edge setting
+    // data mode (may be combined with scope mode)
+
+    cmdOutQue.append(cmdGetFreq);
+    cmdOutQue.append(cmdGetMode);
+
+    cmdOutQue.append(cmdGetFreq);
+    cmdOutQue.append(cmdGetMode);
+
+    cmdOut = cmdNone;
+    delayedCommand->start();
+}
+
 
 void wfmain::on_useDarkThemeChk_clicked(bool checked)
 {
@@ -157,6 +175,7 @@ void wfmain::setAppTheme(bool isDark)
 
 void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
 {
+    QColor color;
     if(isDark)
     {
         plot->setBackground(QColor(0,0,0,255));
@@ -177,7 +196,10 @@ void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
         plot->yAxis->setTickPen(QPen(Qt::white));
         plot->graph(0)->setPen(QPen(Qt::lightGray)); // magenta, yellow, green, lightGray
     } else {
+        //color = ui->groupBox->palette().color(QPalette::Button);
+
         plot->setBackground(QColor(255,255,255,255));
+        //plot->setBackground(color);
 
         plot->xAxis->grid()->setPen(QColor(200,200,200,255));
         plot->yAxis->grid()->setPen(QColor(200,200,200,255));
@@ -202,6 +224,7 @@ void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
 
 void wfmain::runDelayedCommand()
 {
+    cmds qdCmd;
     // switch case on enum
     switch (cmdOut)
     {
@@ -214,6 +237,38 @@ void wfmain::runDelayedCommand()
         default:
             break;
     }
+
+    // Note: Commands that need a specific order should use this queue.
+    // Commands that do not need a speific order should probably just
+    // go through the signal-slot queue mechanism... which should be more clearly defined.
+
+    // Prototype vector queue:
+
+    if(!cmdOutQue.isEmpty())
+    {
+        qdCmd = cmdOutQue.takeFirst();
+        switch(qdCmd)
+        {
+            case cmdGetFreq:
+                emit getFrequency();
+                break;
+            case cmdGetMode:
+                emit getMode();
+                break;
+            case cmdGetDataMode:
+                break;
+            default:
+                break;
+        }
+    }
+    if(cmdOutQue.isEmpty())
+    {
+        // done
+    } else {
+        // next
+        delayedCommand->start();
+    }
+
 }
 
 void wfmain::receiveFreq(double freqMhz)

@@ -104,6 +104,7 @@ private:
     //commHandler *comm;
     void setAppTheme(bool isDark);
     void setPlotTheme(QCustomPlot *plot, bool isDark);
+    void getInitialRigState();
     QWidget * theParent;
 
     rigCommander * rig;
@@ -135,8 +136,9 @@ private:
     double oldLowerFreq;
     double oldUpperFreq;
     double freqMhz;
-    enum cmds {cmdGetFreq, cmdGetMode, cmdGetDataMode};
+    enum cmds {cmdNone, cmdGetFreq, cmdGetMode, cmdGetDataMode};
     cmds cmdOut;
+    QVector <cmds> cmdOutQue;
 
 };
 

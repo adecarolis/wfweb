@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -113,7 +113,7 @@
              </font>
             </property>
             <property name="text">
-             <string>07.225000</string>
+             <string>00.000000</string>
             </property>
            </widget>
           </item>
@@ -1012,7 +1012,7 @@
      <x>0</x>
      <y>0</y>
      <width>583</width>
-     <height>20</height>
+     <height>19</height>
     </rect>
    </property>
   </widget>
