@@ -40,6 +40,7 @@ signals:
     void haveSpectrumData(QByteArray spectrum, double startFreq, double endFreq); // pass along data to UI
     void haveFrequency(double frequencyMhz);
     void haveMode(QString mode);
+    void haveDataMode(bool dataModeEnabled);
     void haveSpectrumBounds();
     void dataForComm(const QByteArray &outData);
     void getMoreDebug();
@@ -56,6 +57,8 @@ private:
     QByteArray makeFreqPayload(double frequency);
     void parseMode();
     void parseSpectrum();
+    void parseDetailedRegisters1A05();
+    void parseRegisters1A();
     void sendDataOut();
     void prepDataAndSend(QByteArray data);
     void debugMe();

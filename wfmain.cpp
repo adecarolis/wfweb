@@ -35,8 +35,8 @@ wfmain::wfmain(QWidget *parent) :
     // TODO: FM is missing, should be where CW is, all other modes get +1?
     //          0      1        2         3       4
     modes << "LSB" << "USB" << "AM" << "CW" << "RTTY";
-    //          5      6        7         8       9
-    modes << "CW-R" << "RTTY-R" << "LSB-D" << "USB-D";
+    //          5      6          7           8          9
+    modes << "FM" << "CW-R" << "RTTY-R" << "LSB-D" << "USB-D";
     ui->modeSelectCombo->insertItems(0, modes);
 
     spans << "2.5k" << "5.0k" << "10k" << "25k";
@@ -61,6 +61,7 @@ wfmain::wfmain(QWidget *parent) :
     connect(rig, SIGNAL(haveFrequency(double)), this, SLOT(receiveFreq(double)));
     connect(this, SIGNAL(getFrequency()), rig, SLOT(getFrequency()));
     connect(this, SIGNAL(getMode()), rig, SLOT(getMode()));
+    connect(this, SIGNAL(getDataMode()), rig, SLOT(getDataMode()));
     connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
     connect(this, SIGNAL(spectOutputDisable()), rig, SLOT(disableSpectOutput()));
     connect(this, SIGNAL(spectOutputEnable()), rig, SLOT(enableSpectOutput()));
@@ -116,6 +117,12 @@ wfmain::wfmain(QWidget *parent) :
     delayedCommand->setInterval(250);
     delayedCommand->setSingleShot(true);
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
+
+    foreach (const QSerialPortInfo &serialPortInfo, QSerialPortInfo::availablePorts())
+    {
+        portList.append(serialPortInfo.portName());
+        ui->commPortDrop->addItem(serialPortInfo.portName());
+    }
 
     getInitialRigState();
 
@@ -237,6 +244,7 @@ void wfmain::runDelayedCommand()
         default:
             break;
     }
+    cmdOut = cmdNone; // yep. Hope this wasn't called twice in a row rapidly.
 
     // Note: Commands that need a specific order should use this queue.
     // Commands that do not need a speific order should probably just
@@ -256,6 +264,7 @@ void wfmain::runDelayedCommand()
                 emit getMode();
                 break;
             case cmdGetDataMode:
+                emit getDataMode();
                 break;
             default:
                 break;
@@ -619,6 +628,14 @@ void wfmain::on_scopeEdgeCombo_currentIndexChanged(int index)
 
 void wfmain::on_modeSelectCombo_currentIndexChanged(int index)
 {
+    // do nothing. The change may be from receiving a mode status update or the user. Can't tell which is which here.
+}
+
+
+
+void wfmain::on_modeSelectCombo_activated(int index)
+{
+    // the user initiated a mode change.
     if(index < 10)
     {
         qDebug() << "Mode selection changed. index: " << index;
@@ -631,6 +648,15 @@ void wfmain::on_modeSelectCombo_currentIndexChanged(int index)
             // set data mode off
         }
     }
+
 }
 
+void wfmain::on_freqDial_actionTriggered(int action)
+{
+    //qDebug() << "Action: " << action; // "7" == changed?
+}
 
+void wfmain::on_freqDial_valueChanged(int value)
+{
+    qDebug() << "Value changed to: " << value ;
+}

@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -36,7 +36,9 @@
              <property name="orientation">
               <enum>Qt::Vertical</enum>
              </property>
-             <widget class="QCustomPlot" name="plot" native="true"/>
+             <widget class="QCustomPlot" name="plot" native="true">
+              <zorder>freqDial</zorder>
+             </widget>
              <widget class="QCustomPlot" name="waterfall" native="true"/>
             </widget>
            </item>
@@ -164,6 +166,34 @@
           </item>
           <item>
            <widget class="QComboBox" name="modeSelectCombo"/>
+          </item>
+          <item>
+           <widget class="QDial" name="freqDial">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>50</width>
+              <height>1</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>60</width>
+              <height>60</height>
+             </size>
+            </property>
+            <property name="wrapping">
+             <bool>true</bool>
+            </property>
+            <property name="notchesVisible">
+             <bool>true</bool>
+            </property>
+           </widget>
           </item>
           <item>
            <spacer name="horizontalSpacer_3">
@@ -1012,7 +1042,7 @@
      <x>0</x>
      <y>0</y>
      <width>583</width>
-     <height>19</height>
+     <height>20</height>
     </rect>
    </property>
   </widget>

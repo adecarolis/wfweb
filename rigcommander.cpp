@@ -395,6 +395,13 @@ void rigCommander::parseCommand()
             //printHex(payloadIn, false, true);
             parseSpectrum();
             break;
+        case '\x1A':
+            if(payloadIn[01] == '\x05')
+            {
+                parseDetailedRegisters1A05();
+            } else {
+                parseRegisters1A();
+            }
         case '\xFB':
             // Fine Business, ACK from rig.
             break;
@@ -410,6 +417,42 @@ void rigCommander::parseCommand()
     }
     // is any payload left?
 
+}
+
+void rigCommander::parseRegisters1A()
+{
+    // The simpler of the 1A stuff:
+
+    // 1A 06: data mode on/off
+    //    07: IP+ enable/disable
+    //    00:   memory contents
+    //    01:   band stacking memory contents (last freq used is stored here per-band)
+    //    03: filter width
+    //    04: AGC rate
+    switch(payloadIn[02])
+    {
+        case '\x06':
+            // data mode
+            // emit havedataMode( (bool) payloadIn[somebit])
+            // index
+            // 03 04
+            // XX YY
+            // XX = 00 (off) or 01 (on)
+            // YY: filter selected, 01 through 03.;
+            // if YY is 00 then XX was also set to 00
+            emit haveDataMode((bool)payloadIn[03]);
+            break;
+        case '\x07':
+            // IP+
+            break;
+        default:
+            break;
+    }
+}
+
+void rigCommander::parseDetailedRegisters1A05()
+{
+    // It seems a lot of misc stuff is under this command and subcommand.
 }
 
 void rigCommander::parseSpectrum()

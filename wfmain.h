@@ -11,6 +11,7 @@
 #include "commhandler.h"
 #include "rigcommander.h"
 #include <qcustomplot.h>
+#include<qserialportinfo.h>
 
 namespace Ui {
 class wfmain;
@@ -29,6 +30,7 @@ signals:
     void setFrequency(double freq);
     void getMode();
     void setMode(char modeIndex);
+    void getDataMode();
     void getDebug();
     void spectOutputEnable();
     void spectOutputDisable();
@@ -96,6 +98,12 @@ private slots:
 
     void on_useDarkThemeChk_clicked(bool checked);
 
+    void on_modeSelectCombo_activated(int index);
+
+    void on_freqDial_actionTriggered(int action);
+
+    void on_freqDial_valueChanged(int value);
+
 private:
     Ui::wfmain *ui;
     QCustomPlot *plot; // line plot
@@ -106,6 +114,7 @@ private:
     void setPlotTheme(QCustomPlot *plot, bool isDark);
     void getInitialRigState();
     QWidget * theParent;
+    QStringList portList;
 
     rigCommander * rig;
     QThread * rigThread;

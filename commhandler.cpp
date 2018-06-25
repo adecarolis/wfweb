@@ -11,10 +11,12 @@ commHandler::commHandler()
 
     port = new QSerialPort();
 
-    // The following should become arguments and/or functions
+    // TODO: The following should become arguments and/or functions
+    // Add signal/slot everywhere for comm port setup.
+    // Consider how to "re-setup" and how to save the state for next time.
     baudrate = 115200;
     stopbits = 1;
-    portName = "/dev/ttyUSB0";
+    portName = "/dev/ttyUSB1";
 
     setupComm(); // basic parameters
     openPort();
@@ -62,9 +64,9 @@ void commHandler::sendDataOut(const QByteArray &writeData)
 void commHandler::receiveDataIn()
 {
     // connected to comm port data signal
-   // inPortData.append(port->readAll());
 
-   // OLD: inPortData = port->readAll();
+    // Here we get a little specific to CIV radios
+    // because we know what constitutes a valid "frame" of data.
 
     // new code:
     port->startTransaction();
@@ -76,10 +78,7 @@ void commHandler::receiveDataIn()
             // good!
             port->commitTransaction();
             emit haveDataFromPort(inPortData);
-            // PRoblem: We often get several chunks together this way
-            // if we can split and individually send them that would be better.
-            // could emit several at each FE....FD segment.
-            // should probbly make the buffer smaller to reduce this
+
             if(rolledBack)
             {
                 qDebug() << "Rolled back and was successfull. Length: " << inPortData.length();
@@ -99,22 +98,13 @@ void commHandler::receiveDataIn()
         qDebug() << "THIS SHOULD ONLY HAPPEN ONCE!!";
         // THIS SHOULD ONLY HAPPEN ONCE!
 
-        //qDebug() << "Data start: 0x" << (char)inPortData[00] << (char)inPortData[01]; // danger
         // unrecoverable. We did not receive the start and must
         // have missed it earlier because we did not roll back to
         // preserve the beginning.
+
         //printHex(inPortData, false, true);
 
     }
-
-
-
-    // Here is where we can be smart about this:
-    // port->startTransaction(); port->rollbackTransaction();
-    // port->commitTransaction();
-
-    // qDebug() << "Data: " << inPortData;
-    // OLD: emit haveDataFromPort(inPortData);
 }
 
 void commHandler::openPort()
