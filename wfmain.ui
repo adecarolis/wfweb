@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>583</width>
-    <height>368</height>
+    <height>582</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -36,9 +36,7 @@
              <property name="orientation">
               <enum>Qt::Vertical</enum>
              </property>
-             <widget class="QCustomPlot" name="plot" native="true">
-              <zorder>freqDial</zorder>
-             </widget>
+             <widget class="QCustomPlot" name="plot" native="true"/>
              <widget class="QCustomPlot" name="waterfall" native="true"/>
             </widget>
            </item>

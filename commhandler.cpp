@@ -16,7 +16,7 @@ commHandler::commHandler()
     // Consider how to "re-setup" and how to save the state for next time.
     baudrate = 115200;
     stopbits = 1;
-    portName = "/dev/ttyUSB1";
+    portName = "/dev/ttyUSB0";
 
     setupComm(); // basic parameters
     openPort();

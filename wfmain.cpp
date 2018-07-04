@@ -125,6 +125,7 @@ wfmain::wfmain(QWidget *parent) :
     }
 
     getInitialRigState();
+    oldFreqDialVal = ui->freqDial->value();
 
 }
 
@@ -201,7 +202,7 @@ void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
         plot->xAxis->setTickPen(QPen(Qt::white));
         plot->yAxis->setBasePen(QPen(Qt::white));
         plot->yAxis->setTickPen(QPen(Qt::white));
-        plot->graph(0)->setPen(QPen(Qt::lightGray)); // magenta, yellow, green, lightGray
+        plot->graph(0)->setPen(QPen(Qt::yellow)); // magenta, yellow, green, lightGray
     } else {
         //color = ui->groupBox->palette().color(QPalette::Button);
 
@@ -285,6 +286,7 @@ void wfmain::receiveFreq(double freqMhz)
     //qDebug() << "Frequency: " << freqMhz;
     ui->freqLabel->setText(QString("%1").arg(freqMhz, 0, 'f'));
     this->freqMhz = freqMhz;
+    this->knobFreqMhz = freqMhz;
 }
 
 void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq)
@@ -340,7 +342,9 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     plot->graph(0)->setData(x,y);
     if((freqMhz < endFreq) && (freqMhz > startFreq))
     {
-        tracer->setGraphKey(freqMhz);
+        // tracer->setGraphKey(freqMhz);
+        tracer->setGraphKey(knobFreqMhz);
+
     }
     if(drawPeaks)
     {
@@ -658,5 +662,77 @@ void wfmain::on_freqDial_actionTriggered(int action)
 
 void wfmain::on_freqDial_valueChanged(int value)
 {
-    qDebug() << "Value changed to: " << value ;
+    // qDebug() << "Old value: " << oldFreqDialVal << " New value: " << value ;
+    double stepSize = 0.001000; // 1kHz steps
+    double newFreqMhz = 0;
+    volatile int delta = 0;
+    int maxVal = ui->freqDial->maximum();
+
+    int directPath = 0;
+    int crossingPath = 0;
+    
+    int distToMaxNew = 0;
+    int distToMaxOld = 0;
+    
+    if(value == 0)
+    {
+        distToMaxNew = 0;
+    } else {
+        distToMaxNew = maxVal - value;
+    }
+
+    if(oldFreqDialVal != 0)
+    {
+        distToMaxOld = maxVal - oldFreqDialVal;
+    } else {
+        distToMaxOld = 0;
+    }
+    
+    directPath = abs(value - oldFreqDialVal);
+    if(value < maxVal / 2)
+    {
+        crossingPath = value + distToMaxOld;
+    } else {
+        crossingPath = distToMaxNew + oldFreqDialVal;
+    }
+    
+    if(directPath > crossingPath)
+    {
+        // use crossing path, it is shorter
+        delta = crossingPath;
+        // mnow calculate the direction:
+        if( value > oldFreqDialVal)
+        {
+            // CW
+            delta = delta;
+        } else {
+            // CCW
+            delta *= -1;
+        }
+
+
+    } else {
+        // use direct path
+        // crossing path is larger than direct path, use direct path
+        //delta = directPath;
+        // now calculate the direction
+        delta = value - oldFreqDialVal;
+
+    }
+
+
+    newFreqMhz = knobFreqMhz + (delta  * stepSize);
+
+    // qDebug() << "old freq: " << knobFreqMhz << " new freq: " << newFreqMhz << "knobDelta: " << delta << " freq delta: " << newFreqMhz - knobFreqMhz;
+
+
+    this->knobFreqMhz = newFreqMhz; // the frequency we think we should be on.
+
+    oldFreqDialVal = value;
+
+    ui->freqLabel->setText(QString("%1").arg(knobFreqMhz, 0, 'f'));
+
+    emit setFrequency(newFreqMhz);
+    //emit getFrequency();
+
 }

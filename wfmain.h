@@ -145,9 +145,11 @@ private:
     double oldLowerFreq;
     double oldUpperFreq;
     double freqMhz;
+    double knobFreqMhz;
     enum cmds {cmdNone, cmdGetFreq, cmdGetMode, cmdGetDataMode};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
+    int oldFreqDialVal;
 
 };
 
