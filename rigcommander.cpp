@@ -9,7 +9,7 @@
 // The IC-7300 "full" manual also contains a command reference.
 
 // How to make spectrum display stop using rigctl:
-//  echo "w \0xFE\0xFE\0x094\0xE0\0x27\0x11\0x00\0xFD" | rigctl -m 373 -r /dev/ttyUSB0 -s 115200 -vvvvv
+//  echo "w \0xFE\0xFE\0x94\0xE0\0x27\0x11\0x00\0xFD" | rigctl -m 373 -r /dev/ttyUSB0 -s 115200 -vvvvv
 
 // Note: When sending \x00, must use QByteArray.setRawData()
 
@@ -17,7 +17,9 @@
 rigCommander::rigCommander()
 {
     // construct
+    // TODO: Bring this parameter and the comm port from the UI.
     civAddr = 0x94; // address of the radio. Decimal is 148.
+
     setCIVAddr(civAddr);
     //payloadPrefix = QByteArray("\xFE\xFE\x94\xE0");
     payloadPrefix = QByteArray("\xFE\xFE");
@@ -34,6 +36,7 @@ rigCommander::rigCommander()
     connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
 
     connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
+    pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
 }
 
 rigCommander::~rigCommander()
@@ -205,11 +208,35 @@ void rigCommander::setMode(char mode)
     QByteArray payload;
     if((mode >=0) && (mode < 10))
     {
+        // annoying hack as mode 6 is undefined.
+        if(mode > 5)
+        {
+            mode++;
+        }
+
         // valid
-        payload.setRawData("\x06", 1); // cmd 06 will apply the default filter, no need to specify.
+        payload.setRawData("\x06", 1); // cmd 06 needs filter specified
+        //payload.setRawData("\x04", 1); // cmd 04 will apply the default filter, but it seems to always pick FIL 02
+
         payload.append(mode);
+        payload.append("\x03"); // wide band
         prepDataAndSend(payload);
     }
+}
+
+void rigCommander::setDataMode(bool dataOn)
+{
+    QByteArray payload;
+
+    payload.setRawData("\x1A\x06", 2);
+    if(dataOn)
+    {
+        payload.append("\x01\x03", 2); // data mode on, wide bandwidth
+
+    } else {
+        payload.append("\x00\x00", 2); // data mode off, bandwidth not defined per ICD.
+    }
+    prepDataAndSend(payload);
 }
 
 void rigCommander::getFrequency()
@@ -232,6 +259,25 @@ void rigCommander::getDataMode()
     QByteArray payload("\x1A\x06");
     prepDataAndSend(payload);
 }
+
+void rigCommander::getPTT()
+{
+    QByteArray payload("\x1C\x00", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setPTT(bool pttOn)
+{
+    //bool pttAllowed = false;
+
+    if(pttAllowed)
+    {
+        QByteArray payload("\x1C\x00", 2);
+        payload.append((char)pttOn);
+        prepDataAndSend(payload);
+    }
+}
+
 
 void rigCommander::setCIVAddr(unsigned char civAddr)
 {
@@ -402,6 +448,9 @@ void rigCommander::parseCommand()
             } else {
                 parseRegisters1A();
             }
+        case '\x1C':
+            parseRegisters1C();
+            break;
         case '\xFB':
             // Fine Business, ACK from rig.
             break;
@@ -410,12 +459,41 @@ void rigCommander::parseCommand()
             qDebug() << "Error (FA) received from rig.";
             printHex(payloadIn, false ,true);
             break;
+
         default:
             qDebug() << "Have other data with cmd: " << std::hex << payloadIn[00];
             printHex(payloadIn, false, true);
             break;
     }
     // is any payload left?
+
+}
+
+void rigCommander::parseRegisters1C()
+{
+    // PTT lives here
+    switch(payloadIn[02])
+    {
+        case '\x00':
+            parsePTT();
+            break;
+        default:
+            break;
+    }
+}
+
+void rigCommander::parsePTT()
+{
+    // read after payloadIn[02]
+
+    if(payloadIn[03] == (char)0)
+    {
+        // PTT off
+        emit havePTTStatus(false);
+    } else {
+        // PTT on
+        emit havePTTStatus(true);
+    }
 
 }
 

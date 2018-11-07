@@ -100,6 +100,12 @@
               <verstretch>0</verstretch>
              </sizepolicy>
             </property>
+            <property name="minimumSize">
+             <size>
+              <width>175</width>
+              <height>0</height>
+             </size>
+            </property>
             <property name="maximumSize">
              <size>
               <width>145</width>
@@ -247,10 +253,26 @@
           </item>
           <item>
            <widget class="QPushButton" name="debugBtn">
+            <property name="toolTip">
+             <string>Don't press this button!</string>
+            </property>
             <property name="text">
              <string>Debug</string>
             </property>
            </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_6">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
           </item>
           <item>
            <spacer name="horizontalSpacer">
@@ -1012,6 +1034,68 @@
              <string>Initialize Comm</string>
             </property>
            </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_14">
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QCheckBox" name="tuningFloorZerosChk">
+            <property name="text">
+             <string>When tuning, set lower digits to zero</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="pttEnableChk">
+            <property name="text">
+             <string>Enable PTT</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="enableXmlRpcChk">
+            <property name="text">
+             <string>Enable XML RPC server</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_15">
+          <property name="topMargin">
+           <number>9</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="pttOnBtn">
+            <property name="text">
+             <string>PTT On</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pttOffBtn">
+            <property name="text">
+             <string>PTT Off</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_5">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
           </item>
          </layout>
         </item>

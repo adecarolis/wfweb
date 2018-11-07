@@ -31,6 +31,9 @@ public slots:
     void setMode(char mode);
     void getFrequency();
     void getMode();
+    void getPTT();
+    void setPTT(bool pttOn);
+    void setDataMode(bool dataOn);
     void getDataMode();
     void setCIVAddr(unsigned char civAddr);
     void handleNewData(const QByteArray &data);
@@ -45,6 +48,7 @@ signals:
     void dataForComm(const QByteArray &outData);
     void getMoreDebug();
     void finished();
+    void havePTTStatus(bool pttOn);
 
 
 private:
@@ -59,6 +63,8 @@ private:
     void parseSpectrum();
     void parseDetailedRegisters1A05();
     void parseRegisters1A();
+    void parseRegisters1C();
+    void parsePTT();
     void sendDataOut();
     void prepDataAndSend(QByteArray data);
     void debugMe();
@@ -81,6 +87,7 @@ private:
 
     double frequencyMhz;
     unsigned char civAddr; // 0x94 is default = 148decimal
+    bool pttAllowed;
 
 
 

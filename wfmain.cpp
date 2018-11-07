@@ -14,11 +14,11 @@ wfmain::wfmain(QWidget *parent) :
     tracer = new QCPItemTracer(plot);
     //tracer->setGraphKey(5.5);
     tracer->setInterpolating(true);
-    tracer->setStyle(QCPItemTracer::tsPlus);
+    tracer->setStyle(QCPItemTracer::tsCrosshair);
 
     tracer->setPen(QPen(Qt::green));
     tracer->setBrush(Qt::green);
-    tracer->setSize(20);
+    tracer->setSize(30);
 
     spectWidth = 475; // fixed for now
     wfLength = 160; // fixed for now
@@ -32,7 +32,6 @@ wfmain::wfmain(QWidget *parent) :
         wfimage.append(empty);
     }
 
-    // TODO: FM is missing, should be where CW is, all other modes get +1?
     //          0      1        2         3       4
     modes << "LSB" << "USB" << "AM" << "CW" << "RTTY";
     //          5      6          7           8          9
@@ -47,6 +46,7 @@ wfmain::wfmain(QWidget *parent) :
     ui->scopeEdgeCombo->insertItems(0,edges);
 
     ui->splitter->setHandleWidth(5);
+    ui->statusBar->showMessage("Ready", 2000);
 
     // comm = new commHandler();
     rig = new rigCommander();
@@ -62,6 +62,9 @@ wfmain::wfmain(QWidget *parent) :
     connect(this, SIGNAL(getFrequency()), rig, SLOT(getFrequency()));
     connect(this, SIGNAL(getMode()), rig, SLOT(getMode()));
     connect(this, SIGNAL(getDataMode()), rig, SLOT(getDataMode()));
+    connect(this, SIGNAL(setDataMode(bool)), rig, SLOT(setDataMode(bool)));
+    connect(rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
+
     connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
     connect(this, SIGNAL(spectOutputDisable()), rig, SLOT(disableSpectOutput()));
     connect(this, SIGNAL(spectOutputEnable()), rig, SLOT(enableSpectOutput()));
@@ -79,7 +82,8 @@ wfmain::wfmain(QWidget *parent) :
     // Plot user interaction
     connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
     connect(wf, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handleWFDoubleClick(QMouseEvent*)));
-
+    connect(plot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handlePlotClick(QMouseEvent*)));
+    connect(wf, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handleWFClick(QMouseEvent*)));
 
     ui->plot->addGraph(); // primary
     ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first?
@@ -114,7 +118,7 @@ wfmain::wfmain(QWidget *parent) :
     ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
 
     delayedCommand = new QTimer(this);
-    delayedCommand->setInterval(250);
+    delayedCommand->setInterval(100); // ms. 250 was fine.
     delayedCommand->setSingleShot(true);
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
 
@@ -151,6 +155,10 @@ void wfmain::getInitialRigState()
     delayedCommand->start();
 }
 
+void wfmain::showStatusBarText(QString text)
+{
+    ui->statusBar->showMessage(text, 5000);
+}
 
 void wfmain::on_useDarkThemeChk_clicked(bool checked)
 {
@@ -267,6 +275,12 @@ void wfmain::runDelayedCommand()
             case cmdGetDataMode:
                 emit getDataMode();
                 break;
+            case cmdSetDataModeOff:
+                emit setDataMode(false);
+                break;
+            case cmdSetDataModeOn:
+                emit setDataMode(true);
+                break;
             default:
                 break;
         }
@@ -287,6 +301,12 @@ void wfmain::receiveFreq(double freqMhz)
     ui->freqLabel->setText(QString("%1").arg(freqMhz, 0, 'f'));
     this->freqMhz = freqMhz;
     this->knobFreqMhz = freqMhz;
+    showStatusBarText(QString("Frequency: %1").arg(freqMhz));
+}
+
+void wfmain::receivePTTstatus(bool pttOn)
+{
+    qDebug() << "PTT status: " << pttOn;
 }
 
 void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq)
@@ -388,15 +408,15 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 {
     double x;
-    double y;
+    //double y;
     //double px;
     x = plot->xAxis->pixelToCoord(me->pos().x());
-    y = plot->yAxis->pixelToCoord(me->pos().y());
+    //y = plot->yAxis->pixelToCoord(me->pos().y());
     emit setFrequency(x);
     cmdOut = cmdGetFreq;
     delayedCommand->start();
+    showStatusBarText(QString("Going to %1 MHz").arg(x));
 
-    qDebug() << "PLOT double click: " << x << ", " << y;
 }
 
 void wfmain::handleWFDoubleClick(QMouseEvent *me)
@@ -410,19 +430,20 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
     emit setFrequency(x);
     cmdOut = cmdGetFreq;
     delayedCommand->start();
-
-    //qDebug() << "WF double click: " << x << ", " << y;
+    showStatusBarText(QString("Going to %1 MHz").arg(x));
 
 }
 
 void wfmain::handlePlotClick(QMouseEvent *me)
 {
-
+    double x = plot->xAxis->pixelToCoord(me->pos().x());
+    showStatusBarText(QString("Selected %1 MHz").arg(x));
 }
 
 void wfmain::handleWFClick(QMouseEvent *me)
 {
-
+    double x = plot->xAxis->pixelToCoord(me->pos().x());
+    showStatusBarText(QString("Selected %1 MHz").arg(x));
 }
 
 
@@ -639,18 +660,32 @@ void wfmain::on_modeSelectCombo_currentIndexChanged(int index)
 
 void wfmain::on_modeSelectCombo_activated(int index)
 {
+    // Reference:
+    //          0      1        2         3       4
+    //modes << "LSB" << "USB" << "AM" << "CW" << "RTTY";
+    //          5      6          7           8          9
+    //modes << "FM" << "CW-R" << "RTTY-R" << "LSB-D" << "USB-D";
+
     // the user initiated a mode change.
     if(index < 10)
     {
-        qDebug() << "Mode selection changed. index: " << index;
-        emit setMode(index);
+        // qDebug() << "Mode selection changed. index: " << index;
 
         if(index > 7)
         {
             // set data mode on
+            // emit setDataMode(true);
+            cmdOutQue.append(cmdSetDataModeOn);
+            delayedCommand->start();
+            index = index - 8;
         } else {
             // set data mode off
+            //emit setDataMode(false);
+            cmdOutQue.append(cmdSetDataModeOff);
+            delayedCommand->start();
         }
+
+        emit setMode(index);
     }
 
 }
@@ -658,12 +693,13 @@ void wfmain::on_modeSelectCombo_activated(int index)
 void wfmain::on_freqDial_actionTriggered(int action)
 {
     //qDebug() << "Action: " << action; // "7" == changed?
+    // TODO: remove this
 }
 
 void wfmain::on_freqDial_valueChanged(int value)
 {
     // qDebug() << "Old value: " << oldFreqDialVal << " New value: " << value ;
-    double stepSize = 0.001000; // 1kHz steps
+    double stepSize = 0.000100; // 100 Hz steps
     double newFreqMhz = 0;
     volatile int delta = 0;
     int maxVal = ui->freqDial->maximum();

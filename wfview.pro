@@ -23,13 +23,13 @@ DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 RESOURCES += qdarkstyle/style.qrc
 
 
-#CONFIG(debug, release|debug) {
-#  win32:QCPLIB = qcustomplotd1
-#  else: QCPLIB = qcustomplotd
-#} else {
-#  win32:QCPLIB = qcustomplot1
-#  else: QCPLIB = qcustomplot
-#}
+CONFIG(debug, release|debug) {
+  win32:QCPLIB = qcustomplotd1
+  else: QCPLIB = qcustomplotd
+} else {
+  win32:QCPLIB = qcustomplot1
+  else: QCPLIB = qcustomplot
+}
 
 QCPLIB = qcustomplot
 
@@ -39,11 +39,13 @@ LIBS += -L./ -l$$QCPLIB
 SOURCES += main.cpp\
         wfmain.cpp \
     commhandler.cpp \
-    rigcommander.cpp
+    rigcommander.cpp \
+    freqmemory.cpp
 
 HEADERS  += wfmain.h \
     ../../../../../usr/include/qcustomplot.h \
     commhandler.h \
-    rigcommander.h
+    rigcommander.h \
+    freqmemory.h
 
 FORMS    += wfmain.ui

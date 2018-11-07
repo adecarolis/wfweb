@@ -93,9 +93,9 @@ void commHandler::receiveDataIn()
             rolledBack = true;
         }
     } else {
-        port->commitTransaction();
-        qDebug() << "Warning: received data with invalid start. Dropping data.";
-        qDebug() << "THIS SHOULD ONLY HAPPEN ONCE!!";
+        port->commitTransaction(); // do not emit data, do not keep data.
+        //qDebug() << "Warning: received data with invalid start. Dropping data.";
+        //qDebug() << "THIS SHOULD ONLY HAPPEN ONCE!!";
         // THIS SHOULD ONLY HAPPEN ONCE!
 
         // unrecoverable. We did not receive the start and must
@@ -115,11 +115,11 @@ void commHandler::openPort()
     if(success)
     {
         isConnected = true;
-        qDebug() << "Opened port!";
+        //qDebug() << "Opened port!";
         return;
     } else {
         // debug?
-        qDebug() << "Could not open serial port.";
+        //qDebug() << "Could not open serial port.";
         isConnected = false;
         return;
     }
@@ -135,6 +135,7 @@ void commHandler::closePort()
 
 void commHandler::debugThis()
 {
+    // Do not use, function is for debug only and subject to change.
     qDebug() << "comm debug called.";
 
     inPortData = port->readAll();

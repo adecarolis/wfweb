@@ -30,7 +30,10 @@ signals:
     void setFrequency(double freq);
     void getMode();
     void setMode(char modeIndex);
+    void setDataMode(bool dataOn);
     void getDataMode();
+    void getPTT();
+    void setPTT(bool pttOn);
     void getDebug();
     void spectOutputEnable();
     void spectOutputDisable();
@@ -45,11 +48,13 @@ private slots:
     void receiveFreq(double);
     void receiveMode(QString);
     void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);
+    void receivePTTstatus(bool pttOn);
     void handlePlotClick(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);
     void handleWFDoubleClick(QMouseEvent *);
     void runDelayedCommand();
+    void showStatusBarText(QString text);
 
     void on_getFreqBtn_clicked();
 
@@ -146,7 +151,7 @@ private:
     double oldUpperFreq;
     double freqMhz;
     double knobFreqMhz;
-    enum cmds {cmdNone, cmdGetFreq, cmdGetMode, cmdGetDataMode};
+    enum cmds {cmdNone, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     int oldFreqDialVal;
