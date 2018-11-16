@@ -34,6 +34,8 @@ signals:
     void getDataMode();
     void getPTT();
     void setPTT(bool pttOn);
+    void getBandStackReg(char band, char regCode);
+    void getRfGain();
     void getDebug();
     void spectOutputEnable();
     void spectOutputDisable();
@@ -49,6 +51,8 @@ private slots:
     void receiveMode(QString);
     void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);
     void receivePTTstatus(bool pttOn);
+    void receiveDataModeStatus(bool dataOn);
+    void receiveBandStackReg(float freq, char mode, bool dataOn); // freq, mode, (filter,) datamode
     void handlePlotClick(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);
@@ -99,15 +103,43 @@ private slots:
 
     void on_scopeEdgeCombo_currentIndexChanged(int index);
 
-    void on_modeSelectCombo_currentIndexChanged(int index);
+    // void on_modeSelectCombo_currentIndexChanged(int index);
 
     void on_useDarkThemeChk_clicked(bool checked);
 
     void on_modeSelectCombo_activated(int index);
 
-    void on_freqDial_actionTriggered(int action);
+    // void on_freqDial_actionTriggered(int action);
 
     void on_freqDial_valueChanged(int value);
+
+    void on_band6mbtn_clicked();
+
+    void on_band10mbtn_clicked();
+
+    void on_band12mbtn_clicked();
+
+    void on_band15mbtn_clicked();
+
+    void on_band17mbtn_clicked();
+
+    void on_band20mbtn_clicked();
+
+    void on_band30mbtn_clicked();
+
+    void on_band40mbtn_clicked();
+
+    void on_band60mbtn_clicked();
+
+    void on_band80mbtn_clicked();
+
+    void on_band160mbtn_clicked();
+
+    void on_bandGenbtn_clicked();
+
+    void on_aboutBtn_clicked();
+
+    void on_aboutQtBtn_clicked();
 
 private:
     Ui::wfmain *ui;
@@ -151,11 +183,16 @@ private:
     double oldUpperFreq;
     double freqMhz;
     double knobFreqMhz;
-    enum cmds {cmdNone, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff};
+    enum cmds {cmdNone, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
+              cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     int oldFreqDialVal;
 
+    void bandStackBtnClick();
+    bool waitingForBandStackRtn;
+    char bandStkBand;
+    char bandStkRegCode;
 };
 
 #endif // WFMAIN_H

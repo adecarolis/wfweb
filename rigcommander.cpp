@@ -1,6 +1,17 @@
 #include "rigcommander.h"
 #include <QDebug>
 
+// Copytight 2017,2018 Elliott H. Liggett
+
+// This file parses data from the radio and also forms commands to the radio.
+// The radio physical interface is handled by the commHandler() instance "comm"
+
+// TODO:
+//      + Allow parameters to pass to the commHandler indicating which serial port to use
+//      + Impliment additional commands (of course)
+//      + Impliment external serial port "pass through"
+//      + Impliment XML RPC server?
+//
 
 //
 // See here for a wonderful CI-V overview:
@@ -21,10 +32,13 @@ rigCommander::rigCommander()
     civAddr = 0x94; // address of the radio. Decimal is 148.
 
     setCIVAddr(civAddr);
+    //compCivAddr = 0xE1;
     //payloadPrefix = QByteArray("\xFE\xFE\x94\xE0");
     payloadPrefix = QByteArray("\xFE\xFE");
     payloadPrefix.append(civAddr);
-    payloadPrefix.append("\xE0");
+    payloadPrefix.append(compCivAddr);
+
+    // payloadPrefix.append("\xE0");
 
     payloadSuffix = QByteArray("\xFD");
     comm = new commHandler();
@@ -54,8 +68,10 @@ void rigCommander::prepDataAndSend(QByteArray data)
     data.prepend(payloadPrefix);
     //printHex(data, false, true);
     data.append(payloadSuffix);
-    //qDebug() << "Final payload in rig commander to be sent to rig: ";
-    //printHex(data, false, true);
+#ifdef QT_DEBUG
+    qDebug() << "Final payload in rig commander to be sent to rig: ";
+    printHex(data, false, true);
+#endif
     emit dataForComm(data);
 }
 
@@ -266,6 +282,14 @@ void rigCommander::getPTT()
     prepDataAndSend(payload);
 }
 
+void rigCommander::getBandStackReg(char band, char regCode)
+{
+    QByteArray payload("\x1A\x01");
+    payload.append(band); // [01 through 11]
+    payload.append(regCode); // [01...03]. 01 = latest, 03 = oldest
+    prepDataAndSend(payload);
+}
+
 void rigCommander::setPTT(bool pttOn)
 {
     //bool pttAllowed = false;
@@ -281,6 +305,8 @@ void rigCommander::setPTT(bool pttOn)
 
 void rigCommander::setCIVAddr(unsigned char civAddr)
 {
+    // Note: This is the radio's CIV address
+    // the computer's CIV address is defined in the header file.
     this->civAddr = civAddr;
 }
 
@@ -383,7 +409,9 @@ void rigCommander::parseData(QByteArray dataInput)
             //        //printHex(payloadIn, false, true);
             //        parseData(payloadIn);
             //        break;
-            case '\xE0':
+            // case '\xE0':
+
+            case (char)compCivAddr:
                 // data is a reply to some query we sent
                 // extract the payload out and parse.
                 // payload = getpayload(data); // or something
@@ -415,8 +443,14 @@ void rigCommander::parseCommand()
 {
     // note: data already is trimmed of the beginning FE FE E0 94 stuff.
 
-    // printHex(data, false, true);
-    //payloadIn = data;
+#ifdef QT_DEBUG
+    if(payloadIn[00] != '\x27')
+    {
+        // debug only
+        printHex(payloadIn, false, true);
+    }
+#endif
+
     switch(payloadIn[00])
     {
 
@@ -435,6 +469,10 @@ void rigCommander::parseCommand()
             //qDebug() << "Have mode data";
             this->parseMode();
             break;
+        case '\x14':
+            // read levels
+            parseLevels();
+            break;
         case '\x27':
             // scope data
             //qDebug() << "Have scope data";
@@ -448,6 +486,7 @@ void rigCommander::parseCommand()
             } else {
                 parseRegisters1A();
             }
+            break;
         case '\x1C':
             parseRegisters1C();
             break;
@@ -469,6 +508,41 @@ void rigCommander::parseCommand()
 
 }
 
+void rigCommander::parseLevels()
+{
+    qDebug() << "Received a level status readout: ";
+    // printHex(payloadIn, false, true);
+
+    char level = (payloadIn[2] * 100) + payloadIn[03];
+    qDebug() << "Level is: " << (int)level << " or " << 100.0*level/255.0 << "%";
+
+    // Typical RF gain response (rather low setting):
+    // "INDEX: 00 01 02 03 04 "
+    // "DATA:  14 02 00 78 fd "
+
+    switch(payloadIn[1])
+    {
+        case '\x01':
+            // AF level
+            break;
+        case '\x02':
+            // RX RF Gain
+            break;
+        case '\x03':
+            // Squelch level
+            break;
+        case '\x0A':
+            // TX RF level
+            break;
+    }
+}
+
+void rigCommander::getRfGain()
+{
+    QByteArray payload("\x14\x02");
+    prepDataAndSend(payload);
+}
+
 void rigCommander::parseRegisters1C()
 {
     // PTT lives here
@@ -486,6 +560,9 @@ void rigCommander::parsePTT()
 {
     // read after payloadIn[02]
 
+    // Because I'm not sure about this:
+    qDebug() << "PTT status received, here is the hex dump:";
+    printHex(payloadIn, false, true);
     if(payloadIn[03] == (char)0)
     {
         // PTT off
@@ -507,8 +584,21 @@ void rigCommander::parseRegisters1A()
     //    01:   band stacking memory contents (last freq used is stored here per-band)
     //    03: filter width
     //    04: AGC rate
-    switch(payloadIn[02])
+    qDebug() << "Looking at register 1A :";
+    printHex(payloadIn, false, true);
+
+    // "INDEX: 00 01 02 03 04 "
+    // "DATA:  1a 06 01 03 fd " (data mode enabled, filter width 3 selected)
+
+    switch(payloadIn[01])
     {
+        case '\x00':
+            // Memory contents
+            break;
+        case '\x01':
+            // band stacking register
+            parseBandStackReg();
+            break;
         case '\x06':
             // data mode
             // emit havedataMode( (bool) payloadIn[somebit])
@@ -521,11 +611,37 @@ void rigCommander::parseRegisters1A()
             emit haveDataMode((bool)payloadIn[03]);
             break;
         case '\x07':
-            // IP+
+            // IP+ status
             break;
         default:
             break;
     }
+}
+
+void rigCommander::parseBandStackReg()
+{
+    // qDebug() << "Band stacking register response received: ";
+    // printHex(payloadIn, false, true);
+    // Reference output, 20 meters, regCode 01 (latest):
+    // "INDEX: 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 "
+    // "DATA:  1a 01 05 01 60 03 23 14 00 00 03 10 00 08 85 00 08 85 fd "
+    // char band = payloadIn[2];
+    // char regCode = payloadIn[3];
+    float freq = parseFrequency(payloadIn, 7);
+    bool dataOn = (payloadIn[11] & 0x10) >> 4; // not sure...
+    char mode = payloadIn[9];
+
+    // 09, 10 mode
+    // 11 digit RH: data mode on (1) or off (0)
+    // 11 digit LH: CTCSS 0 = off, 1 = TONE, 2 = TSQL
+
+    // 12, 13 : tone freq setting
+    // 14, 15 tone squelch freq setting
+    // if more, memory name (label) ascii
+
+    // qDebug() << "band: " << QString("%1").arg(band) << " regCode: " << (QString)regCode << " freq: " << freq;
+    // qDebug() << "mode: " << (QString)mode << " dataOn: " << dataOn;
+    emit haveBandStackReg(freq, mode, dataOn);
 }
 
 void rigCommander::parseDetailedRegisters1A05()

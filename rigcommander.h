@@ -8,6 +8,11 @@
 // This file figures out what to send to the comm and also
 // parses returns into useful things.
 
+// 0xE1 is new default, 0xE0 was before.
+// note: using a define because switch case doesn't even work with const unsigned char. Surprised me.
+#define compCivAddr 0xE1
+
+
 class rigCommander : public QObject
 {
     Q_OBJECT
@@ -30,11 +35,13 @@ public slots:
     void setFrequency(double freq);
     void setMode(char mode);
     void getFrequency();
+    void getBandStackReg(char band, char regCode);
     void getMode();
     void getPTT();
     void setPTT(bool pttOn);
     void setDataMode(bool dataOn);
     void getDataMode();
+    void getRfGain();
     void setCIVAddr(unsigned char civAddr);
     void handleNewData(const QByteArray &data);
     void getDebug();
@@ -44,6 +51,7 @@ signals:
     void haveFrequency(double frequencyMhz);
     void haveMode(QString mode);
     void haveDataMode(bool dataModeEnabled);
+    void haveBandStackReg(float freq, char mode, bool dataOn);
     void haveSpectrumBounds();
     void dataForComm(const QByteArray &outData);
     void getMoreDebug();
@@ -63,8 +71,10 @@ private:
     void parseSpectrum();
     void parseDetailedRegisters1A05();
     void parseRegisters1A();
+    void parseBandStackReg();
     void parseRegisters1C();
     void parsePTT();
+    void parseLevels(); // register 0x14
     void sendDataOut();
     void prepDataAndSend(QByteArray data);
     void debugMe();
@@ -87,6 +97,7 @@ private:
 
     double frequencyMhz;
     unsigned char civAddr; // 0x94 is default = 148decimal
+    //const unsigned char compCivAddr = 0xE1; // 0xE1 is new default, 0xE0 was before.
     bool pttAllowed;
 
 

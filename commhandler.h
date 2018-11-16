@@ -16,6 +16,8 @@ class commHandler : public QObject
 
 public:
     commHandler();
+    commHandler(QString portName);
+
     ~commHandler();
 
 private slots:

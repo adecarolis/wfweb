@@ -63,21 +63,23 @@ wfmain::wfmain(QWidget *parent) :
     connect(this, SIGNAL(getMode()), rig, SLOT(getMode()));
     connect(this, SIGNAL(getDataMode()), rig, SLOT(getDataMode()));
     connect(this, SIGNAL(setDataMode(bool)), rig, SLOT(setDataMode(bool)));
+    connect(this, SIGNAL(getBandStackReg(char,char)), rig, SLOT(getBandStackReg(char,char)));
     connect(rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
-
+    connect(rig, SIGNAL(haveBandStackReg(float,char,bool)), this, SLOT(receiveBandStackReg(float,char,bool)));
     connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
     connect(this, SIGNAL(spectOutputDisable()), rig, SLOT(disableSpectOutput()));
     connect(this, SIGNAL(spectOutputEnable()), rig, SLOT(enableSpectOutput()));
     connect(this, SIGNAL(scopeDisplayDisable()), rig, SLOT(disableSpectrumDisplay()));
     connect(this, SIGNAL(scopeDisplayEnable()), rig, SLOT(enableSpectrumDisplay()));
     connect(rig, SIGNAL(haveMode(QString)), this, SLOT(receiveMode(QString)));
+    connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
     connect(this, SIGNAL(setFrequency(double)), rig, SLOT(setFrequency(double)));
     connect(this, SIGNAL(setScopeCenterMode(bool)), rig, SLOT(setSpectrumCenteredMode(bool)));
     connect(this, SIGNAL(setScopeEdge(char)), rig, SLOT(setScopeEdge(char)));
     connect(this, SIGNAL(setScopeSpan(char)), rig, SLOT(setScopeSpan(char)));
     connect(this, SIGNAL(setMode(char)), rig, SLOT(setMode(char)));
-
+    connect(this, SIGNAL(getRfGain()), rig, SLOT(getRfGain()));
 
     // Plot user interaction
     connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
@@ -131,6 +133,7 @@ wfmain::wfmain(QWidget *parent) :
     getInitialRigState();
     oldFreqDialVal = ui->freqDial->value();
 
+
 }
 
 wfmain::~wfmain()
@@ -147,6 +150,9 @@ void wfmain::getInitialRigState()
 
     cmdOutQue.append(cmdGetFreq);
     cmdOutQue.append(cmdGetMode);
+
+    cmdOutQue.append(cmdDispEnable);
+    cmdOutQue.append(cmdSpecOn);
 
     cmdOutQue.append(cmdGetFreq);
     cmdOutQue.append(cmdGetMode);
@@ -273,6 +279,7 @@ void wfmain::runDelayedCommand()
                 emit getMode();
                 break;
             case cmdGetDataMode:
+                qDebug() << "Sending query for data mode";
                 emit getDataMode();
                 break;
             case cmdSetDataModeOff:
@@ -280,6 +287,18 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdSetDataModeOn:
                 emit setDataMode(true);
+                break;
+            case cmdDispEnable:
+                emit scopeDisplayEnable();
+                break;
+            case cmdDispDisable:
+                emit scopeDisplayDisable();
+                break;
+            case cmdSpecOn:
+                emit spectOutputEnable();
+                break;
+            case cmdSpecOff:
+                emit spectOutputDisable();
                 break;
             default:
                 break;
@@ -306,6 +325,7 @@ void wfmain::receiveFreq(double freqMhz)
 
 void wfmain::receivePTTstatus(bool pttOn)
 {
+    // NOTE: This will only show up if we actually receive a PTT status
     qDebug() << "PTT status: " << pttOn;
 }
 
@@ -465,7 +485,10 @@ void wfmain::on_getModeBtn_clicked()
 
 void wfmain::on_debugBtn_clicked()
 {
-    emit getDebug();
+    // Temporary place to try code
+    // emit getDebug();
+    // emit getBandStackReg(0x11,1); // 20M, latest
+    emit getRfGain();
 }
 
 void wfmain::on_stopBtn_clicked()
@@ -492,9 +515,29 @@ void wfmain::receiveMode(QString mode)
     }
     // Note: we need to know if the DATA mode is active to reach mode-D
     // some kind of queued query:
-    cmdOut = cmdGetDataMode;
-    //delayedCommand->start();
+    cmdOutQue.append(cmdGetDataMode);
+    delayedCommand->start(); // why was that commented out?
 }
+
+void wfmain::receiveDataModeStatus(bool dataEnabled)
+{
+    qDebug() << "Received data mode " << dataEnabled << "\n";
+    if(dataEnabled)
+    {
+        if(currentModeIndex == 0)
+        {
+            // USB
+            ui->modeSelectCombo->setCurrentIndex(8);
+        } else if (currentModeIndex == 1)
+        {
+            // LSB
+            ui->modeSelectCombo->setCurrentIndex(9);
+        }
+        ui->modeLabel->setText( ui->modeLabel->text() + "-D" );
+    }
+
+}
+
 
 void wfmain::on_clearPeakBtn_clicked()
 {
@@ -538,7 +581,7 @@ void wfmain::on_goFreqBtn_clicked()
     }
     ui->freqMhzLineEdit->selectAll();
     freqTextSelected = true;
-
+    ui->tabWidget->setCurrentIndex(0);
 }
 
 void wfmain::checkFreqSel()
@@ -651,10 +694,10 @@ void wfmain::on_scopeEdgeCombo_currentIndexChanged(int index)
     emit setScopeEdge((char)index+1);
 }
 
-void wfmain::on_modeSelectCombo_currentIndexChanged(int index)
-{
+//void wfmain::on_modeSelectCombo_currentIndexChanged(int index)
+//{
     // do nothing. The change may be from receiving a mode status update or the user. Can't tell which is which here.
-}
+//}
 
 
 
@@ -690,11 +733,11 @@ void wfmain::on_modeSelectCombo_activated(int index)
 
 }
 
-void wfmain::on_freqDial_actionTriggered(int action)
-{
+//void wfmain::on_freqDial_actionTriggered(int action)
+//{
     //qDebug() << "Action: " << action; // "7" == changed?
     // TODO: remove this
-}
+//}
 
 void wfmain::on_freqDial_valueChanged(int value)
 {
@@ -761,6 +804,10 @@ void wfmain::on_freqDial_valueChanged(int value)
 
     // qDebug() << "old freq: " << knobFreqMhz << " new freq: " << newFreqMhz << "knobDelta: " << delta << " freq delta: " << newFreqMhz - knobFreqMhz;
 
+    if(ui->tuningFloorZerosChk->isChecked())
+    {
+        newFreqMhz = (double)round(newFreqMhz*10000) / 10000.0;
+    }
 
     this->knobFreqMhz = newFreqMhz; // the frequency we think we should be on.
 
@@ -770,5 +817,163 @@ void wfmain::on_freqDial_valueChanged(int value)
 
     emit setFrequency(newFreqMhz);
     //emit getFrequency();
+
+}
+
+void wfmain::receiveBandStackReg(float freq, char mode, bool dataOn)
+{
+    // read the band stack and apply by sending out commands
+
+    setFrequency(freq);
+    setMode(mode); // make sure this is what you think it is
+
+    // setDataMode(dataOn); // signal out
+    if(dataOn)
+    {
+        cmdOutQue.append(cmdSetDataModeOn);
+    } else {
+        cmdOutQue.append(cmdSetDataModeOff);
+    }
+    cmdOutQue.append(cmdGetFreq);
+    cmdOutQue.append(cmdGetMode);
+    ui->tabWidget->setCurrentIndex(0);
+
+    delayedCommand->start();
+}
+
+void wfmain::bandStackBtnClick()
+{
+    bandStkRegCode = ui->bandStkPopdown->currentIndex() + 1;
+    waitingForBandStackRtn = true; // so that when the return is parsed we jump to this frequency/mode info
+    emit getBandStackReg(bandStkBand, bandStkRegCode);
+}
+
+void wfmain::on_band6mbtn_clicked()
+{
+    bandStkBand = 0x10; // 6 meters
+    bandStackBtnClick();
+}
+
+void wfmain::on_band10mbtn_clicked()
+{
+    bandStkBand = 0x09; // 10 meters
+    bandStackBtnClick();
+}
+
+void wfmain::on_band12mbtn_clicked()
+{
+    bandStkBand = 0x08; // 12 meters
+    bandStackBtnClick();
+}
+
+void wfmain::on_band15mbtn_clicked()
+{
+    bandStkBand = 0x07; // 15 meters
+    bandStackBtnClick();
+}
+
+void wfmain::on_band17mbtn_clicked()
+{
+    bandStkBand = 0x06; // 17 meters
+    bandStackBtnClick();
+}
+
+void wfmain::on_band20mbtn_clicked()
+{
+    bandStkBand = 0x05; // 20 meters
+    bandStackBtnClick();
+}
+
+void wfmain::on_band30mbtn_clicked()
+{
+    bandStkBand = 0x04; // 30 meters
+    bandStackBtnClick();
+}
+
+void wfmain::on_band40mbtn_clicked()
+{
+    bandStkBand = 0x03; // 40 meters
+    bandStackBtnClick();
+}
+
+void wfmain::on_band60mbtn_clicked()
+{
+    // This one is tricky. There isn't a band stack register on the
+    // 7300 for 60 meters, so we just drop to the middle of the band:
+    // Channel 1: 5330.5 kHz
+    // Channel 2: 5346.5 kHz
+    // Channel 3: 5357.0 kHz
+    // Channel 4: 5371.5 kHz
+    // Channel 5: 5403.5 kHz
+    // Really not sure what the best strategy here is, don't want to
+    // clutter the UI with 60M channel buttons...
+    setFrequency(5.3305);
+}
+
+void wfmain::on_band80mbtn_clicked()
+{
+    bandStkBand = 0x02; // 80 meters
+    bandStackBtnClick();
+}
+
+void wfmain::on_band160mbtn_clicked()
+{
+    bandStkBand = 0x01; // 160 meters
+    bandStackBtnClick();
+}
+
+void wfmain::on_bandGenbtn_clicked()
+{
+    // "GENE" general coverage frequency outside the ham bands
+    // which does probably include any 60 meter frequencies used.
+    bandStkBand = 0x11; // GEN
+    bandStackBtnClick();
+}
+
+void wfmain::on_aboutBtn_clicked()
+{
+    // Show.....
+    // Build date, time, git checksum (short)
+    // QT library version
+    // stylesheet credit
+    // contact information
+    QString copyright = QString("Copyright 2017, 2018 Elliott H. Liggett. All rights reserved.");
+    QString ssCredit = QString("Stylesheet qdarkstyle used under MIT license, stored in application directory.");
+    QString contact = QString("email the author: kilocharlie8@gmail.com or W6EL on the air!");
+    QString buildInfo = QString("Build XXXX on YYYY-MM-DD at HH:MM by user UUUU");
+
+    QString aboutText = copyright + "\n" + ssCredit + "\n";
+    aboutText.append(contact + "\n" + buildInfo);
+
+    QMessageBox::about(this, "RigView", aboutText);
+
+    // note: should set parent->Icon() and window titles
+}
+
+void wfmain::on_aboutQtBtn_clicked()
+{
+    QMessageBox::aboutQt(this, "Rig View");
+}
+
+void wfmain::on_fStoBtn_clicked()
+{
+    // sequence:
+    // type frequency
+    // press Enter or Go
+    // change mode if desired
+    // press STO
+    // type memory location 0 through 99
+    // press Enter
+}
+
+void wfmain::on_fRclBtn_clicked()
+{
+    // Sequence:
+    // type memory location 0 through 99
+    // press RCL
+
+    // Program recalls data stored in vector at position specified
+    // drop contents into text box, press go button
+    // add delayed command for mode and data mode
 
 }
