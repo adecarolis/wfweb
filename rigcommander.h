@@ -46,6 +46,8 @@ public slots:
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
     void startATU();
+    void setATU(bool enabled);
+    void getATUStatus();
     void setCIVAddr(unsigned char civAddr);
     void handleNewData(const QByteArray &data);
     void getDebug();
@@ -64,6 +66,7 @@ signals:
     void getMoreDebug();
     void finished();
     void havePTTStatus(bool pttOn);
+    void haveATUStatus(unsigned char status);
 
 
 private:
@@ -81,6 +84,7 @@ private:
     void parseBandStackReg();
     void parseRegisters1C();
     void parsePTT();
+    void parseATU();
     void parseLevels(); // register 0x14
     void sendLevelCmd(unsigned char levAddr, unsigned char level);
     void sendDataOut();

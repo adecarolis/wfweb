@@ -41,6 +41,7 @@ signals:
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
     void startATU();
+    void setATU(bool atuEnabled);
     void spectOutputEnable();
     void spectOutputDisable();
     void scopeDisplayEnable();
@@ -159,6 +160,8 @@ private slots:
     void on_drawTracerChk_toggled(bool checked);
 
     void on_tuneNowBtn_clicked();
+
+    void on_tuneEnableChk_clicked(bool checked);
 
 private:
     Ui::wfmain *ui;

@@ -86,6 +86,8 @@ wfmain::wfmain(QWidget *parent) :
     connect(rig, SIGNAL(haveRfGain(unsigned char)), this, SLOT(receiveRfGain(unsigned char)));
     connect(rig, SIGNAL(haveAfGain(unsigned char)), this, SLOT(receiveAfGain(unsigned char)));
     connect(this, SIGNAL(startATU()), rig, SLOT(startATU()));
+    connect(this, SIGNAL(setATU(bool)), rig, SLOT(setATU(bool)));
+
 
     // Plot user interaction
     connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
@@ -1024,5 +1026,15 @@ void wfmain::on_tuneNowBtn_clicked()
 {
     emit startATU();
     showStatusBarText("Starting ATU cycle...");
+}
 
+void wfmain::on_tuneEnableChk_clicked(bool checked)
+{
+    emit setATU(checked);
+    if(checked)
+    {
+        showStatusBarText("Turning on ATU");
+    } else {
+        showStatusBarText("Turning off ATU");
+    }
 }

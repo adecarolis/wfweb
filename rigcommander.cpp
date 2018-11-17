@@ -583,14 +583,26 @@ void rigCommander::sendLevelCmd(unsigned char levAddr, unsigned char level)
 void rigCommander::parseRegisters1C()
 {
     // PTT lives here
+    // Not sure if 02 is the right place to switch.
+    // TODO: test this function
     switch(payloadIn[02])
     {
         case '\x00':
             parsePTT();
             break;
+        case '\x01':
+            parseATU();
+            // ATU status
+            break;
         default:
             break;
     }
+}
+
+void rigCommander::parseATU()
+{
+    // TODO
+    // emit haveATUStatus(payload [??] );
 }
 
 void rigCommander::parsePTT()
@@ -881,6 +893,25 @@ void rigCommander::parseMode()
 void rigCommander::startATU()
 {
     QByteArray payload("\x1C\x01\x02");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setATU(bool enabled)
+{
+    QByteArray payload;
+
+    if(enabled)
+    {
+        payload.setRawData("\x1C\x01\x01", 3);
+    } else {
+        payload.setRawData("\x1C\x01\x00", 3);
+    }
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getATUStatus()
+{
+    QByteArray payload("\x1C\x01");
     prepDataAndSend(payload);
 }
 
