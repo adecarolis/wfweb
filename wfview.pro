@@ -20,6 +20,11 @@ QMAKE_CXXFLAGS += -march=native
 DEFINES += QT_DEPRECATED_WARNINGS
 DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 
+DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
+
+DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""
+
+
 RESOURCES += qdarkstyle/style.qrc
 
 

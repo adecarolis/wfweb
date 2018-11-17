@@ -36,7 +36,11 @@ signals:
     void setPTT(bool pttOn);
     void getBandStackReg(char band, char regCode);
     void getRfGain();
+    void getAfGain();
     void getDebug();
+    void setRfGain(unsigned char level);
+    void setAfGain(unsigned char level);
+    void startATU();
     void spectOutputEnable();
     void spectOutputDisable();
     void scopeDisplayEnable();
@@ -53,6 +57,9 @@ private slots:
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(bool dataOn);
     void receiveBandStackReg(float freq, char mode, bool dataOn); // freq, mode, (filter,) datamode
+    void receiveRfGain(unsigned char level);
+    void receiveAfGain(unsigned char level);
+
     void handlePlotClick(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);
@@ -141,6 +148,18 @@ private slots:
 
     void on_aboutQtBtn_clicked();
 
+    void on_fStoBtn_clicked();
+
+    void on_fRclBtn_clicked();
+
+    void on_rfGainSlider_valueChanged(int value);
+
+    void on_afGainSlider_valueChanged(int value);
+
+    void on_drawTracerChk_toggled(bool checked);
+
+    void on_tuneNowBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     QCustomPlot *plot; // line plot
@@ -184,7 +203,7 @@ private:
     double freqMhz;
     double knobFreqMhz;
     enum cmds {cmdNone, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
-              cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable};
+              cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     int oldFreqDialVal;

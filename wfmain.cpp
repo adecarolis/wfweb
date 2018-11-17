@@ -80,6 +80,12 @@ wfmain::wfmain(QWidget *parent) :
     connect(this, SIGNAL(setScopeSpan(char)), rig, SLOT(setScopeSpan(char)));
     connect(this, SIGNAL(setMode(char)), rig, SLOT(setMode(char)));
     connect(this, SIGNAL(getRfGain()), rig, SLOT(getRfGain()));
+    connect(this, SIGNAL(getAfGain()), rig, SLOT(getAfGain()));
+    connect(this, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
+    connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
+    connect(rig, SIGNAL(haveRfGain(unsigned char)), this, SLOT(receiveRfGain(unsigned char)));
+    connect(rig, SIGNAL(haveAfGain(unsigned char)), this, SLOT(receiveAfGain(unsigned char)));
+    connect(this, SIGNAL(startATU()), rig, SLOT(startATU()));
 
     // Plot user interaction
     connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
@@ -133,7 +139,7 @@ wfmain::wfmain(QWidget *parent) :
     getInitialRigState();
     oldFreqDialVal = ui->freqDial->value();
 
-
+    //tracer->visible();
 }
 
 wfmain::~wfmain()
@@ -156,6 +162,9 @@ void wfmain::getInitialRigState()
 
     cmdOutQue.append(cmdGetFreq);
     cmdOutQue.append(cmdGetMode);
+
+    cmdOutQue.append(cmdGetRxGain);
+    cmdOutQue.append(cmdGetAfGain);
 
     cmdOut = cmdNone;
     delayedCommand->start();
@@ -299,6 +308,12 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdSpecOff:
                 emit spectOutputDisable();
+                break;
+            case cmdGetRxGain:
+                emit getRfGain();
+                break;
+            case cmdGetAfGain:
+                emit getAfGain();
                 break;
             default:
                 break;
@@ -940,7 +955,7 @@ void wfmain::on_aboutBtn_clicked()
     QString copyright = QString("Copyright 2017, 2018 Elliott H. Liggett. All rights reserved.");
     QString ssCredit = QString("Stylesheet qdarkstyle used under MIT license, stored in application directory.");
     QString contact = QString("email the author: kilocharlie8@gmail.com or W6EL on the air!");
-    QString buildInfo = QString("Build XXXX on YYYY-MM-DD at HH:MM by user UUUU");
+    QString buildInfo = QString("Build " + QString(GITSHORT) + " on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
 
     QString aboutText = copyright + "\n" + ssCredit + "\n";
     aboutText.append(contact + "\n" + buildInfo);
@@ -975,5 +990,39 @@ void wfmain::on_fRclBtn_clicked()
     // Program recalls data stored in vector at position specified
     // drop contents into text box, press go button
     // add delayed command for mode and data mode
+
+}
+
+void wfmain::on_rfGainSlider_valueChanged(int value)
+{
+    emit setRfGain((unsigned char) value);
+}
+
+void wfmain::on_afGainSlider_valueChanged(int value)
+{
+    emit setAfGain((unsigned char) value);
+}
+
+void wfmain::receiveRfGain(unsigned char level)
+{
+    qDebug() << "Setting RF Gain value to " << (int)level;
+    ui->rfGainSlider->setValue(level);
+}
+
+void wfmain::receiveAfGain(unsigned char level)
+{
+    qDebug() << "Setting AF Gain value to " << (int)level;
+    ui->afGainSlider->setValue(level);
+}
+
+void wfmain::on_drawTracerChk_toggled(bool checked)
+{
+    tracer->setVisible(checked);
+}
+
+void wfmain::on_tuneNowBtn_clicked()
+{
+    emit startATU();
+    showStatusBarText("Starting ATU cycle...");
 
 }

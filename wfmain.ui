@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -196,6 +196,44 @@
             </property>
             <property name="notchesVisible">
              <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSlider" name="rfGainSlider">
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>60</height>
+             </size>
+            </property>
+            <property name="toolTip">
+             <string>RX RF Gain</string>
+            </property>
+            <property name="maximum">
+             <number>255</number>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSlider" name="afGainSlider">
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>60</height>
+             </size>
+            </property>
+            <property name="toolTip">
+             <string>RX AF Gain</string>
+            </property>
+            <property name="maximum">
+             <number>255</number>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
             </property>
            </widget>
           </item>
@@ -653,7 +691,7 @@
             </widget>
            </item>
            <item row="1" column="3">
-            <widget class="QPushButton" name="pushButton_11">
+            <widget class="QPushButton" name="fRclBtn">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                <horstretch>0</horstretch>
@@ -1005,6 +1043,16 @@
            </widget>
           </item>
           <item>
+           <widget class="QCheckBox" name="drawTracerChk">
+            <property name="text">
+             <string>Tracer</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QCheckBox" name="fullScreenChk">
             <property name="text">
              <string>Show full screen</string>
@@ -1099,6 +1147,9 @@
             <property name="text">
              <string>When tuning, set lower digits to zero</string>
             </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
            </widget>
           </item>
           <item>
@@ -1151,7 +1202,96 @@
            </widget>
           </item>
           <item>
+           <widget class="QSlider" name="txPowerSlider">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>30</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>60</width>
+              <height>60</height>
+             </size>
+            </property>
+            <property name="toolTip">
+             <string>TX Power</string>
+            </property>
+            <property name="maximum">
+             <number>255</number>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSlider" name="micGainSlider">
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>60</height>
+             </size>
+            </property>
+            <property name="toolTip">
+             <string>Mic Gain</string>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="horizontalSpacer_5">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_16">
+          <property name="topMargin">
+           <number>20</number>
+          </property>
+          <item>
+           <widget class="QCheckBox" name="tuneEnableChk">
+            <property name="text">
+             <string>Enable ATU</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="tuneNowBtn">
+            <property name="text">
+             <string>Tune Now</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_9">
+            <property name="text">
+             <string>ATU Status:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="tuneStatusLabel">
+            <property name="text">
+             <string>                    </string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="tuneSpacer">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>

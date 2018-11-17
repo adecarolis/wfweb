@@ -513,7 +513,7 @@ void rigCommander::parseLevels()
     qDebug() << "Received a level status readout: ";
     // printHex(payloadIn, false, true);
 
-    char level = (payloadIn[2] * 100) + payloadIn[03];
+    unsigned char level = (payloadIn[2] * 100) + payloadIn[03];
     qDebug() << "Level is: " << (int)level << " or " << 100.0*level/255.0 << "%";
 
     // Typical RF gain response (rather low setting):
@@ -524,15 +524,18 @@ void rigCommander::parseLevels()
     {
         case '\x01':
             // AF level
+            emit haveAfGain(level);
             break;
         case '\x02':
             // RX RF Gain
+            emit haveRfGain(level);
             break;
         case '\x03':
             // Squelch level
             break;
         case '\x0A':
             // TX RF level
+            emit haveTxPower(level);
             break;
     }
 }
@@ -540,6 +543,40 @@ void rigCommander::parseLevels()
 void rigCommander::getRfGain()
 {
     QByteArray payload("\x14\x02");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getAfGain()
+{
+    QByteArray payload("\x14\x01");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setRfGain(unsigned char level)
+{
+    sendLevelCmd(0x02, level);
+}
+
+void rigCommander::setAfGain(unsigned char level)
+{
+    sendLevelCmd(0x01, level);
+}
+
+void rigCommander::sendLevelCmd(unsigned char levAddr, unsigned char level)
+{
+    QByteArray payload("\x14");
+    payload.append(levAddr);
+    // careful here. The value in the units and tens can't exceed 99.
+    // ie, can't do this: 01 f2
+    payload.append((int)level/100); // make sure it works with a zero
+    // convert the tens:
+    int tens = (level - 100*((int)level/100))/10;
+    // convert the units:
+    int units = level - 100*((int)level/100);
+    units = units - 10*((int)(units/10));
+    // combine and send:
+    payload.append((tens << 4) | (units) ); // make sure it works with a zero
+
     prepDataAndSend(payload);
 }
 
@@ -840,6 +877,12 @@ void rigCommander::parseMode()
     emit haveMode(mode);
 }
 
+
+void rigCommander::startATU()
+{
+    QByteArray payload("\x1C\x01\x02");
+    prepDataAndSend(payload);
+}
 
 QByteArray rigCommander::stripData(const QByteArray &data, unsigned char cutPosition)
 {

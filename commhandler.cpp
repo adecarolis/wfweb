@@ -77,11 +77,12 @@ void commHandler::sendDataOut(const QByteArray &writeData)
 {
 
     mutex.lock();
-    quint64 bytesWritten;
+    // quint64 bytesWritten;
 
     // sned out data
     //port.send() or whatever
-    bytesWritten = port->write(writeData);
+    // bytesWritten = port->write(writeData);
+    port->write(writeData);
 
     //qDebug() << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length() << " size of byte array: " << writeData.size();
 

@@ -42,6 +42,10 @@ public slots:
     void setDataMode(bool dataOn);
     void getDataMode();
     void getRfGain();
+    void getAfGain();
+    void setRfGain(unsigned char level);
+    void setAfGain(unsigned char level);
+    void startATU();
     void setCIVAddr(unsigned char civAddr);
     void handleNewData(const QByteArray &data);
     void getDebug();
@@ -53,6 +57,9 @@ signals:
     void haveDataMode(bool dataModeEnabled);
     void haveBandStackReg(float freq, char mode, bool dataOn);
     void haveSpectrumBounds();
+    void haveRfGain(unsigned char level);
+    void haveAfGain(unsigned char level);
+    void haveTxPower(unsigned char level);
     void dataForComm(const QByteArray &outData);
     void getMoreDebug();
     void finished();
@@ -75,6 +82,7 @@ private:
     void parseRegisters1C();
     void parsePTT();
     void parseLevels(); // register 0x14
+    void sendLevelCmd(unsigned char levAddr, unsigned char level);
     void sendDataOut();
     void prepDataAndSend(QByteArray data);
     void debugMe();
