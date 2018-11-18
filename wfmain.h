@@ -37,6 +37,7 @@ signals:
     void getBandStackReg(char band, char regCode);
     void getRfGain();
     void getAfGain();
+    void getSql();
     void getDebug();
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
@@ -60,6 +61,7 @@ private slots:
     void receiveBandStackReg(float freq, char mode, bool dataOn); // freq, mode, (filter,) datamode
     void receiveRfGain(unsigned char level);
     void receiveAfGain(unsigned char level);
+    void receiveSql(unsigned char level);
 
     void handlePlotClick(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
@@ -206,7 +208,8 @@ private:
     double freqMhz;
     double knobFreqMhz;
     enum cmds {cmdNone, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
-              cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain};
+              cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
+              cmdGetSql};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     int oldFreqDialVal;

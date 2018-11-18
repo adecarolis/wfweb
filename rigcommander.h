@@ -43,6 +43,7 @@ public slots:
     void getDataMode();
     void getRfGain();
     void getAfGain();
+    void getSql();
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
     void startATU();
@@ -61,6 +62,7 @@ signals:
     void haveSpectrumBounds();
     void haveRfGain(unsigned char level);
     void haveAfGain(unsigned char level);
+    void haveSql(unsigned char level);
     void haveTxPower(unsigned char level);
     void dataForComm(const QByteArray &outData);
     void getMoreDebug();

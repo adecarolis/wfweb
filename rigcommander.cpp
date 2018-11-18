@@ -510,11 +510,17 @@ void rigCommander::parseCommand()
 
 void rigCommander::parseLevels()
 {
-    qDebug() << "Received a level status readout: ";
+    //qDebug() << "Received a level status readout: ";
     // printHex(payloadIn, false, true);
 
-    unsigned char level = (payloadIn[2] * 100) + payloadIn[03];
-    qDebug() << "Level is: " << (int)level << " or " << 100.0*level/255.0 << "%";
+    // wrong: unsigned char level = (payloadIn[2] * 100) + payloadIn[03];
+    unsigned char hundreds = payloadIn[2];
+    unsigned char tens = (payloadIn[3] & 0xf0) >> 4;
+    unsigned char units = (payloadIn[3] & 0x0f);
+
+    unsigned char level = (100*hundreds) + (10*tens) + units;
+
+    //qDebug() << "Level is: " << (int)level << " or " << 100.0*level/255.0 << "%";
 
     // Typical RF gain response (rather low setting):
     // "INDEX: 00 01 02 03 04 "
@@ -532,6 +538,7 @@ void rigCommander::parseLevels()
             break;
         case '\x03':
             // Squelch level
+            emit haveSql(level);
             break;
         case '\x0A':
             // TX RF level
@@ -549,6 +556,13 @@ void rigCommander::getRfGain()
 void rigCommander::getAfGain()
 {
     QByteArray payload("\x14\x01");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getSql()
+{
+    // Squelch
+    QByteArray payload("\x14\x03");
     prepDataAndSend(payload);
 }
 
@@ -633,8 +647,8 @@ void rigCommander::parseRegisters1A()
     //    01:   band stacking memory contents (last freq used is stored here per-band)
     //    03: filter width
     //    04: AGC rate
-    qDebug() << "Looking at register 1A :";
-    printHex(payloadIn, false, true);
+    // qDebug() << "Looking at register 1A :";
+    // printHex(payloadIn, false, true);
 
     // "INDEX: 00 01 02 03 04 "
     // "DATA:  1a 06 01 03 fd " (data mode enabled, filter width 3 selected)

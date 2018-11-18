@@ -85,6 +85,8 @@ wfmain::wfmain(QWidget *parent) :
     connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
     connect(rig, SIGNAL(haveRfGain(unsigned char)), this, SLOT(receiveRfGain(unsigned char)));
     connect(rig, SIGNAL(haveAfGain(unsigned char)), this, SLOT(receiveAfGain(unsigned char)));
+    connect(this, SIGNAL(getSql()), rig, SLOT(getSql()));
+    connect(rig, SIGNAL(haveSql(unsigned char)), this, SLOT(receiveSql(unsigned char)));
     connect(this, SIGNAL(startATU()), rig, SLOT(startATU()));
     connect(this, SIGNAL(setATU(bool)), rig, SLOT(setATU(bool)));
 
@@ -138,10 +140,18 @@ wfmain::wfmain(QWidget *parent) :
         ui->commPortDrop->addItem(serialPortInfo.portName());
     }
 
+    // Initial state of UI:
+    // TODO: Use QSettings and/or argv to set.
+    ui->fullScreenChk->setChecked(true);
+    ui->useDarkThemeChk->setChecked(true);
+    ui->drawPeakChk->setChecked(true);
+    on_useDarkThemeChk_clicked(true);
+    on_fullScreenChk_clicked(true);
+    on_drawPeakChk_clicked(true);
+
     getInitialRigState();
     oldFreqDialVal = ui->freqDial->value();
 
-    //tracer->visible();
 }
 
 wfmain::~wfmain()
@@ -167,6 +177,7 @@ void wfmain::getInitialRigState()
 
     cmdOutQue.append(cmdGetRxGain);
     cmdOutQue.append(cmdGetAfGain);
+    cmdOutQue.append(cmdGetSql);
 
     cmdOut = cmdNone;
     delayedCommand->start();
@@ -316,6 +327,9 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdGetAfGain:
                 emit getAfGain();
+                break;
+            case cmdGetSql:
+                emit getSql();
                 break;
             default:
                 break;
@@ -505,7 +519,15 @@ void wfmain::on_debugBtn_clicked()
     // Temporary place to try code
     // emit getDebug();
     // emit getBandStackReg(0x11,1); // 20M, latest
-    emit getRfGain();
+    // emit getRfGain();
+
+    for(int a=0; a<100; a++)
+    {
+    cmdOutQue.append(cmdGetRxGain);
+    cmdOutQue.append(cmdGetSql);
+    }
+    delayedCommand->start();
+
 }
 
 void wfmain::on_stopBtn_clicked()
@@ -1007,15 +1029,23 @@ void wfmain::on_afGainSlider_valueChanged(int value)
 
 void wfmain::receiveRfGain(unsigned char level)
 {
-    qDebug() << "Setting RF Gain value to " << (int)level;
+    // qDebug() << "Receive RF  level of" << (int)level << " = " << 100*level/255.0 << "%";
     ui->rfGainSlider->setValue(level);
 }
 
 void wfmain::receiveAfGain(unsigned char level)
 {
-    qDebug() << "Setting AF Gain value to " << (int)level;
+    //qDebug() << "Receive AF  level of" << (int)level << " = " << 100*level/255.0 << "%";
     ui->afGainSlider->setValue(level);
 }
+
+void wfmain::receiveSql(unsigned char level)
+{
+    qDebug() << "Receive SQL level of                   " << (int)level << " = " << 100*level/255.0 << "%";
+    // ui->sqlSlider->setValue(level); // No SQL control so far
+}
+
+
 
 void wfmain::on_drawTracerChk_toggled(bool checked)
 {
