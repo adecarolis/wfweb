@@ -89,6 +89,7 @@ wfmain::wfmain(QWidget *parent) :
     connect(rig, SIGNAL(haveSql(unsigned char)), this, SLOT(receiveSql(unsigned char)));
     connect(this, SIGNAL(startATU()), rig, SLOT(startATU()));
     connect(this, SIGNAL(setATU(bool)), rig, SLOT(setATU(bool)));
+    connect(this, SIGNAL(getRigID()), rig, SLOT(getRigID()));
 
 
     // Plot user interaction
@@ -165,6 +166,8 @@ void wfmain::getInitialRigState()
     // Things to get:
     // Freq, Mode, Scope cent/fixed, scope span, edge setting
     // data mode (may be combined with scope mode)
+
+    cmdOutQue.append(cmdGetRigID);
 
     cmdOutQue.append(cmdGetFreq);
     cmdOutQue.append(cmdGetMode);
@@ -294,6 +297,12 @@ void wfmain::runDelayedCommand()
         qdCmd = cmdOutQue.takeFirst();
         switch(qdCmd)
         {
+            case cmdNone:
+                qDebug() << "NOOP";
+                break;
+            case cmdGetRigID:
+                emit getRigID();
+                break;
             case cmdGetFreq:
                 emit getFrequency();
                 break;
@@ -1067,4 +1076,10 @@ void wfmain::on_tuneEnableChk_clicked(bool checked)
     } else {
         showStatusBarText("Turning off ATU");
     }
+}
+
+void wfmain::on_exitBtn_clicked()
+{
+    // Are you sure?
+    QApplication::exit();
 }

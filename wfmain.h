@@ -43,6 +43,7 @@ signals:
     void setAfGain(unsigned char level);
     void startATU();
     void setATU(bool atuEnabled);
+    void getRigID();
     void spectOutputEnable();
     void spectOutputDisable();
     void scopeDisplayEnable();
@@ -165,6 +166,8 @@ private slots:
 
     void on_tuneEnableChk_clicked(bool checked);
 
+    void on_exitBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     QCustomPlot *plot; // line plot
@@ -207,7 +210,7 @@ private:
     double oldUpperFreq;
     double freqMhz;
     double knobFreqMhz;
-    enum cmds {cmdNone, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
+    enum cmds {cmdNone, cmdGetRigID, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
               cmdGetSql};
     cmds cmdOut;

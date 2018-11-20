@@ -428,6 +428,7 @@ void rigCommander::parseData(QByteArray dataInput)
             default:
                 // could be for other equipment on the CIV network.
                 // just drop for now.
+                // relaySendOutData(data);
                 break;
         }
     }
@@ -472,6 +473,11 @@ void rigCommander::parseCommand()
         case '\x14':
             // read levels
             parseLevels();
+            break;
+        case '\x19':
+            // qDebug() << "Have rig ID: " << (int)payloadIn[2];
+            // printHex(payloadIn, false, true);
+            // This returns the CIV address of the radio.  (94 by default)
             break;
         case '\x27':
             // scope data
@@ -928,6 +934,18 @@ void rigCommander::getATUStatus()
     QByteArray payload("\x1C\x01");
     prepDataAndSend(payload);
 }
+
+void rigCommander::getRigID()
+{
+    QByteArray payload;
+    payload.setRawData("\x19\x00", 2);
+    prepDataAndSend(payload);
+}
+
+
+
+
+// Other:
 
 QByteArray rigCommander::stripData(const QByteArray &data, unsigned char cutPosition)
 {

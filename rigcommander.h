@@ -49,6 +49,7 @@ public slots:
     void startATU();
     void setATU(bool enabled);
     void getATUStatus();
+    void getRigID();
     void setCIVAddr(unsigned char civAddr);
     void handleNewData(const QByteArray &data);
     void getDebug();
