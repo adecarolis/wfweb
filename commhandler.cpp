@@ -115,7 +115,7 @@ void commHandler::receiveDataIn()
             }
         } else {
             // did not receive the entire thing so roll back:
-            qDebug() << "Rolling back transaction. End not detected. Lenth: " << inPortData.length();
+            // qDebug() << "Rolling back transaction. End not detected. Lenth: " << inPortData.length();
             //printHex(inPortData, false, true);
             port->rollbackTransaction();
             rolledBack = true;

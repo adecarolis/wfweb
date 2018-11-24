@@ -2,6 +2,7 @@
 #include "ui_wfmain.h"
 
 #include "commhandler.h"
+#include "rigidentities.h"
 
 wfmain::wfmain(QWidget *parent) :
     QMainWindow(parent),
@@ -161,19 +162,79 @@ wfmain::~wfmain()
     delete ui;
 }
 
+void wfmain::loadSettings()
+{
+    qDebug() << "Loading settings from " << settings.fileName();
+
+    // Basic things to load:
+
+    // UI: (full screen, dark theme, draw peaks, colors, etc)
+
+    // Radio and Comms: C-IV addr, port to use
+
+    // Misc. user settings (enable PTT, draw peaks, etc)
+
+    // Memory channels
+}
+
+void wfmain::saveSettings()
+{
+    qDebug() << "Saving settings to " << settings.fileName();
+    // Basic things to load:
+
+    // UI: (full screen, dark theme, draw peaks, colors, etc)
+    settings.beginGroup("Interface");
+    settings.setValue("UseFullScreen", true);
+    settings.setValue("UseDarkMode", true);
+    settings.setValue("DrawPeaks", true);
+    settings.endGroup();
+
+    // Radio and Comms: C-IV addr, port to use
+    settings.beginGroup("Radio");
+    settings.setValue("RigCIVuInt", 0x94);
+    settings.setValue("SerialPortRadio", "/dev/ttyUSB0");
+    settings.endGroup();
+
+    // Misc. user settings (enable PTT, draw peaks, etc)
+    settings.beginGroup("Controls");
+    settings.setValue("EnablePTT", true);
+    settings.setValue("NiceTS", true);
+    settings.endGroup();
+
+    // Memory channels
+    settings.beginGroup("Memory");
+    settings.beginWriteArray("Channel", (int)mem.getNumPresets());
+
+    preset_kind temp;
+    for(int i=0; i < (int)mem.getNumPresets(); i++)
+    {
+        temp = mem.getPreset((int)i);
+        settings.setArrayIndex(i);
+        settings.setValue("freq", temp.frequency);
+        settings.setValue("mode", temp.mode);
+    }
+
+    settings.endArray();
+    settings.endGroup();
+
+    settings.sync(); // Automatic, not needed (supposedly)
+}
+
+
 void wfmain::getInitialRigState()
 {
-    // Things to get:
-    // Freq, Mode, Scope cent/fixed, scope span, edge setting
-    // data mode (may be combined with scope mode)
+    // Initial list of queries to the radio.
+    // These are made when the program starts up
+    // and are used to adjust the UI to match the radio settings
+    // the polling interval is set at 100ms. Faster is possible but slower
+    // computers will glitch occassionally.
 
-    cmdOutQue.append(cmdGetRigID);
+    cmdOutQue.append(cmdGetRigID); // This may be used in the future.
 
     cmdOutQue.append(cmdGetFreq);
     cmdOutQue.append(cmdGetMode);
 
-    cmdOutQue.append(cmdDispEnable);
-    cmdOutQue.append(cmdSpecOn);
+    cmdOutQue.append(cmdNone);
 
     cmdOutQue.append(cmdGetFreq);
     cmdOutQue.append(cmdGetMode);
@@ -181,6 +242,14 @@ void wfmain::getInitialRigState()
     cmdOutQue.append(cmdGetRxGain);
     cmdOutQue.append(cmdGetAfGain);
     cmdOutQue.append(cmdGetSql);
+    // get TX level
+    // get Scope reference Level
+
+    cmdOutQue.append(cmdDispEnable);
+    cmdOutQue.append(cmdSpecOn);
+
+    // get spectrum mode (center or edge)
+    // get spectrum span or edge limit number [1,2,3], update UI
 
     cmdOut = cmdNone;
     delayedCommand->start();
@@ -509,7 +578,6 @@ void wfmain::handleWFClick(QMouseEvent *me)
 
 void wfmain::on_startBtn_clicked()
 {
-    //emit scopeDisplayEnable(); // TODO: need a little delay between these two
     emit spectOutputEnable();
 }
 
@@ -530,12 +598,18 @@ void wfmain::on_debugBtn_clicked()
     // emit getBandStackReg(0x11,1); // 20M, latest
     // emit getRfGain();
 
-    for(int a=0; a<100; a++)
-    {
-    cmdOutQue.append(cmdGetRxGain);
-    cmdOutQue.append(cmdGetSql);
-    }
-    delayedCommand->start();
+//    for(int a=0; a<100; a++)
+//    {
+//    cmdOutQue.append(cmdGetRxGain);
+//    cmdOutQue.append(cmdGetSql);
+//    }
+//    delayedCommand->start();
+
+   // emit getRigID();
+
+    //mem.dumpMemory();
+
+    saveSettings();
 
 }
 
@@ -554,9 +628,10 @@ void wfmain::receiveMode(QString mode)
     if( currentModeIndex == index)
     {
         // do nothing, no need to change the selected mode and fire more events off.
-        return;
-    }
-    if((index >= 0) && (index < 9))
+        // TODO/NOTE: This will not check the DATA mode status, may be worth re-thinking this.
+        // Do not update UI.
+        // return;
+    } else if((index >= 0) && (index < 9))
     {
         ui->modeSelectCombo->setCurrentIndex(index);
         currentModeIndex = index;
@@ -576,12 +651,19 @@ void wfmain::receiveDataModeStatus(bool dataEnabled)
         {
             // USB
             ui->modeSelectCombo->setCurrentIndex(8);
+            ui->modeLabel->setText( "USB-D" );
+
         } else if (currentModeIndex == 1)
         {
             // LSB
             ui->modeSelectCombo->setCurrentIndex(9);
+            ui->modeLabel->setText( "LSB-D" );
+
         }
-        ui->modeLabel->setText( ui->modeLabel->text() + "-D" );
+        // TODO: be more intelligent here to avoid -D-D-D.
+        // include the text above.
+        // ui->modeLabel->setText( ui->modeLabel->text() + "-D" );
+        // Remove if works.
     }
 
 }
@@ -613,8 +695,6 @@ void wfmain::on_fullScreenChk_clicked(bool checked)
         this->showFullScreen();
     else
         this->showNormal();
-
-
 }
 
 void wfmain::on_goFreqBtn_clicked()
@@ -624,6 +704,7 @@ void wfmain::on_goFreqBtn_clicked()
     if(ok)
     {
         emit setFrequency(freq);
+        // TODO: change to cmdQueue
         cmdOut = cmdGetFreq;
         delayedCommand->start();
     }
@@ -729,6 +810,9 @@ void wfmain::on_scopeCenterModeChk_clicked(bool checked)
 
 void wfmain::on_fEnterBtn_clicked()
 {
+    // TODO: do not jump to main tab on enter, only on return
+    // or something.
+    // Maybe this should be an option in settings.
     on_goFreqBtn_clicked();
 }
 
@@ -1009,9 +1093,22 @@ void wfmain::on_fStoBtn_clicked()
     // type frequency
     // press Enter or Go
     // change mode if desired
+    // type in index number 0 through 99
     // press STO
-    // type memory location 0 through 99
-    // press Enter
+
+    bool ok;
+    QString freqString;
+    int preset_number = ui->freqMhzLineEdit->text().toInt(&ok);
+
+    if(ok && (preset_number >= 0) && (preset_number < 100))
+    {
+        // TODO: keep an enum around with the current mode
+        mem.setPreset(preset_number, freqMhz, (mode_kind)ui->modeSelectCombo->currentIndex());
+    } else {
+        qDebug() << "Could not store preset. Valid presets are 0 through 99.";
+    }
+
+
 }
 
 void wfmain::on_fRclBtn_clicked()
@@ -1023,6 +1120,22 @@ void wfmain::on_fRclBtn_clicked()
     // Program recalls data stored in vector at position specified
     // drop contents into text box, press go button
     // add delayed command for mode and data mode
+
+    preset_kind temp;
+    bool ok;
+    QString freqString;
+    int preset_number = ui->freqMhzLineEdit->text().toInt(&ok);
+
+    if(ok && (preset_number >= 0) && (preset_number < 100))
+    {
+        temp = mem.getPreset(preset_number);
+        freqString = QString("%1").arg(temp.frequency);
+        ui->freqMhzLineEdit->setText( freqString );
+        ui->goFreqBtn->click();
+
+    } else {
+        qDebug() << "Could not recall preset. Valid presets are 0 through 99.";
+    }
 
 }
 
@@ -1065,6 +1178,8 @@ void wfmain::on_tuneNowBtn_clicked()
 {
     emit startATU();
     showStatusBarText("Starting ATU cycle...");
+    // TODO: place commands in a timer queue to check for completion and success
+
 }
 
 void wfmain::on_tuneEnableChk_clicked(bool checked)
@@ -1082,4 +1197,22 @@ void wfmain::on_exitBtn_clicked()
 {
     // Are you sure?
     QApplication::exit();
+}
+
+void wfmain::on_pttOnBtn_clicked()
+{
+    // is it enabled?
+
+    // Are we already PTT?
+
+    // send PTT
+    // Start 3 minute timer
+}
+
+void wfmain::on_pttOffBtn_clicked()
+{
+    // Send the PTT OFF command (more than once?)
+
+    // Stop the 3 min tumer
+
 }

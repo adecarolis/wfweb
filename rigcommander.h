@@ -4,6 +4,7 @@
 #include <QObject>
 
 #include "commhandler.h"
+#include "rigidentities.h"
 
 // This file figures out what to send to the comm and also
 // parses returns into useful things.
@@ -109,6 +110,7 @@ private:
     double spectrumStartFreq;
     double spectrumEndFreq;
 
+    model_kind model;
 
     double frequencyMhz;
     unsigned char civAddr; // 0x94 is default = 148decimal

@@ -457,6 +457,9 @@
                <property name="text">
                 <string>30M</string>
                </property>
+               <property name="shortcut">
+                <string>3</string>
+               </property>
               </widget>
              </item>
              <item>
@@ -704,6 +707,9 @@
                <height>30</height>
               </size>
              </property>
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;To recall a preset memory:&lt;/p&gt;&lt;p&gt;1. Type in the preset number (0 through 99)&lt;/p&gt;&lt;p&gt;2. Press RCL (or use hotkey &amp;quot;R&amp;quot;)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
              <property name="text">
               <string>&amp;RCL</string>
              </property>
@@ -816,6 +822,9 @@
                <width>0</width>
                <height>30</height>
               </size>
+             </property>
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;To store a preset:&lt;/p&gt;&lt;p&gt;1. Set the desired frequency and mode per normal methods&lt;/p&gt;&lt;p&gt;2. Type the index to to store to (0 through 99)&lt;/p&gt;&lt;p&gt;3. Press STO (or use hotkey &amp;quot;S&amp;quot;)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
              <property name="text">
               <string>&amp;STO</string>

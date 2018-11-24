@@ -6,12 +6,14 @@
 #include <QString>
 #include <QVector>
 #include <QTimer>
+#include <QSettings>
 
 
 #include "commhandler.h"
 #include "rigcommander.h"
+#include "freqmemory.h"
 #include <qcustomplot.h>
-#include<qserialportinfo.h>
+#include <qserialportinfo.h>
 
 namespace Ui {
 class wfmain;
@@ -168,8 +170,15 @@ private slots:
 
     void on_exitBtn_clicked();
 
+    void on_pttOnBtn_clicked();
+
+    void on_pttOffBtn_clicked();
+
 private:
     Ui::wfmain *ui;
+    QSettings settings;
+    void loadSettings();
+    void saveSettings();
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
     QCPItemTracer * tracer; // marker of current frequency
@@ -215,6 +224,8 @@ private:
               cmdGetSql};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
+    freqMemory mem;
+
     int oldFreqDialVal;
 
     void bandStackBtnClick();

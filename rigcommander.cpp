@@ -1,6 +1,8 @@
 #include "rigcommander.h"
 #include <QDebug>
 
+#include "rigidentities.h"
+
 // Copytight 2017,2018 Elliott H. Liggett
 
 // This file parses data from the radio and also forms commands to the radio.
@@ -358,7 +360,7 @@ void rigCommander::parseData(QByteArray dataInput)
             if(data.length())
             {
                 // Finally this almost never happens
-                qDebug() << "Data length too short: " << data.length() << " bytes. Data:";
+                // qDebug() << "Data length too short: " << data.length() << " bytes. Data:";
                 printHex(data, false, true);
             }
             // no
@@ -369,14 +371,14 @@ void rigCommander::parseData(QByteArray dataInput)
 
         if(!data.startsWith("\xFE\xFE"))
         {
-            qDebug() << "Warning: Invalid data received, did not start with FE FE.";
+            // qDebug() << "Warning: Invalid data received, did not start with FE FE.";
             // find 94 e0 and shift over,
             // or look inside for a second FE FE
             // Often a local echo will miss a few bytes at the beginning.
             if(data.startsWith('\xFE'))
             {
                 data.prepend('\xFE');
-                qDebug() << "Warning: Working with prepended data stream.";
+                // qDebug() << "Warning: Working with prepended data stream.";
                 parseData(payloadIn);
                 return;
             } else {
@@ -475,9 +477,9 @@ void rigCommander::parseCommand()
             parseLevels();
             break;
         case '\x19':
-            // qDebug() << "Have rig ID: " << (int)payloadIn[2];
+            // qDebug() << "Have rig ID: " << (unsigned int)payloadIn[2];
             // printHex(payloadIn, false, true);
-            // This returns the CIV address of the radio.  (94 by default)
+            model = determineRadioModel(payloadIn[2]);
             break;
         case '\x27':
             // scope data

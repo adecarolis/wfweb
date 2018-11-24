@@ -45,12 +45,14 @@ SOURCES += main.cpp\
         wfmain.cpp \
     commhandler.cpp \
     rigcommander.cpp \
-    freqmemory.cpp
+    freqmemory.cpp \
+    rigidentities.cpp
 
 HEADERS  += wfmain.h \
     ../../../../../usr/include/qcustomplot.h \
     commhandler.h \
     rigcommander.h \
-    freqmemory.h
+    freqmemory.h \
+    rigidentities.h
 
 FORMS    += wfmain.ui
