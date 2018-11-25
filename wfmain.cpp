@@ -10,6 +10,8 @@ wfmain::wfmain(QWidget *parent) :
 {
     ui->setupUi(this);
     theParent = parent;
+    setDefaultColors(); // set of UI colors with defaults populated
+    loadSettings(); // Look for default settings
     plot = ui->plot; // rename it waterfall.
     wf = ui->waterfall;
     tracer = new QCPItemTracer(plot);
@@ -113,7 +115,7 @@ wfmain::wfmain(QWidget *parent) :
     colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
     colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
     colorMap->setDataRange(QCPRange(0, 160));
-    colorMap->setGradient(QCPColorGradient::gpJet);
+    colorMap->setGradient(QCPColorGradient::gpJet); // TODO: Add preference
     colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
     colorMap->setData(colorMapData);
     spectRowCurrent = 0;
@@ -127,12 +129,12 @@ wfmain::wfmain(QWidget *parent) :
     plot->graph(1)->setBrush(QBrush(color));
 
     drawPeaks = false;
-    ui->drawPeakChk->setChecked(false);
+    // ui->drawPeakChk->setChecked(false);
 
     ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
 
     delayedCommand = new QTimer(this);
-    delayedCommand->setInterval(100); // ms. 250 was fine.
+    delayedCommand->setInterval(100); // ms. 250 was fine. TODO: Find practical maximum with margin on pi
     delayedCommand->setSingleShot(true);
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
 
@@ -143,16 +145,19 @@ wfmain::wfmain(QWidget *parent) :
     }
 
     // Initial state of UI:
-    // TODO: Use QSettings and/or argv to set.
-    ui->fullScreenChk->setChecked(true);
-    ui->useDarkThemeChk->setChecked(true);
-    ui->drawPeakChk->setChecked(true);
-    on_useDarkThemeChk_clicked(true);
-    on_fullScreenChk_clicked(true);
-    on_drawPeakChk_clicked(true);
+    ui->fullScreenChk->setChecked(prefs.useFullScreen);
+    on_fullScreenChk_clicked(prefs.useFullScreen);
+
+    ui->useDarkThemeChk->setChecked(prefs.useDarkMode);
+    on_useDarkThemeChk_clicked(prefs.useDarkMode);
+
+    ui->drawPeakChk->setChecked(prefs.drawPeaks);
+    on_drawPeakChk_clicked(prefs.drawPeaks);
+    drawPeaks = prefs.drawPeaks;
 
     getInitialRigState();
     oldFreqDialVal = ui->freqDial->value();
+
 
 }
 
@@ -162,19 +167,69 @@ wfmain::~wfmain()
     delete ui;
 }
 
+void wfmain::setDefPrefs()
+{
+    defPrefs.useFullScreen = true;
+    defPrefs.useDarkMode = true;
+    defPrefs.drawPeaks = true;
+    defPrefs.radioCIVAddr = 0x94;
+    defPrefs.serialPortRadio = QString("/dev/ttyUSB0");
+    defPrefs.enablePTT = false;
+    defPrefs.niceTS = true;
+
+}
+
 void wfmain::loadSettings()
 {
     qDebug() << "Loading settings from " << settings.fileName();
 
     // Basic things to load:
-
     // UI: (full screen, dark theme, draw peaks, colors, etc)
+    settings.beginGroup("Interface");
+    prefs.useFullScreen = settings.value("UseFullScreen", defPrefs.useFullScreen).toBool();
+    prefs.useDarkMode = settings.value("UseDarkMode", defPrefs.useDarkMode).toBool();
+    prefs.drawPeaks = settings.value("DrawPeaks", defPrefs.drawPeaks).toBool();
+    settings.endGroup();
 
     // Radio and Comms: C-IV addr, port to use
+    settings.beginGroup("Radio");
+    prefs.radioCIVAddr = (unsigned char) settings.value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
+    prefs.serialPortRadio = settings.value("SerialPortRadio", defPrefs.serialPortRadio).toString();
+    settings.endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
+    settings.beginGroup("Controls");
+    prefs.enablePTT = settings.value("EnablePTT", defPrefs.enablePTT).toBool();
+    prefs.niceTS = settings.value("NiceTS", defPrefs.niceTS).toBool();
+    settings.endGroup();
 
     // Memory channels
+
+    settings.beginGroup("Memory");
+    int size = settings.beginReadArray("Channel");
+    int chan = 0;
+    double freq;
+    unsigned char mode;
+    bool isSet;
+    // preset_kind temp;
+
+    for(int i=0; i < size; i++)
+    {
+        settings.setArrayIndex(i);
+        chan = settings.value("chan", 0).toInt();
+        freq = settings.value("freq", 12.345).toDouble();
+        mode = settings.value("mode", 0).toInt();
+        isSet = settings.value("isSet", false).toBool();
+
+        if(isSet)
+        {
+            mem.setPreset(chan, freq, (mode_kind)mode);
+        }
+    }
+
+    settings.endArray();
+    settings.endGroup();
+
 }
 
 void wfmain::saveSettings()
@@ -210,12 +265,66 @@ void wfmain::saveSettings()
     {
         temp = mem.getPreset((int)i);
         settings.setArrayIndex(i);
+        settings.setValue("chan", i);
         settings.setValue("freq", temp.frequency);
         settings.setValue("mode", temp.mode);
+        settings.setValue("isSet", temp.isSet);
     }
 
     settings.endArray();
     settings.endGroup();
+
+    // Note: X and Y get the same colors. See setPlotTheme() function
+
+    settings.beginGroup("DarkColors");
+
+    settings.setValue("Dark_PlotBackground", QColor(0,0,0,255));
+    settings.setValue("Dark_PlotAxisPen", QColor(75,75,75,255));
+
+    settings.setValue("Dark_PlotLegendTextColor", QColor(255,255,255,255));
+    settings.setValue("Dark_PlotLegendBorderPen", QColor(255,255,255,255));
+    settings.setValue("Dark_PlotLegendBrush", QColor(0,0,0,200));
+
+    settings.setValue("Dark_PlotTickLabel", QColor(Qt::white));
+    settings.setValue("Dark_PlotBasePen", QColor(Qt::white));
+    settings.setValue("Dark_PlotTickPen", QColor(Qt::white));
+    settings.setValue("Dark_PlotFreqTracer", QColor(Qt::yellow));
+
+    settings.endGroup();
+
+
+
+    settings.beginGroup("LightColors");
+
+    settings.setValue("Light_PlotBackground", QColor(255,255,255,255));
+    settings.setValue("Light_PlotAxisPen", QColor(200,200,200,255));
+
+    settings.setValue("Light_PlotLegendTextColor", QColor(0,0,0,255));
+    settings.setValue("Light_PlotLegendBorderPen", QColor(0,0,0,255));
+    settings.setValue("Light_PlotLegendBrush", QColor(255,255,255,200));
+
+    settings.setValue("Light_PlotTickLabel", QColor(Qt::black));
+    settings.setValue("Light_PlotBasePen", QColor(Qt::black));
+    settings.setValue("Light_PlotTickPen", QColor(Qt::black));
+    settings.setValue("Light_PlotFreqTracer", QColor(Qt::blue));
+
+    settings.endGroup();
+
+    // This is a reference to see how the preference file is encoded.
+    settings.beginGroup("StandardColors");
+
+    settings.setValue("white", QColor(Qt::white));
+    settings.setValue("black", QColor(Qt::black));
+
+    settings.setValue("red_opaque", QColor(Qt::red));
+    settings.setValue("red_translucent", QColor(255,0,0,128));
+    settings.setValue("green_opaque", QColor(Qt::green));
+    settings.setValue("green_translucent", QColor(0,255,0,128));
+    settings.setValue("blue_opaque", QColor(Qt::blue));
+    settings.setValue("blue_translucent", QColor(0,0,255,128));
+
+    settings.endGroup();
+
 
     settings.sync(); // Automatic, not needed (supposedly)
 }
@@ -287,6 +396,29 @@ void wfmain::setAppTheme(bool isDark)
         qApp->setStyleSheet("");
     }
 
+}
+
+void wfmain::setDefaultColors()
+{
+    defaultColors.Dark_PlotBackground = QColor(0,0,0,255);
+    defaultColors.Dark_PlotAxisPen = QColor(75,75,75,255);
+    defaultColors.Dark_PlotLegendTextColor = QColor(255,255,255,255);
+    defaultColors.Dark_PlotLegendBorderPen = QColor(255,255,255,255);
+    defaultColors.Dark_PlotLegendBrush = QColor(0,0,0,200);
+    defaultColors.Dark_PlotTickLabel = QColor(Qt::white);
+    defaultColors.Dark_PlotBasePen = QColor(Qt::white);
+    defaultColors.Dark_PlotTickPen = QColor(Qt::white);
+    defaultColors.Dark_PlotFreqTracer = QColor(Qt::yellow);
+
+    defaultColors.Light_PlotBackground = QColor(255,255,255,255);
+    defaultColors.Light_PlotAxisPen = QColor(200,200,200,255);
+    defaultColors.Light_PlotLegendTextColor = QColor(0,0,0,255);
+    defaultColors.Light_PlotLegendBorderPen = QColor(0,0,0,255);
+    defaultColors.Light_PlotLegendBrush = QColor(255,255,255,200);
+    defaultColors.Light_PlotTickLabel = QColor(Qt::black);
+    defaultColors.Light_PlotBasePen = QColor(Qt::black);
+    defaultColors.Light_PlotTickPen = QColor(Qt::black);
+    defaultColors.Light_PlotFreqTracer = QColor(Qt::blue);
 }
 
 void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)

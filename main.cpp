@@ -14,6 +14,7 @@ int main(int argc, char *argv[])
     a.setOrganizationDomain("nodomain");
     a.setApplicationName("RigView");
 
+    a.setWheelScrollLines(1); // one line per wheel click
     wfmain w;
     w.show();
 

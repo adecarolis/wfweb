@@ -225,6 +225,46 @@ private:
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     freqMemory mem;
+    struct colors {
+        QColor Dark_PlotBackground;
+        QColor Dark_PlotAxisPen;
+        QColor Dark_PlotLegendTextColor;
+        QColor Dark_PlotLegendBorderPen;
+        QColor Dark_PlotLegendBrush;
+        QColor Dark_PlotTickLabel;
+        QColor Dark_PlotBasePen;
+        QColor Dark_PlotTickPen;
+        QColor Dark_PlotFreqTracer;
+
+        QColor Light_PlotBackground;
+        QColor Light_PlotAxisPen;
+        QColor Light_PlotLegendTextColor;
+        QColor Light_PlotLegendBorderPen;
+        QColor Light_PlotLegendBrush;
+        QColor Light_PlotTickLabel;
+        QColor Light_PlotBasePen;
+        QColor Light_PlotTickPen;
+        QColor Light_PlotFreqTracer;
+
+    } colorScheme;
+
+    struct preferences {
+        bool useFullScreen;
+        bool useDarkMode;
+        bool drawPeaks;
+        unsigned char radioCIVAddr;
+        QString serialPortRadio;
+        bool enablePTT;
+        bool niceTS;
+
+    } prefs;
+
+    preferences defPrefs;
+    colors defaultColors;
+
+    void setDefaultColors(); // populate with default values
+    void useColors(); // set the plot up
+    void setDefPrefs(); // populate default values to default prefs
 
     int oldFreqDialVal;
 
