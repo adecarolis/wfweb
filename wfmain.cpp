@@ -211,7 +211,14 @@ void wfmain::loadSettings()
     double freq;
     unsigned char mode;
     bool isSet;
-    // preset_kind temp;
+
+    // Annoying: QSettings will write the array to the
+    // preference file starting the array at 1 and ending at 100.
+    // Thus, we are writing the channel number each time.
+    // It is also annoying that they get written with their array
+    // numbers in alphabetical order without zero padding.
+    // Also annoying that the preference groups are not written in
+    // the order they are specified here.
 
     for(int i=0; i < size; i++)
     {
@@ -239,21 +246,21 @@ void wfmain::saveSettings()
 
     // UI: (full screen, dark theme, draw peaks, colors, etc)
     settings.beginGroup("Interface");
-    settings.setValue("UseFullScreen", true);
-    settings.setValue("UseDarkMode", true);
-    settings.setValue("DrawPeaks", true);
+    settings.setValue("UseFullScreen", prefs.useFullScreen);
+    settings.setValue("UseDarkMode", prefs.useDarkMode);
+    settings.setValue("DrawPeaks", prefs.drawPeaks);
     settings.endGroup();
 
     // Radio and Comms: C-IV addr, port to use
     settings.beginGroup("Radio");
-    settings.setValue("RigCIVuInt", 0x94);
-    settings.setValue("SerialPortRadio", "/dev/ttyUSB0");
+    settings.setValue("RigCIVuInt", prefs.radioCIVAddr);
+    settings.setValue("SerialPortRadio", prefs.serialPortRadio);
     settings.endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
     settings.beginGroup("Controls");
-    settings.setValue("EnablePTT", true);
-    settings.setValue("NiceTS", true);
+    settings.setValue("EnablePTT", prefs.enablePTT);
+    settings.setValue("NiceTS", prefs.niceTS);
     settings.endGroup();
 
     // Memory channels
@@ -374,7 +381,7 @@ void wfmain::on_useDarkThemeChk_clicked(bool checked)
     setAppTheme(checked);
     setPlotTheme(wf, checked);
     setPlotTheme(plot, checked);
-
+    prefs.useDarkMode = checked;
 }
 
 void wfmain::setAppTheme(bool isDark)
@@ -781,21 +788,26 @@ void wfmain::receiveDataModeStatus(bool dataEnabled)
     {
         if(currentModeIndex == 0)
         {
-            // USB
+            // LSB
             ui->modeSelectCombo->setCurrentIndex(8);
-            ui->modeLabel->setText( "USB-D" );
+            ui->modeLabel->setText( "LSB-D" );
 
         } else if (currentModeIndex == 1)
         {
-            // LSB
+            // USB
             ui->modeSelectCombo->setCurrentIndex(9);
-            ui->modeLabel->setText( "LSB-D" );
+            ui->modeLabel->setText( "USB-D" );
 
         }
         // TODO: be more intelligent here to avoid -D-D-D.
         // include the text above.
         // ui->modeLabel->setText( ui->modeLabel->text() + "-D" );
         // Remove if works.
+    } else {
+        // update to _not_ have the -D
+        ui->modeSelectCombo->setCurrentIndex(currentModeIndex);
+        // No need to update status label?
+
     }
 
 }
@@ -818,6 +830,8 @@ void wfmain::on_drawPeakChk_clicked(bool checked)
         plot->graph(1)->clearData();
 
     }
+    prefs.drawPeaks = checked;
+
 }
 
 
@@ -827,6 +841,7 @@ void wfmain::on_fullScreenChk_clicked(bool checked)
         this->showFullScreen();
     else
         this->showNormal();
+    prefs.useFullScreen = checked;
 }
 
 void wfmain::on_goFreqBtn_clicked()
@@ -1304,6 +1319,7 @@ void wfmain::receiveSql(unsigned char level)
 void wfmain::on_drawTracerChk_toggled(bool checked)
 {
     tracer->setVisible(checked);
+    prefs.drawTracer = checked;
 }
 
 void wfmain::on_tuneNowBtn_clicked()
@@ -1345,6 +1361,13 @@ void wfmain::on_pttOffBtn_clicked()
 {
     // Send the PTT OFF command (more than once?)
 
-    // Stop the 3 min tumer
+    // Stop the 3 min timer
 
 }
+
+void wfmain::on_saveSettingsBtn_clicked()
+{
+    saveSettings(); // save memory, UI, and radio settings
+}
+
+

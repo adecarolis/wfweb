@@ -13,7 +13,7 @@
 //      + Impliment additional commands (of course)
 //      + Impliment external serial port "pass through"
 //      + Impliment XML RPC server?
-//
+//      + Grab initial state of band scope and adjust UI accordingly.
 
 //
 // See here for a wonderful CI-V overview:
@@ -31,6 +31,8 @@ rigCommander::rigCommander()
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
+    // Keep in hex in the UI as is done with other CIV apps.
+
     civAddr = 0x94; // address of the radio. Decimal is 148.
 
     setCIVAddr(civAddr);
@@ -43,7 +45,12 @@ rigCommander::rigCommander()
     // payloadPrefix.append("\xE0");
 
     payloadSuffix = QByteArray("\xFD");
-    comm = new commHandler();
+    // TODO: list full contents of /dev/serial, grep for IC-7300
+    // /dev/serial/by-path$ ls
+    //     total 0
+    //    lrwxrwxrwx 1 root root 13 Nov 24 21:43 pci-0000:00:12.0-usb-0:2.1:1.0-port0 -> ../../ttyUSB0
+
+    comm = new commHandler("/dev/ttyUSB0");
 
     // data from the comm port to the program:
     connect(comm, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));

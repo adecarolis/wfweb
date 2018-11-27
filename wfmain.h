@@ -174,6 +174,9 @@ private slots:
 
     void on_pttOffBtn_clicked();
 
+    void on_saveSettingsBtn_clicked();
+
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -252,6 +255,7 @@ private:
         bool useFullScreen;
         bool useDarkMode;
         bool drawPeaks;
+        bool drawTracer;
         unsigned char radioCIVAddr;
         QString serialPortRadio;
         bool enablePTT;
