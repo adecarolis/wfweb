@@ -10,6 +10,33 @@ wfmain::wfmain(QWidget *parent) :
 {
     ui->setupUi(this);
     theParent = parent;
+
+    keyF11 = new QShortcut(this);
+    keyF11->setKey(Qt::Key_F11);
+    connect(keyF11, SIGNAL(activated()), this, SLOT(shortcutF11()));
+
+    keyF1 = new QShortcut(this);
+    keyF1->setKey(Qt::Key_F1);
+    connect(keyF1, SIGNAL(activated()), this, SLOT(shortcutF1()));
+
+    keyF2 = new QShortcut(this);
+    keyF2->setKey(Qt::Key_F2);
+    connect(keyF2, SIGNAL(activated()), this, SLOT(shortcutF2()));
+
+    keyF3 = new QShortcut(this);
+    keyF3->setKey(Qt::Key_F3);
+    connect(keyF3, SIGNAL(activated()), this, SLOT(shortcutF3()));
+
+    keyF4 = new QShortcut(this);
+    keyF4->setKey(Qt::Key_F4);
+    connect(keyF4, SIGNAL(activated()), this, SLOT(shortcutF4()));
+
+    keyStar = new QShortcut(this);
+    keyStar->setKey(Qt::Key_Asterisk);
+    connect(keyStar, SIGNAL(activated()), this, SLOT(shortcutStar()));
+
+
+
     setDefaultColors(); // set of UI colors with defaults populated
     loadSettings(); // Look for default settings
     plot = ui->plot; // rename it waterfall.
@@ -39,6 +66,7 @@ wfmain::wfmain(QWidget *parent) :
     modes << "LSB" << "USB" << "AM" << "CW" << "RTTY";
     //          5      6          7           8          9
     modes << "FM" << "CW-R" << "RTTY-R" << "LSB-D" << "USB-D";
+    // TODO: Add FM-D and AM-D which seem to exist
     ui->modeSelectCombo->insertItems(0, modes);
 
     spans << "2.5k" << "5.0k" << "10k" << "25k";
@@ -337,6 +365,52 @@ void wfmain::saveSettings()
 }
 
 
+// Key shortcuts (hotkeys)
+
+void wfmain::shortcutF11()
+{
+    if(onFullscreen)
+    {
+        this->showNormal();
+        onFullscreen = false;
+    } else {
+        this->showFullScreen();
+        onFullscreen = true;
+    }
+}
+
+void wfmain::shortcutF1()
+{
+    ui->tabWidget->setCurrentIndex(0);
+}
+
+void wfmain::shortcutF2()
+{
+    ui->tabWidget->setCurrentIndex(1);
+}
+
+void wfmain::shortcutF3()
+{
+    ui->tabWidget->setCurrentIndex(2);
+}
+
+void wfmain::shortcutF4()
+{
+    ui->tabWidget->setCurrentIndex(3);
+}
+
+void wfmain::shortcutF5()
+{
+
+}
+
+void wfmain::shortcutStar()
+{
+    // Jump to frequency tab from Asterisk key on keypad
+    ui->tabWidget->setCurrentIndex(2);
+}
+
+
 void wfmain::getInitialRigState()
 {
     // Initial list of queries to the radio.
@@ -557,6 +631,8 @@ void wfmain::runDelayedCommand()
         // done
     } else {
         // next
+        // TODO: If we always do ->start, then it will not be necessary for
+        // every command insertion to include a ->start.... probably worth doing.
         delayedCommand->start();
     }
 
@@ -593,7 +669,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     //qDebug() << "Spectrum data received at UI! Length: " << specLen;
     if(specLen != 475)
     {
-        qDebug () << "Unusual spectrum: length: " << specLen;
+        // qDebug () << "Unusual spectrum: length: " << specLen;
         if(specLen > 475)
         {
             specLen = 475;
@@ -838,9 +914,13 @@ void wfmain::on_drawPeakChk_clicked(bool checked)
 void wfmain::on_fullScreenChk_clicked(bool checked)
 {
     if(checked)
+    {
         this->showFullScreen();
-    else
+        onFullscreen = true;
+    } else {
         this->showNormal();
+        onFullscreen = false;
+    }
     prefs.useFullScreen = checked;
 }
 

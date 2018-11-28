@@ -7,6 +7,7 @@
 #include <QVector>
 #include <QTimer>
 #include <QSettings>
+#include <QShortcut>
 
 
 #include "commhandler.h"
@@ -55,6 +56,15 @@ signals:
     void setScopeEdge(char edge);
 
 private slots:
+    void shortcutF11();
+    void shortcutF1();
+    void shortcutF2();
+    void shortcutF3();
+    void shortcutF4();
+    void shortcutF5();
+    void shortcutStar();
+
+
     void on_startBtn_clicked();
     void receiveFreq(double);
     void receiveMode(QString);
@@ -192,6 +202,15 @@ private:
     QWidget * theParent;
     QStringList portList;
 
+    QShortcut *keyF11;
+    QShortcut *keyF1;
+    QShortcut *keyF2;
+    QShortcut *keyF3;
+    QShortcut *keyF4;
+    QShortcut *keyF5;
+    QShortcut *keyStar;
+
+
     rigCommander * rig;
     QThread * rigThread;
     QCPColorMap * colorMap;
@@ -214,6 +233,7 @@ private:
 
     QVector <QByteArray> wfimage;
 
+    bool onFullscreen;
     bool drawPeaks;
     bool freqTextSelected;
     void checkFreqSel();
