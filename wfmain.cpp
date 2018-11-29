@@ -36,9 +36,34 @@ wfmain::wfmain(QWidget *parent) :
     connect(keyStar, SIGNAL(activated()), this, SLOT(shortcutStar()));
 
 
-
     setDefaultColors(); // set of UI colors with defaults populated
-    loadSettings(); // Look for default settings
+    setDefaultColors(); // other default options
+    loadSettings(); // Look for saved preferences
+
+    prefs.serialPortRadio = QString("auto");
+    // if setting for serial port is "auto" then...
+    if(prefs.serialPortRadio == QString("auto"))
+    {
+        // Find the ICOM IC-7300.
+        qDebug() << "Searching for serial port...";
+        QDirIterator it("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
+
+        while (it.hasNext())
+            qDebug() << it.next();
+        // if (it.isEmpty()) // fail or default to ttyUSB0 if present
+        // iterator might not make sense
+        serialPortRig = it.filePath(); // first? last?
+        if(serialPortRig.isEmpty())
+        {
+            qDebug() << "Cannot find valid serial port. Trying /dev/ttyUSB0";
+            serialPortRig = QString("/dev/ttyUSB0");
+        }
+        // end finding the 7300 code
+    } else {
+        serialPortRig = prefs.serialPortRadio;
+    }
+
+
     plot = ui->plot; // rename it waterfall.
     wf = ui->waterfall;
     tracer = new QCPItemTracer(plot);
@@ -80,7 +105,7 @@ wfmain::wfmain(QWidget *parent) :
     ui->statusBar->showMessage("Ready", 2000);
 
     // comm = new commHandler();
-    rig = new rigCommander();
+    rig = new rigCommander(prefs.radioCIVAddr, serialPortRig  );
     rigThread = new QThread(this);
 
     rig->moveToThread(rigThread);
@@ -201,7 +226,7 @@ void wfmain::setDefPrefs()
     defPrefs.useDarkMode = true;
     defPrefs.drawPeaks = true;
     defPrefs.radioCIVAddr = 0x94;
-    defPrefs.serialPortRadio = QString("/dev/ttyUSB0");
+    defPrefs.serialPortRadio = QString("auto");
     defPrefs.enablePTT = false;
     defPrefs.niceTS = true;
 

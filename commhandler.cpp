@@ -46,7 +46,7 @@ commHandler::commHandler(QString portName)
 
     setupComm(); // basic parameters
     openPort();
-    qDebug() << "Serial buffer size: " << port->readBufferSize();
+    // qDebug() << "Serial buffer size: " << port->readBufferSize();
     //port->setReadBufferSize(1024); // manually. 256 never saw any return from the radio. why...
     //qDebug() << "Serial buffer size: " << port->readBufferSize();
 

@@ -27,13 +27,14 @@
 // Note: When sending \x00, must use QByteArray.setRawData()
 
 
-rigCommander::rigCommander()
+rigCommander::rigCommander(unsigned char rigCivAddr, QString rigSerialPort)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
     // Keep in hex in the UI as is done with other CIV apps.
 
-    civAddr = 0x94; // address of the radio. Decimal is 148.
+    // civAddr = 0x94; // address of the radio. Decimal is 148.
+    civAddr = rigCivAddr; // address of the radio. Decimal is 148.
 
     setCIVAddr(civAddr);
     //compCivAddr = 0xE1;
@@ -50,7 +51,8 @@ rigCommander::rigCommander()
     //     total 0
     //    lrwxrwxrwx 1 root root 13 Nov 24 21:43 pci-0000:00:12.0-usb-0:2.1:1.0-port0 -> ../../ttyUSB0
 
-    comm = new commHandler("/dev/ttyUSB0");
+    // comm = new commHandler("/dev/ttyUSB0");
+    comm = new commHandler(rigSerialPort);
 
     // data from the comm port to the program:
     connect(comm, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));

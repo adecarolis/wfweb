@@ -201,6 +201,7 @@ private:
     void getInitialRigState();
     QWidget * theParent;
     QStringList portList;
+    QString serialPortRig;
 
     QShortcut *keyF11;
     QShortcut *keyF1;

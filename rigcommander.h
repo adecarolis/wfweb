@@ -19,7 +19,7 @@ class rigCommander : public QObject
     Q_OBJECT
 
 public:
-    rigCommander();
+    rigCommander(unsigned char rigCivAddr, QString rigSerialPort);
     ~rigCommander();
 
 public slots:
