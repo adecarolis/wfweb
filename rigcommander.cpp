@@ -370,7 +370,7 @@ void rigCommander::parseData(QByteArray dataInput)
             {
                 // Finally this almost never happens
                 // qDebug() << "Data length too short: " << data.length() << " bytes. Data:";
-                printHex(data, false, true);
+                //printHex(data, false, true);
             }
             // no
             //return;

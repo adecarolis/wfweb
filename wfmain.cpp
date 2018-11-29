@@ -604,7 +604,7 @@ void wfmain::runDelayedCommand()
         switch(qdCmd)
         {
             case cmdNone:
-                qDebug() << "NOOP";
+                //qDebug() << "NOOP";
                 break;
             case cmdGetRigID:
                 emit getRigID();
@@ -616,7 +616,7 @@ void wfmain::runDelayedCommand()
                 emit getMode();
                 break;
             case cmdGetDataMode:
-                qDebug() << "Sending query for data mode";
+                // qDebug() << "Sending query for data mode";
                 emit getDataMode();
                 break;
             case cmdSetDataModeOff:
@@ -820,37 +820,37 @@ void wfmain::on_startBtn_clicked()
     emit spectOutputEnable();
 }
 
-void wfmain::on_getFreqBtn_clicked()
-{
-    emit getFrequency();
-}
+//void wfmain::on_getFreqBtn_clicked()
+//{
+//    emit getFrequency();
+//}
 
-void wfmain::on_getModeBtn_clicked()
-{
-    emit getMode();
-}
+//void wfmain::on_getModeBtn_clicked()
+//{
+//    emit getMode();
+//}
 
-void wfmain::on_debugBtn_clicked()
-{
-    // Temporary place to try code
-    // emit getDebug();
-    // emit getBandStackReg(0x11,1); // 20M, latest
-    // emit getRfGain();
+//void wfmain::on_debugBtn_clicked()
+//{
+//    // Temporary place to try code
+//    // emit getDebug();
+//    // emit getBandStackReg(0x11,1); // 20M, latest
+//    // emit getRfGain();
 
-//    for(int a=0; a<100; a++)
-//    {
-//    cmdOutQue.append(cmdGetRxGain);
-//    cmdOutQue.append(cmdGetSql);
-//    }
-//    delayedCommand->start();
+////    for(int a=0; a<100; a++)
+////    {
+////    cmdOutQue.append(cmdGetRxGain);
+////    cmdOutQue.append(cmdGetSql);
+////    }
+////    delayedCommand->start();
 
-   // emit getRigID();
+//   // emit getRigID();
 
-    //mem.dumpMemory();
+//    //mem.dumpMemory();
 
-    saveSettings();
+//    saveSettings();
 
-}
+//}
 
 void wfmain::on_stopBtn_clicked()
 {
@@ -883,7 +883,7 @@ void wfmain::receiveMode(QString mode)
 
 void wfmain::receiveDataModeStatus(bool dataEnabled)
 {
-    qDebug() << "Received data mode " << dataEnabled << "\n";
+    // qDebug() << "Received data mode " << dataEnabled << "\n";
     if(dataEnabled)
     {
         if(currentModeIndex == 0)
@@ -1414,7 +1414,7 @@ void wfmain::receiveAfGain(unsigned char level)
 
 void wfmain::receiveSql(unsigned char level)
 {
-    qDebug() << "Receive SQL level of                   " << (int)level << " = " << 100*level/255.0 << "%";
+    // qDebug() << "Receive SQL level of                   " << (int)level << " = " << 100*level/255.0 << "%";
     // ui->sqlSlider->setValue(level); // No SQL control so far
 }
 

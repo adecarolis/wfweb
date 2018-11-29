@@ -83,11 +83,11 @@ private slots:
     void runDelayedCommand();
     void showStatusBarText(QString text);
 
-    void on_getFreqBtn_clicked();
+    // void on_getFreqBtn_clicked();
 
-    void on_getModeBtn_clicked();
+    // void on_getModeBtn_clicked();
 
-    void on_debugBtn_clicked();
+    // void on_debugBtn_clicked();
 
     void on_stopBtn_clicked();
 

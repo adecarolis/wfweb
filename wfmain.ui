@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -272,30 +272,6 @@
            <widget class="QPushButton" name="clearPeakBtn">
             <property name="text">
              <string>Clear Peaks</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="getFreqBtn">
-            <property name="text">
-             <string>Get Frequency</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="getModeBtn">
-            <property name="text">
-             <string>GetMode</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="debugBtn">
-            <property name="toolTip">
-             <string>Don't press this button!</string>
-            </property>
-            <property name="text">
-             <string>Debug</string>
             </property>
            </widget>
           </item>

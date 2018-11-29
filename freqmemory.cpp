@@ -12,7 +12,7 @@ freqMemory::freqMemory()
 
 void freqMemory::initializePresets()
 {
-    qDebug() << "Initializing " << numPresets << " memory channels";
+    // qDebug() << "Initializing " << numPresets << " memory channels";
 
     for(unsigned int p=0; p < numPresets; p++)
     {

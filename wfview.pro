@@ -27,6 +27,9 @@ DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""
 
 RESOURCES += qdarkstyle/style.qrc
 
+# Do not do this, it will hang on start:
+# CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
+
 
 CONFIG(debug, release|debug) {
   win32:QCPLIB = qcustomplotd1
