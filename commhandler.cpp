@@ -109,7 +109,7 @@ void commHandler::receiveDataIn()
 
             if(rolledBack)
             {
-                qDebug() << "Rolled back and was successfull. Length: " << inPortData.length();
+                // qDebug() << "Rolled back and was successfull. Length: " << inPortData.length();
                 //printHex(inPortData, false, true);
                 rolledBack = false;
             }
@@ -147,7 +147,7 @@ void commHandler::openPort()
         return;
     } else {
         // debug?
-        //qDebug() << "Could not open serial port.";
+        qDebug() << "Could not open serial port " << portName;
         isConnected = false;
         return;
     }

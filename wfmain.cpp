@@ -182,7 +182,6 @@ wfmain::wfmain(QWidget *parent) :
     plot->graph(1)->setBrush(QBrush(color));
 
     drawPeaks = false;
-    // ui->drawPeakChk->setChecked(false);
 
     ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
 

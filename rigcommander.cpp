@@ -391,8 +391,8 @@ void rigCommander::parseData(QByteArray dataInput)
                 parseData(payloadIn);
                 return;
             } else {
-                qDebug() << "Error: Could not reconstruct corrupted data: ";
-                printHex(data, false, true);
+                //qDebug() << "Error: Could not reconstruct corrupted data: ";
+                //printHex(data, false, true);
                 // data.right(data.length() - data.find('\xFE\xFE'));
                 // if found do not return and keep going.
                 return;
