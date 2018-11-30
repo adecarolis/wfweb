@@ -105,7 +105,9 @@ wfmain::wfmain(QWidget *parent) :
     ui->statusBar->showMessage("Ready", 2000);
 
     // comm = new commHandler();
-    rig = new rigCommander(prefs.radioCIVAddr, serialPortRig  );
+    //rig = new rigCommander(prefs.radioCIVAddr, serialPortRig  );
+    rig = new rigCommander(0x94, serialPortRig  );
+
     rigThread = new QThread(this);
 
     rig->moveToThread(rigThread);
@@ -245,7 +247,9 @@ void wfmain::loadSettings()
 
     // Radio and Comms: C-IV addr, port to use
     settings.beginGroup("Radio");
-    prefs.radioCIVAddr = (unsigned char) settings.value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
+    // TODO: Fix this
+    prefs.radioCIVAddr = (unsigned char) settings.value("RigCIVuInt", defPrefs.radioCIVAddr).toChar().toLatin1();
+
     prefs.serialPortRadio = settings.value("SerialPortRadio", defPrefs.serialPortRadio).toString();
     settings.endGroup();
 
@@ -432,6 +436,8 @@ void wfmain::shortcutStar()
 {
     // Jump to frequency tab from Asterisk key on keypad
     ui->tabWidget->setCurrentIndex(2);
+    ui->freqMhzLineEdit->clear();
+    ui->freqMhzLineEdit->setFocus();
 }
 
 
