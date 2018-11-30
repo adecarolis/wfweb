@@ -37,7 +37,7 @@ wfmain::wfmain(QWidget *parent) :
 
 
     setDefaultColors(); // set of UI colors with defaults populated
-    setDefaultColors(); // other default options
+    setDefPrefs(); // other default options
     loadSettings(); // Look for saved preferences
 
     prefs.serialPortRadio = QString("auto");
@@ -104,9 +104,8 @@ wfmain::wfmain(QWidget *parent) :
     ui->splitter->setHandleWidth(5);
     ui->statusBar->showMessage("Ready", 2000);
 
-    // comm = new commHandler();
-    //rig = new rigCommander(prefs.radioCIVAddr, serialPortRig  );
-    rig = new rigCommander(0x94, serialPortRig  );
+    rig = new rigCommander(prefs.radioCIVAddr, serialPortRig  );
+    // rig = new rigCommander(0x94, serialPortRig  );
 
     rigThread = new QThread(this);
 
@@ -868,7 +867,7 @@ void wfmain::on_stopBtn_clicked()
 
 void wfmain::receiveMode(QString mode)
 {
-    ui->modeLabel->setText(mode);
+    //ui->modeLabel->setText(mode);
     int index;
     //bool ok;
     index = modes.indexOf(QRegExp(mode));
@@ -898,13 +897,13 @@ void wfmain::receiveDataModeStatus(bool dataEnabled)
         {
             // LSB
             ui->modeSelectCombo->setCurrentIndex(8);
-            ui->modeLabel->setText( "LSB-D" );
+            //ui->modeLabel->setText( "LSB-D" );
 
         } else if (currentModeIndex == 1)
         {
             // USB
             ui->modeSelectCombo->setCurrentIndex(9);
-            ui->modeLabel->setText( "USB-D" );
+            //ui->modeLabel->setText( "USB-D" );
 
         }
         // TODO: be more intelligent here to avoid -D-D-D.
