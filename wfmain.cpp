@@ -420,6 +420,8 @@ void wfmain::shortcutF2()
 void wfmain::shortcutF3()
 {
     ui->tabWidget->setCurrentIndex(2);
+    ui->freqMhzLineEdit->clear();
+    ui->freqMhzLineEdit->setFocus();
 }
 
 void wfmain::shortcutF4()
