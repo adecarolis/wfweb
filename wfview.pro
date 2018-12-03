@@ -52,7 +52,6 @@ SOURCES += main.cpp\
     rigidentities.cpp
 
 HEADERS  += wfmain.h \
-    ../../../../../usr/include/qcustomplot.h \
     commhandler.h \
     rigcommander.h \
     freqmemory.h \

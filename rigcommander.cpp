@@ -481,6 +481,14 @@ void rigCommander::parseCommand()
             //qDebug() << "Have mode data";
             this->parseMode();
             break;
+        case '\x05':
+            //qDebug() << "Have mode data";
+            this->parseMode();
+            break;
+        case '\x06':
+            //qDebug() << "Have mode data";
+            this->parseMode();
+            break;
         case '\x14':
             // read levels
             parseLevels();
@@ -914,7 +922,8 @@ void rigCommander::parseMode()
             break;
         default:
             qDebug() << "Mode: Unknown: " << payloadIn[01];
-            mode = QString("Unk: %1").arg(payloadIn[01]);
+            printHex(payloadIn, false, true);
+            mode = QString("");
     }
 
     emit haveMode(mode);

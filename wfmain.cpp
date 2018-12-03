@@ -870,7 +870,8 @@ void wfmain::receiveMode(QString mode)
     //ui->modeLabel->setText(mode);
     int index;
     //bool ok;
-    index = modes.indexOf(QRegExp(mode));
+    index = modes.indexOf(QRegExp(mode)); // find the number corresponding to the mode
+    qDebug() << "Received mode " << mode << " current mode: " << currentModeIndex << " search index: " << index;
     if( currentModeIndex == index)
     {
         // do nothing, no need to change the selected mode and fire more events off.
