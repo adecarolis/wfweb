@@ -31,8 +31,12 @@ public slots:
     void disableSpectrumDisplay();
     void setSpectrumBounds();
     void setSpectrumCenteredMode(bool centerEnable); // centered or band-wise
+    void getSpectrumCenterMode();
     void setScopeSpan(char span);
+    void getScopeSpan();
     void setScopeEdge(char edge);
+    void getScopeEdge();
+    void getScopeMode();
     void setFrequency(double freq);
     void setMode(char mode);
     void getFrequency();
@@ -62,6 +66,9 @@ signals:
     void haveDataMode(bool dataModeEnabled);
     void haveBandStackReg(float freq, char mode, bool dataOn);
     void haveSpectrumBounds();
+    void haveScopeSpan(char span);
+    void haveSpectrumFixedMode(bool fixedEnabled);
+    void haveScopeEdge(char edge);
     void haveRfGain(unsigned char level);
     void haveAfGain(unsigned char level);
     void haveSql(unsigned char level);
@@ -83,6 +90,7 @@ private:
     QByteArray makeFreqPayload(double frequency);
     void parseMode();
     void parseSpectrum();
+    void parseWFData();
     void parseDetailedRegisters1A05();
     void parseRegisters1A();
     void parseBandStackReg();

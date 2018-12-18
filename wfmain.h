@@ -54,6 +54,9 @@ signals:
     void setScopeCenterMode(bool centerEnable);
     void setScopeSpan(char span);
     void setScopeEdge(char edge);
+    void getScopeMode();
+    void getScopeEdge();
+    void getScopeSpan();
 
 private slots:
     void shortcutF11();
@@ -186,6 +189,8 @@ private slots:
 
     void on_saveSettingsBtn_clicked();
 
+
+    void on_debugBtn_clicked();
 
 private:
     Ui::wfmain *ui;

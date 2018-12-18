@@ -40,7 +40,6 @@ wfmain::wfmain(QWidget *parent) :
     setDefPrefs(); // other default options
     loadSettings(); // Look for saved preferences
 
-    prefs.serialPortRadio = QString("auto");
     // if setting for serial port is "auto" then...
     if(prefs.serialPortRadio == QString("auto"))
     {
@@ -124,6 +123,7 @@ wfmain::wfmain(QWidget *parent) :
     connect(rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
     connect(rig, SIGNAL(haveBandStackReg(float,char,bool)), this, SLOT(receiveBandStackReg(float,char,bool)));
     connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
+
     connect(this, SIGNAL(spectOutputDisable()), rig, SLOT(disableSpectOutput()));
     connect(this, SIGNAL(spectOutputEnable()), rig, SLOT(enableSpectOutput()));
     connect(this, SIGNAL(scopeDisplayDisable()), rig, SLOT(disableSpectrumDisplay()));
@@ -135,6 +135,10 @@ wfmain::wfmain(QWidget *parent) :
     connect(this, SIGNAL(setScopeCenterMode(bool)), rig, SLOT(setSpectrumCenteredMode(bool)));
     connect(this, SIGNAL(setScopeEdge(char)), rig, SLOT(setScopeEdge(char)));
     connect(this, SIGNAL(setScopeSpan(char)), rig, SLOT(setScopeSpan(char)));
+    connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
+    connect(this, SIGNAL(getScopeEdge()), rig, SLOT(getScopeEdge()));
+    connect(this, SIGNAL(getScopeSpan()), rig, SLOT(getScopeSpan()));
+
     connect(this, SIGNAL(setMode(char)), rig, SLOT(setMode(char)));
     connect(this, SIGNAL(getRfGain()), rig, SLOT(getRfGain()));
     connect(this, SIGNAL(getAfGain()), rig, SLOT(getAfGain()));
@@ -246,9 +250,7 @@ void wfmain::loadSettings()
 
     // Radio and Comms: C-IV addr, port to use
     settings.beginGroup("Radio");
-    // TODO: Fix this
-    prefs.radioCIVAddr = (unsigned char) settings.value("RigCIVuInt", defPrefs.radioCIVAddr).toChar().toLatin1();
-
+    prefs.radioCIVAddr = (unsigned char) settings.value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
     prefs.serialPortRadio = settings.value("SerialPortRadio", defPrefs.serialPortRadio).toString();
     settings.endGroup();
 
@@ -871,7 +873,7 @@ void wfmain::receiveMode(QString mode)
     int index;
     //bool ok;
     index = modes.indexOf(QRegExp(mode)); // find the number corresponding to the mode
-    qDebug() << "Received mode " << mode << " current mode: " << currentModeIndex << " search index: " << index;
+    // qDebug() << "Received mode " << mode << " current mode: " << currentModeIndex << " search index: " << index;
     if( currentModeIndex == index)
     {
         // do nothing, no need to change the selected mode and fire more events off.
@@ -1424,9 +1426,8 @@ void wfmain::receiveSql(unsigned char level)
 {
     // qDebug() << "Receive SQL level of                   " << (int)level << " = " << 100*level/255.0 << "%";
     // ui->sqlSlider->setValue(level); // No SQL control so far
+    (void)level;
 }
-
-
 
 void wfmain::on_drawTracerChk_toggled(bool checked)
 {
@@ -1482,4 +1483,11 @@ void wfmain::on_saveSettingsBtn_clicked()
     saveSettings(); // save memory, UI, and radio settings
 }
 
-
+// --- DEBUG FUNCTION ---
+void wfmain::on_debugBtn_clicked()
+{
+    // TODO: Remove function on release build
+    // emit getScopeMode();
+    // emit getScopeEdge();
+    // emit getScopeSpan();
+}

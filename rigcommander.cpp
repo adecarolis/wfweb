@@ -119,6 +119,21 @@ void rigCommander::setSpectrumBounds()
 
 }
 
+void rigCommander::getScopeMode()
+{
+    // center or fixed
+    QByteArray payload;
+    payload.setRawData("\x27\x14", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getScopeEdge()
+{
+    QByteArray payload;
+    payload.setRawData("\x27\x16", 2);
+    prepDataAndSend(payload);
+}
+
 void rigCommander::setScopeEdge(char edge)
 {
     // 1 2 or 3
@@ -128,6 +143,13 @@ void rigCommander::setScopeEdge(char edge)
     QByteArray payload;
     payload.setRawData("\x27\x16\x00", 3);
     payload.append(edge);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getScopeSpan()
+{
+    QByteArray payload;
+    payload.setRawData("\x27\x15", 2);
     prepDataAndSend(payload);
 }
 
@@ -178,7 +200,7 @@ void rigCommander::setScopeSpan(char span)
 
     payload.append( makeFreqPayload(freq));
     payload.append("\x00");
-    printHex(payload, false, true);
+    // printHex(payload, false, true);
     prepDataAndSend(payload);
 }
 
@@ -191,6 +213,13 @@ void rigCommander::setSpectrumCenteredMode(bool centerEnable)
     } else {
         specModePayload.setRawData("\x27\x14\x00\x01", 4);
     }
+    prepDataAndSend(specModePayload);
+}
+
+void rigCommander::getSpectrumCenterMode()
+{
+    QByteArray specModePayload;
+    specModePayload.setRawData("\x27\x14", 2);
     prepDataAndSend(specModePayload);
 }
 
@@ -502,7 +531,8 @@ void rigCommander::parseCommand()
             // scope data
             //qDebug() << "Have scope data";
             //printHex(payloadIn, false, true);
-            parseSpectrum();
+            parseWFData();
+            //parseSpectrum();
             break;
         case '\x1A':
             if(payloadIn[01] == '\x05')
@@ -735,6 +765,61 @@ void rigCommander::parseBandStackReg()
 void rigCommander::parseDetailedRegisters1A05()
 {
     // It seems a lot of misc stuff is under this command and subcommand.
+}
+
+void rigCommander::parseWFData()
+{
+    float freqSpan = 0.0;
+
+    switch(payloadIn[1])
+    {
+        case 0:
+            // Chunk of spectrum
+            parseSpectrum();
+            break;
+        case 0x10:
+            // confirming scope is on
+            break;
+        case 0x11:
+            // confirming output enabled/disabled of wf data.
+            break;
+        case 0x14:
+            // fixed or center
+            emit haveSpectrumFixedMode((bool)payloadIn[2]);
+            qDebug() << "received 0x14 command fix/center";
+            printHex(payloadIn, false, true);
+            // [1] 0x14
+            // [2] 0x00 (center), 0x01 (fixed)
+            break;
+        case 0x15:
+            // read span in center mode
+            // [1] 0x15
+            // [2] to [8] is span encoded as a frequency
+            freqSpan = parseFrequency(payloadIn, 8);
+            qDebug() << "Received 0x15 center span data: for frequency " << freqSpan;
+            printHex(payloadIn, false, true);
+            break;
+        case 0x16:
+            // read edge mode center in edge mode
+            emit haveScopeEdge((char)payloadIn[2]);
+            qDebug() << "Received 0x16 edge in center mode:";
+            printHex(payloadIn, false, true);
+            // [1] 0x16
+            // [2] 0x01, 0x02, 0x03: Edge 1,2,3
+            break;
+        case 0x19:
+            // scope reference level
+            // [1] 0x19
+            // [2] 0x00
+            // [3] 10dB digit, 1dB digit
+            // [4] 0.1dB digit, 0
+            // [5] 0x00 = +, 0x01 = -
+            break;
+        default:
+            qDebug() << "Unknown waveform data received: ";
+            printHex(payloadIn, false, true);
+            break;
+    }
 }
 
 void rigCommander::parseSpectrum()
