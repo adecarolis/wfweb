@@ -78,6 +78,7 @@ private slots:
     void receiveRfGain(unsigned char level);
     void receiveAfGain(unsigned char level);
     void receiveSql(unsigned char level);
+    void receiveATUStatus(unsigned char atustatus);
 
     void handlePlotClick(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
@@ -250,7 +251,7 @@ private:
     double knobFreqMhz;
     enum cmds {cmdNone, cmdGetRigID, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
-              cmdGetSql};
+              cmdGetSql, cmdGetATUStatus};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     freqMemory mem;

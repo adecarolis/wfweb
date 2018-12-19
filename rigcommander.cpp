@@ -670,8 +670,12 @@ void rigCommander::parseRegisters1C()
 
 void rigCommander::parseATU()
 {
-    // TODO
-    // emit haveATUStatus(payload [??] );
+    // Expect:
+    // [0]:
+    // [1]: 0x1c
+    // [2]: 0x01
+    // [3]: 0 = off, 0x01 = on, 0x02 = tuning in-progress
+    emit haveATUStatus((unsigned char) payloadIn[3]);
 }
 
 void rigCommander::parsePTT()

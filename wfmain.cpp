@@ -1407,19 +1407,24 @@ void wfmain::on_rfGainSlider_valueChanged(int value)
 
 void wfmain::on_afGainSlider_valueChanged(int value)
 {
+    // qDebug() << "Setting AF gain to " << value;
     emit setAfGain((unsigned char) value);
 }
 
 void wfmain::receiveRfGain(unsigned char level)
 {
     // qDebug() << "Receive RF  level of" << (int)level << " = " << 100*level/255.0 << "%";
+    ui->rfGainSlider->blockSignals(true);
     ui->rfGainSlider->setValue(level);
+    ui->rfGainSlider->blockSignals(false);
 }
 
 void wfmain::receiveAfGain(unsigned char level)
 {
-    //qDebug() << "Receive AF  level of" << (int)level << " = " << 100*level/255.0 << "%";
+    // qDebug() << "Receive AF  level of" << (int)level << " = " << 100*level/255.0 << "%";
+    ui->afGainSlider->blockSignals(true);
     ui->afGainSlider->setValue(level);
+    ui->afGainSlider->blockSignals(false);
 }
 
 void wfmain::receiveSql(unsigned char level)
@@ -1440,7 +1445,8 @@ void wfmain::on_tuneNowBtn_clicked()
     emit startATU();
     showStatusBarText("Starting ATU cycle...");
     // TODO: place commands in a timer queue to check for completion and success
-
+    cmdOutQue.append(cmdGetATUStatus);
+    delayedCommand->start();
 }
 
 void wfmain::on_tuneEnableChk_clicked(bool checked)
@@ -1483,11 +1489,39 @@ void wfmain::on_saveSettingsBtn_clicked()
     saveSettings(); // save memory, UI, and radio settings
 }
 
+void wfmain::receiveATUStatus(unsigned char atustatus)
+{
+    switch(atustatus)
+    {
+        case 0x00:
+            // ATU not active
+            ui->tuneEnableChk->blockSignals(true);
+            ui->tuneEnableChk->setChecked(false);
+            ui->tuneEnableChk->blockSignals(false);
+            showStatusBarText("ATU not enabled.");
+            break;
+        case 0x01:
+            // ATU enabled
+            ui->tuneEnableChk->blockSignals(true);
+            ui->tuneEnableChk->setChecked(true);
+            ui->tuneEnableChk->blockSignals(false);
+            showStatusBarText("ATU enabled.");
+            break;
+        case 0x02:
+            // ATU tuning in-progress.
+            // Add command queue to check again and update status bar
+            showStatusBarText("Tuning...");
+            cmdOutQue.append(cmdGetATUStatus);
+            delayedCommand->start();
+            break;
+    }
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
     // TODO: Remove function on release build
     // emit getScopeMode();
-    // emit getScopeEdge();
-    // emit getScopeSpan();
+    // emit getScopeEdge(); // 1,2,3 only in "fixed" mode
+    // emit getScopeSpan(); // in khz, only in "center" mode
 }
