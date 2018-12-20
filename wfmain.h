@@ -46,6 +46,7 @@ signals:
     void setAfGain(unsigned char level);
     void startATU();
     void setATU(bool atuEnabled);
+    void getATUStatus();
     void getRigID();
     void spectOutputEnable();
     void spectOutputDisable();

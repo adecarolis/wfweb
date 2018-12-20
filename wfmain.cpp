@@ -150,7 +150,9 @@ wfmain::wfmain(QWidget *parent) :
     connect(rig, SIGNAL(haveSql(unsigned char)), this, SLOT(receiveSql(unsigned char)));
     connect(this, SIGNAL(startATU()), rig, SLOT(startATU()));
     connect(this, SIGNAL(setATU(bool)), rig, SLOT(setATU(bool)));
+    connect(this, SIGNAL(getATUStatus()), rig, SLOT(getATUStatus()));
     connect(this, SIGNAL(getRigID()), rig, SLOT(getRigID()));
+    connect(rig, SIGNAL(haveATUStatus(unsigned char)), this, SLOT(receiveATUStatus(unsigned char)));
 
 
     // Plot user interaction
@@ -654,6 +656,9 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdGetSql:
                 emit getSql();
+                break;
+            case cmdGetATUStatus:
+                emit getATUStatus();
                 break;
             default:
                 break;
@@ -1491,6 +1496,7 @@ void wfmain::on_saveSettingsBtn_clicked()
 
 void wfmain::receiveATUStatus(unsigned char atustatus)
 {
+    qDebug() << "Received ATU status update: " << (unsigned int) atustatus;
     switch(atustatus)
     {
         case 0x00:
@@ -1510,10 +1516,13 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
         case 0x02:
             // ATU tuning in-progress.
             // Add command queue to check again and update status bar
+            qDebug() << "Received ATU status update that *tuning* is taking place";
             showStatusBarText("Tuning...");
             cmdOutQue.append(cmdGetATUStatus);
             delayedCommand->start();
             break;
+        default:
+            qDebug() << "Did not understand ATU status: " << (unsigned int) atustatus;
     }
 }
 

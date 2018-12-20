@@ -654,7 +654,7 @@ void rigCommander::parseRegisters1C()
     // PTT lives here
     // Not sure if 02 is the right place to switch.
     // TODO: test this function
-    switch(payloadIn[02])
+    switch(payloadIn[01])
     {
         case '\x00':
             parsePTT();
@@ -670,12 +670,12 @@ void rigCommander::parseRegisters1C()
 
 void rigCommander::parseATU()
 {
+    // qDebug() << "Have ATU status from radio. Emitting.";
     // Expect:
-    // [0]:
-    // [1]: 0x1c
-    // [2]: 0x01
-    // [3]: 0 = off, 0x01 = on, 0x02 = tuning in-progress
-    emit haveATUStatus((unsigned char) payloadIn[3]);
+    // [0]: 0x1c
+    // [1]: 0x01
+    // [2]: 0 = off, 0x01 = on, 0x02 = tuning in-progress
+    emit haveATUStatus((unsigned char) payloadIn[2]);
 }
 
 void rigCommander::parsePTT()
@@ -1040,6 +1040,7 @@ void rigCommander::setATU(bool enabled)
 
 void rigCommander::getATUStatus()
 {
+    qDebug() << "Sending out for ATU status in RC.";
     QByteArray payload("\x1C\x01");
     prepDataAndSend(payload);
 }
