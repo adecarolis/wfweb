@@ -466,7 +466,8 @@ void wfmain::getInitialRigState()
 
     cmdOutQue.append(cmdGetRxGain);
     cmdOutQue.append(cmdGetAfGain);
-    cmdOutQue.append(cmdGetSql);
+    // cmdOutQue.append(cmdGetSql); // implimented but not used
+    // TODO:
     // get TX level
     // get Scope reference Level
 
@@ -475,6 +476,10 @@ void wfmain::getInitialRigState()
 
     // get spectrum mode (center or edge)
     // get spectrum span or edge limit number [1,2,3], update UI
+
+    cmdOutQue.append(cmdNone);
+
+    cmdOutQue.append(cmdGetATUStatus);
 
     cmdOut = cmdNone;
     delayedCommand->start();
@@ -1448,8 +1453,7 @@ void wfmain::on_drawTracerChk_toggled(bool checked)
 void wfmain::on_tuneNowBtn_clicked()
 {
     emit startATU();
-    showStatusBarText("Starting ATU cycle...");
-    // TODO: place commands in a timer queue to check for completion and success
+    showStatusBarText("Starting ATU tuning cycle...");
     cmdOutQue.append(cmdGetATUStatus);
     delayedCommand->start();
 }
@@ -1496,7 +1500,7 @@ void wfmain::on_saveSettingsBtn_clicked()
 
 void wfmain::receiveATUStatus(unsigned char atustatus)
 {
-    qDebug() << "Received ATU status update: " << (unsigned int) atustatus;
+    // qDebug() << "Received ATU status update: " << (unsigned int) atustatus;
     switch(atustatus)
     {
         case 0x00:
@@ -1516,13 +1520,15 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
         case 0x02:
             // ATU tuning in-progress.
             // Add command queue to check again and update status bar
-            qDebug() << "Received ATU status update that *tuning* is taking place";
-            showStatusBarText("Tuning...");
+            // qDebug() << "Received ATU status update that *tuning* is taking place";
+            showStatusBarText("ATU is Tuning...");
+            cmdOutQue.append(cmdGetATUStatus); // Sometimes the first hit seems to be missed.
             cmdOutQue.append(cmdGetATUStatus);
             delayedCommand->start();
             break;
         default:
             qDebug() << "Did not understand ATU status: " << (unsigned int) atustatus;
+            break;
     }
 }
 

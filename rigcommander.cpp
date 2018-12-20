@@ -660,8 +660,8 @@ void rigCommander::parseRegisters1C()
             parsePTT();
             break;
         case '\x01':
+            // ATU status (on/off/tuning)
             parseATU();
-            // ATU status
             break;
         default:
             break;
@@ -1040,7 +1040,7 @@ void rigCommander::setATU(bool enabled)
 
 void rigCommander::getATUStatus()
 {
-    qDebug() << "Sending out for ATU status in RC.";
+    //qDebug() << "Sending out for ATU status in RC.";
     QByteArray payload("\x1C\x01");
     prepDataAndSend(payload);
 }
