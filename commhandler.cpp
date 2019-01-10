@@ -165,10 +165,11 @@ void commHandler::receiveDataInPt()
     // We received data from the pseudo-term.
     // qDebug() << "Sending data from pseudo-terminal to radio";
     // Send this data to the radio:
-    QByteArray ptdata = pseudoterm->readAll();
+    //QByteArray ptdata = pseudoterm->readAll();
     // should check the data and rollback
     // for now though...
-    sendDataOut(ptdata);
+    //sendDataOut(ptdata);
+    sendDataOut(pseudoterm->readAll());
 }
 
 void commHandler::receiveDataIn()

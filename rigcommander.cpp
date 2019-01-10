@@ -451,6 +451,7 @@ void rigCommander::parseData(QByteArray dataInput)
             //        break;
             // case '\xE0':
 
+            case (char)0xE0:
             case (char)compCivAddr:
                 // data is a reply to some query we sent
                 // extract the payload out and parse.
@@ -555,8 +556,10 @@ void rigCommander::parseCommand()
             break;
 
         default:
-            qDebug() << "Have other data with cmd: " << std::hex << payloadIn[00];
-            printHex(payloadIn, false, true);
+            // This gets hit a lot when the pseudo-term is
+            // using commands wfview doesn't know yet.
+            // qDebug() << "Have other data with cmd: " << std::hex << payloadIn[00];
+            // printHex(payloadIn, false, true);
             break;
     }
     // is any payload left?
