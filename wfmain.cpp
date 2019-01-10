@@ -608,11 +608,7 @@ void wfmain::runDelayedCommand()
     }
     cmdOut = cmdNone; // yep. Hope this wasn't called twice in a row rapidly.
 
-    // Note: Commands that need a specific order should use this queue.
-    // Commands that do not need a speific order should probably just
-    // go through the signal-slot queue mechanism... which should be more clearly defined.
-
-    // Prototype vector queue:
+    // Note: All command should use this queue. There is no need to use the above system.
 
     if(!cmdOutQue.isEmpty())
     {
@@ -678,7 +674,6 @@ void wfmain::runDelayedCommand()
         // every command insertion to include a ->start.... probably worth doing.
         delayedCommand->start();
     }
-
 }
 
 void wfmain::receiveFreq(double freqMhz)
@@ -700,8 +695,13 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 {
     if((startFreq != oldLowerFreq) || (endFreq != oldUpperFreq))
     {
+        // If the frequency changed and we were drawing peaks, now is the time to clearn them
         if(drawPeaks)
+        {
+            // TODO: create non-button function to do this
+            // This will break if the button is ever moved or renamed.
             on_clearPeakBtn_clicked();
+        }
     }
 
     oldLowerFreq = startFreq;
@@ -712,13 +712,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     //qDebug() << "Spectrum data received at UI! Length: " << specLen;
     if(specLen != 475)
     {
-        // qDebug () << "Unusual spectrum: length: " << specLen;
-        if(specLen > 475)
-        {
-            specLen = 475;
-        } else {
-            // as-is
-        }
+        //qDebug () << "Unusual spectrum: length: " << specLen;
         return; // safe. Using these unusual length things is a problem.
     }
 
@@ -727,7 +721,6 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     for(int i=0; i < spectWidth; i++)
     {
         x[i] = (i * (endFreq-startFreq)/spectWidth) + startFreq;
-
     }
 
     for(int i=0; i<specLen; i++)
@@ -803,7 +796,6 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
     cmdOut = cmdGetFreq;
     delayedCommand->start();
     showStatusBarText(QString("Going to %1 MHz").arg(x));
-
 }
 
 void wfmain::handleWFDoubleClick(QMouseEvent *me)
@@ -818,7 +810,6 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
     cmdOut = cmdGetFreq;
     delayedCommand->start();
     showStatusBarText(QString("Going to %1 MHz").arg(x));
-
 }
 
 void wfmain::handlePlotClick(QMouseEvent *me)
@@ -838,38 +829,6 @@ void wfmain::on_startBtn_clicked()
 {
     emit spectOutputEnable();
 }
-
-//void wfmain::on_getFreqBtn_clicked()
-//{
-//    emit getFrequency();
-//}
-
-//void wfmain::on_getModeBtn_clicked()
-//{
-//    emit getMode();
-//}
-
-//void wfmain::on_debugBtn_clicked()
-//{
-//    // Temporary place to try code
-//    // emit getDebug();
-//    // emit getBandStackReg(0x11,1); // 20M, latest
-//    // emit getRfGain();
-
-////    for(int a=0; a<100; a++)
-////    {
-////    cmdOutQue.append(cmdGetRxGain);
-////    cmdOutQue.append(cmdGetSql);
-////    }
-////    delayedCommand->start();
-
-//   // emit getRigID();
-
-//    //mem.dumpMemory();
-
-//    saveSettings();
-
-//}
 
 void wfmain::on_stopBtn_clicked()
 {
@@ -892,7 +851,9 @@ void wfmain::receiveMode(QString mode)
         // return;
     } else if((index >= 0) && (index < 9))
     {
+        ui->modeSelectCombo->blockSignals(true);
         ui->modeSelectCombo->setCurrentIndex(index);
+        ui->modeSelectCombo->blockSignals(false);
         currentModeIndex = index;
     }
     // Note: we need to know if the DATA mode is active to reach mode-D
@@ -911,27 +872,18 @@ void wfmain::receiveDataModeStatus(bool dataEnabled)
             // LSB
             ui->modeSelectCombo->setCurrentIndex(8);
             //ui->modeLabel->setText( "LSB-D" );
-
         } else if (currentModeIndex == 1)
         {
             // USB
             ui->modeSelectCombo->setCurrentIndex(9);
             //ui->modeLabel->setText( "USB-D" );
-
-        }
-        // TODO: be more intelligent here to avoid -D-D-D.
-        // include the text above.
-        // ui->modeLabel->setText( ui->modeLabel->text() + "-D" );
-        // Remove if works.
+        } 
     } else {
         // update to _not_ have the -D
         ui->modeSelectCombo->setCurrentIndex(currentModeIndex);
         // No need to update status label?
-
     }
-
 }
-
 
 void wfmain::on_clearPeakBtn_clicked()
 {
@@ -951,9 +903,7 @@ void wfmain::on_drawPeakChk_clicked(bool checked)
 
     }
     prefs.drawPeaks = checked;
-
 }
-
 
 void wfmain::on_fullScreenChk_clicked(bool checked)
 {
@@ -1072,8 +1022,6 @@ void wfmain::on_fCEbtn_clicked()
     freqTextSelected = false;
 }
 
-
-
 void wfmain::on_scopeCenterModeChk_clicked(bool checked)
 {
     emit setScopeCenterMode(checked);
@@ -1096,13 +1044,6 @@ void wfmain::on_scopeEdgeCombo_currentIndexChanged(int index)
 {
     emit setScopeEdge((char)index+1);
 }
-
-//void wfmain::on_modeSelectCombo_currentIndexChanged(int index)
-//{
-    // do nothing. The change may be from receiving a mode status update or the user. Can't tell which is which here.
-//}
-
-
 
 void wfmain::on_modeSelectCombo_activated(int index)
 {

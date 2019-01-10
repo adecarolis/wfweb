@@ -21,13 +21,14 @@ public:
     ~commHandler();
 
 private slots:
-    void receiveDataIn();
+    void receiveDataIn(); // from physical port
+    void receiveDataInPt(); // from pseudo-term
     void receiveDataFromUserToRig(const QByteArray &data);
     void debugThis();
 
 signals:
-    void haveTextMessage(QString message); // status, debug
-    void sendDataOutToPort(const QByteArray &writeData);
+    void haveTextMessage(QString message); // status, debug only
+    void sendDataOutToPort(const QByteArray &writeData); // not used
     void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
 
 private:
@@ -35,7 +36,12 @@ private:
     void openPort();
     void closePort();
 
-    void sendDataOut(const QByteArray &writeData);
+    void initializePt(); // like ch constructor
+    void setupPtComm();
+    void openPtPort();
+
+    void sendDataOut(const QByteArray &writeData); // out to radio
+    void sendDataOutPt(const QByteArray &writeData); // out to pseudo-terminal
     void debugMe();
     void hexPrint();
 
@@ -53,6 +59,13 @@ private:
     qint32 baudrate;
     unsigned char stopbits;
     bool rolledBack;
+
+    QSerialPort *pseudoterm;
+    int ptfd; // pseudo-terminal file desc.
+    mutable QMutex ptMutex;
+    bool havePt;
+    QString ptDevSlave;
+
 
 
     bool isConnected; // port opened

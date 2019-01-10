@@ -24,8 +24,10 @@ commHandler::commHandler()
     //port->setReadBufferSize(1024); // manually. 256 never saw any return from the radio. why...
     //qDebug() << "Serial buffer size: " << port->readBufferSize();
 
+    initializePt();
 
     connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
+    connect(pseudoterm, SIGNAL(readyRead()), this, SLOT(receiveDataInPt()));
 }
 
 commHandler::commHandler(QString portName)
@@ -51,9 +53,61 @@ commHandler::commHandler(QString portName)
     //qDebug() << "Serial buffer size: " << port->readBufferSize();
 
 
+    initializePt();
+
     connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
+    connect(pseudoterm, SIGNAL(readyRead()), this, SLOT(receiveDataInPt()));
+
 }
 
+void commHandler::initializePt()
+{
+    qDebug() << "init pt";
+    pseudoterm = new QSerialPort();
+    setupPtComm();
+    openPtPort();
+}
+
+void commHandler::setupPtComm()
+{
+    qDebug() << "Setting up pt";
+    pseudoterm->setPortName("/dev/ptmx");
+    // pseudoterm->setBaudRate(baudrate);
+    // pseudoterm->setStopBits(QSerialPort::OneStop);
+}
+
+void commHandler::openPtPort()
+{
+    qDebug() << "opening pt port";
+    bool success;
+    char ptname[128];
+    success = pseudoterm->open(QIODevice::ReadWrite);
+    if(success)
+    {
+        qDebug() << "Opened pt device, attempting to grant pt status";
+        ptfd = pseudoterm->handle();
+        qDebug() << "ptfd: " << ptfd;
+        if(grantpt(ptfd))
+        {
+            qDebug() << "Failed to grantpt";
+            return;
+        }
+        if(unlockpt(ptfd))
+        {
+            qDebug() << "Failed to unlock pt";
+            return;
+        }
+        // we're good!
+        qDebug() << "Opened pseudoterminal.";
+        qDebug() << "Slave name: " << ptsname(ptfd);
+        ptsname_r(ptfd, ptname, 128);
+        ptDevSlave = QString::fromLocal8Bit(ptname);
+
+    } else {
+        ptfd = 0;
+        qDebug() << "Could not open pseudo-terminal.";
+    }
+}
 
 commHandler::~commHandler()
 {
@@ -89,6 +143,34 @@ void commHandler::sendDataOut(const QByteArray &writeData)
     mutex.unlock();
 }
 
+void commHandler::sendDataOutPt(const QByteArray &writeData)
+{
+    ptMutex.lock();
+    // quint64 bytesWritten;
+
+    // sned out data
+    //port.send() or whatever
+    // bytesWritten = port->write(writeData);
+    //printHex(writeData, false, true);
+    pseudoterm->write(writeData);
+
+    //qDebug() << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length() << " size of byte array: " << writeData.size();
+
+    ptMutex.unlock();
+}
+
+
+void commHandler::receiveDataInPt()
+{
+    // We received data from the pseudo-term.
+    // qDebug() << "Sending data from pseudo-terminal to radio";
+    // Send this data to the radio:
+    QByteArray ptdata = pseudoterm->readAll();
+    // should check the data and rollback
+    // for now though...
+    sendDataOut(ptdata);
+}
+
 void commHandler::receiveDataIn()
 {
     // connected to comm port data signal
@@ -106,6 +188,17 @@ void commHandler::receiveDataIn()
             // good!
             port->commitTransaction();
             emit haveDataFromPort(inPortData);
+            if( (inPortData[2] == 0x00) || (inPortData[2] == 0xE0) || (inPortData[3] == 0xE0) )
+            {
+                // send to the pseudo port as well
+                // index 2 is dest, 0xE1 is wfview, 0xE0 is assumed to be the other device.
+                // Maybe change to "Not 0xE1"
+                // 0xE1 = wfview
+                // 0xE0 = pseudo-term host
+                // 0x00 = broadcast to all
+                //qDebug() << "Sending data from radio to pseudo-terminal";
+                sendDataOutPt(inPortData);
+            }
 
             if(rolledBack)
             {
