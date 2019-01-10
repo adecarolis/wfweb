@@ -66,8 +66,6 @@ private:
     bool havePt;
     QString ptDevSlave;
 
-
-
     bool isConnected; // port opened
     mutable QMutex mutex;
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
