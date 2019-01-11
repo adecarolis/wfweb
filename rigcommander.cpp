@@ -503,6 +503,12 @@ void rigCommander::parseCommand()
         case 03:
             parseFrequency();
             break;
+        case '\x25':
+            if((int)payloadIn[1] == 0)
+            {
+                emit haveFrequency((double)parseFrequency(payloadIn, 5));
+            }
+            break;
         case '\x01':
             //qDebug() << "Have mode data";
             this->parseMode();
@@ -527,6 +533,15 @@ void rigCommander::parseCommand()
             // qDebug() << "Have rig ID: " << (unsigned int)payloadIn[2];
             // printHex(payloadIn, false, true);
             model = determineRadioModel(payloadIn[2]);
+            break;
+        case '\x26':
+            if((int)payloadIn[1] == 0)
+            {
+                // This works but LSB comes out as CW?
+                // Also, an opportunity to read the data mode
+                // payloadIn = payloadIn.right(3);
+                // this->parseMode();
+            }
             break;
         case '\x27':
             // scope data
@@ -688,7 +703,7 @@ void rigCommander::parsePTT()
     // Because I'm not sure about this:
     qDebug() << "PTT status received, here is the hex dump:";
     printHex(payloadIn, false, true);
-    if(payloadIn[03] == (char)0)
+    if(payloadIn[2] == (char)0)
     {
         // PTT off
         emit havePTTStatus(false);
