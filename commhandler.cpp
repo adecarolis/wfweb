@@ -189,7 +189,7 @@ void commHandler::receiveDataIn()
             // good!
             port->commitTransaction();
             emit haveDataFromPort(inPortData);
-            if( (inPortData[2] == 0x00) || (inPortData[2] == 0xE0) || (inPortData[3] == 0xE0) )
+            if( (inPortData[2] == (char)0x00) || (inPortData[2] == (char)0xE0) || (inPortData[3] == (char)0xE0) )
             {
                 // send to the pseudo port as well
                 // index 2 is dest, 0xE1 is wfview, 0xE0 is assumed to be the other device.
