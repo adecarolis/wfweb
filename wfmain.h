@@ -68,6 +68,7 @@ private slots:
     void shortcutF5();
     void shortcutStar();
 
+    void handlePttLimit(); // hit at 3 min transmit length
 
     void on_startBtn_clicked();
     void receiveFreq(double);
@@ -225,6 +226,7 @@ private:
     QCPColorMapData * colorMapData;
     QCPColorScale * colorScale;
     QTimer * delayedCommand;
+    QTimer * pttTimer;
 
     QStringList modes;
     int currentModeIndex;
@@ -297,6 +299,7 @@ private:
     void setDefaultColors(); // populate with default values
     void useColors(); // set the plot up
     void setDefPrefs(); // populate default values to default prefs
+
 
     int oldFreqDialVal;
 

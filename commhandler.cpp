@@ -20,7 +20,7 @@ commHandler::commHandler()
 
     setupComm(); // basic parameters
     openPort();
-    qDebug() << "Serial buffer size: " << port->readBufferSize();
+    //qDebug() << "Serial buffer size: " << port->readBufferSize();
     //port->setReadBufferSize(1024); // manually. 256 never saw any return from the radio. why...
     //qDebug() << "Serial buffer size: " << port->readBufferSize();
 
@@ -62,7 +62,7 @@ commHandler::commHandler(QString portName)
 
 void commHandler::initializePt()
 {
-    qDebug() << "init pt";
+    // qDebug() << "init pt";
     pseudoterm = new QSerialPort();
     setupPtComm();
     openPtPort();
@@ -70,7 +70,7 @@ void commHandler::initializePt()
 
 void commHandler::setupPtComm()
 {
-    qDebug() << "Setting up pt";
+    // qDebug() << "Setting up pt";
     pseudoterm->setPortName("/dev/ptmx");
     // pseudoterm->setBaudRate(baudrate);
     // pseudoterm->setStopBits(QSerialPort::OneStop);
@@ -78,15 +78,15 @@ void commHandler::setupPtComm()
 
 void commHandler::openPtPort()
 {
-    qDebug() << "opening pt port";
+    // qDebug() << "opening pt port";
     bool success;
     char ptname[128];
     success = pseudoterm->open(QIODevice::ReadWrite);
     if(success)
     {
-        qDebug() << "Opened pt device, attempting to grant pt status";
+        // qDebug() << "Opened pt device, attempting to grant pt status";
         ptfd = pseudoterm->handle();
-        qDebug() << "ptfd: " << ptfd;
+        // qDebug() << "ptfd: " << ptfd;
         if(grantpt(ptfd))
         {
             qDebug() << "Failed to grantpt";
@@ -241,7 +241,7 @@ void commHandler::openPort()
         return;
     } else {
         // debug?
-        qDebug() << "Could not open serial port " << portName;
+        qDebug() << "Could not open serial port " << portName << " , please restart.";
         isConnected = false;
         return;
     }

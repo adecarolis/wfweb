@@ -4,12 +4,20 @@
 #include "commhandler.h"
 #include "rigidentities.h"
 
+// This code is copyright 2018-2019 Elliott H. Liggett
+// All rights reserved
+
 wfmain::wfmain(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::wfmain)
 {
     ui->setupUi(this);
     theParent = parent;
+
+    ui->bandStkLastUsedBtn->setVisible(false);
+    ui->bandStkVoiceBtn->setVisible(false);
+    ui->bandStkDataBtn->setVisible(false);
+    ui->bandStkCWBtn->setVisible(false);
 
     keyF11 = new QShortcut(this);
     keyF11->setKey(Qt::Key_F11);
@@ -30,6 +38,10 @@ wfmain::wfmain(QWidget *parent) :
     keyF4 = new QShortcut(this);
     keyF4->setKey(Qt::Key_F4);
     connect(keyF4, SIGNAL(activated()), this, SLOT(shortcutF4()));
+
+    keyF5 = new QShortcut(this);
+    keyF5->setKey(Qt::Key_F5);
+    connect(keyF5, SIGNAL(activated()), this, SLOT(shortcutF5()));
 
     keyStar = new QShortcut(this);
     keyStar->setKey(Qt::Key_Asterisk);
@@ -54,7 +66,7 @@ wfmain::wfmain(QWidget *parent) :
         serialPortRig = it.filePath(); // first? last?
         if(serialPortRig.isEmpty())
         {
-            qDebug() << "Cannot find valid serial port. Trying /dev/ttyUSB0";
+            qDebug() << "Cannot find IC-7300 serial port. Trying /dev/ttyUSB0";
             serialPortRig = QString("/dev/ttyUSB0");
         }
         // end finding the 7300 code
@@ -197,11 +209,19 @@ wfmain::wfmain(QWidget *parent) :
     delayedCommand->setSingleShot(true);
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
 
+    pttTimer = new QTimer(this);
+    pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
+    pttTimer->setSingleShot(true);
+    connect(pttTimer, SIGNAL(timeout()), this, SLOT(handlePttLimit()));
+
+    // Not needed since we automate this now.
+    /*
     foreach (const QSerialPortInfo &serialPortInfo, QSerialPortInfo::availablePorts())
     {
         portList.append(serialPortInfo.portName());
-        ui->commPortDrop->addItem(serialPortInfo.portName());
+        // ui->commPortDrop->addItem(serialPortInfo.portName());
     }
+    */
 
     // Initial state of UI:
     ui->fullScreenChk->setChecked(prefs.useFullScreen);
@@ -434,6 +454,8 @@ void wfmain::shortcutF4()
 
 void wfmain::shortcutF5()
 {
+    QString buildInfo = QString("Build " + QString(GITSHORT) + " on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
+    showStatusBarText(buildInfo);
 
 }
 
@@ -544,7 +566,6 @@ void wfmain::setDefaultColors()
 
 void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
 {
-    QColor color;
     if(isDark)
     {
         plot->setBackground(QColor(0,0,0,255));
@@ -1420,17 +1441,36 @@ void wfmain::on_pttOnBtn_clicked()
 {
     // is it enabled?
 
-    // Are we already PTT?
+    if(!ui->pttEnableChk->isChecked())
+    {
+        showStatusBarText("PTT is disabled, not sending command.");
+        return;
+    }
 
+    // Are we already PTT? Not a big deal, just send again anyway.
+    showStatusBarText("Sending PTT ON command");
+    emit setPTT(true);
     // send PTT
     // Start 3 minute timer
+    pttTimer->start();
 }
 
 void wfmain::on_pttOffBtn_clicked()
 {
     // Send the PTT OFF command (more than once?)
+    showStatusBarText("Sending PTT OFF command");
+    emit setPTT(false);
 
     // Stop the 3 min timer
+    pttTimer->stop();
+
+}
+
+void wfmain::handlePttLimit()
+{
+    // transmission time exceeded!
+    showStatusBarText("Transmit timeout at 3 minutes. Sending PTT OFF command now.");
+    emit setPTT(false);
 
 }
 

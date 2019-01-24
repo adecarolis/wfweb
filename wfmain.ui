@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -537,7 +537,7 @@
           </property>
           <layout class="QHBoxLayout" name="horizontalLayout_12">
            <item>
-            <widget class="QRadioButton" name="radioButton_4">
+            <widget class="QRadioButton" name="bandStkLastUsedBtn">
              <property name="text">
               <string>&amp;Last Used</string>
              </property>
@@ -553,44 +553,64 @@
             </widget>
            </item>
            <item>
+            <widget class="QLabel" name="label">
+             <property name="text">
+              <string>Band Stack Selection:</string>
+             </property>
+            </widget>
+           </item>
+           <item>
             <widget class="QComboBox" name="bandStkPopdown">
              <item>
               <property name="text">
-               <string>0 - Latest Used</string>
+               <string>1 - Latest Used</string>
               </property>
              </item>
              <item>
               <property name="text">
-               <string>1 - Older</string>
+               <string>2 - Older</string>
               </property>
              </item>
              <item>
               <property name="text">
-               <string>2 - Oldest Used</string>
+               <string>3 - Oldest Used</string>
               </property>
              </item>
             </widget>
            </item>
            <item>
-            <widget class="QRadioButton" name="radioButton_3">
+            <widget class="QRadioButton" name="bandStkVoiceBtn">
              <property name="text">
               <string>Voice</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QRadioButton" name="radioButton_2">
+            <widget class="QRadioButton" name="bandStkDataBtn">
              <property name="text">
               <string>Data</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QRadioButton" name="radioButton">
+            <widget class="QRadioButton" name="bandStkCWBtn">
              <property name="text">
               <string>&amp;CW</string>
              </property>
             </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
            </item>
           </layout>
          </widget>
@@ -1064,62 +1084,6 @@
          </layout>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_5">
-          <item>
-           <widget class="QLabel" name="label">
-            <property name="text">
-             <string>Radio CIV Address (decimal)</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QSpinBox" name="civAddrSpin">
-            <property name="maximum">
-             <number>255</number>
-            </property>
-            <property name="value">
-             <number>148</number>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_6">
-          <item>
-           <widget class="QLabel" name="label_4">
-            <property name="text">
-             <string>Port Baudrate</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="baudRateDropdown"/>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_7">
-          <item>
-           <widget class="QLabel" name="label_5">
-            <property name="text">
-             <string>Comm Port</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QComboBox" name="commPortDrop"/>
-          </item>
-          <item>
-           <widget class="QPushButton" name="initCommBtn">
-            <property name="text">
-             <string>Initialize Comm</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
          <layout class="QHBoxLayout" name="horizontalLayout_14">
           <property name="topMargin">
            <number>0</number>
@@ -1141,19 +1105,12 @@
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="QCheckBox" name="enableXmlRpcChk">
-            <property name="text">
-             <string>Enable XML RPC server</string>
-            </property>
-           </widget>
-          </item>
          </layout>
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_15">
           <property name="topMargin">
-           <number>9</number>
+           <number>0</number>
           </property>
           <item>
            <widget class="QPushButton" name="pttOnBtn">
@@ -1222,7 +1179,7 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_16">
           <property name="topMargin">
-           <number>20</number>
+           <number>0</number>
           </property>
           <item>
            <widget class="QCheckBox" name="tuneEnableChk">
@@ -1278,7 +1235,7 @@
      <x>0</x>
      <y>0</y>
      <width>703</width>
-     <height>20</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>
