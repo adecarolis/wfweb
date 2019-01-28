@@ -64,12 +64,13 @@ wfmain::wfmain(QWidget *parent) :
     keyF10->setKey(Qt::Key_F10);
     connect(keyF10, SIGNAL(activated()), this, SLOT(shortcutF10()));
 
-
-
-
     keyStar = new QShortcut(this);
     keyStar->setKey(Qt::Key_Asterisk);
     connect(keyStar, SIGNAL(activated()), this, SLOT(shortcutStar()));
+
+    keySlash = new QShortcut(this);
+    keySlash->setKey(Qt::Key_Slash);
+    connect(keySlash, SIGNAL(activated()), this, SLOT(shortcutSlash()));
 
 
     setDefaultColors(); // set of UI colors with defaults populated
@@ -528,6 +529,12 @@ void wfmain::shortcutStar()
     ui->freqMhzLineEdit->setFocus();
 }
 
+void wfmain::shortcutSlash()
+{
+    // Cycle through available modes
+    // mode+=1%maxmodes
+    // TODO
+}
 
 void wfmain::getInitialRigState()
 {
@@ -585,6 +592,7 @@ void wfmain::setAppTheme(bool isDark)
 {
     if(isDark)
     {
+        // TODO: Take path from preference data
         QFile f(":qdarkstyle/style.qss");
         if (!f.exists())
         {

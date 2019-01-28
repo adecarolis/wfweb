@@ -73,8 +73,8 @@ private slots:
     void shortcutF9();
     void shortcutF10();
 
-
     void shortcutStar();
+    void shortcutSlash();
 
     void handlePttLimit(); // hit at 3 min transmit length
 
@@ -234,6 +234,7 @@ private:
 
 
     QShortcut *keyStar;
+    QShortcut *keySlash;
 
 
     rigCommander * rig;
