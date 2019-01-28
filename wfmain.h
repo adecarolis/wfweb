@@ -66,6 +66,14 @@ private slots:
     void shortcutF3();
     void shortcutF4();
     void shortcutF5();
+
+    void shortcutF6();
+    void shortcutF7();
+    void shortcutF8();
+    void shortcutF9();
+    void shortcutF10();
+
+
     void shortcutStar();
 
     void handlePttLimit(); // hit at 3 min transmit length
@@ -217,6 +225,14 @@ private:
     QShortcut *keyF3;
     QShortcut *keyF4;
     QShortcut *keyF5;
+
+    QShortcut *keyF6;
+    QShortcut *keyF7;
+    QShortcut *keyF8;
+    QShortcut *keyF9;
+    QShortcut *keyF10;
+
+
     QShortcut *keyStar;
 
 

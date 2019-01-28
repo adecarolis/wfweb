@@ -43,6 +43,30 @@ wfmain::wfmain(QWidget *parent) :
     keyF5->setKey(Qt::Key_F5);
     connect(keyF5, SIGNAL(activated()), this, SLOT(shortcutF5()));
 
+
+    keyF6 = new QShortcut(this);
+    keyF6->setKey(Qt::Key_F6);
+    connect(keyF6, SIGNAL(activated()), this, SLOT(shortcutF6()));
+
+    keyF7 = new QShortcut(this);
+    keyF7->setKey(Qt::Key_F7);
+    connect(keyF7, SIGNAL(activated()), this, SLOT(shortcutF7()));
+
+    keyF8 = new QShortcut(this);
+    keyF8->setKey(Qt::Key_F8);
+    connect(keyF8, SIGNAL(activated()), this, SLOT(shortcutF8()));
+
+    keyF9 = new QShortcut(this);
+    keyF9->setKey(Qt::Key_F9);
+    connect(keyF9, SIGNAL(activated()), this, SLOT(shortcutF9()));
+
+    keyF10 = new QShortcut(this);
+    keyF10->setKey(Qt::Key_F10);
+    connect(keyF10, SIGNAL(activated()), this, SLOT(shortcutF10()));
+
+
+
+
     keyStar = new QShortcut(this);
     keyStar->setKey(Qt::Key_Asterisk);
     connect(keyStar, SIGNAL(activated()), this, SLOT(shortcutStar()));
@@ -222,6 +246,14 @@ wfmain::wfmain(QWidget *parent) :
         // ui->commPortDrop->addItem(serialPortInfo.portName());
     }
     */
+
+
+#ifdef QT_DEBUG
+    qDebug() << "Running with debugging options enabled.";
+    ui->debugBtn->setVisible(true);
+#else
+    ui->debugBtn->setVisible(false);
+#endif
 
     // Initial state of UI:
     ui->fullScreenChk->setChecked(prefs.useFullScreen);
@@ -448,8 +480,42 @@ void wfmain::shortcutF4()
     ui->tabWidget->setCurrentIndex(3);
 }
 
+// Mode switch keys:
 void wfmain::shortcutF5()
 {
+    // LSB
+    ui->modeSelectCombo->setCurrentIndex(0);
+}
+
+void wfmain::shortcutF6()
+{
+    // USB
+    ui->modeSelectCombo->setCurrentIndex(1);
+}
+
+void wfmain::shortcutF7()
+{
+    // AM
+    ui->modeSelectCombo->setCurrentIndex(2);
+}
+
+void wfmain::shortcutF8()
+{
+    // CW
+    ui->modeSelectCombo->setCurrentIndex(3);
+}
+
+void wfmain::shortcutF9()
+{
+    // USB-D
+    ui->modeSelectCombo->setCurrentIndex(9);
+}
+
+
+
+void wfmain::shortcutF10()
+{
+    // Build information, debug, whatever you wish
     QString buildInfo = QString("Build " + QString(GITSHORT) + " on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
     showStatusBarText(buildInfo);
 }
