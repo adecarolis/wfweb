@@ -236,8 +236,6 @@ wfmain::wfmain(QWidget *parent) :
 
     getInitialRigState();
     oldFreqDialVal = ui->freqDial->value();
-
-
 }
 
 wfmain::~wfmain()
@@ -255,7 +253,6 @@ void wfmain::setDefPrefs()
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.enablePTT = false;
     defPrefs.niceTS = true;
-
 }
 
 void wfmain::loadSettings()
@@ -315,7 +312,6 @@ void wfmain::loadSettings()
 
     settings.endArray();
     settings.endGroup();
-
 }
 
 void wfmain::saveSettings()
@@ -456,7 +452,6 @@ void wfmain::shortcutF5()
 {
     QString buildInfo = QString("Build " + QString(GITSHORT) + " on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
     showStatusBarText(buildInfo);
-
 }
 
 void wfmain::shortcutStar()
@@ -538,7 +533,6 @@ void wfmain::setAppTheme(bool isDark)
     } else {
         qApp->setStyleSheet("");
     }
-
 }
 
 void wfmain::setDefaultColors()
@@ -607,9 +601,7 @@ void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
         plot->yAxis->setBasePen(QPen(Qt::black));
         plot->yAxis->setTickPen(QPen(Qt::black));
         plot->graph(0)->setPen(QPen(Qt::blue));
-
     }
-
 }
 
 void wfmain::runDelayedCommand()
@@ -844,7 +836,6 @@ void wfmain::handleWFClick(QMouseEvent *me)
     double x = plot->xAxis->pixelToCoord(me->pos().x());
     showStatusBarText(QString("Selected %1 MHz").arg(x));
 }
-
 
 void wfmain::on_startBtn_clicked()
 {
