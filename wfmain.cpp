@@ -19,10 +19,6 @@ wfmain::wfmain(QWidget *parent) :
     ui->bandStkDataBtn->setVisible(false);
     ui->bandStkCWBtn->setVisible(false);
 
-    keyF11 = new QShortcut(this);
-    keyF11->setKey(Qt::Key_F11);
-    connect(keyF11, SIGNAL(activated()), this, SLOT(shortcutF11()));
-
     keyF1 = new QShortcut(this);
     keyF1->setKey(Qt::Key_F1);
     connect(keyF1, SIGNAL(activated()), this, SLOT(shortcutF1()));
@@ -43,7 +39,6 @@ wfmain::wfmain(QWidget *parent) :
     keyF5->setKey(Qt::Key_F5);
     connect(keyF5, SIGNAL(activated()), this, SLOT(shortcutF5()));
 
-
     keyF6 = new QShortcut(this);
     keyF6->setKey(Qt::Key_F6);
     connect(keyF6, SIGNAL(activated()), this, SLOT(shortcutF6()));
@@ -63,6 +58,30 @@ wfmain::wfmain(QWidget *parent) :
     keyF10 = new QShortcut(this);
     keyF10->setKey(Qt::Key_F10);
     connect(keyF10, SIGNAL(activated()), this, SLOT(shortcutF10()));
+
+    keyF11 = new QShortcut(this);
+    keyF11->setKey(Qt::Key_F11);
+    connect(keyF11, SIGNAL(activated()), this, SLOT(shortcutF11()));
+
+    keyF12 = new QShortcut(this);
+    keyF12->setKey(Qt::Key_F12);
+    connect(keyF12, SIGNAL(activated()), this, SLOT(shortcutF12()));
+
+    keyControlT = new QShortcut(this);
+    keyControlT->setKey(Qt::CTRL + Qt::Key_T);
+    connect(keyControlT, SIGNAL(activated()), this, SLOT(shortcutControlT()));
+
+    keyControlR = new QShortcut(this);
+    keyControlR->setKey(Qt::CTRL + Qt::Key_R);
+    connect(keyControlR, SIGNAL(activated()), this, SLOT(shortcutControlR()));
+
+    keyControlI = new QShortcut(this);
+    keyControlI->setKey(Qt::CTRL + Qt::Key_I);
+    connect(keyControlI, SIGNAL(activated()), this, SLOT(shortcutControlI()));
+
+    keyControlU = new QShortcut(this);
+    keyControlU->setKey(Qt::CTRL + Qt::Key_U);
+    connect(keyControlU, SIGNAL(activated()), this, SLOT(shortcutControlU()));
 
     keyStar = new QShortcut(this);
     keyStar->setKey(Qt::Key_Asterisk);
@@ -191,6 +210,10 @@ wfmain::wfmain(QWidget *parent) :
     connect(this, SIGNAL(getRigID()), rig, SLOT(getRigID()));
     connect(rig, SIGNAL(haveATUStatus(unsigned char)), this, SLOT(receiveATUStatus(unsigned char)));
 
+    // Speech (emitted from IC-7300 speaker)
+    connect(this, SIGNAL(sayAll()), rig, SLOT(sayAll()));
+    connect(this, SIGNAL(sayFrequency()), rig, SLOT(sayFrequency()));
+    connect(this, SIGNAL(sayMode()), rig, SLOT(sayMode()));
 
     // Plot user interaction
     connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
@@ -512,13 +535,43 @@ void wfmain::shortcutF9()
     ui->modeSelectCombo->setCurrentIndex(9);
 }
 
-
-
 void wfmain::shortcutF10()
 {
     // Build information, debug, whatever you wish
     QString buildInfo = QString("Build " + QString(GITSHORT) + " on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
     showStatusBarText(buildInfo);
+}
+
+void wfmain::shortcutF12()
+{
+    // Speak current frequency and mode via IC-7300
+    showStatusBarText("Sending speech command to radio.");
+    emit sayAll();
+}
+
+void wfmain::shortcutControlT()
+{
+    // Transmit
+    qDebug() << "Activated Control-T shortcut";
+    ui->pttOnBtn->click();
+}
+
+void wfmain::shortcutControlR()
+{
+    // Receive
+    ui->pttOffBtn->click();
+}
+
+void wfmain::shortcutControlI()
+{
+    // Enable ATU
+    ui->tuneEnableChk->click();
+}
+
+void wfmain::shortcutControlU()
+{
+    // Run ATU tuning cycle
+    ui->tuneNowBtn->click();
 }
 
 void wfmain::shortcutStar()
@@ -532,8 +585,7 @@ void wfmain::shortcutStar()
 void wfmain::shortcutSlash()
 {
     // Cycle through available modes
-    // mode+=1%maxmodes
-    // TODO
+    ui->modeSelectCombo->setCurrentIndex( (ui->modeSelectCombo->currentIndex()+1) % ui->modeSelectCombo->count() );
 }
 
 void wfmain::getInitialRigState()

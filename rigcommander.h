@@ -57,6 +57,9 @@ public slots:
     void getRigID();
     void setCIVAddr(unsigned char civAddr);
     void handleNewData(const QByteArray &data);
+    void sayFrequency();
+    void sayMode();
+    void sayAll();
     void getDebug();
 
 signals:

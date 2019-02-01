@@ -58,9 +58,12 @@ signals:
     void getScopeMode();
     void getScopeEdge();
     void getScopeSpan();
+    void sayFrequency();
+    void sayMode();
+    void sayAll();
+
 
 private slots:
-    void shortcutF11();
     void shortcutF1();
     void shortcutF2();
     void shortcutF3();
@@ -72,6 +75,13 @@ private slots:
     void shortcutF8();
     void shortcutF9();
     void shortcutF10();
+    void shortcutF11();
+    void shortcutF12();
+
+    void shortcutControlT();
+    void shortcutControlR();
+    void shortcutControlI();
+    void shortcutControlU();
 
     void shortcutStar();
     void shortcutSlash();
@@ -219,7 +229,6 @@ private:
     QStringList portList;
     QString serialPortRig;
 
-    QShortcut *keyF11;
     QShortcut *keyF1;
     QShortcut *keyF2;
     QShortcut *keyF3;
@@ -231,6 +240,13 @@ private:
     QShortcut *keyF8;
     QShortcut *keyF9;
     QShortcut *keyF10;
+    QShortcut *keyF11;
+    QShortcut *keyF12;
+
+    QShortcut *keyControlT;
+    QShortcut *keyControlR;
+    QShortcut *keyControlI;
+    QShortcut *keyControlU;
 
 
     QShortcut *keyStar;

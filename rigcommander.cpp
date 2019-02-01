@@ -1070,8 +1070,26 @@ void rigCommander::getRigID()
     prepDataAndSend(payload);
 }
 
+void rigCommander::sayAll()
+{
+    QByteArray payload;
+    payload.setRawData("\x13\x00", 2);
+    prepDataAndSend(payload);
+}
 
+void rigCommander::sayFrequency()
+{
+    QByteArray payload;
+    payload.setRawData("\x13\x01", 2);
+    prepDataAndSend(payload);
+}
 
+void rigCommander::sayMode()
+{
+    QByteArray payload;
+    payload.setRawData("\x13\x02", 2);
+    prepDataAndSend(payload);
+}
 
 // Other:
 
