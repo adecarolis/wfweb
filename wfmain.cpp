@@ -509,30 +509,35 @@ void wfmain::shortcutF5()
 {
     // LSB
     ui->modeSelectCombo->setCurrentIndex(0);
+    on_modeSelectCombo_activated(0);
 }
 
 void wfmain::shortcutF6()
 {
     // USB
     ui->modeSelectCombo->setCurrentIndex(1);
+    on_modeSelectCombo_activated(1);
 }
 
 void wfmain::shortcutF7()
 {
     // AM
     ui->modeSelectCombo->setCurrentIndex(2);
+    on_modeSelectCombo_activated(2);
 }
 
 void wfmain::shortcutF8()
 {
     // CW
     ui->modeSelectCombo->setCurrentIndex(3);
+    on_modeSelectCombo_activated(3);
 }
 
 void wfmain::shortcutF9()
 {
     // USB-D
     ui->modeSelectCombo->setCurrentIndex(9);
+    on_modeSelectCombo_activated(9);
 }
 
 void wfmain::shortcutF10()
@@ -586,6 +591,7 @@ void wfmain::shortcutSlash()
 {
     // Cycle through available modes
     ui->modeSelectCombo->setCurrentIndex( (ui->modeSelectCombo->currentIndex()+1) % ui->modeSelectCombo->count() );
+    on_modeSelectCombo_activated( ui->modeSelectCombo->currentIndex() );
 }
 
 void wfmain::getInitialRigState()
@@ -1191,7 +1197,8 @@ void wfmain::on_modeSelectCombo_activated(int index)
     //          5      6          7           8          9
     //modes << "FM" << "CW-R" << "RTTY-R" << "LSB-D" << "USB-D";
 
-    // the user initiated a mode change.
+    // The "acticvated" signal means the user initiated a mode change.
+    // This function is not called if code initated the change.
     if(index < 10)
     {
         // qDebug() << "Mode selection changed. index: " << index;
