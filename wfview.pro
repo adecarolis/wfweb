@@ -21,6 +21,7 @@ CONFIG(debug, release|debug) {
 QMAKE_CXXFLAGS += -s
 QMAKE_CXXFLAGS += -fvisibility=hidden
 QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
+QMAKE_LFLAGS += -O2 -march=native -s
 }
 
 # The following define makes your compiler emit warnings if you use
