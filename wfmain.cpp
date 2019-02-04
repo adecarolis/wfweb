@@ -91,6 +91,14 @@ wfmain::wfmain(QWidget *parent) :
     keySlash->setKey(Qt::Key_Slash);
     connect(keySlash, SIGNAL(activated()), this, SLOT(shortcutSlash()));
 
+    keyMinus = new QShortcut(this);
+    keyMinus->setKey(Qt::Key_Minus);
+    connect(keyMinus, SIGNAL(activated()), this, SLOT(shortcutMinus()));
+
+    keyPlus = new QShortcut(this);
+    keyPlus->setKey(Qt::Key_Plus);
+    connect(keyPlus, SIGNAL(activated()), this, SLOT(shortcutPlus()));
+
 
     setDefaultColors(); // set of UI colors with defaults populated
     setDefPrefs(); // other default options
@@ -593,6 +601,19 @@ void wfmain::shortcutSlash()
     ui->modeSelectCombo->setCurrentIndex( (ui->modeSelectCombo->currentIndex()+1) % ui->modeSelectCombo->count() );
     on_modeSelectCombo_activated( ui->modeSelectCombo->currentIndex() );
 }
+
+void wfmain::shortcutMinus()
+{
+    ui->freqDial->setValue( ui->freqDial->value() - ui->freqDial->singleStep() );
+    // pageStep is the larger step size
+}
+
+void wfmain::shortcutPlus()
+{
+    ui->freqDial->setValue( ui->freqDial->value() + ui->freqDial->singleStep() );
+    // pageStep is the larger step size
+}
+
 
 void wfmain::getInitialRigState()
 {
