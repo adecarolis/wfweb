@@ -87,6 +87,8 @@ private slots:
     void shortcutSlash();
     void shortcutMinus();
     void shortcutPlus();
+    void shortcutShiftMinus();
+    void shortcutShiftPlus();
 
     void handlePttLimit(); // hit at 3 min transmit length
 
@@ -254,6 +256,9 @@ private:
     QShortcut *keySlash;
     QShortcut *keyMinus;
     QShortcut *keyPlus;
+
+    QShortcut *keyShiftMinus;
+    QShortcut *keyShiftPlus;
 
 
     rigCommander * rig;
