@@ -102,12 +102,22 @@ wfmain::wfmain(QWidget *parent) :
     // TODO: Refactor shift-->control in function and element names.
     // Shift is a poor choice since shift is required to get to + on many keyboards.
     keyShiftMinus = new QShortcut(this);
-    keyShiftMinus->setKey(Qt::CTRL + Qt::Key_Minus);
+    keyShiftMinus->setKey(Qt::SHIFT + Qt::Key_Minus);
     connect(keyShiftMinus, SIGNAL(activated()), this, SLOT(shortcutShiftMinus()));
 
     keyShiftPlus = new QShortcut(this);
-    keyShiftPlus->setKey(Qt::CTRL + Qt::Key_Plus);
+    keyShiftPlus->setKey(Qt::SHIFT + Qt::Key_Plus);
     connect(keyShiftPlus, SIGNAL(activated()), this, SLOT(shortcutShiftPlus()));
+
+    keyControlMinus = new QShortcut(this);
+    keyControlMinus->setKey(Qt::CTRL + Qt::Key_Minus);
+    connect(keyControlMinus, SIGNAL(activated()), this, SLOT(shortcutControlMinus()));
+
+    keyControlPlus = new QShortcut(this);
+    keyControlPlus->setKey(Qt::CTRL + Qt::Key_Plus);
+    connect(keyControlPlus, SIGNAL(activated()), this, SLOT(shortcutControlPlus()));
+
+
 
 
     setDefaultColors(); // set of UI colors with defaults populated
@@ -632,7 +642,15 @@ void wfmain::shortcutShiftPlus()
     ui->freqDial->setValue( ui->freqDial->value() + ui->freqDial->pageStep() );
 }
 
+void wfmain::shortcutControlMinus()
+{
+    ui->freqDial->setValue( ui->freqDial->value() - ui->freqDial->pageStep() );
+}
 
+void wfmain::shortcutControlPlus()
+{
+    ui->freqDial->setValue( ui->freqDial->value() + ui->freqDial->pageStep() );
+}
 
 
 void wfmain::getInitialRigState()
