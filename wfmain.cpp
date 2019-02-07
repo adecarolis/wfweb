@@ -117,7 +117,13 @@ wfmain::wfmain(QWidget *parent) :
     keyControlPlus->setKey(Qt::CTRL + Qt::Key_Plus);
     connect(keyControlPlus, SIGNAL(activated()), this, SLOT(shortcutControlPlus()));
 
+    keyF = new QShortcut(this);
+    keyF->setKey(Qt::Key_F);
+    connect(keyF, SIGNAL(activated()), this, SLOT(shortcutF()));
 
+    keyM = new QShortcut(this);
+    keyM->setKey(Qt::Key_M);
+    connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
 
 
     setDefaultColors(); // set of UI colors with defaults populated
@@ -650,6 +656,18 @@ void wfmain::shortcutControlMinus()
 void wfmain::shortcutControlPlus()
 {
     ui->freqDial->setValue( ui->freqDial->value() + ui->freqDial->pageStep() );
+}
+
+void wfmain::shortcutF()
+{
+    showStatusBarText("Sending speech command (frequency) to radio.");
+    emit sayFrequency();
+}
+
+void wfmain::shortcutM()
+{
+    showStatusBarText("Sending speech command (mode) to radio.");
+    emit sayMode();
 }
 
 
