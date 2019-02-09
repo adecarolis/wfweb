@@ -11,8 +11,13 @@ wfmain::wfmain(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::wfmain)
 {
+    QGuiApplication::setApplicationDisplayName("RigView");
+    QGuiApplication::setApplicationName(QString("RigView"));
+
     ui->setupUi(this);
     theParent = parent;
+
+    setWindowTitle(QString("RigView"));
 
     ui->bandStkLastUsedBtn->setVisible(false);
     ui->bandStkVoiceBtn->setVisible(false);
