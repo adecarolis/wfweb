@@ -339,6 +339,7 @@ void wfmain::setDefPrefs()
     defPrefs.useFullScreen = true;
     defPrefs.useDarkMode = true;
     defPrefs.drawPeaks = true;
+    defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
     defPrefs.radioCIVAddr = 0x94;
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.enablePTT = false;
@@ -355,6 +356,7 @@ void wfmain::loadSettings()
     prefs.useFullScreen = settings.value("UseFullScreen", defPrefs.useFullScreen).toBool();
     prefs.useDarkMode = settings.value("UseDarkMode", defPrefs.useDarkMode).toBool();
     prefs.drawPeaks = settings.value("DrawPeaks", defPrefs.drawPeaks).toBool();
+    prefs.stylesheetPath = settings.value("StylesheetPath", defPrefs.stylesheetPath).toString();
     settings.endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -414,6 +416,7 @@ void wfmain::saveSettings()
     settings.setValue("UseFullScreen", prefs.useFullScreen);
     settings.setValue("UseDarkMode", prefs.useDarkMode);
     settings.setValue("DrawPeaks", prefs.drawPeaks);
+    settings.setValue("StylesheetPath", prefs.stylesheetPath);
     settings.endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -727,8 +730,8 @@ void wfmain::setAppTheme(bool isDark)
 {
     if(isDark)
     {
-        // TODO: Take path from preference data
-        QFile f(":qdarkstyle/style.qss");
+        // QFile f(":qdarkstyle/style.qss"); // built-in resource
+        QFile f("/usr/share/rigview/stylesheets/" + prefs.stylesheetPath);
         if (!f.exists())
         {
             printf("Unable to set stylesheet, file not found\n");
@@ -1504,7 +1507,7 @@ void wfmain::on_aboutBtn_clicked()
     // stylesheet credit
     // contact information
     QString copyright = QString("Copyright 2017, 2018 Elliott H. Liggett. All rights reserved.");
-    QString ssCredit = QString("Stylesheet qdarkstyle used under MIT license, stored in application directory.");
+    QString ssCredit = QString("Stylesheet qdarkstyle used under MIT license, stored in /usr/share/rigview/stylesheets/.");
     QString contact = QString("email the author: kilocharlie8@gmail.com or W6EL on the air!");
     QString buildInfo = QString("Build " + QString(GITSHORT) + " on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
 

@@ -337,6 +337,7 @@ private:
         bool useDarkMode;
         bool drawPeaks;
         bool drawTracer;
+        QString stylesheetPath;
         unsigned char radioCIVAddr;
         QString serialPortRadio;
         bool enablePTT;
