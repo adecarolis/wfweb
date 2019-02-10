@@ -222,6 +222,8 @@ private slots:
 
     void on_debugBtn_clicked();
 
+    void on_pttEnableChk_clicked(bool checked);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;

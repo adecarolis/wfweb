@@ -104,8 +104,6 @@ wfmain::wfmain(QWidget *parent) :
     keyPlus->setKey(Qt::Key_Plus);
     connect(keyPlus, SIGNAL(activated()), this, SLOT(shortcutPlus()));
 
-    // TODO: Refactor shift-->control in function and element names.
-    // Shift is a poor choice since shift is required to get to + on many keyboards.
     keyShiftMinus = new QShortcut(this);
     keyShiftMinus->setKey(Qt::SHIFT + Qt::Key_Minus);
     connect(keyShiftMinus, SIGNAL(activated()), this, SLOT(shortcutShiftMinus()));
@@ -216,6 +214,7 @@ wfmain::wfmain(QWidget *parent) :
     connect(this, SIGNAL(setDataMode(bool)), rig, SLOT(setDataMode(bool)));
     connect(this, SIGNAL(getBandStackReg(char,char)), rig, SLOT(getBandStackReg(char,char)));
     connect(rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
+    connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
     connect(rig, SIGNAL(haveBandStackReg(float,char,bool)), this, SLOT(receiveBandStackReg(float,char,bool)));
     connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
 
@@ -373,6 +372,7 @@ void wfmain::loadSettings()
     // Misc. user settings (enable PTT, draw peaks, etc)
     settings.beginGroup("Controls");
     prefs.enablePTT = settings.value("EnablePTT", defPrefs.enablePTT).toBool();
+    ui->pttEnableChk->setChecked(prefs.enablePTT);
     prefs.niceTS = settings.value("NiceTS", defPrefs.niceTS).toBool();
     settings.endGroup();
 
@@ -1720,6 +1720,11 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
             qDebug() << "Did not understand ATU status: " << (unsigned int) atustatus;
             break;
     }
+}
+
+void wfmain::on_pttEnableChk_clicked(bool checked)
+{
+    prefs.enablePTT = checked;
 }
 
 // --- DEBUG FUNCTION ---
