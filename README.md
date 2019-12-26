@@ -15,7 +15,7 @@ Open Source Icom IC-7300 Visualizer and Controller, including waterfall view. Wi
 5. libqcustomplot-dev 
 
 ### Recommended:
-* Debian-based Linux system (Debian Linux, Linux Mint, Ubuntu, etc).
+* Debian-based Linux system (Debian Linux, Linux Mint, Ubuntu, etc). Any recent Linux system will do though!
 * QT Creator for building, designing, and debugging w/gdb
 
 ### Build directions:
@@ -27,22 +27,27 @@ Open Source Icom IC-7300 Visualizer and Controller, including waterfall view. Wi
 4. Compile by running make.
 
 ### Rig setting:
-1. Use default CI-V address (0x94)
-2. Baud rate 115200
-3. Turn on the bandscope on the rig screen
+1. CI-V Baud rate: Auto
+2. CI-V address: 94h (default) 
+3. CI-V Transceive ON
+4. CI-V USB-> REMOTE Transceive Address: 00h
+5. CI-V Output (for ANT): OFF
+6. CI-V USB Port: Unlink from REMOTE
+7. CI-V USB Baud Rate: 15200
+8. CI-V USB Echo Back: OFF
+9. Turn on the bandscope on the rig screen
 
-* Note: The program currently assumes the device is on /dev/ttyUSB0. Make sure the port is writable by your username. 
+* Note: The program currently assumes the device is on a device like: 
+~~~
+/dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_IC-7300_02010092-if00-port0
+~~~
+This is symlinked to a device like /dev/ttyUSB0 typically. Make sure the port is writable by your username. You can accomplish this using udev rules, or if you are in a hurry: 
+~~~
+sudo chown `whoami` /dev/ttyUSB*
+~~~
 
 ### TODO:
-1. Carefully build comm port traffic into messages. Reject corrupted messages earlier in the chain. 
-2. Impliment "dark mode" in plot and UI elements. 
-3. Impliment band presets per the "Band" tab (currently does nothing)
-4. Impliment STO and RCL buttons under Freq tab
-5. Save settings to text file
-6. Automatically poll transceiver and bandscope state on startup. 
-7. Change the delayedCommand so that it can accept a vector of queued commands. Or change the signal/slot paradigm to automatically queue requests. 
-8. Automatically query the Data Mode when we query the Mode. Also allow data mode setting. 
-9. Fix the indexes on the waterfall display. Currently we take the mouse coordinates and intrepret frequency from the bandscope plot. 
-10. Enable the band scope display in addition to the band scope serial data output. 
-
+1. Re-work pseudo term code into separate thread
+2. Consider XML RPC to make flrig/fldigi interface easier 
+3. Add hide/show for SWR, ALC, Power, S-Meter interface
 
