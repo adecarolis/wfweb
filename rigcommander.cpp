@@ -566,8 +566,10 @@ void rigCommander::parseCommand()
             break;
         case '\xFA':
             // error
+#ifdef QT_DEBUG
             qDebug() << "Error (FA) received from rig.";
             printHex(payloadIn, false ,true);
+#endif
             break;
 
         default:

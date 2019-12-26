@@ -912,7 +912,7 @@ void wfmain::receiveFreq(double freqMhz)
     ui->freqLabel->setText(QString("%1").arg(freqMhz, 0, 'f'));
     this->freqMhz = freqMhz;
     this->knobFreqMhz = freqMhz;
-    showStatusBarText(QString("Frequency: %1").arg(freqMhz));
+    //showStatusBarText(QString("Frequency: %1").arg(freqMhz));
 }
 
 void wfmain::receivePTTstatus(bool pttOn)
@@ -1730,8 +1730,8 @@ void wfmain::on_pttEnableChk_clicked(bool checked)
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
-    // TODO: Remove function on release build
-    // emit getScopeMode();
-    // emit getScopeEdge(); // 1,2,3 only in "fixed" mode
-    // emit getScopeSpan(); // in khz, only in "center" mode
+    // TODO: Why don't these commands work?!
+    //emit getScopeMode();
+    //emit getScopeEdge(); // 1,2,3 only in "fixed" mode
+    //emit getScopeSpan(); // in khz, only in "center" mode
 }

@@ -11,6 +11,7 @@ commHandler::commHandler()
 
     port = new QSerialPort();
 
+
     // TODO: The following should become arguments and/or functions
     // Add signal/slot everywhere for comm port setup.
     // Consider how to "re-setup" and how to save the state for next time.
@@ -56,7 +57,7 @@ commHandler::commHandler(QString portName)
     initializePt();
 
     connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
-    connect(pseudoterm, SIGNAL(readyRead()), this, SLOT(receiveDataInPt()));
+    connect(pseudoterm, SIGNAL(readyRead()), this, SLOT(receiveDataInPt())); // sometimes it seems the connection fails.
 
 }
 
@@ -70,7 +71,7 @@ void commHandler::initializePt()
 
 void commHandler::setupPtComm()
 {
-    // qDebug() << "Setting up pt";
+    qDebug() << "Setting up Pseudo Term";
     pseudoterm->setPortName("/dev/ptmx");
     // pseudoterm->setBaudRate(baudrate);
     // pseudoterm->setStopBits(QSerialPort::OneStop);
@@ -84,9 +85,9 @@ void commHandler::openPtPort()
     success = pseudoterm->open(QIODevice::ReadWrite);
     if(success)
     {
-        // qDebug() << "Opened pt device, attempting to grant pt status";
+        qDebug() << "Opened pt device, attempting to grant pt status";
         ptfd = pseudoterm->handle();
-        // qDebug() << "ptfd: " << ptfd;
+        qDebug() << "ptfd: " << ptfd;
         if(grantpt(ptfd))
         {
             qDebug() << "Failed to grantpt";
@@ -131,31 +132,37 @@ void commHandler::sendDataOut(const QByteArray &writeData)
 {
 
     mutex.lock();
-    // quint64 bytesWritten;
 
-    // sned out data
-    //port.send() or whatever
-    // bytesWritten = port->write(writeData);
+#ifdef QT_DEBUG
+
+    qint64 bytesWritten;
+
+    bytesWritten = port->write(writeData);
+    qDebug() << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
+             << " size of byte array: " << writeData.size()\
+             << " Wrote all bytes? " << (bool) (bytesWritten == (qint64)writeData.size());
+
+#else
     port->write(writeData);
 
-    //qDebug() << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length() << " size of byte array: " << writeData.size();
-
+#endif
     mutex.unlock();
 }
 
 void commHandler::sendDataOutPt(const QByteArray &writeData)
 {
     ptMutex.lock();
-    // quint64 bytesWritten;
-
-    // sned out data
-    //port.send() or whatever
-    // bytesWritten = port->write(writeData);
     //printHex(writeData, false, true);
+
+#ifdef QT_DEBUG
+    qint64 bytesWritten;
+    bytesWritten = port->write(writeData);
+    qDebug() << "pseudo-term bytesWritten: " << bytesWritten << " length of byte array: " << \
+                writeData.length() << " size of byte array: " << writeData.size()\
+             << ", wrote all: " << (bool)(bytesWritten == (qint64)writeData.size());
+#else
     pseudoterm->write(writeData);
-
-    //qDebug() << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length() << " size of byte array: " << writeData.size();
-
+#endif
     ptMutex.unlock();
 }
 
@@ -163,13 +170,14 @@ void commHandler::sendDataOutPt(const QByteArray &writeData)
 void commHandler::receiveDataInPt()
 {
     // We received data from the pseudo-term.
-    // qDebug() << "Sending data from pseudo-terminal to radio";
+    //qDebug() << "Sending data from pseudo-terminal to radio";
     // Send this data to the radio:
     //QByteArray ptdata = pseudoterm->readAll();
     // should check the data and rollback
     // for now though...
     //sendDataOut(ptdata);
     sendDataOut(pseudoterm->readAll());
+    //qDebug() << "Returned from sendDataOut with pseudo-terminal send data.";
 }
 
 void commHandler::receiveDataIn()
