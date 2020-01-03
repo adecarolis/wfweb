@@ -3,6 +3,8 @@ Open Source Icom IC-7300 Visualizer and Controller, including waterfall view. Wi
 
 **Please [see our wiki](https://gitlab.com/eliggett/wfview/-/wikis/home) for detailed information**
 
+wfview is copyright 2017-2020 Elliott H. Liggett. 
+
 ### Features:
 1. Plot bandscope and bandscope waterfall. Optionally, also plot a "peak hold". A splitter lets the user adjust the space used for the waterfall and bandscope plots.
 2. Double-elick anywhere on the bandscope or waterfall to tune the radio. 
