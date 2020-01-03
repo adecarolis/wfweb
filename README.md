@@ -1,6 +1,8 @@
 # wfview
 Open Source Icom IC-7300 Visualizer and Controller, including waterfall view. With this program, you can see your waterfall display on a large screen, or launch from a VNC session and remotely control your radio. wfview does not use hamlib or any other common radio control libraries. That may chance, but at this time, it is not clear how to impliment a continuous stream of spectrum data through either hamlib or flrig. The code should be easily adaptable to the IC-7610 and any other SDR-based Icom radios. 
 
+**Please [see our wiki](https://gitlab.com/eliggett/wfview/-/wikis/home) for detailed information**
+
 ### Features:
 1. Plot bandscope and bandscope waterfall. Optionally, also plot a "peak hold". A splitter lets the user adjust the space used for the waterfall and bandscope plots.
 2. Double-elick anywhere on the bandscope or waterfall to tune the radio. 
