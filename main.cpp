@@ -10,9 +10,9 @@ int main(int argc, char *argv[])
     //a.setStyle( "Fusion" );
 
 
-    a.setOrganizationName("liggett");
+    a.setOrganizationName("eliggett");
     a.setOrganizationDomain("nodomain");
-    a.setApplicationName("RigView");
+    a.setApplicationName("wfview");
 
     a.setWheelScrollLines(1); // one line per wheel click
     wfmain w;

@@ -4,20 +4,20 @@
 #include "commhandler.h"
 #include "rigidentities.h"
 
-// This code is copyright 2018-2019 Elliott H. Liggett
+// This code is copyright 2018-2020 Elliott H. Liggett
 // All rights reserved
 
 wfmain::wfmain(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::wfmain)
 {
-    QGuiApplication::setApplicationDisplayName("RigView");
-    QGuiApplication::setApplicationName(QString("RigView"));
+    QGuiApplication::setApplicationDisplayName("wfview");
+    QGuiApplication::setApplicationName(QString("wfview"));
 
     ui->setupUi(this);
     theParent = parent;
 
-    setWindowTitle(QString("RigView"));
+    setWindowTitle(QString("wfview"));
 
     ui->bandStkLastUsedBtn->setVisible(false);
     ui->bandStkVoiceBtn->setVisible(false);
@@ -736,7 +736,7 @@ void wfmain::setAppTheme(bool isDark)
     if(isDark)
     {
         // QFile f(":qdarkstyle/style.qss"); // built-in resource
-        QFile f("/usr/share/rigview/stylesheets/" + prefs.stylesheetPath);
+        QFile f("/usr/share/wfview/stylesheets/" + prefs.stylesheetPath);
         if (!f.exists())
         {
             printf("Unable to set stylesheet, file not found\n");
