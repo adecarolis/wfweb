@@ -1511,7 +1511,7 @@ void wfmain::on_aboutBtn_clicked()
     // QT library version
     // stylesheet credit
     // contact information
-    QString copyright = QString("Copyright 2017, 2018 Elliott H. Liggett. All rights reserved.");
+    QString copyright = QString("Copyright 2017-2020 Elliott H. Liggett. All rights reserved.");
     QString ssCredit = QString("Stylesheet qdarkstyle used under MIT license, stored in /usr/share/rigview/stylesheets/.");
     QString contact = QString("email the author: kilocharlie8@gmail.com or W6EL on the air!");
     QString buildInfo = QString("Build " + QString(GITSHORT) + " on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
@@ -1519,14 +1519,14 @@ void wfmain::on_aboutBtn_clicked()
     QString aboutText = copyright + "\n" + ssCredit + "\n";
     aboutText.append(contact + "\n" + buildInfo);
 
-    QMessageBox::about(this, "RigView", aboutText);
+    QMessageBox::about(this, "wfview", aboutText);
 
     // note: should set parent->Icon() and window titles
 }
 
 void wfmain::on_aboutQtBtn_clicked()
 {
-    QMessageBox::aboutQt(this, "Rig View");
+    QMessageBox::aboutQt(this, "wfview");
 }
 
 void wfmain::on_fStoBtn_clicked()
