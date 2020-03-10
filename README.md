@@ -1,15 +1,16 @@
 # wfview
 Open Source Icom IC-7300 Visualizer and Controller, including waterfall view. With this program, you can see your waterfall display on a large screen, or launch from a VNC session and remotely control your radio. wfview does not use hamlib or any other common radio control libraries. That may chance, but at this time, it is not clear how to impliment a continuous stream of spectrum data through either hamlib or flrig. The code should be easily adaptable to the IC-7610 and any other SDR-based Icom radios. 
 
-**Please [see our wiki](https://gitlab.com/eliggett/wfview/-/wikis/home) for detailed information**
+**Please [see our wiki](https://gitlab.com/eliggett/wfview/-/wikis/home) for detailed information and basic operation manual.**
 
 wfview is copyright 2017-2020 Elliott H. Liggett. 
 
 ### Features:
 1. Plot bandscope and bandscope waterfall. Optionally, also plot a "peak hold". A splitter lets the user adjust the space used for the waterfall and bandscope plots.
-2. Double-elick anywhere on the bandscope or waterfall to tune the radio. 
+2. Double-click anywhere on the bandscope or waterfall to tune the radio. 
 3. Entry of frequency is permitted under the "Frequency" tab. Buttons are provided for touch-screen control
 4. Bandscope parameters (span and mode) are adjustable. 
+5. Full keyboard and mouse control. Operate in whichever way you like. Most radio functions can be operated from a numberic keypad! 
 
 ### Build Requirements:
 1. gcc / g++ / make
@@ -41,7 +42,7 @@ wfview is copyright 2017-2020 Elliott H. Liggett.
 8. CI-V USB Echo Back: OFF
 9. Turn on the bandscope on the rig screen
 
-* Note: The program currently assumes the device is on a device like: 
+* Note: The program currently assumes the radio is on a device like this: 
 ~~~
 /dev/serial/by-id/usb-Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_IC-7300_02010092-if00-port0
 ~~~
