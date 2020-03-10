@@ -120,6 +120,10 @@ wfmain::wfmain(QWidget *parent) :
     keyControlPlus->setKey(Qt::CTRL + Qt::Key_Plus);
     connect(keyControlPlus, SIGNAL(activated()), this, SLOT(shortcutControlPlus()));
 
+    keyQuit = new QShortcut(this);
+    keyQuit->setKey(Qt::CTRL + Qt::Key_Q);
+    connect(keyQuit, SIGNAL(activated()), this, SLOT(on_exitBtn_clicked()));
+
     keyF = new QShortcut(this);
     keyF->setKey(Qt::Key_F);
     connect(keyF, SIGNAL(activated()), this, SLOT(shortcutF()));
@@ -740,6 +744,7 @@ void wfmain::setAppTheme(bool isDark)
         if (!f.exists())
         {
             printf("Unable to set stylesheet, file not found\n");
+            printf("Tried to load: [%s]\n", QString( QString("/usr/share/wfview/stylesheets/") + prefs.stylesheetPath).toStdString().c_str() );
         }
         else
         {

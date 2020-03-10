@@ -268,6 +268,7 @@ private:
     QShortcut *keyShiftPlus;
     QShortcut *keyControlMinus;
     QShortcut *keyControlPlus;
+    QShortcut *keyQuit;
 
     QShortcut *keyF;
     QShortcut *keyM;
