@@ -3,7 +3,7 @@
 
 wfview is unique in the radio control ecosystem in that it is free and open-source software and can take advantage of modern radio features (such as the waterfall). wfview also does not "eat the serial port", and can allow a second program, such as fldigi, access to the radio via a pseudo-terminal device. 
 
-For screenshots, documentation, User FAQ, Programmer FAQ, and more, please [see the project's wiki](https://gitlab.com/eliggett/wfview/-/wikis/home). 
+**For screenshots, documentation, User FAQ, Programmer FAQ, and more, please [see the project's wiki](https://gitlab.com/eliggett/wfview/-/wikis/home).**
 
 wfview is copyright 2017-2020 Elliott H. Liggett. 
 
