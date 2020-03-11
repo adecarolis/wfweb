@@ -12,7 +12,7 @@ wfview is copyright 2017-2020 Elliott H. Liggett.
 2. Double-click anywhere on the bandscope or waterfall to tune the radio. 
 3. Entry of frequency is permitted under the "Frequency" tab. Buttons are provided for touch-screen control
 4. Bandscope parameters (span and mode) are adjustable. 
-5. Full keyboard and mouse control. Operate in whichever way you like. Most radio functions can be operated from a numberic keypad! 
+5. Full [keyboard](https://gitlab.com/eliggett/wfview/-/wikis/Keystrokes) and mouse control. Operate in whichever way you like. Most radio functions can be operated from a numberic keypad! This also enables those with visual impairments to use the IC-7300. 
 
 ### Build Requirements:
 1. gcc / g++ / make
