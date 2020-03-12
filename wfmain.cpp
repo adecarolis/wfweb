@@ -4,7 +4,7 @@
 #include "commhandler.h"
 #include "rigidentities.h"
 
-// This code is copyright 2018-2020 Elliott H. Liggett
+// This code is copyright 2017-2020 Elliott H. Liggett
 // All rights reserved
 
 wfmain::wfmain(QWidget *parent) :
@@ -604,6 +604,7 @@ void wfmain::shortcutControlT()
 {
     // Transmit
     qDebug() << "Activated Control-T shortcut";
+    showStatusBarText(QString("Transmitting. Press Control-R to receive."));
     ui->pttOnBtn->click();
 }
 
@@ -1625,6 +1626,7 @@ void wfmain::receiveAfGain(unsigned char level)
 
 void wfmain::receiveSql(unsigned char level)
 {
+    // TODO: Maybe add squelch control
     // qDebug() << "Receive SQL level of                   " << (int)level << " = " << 100*level/255.0 << "%";
     // ui->sqlSlider->setValue(level); // No SQL control so far
     (void)level;
@@ -1667,12 +1669,12 @@ void wfmain::on_pttOnBtn_clicked()
 
     if(!ui->pttEnableChk->isChecked())
     {
-        showStatusBarText("PTT is disabled, not sending command.");
+        showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
         return;
     }
 
     // Are we already PTT? Not a big deal, just send again anyway.
-    showStatusBarText("Sending PTT ON command");
+    showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
     emit setPTT(true);
     // send PTT
     // Start 3 minute timer
@@ -1695,7 +1697,6 @@ void wfmain::handlePttLimit()
     // transmission time exceeded!
     showStatusBarText("Transmit timeout at 3 minutes. Sending PTT OFF command now.");
     emit setPTT(false);
-
 }
 
 void wfmain::on_saveSettingsBtn_clicked()

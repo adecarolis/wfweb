@@ -1,7 +1,7 @@
 #include "wfmain.h"
 #include <QApplication>
 
-
+// Copytight 2017-2020 Elliott H. Liggett
 
 
 int main(int argc, char *argv[])

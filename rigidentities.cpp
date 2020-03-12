@@ -1,4 +1,5 @@
 #include "rigidentities.h"
+// Copytight 2017-2020 Elliott H. Liggett
 
 model_kind determineRadioModel(unsigned char rigID)
 {

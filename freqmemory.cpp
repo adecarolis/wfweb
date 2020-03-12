@@ -1,5 +1,7 @@
 #include "freqmemory.h"
 
+// Copytight 2017-2020 Elliott H. Liggett
+
 freqMemory::freqMemory()
 {
     // NOTE: These are also present in the header and

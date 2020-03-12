@@ -3,7 +3,7 @@
 
 #include "rigidentities.h"
 
-// Copytight 2017,2018 Elliott H. Liggett
+// Copytight 2017-2020 Elliott H. Liggett
 
 // This file parses data from the radio and also forms commands to the radio.
 // The radio physical interface is handled by the commHandler() instance "comm"

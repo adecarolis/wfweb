@@ -2,6 +2,8 @@
 
 #include <QDebug>
 
+// Copytight 2017-2020 Elliott H. Liggett
+
 commHandler::commHandler()
 {
     //constructor
