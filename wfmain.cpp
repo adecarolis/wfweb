@@ -1516,17 +1516,27 @@ void wfmain::on_aboutBtn_clicked()
     // QT library version
     // stylesheet credit
     // contact information
+
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("Abou wfviewt");
+    // msgBox.setIcon( QIcon(":/icons/wfview_small.png") );
+    msgBox.setTextFormat(Qt::RichText);
+
+    // TODO: change style of link color based on current CSS sheet.
+
     QString copyright = QString("Copyright 2017-2020 Elliott H. Liggett. All rights reserved.");
-    QString ssCredit = QString("Stylesheet qdarkstyle used under MIT license, stored in /usr/share/rigview/stylesheets/.");
-    QString contact = QString("email the author: kilocharlie8@gmail.com or W6EL on the air!");
-    QString buildInfo = QString("Build " + QString(GITSHORT) + " on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
+    QString ssCredit = QString("<br/>Stylesheet qdarkstyle used under MIT license, stored in /usr/share/rigview/stylesheets/.");
+    QString contact = QString("<br/>email the author: kilocharlie8@gmail.com or W6EL on the air!");
+    QString website = QString("<br/><br/>Get the latest version from our gitlab repo: <a href='https://gitlab.com/eliggett/wfview' style='color: cyan;'>https://gitlab.com/eliggett/wfview</a>");
+    QString docs = QString("<br/>Also see the <a href='https://gitlab.com/eliggett/wfview/-/wikis/home'  style='color: cyan;'>wiki</a> for the <a href='https://gitlab.com/eliggett/wfview/-/wikis/User-FAQ' style='color: cyan;'>FAQ</a>, <a href='https://gitlab.com/eliggett/wfview/-/wikis/Keystrokes' style='color: cyan;'>Keystrokes</a>, and more.");
+    QString buildInfo = QString("<br/><br/>Build " + QString(GITSHORT) + " on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
 
     QString aboutText = copyright + "\n" + ssCredit + "\n";
-    aboutText.append(contact + "\n" + buildInfo);
+    aboutText.append(contact + "\n" + website + "\n"+ docs +"\n" + buildInfo);
 
-    QMessageBox::about(this, "wfview", aboutText);
+    msgBox.setText(aboutText);
+    msgBox.exec();
 
-    // note: should set parent->Icon() and window titles
 }
 
 void wfmain::on_aboutQtBtn_clicked()
