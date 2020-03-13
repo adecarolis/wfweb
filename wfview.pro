@@ -40,7 +40,8 @@ RESOURCES += qdarkstyle/style.qrc \
     resources/resources.qrc
 
 # Why doesn't this seem to do anything?
-DISTFILES += resources/wfview.png
+DISTFILES += resources/wfview.png \
+    resources/install.sh
 DISTFILES += resources/wfview.desktop
 
 QMAKE_POST_LINK += cp ../wfview/resources/wfview.png .;
