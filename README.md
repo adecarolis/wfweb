@@ -5,7 +5,7 @@ wfview is unique in the radio control ecosystem in that it is free and open-sour
 
 **For screenshots, documentation, User FAQ, Programmer FAQ, and more, please [see the project's wiki](https://gitlab.com/eliggett/wfview/-/wikis/home).**
 
-wfview is copyright 2017-2020 Elliott H. Liggett. 
+wfview is copyright 2017-2020 Elliott H. Liggett. All rights reserved. wfview source code is licensed via the GNU GPLv3.
 
 ### Features:
 1. Plot bandscope and bandscope waterfall. Optionally, also plot a "peak hold". A splitter lets the user adjust the space used for the waterfall and bandscope plots.
