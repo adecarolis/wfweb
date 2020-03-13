@@ -1,11 +1,11 @@
 # wfview
-[wfview](https://gitlab.com/eliggett/wfview) is an open-source front-end application for the [Icom IC-7300](https://www.icomamerica.com/en/products/amateur/hf/7300/default.aspx) HF SDR Amateur Radio. wfview supports viewing the spectrum display waterfall and most normal radio controls. Using wfview, the radio can be operated using the mouse, or just the keyboard, or even a touch screen display. The gorgous waterfall spectrum can be displayed on a monitor of any size, and can even projected onto a wall for a presentation. Even a VNC session can make use of wfview for interesting remote rig posibilities. wfview runs on humble hardware, ranging from the $35 Raspberry Pi, to laptops, to desktops. wfview is designed to run on GNU Linux, but can probably be adapted to run on other operating systems. 
+[wfview](https://gitlab.com/eliggett/wfview) is an open-source front-end application for the [Icom IC-7300](https://www.icomamerica.com/en/products/amateur/hf/7300/default.aspx) HF SDR Amateur Radio. wfview supports viewing the spectrum display waterfall and most normal radio controls. Using wfview, the radio can be operated using the mouse, or just the keyboard (great for those with visual impairments), or even a touch screen display. The gorgous waterfall spectrum can be displayed on a monitor of any size, and can even projected onto a wall for a presentation. Even a VNC session can make use of wfview for interesting remote rig posibilities. wfview runs on humble hardware, ranging from the $35 Raspberry Pi, to laptops, to desktops. wfview is designed to run on GNU Linux, but can probably be adapted to run on other operating systems. 
 
 wfview is unique in the radio control ecosystem in that it is free and open-source software and can take advantage of modern radio features (such as the waterfall). wfview also does not "eat the serial port", and can allow a second program, such as fldigi, access to the radio via a pseudo-terminal device. 
 
 **For screenshots, documentation, User FAQ, Programmer FAQ, and more, please [see the project's wiki](https://gitlab.com/eliggett/wfview/-/wikis/home).**
 
-wfview is copyright 2017-2020 Elliott H. Liggett. 
+wfview is copyright 2017-2020 Elliott H. Liggett. All rights reserved. wfview source code is licensed via the GNU GPLv3.
 
 ### Features:
 1. Plot bandscope and bandscope waterfall. Optionally, also plot a "peak hold". A splitter lets the user adjust the space used for the waterfall and bandscope plots.
@@ -13,6 +13,9 @@ wfview is copyright 2017-2020 Elliott H. Liggett.
 3. Entry of frequency is permitted under the "Frequency" tab. Buttons are provided for touch-screen control
 4. Bandscope parameters (span and mode) are adjustable. 
 5. Full [keyboard](https://gitlab.com/eliggett/wfview/-/wikis/Keystrokes) and mouse control. Operate in whichever way you like. Most radio functions can be operated from a numberic keypad! This also enables those with visual impairments to use the IC-7300. 
+6. 100 user memories stored in plain text on the computer
+7. Stylable GUI using CSS
+8. pseudo-terminal device, which allows for secondary program to control the radio while wfview is running
 
 ### Build Requirements:
 1. gcc / g++ / make
