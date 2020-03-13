@@ -13,6 +13,9 @@ wfview is copyright 2017-2020 Elliott H. Liggett. All rights reserved. wfview so
 3. Entry of frequency is permitted under the "Frequency" tab. Buttons are provided for touch-screen control
 4. Bandscope parameters (span and mode) are adjustable. 
 5. Full [keyboard](https://gitlab.com/eliggett/wfview/-/wikis/Keystrokes) and mouse control. Operate in whichever way you like. Most radio functions can be operated from a numberic keypad! This also enables those with visual impairments to use the IC-7300. 
+6. 100 user memories stored in plain text on the computer
+7. Stylable GUI using CSS
+8. pseudo-terminal device, which allows for secondary program to control the radio while wfview is running
 
 ### Build Requirements:
 1. gcc / g++ / make
