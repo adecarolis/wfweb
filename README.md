@@ -56,8 +56,9 @@ This is symlinked to a device like /dev/ttyUSB0 typically. Make sure the port is
 sudo chown `whoami` /dev/ttyUSB*
 ~~~
 
-### TODO:
+### TODO (for developers):
 1. Re-work pseudo term code into separate thread
 2. Consider XML RPC to make flrig/fldigi interface easier 
-3. Add hide/show for SWR, ALC, Power, S-Meter interface
+3. Add hide/show for additional controls: SWR, ALC, Power, S-Meter interface
+4. Fix crash on close (order of delete operations is important)
 
