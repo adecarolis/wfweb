@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=wfview
+GenericName=Radio Controller
+Comment=Control and visualize data from amateur radios
+Exec=wfview
+Icon=wfview
+Terminal=false
+Type=Application
+Categories=Network;HamRadio;

@@ -1,0 +1,5 @@
+<RCC>
+  <qresource prefix="resources">
+    <file>wfview.png</file>
+  </qresource>
+</RCC>

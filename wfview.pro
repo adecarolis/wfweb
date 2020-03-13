@@ -36,7 +36,20 @@ DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
 DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""
 
 
-RESOURCES += qdarkstyle/style.qrc
+RESOURCES += qdarkstyle/style.qrc \
+    resources/resources.qrc
+
+# Why doesn't this seem to do anything?
+DISTFILES += resources/wfview.png
+DISTFILES += resources/wfview.desktop
+
+QMAKE_POST_LINK += cp ../wfview/resources/wfview.png .;
+QMAKE_POST_LINK += cp ../wfview/resources/wfview.desktop .;
+QMAKE_POST_LINK += cp ../wfview/resources/install.sh .;
+QMAKE_POST_LINK += cp -r ../wfview/qdarkstyle .;
+QMAKE_POST_LINK += chmod 755 install.sh;
+QMAKE_POST_LINK += echo; echo; echo "Run install.sh as root from the build directory to install."; echo; echo;
+
 
 # Do not do this, it will hang on start:
 # CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
@@ -69,3 +82,5 @@ HEADERS  += wfmain.h \
     rigidentities.h
 
 FORMS    += wfmain.ui
+
+

@@ -14,6 +14,7 @@ wfmain::wfmain(QWidget *parent) :
     QGuiApplication::setApplicationDisplayName("wfview");
     QGuiApplication::setApplicationName(QString("wfview"));
 
+    setWindowIcon(QIcon( QString(":resources/wfview.png")));
     ui->setupUi(this);
     theParent = parent;
 
@@ -1520,9 +1521,8 @@ void wfmain::on_aboutBtn_clicked()
 
     QMessageBox msgBox(this);
     msgBox.setWindowTitle("Abou wfviewt");
-    // msgBox.setIcon( QIcon(":/icons/wfview_small.png") );
     msgBox.setTextFormat(Qt::RichText);
-
+    msgBox.setWindowIcon(QIcon(":resources/wfview.png"));
     // TODO: change style of link color based on current CSS sheet.
 
     QString copyright = QString("Copyright 2017-2020 Elliott H. Liggett. All rights reserved.");
