@@ -1520,7 +1520,7 @@ void wfmain::on_aboutBtn_clicked()
     // contact information
 
     QMessageBox msgBox(this);
-    msgBox.setWindowTitle("Abou wfviewt");
+    msgBox.setWindowTitle("Abou wfview");
     msgBox.setTextFormat(Qt::RichText);
     msgBox.setWindowIcon(QIcon(":resources/wfview.png"));
     // TODO: change style of link color based on current CSS sheet.
