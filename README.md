@@ -30,7 +30,7 @@ wfview is copyright 2017-2020 Elliott H. Liggett. All rights reserved. wfview so
 
 ### Build directions:
 
-See [INSTALL.md](https://gitlab.com/eliggett/wfview/-/blob/master/README.md) for directions. 
+See [INSTALL.md](https://gitlab.com/eliggett/wfview/-/blob/master/INSTALL.md) for directions. 
 
 ### Rig setting:
 1. CI-V Baud rate: Auto
