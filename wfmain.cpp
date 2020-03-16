@@ -1526,7 +1526,7 @@ void wfmain::on_aboutBtn_clicked()
     // TODO: change style of link color based on current CSS sheet.
 
     QString copyright = QString("Copyright 2017-2020 Elliott H. Liggett. All rights reserved.");
-    QString ssCredit = QString("<br/>Stylesheet qdarkstyle used under MIT license, stored in /usr/share/rigview/stylesheets/.");
+    QString ssCredit = QString("<br/>Stylesheet qdarkstyle used under MIT license, stored in /usr/share/wfview/stylesheets/.");
     QString contact = QString("<br/>email the author: kilocharlie8@gmail.com or W6EL on the air!");
     QString website = QString("<br/><br/>Get the latest version from our gitlab repo: <a href='https://gitlab.com/eliggett/wfview' style='color: cyan;'>https://gitlab.com/eliggett/wfview</a>");
     QString docs = QString("<br/>Also see the <a href='https://gitlab.com/eliggett/wfview/-/wikis/home'  style='color: cyan;'>wiki</a> for the <a href='https://gitlab.com/eliggett/wfview/-/wikis/User-FAQ' style='color: cyan;'>FAQ</a>, <a href='https://gitlab.com/eliggett/wfview/-/wikis/Keystrokes' style='color: cyan;'>Keystrokes</a>, and more.");
