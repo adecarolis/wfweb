@@ -29,12 +29,8 @@ wfview is copyright 2017-2020 Elliott H. Liggett. All rights reserved. wfview so
 * QT Creator for building, designing, and debugging w/gdb
 
 ### Build directions:
-1. clone this repository into a new folder
-2. make a directory to build the code in (mkdir build)
-3. Run qmake to configure the build:
-  * cd build
-  * qmake ../wfview/wfview.pro
-4. Compile by running make.
+
+See [INSTALL.md](https://gitlab.com/eliggett/wfview/-/blob/master/INSTALL.md) for directions. 
 
 ### Rig setting:
 1. CI-V Baud rate: Auto
