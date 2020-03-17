@@ -125,6 +125,14 @@ wfmain::wfmain(QWidget *parent) :
     keyQuit->setKey(Qt::CTRL + Qt::Key_Q);
     connect(keyQuit, SIGNAL(activated()), this, SLOT(on_exitBtn_clicked()));
 
+    keyPageUp = new QShortcut(this);
+    keyPageUp->setKey(Qt::Key_PageUp);
+    connect(keyPageUp, SIGNAL(activated()), this, SLOT(shortcutPageUp()));
+
+    keyPageDown = new QShortcut(this);
+    keyPageDown->setKey(Qt::Key_PageDown);
+    connect(keyPageDown, SIGNAL(activated()), this, SLOT(shortcutPageDown()));
+
     keyF = new QShortcut(this);
     keyF->setKey(Qt::Key_F);
     connect(keyF, SIGNAL(activated()), this, SLOT(shortcutF()));
@@ -672,6 +680,22 @@ void wfmain::shortcutControlPlus()
     ui->freqDial->setValue( ui->freqDial->value() + ui->freqDial->pageStep() );
 }
 
+void wfmain::shortcutPageUp()
+{
+    emit setFrequency(this->freqMhz + 1.0);
+    cmdOutQue.append(cmdGetFreq);
+    cmdOutQue.append(cmdGetMode); // maybe not really needed.
+    delayedCommand->start();
+}
+
+void wfmain::shortcutPageDown()
+{
+    emit setFrequency(this->freqMhz - 1.0);
+    cmdOutQue.append(cmdGetFreq);
+    cmdOutQue.append(cmdGetMode); // maybe not really needed.
+    delayedCommand->start();
+}
+
 void wfmain::shortcutF()
 {
     showStatusBarText("Sending speech command (frequency) to radio.");
@@ -831,7 +855,7 @@ void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
 void wfmain::runDelayedCommand()
 {
     cmds qdCmd;
-    // switch case on enum
+    // Note: This cmdOut queue will be removed entirely soon and only the cmdOutQue will be available.
     switch (cmdOut)
     {
         case cmdGetFreq:

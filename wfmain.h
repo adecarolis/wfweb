@@ -92,6 +92,9 @@ private slots:
     void shortcutControlMinus();
     void shortcutControlPlus();
 
+    void shortcutPageUp();
+    void shortcutPageDown();
+
     void shortcutF();
     void shortcutM();
 
@@ -269,6 +272,9 @@ private:
     QShortcut *keyControlMinus;
     QShortcut *keyControlPlus;
     QShortcut *keyQuit;
+
+    QShortcut *keyPageUp;
+    QShortcut *keyPageDown;
 
     QShortcut *keyF;
     QShortcut *keyM;
