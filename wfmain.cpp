@@ -684,7 +684,7 @@ void wfmain::shortcutPageUp()
 {
     emit setFrequency(this->freqMhz + 1.0);
     cmdOutQue.append(cmdGetFreq);
-    cmdOutQue.append(cmdGetMode); // maybe not really needed.
+    //cmdOutQue.append(cmdGetMode); // maybe not really needed.
     delayedCommand->start();
 }
 
@@ -692,7 +692,7 @@ void wfmain::shortcutPageDown()
 {
     emit setFrequency(this->freqMhz - 1.0);
     cmdOutQue.append(cmdGetFreq);
-    cmdOutQue.append(cmdGetMode); // maybe not really needed.
+    //cmdOutQue.append(cmdGetMode); // maybe not really needed.
     delayedCommand->start();
 }
 

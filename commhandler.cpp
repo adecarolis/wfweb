@@ -84,6 +84,8 @@ void commHandler::openPtPort()
     // qDebug() << "opening pt port";
     bool success;
     char ptname[128];
+    int sysResult=0;
+    QString ptLinkCmd = "ln -s ";
     success = pseudoterm->open(QIODevice::ReadWrite);
     if(success)
     {
@@ -103,8 +105,17 @@ void commHandler::openPtPort()
         // we're good!
         qDebug() << "Opened pseudoterminal.";
         qDebug() << "Slave name: " << ptsname(ptfd);
+
         ptsname_r(ptfd, ptname, 128);
         ptDevSlave = QString::fromLocal8Bit(ptname);
+        ptLinkCmd.append(ptDevSlave);
+        ptLinkCmd.append(" /tmp/rig");
+        sysResult = system("rm /tmp/rig");
+        sysResult = system(ptLinkCmd.toStdString().c_str());
+        if(sysResult)
+        {
+            qDebug() << "Received error from pseudo-terminal symlink command: code: [" << sysResult << "]" << " command: [" << ptLinkCmd << "]";
+        }
 
     } else {
         ptfd = 0;
