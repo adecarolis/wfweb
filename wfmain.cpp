@@ -281,7 +281,11 @@ wfmain::wfmain(QWidget *parent) :
 
     colorMap = new QCPColorMap(wf->xAxis, wf->yAxis);
     colorMapData = NULL;
+
+#if QCUSTOMPLOT_VERSION < 0x020001
     wf->addPlottable(colorMap);
+#endif
+
     colorScale = new QCPColorScale(wf);
     colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
     colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
@@ -1159,7 +1163,12 @@ void wfmain::on_drawPeakChk_clicked(bool checked)
 
     } else {
         drawPeaks = false;
+
+#if QCUSTOMPLOT_VERSION >= 0x020000
+        plot->graph(1)->data()->clear();
+#else
         plot->graph(1)->clearData();
+#endif
 
     }
     prefs.drawPeaks = checked;
