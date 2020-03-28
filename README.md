@@ -52,11 +52,12 @@ This is symlinked to a device like /dev/ttyUSB0 typically. Make sure the port is
 sudo chown `whoami` /dev/ttyUSB*
 ~~~
 
-### TODO (for developers):
+### TODO (for developers and contributors):
 1. Re-work pseudo term code into separate thread
 2. Consider XML RPC to make flrig/fldigi interface easier 
 3. Add hide/show for additional controls: SWR, ALC, Power, S-Meter interface
 4. Fix crash on close (order of delete operations is important)
-5. Add support for other compatible CI-V radios
+5. Add support for other compatible CI-V radios (IC-706, IC-7100, IC-7610, etc)
 6. Better settings panel (select serial port, CI-V address, more obvious exit button)
+7. Add support for festival or other text-to-speech method using the computer (as apposed to the radio's speech module)
 
