@@ -57,4 +57,6 @@ sudo chown `whoami` /dev/ttyUSB*
 2. Consider XML RPC to make flrig/fldigi interface easier 
 3. Add hide/show for additional controls: SWR, ALC, Power, S-Meter interface
 4. Fix crash on close (order of delete operations is important)
+5. Add support for other compatible CI-V radios
+6. Better settings panel (select serial port, CI-V address, more obvious exit button)
 
