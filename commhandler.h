@@ -16,7 +16,7 @@ class commHandler : public QObject
 
 public:
     commHandler();
-    commHandler(QString portName);
+    commHandler(QString portName, quint32 baudRate);
 
     ~commHandler();
 

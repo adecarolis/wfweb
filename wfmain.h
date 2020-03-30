@@ -349,6 +349,7 @@ private:
         QString stylesheetPath;
         unsigned char radioCIVAddr;
         QString serialPortRadio;
+        quint32 serialPortBaud;
         bool enablePTT;
         bool niceTS;
 

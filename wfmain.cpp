@@ -209,8 +209,7 @@ wfmain::wfmain(QWidget *parent) :
     ui->splitter->setHandleWidth(5);
     ui->statusBar->showMessage("Ready", 2000);
 
-    rig = new rigCommander(prefs.radioCIVAddr, serialPortRig  );
-    // rig = new rigCommander(0x94, serialPortRig  );
+    rig = new rigCommander(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud);
 
     rigThread = new QThread(this);
 
@@ -363,6 +362,7 @@ void wfmain::setDefPrefs()
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
     defPrefs.radioCIVAddr = 0x94;
     defPrefs.serialPortRadio = QString("auto");
+    defPrefs.serialPortBaud = 115200;
     defPrefs.enablePTT = false;
     defPrefs.niceTS = true;
 }
@@ -384,6 +384,7 @@ void wfmain::loadSettings()
     settings.beginGroup("Radio");
     prefs.radioCIVAddr = (unsigned char) settings.value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
     prefs.serialPortRadio = settings.value("SerialPortRadio", defPrefs.serialPortRadio).toString();
+    prefs.serialPortBaud = (quint32) settings.value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
     settings.endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
@@ -445,6 +446,7 @@ void wfmain::saveSettings()
     settings.beginGroup("Radio");
     settings.setValue("RigCIVuInt", prefs.radioCIVAddr);
     settings.setValue("SerialPortRadio", prefs.serialPortRadio);
+    settings.setValue("SerialPortBaud", prefs.serialPortBaud);
     settings.endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
@@ -1595,11 +1597,10 @@ void wfmain::on_fStoBtn_clicked()
     {
         // TODO: keep an enum around with the current mode
         mem.setPreset(preset_number, freqMhz, (mode_kind)ui->modeSelectCombo->currentIndex());
+        showStatusBarText( QString("Storing frequency %1 to memory location %2").arg( freqMhz ).arg(preset_number) );
     } else {
-        qDebug() << "Could not store preset. Valid presets are 0 through 99.";
+        showStatusBarText(QString("Could not store preset to %1. Valid preset numbers are 0 to 99").arg(preset_number));
     }
-
-
 }
 
 void wfmain::on_fRclBtn_clicked()

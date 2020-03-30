@@ -33,7 +33,7 @@ commHandler::commHandler()
     connect(pseudoterm, SIGNAL(readyRead()), this, SLOT(receiveDataInPt()));
 }
 
-commHandler::commHandler(QString portName)
+commHandler::commHandler(QString portName, quint32 baudRate)
 {
     //constructor
     // grab baud rate and other comm port details
@@ -45,7 +45,7 @@ commHandler::commHandler(QString portName)
     // TODO: The following should become arguments and/or functions
     // Add signal/slot everywhere for comm port setup.
     // Consider how to "re-setup" and how to save the state for next time.
-    baudrate = 115200;
+    baudrate = baudRate;
     stopbits = 1;
     this->portName = portName;
 
