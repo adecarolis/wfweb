@@ -10,11 +10,21 @@ sudo apt-get install libqt5core5a
 sudo apt-get install qtbase5-dev
 sudo apt-get install libqt5serialport5 libqt5serialport5-dev
 sudo apt-get install git 
-# for older linux versions (Linux Mint 19.x, Ubuntu 18.04): 
+~~~
+Now you need to install qcustomplot. There are two versions that are commonly found in linux distros: 1.3 and 2.0. Either will work fine. If you are not sure which version your linux install comes with, simply run both commands. One will work and the other will fail, and that's fine!
+
+qcustomplot1.3 for older linux versions (Linux Mint 19.x, Ubuntu 18.04): 
+
+~~~
 sudo apt-get install libqcustomplot1.3 libqcustomplot-doc libqcustomplot-dev
-# for newer linux versions (Ubuntu 19, Rasbian V?, Debian 10):
+~~~
+
+qcustomplot2 for newer linux versions (Ubuntu 19, Rasbian V?, Debian 10):
+
+~~~
 sudo apt-get install libqcustomplot2 libqcustomplot-doc libqcustomplot-dev
 ~~~
+
 optional for those that want to work on the code using the QT Creator IDE: 
 ~~~
 sudo apt-get install qtcreator qtcreator-doc
