@@ -294,6 +294,7 @@ wfmain::wfmain(QWidget *parent) :
     colorMap->setData(colorMapData);
     spectRowCurrent = 0;
     wf->yAxis->setRangeReversed(true);
+    wf->xAxis->setVisible(false);
 
     ui->tabWidget->setCurrentIndex(0);
 
@@ -378,6 +379,7 @@ void wfmain::loadSettings()
     prefs.useDarkMode = settings.value("UseDarkMode", defPrefs.useDarkMode).toBool();
     prefs.drawPeaks = settings.value("DrawPeaks", defPrefs.drawPeaks).toBool();
     prefs.stylesheetPath = settings.value("StylesheetPath", defPrefs.stylesheetPath).toString();
+    ui->splitter->restoreState(settings.value("splitter").toByteArray());
     settings.endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -440,6 +442,7 @@ void wfmain::saveSettings()
     settings.setValue("UseDarkMode", prefs.useDarkMode);
     settings.setValue("DrawPeaks", prefs.drawPeaks);
     settings.setValue("StylesheetPath", prefs.stylesheetPath);
+    settings.setValue("splitter", ui->splitter->saveState());
     settings.endGroup();
 
     // Radio and Comms: C-IV addr, port to use
