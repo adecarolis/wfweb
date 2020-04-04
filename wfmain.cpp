@@ -380,6 +380,10 @@ void wfmain::loadSettings()
     prefs.drawPeaks = settings.value("DrawPeaks", defPrefs.drawPeaks).toBool();
     prefs.stylesheetPath = settings.value("StylesheetPath", defPrefs.stylesheetPath).toString();
     ui->splitter->restoreState(settings.value("splitter").toByteArray());
+
+    restoreGeometry(settings.value("windowGeometry").toByteArray());
+    restoreState(settings.value("windowState").toByteArray());
+    setWindowState(Qt::WindowActive); // Works around QT bug to returns window+keyboard focus.
     settings.endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -431,6 +435,8 @@ void wfmain::loadSettings()
     settings.endGroup();
 }
 
+
+
 void wfmain::saveSettings()
 {
     qDebug() << "Saving settings to " << settings.fileName();
@@ -443,6 +449,8 @@ void wfmain::saveSettings()
     settings.setValue("DrawPeaks", prefs.drawPeaks);
     settings.setValue("StylesheetPath", prefs.stylesheetPath);
     settings.setValue("splitter", ui->splitter->saveState());
+    settings.setValue("windowGeometry", saveGeometry());
+    settings.setValue("windowState", saveState());
     settings.endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -493,8 +501,6 @@ void wfmain::saveSettings()
     settings.setValue("Dark_PlotFreqTracer", QColor(Qt::yellow));
 
     settings.endGroup();
-
-
 
     settings.beginGroup("LightColors");
 

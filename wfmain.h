@@ -362,7 +362,6 @@ private:
     void useColors(); // set the plot up
     void setDefPrefs(); // populate default values to default prefs
 
-
     int oldFreqDialVal;
 
     void bandStackBtnClick();
