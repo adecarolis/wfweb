@@ -22,7 +22,7 @@ sudo apt-get install libqcustomplot1.3 libqcustomplot-doc libqcustomplot-dev
 qcustomplot2 for newer linux versions (Ubuntu 19, Rasbian V?, Debian 10):
 
 ~~~
-sudo apt-get install libqcustomplot2 libqcustomplot-doc libqcustomplot-dev
+sudo apt-get install libqcustomplot2.0 libqcustomplot-doc libqcustomplot-dev
 ~~~
 
 optional for those that want to work on the code using the QT Creator IDE: 
