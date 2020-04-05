@@ -44,6 +44,11 @@ qmake ../wfview/wfview.pro
 make -j
 sudo ./install.sh
 ~~~
+Note: On Ubuntu 19, for reasons I do not understand, one must issue this qmake command instead:
+~~~
+qmake -nodepend ../wfview/wfview.pro
+~~~
+If you know why, please tell me. 
 
 ### 4. You can now launch wfview, either from the terminal or from your desktop environment. If you encounter issues using the serial port, run the following command: 
 ~~~
