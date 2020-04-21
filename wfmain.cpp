@@ -1109,7 +1109,6 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     // .y() and is +/- 120.
     // We will click the dial once for every 120 received.
     //QPoint delta = we->angleDelta();
-    // The minus is there because it felt more natural that way.
     int steps = we->angleDelta().y() / 120;
     Qt::KeyboardModifiers key=  we->modifiers();
 
@@ -1121,7 +1120,7 @@ void wfmain::handleWFScroll(QWheelEvent *we)
         steps *=10;
     }
 
-    ui->freqDial->setValue( ui->freqDial->value() - (steps)*ui->freqDial->singleStep() );
+    ui->freqDial->setValue( ui->freqDial->value() + (steps)*ui->freqDial->singleStep() );
 }
 
 void wfmain::handlePlotScroll(QWheelEvent *we)
@@ -1137,7 +1136,7 @@ void wfmain::handlePlotScroll(QWheelEvent *we)
         steps *=10;
     }
 
-    ui->freqDial->setValue( ui->freqDial->value() - (steps)*ui->freqDial->singleStep() );
+    ui->freqDial->setValue( ui->freqDial->value() + (steps)*ui->freqDial->singleStep() );
 }
 
 void wfmain::on_startBtn_clicked()
