@@ -270,6 +270,9 @@ wfmain::wfmain(QWidget *parent) :
     connect(wf, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handleWFDoubleClick(QMouseEvent*)));
     connect(plot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handlePlotClick(QMouseEvent*)));
     connect(wf, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handleWFClick(QMouseEvent*)));
+    connect(wf, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handleWFScroll(QWheelEvent*)));
+    connect(plot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handlePlotScroll(QWheelEvent*)));
+
 
     ui->plot->addGraph(); // primary
     ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first?
@@ -1098,6 +1101,23 @@ void wfmain::handleWFClick(QMouseEvent *me)
 {
     double x = plot->xAxis->pixelToCoord(me->pos().x());
     showStatusBarText(QString("Selected %1 MHz").arg(x));
+}
+
+void wfmain::handleWFScroll(QWheelEvent *we)
+{
+    // The wheel event is typically
+    // .y() and is +/- 120.
+    // We will click the dial once for every 120 received.
+    //QPoint delta = we->angleDelta();
+    // The minus is there because it felt more natural that way.
+    int steps = we->angleDelta().y() / 120;
+    ui->freqDial->setValue( ui->freqDial->value() - (steps)*ui->freqDial->singleStep() );
+}
+
+void wfmain::handlePlotScroll(QWheelEvent *we)
+{
+    int steps = we->angleDelta().y() / 120;
+    ui->freqDial->setValue( ui->freqDial->value() - (steps)*ui->freqDial->singleStep() );
 }
 
 void wfmain::on_startBtn_clicked()

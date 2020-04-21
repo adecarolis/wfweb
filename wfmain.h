@@ -116,6 +116,8 @@ private slots:
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);
     void handleWFDoubleClick(QMouseEvent *);
+    void handleWFScroll(QWheelEvent *);
+    void handlePlotScroll(QWheelEvent *);
     void runDelayedCommand();
     void showStatusBarText(QString text);
 
