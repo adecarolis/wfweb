@@ -518,8 +518,8 @@ void rigCommander::parseCommand()
             this->parseMode();
             break;
         case '\x05':
-            //qDebug() << "Have mode data";
-            this->parseMode();
+            //qDebug() << "Have frequency data";
+            this->parseFrequency();
             break;
         case '\x06':
             //qDebug() << "Have mode data";
