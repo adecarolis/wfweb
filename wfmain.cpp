@@ -1111,12 +1111,32 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     //QPoint delta = we->angleDelta();
     // The minus is there because it felt more natural that way.
     int steps = we->angleDelta().y() / 120;
+    Qt::KeyboardModifiers key=  we->modifiers();
+
+    if (key == Qt::ShiftModifier)
+    {
+        // TODO: Zoom
+    } else if (key == Qt::ControlModifier)
+    {
+        steps *=10;
+    }
+
     ui->freqDial->setValue( ui->freqDial->value() - (steps)*ui->freqDial->singleStep() );
 }
 
 void wfmain::handlePlotScroll(QWheelEvent *we)
 {
     int steps = we->angleDelta().y() / 120;
+    Qt::KeyboardModifiers key=  we->modifiers();
+
+    if (key == Qt::ShiftModifier)
+    {
+        // TODO: Zoom
+    } else if (key == Qt::ControlModifier)
+    {
+        steps *=10;
+    }
+
     ui->freqDial->setValue( ui->freqDial->value() - (steps)*ui->freqDial->singleStep() );
 }
 
