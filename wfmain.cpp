@@ -207,6 +207,13 @@ wfmain::wfmain(QWidget *parent) :
     ui->scopeEdgeCombo->insertItems(0,edges);
 
     ui->splitter->setHandleWidth(5);
+
+    ui->rfGainSlider->setTickInterval(100);
+    ui->rfGainSlider->setSingleStep(100);
+    ui->afGainSlider->setSingleStep(100);
+    ui->afGainSlider->setSingleStep(100);
+
+
     ui->statusBar->showMessage("Ready", 2000);
 
     rig = new rigCommander(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud);
