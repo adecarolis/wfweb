@@ -19,7 +19,7 @@ qcustomplot1.3 for older linux versions (Linux Mint 19.x, Ubuntu 18.04):
 sudo apt-get install libqcustomplot1.3 libqcustomplot-doc libqcustomplot-dev
 ~~~
 
-qcustomplot2 for newer linux versions (Ubuntu 19, Rasbian V?, Debian 10):
+qcustomplot2 for newer linux versions (Linux Mint 20, Ubuntu 19, Rasbian V?, Debian 10):
 
 ~~~
 sudo apt-get install libqcustomplot2.0 libqcustomplot-doc libqcustomplot-dev
