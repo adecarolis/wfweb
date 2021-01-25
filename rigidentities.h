@@ -1,6 +1,8 @@
 #ifndef RIGIDENTITIES_H
 #define RIGIDENTITIES_H
 
+#include <QtNumeric>
+
 // Credit:
 // http://www.docksideradio.com/Icom%20Radio%20Hex%20Addresses.htm
 
@@ -15,12 +17,27 @@ enum model_kind {
     model7700 = 0x74,
     model7800 = 0x6A,
     model7850 = 0x8E,
+    model9700 = 0xA2,
+    model705 = 0xA4,
     modelUnknown = 0xFF
 };
 
 
 model_kind determineRadioModel(unsigned char rigID);
 
+struct rigCapabilities {
+    //model_kind model;
+
+    bool hasLan; // OEM ethernet or wifi connection
+    bool hasEthernet;
+    bool hasWiFi;
+
+    bool hasSpectrum;
+    quint8 spectSeqMax;
+    quint16 spectAmpMax;
+    quint16 spectLenMax;
+
+};
 
 
 #endif // RIGIDENTITIES_H

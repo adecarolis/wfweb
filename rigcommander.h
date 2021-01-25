@@ -64,6 +64,7 @@ public slots:
 
 signals:
     void haveSpectrumData(QByteArray spectrum, double startFreq, double endFreq); // pass along data to UI
+    void haveRigID(rigCapabilities rigCaps);
     void haveFrequency(double frequencyMhz);
     void haveMode(QString mode);
     void haveDataMode(bool dataModeEnabled);
@@ -106,6 +107,7 @@ private:
     void prepDataAndSend(QByteArray data);
     void debugMe();
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
+    void determineRigCaps();
     commHandler * comm;
     QByteArray payloadIn;
     QByteArray echoPerfix;
@@ -121,7 +123,14 @@ private:
     double spectrumStartFreq;
     double spectrumEndFreq;
 
+    struct rigCapabilities rigCaps;
+    bool haveRigCaps;
     model_kind model;
+    quint8 spectSeqMax;
+    quint16 spectAmpMax;
+    quint16 spectLenMax;
+
+    bool usingNativeLAN; // indicates using OEM LAN connection (705,7610,9700,7850)
 
     double frequencyMhz;
     unsigned char civAddr; // 0x94 is default = 148decimal

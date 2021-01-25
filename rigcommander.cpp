@@ -37,6 +37,8 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quin
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
 
     setCIVAddr(civAddr);
+    usingNativeLAN = false; // TODO: set to true if we are connected over ethernet to the rig
+    spectSeqMax = 0; // this is now set after rig ID determined
     //compCivAddr = 0xE1;
     //payloadPrefix = QByteArray("\xFE\xFE\x94\xE0");
     payloadPrefix = QByteArray("\xFE\xFE");
@@ -533,6 +535,10 @@ void rigCommander::parseCommand()
             // qDebug() << "Have rig ID: " << (unsigned int)payloadIn[2];
             // printHex(payloadIn, false, true);
             model = determineRadioModel(payloadIn[2]);
+            determineRigCaps();
+            qDebug() << "Have rig ID: decimal: " << (unsigned int)model;
+
+
             break;
         case '\x26':
             if((int)payloadIn[1] == 0)
@@ -794,7 +800,6 @@ void rigCommander::parseDetailedRegisters1A05()
 void rigCommander::parseWFData()
 {
     float freqSpan = 0.0;
-
     switch(payloadIn[1])
     {
         case 0:
@@ -846,8 +851,85 @@ void rigCommander::parseWFData()
     }
 }
 
+void rigCommander::determineRigCaps()
+{
+    //TODO: Add if(usingNativeLAN) condition
+    //TODO: Determine available bands (low priority, rig will reject out of band requests anyway)
+
+    switch(model){
+        case model7300:
+            rigCaps.hasSpectrum = true;
+            rigCaps.spectSeqMax = 11;
+            rigCaps.spectAmpMax = 160;
+            rigCaps.spectLenMax = 475;
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            break;
+        case model9700:
+            rigCaps.hasSpectrum = true;
+            rigCaps.spectSeqMax = 11;
+            rigCaps.spectAmpMax = 160;
+            rigCaps.spectLenMax = 475;
+            rigCaps.hasLan = true;
+            rigCaps.hasEthernet = true;
+            rigCaps.hasWiFi = false;
+            break;
+        case model7610:
+            rigCaps.hasSpectrum = true;
+            rigCaps.spectSeqMax = 15;
+            rigCaps.spectAmpMax = 200;
+            rigCaps.spectLenMax = 689;
+            rigCaps.hasLan = true;
+            rigCaps.hasEthernet = true;
+            rigCaps.hasWiFi = false;
+            break;
+        case model7850:
+            rigCaps.hasSpectrum = true;
+            rigCaps.spectSeqMax = 15;
+            rigCaps.spectAmpMax = 136;
+            rigCaps.spectLenMax = 689;
+            rigCaps.hasLan = true;
+            rigCaps.hasEthernet = true;
+            rigCaps.hasWiFi = false;
+            break;
+        case model705:
+            rigCaps.hasSpectrum = true;
+            rigCaps.spectSeqMax = 11;
+            rigCaps.spectAmpMax = 160;
+            rigCaps.spectLenMax = 475;
+            rigCaps.hasLan = true;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = true;
+            break;
+        default:
+            rigCaps.hasSpectrum = false;
+            rigCaps.spectSeqMax = 0;
+            rigCaps.spectAmpMax = 0;
+            rigCaps.spectLenMax = 0;
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            break;
+
+    }
+    haveRigCaps = true;
+    emit haveRigID(rigCaps);
+}
+
 void rigCommander::parseSpectrum()
 {
+    if(!haveRigCaps)
+    {
+        qDebug() << "Spectrum received in rigCommander, but rigID is incomplete.";
+        return;
+    }
+    if(rigCaps.spectSeqMax == 0)
+    {
+        // there is a chance this will happen with rigs that support spectrum. Once our RigID query returns, we will parse correctly.
+        qDebug() << "Warning: Spectrum sequence max was zero, yet spectrum was received.";
+        return;
+    }
     // Here is what to expect:
     // payloadIn[00] = '\x27';
     // payloadIn[01] = '\x00';
@@ -906,16 +988,16 @@ void rigCommander::parseSpectrum()
             spectrumStartFreq -= spectrumEndFreq;
             spectrumEndFreq = spectrumStartFreq + 2*(spectrumEndFreq);
         }
-    } else if ((sequence > 1) && (sequence < 11))
+    } else if ((sequence > 1) && (sequence < rigCaps.spectSeqMax))
     {
         // spectrum from index 05 to index 54, length is 55 per segment. Length is 56 total. Pixel data is 50 pixels.
         // sequence numbers 2 through 10, 50 pixels each. Total after sequence 10 is 450 pixels.
         payloadIn.chop(1);
         spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 5)); // write over the FD, last one doesn't, oh well.
         //qDebug() << "sequence: " << sequence << "spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
-    } else if (sequence == 11)
+    } else if (sequence == rigCaps.spectSeqMax)
     {
-        // last spectrum, a little bit different (last 25 pixels). Total at end is 475 pixels.
+        // last spectrum, a little bit different (last 25 pixels). Total at end is 475 pixels (7300).
         payloadIn.chop(1);
         spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 5));
         //qDebug() << "sequence: " << sequence << " spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();

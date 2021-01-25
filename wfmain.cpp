@@ -20,6 +20,8 @@ wfmain::wfmain(QWidget *parent) :
 
     setWindowTitle(QString("wfview"));
 
+    haveRigCaps = false;
+
     ui->bandStkLastUsedBtn->setVisible(false);
     ui->bandStkVoiceBtn->setVisible(false);
     ui->bandStkDataBtn->setVisible(false);
@@ -180,17 +182,17 @@ wfmain::wfmain(QWidget *parent) :
     tracer->setBrush(Qt::green);
     tracer->setSize(30);
 
-    spectWidth = 475; // fixed for now
-    wfLength = 160; // fixed for now
+//    spectWidth = 475; // fixed for now
+//    wfLength = 160; // fixed for now, time-length of waterfall
 
-    // Initialize before use!
+//    // Initialize before use!
 
-    QByteArray empty((int)spectWidth, '\x01');
-    spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
-    for(quint16 i=0; i<wfLength; i++)
-    {
-        wfimage.append(empty);
-    }
+//    QByteArray empty((int)spectWidth, '\x01');
+//    spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
+//    for(quint16 i=0; i<wfLength; i++)
+//    {
+//        wfimage.append(empty);
+//    }
 
     //          0      1        2         3       4
     modes << "LSB" << "USB" << "AM" << "CW" << "RTTY";
@@ -225,6 +227,7 @@ wfmain::wfmain(QWidget *parent) :
     connect(rig, SIGNAL(finished()), rigThread, SLOT(quit()));
     rigThread->start();
 
+    qRegisterMetaType<rigCapabilities>();
 
     connect(rig, SIGNAL(haveFrequency(double)), this, SLOT(receiveFreq(double)));
     connect(this, SIGNAL(getFrequency()), rig, SLOT(getFrequency()));
@@ -266,8 +269,9 @@ wfmain::wfmain(QWidget *parent) :
     connect(this, SIGNAL(getATUStatus()), rig, SLOT(getATUStatus()));
     connect(this, SIGNAL(getRigID()), rig, SLOT(getRigID()));
     connect(rig, SIGNAL(haveATUStatus(unsigned char)), this, SLOT(receiveATUStatus(unsigned char)));
+    connect(rig, SIGNAL(haveRigID(rigCapabilities)), this, SLOT(receiveRigID(rigCapabilities)));
 
-    // Speech (emitted from IC-7300 speaker)
+    // Speech (emitted from rig speaker)
     connect(this, SIGNAL(sayAll()), rig, SLOT(sayAll()));
     connect(this, SIGNAL(sayFrequency()), rig, SLOT(sayFrequency()));
     connect(this, SIGNAL(sayMode()), rig, SLOT(sayMode()));
@@ -295,16 +299,20 @@ wfmain::wfmain(QWidget *parent) :
     wf->addPlottable(colorMap);
 #endif
 
+    //TRY moving to prepareWf():
+
     colorScale = new QCPColorScale(wf);
-    colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
-    colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
-    colorMap->setDataRange(QCPRange(0, 160));
-    colorMap->setGradient(QCPColorGradient::gpJet); // TODO: Add preference
-    colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
-    colorMap->setData(colorMapData);
-    spectRowCurrent = 0;
-    wf->yAxis->setRangeReversed(true);
-    wf->xAxis->setVisible(false);
+//    colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
+//    colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
+//    colorMap->setDataRange(QCPRange(0, 160));
+//    colorMap->setGradient(QCPColorGradient::gpJet); // TODO: Add preference
+//    colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
+//    colorMap->setData(colorMapData);
+//    spectRowCurrent = 0;
+//    wf->yAxis->setRangeReversed(true);
+//    wf->xAxis->setVisible(false);
+
+    // end TRY
 
     ui->tabWidget->setCurrentIndex(0);
 
@@ -547,6 +555,43 @@ void wfmain::saveSettings()
     settings.sync(); // Automatic, not needed (supposedly)
 }
 
+void wfmain::prepareWf()
+{
+    // All this code gets moved in from the constructor of wfmain.
+
+    if(haveRigCaps)
+    {
+        // do things
+        spectWidth = rigCaps.spectLenMax; // was fixed at 475
+        wfLength = 160; // fixed for now, time-length of waterfall
+
+        // Initialize before use!
+
+        QByteArray empty((int)spectWidth, '\x01');
+        spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
+        for(quint16 i=0; i<wfLength; i++)
+        {
+            wfimage.append(empty);
+        }
+
+        // from line 305-313:
+        colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
+        colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
+        colorMap->setDataRange(QCPRange(0, rigCaps.spectAmpMax));
+        colorMap->setGradient(QCPColorGradient::gpJet); // TODO: Add preference
+        colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
+        colorMap->setData(colorMapData);
+        spectRowCurrent = 0;
+        wf->yAxis->setRangeReversed(true);
+        wf->xAxis->setVisible(false);
+
+    } else {
+        qDebug() << "Cannot prepare WF view without rigCaps. Waiting on this.";
+        return;
+    }
+
+}
+
 
 // Key shortcuts (hotkeys)
 
@@ -742,7 +787,7 @@ void wfmain::getInitialRigState()
     // the polling interval is set at 100ms. Faster is possible but slower
     // computers will glitch occassionally.
 
-    cmdOutQue.append(cmdGetRigID); // This may be used in the future.
+    cmdOutQue.append(cmdGetRigID);
 
     cmdOutQue.append(cmdGetFreq);
     cmdOutQue.append(cmdGetMode);
@@ -758,6 +803,11 @@ void wfmain::getInitialRigState()
     // TODO:
     // get TX level
     // get Scope reference Level
+
+    cmdOutQue.append(cmdNone);
+    cmdOutQue.append(cmdGetRigID);
+    cmdOutQue.append(cmdNone);
+    cmdOutQue.append(cmdGetRigID);
 
     cmdOutQue.append(cmdDispEnable);
     cmdOutQue.append(cmdSpecOn);
@@ -962,9 +1012,35 @@ void wfmain::runDelayedCommand()
     }
 }
 
+
+void wfmain::receiveRigID(rigCapabilities rigCaps)
+{
+    // Note: We intentionally request rigID several times
+    // because without rigID, we can't do anything with the waterfall.
+    if(haveRigCaps)
+    {
+        return;
+    } else {
+        qDebug() << "Rig ID received into wfmain: spectLenMax: " << rigCaps.spectLenMax;
+        qDebug() << "Rig ID received into wfmain: spectAmpMax: " << rigCaps.spectAmpMax;
+        qDebug() << "Rig ID received into wfmain: spectSeqMax: " << rigCaps.spectSeqMax;
+        qDebug() << "Rig ID received into wfmain: hasSpectrum: " << rigCaps.hasSpectrum;
+
+        this->rigCaps = rigCaps;
+        this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
+        haveRigCaps = true;
+        prepareWf();
+        // Adding these here because clearly at this point we have valid
+        // rig comms. In the future, we should establish comms and then
+        // do all the initial grabs. For now, this hack of adding them here and there:
+        cmdOutQue.append(cmdGetFreq);
+        cmdOutQue.append(cmdGetMode);
+    }
+}
+
 void wfmain::receiveFreq(double freqMhz)
 {
-    //qDebug() << "Frequency: " << freqMhz;
+    //qDebug() << "HEY WE GOT A Frequency: " << freqMhz;
     ui->freqLabel->setText(QString("%1").arg(freqMhz, 0, 'f'));
     this->freqMhz = freqMhz;
     this->knobFreqMhz = freqMhz;
@@ -979,6 +1055,12 @@ void wfmain::receivePTTstatus(bool pttOn)
 
 void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq)
 {
+    if(!haveRigCaps)
+    {
+        qDebug() << "Spectrum received, but RigID incomplete.";
+        return;
+    }
+
     if((startFreq != oldLowerFreq) || (endFreq != oldUpperFreq))
     {
         // If the frequency changed and we were drawing peaks, now is the time to clearn them
@@ -996,9 +1078,14 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     //qDebug() << "start: " << startFreq << " end: " << endFreq;
     quint16 specLen = spectrum.length();
     //qDebug() << "Spectrum data received at UI! Length: " << specLen;
-    if(specLen != 475)
+    //if( (specLen != 475) || (specLen!=689) )
+
+    if( specLen != rigCaps.spectLenMax )
     {
-        //qDebug () << "Unusual spectrum: length: " << specLen;
+        qDebug() << "-------------------------------------------";
+        qDebug() << "------ Unusual spectrum received, length: " << specLen;
+        qDebug() << "------ Expected spectrum length: " << rigCaps.spectLenMax;
+        qDebug() << "------ This should happen once at most. ";
         return; // safe. Using these unusual length things is a problem.
     }
 
@@ -1208,7 +1295,11 @@ void wfmain::receiveDataModeStatus(bool dataEnabled)
 
 void wfmain::on_clearPeakBtn_clicked()
 {
-    spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
+    if(haveRigCaps)
+    {
+        spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
+    }
+    return;
 }
 
 void wfmain::on_drawPeakChk_clicked(bool checked)

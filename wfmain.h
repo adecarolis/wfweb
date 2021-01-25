@@ -8,11 +8,14 @@
 #include <QTimer>
 #include <QSettings>
 #include <QShortcut>
+#include <QMetaType>
 
 
 #include "commhandler.h"
 #include "rigcommander.h"
 #include "freqmemory.h"
+#include "rigidentities.h"
+
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
 
@@ -111,7 +114,7 @@ private slots:
     void receiveAfGain(unsigned char level);
     void receiveSql(unsigned char level);
     void receiveATUStatus(unsigned char atustatus);
-
+    void receiveRigID(rigCapabilities rigCaps);
     void handlePlotClick(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);
@@ -240,6 +243,7 @@ private:
     //commHandler *comm;
     void setAppTheme(bool isDark);
     void setPlotTheme(QCustomPlot *plot, bool isDark);
+    void prepareWf();
     void getInitialRigState();
     QWidget * theParent;
     QStringList portList;
@@ -366,10 +370,16 @@ private:
 
     int oldFreqDialVal;
 
+    rigCapabilities rigCaps;
+    bool haveRigCaps;
+
     void bandStackBtnClick();
     bool waitingForBandStackRtn;
     char bandStkBand;
     char bandStkRegCode;
 };
+
+Q_DECLARE_METATYPE(struct rigCapabilities) ;
+
 
 #endif // WFMAIN_H
