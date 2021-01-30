@@ -218,6 +218,11 @@ wfmain::wfmain(QWidget *parent) :
 
     ui->statusBar->showMessage("Almost ready", 2000);
 
+    delayedCommand = new QTimer(this);
+    delayedCommand->setInterval(250); // 250ms until we find rig civ and id, then 100ms.
+    delayedCommand->setSingleShot(true);
+    connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
+
     openRig();
 
 //    rig = new rigCommander(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud);
@@ -327,10 +332,10 @@ wfmain::wfmain(QWidget *parent) :
 
     ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
 
-    delayedCommand = new QTimer(this);
-    delayedCommand->setInterval(100); // ms. 250 was fine. TODO: Find practical maximum with margin on pi
-    delayedCommand->setSingleShot(true);
-    connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
+//    delayedCommand = new QTimer(this);
+//    delayedCommand->setInterval(100); // ms. 250 was fine. TODO: Find practical maximum with margin on pi
+//    delayedCommand->setSingleShot(true);
+//    connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
 
     pttTimer = new QTimer(this);
     pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
@@ -398,9 +403,13 @@ void wfmain::openRig()
         // Find the ICOM IC-7300.
         qDebug() << "Searching for serial port...";
         QDirIterator it("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
+        QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*", QDir::Files, QDirIterator::Subdirectories);
 
         while (it.hasNext())
             qDebug() << it.next();
+        while(it97.hasNext())
+            qDebug() << it97.next();
+
         // if (it.isEmpty()) // fail or default to ttyUSB0 if present
         // iterator might not make sense
         serialPortRig = it.filePath(); // first? last?
@@ -427,30 +436,20 @@ void wfmain::openRig()
     rigThread->start();
     connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
     connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
-    // connect rig, signal discoveredRigID
 
-    // emit findRig(); // tell rigCommander to broadcast a request for all rig IDs.
-
-    // TODO: Fix cheat code
     if(prefs.radioCIVAddr == 0)
     {
         // tell rigCommander to broadcast a request for all rig IDs.
         qDebug() << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
         emit getRigCIV();
         cmdOutQue.append(cmdGetRigCIV);
-        cmdOutQue.append(cmdGetRigCIV);
-
-        // TODO: Set timer, if no reply in 100ms, try again.
-        // This should not be a queued command. Call it and ideally wait.
-
+        delayedCommand->start();
     } else {
         // don't bother, they told us the CIV they want, stick with it.
         // We still query the rigID to find the model, but at least we know the CIV.
         qDebug() << "Skipping automatic CIV, using user-supplied value of " << prefs.radioCIVAddr;
         getInitialRigState();
     }
-
-
 }
 
 void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
@@ -458,7 +457,7 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     // Entry point for unknown rig being identified at the start of the program.
     //now we know what the rig ID is:
     qDebug() << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
-
+    delayedCommand->setInterval(100); // faster polling is ok now.
     receiveRigID(rigCaps);
     getInitialRigState();
     return;
@@ -871,7 +870,7 @@ void wfmain::shortcutM()
 }
 
 
-void wfmain::getInitialRigState()
+void wfmain:: getInitialRigState()
 {
     // Initial list of queries to the radio.
     // These are made when the program starts up
@@ -879,7 +878,7 @@ void wfmain::getInitialRigState()
     // the polling interval is set at 100ms. Faster is possible but slower
     // computers will glitch occassionally.
 
-    cmdOutQue.append(cmdGetRigID);
+    //cmdOutQue.append(cmdGetRigID);
 
     cmdOutQue.append(cmdGetFreq);
     cmdOutQue.append(cmdGetMode);
@@ -896,10 +895,10 @@ void wfmain::getInitialRigState()
     // get TX level
     // get Scope reference Level
 
-    cmdOutQue.append(cmdNone);
-    cmdOutQue.append(cmdGetRigID);
-    cmdOutQue.append(cmdNone);
-    cmdOutQue.append(cmdGetRigID);
+    //cmdOutQue.append(cmdNone);
+    //cmdOutQue.append(cmdGetRigID);
+    //cmdOutQue.append(cmdNone);
+    //cmdOutQue.append(cmdGetRigID);
 
     cmdOutQue.append(cmdDispEnable);
     cmdOutQue.append(cmdSpecOn);
@@ -1050,7 +1049,12 @@ void wfmain::runDelayedCommand()
                 emit getRigID();
                 break;
             case cmdGetRigCIV:
-                emit getRigCIV();
+                // if(!know rig civ already)
+                if(!haveRigCaps)
+                {
+                    emit getRigCIV();
+                    cmdOutQue.append(cmdGetRigCIV); // This way, we stay here until we get an answer.
+                }
                 break;
             case cmdGetFreq:
                 emit getFrequency();
