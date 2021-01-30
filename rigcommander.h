@@ -2,6 +2,7 @@
 #define RIGCOMMANDER_H
 
 #include <QObject>
+#include <QDebug>
 
 #include "commhandler.h"
 #include "rigidentities.h"
@@ -55,6 +56,7 @@ public slots:
     void setATU(bool enabled);
     void getATUStatus();
     void getRigID();
+    void findRigs();
     void setCIVAddr(unsigned char civAddr);
     void handleNewData(const QByteArray &data);
     void sayFrequency();
@@ -65,6 +67,7 @@ public slots:
 signals:
     void haveSpectrumData(QByteArray spectrum, double startFreq, double endFreq); // pass along data to UI
     void haveRigID(rigCapabilities rigCaps);
+    void discoveredRigID(rigCapabilities rigCaps);
     void haveFrequency(double frequencyMhz);
     void haveMode(QString mode);
     void haveDataMode(bool dataModeEnabled);
@@ -131,9 +134,12 @@ private:
     quint16 spectLenMax;
 
     bool usingNativeLAN; // indicates using OEM LAN connection (705,7610,9700,7850)
+    bool lookingForRig;
+    bool foundRig;
 
     double frequencyMhz;
-    unsigned char civAddr; // 0x94 is default = 148decimal
+    unsigned char civAddr; // IC-7300: 0x94 is default = 148decimal
+    unsigned char incommingCIVAddr; // place to store the incoming CIV.
     //const unsigned char compCivAddr = 0xE1; // 0xE1 is new default, 0xE0 was before.
     bool pttAllowed;
 

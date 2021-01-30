@@ -48,6 +48,10 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quin
     // payloadPrefix.append("\xE0");
 
     payloadSuffix = QByteArray("\xFD");
+
+    lookingForRig = false;
+    foundRig = false;
+
     // TODO: list full contents of /dev/serial, grep for IC-7300
     // /dev/serial/by-path$ ls
     //     total 0
@@ -74,6 +78,30 @@ rigCommander::~rigCommander()
 void rigCommander::process()
 {
     // new thread enters here. Do nothing.
+}
+
+void rigCommander::findRigs()
+{
+    // This function sends data to 0x00 ("broadcast") to look for any connected rig.
+    lookingForRig = true;
+    foundRig = false;
+
+    QByteArray data;
+    QByteArray data2;
+    data.setRawData("\xFE\xFE\x00", 3);
+    data.append(compCivAddr); // wfview's address, 0xE1
+    data2.setRawData("\x19\x00", 2); // get rig ID
+    data.append(data2);
+    data.append(payloadSuffix);
+
+    //check this:
+#ifdef QT_DEBUG
+    qDebug() << "About to request list of radios connected, using this command: ";
+    printHex(data, false, true);
+#endif
+
+    emit dataForComm(data);
+    return;
 }
 
 void rigCommander::prepDataAndSend(QByteArray data)
@@ -441,6 +469,7 @@ void rigCommander::parseData(QByteArray dataInput)
             //return;
         }
 
+        incommingCIVAddr = data[03]; // track the CIV of the sender.
         switch(data[02])
         {
             //    case civAddr: // can't have a variable here :-(
@@ -534,9 +563,10 @@ void rigCommander::parseCommand()
         case '\x19':
             // qDebug() << "Have rig ID: " << (unsigned int)payloadIn[2];
             // printHex(payloadIn, false, true);
-            model = determineRadioModel(payloadIn[2]);
+            model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
             determineRigCaps();
             qDebug() << "Have rig ID: decimal: " << (unsigned int)model;
+
 
 
             break;
@@ -856,6 +886,10 @@ void rigCommander::determineRigCaps()
     //TODO: Add if(usingNativeLAN) condition
     //TODO: Determine available bands (low priority, rig will reject out of band requests anyway)
 
+    rigCaps.model = model;
+    rigCaps.modelID = model; // may delete later
+    rigCaps.civ = incommingCIVAddr;
+
     switch(model){
         case model7300:
             rigCaps.hasSpectrum = true;
@@ -914,7 +948,22 @@ void rigCommander::determineRigCaps()
 
     }
     haveRigCaps = true;
-    emit haveRigID(rigCaps);
+    if(lookingForRig)
+    {
+        lookingForRig = false;
+        foundRig = true;
+        qDebug() << "---Rig FOUND from broadcast query:";
+        this->civAddr = incommingCIVAddr; // Override and use immediately.
+
+        payloadPrefix = QByteArray("\xFE\xFE");
+        payloadPrefix.append(civAddr);
+        payloadPrefix.append(compCivAddr);
+        // if there is a compile-time error, remove the hex printout prefix from below .
+        qDebug() << "Using incommingCIVAddr: (int): " << this->civAddr << " hex: " << hex << this->civAddr;
+        emit discoveredRigID(rigCaps);
+    } else {
+        emit haveRigID(rigCaps);
+    }
 }
 
 void rigCommander::parseSpectrum()
@@ -1031,7 +1080,16 @@ void rigCommander::parseFrequency()
     //    payloadIn[01] = ; //      . XX KHz
 
     // printHex(payloadIn, false, true);
-    frequencyMhz = payloadIn[04] & 0x0f;
+    frequencyMhz = 0.0;
+    if(payloadIn.length() == 7)
+    {
+        // 7300 has these digits too, as zeros.
+        // IC-705 or IC-9700 with higher frequency data available.
+        frequencyMhz += 100*(payloadIn[05] & 0x0f);
+        frequencyMhz += (1000*((payloadIn[05] & 0xf0) >> 4));
+    }
+
+    frequencyMhz += payloadIn[04] & 0x0f;
     frequencyMhz += 10*((payloadIn[04] & 0xf0) >> 4);
 
     frequencyMhz += ((payloadIn[03] & 0xf0) >>4)/10.0 ;
@@ -1059,7 +1117,10 @@ float rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
 
     float freq = 0.0;
 
-    freq = data[lastPosition] & 0x0f;
+    freq += 100*(data[lastPosition+1] & 0x0f);
+    freq += (1000*((data[lastPosition+1] & 0xf0) >> 4));
+
+    freq += data[lastPosition] & 0x0f;
     freq += 10*((data[lastPosition] & 0xf0) >> 4);
 
     freq += ((data[lastPosition-1] & 0xf0) >>4)/10.0 ;

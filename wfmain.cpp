@@ -149,26 +149,26 @@ wfmain::wfmain(QWidget *parent) :
     loadSettings(); // Look for saved preferences
 
     // if setting for serial port is "auto" then...
-    if(prefs.serialPortRadio == QString("auto"))
-    {
-        // Find the ICOM IC-7300.
-        qDebug() << "Searching for serial port...";
-        QDirIterator it("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
+//    if(prefs.serialPortRadio == QString("auto"))
+//    {
+//        // Find the ICOM IC-7300.
+//        qDebug() << "Searching for serial port...";
+//        QDirIterator it("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
 
-        while (it.hasNext())
-            qDebug() << it.next();
-        // if (it.isEmpty()) // fail or default to ttyUSB0 if present
-        // iterator might not make sense
-        serialPortRig = it.filePath(); // first? last?
-        if(serialPortRig.isEmpty())
-        {
-            qDebug() << "Cannot find IC-7300 serial port. Trying /dev/ttyUSB0";
-            serialPortRig = QString("/dev/ttyUSB0");
-        }
-        // end finding the 7300 code
-    } else {
-        serialPortRig = prefs.serialPortRadio;
-    }
+//        while (it.hasNext())
+//            qDebug() << it.next();
+//        // if (it.isEmpty()) // fail or default to ttyUSB0 if present
+//        // iterator might not make sense
+//        serialPortRig = it.filePath(); // first? last?
+//        if(serialPortRig.isEmpty())
+//        {
+//            qDebug() << "Cannot find IC-7300 serial port. Trying /dev/ttyUSB0";
+//            serialPortRig = QString("/dev/ttyUSB0");
+//        }
+//        // end finding the 7300 code
+//    } else {
+//        serialPortRig = prefs.serialPortRadio;
+//    }
 
 
     plot = ui->plot; // rename it waterfall.
@@ -216,16 +216,18 @@ wfmain::wfmain(QWidget *parent) :
     ui->afGainSlider->setSingleStep(100);
 
 
-    ui->statusBar->showMessage("Ready", 2000);
+    ui->statusBar->showMessage("Almost ready", 2000);
 
-    rig = new rigCommander(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud);
+    openRig();
 
-    rigThread = new QThread(this);
+//    rig = new rigCommander(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud);
 
-    rig->moveToThread(rigThread);
-    connect(rigThread, SIGNAL(started()), rig, SLOT(process()));
-    connect(rig, SIGNAL(finished()), rigThread, SLOT(quit()));
-    rigThread->start();
+//    rigThread = new QThread(this);
+
+//    rig->moveToThread(rigThread);
+//    connect(rigThread, SIGNAL(started()), rig, SLOT(process()));
+//    connect(rig, SIGNAL(finished()), rigThread, SLOT(quit()));
+//    rigThread->start();
 
     qRegisterMetaType<rigCapabilities>();
 
@@ -363,7 +365,7 @@ wfmain::wfmain(QWidget *parent) :
     on_drawPeakChk_clicked(prefs.drawPeaks);
     drawPeaks = prefs.drawPeaks;
 
-    getInitialRigState();
+    //getInitialRigState();
     oldFreqDialVal = ui->freqDial->value();
 }
 
@@ -373,13 +375,103 @@ wfmain::~wfmain()
     delete ui;
 }
 
+void wfmain::openRig()
+{
+    // This function is intended to handle opening a connection to the rig.
+    // the connection can be either serial or network,
+    // and this function is also responsible for initiating the search for a rig model and capabilities.
+    // Any errors, such as unable to open connection or unable to open port, are to be reported to the user.
+
+    //TODO: if(hasRunPreviously)
+
+    //TODO: if(useNetwork){...
+
+    // } else {
+
+    // if (prefs.fileWasNotFound) {
+    //     showRigSettings(); // rig setting dialog box for network/serial, CIV, hostname, port, baud rate, serial device, etc
+    // TODO: How do we know if the setting was loaded?
+
+
+    if(prefs.serialPortRadio == QString("auto"))
+    {
+        // Find the ICOM IC-7300.
+        qDebug() << "Searching for serial port...";
+        QDirIterator it("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
+
+        while (it.hasNext())
+            qDebug() << it.next();
+        // if (it.isEmpty()) // fail or default to ttyUSB0 if present
+        // iterator might not make sense
+        serialPortRig = it.filePath(); // first? last?
+        if(serialPortRig.isEmpty())
+        {
+            qDebug() << "Cannot find IC-7300 serial port. Trying /dev/ttyUSB0";
+            serialPortRig = QString("/dev/ttyUSB0");
+        }
+        // end finding the 7300 code
+    } else {
+        serialPortRig = prefs.serialPortRadio;
+    }
+
+    // Here, the radioCIVAddr is being set from a default preference, whihc is for the 7300.
+    // However, we will not use it initially. OTOH, if it is set explicitedly to a value in the prefs,
+    // then we skip auto detection.
+    rig = new rigCommander(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud);
+
+    rigThread = new QThread(this);
+
+    rig->moveToThread(rigThread);
+    connect(rigThread, SIGNAL(started()), rig, SLOT(process()));
+    connect(rig, SIGNAL(finished()), rigThread, SLOT(quit()));
+    rigThread->start();
+    connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
+    connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
+    // connect rig, signal discoveredRigID
+
+    // emit findRig(); // tell rigCommander to broadcast a request for all rig IDs.
+
+    // TODO: Fix cheat code
+    if(prefs.radioCIVAddr == 0)
+    {
+        // tell rigCommander to broadcast a request for all rig IDs.
+        qDebug() << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
+        emit getRigCIV();
+        cmdOutQue.append(cmdGetRigCIV);
+        cmdOutQue.append(cmdGetRigCIV);
+
+        // TODO: Set timer, if no reply in 100ms, try again.
+        // This should not be a queued command. Call it and ideally wait.
+
+    } else {
+        // don't bother, they told us the CIV they want, stick with it.
+        // We still query the rigID to find the model, but at least we know the CIV.
+        qDebug() << "Skipping automatic CIV, using user-supplied value of " << prefs.radioCIVAddr;
+        getInitialRigState();
+    }
+
+
+}
+
+void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
+{
+    // Entry point for unknown rig being identified at the start of the program.
+    //now we know what the rig ID is:
+    qDebug() << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
+
+    receiveRigID(rigCaps);
+    getInitialRigState();
+    return;
+}
+
+
 void wfmain::setDefPrefs()
 {
     defPrefs.useFullScreen = true;
     defPrefs.useDarkMode = true;
     defPrefs.drawPeaks = true;
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
-    defPrefs.radioCIVAddr = 0x94;
+    defPrefs.radioCIVAddr = 0x00; // previously was 0x94 for 7300.
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.serialPortBaud = 115200;
     defPrefs.enablePTT = false;
@@ -956,6 +1048,9 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdGetRigID:
                 emit getRigID();
+                break;
+            case cmdGetRigCIV:
+                emit getRigCIV();
                 break;
             case cmdGetFreq:
                 emit getFrequency();
@@ -1926,8 +2021,12 @@ void wfmain::on_pttEnableChk_clicked(bool checked)
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
+    qDebug() << "Debug button pressed.";
+
     // TODO: Why don't these commands work?!
     //emit getScopeMode();
     //emit getScopeEdge(); // 1,2,3 only in "fixed" mode
     //emit getScopeSpan(); // in khz, only in "center" mode
+    qDebug() << "Debug: finding rigs attached. Let's see if this works. ";
+    rig->findRigs();
 }

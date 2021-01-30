@@ -50,7 +50,8 @@ signals:
     void startATU();
     void setATU(bool atuEnabled);
     void getATUStatus();
-    void getRigID();
+    void getRigID(); // this is the model of the rig
+    void getRigCIV(); // get the rig's CIV addr
     void spectOutputEnable();
     void spectOutputDisable();
     void scopeDisplayEnable();
@@ -115,6 +116,7 @@ private slots:
     void receiveSql(unsigned char level);
     void receiveATUStatus(unsigned char atustatus);
     void receiveRigID(rigCapabilities rigCaps);
+    void receiveFoundRigID(rigCapabilities rigCaps);
     void handlePlotClick(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);
@@ -245,6 +247,7 @@ private:
     void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
     void getInitialRigState();
+    void openRig();
     QWidget * theParent;
     QStringList portList;
     QString serialPortRig;
@@ -318,7 +321,7 @@ private:
     double oldUpperFreq;
     double freqMhz;
     double knobFreqMhz;
-    enum cmds {cmdNone, cmdGetRigID, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
+    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
               cmdGetSql, cmdGetATUStatus};
     cmds cmdOut;

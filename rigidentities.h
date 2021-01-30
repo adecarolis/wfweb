@@ -26,7 +26,10 @@ enum model_kind {
 model_kind determineRadioModel(unsigned char rigID);
 
 struct rigCapabilities {
-    //model_kind model;
+    model_kind model;
+
+    quint8 civ;
+    quint8 modelID;
 
     bool hasLan; // OEM ethernet or wifi connection
     bool hasEthernet;
