@@ -7,7 +7,7 @@
 // This code is copyright 2017-2020 Elliott H. Liggett
 // All rights reserved
 
-wfmain::wfmain(QWidget *parent) :
+wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent ) :
     QMainWindow(parent),
     ui(new Ui::wfmain)
 {
@@ -19,6 +19,9 @@ wfmain::wfmain(QWidget *parent) :
     theParent = parent;
 
     setWindowTitle(QString("wfview"));
+
+    this->serialPortCL = serialPortCL;
+    this->hostCL = hostCL;
 
     haveRigCaps = false;
 
@@ -216,7 +219,7 @@ wfmain::wfmain(QWidget *parent) :
     ui->afGainSlider->setSingleStep(100);
 
 
-    ui->statusBar->showMessage("Almost ready", 2000);
+    ui->statusBar->showMessage("Connecting to rig...", 1000);
 
     delayedCommand = new QTimer(this);
     delayedCommand->setInterval(250); // 250ms until we find rig civ and id, then 100ms.
@@ -224,15 +227,6 @@ wfmain::wfmain(QWidget *parent) :
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
 
     openRig();
-
-//    rig = new rigCommander(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud);
-
-//    rigThread = new QThread(this);
-
-//    rig->moveToThread(rigThread);
-//    connect(rigThread, SIGNAL(started()), rig, SLOT(process()));
-//    connect(rig, SIGNAL(finished()), rigThread, SLOT(quit()));
-//    rigThread->start();
 
     qRegisterMetaType<rigCapabilities>();
 
@@ -306,20 +300,7 @@ wfmain::wfmain(QWidget *parent) :
     wf->addPlottable(colorMap);
 #endif
 
-    //TRY moving to prepareWf():
-
     colorScale = new QCPColorScale(wf);
-//    colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
-//    colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
-//    colorMap->setDataRange(QCPRange(0, 160));
-//    colorMap->setGradient(QCPColorGradient::gpJet); // TODO: Add preference
-//    colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
-//    colorMap->setData(colorMapData);
-//    spectRowCurrent = 0;
-//    wf->yAxis->setRangeReversed(true);
-//    wf->xAxis->setVisible(false);
-
-    // end TRY
 
     ui->tabWidget->setCurrentIndex(0);
 
@@ -332,10 +313,7 @@ wfmain::wfmain(QWidget *parent) :
 
     ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
 
-//    delayedCommand = new QTimer(this);
-//    delayedCommand->setInterval(100); // ms. 250 was fine. TODO: Find practical maximum with margin on pi
-//    delayedCommand->setSingleShot(true);
-//    connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
+;
 
     pttTimer = new QTimer(this);
     pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
@@ -398,29 +376,68 @@ void wfmain::openRig()
     // TODO: How do we know if the setting was loaded?
 
 
-    if(prefs.serialPortRadio == QString("auto"))
+    // TODO: Use these if they are found
+#ifdef QT_DEBUG
+    if(!serialPortCL.isEmpty())
     {
-        // Find the ICOM IC-7300.
-        qDebug() << "Searching for serial port...";
-        QDirIterator it("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
-        QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*", QDir::Files, QDirIterator::Subdirectories);
-
-        while (it.hasNext())
-            qDebug() << it.next();
-        while(it97.hasNext())
-            qDebug() << it97.next();
-
-        // if (it.isEmpty()) // fail or default to ttyUSB0 if present
-        // iterator might not make sense
-        serialPortRig = it.filePath(); // first? last?
-        if(serialPortRig.isEmpty())
-        {
-            qDebug() << "Cannot find IC-7300 serial port. Trying /dev/ttyUSB0";
-            serialPortRig = QString("/dev/ttyUSB0");
-        }
-        // end finding the 7300 code
+        qDebug() << "Serial port specified by user: " << serialPortCL;
     } else {
-        serialPortRig = prefs.serialPortRadio;
+        qDebug() << "Serial port not specified. ";
+    }
+
+    if(!hostCL.isEmpty())
+    {
+        qDebug() << "Remote host name specified by user: " << hostCL;
+    }
+#endif
+
+    if( (prefs.serialPortRadio == QString("auto")) && (serialPortCL.isEmpty()))
+    {
+        // Find the ICOM
+        // qDebug() << "Searching for serial port...";
+        QDirIterator it73("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
+        QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*A*", QDir::Files, QDirIterator::Subdirectories);
+        QDirIterator it785x("/dev/serial", QStringList() << "*IC-785*A*", QDir::Files, QDirIterator::Subdirectories);
+        QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
+
+
+        if(!it73.filePath().isEmpty())
+        {
+            // use
+            serialPortRig = it73.filePath(); // first
+        } else if(!it97.filePath().isEmpty())
+        {
+            // IC-9700 port
+            serialPortRig = it97.filePath();
+        } else if(!it785x.filePath().isEmpty())
+        {
+            // IC-785x port
+            serialPortRig = it785x.filePath();
+        } else if(!it705.filePath().isEmpty())
+        {
+            // IC-705
+            serialPortRig = it705.filePath();
+        } else {
+            //fall back:
+            qDebug() << "Could not find Icom serial port. Falling back to OS default. Use --port to specify, or modify preferences.";
+#ifdef Q_OS_MAC
+            serialPortRig = QString("/dev/tty.SLAB_USBtoUART");
+#endif
+#ifdef Q_OS_LINUX
+            serialPortRig = QString("/dev/ttyUSB0");
+#endif
+#ifdef Q_OS_UNIX
+            serialPortRig = QString("/dev/ttyUSB0");
+#endif
+        }
+
+    } else {
+        if(serialPortCL.isEmpty())
+        {
+            serialPortRig = prefs.serialPortRadio;
+        } else {
+            serialPortRig = serialPortCL;
+        }
     }
 
     // Here, the radioCIVAddr is being set from a default preference, whihc is for the 7300.
@@ -433,14 +450,17 @@ void wfmain::openRig()
     rig->moveToThread(rigThread);
     connect(rigThread, SIGNAL(started()), rig, SLOT(process()));
     connect(rig, SIGNAL(finished()), rigThread, SLOT(quit()));
+    connect(rig, SIGNAL(haveSerialPortError(QString,QString)), this, SLOT(receiveSerialPortError(QString,QString)));
     rigThread->start();
     connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
     connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
+    ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
 
     if(prefs.radioCIVAddr == 0)
     {
         // tell rigCommander to broadcast a request for all rig IDs.
-        qDebug() << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
+        // qDebug() << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
+        ui->statusBar->showMessage(QString("Searching CIV bus for connected radios."), 1000);
         emit getRigCIV();
         cmdOutQue.append(cmdGetRigCIV);
         delayedCommand->start();
@@ -456,13 +476,25 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
 {
     // Entry point for unknown rig being identified at the start of the program.
     //now we know what the rig ID is:
-    qDebug() << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
+    //qDebug() << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
     delayedCommand->setInterval(100); // faster polling is ok now.
     receiveRigID(rigCaps);
     getInitialRigState();
+
+    QString message = QString("Found model: ").append(rigCaps.modelName);
+
+    ui->statusBar->showMessage(message, 1500);
+
     return;
 }
 
+void wfmain::receiveSerialPortError(QString port, QString errorText)
+{
+    qDebug() << "wfmain: received serial port error for port: " << port << " with message: " << errorText;
+    ui->statusBar->showMessage(QString("ERROR: using port ").append(port).append(": ").append(errorText), 10000);
+
+    // TODO: Dialog box, exit, etc
+}
 
 void wfmain::setDefPrefs()
 {
@@ -1120,11 +1152,14 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
     {
         return;
     } else {
+#ifdef QT_DEBUG
+        qDebug() << "Rig name: " << rigCaps.modelName;
+        qDebug() << "Has LAN capabilities: " << rigCaps.hasLan;
         qDebug() << "Rig ID received into wfmain: spectLenMax: " << rigCaps.spectLenMax;
         qDebug() << "Rig ID received into wfmain: spectAmpMax: " << rigCaps.spectAmpMax;
         qDebug() << "Rig ID received into wfmain: spectSeqMax: " << rigCaps.spectSeqMax;
         qDebug() << "Rig ID received into wfmain: hasSpectrum: " << rigCaps.hasSpectrum;
-
+#endif
         this->rigCaps = rigCaps;
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
         haveRigCaps = true;
@@ -1156,7 +1191,9 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 {
     if(!haveRigCaps)
     {
+#ifdef QT_DEBUG
         qDebug() << "Spectrum received, but RigID incomplete.";
+#endif
         return;
     }
 
@@ -1181,10 +1218,12 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
     if( specLen != rigCaps.spectLenMax )
     {
+#ifdef QT_DEBUG
         qDebug() << "-------------------------------------------";
         qDebug() << "------ Unusual spectrum received, length: " << specLen;
         qDebug() << "------ Expected spectrum length: " << rigCaps.spectLenMax;
         qDebug() << "------ This should happen once at most. ";
+#endif
         return; // safe. Using these unusual length things is a problem.
     }
 
@@ -1302,12 +1341,15 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     // .y() and is +/- 120.
     // We will click the dial once for every 120 received.
     //QPoint delta = we->angleDelta();
+
+    // TODO: Use other method, knob has too few positions to be useful for large steps.
+
     int steps = we->angleDelta().y() / 120;
     Qt::KeyboardModifiers key=  we->modifiers();
 
     if (key == Qt::ShiftModifier)
     {
-        // TODO: Zoom
+        steps *=20;
     } else if (key == Qt::ControlModifier)
     {
         steps *=10;

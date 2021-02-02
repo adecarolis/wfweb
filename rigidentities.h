@@ -2,6 +2,7 @@
 #define RIGIDENTITIES_H
 
 #include <QtNumeric>
+#include <QString>
 
 // Credit:
 // http://www.docksideradio.com/Icom%20Radio%20Hex%20Addresses.htm
@@ -30,6 +31,8 @@ struct rigCapabilities {
 
     quint8 civ;
     quint8 modelID;
+
+    QString modelName;
 
     bool hasLan; // OEM ethernet or wifi connection
     bool hasEthernet;

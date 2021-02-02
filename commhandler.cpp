@@ -131,6 +131,7 @@ commHandler::~commHandler()
 
 void commHandler::setupComm()
 {
+    serialError = false;
     port->setPortName(portName);
     port->setBaudRate(baudrate);
     port->setStopBits(QSerialPort::OneStop);// OneStop is other option
@@ -264,6 +265,8 @@ void commHandler::openPort()
         // debug?
         qDebug() << "Could not open serial port " << portName << " , please restart.";
         isConnected = false;
+        serialError = true;
+        emit haveSerialPortError(portName, "Could not open port. Please restart.");
         return;
     }
 

@@ -28,7 +28,9 @@ class wfmain : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit wfmain(QWidget *parent = 0);
+    explicit wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent = 0);
+    QString serialPortCL;
+    QString hostCL;
     ~wfmain();
 
 signals:
@@ -117,6 +119,7 @@ private slots:
     void receiveATUStatus(unsigned char atustatus);
     void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
+    void receiveSerialPortError(QString port, QString errorText);
     void handlePlotClick(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);

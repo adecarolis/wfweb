@@ -58,6 +58,7 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quin
     //    lrwxrwxrwx 1 root root 13 Nov 24 21:43 pci-0000:00:12.0-usb-0:2.1:1.0-port0 -> ../../ttyUSB0
 
     // comm = new commHandler("/dev/ttyUSB0");
+    this->rigSerialPort = rigSerialPort;
     comm = new commHandler(rigSerialPort, rigBaudRate);
 
     // data from the comm port to the program:
@@ -66,8 +67,11 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quin
     // data from the program to the comm port:
     connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
 
+    connect(comm, SIGNAL(haveSerialPortError(QString,QString)), this, SLOT(handleSerialPortError(QString,QString)));
+
     connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
+
 }
 
 rigCommander::~rigCommander()
@@ -77,7 +81,17 @@ rigCommander::~rigCommander()
 
 void rigCommander::process()
 {
-    // new thread enters here. Do nothing.
+    // new thread enters here. Do nothing but do check for errors.
+    if(comm->serialError)
+    {
+        emit haveSerialPortError(rigSerialPort, QString("Error from commhandler. Check serial port."));
+    }
+}
+
+void rigCommander::handleSerialPortError(const QString port, const QString errorText)
+{
+    qDebug() << "Error using port " << port << " message: " << errorText;
+    emit haveSerialPortError(port, errorText);
 }
 
 void rigCommander::findRigs()
@@ -469,7 +483,7 @@ void rigCommander::parseData(QByteArray dataInput)
             //return;
         }
 
-        incommingCIVAddr = data[03]; // track the CIV of the sender.
+        incomingCIVAddr = data[03]; // track the CIV of the sender.
         switch(data[02])
         {
             //    case civAddr: // can't have a variable here :-(
@@ -888,10 +902,11 @@ void rigCommander::determineRigCaps()
 
     rigCaps.model = model;
     rigCaps.modelID = model; // may delete later
-    rigCaps.civ = incommingCIVAddr;
+    rigCaps.civ = incomingCIVAddr;
 
     switch(model){
         case model7300:
+            rigCaps.modelName = QString("IC-7300");
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 11;
             rigCaps.spectAmpMax = 160;
@@ -901,6 +916,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             break;
         case model9700:
+            rigCaps.modelName = QString("IC-9700");
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 11;
             rigCaps.spectAmpMax = 160;
@@ -910,6 +926,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             break;
         case model7610:
+            rigCaps.modelName = QString("IC-7610");
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 15;
             rigCaps.spectAmpMax = 200;
@@ -919,6 +936,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             break;
         case model7850:
+            rigCaps.modelName = QString("IC-785x");
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 15;
             rigCaps.spectAmpMax = 136;
@@ -928,6 +946,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             break;
         case model705:
+            rigCaps.modelName = QString("IC-705");
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 11;
             rigCaps.spectAmpMax = 160;
@@ -937,6 +956,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = true;
             break;
         default:
+            rigCaps.modelName = QString("IC-unknown");
             rigCaps.hasSpectrum = false;
             rigCaps.spectSeqMax = 0;
             rigCaps.spectAmpMax = 0;
@@ -952,14 +972,16 @@ void rigCommander::determineRigCaps()
     {
         lookingForRig = false;
         foundRig = true;
+#ifdef QT_DEBUG
         qDebug() << "---Rig FOUND from broadcast query:";
-        this->civAddr = incommingCIVAddr; // Override and use immediately.
+#endif
+        this->civAddr = incomingCIVAddr; // Override and use immediately.
 
         payloadPrefix = QByteArray("\xFE\xFE");
         payloadPrefix.append(civAddr);
         payloadPrefix.append(compCivAddr);
-        // if there is a compile-time error, remove the hex printout prefix from below .
-        qDebug() << "Using incommingCIVAddr: (int): " << this->civAddr << " hex: " << hex << this->civAddr;
+        // if there is a compile-time error, remove the following line, the "hex" part is the issue:
+        qDebug() << "Using incomingCIVAddr: (int): " << this->civAddr << " hex: " << hex << this->civAddr;
         emit discoveredRigID(rigCaps);
     } else {
         emit haveRigID(rigCaps);
@@ -970,7 +992,9 @@ void rigCommander::parseSpectrum()
 {
     if(!haveRigCaps)
     {
+#ifdef QT_DEBUG
         qDebug() << "Spectrum received in rigCommander, but rigID is incomplete.";
+#endif
         return;
     }
     if(rigCaps.spectSeqMax == 0)
@@ -1014,6 +1038,14 @@ void rigCommander::parseSpectrum()
     unsigned char sequence = bcdHexToDecimal(payloadIn[03]);
     //unsigned char sequenceMax = bcdHexToDecimal(payloadIn[04]);
     unsigned char scopeMode = bcdHexToDecimal(payloadIn[05]);
+
+    if(scopeMode != oldScopeMode)
+    {
+        //TODO:
+        // emit haveNewScopeMode(scopeMode);
+        oldScopeMode = scopeMode;
+    }
+
     // unsigned char waveInfo = payloadIn[06]; // really just one byte?
     //qDebug() << "Spectrum Data received: " << sequence << "/" << sequenceMax << " mode: " << scopeMode << " waveInfo: " << waveInfo << " length: " << payloadIn.length();
 
@@ -1146,6 +1178,9 @@ void rigCommander::parseMode()
     // USB:
     //"INDEX: 00 01 02 03 "
     //"DATA:  01 01 02 fd "
+
+    //TODO: D-Star DV and DD modes.
+
     switch(payloadIn[01])
     {
         case '\x00':

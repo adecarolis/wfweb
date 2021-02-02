@@ -59,6 +59,7 @@ public slots:
     void findRigs();
     void setCIVAddr(unsigned char civAddr);
     void handleNewData(const QByteArray &data);
+    void handleSerialPortError(const QString port, const QString errorText);
     void sayFrequency();
     void sayMode();
     void sayAll();
@@ -68,6 +69,7 @@ signals:
     void haveSpectrumData(QByteArray spectrum, double startFreq, double endFreq); // pass along data to UI
     void haveRigID(rigCapabilities rigCaps);
     void discoveredRigID(rigCapabilities rigCaps);
+    void haveSerialPortError(const QString port, const QString errorText);
     void haveFrequency(double frequencyMhz);
     void haveMode(QString mode);
     void haveDataMode(bool dataModeEnabled);
@@ -132,6 +134,7 @@ private:
     quint8 spectSeqMax;
     quint16 spectAmpMax;
     quint16 spectLenMax;
+    unsigned char oldScopeMode;
 
     bool usingNativeLAN; // indicates using OEM LAN connection (705,7610,9700,7850)
     bool lookingForRig;
@@ -139,10 +142,12 @@ private:
 
     double frequencyMhz;
     unsigned char civAddr; // IC-7300: 0x94 is default = 148decimal
-    unsigned char incommingCIVAddr; // place to store the incoming CIV.
+    unsigned char incomingCIVAddr; // place to store the incoming CIV.
     //const unsigned char compCivAddr = 0xE1; // 0xE1 is new default, 0xE0 was before.
     bool pttAllowed;
 
+    QString rigSerialPort;
+    QString serialPortError;
 
 
 };
