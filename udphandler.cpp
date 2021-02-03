@@ -225,8 +225,8 @@ void udpHandler::DataReceived()
                 authID[4] = r[30];
                 authID[5] = r[31];
 
-                serial = new udpSerial(radioIP, sport);
-                audio = new udpAudio(radioIP, aport);
+                serial = new udpSerial(localIP, radioIP, sport);
+                audio = new udpAudio(localIP, radioIP, aport);
 
                 QObject::connect(serial, SIGNAL(Receive(QByteArray)), this, SLOT(receiveFromSerialStream(QByteArray)));
 
@@ -373,7 +373,7 @@ qint64 udpHandler::SendPacketAuth(uint8_t magic)
 
 
 // (pseudo) serial class
-udpSerial::udpSerial(QHostAddress ip, int sport) {
+udpSerial::udpSerial(QHostAddress local, QHostAddress ip, int sport) {
     qDebug() << "Starting udpSerial";
     port = sport;
     radioIP = ip;
@@ -383,8 +383,7 @@ udpSerial::udpSerial(QHostAddress ip, int sport) {
 
     localPort = udp->localPort();
     qDebug() << "Serial Stream bound to local port:" << localPort << " remote port:" << port;
-
-    uint32_t addr = QHostAddress("192.168.99.149").toIPv4Address();
+    uint32_t addr =local.toIPv4Address();
     localSID = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (localPort & 0xffff);
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpSerial::DataReceived);
 
@@ -581,7 +580,7 @@ void udpSerial::DataReceived()
 
 
 // Audio stream
-udpAudio::udpAudio(QHostAddress ip, int aport)
+udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
 {
     qDebug() << "Starting udpAudio";
     port = aport;
@@ -591,7 +590,7 @@ udpAudio::udpAudio(QHostAddress ip, int aport)
     localPort = udp->localPort();
     qDebug() << "Audio Stream bound to local port:" << localPort << " remote port:" << port;
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::DataReceived);
-    uint32_t addr = QHostAddress("192.168.99.149").toIPv4Address();
+    uint32_t addr = local.toIPv4Address();
     localSID = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (localPort & 0xffff);
 
     SendPacketConnect(); // First connect packet

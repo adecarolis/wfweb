@@ -81,7 +81,7 @@ class udpSerial : public udpBase
 	Q_OBJECT
 
 public:
-	udpSerial(QHostAddress ip, int sport);
+	udpSerial(QHostAddress local, QHostAddress ip, int sport);
 	~udpSerial();
 	QMutex serialmutex;
 
@@ -107,7 +107,7 @@ class udpAudio : public udpBase
 	Q_OBJECT
 
 public:
-	udpAudio(QHostAddress ip, int aport);
+	udpAudio(QHostAddress local, QHostAddress ip, int aport);
 	~udpAudio();
 
 private:
