@@ -355,7 +355,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 wfmain::~wfmain()
 {
 #ifdef Q_OS_WIN // Prevent crash on exit in Windows.
+    delete rig;
     rigThread->quit();
+    rigThread->wait();
 #endif
     delete ui;
 }
