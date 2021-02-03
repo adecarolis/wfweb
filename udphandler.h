@@ -12,7 +12,7 @@
 #include <QtEndian>
 
 // Needed for audio
-#include <QtMultimedia/qaudiooutput>
+#include <QtMultimedia/QAudioOutput>
 #include <QBuffer>
 
 
