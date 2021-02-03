@@ -531,6 +531,7 @@ void rigCommander::parseData(QByteArray dataInput)
         }
 
         incomingCIVAddr = data[03]; // track the CIV of the sender.
+        incomingCIVAddr = 0xa2;
         switch(data[02])
         {
             //    case civAddr: // can't have a variable here :-(
@@ -625,7 +626,8 @@ void rigCommander::parseCommand()
             // qDebug() << "Have rig ID: " << (unsigned int)payloadIn[2];
             // printHex(payloadIn, false, true);
             
-            model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
+            //model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
+            model = determineRadioModel(0xa2); // verify this is the model not the CIV
             determineRigCaps();
             qDebug() << "Have rig ID: decimal: " << (unsigned int)model;
 
@@ -952,6 +954,7 @@ void rigCommander::determineRigCaps()
     //TODO: Add if(usingNativeLAN) condition
     //TODO: Determine available bands (low priority, rig will reject out of band requests anyway)
 
+
     rigCaps.model = model;
     rigCaps.modelID = model; // may delete later
     rigCaps.civ = incomingCIVAddr;
@@ -1123,7 +1126,7 @@ void rigCommander::parseSpectrum()
         if (payloadIn.length() > 400) // Must be a LAN packet.
         {
             payloadIn.chop(1);
-            spectrumLine.append(payloadIn.mid(5,475)); // write over the FD, last one doesn't, oh well.
+            spectrumLine.append(payloadIn.mid(17,475)); // write over the FD, last one doesn't, oh well.
             emit haveSpectrumData(spectrumLine, spectrumStartFreq, spectrumEndFreq);
         }
     } else if ((sequence > 1) && (sequence < rigCaps.spectSeqMax))
