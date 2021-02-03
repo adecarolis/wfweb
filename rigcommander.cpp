@@ -74,15 +74,62 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quin
 
 }
 
+rigCommander::rigCommander(unsigned char rigCivAddr, QHostAddress ip, int cport, int sport, int aport, QString username, QString password)
+{
+    // construct
+    // TODO: Bring this parameter and the comm port from the UI.
+    // Keep in hex in the UI as is done with other CIV apps.
+
+    // civAddr = 0x94; // address of the radio. Decimal is 148.
+    civAddr = rigCivAddr; // address of the radio. Decimal is 148.
+
+    setCIVAddr(civAddr);
+    usingNativeLAN = true;
+    spectSeqMax = 0; // this is now set after rig ID determined
+    //compCivAddr = 0xE1;
+    //payloadPrefix = QByteArray("\xFE\xFE\x94\xE0");
+    payloadPrefix = QByteArray("\xFE\xFE");
+    payloadPrefix.append(civAddr);
+    payloadPrefix.append(compCivAddr);
+
+    // payloadPrefix.append("\xE0");
+
+    lookingForRig = false;
+    foundRig = false;
+
+    payloadSuffix = QByteArray("\xFD");
+    // TODO: list full contents of /dev/serial, grep for IC-7300
+    // /dev/serial/by-path$ ls
+    //     total 0
+    //    lrwxrwxrwx 1 root root 13 Nov 24 21:43 pci-0000:00:12.0-usb-0:2.1:1.0-port0 -> ../../ttyUSB0
+    // comm = new commHandler("/dev/ttyUSB0");
+    //comm = new commHandler(rigSerialPort, rigBaudRate);
+
+    udp = new udpHandler(ip, cport, sport, aport, username, password);
+
+    // data from the comm port to the program:
+
+    connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
+
+    // data from the program to the comm port:
+    connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+
+    //connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
+    pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
+
+}
 rigCommander::~rigCommander()
 {
-    delete comm;
+    if (comm!=nullptr)
+        delete comm;
+    if (udp != nullptr)
+        delete udp;
 }
 
 void rigCommander::process()
 {
     // new thread enters here. Do nothing but do check for errors.
-    if(comm->serialError)
+    if(comm!=nullptr && comm->serialError)
     {
         emit haveSerialPortError(rigSerialPort, QString("Error from commhandler. Check serial port."));
     }
@@ -577,10 +624,10 @@ void rigCommander::parseCommand()
         case '\x19':
             // qDebug() << "Have rig ID: " << (unsigned int)payloadIn[2];
             // printHex(payloadIn, false, true);
+            
             model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
             determineRigCaps();
             qDebug() << "Have rig ID: decimal: " << (unsigned int)model;
-
 
 
             break;
@@ -880,6 +927,11 @@ void rigCommander::parseWFData()
             // [1] 0x16
             // [2] 0x01, 0x02, 0x03: Edge 1,2,3
             break;
+        case 0x17:
+            // Hold status (only 9700?)
+            qDebug() << "Received 0x17 hold status - need to deal with this!";
+            printHex(payloadIn, false, true);
+            break;
         case 0x19:
             // scope reference level
             // [1] 0x19
@@ -976,7 +1028,6 @@ void rigCommander::determineRigCaps()
         qDebug() << "---Rig FOUND from broadcast query:";
 #endif
         this->civAddr = incomingCIVAddr; // Override and use immediately.
-
         payloadPrefix = QByteArray("\xFE\xFE");
         payloadPrefix.append(civAddr);
         payloadPrefix.append(compCivAddr);
@@ -1056,7 +1107,7 @@ void rigCommander::parseSpectrum()
     // It looks like the data length may be variable, so we need to detect it each time.
     // start at payloadIn.length()-1 (to override the FD). Never mind, index -1 bad.
     // chop off FD.
-    if(sequence == 1)
+    if ((sequence == 1) && (sequence < rigCaps.spectSeqMax))
     {
         // wave information
         spectrumLine.clear();
@@ -1068,6 +1119,12 @@ void rigCommander::parseSpectrum()
             // "center" mode, start is actuall center, end is bandwidth.
             spectrumStartFreq -= spectrumEndFreq;
             spectrumEndFreq = spectrumStartFreq + 2*(spectrumEndFreq);
+        }
+        if (payloadIn.length() > 400) // Must be a LAN packet.
+        {
+            payloadIn.chop(1);
+            spectrumLine.append(payloadIn.mid(5,475)); // write over the FD, last one doesn't, oh well.
+            emit haveSpectrumData(spectrumLine, spectrumStartFreq, spectrumEndFreq);
         }
     } else if ((sequence > 1) && (sequence < rigCaps.spectSeqMax))
     {

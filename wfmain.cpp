@@ -354,7 +354,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
 wfmain::~wfmain()
 {
-    // rigThread->quit();
+#ifdef Q_OS_WIN // Prevent crash on exit in Windows.
+    rigThread->quit();
+#endif
     delete ui;
 }
 
@@ -440,11 +442,15 @@ void wfmain::openRig()
         }
     }
 
-    // Here, the radioCIVAddr is being set from a default preference, whihc is for the 7300.
+    // Here, the radioCIVAddr is being set from a default preference, which is for the 7300.
     // However, we will not use it initially. OTOH, if it is set explicitedly to a value in the prefs,
     // then we skip auto detection.
-    rig = new rigCommander(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud);
 
+    if (prefs.enableLAN)
+        rig = new rigCommander(prefs.radioCIVAddr, QHostAddress(prefs.ipAddress), prefs.controlLANPort, prefs.serialLANPort, prefs.audioLANPort, prefs.username, prefs.password);
+    else
+        rig = new rigCommander(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud);
+    
     rigThread = new QThread(this);
 
     rig->moveToThread(rigThread);
@@ -541,6 +547,29 @@ void wfmain::loadSettings()
     prefs.niceTS = settings.value("NiceTS", defPrefs.niceTS).toBool();
     settings.endGroup();
 
+    settings.beginGroup("LAN");
+    prefs.enableLAN = settings.value("EnableLAN", defPrefs.enableLAN).toBool();
+    ui->lanEnableChk->setChecked(prefs.enableLAN);
+    prefs.ipAddress = settings.value("IPAddress", defPrefs.ipAddress).toString();
+    ui->ipAddressTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->ipAddressTxt->setText(prefs.ipAddress);
+    prefs.controlLANPort = settings.value("ControlLANPort", defPrefs.controlLANPort).toInt();
+    ui->controlPortTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->controlPortTxt->setText(QString("%1").arg(prefs.controlLANPort));
+    prefs.serialLANPort = settings.value("SerialLANPort", defPrefs.serialLANPort).toInt();
+    ui->serialPortTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->serialPortTxt->setText(QString("%1").arg(prefs.serialLANPort));
+    prefs.audioLANPort = settings.value("AudioLANPort", defPrefs.audioLANPort).toInt();
+    ui->audioPortTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->audioPortTxt->setText(QString("%1").arg(prefs.audioLANPort));
+
+    prefs.username = settings.value("Username", defPrefs.username).toString();
+    ui->usernameTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->usernameTxt->setText(QString("%1").arg(prefs.username));
+    prefs.password = settings.value("Password", defPrefs.password).toString();
+    ui->passwordTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->passwordTxt->setText(QString("%1").arg(prefs.password));
+    settings.endGroup();
     // Memory channels
 
     settings.beginGroup("Memory");
@@ -605,6 +634,16 @@ void wfmain::saveSettings()
     settings.beginGroup("Controls");
     settings.setValue("EnablePTT", prefs.enablePTT);
     settings.setValue("NiceTS", prefs.niceTS);
+    settings.endGroup();
+
+    settings.beginGroup("LAN");
+    settings.setValue("EnableLAN", prefs.enableLAN);
+    settings.setValue("IPAddress", prefs.ipAddress);
+    settings.setValue("ControlLANPort", prefs.controlLANPort);
+    settings.setValue("SerialLANPort", prefs.serialLANPort);
+    settings.setValue("AudioLANPort", prefs.audioLANPort);
+    settings.setValue("Username", prefs.username);
+    settings.setValue("Password", prefs.password);
     settings.endGroup();
 
     // Memory channels
@@ -2062,6 +2101,45 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
 void wfmain::on_pttEnableChk_clicked(bool checked)
 {
     prefs.enablePTT = checked;
+}
+
+void wfmain::on_lanEnableChk_clicked(bool checked)
+{
+    prefs.enableLAN = checked;
+    ui->ipAddressTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->controlPortTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->serialPortTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->audioPortTxt->setEnabled(ui->lanEnableChk->isChecked());
+}
+
+void wfmain::on_ipAddressTxt_textChanged(QString text)
+{
+    prefs.ipAddress = text;
+}
+
+void wfmain::on_controlPortTxt_textChanged(QString text)
+{
+    prefs.controlLANPort = text.toInt();
+}
+
+void wfmain::on_serialPortTxt_textChanged(QString text)
+{
+    prefs.serialLANPort = text.toInt();
+}
+
+void wfmain::on_audioPortTxt_textChanged(QString text)
+{
+    prefs.audioLANPort = text.toInt();
+}
+
+void wfmain::on_usernameTxt_textChanged(QString text)
+{
+    prefs.username = text;
+}
+
+void wfmain::on_passwordTxt_textChanged(QString text)
+{
+    prefs.password = text;
 }
 
 // --- DEBUG FUNCTION ---

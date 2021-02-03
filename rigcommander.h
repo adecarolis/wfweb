@@ -5,6 +5,7 @@
 #include <QDebug>
 
 #include "commhandler.h"
+#include "udphandler.h"
 #include "rigidentities.h"
 
 // This file figures out what to send to the comm and also
@@ -21,6 +22,7 @@ class rigCommander : public QObject
 
 public:
     rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
+    rigCommander(unsigned char rigCivAddr, QHostAddress ip, int cport, int sport, int aport, QString username, QString password);
     ~rigCommander();
 
 public slots:
@@ -112,8 +114,9 @@ private:
     void prepDataAndSend(QByteArray data);
     void debugMe();
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
+    commHandler * comm=nullptr;
+    udpHandler* udp=nullptr;
     void determineRigCaps();
-    commHandler * comm;
     QByteArray payloadIn;
     QByteArray echoPerfix;
     QByteArray replyPrefix;

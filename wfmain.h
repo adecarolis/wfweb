@@ -237,6 +237,20 @@ private slots:
 
     void on_pttEnableChk_clicked(bool checked);
 
+    void on_lanEnableChk_clicked(bool checked);
+
+    void on_ipAddressTxt_textChanged(QString text);
+
+    void on_controlPortTxt_textChanged(QString text);
+
+    void on_serialPortTxt_textChanged(QString text);
+
+    void on_audioPortTxt_textChanged(QString text);
+
+    void on_usernameTxt_textChanged(QString text);
+
+    void on_passwordTxt_textChanged(QString text);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -364,6 +378,13 @@ private:
         quint32 serialPortBaud;
         bool enablePTT;
         bool niceTS;
+        bool enableLAN;
+        QString ipAddress;
+        quint32 controlLANPort;
+        quint32 serialLANPort;
+        quint32 audioLANPort;
+        QString username;
+        QString password;
 
     } prefs;
 
