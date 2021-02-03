@@ -65,22 +65,23 @@ install suse 15.x  (did this on a kde virtual machine leap 15.2)
 qt5:
 
 wget http://download.qt.io/official_releases/online_installers/qt-unified-linux-x64-online.run
-chmod +x qt-unified-linux-x64-online.run
-sudo zypper in --type pattern devel_basis
-kdesu ./qt-unified-linux-x64-online.run
-install base qt5 default qt5 desktop development
 
-sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel 
+- chmod +x qt-unified-linux-x64-online.run
+- sudo zypper in --type pattern devel_basis
+- kdesu ./qt-unified-linux-x64-online.run
+- install base qt5 default qt5 desktop development
 
-mkdir src
-cd src
-git clone https://gitlab.com/eliggett/wfview.git
-cd ../
-mkdir build 
-cd build
-qmake-qt5 ../src/wfview/wvfiew.pro
-make
-sudo ./install.sh
+- sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel 
+
+- mkdir src
+- cd src
+- git clone https://gitlab.com/eliggett/wfview.git
+- cd ../
+- mkdir build 
+- cd build
+- qmake-qt5 ../src/wfview/wvfiew.pro
+- make -j
+- sudo ./install.sh
 
 
 ---
