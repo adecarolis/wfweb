@@ -223,15 +223,15 @@ qint64 udpHandler::SendRequestSerialAndAudio()
 
     const unsigned char p[] = {
         0x90, 0x00, 0x00, 0x00, 0x00, 0x00,  0x00, 0x00,
-        localSID >> 24 & 0xff, localSID >> 16 & 0xff, localSID >> 8 & 0xff, localSID & 0xff,
-        remoteSID >> 24 & 0xff, remoteSID >> 16 & 0xff, remoteSID >> 8 & 0xff, remoteSID & 0xff,
-        0x00, 0x00, 0x00, 0x80, 0x01, 0x03, 0x00, static_cast<const unsigned char>(authInnerSendSeq & 0xff), static_cast<const unsigned char>(authInnerSendSeq >> 8 & 0xff),
-        0x00, static_cast<const unsigned char>(authID[0]), static_cast<const unsigned char>(authID[1]), static_cast<const unsigned char>(authID[2]),
-        static_cast<const unsigned char>(authID[3]), static_cast<const unsigned char>(authID[4]), static_cast<const unsigned char>(authID[5]),
-        static_cast<const unsigned char>(a8replyID[0]), static_cast<const unsigned char>(a8replyID[1]), static_cast<const unsigned char>(a8replyID[2]), static_cast<const unsigned char>(a8replyID[3]),
-        static_cast<const unsigned char>(a8replyID[4]), static_cast<const unsigned char>(a8replyID[5]), static_cast<const unsigned char>(a8replyID[6]), static_cast<const unsigned char>(a8replyID[7]),
-        static_cast<const unsigned char>(a8replyID[8]), static_cast<const unsigned char>(a8replyID[9]), static_cast<const unsigned char>(a8replyID[10]), static_cast<const unsigned char>(a8replyID[11]),
-        static_cast<const unsigned char>(a8replyID[12]), static_cast<const unsigned char>(a8replyID[13]), static_cast<const unsigned char>(a8replyID[14]), static_cast<const unsigned char>(a8replyID[15]),
+        static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
+        static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff),
+        0x00, 0x00, 0x00, 0x80, 0x01, 0x03, 0x00, static_cast<unsigned char>(authInnerSendSeq & 0xff), static_cast<const unsigned char>(authInnerSendSeq >> 8 & 0xff),
+        0x00, static_cast<unsigned char>(authID[0]), static_cast<unsigned char>(authID[1]), static_cast<unsigned char>(authID[2]),
+        static_cast<unsigned char>(authID[3]), static_cast<unsigned char>(authID[4]), static_cast<unsigned char>(authID[5]),
+        static_cast<unsigned char>(a8replyID[0]), static_cast<unsigned char>(a8replyID[1]), static_cast<unsigned char>(a8replyID[2]), static_cast<unsigned char>(a8replyID[3]),
+        static_cast<unsigned char>(a8replyID[4]), static_cast<unsigned char>(a8replyID[5]), static_cast<unsigned char>(a8replyID[6]), static_cast<unsigned char>(a8replyID[7]),
+        static_cast<unsigned char>(a8replyID[8]), static_cast<unsigned char>(a8replyID[9]), static_cast<unsigned char>(a8replyID[10]), static_cast<unsigned char>(a8replyID[11]),
+        static_cast<unsigned char>(a8replyID[12]), static_cast<unsigned char>(a8replyID[13]), static_cast<unsigned char>(a8replyID[14]), static_cast<unsigned char>(a8replyID[15]),
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x49, 0x43, 0x2d, 0x37, 0x30, 0x35, 0x00, 0x00, // IC-705 in plain text
@@ -242,11 +242,11 @@ qint64 udpHandler::SendRequestSerialAndAudio()
         usernameEncoded[4], usernameEncoded[5], usernameEncoded[6], usernameEncoded[7],
         usernameEncoded[8], usernameEncoded[9], usernameEncoded[10], usernameEncoded[11],
         usernameEncoded[12], usernameEncoded[13], usernameEncoded[14], usernameEncoded[15],
-        0x01, 0x01, 0x04, 0x04, 0x00, 0x00, static_cast<const unsigned char>(audioSampleRate >> 8 & 0xff), static_cast<const unsigned char>(audioSampleRate & 0xff),
-        0x00, 0x00, static_cast<const unsigned char>(audioSampleRate >> 8 & 0xff), static_cast<const unsigned char>(audioSampleRate & 0xff),
-        0x00, 0x00, static_cast<const unsigned char>(udpSerialPort >> 8 & 0xff), static_cast<const unsigned char>(udpSerialPort & 0xff),
-        0x00, 0x00, static_cast<const unsigned char>(udpAudioPort >> 8 & 0xff), static_cast<const unsigned char>(udpAudioPort & 0xff), 0x00, 0x00,
-        static_cast<const unsigned char>(txSeqBufLengthMs >> 8 & 0xff), static_cast<const unsigned char>(txSeqBufLengthMs & 0xff), 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        0x01, 0x01, 0x04, 0x04, 0x00, 0x00, static_cast<unsigned char>(audioSampleRate >> 8 & 0xff), static_cast<unsigned char>(audioSampleRate & 0xff),
+        0x00, 0x00, static_cast<unsigned char>(audioSampleRate >> 8 & 0xff), static_cast<unsigned char>(audioSampleRate & 0xff),
+        0x00, 0x00, static_cast<unsigned char>(udpSerialPort >> 8 & 0xff), static_cast<unsigned char>(udpSerialPort & 0xff),
+        0x00, 0x00, static_cast<unsigned char>(udpAudioPort >> 8 & 0xff), static_cast<unsigned char>(udpAudioPort & 0xff), 0x00, 0x00,
+        static_cast<unsigned char>(txSeqBufLengthMs >> 8 & 0xff), static_cast<unsigned char>(txSeqBufLengthMs & 0xff), 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     };
 
     authInnerSendSeq++;
@@ -266,8 +266,8 @@ qint64 udpHandler::SendPacketLogin() // Only used on control stream.
 
     const unsigned char p[] = {
         0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        localSID >> 24 & 0xff, localSID >> 16 & 0xff, localSID >> 8 & 0xff, localSID & 0xff,
-        remoteSID >> 24 & 0xff, remoteSID >> 16 & 0xff, remoteSID >> 8 & 0xff, remoteSID & 0xff,
+        static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
+        static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff),
         0x00, 0x00, 0x00, 0x70, 0x01, 0x00, 0x00, static_cast<unsigned char>(authInnerSendSeq & 0xff), static_cast<unsigned char>(authInnerSendSeq >> 8 & 0xff),
         0x00, static_cast<unsigned char>(authStartID & 0xff), static_cast<unsigned char>(authStartID >> 8 & 0xff), 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -301,12 +301,13 @@ qint64 udpHandler::SendPacketLogin() // Only used on control stream.
 qint64 udpHandler::SendPacketAuth(uint8_t magic)
 {
 
-    const char p[] = {
+    const unsigned char p[] = {
         0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,0x00,
-        static_cast<char>(localSID >> 24 & 0xff), static_cast<char>(localSID >> 16 & 0xff), static_cast<char>(localSID >> 8 & 0xff), static_cast<char>(localSID & 0xff),
-        static_cast<char>(remoteSID >> 24 & 0xff), static_cast<char>(remoteSID >> 16 & 0xff), static_cast<char>(remoteSID >> 8 & 0xff), static_cast<char>(remoteSID & 0xff),
-        0x00, 0x00, 0x00, 0x30, 0x01, static_cast<char>(magic), 0x00, static_cast<char>(authInnerSendSeq & 0xff), static_cast<char>((authInnerSendSeq) >> 8 & 0xff), 0x00,
-        authID[0], authID[1], authID[2], authID[3], authID[4], authID[5],
+        static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
+        static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff),
+        0x00, 0x00, 0x00, 0x30, 0x01, static_cast<unsigned char>(magic), 0x00, static_cast<unsigned char>(authInnerSendSeq & 0xff), static_cast<unsigned char>((authInnerSendSeq) >> 8 & 0xff), 0x00,
+        static_cast<unsigned char>(authID[0]), static_cast<unsigned char>(authID[1]), static_cast<unsigned char>(authID[2]), 
+        static_cast<unsigned char>(authID[3]), static_cast<unsigned char>(authID[4]), static_cast<unsigned char>(authID[5]),
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -314,7 +315,7 @@ qint64 udpHandler::SendPacketAuth(uint8_t magic)
     };
 
     authInnerSendSeq++;
-    return SendTrackedPacket(QByteArray::fromRawData(p, sizeof(p)));
+    return SendTrackedPacket(QByteArray::fromRawData((const char *)p, sizeof(p)));
 }
 
 
@@ -338,8 +339,8 @@ int udpSerial::Send(QByteArray d)
 
     uint16_t l = d.length();
     const unsigned char p[] = { static_cast<unsigned char>(0x15 + l), 0x00, 0x00, 0x00, 0x00, 0x00,0x00,0x00,
-        localSID >> 24 & 0xff, localSID >> 16 & 0xff, localSID >> 8 & 0xff,localSID & 0xff,
-        remoteSID >> 24 & 0xff, remoteSID >> 16 & 0xff, remoteSID >> 8 & 0xff,remoteSID & 0xff,
+        static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
+        static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff),
         0xc1, static_cast<unsigned char>(l), 0x00, static_cast<unsigned char>(sendSeqB >> 8 & 0xff),static_cast<unsigned char>(sendSeqB & 0xff)
     };
     QByteArray t = QByteArray::fromRawData((const char*)p, sizeof(p));
@@ -354,8 +355,8 @@ int udpSerial::Send(QByteArray d)
 void udpSerial::SendIdle()
 {
     const unsigned char p[] = { 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        localSID >> 24 & 0xff, localSID >> 16 & 0xff, localSID >> 8 & 0xff, localSID & 0xff,
-        remoteSID >> 24 & 0xff, remoteSID >> 16 & 0xff, remoteSID >> 8 & 0xff, remoteSID & 0xff
+        static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
+        static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff)
     };
 
     SendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
@@ -364,8 +365,8 @@ void udpSerial::SendIdle()
 void udpSerial::SendPeriodic()
 {
     const unsigned char p[] = { 0x15, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00,
-        localSID >> 24 & 0xff, localSID >> 16 & 0xff, localSID >> 8 & 0xff, localSID & 0xff,
-        remoteSID >> 24 & 0xff, remoteSID >> 16 & 0xff, remoteSID >> 8 & 0xff, remoteSID & 0xff
+        static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
+        static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff)
     };
 
     SendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
@@ -381,8 +382,8 @@ qint64 udpSerial::SendPacketOpenClose(bool close)
 
     const unsigned char p[] = {
         0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        localSID >> 24 & 0xff, localSID >> 16 & 0xff, localSID >> 8 & 0xff, localSID & 0xff,
-        remoteSID >> 24 & 0xff, remoteSID >> 16 & 0xff, remoteSID >> 8 & 0xff, remoteSID & 0xff,
+        static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
+        static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff),
         0xc0, 0x01, 0x00, static_cast<const unsigned char>(sendSeqB >> 8 & 0xff), static_cast<const unsigned char>(sendSeqB & 0xff), magic
     };
 
@@ -641,13 +642,13 @@ void udpBase::DataReceived(QByteArray r)
             {
                 QMutexLocker locker(&mutex);
 
-                const char p[] = { 0x15, 0x00, 0x00, 0x00, 0x07, 0x00,static_cast<char>(gotSeq & 0xff),static_cast<char>((gotSeq >> 8) & 0xff),
-                    static_cast<char>(localSID >> 24 & 0xff), static_cast<char>(localSID >> 16 & 0xff), static_cast<char>(localSID >> 8 & 0xff), static_cast<char>(localSID & 0xff),
-                    static_cast<char>(remoteSID >> 24 & 0xff), static_cast<char>(remoteSID >> 16 & 0xff), static_cast<char>(remoteSID >> 8 & 0xff), static_cast<char>(remoteSID & 0xff),
-                    0x01,r[17],r[18],r[19],r[20]
+                const unsigned char p[] = { 0x15, 0x00, 0x00, 0x00, 0x07, 0x00,static_cast<unsigned char>(gotSeq & 0xff),static_cast<unsigned char>((gotSeq >> 8) & 0xff),
+                    static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
+                    static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff),
+                    0x01,static_cast<unsigned char>(r[17]),static_cast<unsigned char>(r[18]),static_cast<unsigned char>(r[19]),static_cast<unsigned char>(r[20])
                 };
 
-                udp->writeDatagram(QByteArray::fromRawData(p, sizeof(p)), radioIP, port);
+                udp->writeDatagram(QByteArray::fromRawData((const char *)p, sizeof(p)), radioIP, port);
 
             }
         }
@@ -663,8 +664,8 @@ void udpBase::DataReceived(QByteArray r)
 void udpBase::SendPkt0Idle(bool tracked=true,quint16 seq=0)
 {
     unsigned char p[] = { 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,0x00,
-        localSID >> 24 & 0xff, localSID >> 16 & 0xff, localSID >> 8 & 0xff, localSID & 0xff,
-        remoteSID >> 24 & 0xff, remoteSID >> 16 & 0xff, remoteSID >> 8 & 0xff, remoteSID & 0xff
+        static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
+        static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff)
     };
 
     if (!tracked) {
@@ -683,10 +684,10 @@ void udpBase::SendPkt7Idle()
 {
     QMutexLocker locker(&mutex);
 
-    const unsigned char p[] = { 0x15, 0x00, 0x00, 0x00, 0x07, 0x00, static_cast<const unsigned char>(pkt7SendSeq & 0xff),static_cast<const unsigned char>(pkt7SendSeq >> 8 & 0xff),
-        localSID >> 24 & 0xff, localSID >> 16 & 0xff, localSID >> 8 & 0xff, localSID & 0xff,
-        remoteSID >> 24 & 0xff, remoteSID >> 16 & 0xff, remoteSID >> 8 & 0xff, remoteSID & 0xff,
-        static_cast<const unsigned char>(rand()),static_cast<const unsigned char>(innerSendSeq & 0xff),static_cast<const unsigned char>(innerSendSeq >> 8 & 0xff), 0x06
+    const unsigned char p[] = { 0x15, 0x00, 0x00, 0x00, 0x07, 0x00, static_cast<unsigned char>(pkt7SendSeq & 0xff),static_cast<unsigned char>(pkt7SendSeq >> 8 & 0xff),
+        static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
+        static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff),
+        static_cast<unsigned char>(rand()),static_cast<unsigned char>(innerSendSeq & 0xff),static_cast<unsigned char>(innerSendSeq >> 8 & 0xff), 0x06
     };
 
     lastPacket7Sent = time(0);
@@ -730,8 +731,8 @@ qint64 udpBase::SendPacketConnect()
     qDebug() << this->metaObject()->className() << ": Sending Connect";
     QMutexLocker locker(&mutex);
     const unsigned char p[] = { 0x10, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00,
-        localSID >> 24 & 0xff, localSID >> 16 & 0xff, localSID >> 8 & 0xff, localSID & 0xff,
-        remoteSID >> 24 & 0xff, remoteSID >> 16 & 0xff, remoteSID >> 8 & 0xff, remoteSID & 0xff
+        static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
+        static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff)
     };
 
     udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
@@ -744,8 +745,8 @@ qint64 udpBase::SendPacketConnect2()
     qDebug() << this->metaObject()->className() << ": Sending Connect2";
     QMutexLocker locker(&mutex);
     const unsigned char p[] = { 0x10, 0x00, 0x00, 0x00, 0x06, 0x00, 0x01, 0x00,
-        localSID >> 24 & 0xff, localSID >> 16 & 0xff, localSID >> 8 & 0xff, localSID & 0xff,
-        remoteSID >> 24 & 0xff, remoteSID >> 16 & 0xff, remoteSID >> 8 & 0xff, remoteSID & 0xff
+        static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
+        static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff)
     };
 
     udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
@@ -757,9 +758,9 @@ qint64 udpBase::SendPacketDisconnect() // Unmanaged packet
     QMutexLocker locker(&mutex);
     //qDebug() << "Sending Stream Disconnect";
 
-    const char p[] = { 0x10, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00,
-        static_cast<char>(localSID >> 24 & 0xff), static_cast<char>(localSID >> 16 & 0xff), static_cast<char>(localSID >> 8 & 0xff), static_cast<char>(localSID & 0xff),
-        static_cast<char>(remoteSID >> 24 & 0xff), static_cast<char>(remoteSID >> 16 & 0xff), static_cast<char>(remoteSID >> 8 & 0xff), static_cast<char>(remoteSID & 0xff)
+    const unsigned char p[] = { 0x10, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00,
+        static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
+        static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff)
     };
     udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
 
@@ -769,7 +770,7 @@ qint64 udpBase::SendPacketDisconnect() // Unmanaged packet
 
 unsigned char* udpBase::Passcode(QString str)
 {
-    const char sequence[] =
+    const unsigned char sequence[] =
     {
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
         0x47,0x5d,0x4c,0x42,0x66,0x20,0x23,0x46,0x4e,0x57,0x45,0x3d,0x67,0x76,0x60,0x41,0x62,0x39,0x59,0x2d,0x68,0x7e,
