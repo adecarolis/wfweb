@@ -10,7 +10,6 @@ commHandler::commHandler()
     // grab baud rate and other comm port details
     // if they need to be changed later, please
     // destroy this and create a new one.
-
     port = new QSerialPort();
 
 
@@ -89,6 +88,9 @@ void commHandler::openPtPort()
     success = pseudoterm->open(QIODevice::ReadWrite);
     if(success)
     {
+		
+#ifndef Q_OS_WIN
+
         qDebug() << "Opened pt device, attempting to grant pt status";
         ptfd = pseudoterm->handle();
         qDebug() << "ptfd: " << ptfd;
@@ -116,6 +118,7 @@ void commHandler::openPtPort()
         {
             qDebug() << "Received error from pseudo-terminal symlink command: code: [" << sysResult << "]" << " command: [" << ptLinkCmd << "]";
         }
+#endif
 
     } else {
         ptfd = 0;
