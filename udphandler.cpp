@@ -202,6 +202,9 @@ void udpHandler::DataReceived()
             break;
         }
         udpBase::DataReceived(r); // Call parent function to process the rest.
+        r.clear();
+        datagram.clear();
+
     }
 
     return;
@@ -434,6 +437,9 @@ void udpSerial::DataReceived()
 
         }
         udpBase::DataReceived(r); // Call parent function to process the rest.
+        r.clear();
+        datagram.clear();
+
     }
 }
 
@@ -534,6 +540,8 @@ void udpAudio::DataReceived()
         }
 
         udpBase::DataReceived(r); // Call parent function to process the rest.
+        r.clear();
+        datagram.clear();
     }
 }
 

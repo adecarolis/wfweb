@@ -23,8 +23,9 @@ class udpBase : public QObject
 {
 
 public:
-	udpBase::udpBase();
-	udpBase::~udpBase();
+	udpBase();
+	~udpBase();
+
 	qint64 SendTrackedPacket(QByteArray d);
 	qint64 SendPacketConnect();
 	qint64 SendPacketConnect2();
@@ -49,16 +50,16 @@ public:
 	uint16_t pkt0SendSeq = 0;
 	uint16_t pkt7SendSeq = 0;
 	uint16_t periodicSeq = 0;
-	time_t lastPacket0Sent;
-	time_t lastPacket7Sent;
+	time_t lastPacket0Sent = 0;
+	time_t lastPacket7Sent = 0;
 
 	QString username = "";
 	QString password = "";
 	QHostAddress radioIP;
 	QHostAddress localIP;
 	bool isAuthenticated = false;
-	int localPort;
-	int port;
+	int localPort=0;
+	int port=0;
 	QTimer *pkt7Timer=nullptr; // Send pkt7 packets every 3 seconds
 	QTimer *pkt0Timer=nullptr; // Send pkt0 packets every 1000ms.
 	QTimer *periodic=nullptr; // Send pkt0 packets every 1000ms.
