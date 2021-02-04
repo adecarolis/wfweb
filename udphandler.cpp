@@ -84,17 +84,7 @@ void udpHandler::DataReceived()
         switch (r.length())
         {
         case (16): // Response to pkt0
-            if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x04\x00\x00\x00"))
-            {
-                // Update remoteSID
-                if (!sentPacketConnect2)
-                {
-                    remoteSID = qFromBigEndian<quint32>(r.mid(8, 4));
-                    SendPacketConnect2(); // second connect packet
-                    sentPacketConnect2 = true;
-                }
-            }
-            else if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x06\x00\x01\x00"))
+            if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x06\x00\x01\x00"))
             {
                 // Update remoteSID
                 if (!sentPacketLogin) {
@@ -103,77 +93,7 @@ void udpHandler::DataReceived()
                     sentPacketLogin = true;
                 }
             }
-            else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x00\x00"))
-            {   // pkt0
-
-            }
-            else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x01\x00"))
-            {   // retransmit request
-                // Send an idle with the requested seqnum.
-                uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
-                qDebug() << "Retransmit request for (control): " << gotSeq;
-                int f;
-                for (f = txSeqBuf.length() - 1; f >= 0; f--)
-                {
-                    if (txSeqBuf[f].seqNum == gotSeq) {
-                        qDebug() << "Sending requested packet (len=" << txSeqBuf[f].data.length() << ")";
-                        udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
-                        udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
-                        break;
-                    }
-                }
-                if (f == 0)
-                {
-                    // Packet was not found in buffer
-                    qDebug() << "Could not find requested packet, sending idle.";
-                    SendPkt0Idle(false, gotSeq);
-                }
-            }
-            else if (r.mid(0, 6) == QByteArrayLiteral("\x18\x00\x00\x00\x01\x00"))
-            {   // retransmit range
-                for (int f = 16; f < r.length() - 4; f = f + 4)
-                {
-                    uint16_t start = qFromLittleEndian<quint16>(r.mid(f, 2));
-                    uint16_t end = qFromLittleEndian<quint16>(r.mid(f + 2, 2));
-                    qDebug() << "Retransmit range request for (audio) from:" << start << " to " << end;
-                    bool found = false;
-                    for (int g = txSeqBuf.length() - 1; g >= 0; g--)
-                        if (txSeqBuf[g].seqNum >= start && txSeqBuf[g].seqNum <= end) {
-                            qDebug() << "Sending requested packet (len=" << txSeqBuf[g].data.length() << ")";
-                            udp->writeDatagram(txSeqBuf[g].data, radioIP, port);
-                            udp->writeDatagram(txSeqBuf[g].data, radioIP, port);
-                            found = true;
-                        }
-                    if (!found)
-                    {
-                        // Packet was not found in buffer
-                        qDebug() << "Could not find retransmited packet, need to send idle.";
-                    }
-                }
-            }
             break;
-
-        case (21): // pkt7, send response if requested.
-            if (r.mid(1, 5) == QByteArrayLiteral("\x00\x00\x00\x07\x00"))
-            {
-                uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
-
-                if (r[16] == (char)0x00)
-                {
-                    QMutexLocker locker(&mutex);
-
-                    const char p[] = { 0x15, 0x00, 0x00, 0x00, 0x07, 0x00,static_cast<char>(gotSeq & 0xff),static_cast<char>((gotSeq >> 8) & 0xff),
-                        static_cast<char>(localSID >> 24 & 0xff), static_cast<char>(localSID >> 16 & 0xff), static_cast<char>(localSID >> 8 & 0xff), static_cast<char>(localSID & 0xff),
-                        static_cast<char>(remoteSID >> 24 & 0xff), static_cast<char>(remoteSID >> 16 & 0xff), static_cast<char>(remoteSID >> 8 & 0xff), static_cast<char>(remoteSID & 0xff),
-                        0x01,r[17],r[18],r[19],r[20]
-                    };
-
-                    udp->writeDatagram(QByteArray::fromRawData(p, sizeof(p)), radioIP, port);
-
-                }
-            }
-            break;
-
         case (64): // Response to Auth packet?
             if (r.mid(0, 6) == QByteArrayLiteral("\x40\x00\x00\x00\x00\x00"))
             {
@@ -184,11 +104,8 @@ void udpHandler::DataReceived()
                     if (!serialAndAudioOpened)
                         SendRequestSerialAndAudio();
                 }
-
             }
-
             break;
-
         case (80):  // Status packet
             if (r.mid(0, 6) == QByteArrayLiteral("\x50\x00\x00\x00\x00\x00"))
             {
@@ -287,9 +204,8 @@ void udpHandler::DataReceived()
                 gotA8ReplyID = true;
             }
             break;
-
         }
-
+        udpBase::DataReceived(r); // Call parent function to process the rest.
     }
 
     return;
@@ -504,18 +420,7 @@ void udpSerial::DataReceived()
         switch (r.length())
         {
         case (16): // Response to pkt0
-            if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x04\x00\x00\x00"))
-            {
-                if (!sentPacketConnect2)
-                {
-                    remoteSID = qFromBigEndian<quint32>(r.mid(8, 4));
-                    SendPacketConnect2(); // second connect packet
-                    sentPacketConnect2 = true;
-                }
-
-
-            }
-            else if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x06\x00\x01\x00"))
+            if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x06\x00\x01\x00"))
             {
                 // Update remoteSID
                 remoteSID = qFromBigEndian<quint32>(r.mid(8, 4));
@@ -535,75 +440,6 @@ void udpSerial::DataReceived()
                 }
 
             }
-            else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x00\x00"))
-            {   // pkt0
-
-            }
-            else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x01\x00"))
-            {   // retransmit request
-                // Send an idle with the requested seqnum.
-                uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
-                qDebug() << "Retransmit request for (serial): " << gotSeq;
-                int f;
-                for (f = txSeqBuf.length() - 1; f >= 0; f--)
-                {
-                    if (txSeqBuf[f].seqNum == gotSeq) {
-                        qDebug() << "Sending requested packet (len=" << txSeqBuf[f].data.length() << ")";
-                        udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
-                        udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
-                        break;
-                    }
-                }
-                if (f == 0)
-                {
-                    // Packet was not found in buffer
-                    qDebug() << "Could not find requested packet, sending idle.";
-                    SendPkt0Idle(false, gotSeq);
-                }
-
-
-            }
-            else if (r.mid(0, 6) == QByteArrayLiteral("\x18\x00\x00\x00\x01\x00"))
-            {   // retransmit range
-                for (int f = 16; f < r.length() - 4; f = f + 4)
-                {
-                    uint16_t start = qFromLittleEndian<quint16>(r.mid(f, 2));
-                    uint16_t end = qFromLittleEndian<quint16>(r.mid(f + 2, 2));
-                    qDebug() << "Retransmit range request for (audio) from:" << start << " to " << end;
-                    bool found = false;
-                    for (int g = txSeqBuf.length() - 1; g >= 0; g--)
-                        if (txSeqBuf[g].seqNum >= start && txSeqBuf[g].seqNum <= end) {
-                            qDebug() << "Sending requested packet (len=" << txSeqBuf[g].data.length() << ")";
-                            udp->writeDatagram(txSeqBuf[g].data, radioIP, port);
-                            udp->writeDatagram(txSeqBuf[g].data, radioIP, port);
-                            found = true;
-                        }
-                    if (!found)
-                    {
-                        // Packet was not found in buffer
-                        qDebug() << "Could not find retransmited packet, need to send idle.";
-                    }
-                }
-            }
-            break;
-
-        case (21): // pkt7, send response if request.
-            if (r.mid(1, 5) == QByteArrayLiteral("\x00\x00\x00\x07\x00"))
-            {
-                uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
-                if (r[16] == (char)0x00)
-                {
-                    QMutexLocker locker(&mutex);
-
-                    char p[] = { 0x15, 0x00, 0x00, 0x00, 0x07, 0x00,static_cast<char>(gotSeq & 0xff),static_cast<char>((gotSeq >> 8) & 0xff),
-                        static_cast<char>(localSID >> 24 & 0xff), static_cast<char>(localSID >> 16 & 0xff), static_cast<char>(localSID >> 8 & 0xff), static_cast<char>(localSID & 0xff),
-                        static_cast<char>(remoteSID >> 24 & 0xff), static_cast<char>(remoteSID >> 16 & 0xff), static_cast<char>(remoteSID >> 8 & 0xff), static_cast<char>(remoteSID & 0xff),
-                        0x01,r[17],r[18],r[19],r[20]
-                    };
-                    udp->writeDatagram(QByteArray::fromRawData(p, sizeof(p)), radioIP, port);
-
-                }
-            }
             break;
         default:
             if (r.length() > 21) {
@@ -616,6 +452,7 @@ void udpSerial::DataReceived()
             break;
 
         }
+        udpBase::DataReceived(r); // Call parent function to process the rest.
     }
 }
 
@@ -684,16 +521,7 @@ void udpAudio::DataReceived()
         switch (r.length())
         {
         case (16): // Response to pkt0
-            if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x04\x00\x00\x00"))
-            {
-                if (!sentPacketConnect2)
-                {
-                    remoteSID = qFromBigEndian<quint32>(r.mid(8, 4));
-                    SendPacketConnect2(); // second connect packet
-                    sentPacketConnect2 = true;
-                }
-            }
-            else if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x06\x00\x01\x00"))
+            if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x06\x00\x01\x00"))
             {
                 // Update remoteSID
                 remoteSID = qFromBigEndian<quint32>(r.mid(8, 4));
@@ -704,76 +532,8 @@ void udpAudio::DataReceived()
                     pkt7Timer->start(3000); // send pkt7 idle packets every 3 seconds
                 }
             }
-            else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x00\x00"))
-            {   // pkt0
-
-            }
-            else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x01\x00"))
-            {   // retransmit request
-                // Send an idle with the requested seqnum.
-                uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
-                qDebug() << "Retransmit request for (audio): " << gotSeq;
-                int f;
-                for (f = txSeqBuf.length() - 1; f >= 0; f--)
-                {
-                    if (txSeqBuf[f].seqNum == gotSeq) {
-                        qDebug() << "Sending requested packet (len=" << txSeqBuf[f].data.length() << ")";
-                        udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
-                        udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
-                        break;
-                    }
-                }
-                if (f == 0)
-                {
-                    // Packet was not found in buffer
-                    qDebug() << "Could not find requested packet, sending idle.";
-                    SendPkt0Idle(false, gotSeq);
-                }
-            }
-            else if (r.mid(0, 6) == QByteArrayLiteral("\x18\x00\x00\x00\x01\x00"))
-            {   // retransmit range
-                for (int f = 16; f < r.length() - 4; f = f + 4)
-                {
-                    uint16_t start = qFromLittleEndian<quint16>(r.mid(f, 2));
-                    uint16_t end = qFromLittleEndian<quint16>(r.mid(f + 2, 2));
-                    qDebug() << "Retransmit range request for (audio) from:" << start << " to " << end;
-                    bool found = false;
-                    for (int g = txSeqBuf.length() - 1; g >= 0; g--)
-                        if (txSeqBuf[g].seqNum >= start && txSeqBuf[g].seqNum <= end) {
-                            qDebug() << "Sending requested packet (len=" << txSeqBuf[g].data.length() << ")";
-                            udp->writeDatagram(txSeqBuf[g].data, radioIP, port);
-                            udp->writeDatagram(txSeqBuf[g].data, radioIP, port);
-                            found = true;
-                        }
-                    if (!found)
-                    {
-                        // Packet was not found in buffer
-                        qDebug() << "Could not find retransmited packet, need to send idle.";
-                    }
-                }
-            }
             break;
 
-        case (21): // pkt7, send response if request.
-            if (r.mid(1, 5) == QByteArrayLiteral("\x00\x00\x00\x07\x00"))
-            {
-                uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
-
-                if (r[16] == (char)0x00)
-                {
-                    QMutexLocker locker(&mutex);
-
-                    const char p[] = { 0x15, 0x00, 0x00, 0x00, 0x07, 0x00,static_cast<char>(gotSeq & 0xff),static_cast<char>((gotSeq >> 8) & 0xff),
-                        static_cast<char>(localSID >> 24 & 0xff), static_cast<char>(localSID >> 16 & 0xff), static_cast<char>(localSID >> 8 & 0xff), static_cast<char>(localSID & 0xff),
-                        static_cast<char>(remoteSID >> 24 & 0xff), static_cast<char>(remoteSID >> 16 & 0xff), static_cast<char>(remoteSID >> 8 & 0xff), static_cast<char>(remoteSID & 0xff),
-                        0x01,r[17],r[18],r[19],r[20]
-                    };
-
-                    udp->writeDatagram(QByteArray::fromRawData(p, sizeof(p)), radioIP, port);
-
-                }
-            }
-            break;
         default:
             if (r.length() >= 580 && (r.mid(0, 6) == QByteArrayLiteral("\x6c\x05\x00\x00\x00\x00") || r.mid(0, 6) == QByteArrayLiteral("\x44\x02\x00\x00\x00\x00")))
             {
@@ -804,12 +564,105 @@ void udpAudio::DataReceived()
             break;
 
         }
+
+        udpBase::DataReceived(r); // Call parent function to process the rest.
     }
 }
 
 
 
 // Base class!
+
+void udpBase::DataReceived(QByteArray r)
+{
+    switch (r.length())
+    {
+    case (16): // Response to pkt0
+        if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x04\x00\x00\x00"))
+        {
+            if (!sentPacketConnect2)
+            {
+                remoteSID = qFromBigEndian<quint32>(r.mid(8, 4));
+                SendPacketConnect2(); // second connect packet
+                sentPacketConnect2 = true;
+            }
+        }
+        else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x00\x00"))
+        {   // pkt0
+
+        }
+        else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x01\x00"))
+        {   // retransmit request
+            // Send an idle with the requested seqnum.
+            uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
+            qDebug() << "Retransmit request for (audio): " << gotSeq;
+            int f;
+            for (f = txSeqBuf.length() - 1; f >= 0; f--)
+            {
+                if (txSeqBuf[f].seqNum == gotSeq) {
+                    qDebug() << "Sending requested packet (len=" << txSeqBuf[f].data.length() << ")";
+                    udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
+                    udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
+                    break;
+                }
+            }
+            if (f == 0)
+            {
+                // Packet was not found in buffer
+                qDebug() << "Could not find requested packet, sending idle.";
+                SendPkt0Idle(false, gotSeq);
+            }
+        }
+        else if (r.mid(0, 6) == QByteArrayLiteral("\x18\x00\x00\x00\x01\x00"))
+        {   // retransmit range
+            for (int f = 16; f < r.length() - 4; f = f + 4)
+            {
+                uint16_t start = qFromLittleEndian<quint16>(r.mid(f, 2));
+                uint16_t end = qFromLittleEndian<quint16>(r.mid(f + 2, 2));
+                qDebug() << "Retransmit range request for (audio) from:" << start << " to " << end;
+                bool found = false;
+                for (int g = txSeqBuf.length() - 1; g >= 0; g--)
+                    if (txSeqBuf[g].seqNum >= start && txSeqBuf[g].seqNum <= end) {
+                        qDebug() << "Sending requested packet (len=" << txSeqBuf[g].data.length() << ")";
+                        udp->writeDatagram(txSeqBuf[g].data, radioIP, port);
+                        udp->writeDatagram(txSeqBuf[g].data, radioIP, port);
+                        found = true;
+                    }
+                if (!found)
+                {
+                    // Packet was not found in buffer
+                    qDebug() << "Could not find retransmited packet, need to send idle.";
+                }
+            }
+        }
+        break;
+
+    case (21): // pkt7, send response if request.
+        if (r.mid(1, 5) == QByteArrayLiteral("\x00\x00\x00\x07\x00"))
+        {
+            uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
+
+            if (r[16] == (char)0x00)
+            {
+                QMutexLocker locker(&mutex);
+
+                const char p[] = { 0x15, 0x00, 0x00, 0x00, 0x07, 0x00,static_cast<char>(gotSeq & 0xff),static_cast<char>((gotSeq >> 8) & 0xff),
+                    static_cast<char>(localSID >> 24 & 0xff), static_cast<char>(localSID >> 16 & 0xff), static_cast<char>(localSID >> 8 & 0xff), static_cast<char>(localSID & 0xff),
+                    static_cast<char>(remoteSID >> 24 & 0xff), static_cast<char>(remoteSID >> 16 & 0xff), static_cast<char>(remoteSID >> 8 & 0xff), static_cast<char>(remoteSID & 0xff),
+                    0x01,r[17],r[18],r[19],r[20]
+                };
+
+                udp->writeDatagram(QByteArray::fromRawData(p, sizeof(p)), radioIP, port);
+
+            }
+        }
+        break;
+    default:
+        break;
+
+    }
+
+}
 
 // Send periodic idle packets (every 100ms)
 void udpBase::SendPkt0Idle(bool tracked=true,quint16 seq=0)

@@ -31,6 +31,8 @@ public:
 	void SendPkt7Idle();
 	void PurgeOldEntries();
 
+	void DataReceived(QByteArray r);
+
 	unsigned char* Passcode(QString str);
 	QString parseNullTerminatedString(QByteArray c, int s);
 	QUdpSocket* udp;
