@@ -15,7 +15,7 @@ udpHandler::udpHandler(QHostAddress ip, int cport, int sport, int aport,QString 
     udp = new QUdpSocket(this);
     udp->bind(); // Bind to random port.
     localPort = udp->localPort();
-    qDebug() << "ControStream bound to local port:" << localPort << " remote port:" << port;
+    qDebug() << "ControlStream bound to local port:" << localPort << " remote port:" << port;
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpHandler::DataReceived);
     
     // Convoluted way to find the external IP address, there must be a better way????
