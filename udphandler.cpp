@@ -23,7 +23,7 @@ udpHandler::udpHandler(QHostAddress ip, int cport, int sport, int aport,QString 
     QList<QHostAddress> hostList = QHostInfo::fromName(localhostname).addresses();
     foreach(const QHostAddress & address, hostList) {
         if (address.protocol() == QAbstractSocket::IPv4Protocol && address.isLoopback() == false) {
-            localIP = address.toString();
+            localIP = QHostAddress(address.toString());
         }
     }
 
@@ -50,7 +50,7 @@ udpHandler::~udpHandler()
         SendPacketDisconnect();
 
     }
-    _sleep(100);
+    //msleep(100);
     udp->close();
     delete udp;
     qDebug() << "Closing udpHandler";
@@ -397,7 +397,7 @@ udpSerial::~udpSerial()
     qDebug() << "Closing udpSerial";
     SendPacketOpenClose(true);
     SendPacketDisconnect();
-    _sleep(100);
+    //_sleep(100);
     udp->close();
     delete udp;
 }
@@ -627,11 +627,11 @@ udpAudio::~udpAudio()
 {
     qDebug() << "Closing udpAudio";
     SendPacketDisconnect();
-    _sleep(100);
 
     udp->close();
     delete udp;
 }
+
 
 
 void udpAudio::DataReceived()

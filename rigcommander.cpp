@@ -531,6 +531,7 @@ void rigCommander::parseData(QByteArray dataInput)
         }
 
         incomingCIVAddr = data[03]; // track the CIV of the sender.
+
         switch(data[02])
         {
             //    case civAddr: // can't have a variable here :-(
@@ -555,8 +556,18 @@ void rigCommander::parseData(QByteArray dataInput)
             case '\x00':
                 // data send initiated by the rig due to user control
                 // extract the payload out and parse.
-                payloadIn = data.right(data.length() - 4);
-                parseCommand();
+                if((unsigned char)data[03]==compCivAddr)
+                {
+                    // This is an echo of our own broadcast request.
+                    // The data are "to 00" and "from E1"
+                    // Don't use it!
+#ifdef QT_DEBUG
+                    qDebug() << "Caught it! Found the echo'd broadcast request from us!";
+#endif
+                } else {
+                    payloadIn = data.right(data.length() - 4);
+                    parseCommand();
+                }
                 break;
             default:
                 // could be for other equipment on the CIV network.
