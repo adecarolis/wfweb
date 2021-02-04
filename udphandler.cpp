@@ -116,8 +116,9 @@ void udpHandler::DataReceived()
                 for (f = txSeqBuf.length() - 1; f >= 0; f--)
                 {
                     if (txSeqBuf[f].seqNum == gotSeq) {
-                        qDebug() << "Sending requested packet";
-                        udp->writeDatagram(QByteArray::fromRawData(txSeqBuf[f].data, sizeof(txSeqBuf[f].data)), radioIP, port);
+                        qDebug() << "Sending requested packet (len=" << txSeqBuf[f].data.length() << ")";
+                        udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
+                        udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
                         break;
                     }
                 }
@@ -130,9 +131,25 @@ void udpHandler::DataReceived()
             }
             else if (r.mid(0, 6) == QByteArrayLiteral("\x18\x00\x00\x00\x01\x00"))
             {   // retransmit range
-                qDebug() << "Retransmit range request: " << datagram.data();
-
-
+                for (int f = 16; f < r.length() - 4; f = f + 4)
+                {
+                    uint16_t start = qFromLittleEndian<quint16>(r.mid(f, 2));
+                    uint16_t end = qFromLittleEndian<quint16>(r.mid(f + 2, 2));
+                    qDebug() << "Retransmit range request for (audio) from:" << start << " to " << end;
+                    bool found = false;
+                    for (int g = txSeqBuf.length() - 1; g >= 0; g--)
+                        if (txSeqBuf[g].seqNum >= start && txSeqBuf[g].seqNum <= end) {
+                            qDebug() << "Sending requested packet (len=" << txSeqBuf[g].data.length() << ")";
+                            udp->writeDatagram(txSeqBuf[g].data, radioIP, port);
+                            udp->writeDatagram(txSeqBuf[g].data, radioIP, port);
+                            found = true;
+                        }
+                    if (!found)
+                    {
+                        // Packet was not found in buffer
+                        qDebug() << "Could not find retransmited packet, need to send idle.";
+                    }
+                }
             }
             break;
 
@@ -531,8 +548,9 @@ void udpSerial::DataReceived()
                 for (f = txSeqBuf.length() - 1; f >= 0; f--)
                 {
                     if (txSeqBuf[f].seqNum == gotSeq) {
-                        qDebug() << "Sending requested packet";
-                        udp->writeDatagram(QByteArray::fromRawData(txSeqBuf[f].data, sizeof(txSeqBuf[f].data)), radioIP, port);
+                        qDebug() << "Sending requested packet (len=" << txSeqBuf[f].data.length() << ")";
+                        udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
+                        udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
                         break;
                     }
                 }
@@ -547,8 +565,25 @@ void udpSerial::DataReceived()
             }
             else if (r.mid(0, 6) == QByteArrayLiteral("\x18\x00\x00\x00\x01\x00"))
             {   // retransmit range
-
-
+                for (int f = 16; f < r.length() - 4; f = f + 4)
+                {
+                    uint16_t start = qFromLittleEndian<quint16>(r.mid(f, 2));
+                    uint16_t end = qFromLittleEndian<quint16>(r.mid(f + 2, 2));
+                    qDebug() << "Retransmit range request for (audio) from:" << start << " to " << end;
+                    bool found = false;
+                    for (int g = txSeqBuf.length() - 1; g >= 0; g--)
+                        if (txSeqBuf[g].seqNum >= start && txSeqBuf[g].seqNum <= end) {
+                            qDebug() << "Sending requested packet (len=" << txSeqBuf[g].data.length() << ")";
+                            udp->writeDatagram(txSeqBuf[g].data, radioIP, port);
+                            udp->writeDatagram(txSeqBuf[g].data, radioIP, port);
+                            found = true;
+                        }
+                    if (!found)
+                    {
+                        // Packet was not found in buffer
+                        qDebug() << "Could not find retransmited packet, need to send idle.";
+                    }
+                }
             }
             break;
 
@@ -682,8 +717,9 @@ void udpAudio::DataReceived()
                 for (f = txSeqBuf.length() - 1; f >= 0; f--)
                 {
                     if (txSeqBuf[f].seqNum == gotSeq) {
-                        qDebug() << "Sending requested packet";
-                        udp->writeDatagram(QByteArray::fromRawData(txSeqBuf[f].data, sizeof(txSeqBuf[f].data)), radioIP, port);
+                        qDebug() << "Sending requested packet (len=" << txSeqBuf[f].data.length() << ")";
+                        udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
+                        udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
                         break;
                     }
                 }
@@ -699,13 +735,17 @@ void udpAudio::DataReceived()
                 for (int f = 16; f < r.length() - 4; f = f + 4)
                 {
                     uint16_t start = qFromLittleEndian<quint16>(r.mid(f, 2));
-                    uint16_t end = qFromLittleEndian<quint16>(r.mid(f+2, 2));
+                    uint16_t end = qFromLittleEndian<quint16>(r.mid(f + 2, 2));
                     qDebug() << "Retransmit range request for (audio) from:" << start << " to " << end;
-                    int g;
-                    for (g = txSeqBuf.length() - 1; g >= 0; g--)
-                        if (txSeqBuf[g].seqNum >= start && txSeqBuf[g].seqNum <= end) 
-                            udp->writeDatagram(QByteArray::fromRawData(txSeqBuf[g].data, sizeof(txSeqBuf[g].data)), radioIP, port);
-                    if (g == 0)
+                    bool found = false;
+                    for (int g = txSeqBuf.length() - 1; g >= 0; g--)
+                        if (txSeqBuf[g].seqNum >= start && txSeqBuf[g].seqNum <= end) {
+                            qDebug() << "Sending requested packet (len=" << txSeqBuf[g].data.length() << ")";
+                            udp->writeDatagram(txSeqBuf[g].data, radioIP, port);
+                            udp->writeDatagram(txSeqBuf[g].data, radioIP, port);
+                            found = true;
+                        }
+                    if (!found)
                     {
                         // Packet was not found in buffer
                         qDebug() << "Could not find retransmited packet, need to send idle.";
