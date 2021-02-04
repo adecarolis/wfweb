@@ -12,48 +12,40 @@ udpHandler::udpHandler(QHostAddress ip, int cport, int sport, int aport,QString 
     this->sport = sport;
     this->username = username;
     this->password = password;
-    udp = new QUdpSocket(this);
-    udp->bind(); // Bind to random port.
-    localPort = udp->localPort();
-    qDebug() << "ControlStream bound to local port:" << localPort << " remote port:" << port;
-    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpHandler::DataReceived);
     
     // Convoluted way to find the external IP address, there must be a better way????
     QString localhostname = QHostInfo::localHostName();
     QList<QHostAddress> hostList = QHostInfo::fromName(localhostname).addresses();
-    foreach(const QHostAddress & address, hostList) {
-        if (address.protocol() == QAbstractSocket::IPv4Protocol && address.isLoopback() == false) {
+    foreach(const QHostAddress & address, hostList) 
+    {
+        if (address.protocol() == QAbstractSocket::IPv4Protocol && address.isLoopback() == false) 
+        {
             localIP = QHostAddress(address.toString());
         }
     }
 
-    uint32_t addr = QHostAddress(localIP).toIPv4Address();
-    localSID = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (localPort & 0xffff);
+    udpBase::udpBase(); // Perform connection
+    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpHandler::DataReceived);
+
     connect(&reauthTimer, &QTimer::timeout, this, QOverload<>::of(&udpHandler::ReAuth));
 
     SendPacketConnect(); // First connect packet
 
 }
 
-
 udpHandler::~udpHandler()
 {
     if (isAuthenticated)
     {
-        if (serial != nullptr)
-            delete serial;
         if (audio != nullptr)
             delete audio;
+        if (serial != nullptr)
+            delete serial;
 
-        qDebug() << "Sending Control De-Auth";
+        qDebug() << "Sending De-Auth packet to radio";
         SendPacketAuth(0x01);
-        SendPacketDisconnect();
 
     }
-
-    udp->close();
-    delete udp;
-    qDebug() << "Closing udpHandler";
 }
 
 void udpHandler::ReAuth()
@@ -111,9 +103,11 @@ void udpHandler::DataReceived()
             {
                 if (r.mid(48, 3) == QByteArrayLiteral("\xff\xff\xff"))
                     if (!serialAndAudioOpened) {
+                        emit haveNetworkError(radioIP.toString(), "Auth failed, try rebooting the radio.");
                         qDebug() << "Auth failed, try rebooting the radio.";
                     }
                 if (r.mid(48, 3) == QByteArrayLiteral("\x00\x00\x00") && r[64] == (char)0x01) {
+                    emit haveNetworkError(radioIP.toString(), "Got radio disconnected.");
                     qDebug() << "Got radio disconnected.";
                 }
             }
@@ -125,11 +119,13 @@ void udpHandler::DataReceived()
             {
                 if (r.mid(48, 4) == QByteArrayLiteral("\xff\xff\xff\xfe"))
                 {
+                    emit haveNetworkError(radioIP.toString(), "Invalid Username/Password");
                     qDebug() << "Invalid Username/Password";
 
                 }
                 else if (!isAuthenticated)
                 {
+                    emit haveNetworkError(radioIP.toString(), "Radio Login OK!");
                     qDebug() << "Login OK!";
 
                     authID[0] = r[26];
@@ -322,30 +318,14 @@ qint64 udpHandler::SendPacketAuth(uint8_t magic)
 // (pseudo) serial class
 udpSerial::udpSerial(QHostAddress local, QHostAddress ip, int sport) {
     qDebug() << "Starting udpSerial";
+    localIP = local;
     port = sport;
     radioIP = ip;
 
-    udp = new QUdpSocket(this);
-    udp->bind(); // Bind to random port.
+    udpBase::udpBase(); // Perform connection
 
-    localPort = udp->localPort();
-    qDebug() << "Serial Stream bound to local port:" << localPort << " remote port:" << port;
-    uint32_t addr =local.toIPv4Address();
-    localSID = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (localPort & 0xffff);
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpSerial::DataReceived);
-
-    SendPacketConnect(); // Need to first get the remote address
-
-}
-
-udpSerial::~udpSerial()
-{
-    qDebug() << "Closing udpSerial";
-    SendPacketOpenClose(true);
-    SendPacketDisconnect();
-    //_sleep(100);
-    udp->close();
-    delete udp;
+    SendPacketConnect(); // First connect packet
 }
 
 
@@ -443,7 +423,8 @@ void udpSerial::DataReceived()
             break;
         default:
             if (r.length() > 21) {
-                uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
+                // We should probably check for missing packets?
+                //uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
                 quint8 temp = r[0] - 0x15;
 
                 if ((quint8)r[16] == 0xc1 && (quint8)r[17] == temp)
@@ -457,21 +438,17 @@ void udpSerial::DataReceived()
 }
 
 
-
 // Audio stream
 udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
 {
     qDebug() << "Starting udpAudio";
+    localIP = local;
     port = aport;
     radioIP = ip;
-    udp = new QUdpSocket(this);
-    udp->bind(); // Bind to random port.
-    localPort = udp->localPort();
-    qDebug() << "Audio Stream bound to local port:" << localPort << " remote port:" << port;
-    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::DataReceived);
-    uint32_t addr = local.toIPv4Address();
-    localSID = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (localPort & 0xffff);
 
+    udpBase::udpBase(); // Perform connection
+
+    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::DataReceived);
     SendPacketConnect(); // First connect packet
 
 
@@ -498,17 +475,8 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
 
     buffer->seek(0);
     audio->start(buffer);
+
 }
-
-
-udpAudio::~udpAudio()
-{
-    qDebug() << "Closing udpAudio";
-    SendPacketDisconnect();
-    udp->close();
-    delete udp;
-}
-
 
 
 void udpAudio::DataReceived()
@@ -570,6 +538,25 @@ void udpAudio::DataReceived()
 }
 
 
+udpBase::udpBase()
+{
+    udp = new QUdpSocket(this);
+    udp->bind(); // Bind to random port.
+    localPort = udp->localPort();
+    qDebug() << "UDP Stream bound to local port:" << localPort << " remote port:" << port;
+    uint32_t addr = localIP.toIPv4Address();
+    localSID = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (localPort & 0xffff);
+}
+
+udpBase::~udpBase()
+{
+    qDebug() << "Closing UDP stream :" << radioIP.toString() << ":" << port;
+    SendPacketDisconnect();
+    if (udp != nullptr) {
+        udp->close();
+        delete udp;
+    }
+}
 
 // Base class!
 

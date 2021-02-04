@@ -23,6 +23,8 @@ class udpBase : public QObject
 {
 
 public:
+	udpBase::udpBase();
+	udpBase::~udpBase();
 	qint64 SendTrackedPacket(QByteArray d);
 	qint64 SendPacketConnect();
 	qint64 SendPacketConnect2();
@@ -35,7 +37,7 @@ public:
 
 	unsigned char* Passcode(QString str);
 	QString parseNullTerminatedString(QByteArray c, int s);
-	QUdpSocket* udp;
+	QUdpSocket* udp=nullptr;
 	uint32_t localSID = 0;
 	uint32_t remoteSID = 0;
 	char authID[6] = { 0, 0, 0, 0, 0, 0 };
@@ -84,7 +86,6 @@ class udpSerial : public udpBase
 
 public:
 	udpSerial(QHostAddress local, QHostAddress ip, int sport);
-	~udpSerial();
 	QMutex serialmutex;
 
 signals:
@@ -110,7 +111,6 @@ class udpAudio : public udpBase
 
 public:
 	udpAudio(QHostAddress local, QHostAddress ip, int aport);
-	~udpAudio();
 
 private:
 
@@ -152,6 +152,7 @@ public slots:
 signals:
 	void RigConnected(const QString&);
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
+	void haveNetworkError(QString, QString);
 
 private:
 

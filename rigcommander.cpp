@@ -67,7 +67,7 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quin
     // data from the program to the comm port:
     connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
 
-    connect(comm, SIGNAL(haveSerialPortError(QString,QString)), this, SLOT(handleSerialPortError(QString,QString)));
+    connect(comm, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
 
     connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
@@ -113,6 +113,9 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QHostAddress ip, int cport,
 
     // data from the program to the comm port:
     connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+
+    // Connect for errors/alerts
+    connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
 
     //connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
