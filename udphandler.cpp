@@ -24,7 +24,7 @@ udpHandler::udpHandler(QHostAddress ip, int cport, int sport, int aport,QString 
         }
     }
 
-    udpBase::udpBase(); // Perform connection
+    init(); // Perform connection
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpHandler::DataReceived);
 
     connect(&reauthTimer, &QTimer::timeout, this, QOverload<>::of(&udpHandler::ReAuth));
@@ -325,7 +325,7 @@ udpSerial::udpSerial(QHostAddress local, QHostAddress ip, int sport) {
     port = sport;
     radioIP = ip;
 
-    udpBase::udpBase(); // Perform connection
+    init(); // Perform connection
 
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpSerial::DataReceived);
     SendPacketConnect(); // First connect packet
@@ -452,7 +452,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
     port = aport;
     radioIP = ip;
 
-    udpBase::udpBase(); // Perform connection
+    init(); // Perform connection
 
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::DataReceived);
     SendPacketConnect(); // First connect packet
@@ -546,7 +546,8 @@ void udpAudio::DataReceived()
 }
 
 
-udpBase::udpBase()
+
+void udpBase::init()
 {
     udp = new QUdpSocket(this);
     udp->bind(); // Bind to random port.
@@ -555,7 +556,6 @@ udpBase::udpBase()
     uint32_t addr = localIP.toIPv4Address();
     localSID = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (localPort & 0xffff);
 }
-
 udpBase::~udpBase()
 {
     qDebug() << "Closing UDP stream :" << radioIP.toString() << ":" << port;

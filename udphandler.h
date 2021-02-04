@@ -23,8 +23,9 @@ class udpBase : public QObject
 {
 
 public:
-	udpBase();
 	~udpBase();
+
+	void init();
 
 	qint64 SendTrackedPacket(QByteArray d);
 	qint64 SendPacketConnect();
