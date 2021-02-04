@@ -626,8 +626,8 @@ void rigCommander::parseCommand()
             // qDebug() << "Have rig ID: " << (unsigned int)payloadIn[2];
             // printHex(payloadIn, false, true);
             
-            //model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
-            model = determineRadioModel(0xa2); // verify this is the model not the CIV
+            model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
+            //model = determineRadioModel(0xa2); //testing by forcing model to 9700.
             determineRigCaps();
             qDebug() << "Have rig ID: decimal: " << (unsigned int)model;
 
