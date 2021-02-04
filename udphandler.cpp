@@ -50,11 +50,7 @@ udpHandler::~udpHandler()
         SendPacketDisconnect();
 
     }
-<<<<<<< HEAD
-    //msleep(100);
-=======
-    //_sleep(100);
->>>>>>> f18d0f3e2b7f1654d64ae9845d804f1dce4e56e6
+
     udp->close();
     delete udp;
     qDebug() << "Closing udpHandler";
@@ -630,11 +626,6 @@ udpAudio::~udpAudio()
 {
     qDebug() << "Closing udpAudio";
     SendPacketDisconnect();
-<<<<<<< HEAD
-=======
-    //_sleep(100);
->>>>>>> f18d0f3e2b7f1654d64ae9845d804f1dce4e56e6
-
     udp->close();
     delete udp;
 }
