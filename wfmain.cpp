@@ -146,7 +146,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     keyM->setKey(Qt::Key_M);
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
 
-
+    // Enumerate audio devices, need to do before settings are loaded.
+    const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
+    for (const QAudioDeviceInfo& deviceInfo : deviceInfos) {
+        ui->audioOutputCombo->addItem(deviceInfo.deviceName());
+    }
     setDefaultColors(); // set of UI colors with defaults populated
     setDefPrefs(); // other default options
     loadSettings(); // Look for saved preferences
@@ -571,6 +575,13 @@ void wfmain::loadSettings()
     prefs.password = settings.value("Password", defPrefs.password).toString();
     ui->passwordTxt->setEnabled(ui->lanEnableChk->isChecked());
     ui->passwordTxt->setText(QString("%1").arg(prefs.password));
+
+    prefs.audioOutput = settings.value("AudioOutput", defPrefs.audioOutput).toString();
+    ui->audioOutputCombo->setEnabled(ui->lanEnableChk->isChecked());
+    int audioIndex = ui->audioOutputCombo->findText("prefs.audioOutput");
+    if (audioIndex  -1)
+        ui->audioOutputCombo->setCurrentIndex(audioIndex);
+
     settings.endGroup();
     // Memory channels
 
@@ -646,6 +657,7 @@ void wfmain::saveSettings()
     settings.setValue("AudioLANPort", prefs.audioLANPort);
     settings.setValue("Username", prefs.username);
     settings.setValue("Password", prefs.password);
+    settings.setValue("AudioOutput", prefs.audioOutput);
     settings.endGroup();
 
     // Memory channels
@@ -2142,6 +2154,11 @@ void wfmain::on_usernameTxt_textChanged(QString text)
 void wfmain::on_passwordTxt_textChanged(QString text)
 {
     prefs.password = text;
+}
+
+void wfmain::on_audioOutputCombo_currentIndexChanged(QString text)
+{
+    prefs.audioOutput = text;
 }
 
 // --- DEBUG FUNCTION ---

@@ -149,6 +149,7 @@ void rigCommander::findRigs()
 
     QByteArray data;
     QByteArray data2;
+    //data.setRawData("\xFE\xFE\xa2", 3);
     data.setRawData("\xFE\xFE\x00", 3);
     data.append(compCivAddr); // wfview's address, 0xE1
     data2.setRawData("\x19\x00", 2); // get rig ID
@@ -635,9 +636,7 @@ void rigCommander::parseCommand()
         case '\x19':
             // qDebug() << "Have rig ID: " << (unsigned int)payloadIn[2];
             // printHex(payloadIn, false, true);
-            
             model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
-            //model = determineRadioModel(0xa2); //testing by forcing model to 9700.
             determineRigCaps();
             qDebug() << "Have rig ID: decimal: " << (unsigned int)model;
 
@@ -1136,7 +1135,8 @@ void rigCommander::parseSpectrum()
         if (payloadIn.length() > 400) // Must be a LAN packet.
         {
             payloadIn.chop(1);
-            spectrumLine.append(payloadIn.mid(17,475)); // write over the FD, last one doesn't, oh well.
+            //spectrumLine.append(payloadIn.mid(17,475)); // write over the FD, last one doesn't, oh well.
+            spectrumLine.append(payloadIn.right(payloadIn.length()-17)); // write over the FD, last one doesn't, oh well.
             emit haveSpectrumData(spectrumLine, spectrumStartFreq, spectrumEndFreq);
         }
     } else if ((sequence > 1) && (sequence < rigCaps.spectSeqMax))

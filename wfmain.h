@@ -251,6 +251,8 @@ private slots:
 
     void on_passwordTxt_textChanged(QString text);
 
+    void on_audioOutputCombo_currentIndexChanged(QString text);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -385,7 +387,7 @@ private:
         quint32 audioLANPort;
         QString username;
         QString password;
-
+        QString audioOutput;
     } prefs;
 
     preferences defPrefs;
