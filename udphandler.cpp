@@ -116,6 +116,7 @@ void udpHandler::DataReceived()
                 for (f = txSeqBuf.length() - 1; f >= 0; f--)
                 {
                     if (txSeqBuf[f].seqNum == gotSeq) {
+                        qDebug() << "Sending requested packet";
                         udp->writeDatagram(QByteArray::fromRawData(txSeqBuf[f].data, sizeof(txSeqBuf[f].data)), radioIP, port);
                         break;
                     }
@@ -123,7 +124,7 @@ void udpHandler::DataReceived()
                 if (f == 0)
                 {
                     // Packet was not found in buffer
-                    qDebug() << "Could not find retransmited packet, sending idle.";
+                    qDebug() << "Could not find requested packet, sending idle.";
                     SendPkt0Idle(false, gotSeq);
                 }
             }
@@ -530,6 +531,7 @@ void udpSerial::DataReceived()
                 for (f = txSeqBuf.length() - 1; f >= 0; f--)
                 {
                     if (txSeqBuf[f].seqNum == gotSeq) {
+                        qDebug() << "Sending requested packet";
                         udp->writeDatagram(QByteArray::fromRawData(txSeqBuf[f].data, sizeof(txSeqBuf[f].data)), radioIP, port);
                         break;
                     }
@@ -537,7 +539,7 @@ void udpSerial::DataReceived()
                 if (f == 0)
                 {
                     // Packet was not found in buffer
-                    qDebug() << "Could not find retransmited packet, sending idle.";
+                    qDebug() << "Could not find requested packet, sending idle.";
                     SendPkt0Idle(false, gotSeq);
                 }
 
@@ -680,6 +682,7 @@ void udpAudio::DataReceived()
                 for (f = txSeqBuf.length() - 1; f >= 0; f--)
                 {
                     if (txSeqBuf[f].seqNum == gotSeq) {
+                        qDebug() << "Sending requested packet";
                         udp->writeDatagram(QByteArray::fromRawData(txSeqBuf[f].data, sizeof(txSeqBuf[f].data)), radioIP, port);
                         break;
                     }
@@ -687,14 +690,27 @@ void udpAudio::DataReceived()
                 if (f == 0)
                 {
                     // Packet was not found in buffer
-                    qDebug() << "Could not find retransmited packet, sending idle.";
+                    qDebug() << "Could not find requested packet, sending idle.";
                     SendPkt0Idle(false, gotSeq);
                 }
             }
             else if (r.mid(0, 6) == QByteArrayLiteral("\x18\x00\x00\x00\x01\x00"))
             {   // retransmit range
-
-
+                for (int f = 16; f < r.length() - 4; f = f + 4)
+                {
+                    uint16_t start = qFromLittleEndian<quint16>(r.mid(f, 2));
+                    uint16_t end = qFromLittleEndian<quint16>(r.mid(f+2, 2));
+                    qDebug() << "Retransmit range request for (audio) from:" << start << " to " << end;
+                    int g;
+                    for (g = txSeqBuf.length() - 1; g >= 0; g--)
+                        if (txSeqBuf[g].seqNum >= start && txSeqBuf[g].seqNum <= end) 
+                            udp->writeDatagram(QByteArray::fromRawData(txSeqBuf[g].data, sizeof(txSeqBuf[g].data)), radioIP, port);
+                    if (g == 0)
+                    {
+                        // Packet was not found in buffer
+                        qDebug() << "Could not find retransmited packet, need to send idle.";
+                    }
+                }
             }
             break;
 
