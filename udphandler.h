@@ -27,7 +27,7 @@ public:
 	qint64 SendPacketConnect();
 	qint64 SendPacketConnect2();
 	qint64 SendPacketDisconnect();
-	void SendPkt0Idle();
+	void SendPkt0Idle(bool tracked, quint16 seq);
 	void SendPkt7Idle();
 	void PurgeOldEntries();
 

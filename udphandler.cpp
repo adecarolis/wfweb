@@ -110,9 +110,22 @@ void udpHandler::DataReceived()
             else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x01\x00"))
             {   // retransmit request
                 // Send an idle with the requested seqnum.
-                qDebug() << "Retransmit request: " << datagram.data();
-
-
+                uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
+                qDebug() << "Retransmit request for (control): " << gotSeq;
+                int f;
+                for (f = txSeqBuf.length() - 1; f >= 0; f--)
+                {
+                    if (txSeqBuf[f].seqNum == gotSeq) {
+                        udp->writeDatagram(QByteArray::fromRawData(txSeqBuf[f].data, sizeof(txSeqBuf[f].data)), radioIP, port);
+                        break;
+                    }
+                }
+                if (f == 0)
+                {
+                    // Packet was not found in buffer
+                    qDebug() << "Could not find retransmited packet, sending idle.";
+                    SendPkt0Idle(false, gotSeq);
+                }
             }
             else if (r.mid(0, 6) == QByteArrayLiteral("\x18\x00\x00\x00\x01\x00"))
             {   // retransmit range
@@ -198,7 +211,7 @@ void udpHandler::DataReceived()
                     SendPacketAuth(0x02);
 
                     pkt0Timer = new QTimer(this);
-                    connect(pkt0Timer, &QTimer::timeout, this, &udpBase::SendPkt0Idle);
+                    connect(pkt0Timer, &QTimer::timeout, this, std::bind(&udpBase::SendPkt0Idle,this,true,0));
                     pkt0Timer->start(100);
 
                     SendPacketAuth(0x05);
@@ -496,36 +509,12 @@ void udpSerial::DataReceived()
                     pkt7Timer->start(3000); // send pkt7 idle packets every 3 seconds
 
                     pkt0Timer = new QTimer(this);
-                    connect(pkt0Timer, &QTimer::timeout, this, &udpBase::SendPkt0Idle);
+                    connect(pkt0Timer, &QTimer::timeout, this, std::bind(&udpBase::SendPkt0Idle,this,true,0));
                     pkt0Timer->start(100);
 
                     periodicRunning = true;
 
                 }
-
-                //Send(QByteArrayLiteral("\xfe\xfe\xa2\xe1\x1a\x05\x00\x75\x00\xfd")); // Disable echo
-
-                /*
-                Send(QByteArrayLiteral("\xfe\xfe\xa2\xe0\x25\x00\xfd"));
-                Send(QByteArrayLiteral("\xfe\xfe\xa2\xe0\x25\x01\xfd"));
-                Send(QByteArrayLiteral("\xfe\xfe\xa2\xe0\x26\x00\xfd"));
-                Send(QByteArrayLiteral("\xfe\xfe\xa2\xe0\x26\x01\xfd"));
-                Send(QByteArrayLiteral("\xfe\xfe\xa2\xe0\x14\x0a\xfd"));
-                Send(QByteArrayLiteral("\xfe\xfe\xa2\xe0\x1c\x00\xfd"));
-                Send(QByteArrayLiteral("\xfe\xfe\xa2\xe0\x1c\x01\xfd"));
-                Send(QByteArrayLiteral("\xfe\xfe\xa2\xe0\x16\x02\xfd"));
-                Send(QByteArrayLiteral("\xfe\xfe\xa2\xe0\x16\x12\xfd"));
-                Send(QByteArrayLiteral("\xfe\xfe\xa2\xe0\x15\x15\xfd"));
-                Send(QByteArrayLiteral("\xfe\xfe\xa2\xe0\x15\x02\xfd"));
-                Send(QByteArrayLiteral("\xfe\xfe\xa2\xe0\x1a\x09\xfd"));
-                Send(QByteArrayLiteral("\xfe\xfe\xa2\xe0\x15\x12\xfd"));
-                */
-                //Send(QByteArrayLiteral("\xfe\xfe\xa2\xe0\x27\x10\x01\xfd")); // Scope ON
-                //Send(QByteArrayLiteral("\xfe\xfe\xa2\xe0\x27\x11\x01\xfd")); // Send scope data
-
-
-
-
 
             }
             else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x00\x00"))
@@ -535,6 +524,22 @@ void udpSerial::DataReceived()
             else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x01\x00"))
             {   // retransmit request
                 // Send an idle with the requested seqnum.
+                uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
+                qDebug() << "Retransmit request for (serial): " << gotSeq;
+                int f;
+                for (f = txSeqBuf.length() - 1; f >= 0; f--)
+                {
+                    if (txSeqBuf[f].seqNum == gotSeq) {
+                        udp->writeDatagram(QByteArray::fromRawData(txSeqBuf[f].data, sizeof(txSeqBuf[f].data)), radioIP, port);
+                        break;
+                    }
+                }
+                if (f == 0)
+                {
+                    // Packet was not found in buffer
+                    qDebug() << "Could not find retransmited packet, sending idle.";
+                    SendPkt0Idle(false, gotSeq);
+                }
 
 
             }
@@ -669,8 +674,22 @@ void udpAudio::DataReceived()
             else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x01\x00"))
             {   // retransmit request
                 // Send an idle with the requested seqnum.
-
-
+                uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
+                qDebug() << "Retransmit request for (audio): " << gotSeq;
+                int f;
+                for (f = txSeqBuf.length() - 1; f >= 0; f--)
+                {
+                    if (txSeqBuf[f].seqNum == gotSeq) {
+                        udp->writeDatagram(QByteArray::fromRawData(txSeqBuf[f].data, sizeof(txSeqBuf[f].data)), radioIP, port);
+                        break;
+                    }
+                }
+                if (f == 0)
+                {
+                    // Packet was not found in buffer
+                    qDebug() << "Could not find retransmited packet, sending idle.";
+                    SendPkt0Idle(false, gotSeq);
+                }
             }
             else if (r.mid(0, 6) == QByteArrayLiteral("\x18\x00\x00\x00\x01\x00"))
             {   // retransmit range
@@ -737,14 +756,21 @@ void udpAudio::DataReceived()
 // Base class!
 
 // Send periodic idle packets (every 100ms)
-void udpBase::SendPkt0Idle()
+void udpBase::SendPkt0Idle(bool tracked=true,quint16 seq=0)
 {
-    const unsigned char p[] = { 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,0x00,
+    unsigned char p[] = { 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,0x00,
         localSID >> 24 & 0xff, localSID >> 16 & 0xff, localSID >> 8 & 0xff, localSID & 0xff,
         remoteSID >> 24 & 0xff, remoteSID >> 16 & 0xff, remoteSID >> 8 & 0xff, remoteSID & 0xff
     };
 
-    SendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
+    if (!tracked) {
+        p[6] = seq & 0xff;
+        p[7] = (seq >> 8) & 0xff;
+        udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
+    }
+    else {
+        SendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
+    }
     return;
 }
 
@@ -772,12 +798,12 @@ qint64 udpBase::SendTrackedPacket(QByteArray d)
     // As the radio can request retransmission of these packets, store them in a buffer (eventually!)
     d[6] = sendSeq & 0xff;
     d[7] = (sendSeq >> 8) & 0xff;
-    //SEQBUFENTRY s;
-    //s.seqNum = sendSeq;
-    //s.timeSent = time(0);
-    //s.data = (d);
-    //txSeqBuf.append(s);
-    //PurgeOldEntries();
+    SEQBUFENTRY s;
+    s.seqNum = sendSeq;
+    s.timeSent = time(0);
+    s.data = (d);
+    txSeqBuf.append(s);
+    PurgeOldEntries();
     sendSeq++;
 
     return udp->writeDatagram(d, radioIP, port);
@@ -788,8 +814,8 @@ void udpBase::PurgeOldEntries()
 {
     for (int f = txSeqBuf.length() - 1; f >= 0; f--)
     {
-        // Delete any entries older than 3 seconds.
-        if (difftime(txSeqBuf[f].timeSent, time(0)) > 3)
+        // Delete any entries older than 1 second.
+        if (difftime(txSeqBuf[f].timeSent, time(0)) > 1)
             txSeqBuf.removeAt(f);
     }
 
