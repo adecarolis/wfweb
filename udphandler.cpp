@@ -431,9 +431,10 @@ void udpSerial::DataReceived()
                 // We should probably check for missing packets?
                 //uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
                 quint8 temp = r[0] - 0x15;
-
+                /*
                 if ((quint8)r[16] == 0xc1 && (quint8)r[17] == temp)
                     emit Receive(r.mid(21)); 
+                    */
             }
             break;
 
@@ -559,10 +560,14 @@ void udpAudio::DataReceived()
                 if (!duplicate)
                 {
                     //qDebug() << "Got Audio Sequence: (" << r.length() << ") " << gotSeq;
-                    qint64 pos = buffer->pos();
-                    buffer->seek(buffer->size());
+                    // Delete contents of buffer up to existing pos()
+                    buffer->buffer().remove(0,buffer->pos());
+                    // Seek to end of curent buffer
+                    buffer->seek(buffer->size()); 
+                    // Append to end of buffer
                     buffer->write(r.mid(24).constData(), r.mid(24).length());
-                    buffer->seek(pos);
+                    // Seek to start of buffer.
+                    buffer->seek(0);
                 }
             }
             break;
@@ -717,7 +722,7 @@ void udpBase::SendPkt7Idle()
 
 
     QMutexLocker locker(&mutex);
-    //qDebug() << this->metaObject()->className()  << " tx buffer size:" << txSeqBuf.length();
+    qDebug() << this->metaObject()->className()  << " tx buffer size:" << txSeqBuf.length();
 
     const unsigned char p[] = { 0x15, 0x00, 0x00, 0x00, 0x07, 0x00, static_cast<unsigned char>(pkt7SendSeq & 0xff),static_cast<unsigned char>(pkt7SendSeq >> 8 & 0xff),
         static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
