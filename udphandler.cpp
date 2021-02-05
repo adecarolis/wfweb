@@ -722,7 +722,7 @@ void udpBase::SendPkt7Idle()
 
 
     QMutexLocker locker(&mutex);
-    qDebug() << this->metaObject()->className()  << " tx buffer size:" << txSeqBuf.length();
+    //qDebug() << this->metaObject()->className()  << " tx buffer size:" << txSeqBuf.length();
 
     const unsigned char p[] = { 0x15, 0x00, 0x00, 0x00, 0x07, 0x00, static_cast<unsigned char>(pkt7SendSeq & 0xff),static_cast<unsigned char>(pkt7SendSeq >> 8 & 0xff),
         static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
