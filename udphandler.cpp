@@ -100,7 +100,7 @@ void udpHandler::DataReceived()
                 // This is a response to our pkt7 request so measure latency (only once fully connected though.
                 latency += (time(NULL) - lastPacket7Sent);
                 latency /= 2;
-                emit haveNetworkStatus("Latency: " + QString::number(latency) + " ms");
+                emit haveNetworkStatus("rtt: " + QString::number(latency) + " ms");
             }
             break;
         case (64): // Response to Auth packet?
