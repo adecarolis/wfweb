@@ -474,12 +474,40 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
     else
     {
         qDebug() << "Audio format not supported!";
+        if(info.isNull())
+        {
+            qDebug() << "No device was found. You probably need to install libqt5multimedia5-plugins.";
+        } else {
+
+            qDebug() << "Devices found: ";
+            const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
+            for (const QAudioDeviceInfo &deviceInfo : deviceInfos)
+            {
+                qDebug() << "Device name: " << deviceInfo.deviceName();
+                qDebug() << deviceInfo.deviceName();
+                qDebug() << "is null (probably not good):";
+                qDebug() << deviceInfo.isNull();
+                qDebug() << "channel count:";
+                qDebug() << deviceInfo.supportedChannelCounts();
+                qDebug() << "byte order:";
+                qDebug() << deviceInfo.supportedByteOrders();
+                qDebug() << "supported codecs:";
+                qDebug() << deviceInfo.supportedCodecs();
+                qDebug() << "sample rates:";
+                qDebug() << deviceInfo.supportedSampleRates();
+                qDebug() << "sample sizes:";
+                qDebug() << deviceInfo.supportedSampleSizes();
+                qDebug() << "sample types:";
+                qDebug() << deviceInfo.supportedSampleTypes();
+            }
+        }
+        qDebug() << "----- done with audio info -----";
     }
 
     buffer = new QBuffer();
     buffer->open(QIODevice::ReadWrite);
     audio = new QAudioOutput(format);
-
+    audio->setBufferSize(6000); // TODO: add preference, maybe UI too.
     buffer->seek(0);
     audio->start(buffer);
 

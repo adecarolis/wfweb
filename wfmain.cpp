@@ -363,6 +363,11 @@ wfmain::~wfmain()
     rigThread->quit();
     rigThread->wait();
 #endif
+#ifdef Q_OS_LINUX
+    delete rig;
+    rigThread->quit();
+    rigThread->wait();
+#endif
     delete ui;
 }
 
