@@ -252,6 +252,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rig, SIGNAL(haveMode(QString)), this, SLOT(receiveMode(QString)));
     connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
+    connect(rig, SIGNAL(haveSpectrumFixedMode(bool)), this, SLOT(receiveSpectrumFixedMode(bool)));
     connect(this, SIGNAL(setFrequency(double)), rig, SLOT(setFrequency(double)));
     connect(this, SIGNAL(setScopeCenterMode(bool)), rig, SLOT(setSpectrumCenteredMode(bool)));
     connect(this, SIGNAL(setScopeEdge(char)), rig, SLOT(setScopeEdge(char)));
@@ -1363,6 +1364,11 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         //qDebug() << "updating spectrum, new row is: " << spectRowCurrent;
 
     }
+}
+
+void wfmain::receiveSpectrumFixedMode(bool isFixed)
+{
+    ui->scopeCenterModeChk->setChecked(!isFixed);
 }
 
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)

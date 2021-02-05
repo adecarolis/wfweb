@@ -51,6 +51,7 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quin
 
     lookingForRig = false;
     foundRig = false;
+    oldScopeMode = 3;
 
     // TODO: list full contents of /dev/serial, grep for IC-7300
     // /dev/serial/by-path$ ls
@@ -96,6 +97,7 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QHostAddress ip, int cport,
 
     lookingForRig = false;
     foundRig = false;
+    oldScopeMode = 3;
 
     payloadSuffix = QByteArray("\xFD");
     // TODO: list full contents of /dev/serial, grep for IC-7300
@@ -1103,12 +1105,12 @@ void rigCommander::parseSpectrum()
 
     unsigned char sequence = bcdHexToDecimal(payloadIn[03]);
     //unsigned char sequenceMax = bcdHexToDecimal(payloadIn[04]);
-    unsigned char scopeMode = bcdHexToDecimal(payloadIn[05]);
+    unsigned char scopeMode = bcdHexToDecimal(payloadIn[05]); // 0=center, 1=fixed
 
     if(scopeMode != oldScopeMode)
     {
-        //TODO:
-        // emit haveNewScopeMode(scopeMode);
+        //TODO: Figure out if this is the first spectrum, and if so, always emit.
+        emit haveSpectrumFixedMode(scopeMode==1);
         oldScopeMode = scopeMode;
     }
 

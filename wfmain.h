@@ -110,6 +110,7 @@ private slots:
     void receiveFreq(double);
     void receiveMode(QString);
     void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);
+    void receiveSpectrumFixedMode(bool isFixed);
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(bool dataOn);
     void receiveBandStackReg(float freq, char mode, bool dataOn); // freq, mode, (filter,) datamode
