@@ -431,10 +431,10 @@ void udpSerial::DataReceived()
                 // We should probably check for missing packets?
                 //uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
                 quint8 temp = r[0] - 0x15;
-                /*
+                
                 if ((quint8)r[16] == 0xc1 && (quint8)r[17] == temp)
                     emit Receive(r.mid(21)); 
-                    */
+                    
             }
             break;
 
