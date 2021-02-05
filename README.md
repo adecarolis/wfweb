@@ -30,6 +30,7 @@ wfview is copyright 2017-2020 Elliott H. Liggett. All rights reserved. wfview so
 6. 100 user memories stored in plain text on the computer
 7. Stylable GUI using CSS
 8. pseudo-terminal device, which allows for secondary program to control the radio while wfview is running
+9. works for radios that support the ethernet interface with compareable waterfall speeds as on the radio itself.
 
 ### Build Requirements:
 1. gcc / g++ / make
