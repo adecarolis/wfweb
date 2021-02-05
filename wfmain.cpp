@@ -519,6 +519,16 @@ void wfmain::setDefPrefs()
     defPrefs.serialPortBaud = 115200;
     defPrefs.enablePTT = false;
     defPrefs.niceTS = true;
+
+    defPrefs.enableLAN = false;
+    defPrefs.ipAddress = QString("");
+    defPrefs.controlLANPort = 50001;
+    defPrefs.serialLANPort = 50002;
+    defPrefs.audioLANPort = 50003;
+    defPrefs.username = QString("");
+    defPrefs.password = QString("");
+    defPrefs.audioOutput = QString("");
+
 }
 
 void wfmain::loadSettings()
@@ -2120,10 +2130,16 @@ void wfmain::on_pttEnableChk_clicked(bool checked)
 void wfmain::on_lanEnableChk_clicked(bool checked)
 {
     prefs.enableLAN = checked;
-    ui->ipAddressTxt->setEnabled(ui->lanEnableChk->isChecked());
-    ui->controlPortTxt->setEnabled(ui->lanEnableChk->isChecked());
-    ui->serialPortTxt->setEnabled(ui->lanEnableChk->isChecked());
-    ui->audioPortTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->ipAddressTxt->setEnabled(checked);
+    ui->controlPortTxt->setEnabled(checked);
+    ui->serialPortTxt->setEnabled(checked);
+    ui->audioPortTxt->setEnabled(checked);
+    ui->usernameTxt->setEnabled(checked);
+    ui->passwordTxt->setEnabled(checked);
+    if(checked)
+    {
+        showStatusBarText("After filling in values, press Save Settings and re-start wfview.");
+    }
 }
 
 void wfmain::on_ipAddressTxt_textChanged(QString text)
@@ -2133,17 +2149,17 @@ void wfmain::on_ipAddressTxt_textChanged(QString text)
 
 void wfmain::on_controlPortTxt_textChanged(QString text)
 {
-    prefs.controlLANPort = text.toInt();
+    prefs.controlLANPort = text.toUInt();
 }
 
 void wfmain::on_serialPortTxt_textChanged(QString text)
 {
-    prefs.serialLANPort = text.toInt();
+    prefs.serialLANPort = text.toUInt();
 }
 
 void wfmain::on_audioPortTxt_textChanged(QString text)
 {
-    prefs.audioLANPort = text.toInt();
+    prefs.audioLANPort = text.toUInt();
 }
 
 void wfmain::on_usernameTxt_textChanged(QString text)
