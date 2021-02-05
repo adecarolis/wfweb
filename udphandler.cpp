@@ -625,21 +625,22 @@ void udpBase::DataReceived(QByteArray r)
         {   // retransmit request
             // Send an idle with the requested seqnum if not found.
             uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
-            qDebug() << "Retransmit request for (audio): " << gotSeq;
-            int f;
-            for (f = txSeqBuf.length() - 1; f >= 0; f--)
+            //qDebug() << "Retransmit request for "<< this->metaObject()->className() <<" : " << gotSeq;
+            bool found=false;
+            for (int f = txSeqBuf.length() - 1; f >= 0; f--)
             {
                 if (txSeqBuf[f].seqNum == gotSeq) {
-                    qDebug() << "Sending requested packet (len=" << txSeqBuf[f].data.length() << ")";
+                    qDebug() << this->metaObject()->className() << ": retransmitting packet :" << gotSeq << " (len=" << txSeqBuf[f].data.length() << ")";
                     udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
                     udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
+                    found = true;
                     break;
                 }
             }
-            if (f == 0)
+            if (!found)
             {
                 // Packet was not found in buffer
-                qDebug() << "Could not find requested packet, sending idle.";
+                qDebug() << this->metaObject()->className() << ": Could not find requested packet " << gotSeq << ", sending idle.";
                 SendPkt0Idle(false, gotSeq);
             }
         }
@@ -649,20 +650,21 @@ void udpBase::DataReceived(QByteArray r)
             {
                 quint16 start = qFromLittleEndian<quint16>(r.mid(f, 2));
                 quint16 end = qFromLittleEndian<quint16>(r.mid(f + 2, 2));
-                qDebug() << "Retransmit range request for (audio) from:" << start << " to " << end;
+                qDebug() << this->metaObject()->className() << ": Retransmit range request for:" << start << " to " << end;
                 for (quint16 gotSeq = start; gotSeq <= end; gotSeq++)
                 {
-                    int h;
-                    for (h = txSeqBuf.length() - 1; h >= 0; h--)
+                    bool found=false;
+                    for (int h = txSeqBuf.length() - 1; h >= 0; h--)
                         if (txSeqBuf[h].seqNum == gotSeq) {
-                            qDebug() << "Sending requested packet (len=" << txSeqBuf[h].data.length() << ")";
+                            qDebug() << this->metaObject()->className() << ": retransmitting packet :" << gotSeq << " (len=" << txSeqBuf[f].data.length() << ")";
                             udp->writeDatagram(txSeqBuf[h].data, radioIP, port);
                             udp->writeDatagram(txSeqBuf[h].data, radioIP, port);
+                            found = true;
                             break;
                         }
-                    if (h==0)
+                    if (!found)
                     {
-                        qDebug() << "Could not find requested packet, sending idle.";
+                        qDebug() << this->metaObject()->className() << ": Could not find requested packet " << gotSeq << ", sending idle.";
                         SendPkt0Idle(false, gotSeq);
                     }
                 }
@@ -760,7 +762,7 @@ void udpBase::PurgeOldEntries()
     for (int f = txSeqBuf.length() - 1; f >= 0; f--)
     {
         // Delete any entries older than 1 second.
-        if (difftime(time(NULL),txSeqBuf[f].timeSent) > 3)
+        if (difftime(time(NULL),txSeqBuf[f].timeSent) > 60) // Delete anything more than 60 seconds old.
             txSeqBuf.removeAt(f);
     }
 
