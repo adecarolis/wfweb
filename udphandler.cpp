@@ -1,4 +1,5 @@
 // Copyright 2021 Phil Taylor M0VSE
+// This code is heavily based on "Kappanhang" by HA2NON, ES1AKOS and W6EL!
 
 #include "udphandler.h"
 
@@ -29,7 +30,7 @@ udpHandler::udpHandler(QHostAddress ip, int cport, int sport, int aport,QString 
 
     connect(&reauthTimer, &QTimer::timeout, this, QOverload<>::of(&udpHandler::ReAuth));
 
-    SendPacketConnect(); // First connect packet
+    udpBase::SendPacketConnect(); // First connect packet
 
 }
 
