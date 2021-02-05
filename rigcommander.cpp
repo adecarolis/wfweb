@@ -118,6 +118,7 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QHostAddress ip, int cport,
 
     // Connect for errors/alerts
     connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
+    connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(handleStatusUpdate(QString)));
 
     //connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
@@ -144,6 +145,11 @@ void rigCommander::handleSerialPortError(const QString port, const QString error
 {
     qDebug() << "Error using port " << port << " message: " << errorText;
     emit haveSerialPortError(port, errorText);
+}
+
+void rigCommander::handleStatusUpdate(const QString text)
+{
+    emit haveStatusUpdate(text);
 }
 
 void rigCommander::findRigs()

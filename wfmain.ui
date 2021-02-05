@@ -1321,7 +1321,10 @@
           <item>
            <widget class="QLineEdit" name="passwordTxt">
             <property name="inputMethodHints">
-             <set>Qt::ImhSensitiveData</set>
+             <set>Qt::ImhNoAutoUppercase|Qt::ImhNoPredictiveText|Qt::ImhSensitiveData</set>
+            </property>
+            <property name="echoMode">
+             <enum>QLineEdit::PasswordEchoOnEdit</enum>
             </property>
            </widget>
           </item>

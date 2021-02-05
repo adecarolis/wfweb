@@ -121,6 +121,7 @@ private slots:
     void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
     void receiveSerialPortError(QString port, QString errorText);
+    void receiveStatusUpdate(QString errorText);
     void handlePlotClick(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);
@@ -322,6 +323,7 @@ private:
     QStringList spans;
     QStringList edges;
     QStringList commPorts;
+    QLabel* rigStatus;
 
     quint16 spectWidth;
     quint16 wfLength;

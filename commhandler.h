@@ -32,6 +32,7 @@ signals:
     void sendDataOutToPort(const QByteArray &writeData); // not used
     void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
     void haveSerialPortError(const QString port, const QString error);
+    void haveStatusUpdate(const QString text);
 
 private:
     void setupComm();

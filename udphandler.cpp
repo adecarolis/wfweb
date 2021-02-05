@@ -171,6 +171,8 @@ void udpHandler::DataReceived()
             if (!serialAndAudioOpened && r.mid(0, 6) == QByteArrayLiteral("\x90\x00\x00\x00\x00\x00") && r[96] == (char)0x01) 
             {
                 devname = parseNullTerminatedString(r, 64);
+                emit haveNetworkStatus(devname);
+
                 qDebug() << "Got serial and audio request success, device name: " << devname;
 
                 // Stuff can change in the meantime because of a previous login...
@@ -445,10 +447,25 @@ void udpSerial::DataReceived()
             break;
         default:
             if (r.length() > 21) {
+                uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
+
+                /*
                 // We should probably check for missing packets?
-                //uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
+                // First check if we are missing any packets?
+                uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
+                if (lastReceivedSeq == 0 || lastReceivedSeq > gotSeq) {
+                    lastReceivedSeq = gotSeq;
+                }
+
+                for (uint16_t f = lastReceivedSeq + 1; f < gotSeq; f++) {
+                    // Do we need to request a retransmit?
+                    qDebug() << this->metaObject()->className() << ": Missing Sequence: (" << r.length() << ") " << f;
+                }
+
+                */
+                lastReceivedSeq = gotSeq;
+
                 quint8 temp = r[0] - 0x15;
-                
                 if ((quint8)r[16] == 0xc1 && (quint8)r[17] == temp)
                 {
                     emit Receive(r.mid(21));
@@ -567,40 +584,31 @@ void udpAudio::DataReceived()
         default:
             if (r.length() >= 580 && (r.mid(0, 6) == QByteArrayLiteral("\x6c\x05\x00\x00\x00\x00") || r.mid(0, 6) == QByteArrayLiteral("\x44\x02\x00\x00\x00\x00")))
             {
-                // This is an audio packet!
+                // First check if we are missing any packets
+                // Audio stream does not send periodic pkt0 so seq "should" be sequential.
                 uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
-
-                if (lastSeq > 0 && gotSeq > lastSeq + 1)
-                {
-                    for (uint16_t f = lastSeq; f < gotSeq; f++)
-                        qDebug() << "Missing Audio Sequence: (" << r.length() << ") " << f;
-                    lastSeq = gotSeq;
+                if (lastReceivedSeq == 0 || lastReceivedSeq > gotSeq) {
+                    lastReceivedSeq = gotSeq;
                 }
 
-                // Actual audio data is r[24] onwards sent in two groups.
-                bool duplicate = false;
-                for (uint16_t f = 0; f < seqBuf.length(); f++)
-                {
-                    if (seqBuf[f].seqNum == gotSeq)
-                    {
-                        duplicate = true;
-                    }
+                for (uint16_t f = lastReceivedSeq + 1; f < gotSeq; f++) {
+                    // Do we need to request a retransmit?
+                    qDebug() << this->metaObject()->className() << ": Missing Sequence: (" << r.length() << ") " << f;
                 }
-                if (!duplicate)
-                {
-                    //qDebug() << "Got Audio Sequence: (" << r.length() << ") " << gotSeq;
-                    // Delete contents of buffer up to existing pos()
-                    buffer->buffer().remove(0,buffer->pos());
-                    // Seek to end of curent buffer
-                    buffer->seek(buffer->size()); 
-                    // Append to end of buffer
-                    buffer->write(r.mid(24).constData(), r.mid(24).length());
-                    // Seek to start of buffer.
-                    buffer->seek(0);
-                }
+
+                lastReceivedSeq = gotSeq;
+
+                //qDebug() << "Got Audio Sequence: (" << r.length() << ") " << gotSeq;
+                // Delete contents of buffer up to existing pos()
+                buffer->buffer().remove(0,buffer->pos());
+                // Seek to end of curent buffer
+                buffer->seek(buffer->size()); 
+                // Append to end of buffer
+                 buffer->write(r.mid(24).constData(), r.mid(24).length());
+                // Seek to start of buffer.
+                buffer->seek(0);
             }
             break;
-
         }
 
         udpBase::DataReceived(r); // Call parent function to process the rest.
@@ -750,8 +758,6 @@ void udpBase::SendPkt0Idle(bool tracked=true,quint16 seq=0)
 // Send periodic idle packets (every 3000ms)
 void udpBase::SendPkt7Idle()
 {
-
-
     QMutexLocker locker(&mutex);
     //qDebug() << this->metaObject()->className()  << " tx buffer size:" << txSeqBuf.length();
 

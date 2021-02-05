@@ -62,6 +62,7 @@ public slots:
     void setCIVAddr(unsigned char civAddr);
     void handleNewData(const QByteArray &data);
     void handleSerialPortError(const QString port, const QString errorText);
+    void handleStatusUpdate(const QString text);
     void sayFrequency();
     void sayMode();
     void sayAll();
@@ -72,6 +73,7 @@ signals:
     void haveRigID(rigCapabilities rigCaps);
     void discoveredRigID(rigCapabilities rigCaps);
     void haveSerialPortError(const QString port, const QString errorText);
+    void haveStatusUpdate(const QString text);
     void haveFrequency(double frequencyMhz);
     void haveMode(QString mode);
     void haveDataMode(bool dataModeEnabled);

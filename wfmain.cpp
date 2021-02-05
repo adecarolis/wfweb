@@ -222,7 +222,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->afGainSlider->setSingleStep(100);
     ui->afGainSlider->setSingleStep(100);
 
-
+    rigStatus = new QLabel(this);
+    ui->statusBar->addPermanentWidget(rigStatus);
     ui->statusBar->showMessage("Connecting to rig...", 1000);
 
     delayedCommand = new QTimer(this);
@@ -468,7 +469,8 @@ void wfmain::openRig()
     rig->moveToThread(rigThread);
     connect(rigThread, SIGNAL(started()), rig, SLOT(process()));
     connect(rig, SIGNAL(finished()), rigThread, SLOT(quit()));
-    connect(rig, SIGNAL(haveSerialPortError(QString,QString)), this, SLOT(receiveSerialPortError(QString,QString)));
+    connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
+    connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
     rigThread->start();
     connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
     connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
@@ -512,6 +514,11 @@ void wfmain::receiveSerialPortError(QString port, QString errorText)
     ui->statusBar->showMessage(QString("ERROR: using port ").append(port).append(": ").append(errorText), 10000);
 
     // TODO: Dialog box, exit, etc
+}
+
+void wfmain::receiveStatusUpdate(QString text)
+{
+    this->rigStatus->setText(text);
 }
 
 void wfmain::setDefPrefs()

@@ -48,6 +48,7 @@ public:
 	uint16_t innerSendSeq = 0;
 	uint16_t sendSeqB = 0;
 	uint16_t sendSeq = 1;
+	uint16_t lastReceivedSeq = 0;
 	uint16_t pkt0SendSeq = 0;
 	uint16_t pkt7SendSeq = 0;
 	uint16_t periodicSeq = 0;
@@ -123,7 +124,6 @@ private:
 	QAudioFormat format;
 
 	bool sentPacketConnect2 = false;
-	uint16_t lastSeq = 0;
 	uint16_t sendAudioSeq = 0;
 
 };
@@ -155,6 +155,7 @@ signals:
 	void RigConnected(const QString&);
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
 	void haveNetworkError(QString, QString);
+	void haveNetworkStatus(QString);
 
 private:
 
