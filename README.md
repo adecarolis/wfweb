@@ -81,5 +81,5 @@ see also the wiki:
 
 - [bugs](https://gitlab.com/eliggett/wfview/-/wikis/Bugs)
 - [feature requests](https://gitlab.com/eliggett/wfview/-/wikis/Feature-requests)
-- [raspberry pi server[(https://gitlab.com/eliggett/wfview/-/wikis/raspi-server-functionality-for-7300,7100-etc)
+- [raspberry pi server](https://gitlab.com/eliggett/wfview/-/wikis/raspi-server-functionality-for-7300,7100-etc)
 
