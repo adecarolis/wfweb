@@ -94,6 +94,15 @@ void udpHandler::DataReceived()
                 }
             }
             break;
+        case (21): // pkt7, 
+            if (r.mid(1, 5) == QByteArrayLiteral("\x00\x00\x00\x07\x00") && serialAndAudioOpened && lastPacket7Sent>0)
+            {
+                // This is a response to our pkt7 request so measure latency (only once fully connected though.
+                latency += (time(NULL) - lastPacket7Sent);
+                latency /= 2;
+                emit haveNetworkStatus("Latency: " + QString::number(latency) + " ms");
+            }
+            break;
         case (64): // Response to Auth packet?
             if (r.mid(0, 6) == QByteArrayLiteral("\x40\x00\x00\x00\x00\x00"))
             {
@@ -447,10 +456,6 @@ void udpSerial::DataReceived()
             break;
         default:
             if (r.length() > 21) {
-                uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
-
-                /*
-                // We should probably check for missing packets?
                 // First check if we are missing any packets?
                 uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
                 if (lastReceivedSeq == 0 || lastReceivedSeq > gotSeq) {
@@ -462,7 +467,7 @@ void udpSerial::DataReceived()
                     qDebug() << this->metaObject()->className() << ": Missing Sequence: (" << r.length() << ") " << f;
                 }
 
-                */
+                
                 lastReceivedSeq = gotSeq;
 
                 quint8 temp = r[0] - 0x15;
@@ -656,7 +661,8 @@ void udpBase::DataReceived(QByteArray r)
         }
         else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x00\x00"))
         {   // pkt0
-
+            // Just get the seqnum and ignore the rest.
+            lastReceivedSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
         }
         else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x01\x00"))
         {   // retransmit request
@@ -726,7 +732,7 @@ void udpBase::DataReceived(QByteArray r)
 
                 udp->writeDatagram(QByteArray::fromRawData((const char *)p, sizeof(p)), radioIP, port);
 
-            }
+            } 
         }
         break;
     default:
@@ -743,6 +749,8 @@ void udpBase::SendPkt0Idle(bool tracked=true,quint16 seq=0)
         static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
         static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff)
     };
+
+    lastPacket0Sent = time(NULL); // Is this used?
 
     if (!tracked) {
         p[6] = seq & 0xff;
@@ -767,7 +775,7 @@ void udpBase::SendPkt7Idle()
         static_cast<unsigned char>(rand()),static_cast<unsigned char>(innerSendSeq & 0xff),static_cast<unsigned char>(innerSendSeq >> 8 & 0xff), 0x06
     };
 
-    lastPacket7Sent = time(0);
+    lastPacket7Sent = time(NULL);
     udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
     pkt7SendSeq++;
     return;

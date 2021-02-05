@@ -54,6 +54,7 @@ public:
 	uint16_t periodicSeq = 0;
 	time_t lastPacket0Sent = 0;
 	time_t lastPacket7Sent = 0;
+	int latency = 0;
 
 	QString username = "";
 	QString password = "";
