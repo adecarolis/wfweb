@@ -76,3 +76,10 @@ sudo chown `whoami` /dev/ttyUSB*
 6. Better settings panel (select serial port, CI-V address, more obvious exit button)
 7. Add support for festival or other text-to-speech method using the computer (as apposed to the radio's speech module)
 
+
+see also the wiki:
+
+- [bugs](https://gitlab.com/eliggett/wfview/-/wikis/Bugs)
+- [feature requests](https://gitlab.com/eliggett/wfview/-/wikis/Feature-requests)
+- [raspberry pi server[(https://gitlab.com/eliggett/wfview/-/wikis/raspi-server-functionality-for-7300,7100-etc)
+
