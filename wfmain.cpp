@@ -510,7 +510,7 @@ void wfmain::receiveSerialPortError(QString port, QString errorText)
 
 void wfmain::setDefPrefs()
 {
-    defPrefs.useFullScreen = true;
+    defPrefs.useFullScreen = false;
     defPrefs.useDarkMode = true;
     defPrefs.drawPeaks = true;
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
@@ -791,6 +791,7 @@ void wfmain::shortcutF11()
         this->showFullScreen();
         onFullscreen = true;
     }
+    ui->fullScreenChk->setChecked(onFullscreen);
 }
 
 void wfmain::shortcutF1()
