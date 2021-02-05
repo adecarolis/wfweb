@@ -507,7 +507,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
     buffer = new QBuffer();
     buffer->open(QIODevice::ReadWrite);
     audio = new QAudioOutput(format);
-    audio->setBufferSize(6000); // TODO: add preference, maybe UI too.
+    audio->setBufferSize(10000); // TODO: add preference, maybe UI too. 20210205: connection was wifi --> cellular --> internet --> rig
     buffer->seek(0);
     audio->start(buffer);
 
