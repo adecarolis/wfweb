@@ -113,7 +113,7 @@ class udpAudio : public udpBase
 
 public:
 	udpAudio(QHostAddress local, QHostAddress ip, int aport);
-
+	~udpAudio();
 private:
 
 	void DataReceived();

@@ -39,9 +39,14 @@ udpHandler::~udpHandler()
     if (isAuthenticated)
     {
         if (audio != nullptr)
+        {
             delete audio;
+        }
+
         if (serial != nullptr)
+        {
             delete serial;
+        }
 
         qDebug() << "Sending De-Auth packet to radio";
         SendPacketAuth(0x01);
@@ -63,7 +68,9 @@ void udpHandler::receiveFromSerialStream(QByteArray data)
 void udpHandler::receiveDataFromUserToRig(QByteArray data)
 {
     if (serial != nullptr)
+    {
         serial->Send(data);
+    }
 }
 
 void udpHandler::DataReceived()
@@ -95,7 +102,9 @@ void udpHandler::DataReceived()
                     // Request serial and audio!
                     gotAuthOK = true;
                     if (!serialAndAudioOpened)
+                    {
                         SendRequestSerialAndAudio();
+                    }
                 }
             }
             break;
@@ -103,11 +112,15 @@ void udpHandler::DataReceived()
             if (r.mid(0, 6) == QByteArrayLiteral("\x50\x00\x00\x00\x00\x00"))
             {
                 if (r.mid(48, 3) == QByteArrayLiteral("\xff\xff\xff"))
-                    if (!serialAndAudioOpened) {
+                {
+                    if (!serialAndAudioOpened) 
+                    {
                         emit haveNetworkError(radioIP.toString(), "Auth failed, try rebooting the radio.");
                         qDebug() << "Auth failed, try rebooting the radio.";
                     }
-                if (r.mid(48, 3) == QByteArrayLiteral("\x00\x00\x00") && r[64] == (char)0x01) {
+                }
+                if (r.mid(48, 3) == QByteArrayLiteral("\x00\x00\x00") && r[64] == (char)0x01) 
+                {
                     emit haveNetworkError(radioIP.toString(), "Got radio disconnected.");
                     qDebug() << "Got radio disconnected.";
                 }
@@ -116,7 +129,6 @@ void udpHandler::DataReceived()
 
         case(96): // Response to Login packet.
             if (r.mid(0, 6) == QByteArrayLiteral("\x60\x00\x00\x00\x00\x00"))
-                //if (r.mid(0, 8) == QByteArrayLiteral("\x60\x00\x00\x00\x00\x00\x01\x00"))
             {
                 if (r.mid(48, 4) == QByteArrayLiteral("\xff\xff\xff\xfe"))
                 {
@@ -156,7 +168,8 @@ void udpHandler::DataReceived()
             }
             break;
         case (144):
-            if (!serialAndAudioOpened && r.mid(0, 6) == QByteArrayLiteral("\x90\x00\x00\x00\x00\x00") && r[96] == (char)0x01) {
+            if (!serialAndAudioOpened && r.mid(0, 6) == QByteArrayLiteral("\x90\x00\x00\x00\x00\x00") && r[96] == (char)0x01) 
+            {
                 devname = parseNullTerminatedString(r, 64);
                 qDebug() << "Got serial and audio request success, device name: " << devname;
 
@@ -181,7 +194,8 @@ void udpHandler::DataReceived()
 
         case (168):
 
-            if (r.mid(0, 6) == QByteArrayLiteral("\xa8\x00\x00\x00\x00\x00")) {
+            if (r.mid(0, 6) == QByteArrayLiteral("\xa8\x00\x00\x00\x00\x00")) 
+            {
                 a8replyID[0] = r[66];
                 a8replyID[1] = r[67];
                 a8replyID[2] = r[68];
@@ -226,7 +240,7 @@ qint64 udpHandler::SendRequestSerialAndAudio()
         0x90, 0x00, 0x00, 0x00, 0x00, 0x00,  0x00, 0x00,
         static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
         static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff),
-        0x00, 0x00, 0x00, 0x80, 0x01, 0x03, 0x00, static_cast<unsigned char>(authInnerSendSeq & 0xff), static_cast<const unsigned char>(authInnerSendSeq >> 8 & 0xff),
+        0x00, 0x00, 0x00, 0x80, 0x01, 0x03, 0x00, static_cast<unsigned char>(authInnerSendSeq & 0xff), static_cast<unsigned char>(authInnerSendSeq >> 8 & 0xff),
         0x00, static_cast<unsigned char>(authID[0]), static_cast<unsigned char>(authID[1]), static_cast<unsigned char>(authID[2]),
         static_cast<unsigned char>(authID[3]), static_cast<unsigned char>(authID[4]), static_cast<unsigned char>(authID[5]),
         static_cast<unsigned char>(a8replyID[0]), static_cast<unsigned char>(a8replyID[1]), static_cast<unsigned char>(a8replyID[2]), static_cast<unsigned char>(a8replyID[3]),
@@ -321,7 +335,8 @@ qint64 udpHandler::SendPacketAuth(uint8_t magic)
 
 
 // (pseudo) serial class
-udpSerial::udpSerial(QHostAddress local, QHostAddress ip, int sport) {
+udpSerial::udpSerial(QHostAddress local, QHostAddress ip, int sport) 
+{
     qDebug() << "Starting udpSerial";
     localIP = local;
     port = sport;
@@ -378,14 +393,16 @@ qint64 udpSerial::SendPacketOpenClose(bool close)
 {
     uint8_t magic = 0x05;
 
-    if (close)
+    if (close) 
+    {
         magic = 0x00;
+    }
 
     const unsigned char p[] = {
         0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
         static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff),
-        0xc0, 0x01, 0x00, static_cast<const unsigned char>(sendSeqB >> 8 & 0xff), static_cast<const unsigned char>(sendSeqB & 0xff), magic
+        0xc0, 0x01, 0x00, static_cast<const unsigned char>(sendSeqB >> 8 & 0xff), static_cast<const unsigned char>(sendSeqB & 0xff),static_cast<unsigned char>(magic)
     };
 
     sendSeqB++;
@@ -433,8 +450,9 @@ void udpSerial::DataReceived()
                 quint8 temp = r[0] - 0x15;
                 
                 if ((quint8)r[16] == 0xc1 && (quint8)r[17] == temp)
-                    emit Receive(r.mid(21)); 
-                    
+                {
+                    emit Receive(r.mid(21));
+                }  
             }
             break;
 
@@ -515,6 +533,13 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
 
 }
 
+udpAudio::~udpAudio()
+{
+    if (buffer != nullptr)
+    {
+        delete buffer;
+    }
+}
 
 void udpAudio::DataReceived()
 {
@@ -555,8 +580,12 @@ void udpAudio::DataReceived()
                 // Actual audio data is r[24] onwards sent in two groups.
                 bool duplicate = false;
                 for (uint16_t f = 0; f < seqBuf.length(); f++)
+                {
                     if (seqBuf[f].seqNum == gotSeq)
+                    {
                         duplicate = true;
+                    }
+                }
                 if (!duplicate)
                 {
                     //qDebug() << "Got Audio Sequence: (" << r.length() << ") " << gotSeq;
@@ -762,8 +791,10 @@ void udpBase::PurgeOldEntries()
     for (int f = txSeqBuf.length() - 1; f >= 0; f--)
     {
         // Delete any entries older than 1 second.
-        if (difftime(time(NULL),txSeqBuf[f].timeSent) > 60) // Delete anything more than 60 seconds old.
+        if (difftime(time(NULL), txSeqBuf[f].timeSent) > 60) // Delete anything more than 60 seconds old.
+        {
             txSeqBuf.removeAt(f);
+        }
     }
 
 }
@@ -830,8 +861,10 @@ unsigned char* udpBase::Passcode(QString str)
     for (int i = 0; i < str.length() && i < 16; i++)
     {
         int p = ascii[i] + i;
-        if (p > 126)
+        if (p > 126) 
+        {
             p = 32 + p % 127;
+        }
         res[i] = sequence[p];
     }
     return res;
@@ -844,9 +877,13 @@ QString udpBase::parseNullTerminatedString(QByteArray c, int s)
     for (int i = s; i < c.length(); i++)
     {
         if (c[i] != '\0')
+        {
             res = res + QChar(c[i]);
+        }
         else
+        {
             break;
+        }
     }
     return res;
 }
