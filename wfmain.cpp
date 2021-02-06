@@ -1377,7 +1377,9 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
 void wfmain::receiveSpectrumFixedMode(bool isFixed)
 {
+    ui->scopeCenterModeChk->blockSignals(true);
     ui->scopeCenterModeChk->setChecked(!isFixed);
+    ui->scopeCenterModeChk->blockSignals(false);
 }
 
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)
