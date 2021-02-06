@@ -406,64 +406,66 @@ void wfmain::openRig()
     }
 #endif
 
-    if( (prefs.serialPortRadio == QString("auto")) && (serialPortCL.isEmpty()))
+    if (prefs.enableLAN)
     {
-        // Find the ICOM
-        // qDebug() << "Searching for serial port...";
-        QDirIterator it73("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
-        QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*A*", QDir::Files, QDirIterator::Subdirectories);
-        QDirIterator it785x("/dev/serial", QStringList() << "*IC-785*A*", QDir::Files, QDirIterator::Subdirectories);
-        QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
+        rig = new rigCommander(prefs.radioCIVAddr, QHostAddress(prefs.ipAddress), prefs.controlLANPort, prefs.serialLANPort, prefs.audioLANPort, prefs.username, prefs.password);
+    } else {
+
+        if( (prefs.serialPortRadio == QString("auto")) && (serialPortCL.isEmpty()))
+        {
+            // Find the ICOM
+            // qDebug() << "Searching for serial port...";
+            QDirIterator it73("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*A*", QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator it785x("/dev/serial", QStringList() << "*IC-785*A*", QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
 
 
-        if(!it73.filePath().isEmpty())
-        {
-            // use
-            serialPortRig = it73.filePath(); // first
-        } else if(!it97.filePath().isEmpty())
-        {
-            // IC-9700 port
-            serialPortRig = it97.filePath();
-        } else if(!it785x.filePath().isEmpty())
-        {
-            // IC-785x port
-            serialPortRig = it785x.filePath();
-        } else if(!it705.filePath().isEmpty())
-        {
-            // IC-705
-            serialPortRig = it705.filePath();
-        } else {
-            //fall back:
-            qDebug() << "Could not find Icom serial port. Falling back to OS default. Use --port to specify, or modify preferences.";
+            if(!it73.filePath().isEmpty())
+            {
+                // use
+                serialPortRig = it73.filePath(); // first
+            } else if(!it97.filePath().isEmpty())
+            {
+                // IC-9700 port
+                serialPortRig = it97.filePath();
+            } else if(!it785x.filePath().isEmpty())
+            {
+                // IC-785x port
+                serialPortRig = it785x.filePath();
+            } else if(!it705.filePath().isEmpty())
+            {
+                // IC-705
+                serialPortRig = it705.filePath();
+            } else {
+                //fall back:
+                qDebug() << "Could not find Icom serial port. Falling back to OS default. Use --port to specify, or modify preferences.";
 #ifdef Q_OS_MAC
-            serialPortRig = QString("/dev/tty.SLAB_USBtoUART");
+                serialPortRig = QString("/dev/tty.SLAB_USBtoUART");
 #endif
 #ifdef Q_OS_LINUX
-            serialPortRig = QString("/dev/ttyUSB0");
+                serialPortRig = QString("/dev/ttyUSB0");
 #endif
-#ifdef Q_OS_UNIX
-            serialPortRig = QString("/dev/ttyUSB0");
+#ifdef Q_OS_WIN
+                serialPortRig = QString("COM1");
 #endif
-        }
+            }
 
-    } else {
-        if(serialPortCL.isEmpty())
-        {
-            serialPortRig = prefs.serialPortRadio;
         } else {
-            serialPortRig = serialPortCL;
+            if(serialPortCL.isEmpty())
+            {
+                serialPortRig = prefs.serialPortRadio;
+            } else {
+                serialPortRig = serialPortCL;
+            }
         }
-    }
 
-    // Here, the radioCIVAddr is being set from a default preference, which is for the 7300.
-    // However, we will not use it initially. OTOH, if it is set explicitedly to a value in the prefs,
-    // then we skip auto detection.
+        // Here, the radioCIVAddr is being set from a default preference, which is for the 7300.
+        // However, we will not use it initially. OTOH, if it is set explicitedly to a value in the prefs,
+        // then we skip auto detection.
 
-    if (prefs.enableLAN)
-        rig = new rigCommander(prefs.radioCIVAddr, QHostAddress(prefs.ipAddress), prefs.controlLANPort, prefs.serialLANPort, prefs.audioLANPort, prefs.username, prefs.password);
-    else
         rig = new rigCommander(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud);
-    
+    }
     rigThread = new QThread(this);
 
     rig->moveToThread(rigThread);
