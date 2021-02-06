@@ -7,6 +7,7 @@
 #include <QHostInfo>
 #include <QTimer>
 #include <QMutex>
+#include <QDateTime>
 
 // Allow easy endian-ness conversions
 #include <QtEndian>
@@ -45,16 +46,16 @@ public:
 	char authID[6] = { 0, 0, 0, 0, 0, 0 };
 	char a8replyID[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	uint16_t authInnerSendSeq = 0;
-	uint16_t innerSendSeq = 0;
+	uint16_t innerSendSeq = 0x8304; // Not sure why?
 	uint16_t sendSeqB = 0;
 	uint16_t sendSeq = 1;
 	uint16_t lastReceivedSeq = 0;
 	uint16_t pkt0SendSeq = 0;
 	uint16_t pkt7SendSeq = 0;
 	uint16_t periodicSeq = 0;
-	time_t lastPacket0Sent = 0;
-	time_t lastPacket7Sent = 0;
-	int latency = 0;
+	QDateTime lastPacket0Sent;
+	QDateTime lastPacket7Sent;
+	quint64 latency = 0;
 
 	QString username = "";
 	QString password = "";

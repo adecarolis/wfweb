@@ -95,10 +95,11 @@ void udpHandler::DataReceived()
             }
             break;
         case (21): // pkt7, 
-            if (r.mid(1, 5) == QByteArrayLiteral("\x00\x00\x00\x07\x00") && serialAndAudioOpened && lastPacket7Sent>0)
+            if (r.mid(1, 5) == QByteArrayLiteral("\x00\x00\x00\x07\x00") && r[16] == (char)0x01 && serialAndAudioOpened)
             {
+                //qDebug("Got response!");
                 // This is a response to our pkt7 request so measure latency (only once fully connected though.
-                latency += (time(NULL) - lastPacket7Sent);
+                latency += lastPacket7Sent.msecsTo(QDateTime::currentDateTime());
                 latency /= 2;
                 emit haveNetworkStatus("rtt: " + QString::number(latency) + " ms");
             }
@@ -596,7 +597,7 @@ void udpAudio::DataReceived()
                     lastReceivedSeq = gotSeq;
                 }
 
-                for (uint16_t f = lastReceivedSeq + 1; f < gotSeq; f++) {
+                for (uint16_t f = lastReceivedSeq+1 ; f < gotSeq; f++) {
                     // Do we need to request a retransmit?
                     qDebug() << this->metaObject()->className() << ": Missing Sequence: (" << r.length() << ") " << f;
                 }
@@ -607,9 +608,9 @@ void udpAudio::DataReceived()
                 // Delete contents of buffer up to existing pos()
                 buffer->buffer().remove(0,buffer->pos());
                 // Seek to end of curent buffer
-                buffer->seek(buffer->size()); 
+                buffer->seek(buffer->size());
                 // Append to end of buffer
-                 buffer->write(r.mid(24).constData(), r.mid(24).length());
+                buffer->write(r.mid(24).constData(), r.mid(24).length());
                 // Seek to start of buffer.
                 buffer->seek(0);
             }
@@ -750,7 +751,7 @@ void udpBase::SendPkt0Idle(bool tracked=true,quint16 seq=0)
         static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff)
     };
 
-    lastPacket0Sent = time(NULL); // Is this used?
+    lastPacket0Sent = QDateTime::currentDateTime(); // Is this used?
 
     if (!tracked) {
         p[6] = seq & 0xff;
@@ -772,12 +773,13 @@ void udpBase::SendPkt7Idle()
     const unsigned char p[] = { 0x15, 0x00, 0x00, 0x00, 0x07, 0x00, static_cast<unsigned char>(pkt7SendSeq & 0xff),static_cast<unsigned char>(pkt7SendSeq >> 8 & 0xff),
         static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
         static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff),
-        static_cast<unsigned char>(rand()),static_cast<unsigned char>(innerSendSeq & 0xff),static_cast<unsigned char>(innerSendSeq >> 8 & 0xff), 0x06
+        0x00, static_cast<unsigned char>(rand()),static_cast<unsigned char>(innerSendSeq & 0xff),static_cast<unsigned char>(innerSendSeq >> 8 & 0xff), 0x06
     };
-
-    lastPacket7Sent = time(NULL);
+    //qDebug() << this->metaObject()->className() << ": Send pkt7: " <<  QByteArray::fromRawData((const char*)p, sizeof(p));
+    lastPacket7Sent = QDateTime::currentDateTime();
     udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
     pkt7SendSeq++;
+    innerSendSeq++;
     return;
 }
 
