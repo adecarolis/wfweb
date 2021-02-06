@@ -245,8 +245,6 @@ qint64 udpHandler::SendRequestSerialAndAudio()
     unsigned char* usernameEncoded = Passcode(username);
     int txSeqBufLengthMs = 100;
     int audioSampleRate = 48000;
-    int udpSerialPort = 50002;
-    int udpAudioPort = 50003;
 
     const unsigned char p[] = {
         0x90, 0x00, 0x00, 0x00, 0x00, 0x00,  0x00, 0x00,
@@ -261,7 +259,7 @@ qint64 udpHandler::SendRequestSerialAndAudio()
         static_cast<unsigned char>(a8replyID[12]), static_cast<unsigned char>(a8replyID[13]), static_cast<unsigned char>(a8replyID[14]), static_cast<unsigned char>(a8replyID[15]),
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x49, 0x43, 0x2d, 0x37, 0x30, 0x35, 0x00, 0x00, // IC-705 in plain text
+        0x49, 0x43, 0x2d, 0x37, 0x38, 0x35, 0x31, 0x00, // IC-7851 in plain text
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -271,8 +269,8 @@ qint64 udpHandler::SendRequestSerialAndAudio()
         usernameEncoded[12], usernameEncoded[13], usernameEncoded[14], usernameEncoded[15],
         0x01, 0x01, 0x04, 0x04, 0x00, 0x00, static_cast<unsigned char>(audioSampleRate >> 8 & 0xff), static_cast<unsigned char>(audioSampleRate & 0xff),
         0x00, 0x00, static_cast<unsigned char>(audioSampleRate >> 8 & 0xff), static_cast<unsigned char>(audioSampleRate & 0xff),
-        0x00, 0x00, static_cast<unsigned char>(udpSerialPort >> 8 & 0xff), static_cast<unsigned char>(udpSerialPort & 0xff),
-        0x00, 0x00, static_cast<unsigned char>(udpAudioPort >> 8 & 0xff), static_cast<unsigned char>(udpAudioPort & 0xff), 0x00, 0x00,
+        0x00, 0x00, static_cast<unsigned char>(sport >> 8 & 0xff), static_cast<unsigned char>(aport & 0xff),
+        0x00, 0x00, static_cast<unsigned char>(aport >> 8 & 0xff), static_cast<unsigned char>(aport & 0xff), 0x00, 0x00,
         static_cast<unsigned char>(txSeqBufLengthMs >> 8 & 0xff), static_cast<unsigned char>(txSeqBufLengthMs & 0xff), 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     };
 
