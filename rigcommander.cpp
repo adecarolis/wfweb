@@ -217,9 +217,87 @@ void rigCommander::disableSpectrumDisplay()
     prepDataAndSend(payload);
 }
 
-void rigCommander::setSpectrumBounds()
+void rigCommander::setSpectrumBounds(double startFreq, double endFreq, unsigned char edgeNumber)
 {
+    if((edgeNumber > 3) || (!edgeNumber))
+    {
+        return;
+    }
 
+    unsigned char freqRange = 1; // 1 = VHF, 2 = UHF, 3 = L-Band
+
+    switch(rigCaps.model)
+    {
+        case model9700:
+            if(startFreq > 148)
+            {
+                freqRange++;
+                if(startFreq > 450)
+                {
+                    freqRange++;
+                }
+            }
+            break;
+        case model705:
+        case model7300:
+        case model7610:
+        case model7850:
+            // Some rigs do not go past 60 MHz, but we will not encounter
+            // requests for those ranges since they are derived from the rig's existing scope range.
+            // start value of freqRange is 1.
+            if(startFreq > 1.6)
+                freqRange++;
+            if(startFreq > 2.0)
+                freqRange++;
+            if(startFreq > 6.0)
+                freqRange++;
+            if(startFreq > 8.0)
+                freqRange++;
+            if(startFreq > 11.0)
+                freqRange++;
+            if(startFreq > 15.0)
+                freqRange++;
+            if(startFreq > 20.0)
+                freqRange++;
+            if(startFreq > 22.0)
+                freqRange++;
+            if(startFreq > 26.0)
+                freqRange++;
+            if(startFreq > 30.0)
+                freqRange++;
+            if(startFreq > 45.0)
+                freqRange++;
+            if(startFreq > 60.0)
+                freqRange++;
+            if(startFreq > 74.8)
+                freqRange++;
+            if(startFreq > 108.0)
+                freqRange++;
+            if(startFreq > 137.0)
+                freqRange++;
+            if(startFreq > 400.0)
+                freqRange++;
+            break;
+        default:
+            return;
+            break;
+
+
+    }
+        QByteArray lowerEdge = makeFreqPayload(startFreq);
+    QByteArray higherEdge = makeFreqPayload(endFreq);
+
+
+    QByteArray payload;
+
+    payload.setRawData("\x27\x1E", 2);
+    payload.append(freqRange);
+    payload.append(edgeNumber);
+
+    payload.append(lowerEdge);
+    payload.append(higherEdge);
+
+    prepDataAndSend(payload);
 }
 
 void rigCommander::getScopeMode()
@@ -1111,14 +1189,7 @@ void rigCommander::parseSpectrum()
 
     unsigned char sequence = bcdHexToDecimal(payloadIn[03]);
     //unsigned char sequenceMax = bcdHexToDecimal(payloadIn[04]);
-    unsigned char scopeMode = bcdHexToDecimal(payloadIn[05]); // 0=center, 1=fixed
 
-    if(scopeMode != oldScopeMode)
-    {
-        //TODO: Figure out if this is the first spectrum, and if so, always emit.
-        emit haveSpectrumFixedMode(scopeMode==1);
-        oldScopeMode = scopeMode;
-    }
 
     // unsigned char waveInfo = payloadIn[06]; // really just one byte?
     //qDebug() << "Spectrum Data received: " << sequence << "/" << sequenceMax << " mode: " << scopeMode << " waveInfo: " << waveInfo << " length: " << payloadIn.length();
@@ -1132,6 +1203,17 @@ void rigCommander::parseSpectrum()
     // chop off FD.
     if ((sequence == 1) && (sequence < rigCaps.spectSeqMax))
     {
+
+        unsigned char scopeMode = bcdHexToDecimal(payloadIn[05]); // 0=center, 1=fixed
+
+        if(scopeMode != oldScopeMode)
+        {
+            //TODO: Figure out if this is the first spectrum, and if so, always emit.
+            emit haveSpectrumFixedMode(scopeMode==1);
+            oldScopeMode = scopeMode;
+        }
+
+
         // wave information
         spectrumLine.clear();
         // parseFrequency(endPosition); // overload does not emit! Return? Where? how...

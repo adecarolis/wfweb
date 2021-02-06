@@ -32,7 +32,7 @@ public slots:
     void disableSpectOutput();
     void enableSpectrumDisplay();
     void disableSpectrumDisplay();
-    void setSpectrumBounds();
+    void setSpectrumBounds(double startFreq, double endFreq, unsigned char edgeNumber);
     void setSpectrumCenteredMode(bool centerEnable); // centered or band-wise
     void getSpectrumCenterMode();
     void setScopeSpan(char span);

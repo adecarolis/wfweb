@@ -261,6 +261,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
     connect(this, SIGNAL(getScopeEdge()), rig, SLOT(getScopeEdge()));
     connect(this, SIGNAL(getScopeSpan()), rig, SLOT(getScopeSpan()));
+    connect(this, SIGNAL(setScopeFixedEdge(double,double,unsigned char)), rig, SLOT(setSpectrumBounds(double,double,unsigned char)));
 
     connect(this, SIGNAL(setMode(char)), rig, SLOT(setMode(char)));
     connect(this, SIGNAL(getRfGain()), rig, SLOT(getRfGain()));
@@ -1206,6 +1207,12 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdGetATUStatus:
                 emit getATUStatus();
+                break;
+            case cmdScopeCenterMode:
+                emit setScopeCenterMode(true);
+                break;
+            case cmdScopeFixedMode:
+                emit setScopeCenterMode(false);
                 break;
             default:
                 break;
@@ -2200,6 +2207,14 @@ void wfmain::on_audioOutputCombo_currentIndexChanged(QString text)
     prefs.audioOutput = text;
 }
 
+void wfmain::on_toFixedBtn_clicked()
+{
+    emit setScopeFixedEdge(oldLowerFreq, oldUpperFreq, ui->scopeEdgeCombo->currentIndex()+1);
+    emit setScopeEdge(ui->scopeEdgeCombo->currentIndex()+1);
+    cmdOutQue.append(cmdScopeFixedMode);
+    delayedCommand->start();
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
@@ -2212,3 +2227,4 @@ void wfmain::on_debugBtn_clicked()
     qDebug() << "Debug: finding rigs attached. Let's see if this works. ";
     rig->findRigs();
 }
+

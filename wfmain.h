@@ -61,6 +61,7 @@ signals:
     void setScopeCenterMode(bool centerEnable);
     void setScopeSpan(char span);
     void setScopeEdge(char edge);
+    void setScopeFixedEdge(double startFreq, double endFreq, unsigned char edgeNumber);
     void getScopeMode();
     void getScopeEdge();
     void getScopeSpan();
@@ -255,6 +256,8 @@ private slots:
 
     void on_audioOutputCombo_currentIndexChanged(QString text);
 
+    void on_toFixedBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -345,7 +348,7 @@ private:
     double knobFreqMhz;
     enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
-              cmdGetSql, cmdGetATUStatus};
+              cmdGetSql, cmdGetATUStatus, cmdScopeCenterMode, cmdScopeFixedMode};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     freqMemory mem;
