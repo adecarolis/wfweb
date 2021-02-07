@@ -361,16 +361,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
 wfmain::~wfmain()
 {
-#ifdef Q_OS_WIN // Prevent crash on exit in Windows.
-    delete rig;
     rigThread->quit();
     rigThread->wait();
-#endif
-#ifdef Q_OS_LINUX
-    delete rig;
-    rigThread->quit();
-    rigThread->wait();
-#endif
     delete ui;
 }
 
@@ -471,7 +463,8 @@ void wfmain::openRig()
 
     rig->moveToThread(rigThread);
     connect(rigThread, SIGNAL(started()), rig, SLOT(process()));
-    connect(rig, SIGNAL(finished()), rigThread, SLOT(quit()));
+    connect(rigThread, SIGNAL(finished()), rig, SLOT(deleteLater()));
+
     connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
     connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
     rigThread->start();
