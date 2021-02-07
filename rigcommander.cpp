@@ -87,6 +87,8 @@ void rigCommander::setup()
     lookingForRig = false;
     foundRig = false;
     oldScopeMode = 3;
+
+    pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
 }
 
 void rigCommander::process()
@@ -106,7 +108,7 @@ void rigCommander::process()
         // Connect for errors/alerts
         connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
         connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(handleStatusUpdate(QString)));
-
+        emit commReady();
     } else {
         comm = new commHandler(rigSerialPort, rigBaudRate);
 
@@ -119,7 +121,7 @@ void rigCommander::process()
         connect(comm, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
 
         connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
-        pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
+        emit commReady();
     }
 
 

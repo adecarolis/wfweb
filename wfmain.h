@@ -108,6 +108,7 @@ private slots:
     void handlePttLimit(); // hit at 3 min transmit length
 
     void on_startBtn_clicked();
+    void receiveCommReady();
     void receiveFreq(double);
     void receiveMode(QString);
     void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);

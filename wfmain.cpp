@@ -477,8 +477,32 @@ void wfmain::openRig()
     rigThread->start();
     connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
     connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
+    connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
     ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
 
+/*
+    if(prefs.radioCIVAddr == 0)
+    {
+        // tell rigCommander to broadcast a request for all rig IDs.
+        // qDebug() << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
+        ui->statusBar->showMessage(QString("Searching CIV bus for connected radios."), 1000);
+        emit getRigCIV();
+        cmdOutQue.append(cmdGetRigCIV);
+        delayedCommand->start();
+    } else {
+        // don't bother, they told us the CIV they want, stick with it.
+        // We still query the rigID to find the model, but at least we know the CIV.
+        qDebug() << "Skipping automatic CIV, using user-supplied value of " << prefs.radioCIVAddr;
+        getInitialRigState();
+    }
+*/
+
+}
+
+void wfmain::receiveCommReady()
+{
+    qDebug() << "Received CommReady!! ";
+    // taken from above:
     if(prefs.radioCIVAddr == 0)
     {
         // tell rigCommander to broadcast a request for all rig IDs.
@@ -494,6 +518,7 @@ void wfmain::openRig()
         getInitialRigState();
     }
 }
+
 
 void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
 {
