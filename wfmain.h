@@ -68,7 +68,9 @@ signals:
     void sayFrequency();
     void sayMode();
     void sayAll();
-
+    void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
+    void sendCommSetup(unsigned char rigCivAddr, QString ip, int cport, int sport, int aport, QString username, QString password);
+    void sendCloseComm();
 
 private slots:
     void shortcutF1();
@@ -259,6 +261,8 @@ private slots:
 
     void on_toFixedBtn_clicked();
 
+    void on_connectBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -314,8 +318,8 @@ private:
     QShortcut *keyM;
 
 
-    rigCommander * rig;
-    QThread * rigThread;
+    rigCommander * rig=Q_NULLPTR;
+    QThread * rigThread=Q_NULLPTR;
     QCPColorMap * colorMap;
     QCPColorMapData * colorMapData;
     QCPColorScale * colorScale;

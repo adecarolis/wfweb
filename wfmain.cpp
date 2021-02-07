@@ -399,9 +399,32 @@ void wfmain::openRig()
     }
 #endif
 
+    if (rigThread == Q_NULLPTR)
+    {
+        rig = new rigCommander();
+        rigThread = new QThread(this);
+
+        rig->moveToThread(rigThread);
+
+        connect(rigThread, SIGNAL(started()), rig, SLOT(process()));
+        connect(rigThread, SIGNAL(finished()), rig, SLOT(deleteLater()));
+        rigThread->start();
+        connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
+        connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
+        
+        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, int, int, int, QString, QString)), rig, SLOT(commSetup(unsigned char, QString, int, int, int, QString, QString)));
+        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32)), rig, SLOT(commSetup(unsigned char, QString, quint32)));
+
+        connect(this, SIGNAL(sendCloseComm()), rig, SLOT(closeComm()));
+        connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
+        connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
+        connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
+
+    }
+
     if (prefs.enableLAN)
     {
-        rig = new rigCommander(prefs.radioCIVAddr, QHostAddress(prefs.ipAddress), prefs.controlLANPort, prefs.serialLANPort, prefs.audioLANPort, prefs.username, prefs.password);
+        emit sendCommSetup(prefs.radioCIVAddr, prefs.ipAddress, prefs.controlLANPort, prefs.serialLANPort, prefs.audioLANPort, prefs.username, prefs.password);
     } else {
 
         if( (prefs.serialPortRadio == QString("auto")) && (serialPortCL.isEmpty()))
@@ -456,21 +479,9 @@ void wfmain::openRig()
         // Here, the radioCIVAddr is being set from a default preference, which is for the 7300.
         // However, we will not use it initially. OTOH, if it is set explicitedly to a value in the prefs,
         // then we skip auto detection.
-
-        rig = new rigCommander(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud);
+        emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud);
     }
-    rigThread = new QThread(this);
 
-    rig->moveToThread(rigThread);
-    connect(rigThread, SIGNAL(started()), rig, SLOT(process()));
-    connect(rigThread, SIGNAL(finished()), rig, SLOT(deleteLater()));
-
-    connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
-    connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
-    rigThread->start();
-    connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
-    connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
-    connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
     ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
 
 /*
@@ -510,6 +521,8 @@ void wfmain::receiveCommReady()
         qDebug() << "Skipping automatic CIV, using user-supplied value of " << prefs.radioCIVAddr;
         getInitialRigState();
     }
+    ui->connectBtn->setText("Disconnect");
+
 }
 
 
@@ -2233,6 +2246,20 @@ void wfmain::on_toFixedBtn_clicked()
     delayedCommand->start();
 }
 
+void wfmain::on_connectBtn_clicked()
+{
+    if (haveRigCaps) {
+        emit sendCloseComm();
+        ui->connectBtn->setText("Connect");
+        haveRigCaps = false;
+    }
+    else
+    {
+        openRig();
+        ui->connectBtn->setText("Disconnect");
+    }
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
@@ -2244,14 +2271,5 @@ void wfmain::on_debugBtn_clicked()
     //emit getScopeSpan(); // in khz, only in "center" mode
     //qDebug() << "Debug: finding rigs attached. Let's see if this works. ";
     //rig->findRigs();
-    if (rigThread && rigThread->isRunning())
-    {
-        rigThread->quit();
-        rigThread->wait();
-    }
-    else
-    {
-        openRig();
-    }
 }
 

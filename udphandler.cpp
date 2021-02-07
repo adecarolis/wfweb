@@ -38,12 +38,12 @@ udpHandler::~udpHandler()
 {
     if (isAuthenticated)
     {
-        if (audio != nullptr)
+        if (audio != Q_NULLPTR)
         {
             delete audio;
         }
 
-        if (serial != nullptr)
+        if (serial != Q_NULLPTR)
         {
             delete serial;
         }
@@ -67,7 +67,7 @@ void udpHandler::receiveFromSerialStream(QByteArray data)
 
 void udpHandler::receiveDataFromUserToRig(QByteArray data)
 {
-    if (serial != nullptr)
+    if (serial != Q_NULLPTR)
     {
         serial->Send(data);
     }
@@ -556,7 +556,12 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
 
 udpAudio::~udpAudio()
 {
-    if (buffer != nullptr)
+    if (audio != Q_NULLPTR)
+    {
+        audio->stop();
+        delete audio;
+    }
+    if (buffer != Q_NULLPTR)
     {
         delete buffer;
     }
@@ -636,9 +641,19 @@ udpBase::~udpBase()
 {
     qDebug() << "Closing UDP stream :" << radioIP.toString() << ":" << port;
     SendPacketDisconnect();
-    if (udp != nullptr) {
+    if (udp != Q_NULLPTR) {
         udp->close();
         delete udp;
+    }
+    if (pkt0Timer != Q_NULLPTR)
+    {
+        pkt0Timer->stop();
+        delete pkt0Timer;
+    }
+    if (pkt7Timer != Q_NULLPTR)
+    {
+        pkt7Timer->stop();
+        delete pkt7Timer;
     }
 }
 

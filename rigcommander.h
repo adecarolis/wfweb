@@ -21,12 +21,14 @@ class rigCommander : public QObject
     Q_OBJECT
 
 public:
-    rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
-    rigCommander(unsigned char rigCivAddr, QHostAddress ip, int cport, int sport, int aport, QString username, QString password);
+    rigCommander();
     ~rigCommander();
 
 public slots:
     void process();
+    void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
+    void commSetup(unsigned char rigCivAddr, QString ip, int cport, int sport, int aport, QString username, QString password);
+    void closeComm();
 
     void enableSpectOutput();
     void disableSpectOutput();
@@ -118,8 +120,8 @@ private:
     void prepDataAndSend(QByteArray data);
     void debugMe();
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
-    commHandler * comm=nullptr;
-    udpHandler* udp=nullptr;
+    commHandler * comm=Q_NULLPTR;
+    udpHandler* udp=Q_NULLPTR;
     void determineRigCaps();
     QByteArray payloadIn;
     QByteArray echoPerfix;
@@ -156,7 +158,7 @@ private:
     QString rigSerialPort;
     quint32 rigBaudRate;
 
-    QHostAddress ip;
+    QString ip;
     int cport;
     int sport;
     int aport;

@@ -40,7 +40,7 @@ public:
 
 	unsigned char* Passcode(QString str);
 	QString parseNullTerminatedString(QByteArray c, int s);
-	QUdpSocket* udp=nullptr;
+	QUdpSocket* udp=Q_NULLPTR;
 	uint32_t localSID = 0;
 	uint32_t remoteSID = 0;
 	char authID[6] = { 0, 0, 0, 0, 0, 0 };
@@ -64,9 +64,9 @@ public:
 	bool isAuthenticated = false;
 	int localPort=0;
 	int port=0;
-	QTimer *pkt7Timer=nullptr; // Send pkt7 packets every 3 seconds
-	QTimer *pkt0Timer=nullptr; // Send pkt0 packets every 1000ms.
-	QTimer *periodic=nullptr; // Send pkt0 packets every 1000ms.
+	QTimer *pkt7Timer=Q_NULLPTR; // Send pkt7 packets every 3 seconds
+	QTimer *pkt0Timer=Q_NULLPTR; // Send pkt0 packets every 1000ms.
+	QTimer *periodic=Q_NULLPTR; // Send pkt0 packets every 1000ms.
 	bool periodicRunning = false;
 	bool sentPacketConnect2 = false;
 	time_t	lastReceived = time(0);
@@ -141,8 +141,8 @@ public:
 	udpHandler(QHostAddress ip, int cport, int sport, int aport, QString username, QString password);
 	~udpHandler();
 
-	udpSerial *serial=nullptr;
-	udpAudio *audio=nullptr;
+	udpSerial *serial=Q_NULLPTR;
+	udpAudio *audio=Q_NULLPTR;
 
 	bool serialAndAudioOpened = false;
 

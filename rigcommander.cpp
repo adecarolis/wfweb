@@ -19,8 +19,18 @@
 
 // Note: When sending \x00, must use QByteArray.setRawData()
 
+rigCommander::rigCommander()
+{
 
-rigCommander::rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate)
+}
+
+rigCommander::~rigCommander()
+{
+    closeComm();
+}
+
+
+void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -37,9 +47,22 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quin
     this->rigSerialPort = rigSerialPort;
     this->rigBaudRate = rigBaudRate;
 
+    comm = new commHandler(rigSerialPort, rigBaudRate);
+
+    // data from the comm port to the program:
+    connect(comm, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
+
+    // data from the program to the comm port:
+    connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
+
+    connect(comm, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
+
+    connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
+    emit commReady();
+
 }
 
-rigCommander::rigCommander(unsigned char rigCivAddr, QHostAddress ip, int cport, int sport, int aport, QString username, QString password)
+void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, int cport, int sport, int aport, QString username, QString password)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -59,18 +82,37 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QHostAddress ip, int cport,
     this->aport = aport;
     this->username = username;
     this->password = password;
+    if (udp == Q_NULLPTR) {
+        udp = new udpHandler(QHostAddress(ip), cport, sport, aport, username, password);
+        connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
 
+        // data from the program to the comm port:
+        connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+
+        // Connect for errors/alerts
+        connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
+        connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(handleStatusUpdate(QString)));
+    }
+
+    // data from the comm port to the program:
+
+    emit commReady();
 
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
 
 }
 
-rigCommander::~rigCommander()
+void rigCommander::closeComm()
 {
-    if (comm!=nullptr)
+    if (comm != Q_NULLPTR) {
         delete comm;
-    if (udp != nullptr)
+    }
+    comm = Q_NULLPTR;
+
+    if (udp != Q_NULLPTR) {
         delete udp;
+    }
+    udp = Q_NULLPTR;
 }
 
 void rigCommander::setup()
@@ -93,40 +135,8 @@ void rigCommander::setup()
 
 void rigCommander::process()
 {
-
-    if(usingNativeLAN)
-    {
-        udp = new udpHandler(ip, cport, sport, aport, username, password);
-
-        // data from the comm port to the program:
-
-        connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
-
-        // data from the program to the comm port:
-        connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
-
-        // Connect for errors/alerts
-        connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
-        connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(handleStatusUpdate(QString)));
-        emit commReady();
-    } else {
-        comm = new commHandler(rigSerialPort, rigBaudRate);
-
-        // data from the comm port to the program:
-        connect(comm, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
-
-        // data from the program to the comm port:
-        connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
-
-        connect(comm, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
-
-        connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
-        emit commReady();
-    }
-
-
     // new thread enters here. Do nothing but do check for errors.
-    if(comm!=nullptr && comm->serialError)
+    if(comm!=Q_NULLPTR && comm->serialError)
     {
         emit haveSerialPortError(rigSerialPort, QString("Error from commhandler. Check serial port."));
     }
