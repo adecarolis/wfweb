@@ -83,7 +83,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, int cport, in
     this->username = username;
     this->password = password;
     if (udp == Q_NULLPTR) {
-        udp = new udpHandler(QHostAddress(ip), cport, sport, aport, username, password);
+        udp = new udpHandler(ip, cport, sport, aport, username, password);
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
 
         // data from the program to the comm port:

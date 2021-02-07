@@ -138,7 +138,7 @@ class udpHandler: public udpBase
 	Q_OBJECT
 
 public:
-	udpHandler(QHostAddress ip, int cport, int sport, int aport, QString username, QString password);
+	udpHandler(QString ip, int cport, int sport, int aport, QString username, QString password);
 	~udpHandler();
 
 	udpSerial *serial=Q_NULLPTR;

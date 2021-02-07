@@ -4,27 +4,46 @@
 #include "udphandler.h"
 
 
-udpHandler::udpHandler(QHostAddress ip, int cport, int sport, int aport,QString username, QString password)
+udpHandler::udpHandler(QString ip, int cport, int sport, int aport, QString username, QString password)
 {
     qDebug() << "Starting udpHandler";
-    radioIP = ip;
+
+    // Lookup IP address
+
     this->port = cport;
     this->aport = aport;
     this->sport = sport;
     this->username = username;
     this->password = password;
 
+    // Try to set the IP address, if it is a hostname then perform a DNS lookup.
+    if (!radioIP.setAddress(ip))
+    {
+        QHostInfo remote = QHostInfo::fromName(ip);
+        if (remote.addresses().length() > 0)
+        {
+            radioIP = remote.addresses().first();
+            qDebug() << "Got IP Address for " << ip << " " << radioIP.toString();
+        }
+        else
+        {
+            qDebug() << ip << ": " << remote.errorString();
+            return;
+        }
+    }
     
     // Convoluted way to find the external IP address, there must be a better way????
     QString localhostname = QHostInfo::localHostName();
     QList<QHostAddress> hostList = QHostInfo::fromName(localhostname).addresses();
-    foreach(const QHostAddress & address, hostList) 
+    foreach(const QHostAddress & address, hostList)
     {
-        if (address.protocol() == QAbstractSocket::IPv4Protocol && address.isLoopback() == false) 
+        if (address.protocol() == QAbstractSocket::IPv4Protocol && address.isLoopback() == false)
         {
             localIP = QHostAddress(address.toString());
         }
     }
+
+
 
     init(); // Perform connection
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpHandler::DataReceived);
@@ -649,8 +668,8 @@ void udpBase::init()
 udpBase::~udpBase()
 {
     qDebug() << "Closing UDP stream :" << radioIP.toString() << ":" << port;
-    SendPacketDisconnect();
     if (udp != Q_NULLPTR) {
+        SendPacketDisconnect();
         udp->close();
         delete udp;
     }
