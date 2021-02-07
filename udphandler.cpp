@@ -20,14 +20,17 @@ udpHandler::udpHandler(QString ip, int cport, int sport, int aport, QString user
     if (!radioIP.setAddress(ip))
     {
         QHostInfo remote = QHostInfo::fromName(ip);
-        if (remote.addresses().length() > 0)
+        foreach(QHostAddress addr, remote.addresses())
         {
-            radioIP = remote.addresses().first();
-            qDebug() << "Got IP Address for " << ip << " " << radioIP.toString();
+            if (addr.protocol() == QAbstractSocket::IPv4Protocol) {
+                radioIP = addr;
+                qDebug() << "Got IP Address :" << ip << ": " << addr.toString();
+                break;
+            }
         }
-        else
-        {
-            qDebug() << ip << ": " << remote.errorString();
+        if (radioIP.isNull())
+        { 
+            qDebug() << "Error obtaining IP Address for :" << ip << ": " << remote.errorString();
             return;
         }
     }
