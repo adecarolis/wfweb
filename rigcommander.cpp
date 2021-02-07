@@ -28,6 +28,7 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quin
 
     // civAddr = 0x94; // address of the radio. Decimal is 148.
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
+    usingNativeLAN = false;
 
     // ---
     setup();
@@ -46,6 +47,7 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QHostAddress ip, int cport,
 
     // civAddr = 0x94; // address of the radio. Decimal is 148.
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
+    usingNativeLAN = true;
 
     // ---
     setup();
@@ -75,7 +77,6 @@ void rigCommander::setup()
 {
     // common elements between the two constructors go here:
     setCIVAddr(civAddr);
-    usingNativeLAN = false; // TODO: set to true if we are connected over ethernet to the rig
     spectSeqMax = 0; // this is now set after rig ID determined
     payloadPrefix = QByteArray("\xFE\xFE");
     payloadPrefix.append(civAddr);
