@@ -8,13 +8,6 @@
 // This file parses data from the radio and also forms commands to the radio.
 // The radio physical interface is handled by the commHandler() instance "comm"
 
-// TODO:
-//      + Allow parameters to pass to the commHandler indicating which serial port to use
-//      + Impliment additional commands (of course)
-//      + Impliment external serial port "pass through"
-//      + Impliment XML RPC server?
-//      + Grab initial state of band scope and adjust UI accordingly.
-
 //
 // See here for a wonderful CI-V overview:
 // http://www.plicht.de/ekki/civ/civ-p0a.html
@@ -36,42 +29,12 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quin
     // civAddr = 0x94; // address of the radio. Decimal is 148.
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
 
-    setCIVAddr(civAddr);
-    usingNativeLAN = false; // TODO: set to true if we are connected over ethernet to the rig
-    spectSeqMax = 0; // this is now set after rig ID determined
-    //compCivAddr = 0xE1;
-    //payloadPrefix = QByteArray("\xFE\xFE\x94\xE0");
-    payloadPrefix = QByteArray("\xFE\xFE");
-    payloadPrefix.append(civAddr);
-    payloadPrefix.append(compCivAddr);
+    // ---
+    setup();
+    // ---
 
-    // payloadPrefix.append("\xE0");
-
-    payloadSuffix = QByteArray("\xFD");
-
-    lookingForRig = false;
-    foundRig = false;
-    oldScopeMode = 3;
-
-    // TODO: list full contents of /dev/serial, grep for IC-7300
-    // /dev/serial/by-path$ ls
-    //     total 0
-    //    lrwxrwxrwx 1 root root 13 Nov 24 21:43 pci-0000:00:12.0-usb-0:2.1:1.0-port0 -> ../../ttyUSB0
-
-    // comm = new commHandler("/dev/ttyUSB0");
     this->rigSerialPort = rigSerialPort;
-    comm = new commHandler(rigSerialPort, rigBaudRate);
-
-    // data from the comm port to the program:
-    connect(comm, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
-
-    // data from the program to the comm port:
-    connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
-
-    connect(comm, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
-
-    connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
-    pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
+    this->rigBaudRate = rigBaudRate;
 
 }
 
@@ -84,46 +47,22 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QHostAddress ip, int cport,
     // civAddr = 0x94; // address of the radio. Decimal is 148.
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
 
-    setCIVAddr(civAddr);
-    usingNativeLAN = true;
-    spectSeqMax = 0; // this is now set after rig ID determined
-    //compCivAddr = 0xE1;
-    //payloadPrefix = QByteArray("\xFE\xFE\x94\xE0");
-    payloadPrefix = QByteArray("\xFE\xFE");
-    payloadPrefix.append(civAddr);
-    payloadPrefix.append(compCivAddr);
+    // ---
+    setup();
+    // ---
 
-    // payloadPrefix.append("\xE0");
+    this->ip = ip;
+    this->cport = cport;
+    this->sport = sport;
+    this->aport = aport;
+    this->username = username;
+    this->password = password;
 
-    lookingForRig = false;
-    foundRig = false;
-    oldScopeMode = 3;
 
-    payloadSuffix = QByteArray("\xFD");
-    // TODO: list full contents of /dev/serial, grep for IC-7300
-    // /dev/serial/by-path$ ls
-    //     total 0
-    //    lrwxrwxrwx 1 root root 13 Nov 24 21:43 pci-0000:00:12.0-usb-0:2.1:1.0-port0 -> ../../ttyUSB0
-    // comm = new commHandler("/dev/ttyUSB0");
-    //comm = new commHandler(rigSerialPort, rigBaudRate);
-
-    udp = new udpHandler(ip, cport, sport, aport, username, password);
-
-    // data from the comm port to the program:
-
-    connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
-
-    // data from the program to the comm port:
-    connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
-
-    // Connect for errors/alerts
-    connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
-    connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(handleStatusUpdate(QString)));
-
-    //connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
 
 }
+
 rigCommander::~rigCommander()
 {
     if (comm!=nullptr)
@@ -132,8 +71,57 @@ rigCommander::~rigCommander()
         delete udp;
 }
 
+void rigCommander::setup()
+{
+    // common elements between the two constructors go here:
+    setCIVAddr(civAddr);
+    usingNativeLAN = false; // TODO: set to true if we are connected over ethernet to the rig
+    spectSeqMax = 0; // this is now set after rig ID determined
+    payloadPrefix = QByteArray("\xFE\xFE");
+    payloadPrefix.append(civAddr);
+    payloadPrefix.append(compCivAddr);
+
+    payloadSuffix = QByteArray("\xFD");
+
+    lookingForRig = false;
+    foundRig = false;
+    oldScopeMode = 3;
+}
+
 void rigCommander::process()
 {
+
+    if(usingNativeLAN)
+    {
+        udp = new udpHandler(ip, cport, sport, aport, username, password);
+
+        // data from the comm port to the program:
+
+        connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
+
+        // data from the program to the comm port:
+        connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+
+        // Connect for errors/alerts
+        connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
+        connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(handleStatusUpdate(QString)));
+
+    } else {
+        comm = new commHandler(rigSerialPort, rigBaudRate);
+
+        // data from the comm port to the program:
+        connect(comm, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
+
+        // data from the program to the comm port:
+        connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
+
+        connect(comm, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
+
+        connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
+        pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
+    }
+
+
     // new thread enters here. Do nothing but do check for errors.
     if(comm!=nullptr && comm->serialError)
     {

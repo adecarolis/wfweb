@@ -69,6 +69,7 @@ public slots:
     void getDebug();
 
 signals:
+    void commReady();
     void haveSpectrumData(QByteArray spectrum, double startFreq, double endFreq); // pass along data to UI
     void haveRigID(rigCapabilities rigCaps);
     void discoveredRigID(rigCapabilities rigCaps);
@@ -94,6 +95,7 @@ signals:
 
 
 private:
+    void setup();
     QByteArray stripData(const QByteArray &data, unsigned char cutPosition);
     void parseData(QByteArray data); // new data come here
     void parseCommand();
@@ -152,6 +154,15 @@ private:
     bool pttAllowed;
 
     QString rigSerialPort;
+    quint32 rigBaudRate;
+
+    QHostAddress ip;
+    int cport;
+    int sport;
+    int aport;
+    QString username;
+    QString password;
+
     QString serialPortError;
 
 
