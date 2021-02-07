@@ -1,9 +1,14 @@
-#include "wfmain.h"
 #include <QApplication>
 #include <iostream>
+#include "wfmain.h"
 
 // Copytight 2017-2021 Elliott H. Liggett
 
+// Smart pointer to log file
+QScopedPointer<QFile>   m_logFile;
+QMutex logMutex;
+
+void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
 
 int main(int argc, char *argv[])
 {
@@ -19,10 +24,11 @@ int main(int argc, char *argv[])
     QString serialPortCL;
     QString hostCL;
     QString civCL;
+    QString logFilename= QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0] + "/wfview.log";
 
     QString currentArg;
 
-    const QString helpText = QString("Usage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr"); // TODO...
+    const QString helpText = QString("Usage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr, -l --logfile filename.log"); // TODO...
 
     for(int c=1; c<argc; c++)
     {
@@ -43,12 +49,21 @@ int main(int argc, char *argv[])
                 hostCL = argv[c+1];
                 c+=1;
             }
-        } else if ((currentArg == "-c") || (currentArg == "--civ"))
+        }
+        else if ((currentArg == "-c") || (currentArg == "--civ"))
         {
-            if(argc > c)
+            if (argc > c)
             {
-                civCL = argv[c+1];
-                c+=1;
+                civCL = argv[c + 1];
+                c += 1;
+            }
+        }
+        else if ((currentArg == "l") || (currentArg == "--logfile"))
+        {
+            if (argc > c)
+            {
+                logFilename = argv[c + 1];
+                c += 1;
             }
         } else if ((currentArg == "--help"))
         {
@@ -62,11 +77,20 @@ int main(int argc, char *argv[])
 
     }
 
+    // Set the logging file before doing anything else.
+    m_logFile.reset(new QFile(logFilename));
+    // Open the file logging
+    m_logFile.data()->open(QFile::Append | QFile::Text);
+    // Set handler
+    qInstallMessageHandler(messageHandler);
+
+    qDebug(logInfo()) << "Starting wfview";
+
 
 #ifdef QT_DEBUG
-    qDebug() << "SerialPortCL as set by parser: " << serialPortCL;
-    qDebug() << "remote host as set by parser: " << hostCL;
-    qDebug() << "CIV as set by parser: " << civCL;
+    qDebug(logDebug()) << "SerialPortCL as set by parser: " << serialPortCL;
+    qDebug(logDebug()) << "remote host as set by parser: " << hostCL;
+    qDebug(logDebug()) << "CIV as set by parser: " << civCL;
 #endif
     a.setWheelScrollLines(1); // one line per wheel click
     wfmain w( serialPortCL, hostCL);
@@ -76,4 +100,30 @@ int main(int argc, char *argv[])
 
 
     return a.exec();
+    qDebug(logInfo()) << "wfview is finished";
+
+}
+
+
+void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
+{
+    // Open stream file writes
+    QMutexLocker locker(&logMutex);
+    QTextStream out(m_logFile.data());
+
+    // Write the date of recording
+    out << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ");
+    // By type determine to what level belongs message
+    
+    switch (type)
+    {
+    case QtInfoMsg:     out << "INF "; break;
+    case QtDebugMsg:    out << "DBG "; break;
+    case QtWarningMsg:  out << "WRN "; break;
+    case QtCriticalMsg: out << "CRT "; break;
+    case QtFatalMsg:    out << "FTL "; break;
+    } 
+    // Write to the output category of the message and the message itself
+    out << context.category << ": " << msg << "\n";
+    out.flush();    // Clear the buffered data
 }

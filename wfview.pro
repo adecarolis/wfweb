@@ -79,14 +79,16 @@ SOURCES += main.cpp\
     rigcommander.cpp \
     freqmemory.cpp \
     rigidentities.cpp \
-	udphandler.cpp
+	udphandler.cpp \
+	logcategories.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
     rigcommander.h \
     freqmemory.h \
     rigidentities.h \
-	udphandler.h
+	udphandler.h \
+	logcategories.h
 
 FORMS    += wfmain.ui
 

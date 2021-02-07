@@ -10,7 +10,7 @@
 #include <QShortcut>
 #include <QMetaType>
 
-
+#include "logcategories.h"
 #include "commhandler.h"
 #include "rigcommander.h"
 #include "freqmemory.h"
