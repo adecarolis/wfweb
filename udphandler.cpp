@@ -181,10 +181,10 @@ void udpHandler::DataReceived()
         case (144):
             if (!serialAndAudioOpened && r.mid(0, 6) == QByteArrayLiteral("\x90\x00\x00\x00\x00\x00") && r[0x60] == (char)0x01)
             {
-                devName = parseNullTerminatedString(r, 0x40);
-                if (parseNullTerminatedString(r, 0x64) != compName)
+                QHostAddress ip = QHostAddress(qFromBigEndian<quint32>(r.mid(0x84, 4)));
+                if (parseNullTerminatedString(r, 0x64) != compName || ip != localIP )
                 {
-                    emit haveNetworkStatus("Radio in use by: " + QString::fromUtf8(parseNullTerminatedString(r, 0x64)));
+                    emit haveNetworkStatus("Radio in use by: " + QString::fromUtf8(parseNullTerminatedString(r, 0x64))+" ("+ip.toString()+")");
                 } 
                 else
                 {
