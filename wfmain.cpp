@@ -521,7 +521,6 @@ void wfmain::receiveCommReady()
         qDebug() << "Skipping automatic CIV, using user-supplied value of " << prefs.radioCIVAddr;
         getInitialRigState();
     }
-    ui->connectBtn->setText("Disconnect");
 
 }
 
@@ -1280,6 +1279,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         this->rigCaps = rigCaps;
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
         haveRigCaps = true;
+        ui->connectBtn->setText("Disconnect"); // We must be connected now.
         prepareWf();
         // Adding these here because clearly at this point we have valid
         // rig comms. In the future, we should establish comms and then
@@ -2248,6 +2248,8 @@ void wfmain::on_toFixedBtn_clicked()
 
 void wfmain::on_connectBtn_clicked()
 {
+    this->rigStatus->setText(""); // Clear status
+
     if (haveRigCaps) {
         emit sendCloseComm();
         ui->connectBtn->setText("Connect");
@@ -2255,8 +2257,8 @@ void wfmain::on_connectBtn_clicked()
     }
     else
     {
+        emit sendCloseComm(); // Just in case there is a failed connection open.
         openRig();
-        ui->connectBtn->setText("Disconnect");
     }
 }
 

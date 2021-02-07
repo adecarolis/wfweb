@@ -39,7 +39,7 @@ public:
 	void DataReceived(QByteArray r);
 
 	unsigned char* Passcode(QString str);
-	QString parseNullTerminatedString(QByteArray c, int s);
+	QByteArray parseNullTerminatedString(QByteArray c, int s);
 	QUdpSocket* udp=Q_NULLPTR;
 	uint32_t localSID = 0;
 	uint32_t remoteSID = 0;
@@ -117,12 +117,12 @@ class udpAudio : public udpBase
 public:
 	udpAudio(QHostAddress local, QHostAddress ip, int aport);
 	~udpAudio();
+	QAudioOutput* audio;
 private:
 
 	void DataReceived();
 
 	QBuffer* buffer;
-	QAudioOutput* audio;
 	QAudioFormat format;
 
 	bool sentPacketConnect2 = false;
@@ -173,11 +173,14 @@ private:
 	bool sentPacketConnect = false;
 	bool sentPacketConnect2 = false;
 
+	bool radioInUse = false;
+
 	int aport;
 	int sport;
 	int reauthInterval = 60000;
 	QTimer reauthTimer;
-	QString devname;
+	QByteArray devName;
+	QByteArray compName;
 };
 
 

@@ -13,6 +13,7 @@ udpHandler::udpHandler(QHostAddress ip, int cport, int sport, int aport,QString 
     this->sport = sport;
     this->username = username;
     this->password = password;
+
     
     // Convoluted way to find the external IP address, there must be a better way????
     QString localhostname = QHostInfo::localHostName();
@@ -31,7 +32,7 @@ udpHandler::udpHandler(QHostAddress ip, int cport, int sport, int aport,QString 
     connect(&reauthTimer, &QTimer::timeout, this, QOverload<>::of(&udpHandler::ReAuth));
 
     udpBase::SendPacketConnect(); // First connect packet
-
+    compName = QString("wfview").toUtf8();
 }
 
 udpHandler::~udpHandler()
@@ -101,7 +102,7 @@ void udpHandler::DataReceived()
                 // This is a response to our pkt7 request so measure latency (only once fully connected though.
                 latency += lastPacket7Sent.msecsTo(QDateTime::currentDateTime());
                 latency /= 2;
-                emit haveNetworkStatus("rtt: " + QString::number(latency) + " ms");
+                emit haveNetworkStatus(" rtt: " + QString::number(latency) + " ms");
             }
             break;
         case (64): // Response to Auth packet?
@@ -123,13 +124,13 @@ void udpHandler::DataReceived()
             {
                 if (r.mid(48, 3) == QByteArrayLiteral("\xff\xff\xff"))
                 {
-                    if (!serialAndAudioOpened) 
+                    if (!serialAndAudioOpened)
                     {
                         emit haveNetworkError(radioIP.toString(), "Auth failed, try rebooting the radio.");
                         qDebug() << "Auth failed, try rebooting the radio.";
                     }
                 }
-                if (r.mid(48, 3) == QByteArrayLiteral("\x00\x00\x00") && r[64] == (char)0x01) 
+                if (r.mid(48, 3) == QByteArrayLiteral("\x00\x00\x00") && r[64] == (char)0x01)
                 {
                     emit haveNetworkError(radioIP.toString(), "Got radio disconnected.");
                     qDebug() << "Got radio disconnected.";
@@ -165,7 +166,7 @@ void udpHandler::DataReceived()
                     SendPacketAuth(0x02);
 
                     pkt0Timer = new QTimer(this);
-                    connect(pkt0Timer, &QTimer::timeout, this, std::bind(&udpBase::SendPkt0Idle,this,true,0));
+                    connect(pkt0Timer, &QTimer::timeout, this, std::bind(&udpBase::SendPkt0Idle, this, true, 0));
                     pkt0Timer->start(100);
 
                     SendPacketAuth(0x05);
@@ -178,29 +179,38 @@ void udpHandler::DataReceived()
             }
             break;
         case (144):
-            if (!serialAndAudioOpened && r.mid(0, 6) == QByteArrayLiteral("\x90\x00\x00\x00\x00\x00") && r[96] == (char)0x01) 
+            if (!serialAndAudioOpened && r.mid(0, 6) == QByteArrayLiteral("\x90\x00\x00\x00\x00\x00") && r[0x60] == (char)0x01)
             {
-                devname = parseNullTerminatedString(r, 64);
-                emit haveNetworkStatus(devname);
+                devName = parseNullTerminatedString(r, 0x40);
+                if (parseNullTerminatedString(r, 0x64) != compName)
+                {
+                    emit haveNetworkStatus("Radio in use by: " + QString::fromUtf8(parseNullTerminatedString(r, 0x64)));
+                } 
+                else
+                {
 
-                qDebug() << "Got serial and audio request success, device name: " << devname;
+                    serial = new udpSerial(localIP, radioIP, sport);
+                    audio = new udpAudio(localIP, radioIP, aport);
 
-                // Stuff can change in the meantime because of a previous login...
-                remoteSID = qFromBigEndian<quint32>(r.mid(8, 4));
-                localSID = qFromBigEndian<quint32>(r.mid(12, 4));
-                authID[0] = r[26];
-                authID[1] = r[27];
-                authID[2] = r[28];
-                authID[3] = r[29];
-                authID[4] = r[30];
-                authID[5] = r[31];
+                    QObject::connect(serial, SIGNAL(Receive(QByteArray)), this, SLOT(receiveFromSerialStream(QByteArray)));
 
-                serial = new udpSerial(localIP, radioIP, sport);
-                audio = new udpAudio(localIP, radioIP, aport);
+                    serialAndAudioOpened = true;
 
-                QObject::connect(serial, SIGNAL(Receive(QByteArray)), this, SLOT(receiveFromSerialStream(QByteArray)));
+                    emit haveNetworkStatus(QString::fromUtf8(devName));
 
-                serialAndAudioOpened = true;
+                    qDebug() << "Got serial and audio request success, device name: " << QString::fromUtf8(devName);
+
+                    // Stuff can change in the meantime because of a previous login...
+                    remoteSID = qFromBigEndian<quint32>(r.mid(8, 4));
+                    localSID = qFromBigEndian<quint32>(r.mid(12, 4));
+                    authID[0] = r[26];
+                    authID[1] = r[27];
+                    authID[2] = r[28];
+                    authID[3] = r[29];
+                    authID[4] = r[30];
+                    authID[5] = r[31];
+                }
+                // Is there already somebody connected to the radio?
             }
             break;
 
@@ -275,7 +285,6 @@ qint64 udpHandler::SendRequestSerialAndAudio()
     };
 
     authInnerSendSeq++;
-
     delete[] usernameEncoded;
 
     return SendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
@@ -289,7 +298,7 @@ qint64 udpHandler::SendPacketLogin() // Only used on control stream.
     unsigned char* usernameEncoded = Passcode(username);
     unsigned char* passwordEncoded = Passcode(password);
 
-    const unsigned char p[] = {
+    unsigned char p[] = {
         0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         static_cast<unsigned char>(localSID >> 24 & 0xff), static_cast<unsigned char>(localSID >> 16 & 0xff), static_cast<unsigned char>(localSID >> 8 & 0xff), static_cast<unsigned char>(localSID & 0xff),
         static_cast<unsigned char>(remoteSID >> 24 & 0xff), static_cast<unsigned char>(remoteSID >> 16 & 0xff), static_cast<unsigned char>(remoteSID >> 8 & 0xff), static_cast<unsigned char>(remoteSID & 0xff),
@@ -307,13 +316,13 @@ qint64 udpHandler::SendPacketLogin() // Only used on control stream.
         passwordEncoded[4], passwordEncoded[5], passwordEncoded[6], passwordEncoded[7],
         passwordEncoded[8], passwordEncoded[9], passwordEncoded[10], passwordEncoded[11],
         passwordEncoded[12], passwordEncoded[13], passwordEncoded[14], passwordEncoded[15],
-        0x69, 0x63, 0x6f, 0x6d, 0x2d, 0x70, 0x63, 0x00, // icom-pc in plain text
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     };
-
-
+    
+    memcpy(p + 0x60, compName.constData(), compName.length());
 
     delete[] usernameEncoded;
     delete[] passwordEncoded;
@@ -900,14 +909,15 @@ unsigned char* udpBase::Passcode(QString str)
 }
 
 
-QString udpBase::parseNullTerminatedString(QByteArray c, int s)
+QByteArray udpBase::parseNullTerminatedString(QByteArray c, int s)
 {
-    QString res = "";
+    //QString res = "";
+    QByteArray res;
     for (int i = s; i < c.length(); i++)
     {
         if (c[i] != '\0')
         {
-            res = res + QChar(c[i]);
+            res.append(c[i]);
         }
         else
         {
