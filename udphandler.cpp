@@ -269,7 +269,7 @@ qint64 udpHandler::SendRequestSerialAndAudio()
         usernameEncoded[12], usernameEncoded[13], usernameEncoded[14], usernameEncoded[15],
         0x01, 0x01, 0x04, 0x04, 0x00, 0x00, static_cast<unsigned char>(audioSampleRate >> 8 & 0xff), static_cast<unsigned char>(audioSampleRate & 0xff),
         0x00, 0x00, static_cast<unsigned char>(audioSampleRate >> 8 & 0xff), static_cast<unsigned char>(audioSampleRate & 0xff),
-        0x00, 0x00, static_cast<unsigned char>(sport >> 8 & 0xff), static_cast<unsigned char>(aport & 0xff),
+        0x00, 0x00, static_cast<unsigned char>(sport >> 8 & 0xff), static_cast<unsigned char>(sport & 0xff),
         0x00, 0x00, static_cast<unsigned char>(aport >> 8 & 0xff), static_cast<unsigned char>(aport & 0xff), 0x00, 0x00,
         static_cast<unsigned char>(txSeqBufLengthMs >> 8 & 0xff), static_cast<unsigned char>(txSeqBufLengthMs & 0xff), 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     };
