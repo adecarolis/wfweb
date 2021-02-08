@@ -586,7 +586,8 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
     connect(this, SIGNAL(haveAudioData(QByteArray,int)), rxaudio, SLOT(incomingAudio(QByteArray,int)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
-    rxaudio->setup(format, 10000);
+    rxAudioThread->start();
+    emit setupAudio(format, 10000);
 
 }
 
