@@ -205,7 +205,7 @@ void udpHandler::DataReceived()
             {
                 devName = parseNullTerminatedString(r, 64);
                 QHostAddress ip = QHostAddress(qFromBigEndian<quint32>(r.mid(0x84, 4)));
-                if (parseNullTerminatedString(r, 0x64) != compName || ip != localIP )
+                if (parseNullTerminatedString(r, 0x64) != compName) //  || ip != localIP ) // TODO: More testing of IP address detection code!
                 {
                     emit haveNetworkStatus("Radio in use by: " + QString::fromUtf8(parseNullTerminatedString(r, 0x64))+" ("+ip.toString()+")");
                 } 
