@@ -7,7 +7,7 @@
 // This code is copyright 2017-2020 Elliott H. Liggett
 // All rights reserved
 
-wfmain::wfmain(QWidget *parent) :
+wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent ) :
     QMainWindow(parent),
     ui(new Ui::wfmain)
 {
@@ -19,6 +19,11 @@ wfmain::wfmain(QWidget *parent) :
     theParent = parent;
 
     setWindowTitle(QString("wfview"));
+
+    this->serialPortCL = serialPortCL;
+    this->hostCL = hostCL;
+
+    haveRigCaps = false;
 
     ui->bandStkLastUsedBtn->setVisible(false);
     ui->bandStkVoiceBtn->setVisible(false);
@@ -141,32 +146,36 @@ wfmain::wfmain(QWidget *parent) :
     keyM->setKey(Qt::Key_M);
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
 
-
+    // Enumerate audio devices, need to do before settings are loaded.
+    const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
+    for (const QAudioDeviceInfo& deviceInfo : deviceInfos) {
+        ui->audioOutputCombo->addItem(deviceInfo.deviceName());
+    }
     setDefaultColors(); // set of UI colors with defaults populated
     setDefPrefs(); // other default options
     loadSettings(); // Look for saved preferences
 
     // if setting for serial port is "auto" then...
-    if(prefs.serialPortRadio == QString("auto"))
-    {
-        // Find the ICOM IC-7300.
-        qDebug() << "Searching for serial port...";
-        QDirIterator it("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
+//    if(prefs.serialPortRadio == QString("auto"))
+//    {
+//        // Find the ICOM IC-7300.
+//        qDebug() << "Searching for serial port...";
+//        QDirIterator it("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
 
-        while (it.hasNext())
-            qDebug() << it.next();
-        // if (it.isEmpty()) // fail or default to ttyUSB0 if present
-        // iterator might not make sense
-        serialPortRig = it.filePath(); // first? last?
-        if(serialPortRig.isEmpty())
-        {
-            qDebug() << "Cannot find IC-7300 serial port. Trying /dev/ttyUSB0";
-            serialPortRig = QString("/dev/ttyUSB0");
-        }
-        // end finding the 7300 code
-    } else {
-        serialPortRig = prefs.serialPortRadio;
-    }
+//        while (it.hasNext())
+//            qDebug() << it.next();
+//        // if (it.isEmpty()) // fail or default to ttyUSB0 if present
+//        // iterator might not make sense
+//        serialPortRig = it.filePath(); // first? last?
+//        if(serialPortRig.isEmpty())
+//        {
+//            qDebug() << "Cannot find IC-7300 serial port. Trying /dev/ttyUSB0";
+//            serialPortRig = QString("/dev/ttyUSB0");
+//        }
+//        // end finding the 7300 code
+//    } else {
+//        serialPortRig = prefs.serialPortRadio;
+//    }
 
 
     plot = ui->plot; // rename it waterfall.
@@ -180,17 +189,17 @@ wfmain::wfmain(QWidget *parent) :
     tracer->setBrush(Qt::green);
     tracer->setSize(30);
 
-    spectWidth = 475; // fixed for now
-    wfLength = 160; // fixed for now
+//    spectWidth = 475; // fixed for now
+//    wfLength = 160; // fixed for now, time-length of waterfall
 
-    // Initialize before use!
+//    // Initialize before use!
 
-    QByteArray empty((int)spectWidth, '\x01');
-    spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
-    for(quint16 i=0; i<wfLength; i++)
-    {
-        wfimage.append(empty);
-    }
+//    QByteArray empty((int)spectWidth, '\x01');
+//    spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
+//    for(quint16 i=0; i<wfLength; i++)
+//    {
+//        wfimage.append(empty);
+//    }
 
     //          0      1        2         3       4
     modes << "LSB" << "USB" << "AM" << "CW" << "RTTY";
@@ -213,18 +222,18 @@ wfmain::wfmain(QWidget *parent) :
     ui->afGainSlider->setSingleStep(100);
     ui->afGainSlider->setSingleStep(100);
 
+    rigStatus = new QLabel(this);
+    ui->statusBar->addPermanentWidget(rigStatus);
+    ui->statusBar->showMessage("Connecting to rig...", 1000);
 
-    ui->statusBar->showMessage("Ready", 2000);
+    delayedCommand = new QTimer(this);
+    delayedCommand->setInterval(250); // 250ms until we find rig civ and id, then 100ms.
+    delayedCommand->setSingleShot(true);
+    connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
 
-    rig = new rigCommander(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud);
+    openRig();
 
-    rigThread = new QThread(this);
-
-    rig->moveToThread(rigThread);
-    connect(rigThread, SIGNAL(started()), rig, SLOT(process()));
-    connect(rig, SIGNAL(finished()), rigThread, SLOT(quit()));
-    rigThread->start();
-
+    qRegisterMetaType<rigCapabilities>();
 
     connect(rig, SIGNAL(haveFrequency(double)), this, SLOT(receiveFreq(double)));
     connect(this, SIGNAL(getFrequency()), rig, SLOT(getFrequency()));
@@ -244,6 +253,7 @@ wfmain::wfmain(QWidget *parent) :
     connect(rig, SIGNAL(haveMode(QString)), this, SLOT(receiveMode(QString)));
     connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
+    connect(rig, SIGNAL(haveSpectrumFixedMode(bool)), this, SLOT(receiveSpectrumFixedMode(bool)));
     connect(this, SIGNAL(setFrequency(double)), rig, SLOT(setFrequency(double)));
     connect(this, SIGNAL(setScopeCenterMode(bool)), rig, SLOT(setSpectrumCenteredMode(bool)));
     connect(this, SIGNAL(setScopeEdge(char)), rig, SLOT(setScopeEdge(char)));
@@ -251,6 +261,7 @@ wfmain::wfmain(QWidget *parent) :
     connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
     connect(this, SIGNAL(getScopeEdge()), rig, SLOT(getScopeEdge()));
     connect(this, SIGNAL(getScopeSpan()), rig, SLOT(getScopeSpan()));
+    connect(this, SIGNAL(setScopeFixedEdge(double,double,unsigned char)), rig, SLOT(setSpectrumBounds(double,double,unsigned char)));
 
     connect(this, SIGNAL(setMode(char)), rig, SLOT(setMode(char)));
     connect(this, SIGNAL(getRfGain()), rig, SLOT(getRfGain()));
@@ -266,8 +277,9 @@ wfmain::wfmain(QWidget *parent) :
     connect(this, SIGNAL(getATUStatus()), rig, SLOT(getATUStatus()));
     connect(this, SIGNAL(getRigID()), rig, SLOT(getRigID()));
     connect(rig, SIGNAL(haveATUStatus(unsigned char)), this, SLOT(receiveATUStatus(unsigned char)));
+    connect(rig, SIGNAL(haveRigID(rigCapabilities)), this, SLOT(receiveRigID(rigCapabilities)));
 
-    // Speech (emitted from IC-7300 speaker)
+    // Speech (emitted from rig speaker)
     connect(this, SIGNAL(sayAll()), rig, SLOT(sayAll()));
     connect(this, SIGNAL(sayFrequency()), rig, SLOT(sayFrequency()));
     connect(this, SIGNAL(sayMode()), rig, SLOT(sayMode()));
@@ -296,15 +308,6 @@ wfmain::wfmain(QWidget *parent) :
 #endif
 
     colorScale = new QCPColorScale(wf);
-    colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
-    colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
-    colorMap->setDataRange(QCPRange(0, 160));
-    colorMap->setGradient(QCPColorGradient::gpJet); // TODO: Add preference
-    colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
-    colorMap->setData(colorMapData);
-    spectRowCurrent = 0;
-    wf->yAxis->setRangeReversed(true);
-    wf->xAxis->setVisible(false);
 
     ui->tabWidget->setCurrentIndex(0);
 
@@ -317,10 +320,7 @@ wfmain::wfmain(QWidget *parent) :
 
     ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
 
-    delayedCommand = new QTimer(this);
-    delayedCommand->setInterval(100); // ms. 250 was fine. TODO: Find practical maximum with margin on pi
-    delayedCommand->setSingleShot(true);
-    connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
+;
 
     pttTimer = new QTimer(this);
     pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
@@ -355,27 +355,226 @@ wfmain::wfmain(QWidget *parent) :
     on_drawPeakChk_clicked(prefs.drawPeaks);
     drawPeaks = prefs.drawPeaks;
 
-    getInitialRigState();
+    //getInitialRigState();
     oldFreqDialVal = ui->freqDial->value();
 }
 
 wfmain::~wfmain()
 {
-    // rigThread->quit();
+    rigThread->quit();
+    rigThread->wait();
     delete ui;
+}
+
+void wfmain::openRig()
+{
+    // This function is intended to handle opening a connection to the rig.
+    // the connection can be either serial or network,
+    // and this function is also responsible for initiating the search for a rig model and capabilities.
+    // Any errors, such as unable to open connection or unable to open port, are to be reported to the user.
+
+    //TODO: if(hasRunPreviously)
+
+    //TODO: if(useNetwork){...
+
+    // } else {
+
+    // if (prefs.fileWasNotFound) {
+    //     showRigSettings(); // rig setting dialog box for network/serial, CIV, hostname, port, baud rate, serial device, etc
+    // TODO: How do we know if the setting was loaded?
+
+
+    // TODO: Use these if they are found
+#ifdef QT_DEBUG
+    if(!serialPortCL.isEmpty())
+    {
+        qDebug() << "Serial port specified by user: " << serialPortCL;
+    } else {
+        qDebug() << "Serial port not specified. ";
+    }
+
+    if(!hostCL.isEmpty())
+    {
+        qDebug() << "Remote host name specified by user: " << hostCL;
+    }
+#endif
+
+    if (rigThread == Q_NULLPTR)
+    {
+        rig = new rigCommander();
+        rigThread = new QThread(this);
+
+        rig->moveToThread(rigThread);
+
+        connect(rigThread, SIGNAL(started()), rig, SLOT(process()));
+        connect(rigThread, SIGNAL(finished()), rig, SLOT(deleteLater()));
+        rigThread->start();
+        connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
+        connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
+        
+        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, int, int, int, QString, QString)), rig, SLOT(commSetup(unsigned char, QString, int, int, int, QString, QString)));
+        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32)), rig, SLOT(commSetup(unsigned char, QString, quint32)));
+
+        connect(this, SIGNAL(sendCloseComm()), rig, SLOT(closeComm()));
+        connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
+        connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
+        connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
+
+    }
+
+    if (prefs.enableLAN)
+    {
+        emit sendCommSetup(prefs.radioCIVAddr, prefs.ipAddress, prefs.controlLANPort, prefs.serialLANPort, prefs.audioLANPort, prefs.username, prefs.password);
+    } else {
+
+        if( (prefs.serialPortRadio == QString("auto")) && (serialPortCL.isEmpty()))
+        {
+            // Find the ICOM
+            // qDebug() << "Searching for serial port...";
+            QDirIterator it73("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*A*", QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator it785x("/dev/serial", QStringList() << "*IC-785*A*", QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
+
+
+            if(!it73.filePath().isEmpty())
+            {
+                // use
+                serialPortRig = it73.filePath(); // first
+            } else if(!it97.filePath().isEmpty())
+            {
+                // IC-9700 port
+                serialPortRig = it97.filePath();
+            } else if(!it785x.filePath().isEmpty())
+            {
+                // IC-785x port
+                serialPortRig = it785x.filePath();
+            } else if(!it705.filePath().isEmpty())
+            {
+                // IC-705
+                serialPortRig = it705.filePath();
+            } else {
+                //fall back:
+                qDebug() << "Could not find Icom serial port. Falling back to OS default. Use --port to specify, or modify preferences.";
+#ifdef Q_OS_MAC
+                serialPortRig = QString("/dev/tty.SLAB_USBtoUART");
+#endif
+#ifdef Q_OS_LINUX
+                serialPortRig = QString("/dev/ttyUSB0");
+#endif
+#ifdef Q_OS_WIN
+                serialPortRig = QString("COM1");
+#endif
+            }
+
+        } else {
+            if(serialPortCL.isEmpty())
+            {
+                serialPortRig = prefs.serialPortRadio;
+            } else {
+                serialPortRig = serialPortCL;
+            }
+        }
+
+        // Here, the radioCIVAddr is being set from a default preference, which is for the 7300.
+        // However, we will not use it initially. OTOH, if it is set explicitedly to a value in the prefs,
+        // then we skip auto detection.
+        emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud);
+    }
+
+    ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
+
+/*
+    if(prefs.radioCIVAddr == 0)
+    {
+        // tell rigCommander to broadcast a request for all rig IDs.
+        // qDebug() << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
+        ui->statusBar->showMessage(QString("Searching CIV bus for connected radios."), 1000);
+        emit getRigCIV();
+        cmdOutQue.append(cmdGetRigCIV);
+        delayedCommand->start();
+    } else {
+        // don't bother, they told us the CIV they want, stick with it.
+        // We still query the rigID to find the model, but at least we know the CIV.
+        qDebug() << "Skipping automatic CIV, using user-supplied value of " << prefs.radioCIVAddr;
+        getInitialRigState();
+    }
+*/
+
+}
+
+void wfmain::receiveCommReady()
+{
+    qDebug() << "Received CommReady!! ";
+    // taken from above:
+    if(prefs.radioCIVAddr == 0)
+    {
+        // tell rigCommander to broadcast a request for all rig IDs.
+        // qDebug() << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
+        ui->statusBar->showMessage(QString("Searching CIV bus for connected radios."), 1000);
+        emit getRigCIV();
+        cmdOutQue.append(cmdGetRigCIV);
+        delayedCommand->start();
+    } else {
+        // don't bother, they told us the CIV they want, stick with it.
+        // We still query the rigID to find the model, but at least we know the CIV.
+        qDebug() << "Skipping automatic CIV, using user-supplied value of " << prefs.radioCIVAddr;
+        getInitialRigState();
+    }
+
+}
+
+
+void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
+{
+    // Entry point for unknown rig being identified at the start of the program.
+    //now we know what the rig ID is:
+    //qDebug() << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
+    delayedCommand->setInterval(100); // faster polling is ok now.
+    receiveRigID(rigCaps);
+    getInitialRigState();
+
+    QString message = QString("Found model: ").append(rigCaps.modelName);
+
+    ui->statusBar->showMessage(message, 1500);
+
+    return;
+}
+
+void wfmain::receiveSerialPortError(QString port, QString errorText)
+{
+    qDebug() << "wfmain: received serial port error for port: " << port << " with message: " << errorText;
+    ui->statusBar->showMessage(QString("ERROR: using port ").append(port).append(": ").append(errorText), 10000);
+
+    // TODO: Dialog box, exit, etc
+}
+
+void wfmain::receiveStatusUpdate(QString text)
+{
+    this->rigStatus->setText(text);
 }
 
 void wfmain::setDefPrefs()
 {
-    defPrefs.useFullScreen = true;
+    defPrefs.useFullScreen = false;
     defPrefs.useDarkMode = true;
     defPrefs.drawPeaks = true;
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
-    defPrefs.radioCIVAddr = 0x94;
+    defPrefs.radioCIVAddr = 0x00; // previously was 0x94 for 7300.
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.serialPortBaud = 115200;
     defPrefs.enablePTT = false;
     defPrefs.niceTS = true;
+
+    defPrefs.enableLAN = false;
+    defPrefs.ipAddress = QString("");
+    defPrefs.controlLANPort = 50001;
+    defPrefs.serialLANPort = 50002;
+    defPrefs.audioLANPort = 50003;
+    defPrefs.username = QString("");
+    defPrefs.password = QString("");
+    defPrefs.audioOutput = QString("");
+
 }
 
 void wfmain::loadSettings()
@@ -410,6 +609,36 @@ void wfmain::loadSettings()
     prefs.niceTS = settings.value("NiceTS", defPrefs.niceTS).toBool();
     settings.endGroup();
 
+    settings.beginGroup("LAN");
+    prefs.enableLAN = settings.value("EnableLAN", defPrefs.enableLAN).toBool();
+    ui->lanEnableChk->setChecked(prefs.enableLAN);
+    prefs.ipAddress = settings.value("IPAddress", defPrefs.ipAddress).toString();
+    ui->ipAddressTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->ipAddressTxt->setText(prefs.ipAddress);
+    prefs.controlLANPort = settings.value("ControlLANPort", defPrefs.controlLANPort).toInt();
+    ui->controlPortTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->controlPortTxt->setText(QString("%1").arg(prefs.controlLANPort));
+    prefs.serialLANPort = settings.value("SerialLANPort", defPrefs.serialLANPort).toInt();
+    ui->serialPortTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->serialPortTxt->setText(QString("%1").arg(prefs.serialLANPort));
+    prefs.audioLANPort = settings.value("AudioLANPort", defPrefs.audioLANPort).toInt();
+    ui->audioPortTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->audioPortTxt->setText(QString("%1").arg(prefs.audioLANPort));
+
+    prefs.username = settings.value("Username", defPrefs.username).toString();
+    ui->usernameTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->usernameTxt->setText(QString("%1").arg(prefs.username));
+    prefs.password = settings.value("Password", defPrefs.password).toString();
+    ui->passwordTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->passwordTxt->setText(QString("%1").arg(prefs.password));
+
+    prefs.audioOutput = settings.value("AudioOutput", defPrefs.audioOutput).toString();
+    ui->audioOutputCombo->setEnabled(ui->lanEnableChk->isChecked());
+    int audioIndex = ui->audioOutputCombo->findText("prefs.audioOutput");
+    if (audioIndex  -1)
+        ui->audioOutputCombo->setCurrentIndex(audioIndex);
+
+    settings.endGroup();
     // Memory channels
 
     settings.beginGroup("Memory");
@@ -474,6 +703,17 @@ void wfmain::saveSettings()
     settings.beginGroup("Controls");
     settings.setValue("EnablePTT", prefs.enablePTT);
     settings.setValue("NiceTS", prefs.niceTS);
+    settings.endGroup();
+
+    settings.beginGroup("LAN");
+    settings.setValue("EnableLAN", prefs.enableLAN);
+    settings.setValue("IPAddress", prefs.ipAddress);
+    settings.setValue("ControlLANPort", prefs.controlLANPort);
+    settings.setValue("SerialLANPort", prefs.serialLANPort);
+    settings.setValue("AudioLANPort", prefs.audioLANPort);
+    settings.setValue("Username", prefs.username);
+    settings.setValue("Password", prefs.password);
+    settings.setValue("AudioOutput", prefs.audioOutput);
     settings.endGroup();
 
     // Memory channels
@@ -547,6 +787,43 @@ void wfmain::saveSettings()
     settings.sync(); // Automatic, not needed (supposedly)
 }
 
+void wfmain::prepareWf()
+{
+    // All this code gets moved in from the constructor of wfmain.
+
+    if(haveRigCaps)
+    {
+        // do things
+        spectWidth = rigCaps.spectLenMax; // was fixed at 475
+        wfLength = 160; // fixed for now, time-length of waterfall
+
+        // Initialize before use!
+
+        QByteArray empty((int)spectWidth, '\x01');
+        spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
+        for(quint16 i=0; i<wfLength; i++)
+        {
+            wfimage.append(empty);
+        }
+
+        // from line 305-313:
+        colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
+        colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
+        colorMap->setDataRange(QCPRange(0, rigCaps.spectAmpMax));
+        colorMap->setGradient(QCPColorGradient::gpJet); // TODO: Add preference
+        colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
+        colorMap->setData(colorMapData);
+        spectRowCurrent = 0;
+        wf->yAxis->setRangeReversed(true);
+        wf->xAxis->setVisible(false);
+
+    } else {
+        qDebug() << "Cannot prepare WF view without rigCaps. Waiting on this.";
+        return;
+    }
+
+}
+
 
 // Key shortcuts (hotkeys)
 
@@ -560,6 +837,7 @@ void wfmain::shortcutF11()
         this->showFullScreen();
         onFullscreen = true;
     }
+    ui->fullScreenChk->setChecked(onFullscreen);
 }
 
 void wfmain::shortcutF1()
@@ -734,7 +1012,7 @@ void wfmain::shortcutM()
 }
 
 
-void wfmain::getInitialRigState()
+void wfmain:: getInitialRigState()
 {
     // Initial list of queries to the radio.
     // These are made when the program starts up
@@ -742,7 +1020,7 @@ void wfmain::getInitialRigState()
     // the polling interval is set at 100ms. Faster is possible but slower
     // computers will glitch occassionally.
 
-    cmdOutQue.append(cmdGetRigID); // This may be used in the future.
+    //cmdOutQue.append(cmdGetRigID);
 
     cmdOutQue.append(cmdGetFreq);
     cmdOutQue.append(cmdGetMode);
@@ -758,6 +1036,11 @@ void wfmain::getInitialRigState()
     // TODO:
     // get TX level
     // get Scope reference Level
+
+    //cmdOutQue.append(cmdNone);
+    //cmdOutQue.append(cmdGetRigID);
+    //cmdOutQue.append(cmdNone);
+    //cmdOutQue.append(cmdGetRigID);
 
     cmdOutQue.append(cmdDispEnable);
     cmdOutQue.append(cmdSpecOn);
@@ -907,6 +1190,14 @@ void wfmain::runDelayedCommand()
             case cmdGetRigID:
                 emit getRigID();
                 break;
+            case cmdGetRigCIV:
+                // if(!know rig civ already)
+                if(!haveRigCaps)
+                {
+                    emit getRigCIV();
+                    cmdOutQue.append(cmdGetRigCIV); // This way, we stay here until we get an answer.
+                }
+                break;
             case cmdGetFreq:
                 emit getFrequency();
                 break;
@@ -947,6 +1238,12 @@ void wfmain::runDelayedCommand()
             case cmdGetATUStatus:
                 emit getATUStatus();
                 break;
+            case cmdScopeCenterMode:
+                emit setScopeCenterMode(true);
+                break;
+            case cmdScopeFixedMode:
+                emit setScopeCenterMode(false);
+                break;
             default:
                 break;
         }
@@ -962,9 +1259,39 @@ void wfmain::runDelayedCommand()
     }
 }
 
+
+void wfmain::receiveRigID(rigCapabilities rigCaps)
+{
+    // Note: We intentionally request rigID several times
+    // because without rigID, we can't do anything with the waterfall.
+    if(haveRigCaps)
+    {
+        return;
+    } else {
+#ifdef QT_DEBUG
+        qDebug() << "Rig name: " << rigCaps.modelName;
+        qDebug() << "Has LAN capabilities: " << rigCaps.hasLan;
+        qDebug() << "Rig ID received into wfmain: spectLenMax: " << rigCaps.spectLenMax;
+        qDebug() << "Rig ID received into wfmain: spectAmpMax: " << rigCaps.spectAmpMax;
+        qDebug() << "Rig ID received into wfmain: spectSeqMax: " << rigCaps.spectSeqMax;
+        qDebug() << "Rig ID received into wfmain: hasSpectrum: " << rigCaps.hasSpectrum;
+#endif
+        this->rigCaps = rigCaps;
+        this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
+        haveRigCaps = true;
+        ui->connectBtn->setText("Disconnect"); // We must be connected now.
+        prepareWf();
+        // Adding these here because clearly at this point we have valid
+        // rig comms. In the future, we should establish comms and then
+        // do all the initial grabs. For now, this hack of adding them here and there:
+        cmdOutQue.append(cmdGetFreq);
+        cmdOutQue.append(cmdGetMode);
+    }
+}
+
 void wfmain::receiveFreq(double freqMhz)
 {
-    //qDebug() << "Frequency: " << freqMhz;
+    //qDebug() << "HEY WE GOT A Frequency: " << freqMhz;
     ui->freqLabel->setText(QString("%1").arg(freqMhz, 0, 'f'));
     this->freqMhz = freqMhz;
     this->knobFreqMhz = freqMhz;
@@ -979,6 +1306,14 @@ void wfmain::receivePTTstatus(bool pttOn)
 
 void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq)
 {
+    if(!haveRigCaps)
+    {
+#ifdef QT_DEBUG
+        qDebug() << "Spectrum received, but RigID incomplete.";
+#endif
+        return;
+    }
+
     if((startFreq != oldLowerFreq) || (endFreq != oldUpperFreq))
     {
         // If the frequency changed and we were drawing peaks, now is the time to clearn them
@@ -996,9 +1331,16 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     //qDebug() << "start: " << startFreq << " end: " << endFreq;
     quint16 specLen = spectrum.length();
     //qDebug() << "Spectrum data received at UI! Length: " << specLen;
-    if(specLen != 475)
+    //if( (specLen != 475) || (specLen!=689) )
+
+    if( specLen != rigCaps.spectLenMax )
     {
-        //qDebug () << "Unusual spectrum: length: " << specLen;
+#ifdef QT_DEBUG
+        qDebug() << "-------------------------------------------";
+        qDebug() << "------ Unusual spectrum received, length: " << specLen;
+        qDebug() << "------ Expected spectrum length: " << rigCaps.spectLenMax;
+        qDebug() << "------ This should happen once at most. ";
+#endif
         return; // safe. Using these unusual length things is a problem.
     }
 
@@ -1071,6 +1413,13 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     }
 }
 
+void wfmain::receiveSpectrumFixedMode(bool isFixed)
+{
+    ui->scopeCenterModeChk->blockSignals(true);
+    ui->scopeCenterModeChk->setChecked(!isFixed);
+    ui->scopeCenterModeChk->blockSignals(false);
+}
+
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 {
     double x;
@@ -1116,12 +1465,15 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     // .y() and is +/- 120.
     // We will click the dial once for every 120 received.
     //QPoint delta = we->angleDelta();
+
+    // TODO: Use other method, knob has too few positions to be useful for large steps.
+
     int steps = we->angleDelta().y() / 120;
     Qt::KeyboardModifiers key=  we->modifiers();
 
     if (key == Qt::ShiftModifier)
     {
-        // TODO: Zoom
+        steps *=20;
     } else if (key == Qt::ControlModifier)
     {
         steps *=10;
@@ -1208,7 +1560,11 @@ void wfmain::receiveDataModeStatus(bool dataEnabled)
 
 void wfmain::on_clearPeakBtn_clicked()
 {
-    spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
+    if(haveRigCaps)
+    {
+        spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
+    }
+    return;
 }
 
 void wfmain::on_drawPeakChk_clicked(bool checked)
@@ -1832,11 +2188,90 @@ void wfmain::on_pttEnableChk_clicked(bool checked)
     prefs.enablePTT = checked;
 }
 
+void wfmain::on_lanEnableChk_clicked(bool checked)
+{
+    prefs.enableLAN = checked;
+    ui->ipAddressTxt->setEnabled(checked);
+    ui->controlPortTxt->setEnabled(checked);
+    ui->serialPortTxt->setEnabled(checked);
+    ui->audioPortTxt->setEnabled(checked);
+    ui->usernameTxt->setEnabled(checked);
+    ui->passwordTxt->setEnabled(checked);
+    if(checked)
+    {
+        showStatusBarText("After filling in values, press Save Settings and re-start wfview.");
+    }
+}
+
+void wfmain::on_ipAddressTxt_textChanged(QString text)
+{
+    prefs.ipAddress = text;
+}
+
+void wfmain::on_controlPortTxt_textChanged(QString text)
+{
+    prefs.controlLANPort = text.toUInt();
+}
+
+void wfmain::on_serialPortTxt_textChanged(QString text)
+{
+    prefs.serialLANPort = text.toUInt();
+}
+
+void wfmain::on_audioPortTxt_textChanged(QString text)
+{
+    prefs.audioLANPort = text.toUInt();
+}
+
+void wfmain::on_usernameTxt_textChanged(QString text)
+{
+    prefs.username = text;
+}
+
+void wfmain::on_passwordTxt_textChanged(QString text)
+{
+    prefs.password = text;
+}
+
+void wfmain::on_audioOutputCombo_currentIndexChanged(QString text)
+{
+    prefs.audioOutput = text;
+}
+
+void wfmain::on_toFixedBtn_clicked()
+{
+    emit setScopeFixedEdge(oldLowerFreq, oldUpperFreq, ui->scopeEdgeCombo->currentIndex()+1);
+    emit setScopeEdge(ui->scopeEdgeCombo->currentIndex()+1);
+    cmdOutQue.append(cmdScopeFixedMode);
+    delayedCommand->start();
+}
+
+void wfmain::on_connectBtn_clicked()
+{
+    this->rigStatus->setText(""); // Clear status
+
+    if (haveRigCaps) {
+        emit sendCloseComm();
+        ui->connectBtn->setText("Connect");
+        haveRigCaps = false;
+    }
+    else
+    {
+        emit sendCloseComm(); // Just in case there is a failed connection open.
+        openRig();
+    }
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
+    qDebug() << "Debug button pressed.";
+
     // TODO: Why don't these commands work?!
     //emit getScopeMode();
     //emit getScopeEdge(); // 1,2,3 only in "fixed" mode
     //emit getScopeSpan(); // in khz, only in "center" mode
+    //qDebug() << "Debug: finding rigs attached. Let's see if this works. ";
+    //rig->findRigs();
 }
+

@@ -2,8 +2,10 @@
 #define RIGCOMMANDER_H
 
 #include <QObject>
+#include <QDebug>
 
 #include "commhandler.h"
+#include "udphandler.h"
 #include "rigidentities.h"
 
 // This file figures out what to send to the comm and also
@@ -19,17 +21,20 @@ class rigCommander : public QObject
     Q_OBJECT
 
 public:
-    rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
+    rigCommander();
     ~rigCommander();
 
 public slots:
     void process();
+    void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
+    void commSetup(unsigned char rigCivAddr, QString ip, int cport, int sport, int aport, QString username, QString password);
+    void closeComm();
 
     void enableSpectOutput();
     void disableSpectOutput();
     void enableSpectrumDisplay();
     void disableSpectrumDisplay();
-    void setSpectrumBounds();
+    void setSpectrumBounds(double startFreq, double endFreq, unsigned char edgeNumber);
     void setSpectrumCenteredMode(bool centerEnable); // centered or band-wise
     void getSpectrumCenterMode();
     void setScopeSpan(char span);
@@ -55,15 +60,23 @@ public slots:
     void setATU(bool enabled);
     void getATUStatus();
     void getRigID();
+    void findRigs();
     void setCIVAddr(unsigned char civAddr);
     void handleNewData(const QByteArray &data);
+    void handleSerialPortError(const QString port, const QString errorText);
+    void handleStatusUpdate(const QString text);
     void sayFrequency();
     void sayMode();
     void sayAll();
     void getDebug();
 
 signals:
+    void commReady();
     void haveSpectrumData(QByteArray spectrum, double startFreq, double endFreq); // pass along data to UI
+    void haveRigID(rigCapabilities rigCaps);
+    void discoveredRigID(rigCapabilities rigCaps);
+    void haveSerialPortError(const QString port, const QString errorText);
+    void haveStatusUpdate(const QString text);
     void haveFrequency(double frequencyMhz);
     void haveMode(QString mode);
     void haveDataMode(bool dataModeEnabled);
@@ -84,6 +97,7 @@ signals:
 
 
 private:
+    void setup();
     QByteArray stripData(const QByteArray &data, unsigned char cutPosition);
     void parseData(QByteArray data); // new data come here
     void parseCommand();
@@ -106,7 +120,9 @@ private:
     void prepDataAndSend(QByteArray data);
     void debugMe();
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
-    commHandler * comm;
+    commHandler * comm=Q_NULLPTR;
+    udpHandler* udp=Q_NULLPTR;
+    void determineRigCaps();
     QByteArray payloadIn;
     QByteArray echoPerfix;
     QByteArray replyPrefix;
@@ -121,13 +137,35 @@ private:
     double spectrumStartFreq;
     double spectrumEndFreq;
 
+    struct rigCapabilities rigCaps;
+    bool haveRigCaps;
     model_kind model;
+    quint8 spectSeqMax;
+    quint16 spectAmpMax;
+    quint16 spectLenMax;
+    unsigned char oldScopeMode;
+
+    bool usingNativeLAN; // indicates using OEM LAN connection (705,7610,9700,7850)
+    bool lookingForRig;
+    bool foundRig;
 
     double frequencyMhz;
-    unsigned char civAddr; // 0x94 is default = 148decimal
+    unsigned char civAddr; // IC-7300: 0x94 is default = 148decimal
+    unsigned char incomingCIVAddr; // place to store the incoming CIV.
     //const unsigned char compCivAddr = 0xE1; // 0xE1 is new default, 0xE0 was before.
     bool pttAllowed;
 
+    QString rigSerialPort;
+    quint32 rigBaudRate;
+
+    QString ip;
+    int cport;
+    int sport;
+    int aport;
+    QString username;
+    QString password;
+
+    QString serialPortError;
 
 
 };

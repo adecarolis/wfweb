@@ -76,6 +76,16 @@
            <widget class="QComboBox" name="scopeEdgeCombo"/>
           </item>
           <item>
+           <widget class="QPushButton" name="toFixedBtn">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;The currently-selected edge slot will be overriden.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>ToFixed</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="clearPeakBtn">
             <property name="text">
              <string>Clear Peaks</string>
@@ -123,7 +133,7 @@
             </property>
             <property name="minimumSize">
              <size>
-              <width>175</width>
+              <width>190</width>
               <height>0</height>
              </size>
             </property>
@@ -140,7 +150,7 @@
              </font>
             </property>
             <property name="text">
-             <string>00.000000</string>
+             <string>0000.000000</string>
             </property>
            </widget>
           </item>
@@ -1164,6 +1174,13 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="connectBtn">
+            <property name="text">
+             <string>Connect</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="debugBtn">
             <property name="text">
              <string>Debug</string>
@@ -1216,6 +1233,127 @@
              </size>
             </property>
            </spacer>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_5">
+          <item>
+           <widget class="QCheckBox" name="lanEnableChk">
+            <property name="text">
+             <string>Enable LAN</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_8">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_6">
+          <item>
+           <widget class="QLabel" name="label_4">
+            <property name="text">
+             <string>Radio IP Address</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="ipAddressTxt"/>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_5">
+            <property name="text">
+             <string>Radio Control Port</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="controlPortTxt">
+            <property name="placeholderText">
+             <string>50001</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_9">
+            <property name="text">
+             <string>Radio Serial Port</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="serialPortTxt">
+            <property name="placeholderText">
+             <string>50002</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_12">
+            <property name="text">
+             <string>Radio Audio Port</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="audioPortTxt">
+            <property name="placeholderText">
+             <string>50003</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_7">
+          <item>
+           <widget class="QLabel" name="label_15">
+            <property name="text">
+             <string>Username</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="usernameTxt"/>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_14">
+            <property name="text">
+             <string>Password</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="passwordTxt">
+            <property name="inputMethodHints">
+             <set>Qt::ImhNoAutoUppercase|Qt::ImhNoPredictiveText|Qt::ImhSensitiveData</set>
+            </property>
+            <property name="echoMode">
+             <enum>QLineEdit::PasswordEchoOnEdit</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_13">
+            <property name="text">
+             <string>Audio Output </string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="audioOutputCombo"/>
           </item>
          </layout>
         </item>
@@ -1277,7 +1415,7 @@
      <x>0</x>
      <y>0</y>
      <width>703</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
@@ -1287,8 +1425,6 @@
  <customwidgets>
   <customwidget>
    <class>QCustomPlot</class>
-   <extends>QWidget</extends>
-   <!-- <header>qcustomplot.h</header> -->
    <container>1</container>
   </customwidget>
  </customwidgets>
