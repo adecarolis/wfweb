@@ -529,8 +529,6 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
     init(); // Perform connection
 
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::DataReceived);
-    SendPacketConnect(); // First connect packet
-
 
     // Init audio
     format.setSampleRate(48000);
@@ -540,6 +538,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
     format.setByteOrder(QAudioFormat::LittleEndian);
     format.setSampleType(QAudioFormat::SignedInt);
     QAudioDeviceInfo info(QAudioDeviceInfo::defaultOutputDevice());
+
     if (info.isFormatSupported(format))
     {
         qDebug() << "Audio format supported";
@@ -583,12 +582,12 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
     rxaudio->moveToThread(rxAudioThread);
 
     connect(this,SIGNAL(setupAudio(QAudioFormat,int)), rxaudio, SLOT(setup(QAudioFormat,int)));
-    connect(this, SIGNAL(haveAudioData(QByteArray,int)), rxaudio, SLOT(incomingAudio(QByteArray,int)));
+    connect(this, SIGNAL(haveAudioData(QByteArray)), rxaudio, SLOT(incomingAudio(QByteArray)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
     rxAudioThread->start();
-    emit setupAudio(format, 10000);
-
+    emit setupAudio(format, 12000);
+    SendPacketConnect(); // First connect packet, audio should start very soon after.
 }
 
 udpAudio::~udpAudio()
@@ -639,7 +638,7 @@ void udpAudio::DataReceived()
 
                 lastReceivedSeq = gotSeq;
 
-                emit haveAudioData(r.mid(24), r.mid(24).length());
+                emit haveAudioData(r.mid(24));
             }
             break;
         }

@@ -9,7 +9,6 @@ rxAudioHandler::~rxAudioHandler()
 {
     audio->stop();
     delete audio;
-    delete buffer;
 }
 
 void rxAudioHandler::process()
@@ -21,22 +20,16 @@ void rxAudioHandler::setup(const QAudioFormat format, const int bufferSize)
 {
     this->format  = format;
     this->bufferSize = bufferSize;
-    buffer = new QBuffer();
-    buffer->open(QIODevice::ReadWrite);
     audio = new QAudioOutput(format);
     audio->setBufferSize(bufferSize);
-    buffer->seek(0);
-    audio->start(buffer);
+    device = audio->start();
 }
 
 
-void rxAudioHandler::incomingAudio(const QByteArray data, const int size)
+void rxAudioHandler::incomingAudio(const QByteArray data)
 {
-    buffer->buffer().remove(0,buffer->pos());
-    buffer->seek(buffer->size());
-
-    buffer->write(data.constData(), size);
-    buffer->seek(0);
+    QMutexLocker locker(&mutex);
+    device->write(data,data.length());
 }
 
 void rxAudioHandler::changeBufferSize(const int newSize)
@@ -49,11 +42,6 @@ void rxAudioHandler::changeBufferSize(const int newSize)
 
 void rxAudioHandler::getBufferSize()
 {
-    emit sendBufferSize(buffer->size());
+    emit sendBufferSize(audio->bufferSize());
 }
 
-
-void rxAudioHandler::getAudioBufferSize()
-{
-    emit sendAudioBufferSize(audio->bufferSize());
-}

@@ -124,7 +124,7 @@ public:
 	QAudioOutput* audio;
 
 signals:
-    void haveAudioData(QByteArray data, int length);
+    void haveAudioData(QByteArray data);
     void setupAudio(const QAudioFormat format, const int bufferSize);
 private:
 

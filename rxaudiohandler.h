@@ -4,7 +4,8 @@
 #include <QObject>
 
 #include <QtMultimedia/QAudioOutput>
-#include <QBuffer>
+#include <QMutexLocker>
+#include <QIODevice>
 
 #include <QDebug>
 
@@ -21,10 +22,9 @@ public slots:
     void process();
     void setup(const QAudioFormat format, const int bufferSize);
 
-    void incomingAudio(const QByteArray data, const int size);
+    void incomingAudio(const QByteArray data);
     void changeBufferSize(const int newSize);
     void getBufferSize();
-    void getAudioBufferSize();
 
 signals:
     void audioMessage(QString message);
@@ -33,10 +33,11 @@ signals:
 
 
 private:
-    QBuffer* buffer;
     QAudioOutput* audio;
     QAudioFormat format;
+    QIODevice* device;
     int bufferSize;
+    QMutex mutex;
 
 
 };
