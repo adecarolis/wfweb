@@ -69,8 +69,9 @@ signals:
     void sayMode();
     void sayAll();
     void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
-    void sendCommSetup(unsigned char rigCivAddr, QString ip, int cport, int sport, int aport, QString username, QString password);
+    void sendCommSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, QString username, QString password, quint16 buffer, quint16 sample, quint8 channels);
     void sendCloseComm();
+    void sendChangeBufferSize(quint16 value);
 
 private slots:
     void shortcutF1();
@@ -259,9 +260,17 @@ private slots:
 
     void on_audioOutputCombo_currentIndexChanged(QString text);
 
+    void on_audioInputCombo_currentIndexChanged(QString text);
+
     void on_toFixedBtn_clicked();
 
     void on_connectBtn_clicked();
+
+    void on_audioBufferSizeSlider_valueChanged(int value);
+
+    void on_audioChannelsCombo_currentIndexChanged(QString text);
+
+    void on_audioSampleRateCombo_currentIndexChanged(QString text);
 
 private:
     Ui::wfmain *ui;
@@ -393,12 +402,16 @@ private:
         bool niceTS;
         bool enableLAN;
         QString ipAddress;
-        quint32 controlLANPort;
-        quint32 serialLANPort;
-        quint32 audioLANPort;
+        quint16 controlLANPort;
+        quint16 serialLANPort;
+        quint16 audioLANPort;
         QString username;
         QString password;
         QString audioOutput;
+        QString audioInput;
+        quint16 audioBufferSize;
+        quint16 audioSampleRate;
+        quint8 audioChannels;
     } prefs;
 
     preferences defPrefs;

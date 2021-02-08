@@ -147,10 +147,15 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
 
     // Enumerate audio devices, need to do before settings are loaded.
-    const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
-    for (const QAudioDeviceInfo& deviceInfo : deviceInfos) {
+    const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
+    for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
         ui->audioOutputCombo->addItem(deviceInfo.deviceName());
     }
+    const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
+    for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
+        ui->audioInputCombo->addItem(deviceInfo.deviceName());
+    }
+
     setDefaultColors(); // set of UI colors with defaults populated
     setDefPrefs(); // other default options
     loadSettings(); // Look for saved preferences
@@ -412,19 +417,20 @@ void wfmain::openRig()
         connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
         connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
         
-        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, int, int, int, QString, QString)), rig, SLOT(commSetup(unsigned char, QString, int, int, int, QString, QString)));
+        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint16, quint16, quint16, QString, QString,quint16,quint16,quint8)), rig, SLOT(commSetup(unsigned char, QString, quint16, quint16, quint16, QString, QString,quint16,quint16,quint8)));
         connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32)), rig, SLOT(commSetup(unsigned char, QString, quint32)));
 
         connect(this, SIGNAL(sendCloseComm()), rig, SLOT(closeComm()));
+        connect(this, SIGNAL(sendChangeBufferSize(quint16)), rig, SLOT(changeBufferSize(quint16)));
         connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
         connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
-
     }
 
     if (prefs.enableLAN)
     {
-        emit sendCommSetup(prefs.radioCIVAddr, prefs.ipAddress, prefs.controlLANPort, prefs.serialLANPort, prefs.audioLANPort, prefs.username, prefs.password);
+        emit sendCommSetup(prefs.radioCIVAddr, prefs.ipAddress, prefs.controlLANPort, 
+            prefs.serialLANPort, prefs.audioLANPort, prefs.username, prefs.password,prefs.audioBufferSize,prefs.audioSampleRate,prefs.audioChannels);
     } else {
 
         if( (prefs.serialPortRadio == QString("auto")) && (serialPortCL.isEmpty()))
@@ -573,7 +579,11 @@ void wfmain::setDefPrefs()
     defPrefs.audioLANPort = 50003;
     defPrefs.username = QString("");
     defPrefs.password = QString("");
-    defPrefs.audioOutput = QString("");
+    defPrefs.audioOutput = QAudioDeviceInfo::defaultOutputDevice().deviceName();
+    defPrefs.audioInput = QAudioDeviceInfo::defaultInputDevice().deviceName();
+    defPrefs.audioBufferSize = 12000;
+    defPrefs.audioChannels = 1;
+    defPrefs.audioSampleRate = 48000;
 
 }
 
@@ -612,15 +622,19 @@ void wfmain::loadSettings()
     settings.beginGroup("LAN");
     prefs.enableLAN = settings.value("EnableLAN", defPrefs.enableLAN).toBool();
     ui->lanEnableChk->setChecked(prefs.enableLAN);
+    
     prefs.ipAddress = settings.value("IPAddress", defPrefs.ipAddress).toString();
     ui->ipAddressTxt->setEnabled(ui->lanEnableChk->isChecked());
     ui->ipAddressTxt->setText(prefs.ipAddress);
+    
     prefs.controlLANPort = settings.value("ControlLANPort", defPrefs.controlLANPort).toInt();
     ui->controlPortTxt->setEnabled(ui->lanEnableChk->isChecked());
     ui->controlPortTxt->setText(QString("%1").arg(prefs.controlLANPort));
+    
     prefs.serialLANPort = settings.value("SerialLANPort", defPrefs.serialLANPort).toInt();
     ui->serialPortTxt->setEnabled(ui->lanEnableChk->isChecked());
     ui->serialPortTxt->setText(QString("%1").arg(prefs.serialLANPort));
+    
     prefs.audioLANPort = settings.value("AudioLANPort", defPrefs.audioLANPort).toInt();
     ui->audioPortTxt->setEnabled(ui->lanEnableChk->isChecked());
     ui->audioPortTxt->setText(QString("%1").arg(prefs.audioLANPort));
@@ -628,15 +642,39 @@ void wfmain::loadSettings()
     prefs.username = settings.value("Username", defPrefs.username).toString();
     ui->usernameTxt->setEnabled(ui->lanEnableChk->isChecked());
     ui->usernameTxt->setText(QString("%1").arg(prefs.username));
+    
     prefs.password = settings.value("Password", defPrefs.password).toString();
     ui->passwordTxt->setEnabled(ui->lanEnableChk->isChecked());
     ui->passwordTxt->setText(QString("%1").arg(prefs.password));
 
+    prefs.audioBufferSize = settings.value("AudioBufferSize", defPrefs.audioBufferSize).toInt();
+    ui->audioBufferSizeSlider->setEnabled(ui->lanEnableChk->isChecked());
+    ui->audioBufferSizeSlider->setValue(prefs.audioBufferSize);
+    ui->audioBufferSizeSlider->setTracking(false); // Stop it sending value on every change.
+
+    prefs.audioSampleRate = settings.value("AudioSampleRate", defPrefs.audioSampleRate).toInt();
+    ui->audioSampleRateCombo->setEnabled(ui->lanEnableChk->isChecked());
+    int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(prefs.audioSampleRate));
+    if (audioSampleRateIndex != -1)
+        ui->audioOutputCombo->setCurrentIndex(audioSampleRateIndex);
+
+    prefs.audioChannels = settings.value("AudioNumChannels", defPrefs.audioChannels).toInt();
+    ui->audioChannelsCombo->setEnabled(ui->lanEnableChk->isChecked());
+    int audioChannelsIndex = ui->audioChannelsCombo->findText(QString::number(prefs.audioChannels));
+    if (audioChannelsIndex != -1)
+        ui->audioChannelsCombo->setCurrentIndex(audioChannelsIndex);
+
     prefs.audioOutput = settings.value("AudioOutput", defPrefs.audioOutput).toString();
     ui->audioOutputCombo->setEnabled(ui->lanEnableChk->isChecked());
-    int audioIndex = ui->audioOutputCombo->findText("prefs.audioOutput");
-    if (audioIndex  -1)
-        ui->audioOutputCombo->setCurrentIndex(audioIndex);
+    int audioOutputIndex = ui->audioOutputCombo->findText(prefs.audioOutput);
+    if (audioOutputIndex != -1)
+        ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
+
+    prefs.audioInput = settings.value("AudioInput", defPrefs.audioInput).toString();
+    ui->audioInputCombo->setEnabled(ui->lanEnableChk->isChecked());
+    int audioInputIndex = ui->audioInputCombo->findText(prefs.audioInput);
+    if (audioInputIndex != - 1)
+        ui->audioOutputCombo->setCurrentIndex(audioInputIndex);
 
     settings.endGroup();
     // Memory channels
@@ -713,7 +751,11 @@ void wfmain::saveSettings()
     settings.setValue("AudioLANPort", prefs.audioLANPort);
     settings.setValue("Username", prefs.username);
     settings.setValue("Password", prefs.password);
+    settings.setValue("AudioBufferSize", prefs.audioBufferSize);
+    settings.setValue("AudioSampleRate", prefs.audioSampleRate);
+    settings.setValue("AudioNumChannels", prefs.audioChannels);
     settings.setValue("AudioOutput", prefs.audioOutput);
+    settings.setValue("AudioInput", prefs.audioInput);
     settings.endGroup();
 
     // Memory channels
@@ -2236,6 +2278,28 @@ void wfmain::on_passwordTxt_textChanged(QString text)
 void wfmain::on_audioOutputCombo_currentIndexChanged(QString text)
 {
     prefs.audioOutput = text;
+}
+
+void wfmain::on_audioInputCombo_currentIndexChanged(QString text)
+{
+    prefs.audioInput = text;
+}
+
+void wfmain::on_audioSampleRateCombo_currentIndexChanged(QString text)
+{
+    prefs.audioSampleRate = text.toInt();
+}
+
+void wfmain::on_audioChannelsCombo_currentIndexChanged(QString text)
+{
+    prefs.audioChannels = text.toInt();
+}
+
+void wfmain::on_audioBufferSizeSlider_valueChanged(int value)
+{
+    prefs.audioBufferSize = value;
+    ui->bufferValue->setText(QString::number(value));
+    emit sendChangeBufferSize(value);
 }
 
 void wfmain::on_toFixedBtn_clicked()

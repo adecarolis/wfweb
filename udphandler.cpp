@@ -4,9 +4,9 @@
 #include "udphandler.h"
 
 
-udpHandler::udpHandler(QString ip, int cport, int sport, int aport, QString username, QString password)
+udpHandler::udpHandler(QString ip, quint16 cport, quint16 sport, quint16 aport, QString username, QString password, quint16 buffer, quint16 sample,quint8 channels)
 {
-    qDebug() << "Starting udpHandler";
+    qDebug() << "Starting udpHandler user:" << username << " buffer:" << buffer << " sample rate: " << sample << " channels: " << channels;
 
     // Lookup IP address
 
@@ -15,6 +15,9 @@ udpHandler::udpHandler(QString ip, int cport, int sport, int aport, QString user
     this->sport = sport;
     this->username = username;
     this->password = password;
+    this->bufferSize = buffer;
+    this->sampleRate = sample;
+    this->channelCount = channels;
 
     // Try to set the IP address, if it is a hostname then perform a DNS lookup.
     if (!radioIP.setAddress(ip))
@@ -75,6 +78,11 @@ udpHandler::~udpHandler()
         SendPacketAuth(0x01);
 
     }
+}
+
+void udpHandler::changeBufferSize(quint16 value)
+{
+    emit haveChangeBufferSize(value);
 }
 
 void udpHandler::ReAuth()
@@ -213,9 +221,10 @@ void udpHandler::DataReceived()
                 {
 
                     serial = new udpSerial(localIP, radioIP, sport);
-                    audio = new udpAudio(localIP, radioIP, aport);
+                    audio = new udpAudio(localIP, radioIP, aport,bufferSize,sampleRate,channelCount);
 
                     QObject::connect(serial, SIGNAL(Receive(QByteArray)), this, SLOT(receiveFromSerialStream(QByteArray)));
+                    QObject::connect(this, SIGNAL(haveChangeBufferSize(quint16)), audio, SLOT(changeBufferSize(quint16)));
 
                     serialAndAudioOpened = true;
 
@@ -277,7 +286,6 @@ qint64 udpHandler::SendRequestSerialAndAudio()
 
     unsigned char* usernameEncoded = Passcode(username);
     int txSeqBufLengthMs = 100;
-    int audioSampleRate = 48000;
 
     const unsigned char p[] = {
         0x90, 0x00, 0x00, 0x00, 0x00, 0x00,  0x00, 0x00,
@@ -300,8 +308,8 @@ qint64 udpHandler::SendRequestSerialAndAudio()
         usernameEncoded[4], usernameEncoded[5], usernameEncoded[6], usernameEncoded[7],
         usernameEncoded[8], usernameEncoded[9], usernameEncoded[10], usernameEncoded[11],
         usernameEncoded[12], usernameEncoded[13], usernameEncoded[14], usernameEncoded[15],
-        0x01, 0x01, 0x04, 0x04, 0x00, 0x00, static_cast<unsigned char>(audioSampleRate >> 8 & 0xff), static_cast<unsigned char>(audioSampleRate & 0xff),
-        0x00, 0x00, static_cast<unsigned char>(audioSampleRate >> 8 & 0xff), static_cast<unsigned char>(audioSampleRate & 0xff),
+        0x01, 0x01, 0x04, 0x04, 0x00, 0x00, static_cast<unsigned char>(sampleRate >> 8 & 0xff), static_cast<unsigned char>(sampleRate & 0xff),
+        0x00, 0x00, static_cast<unsigned char>(sampleRate >> 8 & 0xff), static_cast<unsigned char>(sampleRate & 0xff),
         0x00, 0x00, static_cast<unsigned char>(sport >> 8 & 0xff), static_cast<unsigned char>(sport & 0xff),
         0x00, 0x00, static_cast<unsigned char>(aport >> 8 & 0xff), static_cast<unsigned char>(aport & 0xff), 0x00, 0x00,
         static_cast<unsigned char>(txSeqBufLengthMs >> 8 & 0xff), static_cast<unsigned char>(txSeqBufLengthMs & 0xff), 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
@@ -377,7 +385,7 @@ qint64 udpHandler::SendPacketAuth(uint8_t magic)
 
 
 // (pseudo) serial class
-udpSerial::udpSerial(QHostAddress local, QHostAddress ip, int sport) 
+udpSerial::udpSerial(QHostAddress local, QHostAddress ip, quint16 sport) 
 {
     qDebug() << "Starting udpSerial";
     localIP = local;
@@ -519,20 +527,23 @@ void udpSerial::DataReceived()
 
 
 // Audio stream
-udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
+udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 buffer, quint16 sample, quint8 channels)
 {
     qDebug() << "Starting udpAudio";
     localIP = local;
     port = aport;
     radioIP = ip;
+    bufferSize = buffer;
+    sampleRate = sample;
+    channelCount = channels;
 
     init(); // Perform connection
 
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::DataReceived);
 
     // Init audio
-    format.setSampleRate(48000);
-    format.setChannelCount(1);
+    format.setSampleRate(sampleRate);
+    format.setChannelCount(channelCount);
     format.setSampleSize(16);
     format.setCodec("audio/pcm");
     format.setByteOrder(QAudioFormat::LittleEndian);
@@ -581,12 +592,13 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
 
     rxaudio->moveToThread(rxAudioThread);
 
-    connect(this,SIGNAL(setupAudio(QAudioFormat,int)), rxaudio, SLOT(setup(QAudioFormat,int)));
+    connect(this,SIGNAL(setupAudio(QAudioFormat,quint16)), rxaudio, SLOT(setup(QAudioFormat,quint16)));
     connect(this, SIGNAL(haveAudioData(QByteArray)), rxaudio, SLOT(incomingAudio(QByteArray)));
+    connect(this, SIGNAL(haveChangeBufferSize(quint16)), rxaudio, SLOT(changeBufferSize(quint16)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
     rxAudioThread->start();
-    emit setupAudio(format, 12000);
+    emit setupAudio(format, bufferSize);
     SendPacketConnect(); // First connect packet, audio should start very soon after.
 }
 
@@ -596,6 +608,11 @@ udpAudio::~udpAudio()
         rxAudioThread->quit();
         rxAudioThread->wait();
     }
+}
+
+void udpAudio::changeBufferSize(quint16 value)
+{
+    emit haveChangeBufferSize(value);
 }
 
 void udpAudio::DataReceived()

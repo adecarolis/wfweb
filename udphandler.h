@@ -66,8 +66,8 @@ public:
 	QHostAddress radioIP;
 	QHostAddress localIP;
 	bool isAuthenticated = false;
-	int localPort=0;
-	int port=0;
+	quint16 localPort=0;
+	quint16 port=0;
 	QTimer *pkt7Timer=Q_NULLPTR; // Send pkt7 packets every 3 seconds
 	QTimer *pkt0Timer=Q_NULLPTR; // Send pkt0 packets every 1000ms.
 	QTimer *periodic=Q_NULLPTR; // Send pkt0 packets every 1000ms.
@@ -94,7 +94,7 @@ class udpSerial : public udpBase
 	Q_OBJECT
 
 public:
-	udpSerial(QHostAddress local, QHostAddress ip, int sport);
+	udpSerial(QHostAddress local, QHostAddress ip, quint16 sport);
 	QMutex serialmutex;
 
 signals:
@@ -119,19 +119,26 @@ class udpAudio : public udpBase
 	Q_OBJECT
 
 public:
-	udpAudio(QHostAddress local, QHostAddress ip, int aport);
+	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 buffer, quint16 sample, quint8 channels);
 	~udpAudio();
 	QAudioOutput* audio;
 
 signals:
     void haveAudioData(QByteArray data);
-    void setupAudio(const QAudioFormat format, const int bufferSize);
+    void setupAudio(const QAudioFormat format, const quint16 bufferSize);
+	void haveChangeBufferSize(quint16 value);
+
+public slots:
+	void changeBufferSize(quint16 value);
+
 private:
 
 	void DataReceived();
 
-	QBuffer* buffer;
 	QAudioFormat format;
+	quint16 bufferSize;
+	quint16 sampleRate;
+	quint8 channelCount;
 
 	bool sentPacketConnect2 = false;
 	uint16_t sendAudioSeq = 0;
@@ -150,7 +157,7 @@ class udpHandler: public udpBase
 	Q_OBJECT
 
 public:
-	udpHandler(QString ip, int cport, int sport, int aport, QString username, QString password);
+	udpHandler(QString ip, quint16 cport, quint16 sport, quint16 aport, QString username, QString password, quint16 buffer, quint16 sample,quint8 channels);
 	~udpHandler();
 
 	udpSerial *serial=Q_NULLPTR;
@@ -163,6 +170,7 @@ public:
 public slots:
 	void receiveDataFromUserToRig(QByteArray); // This slot will send data on to 
 	void receiveFromSerialStream(QByteArray);
+	void changeBufferSize(quint16 value);
 
 
 signals:
@@ -170,6 +178,7 @@ signals:
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
 	void haveNetworkError(QString, QString);
 	void haveNetworkStatus(QString);
+	void haveChangeBufferSize(quint16 value);
 
 private:
 
@@ -187,9 +196,12 @@ private:
 
 	bool radioInUse = false;
 
-	int aport;
-	int sport;
-	int reauthInterval = 60000;
+	quint16 aport;
+	quint16 sport;
+	quint16 sampleRate;
+	quint16 bufferSize;
+	quint8 channelCount;
+	quint16 reauthInterval = 60000;
 	QTimer reauthTimer;
 	QByteArray devName;
 	QByteArray compName;

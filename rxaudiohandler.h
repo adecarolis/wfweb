@@ -20,16 +20,15 @@ public:
 
 public slots:
     void process();
-    void setup(const QAudioFormat format, const int bufferSize);
+    void setup(const QAudioFormat format, const quint16 bufferSize);
 
     void incomingAudio(const QByteArray data);
-    void changeBufferSize(const int newSize);
+    void changeBufferSize(const quint16 newSize);
     void getBufferSize();
 
 signals:
     void audioMessage(QString message);
-    void sendBufferSize(int newSize);
-    void sendAudioBufferSize(int newSize);
+    void sendBufferSize(quint16 newSize);
 
 
 private:

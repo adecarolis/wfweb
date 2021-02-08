@@ -1345,6 +1345,86 @@
             </property>
            </widget>
           </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_18">
+          <item>
+           <widget class="QLabel" name="label_16">
+            <property name="text">
+             <string>Audio Buffer Size</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSlider" name="audioBufferSizeSlider">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="maximum">
+             <number>65536</number>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="bufferValue">
+            <property name="text">
+             <string>0</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_19">
+            <property name="text">
+             <string>Channels</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="audioChannelsCombo">
+            <item>
+             <property name="text">
+              <string>1</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>2</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_17">
+          <item>
+           <widget class="QLabel" name="label_17">
+            <property name="text">
+             <string>Sample Rate</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="audioSampleRateCombo">
+            <item>
+             <property name="text">
+              <string>48000</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>44100</string>
+             </property>
+            </item>
+           </widget>
+          </item>
           <item>
            <widget class="QLabel" name="label_13">
             <property name="text">
@@ -1354,6 +1434,16 @@
           </item>
           <item>
            <widget class="QComboBox" name="audioOutputCombo"/>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_18">
+            <property name="text">
+             <string>Audio Input</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="audioInputCombo"/>
           </item>
          </layout>
         </item>

@@ -62,7 +62,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
 
 }
 
-void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, int cport, int sport, int aport, QString username, QString password)
+void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, QString username, QString password, quint16 buffer, quint16 sample, quint8 channels)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -83,11 +83,12 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, int cport, in
     this->username = username;
     this->password = password;
     if (udp == Q_NULLPTR) {
-        udp = new udpHandler(ip, cport, sport, aport, username, password);
+        udp = new udpHandler(ip, cport, sport, aport, username, password,buffer,sample,channels);
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
 
         // data from the program to the comm port:
         connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+        connect(this, SIGNAL(haveChangeBufferSize(quint16)), udp, SLOT(changeBufferSize(quint16)));
 
         // Connect for errors/alerts
         connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
@@ -1412,6 +1413,11 @@ void rigCommander::getRigID()
     QByteArray payload;
     payload.setRawData("\x19\x00", 2);
     prepDataAndSend(payload);
+}
+
+void rigCommander::changeBufferSize(const quint16 value)
+{
+    emit haveChangeBufferSize(value);
 }
 
 void rigCommander::sayAll()

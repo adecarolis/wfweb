@@ -16,7 +16,7 @@ void rxAudioHandler::process()
     qDebug() << "rxAudio Handler created.";
 }
 
-void rxAudioHandler::setup(const QAudioFormat format, const int bufferSize)
+void rxAudioHandler::setup(const QAudioFormat format, const quint16 bufferSize)
 {
     this->format  = format;
     this->bufferSize = bufferSize;
@@ -32,12 +32,13 @@ void rxAudioHandler::incomingAudio(const QByteArray data)
     device->write(data,data.length());
 }
 
-void rxAudioHandler::changeBufferSize(const int newSize)
+void rxAudioHandler::changeBufferSize(const quint16 newSize)
 {
-    // TODO: make a way to change the buffer size.
-    // possibly deleting the buffer and re-creating
-
+    QMutexLocker locker(&mutex);
+    qDebug() << "Changing buffer size to: " << newSize << " from " << audio->bufferSize();
+    audio->stop();
     audio->setBufferSize(newSize);
+    device = audio->start();
 }
 
 void rxAudioHandler::getBufferSize()
