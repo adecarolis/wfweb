@@ -15,9 +15,13 @@
 // Needed for audio
 #include <QtMultimedia/QAudioOutput>
 #include <QBuffer>
+#include <QThread>
 
 
 #include <QDebug>
+
+#include "rxaudiohandler.h"
+
 
 // Parent class that contains all common items.
 class udpBase : public QObject
@@ -118,6 +122,10 @@ public:
 	udpAudio(QHostAddress local, QHostAddress ip, int aport);
 	~udpAudio();
 	QAudioOutput* audio;
+
+signals:
+    void haveAudioData(QByteArray data, int length);
+    void setupAudio(const QAudioFormat format, const int bufferSize);
 private:
 
 	void DataReceived();
@@ -127,6 +135,10 @@ private:
 
 	bool sentPacketConnect2 = false;
 	uint16_t sendAudioSeq = 0;
+
+    rxAudioHandler* rxaudio;
+    QThread* rxAudioThread;
+
 
 };
 

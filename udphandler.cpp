@@ -576,12 +576,15 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
         qDebug() << "----- done with audio info -----";
     }
 
-    buffer = new QBuffer();
-    buffer->open(QIODevice::ReadWrite);
-    audio = new QAudioOutput(format);
-    audio->setBufferSize(10000); // TODO: add preference, maybe UI too. 20210205: connection was wifi --> cellular --> internet --> rig
-    buffer->seek(0);
-    audio->start(buffer);
+    rxaudio = new rxAudioHandler();
+    rxAudioThread = new QThread(this);
+
+    rxaudio->moveToThread(rxAudioThread);
+
+    connect(this,SIGNAL(setupAudio(QAudioFormat,int)), rxaudio, SLOT(setup(QAudioFormat,int)));
+    connect(this, SIGNAL(haveAudioData(QByteArray,int)), rxaudio, SLOT(incomingAudio(QByteArray,int)));
+
+    rxaudio->setup(format, 10000);
 
 }
 
@@ -595,6 +598,14 @@ udpAudio::~udpAudio()
     if (buffer != Q_NULLPTR)
     {
         delete buffer;
+    }
+    if(rxaudio != Q_NULLPTR)
+    {
+        delete rxaudio;
+    }
+    if(rxAudioThread != Q_NULLPTR)
+    {
+        delete rxAudioThread;
     }
 }
 
@@ -638,15 +649,7 @@ void udpAudio::DataReceived()
 
                 lastReceivedSeq = gotSeq;
 
-                //qDebug() << "Got Audio Sequence: (" << r.length() << ") " << gotSeq;
-                // Delete contents of buffer up to existing pos()
-                buffer->buffer().remove(0,buffer->pos());
-                // Seek to end of curent buffer
-                buffer->seek(buffer->size());
-                // Append to end of buffer
-                buffer->write(r.mid(24).constData(), r.mid(24).length());
-                // Seek to start of buffer.
-                buffer->seek(0);
+                emit haveAudioData(r.mid(24), r.mid(24).length());
             }
             break;
         }

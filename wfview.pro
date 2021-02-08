@@ -80,7 +80,8 @@ SOURCES += main.cpp\
     freqmemory.cpp \
     rigidentities.cpp \
 	udphandler.cpp \
-	logcategories.cpp
+	logcategories.cpp \
+    rxaudiohandler.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -88,7 +89,8 @@ HEADERS  += wfmain.h \
     freqmemory.h \
     rigidentities.h \
 	udphandler.h \
-	logcategories.h
+	logcategories.h \
+    rxaudiohandler.h
 
 FORMS    += wfmain.ui
 
