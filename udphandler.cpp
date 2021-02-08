@@ -203,6 +203,7 @@ void udpHandler::DataReceived()
         case (144):
             if (!serialAndAudioOpened && r.mid(0, 6) == QByteArrayLiteral("\x90\x00\x00\x00\x00\x00") && r[0x60] == (char)0x01)
             {
+                devName = parseNullTerminatedString(r, 64);
                 QHostAddress ip = QHostAddress(qFromBigEndian<quint32>(r.mid(0x84, 4)));
                 if (parseNullTerminatedString(r, 0x64) != compName || ip != localIP )
                 {
@@ -583,6 +584,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
 
     connect(this,SIGNAL(setupAudio(QAudioFormat,int)), rxaudio, SLOT(setup(QAudioFormat,int)));
     connect(this, SIGNAL(haveAudioData(QByteArray,int)), rxaudio, SLOT(incomingAudio(QByteArray,int)));
+    connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
     rxaudio->setup(format, 10000);
 
@@ -590,22 +592,9 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, int aport)
 
 udpAudio::~udpAudio()
 {
-    if (audio != Q_NULLPTR)
-    {
-        audio->stop();
-        delete audio;
-    }
-    if (buffer != Q_NULLPTR)
-    {
-        delete buffer;
-    }
-    if(rxaudio != Q_NULLPTR)
-    {
-        delete rxaudio;
-    }
-    if(rxAudioThread != Q_NULLPTR)
-    {
-        delete rxAudioThread;
+    if (rxAudioThread) {
+        rxAudioThread->quit();
+        rxAudioThread->wait();
     }
 }
 
