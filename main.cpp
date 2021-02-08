@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
                 c += 1;
             }
         }
-        else if ((currentArg == "l") || (currentArg == "--logfile"))
+        else if ((currentArg == "-l") || (currentArg == "--logfile"))
         {
             if (argc > c)
             {
