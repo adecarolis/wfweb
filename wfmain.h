@@ -275,6 +275,8 @@ private slots:
 
     void on_audioSampleRateCombo_currentIndexChanged(QString text);
 
+    void on_scopeEnableWFBtn_clicked(bool checked);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;

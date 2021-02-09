@@ -1565,6 +1565,16 @@ void wfmain::handlePlotScroll(QWheelEvent *we)
     ui->freqDial->setValue( ui->freqDial->value() + (steps)*ui->freqDial->singleStep() );
 }
 
+void wfmain::on_scopeEnableWFBtn_clicked(bool checked)
+{
+    if(checked)
+    {
+        emit spectOutputEnable();
+    } else {
+        emit spectOutputDisable();
+    }
+}
+
 void wfmain::on_startBtn_clicked()
 {
     emit spectOutputEnable();
@@ -2369,4 +2379,6 @@ void wfmain::on_debugBtn_clicked()
     //qDebug() << "Debug: finding rigs attached. Let's see if this works. ";
     //rig->findRigs();
 }
+
+
 
