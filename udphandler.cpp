@@ -226,7 +226,7 @@ void udpHandler::DataReceived()
         case (144):
             if (!serialAndAudioOpened && r.mid(0, 6) == QByteArrayLiteral("\x90\x00\x00\x00\x00\x00") && r[0x60] == (char)0x01)
             {
-                devName = parseNullTerminatedString(r, 40);
+                devName = parseNullTerminatedString(r, 0x40);
                 QHostAddress ip = QHostAddress(qFromBigEndian<quint32>(r.mid(0x84, 4)));
                 if (parseNullTerminatedString(r, 0x64) != compName) //  || ip != localIP ) // TODO: More testing of IP address detection code!
                 {
