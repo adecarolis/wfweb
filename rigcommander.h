@@ -27,7 +27,8 @@ public:
 public slots:
     void process();
     void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
-    void commSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, QString username, QString password, quint16 buffer, quint16 sample, quint8 channels);
+    void commSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, 
+                    QString username, QString password, quint16 buffer, quint16 rxsample, quint8 rxcodec,quint16 txsample, quint8 txcodec);
     void closeComm();
 
     void enableSpectOutput();

@@ -1352,7 +1352,7 @@
           <item>
            <widget class="QLabel" name="label_16">
             <property name="text">
-             <string>Audio Buffer Size</string>
+             <string>RX Audio Buffer Size</string>
             </property>
            </widget>
           </item>
@@ -1382,23 +1382,22 @@
           <item>
            <widget class="QLabel" name="label_19">
             <property name="text">
-             <string>Channels</string>
+             <string>RX Codec</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="audioChannelsCombo">
-            <item>
-             <property name="text">
-              <string>1</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>2</string>
-             </property>
-            </item>
+           <widget class="QComboBox" name="audioRXCodecCombo"/>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_20">
+            <property name="text">
+             <string>TX Codec</string>
+            </property>
            </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="audioTXCodecCombo"/>
           </item>
          </layout>
         </item>

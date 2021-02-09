@@ -69,7 +69,8 @@ signals:
     void sayMode();
     void sayAll();
     void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
-    void sendCommSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, QString username, QString password, quint16 buffer, quint16 sample, quint8 channels);
+    void sendCommSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, 
+        QString username, QString password, quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
     void sendCloseComm();
     void sendChangeBufferSize(quint16 value);
 
@@ -268,7 +269,9 @@ private slots:
 
     void on_audioBufferSizeSlider_valueChanged(int value);
 
-    void on_audioChannelsCombo_currentIndexChanged(QString text);
+    void on_audioRXCodecCombo_currentIndexChanged(int value);
+
+    void on_audioTXCodecCombo_currentIndexChanged(int value);
 
     void on_audioSampleRateCombo_currentIndexChanged(QString text);
 
@@ -409,9 +412,11 @@ private:
         QString password;
         QString audioOutput;
         QString audioInput;
-        quint16 audioBufferSize;
-        quint16 audioSampleRate;
-        quint8 audioChannels;
+        quint16 audioRXBufferSize;
+        quint16 audioRXSampleRate;
+        quint8 audioRXCodec;
+        quint16 audioTXSampleRate;
+        quint8 audioTXCodec;
     } prefs;
 
     preferences defPrefs;

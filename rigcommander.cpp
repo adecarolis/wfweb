@@ -62,7 +62,8 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
 
 }
 
-void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, QString username, QString password, quint16 buffer, quint16 sample, quint8 channels)
+void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, 
+        QString username, QString password, quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -76,14 +77,16 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, quint16 cport
     setup();
     // ---
 
+    /* is this used for anything now???
     this->ip = ip;
     this->cport = cport;
     this->sport = sport;
     this->aport = aport;
     this->username = username;
     this->password = password;
+    */
     if (udp == Q_NULLPTR) {
-        udp = new udpHandler(ip, cport, sport, aport, username, password,buffer,sample,channels);
+        udp = new udpHandler(ip, cport, sport, aport, username, password,buffer,rxsample,rxcodec,txsample,txcodec);
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
 
         // data from the program to the comm port:

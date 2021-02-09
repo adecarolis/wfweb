@@ -20,7 +20,7 @@ public:
 
 public slots:
     void process();
-    void setup(const QAudioFormat format, const quint16 bufferSize);
+    void setup(const QAudioFormat format, const quint16 bufferSize, const bool isulaw);
 
     void incomingAudio(const QByteArray data);
     void changeBufferSize(const quint16 newSize);
@@ -32,11 +32,14 @@ signals:
 
 
 private:
+    QByteArray uLawDecode(const QByteArray in);
+
     QAudioOutput* audio;
     QAudioFormat format;
     QIODevice* device;
     int bufferSize;
     QMutex mutex;
+    bool isUlaw;
 
 
 };

@@ -325,7 +325,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
 
-;
 
     pttTimer = new QTimer(this);
     pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
@@ -417,7 +416,7 @@ void wfmain::openRig()
         connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
         connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
         
-        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint16, quint16, quint16, QString, QString,quint16,quint16,quint8)), rig, SLOT(commSetup(unsigned char, QString, quint16, quint16, quint16, QString, QString,quint16,quint16,quint8)));
+        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint16, quint16, quint16, QString, QString,quint16,quint16,quint8,quint16,quint8)), rig, SLOT(commSetup(unsigned char, QString, quint16, quint16, quint16, QString, QString,quint16,quint16,quint8,quint16,quint8)));
         connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32)), rig, SLOT(commSetup(unsigned char, QString, quint32)));
 
         connect(this, SIGNAL(sendCloseComm()), rig, SLOT(closeComm()));
@@ -430,7 +429,7 @@ void wfmain::openRig()
     if (prefs.enableLAN)
     {
         emit sendCommSetup(prefs.radioCIVAddr, prefs.ipAddress, prefs.controlLANPort, 
-            prefs.serialLANPort, prefs.audioLANPort, prefs.username, prefs.password,prefs.audioBufferSize,prefs.audioSampleRate,prefs.audioChannels);
+            prefs.serialLANPort, prefs.audioLANPort, prefs.username, prefs.password,prefs.audioRXBufferSize,prefs.audioRXSampleRate,prefs.audioRXCodec,prefs.audioTXSampleRate,prefs.audioTXCodec);
     } else {
 
         if( (prefs.serialPortRadio == QString("auto")) && (serialPortCL.isEmpty()))
@@ -581,9 +580,12 @@ void wfmain::setDefPrefs()
     defPrefs.password = QString("");
     defPrefs.audioOutput = QAudioDeviceInfo::defaultOutputDevice().deviceName();
     defPrefs.audioInput = QAudioDeviceInfo::defaultInputDevice().deviceName();
-    defPrefs.audioBufferSize = 12000;
-    defPrefs.audioChannels = 1;
-    defPrefs.audioSampleRate = 48000;
+    defPrefs.audioRXBufferSize = 12000;
+    defPrefs.audioRXSampleRate = 48000;
+    defPrefs.audioRXCodec = 4;
+    defPrefs.audioTXSampleRate = 48000;
+    defPrefs.audioTXCodec = 4;
+
 
 }
 
@@ -647,22 +649,42 @@ void wfmain::loadSettings()
     ui->passwordTxt->setEnabled(ui->lanEnableChk->isChecked());
     ui->passwordTxt->setText(QString("%1").arg(prefs.password));
 
-    prefs.audioBufferSize = settings.value("AudioBufferSize", defPrefs.audioBufferSize).toInt();
+    prefs.audioRXBufferSize = settings.value("AudioRXBufferSize", defPrefs.audioRXBufferSize).toInt();
     ui->audioBufferSizeSlider->setEnabled(ui->lanEnableChk->isChecked());
-    ui->audioBufferSizeSlider->setValue(prefs.audioBufferSize);
+    ui->audioBufferSizeSlider->setValue(prefs.audioRXBufferSize);
     ui->audioBufferSizeSlider->setTracking(false); // Stop it sending value on every change.
 
-    prefs.audioSampleRate = settings.value("AudioSampleRate", defPrefs.audioSampleRate).toInt();
+    prefs.audioRXSampleRate = settings.value("AudioRXSampleRate", defPrefs.audioRXSampleRate).toInt();
+    prefs.audioTXSampleRate = settings.value("AudioTXSampleRate", defPrefs.audioTXSampleRate).toInt();
     ui->audioSampleRateCombo->setEnabled(ui->lanEnableChk->isChecked());
-    int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(prefs.audioSampleRate));
-    if (audioSampleRateIndex != -1)
+    int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(prefs.audioRXSampleRate));
+    if (audioSampleRateIndex != -1) {
         ui->audioOutputCombo->setCurrentIndex(audioSampleRateIndex);
+    }
 
-    prefs.audioChannels = settings.value("AudioNumChannels", defPrefs.audioChannels).toInt();
-    ui->audioChannelsCombo->setEnabled(ui->lanEnableChk->isChecked());
-    int audioChannelsIndex = ui->audioChannelsCombo->findText(QString::number(prefs.audioChannels));
-    if (audioChannelsIndex != -1)
-        ui->audioChannelsCombo->setCurrentIndex(audioChannelsIndex);
+    // Add codec combobox items here so that we can add userdata!
+    ui->audioRXCodecCombo->addItem("LPCM 1ch 16bit", 4);
+    ui->audioRXCodecCombo->addItem("LPCM 1ch 8bit", 1);
+    ui->audioRXCodecCombo->addItem("uLaw 1ch 8bit", 2);
+    ui->audioRXCodecCombo->addItem("LPCM 2ch 16bit", 16);
+    ui->audioRXCodecCombo->addItem("uLaw 2ch 8bit", 32);
+    ui->audioRXCodecCombo->addItem("PCM 2ch 8bit", 8);
+
+    prefs.audioRXCodec = settings.value("AudioRXCodec", defPrefs.audioRXCodec).toInt();
+    ui->audioRXCodecCombo->setEnabled(ui->lanEnableChk->isChecked());
+    for (int f = 0; f < ui->audioRXCodecCombo->count(); f++)
+        if (ui->audioRXCodecCombo->itemData(f).toInt() == prefs.audioRXCodec)
+            ui->audioRXCodecCombo->setCurrentIndex(f);
+
+    ui->audioTXCodecCombo->addItem("LPCM 1ch 16bit", 4);
+    ui->audioTXCodecCombo->addItem("LPCM 1ch 8bit", 1);
+    ui->audioTXCodecCombo->addItem("uLaw 1ch 8bit", 2);
+
+    prefs.audioTXCodec = settings.value("AudioTXCodec", defPrefs.audioTXCodec).toInt();
+    ui->audioTXCodecCombo->setEnabled(ui->lanEnableChk->isChecked());
+    for (int f = 0; f < ui->audioTXCodecCombo->count(); f++)
+        if (ui->audioTXCodecCombo->itemData(f).toInt() == prefs.audioTXCodec)
+            ui->audioTXCodecCombo->setCurrentIndex(f);
 
     prefs.audioOutput = settings.value("AudioOutput", defPrefs.audioOutput).toString();
     ui->audioOutputCombo->setEnabled(ui->lanEnableChk->isChecked());
@@ -751,9 +773,12 @@ void wfmain::saveSettings()
     settings.setValue("AudioLANPort", prefs.audioLANPort);
     settings.setValue("Username", prefs.username);
     settings.setValue("Password", prefs.password);
-    settings.setValue("AudioBufferSize", prefs.audioBufferSize);
-    settings.setValue("AudioSampleRate", prefs.audioSampleRate);
-    settings.setValue("AudioNumChannels", prefs.audioChannels);
+    settings.setValue("AudioRXBufferSize", prefs.audioRXBufferSize);
+    settings.setValue("AudioRXSampleRate", prefs.audioRXSampleRate);
+    settings.setValue("AudioRXCodec", prefs.audioRXCodec);
+    settings.setValue("AudioTXBufferSize", prefs.audioRXBufferSize);
+    settings.setValue("AudioTXSampleRate", prefs.audioRXSampleRate);
+    settings.setValue("AudioTXCodec", prefs.audioTXCodec);
     settings.setValue("AudioOutput", prefs.audioOutput);
     settings.setValue("AudioInput", prefs.audioInput);
     settings.endGroup();
@@ -2287,17 +2312,23 @@ void wfmain::on_audioInputCombo_currentIndexChanged(QString text)
 
 void wfmain::on_audioSampleRateCombo_currentIndexChanged(QString text)
 {
-    prefs.audioSampleRate = text.toInt();
+    prefs.audioRXSampleRate = text.toInt();
+    prefs.audioTXSampleRate = text.toInt();
 }
 
-void wfmain::on_audioChannelsCombo_currentIndexChanged(QString text)
+void wfmain::on_audioRXCodecCombo_currentIndexChanged(int value)
 {
-    prefs.audioChannels = text.toInt();
+    prefs.audioRXCodec = ui->audioRXCodecCombo->itemData(value).toInt();
+}
+
+void wfmain::on_audioTXCodecCombo_currentIndexChanged(int value)
+{
+    prefs.audioTXCodec = ui->audioTXCodecCombo->itemData(value).toInt();
 }
 
 void wfmain::on_audioBufferSizeSlider_valueChanged(int value)
 {
-    prefs.audioBufferSize = value;
+    prefs.audioRXBufferSize = value;
     ui->bufferValue->setText(QString::number(value));
     emit sendChangeBufferSize(value);
 }

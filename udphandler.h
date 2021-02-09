@@ -22,7 +22,6 @@
 
 #include "rxaudiohandler.h"
 
-
 // Parent class that contains all common items.
 class udpBase : public QObject
 {
@@ -119,13 +118,13 @@ class udpAudio : public udpBase
 	Q_OBJECT
 
 public:
-	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 buffer, quint16 sample, quint8 channels);
+	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
 	~udpAudio();
 	QAudioOutput* audio;
 
 signals:
     void haveAudioData(QByteArray data);
-    void setupAudio(const QAudioFormat format, const quint16 bufferSize);
+    void setupAudio(const QAudioFormat format, const quint16 bufferSize, const bool isulaw);
 	void haveChangeBufferSize(quint16 value);
 
 public slots:
@@ -134,11 +133,18 @@ public slots:
 private:
 
 	void DataReceived();
-
 	QAudioFormat format;
 	quint16 bufferSize;
-	quint16 sampleRate;
-	quint8 channelCount;
+	quint16 rxSampleRate;
+	quint16 txSampleRate;
+	quint8 rxCodec;
+	quint8 txCodec;
+	quint8 rxChannelCount = 1;
+	bool rxIsUlawCodec = false;
+	quint8 rxNumSamples = 16;
+	quint8 txChannelCount = 1;
+	bool txIsUlawCodec = false;
+	quint8 txNumSamples = 16;
 
 	bool sentPacketConnect2 = false;
 	uint16_t sendAudioSeq = 0;
@@ -157,7 +163,8 @@ class udpHandler: public udpBase
 	Q_OBJECT
 
 public:
-	udpHandler(QString ip, quint16 cport, quint16 sport, quint16 aport, QString username, QString password, quint16 buffer, quint16 sample,quint8 channels);
+	udpHandler(QString ip, quint16 cport, quint16 sport, quint16 aport, QString username, QString password, 
+					quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
 	~udpHandler();
 
 	udpSerial *serial=Q_NULLPTR;
@@ -198,9 +205,12 @@ private:
 
 	quint16 aport;
 	quint16 sport;
-	quint16 sampleRate;
-	quint16 bufferSize;
-	quint8 channelCount;
+	quint16 rxSampleRate;
+	quint16 txSampleRate;
+	quint16 rxBufferSize;
+	quint8 rxCodec;
+	quint8 txCodec;
+
 	quint16 reauthInterval = 60000;
 	QTimer reauthTimer;
 	QByteArray devName;
