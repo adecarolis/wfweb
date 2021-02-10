@@ -1,5 +1,6 @@
 #include "rigidentities.h"
-// Copytight 2017-2020 Elliott H. Liggett
+
+// Copytight 2017-2021 Elliott H. Liggett
 
 model_kind determineRadioModel(unsigned char rigID)
 {
@@ -32,6 +33,12 @@ model_kind determineRadioModel(unsigned char rigID)
         case model7850:
             rig = model7850;
             break;
+        case model9700:
+            rig = model9700;
+            break;
+        case model705:
+            rig = model705;
+            break;
         default:
             rig = modelUnknown;
             break;
@@ -39,3 +46,8 @@ model_kind determineRadioModel(unsigned char rigID)
 
     return rig;
 }
+
+
+
+
+

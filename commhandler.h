@@ -17,6 +17,7 @@ class commHandler : public QObject
 public:
     commHandler();
     commHandler(QString portName, quint32 baudRate);
+    bool serialError;
 
     ~commHandler();
 
@@ -30,6 +31,8 @@ signals:
     void haveTextMessage(QString message); // status, debug only
     void sendDataOutToPort(const QByteArray &writeData); // not used
     void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
+    void haveSerialPortError(const QString port, const QString error);
+    void haveStatusUpdate(const QString text);
 
 private:
     void setupComm();

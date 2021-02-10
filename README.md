@@ -1,5 +1,19 @@
 # wfview
-[wfview](https://gitlab.com/eliggett/wfview) is an open-source front-end application for the [Icom IC-7300](https://www.icomamerica.com/en/products/amateur/hf/7300/default.aspx) HF SDR Amateur Radio. wfview supports viewing the spectrum display waterfall and most normal radio controls. Using wfview, the radio can be operated using the mouse, or just the keyboard (great for those with visual impairments), or even a touch screen display. The gorgous waterfall spectrum can be displayed on a monitor of any size, and can even projected onto a wall for a presentation. Even a VNC session can make use of wfview for interesting remote rig posibilities. wfview runs on humble hardware, ranging from the $35 Raspberry Pi, to laptops, to desktops. wfview is designed to run on GNU Linux, but can probably be adapted to run on other operating systems. 
+
+
+[wfview](https://gitlab.com/eliggett/wfview) is an open-source front-end application for the 
+
+- [Icom IC-7300](https://www.icomamerica.com/en/products/amateur/hf/7300/default.aspx) HF SDR Amateur Radio
+- [Icom IC-7610](https://www.icomamerica.com/en/products/amateur/hf/7610/default.aspx) HF SDR Amateur Radio
+- [Icom IC-7850](https://www.icomamerica.com/en/products/amateur/hf/7850/default.aspx) HF Hybrid SDR Amateur Radio
+- [Icom IC-7851](https://www.icomamerica.com/en/products/amateur/hf/7851/default.aspx) HF Hybrid SDR Amateur Radio
+- [Icom IC-9700](https://www.icomamerica.com/en/products/amateur/hf/9700/default.aspx) VHF/UHF SDR Amateur Radio
+
+Other models to be tested/added (including the IC-705).. 
+
+wfview supports viewing the spectrum display waterfall and most normal radio controls. Using wfview, the radio can be operated using the mouse, or just the keyboard (great for those with visual impairments), or even a touch screen display. The gorgous waterfall spectrum can be displayed on a monitor of any size, and can even projected onto a wall for a presentation. Even a VNC session can make use of wfview for interesting remote rig posibilities. wfview runs on humble hardware, ranging from the $35 Raspberry Pi, to laptops, to desktops. wfview is designed to run on GNU Linux, but can probably be adapted to run on other operating systems. In fact we do have  working example in windows as well.
+
+
 
 wfview is unique in the radio control ecosystem in that it is free and open-source software and can take advantage of modern radio features (such as the waterfall). wfview also does not "eat the serial port", and can allow a second program, such as fldigi, access to the radio via a pseudo-terminal device. 
 
@@ -16,6 +30,7 @@ wfview is copyright 2017-2020 Elliott H. Liggett. All rights reserved. wfview so
 6. 100 user memories stored in plain text on the computer
 7. Stylable GUI using CSS
 8. pseudo-terminal device, which allows for secondary program to control the radio while wfview is running
+9. works for radios that support the ethernet interface with compareable waterfall speeds as on the radio itself.
 
 ### Build Requirements:
 1. gcc / g++ / make
@@ -60,4 +75,11 @@ sudo chown `whoami` /dev/ttyUSB*
 5. Add support for other compatible CI-V radios (IC-706, IC-7100, IC-7610, etc)
 6. Better settings panel (select serial port, CI-V address, more obvious exit button)
 7. Add support for festival or other text-to-speech method using the computer (as apposed to the radio's speech module)
+
+
+see also the wiki:
+
+- [bugs](https://gitlab.com/eliggett/wfview/-/wikis/Bugs)
+- [feature requests](https://gitlab.com/eliggett/wfview/-/wikis/Feature-requests)
+- [raspberry pi server](https://gitlab.com/eliggett/wfview/-/wikis/raspi-server-functionality-for-7300,7100-etc)
 

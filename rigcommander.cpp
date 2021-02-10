@@ -8,13 +8,6 @@
 // This file parses data from the radio and also forms commands to the radio.
 // The radio physical interface is handled by the commHandler() instance "comm"
 
-// TODO:
-//      + Allow parameters to pass to the commHandler indicating which serial port to use
-//      + Impliment additional commands (of course)
-//      + Impliment external serial port "pass through"
-//      + Impliment XML RPC server?
-//      + Grab initial state of band scope and adjust UI accordingly.
-
 //
 // See here for a wonderful CI-V overview:
 // http://www.plicht.de/ekki/civ/civ-p0a.html
@@ -26,8 +19,18 @@
 
 // Note: When sending \x00, must use QByteArray.setRawData()
 
+rigCommander::rigCommander()
+{
 
-rigCommander::rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate)
+}
+
+rigCommander::~rigCommander()
+{
+    closeComm();
+}
+
+
+void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -35,23 +38,15 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quin
 
     // civAddr = 0x94; // address of the radio. Decimal is 148.
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
+    usingNativeLAN = false;
 
-    setCIVAddr(civAddr);
-    //compCivAddr = 0xE1;
-    //payloadPrefix = QByteArray("\xFE\xFE\x94\xE0");
-    payloadPrefix = QByteArray("\xFE\xFE");
-    payloadPrefix.append(civAddr);
-    payloadPrefix.append(compCivAddr);
+    // ---
+    setup();
+    // ---
 
-    // payloadPrefix.append("\xE0");
+    this->rigSerialPort = rigSerialPort;
+    this->rigBaudRate = rigBaudRate;
 
-    payloadSuffix = QByteArray("\xFD");
-    // TODO: list full contents of /dev/serial, grep for IC-7300
-    // /dev/serial/by-path$ ls
-    //     total 0
-    //    lrwxrwxrwx 1 root root 13 Nov 24 21:43 pci-0000:00:12.0-usb-0:2.1:1.0-port0 -> ../../ttyUSB0
-
-    // comm = new commHandler("/dev/ttyUSB0");
     comm = new commHandler(rigSerialPort, rigBaudRate);
 
     // data from the comm port to the program:
@@ -60,18 +55,131 @@ rigCommander::rigCommander(unsigned char rigCivAddr, QString rigSerialPort, quin
     // data from the program to the comm port:
     connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
 
+    connect(comm, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
+
     connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
-    pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
+    emit commReady();
+
 }
 
-rigCommander::~rigCommander()
+void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, 
+        QString username, QString password, quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec)
 {
-    delete comm;
+    // construct
+    // TODO: Bring this parameter and the comm port from the UI.
+    // Keep in hex in the UI as is done with other CIV apps.
+
+    // civAddr = 0x94; // address of the radio. Decimal is 148.
+    civAddr = rigCivAddr; // address of the radio. Decimal is 148.
+    usingNativeLAN = true;
+
+    // ---
+    setup();
+    // ---
+
+    /* is this used for anything now???
+    this->ip = ip;
+    this->cport = cport;
+    this->sport = sport;
+    this->aport = aport;
+    this->username = username;
+    this->password = password;
+    */
+    if (udp == Q_NULLPTR) {
+        udp = new udpHandler(ip, cport, sport, aport, username, password,buffer,rxsample,rxcodec,txsample,txcodec);
+        connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
+
+        // data from the program to the comm port:
+        connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+        connect(this, SIGNAL(haveChangeBufferSize(quint16)), udp, SLOT(changeBufferSize(quint16)));
+
+        // Connect for errors/alerts
+        connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
+        connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(handleStatusUpdate(QString)));
+    }
+
+    // data from the comm port to the program:
+
+    emit commReady();
+
+    pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
+
+}
+
+void rigCommander::closeComm()
+{
+    if (comm != Q_NULLPTR) {
+        delete comm;
+    }
+    comm = Q_NULLPTR;
+
+    if (udp != Q_NULLPTR) {
+        delete udp;
+    }
+    udp = Q_NULLPTR;
+}
+
+void rigCommander::setup()
+{
+    // common elements between the two constructors go here:
+    setCIVAddr(civAddr);
+    spectSeqMax = 0; // this is now set after rig ID determined
+    payloadPrefix = QByteArray("\xFE\xFE");
+    payloadPrefix.append(civAddr);
+    payloadPrefix.append(compCivAddr);
+
+    payloadSuffix = QByteArray("\xFD");
+
+    lookingForRig = false;
+    foundRig = false;
+    oldScopeMode = 3;
+
+    pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
 }
 
 void rigCommander::process()
 {
-    // new thread enters here. Do nothing.
+    // new thread enters here. Do nothing but do check for errors.
+    if(comm!=Q_NULLPTR && comm->serialError)
+    {
+        emit haveSerialPortError(rigSerialPort, QString("Error from commhandler. Check serial port."));
+    }
+}
+
+void rigCommander::handleSerialPortError(const QString port, const QString errorText)
+{
+    qDebug() << "Error using port " << port << " message: " << errorText;
+    emit haveSerialPortError(port, errorText);
+}
+
+void rigCommander::handleStatusUpdate(const QString text)
+{
+    emit haveStatusUpdate(text);
+}
+
+void rigCommander::findRigs()
+{
+    // This function sends data to 0x00 ("broadcast") to look for any connected rig.
+    lookingForRig = true;
+    foundRig = false;
+
+    QByteArray data;
+    QByteArray data2;
+    //data.setRawData("\xFE\xFE\xa2", 3);
+    data.setRawData("\xFE\xFE\x00", 3);
+    data.append(compCivAddr); // wfview's address, 0xE1
+    data2.setRawData("\x19\x00", 2); // get rig ID
+    data.append(data2);
+    data.append(payloadSuffix);
+
+    //check this:
+#ifdef QT_DEBUG
+    qDebug() << "About to request list of radios connected, using this command: ";
+    printHex(data, false, true);
+#endif
+
+    emit dataForComm(data);
+    return;
 }
 
 void rigCommander::prepDataAndSend(QByteArray data)
@@ -114,9 +222,87 @@ void rigCommander::disableSpectrumDisplay()
     prepDataAndSend(payload);
 }
 
-void rigCommander::setSpectrumBounds()
+void rigCommander::setSpectrumBounds(double startFreq, double endFreq, unsigned char edgeNumber)
 {
+    if((edgeNumber > 3) || (!edgeNumber))
+    {
+        return;
+    }
 
+    unsigned char freqRange = 1; // 1 = VHF, 2 = UHF, 3 = L-Band
+
+    switch(rigCaps.model)
+    {
+        case model9700:
+            if(startFreq > 148)
+            {
+                freqRange++;
+                if(startFreq > 450)
+                {
+                    freqRange++;
+                }
+            }
+            break;
+        case model705:
+        case model7300:
+        case model7610:
+        case model7850:
+            // Some rigs do not go past 60 MHz, but we will not encounter
+            // requests for those ranges since they are derived from the rig's existing scope range.
+            // start value of freqRange is 1.
+            if(startFreq > 1.6)
+                freqRange++;
+            if(startFreq > 2.0)
+                freqRange++;
+            if(startFreq > 6.0)
+                freqRange++;
+            if(startFreq > 8.0)
+                freqRange++;
+            if(startFreq > 11.0)
+                freqRange++;
+            if(startFreq > 15.0)
+                freqRange++;
+            if(startFreq > 20.0)
+                freqRange++;
+            if(startFreq > 22.0)
+                freqRange++;
+            if(startFreq > 26.0)
+                freqRange++;
+            if(startFreq > 30.0)
+                freqRange++;
+            if(startFreq > 45.0)
+                freqRange++;
+            if(startFreq > 60.0)
+                freqRange++;
+            if(startFreq > 74.8)
+                freqRange++;
+            if(startFreq > 108.0)
+                freqRange++;
+            if(startFreq > 137.0)
+                freqRange++;
+            if(startFreq > 400.0)
+                freqRange++;
+            break;
+        default:
+            return;
+            break;
+
+
+    }
+        QByteArray lowerEdge = makeFreqPayload(startFreq);
+    QByteArray higherEdge = makeFreqPayload(endFreq);
+
+
+    QByteArray payload;
+
+    payload.setRawData("\x27\x1E", 2);
+    payload.append(freqRange);
+    payload.append(edgeNumber);
+
+    payload.append(lowerEdge);
+    payload.append(higherEdge);
+
+    prepDataAndSend(payload);
 }
 
 void rigCommander::getScopeMode()
@@ -439,6 +625,8 @@ void rigCommander::parseData(QByteArray dataInput)
             //return;
         }
 
+        incomingCIVAddr = data[03]; // track the CIV of the sender.
+
         switch(data[02])
         {
             //    case civAddr: // can't have a variable here :-(
@@ -463,8 +651,18 @@ void rigCommander::parseData(QByteArray dataInput)
             case '\x00':
                 // data send initiated by the rig due to user control
                 // extract the payload out and parse.
-                payloadIn = data.right(data.length() - 4);
-                parseCommand();
+                if((unsigned char)data[03]==compCivAddr)
+                {
+                    // This is an echo of our own broadcast request.
+                    // The data are "to 00" and "from E1"
+                    // Don't use it!
+#ifdef QT_DEBUG
+                    qDebug() << "Caught it! Found the echo'd broadcast request from us!";
+#endif
+                } else {
+                    payloadIn = data.right(data.length() - 4);
+                    parseCommand();
+                }
                 break;
             default:
                 // could be for other equipment on the CIV network.
@@ -532,7 +730,11 @@ void rigCommander::parseCommand()
         case '\x19':
             // qDebug() << "Have rig ID: " << (unsigned int)payloadIn[2];
             // printHex(payloadIn, false, true);
-            model = determineRadioModel(payloadIn[2]);
+            model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
+            determineRigCaps();
+            qDebug() << "Have rig ID: decimal: " << (unsigned int)model;
+
+
             break;
         case '\x26':
             if((int)payloadIn[1] == 0)
@@ -794,7 +996,6 @@ void rigCommander::parseDetailedRegisters1A05()
 void rigCommander::parseWFData()
 {
     float freqSpan = 0.0;
-
     switch(payloadIn[1])
     {
         case 0:
@@ -831,6 +1032,11 @@ void rigCommander::parseWFData()
             // [1] 0x16
             // [2] 0x01, 0x02, 0x03: Edge 1,2,3
             break;
+        case 0x17:
+            // Hold status (only 9700?)
+            qDebug() << "Received 0x17 hold status - need to deal with this!";
+            printHex(payloadIn, false, true);
+            break;
         case 0x19:
             // scope reference level
             // [1] 0x19
@@ -846,8 +1052,114 @@ void rigCommander::parseWFData()
     }
 }
 
+void rigCommander::determineRigCaps()
+{
+    //TODO: Add if(usingNativeLAN) condition
+    //TODO: Determine available bands (low priority, rig will reject out of band requests anyway)
+
+
+    rigCaps.model = model;
+    rigCaps.modelID = model; // may delete later
+    rigCaps.civ = incomingCIVAddr;
+
+    switch(model){
+        case model7300:
+            rigCaps.modelName = QString("IC-7300");
+            rigCaps.hasSpectrum = true;
+            rigCaps.spectSeqMax = 11;
+            rigCaps.spectAmpMax = 160;
+            rigCaps.spectLenMax = 475;
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            break;
+        case model9700:
+            rigCaps.modelName = QString("IC-9700");
+            rigCaps.hasSpectrum = true;
+            rigCaps.spectSeqMax = 11;
+            rigCaps.spectAmpMax = 160;
+            rigCaps.spectLenMax = 475;
+            rigCaps.hasLan = true;
+            rigCaps.hasEthernet = true;
+            rigCaps.hasWiFi = false;
+            break;
+        case model7610:
+            rigCaps.modelName = QString("IC-7610");
+            rigCaps.hasSpectrum = true;
+            rigCaps.spectSeqMax = 15;
+            rigCaps.spectAmpMax = 200;
+            rigCaps.spectLenMax = 689;
+            rigCaps.hasLan = true;
+            rigCaps.hasEthernet = true;
+            rigCaps.hasWiFi = false;
+            break;
+        case model7850:
+            rigCaps.modelName = QString("IC-785x");
+            rigCaps.hasSpectrum = true;
+            rigCaps.spectSeqMax = 15;
+            rigCaps.spectAmpMax = 136;
+            rigCaps.spectLenMax = 689;
+            rigCaps.hasLan = true;
+            rigCaps.hasEthernet = true;
+            rigCaps.hasWiFi = false;
+            break;
+        case model705:
+            rigCaps.modelName = QString("IC-705");
+            rigCaps.hasSpectrum = true;
+            rigCaps.spectSeqMax = 11;
+            rigCaps.spectAmpMax = 160;
+            rigCaps.spectLenMax = 475;
+            rigCaps.hasLan = true;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = true;
+            break;
+        default:
+            rigCaps.modelName = QString("IC-unknown");
+            rigCaps.hasSpectrum = false;
+            rigCaps.spectSeqMax = 0;
+            rigCaps.spectAmpMax = 0;
+            rigCaps.spectLenMax = 0;
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            break;
+
+    }
+    haveRigCaps = true;
+    if(lookingForRig)
+    {
+        lookingForRig = false;
+        foundRig = true;
+#ifdef QT_DEBUG
+        qDebug() << "---Rig FOUND from broadcast query:";
+#endif
+        this->civAddr = incomingCIVAddr; // Override and use immediately.
+        payloadPrefix = QByteArray("\xFE\xFE");
+        payloadPrefix.append(civAddr);
+        payloadPrefix.append(compCivAddr);
+        // if there is a compile-time error, remove the following line, the "hex" part is the issue:
+        qDebug() << "Using incomingCIVAddr: (int): " << this->civAddr << " hex: " << hex << this->civAddr;
+        emit discoveredRigID(rigCaps);
+    } else {
+        emit haveRigID(rigCaps);
+    }
+}
+
 void rigCommander::parseSpectrum()
 {
+    if(!haveRigCaps)
+    {
+#ifdef QT_DEBUG
+        qDebug() << "Spectrum received in rigCommander, but rigID is incomplete.";
+#endif
+        return;
+    }
+    if(rigCaps.spectSeqMax == 0)
+    {
+        // there is a chance this will happen with rigs that support spectrum. Once our RigID query returns, we will parse correctly.
+        qDebug() << "Warning: Spectrum sequence max was zero, yet spectrum was received.";
+        return;
+    }
     // Here is what to expect:
     // payloadIn[00] = '\x27';
     // payloadIn[01] = '\x00';
@@ -882,7 +1194,8 @@ void rigCommander::parseSpectrum()
 
     unsigned char sequence = bcdHexToDecimal(payloadIn[03]);
     //unsigned char sequenceMax = bcdHexToDecimal(payloadIn[04]);
-    unsigned char scopeMode = bcdHexToDecimal(payloadIn[05]);
+
+
     // unsigned char waveInfo = payloadIn[06]; // really just one byte?
     //qDebug() << "Spectrum Data received: " << sequence << "/" << sequenceMax << " mode: " << scopeMode << " waveInfo: " << waveInfo << " length: " << payloadIn.length();
 
@@ -893,8 +1206,19 @@ void rigCommander::parseSpectrum()
     // It looks like the data length may be variable, so we need to detect it each time.
     // start at payloadIn.length()-1 (to override the FD). Never mind, index -1 bad.
     // chop off FD.
-    if(sequence == 1)
+    if ((sequence == 1) && (sequence < rigCaps.spectSeqMax))
     {
+
+        unsigned char scopeMode = bcdHexToDecimal(payloadIn[05]); // 0=center, 1=fixed
+
+        if(scopeMode != oldScopeMode)
+        {
+            //TODO: Figure out if this is the first spectrum, and if so, always emit.
+            emit haveSpectrumFixedMode(scopeMode==1);
+            oldScopeMode = scopeMode;
+        }
+
+
         // wave information
         spectrumLine.clear();
         // parseFrequency(endPosition); // overload does not emit! Return? Where? how...
@@ -906,16 +1230,23 @@ void rigCommander::parseSpectrum()
             spectrumStartFreq -= spectrumEndFreq;
             spectrumEndFreq = spectrumStartFreq + 2*(spectrumEndFreq);
         }
-    } else if ((sequence > 1) && (sequence < 11))
+        if (payloadIn.length() > 400) // Must be a LAN packet.
+        {
+            payloadIn.chop(1);
+            //spectrumLine.append(payloadIn.mid(17,475)); // write over the FD, last one doesn't, oh well.
+            spectrumLine.append(payloadIn.right(payloadIn.length()-17)); // write over the FD, last one doesn't, oh well.
+            emit haveSpectrumData(spectrumLine, spectrumStartFreq, spectrumEndFreq);
+        }
+    } else if ((sequence > 1) && (sequence < rigCaps.spectSeqMax))
     {
         // spectrum from index 05 to index 54, length is 55 per segment. Length is 56 total. Pixel data is 50 pixels.
         // sequence numbers 2 through 10, 50 pixels each. Total after sequence 10 is 450 pixels.
         payloadIn.chop(1);
         spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 5)); // write over the FD, last one doesn't, oh well.
         //qDebug() << "sequence: " << sequence << "spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
-    } else if (sequence == 11)
+    } else if (sequence == rigCaps.spectSeqMax)
     {
-        // last spectrum, a little bit different (last 25 pixels). Total at end is 475 pixels.
+        // last spectrum, a little bit different (last 25 pixels). Total at end is 475 pixels (7300).
         payloadIn.chop(1);
         spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 5));
         //qDebug() << "sequence: " << sequence << " spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
@@ -949,7 +1280,16 @@ void rigCommander::parseFrequency()
     //    payloadIn[01] = ; //      . XX KHz
 
     // printHex(payloadIn, false, true);
-    frequencyMhz = payloadIn[04] & 0x0f;
+    frequencyMhz = 0.0;
+    if(payloadIn.length() == 7)
+    {
+        // 7300 has these digits too, as zeros.
+        // IC-705 or IC-9700 with higher frequency data available.
+        frequencyMhz += 100*(payloadIn[05] & 0x0f);
+        frequencyMhz += (1000*((payloadIn[05] & 0xf0) >> 4));
+    }
+
+    frequencyMhz += payloadIn[04] & 0x0f;
     frequencyMhz += 10*((payloadIn[04] & 0xf0) >> 4);
 
     frequencyMhz += ((payloadIn[03] & 0xf0) >>4)/10.0 ;
@@ -977,7 +1317,10 @@ float rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
 
     float freq = 0.0;
 
-    freq = data[lastPosition] & 0x0f;
+    freq += 100*(data[lastPosition+1] & 0x0f);
+    freq += (1000*((data[lastPosition+1] & 0xf0) >> 4));
+
+    freq += data[lastPosition] & 0x0f;
     freq += 10*((data[lastPosition] & 0xf0) >> 4);
 
     freq += ((data[lastPosition-1] & 0xf0) >>4)/10.0 ;
@@ -1003,6 +1346,9 @@ void rigCommander::parseMode()
     // USB:
     //"INDEX: 00 01 02 03 "
     //"DATA:  01 01 02 fd "
+
+    //TODO: D-Star DV and DD modes.
+
     switch(payloadIn[01])
     {
         case '\x00':
@@ -1070,6 +1416,11 @@ void rigCommander::getRigID()
     QByteArray payload;
     payload.setRawData("\x19\x00", 2);
     prepDataAndSend(payload);
+}
+
+void rigCommander::changeBufferSize(const quint16 value)
+{
+    emit haveChangeBufferSize(value);
 }
 
 void rigCommander::sayAll()

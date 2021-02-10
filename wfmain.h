@@ -8,11 +8,14 @@
 #include <QTimer>
 #include <QSettings>
 #include <QShortcut>
+#include <QMetaType>
 
-
+#include "logcategories.h"
 #include "commhandler.h"
 #include "rigcommander.h"
 #include "freqmemory.h"
+#include "rigidentities.h"
+
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
 
@@ -25,7 +28,9 @@ class wfmain : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit wfmain(QWidget *parent = 0);
+    explicit wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent = 0);
+    QString serialPortCL;
+    QString hostCL;
     ~wfmain();
 
 signals:
@@ -47,7 +52,8 @@ signals:
     void startATU();
     void setATU(bool atuEnabled);
     void getATUStatus();
-    void getRigID();
+    void getRigID(); // this is the model of the rig
+    void getRigCIV(); // get the rig's CIV addr
     void spectOutputEnable();
     void spectOutputDisable();
     void scopeDisplayEnable();
@@ -55,13 +61,18 @@ signals:
     void setScopeCenterMode(bool centerEnable);
     void setScopeSpan(char span);
     void setScopeEdge(char edge);
+    void setScopeFixedEdge(double startFreq, double endFreq, unsigned char edgeNumber);
     void getScopeMode();
     void getScopeEdge();
     void getScopeSpan();
     void sayFrequency();
     void sayMode();
     void sayAll();
-
+    void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
+    void sendCommSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, 
+        QString username, QString password, quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
+    void sendCloseComm();
+    void sendChangeBufferSize(quint16 value);
 
 private slots:
     void shortcutF1();
@@ -101,9 +112,11 @@ private slots:
     void handlePttLimit(); // hit at 3 min transmit length
 
     void on_startBtn_clicked();
+    void receiveCommReady();
     void receiveFreq(double);
     void receiveMode(QString);
     void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);
+    void receiveSpectrumFixedMode(bool isFixed);
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(bool dataOn);
     void receiveBandStackReg(float freq, char mode, bool dataOn); // freq, mode, (filter,) datamode
@@ -111,7 +124,10 @@ private slots:
     void receiveAfGain(unsigned char level);
     void receiveSql(unsigned char level);
     void receiveATUStatus(unsigned char atustatus);
-
+    void receiveRigID(rigCapabilities rigCaps);
+    void receiveFoundRigID(rigCapabilities rigCaps);
+    void receiveSerialPortError(QString port, QString errorText);
+    void receiveStatusUpdate(QString errorText);
     void handlePlotClick(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);
@@ -229,6 +245,38 @@ private slots:
 
     void on_pttEnableChk_clicked(bool checked);
 
+    void on_lanEnableChk_clicked(bool checked);
+
+    void on_ipAddressTxt_textChanged(QString text);
+
+    void on_controlPortTxt_textChanged(QString text);
+
+    void on_serialPortTxt_textChanged(QString text);
+
+    void on_audioPortTxt_textChanged(QString text);
+
+    void on_usernameTxt_textChanged(QString text);
+
+    void on_passwordTxt_textChanged(QString text);
+
+    void on_audioOutputCombo_currentIndexChanged(QString text);
+
+    void on_audioInputCombo_currentIndexChanged(QString text);
+
+    void on_toFixedBtn_clicked();
+
+    void on_connectBtn_clicked();
+
+    void on_audioBufferSizeSlider_valueChanged(int value);
+
+    void on_audioRXCodecCombo_currentIndexChanged(int value);
+
+    void on_audioTXCodecCombo_currentIndexChanged(int value);
+
+    void on_audioSampleRateCombo_currentIndexChanged(QString text);
+
+    void on_scopeEnableWFBtn_clicked(bool checked);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -240,7 +288,9 @@ private:
     //commHandler *comm;
     void setAppTheme(bool isDark);
     void setPlotTheme(QCustomPlot *plot, bool isDark);
+    void prepareWf();
     void getInitialRigState();
+    void openRig();
     QWidget * theParent;
     QStringList portList;
     QString serialPortRig;
@@ -282,8 +332,8 @@ private:
     QShortcut *keyM;
 
 
-    rigCommander * rig;
-    QThread * rigThread;
+    rigCommander * rig=Q_NULLPTR;
+    QThread * rigThread=Q_NULLPTR;
     QCPColorMap * colorMap;
     QCPColorMapData * colorMapData;
     QCPColorScale * colorScale;
@@ -295,6 +345,7 @@ private:
     QStringList spans;
     QStringList edges;
     QStringList commPorts;
+    QLabel* rigStatus;
 
     quint16 spectWidth;
     quint16 wfLength;
@@ -314,9 +365,9 @@ private:
     double oldUpperFreq;
     double freqMhz;
     double knobFreqMhz;
-    enum cmds {cmdNone, cmdGetRigID, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
+    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
-              cmdGetSql, cmdGetATUStatus};
+              cmdGetSql, cmdGetATUStatus, cmdScopeCenterMode, cmdScopeFixedMode};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     freqMemory mem;
@@ -354,7 +405,20 @@ private:
         quint32 serialPortBaud;
         bool enablePTT;
         bool niceTS;
-
+        bool enableLAN;
+        QString ipAddress;
+        quint16 controlLANPort;
+        quint16 serialLANPort;
+        quint16 audioLANPort;
+        QString username;
+        QString password;
+        QString audioOutput;
+        QString audioInput;
+        quint16 audioRXBufferSize;
+        quint16 audioRXSampleRate;
+        quint8 audioRXCodec;
+        quint16 audioTXSampleRate;
+        quint8 audioTXCodec;
     } prefs;
 
     preferences defPrefs;
@@ -366,10 +430,16 @@ private:
 
     int oldFreqDialVal;
 
+    rigCapabilities rigCaps;
+    bool haveRigCaps;
+
     void bandStackBtnClick();
     bool waitingForBandStackRtn;
     char bandStkBand;
     char bandStkRegCode;
 };
+
+Q_DECLARE_METATYPE(struct rigCapabilities) ;
+
 
 #endif // WFMAIN_H
