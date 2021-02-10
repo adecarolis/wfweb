@@ -1,0 +1,26 @@
+
+# CHANGELOG
+
+- 20210210	added control over LAN for rigs that support it
+                has been tested on the 705, 7610, 785x, 9700.
+		should work on 7700, 7800, other rigs.
+		added different sampling rates for rx
+		added different codecs
+		added scope data for 7610, 785x.  
+		several cosmetic changes in the UI
+		fixed a slew of bugs
+		builds on MAC-OS, Linux, Windows
+		added ToFixed
+		implemented connect/disconnect rig
+		improved USB serial code
+		fixed memory leak 
+		redesigned rx audio path for better performance
+		added round trip time for network connected devices
+		added detection code of rigtype
+		automatic detection of CIV control address
+		added logfile capability
+
+
+			
+
+            
