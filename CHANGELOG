@@ -19,6 +19,7 @@
 		added detection code of rigtype
 		automatic detection of CIV control address
 		added logfile capability
+		works on a raspberry pi (USB and ethernet)
 
 
 			
