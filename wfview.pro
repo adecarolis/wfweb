@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui serialport
+QT       += core gui serialport network multimedia
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
@@ -31,9 +31,14 @@ QMAKE_LFLAGS += -O2 -march=native -s
 DEFINES += QT_DEPRECATED_WARNINGS
 DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 
-DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
+linux:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
 
-DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""
+linux:DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""
+
+win32:INCLUDEPATH += c:/qcustomplot
+win32:DEFINES += HOST=1
+win32:DEFINES += UNAME=1
+win32:DEFINES += GITSHORT=1
 
 
 RESOURCES += qdarkstyle/style.qrc \
@@ -44,17 +49,16 @@ DISTFILES += resources/wfview.png \
     resources/install.sh
 DISTFILES += resources/wfview.desktop
 
-QMAKE_POST_LINK += cp ../wfview/resources/wfview.png .;
-QMAKE_POST_LINK += cp ../wfview/resources/wfview.desktop .;
-QMAKE_POST_LINK += cp ../wfview/resources/install.sh .;
-QMAKE_POST_LINK += cp -r ../wfview/qdarkstyle .;
-QMAKE_POST_LINK += chmod 755 install.sh;
-QMAKE_POST_LINK += echo; echo; echo "Run install.sh as root from the build directory to install."; echo; echo;
+linux:QMAKE_POST_LINK += cp ../wfview/resources/wfview.png .;
+linux:QMAKE_POST_LINK += cp ../wfview/resources/wfview.desktop .;
+linux:QMAKE_POST_LINK += cp ../wfview/resources/install.sh .;
+linux:QMAKE_POST_LINK += cp -r ../wfview/qdarkstyle .;
+linux:QMAKE_POST_LINK += chmod 755 install.sh;
+linux:QMAKE_POST_LINK += echo; echo; echo "Run install.sh as root from the build directory to install."; echo; echo;
 
 
 # Do not do this, it will hang on start:
 # CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
-
 
 CONFIG(debug, release|debug) {
   win32:QCPLIB = qcustomplotd1
@@ -74,13 +78,19 @@ SOURCES += main.cpp\
     commhandler.cpp \
     rigcommander.cpp \
     freqmemory.cpp \
-    rigidentities.cpp
+    rigidentities.cpp \
+	udphandler.cpp \
+	logcategories.cpp \
+    rxaudiohandler.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
     rigcommander.h \
     freqmemory.h \
-    rigidentities.h
+    rigidentities.h \
+	udphandler.h \
+	logcategories.h \
+    rxaudiohandler.h
 
 FORMS    += wfmain.ui
 
