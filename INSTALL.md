@@ -53,6 +53,7 @@ sudo chown $USER /dev/ttyUSB*
 
 - most linux systems just need to have you added to the dialout group as that's persistent and more secure.
 
+sudo usermod -aG dialout $USER
 
 
 ### opensuse install ###
