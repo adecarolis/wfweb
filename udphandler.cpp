@@ -312,6 +312,7 @@ qint64 udpHandler::SendRequestSerialAndAudio()
 
     quint8* usernameEncoded = Passcode(username);
     int txSeqBufLengthMs = 50;
+
     const quint8 p[] = {
         0x90, 0x00, 0x00, 0x00, 0x00, 0x00,  0x00, 0x00,
         static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
@@ -575,12 +576,6 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 b
     if (rxCodec == 0x02 || rxCodec == 0x8)
         rxNumSamples = 8; // uLaw is actually 16bit. 
 
-    if (txCodec == 0x01)
-        txIsUlawCodec = true;
-    else if (txCodec == 0x02)
-        txNumSamples = 8; // uLaw is actually 16bit. 
-
-    
     rxaudio = new audioHandler();
     rxAudioThread = new QThread(this);
 
@@ -623,6 +618,7 @@ udpAudio::~udpAudio()
         rxAudioThread->quit();
         rxAudioThread->wait();
     }
+	
     if (txAudioThread) {
         txAudioThread->quit();
         txAudioThread->wait();
@@ -652,6 +648,7 @@ void udpAudio::sendTxAudio(QByteArray audio)
         SendTrackedPacket(tx);
         sendAudioSeq++;
     }
+
 }
 
 void udpAudio::changeBufferSize(quint16 value)

@@ -23,6 +23,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     this->serialPortCL = serialPortCL;
     this->hostCL = hostCL;
 
+    cal = new calibrationWindow();
+
     haveRigCaps = false;
 
     ui->bandStkLastUsedBtn->setVisible(false);
@@ -210,8 +212,13 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     modes << "LSB" << "USB" << "AM" << "CW" << "RTTY";
     //          5      6          7           8          9
     modes << "FM" << "CW-R" << "RTTY-R" << "LSB-D" << "USB-D";
-    // TODO: Add FM-D and AM-D which seem to exist
+    // TODO: Add FM-D and AM-D and where applicable D-Star hich seem to exist
     ui->modeSelectCombo->insertItems(0, modes);
+
+    QStringList filters;
+    filters << "1" << "2" << "3" << "Setup...";
+    ui->modeFilterCombo->addItems(filters);
+
 
     spans << "2.5k" << "5.0k" << "10k" << "25k";
     spans << "50k" << "100k" << "250k" << "500k";
@@ -277,6 +284,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rig, SIGNAL(haveAfGain(unsigned char)), this, SLOT(receiveAfGain(unsigned char)));
     connect(this, SIGNAL(getSql()), rig, SLOT(getSql()));
     connect(rig, SIGNAL(haveSql(unsigned char)), this, SLOT(receiveSql(unsigned char)));
+    connect(this, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
     connect(this, SIGNAL(startATU()), rig, SLOT(startATU()));
     connect(this, SIGNAL(setATU(bool)), rig, SLOT(setATU(bool)));
     connect(this, SIGNAL(getATUStatus()), rig, SLOT(getATUStatus()));
@@ -288,6 +296,15 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(sayAll()), rig, SLOT(sayAll()));
     connect(this, SIGNAL(sayFrequency()), rig, SLOT(sayFrequency()));
     connect(this, SIGNAL(sayMode()), rig, SLOT(sayMode()));
+
+    // calibration window:
+    connect(cal, SIGNAL(requestRefAdjustCourse()), rig, SLOT(getRefAdjustCourse()));
+    connect(cal, SIGNAL(requestRefAdjustFine()), rig, SLOT(getRefAdjustFine()));
+    connect(rig, SIGNAL(haveRefAdjustCourse(unsigned char)), cal, SLOT(handleRefAdjustCourse(unsigned char)));
+    connect(rig, SIGNAL(haveRefAdjustFine(unsigned char)), cal, SLOT(handleRefAdjustFine(unsigned char)));
+    connect(cal, SIGNAL(setRefAdjustCourse(unsigned char)), rig, SLOT(setRefAdjustCourse(unsigned char)));
+    connect(cal, SIGNAL(setRefAdjustFine(unsigned char)), rig, SLOT(setRefAdjustFine(unsigned char)));
+
 
     // Plot user interaction
     connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
@@ -535,6 +552,22 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     // Entry point for unknown rig being identified at the start of the program.
     //now we know what the rig ID is:
     //qDebug() << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
+
+    // We have to be careful here:
+    // If we enter this a second time, we will get two sets of DV and DD modes
+    // Also, if ever there is a rig with DV but without DV, we'll be off by one.
+    // A better solution is to translate the combo selection to a shared type
+    // such as an enum or even the actual CIV mode byte.
+
+    if(rigCaps.hasDV)
+    {
+        ui->modeSelectCombo->addItem("DV");
+    }
+    if(rigCaps.hasDD)
+    {
+        ui->modeSelectCombo->addItem("DD");
+    }
+
     delayedCommand->setInterval(100); // faster polling is ok now.
     receiveRigID(rigCaps);
     getInitialRigState();
@@ -1099,7 +1132,7 @@ void wfmain:: getInitialRigState()
 
     cmdOutQue.append(cmdGetRxGain);
     cmdOutQue.append(cmdGetAfGain);
-    // cmdOutQue.append(cmdGetSql); // implimented but not used
+    cmdOutQue.append(cmdGetSql); // implimented but not used
     // TODO:
     // get TX level
     // get Scope reference Level
@@ -2148,9 +2181,8 @@ void wfmain::receiveAfGain(unsigned char level)
 
 void wfmain::receiveSql(unsigned char level)
 {
-    // TODO: Maybe add squelch control
-    // qDebug() << "Receive SQL level of                   " << (int)level << " = " << 100*level/255.0 << "%";
-    // ui->sqlSlider->setValue(level); // No SQL control so far
+    qDebug() << "Receive SQL level of                   " << (int)level << " = " << 100*level/255.0 << "%";
+    ui->sqlSlider->setValue(level);
     (void)level;
 }
 
@@ -2367,6 +2399,22 @@ void wfmain::on_connectBtn_clicked()
     }
 }
 
+void wfmain::on_sqlSlider_valueChanged(int value)
+{
+    emit setSql((unsigned char)value);
+}
+
+void wfmain::on_modeFilterCombo_activated(int index)
+{
+    //TODO:
+    if(index >2)
+    {
+        //filterSetup->show();
+    }
+
+    // emit setFilterSel((unsigned char)index);
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
@@ -2378,7 +2426,7 @@ void wfmain::on_debugBtn_clicked()
     //emit getScopeSpan(); // in khz, only in "center" mode
     //qDebug() << "Debug: finding rigs attached. Let's see if this works. ";
     //rig->findRigs();
+    cal->show();
 }
-
 
 

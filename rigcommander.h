@@ -55,6 +55,7 @@ public slots:
     void getRfGain();
     void getAfGain();
     void getSql();
+    void setSquelch(unsigned char level);
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
     void startATU();
@@ -63,6 +64,10 @@ public slots:
     void getRigID();
     void findRigs();
     void setCIVAddr(unsigned char civAddr);
+    void getRefAdjustCourse();
+    void getRefAdjustFine();
+    void setRefAdjustCourse(unsigned char level);
+    void setRefAdjustFine(unsigned char level);
     void handleNewData(const QByteArray &data);
     void handleSerialPortError(const QString port, const QString errorText);
     void handleStatusUpdate(const QString text);
@@ -91,6 +96,9 @@ signals:
     void haveAfGain(unsigned char level);
     void haveSql(unsigned char level);
     void haveTxPower(unsigned char level);
+    void thing();
+    void haveRefAdjustCourse(unsigned char level);
+    void haveRefAdjustFine(unsigned char level);
     void dataForComm(const QByteArray &outData);
     void getMoreDebug();
     void finished();
@@ -105,6 +113,8 @@ private:
     void parseData(QByteArray data); // new data come here
     void parseCommand();
     unsigned char bcdHexToDecimal(unsigned char in);
+    unsigned char bcdHexToDecimal(unsigned char hundreds, unsigned char tensunits);
+    QByteArray bcdEncodeInt(unsigned int);
     void parseFrequency();
     float parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
     QByteArray makeFreqPayload(double frequency);

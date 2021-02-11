@@ -18,7 +18,6 @@
 #include <QBuffer>
 #include <QThread>
 
-
 #include <QDebug>
 
 #include "audiohandler.h"
@@ -125,14 +124,15 @@ public:
 
 signals:
     void haveAudioData(QByteArray data);
+
 	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 bufferSize, const bool isUlaw, const bool isInput);
 	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 bufferSize, const bool isUlaw, const bool isInput);
+
 	void haveChangeBufferSize(quint16 value);
 
 public slots:
 	void changeBufferSize(quint16 value);
 	void sendTxAudio(QByteArray d);
-
 
 private:
 
@@ -158,6 +158,7 @@ private:
 
 	audioHandler* txaudio;
 	QThread* txAudioThread;
+
 };
 
 

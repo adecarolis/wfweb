@@ -43,6 +43,9 @@ struct rigCapabilities {
     quint16 spectAmpMax;
     quint16 spectLenMax;
 
+    bool hasDD;
+    bool hasDV;
+
 };
 
 

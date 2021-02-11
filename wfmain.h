@@ -16,6 +16,8 @@
 #include "freqmemory.h"
 #include "rigidentities.h"
 
+#include "calibrationwindow.h"
+
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
 
@@ -49,6 +51,7 @@ signals:
     void getDebug();
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
+    void setSql(unsigned char level);
     void startATU();
     void setATU(bool atuEnabled);
     void getATUStatus();
@@ -277,6 +280,10 @@ private slots:
 
     void on_scopeEnableWFBtn_clicked(bool checked);
 
+    void on_sqlSlider_valueChanged(int value);
+
+    void on_modeFilterCombo_activated(int index);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -432,6 +439,8 @@ private:
 
     rigCapabilities rigCaps;
     bool haveRigCaps;
+
+    calibrationWindow *cal;
 
     void bandStackBtnClick();
     bool waitingForBandStackRtn;
