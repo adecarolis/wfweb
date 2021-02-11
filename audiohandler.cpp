@@ -4,7 +4,7 @@
 */
 #include "audiohandler.h"
 
-int8_t uLawEncode(int16_t number)
+static int8_t uLawEncode(int16_t number)
 {
     const uint16_t MULAW_MAX = 0x1FFF;
     const uint16_t MULAW_BIAS = 33;
