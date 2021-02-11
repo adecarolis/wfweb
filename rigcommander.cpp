@@ -858,6 +858,26 @@ void rigCommander::setAfGain(unsigned char level)
     sendLevelCmd(0x01, level);
 }
 
+void rigCommander::setRefAdjustCourse(unsigned char level)
+{
+    // 1A 05 00 72 0000-0255
+    QByteArray payload;
+    payload.setRawData("\x1A\x05\x00\x72", 4);
+    payload.append(bcdEncodeInt((unsigned int)level));
+    prepDataAndSend(payload);
+
+}
+
+void rigCommander::setRefAdjustFine(unsigned char level)
+{
+    qDebug() << __FUNCTION__ << " level: " << level;
+    // 1A 05 00 73 0000-0255
+    QByteArray payload;
+    payload.setRawData("\x1A\x05\x00\x73", 4);
+    payload.append(bcdEncodeInt((unsigned int)level));
+    prepDataAndSend(payload);
+}
+
 void rigCommander::sendLevelCmd(unsigned char levAddr, unsigned char level)
 {
     QByteArray payload("\x14");
@@ -873,6 +893,22 @@ void rigCommander::sendLevelCmd(unsigned char levAddr, unsigned char level)
     // combine and send:
     payload.append((tens << 4) | (units) ); // make sure it works with a zero
 
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getRefAdjustCourse()
+{
+    // 1A 05 00 72
+    QByteArray payload;
+    payload.setRawData("\x1A\x05\x00\x72", 4);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getRefAdjustFine()
+{
+    // 1A 05 00 73
+    QByteArray payload;
+    payload.setRawData("\x1A\x05\x00\x73", 4);
     prepDataAndSend(payload);
 }
 
@@ -996,6 +1032,28 @@ void rigCommander::parseBandStackReg()
 void rigCommander::parseDetailedRegisters1A05()
 {
     // It seems a lot of misc stuff is under this command and subcommand.
+    // 1A 05 ...
+    // 00 01 02 03 04 ...
+
+    // 02 and 03 make up a BCD'd number:
+    // 0001, 0002, 0003, ... 0101, 0102, 0103...
+
+    int subcmd = bcdHexToDecimal(payloadIn[3]) + (10*bcdHexToDecimal(payloadIn[2]));
+
+    switch(subcmd)
+    {
+        case 72:
+            // course reference
+            emit haveRefAdjustCourse(  bcdHexToDecimal(payloadIn[5]) + (10*bcdHexToDecimal(payloadIn[6])) );
+            break;
+        case 73:
+            // fine reference
+            emit haveRefAdjustFine( bcdHexToDecimal(payloadIn[5]) + (10*bcdHexToDecimal(payloadIn[6])) );
+            break;
+        default:
+            break;
+    }
+
 }
 
 void rigCommander::parseWFData()
@@ -1273,6 +1331,49 @@ unsigned char rigCommander::bcdHexToDecimal(unsigned char in)
     out = in & 0x0f;
     out += ((in & 0xf0) >> 4)*10;
     return out;
+}
+
+unsigned char rigCommander::bcdHexToDecimal(unsigned char hundreds, unsigned char tensunits)
+{
+    // convert:
+    // hex data: 0x01 0x23
+    // convert to uchar:
+    // uchar: 123
+
+    // unsigned char thousands = hundreds / 100;
+    unsigned char rtnVal;
+    rtnVal = (hundreds & 0x0f)*100;
+    rtnVal += ((tensunits & 0xf0)>>4)*10;
+    rtnVal += (tensunits & 0x0f);
+
+    return rtnVal;
+}
+
+QByteArray rigCommander::bcdEncodeInt(unsigned int num)
+{
+    if(num > 9999)
+    {
+        qDebug() << __FUNCTION__ << "Error, number is too big for four-digit conversion: " << num;
+        return QByteArray();
+    }
+
+    char thousands = num / 1000;
+    char hundreds = (num - (1000*thousands)) / 100;
+    char tens = (num - (1000*thousands) - (100*hundreds)) / 10;
+    char units = (num - (1000*thousands) - (100*hundreds) - (10*tens));
+
+    char b0 = hundreds | (thousands << 4);
+    char b1 = units | (tens << 4);
+
+    qDebug() << __FUNCTION__ << " encoding value " << num << " as hex:";
+    //printHex(QByteArray(b0), false, true);
+    //printHex(QByteArray(b1), false, true);
+
+
+    QByteArray result;
+    result.append(b0).append(b1);
+    qDebug() << "Result: " << result;
+    return result;
 }
 
 void rigCommander::parseFrequency()

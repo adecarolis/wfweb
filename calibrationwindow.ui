@@ -130,6 +130,9 @@
        <layout class="QVBoxLayout" name="verticalLayout_6">
         <item>
          <widget class="QSlider" name="calCourseSlider">
+          <property name="maximum">
+           <number>255</number>
+          </property>
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
@@ -137,6 +140,9 @@
         </item>
         <item>
          <widget class="QSlider" name="calFineSlider">
+          <property name="maximum">
+           <number>255</number>
+          </property>
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
@@ -186,10 +192,13 @@
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <property name="topMargin">
-       <number>10</number>
+       <number>0</number>
       </property>
       <item>
        <widget class="QPushButton" name="calSaveSlotBtn">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Save the calibration data to the indicated slot in the preference file. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
         <property name="text">
          <string>Save</string>
         </property>
@@ -197,6 +206,9 @@
       </item>
       <item>
        <widget class="QPushButton" name="calLoadSlotBtn">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Load the calibration data fromthe indicated slot in the preference file. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
         <property name="text">
          <string>Load</string>
         </property>
