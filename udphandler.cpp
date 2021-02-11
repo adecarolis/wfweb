@@ -311,7 +311,7 @@ qint64 udpHandler::SendRequestSerialAndAudio()
     */
 
     quint8* usernameEncoded = Passcode(username);
-    int txSeqBufLengthMs = 200;
+    int txSeqBufLengthMs = 50;
     const quint8 p[] = {
         0x90, 0x00, 0x00, 0x00, 0x00, 0x00,  0x00, 0x00,
         static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
@@ -574,59 +574,46 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 b
         rxChannelCount = 2;
     if (rxCodec == 0x02 || rxCodec == 0x8)
         rxNumSamples = 8; // uLaw is actually 16bit. 
-        
-    // Init audio
-    format.setSampleRate(rxSampleRate);
-    format.setChannelCount(rxChannelCount);
-    format.setSampleSize(rxNumSamples);
-    format.setCodec("audio/pcm");
-    format.setByteOrder(QAudioFormat::LittleEndian);
-    format.setSampleType(QAudioFormat::SignedInt);
 
-    QAudioDeviceInfo info(QAudioDeviceInfo::defaultOutputDevice());
+    if (txCodec == 0x01)
+        txIsUlawCodec = true;
+    else if (txCodec == 0x02)
+        txNumSamples = 8; // uLaw is actually 16bit. 
 
-    if (info.isFormatSupported(format))
-    {
-        qDebug() << "Audio format supported";
-    }
-    else
-    {
-        qDebug() << "Audio format not supported!";
-        if (info.isNull())
-        {
-            qDebug() << "No device was found. You probably need to install libqt5multimedia-plugins.";
-        }
-        else {
-            qDebug() << "Audio Devices found: ";
-            const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
-            for (const QAudioDeviceInfo& deviceInfo : deviceInfos)
-            {
-                qDebug() << "Device name: " << deviceInfo.deviceName();
-                qDebug() << "is null (probably not good):" << deviceInfo.isNull();
-                qDebug() << "channel count:" << deviceInfo.supportedChannelCounts();
-                qDebug() << "byte order:" << deviceInfo.supportedByteOrders();
-                qDebug() << "supported codecs:" << deviceInfo.supportedCodecs();
-                qDebug() << "sample rates:" << deviceInfo.supportedSampleRates();
-                qDebug() << "sample sizes:" << deviceInfo.supportedSampleSizes();
-                qDebug() << "sample types:" << deviceInfo.supportedSampleTypes();
-            }
-            qDebug() << "----- done with audio info -----";
-        }
-    }
-
-
-    rxaudio = new rxAudioHandler();
+    
+    rxaudio = new audioHandler();
     rxAudioThread = new QThread(this);
 
     rxaudio->moveToThread(rxAudioThread);
 
-    connect(this,SIGNAL(setupAudio(QAudioFormat,quint16,bool)), rxaudio, SLOT(setup(QAudioFormat,quint16,bool)));
+    connect(this, SIGNAL(setupAudio(quint8, quint8, quint16, quint16, bool, bool)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool)));
     connect(this, SIGNAL(haveAudioData(QByteArray)), rxaudio, SLOT(incomingAudio(QByteArray)));
     connect(this, SIGNAL(haveChangeBufferSize(quint16)), rxaudio, SLOT(changeBufferSize(quint16)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
+    if (txCodec == 0x01)
+        txIsUlawCodec = true;
+    else if (txCodec == 0x02)
+        txNumSamples = 8; // uLaw is actually 16bit. 
+
+    txChannelCount = 1; // Only 1 channel is supported.
+
+    txaudio = new audioHandler();
+    txAudioThread = new QThread(this);
+
+    txaudio->moveToThread(txAudioThread);
+
+    connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool)));
+    connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool)));
+    connect(txaudio, SIGNAL(haveAudioData(QByteArray)), this, SLOT(sendTxAudio(QByteArray)));
+    connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
+    
     rxAudioThread->start();
-    emit setupAudio(format, bufferSize,rxIsUlawCodec);
+    emit setupRxAudio(rxNumSamples, rxChannelCount, rxSampleRate, bufferSize, rxIsUlawCodec,false);
+
+    txAudioThread->start();
+    emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, bufferSize, txIsUlawCodec,true);
+
     SendPacketConnect(); // First connect packet, audio should start very soon after.
 }
 
@@ -635,6 +622,35 @@ udpAudio::~udpAudio()
     if (rxAudioThread) {
         rxAudioThread->quit();
         rxAudioThread->wait();
+    }
+    if (txAudioThread) {
+        txAudioThread->quit();
+        txAudioThread->wait();
+    }
+}
+
+void udpAudio::sendTxAudio(QByteArray audio)
+{
+    quint8 p[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
+      static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff),
+      0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+    };
+    int counter = 0;
+    while (counter < audio.length())
+    {
+        QByteArray tx = QByteArray::fromRawData((const char*)p, sizeof(p));
+        QByteArray partial = audio.mid(counter, 1364);
+        tx.append(partial);
+        tx[0] = static_cast<quint8>(tx.length() & 0xff);
+        tx[1] = static_cast<quint8>(tx.length() >> 8 & 0xff);
+        tx[18] = static_cast<quint8>(sendAudioSeq >> 8 & 0xff);
+        tx[19] = static_cast<quint8>(sendAudioSeq & 0xff);
+        tx[22] = static_cast<quint8>(partial.length() >> 8 & 0xff);
+        tx[23] = static_cast<quint8>(partial.length() & 0xff);
+        counter = counter + partial.length();
+        SendTrackedPacket(tx);
+        sendAudioSeq++;
     }
 }
 
@@ -897,8 +913,7 @@ void udpBase::PurgeOldEntries()
 {
     for (int f = txSeqBuf.length() - 1; f >= 0; f--)
     {
-        // Delete any entries older than 1 second.
-        if (difftime(time(NULL), txSeqBuf[f].timeSent) > 60) // Delete anything more than 60 seconds old.
+        if (difftime(time(NULL), txSeqBuf[f].timeSent) > 5) // Delete anything more than 5 seconds old.
         {
             txSeqBuf.removeAt(f);
         }

@@ -8,6 +8,7 @@
 #include <QTimer>
 #include <QMutex>
 #include <QDateTime>
+#include <QByteArray>
 
 // Allow easy endian-ness conversions
 #include <QtEndian>
@@ -20,7 +21,7 @@
 
 #include <QDebug>
 
-#include "rxaudiohandler.h"
+#include "audiohandler.h"
 
 // Parent class that contains all common items.
 class udpBase : public QObject
@@ -124,11 +125,14 @@ public:
 
 signals:
     void haveAudioData(QByteArray data);
-    void setupAudio(const QAudioFormat format, const quint16 bufferSize, const bool isulaw);
+	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 bufferSize, const bool isUlaw, const bool isInput);
+	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 bufferSize, const bool isUlaw, const bool isInput);
 	void haveChangeBufferSize(quint16 value);
 
 public slots:
 	void changeBufferSize(quint16 value);
+	void sendTxAudio(QByteArray d);
+
 
 private:
 
@@ -149,10 +153,11 @@ private:
 	bool sentPacketConnect2 = false;
 	uint16_t sendAudioSeq = 0;
 
-    rxAudioHandler* rxaudio;
-    QThread* rxAudioThread;
+	audioHandler* rxaudio;
+	QThread* rxAudioThread;
 
-
+	audioHandler* txaudio;
+	QThread* txAudioThread;
 };
 
 

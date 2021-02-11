@@ -664,8 +664,8 @@ void wfmain::loadSettings()
 
     // Add codec combobox items here so that we can add userdata!
     ui->audioRXCodecCombo->addItem("LPCM 1ch 16bit", 4);
-    ui->audioRXCodecCombo->addItem("LPCM 1ch 8bit", 1);
-    ui->audioRXCodecCombo->addItem("uLaw 1ch 8bit", 2);
+    ui->audioRXCodecCombo->addItem("LPCM 1ch 8bit", 2);
+    ui->audioRXCodecCombo->addItem("uLaw 1ch 8bit", 1);
     ui->audioRXCodecCombo->addItem("LPCM 2ch 16bit", 16);
     ui->audioRXCodecCombo->addItem("uLaw 2ch 8bit", 32);
     ui->audioRXCodecCombo->addItem("PCM 2ch 8bit", 8);
@@ -677,8 +677,8 @@ void wfmain::loadSettings()
             ui->audioRXCodecCombo->setCurrentIndex(f);
 
     ui->audioTXCodecCombo->addItem("LPCM 1ch 16bit", 4);
-    ui->audioTXCodecCombo->addItem("LPCM 1ch 8bit", 1);
-    ui->audioTXCodecCombo->addItem("uLaw 1ch 8bit", 2);
+    ui->audioTXCodecCombo->addItem("LPCM 1ch 8bit", 2);
+    ui->audioTXCodecCombo->addItem("uLaw 1ch 8bit", 1);
 
     prefs.audioTXCodec = settings.value("AudioTXCodec", defPrefs.audioTXCodec).toInt();
     ui->audioTXCodecCombo->setEnabled(ui->lanEnableChk->isChecked());
