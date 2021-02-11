@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 
     QString currentArg;
 
-    const QString helpText = QString("Usage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr, -l --logfile filename.log\n"); // TODO...
+    const QString helpText = QString("\nUsage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr, -l --logfile filename.log\n"); // TODO...
 
     for(int c=1; c<argc; c++)
     {
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
         } else {
             std::cout << "Unrecognized option: " << currentArg.toStdString();
             std::cout << helpText.toStdString();
-            return -1;
+	    return -1;
         }
 
     }
