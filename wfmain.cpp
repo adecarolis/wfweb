@@ -215,6 +215,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     // TODO: Add FM-D and AM-D and where applicable D-Star hich seem to exist
     ui->modeSelectCombo->insertItems(0, modes);
 
+    QStringList filters;
+    filters << "1" << "2" << "3" << "Setup...";
+    ui->modeFilterCombo->addItems(filters);
+
+
     spans << "2.5k" << "5.0k" << "10k" << "25k";
     spans << "50k" << "100k" << "250k" << "500k";
     ui->scopeBWCombo->insertItems(0, spans);
@@ -2399,6 +2404,16 @@ void wfmain::on_sqlSlider_valueChanged(int value)
     emit setSql((unsigned char)value);
 }
 
+void wfmain::on_modeFilterCombo_activated(int index)
+{
+    //TODO:
+    if(index >2)
+    {
+        //filterSetup->show();
+    }
+
+    // emit setFilterSel((unsigned char)index);
+}
 
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
@@ -2413,5 +2428,7 @@ void wfmain::on_debugBtn_clicked()
     //rig->findRigs();
     cal->show();
 }
+
+
 
 

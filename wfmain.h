@@ -281,6 +281,8 @@ private slots:
 
     void on_sqlSlider_valueChanged(int value);
 
+    void on_modeFilterCombo_activated(int index);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
