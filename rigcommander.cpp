@@ -1118,12 +1118,16 @@ void rigCommander::parseWFData()
 void rigCommander::determineRigCaps()
 {
     //TODO: Add if(usingNativeLAN) condition
+    //TODO: Add "hasDD", "hasDV" for d-star (705 and 9700)
     //TODO: Determine available bands (low priority, rig will reject out of band requests anyway)
 
 
     rigCaps.model = model;
     rigCaps.modelID = model; // may delete later
     rigCaps.civ = incomingCIVAddr;
+
+    rigCaps.hasDD = false;
+    rigCaps.hasDV = false;
 
     switch(model){
         case model7300:
@@ -1145,6 +1149,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = true;
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
+            rigCaps.hasDD = true;
+            rigCaps.hasDV = true;
             break;
         case model7610:
             rigCaps.modelName = QString("IC-7610");
@@ -1175,9 +1181,11 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = true;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = true;
+            rigCaps.hasDD = true;
+            rigCaps.hasDV = true;
             break;
         default:
-            rigCaps.modelName = QString("IC-unknown");
+            rigCaps.modelName = QString("IC-RigID: 0x%1").arg(rigCaps.model, 0, 16);
             rigCaps.hasSpectrum = false;
             rigCaps.spectSeqMax = 0;
             rigCaps.spectAmpMax = 0;
@@ -1185,6 +1193,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            qDebug() << "Found unknown rig: " << rigCaps.modelName;
             break;
 
     }
@@ -1315,14 +1324,6 @@ void rigCommander::parseSpectrum()
         //qDebug() << "sequence: " << sequence << " spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
         emit haveSpectrumData(spectrumLine, spectrumStartFreq, spectrumEndFreq);
     }
-
-    /*
-    if(spectrumLine.length() != 475)
-    {
-        qDebug() << "Unusual length spectrum: " << spectrumLine.length();
-        printHex(spectrumLine, false, true);
-    }
-    */
 }
 
 unsigned char rigCommander::bcdHexToDecimal(unsigned char in)
@@ -1480,6 +1481,12 @@ void rigCommander::parseMode()
             break;
         case '\x08':
             mode = "RTTY-R";
+            break;
+        case '\x17':
+            mode = "DV";
+            break;
+        case '\x22':
+            mode = "DD";
             break;
         default:
             qDebug() << "Mode: Unknown: " << payloadIn[01];

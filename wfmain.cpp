@@ -547,6 +547,22 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     // Entry point for unknown rig being identified at the start of the program.
     //now we know what the rig ID is:
     //qDebug() << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
+
+    // We have to be careful here:
+    // If we enter this a second time, we will get two sets of DV and DD modes
+    // Also, if ever there is a rig with DV but without DV, we'll be off by one.
+    // A better solution is to translate the combo selection to a shared type
+    // such as an enum or even the actual CIV mode byte.
+
+    if(rigCaps.hasDV)
+    {
+        ui->modeSelectCombo->addItem("DV");
+    }
+    if(rigCaps.hasDD)
+    {
+        ui->modeSelectCombo->addItem("DD");
+    }
+
     delayedCommand->setInterval(100); // faster polling is ok now.
     receiveRigID(rigCaps);
     getInitialRigState();
