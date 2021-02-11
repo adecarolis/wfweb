@@ -55,6 +55,7 @@ public slots:
     void getRfGain();
     void getAfGain();
     void getSql();
+    void setSquelch(unsigned char level);
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
     void startATU();

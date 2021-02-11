@@ -843,6 +843,11 @@ void rigCommander::getSql()
     prepDataAndSend(payload);
 }
 
+void rigCommander::setSquelch(unsigned char level)
+{
+    sendLevelCmd(0x03, level);
+}
+
 void rigCommander::setRfGain(unsigned char level)
 {
     sendLevelCmd(0x02, level);

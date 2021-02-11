@@ -81,7 +81,8 @@ SOURCES += main.cpp\
     rigidentities.cpp \
 	udphandler.cpp \
 	logcategories.cpp \
-    rxaudiohandler.cpp
+    rxaudiohandler.cpp \
+    calibrationwindow.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -90,8 +91,10 @@ HEADERS  += wfmain.h \
     rigidentities.h \
 	udphandler.h \
 	logcategories.h \
-    rxaudiohandler.h
+    rxaudiohandler.h \
+    calibrationwindow.h
 
-FORMS    += wfmain.ui
+FORMS    += wfmain.ui \
+    calibrationwindow.ui
 
 

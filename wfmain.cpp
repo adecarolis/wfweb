@@ -23,6 +23,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     this->serialPortCL = serialPortCL;
     this->hostCL = hostCL;
 
+    cal = new calibrationWindow();
+
     haveRigCaps = false;
 
     ui->bandStkLastUsedBtn->setVisible(false);
@@ -277,6 +279,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rig, SIGNAL(haveAfGain(unsigned char)), this, SLOT(receiveAfGain(unsigned char)));
     connect(this, SIGNAL(getSql()), rig, SLOT(getSql()));
     connect(rig, SIGNAL(haveSql(unsigned char)), this, SLOT(receiveSql(unsigned char)));
+    connect(this, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
     connect(this, SIGNAL(startATU()), rig, SLOT(startATU()));
     connect(this, SIGNAL(setATU(bool)), rig, SLOT(setATU(bool)));
     connect(this, SIGNAL(getATUStatus()), rig, SLOT(getATUStatus()));
@@ -1099,7 +1102,7 @@ void wfmain:: getInitialRigState()
 
     cmdOutQue.append(cmdGetRxGain);
     cmdOutQue.append(cmdGetAfGain);
-    // cmdOutQue.append(cmdGetSql); // implimented but not used
+    cmdOutQue.append(cmdGetSql); // implimented but not used
     // TODO:
     // get TX level
     // get Scope reference Level
@@ -2148,9 +2151,8 @@ void wfmain::receiveAfGain(unsigned char level)
 
 void wfmain::receiveSql(unsigned char level)
 {
-    // TODO: Maybe add squelch control
-    // qDebug() << "Receive SQL level of                   " << (int)level << " = " << 100*level/255.0 << "%";
-    // ui->sqlSlider->setValue(level); // No SQL control so far
+    qDebug() << "Receive SQL level of                   " << (int)level << " = " << 100*level/255.0 << "%";
+    ui->sqlSlider->setValue(level);
     (void)level;
 }
 
@@ -2367,6 +2369,12 @@ void wfmain::on_connectBtn_clicked()
     }
 }
 
+void wfmain::on_sqlSlider_valueChanged(int value)
+{
+    emit setSql((unsigned char)value);
+}
+
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
@@ -2378,7 +2386,7 @@ void wfmain::on_debugBtn_clicked()
     //emit getScopeSpan(); // in khz, only in "center" mode
     //qDebug() << "Debug: finding rigs attached. Let's see if this works. ";
     //rig->findRigs();
+    cal->show();
 }
-
 
 
