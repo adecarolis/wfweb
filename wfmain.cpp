@@ -212,7 +212,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     modes << "LSB" << "USB" << "AM" << "CW" << "RTTY";
     //          5      6          7           8          9
     modes << "FM" << "CW-R" << "RTTY-R" << "LSB-D" << "USB-D";
-    // TODO: Add FM-D and AM-D which seem to exist
+    // TODO: Add FM-D and AM-D and where applicable D-Star hich seem to exist
     ui->modeSelectCombo->insertItems(0, modes);
 
     spans << "2.5k" << "5.0k" << "10k" << "25k";
