@@ -291,7 +291,7 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
     int outlen = 0;
     if (isUlaw) {
         QByteArray out;
-        if (len < 960)
+        if (len < 1920)
         {
             return 0;
         }
