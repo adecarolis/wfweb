@@ -296,7 +296,7 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
             return 0;
         }
         outlen = qMin(960, (int)len / 2);
-        for (int f = 0; outlen; f++)
+        for (int f = 0; f<outlen; f++)
         {
             out.append(uLawEncode(qFromLittleEndian<qint16>(data+f*2)));
         }
