@@ -13,6 +13,7 @@ enum model_kind {
     model7100 = 0x88,
     model7200 = 0x76,
     model7300 = 0x94,
+    modelR8600 = 0x96,
     model7600 = 0x7A,
     model7610 = 0x98,
     model7700 = 0x74,
@@ -45,6 +46,8 @@ struct rigCapabilities {
 
     bool hasDD;
     bool hasDV;
+
+    bool hasTransmit;
 
 };
 

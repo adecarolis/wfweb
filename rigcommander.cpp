@@ -1129,6 +1129,8 @@ void rigCommander::determineRigCaps()
     rigCaps.hasDD = false;
     rigCaps.hasDV = false;
 
+    rigCaps.hasTransmit = true;
+
     switch(model){
         case model7300:
             rigCaps.modelName = QString("IC-7300");
@@ -1139,6 +1141,17 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            break;
+        case modelR8600:
+            rigCaps.modelName = QString("IC-R8600");
+            rigCaps.hasSpectrum = true;
+            rigCaps.spectSeqMax = 11;
+            rigCaps.spectAmpMax = 160;
+            rigCaps.spectLenMax = 475;
+            rigCaps.hasLan = true;
+            rigCaps.hasEthernet = true;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasTransmit = false;
             break;
         case model9700:
             rigCaps.modelName = QString("IC-9700");
