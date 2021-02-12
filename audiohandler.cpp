@@ -288,28 +288,27 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 
 qint64 audioHandler::writeData(const char* data, qint64 len)
 {
-    int outlen = 0;
     if (isUlaw) {
-        QByteArray out;
-        if (len < 1920)
+        for (int f = 0; f < len / 2; f++)
         {
-            return 0;
+            buffer.append(uLawEncode(qFromLittleEndian<qint16>(data + f * 2)));
         }
-        outlen = qMin(960, (int)len / 2);
-        for (int f = 0; f<outlen; f++)
-        {
-            out.append(uLawEncode(qFromLittleEndian<qint16>(data+f*2)));
-        }
-        emit haveAudioData(out);
-    } else {
-        if ((format.sampleSize()==8 && len<960) || (format.sampleSize()==16 && len<1920))
-        {
-            return 0;
-        }
-        outlen = qMin(format.sampleSize()==8?960:1920, (int)len);
-        emit haveAudioData(QByteArray::fromRawData(data, outlen));
     }
-    return (outlen);
+    else {
+        buffer.append(QByteArray::fromRawData(data, len));
+    }
+    int chunkSize = 1920;
+    if (format.sampleSize() == 8)
+    {
+        chunkSize = 960;
+    }
+
+    if (buffer.length() >= chunkSize)
+    {
+        emit haveAudioData(buffer.mid(0, chunkSize));
+        buffer.remove(0, chunkSize);
+    }
+    return (len); // Always return the same number as we received
 }
 
 qint64 audioHandler::bytesAvailable() const
