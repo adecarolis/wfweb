@@ -632,7 +632,7 @@ void udpAudio::sendTxAudio(QByteArray audio)
       0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00
     };
     int counter = 0;
-    if ((txCodec == 0x01 || txCodec == 0x02 && audio.length() != 960)  || (txCodec == 0x04 && audio.length() != 1920)) {
+    if (((txCodec == 0x01 || txCodec == 0x02) && audio.length() != 960)  || (txCodec == 0x04 && audio.length() != 1920)) {
         qDebug() << "Unsupported TX audio length :" << audio.length() << " With codec: " << txCodec;
     }
     while (counter < audio.length())
@@ -647,7 +647,7 @@ void udpAudio::sendTxAudio(QByteArray audio)
         tx[22] = static_cast<quint8>(partial.length() >> 8 & 0xff);
         tx[23] = static_cast<quint8>(partial.length() & 0xff);
         counter = counter + partial.length();
-        qDebug() << "Sending audio packet length: " << tx.length();
+        //qDebug() << "Sending audio packet length: " << tx.length();
         SendTrackedPacket(tx);
         sendAudioSeq++;
     }
