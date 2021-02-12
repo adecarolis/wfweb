@@ -189,6 +189,8 @@ void audioHandler::reinit()
     if (running) {
         this->start();
     }
+    flush();
+
 }
 
 void audioHandler::start()
