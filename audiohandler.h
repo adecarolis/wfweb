@@ -57,18 +57,19 @@ signals:
 private:
     void reinit();
 
-    int             bufferSize;
     QMutex          mutex;
-    bool            isUlaw;
-    bool            isInput;   // Used to determine whether input or output audio
 
     bool             isInitialized;
+    QAudioOutput* audioOutput;
+    QAudioInput* audioInput;
+    bool            isUlaw;
+    int             bufferSize;
+    bool            isInput;   // Used to determine whether input or output audio
+    float            volume;
+
     QByteArray       buffer;
     QAudioFormat     format;
     QAudioDeviceInfo deviceInfo;
-    QAudioOutput*    audioOutput = Q_NULLPTR;
-    QAudioInput*    audioInput = Q_NULLPTR;
-    float            volume;
 
 };
 

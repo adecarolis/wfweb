@@ -73,11 +73,12 @@ static qint16 uLawDecode(quint8 in)
 audioHandler::audioHandler(QObject* parent) :
     QIODevice(parent),
     isInitialized(false),
-    audioOutput(0),
-    volume(1.0f),
+    audioOutput(Q_NULLPTR),
+    audioInput(Q_NULLPTR)
     isUlaw(false),
     bufferSize(0),
-    isInput(0)
+    isInput(0),
+    volume(1.0f)
 {
 
 }
