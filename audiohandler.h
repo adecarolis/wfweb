@@ -13,6 +13,7 @@
 #include <QAudioInput>
 #include <QIODevice>
 #include <QThread>
+#include <QTimer>
 
 #include <QDebug>
 
@@ -48,11 +49,13 @@ public slots:
 private slots:
     void notified();
     void stateChanged(QAudio::State state);
+    void getNextAudioChunk(void);
 
 signals:
     void audioMessage(QString message);
     void sendBufferSize(quint16 newSize);
     void haveAudioData(const QByteArray& data);
+
 
 private:
     void reinit();
@@ -72,6 +75,8 @@ private:
     QAudioDeviceInfo deviceInfo;
     quint16          radioSampleRate;
     quint8           radioSampleBits;
+    QTimer* txAudioTimer = Q_NULLPTR; // Send pkt0 packets every 1000ms.
+
 
 };
 

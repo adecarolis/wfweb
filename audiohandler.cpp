@@ -177,8 +177,11 @@ void audioHandler::reinit()
         audioInput = Q_NULLPTR;
         audioInput = new QAudioInput(deviceInfo, format, this);
         audioInput->setBufferSize(audioBuffer);
+        audioInput->setNotifyInterval(20);
+
         connect(audioInput, SIGNAL(notify()), SLOT(notified()));
         connect(audioInput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
+
     }
     else {
         // (Re)initialize audio output
@@ -303,6 +306,15 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 
 qint64 audioHandler::writeData(const char* data, qint64 len)
 {
+    QMutexLocker locker(&mutex);
+
+    
+    if (buffer.length() > bufferSize)
+    {
+        qWarning() << "writeData() Buffer overflow";
+        buffer.clear();
+    }
+
     int chunkSize = 960; // Assume 8bit or uLaw.
     if (isUlaw) {
         for (int f = 0; f < len / 2; f++)
@@ -324,11 +336,14 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
         qWarning() << "Unsupported number of bits! :" << radioSampleBits;
     }
 
-    while (buffer.length() >= chunkSize)
+    
+    if (buffer.length() >= chunkSize)
     {
+        qDebug() << "Sending haveAudioData() with " << chunkSize << " bytes " << " rxlen: " << len;
         emit haveAudioData(buffer.mid(0, chunkSize));
         buffer.remove(0, chunkSize);
     }
+    
     return (len); // Always return the same number as we received
 }
 
@@ -395,6 +410,18 @@ void audioHandler::changeBufferSize(const quint16 newSize)
 void audioHandler::getBufferSize()
 {
     emit sendBufferSize(audioOutput->bufferSize());
+}
+
+void audioHandler::getNextAudioChunk()
+{
+    QMutexLocker locker(&mutex);
+    quint16 numSamples = radioSampleBits * 120;
+    if (buffer.size() >= numSamples) {
+        emit haveAudioData(buffer.mid(0, numSamples));
+        buffer.remove(0, numSamples);
+    }
+
+    return;
 }
 
 

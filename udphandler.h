@@ -69,7 +69,7 @@ public:
 	quint16 port=0;
 	QTimer *pkt7Timer=Q_NULLPTR; // Send pkt7 packets every 3 seconds
 	QTimer *pkt0Timer=Q_NULLPTR; // Send pkt0 packets every 1000ms.
-	QTimer *periodic=Q_NULLPTR; // Send pkt0 packets every 1000ms.
+	QTimer* periodic = Q_NULLPTR; // Send pkt0 packets every 1000ms.
 	bool periodicRunning = false;
 	bool sentPacketConnect2 = false;
 	time_t	lastReceived = time(0);

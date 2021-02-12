@@ -498,7 +498,7 @@ void udpSerial::DataReceived()
                     pkt7Timer->start(3000); // send pkt7 idle packets every 3 seconds
 
                     pkt0Timer = new QTimer(this);
-                    connect(pkt0Timer, &QTimer::timeout, this, std::bind(&udpBase::SendPkt0Idle,this,true,0));
+                    connect(pkt0Timer, &QTimer::timeout, this, std::bind(&udpBase::SendPkt0Idle, this, true, 0));
                     pkt0Timer->start(100);
 
                     periodicRunning = true;
@@ -626,6 +626,9 @@ udpAudio::~udpAudio()
     }
 }
 
+
+
+
 void udpAudio::sendTxAudio(QByteArray audio)
 {
     quint8 p[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -634,9 +637,9 @@ void udpAudio::sendTxAudio(QByteArray audio)
       0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00
     };
     int counter = 0;
-    if (((txCodec == 0x01 || txCodec == 0x02) && audio.length() != 960)  || (txCodec == 0x04 && audio.length() != 1920)) {
-        qDebug() << "Unsupported TX audio length :" << audio.length() << " With codec: " << txCodec;
-    }
+    //if (((txCodec == 0x01 || txCodec == 0x02) && audio.length() != 960)  || (txCodec == 0x04 && audio.length() != 1920)) {
+    //    qDebug() << "Unsupported TX audio length :" << audio.length() << " With codec: " << txCodec;
+    //}
     while (counter < audio.length())
     {
         QByteArray tx = QByteArray::fromRawData((const char*)p, sizeof(p));
@@ -654,12 +657,15 @@ void udpAudio::sendTxAudio(QByteArray audio)
         sendAudioSeq++;
     }
 
+
 }
 
 void udpAudio::changeBufferSize(quint16 value)
 {
     emit haveChangeBufferSize(value);
 }
+
+
 
 void udpAudio::DataReceived()
 {
@@ -677,9 +683,11 @@ void udpAudio::DataReceived()
                 remoteSID = qFromBigEndian<quint32>(r.mid(8, 4));
                 if (!periodicRunning) {
                     periodicRunning = true;
+
                     pkt7Timer = new QTimer(this);
                     connect(pkt7Timer, &QTimer::timeout, this, &udpBase::SendPkt7Idle);
                     pkt7Timer->start(3000); // send pkt7 idle packets every 3 seconds
+
                 }
             }
             break;
