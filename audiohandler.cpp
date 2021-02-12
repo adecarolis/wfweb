@@ -298,7 +298,7 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
         buffer.append(QByteArray::fromRawData(data, len));
     }
     int chunkSize = 1920;
-    if (format.sampleSize() == 8)
+    if (format.sampleSize() == 8 || isUlaw)
     {
         chunkSize = 960;
     }
