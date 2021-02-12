@@ -298,18 +298,6 @@ void udpHandler::DataReceived()
 
 qint64 udpHandler::SendRequestSerialAndAudio()
 {
-
-    /*
-        0x72 is RX audio codec
-        0x73 is TX audio codec (only single channel options) 
-        0x01 uLaw 1ch 8bit
-        0x02 PCM 1ch 8bit
-        0x04 PCM 1ch 16bit
-        0x08 PCM 2ch 8bit
-        0x10 PCM 2ch 16bit
-        0x20 uLaw 2ch 8bit
-    */
-
     quint8* usernameEncoded = Passcode(username);
     int txSeqBufLengthMs = 50;
 
@@ -569,12 +557,26 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 b
 
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::DataReceived);
 
-    if (rxCodec == 0x01 || rxCodec == 0x20)
+    /*
+    0x72 is RX audio codec
+    0x73 is TX audio codec (only single channel options)
+    0x01 uLaw 1ch 8bit
+    0x02 PCM 1ch 8bit
+    0x04 PCM 1ch 16bit
+    0x08 PCM 2ch 8bit
+    0x10 PCM 2ch 16bit
+    0x20 uLaw 2ch 8bit
+    */
+
+    if (rxCodec == 0x01 || rxCodec == 0x20) {
         rxIsUlawCodec = true;
-    if (rxCodec == 0x08 || rxCodec == 0x10 || rxCodec == 0x20)
+    }
+    if (rxCodec == 0x08 || rxCodec == 0x10 || rxCodec == 0x20) {
         rxChannelCount = 2;
-    if (rxCodec == 0x02 || rxCodec == 0x8)
-        rxNumSamples = 8; // uLaw is actually 16bit. 
+    }
+    if (rxCodec == 0x04 || rxCodec == 0x10) {
+        rxNumSamples = 16;
+    }
 
     rxaudio = new audioHandler();
     rxAudioThread = new QThread(this);
@@ -588,8 +590,8 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 b
 
     if (txCodec == 0x01)
         txIsUlawCodec = true;
-    else if (txCodec == 0x02)
-        txNumSamples = 8; // uLaw is actually 16bit. 
+    else if (txCodec == 0x04)
+        txNumSamples = 16;
 
     txChannelCount = 1; // Only 1 channel is supported.
 

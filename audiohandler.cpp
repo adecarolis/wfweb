@@ -99,9 +99,10 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
     if (isInitialized) {
         return false;
     }
-    format.setSampleSize(bits);
+    /* Always use 16 bit 48K samples internally*/
+    format.setSampleSize(16);
     format.setChannelCount(channels);
-    format.setSampleRate(samplerate);
+    format.setSampleRate(48000);
     format.setCodec("audio/pcm");
     format.setByteOrder(QAudioFormat::LittleEndian);
     format.setSampleType(QAudioFormat::SignedInt);
@@ -109,6 +110,8 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
     this->bufferSize = buffer;
     this->isUlaw = ulaw;
     this->isInput = isinput;
+    this->radioSampleBits = bits;
+    this->radioSampleRate = samplerate;
 
     if (isInput)
         isInitialized = setDevice(QAudioDeviceInfo::defaultInputDevice());
@@ -272,15 +275,26 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
             qToLittleEndian<qint16>(uLawDecode(buffer.at(f)), data + f * 2);
         }
         buffer.remove(0, outlen);
-        outlen = outlen * 2; 
+        outlen = outlen * 2;
     }
     else {
-        // Just copy it.
-        outlen = qMin(buffer.length(), (int)maxlen);
-        if (outlen % 2 != 0) {
-            outlen += 1;
+        if (radioSampleBits == 8)
+        {
+            outlen = qMin(buffer.length(), (int)maxlen/2);
+            for (int f = 0; f < outlen; f++)
+            {
+                qToLittleEndian<qint16>((qint16)(buffer[f]<<8) - 32640, data + f * 2);
+            }
+            buffer.remove(0, outlen);
+            outlen = outlen * 2;
+        } else {
+            // Just copy it.
+            outlen = qMin(buffer.length(), (int)maxlen);
+            if (outlen % 2 != 0) {
+                outlen += 1;
+            }
+            memcpy(data, buffer.data(), outlen);
         }
-        memcpy(data, buffer.data(), outlen);
         buffer.remove(0, outlen);
     }
 
@@ -289,19 +303,25 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 
 qint64 audioHandler::writeData(const char* data, qint64 len)
 {
+    int chunkSize = 960; // Assume 8bit or uLaw.
     if (isUlaw) {
         for (int f = 0; f < len / 2; f++)
         {
             buffer.append(uLawEncode(qFromLittleEndian<qint16>(data + f * 2)));
         }
     }
-    else {
-        buffer.append(QByteArray::fromRawData(data, len));
+    else if (radioSampleBits == 8) {
+        for (int f = 0; f < len / 2; f++)
+        {
+            buffer.append((quint8)(((qFromLittleEndian<qint16>(data + f * 2) >> 8) ^ 0x80) & 0xff));
+        }
     }
-    int chunkSize = 960;
-    if (format.sampleSize() == 16 && !isUlaw)
-    {
+    else if (radioSampleBits == 16) {
+        buffer.append(QByteArray::fromRawData(data, len));
         chunkSize = 1920;
+    }
+    else {
+        qWarning() << "Unsupported number of bits! :" << radioSampleBits;
     }
 
     while (buffer.length() >= chunkSize)

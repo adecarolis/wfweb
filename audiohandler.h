@@ -70,6 +70,8 @@ private:
     QByteArray       buffer;
     QAudioFormat     format;
     QAudioDeviceInfo deviceInfo;
+    quint16          radioSampleRate;
+    quint8           radioSampleBits;
 
 };
 

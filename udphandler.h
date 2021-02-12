@@ -145,10 +145,10 @@ private:
 	quint8 txCodec;
 	quint8 rxChannelCount = 1;
 	bool rxIsUlawCodec = false;
-	quint8 rxNumSamples = 16;
+	quint8 rxNumSamples = 8;
 	quint8 txChannelCount = 1;
 	bool txIsUlawCodec = false;
-	quint8 txNumSamples = 16;
+	quint8 txNumSamples = 8;
 
 	bool sentPacketConnect2 = false;
 	uint16_t sendAudioSeq = 0;
