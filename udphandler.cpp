@@ -466,7 +466,7 @@ qint64 udpSerial::SendPacketOpenClose(bool close)
         0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
         static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff),
-        0xc0, 0x01, 0x00, static_cast<const quint8>(sendSeqB >> 8 & 0xff), static_cast<const quint8>(sendSeqB & 0xff),static_cast<quint8>(magic)
+        0xc0, 0x01, 0x00, static_cast<quint8>(sendSeqB >> 8 & 0xff), static_cast<quint8>(sendSeqB & 0xff),static_cast<quint8>(magic)
     };
 
     sendSeqB++;
