@@ -132,10 +132,10 @@ signals:
 
 public slots:
 	void changeBufferSize(quint16 value);
-	void sendTxAudio(QByteArray d);
 
 private:
 
+	void sendTxAudio();
 	void DataReceived();
 	QAudioFormat format;
 	quint16 bufferSize;
@@ -158,6 +158,8 @@ private:
 
 	audioHandler* txaudio;
 	QThread* txAudioThread;
+
+	QTimer* txAudioTimer;
 
 };
 
