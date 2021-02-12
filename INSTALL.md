@@ -9,6 +9,9 @@ sudo apt-get install qt5-default
 sudo apt-get install libqt5core5a
 sudo apt-get install qtbase5-dev
 sudo apt-get install libqt5serialport5 libqt5serialport5-dev
+sudo apt-get install libqt5multimedia5
+sudo apt-get install libqt5multimedia5-plugins
+sudo apt-get install qtmultimedia5-dev
 sudo apt-get install git 
 ~~~
 Now you need to install qcustomplot. There are two versions that are commonly found in linux distros: 1.3 and 2.0. Either will work fine. If you are not sure which version your linux install comes with, simply run both commands. One will work and the other will fail, and that's fine!
