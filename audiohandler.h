@@ -75,7 +75,6 @@ private:
     QAudioDeviceInfo deviceInfo;
     quint16          radioSampleRate;
     quint8           radioSampleBits;
-    QTimer* txAudioTimer = Q_NULLPTR; // Send pkt0 packets every 1000ms.
 
 
 };
