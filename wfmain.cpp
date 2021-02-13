@@ -895,7 +895,7 @@ void wfmain::prepareWf()
     {
         // do things
         spectWidth = rigCaps.spectLenMax; // was fixed at 475
-        wfLength = 160; // fixed for now, time-length of waterfall
+        wfLength = ; // fixed for now, time-length of waterfall
 
         // Initialize before use!
 
@@ -1478,7 +1478,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     {
         plot->graph(1)->setData(x,y2); // peaks
     }
-    plot->yAxis->setRange(0, 160);
+    plot->yAxis->setRange(0, rigCaps.spectAmpMax+1);
     plot->xAxis->setRange(startFreq, endFreq);
     plot->replot();
 
