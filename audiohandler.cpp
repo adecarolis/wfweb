@@ -357,12 +357,12 @@ void audioHandler::notified()
 void audioHandler::stateChanged(QAudio::State state)
 {
     if (state == QAudio::IdleState && audioOutput->error() == QAudio::UnderrunError) {
-        qDebug() << this->metaObject()->className() << ":Buffer underrun";
-        if (buffer.length() < bufferSize) {
-            audioOutput->suspend();
-        }
+        qDebug() << this->metaObject()->className() << "RX:Buffer underrun";
+        //if (buffer.length() < bufferSize) {
+        //    audioOutput->suspend();
+        //}
     }
-    qDebug() << this->metaObject()->className() << ": state = " << state;
+    //qDebug() << this->metaObject()->className() << ": state = " << state;
 }
 
 
