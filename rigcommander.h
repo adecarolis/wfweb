@@ -85,7 +85,7 @@ signals:
     void haveSerialPortError(const QString port, const QString errorText);
     void haveStatusUpdate(const QString text);
     void haveFrequency(double frequencyMhz);
-    void haveMode(QString mode);
+    void haveMode(unsigned char mode);
     void haveDataMode(bool dataModeEnabled);
     void haveBandStackReg(float freq, char mode, bool dataOn);
     void haveSpectrumBounds();

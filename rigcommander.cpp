@@ -504,7 +504,8 @@ void rigCommander::getDataMode()
 
 void rigCommander::getPTT()
 {
-    QByteArray payload("\x1C\x00", 2);
+    QByteArray payload;
+    payload.setRawData("\x1C\x00", 2);
     prepDataAndSend(payload);
 }
 
@@ -1128,6 +1129,7 @@ void rigCommander::determineRigCaps()
 
     rigCaps.hasDD = false;
     rigCaps.hasDV = false;
+    rigCaps.hasATU = false;
 
     rigCaps.hasTransmit = true;
 
@@ -1141,6 +1143,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasATU = true;
             break;
         case modelR8600:
             rigCaps.modelName = QString("IC-R8600");
@@ -1184,6 +1187,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = true;
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
+            rigCaps.hasATU = true;
             break;
         case model705:
             rigCaps.modelName = QString("IC-705");
@@ -1196,6 +1200,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = true;
             rigCaps.hasDD = true;
             rigCaps.hasDV = true;
+            rigCaps.hasATU = true;
             break;
         default:
             rigCaps.modelName = QString("IC-RigID: 0x%1").arg(rigCaps.model, 0, 16);
@@ -1467,8 +1472,7 @@ void rigCommander::parseMode()
     //"INDEX: 00 01 02 03 "
     //"DATA:  01 01 02 fd "
 
-    //TODO: D-Star DV and DD modes.
-
+    /*
     switch(payloadIn[01])
     {
         case '\x00':
@@ -1495,6 +1499,10 @@ void rigCommander::parseMode()
         case '\x08':
             mode = "RTTY-R";
             break;
+        case '\x12':
+        case '\x13':
+
+            break;
         case '\x17':
             mode = "DV";
             break;
@@ -1506,8 +1514,9 @@ void rigCommander::parseMode()
             printHex(payloadIn, false, true);
             mode = QString("");
     }
+*/
 
-    emit haveMode(mode);
+    emit haveMode((unsigned char)payloadIn[01]);
 }
 
 

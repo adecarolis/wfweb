@@ -208,16 +208,22 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 //        wfimage.append(empty);
 //    }
 
-    //          0      1        2         3       4
-    modes << "LSB" << "USB" << "AM" << "CW" << "RTTY";
-    //          5      6          7           8          9
-    modes << "FM" << "CW-R" << "RTTY-R" << "LSB-D" << "USB-D";
-    // TODO: Add FM-D and AM-D and where applicable D-Star hich seem to exist
-    ui->modeSelectCombo->insertItems(0, modes);
 
-    QStringList filters;
-    filters << "1" << "2" << "3" << "Setup...";
-    ui->modeFilterCombo->addItems(filters);
+    ui->modeSelectCombo->addItem("LSB",  0x00);
+    ui->modeSelectCombo->addItem("USB",  0x01);
+    ui->modeSelectCombo->addItem("AM",   0x02);
+    ui->modeSelectCombo->addItem("CW",   0x03);
+    ui->modeSelectCombo->addItem("RTTY", 0x04);
+    ui->modeSelectCombo->addItem("FM",   0x05);
+    ui->modeSelectCombo->addItem("CW-R", 0x07);
+    ui->modeSelectCombo->addItem("RTTY-R", 0x08);
+
+
+    ui->modeFilterCombo->addItem("1", 1);
+    ui->modeFilterCombo->addItem("2", 2);
+    ui->modeFilterCombo->addItem("3", 3);
+    ui->modeFilterCombo->addItem("Setup...", 10);
+
 
 
     spans << "2.5k" << "5.0k" << "10k" << "25k";
@@ -262,7 +268,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(spectOutputEnable()), rig, SLOT(enableSpectOutput()));
     connect(this, SIGNAL(scopeDisplayDisable()), rig, SLOT(disableSpectrumDisplay()));
     connect(this, SIGNAL(scopeDisplayEnable()), rig, SLOT(enableSpectrumDisplay()));
-    connect(rig, SIGNAL(haveMode(QString)), this, SLOT(receiveMode(QString)));
+    connect(rig, SIGNAL(haveMode(unsigned char)), this, SLOT(receiveMode(unsigned char)));
     connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
     connect(rig, SIGNAL(haveSpectrumFixedMode(bool)), this, SLOT(receiveSpectrumFixedMode(bool)));
@@ -559,6 +565,7 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     // A better solution is to translate the combo selection to a shared type
     // such as an enum or even the actual CIV mode byte.
 
+    /*
     if(rigCaps.hasDV)
     {
         ui->modeSelectCombo->addItem("DV");
@@ -567,6 +574,7 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     {
         ui->modeSelectCombo->addItem("DD");
     }
+    */
 
     delayedCommand->setInterval(100); // faster polling is ok now.
     receiveRigID(rigCaps);
@@ -895,7 +903,7 @@ void wfmain::prepareWf()
     {
         // do things
         spectWidth = rigCaps.spectLenMax; // was fixed at 475
-        wfLength = ; // fixed for now, time-length of waterfall
+        wfLength = 160; // fixed for now, time-length of waterfall
 
         // Initialize before use!
 
@@ -1117,10 +1125,8 @@ void wfmain:: getInitialRigState()
     // Initial list of queries to the radio.
     // These are made when the program starts up
     // and are used to adjust the UI to match the radio settings
-    // the polling interval is set at 100ms. Faster is possible but slower
+    // the polling interval is set at 200ms. Faster is possible but slower
     // computers will glitch occassionally.
-
-    //cmdOutQue.append(cmdGetRigID);
 
     cmdOutQue.append(cmdGetFreq);
     cmdOutQue.append(cmdGetMode);
@@ -1137,21 +1143,14 @@ void wfmain:: getInitialRigState()
     // get TX level
     // get Scope reference Level
 
-    //cmdOutQue.append(cmdNone);
-    //cmdOutQue.append(cmdGetRigID);
-    //cmdOutQue.append(cmdNone);
-    //cmdOutQue.append(cmdGetRigID);
-
     cmdOutQue.append(cmdDispEnable);
     cmdOutQue.append(cmdSpecOn);
 
-    // get spectrum mode (center or edge)
-    // get spectrum span or edge limit number [1,2,3], update UI
-
     cmdOutQue.append(cmdNone);
-
-    cmdOutQue.append(cmdGetATUStatus);
-
+    if(rigCaps.hasATU)
+    {
+        cmdOutQue.append(cmdGetATUStatus);
+    }
     cmdOut = cmdNone;
     delayedCommand->start();
 }
@@ -1379,6 +1378,25 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         this->rigCaps = rigCaps;
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
         haveRigCaps = true;
+        if(rigCaps.model==model7850)
+        {
+            ui->modeSelectCombo->addItem("PSK", 0x12);
+            ui->modeSelectCombo->addItem("PSK-R", 0x13);
+        }
+
+        if(rigCaps.hasDV)
+        {
+            ui->modeSelectCombo->addItem("DV", 0x17);
+        }
+
+        if(rigCaps.hasDD)
+        {
+            ui->modeSelectCombo->addItem("DD", 0x22);
+        }
+
+        ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
+        ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
+
         ui->connectBtn->setText("Disconnect"); // We must be connected now.
         prepareWf();
         // Adding these here because clearly at this point we have valid
@@ -1619,8 +1637,9 @@ void wfmain::on_stopBtn_clicked()
     //emit scopeDisplayDisable();
 }
 
-void wfmain::receiveMode(QString mode)
+void wfmain::receiveMode(unsigned char mode)
 {
+    /*
     //ui->modeLabel->setText(mode);
     int index;
     //bool ok;
@@ -1639,6 +1658,21 @@ void wfmain::receiveMode(QString mode)
         ui->modeSelectCombo->blockSignals(false);
         currentModeIndex = index;
     }
+    */
+
+    qDebug() << "Received mode " << mode << " current mode: " << currentModeIndex;
+
+
+
+    if((mode >0) && (mode < 0x23))
+    {
+        ui->modeSelectCombo->blockSignals(true);
+        ui->modeSelectCombo->setCurrentIndex(mode);
+        ui->modeSelectCombo->blockSignals(false);
+        currentModeIndex = mode;
+    }
+
+
     // Note: we need to know if the DATA mode is active to reach mode-D
     // some kind of queued query:
     cmdOutQue.append(cmdGetDataMode);
@@ -1647,6 +1681,7 @@ void wfmain::receiveMode(QString mode)
 
 void wfmain::receiveDataModeStatus(bool dataEnabled)
 {
+    /*
     // qDebug() << "Received data mode " << dataEnabled << "\n";
     if(dataEnabled)
     {
@@ -1666,6 +1701,7 @@ void wfmain::receiveDataModeStatus(bool dataEnabled)
         ui->modeSelectCombo->setCurrentIndex(currentModeIndex);
         // No need to update status label?
     }
+    */
 }
 
 void wfmain::on_clearPeakBtn_clicked()
@@ -2181,9 +2217,7 @@ void wfmain::receiveAfGain(unsigned char level)
 
 void wfmain::receiveSql(unsigned char level)
 {
-    qDebug() << "Receive SQL level of                   " << (int)level << " = " << 100*level/255.0 << "%";
     ui->sqlSlider->setValue(level);
-    (void)level;
 }
 
 void wfmain::on_drawTracerChk_toggled(bool checked)
@@ -2426,7 +2460,7 @@ void wfmain::on_debugBtn_clicked()
     //emit getScopeSpan(); // in khz, only in "center" mode
     //qDebug() << "Debug: finding rigs attached. Let's see if this works. ";
     //rig->findRigs();
-    cal->show();
+    // cal->show();
 }
 
 
