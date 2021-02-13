@@ -13,6 +13,7 @@
 #include <QAudioInput>
 #include <QIODevice>
 #include <QThread>
+#include <QTimer>
 
 #include <QDebug>
 
@@ -39,10 +40,12 @@ public:
     qint64 writeData(const char* data, qint64 len);
     qint64 bytesAvailable() const;
     bool isSequential() const;
+    volatile bool chunkAvailable;
+    void incomingAudio(const QByteArray& data);
+    void getNextAudioChunk(QByteArray &data);
 
 public slots:
     bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 bufferSize, const bool isulaw, const bool isinput);
-    void incomingAudio(const QByteArray& data);
     void changeBufferSize(const quint16 newSize);
 
 private slots:
@@ -53,6 +56,7 @@ signals:
     void audioMessage(QString message);
     void sendBufferSize(quint16 newSize);
     void haveAudioData(const QByteArray& data);
+
 
 private:
     void reinit();
@@ -72,6 +76,7 @@ private:
     QAudioDeviceInfo deviceInfo;
     quint16          radioSampleRate;
     quint8           radioSampleBits;
+
 
 };
 

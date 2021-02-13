@@ -498,7 +498,7 @@ void udpSerial::DataReceived()
                     pkt7Timer->start(3000); // send pkt7 idle packets every 3 seconds
 
                     pkt0Timer = new QTimer(this);
-                    connect(pkt0Timer, &QTimer::timeout, this, std::bind(&udpBase::SendPkt0Idle,this,true,0));
+                    connect(pkt0Timer, &QTimer::timeout, this, std::bind(&udpBase::SendPkt0Idle, this, true, 0));
                     pkt0Timer->start(100);
 
                     periodicRunning = true;
@@ -584,7 +584,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 b
     rxaudio->moveToThread(rxAudioThread);
 
     connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool)));
-    connect(this, SIGNAL(haveAudioData(QByteArray)), rxaudio, SLOT(incomingAudio(QByteArray)));
+    //connect(this, SIGNAL(haveAudioData(QByteArray)), rxaudio, SLOT(incomingAudio(QByteArray)));
     connect(this, SIGNAL(haveChangeBufferSize(quint16)), rxaudio, SLOT(changeBufferSize(quint16)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
@@ -601,7 +601,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 b
     txaudio->moveToThread(txAudioThread);
 
     connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool)));
-    connect(txaudio, SIGNAL(haveAudioData(QByteArray)), this, SLOT(sendTxAudio(QByteArray)));
+    //connect(txaudio, SIGNAL(haveAudioData(QByteArray)), this, SLOT(sendTxAudio(QByteArray)));
     connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
     
     rxAudioThread->start();
@@ -624,42 +624,54 @@ udpAudio::~udpAudio()
         txAudioThread->quit();
         txAudioThread->wait();
     }
+    if (txAudioTimer != Q_NULLPTR)
+    {
+        txAudioTimer->stop();
+        delete txAudioTimer;
+    }
 }
 
-void udpAudio::sendTxAudio(QByteArray audio)
+
+
+
+void udpAudio::sendTxAudio()
 {
     quint8 p[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
       static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff),
       0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00
     };
-    int counter = 0;
-    if (((txCodec == 0x01 || txCodec == 0x02) && audio.length() != 960)  || (txCodec == 0x04 && audio.length() != 1920)) {
-        qDebug() << "Unsupported TX audio length :" << audio.length() << " With codec: " << txCodec;
+    //if (((txCodec == 0x01 || txCodec == 0x02) && audio.length() != 960)  || (txCodec == 0x04 && audio.length() != 1920)) {
+    //    qDebug() << "Unsupported TX audio length :" << audio.length() << " With codec: " << txCodec;
+    //}
+    if (txaudio->chunkAvailable) {
+        QByteArray audio;
+        txaudio->getNextAudioChunk(audio);
+        int counter = 0;
+        while (counter < audio.length()) {
+            QByteArray tx = QByteArray::fromRawData((const char*)p, sizeof(p));
+            QByteArray partial = audio.mid(counter, 1364);
+            tx.append(partial);
+            tx[0] = static_cast<quint8>(tx.length() & 0xff);
+            tx[1] = static_cast<quint8>(tx.length() >> 8 & 0xff);
+            tx[18] = static_cast<quint8>(sendAudioSeq >> 8 & 0xff);
+            tx[19] = static_cast<quint8>(sendAudioSeq & 0xff);
+            tx[22] = static_cast<quint8>(partial.length() >> 8 & 0xff);
+            tx[23] = static_cast<quint8>(partial.length() & 0xff);
+            counter = counter + partial.length();
+            //qDebug() << "Sending audio packet length: " << tx.length();
+            SendTrackedPacket(tx);
+            sendAudioSeq++;
+        }
     }
-    while (counter < audio.length())
-    {
-        QByteArray tx = QByteArray::fromRawData((const char*)p, sizeof(p));
-        QByteArray partial = audio.mid(counter, 1364);
-        tx.append(partial);
-        tx[0] = static_cast<quint8>(tx.length() & 0xff);
-        tx[1] = static_cast<quint8>(tx.length() >> 8 & 0xff);
-        tx[18] = static_cast<quint8>(sendAudioSeq >> 8 & 0xff);
-        tx[19] = static_cast<quint8>(sendAudioSeq & 0xff);
-        tx[22] = static_cast<quint8>(partial.length() >> 8 & 0xff);
-        tx[23] = static_cast<quint8>(partial.length() & 0xff);
-        counter = counter + partial.length();
-        //qDebug() << "Sending audio packet length: " << tx.length();
-        SendTrackedPacket(tx);
-        sendAudioSeq++;
-    }
-
 }
 
 void udpAudio::changeBufferSize(quint16 value)
 {
     emit haveChangeBufferSize(value);
 }
+
+
 
 void udpAudio::DataReceived()
 {
@@ -677,9 +689,14 @@ void udpAudio::DataReceived()
                 remoteSID = qFromBigEndian<quint32>(r.mid(8, 4));
                 if (!periodicRunning) {
                     periodicRunning = true;
+
                     pkt7Timer = new QTimer(this);
                     connect(pkt7Timer, &QTimer::timeout, this, &udpBase::SendPkt7Idle);
                     pkt7Timer->start(3000); // send pkt7 idle packets every 3 seconds
+
+                    txAudioTimer = new QTimer(this);
+                    connect(txAudioTimer, &QTimer::timeout, this, &udpAudio::sendTxAudio);
+                    txAudioTimer->start(10); // send pkt7 idle packets every 3 seconds
                 }
             }
             break;
@@ -711,7 +728,7 @@ void udpAudio::DataReceived()
 
                 lastReceivedSeq = gotSeq;
 
-                emit haveAudioData(r.mid(24));
+                rxaudio->incomingAudio(r.mid(24));
             }
             break;
         }

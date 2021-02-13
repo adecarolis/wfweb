@@ -69,7 +69,7 @@ public:
 	quint16 port=0;
 	QTimer *pkt7Timer=Q_NULLPTR; // Send pkt7 packets every 3 seconds
 	QTimer *pkt0Timer=Q_NULLPTR; // Send pkt0 packets every 1000ms.
-	QTimer *periodic=Q_NULLPTR; // Send pkt0 packets every 1000ms.
+	QTimer* periodic = Q_NULLPTR; // Send pkt0 packets every 1000ms.
 	bool periodicRunning = false;
 	bool sentPacketConnect2 = false;
 	time_t	lastReceived = time(0);
@@ -132,10 +132,10 @@ signals:
 
 public slots:
 	void changeBufferSize(quint16 value);
-	void sendTxAudio(QByteArray d);
 
 private:
 
+	void sendTxAudio();
 	void DataReceived();
 	QAudioFormat format;
 	quint16 bufferSize;
@@ -153,11 +153,13 @@ private:
 	bool sentPacketConnect2 = false;
 	uint16_t sendAudioSeq = 0;
 
-	audioHandler* rxaudio;
-	QThread* rxAudioThread;
+	audioHandler* rxaudio=Q_NULLPTR;
+	QThread* rxAudioThread=Q_NULLPTR;
 
-	audioHandler* txaudio;
-	QThread* txAudioThread;
+	audioHandler* txaudio=Q_NULLPTR;
+	QThread* txAudioThread=Q_NULLPTR;
+
+	QTimer* txAudioTimer=Q_NULLPTR;
 
 };
 
