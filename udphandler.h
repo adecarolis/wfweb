@@ -216,8 +216,8 @@ private:
 	bool radioInUse = false;
 
 	quint16 controlPort;
-	quint16 audioPort;
 	quint16 civPort;
+	quint16 audioPort;
 
 	quint16 rxSampleRate;
 	quint16 txSampleRate;
