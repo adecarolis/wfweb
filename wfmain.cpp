@@ -1639,30 +1639,7 @@ void wfmain::on_stopBtn_clicked()
 
 void wfmain::receiveMode(unsigned char mode)
 {
-    /*
-    //ui->modeLabel->setText(mode);
-    int index;
-    //bool ok;
-    index = modes.indexOf(QRegExp(mode)); // find the number corresponding to the mode
-    // qDebug() << "Received mode " << mode << " current mode: " << currentModeIndex << " search index: " << index;
-    if( currentModeIndex == index)
-    {
-        // do nothing, no need to change the selected mode and fire more events off.
-        // TODO/NOTE: This will not check the DATA mode status, may be worth re-thinking this.
-        // Do not update UI.
-        // return;
-    } else if((index >= 0) && (index < 9))
-    {
-        ui->modeSelectCombo->blockSignals(true);
-        ui->modeSelectCombo->setCurrentIndex(index);
-        ui->modeSelectCombo->blockSignals(false);
-        currentModeIndex = index;
-    }
-    */
-
     qDebug() << "Received mode " << mode << " current mode: " << currentModeIndex;
-
-
 
     if((mode >0) && (mode < 0x23))
     {
