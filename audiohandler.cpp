@@ -131,8 +131,7 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
         isInitialized = setDevice(QAudioDeviceInfo::defaultInputDevice());
     else
         isInitialized = setDevice(QAudioDeviceInfo::defaultOutputDevice());
-
-    this->start();
+    
     return isInitialized;
 }
 
@@ -211,6 +210,7 @@ void audioHandler::reinit()
     if (running) {
         this->start();
     }
+    this->flush();
 }
 
 void audioHandler::start()
@@ -223,12 +223,11 @@ void audioHandler::start()
     }
 
     if (isInput) {
-        this->open(QIODevice::WriteOnly);
+        this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
     }
     else {
-        this->open(QIODevice::ReadOnly);
+        this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
     }
-    buffer.clear(); // No buffer used on audioinput.
 
     if (isInput) {
         audioInput->start(this);
@@ -254,6 +253,7 @@ void audioHandler::flush()
     else {
         audioOutput->reset();
     }
+    buffer.clear();
     this->start();
 }
 
@@ -387,9 +387,6 @@ void audioHandler::incomingAudio(const QByteArray& data)
             qDebug() << "RX Audio Suspended, Resuming...";
             audioOutput->resume();
         }
-    }
-    else {
-        qDebug() << this->metaObject()->className() << ": Audio received from radio but audio output is stopped!";
     }
 }
 

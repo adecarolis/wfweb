@@ -22,6 +22,11 @@
 
 #include "audiohandler.h"
 
+#define PURGE_SECONDS 5
+
+quint8* passcode(QString str);
+QByteArray parseNullTerminatedString(QByteArray c, int s);
+
 // Parent class that contains all common items.
 class udpBase : public QObject
 {
@@ -31,21 +36,14 @@ public:
 
 	void init();
 
-	qint64 SendTrackedPacket(QByteArray d);
-	qint64 SendPacketConnect();
-	qint64 SendPacketConnect2();
-	qint64 SendPacketDisconnect();
-	void SendPkt0Idle(bool tracked, quint16 seq);
-	void SendPkt7Idle();
-	void PurgeOldEntries();
+	void dataReceived(QByteArray r); 
+	void sendAreYouThere();
+	void sendPing(); // Periodic type 0x07 ping packet sending
+	void sendIdle(bool tracked, quint16 seq);
 
-	void DataReceived(QByteArray r);
-
-	unsigned char* Passcode(QString str);
-	QByteArray parseNullTerminatedString(QByteArray c, int s);
 	QUdpSocket* udp=Q_NULLPTR;
-	uint32_t localSID = 0;
-	uint32_t remoteSID = 0;
+	uint32_t myId = 0;
+	uint32_t remoteId = 0;
 	char authID[6] = { 0, 0, 0, 0, 0, 0 };
 	char a8replyID[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	uint16_t authInnerSendSeq = 0;
@@ -54,10 +52,7 @@ public:
 	uint16_t sendSeq = 1;
 	uint16_t lastReceivedSeq = 0;
 	uint16_t pkt0SendSeq = 0;
-	uint16_t pkt7SendSeq = 0;
 	uint16_t periodicSeq = 0;
-	QDateTime lastPacket0Sent;
-	QDateTime lastPacket7Sent;
 	quint64 latency = 0;
 
 	QString username = "";
@@ -67,9 +62,6 @@ public:
 	bool isAuthenticated = false;
 	quint16 localPort=0;
 	quint16 port=0;
-	QTimer *pkt7Timer=Q_NULLPTR; // Send pkt7 packets every 3 seconds
-	QTimer *pkt0Timer=Q_NULLPTR; // Send pkt0 packets every 1000ms.
-	QTimer* periodic = Q_NULLPTR; // Send pkt0 packets every 1000ms.
 	bool periodicRunning = false;
 	bool sentPacketConnect2 = false;
 	time_t	lastReceived = time(0);
@@ -84,31 +76,45 @@ public:
 	QList <SEQBUFENTRY> txSeqBuf = QList<SEQBUFENTRY>();
 	QList <SEQBUFENTRY> seqBuf = QList<SEQBUFENTRY>();
 
+	void sendAreYouReady();
+	void sendPacketDisconnect();
+	void sendTrackedPacket(QByteArray d);
+	void purgeOldEntries();
+
+	QTimer areYouThereTimer; // Send are-you-there packets every second until a response is received.
+	QTimer pingTimer; // Start sending pings immediately.
+	QTimer idleTimer; // Start watchdog once we are connected.
+
+	QDateTime lastPingSentTime;
+	uint16_t pingSendSeq = 0;
+
+	QDateTime lastControlPacketSentTime;
+
 };
 
 
 // Class for all (pseudo) serial communications
-class udpSerial : public udpBase
+class udpCivData : public udpBase
 {
 	Q_OBJECT
 
 public:
-	udpSerial(QHostAddress local, QHostAddress ip, quint16 sport);
+	udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort);
+	~udpCivData();
 	QMutex serialmutex;
 
 signals:
-	//void ReceiveSerial(QByteArray);
-	int Receive(QByteArray);
+	int receive(QByteArray);
 
 public slots:
-	int Send(QByteArray d);
+	void send(QByteArray d);
 
 
 private:
-	void DataReceived();
+	void dataReceived();
 	void SendIdle();
 	void SendPeriodic();
-	qint64 SendPacketOpenClose(bool close);
+	void sendOpenClose(bool close);
 };
 
 
@@ -120,7 +126,6 @@ class udpAudio : public udpBase
 public:
 	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
 	~udpAudio();
-	QAudioOutput* audio;
 
 signals:
     void haveAudioData(QByteArray data);
@@ -136,7 +141,7 @@ public slots:
 private:
 
 	void sendTxAudio();
-	void DataReceived();
+	void dataReceived();
 	QAudioFormat format;
 	quint16 bufferSize;
 	quint16 rxSampleRate;
@@ -159,7 +164,7 @@ private:
 	audioHandler* txaudio=Q_NULLPTR;
 	QThread* txAudioThread=Q_NULLPTR;
 
-	QTimer* txAudioTimer=Q_NULLPTR;
+	QTimer txAudioTimer;
 
 };
 
@@ -175,21 +180,19 @@ public:
 					quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
 	~udpHandler();
 
-	udpSerial *serial=Q_NULLPTR;
-	udpAudio *audio=Q_NULLPTR;
-
 	bool serialAndAudioOpened = false;
 
+	udpCivData* civ = Q_NULLPTR;
+	udpAudio* audio = Q_NULLPTR;
 
 
 public slots:
 	void receiveDataFromUserToRig(QByteArray); // This slot will send data on to 
-	void receiveFromSerialStream(QByteArray);
+	void receiveFromCivStream(QByteArray);
 	void changeBufferSize(quint16 value);
 
 
 signals:
-	void RigConnected(const QString&);
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
 	void haveNetworkError(QString, QString);
 	void haveNetworkStatus(QString);
@@ -197,11 +200,12 @@ signals:
 
 private:
 
-	qint64 SendRequestSerialAndAudio();
-	qint64 SendPacketLogin();
-	qint64 SendPacketAuth(uint8_t magic);
-	void ReAuth();
-	void DataReceived();
+	void dataReceived();
+
+	void sendRequestSerialAndAudio();
+	void sendLogin();
+	void sendToken(uint8_t magic);
+
 	bool gotA8ReplyID = false;
 	bool gotAuthOK = false;
 
@@ -211,8 +215,10 @@ private:
 
 	bool radioInUse = false;
 
-	quint16 aport;
-	quint16 sport;
+	quint16 controlPort;
+	quint16 audioPort;
+	quint16 civPort;
+
 	quint16 rxSampleRate;
 	quint16 txSampleRate;
 	quint16 rxBufferSize;
@@ -220,9 +226,14 @@ private:
 	quint8 txCodec;
 
 	quint16 reauthInterval = 60000;
-	QTimer reauthTimer;
 	QByteArray devName;
 	QByteArray compName;
+	
+	QTimer tokenTimer;
+	QTimer areYouThereTimer;
+
+
+
 };
 
 

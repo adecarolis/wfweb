@@ -3,17 +3,14 @@
 
 #include "udphandler.h"
 
-udpHandler::udpHandler(QString ip, quint16 cport, quint16 sport, quint16 aport, QString username, QString password, 
-                            quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec)
+udpHandler::udpHandler(QString ip, quint16 controlPort, quint16 civPort, quint16 audioPort, QString username, QString password, 
+                            quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec) :
+    controlPort(controlPort),
+    civPort(civPort),
+    audioPort(audioPort)
 {
-    qDebug() << "Starting udpHandler user:" << username << " buffer:" << buffer << " rx sample rate: " << rxsample << 
-                        " rx codec: " << rxcodec << " tx sample rate: " << txsample << " tx codec: " << txcodec;
 
-    // Lookup IP address
-
-    this->port = cport;
-    this->aport = aport;
-    this->sport = sport;
+    this->port = this->controlPort;
     this->username = username;
     this->password = password;
     this->rxBufferSize = buffer;
@@ -22,17 +19,8 @@ udpHandler::udpHandler(QString ip, quint16 cport, quint16 sport, quint16 aport, 
     this->rxCodec = rxcodec;
     this->txCodec = txcodec;
 
-    /*
-    0x01 uLaw 1ch 8bit
-    0x02 PCM 1ch 8bit
-    0x04 PCM 1ch 16bit
-    0x08 PCM 2ch 8bit
-    0x10 PCM 2ch 16bit
-    0x20 uLaw 2ch 8bit
-    */
-    this->rxCodec = rxcodec;
-    this->txCodec = txcodec;
-
+    qDebug() << "Starting udpHandler user:" << username << " buffer:" << buffer << " rx sample rate: " << rxsample <<
+        " rx codec: " << rxcodec << " tx sample rate: " << txsample << " tx codec: " << txcodec;
 
     // Try to set the IP address, if it is a hostname then perform a DNS lookup.
     if (!radioIP.setAddress(ip))
@@ -64,34 +52,40 @@ udpHandler::udpHandler(QString ip, quint16 cport, quint16 sport, quint16 aport, 
         }
     }
 
+    udpBase::init(); // Perform UDP socket initialization.
 
+    // Connect socket to my dataReceived function.
+    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpHandler::dataReceived);
 
-    init(); // Perform connection
-    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpHandler::DataReceived);
+    /*
+        Connect various timers
+    */
+    connect(&tokenTimer, &QTimer::timeout, this, std::bind(&udpHandler::sendToken, this, 0x05));
+    connect(&areYouThereTimer, &QTimer::timeout, this, QOverload<>::of(&udpBase::sendAreYouThere));
+    connect(&pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
+    connect(&idleTimer, &QTimer::timeout, this, std::bind(&udpBase::sendIdle, this, true, 0));
 
-    connect(&reauthTimer, &QTimer::timeout, this, QOverload<>::of(&udpHandler::ReAuth));
+    // Start sending are you there packets - will be stopped once "I am here" received
+    areYouThereTimer.start(500);
 
-    udpBase::SendPacketConnect(); // First connect packet
+    // Set my computer name. Should this be configurable?
     compName = QString("wfview").toUtf8();
+
 }
 
 udpHandler::~udpHandler()
 {
-    if (isAuthenticated)
-    {
-        if (audio != Q_NULLPTR)
-        {
+    if (isAuthenticated) {
+        if (audio != Q_NULLPTR) {
             delete audio;
         }
 
-        if (serial != Q_NULLPTR)
-        {
-            delete serial;
+        if (civ != Q_NULLPTR) {
+            delete civ;
         }
 
-        qDebug() << "Sending De-Auth packet to radio";
-        SendPacketAuth(0x01);
-
+        qDebug() << "Sending token removal packet";
+        sendToken(0x01);
     }
 }
 
@@ -100,26 +94,20 @@ void udpHandler::changeBufferSize(quint16 value)
     emit haveChangeBufferSize(value);
 }
 
-void udpHandler::ReAuth()
-{
-    qDebug() << "Performing ReAuth";
-    SendPacketAuth(0x05);
-}
-
-void udpHandler::receiveFromSerialStream(QByteArray data)
+void udpHandler::receiveFromCivStream(QByteArray data)
 {
     emit haveDataFromPort(data);
 }
 
 void udpHandler::receiveDataFromUserToRig(QByteArray data)
 {
-    if (serial != Q_NULLPTR)
+    if (civ != Q_NULLPTR)
     {
-        serial->Send(data);
+        civ->send(data);
     }
 }
 
-void udpHandler::DataReceived()
+void udpHandler::dataReceived()
 {
     while (udp->hasPendingDatagrams()) {
         lastReceived = time(0);
@@ -129,23 +117,30 @@ void udpHandler::DataReceived()
 
         switch (r.length())
         {
-        case (16): // Response to pkt0
-            if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x06\x00\x01\x00"))
-            {
-                // Update remoteSID
-                if (!sentPacketLogin) {
-                    remoteSID = qFromBigEndian<quint32>(r.mid(8, 4));
-                    SendPacketLogin(); // second login packet
-                    sentPacketLogin = true;
+        case (16):
+            if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x04\x00\x00\x00")) {
+                // If timer is active, stop it as they are obviously there!
+                if (areYouThereTimer.isActive()) {
+                    areYouThereTimer.stop();
+                    // send ping packets every second
+                    pingTimer.start(1000);
+                    idleTimer.start(100);
                 }
+            }
+            // This is "I am ready" in response to "Are you ready" so send login.
+            else if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x06\x00\x01\x00"))
+            {
+                qDebug() << this->metaObject()->className() << ": Received I am ready";
+                remoteId = qFromBigEndian<quint32>(r.mid(8, 4));
+                sendLogin(); // second login packet
             }
             break;
         case (21): // pkt7, 
             if (r.mid(1, 5) == QByteArrayLiteral("\x00\x00\x00\x07\x00") && r[16] == (char)0x01 && serialAndAudioOpened)
             {
                 //qDebug("Got response!");
-                // This is a response to our pkt7 request so measure latency (only once fully connected though.
-                latency += lastPacket7Sent.msecsTo(QDateTime::currentDateTime());
+                // This is a response to our ping request so measure latency (only once fully connected though.
+                latency += lastPingSentTime.msecsTo(QDateTime::currentDateTime());
                 latency /= 2;
                 emit haveNetworkStatus(" rtt: " + QString::number(latency) + " ms");
             }
@@ -159,7 +154,7 @@ void udpHandler::DataReceived()
                     gotAuthOK = true;
                     if (!serialAndAudioOpened)
                     {
-                        SendRequestSerialAndAudio();
+                        sendRequestSerialAndAudio();
                     }
                 }
             }
@@ -172,13 +167,13 @@ void udpHandler::DataReceived()
                     if (!serialAndAudioOpened)
                     {
                         emit haveNetworkError(radioIP.toString(), "Auth failed, try rebooting the radio.");
-                        qDebug() << "Auth failed, try rebooting the radio.";
+                        qDebug() << this->metaObject()->className() << "Auth failed, try rebooting the radio.";
                     }
                 }
                 if (r.mid(48, 3) == QByteArrayLiteral("\x00\x00\x00") && r[64] == (char)0x01)
                 {
                     emit haveNetworkError(radioIP.toString(), "Got radio disconnected.");
-                    qDebug() << "Got radio disconnected.";
+                    qDebug() << this->metaObject()->className() << "Got radio disconnected.";
                 }
             }
             break;
@@ -188,14 +183,14 @@ void udpHandler::DataReceived()
             {
                 if (r.mid(48, 4) == QByteArrayLiteral("\xff\xff\xff\xfe"))
                 {
-                    emit haveNetworkError(radioIP.toString(), "Invalid Username/Password");
-                    qDebug() << "Invalid Username/Password";
+                    emit haveNetworkStatus("Invalid Username/Password");
+                    qDebug() << this->metaObject()->className() << "Invalid Username/Password";
 
                 }
                 else if (!isAuthenticated)
                 {
-                    emit haveNetworkError(radioIP.toString(), "Radio Login OK!");
-                    qDebug() << "Login OK!";
+                    emit haveNetworkStatus("Radio Login OK!");
+                    qDebug() << this->metaObject()->className() << "Received Login OK";
 
                     authID[0] = r[26];
                     authID[1] = r[27];
@@ -204,19 +199,8 @@ void udpHandler::DataReceived()
                     authID[4] = r[30];
                     authID[5] = r[31];
 
-                    pkt7Timer = new QTimer(this);
-                    connect(pkt7Timer, &QTimer::timeout, this, &udpBase::SendPkt7Idle);
-                    pkt7Timer->start(3000); // send pkt7 idle packets every 3 seconds
-
-                    SendPacketAuth(0x02);
-
-                    pkt0Timer = new QTimer(this);
-                    connect(pkt0Timer, &QTimer::timeout, this, std::bind(&udpBase::SendPkt0Idle, this, true, 0));
-                    pkt0Timer->start(100);
-
-                    SendPacketAuth(0x05);
-
-                    reauthTimer.start(reauthInterval);
+                    sendToken(0x02);
+                    tokenTimer.start(60000); // Start token request timer
 
                     isAuthenticated = true;
                 }
@@ -224,44 +208,52 @@ void udpHandler::DataReceived()
             }
             break;
         case (144):
-            if (!serialAndAudioOpened && r.mid(0, 6) == QByteArrayLiteral("\x90\x00\x00\x00\x00\x00") && r[0x60] == (char)0x01)
+            if (!serialAndAudioOpened && r.mid(0, 6) == QByteArrayLiteral("\x90\x00\x00\x00\x00\x00") && r[0x60] == (char)0x00)
             {
                 devName = parseNullTerminatedString(r, 0x40);
                 QHostAddress ip = QHostAddress(qFromBigEndian<quint32>(r.mid(0x84, 4)));
                 if (!ip.isEqual(QHostAddress("0.0.0.0")) && parseNullTerminatedString(r, 0x64) != compName) //  || ip != localIP ) // TODO: More testing of IP address detection code!
                 {
-                    emit haveNetworkStatus("Radio in use by: " + QString::fromUtf8(parseNullTerminatedString(r, 0x64))+" ("+ip.toString()+")");
-                } 
-                else
-                {
+                    emit haveNetworkStatus(QString::fromUtf8(devName) + "in use by: " + QString::fromUtf8(parseNullTerminatedString(r, 0x64)) + " (" + ip.toString() + ")");
+                }
+                else {
+                    emit haveNetworkStatus(QString::fromUtf8(devName) + " available");
+                    sendRequestSerialAndAudio();
+                }
+            }
+            else if (!serialAndAudioOpened && r.mid(0, 6) == QByteArrayLiteral("\x90\x00\x00\x00\x00\x00") && r[0x60] == (char)0x01)
+            {
+                    devName = parseNullTerminatedString(r, 0x40);
 
-                    serial = new udpSerial(localIP, radioIP, sport);
-                    audio = new udpAudio(localIP, radioIP, aport,rxBufferSize,rxSampleRate, rxCodec,txSampleRate,txCodec);
+                    civ = new udpCivData(localIP, radioIP, civPort);
+                    audio = new udpAudio(localIP, radioIP, audioPort,rxBufferSize,rxSampleRate, rxCodec,txSampleRate,txCodec);
 
-                    QObject::connect(serial, SIGNAL(Receive(QByteArray)), this, SLOT(receiveFromSerialStream(QByteArray)));
+                    QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
                     QObject::connect(this, SIGNAL(haveChangeBufferSize(quint16)), audio, SLOT(changeBufferSize(quint16)));
 
                     serialAndAudioOpened = true;
 
                     emit haveNetworkStatus(QString::fromUtf8(devName));
 
-                    qDebug() << "Got serial and audio request success, device name: " << QString::fromUtf8(devName);
+                    qDebug() << this->metaObject()->className() << "Got serial and audio request success, device name: " << QString::fromUtf8(devName);
 
                     // Stuff can change in the meantime because of a previous login...
-                    remoteSID = qFromBigEndian<quint32>(r.mid(8, 4));
-                    localSID = qFromBigEndian<quint32>(r.mid(12, 4));
+                    remoteId = qFromBigEndian<quint32>(r.mid(8, 4));
+                    myId = qFromBigEndian<quint32>(r.mid(12, 4));
                     authID[0] = r[26];
                     authID[1] = r[27];
                     authID[2] = r[28];
                     authID[3] = r[29];
                     authID[4] = r[30];
                     authID[5] = r[31];
-                }
                 // Is there already somebody connected to the radio?
             }
             break;
 
         case (168):
+            qDebug() << this->metaObject()->className() << "Received radio capabilities, Name:" <<
+                QString::fromUtf8(parseNullTerminatedString(r, 0x52)) << " Audio:" <<
+                QString::fromUtf8(parseNullTerminatedString(r, 0x72));
 
             if (r.mid(0, 6) == QByteArrayLiteral("\xa8\x00\x00\x00\x00\x00")) 
             {
@@ -285,7 +277,7 @@ void udpHandler::DataReceived()
             }
             break;
         }
-        udpBase::DataReceived(r); // Call parent function to process the rest.
+        udpBase::dataReceived(r); // Call parent function to process the rest.
         r.clear();
         datagram.clear();
 
@@ -296,15 +288,15 @@ void udpHandler::DataReceived()
 
 
 
-qint64 udpHandler::SendRequestSerialAndAudio()
+void udpHandler::sendRequestSerialAndAudio()
 {
-    quint8* usernameEncoded = Passcode(username);
+    quint8* usernameEncoded = passcode(username);
     int txSeqBufLengthMs = 50;
 
     const quint8 p[] = {
         0x90, 0x00, 0x00, 0x00, 0x00, 0x00,  0x00, 0x00,
-        static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
-        static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff),
+        static_cast<quint8>(myId >> 24 & 0xff), static_cast<quint8>(myId >> 16 & 0xff), static_cast<quint8>(myId >> 8 & 0xff), static_cast<quint8>(myId & 0xff),
+        static_cast<quint8>(remoteId >> 24 & 0xff), static_cast<quint8>(remoteId >> 16 & 0xff), static_cast<quint8>(remoteId >> 8 & 0xff), static_cast<quint8>(remoteId & 0xff),
         0x00, 0x00, 0x00, 0x80, 0x01, 0x03, 0x00, static_cast<quint8>(authInnerSendSeq & 0xff), static_cast<quint8>(authInnerSendSeq >> 8 & 0xff),
         0x00, static_cast<quint8>(authID[0]), static_cast<quint8>(authID[1]), static_cast<quint8>(authID[2]),
         static_cast<quint8>(authID[3]), static_cast<quint8>(authID[4]), static_cast<quint8>(authID[5]),
@@ -324,29 +316,32 @@ qint64 udpHandler::SendRequestSerialAndAudio()
         usernameEncoded[12], usernameEncoded[13], usernameEncoded[14], usernameEncoded[15],
         0x01, 0x01, rxCodec, txCodec, 0x00, 0x00, static_cast<quint8>(rxSampleRate >> 8 & 0xff), static_cast<quint8>(rxSampleRate & 0xff),
         0x00, 0x00, static_cast<quint8>(txSampleRate >> 8 & 0xff), static_cast<quint8>(txSampleRate & 0xff),
-        0x00, 0x00, static_cast<quint8>(sport >> 8 & 0xff), static_cast<quint8>(sport & 0xff),
-        0x00, 0x00, static_cast<quint8>(aport >> 8 & 0xff), static_cast<quint8>(aport & 0xff), 0x00, 0x00,
+        0x00, 0x00, static_cast<quint8>(civPort >> 8 & 0xff), static_cast<quint8>(civPort & 0xff),
+        0x00, 0x00, static_cast<quint8>(audioPort >> 8 & 0xff), static_cast<quint8>(audioPort & 0xff), 0x00, 0x00,
         static_cast<quint8>(txSeqBufLengthMs >> 8 & 0xff), static_cast<quint8>(txSeqBufLengthMs & 0xff), 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     };
 
     authInnerSendSeq++;
     delete[] usernameEncoded;
 
-    return SendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
+    sendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
+    return;
 }
 
 
-qint64 udpHandler::SendPacketLogin() // Only used on control stream.
+void udpHandler::sendLogin() // Only used on control stream.
 {
 
+    qDebug() << this->metaObject()->className() << ": Sending login packet";
+
     uint16_t authStartID = rand() | rand() << 8;
-    quint8* usernameEncoded = Passcode(username);
-    quint8* passwordEncoded = Passcode(password);
+    quint8* usernameEncoded = passcode(username);
+    quint8* passwordEncoded = passcode(password);
 
     quint8 p[] = {
         0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
-        static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff),
+        static_cast<quint8>(myId >> 24 & 0xff), static_cast<quint8>(myId >> 16 & 0xff), static_cast<quint8>(myId >> 8 & 0xff), static_cast<quint8>(myId & 0xff),
+        static_cast<quint8>(remoteId >> 24 & 0xff), static_cast<quint8>(remoteId >> 16 & 0xff), static_cast<quint8>(remoteId >> 8 & 0xff), static_cast<quint8>(remoteId & 0xff),
         0x00, 0x00, 0x00, 0x70, 0x01, 0x00, 0x00, static_cast<quint8>(authInnerSendSeq & 0xff), static_cast<quint8>(authInnerSendSeq >> 8 & 0xff),
         0x00, static_cast<quint8>(authStartID & 0xff), static_cast<quint8>(authStartID >> 8 & 0xff), 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -373,17 +368,19 @@ qint64 udpHandler::SendPacketLogin() // Only used on control stream.
     delete[] passwordEncoded;
 
     authInnerSendSeq++;
-    return SendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
+    sendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
+    return;
 }
 
 
-qint64 udpHandler::SendPacketAuth(uint8_t magic)
+void udpHandler::sendToken(uint8_t magic)
 {
 
+    qDebug() << this->metaObject()->className() << "Sending Token confirmation: " << magic;
     const quint8 p[] = {
         0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,0x00,
-        static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
-        static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff),
+        static_cast<quint8>(myId >> 24 & 0xff), static_cast<quint8>(myId >> 16 & 0xff), static_cast<quint8>(myId >> 8 & 0xff), static_cast<quint8>(myId & 0xff),
+        static_cast<quint8>(remoteId >> 24 & 0xff), static_cast<quint8>(remoteId >> 16 & 0xff), static_cast<quint8>(remoteId >> 8 & 0xff), static_cast<quint8>(remoteId & 0xff),
         0x00, 0x00, 0x00, 0x30, 0x01, static_cast<quint8>(magic), 0x00, static_cast<quint8>(authInnerSendSeq & 0xff), static_cast<quint8>((authInnerSendSeq) >> 8 & 0xff), 0x00,
         static_cast<quint8>(authID[0]), static_cast<quint8>(authID[1]), static_cast<quint8>(authID[2]), 
         static_cast<quint8>(authID[3]), static_cast<quint8>(authID[4]), static_cast<quint8>(authID[5]),
@@ -394,66 +391,82 @@ qint64 udpHandler::SendPacketAuth(uint8_t magic)
     };
 
     authInnerSendSeq++;
-    return SendTrackedPacket(QByteArray::fromRawData((const char *)p, sizeof(p)));
+    sendTrackedPacket(QByteArray::fromRawData((const char *)p, sizeof(p)));
+    return;
 }
 
 
-// (pseudo) serial class
-udpSerial::udpSerial(QHostAddress local, QHostAddress ip, quint16 sport) 
+// Class that manages all Civ Data to/from the rig
+udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort) 
 {
-    qDebug() << "Starting udpSerial";
+    qDebug() << "Starting udpCivData";
     localIP = local;
-    port = sport;
+    port = civPort;
     radioIP = ip;
 
-    init(); // Perform connection
+    udpBase::init(); // Perform connection
 
-    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpSerial::DataReceived);
-    SendPacketConnect(); // First connect packet
+    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpCivData::dataReceived);
+
+    sendAreYouThere(); // First connect packet
+
+    /*
+        Connect various timers
+    */
+    connect(&pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
+    connect(&idleTimer, &QTimer::timeout, this, std::bind(&udpBase::sendIdle, this, true, 0));
+
+    // send ping packets every 100 ms (maybe change to less frequent?)
+    pingTimer.start(100);
+    // Send idle packets every 100ms, this timer will be reset everytime a non-idle packet is sent.
+    idleTimer.start(100);
 }
 
+udpCivData::~udpCivData() {
+    sendOpenClose(true);
+}
 
-int udpSerial::Send(QByteArray d)
+void udpCivData::send(QByteArray d)
 {
     // qDebug() << "Sending: (" << d.length() << ") " << d;
 
     uint16_t l = d.length();
     const quint8 p[] = { static_cast<quint8>(0x15 + l), 0x00, 0x00, 0x00, 0x00, 0x00,0x00,0x00,
-        static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
-        static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff),
+        static_cast<quint8>(myId >> 24 & 0xff), static_cast<quint8>(myId >> 16 & 0xff), static_cast<quint8>(myId >> 8 & 0xff), static_cast<quint8>(myId & 0xff),
+        static_cast<quint8>(remoteId >> 24 & 0xff), static_cast<quint8>(remoteId >> 16 & 0xff), static_cast<quint8>(remoteId >> 8 & 0xff), static_cast<quint8>(remoteId & 0xff),
         0xc1, static_cast<quint8>(l), 0x00, static_cast<quint8>(sendSeqB >> 8 & 0xff),static_cast<quint8>(sendSeqB & 0xff)
     };
     QByteArray t = QByteArray::fromRawData((const char*)p, sizeof(p));
     t.append(d);
-    SendTrackedPacket(t);
+    sendTrackedPacket(t);
     sendSeqB++;
-    return 1;
+    return;
 }
 
 
 
-void udpSerial::SendIdle()
+void udpCivData::SendIdle()
 {
     const quint8 p[] = { 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
-        static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff)
+        static_cast<quint8>(myId >> 24 & 0xff), static_cast<quint8>(myId >> 16 & 0xff), static_cast<quint8>(myId >> 8 & 0xff), static_cast<quint8>(myId & 0xff),
+        static_cast<quint8>(remoteId >> 24 & 0xff), static_cast<quint8>(remoteId >> 16 & 0xff), static_cast<quint8>(remoteId >> 8 & 0xff), static_cast<quint8>(remoteId & 0xff)
     };
 
-    SendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
+    sendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
 }
 
-void udpSerial::SendPeriodic()
+void udpCivData::SendPeriodic()
 {
     const quint8 p[] = { 0x15, 0x00, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00,
-        static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
-        static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff)
+        static_cast<quint8>(myId >> 24 & 0xff), static_cast<quint8>(myId >> 16 & 0xff), static_cast<quint8>(myId >> 8 & 0xff), static_cast<quint8>(myId & 0xff),
+        static_cast<quint8>(remoteId >> 24 & 0xff), static_cast<quint8>(remoteId >> 16 & 0xff), static_cast<quint8>(remoteId >> 8 & 0xff), static_cast<quint8>(remoteId & 0xff)
     };
 
-    SendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
+    sendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
 
 }
 
-qint64 udpSerial::SendPacketOpenClose(bool close)
+void udpCivData::sendOpenClose(bool close)
 {
     uint8_t magic = 0x05;
 
@@ -464,19 +477,20 @@ qint64 udpSerial::SendPacketOpenClose(bool close)
 
     const quint8 p[] = {
         0x16, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
-        static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff),
+        static_cast<quint8>(myId >> 24 & 0xff), static_cast<quint8>(myId >> 16 & 0xff), static_cast<quint8>(myId >> 8 & 0xff), static_cast<quint8>(myId & 0xff),
+        static_cast<quint8>(remoteId >> 24 & 0xff), static_cast<quint8>(remoteId >> 16 & 0xff), static_cast<quint8>(remoteId >> 8 & 0xff), static_cast<quint8>(remoteId & 0xff),
         0xc0, 0x01, 0x00, static_cast<quint8>(sendSeqB >> 8 & 0xff), static_cast<quint8>(sendSeqB & 0xff),static_cast<quint8>(magic)
     };
 
     sendSeqB++;
 
-    return SendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
+    sendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
+    return;
 }
 
 
 
-void udpSerial::DataReceived()
+void udpCivData::dataReceived()
 {
     while (udp->hasPendingDatagrams()) {
         QNetworkDatagram datagram = udp->receiveDatagram();
@@ -488,23 +502,9 @@ void udpSerial::DataReceived()
         case (16): // Response to pkt0
             if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x06\x00\x01\x00"))
             {
-                // Update remoteSID
-                remoteSID = qFromBigEndian<quint32>(r.mid(8, 4));
-
-                if (!periodicRunning) {
-                    SendPacketOpenClose(false); // First connect packet
-                    pkt7Timer = new QTimer(this);
-                    connect(pkt7Timer, &QTimer::timeout, this, &udpBase::SendPkt7Idle);
-                    pkt7Timer->start(3000); // send pkt7 idle packets every 3 seconds
-
-                    pkt0Timer = new QTimer(this);
-                    connect(pkt0Timer, &QTimer::timeout, this, std::bind(&udpBase::SendPkt0Idle, this, true, 0));
-                    pkt0Timer->start(100);
-
-                    periodicRunning = true;
-
-                }
-
+                // Update remoteId
+                remoteId = qFromBigEndian<quint32>(r.mid(8, 4));
+                sendOpenClose(false);
             }
             break;
         default:
@@ -526,13 +526,13 @@ void udpSerial::DataReceived()
                 quint8 temp = r[0] - 0x15;
                 if ((quint8)r[16] == 0xc1 && (quint8)r[17] == temp)
                 {
-                    emit Receive(r.mid(21));
+                    emit receive(r.mid(21));
                 }  
             }
             break;
 
         }
-        udpBase::DataReceived(r); // Call parent function to process the rest.
+        udpBase::dataReceived(r); // Call parent function to process the rest.
         r.clear();
         datagram.clear();
 
@@ -541,11 +541,11 @@ void udpSerial::DataReceived()
 
 
 // Audio stream
-udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec)
+udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec)
 {
     qDebug() << "Starting udpAudio";
     this->localIP = local;
-    this->port = aport;
+    this->port = audioPort;
     this->radioIP = ip;
     this->bufferSize = buffer;
     this->rxSampleRate = rxsample;
@@ -555,7 +555,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 b
 
     init(); // Perform connection
 
-    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::DataReceived);
+    QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::dataReceived);
 
     /*
     0x72 is RX audio codec
@@ -610,24 +610,31 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 b
     txAudioThread->start();
     emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, bufferSize, txIsUlawCodec,true);
 
-    SendPacketConnect(); // First connect packet, audio should start very soon after.
+    sendAreYouThere(); // No need to send periodic are you there as we know they are!
+
+    connect(&pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
+    pingTimer.start(100); // send ping packets every 100ms
+
+    connect(&txAudioTimer, &QTimer::timeout, this, &udpAudio::sendTxAudio);
+    txAudioTimer.start(10);
+
 }
 
 udpAudio::~udpAudio()
 {
+    if (txAudioTimer.isActive())
+    {
+        txAudioTimer.stop();
+    }
+
     if (rxAudioThread) {
         rxAudioThread->quit();
         rxAudioThread->wait();
     }
-	
+
     if (txAudioThread) {
         txAudioThread->quit();
         txAudioThread->wait();
-    }
-    if (txAudioTimer != Q_NULLPTR)
-    {
-        txAudioTimer->stop();
-        delete txAudioTimer;
     }
 }
 
@@ -637,8 +644,8 @@ udpAudio::~udpAudio()
 void udpAudio::sendTxAudio()
 {
     quint8 p[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
-      static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff),
+      static_cast<quint8>(myId >> 24 & 0xff), static_cast<quint8>(myId >> 16 & 0xff), static_cast<quint8>(myId >> 8 & 0xff), static_cast<quint8>(myId & 0xff),
+      static_cast<quint8>(remoteId >> 24 & 0xff), static_cast<quint8>(remoteId >> 16 & 0xff), static_cast<quint8>(remoteId >> 8 & 0xff), static_cast<quint8>(remoteId & 0xff),
       0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00
     };
     //if (((txCodec == 0x01 || txCodec == 0x02) && audio.length() != 960)  || (txCodec == 0x04 && audio.length() != 1920)) {
@@ -660,7 +667,7 @@ void udpAudio::sendTxAudio()
             tx[23] = static_cast<quint8>(partial.length() & 0xff);
             counter = counter + partial.length();
             //qDebug() << "Sending audio packet length: " << tx.length();
-            SendTrackedPacket(tx);
+            sendTrackedPacket(tx);
             sendAudioSeq++;
         }
     }
@@ -673,7 +680,7 @@ void udpAudio::changeBufferSize(quint16 value)
 
 
 
-void udpAudio::DataReceived()
+void udpAudio::dataReceived()
 {
     while (udp->hasPendingDatagrams()) {
         QNetworkDatagram datagram = udp->receiveDatagram();
@@ -682,23 +689,7 @@ void udpAudio::DataReceived()
 
         switch (r.length())
         {
-        case (16): // Response to pkt0
-            if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x06\x00\x01\x00"))
-            {
-                // Update remoteSID in case it has changed.
-                remoteSID = qFromBigEndian<quint32>(r.mid(8, 4));
-                if (!periodicRunning) {
-                    periodicRunning = true;
-
-                    pkt7Timer = new QTimer(this);
-                    connect(pkt7Timer, &QTimer::timeout, this, &udpBase::SendPkt7Idle);
-                    pkt7Timer->start(3000); // send pkt7 idle packets every 3 seconds
-
-                    txAudioTimer = new QTimer(this);
-                    connect(txAudioTimer, &QTimer::timeout, this, &udpAudio::sendTxAudio);
-                    txAudioTimer->start(10); // send pkt7 idle packets every 3 seconds
-                }
-            }
+        case (16): // Response to idle packet handled in udpBase
             break;
 
         default:
@@ -733,7 +724,7 @@ void udpAudio::DataReceived()
             break;
         }
 
-        udpBase::DataReceived(r); // Call parent function to process the rest.
+        udpBase::dataReceived(r); // Call parent function to process the rest.
         r.clear();
         datagram.clear();
     }
@@ -748,60 +739,55 @@ void udpBase::init()
     localPort = udp->localPort();
     qDebug() << "UDP Stream bound to local port:" << localPort << " remote port:" << port;
     uint32_t addr = localIP.toIPv4Address();
-    localSID = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (localPort & 0xffff);
+    myId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (localPort & 0xffff);
 }
+
 udpBase::~udpBase()
 {
     qDebug() << "Closing UDP stream :" << radioIP.toString() << ":" << port;
     if (udp != Q_NULLPTR) {
-        SendPacketDisconnect();
+        sendPacketDisconnect();
         udp->close();
         delete udp;
     }
-    if (pkt0Timer != Q_NULLPTR)
+    if (pingTimer.isActive())
     {
-        pkt0Timer->stop();
-        delete pkt0Timer;
+        pingTimer.stop();
     }
-    if (pkt7Timer != Q_NULLPTR)
+    if (idleTimer.isActive())
     {
-        pkt7Timer->stop();
-        delete pkt7Timer;
+        idleTimer.stop();
     }
 }
 
 // Base class!
 
-void udpBase::DataReceived(QByteArray r)
+void udpBase::dataReceived(QByteArray r)
 {
     switch (r.length())
     {
-    case (16): // Response to pkt0
-        if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x04\x00\x00\x00"))
-        {
-            if (!sentPacketConnect2)
-            {
-                remoteSID = qFromBigEndian<quint32>(r.mid(8, 4));
-                SendPacketConnect2(); // second connect packet
-                sentPacketConnect2 = true;
-            }
-        }
-        else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x00\x00"))
-        {   // pkt0
+    case (16): // Empty response used for simple comms and retransmit requests.
+        if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x04\x00\x00\x00")) {
+            // If timer is active, stop it as they are obviously there!
+            qDebug() << this->metaObject()->className() << ": Received I am here";
+            // I don't think that we will ever receive an "I am here" other than in response to "Are you there?"
+            remoteId = qFromBigEndian<quint32>(r.mid(8, 4));
+            sendAreYouReady();
+        } 
+        else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x00\x00")) {   
             // Just get the seqnum and ignore the rest.
             lastReceivedSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
         }
-        else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x01\x00"))
-        {   // retransmit request
+        else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x01\x00")) {
+            // retransmit request
             // Send an idle with the requested seqnum if not found.
             uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
-            //qDebug() << "Retransmit request for "<< this->metaObject()->className() <<" : " << gotSeq;
             bool found=false;
             for (int f = txSeqBuf.length() - 1; f >= 0; f--)
             {
                 if (txSeqBuf[f].seqNum == gotSeq) {
                     qDebug() << this->metaObject()->className() << ": retransmitting packet :" << gotSeq << " (len=" << txSeqBuf[f].data.length() << ")";
-                    udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
+                    QMutexLocker locker(&mutex);
                     udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
                     found = true;
                     break;
@@ -811,7 +797,7 @@ void udpBase::DataReceived(QByteArray r)
             {
                 // Packet was not found in buffer
                 qDebug() << this->metaObject()->className() << ": Could not find requested packet " << gotSeq << ", sending idle.";
-                SendPkt0Idle(false, gotSeq);
+                sendIdle(false, gotSeq);
             }
         }
         else if (r.mid(0, 6) == QByteArrayLiteral("\x18\x00\x00\x00\x01\x00"))
@@ -827,7 +813,7 @@ void udpBase::DataReceived(QByteArray r)
                     for (int h = txSeqBuf.length() - 1; h >= 0; h--)
                         if (txSeqBuf[h].seqNum == gotSeq) {
                             qDebug() << this->metaObject()->className() << ": retransmitting packet :" << gotSeq << " (len=" << txSeqBuf[f].data.length() << ")";
-                            udp->writeDatagram(txSeqBuf[h].data, radioIP, port);
+                            QMutexLocker locker(&mutex);
                             udp->writeDatagram(txSeqBuf[h].data, radioIP, port);
                             found = true;
                             break;
@@ -835,31 +821,45 @@ void udpBase::DataReceived(QByteArray r)
                     if (!found)
                     {
                         qDebug() << this->metaObject()->className() << ": Could not find requested packet " << gotSeq << ", sending idle.";
-                        SendPkt0Idle(false, gotSeq);
+                        sendIdle(false, gotSeq);
                     }
                 }
             }
         }
         break;
 
-    case (21): // pkt7, send response if request.
+    case (21): 
         if (r.mid(1, 5) == QByteArrayLiteral("\x00\x00\x00\x07\x00"))
         {
+            // It is a ping request/response
             uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
 
             if (r[16] == (char)0x00)
             {
-                QMutexLocker locker(&mutex);
 
                 const quint8 p[] = { 0x15, 0x00, 0x00, 0x00, 0x07, 0x00,static_cast<quint8>(gotSeq & 0xff),static_cast<quint8>((gotSeq >> 8) & 0xff),
-                    static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
-                    static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff),
+                    static_cast<quint8>(myId >> 24 & 0xff), static_cast<quint8>(myId >> 16 & 0xff), static_cast<quint8>(myId >> 8 & 0xff), static_cast<quint8>(myId & 0xff),
+                    static_cast<quint8>(remoteId >> 24 & 0xff), static_cast<quint8>(remoteId >> 16 & 0xff), static_cast<quint8>(remoteId >> 8 & 0xff), static_cast<quint8>(remoteId & 0xff),
                     0x01,static_cast<quint8>(r[17]),static_cast<quint8>(r[18]),static_cast<quint8>(r[19]),static_cast<quint8>(r[20])
                 };
-
+                QMutexLocker locker(&mutex);
                 udp->writeDatagram(QByteArray::fromRawData((const char *)p, sizeof(p)), radioIP, port);
+            }
+            else if (r[16] == (char)0x01) {
+                if (gotSeq == pingSendSeq)
+                {
+                    // This is response to OUR request so increment counter
+                    pingSendSeq++;
+                }
+                else {
+                    // Not sure what to do here, need to spend more time with the protocol!
+                    qDebug() << "Received out-of-sequence ping response. Sent:" << pingSendSeq << " received " << gotSeq;
+                }
 
-            } 
+            } else {
+                qDebug() << "Unhandled response to ping. I have never seen this! 0x10=" << r[16];
+            }
+
         }
         break;
     default:
@@ -869,50 +869,48 @@ void udpBase::DataReceived(QByteArray r)
 
 }
 
-// Send periodic idle packets (every 100ms)
-void udpBase::SendPkt0Idle(bool tracked=true,quint16 seq=0)
+void udpBase::sendIdle(bool tracked=true,quint16 seq=0)
 {
     quint8 p[] = { 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,0x00,
-        static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
-        static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff)
+        static_cast<quint8>(myId >> 24 & 0xff), static_cast<quint8>(myId >> 16 & 0xff), static_cast<quint8>(myId >> 8 & 0xff), static_cast<quint8>(myId & 0xff),
+        static_cast<quint8>(remoteId >> 24 & 0xff), static_cast<quint8>(remoteId >> 16 & 0xff), static_cast<quint8>(remoteId >> 8 & 0xff), static_cast<quint8>(remoteId & 0xff)
     };
 
-    lastPacket0Sent = QDateTime::currentDateTime(); // Is this used?
-
+    lastControlPacketSentTime = QDateTime::currentDateTime(); // Is this used?
     if (!tracked) {
         p[6] = seq & 0xff;
         p[7] = (seq >> 8) & 0xff;
+        QMutexLocker locker(&mutex);
         udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
     }
     else {
-        SendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
+        sendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
     }
+    idleTimer.start(); // Force the idle timer to be reset.
     return;
 }
 
-// Send periodic idle packets (every 3000ms)
-void udpBase::SendPkt7Idle()
+// Send periodic ping packets
+void udpBase::sendPing()
 {
-    QMutexLocker locker(&mutex);
     //qDebug() << this->metaObject()->className()  << " tx buffer size:" << txSeqBuf.length();
 
-    const quint8 p[] = { 0x15, 0x00, 0x00, 0x00, 0x07, 0x00, static_cast<quint8>(pkt7SendSeq & 0xff),static_cast<quint8>(pkt7SendSeq >> 8 & 0xff),
-        static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
-        static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff),
+    const quint8 p[] = { 0x15, 0x00, 0x00, 0x00, 0x07, 0x00, static_cast<quint8>(pingSendSeq & 0xff),static_cast<quint8>(pingSendSeq >> 8 & 0xff),
+        static_cast<quint8>(myId >> 24 & 0xff), static_cast<quint8>(myId >> 16 & 0xff), static_cast<quint8>(myId >> 8 & 0xff), static_cast<quint8>(myId & 0xff),
+        static_cast<quint8>(remoteId >> 24 & 0xff), static_cast<quint8>(remoteId >> 16 & 0xff), static_cast<quint8>(remoteId >> 8 & 0xff), static_cast<quint8>(remoteId & 0xff),
         0x00, static_cast<quint8>(rand()),static_cast<quint8>(innerSendSeq & 0xff),static_cast<quint8>(innerSendSeq >> 8 & 0xff), 0x06
     };
     //qDebug() << this->metaObject()->className() << ": Send pkt7: " <<  QByteArray::fromRawData((const char*)p, sizeof(p));
-    lastPacket7Sent = QDateTime::currentDateTime();
+    lastPingSentTime = QDateTime::currentDateTime();
+    QMutexLocker locker(&mutex);
     udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
-    pkt7SendSeq++;
     innerSendSeq++;
     return;
 }
 
 
-qint64 udpBase::SendTrackedPacket(QByteArray d)
+void udpBase::sendTrackedPacket(QByteArray d)
 {
-    QMutexLocker locker(&mutex);
     // As the radio can request retransmission of these packets, store them in a buffer (eventually!)
     d[6] = sendSeq & 0xff;
     d[7] = (sendSeq >> 8) & 0xff;
@@ -921,68 +919,83 @@ qint64 udpBase::SendTrackedPacket(QByteArray d)
     s.timeSent = time(NULL);
     s.data = (d);
     txSeqBuf.append(s);
-    PurgeOldEntries();
+    purgeOldEntries(); // Delete entries older than PURGE_SECONDS seconds (currently 5)
     sendSeq++;
 
-    return udp->writeDatagram(d, radioIP, port);
+    QMutexLocker locker(&mutex);
+    udp->writeDatagram(d, radioIP, port);
+    if (idleTimer.isActive()) {
+        idleTimer.start(100); // Reset idle counter if it's running
+    }
+    return;
 }
 
-
-void udpBase::PurgeOldEntries()
+void udpBase::purgeOldEntries()
 {
     for (int f = txSeqBuf.length() - 1; f >= 0; f--)
     {
-        if (difftime(time(NULL), txSeqBuf[f].timeSent) > 5) // Delete anything more than 5 seconds old.
+        if (difftime(time(NULL), txSeqBuf[f].timeSent) > PURGE_SECONDS)
         {
             txSeqBuf.removeAt(f);
         }
     }
-
 }
 
-qint64 udpBase::SendPacketConnect()
+
+/// <summary>
+/// This function is used by all sockets and expects an "I am here" response.
+/// </summary>
+void udpBase::sendAreYouThere()
 {
-    qDebug() << this->metaObject()->className() << ": Sending Connect";
-    QMutexLocker locker(&mutex);
+    qDebug() << this->metaObject()->className() << ": Sending Are You There...";
     const quint8 p[] = { 0x10, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00,
-        static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
-        static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff)
+        static_cast<quint8>(myId >> 24 & 0xff), static_cast<quint8>(myId >> 16 & 0xff), static_cast<quint8>(myId >> 8 & 0xff), static_cast<quint8>(myId & 0xff),
+        static_cast<quint8>(remoteId >> 24 & 0xff), static_cast<quint8>(remoteId >> 16 & 0xff), static_cast<quint8>(remoteId >> 8 & 0xff), static_cast<quint8>(remoteId & 0xff)
     };
 
+    QMutexLocker locker(&mutex);
     udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
-    return udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
+    return;
 }
 
 
-qint64 udpBase::SendPacketConnect2()
+/// <summary>
+/// Once an "I am here" response is received, send this 
+/// </summary>
+void udpBase::sendAreYouReady()
 {
-    qDebug() << this->metaObject()->className() << ": Sending Connect2";
-    QMutexLocker locker(&mutex);
+    qDebug() << this->metaObject()->className() << ": Sending Are you ready?";
     const quint8 p[] = { 0x10, 0x00, 0x00, 0x00, 0x06, 0x00, 0x01, 0x00,
-        static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
-        static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff)
+        static_cast<quint8>(myId >> 24 & 0xff), static_cast<quint8>(myId >> 16 & 0xff), static_cast<quint8>(myId >> 8 & 0xff), static_cast<quint8>(myId & 0xff),
+        static_cast<quint8>(remoteId >> 24 & 0xff), static_cast<quint8>(remoteId >> 16 & 0xff), static_cast<quint8>(remoteId >> 8 & 0xff), static_cast<quint8>(remoteId & 0xff)
     };
 
+    QMutexLocker locker(&mutex);
     udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
-    return udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
+    return;
 }
 
-qint64 udpBase::SendPacketDisconnect() // Unmanaged packet
+void udpBase::sendPacketDisconnect() // Unmanaged packet
 {
-    QMutexLocker locker(&mutex);
-    //qDebug() << "Sending Stream Disconnect";
+    qDebug() << "Sending Stream Disconnect";
 
     const quint8 p[] = { 0x10, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00,
-        static_cast<quint8>(localSID >> 24 & 0xff), static_cast<quint8>(localSID >> 16 & 0xff), static_cast<quint8>(localSID >> 8 & 0xff), static_cast<quint8>(localSID & 0xff),
-        static_cast<quint8>(remoteSID >> 24 & 0xff), static_cast<quint8>(remoteSID >> 16 & 0xff), static_cast<quint8>(remoteSID >> 8 & 0xff), static_cast<quint8>(remoteSID & 0xff)
+        static_cast<quint8>(myId >> 24 & 0xff), static_cast<quint8>(myId >> 16 & 0xff), static_cast<quint8>(myId >> 8 & 0xff), static_cast<quint8>(myId & 0xff),
+        static_cast<quint8>(remoteId >> 24 & 0xff), static_cast<quint8>(remoteId >> 16 & 0xff), static_cast<quint8>(remoteId >> 8 & 0xff), static_cast<quint8>(remoteId & 0xff)
     };
-    udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
 
-    return udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
+    QMutexLocker locker(&mutex);
+    udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
+    return;
 }
 
 
-quint8* udpBase::Passcode(QString str)
+/// <summary>
+/// passcode function used to generate secure (ish) code
+/// </summary>
+/// <param name="str"></param>
+/// <returns>pointer to encoded username or password</returns>
+quint8* passcode(QString str)
 {
     const quint8 sequence[] =
     {
@@ -1011,8 +1024,13 @@ quint8* udpBase::Passcode(QString str)
     return res;
 }
 
-
-QByteArray udpBase::parseNullTerminatedString(QByteArray c, int s)
+/// <summary>
+/// returns a QByteArray of a null terminated string
+/// </summary>
+/// <param name="c"></param>
+/// <param name="s"></param>
+/// <returns></returns>
+QByteArray parseNullTerminatedString(QByteArray c, int s)
 {
     //QString res = "";
     QByteArray res;
