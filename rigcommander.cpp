@@ -448,15 +448,8 @@ QByteArray rigCommander::makeFreqPayload(double freq)
 void rigCommander::setMode(char mode)
 {
     QByteArray payload;
-    if((mode >=0) && (mode < 10))
+    if((mode >0) && (mode < 0x22 + 1))
     {
-        // annoying hack as mode 6 is undefined.
-        if(mode > 5)
-        {
-            mode++;
-        }
-
-        // valid
         payload.setRawData("\x06", 1); // cmd 06 needs filter specified
         //payload.setRawData("\x04", 1); // cmd 04 will apply the default filter, but it seems to always pick FIL 02
 

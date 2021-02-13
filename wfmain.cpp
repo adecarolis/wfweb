@@ -1834,35 +1834,14 @@ void wfmain::on_scopeEdgeCombo_currentIndexChanged(int index)
 
 void wfmain::on_modeSelectCombo_activated(int index)
 {
-    // Reference:
-    //          0      1        2         3       4
-    //modes << "LSB" << "USB" << "AM" << "CW" << "RTTY";
-    //          5      6          7           8          9
-    //modes << "FM" << "CW-R" << "RTTY-R" << "LSB-D" << "USB-D";
-
     // The "acticvated" signal means the user initiated a mode change.
     // This function is not called if code initated the change.
-    if(index < 10)
-    {
-        // qDebug() << "Mode selection changed. index: " << index;
 
-        if(index > 7)
-        {
-            // set data mode on
-            // emit setDataMode(true);
-            cmdOutQue.append(cmdSetDataModeOn);
-            delayedCommand->start();
-            index = index - 8;
-        } else {
-            // set data mode off
-            //emit setDataMode(false);
-            cmdOutQue.append(cmdSetDataModeOff);
-            delayedCommand->start();
-        }
+    unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->itemData(index).toUInt());
 
-        emit setMode(index);
-    }
+    qDebug() << __func__ << " at index " << index << " has newMode: " << newMode;
 
+    emit setMode(newMode);
 }
 
 //void wfmain::on_freqDial_actionTriggered(int action)
