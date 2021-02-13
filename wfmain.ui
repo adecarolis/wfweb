@@ -183,7 +183,21 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="modeSelectCombo"/>
+           <layout class="QVBoxLayout" name="verticalLayout_12">
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QComboBox" name="modeSelectCombo"/>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="dataModeBtn">
+              <property name="text">
+               <string>Data</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
           <item>
            <widget class="QDial" name="freqDial">

@@ -1681,27 +1681,9 @@ void wfmain::receiveMode(unsigned char mode)
 
 void wfmain::receiveDataModeStatus(bool dataEnabled)
 {
-    /*
-    // qDebug() << "Received data mode " << dataEnabled << "\n";
-    if(dataEnabled)
-    {
-        if(currentModeIndex == 0)
-        {
-            // LSB
-            ui->modeSelectCombo->setCurrentIndex(8);
-            //ui->modeLabel->setText( "LSB-D" );
-        } else if (currentModeIndex == 1)
-        {
-            // USB
-            ui->modeSelectCombo->setCurrentIndex(9);
-            //ui->modeLabel->setText( "USB-D" );
-        } 
-    } else {
-        // update to _not_ have the -D
-        ui->modeSelectCombo->setCurrentIndex(currentModeIndex);
-        // No need to update status label?
-    }
-    */
+    ui->dataModeBtn->blockSignals(true);
+    ui->dataModeBtn->setChecked(dataEnabled);
+    ui->dataModeBtn->blockSignals(false);
 }
 
 void wfmain::on_clearPeakBtn_clicked()
@@ -2464,3 +2446,8 @@ void wfmain::on_debugBtn_clicked()
 }
 
 
+
+void wfmain::on_dataModeBtn_toggled(bool checked)
+{
+    setDataMode(checked);
+}

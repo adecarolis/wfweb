@@ -284,6 +284,8 @@ private slots:
 
     void on_modeFilterCombo_activated(int index);
 
+    void on_dataModeBtn_toggled(bool checked);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
