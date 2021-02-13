@@ -153,13 +153,13 @@ private:
 	bool sentPacketConnect2 = false;
 	uint16_t sendAudioSeq = 0;
 
-	audioHandler* rxaudio;
-	QThread* rxAudioThread;
+	audioHandler* rxaudio=Q_NULLPTR;
+	QThread* rxAudioThread=Q_NULLPTR;
 
-	audioHandler* txaudio;
-	QThread* txAudioThread;
+	audioHandler* txaudio=Q_NULLPTR;
+	QThread* txAudioThread=Q_NULLPTR;
 
-	QTimer* txAudioTimer;
+	QTimer* txAudioTimer=Q_NULLPTR;
 
 };
 

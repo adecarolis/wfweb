@@ -40,8 +40,9 @@ public:
     qint64 writeData(const char* data, qint64 len);
     qint64 bytesAvailable() const;
     bool isSequential() const;
+    volatile bool chunkAvailable;
     void incomingAudio(const QByteArray& data);
-    QByteArray getNextAudioChunk(void);
+    void getNextAudioChunk(QByteArray &data);
 
 public slots:
     bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 bufferSize, const bool isulaw, const bool isinput);

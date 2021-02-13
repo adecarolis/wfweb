@@ -47,7 +47,7 @@ qint16 uLawDecode(qint8 number)
 }
 */
 
-qint16 uLawDecode(quint8 in)
+qint16 uLawDecode(const quint8 in)
 {
     static const qint16 ulaw_decode[256] = {
     -32124, -31100, -30076, -29052, -28028, -27004, -25980, -24956,
@@ -82,8 +82,6 @@ qint16 uLawDecode(quint8 in)
        244,    228,    212,    196,    180,    164,    148,    132,
        120,    112,    104,     96,     88,     80,     72,     64,
         56,     48,     40,     32,     24,     16,      8,      0 };
-    if (in == 0x02) // MUZERO
-        in = 0;
     return ulaw_decode[in];
 }
 
@@ -183,8 +181,8 @@ void audioHandler::reinit()
 
     // Calculate the minimum required audio buffer
     // This may need work depending on how it performs on other platforms.
-    int audioBuffer = format.sampleRate() / 10;
-    audioBuffer = audioBuffer * (format.sampleSize() / 8);
+    //int audioBuffer = format.sampleRate() / 10;
+    //audioBuffer = audioBuffer * (format.sampleSize() / 8);
 
     if (this->isInput)
     {
@@ -192,8 +190,8 @@ void audioHandler::reinit()
         if (audioInput != Q_NULLPTR)
             delete audioInput;
         audioInput = new QAudioInput(deviceInfo, format, this);
-        audioInput->setBufferSize(audioBuffer);
-        audioInput->setNotifyInterval(20);
+        //audioInput->setBufferSize(audioBuffer);
+        //audioInput->setNotifyInterval(20);
 
         connect(audioInput, SIGNAL(notify()), SLOT(notified()));
         connect(audioInput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
@@ -205,7 +203,7 @@ void audioHandler::reinit()
             delete audioOutput;
         audioOutput = Q_NULLPTR;
         audioOutput = new QAudioOutput(deviceInfo, format, this);
-        audioOutput->setBufferSize(audioBuffer);
+        //audioOutput->setBufferSize(audioBuffer);
         connect(audioOutput, SIGNAL(notify()), SLOT(notified()));
         connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
     }
@@ -213,8 +211,6 @@ void audioHandler::reinit()
     if (running) {
         this->start();
     }
-    flush();
-
 }
 
 void audioHandler::start()
@@ -250,8 +246,6 @@ void audioHandler::setVolume(float volume)
 
 void audioHandler::flush()
 {
-    // Flushing buffers is a bit tricky...
-    // Don't modify this unless you're sure
     qDebug() << this->metaObject()->className() << ": flush() running";
     this->stop();
     if (isInput) {
@@ -287,40 +281,34 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 {
     // Calculate output length, always full samples
     int outlen = 0;
-    QMutexLocker locker(&mutex);
-    if (isUlaw)
+    if (radioSampleBits == 8)
     {
-        // Need to process uLaw.
         // Input buffer is 8bit and output buffer is 16bit 
         outlen = qMin(buffer.length(), (int)maxlen / 2);
-        for (int f = 0; f < outlen; f++)
+        for (quint16 f = 0; f < outlen; f++)
         {
-            qToLittleEndian<qint16>(uLawDecode(buffer.at(f)),data + f * 2);
+            if (isUlaw)
+                qToLittleEndian<qint16>(uLawDecode(buffer.at(f)), data + (f * 2));
+            else
+                qToLittleEndian<qint16>((qint16)(buffer[f] << 8) - 32640, data + (f * 2));
         }
+        QMutexLocker locker(&mutex);
         buffer.remove(0, outlen);
         outlen = outlen * 2;
     }
-    else {
-        if (radioSampleBits == 8)
-        {
-            outlen = qMin(buffer.length(), (int)maxlen/2);
-            for (int f = 0; f < outlen; f++)
-            {
-                qToLittleEndian<qint16>((qint16)(buffer[f]<<8) - 32640,data + f * 2);
-            }
-            buffer.remove(0, outlen);
-            outlen = outlen * 2;
-        } else {
-            // Just copy it.
-            outlen = qMin(buffer.length(), (int)maxlen);
-            if (outlen % 2 != 0) {
-                outlen += 1;
-            }
-            memcpy(data, buffer.data(), outlen);
+    else if (radioSampleBits == 16) {
+        // Just copy it
+        outlen = qMin(buffer.length(), (int)maxlen);
+        if (outlen % 2 != 0) {
+            outlen += 1; // Not sure if this is necessary as we should always have an even number!
         }
+        memcpy(data, buffer.data(), outlen);
+        QMutexLocker locker(&mutex);
         buffer.remove(0, outlen);
     }
-
+    else {
+        qDebug() << "Sample bits MUST be 8 or 16 - got: " << radioSampleBits; // Should never happen?
+    }
     return outlen;
 }
 
@@ -331,7 +319,7 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
     if (buffer.length() > bufferSize * 4)
     {
         qWarning() << "writeData() Buffer overflow";
-        buffer.clear();
+        buffer.clear(); // Will cause a click!
     }
 
     if (isUlaw) {
@@ -352,7 +340,9 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
     else {
         qWarning() << "Unsupported number of bits! :" << radioSampleBits;
     }
-       
+    if (buffer.size() >= radioSampleBits * 120) {
+        chunkAvailable = true;
+    }
     return (len); // Always return the same number as we received
 }
 
@@ -408,7 +398,6 @@ void audioHandler::changeBufferSize(const quint16 newSize)
     QMutexLocker locker(&mutex);
     qDebug() << this->metaObject()->className() << ": Changing buffer size to: " << newSize << " from " << bufferSize;
     bufferSize = newSize;
-    flush();
 }
 
 void audioHandler::getBufferSize()
@@ -416,17 +405,19 @@ void audioHandler::getBufferSize()
     emit sendBufferSize(audioOutput->bufferSize());
 }
 
-QByteArray audioHandler::getNextAudioChunk()
+void audioHandler::getNextAudioChunk(QByteArray& ret)
 {
-    QMutexLocker locker(&mutex);
     quint16 numSamples = radioSampleBits * 120;
-    QByteArray ret;
     if (buffer.size() >= numSamples) {
+        QMutexLocker locker(&mutex);
         ret.append(buffer.mid(0, numSamples));
         buffer.remove(0, numSamples);
     }
-
-    return ret;
+    if (buffer.size() < numSamples)
+    {
+        chunkAvailable = false;
+    }
+    return;
 }
 
 

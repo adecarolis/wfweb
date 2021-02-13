@@ -644,9 +644,11 @@ void udpAudio::sendTxAudio()
     //if (((txCodec == 0x01 || txCodec == 0x02) && audio.length() != 960)  || (txCodec == 0x04 && audio.length() != 1920)) {
     //    qDebug() << "Unsupported TX audio length :" << audio.length() << " With codec: " << txCodec;
     //}
-        QByteArray audio = txaudio->getNextAudioChunk();
+    if (txaudio->chunkAvailable) {
+        QByteArray audio;
+        txaudio->getNextAudioChunk(audio);
         int counter = 0;
-        while (counter < audio.length() ) {
+        while (counter < audio.length()) {
             QByteArray tx = QByteArray::fromRawData((const char*)p, sizeof(p));
             QByteArray partial = audio.mid(counter, 1364);
             tx.append(partial);
@@ -660,8 +662,8 @@ void udpAudio::sendTxAudio()
             //qDebug() << "Sending audio packet length: " << tx.length();
             SendTrackedPacket(tx);
             sendAudioSeq++;
-            QThread::msleep(5);
         }
+    }
 }
 
 void udpAudio::changeBufferSize(quint16 value)
