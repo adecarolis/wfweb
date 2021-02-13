@@ -1639,14 +1639,32 @@ void wfmain::on_stopBtn_clicked()
 
 void wfmain::receiveMode(unsigned char mode)
 {
-    qDebug() << "Received mode " << mode << " current mode: " << currentModeIndex;
+    qDebug() << __func__ << "Received mode " << mode << " current mode: " << currentModeIndex;
 
-    if((mode >0) && (mode < 0x23))
+    bool found=false;
+
+    if(mode < 0x23)
     {
-        ui->modeSelectCombo->blockSignals(true);
-        ui->modeSelectCombo->setCurrentIndex(mode);
-        ui->modeSelectCombo->blockSignals(false);
+
+        for(int i=0; i < ui->modeSelectCombo->count(); i++)
+        {
+            if(ui->modeSelectCombo->itemData(i).toInt() == mode)
+            {
+                ui->modeSelectCombo->blockSignals(true);
+                ui->modeSelectCombo->setCurrentIndex(i);
+                ui->modeSelectCombo->blockSignals(false);
+                found = true;
+            }
+        }
         currentModeIndex = mode;
+    } else {
+        qDebug() << __func__ << "Invalid mode " << mode << " received. ";
+    }
+
+    if(!found)
+    {
+        qDebug() << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
+
     }
 
 
@@ -1838,7 +1856,7 @@ void wfmain::on_modeSelectCombo_activated(int index)
     // This function is not called if code initated the change.
 
     unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->itemData(index).toUInt());
-
+    currentModeIndex = newMode;
     qDebug() << __func__ << " at index " << index << " has newMode: " << newMode;
 
     emit setMode(newMode);
@@ -2399,6 +2417,7 @@ void wfmain::on_debugBtn_clicked()
     //qDebug() << "Debug: finding rigs attached. Let's see if this works. ";
     //rig->findRigs();
     // cal->show();
+    emit getMode();
 }
 
 
