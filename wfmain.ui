@@ -233,7 +233,11 @@
              </widget>
             </item>
             <item>
-             <widget class="QComboBox" name="tuningStepCombo"/>
+             <widget class="QComboBox" name="tuningStepCombo">
+              <property name="toolTip">
+               <string>Tuning Step Selection possibly. Or not...</string>
+              </property>
+             </widget>
             </item>
             <item>
              <widget class="QCheckBox" name="tuneLockChk">

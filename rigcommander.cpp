@@ -445,16 +445,26 @@ QByteArray rigCommander::makeFreqPayload(double freq)
 
 }
 
-void rigCommander::setMode(char mode)
+void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
 {
     QByteArray payload;
-    if((mode >=0) && (mode < 0x22 + 1))
+    if(mode < 0x22 + 1)
     {
+        // mode command | filter
+        // 0x01 | Filter 01 automatically
+        // 0x04 | user-specififed 01, 02, 03 | note, is "read the current mode" on older rigs
+        // 0x06 | "default" filter is auto
+
         payload.setRawData("\x06", 1); // cmd 06 needs filter specified
         //payload.setRawData("\x04", 1); // cmd 04 will apply the default filter, but it seems to always pick FIL 02
 
         payload.append(mode);
-        payload.append("\x03"); // wide band
+        if(rigCaps.model==model706)
+        {
+            payload.append("\x01"); // "normal" on IC-706
+        } else {
+            payload.append(modeFilter);
+        }
         prepDataAndSend(payload);
     }
 }
@@ -1124,6 +1134,11 @@ void rigCommander::determineRigCaps()
     rigCaps.hasDV = false;
     rigCaps.hasATU = false;
 
+    rigCaps.spectSeqMax = 0;
+    rigCaps.spectAmpMax = 0;
+    rigCaps.spectLenMax = 0;
+
+
     rigCaps.hasTransmit = true;
 
     switch(model){
@@ -1193,6 +1208,14 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = true;
             rigCaps.hasDD = true;
             rigCaps.hasDV = true;
+            rigCaps.hasATU = true;
+            break;
+        case model706:
+            rigCaps.modelName = QString("IC-706");
+            rigCaps.hasSpectrum = false;
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
             rigCaps.hasATU = true;
             break;
         default:

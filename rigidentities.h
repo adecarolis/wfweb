@@ -21,6 +21,7 @@ enum model_kind {
     model7850 = 0x8E,
     model9700 = 0xA2,
     model705 = 0xA4,
+    model706 = 0x58,
     modelUnknown = 0xFF
 };
 

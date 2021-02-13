@@ -44,7 +44,7 @@ public slots:
     void getScopeEdge();
     void getScopeMode();
     void setFrequency(double freq);
-    void setMode(char mode);
+    void setMode(unsigned char mode, unsigned char modeFilter);
     void getFrequency();
     void getBandStackReg(char band, char regCode);
     void getMode();

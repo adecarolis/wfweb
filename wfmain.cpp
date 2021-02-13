@@ -24,6 +24,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     this->hostCL = hostCL;
 
     cal = new calibrationWindow();
+    sat = new satelliteSetup();
+
 
     haveRigCaps = false;
 
@@ -222,7 +224,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->modeFilterCombo->addItem("1", 1);
     ui->modeFilterCombo->addItem("2", 2);
     ui->modeFilterCombo->addItem("3", 3);
-    ui->modeFilterCombo->addItem("Setup...", 10);
+    ui->modeFilterCombo->addItem("Setup...", 99);
 
 
 
@@ -281,7 +283,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(getScopeSpan()), rig, SLOT(getScopeSpan()));
     connect(this, SIGNAL(setScopeFixedEdge(double,double,unsigned char)), rig, SLOT(setSpectrumBounds(double,double,unsigned char)));
 
-    connect(this, SIGNAL(setMode(char)), rig, SLOT(setMode(char)));
+    connect(this, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
     connect(this, SIGNAL(getRfGain()), rig, SLOT(getRfGain()));
     connect(this, SIGNAL(getAfGain()), rig, SLOT(getAfGain()));
     connect(this, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
@@ -1857,9 +1859,16 @@ void wfmain::on_modeSelectCombo_activated(int index)
 
     unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->itemData(index).toUInt());
     currentModeIndex = newMode;
-    qDebug() << __func__ << " at index " << index << " has newMode: " << newMode;
 
-    emit setMode(newMode);
+    int filterSelection = ui->modeFilterCombo->currentData().toInt();
+    if(filterSelection == 99)
+    {
+        // oops, we forgot to reset the combo box
+    } else {
+        qDebug() << __func__ << " at index " << index << " has newMode: " << newMode;
+
+        emit setMode(newMode, filterSelection);
+    }
 }
 
 //void wfmain::on_freqDial_actionTriggered(int action)
@@ -1954,7 +1963,8 @@ void wfmain::receiveBandStackReg(float freq, char mode, bool dataOn)
     // read the band stack and apply by sending out commands
 
     setFrequency(freq);
-    setMode(mode); // make sure this is what you think it is
+    int filterSelection = ui->modeFilterCombo->currentData().toInt();
+    setMode(mode, (unsigned char)filterSelection); // make sure this is what you think it is
 
     // setDataMode(dataOn); // signal out
     if(dataOn)
@@ -2396,13 +2406,24 @@ void wfmain::on_sqlSlider_valueChanged(int value)
 
 void wfmain::on_modeFilterCombo_activated(int index)
 {
-    //TODO:
-    if(index >2)
+
+    int filterSelection = ui->modeFilterCombo->itemData(index).toInt();
+    if(filterSelection == 99)
     {
-        //filterSetup->show();
+        // TODO:
+        // Bump the filter selected back to F1, F2, or F3
+        // possibly track the filter in the class. Would make this easier.
+        // filterSetup.show();
+        //
+
+    } else {
+
+        unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->currentData().toUInt());
+        currentModeIndex = newMode; // we track this for other functions
+
+        emit setMode(newMode, (unsigned char)filterSelection);
     }
 
-    // emit setFilterSel((unsigned char)index);
 }
 
 // --- DEBUG FUNCTION ---
@@ -2417,7 +2438,8 @@ void wfmain::on_debugBtn_clicked()
     //qDebug() << "Debug: finding rigs attached. Let's see if this works. ";
     //rig->findRigs();
     // cal->show();
-    emit getMode();
+    // emit getMode();
+    sat->show();
 }
 
 

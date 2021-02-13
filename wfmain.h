@@ -17,6 +17,7 @@
 #include "rigidentities.h"
 
 #include "calibrationwindow.h"
+#include "satellitesetup.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -39,7 +40,7 @@ signals:
     void getFrequency();
     void setFrequency(double freq);
     void getMode();
-    void setMode(char modeIndex);
+    void setMode(unsigned char modeIndex, unsigned char modeFilter);
     void setDataMode(bool dataOn);
     void getDataMode();
     void getPTT();
@@ -443,6 +444,7 @@ private:
     bool haveRigCaps;
 
     calibrationWindow *cal;
+    satelliteSetup *sat;
 
     void bandStackBtnClick();
     bool waitingForBandStackRtn;
