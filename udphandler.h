@@ -78,7 +78,7 @@ public:
 	};
 
 	QList <SEQBUFENTRY> txSeqBuf = QList<SEQBUFENTRY>();
-	QList <SEQBUFENTRY> seqBuf = QList<SEQBUFENTRY>();
+	std::vector< quint16 > rxSeqBuf;
 
 	void sendAreYouReady();
 	void sendPacketDisconnect();

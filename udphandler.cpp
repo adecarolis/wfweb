@@ -142,25 +142,25 @@ void udpHandler::dataReceived()
                 latency += lastPingSentTime.msecsTo(QDateTime::currentDateTime());
                 latency /= 2;
                 quint32 totalsent = packetsSent;
-                quint32 totallost = packetsLost;
+                quint32 totallost = packetsLost/2;
                 if (audio != Q_NULLPTR) {
                     totalsent = totalsent + audio->packetsSent;
-                    totallost = totallost + audio->packetsLost;
+                    totallost = totallost + audio->packetsLost/2;
                 }
                 if (civ != Q_NULLPTR) {
                     totalsent = totalsent + civ->packetsSent;
-                    totallost = totallost + civ->packetsLost;
+                    totallost = totallost + civ->packetsLost/2;
                 }
-                double perclost = (double)totallost / totalsent * 100.0 ;
+                //double perclost = 1.0 * totallost / totalsent * 100.0 ;
 
-                emit haveNetworkStatus(" rtt: " + QString::number(latency) + " ms, loss: " +  QString::number(perclost, 'f',2) + "%");
+                emit haveNetworkStatus(" rtt: " + QString::number(latency) + " ms, loss: (" +QString::number(packetsLost)+ "/"+ QString::number(packetsSent) +")");
             }
             break;
         case (64): // Response to Auth packet?
             if (r.mid(0, 6) == QByteArrayLiteral("\x40\x00\x00\x00\x00\x00") && r[21] == (char)0x05) {
                 if (r.mid(0x30, 4) == QByteArrayLiteral("\x00\x00\x00\x00")) {
                     qDebug() << this->metaObject()->className() << ": Token renewal successful";
-
+                    tokenTimer.start(TOKEN_RENEWAL);
                     gotAuthOK = true;
                     if (!serialAndAudioOpened)
                     {
@@ -402,6 +402,7 @@ void udpHandler::sendToken(uint8_t magic)
 
     authInnerSendSeq++;
     sendTrackedPacket(QByteArray::fromRawData((const char *)p, sizeof(p)));
+    tokenTimer.start(100); // Set 100ms timer for retry.
     return;
 }
 
@@ -530,7 +531,7 @@ void udpCivData::dataReceived()
                     qDebug() << this->metaObject()->className() << ": Missing Sequence: (" << r.length() << ") " << f;
                 }
 
-                
+
                 lastReceivedSeq = gotSeq;
 
                 quint8 temp = r[0] - 0x15;
@@ -717,8 +718,7 @@ void udpAudio::dataReceived()
                 r.mid(0, 2) == QByteArrayLiteral("\xd8\x03") ||
                 r.mid(0, 2) == QByteArrayLiteral("\x70\x04"))
             {
-                // First check if we are missing any packets
-                // Audio stream does not send periodic pkt0 so seq "should" be sequential.
+                // First check if we are missing any packets as seq should be sequential.
                 uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
                 if (lastReceivedSeq == 0 || lastReceivedSeq > gotSeq) {
                     lastReceivedSeq = gotSeq;
@@ -803,7 +803,6 @@ void udpBase::dataReceived(QByteArray r)
                     //qDebug() << this->metaObject()->className() << ": retransmitting packet :" << gotSeq << " (len=" << txSeqBuf[f].data.length() << ")";
                     QMutexLocker locker(&mutex);
                     udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
-                    packetsSent++;
                     found = true;
                     break;
                 }
@@ -831,7 +830,6 @@ void udpBase::dataReceived(QByteArray r)
                             //qDebug() << this->metaObject()->className() << ": retransmitting packet :" << gotSeq << " (len=" << txSeqBuf[f].data.length() << ")";
                             QMutexLocker locker(&mutex);
                             udp->writeDatagram(txSeqBuf[h].data, radioIP, port);
-                            packetsSent++;
                             found = true;
                             break;
                         }
@@ -861,7 +859,6 @@ void udpBase::dataReceived(QByteArray r)
                 };
                 QMutexLocker locker(&mutex);
                 udp->writeDatagram(QByteArray::fromRawData((const char *)p, sizeof(p)), radioIP, port);
-                packetsSent++;
             }
             else if (r[16] == (char)0x01) {
                 if (gotSeq == pingSendSeq)
@@ -872,7 +869,6 @@ void udpBase::dataReceived(QByteArray r)
                 else {
                     // Not sure what to do here, need to spend more time with the protocol but try sending ping with same seq next time?
                     //qDebug() << "Received out-of-sequence ping response. Sent:" << pingSendSeq << " received " << gotSeq;
-                    packetsLost++;
                 }
 
             } else {
@@ -901,7 +897,6 @@ void udpBase::sendIdle(bool tracked=true,quint16 seq=0)
         p[7] = (seq >> 8) & 0xff;
         QMutexLocker locker(&mutex);
         udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
-        packetsSent++;
     }
     else {
         sendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
@@ -927,7 +922,6 @@ void udpBase::sendPing()
     QMutexLocker locker(&mutex);
     udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
     innerSendSeq++;
-    packetsSent++;
     return;
 }
 
