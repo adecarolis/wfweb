@@ -349,7 +349,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     drawPeaks = false;
 
     ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
-
+    ui->audioPortTxt->setValidator(new QIntValidator(this));
+    ui->serialPortTxt->setValidator(new QIntValidator(this));
+    ui->controlPortTxt->setValidator(new QIntValidator(this));
 
     pttTimer = new QTimer(this);
     pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
