@@ -270,7 +270,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(spectOutputEnable()), rig, SLOT(enableSpectOutput()));
     connect(this, SIGNAL(scopeDisplayDisable()), rig, SLOT(disableSpectrumDisplay()));
     connect(this, SIGNAL(scopeDisplayEnable()), rig, SLOT(enableSpectrumDisplay()));
-    connect(rig, SIGNAL(haveMode(unsigned char)), this, SLOT(receiveMode(unsigned char)));
+    connect(rig, SIGNAL(haveMode(unsigned char, unsigned char)), this, SLOT(receiveMode(unsigned char, unsigned char)));
     connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
     connect(rig, SIGNAL(haveSpectrumFixedMode(bool)), this, SLOT(receiveSpectrumFixedMode(bool)));
@@ -1639,7 +1639,7 @@ void wfmain::on_stopBtn_clicked()
     //emit scopeDisplayDisable();
 }
 
-void wfmain::receiveMode(unsigned char mode)
+void wfmain::receiveMode(unsigned char mode, unsigned char filter)
 {
     qDebug() << __func__ << "Received mode " << mode << " current mode: " << currentModeIndex;
 
@@ -1668,6 +1668,14 @@ void wfmain::receiveMode(unsigned char mode)
         qDebug() << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
 
     }
+
+    if( (filter) && (filter < 4)){
+        ui->modeFilterCombo->blockSignals(true);
+        ui->modeFilterCombo->setCurrentIndex(filter-1);
+        ui->modeFilterCombo->blockSignals(false);
+    }
+
+    (void)filter;
 
 
     // Note: we need to know if the DATA mode is active to reach mode-D
@@ -2083,15 +2091,19 @@ void wfmain::on_aboutBtn_clicked()
     msgBox.setWindowIcon(QIcon(":resources/wfview.png"));
     // TODO: change style of link color based on current CSS sheet.
 
-    QString copyright = QString("Copyright 2017-2020 Elliott H. Liggett. All rights reserved.");
-    QString ssCredit = QString("<br/>Stylesheet qdarkstyle used under MIT license, stored in /usr/share/wfview/stylesheets/.");
-    QString contact = QString("<br/>email the author: kilocharlie8@gmail.com or W6EL on the air!");
+    QString head = QString("<html><head></head><body>");
+    QString copyright = QString("Copyright 2017-2021 Elliott H. Liggett, W6EL. All rights reserved.");
+    QString nacode = QString("<br/><br/>Networking and audio code written by Phil Taylor, M0VSE");
+    QString doctest = QString("<br/><br/>Testing, documentation, bug fixes, and development mentorship from Roeland Jansen, PA3MET, and Jim Nijkamp, PA8E.");
+    QString ssCredit = QString("<br/><br/>Stylesheet qdarkstyle used under MIT license, stored in /usr/share/wfview/stylesheets/.");
     QString website = QString("<br/><br/>Get the latest version from our gitlab repo: <a href='https://gitlab.com/eliggett/wfview' style='color: cyan;'>https://gitlab.com/eliggett/wfview</a>");
     QString docs = QString("<br/>Also see the <a href='https://gitlab.com/eliggett/wfview/-/wikis/home'  style='color: cyan;'>wiki</a> for the <a href='https://gitlab.com/eliggett/wfview/-/wikis/User-FAQ' style='color: cyan;'>FAQ</a>, <a href='https://gitlab.com/eliggett/wfview/-/wikis/Keystrokes' style='color: cyan;'>Keystrokes</a>, and more.");
+    QString contact = QString("<br/>email the author: kilocharlie8@gmail.com or W6EL on the air!");
     QString buildInfo = QString("<br/><br/>Build " + QString(GITSHORT) + " on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
+    QString end = QString("</body></html>");
 
-    QString aboutText = copyright + "\n" + ssCredit + "\n";
-    aboutText.append(contact + "\n" + website + "\n"+ docs +"\n" + buildInfo);
+    QString aboutText = head + copyright + "\n" + nacode + "\n" + doctest + "\n" + ssCredit + "\n";
+    aboutText.append(website + "\n"+ docs + contact +"\n" + buildInfo + end);
 
     msgBox.setText(aboutText);
     msgBox.exec();
@@ -2426,6 +2438,11 @@ void wfmain::on_modeFilterCombo_activated(int index)
 
 }
 
+void wfmain::on_dataModeBtn_toggled(bool checked)
+{
+    setDataMode(checked);
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
@@ -2438,13 +2455,6 @@ void wfmain::on_debugBtn_clicked()
     //qDebug() << "Debug: finding rigs attached. Let's see if this works. ";
     //rig->findRigs();
     // cal->show();
-    // emit getMode();
+    //emit getMode();
     sat->show();
-}
-
-
-
-void wfmain::on_dataModeBtn_toggled(bool checked)
-{
-    setDataMode(checked);
 }

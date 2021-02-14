@@ -1479,60 +1479,15 @@ float rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
 
 void rigCommander::parseMode()
 {
-    QString mode;
-    // LSB:
-    //"INDEX: 00 01 02 03 "
-    //"DATA:  01 00 02 fd "
-
-    // USB:
-    //"INDEX: 00 01 02 03 "
-    //"DATA:  01 01 02 fd "
-
-    /*
-    switch(payloadIn[01])
+    unsigned char filter;
+    if(payloadIn[2] != '\xFD')
     {
-        case '\x00':
-            mode = "LSB";
-            break;
-        case '\x01':
-            mode = "USB";
-            break;
-        case '\x02':
-            mode = "AM";
-            break;
-        case '\x03':
-            mode = "CW";
-            break;
-        case '\x04':
-            mode = "RTTY";
-            break;
-        case '\x05':
-            mode = "FM";
-            break;
-        case '\x07':
-            mode = "CW-R";
-            break;
-        case '\x08':
-            mode = "RTTY-R";
-            break;
-        case '\x12':
-        case '\x13':
-
-            break;
-        case '\x17':
-            mode = "DV";
-            break;
-        case '\x22':
-            mode = "DD";
-            break;
-        default:
-            qDebug() << "Mode: Unknown: " << payloadIn[01];
-            printHex(payloadIn, false, true);
-            mode = QString("");
+        filter = payloadIn[2];
+    } else {
+        filter = 0;
     }
-*/
 
-    emit haveMode((unsigned char)payloadIn[01]);
+    emit haveMode((unsigned char)payloadIn[01], filter);
 }
 
 

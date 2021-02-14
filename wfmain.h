@@ -118,7 +118,7 @@ private slots:
     void on_startBtn_clicked();
     void receiveCommReady();
     void receiveFreq(double);
-    void receiveMode(unsigned char);
+    void receiveMode(unsigned char mode, unsigned char filter);
     void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);
     void receiveSpectrumFixedMode(bool isFixed);
     void receivePTTstatus(bool pttOn);
