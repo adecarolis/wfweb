@@ -82,8 +82,10 @@ void commHandler::openPtPort()
 {
     // qDebug() << "opening pt port";
     bool success;
+#ifndef Q_OS_WIN
     char ptname[128];
     int sysResult=0;
+#endif
     QString ptLinkCmd = "ln -s ";
     success = pseudoterm->open(QIODevice::ReadWrite);
     if(success)

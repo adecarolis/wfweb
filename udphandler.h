@@ -50,8 +50,6 @@ public:
 	QUdpSocket* udp=Q_NULLPTR;
 	uint32_t myId = 0;
 	uint32_t remoteId = 0;
-	char authID[6] = { 0, 0, 0, 0, 0, 0 };
-	char a8replyID[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	uint16_t authInnerSendSeq = 0;
 	uint16_t innerSendSeq = 0x8304; // Not sure why?
 	uint16_t sendSeqB = 0;
@@ -241,6 +239,9 @@ private:
 	quint16 reauthInterval = 60000;
 	QByteArray devName;
 	QByteArray compName;
+	QByteArray audioType;
+	QByteArray replyId;
+	QByteArray authId;
 	
 	QTimer tokenTimer;
 	QTimer areYouThereTimer;
