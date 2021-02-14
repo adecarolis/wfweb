@@ -146,16 +146,27 @@ void udpHandler::dataReceived()
             }
             break;
         case (64): // Response to Auth packet?
-            if (r.mid(0, 6) == QByteArrayLiteral("\x40\x00\x00\x00\x00\x00"))
-            {
-                if (r[21] == (char)0x05)
-                {
-                    // Request serial and audio!
+            if (r.mid(0, 6) == QByteArrayLiteral("\x40\x00\x00\x00\x00\x00") && r[21] == (char)0x05) {
+                if (r.mid(0x30, 4) == QByteArrayLiteral("\x00\x00\x00\x00")) {
+                    qDebug() << this->metaObject()->className() << ": Token renewal successful";
+
                     gotAuthOK = true;
                     if (!serialAndAudioOpened)
                     {
                         sendRequestSerialAndAudio();
                     }
+
+                }
+                else if (r.mid(0x30, 4) == QByteArrayLiteral("\xff\xff\xff\xff"))
+                {
+                    qWarning() << this->metaObject()->className() << ": Radio rejected token renewal, performing login";
+                    remoteId = qFromBigEndian<quint32>(r.mid(8, 4));
+                    isAuthenticated = false;
+                    sendLogin(); // Try sending login packet.
+                }
+                else
+                {
+                    qWarning() << this->metaObject()->className() << ": Unknown response to token renewal? " << r.mid(0x30,4);
                 }
             }
             break;
@@ -167,13 +178,13 @@ void udpHandler::dataReceived()
                     if (!serialAndAudioOpened)
                     {
                         emit haveNetworkError(radioIP.toString(), "Auth failed, try rebooting the radio.");
-                        qDebug() << this->metaObject()->className() << "Auth failed, try rebooting the radio.";
+                        qDebug() << this->metaObject()->className() << ": Auth failed, try rebooting the radio.";
                     }
                 }
                 if (r.mid(48, 3) == QByteArrayLiteral("\x00\x00\x00") && r[64] == (char)0x01)
                 {
                     emit haveNetworkError(radioIP.toString(), "Got radio disconnected.");
-                    qDebug() << this->metaObject()->className() << "Got radio disconnected.";
+                    qDebug() << this->metaObject()->className() << ": Got radio disconnected.";
                 }
             }
             break;
@@ -184,13 +195,13 @@ void udpHandler::dataReceived()
                 if (r.mid(48, 4) == QByteArrayLiteral("\xff\xff\xff\xfe"))
                 {
                     emit haveNetworkStatus("Invalid Username/Password");
-                    qDebug() << this->metaObject()->className() << "Invalid Username/Password";
+                    qDebug() << this->metaObject()->className() << ": Invalid Username/Password";
 
                 }
                 else if (!isAuthenticated)
                 {
                     emit haveNetworkStatus("Radio Login OK!");
-                    qDebug() << this->metaObject()->className() << "Received Login OK";
+                    qDebug() << this->metaObject()->className() << ": Received Login OK";
 
                     authID[0] = r[26];
                     authID[1] = r[27];
@@ -605,10 +616,8 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
     
     rxAudioThread->start();
-    emit setupRxAudio(rxNumSamples, rxChannelCount, rxSampleRate, bufferSize, rxIsUlawCodec,false);
 
     txAudioThread->start();
-    emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, bufferSize, txIsUlawCodec,true);
 
     sendAreYouThere(); // No need to send periodic are you there as we know they are!
 
@@ -617,6 +626,10 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     connect(&txAudioTimer, &QTimer::timeout, this, &udpAudio::sendTxAudio);
     txAudioTimer.start(10);
+
+    emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, bufferSize, txIsUlawCodec, true);
+    emit setupRxAudio(rxNumSamples, rxChannelCount, rxSampleRate, bufferSize, rxIsUlawCodec, false);
+
 
 }
 
