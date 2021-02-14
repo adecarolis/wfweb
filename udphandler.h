@@ -23,6 +23,12 @@
 #include "audiohandler.h"
 
 #define PURGE_SECONDS 5
+#define TOKEN_RENEWAL 60000
+#define PING_PERIOD 100
+#define IDLE_PERIOD 100
+#define TXAUDIO_PERIOD 10
+#define AREYOUTHERE_PERIOD 500
+
 
 quint8* passcode(QString str);
 QByteArray parseNullTerminatedString(QByteArray c, int s);
@@ -89,6 +95,8 @@ public:
 	uint16_t pingSendSeq = 0;
 
 	QDateTime lastControlPacketSentTime;
+
+	quint16 areYouThereCounter=0;
 
 };
 
@@ -200,6 +208,8 @@ signals:
 
 private:
 
+	void sendAreYouThere();
+
 	void dataReceived();
 
 	void sendRequestSerialAndAudio();
@@ -232,7 +242,7 @@ private:
 	QTimer tokenTimer;
 	QTimer areYouThereTimer;
 
-
+	bool highBandwidthConnection = false;
 
 };
 

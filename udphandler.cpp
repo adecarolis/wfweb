@@ -61,12 +61,12 @@ udpHandler::udpHandler(QString ip, quint16 controlPort, quint16 civPort, quint16
         Connect various timers
     */
     connect(&tokenTimer, &QTimer::timeout, this, std::bind(&udpHandler::sendToken, this, 0x05));
-    connect(&areYouThereTimer, &QTimer::timeout, this, QOverload<>::of(&udpBase::sendAreYouThere));
+    connect(&areYouThereTimer, &QTimer::timeout, this, QOverload<>::of(&udpHandler::sendAreYouThere));
     connect(&pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
     connect(&idleTimer, &QTimer::timeout, this, std::bind(&udpBase::sendIdle, this, true, 0));
 
     // Start sending are you there packets - will be stopped once "I am here" received
-    areYouThereTimer.start(500);
+    areYouThereTimer.start(AREYOUTHERE_PERIOD);
 
     // Set my computer name. Should this be configurable?
     compName = QString("wfview").toUtf8();
@@ -123,8 +123,8 @@ void udpHandler::dataReceived()
                 if (areYouThereTimer.isActive()) {
                     areYouThereTimer.stop();
                     // send ping packets every second
-                    pingTimer.start(1000);
-                    idleTimer.start(100);
+                    pingTimer.start(PING_PERIOD);
+                    idleTimer.start(IDLE_PERIOD);
                 }
             }
             // This is "I am ready" in response to "Are you ready" so send login.
@@ -211,10 +211,16 @@ void udpHandler::dataReceived()
                     authID[5] = r[31];
 
                     sendToken(0x02);
-                    tokenTimer.start(60000); // Start token request timer
+                    tokenTimer.start(TOKEN_RENEWAL); // Start token request timer
 
                     isAuthenticated = true;
                 }
+
+                if (r.mid(0x40, 4) == QByteArrayLiteral("FTTH"))
+                {
+                    highBandwidthConnection = true;
+                }
+                qDebug() << this->metaObject()->className() << ": Detected connection speed " << QString::fromUtf8(parseNullTerminatedString(r, 0x40));
 
             }
             break;
@@ -339,6 +345,17 @@ void udpHandler::sendRequestSerialAndAudio()
     return;
 }
 
+void udpHandler::sendAreYouThere()
+{
+    if (areYouThereCounter == 20)
+    {
+        qDebug() << this->metaObject()->className() << ": Radio not responding.";
+        emit haveNetworkStatus("Radio not responding!");
+    }
+    areYouThereCounter++;
+    udpBase::sendAreYouThere();
+}
+
 
 void udpHandler::sendLogin() // Only used on control stream.
 {
@@ -428,9 +445,9 @@ udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort)
     connect(&idleTimer, &QTimer::timeout, this, std::bind(&udpBase::sendIdle, this, true, 0));
 
     // send ping packets every 100 ms (maybe change to less frequent?)
-    pingTimer.start(100);
+    pingTimer.start(PING_PERIOD);
     // Send idle packets every 100ms, this timer will be reset everytime a non-idle packet is sent.
-    idleTimer.start(100);
+    idleTimer.start(IDLE_PERIOD);
 }
 
 udpCivData::~udpCivData() {
@@ -622,10 +639,10 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     sendAreYouThere(); // No need to send periodic are you there as we know they are!
 
     connect(&pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
-    pingTimer.start(100); // send ping packets every 100ms
+    pingTimer.start(PING_PERIOD); // send ping packets every 100ms
 
     connect(&txAudioTimer, &QTimer::timeout, this, &udpAudio::sendTxAudio);
-    txAudioTimer.start(10);
+    txAudioTimer.start(TXAUDIO_PERIOD);
 
     emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, bufferSize, txIsUlawCodec, true);
     emit setupRxAudio(rxNumSamples, rxChannelCount, rxSampleRate, bufferSize, rxIsUlawCodec, false);
@@ -783,6 +800,7 @@ void udpBase::dataReceived(QByteArray r)
         if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x04\x00\x00\x00")) {
             // If timer is active, stop it as they are obviously there!
             qDebug() << this->metaObject()->className() << ": Received I am here";
+            areYouThereCounter = 0;
             // I don't think that we will ever receive an "I am here" other than in response to "Are you there?"
             remoteId = qFromBigEndian<quint32>(r.mid(8, 4));
             sendAreYouReady();
@@ -899,7 +917,9 @@ void udpBase::sendIdle(bool tracked=true,quint16 seq=0)
     else {
         sendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
     }
-    idleTimer.start(); // Force the idle timer to be reset.
+    if (idleTimer.isActive()) {
+        idleTimer.start(IDLE_PERIOD); // Reset idle counter if it's running
+    }
     return;
 }
 
@@ -938,7 +958,7 @@ void udpBase::sendTrackedPacket(QByteArray d)
     QMutexLocker locker(&mutex);
     udp->writeDatagram(d, radioIP, port);
     if (idleTimer.isActive()) {
-        idleTimer.start(100); // Reset idle counter if it's running
+        idleTimer.start(IDLE_PERIOD); // Reset idle counter if it's running
     }
     return;
 }
