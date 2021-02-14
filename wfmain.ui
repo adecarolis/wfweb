@@ -183,35 +183,70 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="modeSelectCombo"/>
+           <layout class="QVBoxLayout" name="verticalLayout_12">
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QComboBox" name="modeSelectCombo"/>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="dataModeBtn">
+              <property name="text">
+               <string>Data</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
           <item>
-           <widget class="QDial" name="freqDial">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
+           <layout class="QVBoxLayout" name="tuningLayout">
+            <property name="rightMargin">
+             <number>0</number>
             </property>
-            <property name="minimumSize">
-             <size>
-              <width>50</width>
-              <height>1</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>60</width>
-              <height>60</height>
-             </size>
-            </property>
-            <property name="wrapping">
-             <bool>true</bool>
-            </property>
-            <property name="notchesVisible">
-             <bool>true</bool>
-            </property>
-           </widget>
+            <item>
+             <widget class="QDial" name="freqDial">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>60</width>
+                <height>60</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>60</width>
+                <height>60</height>
+               </size>
+              </property>
+              <property name="wrapping">
+               <bool>true</bool>
+              </property>
+              <property name="notchesVisible">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="tuningStepCombo">
+              <property name="toolTip">
+               <string>Tuning Step Selection possibly. Or not...</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="tuneLockChk">
+              <property name="text">
+               <string>F Lock</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
           </item>
           <item>
            <layout class="QVBoxLayout" name="verticalLayout_11">
@@ -222,6 +257,9 @@
              <widget class="QLabel" name="label_22">
               <property name="text">
                <string>Receive Filter</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
               </property>
              </widget>
             </item>
@@ -237,10 +275,16 @@
             </property>
             <item>
              <widget class="QSlider" name="rfGainSlider">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>70</height>
+               </size>
+              </property>
               <property name="maximumSize">
                <size>
                 <width>16777215</width>
-                <height>60</height>
+                <height>80</height>
                </size>
               </property>
               <property name="toolTip">
@@ -276,10 +320,16 @@
             </property>
             <item>
              <widget class="QSlider" name="afGainSlider">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>70</height>
+               </size>
+              </property>
               <property name="maximumSize">
                <size>
                 <width>16777215</width>
-                <height>60</height>
+                <height>80</height>
                </size>
               </property>
               <property name="toolTip">
@@ -315,10 +365,16 @@
             </property>
             <item>
              <widget class="QSlider" name="sqlSlider">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>70</height>
+               </size>
+              </property>
               <property name="maximumSize">
                <size>
                 <width>16777215</width>
-                <height>60</height>
+                <height>80</height>
                </size>
               </property>
               <property name="maximum">

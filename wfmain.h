@@ -17,6 +17,7 @@
 #include "rigidentities.h"
 
 #include "calibrationwindow.h"
+#include "satellitesetup.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -39,7 +40,7 @@ signals:
     void getFrequency();
     void setFrequency(double freq);
     void getMode();
-    void setMode(char modeIndex);
+    void setMode(unsigned char modeIndex, unsigned char modeFilter);
     void setDataMode(bool dataOn);
     void getDataMode();
     void getPTT();
@@ -117,7 +118,7 @@ private slots:
     void on_startBtn_clicked();
     void receiveCommReady();
     void receiveFreq(double);
-    void receiveMode(QString);
+    void receiveMode(unsigned char mode, unsigned char filter);
     void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);
     void receiveSpectrumFixedMode(bool isFixed);
     void receivePTTstatus(bool pttOn);
@@ -284,6 +285,8 @@ private slots:
 
     void on_modeFilterCombo_activated(int index);
 
+    void on_dataModeBtn_toggled(bool checked);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -441,6 +444,7 @@ private:
     bool haveRigCaps;
 
     calibrationWindow *cal;
+    satelliteSetup *sat;
 
     void bandStackBtnClick();
     bool waitingForBandStackRtn;

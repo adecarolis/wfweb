@@ -44,7 +44,7 @@ public slots:
     void getScopeEdge();
     void getScopeMode();
     void setFrequency(double freq);
-    void setMode(char mode);
+    void setMode(unsigned char mode, unsigned char modeFilter);
     void getFrequency();
     void getBandStackReg(char band, char regCode);
     void getMode();
@@ -85,7 +85,7 @@ signals:
     void haveSerialPortError(const QString port, const QString errorText);
     void haveStatusUpdate(const QString text);
     void haveFrequency(double frequencyMhz);
-    void haveMode(QString mode);
+    void haveMode(unsigned char mode, unsigned char filter);
     void haveDataMode(bool dataModeEnabled);
     void haveBandStackReg(float freq, char mode, bool dataOn);
     void haveSpectrumBounds();

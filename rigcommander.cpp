@@ -445,23 +445,26 @@ QByteArray rigCommander::makeFreqPayload(double freq)
 
 }
 
-void rigCommander::setMode(char mode)
+void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
 {
     QByteArray payload;
-    if((mode >=0) && (mode < 10))
+    if(mode < 0x22 + 1)
     {
-        // annoying hack as mode 6 is undefined.
-        if(mode > 5)
-        {
-            mode++;
-        }
+        // mode command | filter
+        // 0x01 | Filter 01 automatically
+        // 0x04 | user-specififed 01, 02, 03 | note, is "read the current mode" on older rigs
+        // 0x06 | "default" filter is auto
 
-        // valid
         payload.setRawData("\x06", 1); // cmd 06 needs filter specified
         //payload.setRawData("\x04", 1); // cmd 04 will apply the default filter, but it seems to always pick FIL 02
 
         payload.append(mode);
-        payload.append("\x03"); // wide band
+        if(rigCaps.model==model706)
+        {
+            payload.append("\x01"); // "normal" on IC-706
+        } else {
+            payload.append(modeFilter);
+        }
         prepDataAndSend(payload);
     }
 }
@@ -504,7 +507,8 @@ void rigCommander::getDataMode()
 
 void rigCommander::getPTT()
 {
-    QByteArray payload("\x1C\x00", 2);
+    QByteArray payload;
+    payload.setRawData("\x1C\x00", 2);
     prepDataAndSend(payload);
 }
 
@@ -1128,6 +1132,14 @@ void rigCommander::determineRigCaps()
 
     rigCaps.hasDD = false;
     rigCaps.hasDV = false;
+    rigCaps.hasATU = false;
+
+    rigCaps.spectSeqMax = 0;
+    rigCaps.spectAmpMax = 0;
+    rigCaps.spectLenMax = 0;
+
+
+    rigCaps.hasTransmit = true;
 
     switch(model){
         case model7300:
@@ -1139,6 +1151,18 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasATU = true;
+            break;
+        case modelR8600:
+            rigCaps.modelName = QString("IC-R8600");
+            rigCaps.hasSpectrum = true;
+            rigCaps.spectSeqMax = 11;
+            rigCaps.spectAmpMax = 160;
+            rigCaps.spectLenMax = 475;
+            rigCaps.hasLan = true;
+            rigCaps.hasEthernet = true;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasTransmit = false;
             break;
         case model9700:
             rigCaps.modelName = QString("IC-9700");
@@ -1171,6 +1195,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = true;
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
+            rigCaps.hasATU = true;
             break;
         case model705:
             rigCaps.modelName = QString("IC-705");
@@ -1183,6 +1208,15 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = true;
             rigCaps.hasDD = true;
             rigCaps.hasDV = true;
+            rigCaps.hasATU = true;
+            break;
+        case model706:
+            rigCaps.modelName = QString("IC-706");
+            rigCaps.hasSpectrum = false;
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasATU = true;
             break;
         default:
             rigCaps.modelName = QString("IC-RigID: 0x%1").arg(rigCaps.model, 0, 16);
@@ -1445,56 +1479,15 @@ float rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
 
 void rigCommander::parseMode()
 {
-    QString mode;
-    // LSB:
-    //"INDEX: 00 01 02 03 "
-    //"DATA:  01 00 02 fd "
-
-    // USB:
-    //"INDEX: 00 01 02 03 "
-    //"DATA:  01 01 02 fd "
-
-    //TODO: D-Star DV and DD modes.
-
-    switch(payloadIn[01])
+    unsigned char filter;
+    if(payloadIn[2] != '\xFD')
     {
-        case '\x00':
-            mode = "LSB";
-            break;
-        case '\x01':
-            mode = "USB";
-            break;
-        case '\x02':
-            mode = "AM";
-            break;
-        case '\x03':
-            mode = "CW";
-            break;
-        case '\x04':
-            mode = "RTTY";
-            break;
-        case '\x05':
-            mode = "FM";
-            break;
-        case '\x07':
-            mode = "CW-R";
-            break;
-        case '\x08':
-            mode = "RTTY-R";
-            break;
-        case '\x17':
-            mode = "DV";
-            break;
-        case '\x22':
-            mode = "DD";
-            break;
-        default:
-            qDebug() << "Mode: Unknown: " << payloadIn[01];
-            printHex(payloadIn, false, true);
-            mode = QString("");
+        filter = payloadIn[2];
+    } else {
+        filter = 0;
     }
 
-    emit haveMode(mode);
+    emit haveMode((unsigned char)payloadIn[01], filter);
 }
 
 
