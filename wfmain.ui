@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -1356,6 +1356,13 @@
             </property>
            </spacer>
           </item>
+          <item>
+           <widget class="QPushButton" name="udpServerSetupBtn">
+            <property name="text">
+             <string>Server Setup</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </item>
         <item>
@@ -1612,7 +1619,7 @@
      <x>0</x>
      <y>0</y>
      <width>810</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

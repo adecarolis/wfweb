@@ -18,6 +18,7 @@
 
 #include "calibrationwindow.h"
 #include "satellitesetup.h"
+#include "udpserversetup.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -287,6 +288,8 @@ private slots:
 
     void on_dataModeBtn_toggled(bool checked);
 
+    void on_udpServerSetupBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -445,7 +448,7 @@ private:
 
     calibrationWindow *cal;
     satelliteSetup *sat;
-
+    udpServerSetup* srv;
     void bandStackBtnClick();
     bool waitingForBandStackRtn;
     char bandStkBand;

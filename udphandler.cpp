@@ -1065,3 +1065,4 @@ QByteArray parseNullTerminatedString(QByteArray c, int s)
     }
     return res;
 }
+
