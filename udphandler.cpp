@@ -385,7 +385,7 @@ void udpHandler::sendLogin() // Only used on control stream.
 void udpHandler::sendToken(uint8_t magic)
 {
 
-    qDebug() << this->metaObject()->className() << "Sending Token confirmation: " << magic;
+    qDebug() << this->metaObject()->className() << "Sending Token request: " << magic;
     quint8 p[] = {
         0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,0x00,
         static_cast<quint8>(myId >> 24 & 0xff), static_cast<quint8>(myId >> 16 & 0xff), static_cast<quint8>(myId >> 8 & 0xff), static_cast<quint8>(myId & 0xff),
