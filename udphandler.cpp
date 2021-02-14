@@ -142,7 +142,19 @@ void udpHandler::dataReceived()
                 // This is a response to our ping request so measure latency (only once fully connected though.
                 latency += lastPingSentTime.msecsTo(QDateTime::currentDateTime());
                 latency /= 2;
-                emit haveNetworkStatus(" rtt: " + QString::number(latency) + " ms");
+                quint32 totalsent = packetsSent;
+                quint32 totallost = packetsLost;
+                if (audio != Q_NULLPTR) {
+                    totalsent = totalsent + audio->packetsSent;
+                    totallost = totallost + audio->packetsLost;
+                }
+                if (civ != Q_NULLPTR) {
+                    totalsent = totalsent + civ->packetsSent;
+                    totallost = totallost + civ->packetsLost;
+                }
+                double perclost = (double)totallost / totalsent * 100.0 ;
+
+                emit haveNetworkStatus(" rtt: " + QString::number(latency) + " ms, loss: " +  QString::number(perclost, 'f',2) + "%");
             }
             break;
         case (64): // Response to Auth packet?
@@ -816,8 +828,9 @@ void udpBase::dataReceived(QByteArray r)
             bool found=false;
             for (int f = txSeqBuf.length() - 1; f >= 0; f--)
             {
+                packetsLost++;
                 if (txSeqBuf[f].seqNum == gotSeq) {
-                    qDebug() << this->metaObject()->className() << ": retransmitting packet :" << gotSeq << " (len=" << txSeqBuf[f].data.length() << ")";
+                    //qDebug() << this->metaObject()->className() << ": retransmitting packet :" << gotSeq << " (len=" << txSeqBuf[f].data.length() << ")";
                     QMutexLocker locker(&mutex);
                     udp->writeDatagram(txSeqBuf[f].data, radioIP, port);
                     found = true;
@@ -827,7 +840,7 @@ void udpBase::dataReceived(QByteArray r)
             if (!found)
             {
                 // Packet was not found in buffer
-                qDebug() << this->metaObject()->className() << ": Could not find requested packet " << gotSeq << ", sending idle.";
+                //qDebug() << this->metaObject()->className() << ": Could not find requested packet " << gotSeq << ", sending idle.";
                 sendIdle(false, gotSeq);
             }
         }
@@ -837,13 +850,14 @@ void udpBase::dataReceived(QByteArray r)
             {
                 quint16 start = qFromLittleEndian<quint16>(r.mid(f, 2));
                 quint16 end = qFromLittleEndian<quint16>(r.mid(f + 2, 2));
+                packetsLost=packetsLost + (end-start);
                 qDebug() << this->metaObject()->className() << ": Retransmit range request for:" << start << " to " << end;
                 for (quint16 gotSeq = start; gotSeq <= end; gotSeq++)
                 {
                     bool found=false;
                     for (int h = txSeqBuf.length() - 1; h >= 0; h--)
                         if (txSeqBuf[h].seqNum == gotSeq) {
-                            qDebug() << this->metaObject()->className() << ": retransmitting packet :" << gotSeq << " (len=" << txSeqBuf[f].data.length() << ")";
+                            //qDebug() << this->metaObject()->className() << ": retransmitting packet :" << gotSeq << " (len=" << txSeqBuf[f].data.length() << ")";
                             QMutexLocker locker(&mutex);
                             udp->writeDatagram(txSeqBuf[h].data, radioIP, port);
                             found = true;
@@ -851,7 +865,7 @@ void udpBase::dataReceived(QByteArray r)
                         }
                     if (!found)
                     {
-                        qDebug() << this->metaObject()->className() << ": Could not find requested packet " << gotSeq << ", sending idle.";
+                        //qDebug() << this->metaObject()->className() << ": Could not find requested packet " << gotSeq << ", sending idle.";
                         sendIdle(false, gotSeq);
                     }
                 }
@@ -960,6 +974,7 @@ void udpBase::sendTrackedPacket(QByteArray d)
     if (idleTimer.isActive()) {
         idleTimer.start(IDLE_PERIOD); // Reset idle counter if it's running
     }
+    packetsSent++;
     return;
 }
 

@@ -98,6 +98,9 @@ public:
 
 	quint16 areYouThereCounter=0;
 
+	quint32 packetsSent=0;
+	quint32 packetsLost=0;
+
 };
 
 
@@ -243,7 +246,6 @@ private:
 	QTimer areYouThereTimer;
 
 	bool highBandwidthConnection = false;
-
 };
 
 
