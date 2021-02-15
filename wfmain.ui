@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -443,7 +443,7 @@
              <number>0</number>
             </property>
             <item>
-             <widget class="QSlider" name="verticalSlider">
+             <widget class="QSlider" name="txPowerSlider">
               <property name="minimumSize">
                <size>
                 <width>0</width>
@@ -455,6 +455,9 @@
                 <width>16777215</width>
                 <height>80</height>
                </size>
+              </property>
+              <property name="toolTip">
+               <string>Transmit Power</string>
               </property>
               <property name="orientation">
                <enum>Qt::Vertical</enum>
@@ -482,7 +485,7 @@
              <number>0</number>
             </property>
             <item>
-             <widget class="QSlider" name="verticalSlider_2">
+             <widget class="QSlider" name="micGainSlider">
               <property name="minimumSize">
                <size>
                 <width>0</width>
@@ -494,6 +497,9 @@
                 <width>16777215</width>
                 <height>80</height>
                </size>
+              </property>
+              <property name="toolTip">
+               <string>Mic Gain</string>
               </property>
               <property name="orientation">
                <enum>Qt::Vertical</enum>
@@ -521,7 +527,7 @@
              <number>0</number>
             </property>
             <item>
-             <widget class="QSlider" name="verticalSlider_3">
+             <widget class="QSlider" name="scopeRefLevelSlider">
               <property name="minimumSize">
                <size>
                 <width>0</width>
@@ -533,6 +539,9 @@
                 <width>16777215</width>
                 <height>80</height>
                </size>
+              </property>
+              <property name="toolTip">
+               <string>Spectrum Reference Level Adjust</string>
               </property>
               <property name="orientation">
                <enum>Qt::Vertical</enum>
