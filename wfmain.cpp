@@ -264,6 +264,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(getBandStackReg(char,char)), rig, SLOT(getBandStackReg(char,char)));
     connect(rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
     connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
+    connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
     connect(rig, SIGNAL(haveBandStackReg(float,char,bool)), this, SLOT(receiveBandStackReg(float,char,bool)));
     connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
 
@@ -358,6 +359,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
     pttTimer->setSingleShot(true);
     connect(pttTimer, SIGNAL(timeout()), this, SLOT(handlePttLimit()));
+    amTransmitting = false;
 
     // Not needed since we automate this now.
     /*
@@ -1348,6 +1350,9 @@ void wfmain::runDelayedCommand()
             case cmdScopeFixedMode:
                 emit setScopeCenterMode(false);
                 break;
+            case cmdGetPTT:
+                emit getPTT();
+                break;
             default:
                 break;
         }
@@ -1361,6 +1366,12 @@ void wfmain::runDelayedCommand()
         // every command insertion to include a ->start.... probably worth doing.
         delayedCommand->start();
     }
+}
+
+void wfmain::issueDelayedCommand(cmds cmd)
+{
+    cmdOutQue.append(cmd);
+    delayedCommand->start();
 }
 
 
@@ -1423,9 +1434,22 @@ void wfmain::receiveFreq(double freqMhz)
 
 void wfmain::receivePTTstatus(bool pttOn)
 {
-    // NOTE: This will only show up if we actually receive a PTT status
+    // This is the only place where amTransmitting and the transmit button text should be changed:
     qDebug() << "PTT status: " << pttOn;
+    amTransmitting = pttOn;
+    changeTxBtn();
 }
+
+void wfmain::changeTxBtn()
+{
+    if(amTransmitting)
+    {
+        ui->transmitBtn->setText("Receive");
+    } else {
+        ui->transmitBtn->setText("Transmit");
+    }
+}
+
 
 void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq)
 {
@@ -2245,6 +2269,7 @@ void wfmain::on_pttOnBtn_clicked()
     // Are we already PTT? Not a big deal, just send again anyway.
     showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
     emit setPTT(true);
+    amTransmitting = true;
     // send PTT
     // Start 3 minute timer
     pttTimer->start();
@@ -2258,7 +2283,8 @@ void wfmain::on_pttOffBtn_clicked()
 
     // Stop the 3 min timer
     pttTimer->stop();
-
+    cmdOutQue.append(cmdGetPTT);
+    delayedCommand->start();
 }
 
 void wfmain::handlePttLimit()
@@ -2464,4 +2490,31 @@ void wfmain::on_debugBtn_clicked()
     // cal->show();
     //emit getMode();
     sat->show();
+}
+
+void wfmain::on_transmitBtn_clicked()
+{
+    if(!amTransmitting)
+    {
+        // Currently receiving
+        if(!ui->pttEnableChk->isChecked())
+        {
+            showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
+            return;
+        }
+
+        // Are we already PTT? Not a big deal, just send again anyway.
+        showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
+        emit setPTT(true);
+        // send PTT
+        // Start 3 minute timer
+        pttTimer->start();
+        issueDelayedCommand(cmdGetPTT);
+        //changeTxBtn();
+
+    } else {
+        // Currently transmitting
+        emit setPTT(false);
+        issueDelayedCommand(cmdGetPTT);
+    }
 }

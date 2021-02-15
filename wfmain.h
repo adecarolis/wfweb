@@ -290,6 +290,8 @@ private slots:
 
     void on_udpServerSetupBtn_clicked();
 
+    void on_transmitBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -380,7 +382,7 @@ private:
     double knobFreqMhz;
     enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
-              cmdGetSql, cmdGetATUStatus, cmdScopeCenterMode, cmdScopeFixedMode};
+              cmdGetSql, cmdGetATUStatus, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     freqMemory mem;
@@ -441,10 +443,14 @@ private:
     void useColors(); // set the plot up
     void setDefPrefs(); // populate default values to default prefs
 
+    void changeTxBtn();
+    void issueDelayedCommand(cmds cmd);
+
     int oldFreqDialVal;
 
     rigCapabilities rigCaps;
     bool haveRigCaps;
+    bool amTransmitting;
 
     calibrationWindow *cal;
     satelliteSetup *sat;
