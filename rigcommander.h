@@ -52,12 +52,33 @@ public slots:
     void setPTT(bool pttOn);
     void setDataMode(bool dataOn);
     void getDataMode();
+
+    void getLevels(); // all supported levels
+
     void getRfGain();
     void getAfGain();
     void getSql();
+    void getTxLevel();
+    void getMicGain();
+    void getCompLevel();
+    void getMonitorLevel();
+    void getVoxGain();
+    void getAntiVoxGain();
+
+    void getSMeter();
+    void getRFPowerMeter();
+    void getSWRMeter();
+    void getALCMeter();
+    void getCompReductionMeter();
+    void getVdMeter();
+    void getIDMeter();
+
+    void getMeters(bool transmitting); // all supported meters per transmit or receive
+
     void setSquelch(unsigned char level);
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
+
     void startATU();
     void setATU(bool enabled);
     void getATUStatus();
@@ -92,10 +113,25 @@ signals:
     void haveScopeSpan(char span);
     void haveSpectrumFixedMode(bool fixedEnabled);
     void haveScopeEdge(char edge);
+
     void haveRfGain(unsigned char level);
     void haveAfGain(unsigned char level);
     void haveSql(unsigned char level);
     void haveTxPower(unsigned char level);
+    void haveMicGain(unsigned char level);
+    void haveCompLevel(unsigned char level);
+    void haveMonitorLevel(unsigned char level);
+    void haveVoxGain(unsigned char gain);
+    void haveAntiVoxGain(unsigned char gain);
+
+    void haveSMeter(unsigned char level);
+    void haveRFMeter(unsigned char level);
+    void haveSWRMeter(unsigned char);
+    void haveALCMeter(unsigned char);
+    void haveCompMeter(unsigned char dbreduction);
+    void haveVdMeter(unsigned char voltage);
+    void haveIdMeter(unsigned char current);
+
     void thing();
     void haveRefAdjustCourse(unsigned char level);
     void haveRefAdjustFine(unsigned char level);

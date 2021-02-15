@@ -731,6 +731,10 @@ void rigCommander::parseCommand()
             // read levels
             parseLevels();
             break;
+        case '\x15':
+            // Metering such as s, power, etc
+            parseLevels();
+            break;
         case '\x19':
             // qDebug() << "Have rig ID: " << (unsigned int)payloadIn[2];
             // printHex(payloadIn, false, true);
@@ -807,25 +811,97 @@ void rigCommander::parseLevels()
     // "INDEX: 00 01 02 03 04 "
     // "DATA:  14 02 00 78 fd "
 
-    switch(payloadIn[1])
+    if(payloadIn[0] = '\x14')
     {
-        case '\x01':
-            // AF level
-            emit haveAfGain(level);
-            break;
-        case '\x02':
-            // RX RF Gain
-            emit haveRfGain(level);
-            break;
-        case '\x03':
-            // Squelch level
-            emit haveSql(level);
-            break;
-        case '\x0A':
-            // TX RF level
-            emit haveTxPower(level);
-            break;
+        switch(payloadIn[1])
+        {
+            case '\x01':
+                // AF level
+                emit haveAfGain(level);
+                break;
+            case '\x02':
+                // RX RF Gain
+                emit haveRfGain(level);
+                break;
+            case '\x03':
+                // Squelch level
+                emit haveSql(level);
+                break;
+            case '\x0A':
+                // TX RF level
+                emit haveTxPower(level);
+                break;
+            case '\x0B':
+                // Mic Gain
+                emit haveMicGain(level);
+                break;
+            case '\x0E':
+                // compressor level
+                emit haveCompLevel(level);
+                break;
+            case '\x15':
+                // monitor level
+                emit haveMonitorLevel(level);
+                break;
+            case '\x16':
+                // VOX gain
+                emit haveVoxGain(level);
+                break;
+            case '\x17':
+                // anti-VOX gain
+                emit haveAntiVoxGain(level);
+                break;
+
+            default:
+                qDebug() << "Unknown control level (0x14) received at register " << payloadIn[1] << " with level " << level;
+                break;
+
+        }
+        return;
     }
+
+    if(payloadIn[0] = '\x15')
+    {
+        switch(payloadIn[1])
+        {
+            case '\x02':
+                // S-Meter
+                emit haveSMeter(level);
+                break;
+            case '\x11':
+                // RF-Power meter
+                emit haveRFMeter(level);
+                break;
+            case '\x12':
+                // SWR
+                emit haveSWRMeter(level);
+                break;
+            case '\x13':
+                // ALC
+                emit haveALCMeter(level);
+                break;
+            case '\x14':
+                // COMP dB reduction
+                emit haveCompMeter(level);
+                break;
+            case '\x15':
+                // VD (12V)
+                emit haveVdMeter(level);
+                break;
+            case '\x16':
+                // ID
+                emit haveIdMeter(level);
+                break;
+
+            default:
+                qDebug() << "Unknown meter level (0x15) received at register " << payloadIn[1] << " with level " << level;
+                break;
+        }
+
+
+    return;
+    }
+
 }
 
 void rigCommander::getRfGain()
@@ -842,10 +918,123 @@ void rigCommander::getAfGain()
 
 void rigCommander::getSql()
 {
-    // Squelch
     QByteArray payload("\x14\x03");
     prepDataAndSend(payload);
 }
+
+void rigCommander::getTxLevel()
+{
+    QByteArray payload("\x14\x0A");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getMicGain()
+{
+    QByteArray payload("\x14\x0B");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getCompLevel()
+{
+    QByteArray payload("\x14\x0E");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getMonitorLevel()
+{
+    QByteArray payload("\x14\x15");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getVoxGain()
+{
+    QByteArray payload("\x14\x16");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getAntiVoxGain()
+{
+    QByteArray payload("\x14\x17");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getLevels()
+{
+    // Function to grab all levels
+    qDebug() << __func__ << ": grabbing all levels supported.";
+    getRfGain();
+    getAfGain();
+    getSql();
+    getTxLevel();
+    getMicGain();
+    getCompLevel();
+    getMonitorLevel();
+    getVoxGain();
+    getAntiVoxGain();
+}
+
+void rigCommander::getMeters(bool transmitting)
+{
+    // Nice function to just grab every meter
+    qDebug() << __func__ << ": grabbing all metering for mode " << (transmitting==true? "transmitting":"receiving") ;
+
+    if(transmitting)
+    {
+        getRFPowerMeter();
+        getSWRMeter();
+        getALCMeter();
+        getCompReductionMeter();
+
+    } else {
+        getSMeter();
+    }
+
+    getVdMeter();
+    getIDMeter();
+}
+
+void rigCommander::getSMeter()
+{
+    QByteArray payload("\x15\x02");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getRFPowerMeter()
+{
+    QByteArray payload("\x15\x11");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getSWRMeter()
+{
+    QByteArray payload("\x15\x12");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getALCMeter()
+{
+    QByteArray payload("\x15\x13");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getCompReductionMeter()
+{
+    QByteArray payload("\x15\x14");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getVdMeter()
+{
+    QByteArray payload("\x15\x15");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getIDMeter()
+{
+    QByteArray payload("\x15\x16");
+    prepDataAndSend(payload);
+}
+
 
 void rigCommander::setSquelch(unsigned char level)
 {
