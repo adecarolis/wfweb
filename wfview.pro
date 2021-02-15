@@ -83,7 +83,8 @@ SOURCES += main.cpp\
 	logcategories.cpp \
     audiohandler.cpp \
     calibrationwindow.cpp \
-    satellitesetup.cpp
+    satellitesetup.cpp \
+    udpserversetup.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -94,12 +95,14 @@ HEADERS  += wfmain.h \
 	logcategories.h \
     audiohandler.h \
     calibrationwindow.h \
-    satellitesetup.h
+    satellitesetup.h \
+    udpserversetup.h
 
 
 FORMS    += wfmain.ui \
     calibrationwindow.ui \
-    satellitesetup.ui
+    satellitesetup.ui \
+    udpserversetup.ui
 
 
 

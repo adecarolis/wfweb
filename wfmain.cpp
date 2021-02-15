@@ -25,6 +25,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     cal = new calibrationWindow();
     sat = new satelliteSetup();
+    srv = new udpServerSetup();
 
 
     haveRigCaps = false;
@@ -2413,6 +2414,10 @@ void wfmain::on_connectBtn_clicked()
     }
 }
 
+void wfmain::on_udpServerSetupBtn_clicked()
+{
+    srv->show();
+}
 void wfmain::on_sqlSlider_valueChanged(int value)
 {
     emit setSql((unsigned char)value);
