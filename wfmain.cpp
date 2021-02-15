@@ -1374,6 +1374,13 @@ void wfmain::issueDelayedCommand(cmds cmd)
     delayedCommand->start();
 }
 
+void wfmain::issueDelayedCommandPriority(cmds cmd)
+{
+    // Places the new command at the top of the queue
+    // Use only when needed.
+    cmdOutQue.prepend(cmd);
+    delayedCommand->start();
+}
 
 void wfmain::receiveRigID(rigCapabilities rigCaps)
 {
@@ -2269,10 +2276,10 @@ void wfmain::on_pttOnBtn_clicked()
     // Are we already PTT? Not a big deal, just send again anyway.
     showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
     emit setPTT(true);
-    amTransmitting = true;
     // send PTT
     // Start 3 minute timer
     pttTimer->start();
+    issueDelayedCommand(cmdGetPTT);
 }
 
 void wfmain::on_pttOffBtn_clicked()
@@ -2283,8 +2290,7 @@ void wfmain::on_pttOffBtn_clicked()
 
     // Stop the 3 min timer
     pttTimer->stop();
-    cmdOutQue.append(cmdGetPTT);
-    delayedCommand->start();
+    issueDelayedCommand(cmdGetPTT);
 }
 
 void wfmain::handlePttLimit()

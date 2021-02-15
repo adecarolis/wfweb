@@ -445,6 +445,7 @@ private:
 
     void changeTxBtn();
     void issueDelayedCommand(cmds cmd);
+    void issueDelayedCommandPriority(cmds cmd);
 
     int oldFreqDialVal;
 
