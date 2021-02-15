@@ -1048,11 +1048,11 @@ void rigCommander::parseDetailedRegisters1A05()
     {
         case 72:
             // course reference
-            emit haveRefAdjustCourse(  bcdHexToDecimal(payloadIn[5]) + (10*bcdHexToDecimal(payloadIn[6])) );
+            emit haveRefAdjustCourse(  bcdHexToDecimal(payloadIn[5]) + (100*bcdHexToDecimal(payloadIn[4])) );
             break;
         case 73:
             // fine reference
-            emit haveRefAdjustFine( bcdHexToDecimal(payloadIn[5]) + (10*bcdHexToDecimal(payloadIn[6])) );
+            emit haveRefAdjustFine( bcdHexToDecimal(payloadIn[5]) + (100*bcdHexToDecimal(payloadIn[4])) );
             break;
         default:
             break;
@@ -1400,7 +1400,7 @@ QByteArray rigCommander::bcdEncodeInt(unsigned int num)
     char b0 = hundreds | (thousands << 4);
     char b1 = units | (tens << 4);
 
-    qDebug() << __FUNCTION__ << " encoding value " << num << " as hex:";
+    //qDebug() << __FUNCTION__ << " encoding value " << num << " as hex:";
     //printHex(QByteArray(b0), false, true);
     //printHex(QByteArray(b1), false, true);
 
