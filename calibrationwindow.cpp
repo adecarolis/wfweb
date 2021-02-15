@@ -67,10 +67,17 @@ void calibrationWindow::on_calReadRigCalBtn_clicked()
 
 void calibrationWindow::on_calCourseSlider_valueChanged(int value)
 {
+    ui->calCourseSpinbox->blockSignals(true);
+    ui->calCourseSpinbox->setValue((int) value);
+    ui->calCourseSpinbox->blockSignals(false);
     emit setRefAdjustCourse((unsigned char) value);
+
 }
 
 void calibrationWindow::on_calFineSlider_valueChanged(int value)
 {
+    ui->calFineSpinbox->blockSignals(true);
+    ui->calFineSpinbox->setValue((int) value);
+    ui->calFineSpinbox->blockSignals(false);
     emit setRefAdjustFine((unsigned char) value);
 }

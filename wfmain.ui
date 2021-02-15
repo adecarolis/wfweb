@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -188,17 +188,28 @@
              </layout>
             </item>
             <item>
-             <widget class="QProgressBar" name="levelIndicator">
-              <property name="maximum">
-               <number>255</number>
-              </property>
-              <property name="value">
-               <number>100</number>
-              </property>
-              <property name="textVisible">
-               <bool>false</bool>
-              </property>
-             </widget>
+             <layout class="QHBoxLayout" name="horizontalLayout_21">
+              <item>
+               <widget class="QLabel" name="label_26">
+                <property name="text">
+                 <string>Signal</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QProgressBar" name="levelIndicator">
+                <property name="maximum">
+                 <number>255</number>
+                </property>
+                <property name="value">
+                 <number>100</number>
+                </property>
+                <property name="textVisible">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
            </layout>
           </item>
@@ -1333,16 +1344,12 @@
            </widget>
           </item>
           <item>
-           <widget class="QCheckBox" name="fullScreenChk">
+           <widget class="QCheckBox" name="tuningFloorZerosChk">
             <property name="text">
-             <string>Show full screen</string>
+             <string>When tuning, set lower digits to zero</string>
             </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="useDarkThemeChk">
-            <property name="text">
-             <string>Use Dark Theme</string>
+            <property name="checked">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -1367,24 +1374,86 @@
            <number>0</number>
           </property>
           <item>
-           <widget class="QCheckBox" name="tuningFloorZerosChk">
+           <widget class="QCheckBox" name="checkBox_2">
             <property name="text">
-             <string>When tuning, set lower digits to zero</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
+             <string>Use System Theme</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QCheckBox" name="pttEnableChk">
+           <widget class="QCheckBox" name="useDarkThemeChk">
             <property name="text">
-             <string>Enable PTT Controls</string>
+             <string>Waterfall Dark Theme</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="fullScreenChk">
+            <property name="text">
+             <string>Show full screen</string>
             </property>
            </widget>
           </item>
           <item>
            <spacer name="horizontalSpacer_7">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_22">
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="adjRefBtn">
+            <property name="text">
+             <string>Adjust Reference</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="satOpsBtn">
+            <property name="text">
+             <string>Satellite Ops</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_27">
+            <property name="text">
+             <string>Modulation Input:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="modInputCombo"/>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="tuneEnableChk">
+            <property name="text">
+             <string>Enable ATU</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="tuneNowBtn">
+            <property name="text">
+             <string>Tune Now</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_9">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
@@ -1421,30 +1490,9 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="aboutBtn">
+           <widget class="QCheckBox" name="pttEnableChk">
             <property name="text">
-             <string>About</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="saveSettingsBtn">
-            <property name="text">
-             <string>Save Settings</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="connectBtn">
-            <property name="text">
-             <string>Connect</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="debugBtn">
-            <property name="text">
-             <string>Debug</string>
+             <string>Enable PTT Controls</string>
             </property>
            </widget>
           </item>
@@ -1469,18 +1517,21 @@
            <number>0</number>
           </property>
           <item>
-           <widget class="QCheckBox" name="tuneEnableChk">
+           <widget class="QCheckBox" name="checkBox">
             <property name="text">
-             <string>Enable ATU</string>
+             <string>Enable USB (serial)</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="tuneNowBtn">
+           <widget class="QLabel" name="label_28">
             <property name="text">
-             <string>Tune Now</string>
+             <string>Serial Device:</string>
             </property>
            </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="serialDeviceListCombo"/>
           </item>
           <item>
            <spacer name="tuneSpacer">
@@ -1507,6 +1558,20 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="connectBtn">
+            <property name="text">
+             <string>Connect</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="udpServerSetupBtn">
+            <property name="text">
+             <string>Server Setup</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="horizontalSpacer_8">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -1518,13 +1583,6 @@
              </size>
             </property>
            </spacer>
-          </item>
-          <item>
-           <widget class="QPushButton" name="udpServerSetupBtn">
-            <property name="text">
-             <string>Server Setup</string>
-            </property>
-           </widget>
           </item>
          </layout>
         </item>
@@ -1730,6 +1788,13 @@
            <number>0</number>
           </property>
           <item>
+           <widget class="QPushButton" name="debugBtn">
+            <property name="text">
+             <string>Debug</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="horizontalSpacer_6">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -1741,6 +1806,20 @@
              </size>
             </property>
            </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="aboutBtn">
+            <property name="text">
+             <string>About</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="saveSettingsBtn">
+            <property name="text">
+             <string>Save Settings</string>
+            </property>
+           </widget>
           </item>
           <item>
            <widget class="QPushButton" name="exitBtn">

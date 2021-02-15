@@ -1038,7 +1038,8 @@ void wfmain::shortcutControlT()
 void wfmain::shortcutControlR()
 {
     // Receive
-    ui->pttOffBtn->click();
+    emit setPTT(false);
+    issueDelayedCommand(cmdGetPTT);
 }
 
 void wfmain::shortcutControlI()
@@ -2482,22 +2483,6 @@ void wfmain::on_dataModeBtn_toggled(bool checked)
     setDataMode(checked);
 }
 
-// --- DEBUG FUNCTION ---
-void wfmain::on_debugBtn_clicked()
-{
-    qDebug() << "Debug button pressed.";
-
-    // TODO: Why don't these commands work?!
-    //emit getScopeMode();
-    //emit getScopeEdge(); // 1,2,3 only in "fixed" mode
-    //emit getScopeSpan(); // in khz, only in "center" mode
-    //qDebug() << "Debug: finding rigs attached. Let's see if this works. ";
-    //rig->findRigs();
-    // cal->show();
-    //emit getMode();
-    sat->show();
-}
-
 void wfmain::on_transmitBtn_clicked()
 {
     if(!amTransmitting)
@@ -2524,3 +2509,26 @@ void wfmain::on_transmitBtn_clicked()
         issueDelayedCommand(cmdGetPTT);
     }
 }
+
+void wfmain::on_adjRefBtn_clicked()
+{
+    cal->show();
+}
+
+void wfmain::on_satOpsBtn_clicked()
+{
+    sat->show();
+}
+
+// --- DEBUG FUNCTION ---
+void wfmain::on_debugBtn_clicked()
+{
+    qDebug() << "Debug button pressed.";
+
+    // TODO: Why don't these commands work?!
+    //emit getScopeMode();
+    //emit getScopeEdge(); // 1,2,3 only in "fixed" mode
+    //emit getScopeSpan(); // in khz, only in "center" mode
+
+}
+

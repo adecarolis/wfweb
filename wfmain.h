@@ -292,6 +292,10 @@ private slots:
 
     void on_transmitBtn_clicked();
 
+    void on_adjRefBtn_clicked();
+
+    void on_satOpsBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
