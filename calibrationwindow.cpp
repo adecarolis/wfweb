@@ -70,6 +70,7 @@ void calibrationWindow::on_calCourseSlider_valueChanged(int value)
     ui->calCourseSpinbox->blockSignals(true);
     ui->calCourseSpinbox->setValue((int) value);
     ui->calCourseSpinbox->blockSignals(false);
+
     emit setRefAdjustCourse((unsigned char) value);
 
 }
@@ -79,5 +80,50 @@ void calibrationWindow::on_calFineSlider_valueChanged(int value)
     ui->calFineSpinbox->blockSignals(true);
     ui->calFineSpinbox->setValue((int) value);
     ui->calFineSpinbox->blockSignals(false);
+
     emit setRefAdjustFine((unsigned char) value);
+}
+
+void calibrationWindow::on_calCourseSpinbox_valueChanged(int value)
+{
+    // this one works with the up and down arrows,
+    // however, if typing in a value, say "128",
+    // this will get called three times with these values:
+    // 1
+    // 12
+    // 128
+
+    //int value = ui->calFineSpinbox->value();
+
+    ui->calCourseSlider->blockSignals(true);
+    ui->calCourseSlider->setValue(value);
+    ui->calCourseSlider->blockSignals(false);
+
+    emit setRefAdjustCourse((unsigned char) value);
+
+
+}
+
+void calibrationWindow::on_calFineSpinbox_valueChanged(int value)
+{
+    //int value = ui->calFineSpinbox->value();
+
+    ui->calFineSlider->blockSignals(true);
+    ui->calFineSlider->setValue(value);
+    ui->calFineSlider->blockSignals(false);
+
+    emit setRefAdjustFine((unsigned char) value);
+}
+
+void calibrationWindow::on_calFineSpinbox_editingFinished()
+{
+
+}
+
+void calibrationWindow::on_calCourseSpinbox_editingFinished()
+{
+    // This function works well for typing in values
+    // but the up and down arrows on the spinbox will not
+    // trigger this function, until the enter key is pressed.
+
 }
