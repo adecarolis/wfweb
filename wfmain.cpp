@@ -305,7 +305,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(setMonitorLevel(unsigned char)), rig, SLOT(setMonitorLevel(unsigned char)));
     connect(this, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
     connect(this, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
-
+    connect(this, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
 
 
     // Levels: handle return on query:
@@ -2602,8 +2602,8 @@ void wfmain::on_micGainSlider_valueChanged(int value)
 
 void wfmain::on_scopeRefLevelSlider_valueChanged(int value)
 {
-    //emit setScopeRefLevel(value);
-    (void)value;
+    value = (value/5) * 5; // rounded to "nearest 5"
+    emit setSpectrumRefLevel(value);
 }
 
 

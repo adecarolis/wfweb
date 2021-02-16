@@ -67,7 +67,7 @@ signals:
     void setMonitorLevel(unsigned char);
     void setVoxGain(unsigned char);
     void setAntiVoxGain(unsigned char);
-
+    void setSpectrumRefLevel(int);
     void getMeters(bool isTransmitting);
 
 

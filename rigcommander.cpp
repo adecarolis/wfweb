@@ -402,6 +402,33 @@ void rigCommander::setSpectrumCenteredMode(bool centerEnable)
     prepDataAndSend(specModePayload);
 }
 
+void rigCommander::setSpectrumRefLevel(int level)
+{
+    //qDebug() << __func__ << ": Setting scope to level " << level;
+    QByteArray setting;
+    QByteArray number;
+    QByteArray pn;
+    setting.setRawData("\x27\x19\x00", 3);
+
+    if(level >= 0)
+    {
+        pn.setRawData("\x00", 1);
+        number = bcdEncodeInt(level*10);
+    } else {
+        pn.setRawData("\x01", 1);
+        number = bcdEncodeInt( (-level)*10 );
+    }
+
+    setting.append(number);
+    setting.append(pn);
+
+    //qDebug() << __func__ << ": scope reference number: " << number << ", PN to: " << pn;
+    //printHex(setting, false, true);
+
+    prepDataAndSend(setting);
+}
+
+
 void rigCommander::getSpectrumCenterMode()
 {
     QByteArray specModePayload;

@@ -38,6 +38,7 @@ public slots:
     void setSpectrumBounds(double startFreq, double endFreq, unsigned char edgeNumber);
     void setSpectrumCenteredMode(bool centerEnable); // centered or band-wise
     void getSpectrumCenterMode();
+    void setSpectrumRefLevel(int level);
     void setScopeSpan(char span);
     void getScopeSpan();
     void setScopeEdge(char edge);
