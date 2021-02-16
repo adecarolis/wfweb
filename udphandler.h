@@ -30,7 +30,7 @@
 #define AREYOUTHERE_PERIOD 500
 
 
-quint8* passcode(QString str);
+void passcode(QString in, QByteArray& out);
 QByteArray parseNullTerminatedString(QByteArray c, int s);
 
 // Parent class that contains all common items.
