@@ -29,7 +29,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Reference Adjustment</string>
   </property>
   <widget class="QWidget" name="verticalLayoutWidget">
    <property name="geometry">
