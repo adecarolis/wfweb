@@ -200,7 +200,7 @@ void udpServer::controlReceived()
             }
             else if (r.mid(0x13,3) == QByteArrayLiteral("\x30\01\x05")) {
                 qDebug() << current->ipAddress.toString() << ": Received 'token renewal' request";
-                sendTokenRenewal(current, qFromLittleEndian<quint16>(r.mid(0x17, 2)));
+                sendTokenRenewal(current);
             }
             break;
         case (0x80):
@@ -227,7 +227,7 @@ void udpServer::controlReceived()
                 current->authInnerSeq = qFromLittleEndian<quint16>(r.mid(0x17, 2));
                 current->authSeq = qFromLittleEndian<quint16>(r.mid(0x06, 2));
                 current->tokenRx = qFromLittleEndian<quint16>(r.mid(0x1a, 2));
-                current->tokenTx = (quint32)(quint8)rand() | (quint8)rand() << 8 | (quint8) rand << 16 | (quint16)rand() << 24;
+                current->tokenTx = (quint32)((quint16)rand() | (quint16)rand() << 16) ;
 
                 if (userOk) {
                     sendLoginResponse(current, true);
@@ -437,7 +437,7 @@ void udpServer::sendConnectionInfo(CLIENT* c)
     return;
 }
 
-void udpServer::sendTokenRenewal(CLIENT* c, quint16 seq)
+void udpServer::sendTokenRenewal(CLIENT* c)
 {
     qDebug() << c->ipAddress.toString() << ": Sending Token renwal";
     quint8 p[] = { 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, static_cast<quint8>(c->txSeq & 0xff), static_cast<quint8>(c->txSeq >> 8 & 0xff),

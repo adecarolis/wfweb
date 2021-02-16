@@ -75,7 +75,7 @@ private:
 	void sendLoginResponse(CLIENT* c, bool allowed);
 	void sendCapabilities(CLIENT* c);
 	void sendConnectionInfo(CLIENT* c);
-	void sendTokenRenewal(CLIENT* c, quint16 seq);
+	void sendTokenRenewal(CLIENT* c);
 
 
 	SERVERCONFIG config;
