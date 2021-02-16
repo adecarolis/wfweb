@@ -772,13 +772,13 @@ void wfmain::loadSettings()
     serverConfig.controlPort = settings.value("ServerControlPort", 50001).toInt();
     serverConfig.civPort = settings.value("ServerCivPort", 50002).toInt();
     serverConfig.audioPort = settings.value("ServerAudioPort", 50003).toInt();
-    int numUsers = settings.value("ServerNumUsers", 0).toInt();
+    int numUsers = settings.value("ServerNumUsers", 2).toInt();
     serverConfig.users.clear();
     for (int f = 0; f < numUsers; f++)
     {
         SERVERUSER user;
-        user.username = settings.value("ServerUsername" + f, "").toString();
-        user.password = settings.value("ServerPassword" + f, "").toString();
+        user.username = settings.value("ServerUsername_" + QString::number(f), "").toString();
+        user.password = settings.value("ServerPassword_" + QString::number(f), "").toString();
         serverConfig.users.append(user);
     }
 
@@ -947,8 +947,8 @@ void wfmain::saveSettings()
     settings.setValue("ServerNumUsers", serverConfig.users.count());
     for (int f = 0; f < serverConfig.users.count(); f++)
     {
-        settings.setValue("ServerUsername" + f, serverConfig.users[f].username);
-        settings.setValue("ServerPassword" + f, serverConfig.users[f].password);
+        settings.setValue("ServerUsername_" + QString::number(f), serverConfig.users[f].username);
+        settings.setValue("ServerPassword_" + QString::number(f), serverConfig.users[f].password);
     }
 
     settings.endGroup();
