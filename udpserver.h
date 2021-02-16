@@ -49,10 +49,10 @@ private:
 		quint32 rxPingSeq; // 32bit as has other info
 		quint16 authInnerSeq;
 		quint16 authSeq;
-		quint32 innerPingSeq;
+		quint16 innerPingSeq;
 		quint16 innerSeq;
 		quint16 tokenRx;
-		quint16 tokenTx;
+		quint32 tokenTx;
 		QUdpSocket* socket;
 
 		QTimer* pingTimer;

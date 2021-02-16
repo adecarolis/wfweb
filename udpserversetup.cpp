@@ -31,7 +31,6 @@ void udpServerSetup::receiveServerConfig(SERVERCONFIG conf)
     {
         if (ui->usersTable->rowCount() <= row) {
             ui->usersTable->insertRow(ui->usersTable->rowCount());
-            ui->usersTable->setHorizontalHeaderItem(ui->usersTable->rowCount() - 1, new QTableWidgetItem("User " + QString::number(row + 1)));
         }
         ui->usersTable->setItem(row, 0, new QTableWidgetItem(user.username));
         ui->usersTable->setItem(row, 1, new QTableWidgetItem(user.password));
@@ -42,6 +41,8 @@ void udpServerSetup::receiveServerConfig(SERVERCONFIG conf)
     {
         ui->usersTable->removeRow(count);
     }
+    ui->usersTable->insertRow(ui->usersTable->rowCount());
+    //ui->usersTable->setHorizontalHeaderItem(ui->usersTable->rowCount() - 1, new QTableWidgetItem("User " + QString::number(row + 1)));
 
 }
 
@@ -58,12 +59,29 @@ void udpServerSetup::accept()
 
     for (int row = 0; row < ui->usersTable->model()->rowCount(); row++)
     {
-        SERVERUSER user;
-        user.username = ui->usersTable->item(row, 0)->text();
-        user.password = ui->usersTable->item(row, 1)->text();
-        config.users.append(user);
+        if (ui->usersTable->item(row, 0) != NULL && ui->usersTable->item(row, 1) != NULL)
+        {
+            SERVERUSER user;
+            user.username = ui->usersTable->item(row, 0)->text();
+            user.password = ui->usersTable->item(row, 1)->text();
+            config.users.append(user);
+            
+        }
+        else {
+            ui->usersTable->removeRow(row);
+        }
     }
 
     emit serverConfig(config,true);
     this->hide();
+}
+
+
+void udpServerSetup::on_usersTable_cellClicked(int row, int col)
+{
+    qDebug() << "Clicked on " << row << "," << col;
+    if (row == ui->usersTable->model()->rowCount() - 1 && ui->usersTable->item(row, 0) != NULL && ui->usersTable->item(row, 1) != NULL) {
+        ui->usersTable->insertRow(ui->usersTable->rowCount());
+    }
+
 }

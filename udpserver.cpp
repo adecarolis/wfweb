@@ -66,7 +66,7 @@ udpServer::~udpServer()
     {
         client->idleTimer->stop();
         delete client->idleTimer;
-        delete& client; // Not sure how safe this is?
+        //delete& client; // Not sure how safe this is?
     }
     foreach(CLIENT* client, civClients)
     {
@@ -74,7 +74,7 @@ udpServer::~udpServer()
         delete client->idleTimer;
         client->pingTimer->stop();
         delete client->pingTimer;
-        delete& client; // Not sure how safe this is?
+        //delete& client; // Not sure how safe this is?
     }
     foreach(CLIENT* client, audioClients)
     {
@@ -82,7 +82,7 @@ udpServer::~udpServer()
         delete client->idleTimer;
         client->pingTimer->stop();
         delete client->pingTimer;
-        delete& client; // Not sure how safe this is?
+        //delete& client; // Not sure how safe this is?
     }
     
 }
@@ -112,8 +112,8 @@ void udpServer::controlReceived()
             current->myId = controlId;
             current->remoteId = qFromLittleEndian<quint32>(r.mid(8, 4));
             current->socket = udpControl;
-            current->innerPingSeq = (quint32)rand();
-            current->pingSeq = 1;
+            current->innerPingSeq = (quint16)rand();
+            current->pingSeq = (quint8)rand() << 8  | (quint8)rand();
             current->pingTimer = new QTimer();
             current->idleTimer = new QTimer();
             connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, current, (quint16)0x00, false));
@@ -225,9 +225,9 @@ void udpServer::controlReceived()
                 // Generate login response
                 current->clientName = parseNullTerminatedString(r, 0x60);
                 current->authInnerSeq = qFromLittleEndian<quint16>(r.mid(0x17, 2));
-                current->tokenRx = qFromLittleEndian<quint16>(r.mid(0x1a, 2));
                 current->authSeq = qFromLittleEndian<quint16>(r.mid(0x06, 2));
-                current->tokenTx = (quint16)rand();
+                current->tokenRx = qFromLittleEndian<quint16>(r.mid(0x1a, 2));
+                current->tokenTx = (quint32)(quint8)rand() | (quint8)rand() << 8 | (quint8) rand << 16 | (quint16)rand() << 24;
 
                 if (userOk) {
                     sendLoginResponse(current, true);
@@ -251,6 +251,8 @@ void udpServer::civReceived()
     while (udpCiv->hasPendingDatagrams()) {
         QNetworkDatagram datagram = udpCiv->receiveDatagram();
         QByteArray r = datagram.data();
+        qDebug() << "CIV Data from :" << datagram.senderAddress().toString() << ":" << QString::number(datagram.senderPort());
+
     }
 }
 
@@ -259,6 +261,7 @@ void udpServer::audioReceived()
     while (udpAudio->hasPendingDatagrams()) {
         QNetworkDatagram datagram = udpAudio->receiveDatagram();
         QByteArray r = datagram.data();
+        qDebug() << "Audio Data from :" << datagram.senderAddress().toString() << ":" << QString::number(datagram.senderPort());
     }
 }
 
@@ -290,22 +293,22 @@ void udpServer::sendPing(CLIENT* c, quint16 seq, bool reply)
     //qDebug() << c->ipAddress.toString() << ": Sending Ping";
 
     quint32 pingSeq = 0;
-    quint16 sendSeq = seq;
     if (reply) {
         pingSeq = c->rxPingSeq;
     }
     else {
-        pingSeq = (quint32)((quint16)rand() << 16) | c->innerPingSeq;
-        sendSeq = c->pingSeq;
+        pingSeq = (quint32)((quint8)(rand() & 0xff)) | (quint16)c->innerPingSeq << 8 | (quint8)0x06 << 24;
+        seq = c->pingSeq;
     }
 
     // First byte of pings "from" server is 0x00 NOT packet length!
     //
-    const quint8 p[] = { 0x00, 0x00, 0x00, 0x00, 0x07, 0x00,static_cast<quint8>(sendSeq & 0xff),static_cast<quint8>(sendSeq >>8 & 0xff),
+    const quint8 p[] = { 0x00, 0x00, 0x00, 0x00, 0x07, 0x00,static_cast<quint8>(seq & 0xff),static_cast<quint8>(seq >>8 & 0xff),
         static_cast<quint8>(c->myId & 0xff), static_cast<quint8>(c->myId >>8 & 0xff), static_cast<quint8>(c->myId >>16 & 0xff), static_cast<quint8>(c->myId >>24 & 0xff),
         static_cast<quint8>(c->remoteId & 0xff), static_cast<quint8>(c->remoteId >> 8 & 0xff), static_cast<quint8>(c->remoteId >> 16 & 0xff), static_cast<quint8>(c->remoteId >>24 & 0xff),
         static_cast<quint8>(reply), static_cast<quint8>(pingSeq & 0xff), static_cast<quint8>(pingSeq >> 8 & 0xff), static_cast<quint8>(pingSeq >> 16 & 0xff), static_cast<quint8>(pingSeq >>24 & 0xff)
     };
+    c->innerPingSeq++;
 
     c->socket->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), c->ipAddress, c->port);
     return;
@@ -313,11 +316,13 @@ void udpServer::sendPing(CLIENT* c, quint16 seq, bool reply)
 
 void udpServer::sendIdle(CLIENT* c, quint16 seq)
 {
+    
     if (seq == 0x00)
     {
         seq = c->txSeq;
         c->txSeq++;
     }
+    
 
     const quint8 p[] = { 0x10, 0x00, 0x00, 0x00, 0x00, 0x00,static_cast<quint8>(seq & 0xff),static_cast<quint8>(seq >>8 & 0xff),
         static_cast<quint8>(c->myId & 0xff), static_cast<quint8>(c->myId >> 8 & 0xff), static_cast<quint8>(c->myId >>16 & 0xff), static_cast<quint8>(c->myId >>24 & 0xff),
@@ -335,7 +340,10 @@ void udpServer::sendLoginResponse(CLIENT* c,bool allowed)
         static_cast<quint8>(c->myId & 0xff), static_cast<quint8>(c->myId >> 8 & 0xff), static_cast<quint8>(c->myId >> 16 & 0xff), static_cast<quint8>(c->myId >> 24 & 0xff),
         static_cast<quint8>(c->remoteId & 0xff), static_cast<quint8>(c->remoteId >> 8 & 0xff), static_cast<quint8>(c->remoteId >> 16 & 0xff), static_cast<quint8>(c->remoteId >> 24 & 0xff),
         /*0x10*/ 0x00, 0x00, 0x00, 0x50, 0x02, 0x00, 0x00,
-        static_cast<quint8>(c->authInnerSeq & 0xff), static_cast<quint8>(c->authInnerSeq >> 8 & 0xff), 0x00, static_cast<quint8>(c->tokenRx >> 0 & 0xff), static_cast<quint8>(c->tokenRx >> 8 & 0xff), 0x00, 0x00,  static_cast<quint8>(c->tokenTx & 0xff), static_cast<quint8>(c->tokenTx >> 8 & 0xff),
+        static_cast<quint8>(c->authInnerSeq & 0xff), static_cast<quint8>(c->authInnerSeq >> 8 & 0xff), 0x00,
+        static_cast<quint8>(c->tokenRx >> 0 & 0xff), static_cast<quint8>(c->tokenRx >> 8 & 0xff),
+        static_cast<quint8>(c->tokenTx & 0xff), static_cast<quint8>(c->tokenTx >> 8 & 0xff),
+        static_cast<quint8>(c->tokenTx >> 16 & 0xff), static_cast<quint8>(c->tokenTx >> 24 & 0xff),
         /*0x20*/ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         /*0x30*/ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         /*0x40*/ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -365,7 +373,10 @@ void udpServer::sendCapabilities(CLIENT* c)
         static_cast<quint8>(c->myId & 0xff), static_cast<quint8>(c->myId >> 8 & 0xff), static_cast<quint8>(c->myId >> 16 & 0xff), static_cast<quint8>(c->myId >>24 & 0xff),
         static_cast<quint8>(c->remoteId & 0xff), static_cast<quint8>(c->remoteId >> 8 & 0xff), static_cast<quint8>(c->remoteId >> 16 & 0xff), static_cast<quint8>(c->remoteId >>24 & 0xff),
         /*0x10*/ 0x00, 0x00, 0x00, 0x98, 0x02, 0x02, 0x00,
-        static_cast<quint8>(c->authInnerSeq & 0xff), static_cast<quint8>(c->authInnerSeq >>8 & 0xff), 0x00, static_cast<quint8>(c->tokenRx & 0xff), static_cast<quint8>(c->tokenRx >>8 & 0xff), 0x00, 0x00,  static_cast<quint8>(c->tokenTx & 0xff), static_cast<quint8>(c->tokenTx >> 8 & 0xff),
+        static_cast<quint8>(c->authInnerSeq & 0xff), static_cast<quint8>(c->authInnerSeq >> 8 & 0xff), 0x00,
+        static_cast<quint8>(c->tokenRx >> 0 & 0xff), static_cast<quint8>(c->tokenRx >> 8 & 0xff),
+        static_cast<quint8>(c->tokenTx & 0xff), static_cast<quint8>(c->tokenTx >> 8 & 0xff),
+        static_cast<quint8>(c->tokenTx >> 16 & 0xff), static_cast<quint8>(c->tokenTx >> 24 & 0xff),
         /*0x20*/ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         /*0x30*/ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         /*0x40*/ 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x80, 0x00, 0x00, 0x90, 0xc7, 0x00,
@@ -380,10 +391,11 @@ void udpServer::sendCapabilities(CLIENT* c)
     // 0x90-0xa8 contains lots of seemingly random data, radio info?
 
     //memcpy(p + 0x4d, QByteArrayLiteral("\x08\x7a\x55").constData(), 3); // IC7851
-    //p[0x94] = (char)0x8e; // IC-7851
+    //p[0x94] = (char)0x8e; // IC-7851 C-IV address
+
     memcpy(p + 0x4d, QByteArrayLiteral("\x0b\xe7\x64").constData(), 3); // IC9700
-    p[0x94] = (char)0xa2; // IC-9700
-   
+    p[0x94] = (char)0xa2; // IC-9700 C-IV address
+
     memcpy(p + 0x52, QByteArrayLiteral("IC-9700").constData(), 7);
     memcpy(p + 0x72, QByteArrayLiteral("ICOM_VAUDIO").constData(), 11);
 
@@ -401,7 +413,10 @@ void udpServer::sendConnectionInfo(CLIENT* c)
         static_cast<quint8>(c->myId & 0xff), static_cast<quint8>(c->myId >> 8 & 0xff), static_cast<quint8>(c->myId >>16 & 0xff), static_cast<quint8>(c->myId >> 24 & 0xff),
         static_cast<quint8>(c->remoteId & 0xff), static_cast<quint8>(c->remoteId >> 8 & 0xff), static_cast<quint8>(c->remoteId >> 16 & 0xff), static_cast<quint8>(c->remoteId >>24 & 0xff),
         /*0x10*/ 0x00, 0x00, 0x00, 0x80, 0x03, 0x00, 0x00,
-        static_cast<quint8>(c->authInnerSeq & 0xff), static_cast<quint8>(c->authInnerSeq >>8 & 0xff), 0x00, static_cast<quint8>(c->tokenRx & 0xff), static_cast<quint8>(c->tokenRx >>8  & 0xff), 0x00, 0x00,  static_cast<quint8>(c->tokenTx & 0xff), static_cast<quint8>(c->tokenTx >> 8 & 0xff),
+        static_cast<quint8>(c->authInnerSeq & 0xff), static_cast<quint8>(c->authInnerSeq >> 8 & 0xff), 0x00,
+        static_cast<quint8>(c->tokenRx >> 0 & 0xff), static_cast<quint8>(c->tokenRx >> 8 & 0xff),
+        static_cast<quint8>(c->tokenTx & 0xff), static_cast<quint8>(c->tokenTx >> 8 & 0xff),
+        static_cast<quint8>(c->tokenTx >> 16 & 0xff), static_cast<quint8>(c->tokenTx >> 24 & 0xff),
         /*0x20*/ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x80, 0x00, 0x00, 0x90, 0xc7, 0x08, 0x7a, 0x55,
         /*0x30*/ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         /*0x40*/ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -412,7 +427,8 @@ void udpServer::sendConnectionInfo(CLIENT* c)
     };
 
     // 0x1a-0x1f is authid (random number?
-    memcpy(p + 0x40, QByteArrayLiteral("IC-7851").constData(), 7);
+    //memcpy(p + 0x40, QByteArrayLiteral("IC-7851").constData(), 7);
+    memcpy(p + 0x40, QByteArrayLiteral("IC-9700").constData(), 7);
 
     c->authInnerSeq++;
     c->txSeq++;
@@ -423,16 +439,15 @@ void udpServer::sendConnectionInfo(CLIENT* c)
 
 void udpServer::sendTokenRenewal(CLIENT* c, quint16 seq)
 {
-    if (seq == 0x00)
-    {
-        seq = c->authInnerSeq;
-    }
     qDebug() << c->ipAddress.toString() << ": Sending Token renwal";
     quint8 p[] = { 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, static_cast<quint8>(c->txSeq & 0xff), static_cast<quint8>(c->txSeq >> 8 & 0xff),
         static_cast<quint8>(c->myId & 0xff), static_cast<quint8>(c->myId >> 8 & 0xff), static_cast<quint8>(c->myId >> 16 & 0xff), static_cast<quint8>(c->myId >> 24 & 0xff),
         static_cast<quint8>(c->remoteId & 0xff), static_cast<quint8>(c->remoteId >> 8 & 0xff), static_cast<quint8>(c->remoteId >> 16 & 0xff), static_cast<quint8>(c->remoteId >> 24 & 0xff),
         /*0x10*/ 0x00, 0x00, 0x00, 0x30, 0x02, 0x05, 0x00,
-        static_cast<quint8>(seq & 0xff), static_cast<quint8>(seq >> 8 & 0xff), 0x00, static_cast<quint8>(c->tokenRx >> 0 & 0xff), static_cast<quint8>(c->tokenRx >> 8 & 0xff), 0x00, 0x00,  static_cast<quint8>(c->tokenTx & 0xff), static_cast<quint8>(c->tokenTx >> 8 & 0xff),
+        static_cast<quint8>(c->authInnerSeq & 0xff), static_cast<quint8>(c->authInnerSeq >> 8 & 0xff), 0x00,
+        static_cast<quint8>(c->tokenRx >> 0 & 0xff), static_cast<quint8>(c->tokenRx >> 8 & 0xff),
+        static_cast<quint8>(c->tokenTx & 0xff), static_cast<quint8>(c->tokenTx >> 8 & 0xff),
+        static_cast<quint8>(c->tokenTx >> 16 & 0xff), static_cast<quint8>(c->tokenTx >> 24 & 0xff),
         /*0x20*/ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         /*0x30*/ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     };

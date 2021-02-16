@@ -32,6 +32,9 @@ public:
     explicit udpServerSetup(QWidget* parent = 0);
     ~udpServerSetup();
 
+private slots:
+    void on_usersTable_cellClicked(int row, int col);
+
 public slots:    
     void receiveServerConfig(SERVERCONFIG conf);
 
