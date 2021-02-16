@@ -295,6 +295,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(getSql()), rig, SLOT(getSql()));
     connect(this, SIGNAL(getTxPower()), rig, SLOT(getTxLevel()));
     connect(this, SIGNAL(getMicGain()), rig, SLOT(getMicGain()));
+    connect(this, SIGNAL(getSpectrumRefLevel()), rig, SLOT(getSpectrumRefLevel()));
 
     // Levels: Set:
     connect(this, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
@@ -314,6 +315,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rig, SIGNAL(haveSql(unsigned char)), this, SLOT(receiveSql(unsigned char)));
     connect(rig, SIGNAL(haveTxPower(unsigned char)), this, SLOT(receiveTxPower(unsigned char)));
     connect(rig, SIGNAL(haveMicGain(unsigned char)), this, SLOT(receiveMicGain(unsigned char)));
+    connect(rig, SIGNAL(haveSpectrumRefLevel(int)), this, SLOT(receiveSpectrumRefLevel(int)));
 
     connect(this, SIGNAL(startATU()), rig, SLOT(startATU()));
     connect(this, SIGNAL(setATU(bool)), rig, SLOT(setATU(bool)));
@@ -2606,8 +2608,10 @@ void wfmain::on_scopeRefLevelSlider_valueChanged(int value)
     emit setSpectrumRefLevel(value);
 }
 
-
-
+void wfmain::receiveSpectrumRefLevel(int level)
+{
+    changeSliderQuietly(ui->scopeRefLevelSlider, level);
+}
 
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
@@ -2619,8 +2623,10 @@ void wfmain::on_debugBtn_clicked()
     //emit getScopeEdge(); // 1,2,3 only in "fixed" mode
     //emit getScopeSpan(); // in khz, only in "center" mode
 
-    emit getLevels();
+    // emit getLevels();
     // emit getMeters(amTransmitting);
+
+    emit getSpectrumRefLevel();
 
 }
 

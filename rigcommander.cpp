@@ -402,6 +402,21 @@ void rigCommander::setSpectrumCenteredMode(bool centerEnable)
     prepDataAndSend(specModePayload);
 }
 
+void rigCommander::getSpectrumRefLevel()
+{
+    QByteArray payload;
+    payload.setRawData("\x27\x19\x00", 3);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getSpectrumRefLevel(unsigned char mainSub)
+{
+    QByteArray payload;
+    payload.setRawData("\x27\x19", 2);
+    payload.append(mainSub);
+    prepDataAndSend(payload);
+}
+
 void rigCommander::setSpectrumRefLevel(int level)
 {
     //qDebug() << __func__ << ": Setting scope to level " << level;
@@ -1304,17 +1319,17 @@ void rigCommander::parseDetailedRegisters1A05()
     // 02 and 03 make up a BCD'd number:
     // 0001, 0002, 0003, ... 0101, 0102, 0103...
 
-    int subcmd = bcdHexToDecimal(payloadIn[3]) + (10*bcdHexToDecimal(payloadIn[2]));
+    int subcmd = bcdHexToUChar(payloadIn[3]) + (10*bcdHexToUChar(payloadIn[2]));
 
     switch(subcmd)
     {
         case 72:
             // course reference
-            emit haveRefAdjustCourse(  bcdHexToDecimal(payloadIn[5]) + (100*bcdHexToDecimal(payloadIn[4])) );
+            emit haveRefAdjustCourse(  bcdHexToUChar(payloadIn[5]) + (100*bcdHexToUChar(payloadIn[4])) );
             break;
         case 73:
             // fine reference
-            emit haveRefAdjustFine( bcdHexToDecimal(payloadIn[5]) + (100*bcdHexToDecimal(payloadIn[4])) );
+            emit haveRefAdjustFine( bcdHexToUChar(payloadIn[5]) + (100*bcdHexToUChar(payloadIn[4])) );
             break;
         default:
             break;
@@ -1373,6 +1388,7 @@ void rigCommander::parseWFData()
             // [3] 10dB digit, 1dB digit
             // [4] 0.1dB digit, 0
             // [5] 0x00 = +, 0x01 = -
+            parseSpectrumRefLevel();
             break;
         default:
             qDebug() << "Unknown waveform data received: ";
@@ -1560,7 +1576,7 @@ void rigCommander::parseSpectrum()
     // 11    10    26        31     Minimum wave information w/waveform data
     // 1     1     0         18     Only Wave Information without waveform data
 
-    unsigned char sequence = bcdHexToDecimal(payloadIn[03]);
+    unsigned char sequence = bcdHexToUChar(payloadIn[03]);
     //unsigned char sequenceMax = bcdHexToDecimal(payloadIn[04]);
 
 
@@ -1577,7 +1593,7 @@ void rigCommander::parseSpectrum()
     if ((sequence == 1) && (sequence < rigCaps.spectSeqMax))
     {
 
-        unsigned char scopeMode = bcdHexToDecimal(payloadIn[05]); // 0=center, 1=fixed
+        unsigned char scopeMode = bcdHexToUChar(payloadIn[05]); // 0=center, 1=fixed
 
         if(scopeMode != oldScopeMode)
         {
@@ -1622,7 +1638,25 @@ void rigCommander::parseSpectrum()
     }
 }
 
-unsigned char rigCommander::bcdHexToDecimal(unsigned char in)
+void rigCommander::parseSpectrumRefLevel()
+{
+    // 00: 27
+    // 01: 19
+    // 02: 00 (fixed)
+    // 03: XX
+    // 04: x0
+    // 05: 00 (+) or 01 (-)
+
+    unsigned char negative = payloadIn[5];
+    int value = bcdHexToUInt(payloadIn[3], payloadIn[4]);
+    value = value / 10;
+    if(negative){
+        value *= (-1*negative);
+    }
+    emit haveSpectrumRefLevel(value);
+}
+
+unsigned char rigCommander::bcdHexToUChar(unsigned char in)
 {
     unsigned char out = 0;
     out = in & 0x0f;
@@ -1630,18 +1664,35 @@ unsigned char rigCommander::bcdHexToDecimal(unsigned char in)
     return out;
 }
 
-unsigned char rigCommander::bcdHexToDecimal(unsigned char hundreds, unsigned char tensunits)
+unsigned int rigCommander::bcdHexToUInt(unsigned char hundreds, unsigned char tensunits)
+{
+    // convert:
+    // hex data: 0x41 0x23
+    // convert to uint:
+    // uchar: 4123
+    unsigned char thousands = ((hundreds & 0xf0)>>4);
+    unsigned int rtnVal;
+    rtnVal = (hundreds & 0x0f)*100;
+    rtnVal += ((tensunits & 0xf0)>>4)*10;
+    rtnVal += (tensunits & 0x0f);
+    rtnVal += thousands * 1000;
+
+    return rtnVal;
+}
+
+unsigned char rigCommander::bcdHexToUChar(unsigned char hundreds, unsigned char tensunits)
 {
     // convert:
     // hex data: 0x01 0x23
     // convert to uchar:
     // uchar: 123
 
-    // unsigned char thousands = hundreds / 100;
+    //unsigned char thousands = ((hundreds & 0xf0)>>4);
     unsigned char rtnVal;
     rtnVal = (hundreds & 0x0f)*100;
     rtnVal += ((tensunits & 0xf0)>>4)*10;
     rtnVal += (tensunits & 0x0f);
+    //rtnVal += thousands * 1000;
 
     return rtnVal;
 }

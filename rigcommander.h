@@ -39,6 +39,8 @@ public slots:
     void setSpectrumCenteredMode(bool centerEnable); // centered or band-wise
     void getSpectrumCenterMode();
     void setSpectrumRefLevel(int level);
+    void getSpectrumRefLevel();
+    void getSpectrumRefLevel(unsigned char mainSub);
     void setScopeSpan(char span);
     void getScopeSpan();
     void setScopeEdge(char edge);
@@ -120,6 +122,7 @@ signals:
     void haveScopeSpan(char span);
     void haveSpectrumFixedMode(bool fixedEnabled);
     void haveScopeEdge(char edge);
+    void haveSpectrumRefLevel(int level);
 
     void haveRfGain(unsigned char level);
     void haveAfGain(unsigned char level);
@@ -155,8 +158,9 @@ private:
     QByteArray stripData(const QByteArray &data, unsigned char cutPosition);
     void parseData(QByteArray data); // new data come here
     void parseCommand();
-    unsigned char bcdHexToDecimal(unsigned char in);
-    unsigned char bcdHexToDecimal(unsigned char hundreds, unsigned char tensunits);
+    unsigned char bcdHexToUChar(unsigned char in);
+    unsigned char bcdHexToUChar(unsigned char hundreds, unsigned char tensunits);
+    unsigned int bcdHexToUInt(unsigned char hundreds, unsigned char tensunits);
     QByteArray bcdEncodeInt(unsigned int);
     void parseFrequency();
     float parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
@@ -164,6 +168,7 @@ private:
     void parseMode();
     void parseSpectrum();
     void parseWFData();
+    void parseSpectrumRefLevel();
     void parseDetailedRegisters1A05();
     void parseRegisters1A();
     void parseBandStackReg();

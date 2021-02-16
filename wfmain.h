@@ -56,6 +56,7 @@ signals:
     void getSql();
     void getTxPower();
     void getMicGain();
+    void getSpectrumRefLevel();
 
     // Level set:
     void setRfGain(unsigned char level);
@@ -153,6 +154,7 @@ private slots:
     void receiveMonitorGain(unsigned char monitorGain);
     void receiveVoxGain(unsigned char voxGain);
     void receiveAntiVoxGain(unsigned char antiVoxGain);
+    void receiveSpectrumRefLevel(int level);
 
     // Meters:
 
