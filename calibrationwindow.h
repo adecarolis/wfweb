@@ -36,6 +36,14 @@ private slots:
 
     void on_calFineSlider_valueChanged(int value);
 
+    void on_calCourseSpinbox_valueChanged(int arg1);
+
+    void on_calFineSpinbox_valueChanged(int arg1);
+
+    void on_calFineSpinbox_editingFinished();
+
+    void on_calCourseSpinbox_editingFinished();
+
 private:
     Ui::calibrationWindow *ui;
 };

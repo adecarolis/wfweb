@@ -402,6 +402,48 @@ void rigCommander::setSpectrumCenteredMode(bool centerEnable)
     prepDataAndSend(specModePayload);
 }
 
+void rigCommander::getSpectrumRefLevel()
+{
+    QByteArray payload;
+    payload.setRawData("\x27\x19\x00", 3);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getSpectrumRefLevel(unsigned char mainSub)
+{
+    QByteArray payload;
+    payload.setRawData("\x27\x19", 2);
+    payload.append(mainSub);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setSpectrumRefLevel(int level)
+{
+    //qDebug() << __func__ << ": Setting scope to level " << level;
+    QByteArray setting;
+    QByteArray number;
+    QByteArray pn;
+    setting.setRawData("\x27\x19\x00", 3);
+
+    if(level >= 0)
+    {
+        pn.setRawData("\x00", 1);
+        number = bcdEncodeInt(level*10);
+    } else {
+        pn.setRawData("\x01", 1);
+        number = bcdEncodeInt( (-level)*10 );
+    }
+
+    setting.append(number);
+    setting.append(pn);
+
+    //qDebug() << __func__ << ": scope reference number: " << number << ", PN to: " << pn;
+    //printHex(setting, false, true);
+
+    prepDataAndSend(setting);
+}
+
+
 void rigCommander::getSpectrumCenterMode()
 {
     QByteArray specModePayload;
@@ -731,6 +773,10 @@ void rigCommander::parseCommand()
             // read levels
             parseLevels();
             break;
+        case '\x15':
+            // Metering such as s, power, etc
+            parseLevels();
+            break;
         case '\x19':
             // qDebug() << "Have rig ID: " << (unsigned int)payloadIn[2];
             // printHex(payloadIn, false, true);
@@ -807,26 +853,189 @@ void rigCommander::parseLevels()
     // "INDEX: 00 01 02 03 04 "
     // "DATA:  14 02 00 78 fd "
 
-    switch(payloadIn[1])
+    if(payloadIn[0] = '\x14')
     {
-        case '\x01':
-            // AF level
-            emit haveAfGain(level);
-            break;
-        case '\x02':
-            // RX RF Gain
-            emit haveRfGain(level);
-            break;
-        case '\x03':
-            // Squelch level
-            emit haveSql(level);
-            break;
-        case '\x0A':
-            // TX RF level
-            emit haveTxPower(level);
-            break;
+        qDebug() <<__func__<< ": in payload[0] is 0x14";
+        switch(payloadIn[1])
+        {
+            case '\x01':
+                // AF level
+                emit haveAfGain(level);
+                break;
+            case '\x02':
+                // RX RF Gain
+                qDebug() << __func__ << ": RF Gain: " << level;
+                emit haveRfGain(level);
+                break;
+            case '\x03':
+                // Squelch level
+                emit haveSql(level);
+                break;
+            case '\x0A':
+                // TX RF level
+                emit haveTxPower(level);
+                break;
+            case '\x0B':
+                // Mic Gain
+                emit haveMicGain(level);
+                break;
+            case '\x0E':
+                // compressor level
+                emit haveCompLevel(level);
+                break;
+            case '\x15':
+                // monitor level
+                emit haveMonitorLevel(level);
+                break;
+            case '\x16':
+                // VOX gain
+                emit haveVoxGain(level);
+                break;
+            case '\x17':
+                // anti-VOX gain
+                emit haveAntiVoxGain(level);
+                break;
+
+            default:
+                qDebug() << "Unknown control level (0x14) received at register " << payloadIn[1] << " with level " << level;
+                break;
+
+        }
+        return;
     }
+
+    if(payloadIn[0] = '\x15')
+    {
+        qDebug() <<__func__<< ": in payload[0] is 0x15";
+        switch(payloadIn[1])
+        {
+            case '\x02':
+                // S-Meter
+                emit haveSMeter(level);
+                break;
+            case '\x11':
+                // RF-Power meter
+                emit haveRFMeter(level);
+                break;
+            case '\x12':
+                // SWR
+                emit haveSWRMeter(level);
+                break;
+            case '\x13':
+                // ALC
+                emit haveALCMeter(level);
+                break;
+            case '\x14':
+                // COMP dB reduction
+                emit haveCompMeter(level);
+                break;
+            case '\x15':
+                // VD (12V)
+                emit haveVdMeter(level);
+                break;
+            case '\x16':
+                // ID
+                emit haveIdMeter(level);
+                break;
+
+            default:
+                qDebug() << "Unknown meter level (0x15) received at register " << payloadIn[1] << " with level " << level;
+                break;
+        }
+
+
+    return;
+    }
+
 }
+
+void rigCommander::setTxPower(unsigned char power)
+{
+    QByteArray payload("\x14\x0A");
+    payload.append(bcdEncodeInt(power));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setMicGain(unsigned char gain)
+{
+    QByteArray payload("\x14\x0B");
+    payload.append(bcdEncodeInt(gain));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setUSBGain(unsigned char gain)
+{
+    QByteArray payload;
+
+    switch(rigCaps.model)
+    {
+        case model9700:
+            payload.setRawData("\x1A\x05\x01\x13", 4);
+            break;
+        case model7100:
+        case model7610:
+            payload.setRawData("\x1A\x05\x00\x89", 4);
+            break;
+        case model7300:
+            payload.setRawData("\x1A\x05\x00\x65", 4);
+            break;
+        case model7850:
+            payload.setRawData("\x1A\x05\x00\x61", 4);
+            break;
+        case model7600:
+            payload.setRawData("\x1A\x05\x00\x29", 4);
+            break;
+        default:
+            return;
+    }
+    payload.append(bcdEncodeInt(gain));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setLANGain(unsigned char gain)
+{
+    QByteArray payload("\x1A\x05\x01\x14");
+
+
+    payload.append(bcdEncodeInt(gain));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setACCGain(unsigned char gain)
+{
+    QByteArray payload("\x1A\x05\x01\x12");
+    payload.append(bcdEncodeInt(gain));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setCompLevel(unsigned char compLevel)
+{
+    QByteArray payload("\x14\x0E");
+    payload.append(bcdEncodeInt(compLevel));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setMonitorLevel(unsigned char monitorLevel)
+{
+    QByteArray payload("\x14\x0E");
+    payload.append(bcdEncodeInt(monitorLevel));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setVoxGain(unsigned char gain)
+{
+    QByteArray payload("\x14\x16");
+    payload.append(bcdEncodeInt(gain));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setAntiVoxGain(unsigned char gain)
+{
+    QByteArray payload("\x14\x17");
+    payload.append(bcdEncodeInt(gain));
+    prepDataAndSend(payload);
+}
+
 
 void rigCommander::getRfGain()
 {
@@ -842,10 +1051,123 @@ void rigCommander::getAfGain()
 
 void rigCommander::getSql()
 {
-    // Squelch
     QByteArray payload("\x14\x03");
     prepDataAndSend(payload);
 }
+
+void rigCommander::getTxLevel()
+{
+    QByteArray payload("\x14\x0A");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getMicGain()
+{
+    QByteArray payload("\x14\x0B");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getCompLevel()
+{
+    QByteArray payload("\x14\x0E");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getMonitorLevel()
+{
+    QByteArray payload("\x14\x15");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getVoxGain()
+{
+    QByteArray payload("\x14\x16");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getAntiVoxGain()
+{
+    QByteArray payload("\x14\x17");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getLevels()
+{
+    // Function to grab all levels
+    qDebug() << __func__ << ": grabbing all levels supported.";
+    getRfGain(); //0x02
+    getAfGain(); // 0x01
+    getSql(); // 0x03
+    getTxLevel(); // 0x0A
+    getMicGain(); // 0x0B
+    getCompLevel(); // 0x0E
+//    getMonitorLevel(); // 0x15
+//    getVoxGain(); // 0x16
+//    getAntiVoxGain(); // 0x17
+}
+
+void rigCommander::getMeters(bool transmitting)
+{
+    // Nice function to just grab every meter
+    qDebug() << __func__ << ": grabbing all metering for mode " << (transmitting==true? "transmitting":"receiving") ;
+
+    if(transmitting)
+    {
+        getRFPowerMeter();
+        getSWRMeter();
+        getALCMeter();
+        getCompReductionMeter();
+
+    } else {
+        getSMeter();
+    }
+
+    getVdMeter();
+    getIDMeter();
+}
+
+void rigCommander::getSMeter()
+{
+    QByteArray payload("\x15\x02");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getRFPowerMeter()
+{
+    QByteArray payload("\x15\x11");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getSWRMeter()
+{
+    QByteArray payload("\x15\x12");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getALCMeter()
+{
+    QByteArray payload("\x15\x13");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getCompReductionMeter()
+{
+    QByteArray payload("\x15\x14");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getVdMeter()
+{
+    QByteArray payload("\x15\x15");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getIDMeter()
+{
+    QByteArray payload("\x15\x16");
+    prepDataAndSend(payload);
+}
+
 
 void rigCommander::setSquelch(unsigned char level)
 {
@@ -1042,17 +1364,17 @@ void rigCommander::parseDetailedRegisters1A05()
     // 02 and 03 make up a BCD'd number:
     // 0001, 0002, 0003, ... 0101, 0102, 0103...
 
-    int subcmd = bcdHexToDecimal(payloadIn[3]) + (10*bcdHexToDecimal(payloadIn[2]));
+    int subcmd = bcdHexToUChar(payloadIn[3]) + (10*bcdHexToUChar(payloadIn[2]));
 
     switch(subcmd)
     {
         case 72:
             // course reference
-            emit haveRefAdjustCourse(  bcdHexToDecimal(payloadIn[5]) + (10*bcdHexToDecimal(payloadIn[6])) );
+            emit haveRefAdjustCourse(  bcdHexToUChar(payloadIn[5]) + (100*bcdHexToUChar(payloadIn[4])) );
             break;
         case 73:
             // fine reference
-            emit haveRefAdjustFine( bcdHexToDecimal(payloadIn[5]) + (10*bcdHexToDecimal(payloadIn[6])) );
+            emit haveRefAdjustFine( bcdHexToUChar(payloadIn[5]) + (100*bcdHexToUChar(payloadIn[4])) );
             break;
         default:
             break;
@@ -1111,6 +1433,7 @@ void rigCommander::parseWFData()
             // [3] 10dB digit, 1dB digit
             // [4] 0.1dB digit, 0
             // [5] 0x00 = +, 0x01 = -
+            parseSpectrumRefLevel();
             break;
         default:
             qDebug() << "Unknown waveform data received: ";
@@ -1298,7 +1621,7 @@ void rigCommander::parseSpectrum()
     // 11    10    26        31     Minimum wave information w/waveform data
     // 1     1     0         18     Only Wave Information without waveform data
 
-    unsigned char sequence = bcdHexToDecimal(payloadIn[03]);
+    unsigned char sequence = bcdHexToUChar(payloadIn[03]);
     //unsigned char sequenceMax = bcdHexToDecimal(payloadIn[04]);
 
 
@@ -1315,7 +1638,7 @@ void rigCommander::parseSpectrum()
     if ((sequence == 1) && (sequence < rigCaps.spectSeqMax))
     {
 
-        unsigned char scopeMode = bcdHexToDecimal(payloadIn[05]); // 0=center, 1=fixed
+        unsigned char scopeMode = bcdHexToUChar(payloadIn[05]); // 0=center, 1=fixed
 
         if(scopeMode != oldScopeMode)
         {
@@ -1360,7 +1683,25 @@ void rigCommander::parseSpectrum()
     }
 }
 
-unsigned char rigCommander::bcdHexToDecimal(unsigned char in)
+void rigCommander::parseSpectrumRefLevel()
+{
+    // 00: 27
+    // 01: 19
+    // 02: 00 (fixed)
+    // 03: XX
+    // 04: x0
+    // 05: 00 (+) or 01 (-)
+
+    unsigned char negative = payloadIn[5];
+    int value = bcdHexToUInt(payloadIn[3], payloadIn[4]);
+    value = value / 10;
+    if(negative){
+        value *= (-1*negative);
+    }
+    emit haveSpectrumRefLevel(value);
+}
+
+unsigned char rigCommander::bcdHexToUChar(unsigned char in)
 {
     unsigned char out = 0;
     out = in & 0x0f;
@@ -1368,18 +1709,35 @@ unsigned char rigCommander::bcdHexToDecimal(unsigned char in)
     return out;
 }
 
-unsigned char rigCommander::bcdHexToDecimal(unsigned char hundreds, unsigned char tensunits)
+unsigned int rigCommander::bcdHexToUInt(unsigned char hundreds, unsigned char tensunits)
+{
+    // convert:
+    // hex data: 0x41 0x23
+    // convert to uint:
+    // uchar: 4123
+    unsigned char thousands = ((hundreds & 0xf0)>>4);
+    unsigned int rtnVal;
+    rtnVal = (hundreds & 0x0f)*100;
+    rtnVal += ((tensunits & 0xf0)>>4)*10;
+    rtnVal += (tensunits & 0x0f);
+    rtnVal += thousands * 1000;
+
+    return rtnVal;
+}
+
+unsigned char rigCommander::bcdHexToUChar(unsigned char hundreds, unsigned char tensunits)
 {
     // convert:
     // hex data: 0x01 0x23
     // convert to uchar:
     // uchar: 123
 
-    // unsigned char thousands = hundreds / 100;
+    //unsigned char thousands = ((hundreds & 0xf0)>>4);
     unsigned char rtnVal;
     rtnVal = (hundreds & 0x0f)*100;
     rtnVal += ((tensunits & 0xf0)>>4)*10;
     rtnVal += (tensunits & 0x0f);
+    //rtnVal += thousands * 1000;
 
     return rtnVal;
 }
@@ -1400,7 +1758,7 @@ QByteArray rigCommander::bcdEncodeInt(unsigned int num)
     char b0 = hundreds | (thousands << 4);
     char b1 = units | (tens << 4);
 
-    qDebug() << __FUNCTION__ << " encoding value " << num << " as hex:";
+    //qDebug() << __FUNCTION__ << " encoding value " << num << " as hex:";
     //printHex(QByteArray(b0), false, true);
     //printHex(QByteArray(b1), false, true);
 

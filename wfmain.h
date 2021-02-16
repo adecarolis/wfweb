@@ -48,13 +48,31 @@ signals:
     void getPTT();
     void setPTT(bool pttOn);
     void getBandStackReg(char band, char regCode);
+    void getDebug();
+
+    // Level get:
+    void getLevels(); // get all levels
     void getRfGain();
     void getAfGain();
     void getSql();
-    void getDebug();
+    void getTxPower();
+    void getMicGain();
+    void getSpectrumRefLevel();
+
+    // Level set:
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
     void setSql(unsigned char level);
+    void setMicGain(unsigned char);
+    void setCompLevel(unsigned char);
+    void setTxPower(unsigned char);
+    void setMonitorLevel(unsigned char);
+    void setVoxGain(unsigned char);
+    void setAntiVoxGain(unsigned char);
+    void setSpectrumRefLevel(int);
+    void getMeters(bool isTransmitting);
+
+
     void startATU();
     void setATU(bool atuEnabled);
     void getATUStatus();
@@ -128,9 +146,21 @@ private slots:
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(bool dataOn);
     void receiveBandStackReg(float freq, char mode, bool dataOn); // freq, mode, (filter,) datamode
+
+    // Levels:
     void receiveRfGain(unsigned char level);
     void receiveAfGain(unsigned char level);
     void receiveSql(unsigned char level);
+    void receiveTxPower(unsigned char power);
+    void receiveMicGain(unsigned char gain);
+    void receiveCompLevel(unsigned char compLevel);
+    void receiveMonitorGain(unsigned char monitorGain);
+    void receiveVoxGain(unsigned char voxGain);
+    void receiveAntiVoxGain(unsigned char antiVoxGain);
+    void receiveSpectrumRefLevel(int level);
+
+    // Meters:
+
     void receiveATUStatus(unsigned char atustatus);
     void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
@@ -294,6 +324,18 @@ private slots:
 
     void on_udpServerSetupBtn_clicked();
 
+    void on_transmitBtn_clicked();
+
+    void on_adjRefBtn_clicked();
+
+    void on_satOpsBtn_clicked();
+
+    void on_txPowerSlider_valueChanged(int value);
+
+    void on_micGainSlider_valueChanged(int value);
+
+    void on_scopeRefLevelSlider_valueChanged(int value);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -385,7 +427,8 @@ private:
     double knobFreqMhz;
     enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
-              cmdGetSql, cmdGetATUStatus, cmdScopeCenterMode, cmdScopeFixedMode};
+              cmdGetSql, cmdGetATUStatus, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
+              cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     freqMemory mem;
@@ -446,10 +489,16 @@ private:
     void useColors(); // set the plot up
     void setDefPrefs(); // populate default values to default prefs
 
+    void changeTxBtn();
+    void issueDelayedCommand(cmds cmd);
+    void issueDelayedCommandPriority(cmds cmd);
+    void changeSliderQuietly(QSlider *slider, int value);
+
     int oldFreqDialVal;
 
     rigCapabilities rigCaps;
     bool haveRigCaps;
+    bool amTransmitting;
 
     calibrationWindow *cal;
     satelliteSetup *sat;

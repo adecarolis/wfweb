@@ -38,6 +38,9 @@ public slots:
     void setSpectrumBounds(double startFreq, double endFreq, unsigned char edgeNumber);
     void setSpectrumCenteredMode(bool centerEnable); // centered or band-wise
     void getSpectrumCenterMode();
+    void setSpectrumRefLevel(int level);
+    void getSpectrumRefLevel();
+    void getSpectrumRefLevel(unsigned char mainSub);
     void setScopeSpan(char span);
     void getScopeSpan();
     void setScopeEdge(char edge);
@@ -52,12 +55,42 @@ public slots:
     void setPTT(bool pttOn);
     void setDataMode(bool dataOn);
     void getDataMode();
+
+    void getLevels(); // all supported levels
+
     void getRfGain();
     void getAfGain();
     void getSql();
+    void getTxLevel();
+    void getMicGain();
+    void getCompLevel();
+    void getMonitorLevel();
+    void getVoxGain();
+    void getAntiVoxGain();
+
+    void getSMeter();
+    void getRFPowerMeter();
+    void getSWRMeter();
+    void getALCMeter();
+    void getCompReductionMeter();
+    void getVdMeter();
+    void getIDMeter();
+
+    void getMeters(bool transmitting); // all supported meters per transmit or receive
+
     void setSquelch(unsigned char level);
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
+    void setTxPower(unsigned char power);
+    void setMicGain(unsigned char gain);
+    void setUSBGain(unsigned char gain);
+    void setLANGain(unsigned char gain);
+    void setACCGain(unsigned char gain);
+    void setCompLevel(unsigned char compLevel);
+    void setMonitorLevel(unsigned char monitorLevel);
+    void setVoxGain(unsigned char gain);
+    void setAntiVoxGain(unsigned char gain);
+
     void startATU();
     void setATU(bool enabled);
     void getATUStatus();
@@ -92,10 +125,26 @@ signals:
     void haveScopeSpan(char span);
     void haveSpectrumFixedMode(bool fixedEnabled);
     void haveScopeEdge(char edge);
+    void haveSpectrumRefLevel(int level);
+
     void haveRfGain(unsigned char level);
     void haveAfGain(unsigned char level);
     void haveSql(unsigned char level);
     void haveTxPower(unsigned char level);
+    void haveMicGain(unsigned char level);
+    void haveCompLevel(unsigned char level);
+    void haveMonitorLevel(unsigned char level);
+    void haveVoxGain(unsigned char gain);
+    void haveAntiVoxGain(unsigned char gain);
+
+    void haveSMeter(unsigned char level);
+    void haveRFMeter(unsigned char level);
+    void haveSWRMeter(unsigned char);
+    void haveALCMeter(unsigned char);
+    void haveCompMeter(unsigned char dbreduction);
+    void haveVdMeter(unsigned char voltage);
+    void haveIdMeter(unsigned char current);
+
     void thing();
     void haveRefAdjustCourse(unsigned char level);
     void haveRefAdjustFine(unsigned char level);
@@ -112,8 +161,9 @@ private:
     QByteArray stripData(const QByteArray &data, unsigned char cutPosition);
     void parseData(QByteArray data); // new data come here
     void parseCommand();
-    unsigned char bcdHexToDecimal(unsigned char in);
-    unsigned char bcdHexToDecimal(unsigned char hundreds, unsigned char tensunits);
+    unsigned char bcdHexToUChar(unsigned char in);
+    unsigned char bcdHexToUChar(unsigned char hundreds, unsigned char tensunits);
+    unsigned int bcdHexToUInt(unsigned char hundreds, unsigned char tensunits);
     QByteArray bcdEncodeInt(unsigned int);
     void parseFrequency();
     float parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
@@ -121,6 +171,7 @@ private:
     void parseMode();
     void parseSpectrum();
     void parseWFData();
+    void parseSpectrumRefLevel();
     void parseDetailedRegisters1A05();
     void parseRegisters1A();
     void parseBandStackReg();

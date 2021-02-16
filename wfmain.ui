@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -120,82 +120,96 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
-           <widget class="QLabel" name="freqLabel">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="minimumSize">
-             <size>
-              <width>190</width>
-              <height>0</height>
-             </size>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>145</width>
-              <height>30</height>
-             </size>
-            </property>
-            <property name="font">
-             <font>
-              <family>DejaVu Sans</family>
-              <pointsize>20</pointsize>
-             </font>
-            </property>
-            <property name="text">
-             <string>0000.000000</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="label_3">
-            <property name="maximumSize">
-             <size>
-              <width>16777215</width>
-              <height>30</height>
-             </size>
-            </property>
-            <property name="font">
-             <font>
-              <family>DejaVu Sans</family>
-              <pointsize>20</pointsize>
-             </font>
-            </property>
-            <property name="text">
-             <string>MHz</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="label_2">
-            <property name="maximumSize">
-             <size>
-              <width>16777215</width>
-              <height>30</height>
-             </size>
-            </property>
-            <property name="text">
-             <string>Mode:</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <layout class="QVBoxLayout" name="verticalLayout_12">
-            <property name="rightMargin">
+           <layout class="QVBoxLayout" name="verticalLayout_15">
+            <property name="leftMargin">
              <number>0</number>
             </property>
             <item>
-             <widget class="QComboBox" name="modeSelectCombo"/>
+             <layout class="QHBoxLayout" name="horizontalLayout_20">
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <item>
+               <widget class="QLabel" name="freqLabel">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="minimumSize">
+                 <size>
+                  <width>190</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>145</width>
+                  <height>30</height>
+                 </size>
+                </property>
+                <property name="font">
+                 <font>
+                  <family>DejaVu Sans</family>
+                  <pointsize>20</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>0000.000000</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_3">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>30</height>
+                 </size>
+                </property>
+                <property name="font">
+                 <font>
+                  <family>DejaVu Sans</family>
+                  <pointsize>20</pointsize>
+                 </font>
+                </property>
+                <property name="text">
+                 <string>MHz</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
             <item>
-             <widget class="QCheckBox" name="dataModeBtn">
-              <property name="text">
-               <string>Data</string>
-              </property>
-             </widget>
+             <layout class="QHBoxLayout" name="horizontalLayout_21">
+              <item>
+               <widget class="QLabel" name="label_26">
+                <property name="text">
+                 <string>Signal</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QProgressBar" name="levelIndicator">
+                <property name="maximum">
+                 <number>255</number>
+                </property>
+                <property name="value">
+                 <number>100</number>
+                </property>
+                <property name="textVisible">
+                 <bool>false</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
             </item>
            </layout>
           </item>
@@ -253,6 +267,29 @@
             <property name="rightMargin">
              <number>10</number>
             </property>
+            <item>
+             <widget class="QLabel" name="label_2">
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>30</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Mode:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="modeSelectCombo"/>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="dataModeBtn">
+              <property name="text">
+               <string>Data</string>
+              </property>
+             </widget>
+            </item>
             <item>
              <widget class="QLabel" name="label_22">
               <property name="text">
@@ -395,6 +432,204 @@
               </property>
               <property name="text">
                <string>SQ</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_12">
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QSlider" name="txPowerSlider">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>70</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>80</height>
+               </size>
+              </property>
+              <property name="toolTip">
+               <string>Transmit Power</string>
+              </property>
+              <property name="maximum">
+               <number>255</number>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_23">
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>15</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>TX</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_13">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QSlider" name="micGainSlider">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>70</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>80</height>
+               </size>
+              </property>
+              <property name="toolTip">
+               <string>Mic Gain</string>
+              </property>
+              <property name="maximum">
+               <number>255</number>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_24">
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>15</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Mic</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_14">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QSlider" name="scopeRefLevelSlider">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>70</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>80</height>
+               </size>
+              </property>
+              <property name="toolTip">
+               <string>Spectrum Reference Level Adjust</string>
+              </property>
+              <property name="minimum">
+               <number>-200</number>
+              </property>
+              <property name="maximum">
+               <number>200</number>
+              </property>
+              <property name="singleStep">
+               <number>5</number>
+              </property>
+              <property name="pageStep">
+               <number>5</number>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_25">
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>15</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Ref</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_16">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QPushButton" name="transmitBtn">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>50</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Transmit</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="rptSimplexBtn">
+              <property name="text">
+               <string>Simplex</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="rptDupPlusBtn">
+              <property name="text">
+               <string>Dup+</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="rptDupMinusBtn">
+              <property name="text">
+               <string>Dup-</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="rptAutoBtn">
+              <property name="text">
+               <string>Auto</string>
               </property>
              </widget>
             </item>
@@ -1170,16 +1405,12 @@
            </widget>
           </item>
           <item>
-           <widget class="QCheckBox" name="fullScreenChk">
+           <widget class="QCheckBox" name="tuningFloorZerosChk">
             <property name="text">
-             <string>Show full screen</string>
+             <string>When tuning, set lower digits to zero</string>
             </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="useDarkThemeChk">
-            <property name="text">
-             <string>Use Dark Theme</string>
+            <property name="checked">
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -1204,24 +1435,86 @@
            <number>0</number>
           </property>
           <item>
-           <widget class="QCheckBox" name="tuningFloorZerosChk">
+           <widget class="QCheckBox" name="checkBox_2">
             <property name="text">
-             <string>When tuning, set lower digits to zero</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
+             <string>Use System Theme</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QCheckBox" name="pttEnableChk">
+           <widget class="QCheckBox" name="useDarkThemeChk">
             <property name="text">
-             <string>Enable PTT Controls</string>
+             <string>Waterfall Dark Theme</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="fullScreenChk">
+            <property name="text">
+             <string>Show full screen</string>
             </property>
            </widget>
           </item>
           <item>
            <spacer name="horizontalSpacer_7">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_22">
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="adjRefBtn">
+            <property name="text">
+             <string>Adjust Reference</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="satOpsBtn">
+            <property name="text">
+             <string>Satellite Ops</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_27">
+            <property name="text">
+             <string>Modulation Input:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="modInputCombo"/>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="tuneEnableChk">
+            <property name="text">
+             <string>Enable ATU</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="tuneNowBtn">
+            <property name="text">
+             <string>Tune Now</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_9">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
@@ -1258,30 +1551,9 @@
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="aboutBtn">
+           <widget class="QCheckBox" name="pttEnableChk">
             <property name="text">
-             <string>About</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="saveSettingsBtn">
-            <property name="text">
-             <string>Save Settings</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="connectBtn">
-            <property name="text">
-             <string>Connect</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="debugBtn">
-            <property name="text">
-             <string>Debug</string>
+             <string>Enable PTT Controls</string>
             </property>
            </widget>
           </item>
@@ -1306,18 +1578,21 @@
            <number>0</number>
           </property>
           <item>
-           <widget class="QCheckBox" name="tuneEnableChk">
+           <widget class="QCheckBox" name="checkBox">
             <property name="text">
-             <string>Enable ATU</string>
+             <string>Enable USB (serial)</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QPushButton" name="tuneNowBtn">
+           <widget class="QLabel" name="label_28">
             <property name="text">
-             <string>Tune Now</string>
+             <string>Serial Device:</string>
             </property>
            </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="serialDeviceListCombo"/>
           </item>
           <item>
            <spacer name="tuneSpacer">
@@ -1344,6 +1619,20 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="connectBtn">
+            <property name="text">
+             <string>Connect</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="udpServerSetupBtn">
+            <property name="text">
+             <string>Server Setup</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="horizontalSpacer_8">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -1355,13 +1644,6 @@
              </size>
             </property>
            </spacer>
-          </item>
-          <item>
-           <widget class="QPushButton" name="udpServerSetupBtn">
-            <property name="text">
-             <string>Server Setup</string>
-            </property>
-           </widget>
           </item>
          </layout>
         </item>
@@ -1567,6 +1849,13 @@
            <number>0</number>
           </property>
           <item>
+           <widget class="QPushButton" name="debugBtn">
+            <property name="text">
+             <string>Debug</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="horizontalSpacer_6">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -1578,6 +1867,20 @@
              </size>
             </property>
            </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="aboutBtn">
+            <property name="text">
+             <string>About</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="saveSettingsBtn">
+            <property name="text">
+             <string>Save Settings</string>
+            </property>
+           </widget>
           </item>
           <item>
            <widget class="QPushButton" name="exitBtn">
@@ -1619,7 +1922,7 @@
      <x>0</x>
      <y>0</y>
      <width>810</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>

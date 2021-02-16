@@ -282,6 +282,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(getBandStackReg(char,char)), rig, SLOT(getBandStackReg(char,char)));
     connect(rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
     connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
+    connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
     connect(rig, SIGNAL(haveBandStackReg(float,char,bool)), this, SLOT(receiveBandStackReg(float,char,bool)));
     connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
 
@@ -303,15 +304,37 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(setScopeFixedEdge(double,double,unsigned char)), rig, SLOT(setSpectrumBounds(double,double,unsigned char)));
 
     connect(this, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
+
+    // Levels (read and write)
+    // Levels: Query:
+    connect(this, SIGNAL(getLevels()), rig, SLOT(getLevels()));
     connect(this, SIGNAL(getRfGain()), rig, SLOT(getRfGain()));
     connect(this, SIGNAL(getAfGain()), rig, SLOT(getAfGain()));
+    connect(this, SIGNAL(getSql()), rig, SLOT(getSql()));
+    connect(this, SIGNAL(getTxPower()), rig, SLOT(getTxLevel()));
+    connect(this, SIGNAL(getMicGain()), rig, SLOT(getMicGain()));
+    connect(this, SIGNAL(getSpectrumRefLevel()), rig, SLOT(getSpectrumRefLevel()));
+
+    // Levels: Set:
     connect(this, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
     connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
+    connect(this, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
+    connect(this, SIGNAL(setTxPower(unsigned char)), rig, SLOT(setTxPower(unsigned char)));
+    connect(this, SIGNAL(setMicGain(unsigned char)), rig, SLOT(setMicGain(unsigned char)));
+    connect(this, SIGNAL(setMonitorLevel(unsigned char)), rig, SLOT(setMonitorLevel(unsigned char)));
+    connect(this, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
+    connect(this, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
+    connect(this, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
+
+
+    // Levels: handle return on query:
     connect(rig, SIGNAL(haveRfGain(unsigned char)), this, SLOT(receiveRfGain(unsigned char)));
     connect(rig, SIGNAL(haveAfGain(unsigned char)), this, SLOT(receiveAfGain(unsigned char)));
-    connect(this, SIGNAL(getSql()), rig, SLOT(getSql()));
     connect(rig, SIGNAL(haveSql(unsigned char)), this, SLOT(receiveSql(unsigned char)));
-    connect(this, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
+    connect(rig, SIGNAL(haveTxPower(unsigned char)), this, SLOT(receiveTxPower(unsigned char)));
+    connect(rig, SIGNAL(haveMicGain(unsigned char)), this, SLOT(receiveMicGain(unsigned char)));
+    connect(rig, SIGNAL(haveSpectrumRefLevel(int)), this, SLOT(receiveSpectrumRefLevel(int)));
+
     connect(this, SIGNAL(startATU()), rig, SLOT(startATU()));
     connect(this, SIGNAL(setATU(bool)), rig, SLOT(setATU(bool)));
     connect(this, SIGNAL(getATUStatus()), rig, SLOT(getATUStatus()));
@@ -341,6 +364,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(wf, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handleWFScroll(QWheelEvent*)));
     connect(plot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handlePlotScroll(QWheelEvent*)));
 
+    // Metering
+    connect(this, SIGNAL(getMeters(bool)), rig, SLOT(getMeters(bool)));
 
     ui->plot->addGraph(); // primary
     ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first?
@@ -368,12 +393,15 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     drawPeaks = false;
 
     ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
-
+    ui->audioPortTxt->setValidator(new QIntValidator(this));
+    ui->serialPortTxt->setValidator(new QIntValidator(this));
+    ui->controlPortTxt->setValidator(new QIntValidator(this));
 
     pttTimer = new QTimer(this);
     pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
     pttTimer->setSingleShot(true);
     connect(pttTimer, SIGNAL(timeout()), this, SLOT(handlePttLimit()));
+    amTransmitting = false;
 
     // Not needed since we automate this now.
     /*
@@ -1094,7 +1122,8 @@ void wfmain::shortcutControlT()
 void wfmain::shortcutControlR()
 {
     // Receive
-    ui->pttOffBtn->click();
+    emit setPTT(false);
+    issueDelayedCommand(cmdGetPTT);
 }
 
 void wfmain::shortcutControlI()
@@ -1201,10 +1230,11 @@ void wfmain:: getInitialRigState()
 
     cmdOutQue.append(cmdGetRxGain);
     cmdOutQue.append(cmdGetAfGain);
-    cmdOutQue.append(cmdGetSql); // implimented but not used
-    // TODO:
-    // get TX level
-    // get Scope reference Level
+    cmdOutQue.append(cmdGetSql);
+    cmdOutQue.append(cmdGetSpectrumRefLevel);
+
+    cmdOutQue.append(cmdGetTxPower);
+    cmdOutQue.append(cmdGetMicGain);
 
     cmdOutQue.append(cmdDispEnable);
     cmdOutQue.append(cmdSpecOn);
@@ -1397,6 +1427,15 @@ void wfmain::runDelayedCommand()
             case cmdGetSql:
                 emit getSql();
                 break;
+            case cmdGetTxPower:
+                emit getTxPower();
+                break;
+            case cmdGetMicGain:
+                emit getMicGain();
+                break;
+            case cmdGetSpectrumRefLevel:
+                emit getSpectrumRefLevel();
+                break;
             case cmdGetATUStatus:
                 emit getATUStatus();
                 break;
@@ -1405,6 +1444,9 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdScopeFixedMode:
                 emit setScopeCenterMode(false);
+                break;
+            case cmdGetPTT:
+                emit getPTT();
                 break;
             default:
                 break;
@@ -1421,6 +1463,19 @@ void wfmain::runDelayedCommand()
     }
 }
 
+void wfmain::issueDelayedCommand(cmds cmd)
+{
+    cmdOutQue.append(cmd);
+    delayedCommand->start();
+}
+
+void wfmain::issueDelayedCommandPriority(cmds cmd)
+{
+    // Places the new command at the top of the queue
+    // Use only when needed.
+    cmdOutQue.prepend(cmd);
+    delayedCommand->start();
+}
 
 void wfmain::receiveRigID(rigCapabilities rigCaps)
 {
@@ -1457,6 +1512,15 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->modeSelectCombo->addItem("DD", 0x22);
         }
 
+        if(rigCaps.model == model9700)
+        {
+            ui->satOpsBtn->setDisabled(false);
+            ui->adjRefBtn->setDisabled(false);
+        } else {
+            ui->satOpsBtn->setDisabled(true);
+            ui->adjRefBtn->setDisabled(true);
+        }
+
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
 
@@ -1481,9 +1545,22 @@ void wfmain::receiveFreq(double freqMhz)
 
 void wfmain::receivePTTstatus(bool pttOn)
 {
-    // NOTE: This will only show up if we actually receive a PTT status
+    // This is the only place where amTransmitting and the transmit button text should be changed:
     qDebug() << "PTT status: " << pttOn;
+    amTransmitting = pttOn;
+    changeTxBtn();
 }
+
+void wfmain::changeTxBtn()
+{
+    if(amTransmitting)
+    {
+        ui->transmitBtn->setText("Receive");
+    } else {
+        ui->transmitBtn->setText("Transmit");
+    }
+}
+
 
 void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq)
 {
@@ -2240,7 +2317,7 @@ void wfmain::on_afGainSlider_valueChanged(int value)
 
 void wfmain::receiveRfGain(unsigned char level)
 {
-    // qDebug() << "Receive RF  level of" << (int)level << " = " << 100*level/255.0 << "%";
+    qDebug() << "Receive RF  level of" << (int)level << " = " << 100*level/255.0 << "%";
     ui->rfGainSlider->blockSignals(true);
     ui->rfGainSlider->setValue(level);
     ui->rfGainSlider->blockSignals(false);
@@ -2306,6 +2383,7 @@ void wfmain::on_pttOnBtn_clicked()
     // send PTT
     // Start 3 minute timer
     pttTimer->start();
+    issueDelayedCommand(cmdGetPTT);
 }
 
 void wfmain::on_pttOffBtn_clicked()
@@ -2316,7 +2394,7 @@ void wfmain::on_pttOffBtn_clicked()
 
     // Stop the 3 min timer
     pttTimer->stop();
-
+    issueDelayedCommand(cmdGetPTT);
 }
 
 void wfmain::handlePttLimit()
@@ -2508,6 +2586,102 @@ void wfmain::on_dataModeBtn_toggled(bool checked)
     setDataMode(checked);
 }
 
+void wfmain::on_transmitBtn_clicked()
+{
+    if(!amTransmitting)
+    {
+        // Currently receiving
+        if(!ui->pttEnableChk->isChecked())
+        {
+            showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
+            return;
+        }
+
+        // Are we already PTT? Not a big deal, just send again anyway.
+        showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
+        emit setPTT(true);
+        // send PTT
+        // Start 3 minute timer
+        pttTimer->start();
+        issueDelayedCommand(cmdGetPTT);
+        //changeTxBtn();
+
+    } else {
+        // Currently transmitting
+        emit setPTT(false);
+        issueDelayedCommand(cmdGetPTT);
+    }
+}
+
+void wfmain::on_adjRefBtn_clicked()
+{
+    cal->show();
+}
+
+void wfmain::on_satOpsBtn_clicked()
+{
+    sat->show();
+}
+
+void wfmain::changeSliderQuietly(QSlider *slider, int value)
+{
+    slider->blockSignals(true);
+    slider->setValue(value);
+    slider->blockSignals(false);
+
+}
+
+void wfmain::receiveTxPower(unsigned char power)
+{
+    changeSliderQuietly(ui->txPowerSlider, power);
+}
+
+void wfmain::receiveMicGain(unsigned char gain)
+{
+    changeSliderQuietly(ui->micGainSlider, gain);
+}
+
+void wfmain::receiveCompLevel(unsigned char compLevel)
+{
+    (void)compLevel;
+}
+
+void wfmain::receiveMonitorGain(unsigned char monitorGain)
+{
+    (void)monitorGain;
+}
+
+void wfmain::receiveVoxGain(unsigned char voxGain)
+{
+    (void)voxGain;
+}
+
+void wfmain::receiveAntiVoxGain(unsigned char antiVoxGain)
+{
+    (void)antiVoxGain;
+}
+
+void wfmain::on_txPowerSlider_valueChanged(int value)
+{
+    emit setTxPower(value);
+}
+
+void wfmain::on_micGainSlider_valueChanged(int value)
+{
+    emit setMicGain(value);
+}
+
+void wfmain::on_scopeRefLevelSlider_valueChanged(int value)
+{
+    value = (value/5) * 5; // rounded to "nearest 5"
+    emit setSpectrumRefLevel(value);
+}
+
+void wfmain::receiveSpectrumRefLevel(int level)
+{
+    changeSliderQuietly(ui->scopeRefLevelSlider, level);
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
@@ -2517,11 +2691,12 @@ void wfmain::on_debugBtn_clicked()
     //emit getScopeMode();
     //emit getScopeEdge(); // 1,2,3 only in "fixed" mode
     //emit getScopeSpan(); // in khz, only in "center" mode
-    //qDebug() << "Debug: finding rigs attached. Let's see if this works. ";
-    //rig->findRigs();
-    // cal->show();
-    //emit getMode();
-    sat->show();
+
+    // emit getLevels();
+    // emit getMeters(amTransmitting);
+
+    emit getSpectrumRefLevel();
+
 }
 
 // Slot to send/receive server config.
@@ -2539,3 +2714,4 @@ void wfmain::serverConfigRequested(SERVERCONFIG conf, bool store)
     }
 
 }
+
