@@ -1171,13 +1171,10 @@ void wfmain:: getInitialRigState()
     cmdOutQue.append(cmdGetRxGain);
     cmdOutQue.append(cmdGetAfGain);
     cmdOutQue.append(cmdGetSql);
+    cmdOutQue.append(cmdGetSpectrumRefLevel);
 
     cmdOutQue.append(cmdGetTxPower);
     cmdOutQue.append(cmdGetMicGain);
-
-    // TODO:
-    // get TX level
-    // get Scope reference Level
 
     cmdOutQue.append(cmdDispEnable);
     cmdOutQue.append(cmdSpecOn);
@@ -1376,6 +1373,8 @@ void wfmain::runDelayedCommand()
             case cmdGetMicGain:
                 emit getMicGain();
                 break;
+            case cmdGetSpectrumRefLevel:
+                emit getSpectrumRefLevel();
             case cmdGetATUStatus:
                 emit getATUStatus();
                 break;

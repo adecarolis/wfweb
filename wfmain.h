@@ -423,7 +423,7 @@ private:
     enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
               cmdGetSql, cmdGetATUStatus, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
-              cmdGetTxPower, cmdGetMicGain};
+              cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     freqMemory mem;
