@@ -459,6 +459,9 @@
               <property name="toolTip">
                <string>Transmit Power</string>
               </property>
+              <property name="maximum">
+               <number>255</number>
+              </property>
               <property name="orientation">
                <enum>Qt::Vertical</enum>
               </property>
@@ -500,6 +503,9 @@
               </property>
               <property name="toolTip">
                <string>Mic Gain</string>
+              </property>
+              <property name="maximum">
+               <number>255</number>
               </property>
               <property name="orientation">
                <enum>Qt::Vertical</enum>
