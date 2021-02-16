@@ -603,7 +603,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QRadioButton" name="radioButton">
+             <widget class="QRadioButton" name="rptSimplexBtn">
               <property name="text">
                <string>Simplex</string>
               </property>
@@ -613,21 +613,21 @@
              </widget>
             </item>
             <item>
-             <widget class="QRadioButton" name="radioButton_3">
+             <widget class="QRadioButton" name="rptDupPlusBtn">
               <property name="text">
                <string>Dup+</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QRadioButton" name="radioButton_2">
+             <widget class="QRadioButton" name="rptDupMinusBtn">
               <property name="text">
                <string>Dup-</string>
               </property>
              </widget>
             </item>
             <item>
-             <widget class="QRadioButton" name="radioButton_4">
+             <widget class="QRadioButton" name="rptAutoBtn">
               <property name="text">
                <string>Auto</string>
               </property>
