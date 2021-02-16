@@ -813,6 +813,7 @@ void rigCommander::parseLevels()
 
     if(payloadIn[0] = '\x14')
     {
+        qDebug() <<__func__<< ": in payload[0] is 0x14";
         switch(payloadIn[1])
         {
             case '\x01':
@@ -821,6 +822,7 @@ void rigCommander::parseLevels()
                 break;
             case '\x02':
                 // RX RF Gain
+                qDebug() << __func__ << ": RF Gain: " << level;
                 emit haveRfGain(level);
                 break;
             case '\x03':
@@ -862,6 +864,7 @@ void rigCommander::parseLevels()
 
     if(payloadIn[0] = '\x15')
     {
+        qDebug() <<__func__<< ": in payload[0] is 0x15";
         switch(payloadIn[1])
         {
             case '\x02':
@@ -962,15 +965,15 @@ void rigCommander::getLevels()
 {
     // Function to grab all levels
     qDebug() << __func__ << ": grabbing all levels supported.";
-    getRfGain();
-    getAfGain();
-    getSql();
-    getTxLevel();
-    getMicGain();
-    getCompLevel();
-    getMonitorLevel();
-    getVoxGain();
-    getAntiVoxGain();
+    getRfGain(); //0x02
+    getAfGain(); // 0x01
+    getSql(); // 0x03
+    getTxLevel(); // 0x0A
+    getMicGain(); // 0x0B
+    getCompLevel(); // 0x0E
+//    getMonitorLevel(); // 0x15
+//    getVoxGain(); // 0x16
+//    getAntiVoxGain(); // 0x17
 }
 
 void rigCommander::getMeters(bool transmitting)

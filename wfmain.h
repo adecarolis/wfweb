@@ -54,6 +54,11 @@ signals:
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
     void setSql(unsigned char level);
+
+    void getLevels();
+    void getMeters(bool isTransmitting);
+
+
     void startATU();
     void setATU(bool atuEnabled);
     void getATUStatus();
@@ -125,9 +130,20 @@ private slots:
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(bool dataOn);
     void receiveBandStackReg(float freq, char mode, bool dataOn); // freq, mode, (filter,) datamode
+
+    // Levels:
     void receiveRfGain(unsigned char level);
     void receiveAfGain(unsigned char level);
     void receiveSql(unsigned char level);
+    void receiveTxPower(unsigned char power);
+    void receiveMicGain(unsigned char gain);
+    void receiveCompLevel(unsigned char compLevel);
+    void receiveMonitorGain(unsigned char monitorGain);
+    void receiveVoxGain(unsigned char voxGain);
+    void receiveAntiVoxGain(unsigned char antiVoxGain);
+
+    // Meters:
+
     void receiveATUStatus(unsigned char atustatus);
     void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
@@ -450,6 +466,7 @@ private:
     void changeTxBtn();
     void issueDelayedCommand(cmds cmd);
     void issueDelayedCommandPriority(cmds cmd);
+    void changeSliderQuietly(QSlider *slider, int value);
 
     int oldFreqDialVal;
 

@@ -286,6 +286,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(setScopeFixedEdge(double,double,unsigned char)), rig, SLOT(setSpectrumBounds(double,double,unsigned char)));
 
     connect(this, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
+
+    // Levels (read and write)
+    connect(this, SIGNAL(getLevels()), rig, SLOT(getLevels()));
     connect(this, SIGNAL(getRfGain()), rig, SLOT(getRfGain()));
     connect(this, SIGNAL(getAfGain()), rig, SLOT(getAfGain()));
     connect(this, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
@@ -295,6 +298,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(getSql()), rig, SLOT(getSql()));
     connect(rig, SIGNAL(haveSql(unsigned char)), this, SLOT(receiveSql(unsigned char)));
     connect(this, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
+    connect(rig, SIGNAL(haveTxPower(unsigned char)), this, SLOT(receiveTxPower(unsigned char)));
+    connect(rig, SIGNAL(haveMicGain(unsigned char)), this, SLOT(receiveMicGain(unsigned char)));
+
     connect(this, SIGNAL(startATU()), rig, SLOT(startATU()));
     connect(this, SIGNAL(setATU(bool)), rig, SLOT(setATU(bool)));
     connect(this, SIGNAL(getATUStatus()), rig, SLOT(getATUStatus()));
@@ -324,6 +330,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(wf, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handleWFScroll(QWheelEvent*)));
     connect(plot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handlePlotScroll(QWheelEvent*)));
 
+    // Metering
+    connect(this, SIGNAL(getMeters(bool)), rig, SLOT(getMeters(bool)));
 
     ui->plot->addGraph(); // primary
     ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first?
@@ -2214,7 +2222,7 @@ void wfmain::on_afGainSlider_valueChanged(int value)
 
 void wfmain::receiveRfGain(unsigned char level)
 {
-    // qDebug() << "Receive RF  level of" << (int)level << " = " << 100*level/255.0 << "%";
+    qDebug() << "Receive RF  level of" << (int)level << " = " << 100*level/255.0 << "%";
     ui->rfGainSlider->blockSignals(true);
     ui->rfGainSlider->setValue(level);
     ui->rfGainSlider->blockSignals(false);
@@ -2520,6 +2528,46 @@ void wfmain::on_satOpsBtn_clicked()
     sat->show();
 }
 
+void wfmain::changeSliderQuietly(QSlider *slider, int value)
+{
+    slider->blockSignals(true);
+    slider->setValue(value);
+    slider->blockSignals(false);
+
+}
+
+void wfmain::receiveTxPower(unsigned char power)
+{
+    changeSliderQuietly(ui->txPowerSlider, power);
+}
+
+void wfmain::receiveMicGain(unsigned char gain)
+{
+    changeSliderQuietly(ui->micGainSlider, gain);
+}
+
+void wfmain::receiveCompLevel(unsigned char compLevel)
+{
+    (void)compLevel;
+}
+
+void wfmain::receiveMonitorGain(unsigned char monitorGain)
+{
+    (void)monitorGain;
+}
+
+void wfmain::receiveVoxGain(unsigned char voxGain)
+{
+    (void)voxGain;
+}
+
+void wfmain::receiveAntiVoxGain(unsigned char antiVoxGain)
+{
+    (void)antiVoxGain;
+}
+
+
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
@@ -2529,6 +2577,9 @@ void wfmain::on_debugBtn_clicked()
     //emit getScopeMode();
     //emit getScopeEdge(); // 1,2,3 only in "fixed" mode
     //emit getScopeSpan(); // in khz, only in "center" mode
+
+    emit getLevels();
+    // emit getMeters(amTransmitting);
 
 }
 
