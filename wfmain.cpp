@@ -1375,6 +1375,7 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdGetSpectrumRefLevel:
                 emit getSpectrumRefLevel();
+                break;
             case cmdGetATUStatus:
                 emit getATUStatus();
                 break;
