@@ -27,6 +27,10 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     sat = new satelliteSetup();
     srv = new udpServerSetup();
 
+    connect(this, SIGNAL(sendServerConfig(SERVERCONFIG)), srv, SLOT(receiveServerConfig(SERVERCONFIG)));
+    connect(srv, SIGNAL(serverConfig(SERVERCONFIG, bool)), this, SLOT(serverConfigRequested(SERVERCONFIG, bool)));
+
+
 
     haveRigCaps = false;
 
@@ -187,6 +191,20 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 //        serialPortRig = prefs.serialPortRadio;
 //    }
 
+    // Start server if enabled in config
+    if (serverConfig.enabled) {
+        udp = new udpServer(serverConfig);
+
+        serverThread = new QThread(this);
+
+        udp->moveToThread(serverThread);
+
+        connect(this, SIGNAL(initServer()), udp, SLOT(init()));
+        connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
+        serverThread->start();
+
+        emit initServer();
+    }
 
     plot = ui->plot; // rename it waterfall.
     wf = ui->waterfall;
@@ -393,6 +411,10 @@ wfmain::~wfmain()
 {
     rigThread->quit();
     rigThread->wait();
+    if (serverThread != Q_NULLPTR) {
+        serverThread->quit();
+        serverThread->wait();
+    }
     delete ui;
 }
 
@@ -743,6 +765,25 @@ void wfmain::loadSettings()
         ui->audioOutputCombo->setCurrentIndex(audioInputIndex);
 
     settings.endGroup();
+
+    settings.beginGroup("Server");
+
+    serverConfig.enabled = settings.value("ServerEnabled", false).toBool();
+    serverConfig.controlPort = settings.value("ServerControlPort", 50001).toInt();
+    serverConfig.civPort = settings.value("ServerCivPort", 50002).toInt();
+    serverConfig.audioPort = settings.value("ServerAudioPort", 50003).toInt();
+    int numUsers = settings.value("ServerNumUsers", 0).toInt();
+    serverConfig.users.clear();
+    for (int f = 0; f < numUsers; f++)
+    {
+        SERVERUSER user;
+        user.username = settings.value("ServerUsername" + f, "").toString();
+        user.password = settings.value("ServerPassword" + f, "").toString();
+        serverConfig.users.append(user);
+    }
+
+    settings.endGroup();
+
     // Memory channels
 
     settings.beginGroup("Memory");
@@ -776,6 +817,9 @@ void wfmain::loadSettings()
 
     settings.endArray();
     settings.endGroup();
+
+    emit sendServerConfig(serverConfig);
+
 }
 
 
@@ -893,6 +937,22 @@ void wfmain::saveSettings()
     settings.setValue("blue_translucent", QColor(0,0,255,128));
 
     settings.endGroup();
+
+    settings.beginGroup("Server");
+
+    settings.setValue("ServerEnabled", serverConfig.enabled);
+    settings.setValue("ServerControlPort", serverConfig.controlPort);
+    settings.setValue("ServerCivPort", serverConfig.civPort);
+    settings.setValue("ServerAudioPort", serverConfig.audioPort);
+    settings.setValue("ServerNumUsers", serverConfig.users.count());
+    for (int f = 0; f < serverConfig.users.count(); f++)
+    {
+        settings.setValue("ServerUsername" + f, serverConfig.users[f].username);
+        settings.setValue("ServerPassword" + f, serverConfig.users[f].password);
+    }
+
+    settings.endGroup();
+
 
 
     settings.sync(); // Automatic, not needed (supposedly)
@@ -2462,4 +2522,20 @@ void wfmain::on_debugBtn_clicked()
     // cal->show();
     //emit getMode();
     sat->show();
+}
+
+// Slot to send/receive server config.
+// If store is true then write to config otherwise send current config by signal
+void wfmain::serverConfigRequested(SERVERCONFIG conf, bool store)
+{
+
+    if (!store) {
+        emit sendServerConfig(serverConfig);
+    }
+    else {
+        // Store config in file!
+        qDebug() << "Storing server config";
+        serverConfig = conf;
+    }
+
 }

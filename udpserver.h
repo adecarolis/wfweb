@@ -1,0 +1,105 @@
+#ifndef UDPSERVER_H
+#define UDPSERVER_H
+
+#include <QObject>
+#include <QUdpSocket>
+#include <QNetworkDatagram>
+#include <QHostInfo>
+#include <QTimer>
+#include <QMutex>
+#include <QDateTime>
+#include <QByteArray>
+#include <QList>
+
+// Allow easy endian-ness conversions
+#include <QtEndian>
+
+#include <QDebug>
+
+#include <udpserversetup.h>
+
+extern void passcode(QString in,QByteArray& out);
+extern QByteArray parseNullTerminatedString(QByteArray c, int s);
+
+class udpServer : public QObject
+{
+	Q_OBJECT
+
+public:
+	udpServer(SERVERCONFIG config);
+	~udpServer();
+
+public slots:
+	void init();
+
+private:
+
+	struct CLIENT {
+		bool connected = false;
+		QHostAddress ipAddress;
+		quint16 port;
+		QByteArray clientName;
+		time_t	timeConnected;
+		time_t lastHeard;
+		quint32 myId;
+		quint32 remoteId;
+		quint32 txSeq=1;
+		quint32 rxSeq;
+		quint16 pingSeq;
+		quint32 rxPingSeq; // 32bit as has other info
+		quint16 authInnerSeq;
+		quint16 authSeq;
+		quint32 innerPingSeq;
+		quint16 innerSeq;
+		quint16 tokenRx;
+		quint16 tokenTx;
+		QUdpSocket* socket;
+
+		QTimer* pingTimer;
+		QTimer* idleTimer;
+
+		// Only used for audio.
+		quint8 rxCodec;
+		quint8 txCodec;
+		quint16 rxSampleRate;
+		quint16 txSampleRate;
+	};
+
+	void controlReceived();
+	void civReceived();
+	void audioReceived();
+	void sendIAmHere(CLIENT* c);
+	void sendIAmReady(CLIENT* c);
+	void sendPing(CLIENT* c, quint16 seq, bool reply);
+	void sendIdle(CLIENT* c, quint16 seq);
+	void sendLoginResponse(CLIENT* c, bool allowed);
+	void sendCapabilities(CLIENT* c);
+	void sendConnectionInfo(CLIENT* c);
+	void sendTokenRenewal(CLIENT* c, quint16 seq);
+
+
+	SERVERCONFIG config;
+
+	QUdpSocket* udpControl = Q_NULLPTR;
+	QUdpSocket* udpCiv = Q_NULLPTR;
+	QUdpSocket* udpAudio = Q_NULLPTR;
+	QHostAddress localIP;
+	
+	quint32 controlId = 0;
+	quint32 civId = 0;
+	quint32 audioId = 0;
+
+	struct SEQBUFENTRY {
+		time_t	timeSent;
+		uint16_t seqNum;
+		QByteArray data;
+	};
+
+	QList <CLIENT*> controlClients = QList<CLIENT*>();
+	QList <CLIENT*> civClients = QList<CLIENT*>();
+	QList <CLIENT*> audioClients = QList<CLIENT*>();
+
+};
+
+
+#endif // UDPSERVER_H
