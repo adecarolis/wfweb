@@ -1451,6 +1451,15 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->modeSelectCombo->addItem("DD", 0x22);
         }
 
+        if(rigCaps.model == model9700)
+        {
+            ui->satOpsBtn->setDisabled(false);
+            ui->adjRefBtn->setDisabled(false);
+        } else {
+            ui->satOpsBtn->setDisabled(true);
+            ui->adjRefBtn->setDisabled(true);
+        }
+
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
 
