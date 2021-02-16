@@ -582,8 +582,11 @@
            </layout>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_19">
+           <layout class="QVBoxLayout" name="verticalLayout_16">
             <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
              <number>0</number>
             </property>
             <item>
@@ -596,6 +599,37 @@
               </property>
               <property name="text">
                <string>Transmit</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="radioButton">
+              <property name="text">
+               <string>Simplex</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="radioButton_3">
+              <property name="text">
+               <string>Dup+</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="radioButton_2">
+              <property name="text">
+               <string>Dup-</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="radioButton_4">
+              <property name="text">
+               <string>Auto</string>
               </property>
              </widget>
             </item>

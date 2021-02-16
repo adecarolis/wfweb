@@ -963,6 +963,51 @@ void rigCommander::setMicGain(unsigned char gain)
     prepDataAndSend(payload);
 }
 
+void rigCommander::setUSBGain(unsigned char gain)
+{
+    QByteArray payload;
+
+    switch(rigCaps.model)
+    {
+        case model9700:
+            payload.setRawData("\x1A\x05\x01\x13", 4);
+            break;
+        case model7100:
+        case model7610:
+            payload.setRawData("\x1A\x05\x00\x89", 4);
+            break;
+        case model7300:
+            payload.setRawData("\x1A\x05\x00\x65", 4);
+            break;
+        case model7850:
+            payload.setRawData("\x1A\x05\x00\x61", 4);
+            break;
+        case model7600:
+            payload.setRawData("\x1A\x05\x00\x29", 4);
+            break;
+        default:
+            return;
+    }
+    payload.append(bcdEncodeInt(gain));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setLANGain(unsigned char gain)
+{
+    QByteArray payload("\x1A\x05\x01\x14");
+
+
+    payload.append(bcdEncodeInt(gain));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setACCGain(unsigned char gain)
+{
+    QByteArray payload("\x1A\x05\x01\x12");
+    payload.append(bcdEncodeInt(gain));
+    prepDataAndSend(payload);
+}
+
 void rigCommander::setCompLevel(unsigned char compLevel)
 {
     QByteArray payload("\x14\x0E");

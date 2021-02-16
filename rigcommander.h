@@ -83,6 +83,9 @@ public slots:
     void setAfGain(unsigned char level);
     void setTxPower(unsigned char power);
     void setMicGain(unsigned char gain);
+    void setUSBGain(unsigned char gain);
+    void setLANGain(unsigned char gain);
+    void setACCGain(unsigned char gain);
     void setCompLevel(unsigned char compLevel);
     void setMonitorLevel(unsigned char monitorLevel);
     void setVoxGain(unsigned char gain);
