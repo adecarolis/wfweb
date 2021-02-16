@@ -47,15 +47,27 @@ signals:
     void getPTT();
     void setPTT(bool pttOn);
     void getBandStackReg(char band, char regCode);
+    void getDebug();
+
+    // Level get:
+    void getLevels(); // get all levels
     void getRfGain();
     void getAfGain();
     void getSql();
-    void getDebug();
+    void getTxPower();
+    void getMicGain();
+
+    // Level set:
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
     void setSql(unsigned char level);
+    void setMicGain(unsigned char);
+    void setCompLevel(unsigned char);
+    void setTxPower(unsigned char);
+    void setMonitorLevel(unsigned char);
+    void setVoxGain(unsigned char);
+    void setAntiVoxGain(unsigned char);
 
-    void getLevels();
     void getMeters(bool isTransmitting);
 
 
@@ -312,6 +324,12 @@ private slots:
 
     void on_satOpsBtn_clicked();
 
+    void on_txPowerSlider_valueChanged(int value);
+
+    void on_micGainSlider_valueChanged(int value);
+
+    void on_scopeRefLevelSlider_valueChanged(int value);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -402,7 +420,8 @@ private:
     double knobFreqMhz;
     enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
-              cmdGetSql, cmdGetATUStatus, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT};
+              cmdGetSql, cmdGetATUStatus, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
+              cmdGetTxPower, cmdGetMicGain};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     freqMemory mem;

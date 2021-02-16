@@ -543,6 +543,15 @@
               <property name="toolTip">
                <string>Spectrum Reference Level Adjust</string>
               </property>
+              <property name="minimum">
+               <number>-200</number>
+              </property>
+              <property name="maximum">
+               <number>200</number>
+              </property>
+              <property name="singleStep">
+               <number>5</number>
+              </property>
               <property name="orientation">
                <enum>Qt::Vertical</enum>
               </property>

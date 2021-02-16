@@ -288,16 +288,30 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
 
     // Levels (read and write)
+    // Levels: Query:
     connect(this, SIGNAL(getLevels()), rig, SLOT(getLevels()));
     connect(this, SIGNAL(getRfGain()), rig, SLOT(getRfGain()));
     connect(this, SIGNAL(getAfGain()), rig, SLOT(getAfGain()));
+    connect(this, SIGNAL(getSql()), rig, SLOT(getSql()));
+    connect(this, SIGNAL(getTxPower()), rig, SLOT(getTxLevel()));
+    connect(this, SIGNAL(getMicGain()), rig, SLOT(getMicGain()));
+
+    // Levels: Set:
     connect(this, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
     connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
+    connect(this, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
+    connect(this, SIGNAL(setTxPower(unsigned char)), rig, SLOT(setTxPower(unsigned char)));
+    connect(this, SIGNAL(setMicGain(unsigned char)), rig, SLOT(setMicGain(unsigned char)));
+    connect(this, SIGNAL(setMonitorLevel(unsigned char)), rig, SLOT(setMonitorLevel(unsigned char)));
+    connect(this, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
+    connect(this, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
+
+
+
+    // Levels: handle return on query:
     connect(rig, SIGNAL(haveRfGain(unsigned char)), this, SLOT(receiveRfGain(unsigned char)));
     connect(rig, SIGNAL(haveAfGain(unsigned char)), this, SLOT(receiveAfGain(unsigned char)));
-    connect(this, SIGNAL(getSql()), rig, SLOT(getSql()));
     connect(rig, SIGNAL(haveSql(unsigned char)), this, SLOT(receiveSql(unsigned char)));
-    connect(this, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
     connect(rig, SIGNAL(haveTxPower(unsigned char)), this, SLOT(receiveTxPower(unsigned char)));
     connect(rig, SIGNAL(haveMicGain(unsigned char)), this, SLOT(receiveMicGain(unsigned char)));
 
@@ -1154,7 +1168,11 @@ void wfmain:: getInitialRigState()
 
     cmdOutQue.append(cmdGetRxGain);
     cmdOutQue.append(cmdGetAfGain);
-    cmdOutQue.append(cmdGetSql); // implimented but not used
+    cmdOutQue.append(cmdGetSql);
+
+    cmdOutQue.append(cmdGetTxPower);
+    cmdOutQue.append(cmdGetMicGain);
+
     // TODO:
     // get TX level
     // get Scope reference Level
@@ -1349,6 +1367,12 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdGetSql:
                 emit getSql();
+                break;
+            case cmdGetTxPower:
+                emit getTxPower();
+                break;
+            case cmdGetMicGain:
+                emit getMicGain();
                 break;
             case cmdGetATUStatus:
                 emit getATUStatus();
@@ -2565,6 +2589,23 @@ void wfmain::receiveAntiVoxGain(unsigned char antiVoxGain)
 {
     (void)antiVoxGain;
 }
+
+void wfmain::on_txPowerSlider_valueChanged(int value)
+{
+    emit setTxPower(value);
+}
+
+void wfmain::on_micGainSlider_valueChanged(int value)
+{
+    emit setMicGain(value);
+}
+
+void wfmain::on_scopeRefLevelSlider_valueChanged(int value)
+{
+    //emit setScopeRefLevel(value);
+    (void)value;
+}
+
 
 
 

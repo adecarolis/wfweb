@@ -907,6 +907,49 @@ void rigCommander::parseLevels()
 
 }
 
+void rigCommander::setTxPower(unsigned char power)
+{
+    QByteArray payload("\x14\x0A");
+    payload.append(bcdEncodeInt(power));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setMicGain(unsigned char gain)
+{
+    QByteArray payload("\x14\x0B");
+    payload.append(bcdEncodeInt(gain));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setCompLevel(unsigned char compLevel)
+{
+    QByteArray payload("\x14\x0E");
+    payload.append(bcdEncodeInt(compLevel));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setMonitorLevel(unsigned char monitorLevel)
+{
+    QByteArray payload("\x14\x0E");
+    payload.append(bcdEncodeInt(monitorLevel));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setVoxGain(unsigned char gain)
+{
+    QByteArray payload("\x14\x16");
+    payload.append(bcdEncodeInt(gain));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setAntiVoxGain(unsigned char gain)
+{
+    QByteArray payload("\x14\x17");
+    payload.append(bcdEncodeInt(gain));
+    prepDataAndSend(payload);
+}
+
+
 void rigCommander::getRfGain()
 {
     QByteArray payload("\x14\x02");

@@ -78,6 +78,12 @@ public slots:
     void setSquelch(unsigned char level);
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
+    void setTxPower(unsigned char power);
+    void setMicGain(unsigned char gain);
+    void setCompLevel(unsigned char compLevel);
+    void setMonitorLevel(unsigned char monitorLevel);
+    void setVoxGain(unsigned char gain);
+    void setAntiVoxGain(unsigned char gain);
 
     void startATU();
     void setATU(bool enabled);
