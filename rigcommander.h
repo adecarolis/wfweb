@@ -15,6 +15,12 @@
 // note: using a define because switch case doesn't even work with const unsigned char. Surprised me.
 #define compCivAddr 0xE1
 
+enum rigInput{ inputMic=0,
+               inputACC=1,
+               inputUSB=3,
+               inputLAN=5,
+               inputACCA,
+               inputACCB};
 
 class rigCommander : public QObject
 {
@@ -90,6 +96,9 @@ public slots:
     void setMonitorLevel(unsigned char monitorLevel);
     void setVoxGain(unsigned char gain);
     void setAntiVoxGain(unsigned char gain);
+
+    void setModInput(rigInput input);
+    void setModInputDataMode(rigInput input);
 
     void startATU();
     void setATU(bool enabled);
@@ -180,10 +189,15 @@ private:
     void parseATU();
     void parseLevels(); // register 0x14
     void sendLevelCmd(unsigned char levAddr, unsigned char level);
+    QByteArray getLANAddr();
+    QByteArray getUSBAddr();
+    QByteArray getACCAddr();
     void sendDataOut();
     void prepDataAndSend(QByteArray data);
     void debugMe();
+    void printHex(const QByteArray &pdata);
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
+
     commHandler * comm=Q_NULLPTR;
     udpHandler* udp=Q_NULLPTR;
     void determineRigCaps();

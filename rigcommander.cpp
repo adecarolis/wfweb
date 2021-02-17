@@ -963,12 +963,93 @@ void rigCommander::setMicGain(unsigned char gain)
     prepDataAndSend(payload);
 }
 
-void rigCommander::setUSBGain(unsigned char gain)
+void rigCommander::setModInput(rigInput input)
+{
+
+    QByteArray payload;
+    QByteArray inAsByte;
+
+
+    switch(rigCaps.model)
+    {
+        case model9700:
+            payload.setRawData("\x1A\x05\x01\x15", 4);
+            payload.append((unsigned char)input);
+            break;
+        case model7610:
+            payload.setRawData("\x1A\x05\x00\x91", 4);
+            payload.append((unsigned char)input);
+            break;
+        case model7300:
+            payload.setRawData("\x1A\x05\x00\x67", 4);
+            payload.append((unsigned char)input);
+            break;
+        case model7850:
+            payload.setRawData("\x1A\x05\x00\x63", 4);
+            switch(input)
+            {
+                case inputMic:
+                    inAsByte.setRawData("\x00", 1);
+                    break;
+                case inputACCA:
+                    inAsByte.setRawData("\x01", 1);
+                    break;
+                case inputACCB:
+                    inAsByte.setRawData("\x02", 1);
+                    break;
+                case inputUSB:
+                    inAsByte.setRawData("\x08", 1);
+                    break;
+                case inputLAN:
+                    inAsByte.setRawData("\x09", 1);
+                    break;
+                default:
+                    return;
+
+            }
+            payload.append(inAsByte);
+            break;
+        case model705:
+            payload.setRawData("\x1A\x05\x01\x18", 4);
+            switch(input)
+            {
+                case inputMic:
+                    inAsByte.setRawData("\x00", 1);
+                    break;
+                case inputUSB:
+                    inAsByte.setRawData("\x01", 1);
+                    break;
+                case inputLAN: // WLAN
+                    inAsByte.setRawData("\x03", 1);
+                    break;
+                default:
+                    return;
+            }
+            payload.append(inAsByte);
+            break;
+
+        default:
+            break;
+    }
+
+    prepDataAndSend(payload);
+
+}
+
+void rigCommander::setModInputDataMode(rigInput input)
+{
+    (void)input;
+}
+
+QByteArray rigCommander::getUSBAddr()
 {
     QByteArray payload;
 
     switch(rigCaps.model)
     {
+        case model705:
+            payload.setRawData("\x1A\x05\x01\x16", 4);
+            break;
         case model9700:
             payload.setRawData("\x1A\x05\x01\x13", 4);
             break;
@@ -986,24 +1067,85 @@ void rigCommander::setUSBGain(unsigned char gain)
             payload.setRawData("\x1A\x05\x00\x29", 4);
             break;
         default:
-            return;
+            break;
     }
+    return payload;
+}
+
+
+void rigCommander::setUSBGain(unsigned char gain)
+{
+    QByteArray payload = getUSBAddr();
     payload.append(bcdEncodeInt(gain));
     prepDataAndSend(payload);
 }
 
+QByteArray rigCommander::getLANAddr()
+{
+    QByteArray payload;
+    switch(rigCaps.model)
+    {
+        case model705:
+            payload.setRawData("\x1A\x05\x01\x17", 4);
+            break;
+        case model9700:
+            payload.setRawData("\x1A\x05\x01\x14", 4);
+            break;
+        case model7610:
+            payload.setRawData("\x1A\x05\x00\x90", 4);
+            break;
+        case model7850:
+            payload.setRawData("\x1A\x05\x00\x62", 4);
+            break;
+        default:
+            break;
+    }
+
+    return payload;
+}
+
+
 void rigCommander::setLANGain(unsigned char gain)
 {
-    QByteArray payload("\x1A\x05\x01\x14");
-
-
+    QByteArray payload = getLANAddr();
     payload.append(bcdEncodeInt(gain));
     prepDataAndSend(payload);
+}
+
+QByteArray rigCommander::getACCAddr()
+{
+    QByteArray payload;
+
+    // Note: the manual for the IC-7600 does not call out a
+    // register to adjust the ACC gain.
+    switch(rigCaps.model)
+    {
+        case model9700:
+            payload.setRawData("\x1A\x05\x01\x12", 4);
+            break;
+        case model7100:
+            payload.setRawData("\x1A\x05\x00\x87", 4);
+            break;
+        case model7610:
+            payload.setRawData("\x1A\x05\x00\x88", 4);
+            break;
+        case model7300:
+            payload.setRawData("\x1A\x05\x00\x64", 4);
+            break;
+        case model7850:
+            // Note: 0x58 = ACC-A, 0x59 = ACC-B
+            payload.setRawData("\x1A\x05\x00\x58", 4);
+            break;
+        default:
+            break;
+    }
+
+    return payload;
 }
 
 void rigCommander::setACCGain(unsigned char gain)
 {
-    QByteArray payload("\x1A\x05\x01\x12");
+    QByteArray payload = getACCAddr();
     payload.append(bcdEncodeInt(gain));
     prepDataAndSend(payload);
 }
@@ -1271,9 +1413,6 @@ void rigCommander::parsePTT()
 {
     // read after payloadIn[02]
 
-    // Because I'm not sure about this:
-    qDebug() << "PTT status received, here is the hex dump:";
-    printHex(payloadIn, false, true);
     if(payloadIn[2] == (char)0)
     {
         // PTT off
@@ -1444,8 +1583,6 @@ void rigCommander::parseWFData()
 
 void rigCommander::determineRigCaps()
 {
-    //TODO: Add if(usingNativeLAN) condition
-    //TODO: Add "hasDD", "hasDV" for d-star (705 and 9700)
     //TODO: Determine available bands (low priority, rig will reject out of band requests anyway)
 
 
@@ -1926,6 +2063,11 @@ void rigCommander::getDebug()
 {
     // generic debug function for development.
     emit getMoreDebug();
+}
+
+void rigCommander::printHex(const QByteArray &pdata)
+{
+    printHex(pdata, false, true);
 }
 
 void rigCommander::printHex(const QByteArray &pdata, bool printVert, bool printHoriz)
