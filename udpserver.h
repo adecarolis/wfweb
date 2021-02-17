@@ -39,24 +39,32 @@ private:
 		QHostAddress ipAddress;
 		quint16 port;
 		QByteArray clientName;
-		time_t	timeConnected;
-		time_t lastHeard;
+		QDateTime	timeConnected;
+		QDateTime lastHeard;
+		bool isStreaming;
+		quint16 civPort;
+		quint16 audioPort;
+		quint16 txBufferLen;
 		quint32 myId;
 		quint32 remoteId;
-		quint32 txSeq=1;
+		quint32 txSeq=0;
 		quint32 rxSeq;
+		quint32 connSeq;
 		quint16 pingSeq;
 		quint32 rxPingSeq; // 32bit as has other info
-		quint16 authInnerSeq;
+		quint32 authInnerSeq;
 		quint16 authSeq;
 		quint16 innerPingSeq;
 		quint16 innerSeq;
 		quint16 tokenRx;
 		quint32 tokenTx;
+		quint8 wdseq;
 		QUdpSocket* socket;
+
 
 		QTimer* pingTimer;
 		QTimer* idleTimer;
+		QTimer* wdTimer;
 
 		// Only used for audio.
 		quint8 rxCodec;
@@ -72,10 +80,13 @@ private:
 	void sendIAmReady(CLIENT* c);
 	void sendPing(CLIENT* c, quint16 seq, bool reply);
 	void sendIdle(CLIENT* c, quint16 seq);
-	void sendLoginResponse(CLIENT* c, bool allowed);
+	void sendLoginResponse(CLIENT* c, quint16 seq, bool allowed);
 	void sendCapabilities(CLIENT* c);
 	void sendConnectionInfo(CLIENT* c);
-	void sendTokenRenewal(CLIENT* c);
+	void sendTokenResponse(CLIENT* c,quint8 type);
+	void sendWatchdog(CLIENT* c);
+	void sendStatus(CLIENT* c);
+
 
 
 	SERVERCONFIG config;
@@ -88,6 +99,9 @@ private:
 	quint32 controlId = 0;
 	quint32 civId = 0;
 	quint32 audioId = 0;
+
+	QString rigname = "IC-9700";
+	quint8 rigciv = 0xa2;
 
 	struct SEQBUFENTRY {
 		time_t	timeSent;
