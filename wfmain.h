@@ -489,6 +489,9 @@ private:
     void issueDelayedCommandPriority(cmds cmd);
     void changeSliderQuietly(QSlider *slider, int value);
 
+    void changeMode(mode_kind mode);
+    void changeMode(mode_kind mode, bool dataOn);
+
     int oldFreqDialVal;
 
     rigCapabilities rigCaps;
