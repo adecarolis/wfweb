@@ -860,33 +860,36 @@ void udpServer::dataForServer(QByteArray d)
     return;
 }
 
+
+// This function is passed a pointer to the list of connection objects and a pointer to the object itself
+// Needs to stop and delete all timers, remove the connection from the list and delete the connection.
 void udpServer::deleteConnection(QList<CLIENT*> *l, CLIENT* c)
 {
+    qDebug() << "Deleting connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
+    if (c->idleTimer != Q_NULLPTR) {
+        c->idleTimer->stop();
+        delete c->idleTimer;
+    }
+    if (c->pingTimer != Q_NULLPTR) {
+        c->pingTimer->stop();
+        delete c->pingTimer;
+    }
+    if (c->wdTimer != Q_NULLPTR) {
+        c->wdTimer->stop();
+        delete c->wdTimer;
+    }
+
     QList<CLIENT*>::iterator it = l->begin();
     while (it != l->end()) {
         CLIENT* client = *it;
         if (client != Q_NULLPTR && client == c) {
-            qDebug() << "Deleting connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
-            if (client->idleTimer != Q_NULLPTR) {
-                client->idleTimer->stop();
-                delete client->idleTimer;
-            }
-            if (client->pingTimer != Q_NULLPTR) {
-                client->pingTimer->stop();
-                delete client->pingTimer;
-            }
-            if (client->wdTimer != Q_NULLPTR) {
-                client->wdTimer->stop();
-                delete client->wdTimer;
-            }
-            qDebug() << "Number of clients: " << l->length();
             it = l->erase(it);
-            qDebug() << "Number of clients (after erase): " << l->length();
         }
         else {
             ++it;
         }
     }
-    delete c;
+    delete c; // Is this needed or will the erase have done it?
     c = Q_NULLPTR;
+    qDebug() << "Current Number of clients connected: " << l->length();
 }
