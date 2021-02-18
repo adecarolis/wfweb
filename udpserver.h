@@ -90,7 +90,7 @@ private:
 	void sendCapabilities(CLIENT* c);
 	void sendConnectionInfo(CLIENT* c);
 	void sendTokenResponse(CLIENT* c,quint8 type);
-	void sendWatchdog(QList<CLIENT*> l, CLIENT* c);
+	void sendWatchdog(CLIENT* c);
 	void sendStatus(CLIENT* c);
 	void deleteConnection(QList<CLIENT*> *l, CLIENT* c);
 

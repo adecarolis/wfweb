@@ -159,7 +159,7 @@ void udpServer::controlReceived()
             current->wdTimer = new QTimer();
             connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, &controlClients, current, (quint16)0x00, false));
             connect(current->idleTimer, &QTimer::timeout, this, std::bind(&udpServer::sendIdle, this, current, (quint16)0x00));
-            connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::sendWatchdog, this, controlClients, current));
+            connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::sendWatchdog, this, current));
             current->pingTimer->start(100);
             current->idleTimer->start(100);
             current->wdTimer->start(10000);
@@ -765,7 +765,7 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
 }
 
 #define WATCHDOG_SIZE 0x14
-void udpServer::sendWatchdog(QList<CLIENT*> l,CLIENT* c)
+void udpServer::sendWatchdog(CLIENT* c)
 {
     QMutexLocker locker(&mutex);
 
