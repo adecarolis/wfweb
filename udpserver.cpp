@@ -101,6 +101,9 @@ void udpServer::controlReceived()
         QNetworkDatagram datagram = udpControl->receiveDatagram();
         QByteArray r = datagram.data();
         CLIENT* current = Q_NULLPTR;
+        if (datagram.senderPort() == 65535 || datagram.senderPort() == 0)
+            return;
+
         foreach(CLIENT * client, controlClients)
         {
             if (client->ipAddress == datagram.senderAddress() && client->port == datagram.senderPort())
@@ -281,6 +284,9 @@ void udpServer::civReceived()
 
         CLIENT* current = Q_NULLPTR;
 
+        if (datagram.senderPort() == 65535 || datagram.senderPort() == 0)
+            return;
+
         foreach(CLIENT * client, civClients)
         {
             if (client->ipAddress == datagram.senderAddress() && client->port == datagram.senderPort())
@@ -371,6 +377,17 @@ void udpServer::civReceived()
             }
             break;
         default:
+            if (r.length() > 21) {
+                // First check if we are missing any packets?
+                quint8 temp = r[0] - 0x15;
+                if ((quint8)r[16] == 0xc1 && (quint8)r[17] == temp)
+                {
+                    qDebug() << "Got CIV from server: " << r.mid(21);
+                    emit haveDataFromServer(r.mid(21));
+                }
+            }
+
+
             break;
         }
     }
@@ -383,8 +400,12 @@ void udpServer::audioReceived()
         QByteArray r = datagram.data();
         CLIENT* current = Q_NULLPTR;
 
+        if (datagram.senderPort() == 65535 || datagram.senderPort() == 0)
+            return;
+
         foreach(CLIENT * client, audioClients)
         {
+
             if (client != Q_NULLPTR && client->ipAddress == datagram.senderAddress() && client->port == datagram.senderPort())
             {
                 current = client;
@@ -757,4 +778,35 @@ void udpServer::sendStatus(CLIENT* c)
 
 
 }
+
+
+#define SEND_SIZE 17
+void udpServer::dataForServer(QByteArray d)
+{
+
+    CLIENT* current = Q_NULLPTR;
+    foreach(CLIENT * client, civClients)
+    {
+        qDebug() << "Sending CIV data to " << client->ipAddress.toString();
+        quint8 p[SEND_SIZE];
+        memset(p, 0x0, sizeof(p));
+        qToLittleEndian(client->txSeq, p + 0x06);
+        qToLittleEndian(client->myId, p + 0x08);
+        qToLittleEndian(client->remoteId, p + 0x0c);
+
+        QByteArray t = QByteArray::fromRawData((const char*)p, sizeof(p));
+        p[0x10] = (char)0xc1;
+        qToLittleEndian((quint16)t.length(), p + 0x11);
+        qToLittleEndian((quint16)sizeof(p) + t.length(), p + 0x00);
+
+        t.append(QByteArray::fromRawData((const char*)p, sizeof(p)));
+        qToLittleEndian(client->connSeq, p + 0x12);
+        client->socket->writeDatagram(t, client->ipAddress, client->port);
+        client->connSeq++;
+        client->txSeq++;
+    }
+    
+    return;
+}
+
 

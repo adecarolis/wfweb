@@ -31,6 +31,10 @@ public:
 
 public slots:
 	void init();
+	void dataForServer(QByteArray);
+
+signals:
+	void haveDataFromServer(QByteArray);
 
 private:
 

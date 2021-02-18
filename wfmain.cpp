@@ -201,6 +201,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
         connect(this, SIGNAL(initServer()), udp, SLOT(init()));
         connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
+
+
         serverThread->start();
 
         emit initServer();
@@ -366,6 +368,12 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     // Metering
     connect(this, SIGNAL(getMeters(bool)), rig, SLOT(getMeters(bool)));
+
+
+    // Server
+    connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
+    connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
+
 
     ui->plot->addGraph(); // primary
     ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first?
