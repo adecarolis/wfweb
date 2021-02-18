@@ -888,10 +888,10 @@ void udpBase::sendPing()
     quint8 p[PING_SIZE];
     memset(p, 0x0, sizeof(p));
     qToLittleEndian((quint16)sizeof(p), p + 0x00);
+    p[0x04] = 0x07;
     qToLittleEndian(myId, p + 0x08);
     qToLittleEndian(remoteId, p + 0x0c);
     qToLittleEndian(pingSeq, p + 0x11);
-
     lastPingSentTime = QDateTime::currentDateTime();
     QMutexLocker locker(&mutex);
     udp->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), radioIP, port);
