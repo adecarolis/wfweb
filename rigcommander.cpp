@@ -549,13 +549,35 @@ void rigCommander::getDataMode()
 
 void rigCommander::setDuplexMode(duplexMode dm)
 {
-    (void)dm;
+    QByteArray payload;
+    payload.setRawData("\x0F", 1);
+    payload.append((unsigned char) dm);
+    prepDataAndSend(payload);
 }
 
 void rigCommander::getDuplexMode()
 {
+    QByteArray payload;
+    payload.setRawData("\x0F\x00", 2);
+    prepDataAndSend(payload);
 
+    payload.setRawData("\x0F\x01", 2);
+    prepDataAndSend(payload);
+
+    payload.setRawData("\x0F\x10", 2);
+    prepDataAndSend(payload);
+
+    payload.setRawData("\x0F\x11", 2);
+    prepDataAndSend(payload);
+
+    payload.setRawData("\x0F\x12", 2);
+    prepDataAndSend(payload);
+
+    payload.setRawData("\x0F\x13", 2);
+    prepDataAndSend(payload);
 }
+
+
 
 
 void rigCommander::getPTT()
@@ -779,6 +801,9 @@ void rigCommander::parseCommand()
         case '\x06':
             //qDebug() << "Have mode data";
             this->parseMode();
+            break;
+        case '\x0F':
+            emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
             break;
         case '\x14':
             // read levels

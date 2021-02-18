@@ -29,7 +29,8 @@ enum duplexMode{
     dmSplitOn=0x01,
     dmSimplex=0x10,
     dmDupMinus=0x11,
-    dmDupPlus=0x12
+    dmDupPlus=0x12,
+    dmDupRPS=0x13
 };
 
 class rigCommander : public QObject
