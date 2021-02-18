@@ -2608,6 +2608,32 @@ void wfmain::receiveMicGain(unsigned char gain)
     changeSliderQuietly(ui->micGainSlider, gain);
 }
 
+void wfmain::receiveModInput(rigInput input)
+{
+    (void)input;
+}
+
+void wfmain::receiveDuplexMode(duplexMode dm)
+{
+    (void)dm;
+}
+
+void wfmain::receiveACCGain(unsigned char level, unsigned char ab)
+{
+    (void)level;
+    (void)ab;
+}
+
+void wfmain::receiveUSBGain(unsigned char level)
+{
+    (void)level;
+}
+
+void wfmain::receiveLANGain(unsigned char level)
+{
+    (void)level;
+}
+
 void wfmain::receiveCompLevel(unsigned char compLevel)
 {
     (void)compLevel;
