@@ -75,6 +75,8 @@ private:
 		quint8 txCodec;
 		quint16 rxSampleRate;
 		quint16 txSampleRate;
+
+
 	};
 
 	void controlReceived();
@@ -82,14 +84,16 @@ private:
 	void audioReceived();
 	void sendIAmHere(CLIENT* c);
 	void sendIAmReady(CLIENT* c);
-	void sendPing(CLIENT* c, quint16 seq, bool reply);
+	void sendPing(QList<CLIENT*> *l,CLIENT* c, quint16 seq, bool reply);
 	void sendIdle(CLIENT* c, quint16 seq);
 	void sendLoginResponse(CLIENT* c, quint16 seq, bool allowed);
 	void sendCapabilities(CLIENT* c);
 	void sendConnectionInfo(CLIENT* c);
 	void sendTokenResponse(CLIENT* c,quint8 type);
-	void sendWatchdog(CLIENT* c);
+	void sendWatchdog(QList<CLIENT*> l, CLIENT* c);
 	void sendStatus(CLIENT* c);
+	void deleteConnection(QList<CLIENT*> *l, CLIENT* c);
+
 
 
 
@@ -112,6 +116,8 @@ private:
 		uint16_t seqNum;
 		QByteArray data;
 	};
+
+	QMutex mutex; // Used for critical operations.
 
 	QList <CLIENT*> controlClients = QList<CLIENT*>();
 	QList <CLIENT*> civClients = QList<CLIENT*>();

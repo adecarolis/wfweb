@@ -2420,7 +2420,7 @@ void rigCommander::printHex(const QByteArray &pdata, bool printVert, bool printH
 
 void rigCommander::dataFromServer(QByteArray data)
 {
-    qDebug() << "emit dataForComm()";
+    //qDebug() << "emit dataForComm()";
     emit dataForComm(data);
 }
 
