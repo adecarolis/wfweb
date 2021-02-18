@@ -366,7 +366,7 @@ void udpServer::civReceived()
             } // This is a retransmit request
             else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x01\x00"))
             {
-                // Just send an idle for now!
+                // Just send an idle for now, we need to be able to retransmit missing packets.
                 qDebug() << current->ipAddress.toString() << ": Received 'retransmit' request for " << gotSeq;
                 sendIdle(current, gotSeq);
 
@@ -840,14 +840,13 @@ void udpServer::dataForServer(QByteArray d)
             qToLittleEndian(client->txSeq, p + 0x06);
             qToLittleEndian(client->myId, p + 0x08);
             qToLittleEndian(client->remoteId, p + 0x0c);
+            p[0x10] = (char)0xc1;
+            qToLittleEndian((quint16)d.length(), p + 0x11);
+            qToBigEndian(client->connSeq, p + 0x13); // THIS IS BIG ENDIAN!
 
             QByteArray t = QByteArray::fromRawData((const char*)p, sizeof(p));
-            p[0x10] = (char)0xc1;
-            qToLittleEndian((quint16)t.length(), p + 0x11);
-            qToLittleEndian(client->connSeq, p + 0x12);
-            qToLittleEndian((quint16)sizeof(p) + t.length()+d.length(), p + 0x00);
+            qToLittleEndian((quint16)t.length()+d.length(), p + 0x00);
 
-            t.append(QByteArray::fromRawData((const char*)p, sizeof(p)));
             t.append(d);
 
             QMutexLocker locker(&mutex);

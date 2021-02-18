@@ -428,7 +428,7 @@ void udpCivData::send(QByteArray d)
     qToLittleEndian(remoteId, p + 0x0c);
     p[0x10] = 0xc1;
     qToLittleEndian((quint16)d.length(), p + 0x11);
-    qToLittleEndian(sendSeqB, p + 0x13);
+    qToBigEndian(sendSeqB, p + 0x13); // THIS IS BIG ENDIAN!
 
     QByteArray t = QByteArray::fromRawData((const char*)p, sizeof(p));
     t.append(d);
@@ -501,7 +501,7 @@ void udpCivData::dataReceived()
                 quint8 temp = r[0] - 0x15;
                 if ((quint8)r[16] == 0xc1 && (quint8)r[17] == temp)
                 {
-                    emit receive(r.mid(21));
+                    emit receive(r.mid(0x15)); 
                 }  
             }
             break;
