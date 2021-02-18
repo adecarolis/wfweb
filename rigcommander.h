@@ -20,7 +20,17 @@ enum rigInput{ inputMic=0,
                inputUSB=3,
                inputLAN=5,
                inputACCA,
-               inputACCB};
+               inputACCB,
+               inputUnknown=0xff
+};
+
+enum duplexMode{
+    dmSplitOff=0x00,
+    dmSplitOn=0x01,
+    dmSimplex=0x10,
+    dmDupMinus=0x11,
+    dmDupPlus=0x12
+};
 
 class rigCommander : public QObject
 {
@@ -61,6 +71,8 @@ public slots:
     void setPTT(bool pttOn);
     void setDataMode(bool dataOn);
     void getDataMode();
+    void setDuplexMode(duplexMode dm);
+    void getDuplexMode();
 
     void getLevels(); // all supported levels
 
@@ -73,6 +85,9 @@ public slots:
     void getMonitorLevel();
     void getVoxGain();
     void getAntiVoxGain();
+    void getUSBGain();
+    void getLANGain();
+    void getACCGain();
 
     void getSMeter();
     void getRFPowerMeter();
@@ -97,8 +112,8 @@ public slots:
     void setVoxGain(unsigned char gain);
     void setAntiVoxGain(unsigned char gain);
 
-    void setModInput(rigInput input);
-    void setModInputDataMode(rigInput input);
+    void getModInput(bool dataOn);
+    void setModInput(rigInput input, bool dataOn);
 
     void startATU();
     void setATU(bool enabled);
@@ -129,6 +144,7 @@ signals:
     void haveFrequency(double frequencyMhz);
     void haveMode(unsigned char mode, unsigned char filter);
     void haveDataMode(bool dataModeEnabled);
+    void haveDuplexMode(duplexMode);
     void haveBandStackReg(float freq, char mode, bool dataOn);
     void haveSpectrumBounds();
     void haveScopeSpan(char span);
@@ -145,6 +161,11 @@ signals:
     void haveMonitorLevel(unsigned char level);
     void haveVoxGain(unsigned char gain);
     void haveAntiVoxGain(unsigned char gain);
+
+    void haveModInput(rigInput input, bool isData);
+    void haveLANGain(unsigned char gain);
+    void haveUSBGain(unsigned char gain);
+    void haveACCGain(unsigned char gain, unsigned char ab);
 
     void haveSMeter(unsigned char level);
     void haveRFMeter(unsigned char level);
@@ -192,6 +213,7 @@ private:
     QByteArray getLANAddr();
     QByteArray getUSBAddr();
     QByteArray getACCAddr();
+    void setModInput(rigInput input, bool dataOn, bool isQuery);
     void sendDataOut();
     void prepDataAndSend(QByteArray data);
     void debugMe();

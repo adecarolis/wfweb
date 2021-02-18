@@ -547,6 +547,17 @@ void rigCommander::getDataMode()
     prepDataAndSend(payload);
 }
 
+void rigCommander::setDuplexMode(duplexMode dm)
+{
+    (void)dm;
+}
+
+void rigCommander::getDuplexMode()
+{
+
+}
+
+
 void rigCommander::getPTT()
 {
     QByteArray payload;
@@ -963,11 +974,32 @@ void rigCommander::setMicGain(unsigned char gain)
     prepDataAndSend(payload);
 }
 
-void rigCommander::setModInput(rigInput input)
+void rigCommander::getModInput(bool dataOn)
 {
+    setModInput(inputMic, dataOn, true);
+}
+
+void rigCommander::setModInput(rigInput input, bool dataOn)
+{
+    setModInput(input, dataOn, false);
+}
+
+void rigCommander::setModInput(rigInput input, bool dataOn, bool isQuery)
+{
+//    The input enum is as follows:
+
+//    inputMic=0,
+//    inputACC=1,
+//    inputUSB=3,
+//    inputLAN=5,
+//    inputACCA,
+//    inputACCB};
 
     QByteArray payload;
     QByteArray inAsByte;
+
+    if(isQuery)
+        input = inputMic;
 
 
     switch(rigCaps.model)
@@ -981,7 +1013,7 @@ void rigCommander::setModInput(rigInput input)
             payload.append((unsigned char)input);
             break;
         case model7300:
-            payload.setRawData("\x1A\x05\x00\x67", 4);
+            payload.setRawData("\x1A\x05\x00\x66", 4);
             payload.append((unsigned char)input);
             break;
         case model7850:
@@ -1027,18 +1059,40 @@ void rigCommander::setModInput(rigInput input)
             }
             payload.append(inAsByte);
             break;
-
+        case model7700:
+            payload.setRawData("\x1A\x05\x00\x32", 4);
+            if(input==inputLAN)
+            {
+                // NOTE: CIV manual says data may range from 0 to 3
+                // But data 0x04 does correspond to LAN.
+                payload.append("\x04");
+            } else {
+                payload.append((unsigned char)input);
+            }
+            break;
+        case model7600:
+            payload.setRawData("\x1A\x05\x00\x30", 4);
+            payload.append((unsigned char)input);
+            break;
+        case model7100:
+            payload.setRawData("\x1A\x05\x00\x90", 4);
+            payload.append((unsigned char)input);
+            break;
         default:
             break;
+    }
+    if(dataOn)
+    {
+        payload[3] = payload[3] + 1;
+    }
+
+    if(isQuery)
+    {
+        payload.truncate(4);
     }
 
     prepDataAndSend(payload);
 
-}
-
-void rigCommander::setModInputDataMode(rigInput input)
-{
-    (void)input;
 }
 
 QByteArray rigCommander::getUSBAddr()
@@ -1070,6 +1124,12 @@ QByteArray rigCommander::getUSBAddr()
             break;
     }
     return payload;
+}
+
+void rigCommander::getUSBGain()
+{
+    QByteArray payload = getUSBAddr();
+    prepDataAndSend(payload);
 }
 
 
@@ -1104,6 +1164,11 @@ QByteArray rigCommander::getLANAddr()
     return payload;
 }
 
+void rigCommander::getLANGain()
+{
+    QByteArray payload = getLANAddr();
+    prepDataAndSend(payload);
+}
 
 void rigCommander::setLANGain(unsigned char gain)
 {
@@ -1141,6 +1206,12 @@ QByteArray rigCommander::getACCAddr()
     }
 
     return payload;
+}
+
+void rigCommander::getACCGain()
+{
+    QByteArray payload = getACCAddr();
+    prepDataAndSend(payload);
 }
 
 void rigCommander::setACCGain(unsigned char gain)
@@ -1503,18 +1574,238 @@ void rigCommander::parseDetailedRegisters1A05()
     // 02 and 03 make up a BCD'd number:
     // 0001, 0002, 0003, ... 0101, 0102, 0103...
 
+    // 04 is a typical single byte response
+    // 04 05 is a typical 0-255 response
+
+    // This file processes the registers which are radically different in each model.
+    // It is a work in progress.
+    // TODO: inputMod source and gain for models: 7700, and 7600
+
+    int level = bcdHexToUChar(payloadIn[4]) + (10*bcdHexToUChar(payloadIn[5]));
+
     int subcmd = bcdHexToUChar(payloadIn[3]) + (10*bcdHexToUChar(payloadIn[2]));
 
-    switch(subcmd)
+    rigInput input;
+    input = (rigInput)bcdHexToUChar(payloadIn[4]);
+    int inputRaw = bcdHexToUChar(payloadIn[4]);
+
+    switch(rigCaps.model)
     {
-        case 72:
-            // course reference
-            emit haveRefAdjustCourse(  bcdHexToUChar(payloadIn[5]) + (100*bcdHexToUChar(payloadIn[4])) );
+        case model9700:
+            switch(subcmd)
+            {
+                case 72:
+                    // course reference
+                    emit haveRefAdjustCourse(  bcdHexToUChar(payloadIn[5]) + (100*bcdHexToUChar(payloadIn[4])) );
+                    break;
+                case 73:
+                    // fine reference
+                    emit haveRefAdjustFine( bcdHexToUChar(payloadIn[5]) + (100*bcdHexToUChar(payloadIn[4])) );
+                    break;
+                case 112:
+                    emit haveACCGain(level, 0);
+                    break;
+                case 113:
+                    emit haveUSBGain(level);
+                    break;
+                case 114:
+                    emit haveLANGain(level);
+                    break;
+                case 115:
+                    emit haveModInput(input, false);
+                    break;
+                case 116:
+                    emit haveModInput(input, true);
+                    break;
+                default:
+                    break;
+            }
+            return;
+        case model7850:
+            switch(subcmd)
+            {
+                case 63:
+                    switch(inputRaw)
+                    {
+                        case 0:
+                            input = inputMic;
+                            break;
+                        case 1:
+                            input = inputACCA;
+                            break;
+                        case 2:
+                            input = inputACCB;
+                            break;
+                        case 8:
+                            input = inputUSB;
+                            break;
+                        case 9:
+                            input = inputLAN;
+                            break;
+                        default:
+                            input = inputUnknown;
+                            break;
+                    }
+                    emit haveModInput(input, false);
+                    break;
+                case 64:
+                    switch(inputRaw)
+                    {
+                        case 0:
+                            input = inputMic;
+                            break;
+                        case 1:
+                            input = inputACCA;
+                            break;
+                        case 2:
+                            input = inputACCB;
+                            break;
+                        case 8:
+                            input = inputUSB;
+                            break;
+                        case 9:
+                            input = inputLAN;
+                            break;
+                        default:
+                            input = inputUnknown;
+                            break;
+                    }
+                    emit haveModInput(input, true);
+                    break;
+                case 58:
+                    emit haveACCGain(level, 0);
+                    break;
+                case 59:
+                    emit haveACCGain(level, 1);
+                    break;
+                case 61:
+                    emit haveUSBGain(level);
+                    break;
+                case 62:
+                    emit haveLANGain(level);
+                    break;
+            }
+        case model7610:
+            switch(subcmd)
+            {
+                case 91:
+                    emit haveModInput(input, false);
+                    break;
+                case 92:
+                    emit haveModInput(input, true);
+                    break;
+                case 88:
+                    emit haveACCGain(level, 0);
+                    break;
+                case 89:
+                    emit haveUSBGain(level);
+                    break;
+                case 90:
+                    emit haveLANGain(level);
+                    break;
+                default:
+                    break;
+            }
+            return;
+        case model7600:
+            switch(subcmd)
+            {
+                case 30:
+                    emit haveModInput(input, false);
+                    break;
+                case 31:
+                    emit haveModInput(input, true);
+                    break;
+                case 29:
+                    emit haveUSBGain(level);
+                    break;
+                default:
+                    break;
+            }
+            return;
+        case model7300:
+            switch(subcmd)
+            {
+                case 64:
+                    emit haveACCGain(level, 0);
+                    break;
+                case 65:
+                    emit haveUSBGain(level);
+                    break;
+                case 66:
+                    emit haveModInput(input, false);
+                    break;
+                case 67:
+                    emit haveModInput(input, true);
+                    break;
+                default:
+                    break;
+            }
+            return;
+        case model7100:
+            switch(subcmd)
+            {
+                case 87:
+                    emit haveACCGain(level, 0);
+                    break;
+                case 89:
+                    emit haveUSBGain(level);
+                    break;
+                case 90:
+                    emit haveModInput(input, false);
+                    break;
+                case 91:
+                    emit haveModInput(input, true);
+                    break;
+            }
+        case model705:
+            switch(subcmd)
+            {
+                case 116:
+                    emit haveUSBGain(level);
+                    break;
+                case 117:
+                    emit haveLANGain(level);
+                    break;
+                case 118:
+                    switch(inputRaw)
+                    {
+                        case 0:
+                            input = inputMic;
+                            break;
+                        case 1:
+                            input = inputUSB;
+                            break;
+                        case 3:
+                            input = inputLAN;
+                            break;
+                        default:
+                            input = inputUnknown;
+                            break;
+                    }
+                    emit haveModInput(input, false);
+                    break;
+                case 119:
+                    switch(inputRaw)
+                    {
+                        case 0:
+                            input = inputMic;
+                            break;
+                        case 1:
+                            input = inputUSB;
+                            break;
+                        case 3:
+                            input = inputLAN;
+                            break;
+                        default:
+                            input = inputUnknown;
+                            break;
+                    }
+                    emit haveModInput(input, true);
+                    break;
+            }
             break;
-        case 73:
-            // fine reference
-            emit haveRefAdjustFine( bcdHexToUChar(payloadIn[5]) + (100*bcdHexToUChar(payloadIn[4])) );
-            break;
+
         default:
             break;
     }
