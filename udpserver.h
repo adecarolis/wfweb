@@ -1,0 +1,119 @@
+#ifndef UDPSERVER_H
+#define UDPSERVER_H
+
+#include <QObject>
+#include <QUdpSocket>
+#include <QNetworkDatagram>
+#include <QHostInfo>
+#include <QTimer>
+#include <QMutex>
+#include <QDateTime>
+#include <QByteArray>
+#include <QList>
+
+// Allow easy endian-ness conversions
+#include <QtEndian>
+
+#include <QDebug>
+
+#include <udpserversetup.h>
+
+extern void passcode(QString in,QByteArray& out);
+extern QByteArray parseNullTerminatedString(QByteArray c, int s);
+
+class udpServer : public QObject
+{
+	Q_OBJECT
+
+public:
+	udpServer(SERVERCONFIG config);
+	~udpServer();
+
+public slots:
+	void init();
+
+private:
+
+	struct CLIENT {
+		bool connected = false;
+		QHostAddress ipAddress;
+		quint16 port;
+		QByteArray clientName;
+		QDateTime	timeConnected;
+		QDateTime lastHeard;
+		bool isStreaming;
+		quint16 civPort;
+		quint16 audioPort;
+		quint16 txBufferLen;
+		quint32 myId;
+		quint32 remoteId;
+		quint32 txSeq=0;
+		quint32 rxSeq;
+		quint32 connSeq;
+		quint16 pingSeq;
+		quint32 rxPingSeq; // 32bit as has other info
+		quint32 authInnerSeq;
+		quint16 authSeq;
+		quint16 innerPingSeq;
+		quint16 innerSeq;
+		quint16 tokenRx;
+		quint32 tokenTx;
+		quint8 wdseq;
+		QUdpSocket* socket;
+
+
+		QTimer* pingTimer;
+		QTimer* idleTimer;
+		QTimer* wdTimer;
+
+		// Only used for audio.
+		quint8 rxCodec;
+		quint8 txCodec;
+		quint16 rxSampleRate;
+		quint16 txSampleRate;
+	};
+
+	void controlReceived();
+	void civReceived();
+	void audioReceived();
+	void sendIAmHere(CLIENT* c);
+	void sendIAmReady(CLIENT* c);
+	void sendPing(CLIENT* c, quint16 seq, bool reply);
+	void sendIdle(CLIENT* c, quint16 seq);
+	void sendLoginResponse(CLIENT* c, quint16 seq, bool allowed);
+	void sendCapabilities(CLIENT* c);
+	void sendConnectionInfo(CLIENT* c);
+	void sendTokenResponse(CLIENT* c,quint8 type);
+	void sendWatchdog(CLIENT* c);
+	void sendStatus(CLIENT* c);
+
+
+
+	SERVERCONFIG config;
+
+	QUdpSocket* udpControl = Q_NULLPTR;
+	QUdpSocket* udpCiv = Q_NULLPTR;
+	QUdpSocket* udpAudio = Q_NULLPTR;
+	QHostAddress localIP;
+	
+	quint32 controlId = 0;
+	quint32 civId = 0;
+	quint32 audioId = 0;
+
+	QString rigname = "IC-9700";
+	quint8 rigciv = 0xa2;
+
+	struct SEQBUFENTRY {
+		time_t	timeSent;
+		uint16_t seqNum;
+		QByteArray data;
+	};
+
+	QList <CLIENT*> controlClients = QList<CLIENT*>();
+	QList <CLIENT*> civClients = QList<CLIENT*>();
+	QList <CLIENT*> audioClients = QList<CLIENT*>();
+
+};
+
+
+#endif // UDPSERVER_H

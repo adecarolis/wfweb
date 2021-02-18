@@ -19,6 +19,7 @@
 #include "calibrationwindow.h"
 #include "satellitesetup.h"
 #include "udpserversetup.h"
+#include "udpserver.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -98,6 +99,8 @@ signals:
         QString username, QString password, quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
     void sendCloseComm();
     void sendChangeBufferSize(quint16 value);
+    void initServer();
+    void sendServerConfig(SERVERCONFIG conf);
 
 private slots:
     void shortcutF1();
@@ -180,6 +183,7 @@ private slots:
     void handlePlotScroll(QWheelEvent *);
     void runDelayedCommand();
     void showStatusBarText(QString text);
+    void serverConfigRequested(SERVERCONFIG conf, bool store);
 
     // void on_getFreqBtn_clicked();
 
@@ -397,12 +401,13 @@ private:
 
 
     rigCommander * rig=Q_NULLPTR;
-    QThread * rigThread=Q_NULLPTR;
+    QThread* rigThread = Q_NULLPTR;
     QCPColorMap * colorMap;
     QCPColorMapData * colorMapData;
     QCPColorScale * colorScale;
     QTimer * delayedCommand;
     QTimer * pttTimer;
+
 
     QStringList modes;
     int currentModeIndex;
@@ -509,11 +514,17 @@ private:
 
     calibrationWindow *cal;
     satelliteSetup *sat;
-    udpServerSetup* srv;
+    udpServerSetup *srv;
+    udpServer *udp;
+    QThread *serverThread = Q_NULLPTR;
+
     void bandStackBtnClick();
     bool waitingForBandStackRtn;
     char bandStkBand;
     char bandStkRegCode;
+
+    SERVERCONFIG serverConfig;
+
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities) ;

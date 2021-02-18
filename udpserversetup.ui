@@ -307,56 +307,6 @@
          <attribute name="verticalHeaderStretchLastSection">
           <bool>false</bool>
          </attribute>
-         <row>
-          <property name="text">
-           <string>User 1</string>
-          </property>
-         </row>
-         <row>
-          <property name="text">
-           <string>User 2</string>
-          </property>
-         </row>
-         <row>
-          <property name="text">
-           <string>User 3</string>
-          </property>
-         </row>
-         <row>
-          <property name="text">
-           <string>User 4</string>
-          </property>
-         </row>
-         <row>
-          <property name="text">
-           <string>User 5</string>
-          </property>
-         </row>
-         <row>
-          <property name="text">
-           <string>User 6</string>
-          </property>
-         </row>
-         <row>
-          <property name="text">
-           <string>User 7</string>
-          </property>
-         </row>
-         <row>
-          <property name="text">
-           <string>User 8</string>
-          </property>
-         </row>
-         <row>
-          <property name="text">
-           <string>User 9</string>
-          </property>
-         </row>
-         <row>
-          <property name="text">
-           <string>User 10</string>
-          </property>
-         </row>
          <column>
           <property name="text">
            <string>Username</string>
