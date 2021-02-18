@@ -15,6 +15,23 @@
 // note: using a define because switch case doesn't even work with const unsigned char. Surprised me.
 #define compCivAddr 0xE1
 
+enum rigInput{ inputMic=0,
+               inputACC=1,
+               inputUSB=3,
+               inputLAN=5,
+               inputACCA,
+               inputACCB,
+               inputUnknown=0xff
+};
+
+enum duplexMode{
+    dmSplitOff=0x00,
+    dmSplitOn=0x01,
+    dmSimplex=0x10,
+    dmDupMinus=0x11,
+    dmDupPlus=0x12,
+    dmDupRPS=0x13
+};
 
 class rigCommander : public QObject
 {
@@ -55,6 +72,8 @@ public slots:
     void setPTT(bool pttOn);
     void setDataMode(bool dataOn);
     void getDataMode();
+    void setDuplexMode(duplexMode dm);
+    void getDuplexMode();
 
     void getLevels(); // all supported levels
 
@@ -67,6 +86,9 @@ public slots:
     void getMonitorLevel();
     void getVoxGain();
     void getAntiVoxGain();
+    void getUSBGain();
+    void getLANGain();
+    void getACCGain();
 
     void getSMeter();
     void getRFPowerMeter();
@@ -90,6 +112,9 @@ public slots:
     void setMonitorLevel(unsigned char monitorLevel);
     void setVoxGain(unsigned char gain);
     void setAntiVoxGain(unsigned char gain);
+
+    void getModInput(bool dataOn);
+    void setModInput(rigInput input, bool dataOn);
 
     void startATU();
     void setATU(bool enabled);
@@ -121,6 +146,7 @@ signals:
     void haveFrequency(double frequencyMhz);
     void haveMode(unsigned char mode, unsigned char filter);
     void haveDataMode(bool dataModeEnabled);
+    void haveDuplexMode(duplexMode);
     void haveBandStackReg(float freq, char mode, bool dataOn);
     void haveSpectrumBounds();
     void haveScopeSpan(char span);
@@ -137,6 +163,11 @@ signals:
     void haveMonitorLevel(unsigned char level);
     void haveVoxGain(unsigned char gain);
     void haveAntiVoxGain(unsigned char gain);
+
+    void haveModInput(rigInput input, bool isData);
+    void haveLANGain(unsigned char gain);
+    void haveUSBGain(unsigned char gain);
+    void haveACCGain(unsigned char gain, unsigned char ab);
 
     void haveSMeter(unsigned char level);
     void haveRFMeter(unsigned char level);
@@ -182,10 +213,16 @@ private:
     void parseATU();
     void parseLevels(); // register 0x14
     void sendLevelCmd(unsigned char levAddr, unsigned char level);
+    QByteArray getLANAddr();
+    QByteArray getUSBAddr();
+    QByteArray getACCAddr();
+    void setModInput(rigInput input, bool dataOn, bool isQuery);
     void sendDataOut();
     void prepDataAndSend(QByteArray data);
     void debugMe();
+    void printHex(const QByteArray &pdata);
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
+
     commHandler * comm=Q_NULLPTR;
     udpHandler* udp=Q_NULLPTR;
     void determineRigCaps();

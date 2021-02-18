@@ -9,16 +9,18 @@
 // modes << "FM" << "CW-R" << "RTTY-R" << "LSB-D" << "USB-D";
 
 enum mode_kind {
-    modeLSB=0,
-    modeUSB,
-    modeAM,
-    modeCW,
-    modeRTTY,
-    modeFM,
-    modeCW_R,
-    modeRTTY_R,
-    modeLSB_D,
-    modeUSB_D
+    modeLSB=0x00,
+    modeUSB=0x01,
+    modeAM=0x02,
+    modeCW=0x03,
+    modeRTTY=0x04,
+    modeFM=0x05,
+    modeCW_R=0x07,
+    modeRTTY_R=0x08,
+    modeLSB_D=0x80,
+    modeUSB_D=0x81,
+    modeDV=0x17,
+    modeDD=0x27
 };
 
 struct preset_kind {

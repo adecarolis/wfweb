@@ -45,6 +45,8 @@ signals:
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
     void setDataMode(bool dataOn);
     void getDataMode();
+    void getDuplexMode();
+    void getModInput();
     void getPTT();
     void setPTT(bool pttOn);
     void getBandStackReg(char band, char regCode);
@@ -146,6 +148,10 @@ private slots:
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(bool dataOn);
     void receiveBandStackReg(float freq, char mode, bool dataOn); // freq, mode, (filter,) datamode
+    void receiveModInput(rigInput input);
+    void receiveDuplexMode(duplexMode dm);
+
+
 
     // Levels:
     void receiveRfGain(unsigned char level);
@@ -158,6 +164,9 @@ private slots:
     void receiveVoxGain(unsigned char voxGain);
     void receiveAntiVoxGain(unsigned char antiVoxGain);
     void receiveSpectrumRefLevel(int level);
+    void receiveACCGain(unsigned char level, unsigned char ab);
+    void receiveUSBGain(unsigned char level);
+    void receiveLANGain(unsigned char level);
 
     // Meters:
 
@@ -493,6 +502,9 @@ private:
     void issueDelayedCommand(cmds cmd);
     void issueDelayedCommandPriority(cmds cmd);
     void changeSliderQuietly(QSlider *slider, int value);
+
+    void changeMode(mode_kind mode);
+    void changeMode(mode_kind mode, bool dataOn);
 
     int oldFreqDialVal;
 

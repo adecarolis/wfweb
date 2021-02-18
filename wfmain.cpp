@@ -1073,43 +1073,37 @@ void wfmain::shortcutF4()
 void wfmain::shortcutF5()
 {
     // LSB
-    ui->modeSelectCombo->setCurrentIndex(0);
-    on_modeSelectCombo_activated(0);
+    changeMode(modeLSB, false);
 }
 
 void wfmain::shortcutF6()
 {
     // USB
-    ui->modeSelectCombo->setCurrentIndex(1);
-    on_modeSelectCombo_activated(1);
+    changeMode(modeUSB, false);
 }
 
 void wfmain::shortcutF7()
 {
     // AM
-    ui->modeSelectCombo->setCurrentIndex(2);
-    on_modeSelectCombo_activated(2);
+    changeMode(modeAM, false);
 }
 
 void wfmain::shortcutF8()
 {
     // CW
-    ui->modeSelectCombo->setCurrentIndex(3);
-    on_modeSelectCombo_activated(3);
+    changeMode(modeCW, false);
 }
 
 void wfmain::shortcutF9()
 {
     // USB-D
-    ui->modeSelectCombo->setCurrentIndex(9);
-    on_modeSelectCombo_activated(9);
+    changeMode(modeUSB, true);
 }
 
 void wfmain::shortcutF10()
 {
-    // Build information, debug, whatever you wish
-    QString buildInfo = QString("Build " + QString(GITSHORT) + " on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
-    showStatusBarText(buildInfo);
+    // FM
+    changeMode(modeFM, false);
 }
 
 void wfmain::shortcutF12()
@@ -2006,6 +2000,37 @@ void wfmain::on_scopeEdgeCombo_currentIndexChanged(int index)
     emit setScopeEdge((char)index+1);
 }
 
+void wfmain::changeMode(mode_kind mode)
+{
+    bool dataOn = false;
+    if(((unsigned char) mode >> 4) == 0x08)
+    {
+        dataOn = true;
+        mode = (mode_kind)((int)mode & 0x0f);
+    }
+
+    changeMode(mode, dataOn);
+}
+
+void wfmain::changeMode(mode_kind mode, bool dataOn)
+{
+    int filter = ui->modeFilterCombo->currentData().toInt();
+    emit setMode((unsigned char)mode, filter);
+    if(dataOn)
+    {
+        issueDelayedCommand(cmdSetDataModeOn);
+        ui->dataModeBtn->blockSignals(true);
+        ui->dataModeBtn->setChecked(true);
+        ui->dataModeBtn->blockSignals(false);
+    } else {
+        issueDelayedCommand(cmdSetDataModeOff);
+        ui->dataModeBtn->blockSignals(true);
+        ui->dataModeBtn->setChecked(false);
+        ui->dataModeBtn->blockSignals(false);
+    }
+    issueDelayedCommand(cmdGetMode);
+}
+
 void wfmain::on_modeSelectCombo_activated(int index)
 {
     // The "acticvated" signal means the user initiated a mode change.
@@ -2410,6 +2435,7 @@ void wfmain::handlePttLimit()
     // transmission time exceeded!
     showStatusBarText("Transmit timeout at 3 minutes. Sending PTT OFF command now.");
     emit setPTT(false);
+    issueDelayedCommand(cmdGetPTT);
 }
 
 void wfmain::on_saveSettingsBtn_clicked()
@@ -2617,6 +2643,7 @@ void wfmain::on_transmitBtn_clicked()
     } else {
         // Currently transmitting
         emit setPTT(false);
+        pttTimer->stop();
         issueDelayedCommand(cmdGetPTT);
     }
 }
@@ -2647,6 +2674,32 @@ void wfmain::receiveTxPower(unsigned char power)
 void wfmain::receiveMicGain(unsigned char gain)
 {
     changeSliderQuietly(ui->micGainSlider, gain);
+}
+
+void wfmain::receiveModInput(rigInput input)
+{
+    (void)input;
+}
+
+void wfmain::receiveDuplexMode(duplexMode dm)
+{
+    (void)dm;
+}
+
+void wfmain::receiveACCGain(unsigned char level, unsigned char ab)
+{
+    (void)level;
+    (void)ab;
+}
+
+void wfmain::receiveUSBGain(unsigned char level)
+{
+    (void)level;
+}
+
+void wfmain::receiveLANGain(unsigned char level)
+{
+    (void)level;
 }
 
 void wfmain::receiveCompLevel(unsigned char compLevel)
