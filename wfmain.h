@@ -47,7 +47,8 @@ signals:
     void getDataMode();
     void getDuplexMode();
     void setDuplexMode(duplexMode dm);
-    void getModInput();
+    void getModInput(bool dataOn);
+    void setModInput(rigInput input, bool dataOn);
     void getPTT();
     void setPTT(bool pttOn);
     void getBandStackReg(char band, char regCode);
@@ -149,7 +150,7 @@ private slots:
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(bool dataOn);
     void receiveBandStackReg(float freq, char mode, bool dataOn); // freq, mode, (filter,) datamode
-    void receiveModInput(rigInput input);
+    void receiveModInput(rigInput input, bool dataOn);
     void receiveDuplexMode(duplexMode dm);
 
 
@@ -356,6 +357,10 @@ private slots:
 
     void on_useSystemThemeChk_clicked(bool checked);
 
+    void on_modInputCombo_activated(int index);
+
+    void on_modInputDataCombo_activated(int index);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -448,7 +453,7 @@ private:
     enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
               cmdGetSql, cmdGetATUStatus, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
-              cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode};
+              cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     freqMemory mem;

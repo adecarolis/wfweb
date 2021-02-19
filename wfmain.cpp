@@ -301,6 +301,10 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
     connect(rig, SIGNAL(haveDuplexMode(duplexMode)), this, SLOT(receiveDuplexMode(duplexMode)));
 
+    connect(this, SIGNAL(getModInput(bool)), rig, SLOT(getModInput(bool)));
+    connect(rig, SIGNAL(haveModInput(rigInput,bool)), this, SLOT(receiveModInput(rigInput, bool)));
+    connect(this, SIGNAL(setModInput(rigInput, bool)), rig, SLOT(setModInput(rigInput,bool)));
+
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
     connect(rig, SIGNAL(haveSpectrumFixedMode(bool)), this, SLOT(receiveSpectrumFixedMode(bool)));
     connect(this, SIGNAL(setFrequency(double)), rig, SLOT(setFrequency(double)));
@@ -629,23 +633,6 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     // Entry point for unknown rig being identified at the start of the program.
     //now we know what the rig ID is:
     //qDebug() << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
-
-    // We have to be careful here:
-    // If we enter this a second time, we will get two sets of DV and DD modes
-    // Also, if ever there is a rig with DV but without DV, we'll be off by one.
-    // A better solution is to translate the combo selection to a shared type
-    // such as an enum or even the actual CIV mode byte.
-
-    /*
-    if(rigCaps.hasDV)
-    {
-        ui->modeSelectCombo->addItem("DV");
-    }
-    if(rigCaps.hasDD)
-    {
-        ui->modeSelectCombo->addItem("DD");
-    }
-    */
 
     delayedCommand->setInterval(100); // faster polling is ok now.
     receiveRigID(rigCaps);
@@ -1256,6 +1243,9 @@ void wfmain:: getInitialRigState()
     cmdOutQue.append(cmdDispEnable);
     cmdOutQue.append(cmdSpecOn);
 
+    cmdOutQue.append(cmdGetModInput);
+    cmdOutQue.append(cmdGetModDataInput);
+
     cmdOutQue.append(cmdNone);
 
     if(rigCaps.hasATU)
@@ -1430,6 +1420,12 @@ void wfmain::runDelayedCommand()
             case cmdSetDataModeOn:
                 emit setDataMode(true);
                 break;
+            case cmdGetModInput:
+                emit getModInput(false);
+                break;
+            case cmdGetModDataInput:
+                emit getModInput(true);
+                break;
             case cmdGetDuplexMode:
                 emit getDuplexMode();
                 break;
@@ -1546,6 +1542,42 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         } else {
             ui->satOpsBtn->setDisabled(true);
             ui->adjRefBtn->setDisabled(true);
+        }
+        QString inName;
+        for(int i=0; i < rigCaps.inputs.length(); i++)
+        {
+            switch(rigCaps.inputs.at(i))
+            {
+                case inputMic:
+                    inName = "Mic";
+                    break;
+                case inputLAN:
+                    inName = "LAN";
+                    break;
+                case inputUSB:
+                    inName = "USB";
+                    break;
+                case inputACC:
+                    inName = "ACC";
+                    break;
+                case inputACCA:
+                    inName = "ACCA";
+                    break;
+                case inputACCB:
+                    inName = "ACCB";
+                    break;
+                default:
+                    inName = "Unknown";
+                    break;
+
+            }
+            ui->modInputCombo->addItem(inName, rigCaps.inputs.at(i));
+            ui->modInputDataCombo->addItem(inName, rigCaps.inputs.at(i));
+        }
+        if(rigCaps.inputs.length() == 0)
+        {
+            ui->modInputCombo->addItem("None", inputNone);
+            ui->modInputDataCombo->addItem("None", inputNone);
         }
 
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
@@ -2701,9 +2733,30 @@ void wfmain::receiveMicGain(unsigned char gain)
     changeSliderQuietly(ui->micGainSlider, gain);
 }
 
-void wfmain::receiveModInput(rigInput input)
+void wfmain::receiveModInput(rigInput input, bool dataOn)
 {
-    (void)input;
+    QComboBox *box;
+    bool found;
+    qDebug() << "Found rig input " << (int) input << " with data set to: " << dataOn;
+    if(dataOn)
+    {
+        box = ui->modInputDataCombo;
+    } else {
+        box = ui->modInputCombo;
+    }
+
+    for(int i=0; i < box->count(); i++)
+    {
+        if(box->itemData(i).toInt() == (int)input)
+        {
+            box->blockSignals(true);
+            box->setCurrentIndex(i);
+            box->blockSignals(false);
+            found = true;
+        }
+    }
+    if(!found)
+        qDebug() << "Could not find modulation input: " << (int)input;
 }
 
 void wfmain::receiveDuplexMode(duplexMode dm)
@@ -2782,23 +2835,6 @@ void wfmain::receiveSpectrumRefLevel(int level)
     changeSliderQuietly(ui->scopeRefLevelSlider, level);
 }
 
-// --- DEBUG FUNCTION ---
-void wfmain::on_debugBtn_clicked()
-{
-    qDebug() << "Debug button pressed.";
-
-    // TODO: Why don't these commands work?!
-    //emit getScopeMode();
-    //emit getScopeEdge(); // 1,2,3 only in "fixed" mode
-    //emit getScopeSpan(); // in khz, only in "center" mode
-
-    // emit getLevels();
-    // emit getMeters(amTransmitting);
-
-    //emit getSpectrumRefLevel();
-    emit getDuplexMode();
-}
-
 // Slot to send/receive server config.
 // If store is true then write to config otherwise send current config by signal
 void wfmain::serverConfigRequested(SERVERCONFIG conf, bool store)
@@ -2842,6 +2878,34 @@ void wfmain::on_rptAutoBtn_clicked()
     // Auto Rptr (enable this feature)
     // TODO: Hide an AutoOff button somewhere for non-US users
     emit setDuplexMode(dmDupAutoOn);
+}
+
+void wfmain::on_modInputCombo_activated(int index)
+{
+    emit setModInput( (rigInput)ui->modInputCombo->currentData().toInt(), false );
+}
+
+void wfmain::on_modInputDataCombo_activated(int index)
+{
+    emit setModInput( (rigInput)ui->modInputDataCombo->currentData().toInt(), true );
+}
+
+// --- DEBUG FUNCTION ---
+void wfmain::on_debugBtn_clicked()
+{
+    qDebug() << "Debug button pressed.";
+
+    // TODO: Why don't these commands work?!
+    //emit getScopeMode();
+    //emit getScopeEdge(); // 1,2,3 only in "fixed" mode
+    //emit getScopeSpan(); // in khz, only in "center" mode
+
+    // emit getLevels();
+    // emit getMeters(amTransmitting);
+
+    // emit getTSQL();
+    emit getModInput(false);
+    emit getModInput(true);
 }
 
 

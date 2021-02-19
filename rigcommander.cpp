@@ -1607,9 +1607,9 @@ void rigCommander::parseDetailedRegisters1A05()
     // It is a work in progress.
     // TODO: inputMod source and gain for models: 7700, and 7600
 
-    int level = bcdHexToUChar(payloadIn[4]) + (10*bcdHexToUChar(payloadIn[5]));
+    int level = bcdHexToUChar(payloadIn[4]) + (100*bcdHexToUChar(payloadIn[5]));
 
-    int subcmd = bcdHexToUChar(payloadIn[3]) + (10*bcdHexToUChar(payloadIn[2]));
+    int subcmd = bcdHexToUChar(payloadIn[3]) + (100*bcdHexToUChar(payloadIn[2]));
 
     rigInput input;
     input = (rigInput)bcdHexToUChar(payloadIn[4]);
@@ -1620,6 +1620,7 @@ void rigCommander::parseDetailedRegisters1A05()
         case model9700:
             switch(subcmd)
             {
+
                 case 72:
                     // course reference
                     emit haveRefAdjustCourse(  bcdHexToUChar(payloadIn[5]) + (100*bcdHexToUChar(payloadIn[4])) );
@@ -1915,6 +1916,8 @@ void rigCommander::determineRigCaps()
     rigCaps.spectAmpMax = 0;
     rigCaps.spectLenMax = 0;
 
+    rigCaps.inputs.append(inputMic);
+
 
     rigCaps.hasTransmit = true;
 
@@ -1925,6 +1928,8 @@ void rigCommander::determineRigCaps()
             rigCaps.spectSeqMax = 11;
             rigCaps.spectAmpMax = 160;
             rigCaps.spectLenMax = 475;
+            rigCaps.inputs.append(inputUSB);
+            rigCaps.inputs.append(inputACC);
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
@@ -1936,6 +1941,7 @@ void rigCommander::determineRigCaps()
             rigCaps.spectSeqMax = 11;
             rigCaps.spectAmpMax = 160;
             rigCaps.spectLenMax = 475;
+            rigCaps.inputs.clear();
             rigCaps.hasLan = true;
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
@@ -1947,6 +1953,9 @@ void rigCommander::determineRigCaps()
             rigCaps.spectSeqMax = 11;
             rigCaps.spectAmpMax = 160;
             rigCaps.spectLenMax = 475;
+            rigCaps.inputs.append(inputLAN);
+            rigCaps.inputs.append(inputUSB);
+            rigCaps.inputs.append(inputACC);
             rigCaps.hasLan = true;
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
@@ -1959,6 +1968,9 @@ void rigCommander::determineRigCaps()
             rigCaps.spectSeqMax = 15;
             rigCaps.spectAmpMax = 200;
             rigCaps.spectLenMax = 689;
+            rigCaps.inputs.append(inputLAN);
+            rigCaps.inputs.append(inputUSB);
+            rigCaps.inputs.append(inputACC);
             rigCaps.hasLan = true;
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
@@ -1969,6 +1981,10 @@ void rigCommander::determineRigCaps()
             rigCaps.spectSeqMax = 15;
             rigCaps.spectAmpMax = 136;
             rigCaps.spectLenMax = 689;
+            rigCaps.inputs.append(inputLAN);
+            rigCaps.inputs.append(inputUSB);
+            rigCaps.inputs.append(inputACCA);
+            rigCaps.inputs.append(inputACCB);
             rigCaps.hasLan = true;
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
@@ -1980,6 +1996,8 @@ void rigCommander::determineRigCaps()
             rigCaps.spectSeqMax = 11;
             rigCaps.spectAmpMax = 160;
             rigCaps.spectLenMax = 475;
+            rigCaps.inputs.append(inputLAN);
+            rigCaps.inputs.append(inputUSB);
             rigCaps.hasLan = true;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = true;
@@ -1987,9 +2005,20 @@ void rigCommander::determineRigCaps()
             rigCaps.hasDV = true;
             rigCaps.hasATU = true;
             break;
+        case model7100:
+            rigCaps.modelName = QString("IC-7100");
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.append(inputUSB);
+            rigCaps.inputs.append(inputACC);
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasATU = true;
+            break;
         case model706:
             rigCaps.modelName = QString("IC-706");
             rigCaps.hasSpectrum = false;
+            rigCaps.inputs.clear();
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
@@ -2001,6 +2030,7 @@ void rigCommander::determineRigCaps()
             rigCaps.spectSeqMax = 0;
             rigCaps.spectAmpMax = 0;
             rigCaps.spectLenMax = 0;
+            rigCaps.inputs.clear();
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;

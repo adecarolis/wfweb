@@ -15,15 +15,6 @@
 // note: using a define because switch case doesn't even work with const unsigned char. Surprised me.
 #define compCivAddr 0xE1
 
-enum rigInput{ inputMic=0,
-               inputACC=1,
-               inputUSB=3,
-               inputLAN=5,
-               inputACCA,
-               inputACCB,
-               inputUnknown=0xff
-};
-
 enum duplexMode{
     dmSplitOff=0x00,
     dmSplitOn=0x01,
