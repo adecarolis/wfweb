@@ -370,7 +370,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(getMeters(bool)), rig, SLOT(getMeters(bool)));
 
 
-    if (serverConfig.enabled) {
+    if (serverConfig.enabled && udp != Q_NULLPTR) {
         // Server
         connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
         connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
