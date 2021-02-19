@@ -136,6 +136,7 @@ public slots:
     void sayMode();
     void sayAll();
     void getDebug();
+    void dataFromServer(QByteArray data);
 
 signals:
     void commReady();
@@ -187,6 +188,7 @@ signals:
     void havePTTStatus(bool pttOn);
     void haveATUStatus(unsigned char status);
     void haveChangeBufferSize(quint16 value);
+    void haveDataForServer(QByteArray outData);
 
 
 private:

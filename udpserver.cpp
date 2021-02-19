@@ -1,5 +1,7 @@
 #include "udpserver.h"
 
+#define STALE_CONNECTION 15
+
 udpServer::udpServer(SERVERCONFIG config) :
     config(config)
 {
@@ -53,28 +55,51 @@ udpServer::~udpServer()
 
     foreach(CLIENT * client, controlClients)
     {
-        client->idleTimer->stop();
-        delete client->idleTimer;
-        client->pingTimer->stop();
-        delete client->pingTimer;
-        client->wdTimer->stop();
-        delete client->wdTimer;
-        //delete& client; // Not sure how safe this is?
+        if (client->idleTimer != Q_NULLPTR)
+        {
+            client->idleTimer->stop();
+            delete client->idleTimer;
+        }
+        if (client->pingTimer != Q_NULLPTR) {
+            client->pingTimer->stop();
+            delete client->pingTimer;
+        }
+        if (client->wdTimer != Q_NULLPTR) {
+            client->wdTimer->stop();
+            delete client->wdTimer;
+        }
+        delete client;
+        controlClients.removeAll(client);
     }
     foreach(CLIENT * client, civClients)
     {
-        client->idleTimer->stop();
-        delete client->idleTimer;
-        client->pingTimer->stop();
-        delete client->pingTimer;
-        //delete& client; // Not sure how safe this is?
+        if (client->idleTimer != Q_NULLPTR)
+        {
+            client->idleTimer->stop();
+            delete client->idleTimer;
+        }
+        if (client->pingTimer != Q_NULLPTR) {
+            client->pingTimer->stop();
+            delete client->pingTimer;
+        }
+        delete client;
+        civClients.removeAll(client);
     }
     foreach(CLIENT * client, audioClients)
     {
-        client->pingTimer->stop();
-        delete client->pingTimer;
-        //delete& client; // Not sure how safe this is?
+        if (client->idleTimer != Q_NULLPTR)
+        {
+            client->idleTimer->stop();
+            delete client->idleTimer;
+        }
+        if (client->pingTimer != Q_NULLPTR) {
+            client->pingTimer->stop();
+            delete client->pingTimer;
+        }
+        delete client;
+        audioClients.removeAll(client);
     }
+
 
 
     if (udpControl != Q_NULLPTR) {
@@ -101,11 +126,17 @@ void udpServer::controlReceived()
         QNetworkDatagram datagram = udpControl->receiveDatagram();
         QByteArray r = datagram.data();
         CLIENT* current = Q_NULLPTR;
+        if (datagram.senderAddress().isNull() || datagram.senderPort() == 65535 || datagram.senderPort() == 0)
+            return;
+
         foreach(CLIENT * client, controlClients)
         {
-            if (client->ipAddress == datagram.senderAddress() && client->port == datagram.senderPort())
+            if (client != Q_NULLPTR)
             {
-                current = client;
+                if (client->ipAddress == datagram.senderAddress() && client->port == datagram.senderPort())
+                {
+                    current = client;
+                }
             }
         }
         if (current == Q_NULLPTR)
@@ -126,13 +157,13 @@ void udpServer::controlReceived()
             current->pingTimer = new QTimer();
             current->idleTimer = new QTimer();
             current->wdTimer = new QTimer();
-            connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, current, (quint16)0x00, false));
+            connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, &controlClients, current, (quint16)0x00, false));
             connect(current->idleTimer, &QTimer::timeout, this, std::bind(&udpServer::sendIdle, this, current, (quint16)0x00));
             connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::sendWatchdog, this, current));
             current->pingTimer->start(100);
             current->idleTimer->start(100);
             current->wdTimer->start(10000);
-            qDebug() << "New connection created from :" << current->ipAddress.toString() << ":" << QString::number(current->port);
+            qDebug() << "New Control connection created from :" << current->ipAddress.toString() << ":" << QString::number(current->port);
             controlClients.append(current);
         }
 
@@ -164,12 +195,8 @@ void udpServer::controlReceived()
             {
                 qDebug() << current->ipAddress.toString() << ": Received 'disconnect' request";
                 sendIdle(current, gotSeq);
-                current->idleTimer->stop();
-                current->pingTimer->stop();
-                current->wdTimer->stop();
-                delete current;
-                controlClients.removeOne(current);
-
+                //current->wdTimer->stop(); // Keep watchdog running to delete stale connection.
+                deleteConnection(&controlClients, current);
             }
             break;
         case (0x14):
@@ -183,11 +210,11 @@ void udpServer::controlReceived()
                 if (r[16] == (char)0x00)
                 {
                     current->rxPingSeq = qFromLittleEndian<quint32>(r.mid(0x11, 4));
-                    sendPing(current, gotSeq, true);
+                    sendPing(&controlClients, current, gotSeq, true);
                 }
                 else if (r[16] == (char)0x01) {
                     // A Reply to our ping!
-                    if (gotSeq == current->pingSeq) {
+                    if (gotSeq == current->pingSeq || gotSeq == current->pingSeq - 1) {
                         current->pingSeq++;
                     }
                     else {
@@ -281,11 +308,20 @@ void udpServer::civReceived()
 
         CLIENT* current = Q_NULLPTR;
 
+        if (datagram.senderAddress().isNull() || datagram.senderPort() == 65535 || datagram.senderPort() == 0)
+            return;
+
+        QDateTime now = QDateTime::currentDateTime();
+
         foreach(CLIENT * client, civClients)
         {
-            if (client->ipAddress == datagram.senderAddress() && client->port == datagram.senderPort())
+            if (client != Q_NULLPTR)
             {
-                current = client;
+                if (client->ipAddress == datagram.senderAddress() && client->port == datagram.senderPort())
+                {
+                    current = client;
+                }
+
             }
         }
         if (current == Q_NULLPTR)
@@ -303,11 +339,11 @@ void udpServer::civReceived()
             current->pingTimer = new QTimer();
             current->idleTimer = new QTimer();
             current->wdTimer = new QTimer();
-            connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, current, (quint16)0x00, false));
+            connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, &civClients, current, (quint16)0x00, false));
             connect(current->idleTimer, &QTimer::timeout, this, std::bind(&udpServer::sendIdle, this, current, (quint16)0x00));
             current->pingTimer->start(100);
             current->idleTimer->start(100);
-            qDebug() << "New connection created from :" << current->ipAddress.toString() << ":" << QString::number(current->port);
+            qDebug() << "New CIV connection created from :" << current->ipAddress.toString() << ":" << QString::number(current->port);
             civClients.append(current);
         }
 
@@ -330,7 +366,7 @@ void udpServer::civReceived()
             } // This is a retransmit request
             else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x01\x00"))
             {
-                // Just send an idle for now!
+                // Just send an idle for now, we need to be able to retransmit missing packets.
                 qDebug() << current->ipAddress.toString() << ": Received 'retransmit' request for " << gotSeq;
                 sendIdle(current, gotSeq);
 
@@ -339,10 +375,7 @@ void udpServer::civReceived()
             {
                 qDebug() << current->ipAddress.toString() << ": Received 'disconnect' request";
                 sendIdle(current, gotSeq);
-                current->idleTimer->stop();
-                current->pingTimer->stop();
-                delete current;
-                controlClients.removeOne(current);
+                deleteConnection(&civClients, current);
 
             }
             break;
@@ -357,11 +390,11 @@ void udpServer::civReceived()
                 if (r[16] == (char)0x00)
                 {
                     current->rxPingSeq = qFromLittleEndian<quint32>(r.mid(0x11, 4));
-                    sendPing(current, gotSeq, true);
+                    sendPing(&civClients, current, gotSeq, true);
                 }
                 else if (r[16] == (char)0x01) {
                     // A Reply to our ping!
-                    if (gotSeq == current->pingSeq) {
+                    if (gotSeq == current->pingSeq || gotSeq == current->pingSeq - 1) {
                         current->pingSeq++;
                     }
                     else {
@@ -371,6 +404,17 @@ void udpServer::civReceived()
             }
             break;
         default:
+            if (r.length() > 21) {
+                // First check if we are missing any packets?
+                quint8 temp = r[0] - 0x15;
+                if ((quint8)r[16] == 0xc1 && (quint8)r[17] == temp)
+                {
+                    //qDebug() << "Got CIV from server: " << r.mid(21);
+                    emit haveDataFromServer(r.mid(21));
+                }
+            }
+
+
             break;
         }
     }
@@ -383,11 +427,19 @@ void udpServer::audioReceived()
         QByteArray r = datagram.data();
         CLIENT* current = Q_NULLPTR;
 
+        if (datagram.senderAddress().isNull() || datagram.senderPort() == 65535 || datagram.senderPort() == 0)
+            return;
+
+        QDateTime now = QDateTime::currentDateTime();
+
         foreach(CLIENT * client, audioClients)
         {
-            if (client != Q_NULLPTR && client->ipAddress == datagram.senderAddress() && client->port == datagram.senderPort())
+            if (client != Q_NULLPTR)
             {
-                current = client;
+                if (client->ipAddress == datagram.senderAddress() && client->port == datagram.senderPort())
+                {
+                    current = client;
+                }
             }
         }
         if (current == Q_NULLPTR)
@@ -403,9 +455,9 @@ void udpServer::audioReceived()
             current->innerPingSeq = (quint16)rand();
             current->pingSeq = (quint8)rand() << 8 | (quint8)rand();
             current->pingTimer = new QTimer();
-            connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, current, (quint16)0x00, false));
+            connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, &audioClients, current, (quint16)0x00, false));
             current->pingTimer->start(100);
-            qDebug() << "New connection created from :" << current->ipAddress.toString() << ":" << QString::number(current->port);
+            qDebug() << "New Audio connection created from :" << current->ipAddress.toString() << ":" << QString::number(current->port);
             audioClients.append(current);
         }
 
@@ -437,10 +489,7 @@ void udpServer::audioReceived()
             {
                 qDebug() << current->ipAddress.toString() << ": Received 'disconnect' request";
                 sendIdle(current, gotSeq);
-                current->pingTimer->stop();
-                delete current;
-                controlClients.removeOne(current);
-
+                deleteConnection(&audioClients, current);
             }
             break;
         case (0x14):
@@ -454,9 +503,9 @@ void udpServer::audioReceived()
                 if (r[16] == (char)0x00)
                 {
                     current->rxPingSeq = qFromLittleEndian<quint32>(r.mid(0x11, 4));
-                    sendPing(current, gotSeq, true);
+                    sendPing(&audioClients, current, gotSeq, true);
                 }
-                else if (r[16] == (char)0x01) {
+                if (gotSeq == current->pingSeq || gotSeq == current->pingSeq - 1) {
                     // A Reply to our ping!
                     if (gotSeq == current->pingSeq) {
                         current->pingSeq++;
@@ -516,6 +565,8 @@ void udpServer::sendIAmReady(CLIENT* c)
 
 void udpServer::sendIdle(CLIENT* c, quint16 seq)
 {
+    QMutexLocker locker(&mutex);
+
     if (seq == 0x00)
     {
         seq = c->txSeq;
@@ -537,8 +588,20 @@ void udpServer::sendIdle(CLIENT* c, quint16 seq)
 
 
 #define PING_SIZE 0x15
-void udpServer::sendPing(CLIENT* c, quint16 seq, bool reply)
+void udpServer::sendPing(QList<CLIENT*> *l,CLIENT* c, quint16 seq, bool reply)
 {
+    QMutexLocker locker(&mutex);
+    // Also use to detect "stale" connections
+    QDateTime now = QDateTime::currentDateTime();
+
+    if (c->lastHeard.secsTo(now) > STALE_CONNECTION)
+    {
+        qDebug() << "Deleting stale connection " << c->ipAddress.toString();
+        deleteConnection(l, c);
+        return;
+    }
+
+
     //qDebug() << c->ipAddress.toString() << ": Sending Ping";
 
     quint32 pingSeq = 0;
@@ -704,8 +767,11 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
 #define WATCHDOG_SIZE 0x14
 void udpServer::sendWatchdog(CLIENT* c)
 {
+    QMutexLocker locker(&mutex);
+
     QDateTime now = QDateTime::currentDateTime();
-    qint32 deciSeconds = (qint32)c->timeConnected.msecsTo(now)/100;
+
+    qint32 deciSeconds = (qint32)c->timeConnected.msecsTo(now) / 100;
 
     quint8 p[WATCHDOG_SIZE];
     memset(p, 0x0, sizeof(p));
@@ -726,6 +792,8 @@ void udpServer::sendWatchdog(CLIENT* c)
 
 void udpServer::sendStatus(CLIENT* c)
 {
+    QMutexLocker locker(&mutex);
+
     qDebug() << c->ipAddress.toString() << ": Sending Status";
 
     quint8 p[STATUS_SIZE];
@@ -758,3 +826,69 @@ void udpServer::sendStatus(CLIENT* c)
 
 }
 
+
+#define SEND_SIZE 0x15
+void udpServer::dataForServer(QByteArray d)
+{
+
+    //qDebug() << "Server got:" << d;
+    foreach(CLIENT * client, civClients)
+    {
+        if (client != Q_NULLPTR && client->connected) {
+            quint8 p[SEND_SIZE];
+            memset(p, 0x0, sizeof(p));
+            qToLittleEndian(client->txSeq, p + 0x06);
+            qToLittleEndian(client->myId, p + 0x08);
+            qToLittleEndian(client->remoteId, p + 0x0c);
+            p[0x10] = (char)0xc1;
+            qToLittleEndian((quint16)d.length(), p + 0x11);
+            qToBigEndian(client->connSeq, p + 0x13); // THIS IS BIG ENDIAN!
+
+            QByteArray t = QByteArray::fromRawData((const char*)p, sizeof(p));
+            qToLittleEndian((quint16)t.length()+d.length(), p + 0x00);
+
+            t.append(d);
+
+            QMutexLocker locker(&mutex);
+            client->connSeq++;
+            client->txSeq++;
+            client->socket->writeDatagram(t, client->ipAddress, client->port);
+        }
+    }
+    
+    return;
+}
+
+
+// This function is passed a pointer to the list of connection objects and a pointer to the object itself
+// Needs to stop and delete all timers, remove the connection from the list and delete the connection.
+void udpServer::deleteConnection(QList<CLIENT*> *l, CLIENT* c)
+{
+    qDebug() << "Deleting connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
+    if (c->idleTimer != Q_NULLPTR) {
+        c->idleTimer->stop();
+        delete c->idleTimer;
+    }
+    if (c->pingTimer != Q_NULLPTR) {
+        c->pingTimer->stop();
+        delete c->pingTimer;
+    }
+    if (c->wdTimer != Q_NULLPTR) {
+        c->wdTimer->stop();
+        delete c->wdTimer;
+    }
+
+    QList<CLIENT*>::iterator it = l->begin();
+    while (it != l->end()) {
+        CLIENT* client = *it;
+        if (client != Q_NULLPTR && client == c) {
+            it = l->erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+    delete c; // Is this needed or will the erase have done it?
+    c = Q_NULLPTR;
+    qDebug() << "Current Number of clients connected: " << l->length();
+}

@@ -43,9 +43,8 @@ public:
 	void init();
 
 	void dataReceived(QByteArray r); 
-	void sendAreYouThere();
 	void sendPing(); // Periodic type 0x07 ping packet sending
-	void sendIdle(bool tracked, quint16 seq);
+	void sendControl(bool tracked,quint8 id, quint16 seq);
 
 	QUdpSocket* udp=Q_NULLPTR;
 	uint32_t myId = 0;
@@ -80,8 +79,6 @@ public:
 	QList <SEQBUFENTRY> txSeqBuf = QList<SEQBUFENTRY>();
 	std::vector< quint16 > rxSeqBuf;
 
-	void sendAreYouReady();
-	void sendPacketDisconnect();
 	void sendTrackedPacket(QByteArray d);
 	void purgeOldEntries();
 
@@ -121,8 +118,6 @@ public slots:
 
 private:
 	void dataReceived();
-	void SendIdle();
-	void SendPeriodic();
 	void sendOpenClose(bool close);
 };
 
