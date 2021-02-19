@@ -1,6 +1,17 @@
 
 # CHANGELOG
 
+- 20210218
+		added SQ slider
+		added TX power slider
+		added TX button
+		added simplex/duplex/auto shifts
+		added debug logging
+		added TX and RX codec selections
+		added RX audio buffer size slider
+		started adding server setup
+
+		
 - 20210210	added control over LAN for rigs that support it
                 has been tested on the 705, 7610, 785x, 9700.
 		should work on 7700, 7800, other rigs.
