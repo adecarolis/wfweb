@@ -610,6 +610,9 @@
               <property name="checked">
                <bool>true</bool>
               </property>
+              <attribute name="buttonGroup">
+               <string notr="true">duplexBtnGrp</string>
+              </attribute>
              </widget>
             </item>
             <item>
@@ -617,6 +620,9 @@
               <property name="text">
                <string>Dup+</string>
               </property>
+              <attribute name="buttonGroup">
+               <string notr="true">duplexBtnGrp</string>
+              </attribute>
              </widget>
             </item>
             <item>
@@ -624,6 +630,9 @@
               <property name="text">
                <string>Dup-</string>
               </property>
+              <attribute name="buttonGroup">
+               <string notr="true">duplexBtnGrp</string>
+              </attribute>
              </widget>
             </item>
             <item>
@@ -631,6 +640,9 @@
               <property name="text">
                <string>Auto</string>
               </property>
+              <attribute name="buttonGroup">
+               <string notr="true">duplexBtnGrp</string>
+              </attribute>
              </widget>
             </item>
            </layout>
@@ -1937,4 +1949,7 @@
  </customwidgets>
  <resources/>
  <connections/>
+ <buttongroups>
+  <buttongroup name="duplexBtnGrp"/>
+ </buttongroups>
 </ui>

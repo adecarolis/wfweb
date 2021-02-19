@@ -46,6 +46,7 @@ signals:
     void setDataMode(bool dataOn);
     void getDataMode();
     void getDuplexMode();
+    void setDuplexMode(duplexMode dm);
     void getModInput();
     void getPTT();
     void setPTT(bool pttOn);
@@ -345,6 +346,14 @@ private slots:
 
     void on_scopeRefLevelSlider_valueChanged(int value);
 
+    void on_rptDupPlusBtn_clicked();
+
+    void on_rptSimplexBtn_clicked();
+
+    void on_rptDupMinusBtn_clicked();
+
+    void on_rptAutoBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -437,7 +446,7 @@ private:
     enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
               cmdGetSql, cmdGetATUStatus, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
-              cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel};
+              cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     freqMemory mem;
@@ -527,7 +536,9 @@ private:
 
 };
 
-Q_DECLARE_METATYPE(struct rigCapabilities) ;
+Q_DECLARE_METATYPE(struct rigCapabilities)
+Q_DECLARE_METATYPE(enum rigInput)
+Q_DECLARE_METATYPE(enum duplexMode)
 
 
 #endif // WFMAIN_H

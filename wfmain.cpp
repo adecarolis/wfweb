@@ -273,6 +273,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     openRig();
 
     qRegisterMetaType<rigCapabilities>();
+    qRegisterMetaType<duplexMode>();
+    qRegisterMetaType<rigInput>();
 
     connect(rig, SIGNAL(haveFrequency(double)), this, SLOT(receiveFreq(double)));
     connect(this, SIGNAL(getFrequency()), rig, SLOT(getFrequency()));
@@ -292,6 +294,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(scopeDisplayEnable()), rig, SLOT(enableSpectrumDisplay()));
     connect(rig, SIGNAL(haveMode(unsigned char, unsigned char)), this, SLOT(receiveMode(unsigned char, unsigned char)));
     connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
+
+    connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
+    connect(this, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
+    connect(rig, SIGNAL(haveDuplexMode(duplexMode)), this, SLOT(receiveDuplexMode(duplexMode)));
+
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
     connect(rig, SIGNAL(haveSpectrumFixedMode(bool)), this, SLOT(receiveSpectrumFixedMode(bool)));
     connect(this, SIGNAL(setFrequency(double)), rig, SLOT(setFrequency(double)));
@@ -1222,18 +1229,21 @@ void wfmain:: getInitialRigState()
     cmdOutQue.append(cmdGetFreq);
     cmdOutQue.append(cmdGetMode);
 
+    // From left to right in the UI:
+    cmdOutQue.append(cmdGetDataMode);
     cmdOutQue.append(cmdGetRxGain);
     cmdOutQue.append(cmdGetAfGain);
     cmdOutQue.append(cmdGetSql);
-    cmdOutQue.append(cmdGetSpectrumRefLevel);
-
     cmdOutQue.append(cmdGetTxPower);
     cmdOutQue.append(cmdGetMicGain);
+    cmdOutQue.append(cmdGetSpectrumRefLevel);
+    cmdOutQue.append(cmdGetDuplexMode);
 
     cmdOutQue.append(cmdDispEnable);
     cmdOutQue.append(cmdSpecOn);
 
     cmdOutQue.append(cmdNone);
+
     if(rigCaps.hasATU)
     {
         cmdOutQue.append(cmdGetATUStatus);
@@ -1399,6 +1409,9 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdSetDataModeOn:
                 emit setDataMode(true);
+                break;
+            case cmdGetDuplexMode:
+                emit getDuplexMode();
                 break;
             case cmdDispEnable:
                 emit scopeDisplayEnable();
@@ -2675,6 +2688,20 @@ void wfmain::receiveModInput(rigInput input)
 
 void wfmain::receiveDuplexMode(duplexMode dm)
 {
+    switch(dm)
+    {
+        case dmSimplex:
+            ui->rptSimplexBtn->setChecked(true);
+            break;
+        case dmDupPlus:
+            ui->rptDupPlusBtn->setChecked(true);
+            break;
+        case dmDupMinus:
+            ui->rptDupMinusBtn->setChecked(true);
+            break;
+        default:
+            break;
+    }
     (void)dm;
 }
 
@@ -2748,8 +2775,8 @@ void wfmain::on_debugBtn_clicked()
     // emit getLevels();
     // emit getMeters(amTransmitting);
 
-    emit getSpectrumRefLevel();
-
+    //emit getSpectrumRefLevel();
+    emit getDuplexMode();
 }
 
 // Slot to send/receive server config.
@@ -2768,3 +2795,31 @@ void wfmain::serverConfigRequested(SERVERCONFIG conf, bool store)
 
 }
 
+
+void wfmain::on_rptDupPlusBtn_clicked()
+{
+    // DUP+
+    emit setDuplexMode(dmDupAutoOff);
+    emit setDuplexMode(dmDupPlus);
+}
+
+void wfmain::on_rptSimplexBtn_clicked()
+{
+    // Simplex
+    emit setDuplexMode(dmDupAutoOff);
+    emit setDuplexMode(dmSimplex);
+}
+
+void wfmain::on_rptDupMinusBtn_clicked()
+{
+    // DUP-
+    emit setDuplexMode(dmDupAutoOff);
+    emit setDuplexMode(dmDupMinus);
+}
+
+void wfmain::on_rptAutoBtn_clicked()
+{
+    // Auto Rptr (enable this feature)
+    // TODO: Hide an AutoOff button somewhere for non-US users
+    emit setDuplexMode(dmDupAutoOn);
+}

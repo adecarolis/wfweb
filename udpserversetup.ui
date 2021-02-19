@@ -99,7 +99,7 @@
          <property name="maximumSize">
           <size>
            <width>16777215</width>
-           <height>15</height>
+           <height>20</height>
           </size>
          </property>
          <property name="text">
@@ -167,6 +167,12 @@
        </item>
        <item>
         <widget class="QLabel" name="label_3">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="minimumSize">
           <size>
            <width>0</width>
@@ -299,7 +305,7 @@
           <bool>true</bool>
          </attribute>
          <attribute name="verticalHeaderVisible">
-          <bool>true</bool>
+          <bool>false</bool>
          </attribute>
          <attribute name="verticalHeaderShowSortIndicator" stdset="0">
           <bool>true</bool>

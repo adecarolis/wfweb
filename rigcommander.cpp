@@ -550,30 +550,29 @@ void rigCommander::getDataMode()
 void rigCommander::setDuplexMode(duplexMode dm)
 {
     QByteArray payload;
-    payload.setRawData("\x0F", 1);
-    payload.append((unsigned char) dm);
+    if(dm==dmDupAutoOff)
+    {
+        payload.setRawData("\x1A\x05\x00\x46\x00", 5);
+    } else if (dm==dmDupAutoOn)
+    {
+        payload.setRawData("\x1A\x05\x00\x46\x01", 5);
+    } else {
+        payload.setRawData("\x0F", 1);
+        payload.append((unsigned char) dm);
+    }
     prepDataAndSend(payload);
 }
 
 void rigCommander::getDuplexMode()
 {
     QByteArray payload;
-    payload.setRawData("\x0F\x00", 2);
+
+    // Duplex mode:
+    payload.setRawData("\x0F", 1);
     prepDataAndSend(payload);
 
-    payload.setRawData("\x0F\x01", 2);
-    prepDataAndSend(payload);
-
-    payload.setRawData("\x0F\x10", 2);
-    prepDataAndSend(payload);
-
-    payload.setRawData("\x0F\x11", 2);
-    prepDataAndSend(payload);
-
-    payload.setRawData("\x0F\x12", 2);
-    prepDataAndSend(payload);
-
-    payload.setRawData("\x0F\x13", 2);
+    // Auto Repeater Mode:
+    payload.setRawData("\x1A\x05\x00\x46", 4);
     prepDataAndSend(payload);
 }
 
@@ -803,6 +802,7 @@ void rigCommander::parseCommand()
             this->parseMode();
             break;
         case '\x0F':
+            qDebug() << "Received duplex mode: " << (unsigned char)payloadIn[1];
             emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
             break;
         case '\x14':
