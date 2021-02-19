@@ -377,9 +377,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(getMeters(bool)), rig, SLOT(getMeters(bool)));
 
 
-    // Server
-    connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
-    connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
+    // Server (these two lines caused my version to crash, not sure why yet)
+    //connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
+    //connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
 
 
     ui->plot->addGraph(); // primary
@@ -441,6 +441,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     ui->useDarkThemeChk->setChecked(prefs.useDarkMode);
     on_useDarkThemeChk_clicked(prefs.useDarkMode);
+
+    ui->useSystemThemeChk->setChecked(prefs.useSystemTheme);
+    on_useSystemThemeChk_clicked(prefs.useSystemTheme);
 
     ui->drawPeakChk->setChecked(prefs.drawPeaks);
     on_drawPeakChk_clicked(prefs.drawPeaks);
@@ -672,6 +675,7 @@ void wfmain::setDefPrefs()
 {
     defPrefs.useFullScreen = false;
     defPrefs.useDarkMode = true;
+    defPrefs.useSystemTheme = false;
     defPrefs.drawPeaks = true;
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
     defPrefs.radioCIVAddr = 0x00; // previously was 0x94 for 7300.
@@ -707,6 +711,7 @@ void wfmain::loadSettings()
     settings.beginGroup("Interface");
     prefs.useFullScreen = settings.value("UseFullScreen", defPrefs.useFullScreen).toBool();
     prefs.useDarkMode = settings.value("UseDarkMode", defPrefs.useDarkMode).toBool();
+    prefs.useSystemTheme = settings.value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
     prefs.drawPeaks = settings.value("DrawPeaks", defPrefs.drawPeaks).toBool();
     prefs.stylesheetPath = settings.value("StylesheetPath", defPrefs.stylesheetPath).toString();
     ui->splitter->restoreState(settings.value("splitter").toByteArray());
@@ -875,6 +880,7 @@ void wfmain::saveSettings()
     // UI: (full screen, dark theme, draw peaks, colors, etc)
     settings.beginGroup("Interface");
     settings.setValue("UseFullScreen", prefs.useFullScreen);
+    settings.setValue("UseSystemTheme", prefs.useSystemTheme);
     settings.setValue("UseDarkMode", prefs.useDarkMode);
     settings.setValue("DrawPeaks", prefs.drawPeaks);
     settings.setValue("StylesheetPath", prefs.stylesheetPath);
@@ -1267,15 +1273,21 @@ void wfmain::showStatusBarText(QString text)
 
 void wfmain::on_useDarkThemeChk_clicked(bool checked)
 {
-    setAppTheme(checked);
+    //setAppTheme(checked);
     setPlotTheme(wf, checked);
     setPlotTheme(plot, checked);
     prefs.useDarkMode = checked;
 }
 
-void wfmain::setAppTheme(bool isDark)
+void wfmain::on_useSystemThemeChk_clicked(bool checked)
 {
-    if(isDark)
+    setAppTheme(!checked);
+    prefs.useSystemTheme = checked;
+}
+
+void wfmain::setAppTheme(bool isCustom)
+{
+    if(isCustom)
     {
         // QFile f(":qdarkstyle/style.qss"); // built-in resource
         QFile f("/usr/share/wfview/stylesheets/" + prefs.stylesheetPath);
@@ -2831,3 +2843,5 @@ void wfmain::on_rptAutoBtn_clicked()
     // TODO: Hide an AutoOff button somewhere for non-US users
     emit setDuplexMode(dmDupAutoOn);
 }
+
+

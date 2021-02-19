@@ -354,6 +354,8 @@ private slots:
 
     void on_rptAutoBtn_clicked();
 
+    void on_useSystemThemeChk_clicked(bool checked);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -363,7 +365,7 @@ private:
     QCustomPlot *wf; // waterfall image
     QCPItemTracer * tracer; // marker of current frequency
     //commHandler *comm;
-    void setAppTheme(bool isDark);
+    void setAppTheme(bool isCustom);
     void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
     void getInitialRigState();
@@ -476,6 +478,7 @@ private:
     struct preferences {
         bool useFullScreen;
         bool useDarkMode;
+        bool useSystemTheme;
         bool drawPeaks;
         bool drawTracer;
         QString stylesheetPath;
