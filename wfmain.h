@@ -62,6 +62,7 @@ signals:
     void getTxPower();
     void getMicGain();
     void getSpectrumRefLevel();
+    void getModInputLevel(rigInput input);
 
     // Level set:
     void setRfGain(unsigned char level);
@@ -74,7 +75,16 @@ signals:
     void setVoxGain(unsigned char);
     void setAntiVoxGain(unsigned char);
     void setSpectrumRefLevel(int);
+
+    void setModLevel(rigInput input, unsigned char level);
+    void setACCGain(unsigned char level);
+    void setACCAGain(unsigned char level);
+    void setACCBGain(unsigned char level);
+    void setUSBGain(unsigned char level);
+    void setLANGain(unsigned char level);
+
     void getMeters(bool isTransmitting);
+
 
 
     void startATU();
@@ -453,7 +463,8 @@ private:
     enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
               cmdGetSql, cmdGetATUStatus, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
-              cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput};
+              cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
+              cmdGetCurrentModLevel};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     freqMemory mem;
@@ -520,14 +531,31 @@ private:
     void issueDelayedCommandPriority(cmds cmd);
     void changeSliderQuietly(QSlider *slider, int value);
 
+    void processModLevel(rigInput source, unsigned char level);
+
+    void processChangingCurrentModLevel(unsigned char level);
+
+    void changeModLabel(rigInput source);
+
     void changeMode(mode_kind mode);
     void changeMode(mode_kind mode, bool dataOn);
 
     int oldFreqDialVal;
 
     rigCapabilities rigCaps;
+    rigInput currentModSrc = inputUnknown;
+    rigInput currentModDataSrc = inputUnknown;
+
     bool haveRigCaps;
     bool amTransmitting;
+    bool usingDataMode = false;
+
+    unsigned char micGain=0;
+    unsigned char accAGain=0;
+    unsigned char accBGain=0;
+    unsigned char accGain=0;
+    unsigned char usbGain=0;
+    unsigned char lanGain=0;
 
     calibrationWindow *cal;
     satelliteSetup *sat;

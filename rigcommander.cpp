@@ -1121,6 +1121,72 @@ void rigCommander::setModInput(rigInput input, bool dataOn, bool isQuery)
 
 }
 
+void rigCommander::setModInputLevel(rigInput input, unsigned char level)
+{
+    switch(input)
+    {
+        case inputMic:
+            setMicGain(level);
+            break;
+
+        case inputACCA:
+            setACCGain(level, 0);
+            break;
+
+        case inputACCB:
+            setACCGain(level, 1);
+            break;
+
+        case inputACC:
+            setACCGain(level);
+            break;
+
+        case inputUSB:
+            setUSBGain(level);
+            break;
+
+        case inputLAN:
+            setLANGain(level);
+            break;
+
+        default:
+            break;
+    }
+}
+
+void rigCommander::getModInputLevel(rigInput input)
+{
+    switch(input)
+    {
+        case inputMic:
+            getMicGain();
+            break;
+
+        case inputACCA:
+            getACCGain(0);
+            break;
+
+        case inputACCB:
+            getACCGain(1);
+            break;
+
+        case inputACC:
+            getACCGain();
+            break;
+
+        case inputUSB:
+            getUSBGain();
+            break;
+
+        case inputLAN:
+            getLANGain();
+            break;
+
+        default:
+            break;
+    }
+}
+
 QByteArray rigCommander::getUSBAddr()
 {
     QByteArray payload;
@@ -1203,12 +1269,15 @@ void rigCommander::setLANGain(unsigned char gain)
     prepDataAndSend(payload);
 }
 
-QByteArray rigCommander::getACCAddr()
+QByteArray rigCommander::getACCAddr(unsigned char ab)
 {
     QByteArray payload;
 
     // Note: the manual for the IC-7600 does not call out a
     // register to adjust the ACC gain.
+
+    // 7850: ACC-A = 0, ACC-B = 1
+
     switch(rigCaps.model)
     {
         case model9700:
@@ -1225,7 +1294,14 @@ QByteArray rigCommander::getACCAddr()
             break;
         case model7850:
             // Note: 0x58 = ACC-A, 0x59 = ACC-B
-            payload.setRawData("\x1A\x05\x00\x58", 4);
+            if(ab==0)
+            {
+                // A
+                payload.setRawData("\x1A\x05\x00\x58", 4);
+            } else {
+                // B
+                payload.setRawData("\x1A\x05\x00\x59", 4);
+            }
             break;
         default:
             break;
@@ -1236,13 +1312,28 @@ QByteArray rigCommander::getACCAddr()
 
 void rigCommander::getACCGain()
 {
-    QByteArray payload = getACCAddr();
+    QByteArray payload = getACCAddr(0);
     prepDataAndSend(payload);
 }
 
+
+void rigCommander::getACCGain(unsigned char ab)
+{
+    QByteArray payload = getACCAddr(ab);
+    prepDataAndSend(payload);
+}
+
+
 void rigCommander::setACCGain(unsigned char gain)
 {
-    QByteArray payload = getACCAddr();
+    QByteArray payload = getACCAddr(0);
+    payload.append(bcdEncodeInt(gain));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setACCGain(unsigned char gain, unsigned char ab)
+{
+    QByteArray payload = getACCAddr(ab);
     payload.append(bcdEncodeInt(gain));
     prepDataAndSend(payload);
 }
@@ -1607,7 +1698,7 @@ void rigCommander::parseDetailedRegisters1A05()
     // It is a work in progress.
     // TODO: inputMod source and gain for models: 7700, and 7600
 
-    int level = bcdHexToUChar(payloadIn[4]) + (100*bcdHexToUChar(payloadIn[5]));
+    int level = (100*bcdHexToUChar(payloadIn[4])) + bcdHexToUChar(payloadIn[5]);
 
     int subcmd = bcdHexToUChar(payloadIn[3]) + (100*bcdHexToUChar(payloadIn[2]));
 
@@ -1630,7 +1721,7 @@ void rigCommander::parseDetailedRegisters1A05()
                     emit haveRefAdjustFine( bcdHexToUChar(payloadIn[5]) + (100*bcdHexToUChar(payloadIn[4])) );
                     break;
                 case 112:
-                    emit haveACCGain(level, 0);
+                    emit haveACCGain(level, 5);
                     break;
                 case 113:
                     emit haveUSBGain(level);
@@ -1722,7 +1813,7 @@ void rigCommander::parseDetailedRegisters1A05()
                     emit haveModInput(input, true);
                     break;
                 case 88:
-                    emit haveACCGain(level, 0);
+                    emit haveACCGain(level, 5);
                     break;
                 case 89:
                     emit haveUSBGain(level);
@@ -1754,7 +1845,7 @@ void rigCommander::parseDetailedRegisters1A05()
             switch(subcmd)
             {
                 case 64:
-                    emit haveACCGain(level, 0);
+                    emit haveACCGain(level, 5);
                     break;
                 case 65:
                     emit haveUSBGain(level);
@@ -1773,7 +1864,7 @@ void rigCommander::parseDetailedRegisters1A05()
             switch(subcmd)
             {
                 case 87:
-                    emit haveACCGain(level, 0);
+                    emit haveACCGain(level, 5);
                     break;
                 case 89:
                     emit haveUSBGain(level);
