@@ -505,6 +505,7 @@ void udpCivData::dataReceived()
                     remoteId = in->sentid;
                     sendOpenClose(false);
                 }
+                break;
             }
             default:
             {
