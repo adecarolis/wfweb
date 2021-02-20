@@ -3,8 +3,9 @@
 
 #include <QtNumeric>
 #include <QString>
+#include <QList>
 
-// Credit:
+// Credit for parts of CIV list:
 // http://www.docksideradio.com/Icom%20Radio%20Hex%20Addresses.htm
 
 // 7850 and 7851 have the same commands and are essentially identical
@@ -25,6 +26,15 @@ enum model_kind {
     modelUnknown = 0xFF
 };
 
+enum rigInput{ inputMic=0,
+               inputACC=1,
+               inputUSB=3,
+               inputLAN=5,
+               inputACCA,
+               inputACCB,
+               inputNone,
+               inputUnknown=0xff
+};
 
 model_kind determineRadioModel(unsigned char rigID);
 
@@ -39,6 +49,8 @@ struct rigCapabilities {
     bool hasLan; // OEM ethernet or wifi connection
     bool hasEthernet;
     bool hasWiFi;
+
+    QVector<rigInput> inputs;
 
     bool hasSpectrum;
     quint8 spectSeqMax;

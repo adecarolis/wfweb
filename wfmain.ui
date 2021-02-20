@@ -513,7 +513,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="label_24">
+             <widget class="QLabel" name="modSliderLbl">
               <property name="maximumSize">
                <size>
                 <width>16777215</width>
@@ -610,6 +610,9 @@
               <property name="checked">
                <bool>true</bool>
               </property>
+              <attribute name="buttonGroup">
+               <string notr="true">duplexBtnGrp</string>
+              </attribute>
              </widget>
             </item>
             <item>
@@ -617,6 +620,9 @@
               <property name="text">
                <string>Dup+</string>
               </property>
+              <attribute name="buttonGroup">
+               <string notr="true">duplexBtnGrp</string>
+              </attribute>
              </widget>
             </item>
             <item>
@@ -624,6 +630,9 @@
               <property name="text">
                <string>Dup-</string>
               </property>
+              <attribute name="buttonGroup">
+               <string notr="true">duplexBtnGrp</string>
+              </attribute>
              </widget>
             </item>
             <item>
@@ -631,6 +640,9 @@
               <property name="text">
                <string>Auto</string>
               </property>
+              <attribute name="buttonGroup">
+               <string notr="true">duplexBtnGrp</string>
+              </attribute>
              </widget>
             </item>
            </layout>
@@ -1435,7 +1447,7 @@
            <number>0</number>
           </property>
           <item>
-           <widget class="QCheckBox" name="checkBox_2">
+           <widget class="QCheckBox" name="useSystemThemeChk">
             <property name="text">
              <string>Use System Theme</string>
             </property>
@@ -1498,6 +1510,16 @@
           </item>
           <item>
            <widget class="QComboBox" name="modInputCombo"/>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_29">
+            <property name="text">
+             <string>Data Mod Input:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="modInputDataCombo"/>
           </item>
           <item>
            <widget class="QCheckBox" name="tuneEnableChk">
@@ -1937,4 +1959,7 @@
  </customwidgets>
  <resources/>
  <connections/>
+ <buttongroups>
+  <buttongroup name="duplexBtnGrp"/>
+ </buttongroups>
 </ui>

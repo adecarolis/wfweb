@@ -275,6 +275,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     openRig();
 
     qRegisterMetaType<rigCapabilities>();
+    qRegisterMetaType<duplexMode>();
+    qRegisterMetaType<rigInput>();
 
     connect(rig, SIGNAL(haveFrequency(double)), this, SLOT(receiveFreq(double)));
     connect(this, SIGNAL(getFrequency()), rig, SLOT(getFrequency()));
@@ -294,6 +296,15 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(scopeDisplayEnable()), rig, SLOT(enableSpectrumDisplay()));
     connect(rig, SIGNAL(haveMode(unsigned char, unsigned char)), this, SLOT(receiveMode(unsigned char, unsigned char)));
     connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
+
+    connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
+    connect(this, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
+    connect(rig, SIGNAL(haveDuplexMode(duplexMode)), this, SLOT(receiveDuplexMode(duplexMode)));
+
+    connect(this, SIGNAL(getModInput(bool)), rig, SLOT(getModInput(bool)));
+    connect(rig, SIGNAL(haveModInput(rigInput,bool)), this, SLOT(receiveModInput(rigInput, bool)));
+    connect(this, SIGNAL(setModInput(rigInput, bool)), rig, SLOT(setModInput(rigInput,bool)));
+
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
     connect(rig, SIGNAL(haveSpectrumFixedMode(bool)), this, SLOT(receiveSpectrumFixedMode(bool)));
     connect(this, SIGNAL(setFrequency(double)), rig, SLOT(setFrequency(double)));
@@ -316,6 +327,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(getTxPower()), rig, SLOT(getTxLevel()));
     connect(this, SIGNAL(getMicGain()), rig, SLOT(getMicGain()));
     connect(this, SIGNAL(getSpectrumRefLevel()), rig, SLOT(getSpectrumRefLevel()));
+    connect(this, SIGNAL(getModInputLevel(rigInput)), rig, SLOT(getModInputLevel(rigInput)));
 
     // Levels: Set:
     connect(this, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
@@ -327,7 +339,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
     connect(this, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
     connect(this, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
-
+    connect(this, SIGNAL(setModLevel(rigInput,unsigned char)), rig, SLOT(setModInputLevel(rigInput,unsigned char)));
 
     // Levels: handle return on query:
     connect(rig, SIGNAL(haveRfGain(unsigned char)), this, SLOT(receiveRfGain(unsigned char)));
@@ -336,6 +348,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rig, SIGNAL(haveTxPower(unsigned char)), this, SLOT(receiveTxPower(unsigned char)));
     connect(rig, SIGNAL(haveMicGain(unsigned char)), this, SLOT(receiveMicGain(unsigned char)));
     connect(rig, SIGNAL(haveSpectrumRefLevel(int)), this, SLOT(receiveSpectrumRefLevel(int)));
+    connect(rig, SIGNAL(haveACCGain(unsigned char,unsigned char)), this, SLOT(receiveACCGain(unsigned char,unsigned char)));
+    connect(rig, SIGNAL(haveUSBGain(unsigned char)), this, SLOT(receiveUSBGain(unsigned char)));
+    connect(rig, SIGNAL(haveLANGain(unsigned char)), this, SLOT(receiveLANGain(unsigned char)));
 
     connect(this, SIGNAL(startATU()), rig, SLOT(startATU()));
     connect(this, SIGNAL(setATU(bool)), rig, SLOT(setATU(bool)));
@@ -368,7 +383,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     // Metering
     connect(this, SIGNAL(getMeters(bool)), rig, SLOT(getMeters(bool)));
-
 
     if (serverConfig.enabled && udp != Q_NULLPTR) {
         // Server
@@ -435,6 +449,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     ui->useDarkThemeChk->setChecked(prefs.useDarkMode);
     on_useDarkThemeChk_clicked(prefs.useDarkMode);
+
+    ui->useSystemThemeChk->setChecked(prefs.useSystemTheme);
+    on_useSystemThemeChk_clicked(prefs.useSystemTheme);
 
     ui->drawPeakChk->setChecked(prefs.drawPeaks);
     on_drawPeakChk_clicked(prefs.drawPeaks);
@@ -621,30 +638,13 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     //now we know what the rig ID is:
     //qDebug() << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
 
-    // We have to be careful here:
-    // If we enter this a second time, we will get two sets of DV and DD modes
-    // Also, if ever there is a rig with DV but without DV, we'll be off by one.
-    // A better solution is to translate the combo selection to a shared type
-    // such as an enum or even the actual CIV mode byte.
-
-    /*
-    if(rigCaps.hasDV)
-    {
-        ui->modeSelectCombo->addItem("DV");
-    }
-    if(rigCaps.hasDD)
-    {
-        ui->modeSelectCombo->addItem("DD");
-    }
-    */
-
     delayedCommand->setInterval(100); // faster polling is ok now.
     receiveRigID(rigCaps);
     getInitialRigState();
 
     QString message = QString("Found model: ").append(rigCaps.modelName);
 
-    ui->statusBar->showMessage(message, 1500);
+    ui->statusBar->showMessage(message, 0);
 
     return;
 }
@@ -666,6 +666,7 @@ void wfmain::setDefPrefs()
 {
     defPrefs.useFullScreen = false;
     defPrefs.useDarkMode = true;
+    defPrefs.useSystemTheme = false;
     defPrefs.drawPeaks = true;
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
     defPrefs.radioCIVAddr = 0x00; // previously was 0x94 for 7300.
@@ -701,6 +702,7 @@ void wfmain::loadSettings()
     settings.beginGroup("Interface");
     prefs.useFullScreen = settings.value("UseFullScreen", defPrefs.useFullScreen).toBool();
     prefs.useDarkMode = settings.value("UseDarkMode", defPrefs.useDarkMode).toBool();
+    prefs.useSystemTheme = settings.value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
     prefs.drawPeaks = settings.value("DrawPeaks", defPrefs.drawPeaks).toBool();
     prefs.stylesheetPath = settings.value("StylesheetPath", defPrefs.stylesheetPath).toString();
     ui->splitter->restoreState(settings.value("splitter").toByteArray());
@@ -869,6 +871,7 @@ void wfmain::saveSettings()
     // UI: (full screen, dark theme, draw peaks, colors, etc)
     settings.beginGroup("Interface");
     settings.setValue("UseFullScreen", prefs.useFullScreen);
+    settings.setValue("UseSystemTheme", prefs.useSystemTheme);
     settings.setValue("UseDarkMode", prefs.useDarkMode);
     settings.setValue("DrawPeaks", prefs.drawPeaks);
     settings.setValue("StylesheetPath", prefs.stylesheetPath);
@@ -1231,18 +1234,26 @@ void wfmain:: getInitialRigState()
     cmdOutQue.append(cmdGetFreq);
     cmdOutQue.append(cmdGetMode);
 
+    // From left to right in the UI:
+    cmdOutQue.append(cmdGetDataMode);
+    cmdOutQue.append(cmdGetModInput);
+    cmdOutQue.append(cmdGetModDataInput);
     cmdOutQue.append(cmdGetRxGain);
     cmdOutQue.append(cmdGetAfGain);
     cmdOutQue.append(cmdGetSql);
-    cmdOutQue.append(cmdGetSpectrumRefLevel);
-
     cmdOutQue.append(cmdGetTxPower);
-    cmdOutQue.append(cmdGetMicGain);
+    cmdOutQue.append(cmdGetCurrentModLevel); // level for currently selected mod sources
+    cmdOutQue.append(cmdGetSpectrumRefLevel);
+    cmdOutQue.append(cmdGetDuplexMode);
 
     cmdOutQue.append(cmdDispEnable);
     cmdOutQue.append(cmdSpecOn);
 
+    cmdOutQue.append(cmdGetModInput);
+    cmdOutQue.append(cmdGetModDataInput);
+
     cmdOutQue.append(cmdNone);
+
     if(rigCaps.hasATU)
     {
         cmdOutQue.append(cmdGetATUStatus);
@@ -1258,15 +1269,21 @@ void wfmain::showStatusBarText(QString text)
 
 void wfmain::on_useDarkThemeChk_clicked(bool checked)
 {
-    setAppTheme(checked);
+    //setAppTheme(checked);
     setPlotTheme(wf, checked);
     setPlotTheme(plot, checked);
     prefs.useDarkMode = checked;
 }
 
-void wfmain::setAppTheme(bool isDark)
+void wfmain::on_useSystemThemeChk_clicked(bool checked)
 {
-    if(isDark)
+    setAppTheme(!checked);
+    prefs.useSystemTheme = checked;
+}
+
+void wfmain::setAppTheme(bool isCustom)
+{
+    if(isCustom)
     {
         // QFile f(":qdarkstyle/style.qss"); // built-in resource
         QFile f("/usr/share/wfview/stylesheets/" + prefs.stylesheetPath);
@@ -1409,6 +1426,19 @@ void wfmain::runDelayedCommand()
             case cmdSetDataModeOn:
                 emit setDataMode(true);
                 break;
+            case cmdGetModInput:
+                emit getModInput(false);
+                break;
+            case cmdGetModDataInput:
+                emit getModInput(true);
+                break;
+            case cmdGetCurrentModLevel:
+                emit getModInputLevel(currentModSrc);
+                emit getModInputLevel(currentModDataSrc);
+                break;
+            case cmdGetDuplexMode:
+                emit getDuplexMode();
+                break;
             case cmdDispEnable:
                 emit scopeDisplayEnable();
                 break;
@@ -1522,6 +1552,42 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         } else {
             ui->satOpsBtn->setDisabled(true);
             ui->adjRefBtn->setDisabled(true);
+        }
+        QString inName;
+        for(int i=0; i < rigCaps.inputs.length(); i++)
+        {
+            switch(rigCaps.inputs.at(i))
+            {
+                case inputMic:
+                    inName = "Mic";
+                    break;
+                case inputLAN:
+                    inName = "LAN";
+                    break;
+                case inputUSB:
+                    inName = "USB";
+                    break;
+                case inputACC:
+                    inName = "ACC";
+                    break;
+                case inputACCA:
+                    inName = "ACCA";
+                    break;
+                case inputACCB:
+                    inName = "ACCB";
+                    break;
+                default:
+                    inName = "Unknown";
+                    break;
+
+            }
+            ui->modInputCombo->addItem(inName, rigCaps.inputs.at(i));
+            ui->modInputDataCombo->addItem(inName, rigCaps.inputs.at(i));
+        }
+        if(rigCaps.inputs.length() == 0)
+        {
+            ui->modInputCombo->addItem("None", inputNone);
+            ui->modInputDataCombo->addItem("None", inputNone);
         }
 
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
@@ -1830,6 +1896,8 @@ void wfmain::receiveDataModeStatus(bool dataEnabled)
     ui->dataModeBtn->blockSignals(true);
     ui->dataModeBtn->setChecked(dataEnabled);
     ui->dataModeBtn->blockSignals(false);
+
+    usingDataMode = dataEnabled;
 }
 
 void wfmain::on_clearPeakBtn_clicked()
@@ -2619,6 +2687,13 @@ void wfmain::on_modeFilterCombo_activated(int index)
 void wfmain::on_dataModeBtn_toggled(bool checked)
 {
     setDataMode(checked);
+    usingDataMode = checked;
+    if(usingDataMode)
+    {
+        changeModLabelAndSlider(currentModDataSrc);
+    } else {
+        changeModLabelAndSlider(currentModSrc);
+    }
 }
 
 void wfmain::on_transmitBtn_clicked()
@@ -2674,33 +2749,135 @@ void wfmain::receiveTxPower(unsigned char power)
 
 void wfmain::receiveMicGain(unsigned char gain)
 {
-    changeSliderQuietly(ui->micGainSlider, gain);
+    processModLevel(inputMic, gain);
 }
 
-void wfmain::receiveModInput(rigInput input)
+void wfmain::processModLevel(rigInput source, unsigned char level)
 {
-    (void)input;
+    rigInput currentIn;
+    if(usingDataMode)
+    {
+        currentIn = currentModDataSrc;
+    } else {
+        currentIn = currentModSrc;
+    }
+
+    switch(source)
+    {
+        case inputMic:
+            micGain = level;
+            break;
+        case inputACC:
+            accGain = level;
+            break;
+
+        case inputACCA:
+            accAGain = level;
+            break;
+
+        case inputACCB:
+            accBGain = level;
+            break;
+
+        case inputUSB:
+            usbGain = level;
+            break;
+
+        case inputLAN:
+            lanGain = level;
+            break;
+
+        default:
+            break;
+    }
+    if(currentIn == source)
+    {
+        changeSliderQuietly(ui->micGainSlider, level);
+    }
+
+}
+
+void wfmain::receiveModInput(rigInput input, bool dataOn)
+{
+    QComboBox *box;
+    QString inputName;
+    bool found;
+    bool foundCurrent = false;
+
+    if(dataOn)
+    {
+        box = ui->modInputDataCombo;
+        currentModDataSrc = input;
+        if(usingDataMode)
+            foundCurrent = true;
+    } else {
+        box = ui->modInputCombo;
+        currentModSrc = input;
+        if(!usingDataMode)
+            foundCurrent = true;
+    }
+
+    for(int i=0; i < box->count(); i++)
+    {
+        if(box->itemData(i).toInt() == (int)input)
+        {
+            box->blockSignals(true);
+            box->setCurrentIndex(i);
+            box->blockSignals(false);
+            found = true;
+        }
+    }
+
+    if(foundCurrent)
+    {
+        changeModLabel(input);
+    }
+    if(!found)
+        qDebug() << "Could not find modulation input: " << (int)input;
 }
 
 void wfmain::receiveDuplexMode(duplexMode dm)
 {
+    switch(dm)
+    {
+        case dmSimplex:
+            ui->rptSimplexBtn->setChecked(true);
+            break;
+        case dmDupPlus:
+            ui->rptDupPlusBtn->setChecked(true);
+            break;
+        case dmDupMinus:
+            ui->rptDupMinusBtn->setChecked(true);
+            break;
+        default:
+            break;
+    }
     (void)dm;
 }
 
 void wfmain::receiveACCGain(unsigned char level, unsigned char ab)
 {
-    (void)level;
-    (void)ab;
+    if(ab==1)
+    {
+    processModLevel(inputACCB, level);
+    } else {
+        if(rigCaps.model == model7850)
+        {
+            processModLevel(inputACCA, level);
+        } else {
+            processModLevel(inputACC, level);
+        }
+    }
 }
 
 void wfmain::receiveUSBGain(unsigned char level)
 {
-    (void)level;
+    processModLevel(inputUSB, level);
 }
 
 void wfmain::receiveLANGain(unsigned char level)
 {
-    (void)level;
+    processModLevel(inputLAN, level);
 }
 
 void wfmain::receiveCompLevel(unsigned char compLevel)
@@ -2730,7 +2907,7 @@ void wfmain::on_txPowerSlider_valueChanged(int value)
 
 void wfmain::on_micGainSlider_valueChanged(int value)
 {
-    emit setMicGain(value);
+    processChangingCurrentModLevel((unsigned char) value);
 }
 
 void wfmain::on_scopeRefLevelSlider_valueChanged(int value)
@@ -2742,23 +2919,6 @@ void wfmain::on_scopeRefLevelSlider_valueChanged(int value)
 void wfmain::receiveSpectrumRefLevel(int level)
 {
     changeSliderQuietly(ui->scopeRefLevelSlider, level);
-}
-
-// --- DEBUG FUNCTION ---
-void wfmain::on_debugBtn_clicked()
-{
-    qDebug() << "Debug button pressed.";
-
-    // TODO: Why don't these commands work?!
-    //emit getScopeMode();
-    //emit getScopeEdge(); // 1,2,3 only in "fixed" mode
-    //emit getScopeSpan(); // in khz, only in "center" mode
-
-    // emit getLevels();
-    // emit getMeters(amTransmitting);
-
-    emit getSpectrumRefLevel();
-
 }
 
 // Slot to send/receive server config.
@@ -2777,3 +2937,141 @@ void wfmain::serverConfigRequested(SERVERCONFIG conf, bool store)
 
 }
 
+
+void wfmain::on_rptDupPlusBtn_clicked()
+{
+    // DUP+
+    emit setDuplexMode(dmDupAutoOff);
+    emit setDuplexMode(dmDupPlus);
+}
+
+void wfmain::on_rptSimplexBtn_clicked()
+{
+    // Simplex
+    emit setDuplexMode(dmDupAutoOff);
+    emit setDuplexMode(dmSimplex);
+}
+
+void wfmain::on_rptDupMinusBtn_clicked()
+{
+    // DUP-
+    emit setDuplexMode(dmDupAutoOff);
+    emit setDuplexMode(dmDupMinus);
+}
+
+void wfmain::on_rptAutoBtn_clicked()
+{
+    // Auto Rptr (enable this feature)
+    // TODO: Hide an AutoOff button somewhere for non-US users
+    emit setDuplexMode(dmDupAutoOn);
+}
+
+void wfmain::on_modInputCombo_activated(int index)
+{
+    emit setModInput( (rigInput)ui->modInputCombo->currentData().toInt(), false );
+    currentModSrc = (rigInput)ui->modInputCombo->currentData().toInt();
+    issueDelayedCommand(cmdGetCurrentModLevel);
+    if(!usingDataMode)
+    {
+        changeModLabel(currentModSrc);
+    }
+    (void)index;
+}
+
+void wfmain::on_modInputDataCombo_activated(int index)
+{
+    emit setModInput( (rigInput)ui->modInputDataCombo->currentData().toInt(), true );
+    currentModDataSrc = (rigInput)ui->modInputDataCombo->currentData().toInt();
+    issueDelayedCommand(cmdGetCurrentModLevel);
+    if(usingDataMode)
+    {
+        changeModLabel(currentModDataSrc);
+    }
+    (void)index;
+}
+
+
+void wfmain::changeModLabelAndSlider(rigInput source)
+{
+    changeModLabel(source, true);
+}
+
+void wfmain::changeModLabel(rigInput input)
+{
+    changeModLabel(input, false);
+}
+
+
+void wfmain::changeModLabel(rigInput input, bool updateLevel)
+{
+    QString inputName;
+    unsigned char gain = 0;
+
+    switch(input)
+    {
+        case inputMic:
+            inputName = "Mic";
+            gain = micGain;
+            break;
+        case inputACC:
+            inputName = "ACC";
+            gain = accGain;
+            break;
+        case inputACCA:
+            inputName = "ACCA";
+            gain = accAGain;
+            break;
+        case inputACCB:
+            inputName = "ACCB";
+            gain = accBGain;
+            break;
+        case inputUSB:
+            inputName = "USB";
+            gain = usbGain;
+            break;
+        case inputLAN:
+            inputName = "LAN";
+            gain = lanGain;
+            break;
+        default:
+            inputName = "UNK";
+            gain=0;
+            break;
+    }
+    ui->modSliderLbl->setText(inputName);
+    if(updateLevel)
+    {
+        changeSliderQuietly(ui->micGainSlider, gain);
+    }
+}
+
+void wfmain::processChangingCurrentModLevel(unsigned char level)
+{
+    // slider moved, so find the current mod and issue the level set command.
+    rigInput currentIn;
+    if(usingDataMode)
+    {
+        currentIn = currentModDataSrc;
+    } else {
+        currentIn = currentModSrc;
+    }
+    qDebug() << __func__ << ": setting current level: " << level;
+
+    emit setModLevel(currentIn, level);
+}
+
+// --- DEBUG FUNCTION ---
+void wfmain::on_debugBtn_clicked()
+{
+    qDebug() << "Debug button pressed.";
+
+    // TODO: Why don't these commands work?!
+    //emit getScopeMode();
+    //emit getScopeEdge(); // 1,2,3 only in "fixed" mode
+    //emit getScopeSpan(); // in khz, only in "center" mode
+
+    // emit getLevels();
+    // emit getMeters(amTransmitting);
+
+    // emit getTSQL();
+}

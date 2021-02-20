@@ -15,22 +15,15 @@
 // note: using a define because switch case doesn't even work with const unsigned char. Surprised me.
 #define compCivAddr 0xE1
 
-enum rigInput{ inputMic=0,
-               inputACC=1,
-               inputUSB=3,
-               inputLAN=5,
-               inputACCA,
-               inputACCB,
-               inputUnknown=0xff
-};
-
 enum duplexMode{
     dmSplitOff=0x00,
     dmSplitOn=0x01,
     dmSimplex=0x10,
     dmDupMinus=0x11,
     dmDupPlus=0x12,
-    dmDupRPS=0x13
+    dmDupRPS=0x13,
+    dmDupAutoOn=0x26,
+    dmDupAutoOff=0x36
 };
 
 class rigCommander : public QObject
@@ -89,6 +82,8 @@ public slots:
     void getUSBGain();
     void getLANGain();
     void getACCGain();
+    void getACCGain(unsigned char ab);
+
 
     void getSMeter();
     void getRFPowerMeter();
@@ -108,6 +103,8 @@ public slots:
     void setUSBGain(unsigned char gain);
     void setLANGain(unsigned char gain);
     void setACCGain(unsigned char gain);
+    void setACCGain(unsigned char gain, unsigned char ab);
+
     void setCompLevel(unsigned char compLevel);
     void setMonitorLevel(unsigned char monitorLevel);
     void setVoxGain(unsigned char gain);
@@ -115,6 +112,9 @@ public slots:
 
     void getModInput(bool dataOn);
     void setModInput(rigInput input, bool dataOn);
+
+    void setModInputLevel(rigInput input, unsigned char level);
+    void getModInputLevel(rigInput input);
 
     void startATU();
     void setATU(bool enabled);
@@ -168,6 +168,7 @@ signals:
     void haveLANGain(unsigned char gain);
     void haveUSBGain(unsigned char gain);
     void haveACCGain(unsigned char gain, unsigned char ab);
+    void haveModSrcGain(rigInput input, unsigned char gain);
 
     void haveSMeter(unsigned char level);
     void haveRFMeter(unsigned char level);
@@ -215,7 +216,7 @@ private:
     void sendLevelCmd(unsigned char levAddr, unsigned char level);
     QByteArray getLANAddr();
     QByteArray getUSBAddr();
-    QByteArray getACCAddr();
+    QByteArray getACCAddr(unsigned char ab);
     void setModInput(rigInput input, bool dataOn, bool isQuery);
     void sendDataOut();
     void prepDataAndSend(QByteArray data);
