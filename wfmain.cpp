@@ -2688,6 +2688,12 @@ void wfmain::on_dataModeBtn_toggled(bool checked)
 {
     setDataMode(checked);
     usingDataMode = checked;
+    if(usingDataMode)
+    {
+        changeModLabelAndSlider(currentModDataSrc);
+    } else {
+        changeModLabelAndSlider(currentModSrc);
+    }
 }
 
 void wfmain::on_transmitBtn_clicked()
@@ -2984,33 +2990,59 @@ void wfmain::on_modInputDataCombo_activated(int index)
     (void)index;
 }
 
+
+void wfmain::changeModLabelAndSlider(rigInput source)
+{
+    changeModLabel(source, true);
+}
+
 void wfmain::changeModLabel(rigInput input)
 {
+    changeModLabel(input, false);
+}
+
+
+void wfmain::changeModLabel(rigInput input, bool updateLevel)
+{
     QString inputName;
+    unsigned char gain = 0;
+
     switch(input)
     {
         case inputMic:
             inputName = "Mic";
+            gain = micGain;
             break;
         case inputACC:
             inputName = "ACC";
+            gain = accGain;
             break;
         case inputACCA:
             inputName = "ACCA";
+            gain = accAGain;
             break;
         case inputACCB:
             inputName = "ACCB";
+            gain = accBGain;
             break;
         case inputUSB:
             inputName = "USB";
+            gain = usbGain;
             break;
         case inputLAN:
             inputName = "LAN";
+            gain = lanGain;
             break;
         default:
             inputName = "UNK";
+            gain=0;
+            break;
     }
     ui->modSliderLbl->setText(inputName);
+    if(updateLevel)
+    {
+        changeSliderQuietly(ui->micGainSlider, gain);
+    }
 }
 
 void wfmain::processChangingCurrentModLevel(unsigned char level)

@@ -536,6 +536,10 @@ private:
     void processChangingCurrentModLevel(unsigned char level);
 
     void changeModLabel(rigInput source);
+    void changeModLabel(rigInput source, bool updateLevel);
+
+    void changeModLabelAndSlider(rigInput source);
+
 
     void changeMode(mode_kind mode);
     void changeMode(mode_kind mode, bool dataOn);
