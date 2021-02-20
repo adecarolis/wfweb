@@ -18,7 +18,7 @@
 
 // Variable size packets + payload
 #define CIV_SIZE 0x15
-#define TXAUDIO_SIZE 0x15
+#define TXAUDIO_SIZE 0x18
 #define DATA_SIZE 0x15
 
 // 0x10 length control packet (connect/disconnect/idle.)
@@ -56,7 +56,25 @@ typedef union ping_packet {
 
     };
     char packet[PING_SIZE];
-} *ping_packet_t, *data_packet_t, data_packet;
+} *ping_packet_t, * data_packet_t, data_packet;
+
+
+// 0x18 length txaudio packet 
+typedef union txaudio_packet {
+    struct
+    {
+        quint32 len;        // 0x00
+        quint16 type;       // 0x04
+        quint16 seq;        // 0x06
+        quint32 sentid;     // 0x08
+        quint32 rcvdid;     // 0x0c
+        quint16 ident;      // 0x10
+        quint16 sendseq;    // 0x12
+        quint16 unused;     // 0x14
+        quint16 datalen;    // 0x16
+    };
+    char packet[TXAUDIO_SIZE];
+} *txaudio_packet_t;
 
 
 // 0x18 length txaudio packet 

@@ -648,23 +648,31 @@ void udpAudio::sendTxAudio()
     if (txaudio->chunkAvailable) {
         QByteArray audio;
         txaudio->getNextAudioChunk(audio);
-        int counter = 0;
-        while (counter < audio.length()) {
-            QByteArray partial = audio.mid(counter, 1364);
-            ping_packet p;
+        int counter = 1;
+        int len = 0;
+        while (len < audio.length()) {
+            QByteArray partial = audio.mid(len, 1364);
+            txaudio_packet p;
             memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
-            p.len = sizeof(p);
+            p.len = sizeof(p)+partial.length();
             p.sentid = myId;
             p.rcvdid = remoteId;
-            p.reply = (char)0x80;
-            p.datalen = partial.length();
-            p.sendseq = qToBigEndian(sendAudioSeq); // THIS IS BIG ENDIAN!
+            if (counter % 2 == 0)
+            {
+                p.ident = 0x0680;
+            }
+            else {
+                p.ident = 0x0681;
+            }
+            p.datalen = (quint16)qToBigEndian((quint16)partial.length());
+            p.sendseq = (quint16)qToBigEndian(sendAudioSeq); // THIS IS BIG ENDIAN!
             QByteArray tx = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
             tx.append(partial);
-            counter = counter + partial.length();
+            len = len + partial.length();
             //qDebug() << "Sending audio packet length: " << tx.length();
             sendTrackedPacket(tx);
             sendAudioSeq++;
+            counter++;
         }
     }
 }
