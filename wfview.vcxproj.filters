@@ -1,0 +1,322 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Form Files">
+      <UniqueIdentifier>{99349809-55BA-4b9d-BF79-8FDBB0286EB3}</UniqueIdentifier>
+      <Extensions>ui</Extensions>
+      <ParseFiles>false</ParseFiles>
+    </Filter>
+    <Filter Include="Form Files">
+      <UniqueIdentifier>{99349809-55BA-4b9d-BF79-8FDBB0286EB3}</UniqueIdentifier>
+      <Extensions>ui</Extensions>
+      <ParseFiles>false</ParseFiles>
+    </Filter>
+    <Filter Include="Generated Files">
+      <UniqueIdentifier>{71ED8ED8-ACB9-4CE9-BBE1-E00B30144E11}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx;moc;h;def;odl;idl;res;</Extensions>
+    </Filter>
+    <Filter Include="Generated Files">
+      <UniqueIdentifier>{71ED8ED8-ACB9-4CE9-BBE1-E00B30144E11}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx;moc;h;def;odl;idl;res;</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{D9D6E242-F8AF-46E4-B9FD-80ECBC20BA3E}</UniqueIdentifier>
+      <Extensions>qrc;*</Extensions>
+      <ParseFiles>false</ParseFiles>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{D9D6E242-F8AF-46E4-B9FD-80ECBC20BA3E}</UniqueIdentifier>
+      <Extensions>qrc;*</Extensions>
+      <ParseFiles>false</ParseFiles>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Distribution Files">
+      <UniqueIdentifier>{B83CAF91-C7BF-462F-B76C-EA11631F866C}</UniqueIdentifier>
+      <Extensions>*</Extensions>
+      <ParseFiles>false</ParseFiles>
+    </Filter>
+    <Filter Include="Distribution Files">
+      <UniqueIdentifier>{B83CAF91-C7BF-462F-B76C-EA11631F866C}</UniqueIdentifier>
+      <Extensions>*</Extensions>
+      <ParseFiles>false</ParseFiles>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="commhandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="freqmemory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="logcategories.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="c:\qcustomplot\qcustomplot.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="rigcommander.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="rigidentities.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="udphandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="wfmain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="audiohandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="calibrationwindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="satellitesetup.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="udpserversetup.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="udpserver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="commhandler.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <ClInclude Include="freqmemory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="logcategories.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <QtMoc Include="c:\qcustomplot\qcustomplot.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="rigcommander.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <ClInclude Include="rigidentities.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <QtMoc Include="udphandler.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="wfmain.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="audiohandler.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="calibrationwindow.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="satellitesetup.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="udpserversetup.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="udpserver.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="debug\moc_predefs.h.cbt">
+      <Filter>Generated Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="release\moc_predefs.h.cbt">
+      <Filter>Generated Files</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <QtUic Include="wfmain.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="calibrationwindow.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="satellitesetup.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="udpserversetup.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="qdarkstyle\rc\Hmovetoolbar.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\Hsepartoolbar.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\Vmovetoolbar.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\Vsepartoolbar.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\branch_closed-on.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\branch_closed.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\branch_open-on.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\branch_open.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\checkbox_checked.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\checkbox_checked_disabled.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\checkbox_checked_focus.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\checkbox_indeterminate.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\checkbox_indeterminate_focus.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\checkbox_unchecked.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\checkbox_unchecked_disabled.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\checkbox_unchecked_focus.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\close-hover.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\close-pressed.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\close.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\down_arrow.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\down_arrow_disabled.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\left_arrow.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\left_arrow_disabled.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\radio_checked.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\radio_checked_disabled.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\radio_checked_focus.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\radio_unchecked.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\radio_unchecked_disabled.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\radio_unchecked_focus.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <QtRcc Include="resources\resources.qrc">
+      <Filter>Resource Files</Filter>
+    </QtRcc>
+    <None Include="qdarkstyle\rc\right_arrow.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\right_arrow_disabled.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\sizegrip.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <QtRcc Include="qdarkstyle\style.qrc">
+      <Filter>Resource Files</Filter>
+    </QtRcc>
+    <None Include="qdarkstyle\style.qss">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\stylesheet-branch-end.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\stylesheet-branch-more.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\stylesheet-vline.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\transparent.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\undock.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\up_arrow.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="qdarkstyle\rc\up_arrow_disabled.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="resources\wfview.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="resources\wfview.png" />
+    <None Include="resources\wfview.png" />
+    <None Include="resources\wfview.png" />
+    <None Include="resources\wfview.png" />
+    <None Include="resources\wfview.png" />
+    <None Include="resources\wfview.png" />
+    <None Include="resources\wfview.png" />
+    <None Include="resources\wfview.png" />
+    <None Include="resources\wfview.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="resources\install.sh">
+      <Filter>Distribution Files</Filter>
+    </None>
+    <None Include="resources\wfview.desktop">
+      <Filter>Distribution Files</Filter>
+    </None>
+    <None Include="resources\wfview.png">
+      <Filter>Distribution Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="packettypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
