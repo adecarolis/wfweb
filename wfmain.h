@@ -564,7 +564,8 @@ private:
     calibrationWindow *cal;
     satelliteSetup *sat;
     udpServerSetup *srv;
-    udpServer *udp;
+
+    udpServer *udp = Q_NULLPTR;
     QThread *serverThread = Q_NULLPTR;
 
     void bandStackBtnClick();

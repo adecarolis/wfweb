@@ -615,7 +615,7 @@ void rigCommander::setCIVAddr(unsigned char civAddr)
 }
 
 void rigCommander::handleNewData(const QByteArray &data)
-{
+{    
     emit haveDataForServer(data);
     parseData(data);
 }

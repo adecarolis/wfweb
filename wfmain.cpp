@@ -384,11 +384,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     // Metering
     connect(this, SIGNAL(getMeters(bool)), rig, SLOT(getMeters(bool)));
 
-
-    // Server (these two lines caused my version to crash, not sure why yet)
-    //connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
-    //connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
-
+    if (serverConfig.enabled && udp != Q_NULLPTR) {
+        // Server
+        connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
+        connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
+    }
 
     ui->plot->addGraph(); // primary
     ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first?
