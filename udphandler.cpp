@@ -813,6 +813,7 @@ void udpBase::dataReceived(QByteArray r)
                     sendControl(false, 0, in->seq);
                 }
             }
+            break;
         }
         case (PING_SIZE): // ping packet
         {
