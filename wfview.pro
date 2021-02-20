@@ -98,7 +98,8 @@ HEADERS  += wfmain.h \
     calibrationwindow.h \
     satellitesetup.h \
     udpserversetup.h \
-	udpserver.h
+	udpserver.h \
+	packettypes.h
 
 
 FORMS    += wfmain.ui \

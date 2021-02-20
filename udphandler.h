@@ -21,6 +21,7 @@
 #include <QDebug>
 
 #include "audiohandler.h"
+#include "packettypes.h"
 
 #define PURGE_SECONDS 5
 #define TOKEN_RENEWAL 60000
@@ -45,6 +46,8 @@ public:
 	void dataReceived(QByteArray r); 
 	void sendPing(); // Periodic type 0x07 ping packet sending
 	void sendControl(bool tracked,quint8 id, quint16 seq);
+
+	QTime timeStarted;
 
 	QUdpSocket* udp=Q_NULLPTR;
 	uint32_t myId = 0;
@@ -88,8 +91,6 @@ public:
 
 	QDateTime lastPingSentTime;
 	uint16_t pingSendSeq = 0;
-
-	QDateTime lastControlPacketSentTime;
 
 	quint16 areYouThereCounter=0;
 
@@ -184,7 +185,7 @@ public:
 					quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
 	~udpHandler();
 
-	bool serialAndAudioOpened = false;
+	bool streamOpened = false;
 
 	udpCivData* civ = Q_NULLPTR;
 	udpAudio* audio = Q_NULLPTR;
@@ -203,12 +204,13 @@ signals:
 	void haveChangeBufferSize(quint16 value);
 
 private:
+	
 
 	void sendAreYouThere();
 
 	void dataReceived();
 
-	void sendRequestSerialAndAudio();
+	void sendRequestStream();
 	void sendLogin();
 	void sendToken(uint8_t magic);
 
@@ -236,8 +238,12 @@ private:
 	QByteArray compName;
 	QByteArray audioType;
 	QByteArray replyId;
-	QByteArray authId;
-	
+	quint16 tokRequest;
+	quint32 token;
+	// These are for stream ident info.
+	char identa;
+	quint32 identb;
+
 	QTimer tokenTimer;
 	QTimer areYouThereTimer;
 
