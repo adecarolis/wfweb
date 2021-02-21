@@ -17,6 +17,7 @@
 #include <QDebug>
 
 #include <udpserversetup.h>
+#include "packettypes.h"
 
 extern void passcode(QString in,QByteArray& out);
 extern QByteArray parseNullTerminatedString(QByteArray c, int s);

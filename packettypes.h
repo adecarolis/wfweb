@@ -5,21 +5,22 @@
 #pragma pack(push, 1)
 
 // Fixed Size Packets
-#define CONTROL_SIZE 0x10
-#define PING_SIZE 0x15
-#define OPENCLOSE_SIZE 0x16
-#define RETRANSMIT_SIZE 0x18
-#define TOKEN_SIZE 0x40
-#define STATUS_SIZE 0x50
-#define LOGIN_RESPONSE_SIZE 0x60
-#define LOGIN_SIZE 0x80
-#define CONNINFO_SIZE 0x90
-#define CAPABILITIES_SIZE 0xA8
+#define CONTROL_SIZE            0x10
+#define WATCHDOG_SIZE           0x14
+#define PING_SIZE               0x15
+#define OPENCLOSE_SIZE          0x16
+#define RETRANSMIT_SIZE         0x18
+#define TOKEN_SIZE              0x40
+#define STATUS_SIZE             0x50
+#define LOGIN_RESPONSE_SIZE     0x60
+#define LOGIN_SIZE              0x80
+#define CONNINFO_SIZE           0x90
+#define CAPABILITIES_SIZE       0xA8
 
 // Variable size packets + payload
-#define CIV_SIZE 0x15
-#define TXAUDIO_SIZE 0x18
-#define DATA_SIZE 0x15
+#define CIV_SIZE                0x15
+#define TXAUDIO_SIZE            0x18
+#define DATA_SIZE               0x15
 
 // 0x10 length control packet (connect/disconnect/idle.)
 typedef union control_packet {
