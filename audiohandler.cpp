@@ -131,7 +131,7 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
         isInitialized = setDevice(QAudioDeviceInfo::defaultInputDevice());
     else
         isInitialized = setDevice(QAudioDeviceInfo::defaultOutputDevice());
-    
+
     return isInitialized;
 }
 
@@ -172,11 +172,9 @@ bool audioHandler::setDevice(QAudioDeviceInfo deviceInfo)
 void audioHandler::reinit()
 {
     qDebug() << this->metaObject()->className() << ": reinit() running";
-    bool running = false;
     if (audioOutput && audioOutput->state() != QAudio::StoppedState) {
-        running = true;
+        this->stop();
     }
-    this->stop();
 
     // Calculate the minimum required audio buffer
     // This may need work depending on how it performs on other platforms.
@@ -207,9 +205,7 @@ void audioHandler::reinit()
         connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
     }
 
-    if (running) {
-        this->start();
-    }
+    this->start();
     this->flush();
 }
 
@@ -224,15 +220,10 @@ void audioHandler::start()
 
     if (isInput) {
         this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
-    }
-    else {
-        this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
-    }
-
-    if (isInput) {
         audioInput->start(this);
     }
     else {
+        this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
         audioOutput->start(this);
     }
 }
@@ -319,7 +310,7 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
     if (buffer.length() > bufferSize * 4)
     {
         qWarning() << "writeData() Buffer overflow";
-        buffer.clear(); // Will cause a click!
+       // buffer.clear(); // Will cause a click!
     }
 
     if (isUlaw) {
@@ -400,6 +391,11 @@ void audioHandler::changeBufferSize(const quint16 newSize)
 void audioHandler::getBufferSize()
 {
     emit sendBufferSize(audioOutput->bufferSize());
+}
+
+bool audioHandler::isChunkAvailable()
+{
+    return chunkAvailable;
 }
 
 void audioHandler::getNextAudioChunk(QByteArray& ret)

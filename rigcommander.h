@@ -199,7 +199,7 @@ signals:
     void haveATUStatus(unsigned char status);
     void haveChangeBufferSize(quint16 value);
     void haveDataForServer(QByteArray outData);
-
+    void initUdpHandler();
 
 private:
     void setup();
@@ -237,6 +237,8 @@ private:
 
     commHandler * comm=Q_NULLPTR;
     udpHandler* udp=Q_NULLPTR;
+    QThread* udpHandlerThread = Q_NULLPTR;
+
     void determineRigCaps();
     QByteArray payloadIn;
     QByteArray echoPerfix;

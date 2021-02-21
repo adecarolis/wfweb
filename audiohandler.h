@@ -40,10 +40,9 @@ public:
     qint64 writeData(const char* data, qint64 len);
     qint64 bytesAvailable() const;
     bool isSequential() const;
-    volatile bool chunkAvailable;
     void incomingAudio(const QByteArray& data);
     void getNextAudioChunk(QByteArray &data);
-
+    bool isChunkAvailable();
 public slots:
     bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 bufferSize, const bool isulaw, const bool isinput);
     void changeBufferSize(const quint16 newSize);
@@ -63,13 +62,14 @@ private:
 
     QMutex          mutex;
 
-    bool             isInitialized;
-    QAudioOutput* audioOutput;
-    QAudioInput* audioInput;
+    bool            chunkAvailable;
+    bool            isInitialized;
+    QAudioOutput*   audioOutput;
+    QAudioInput*    audioInput;
     bool            isUlaw;
     int             bufferSize;
     bool            isInput;   // Used to determine whether input or output audio
-    float            volume;
+    float           volume;
 
     QByteArray       buffer;
     QAudioFormat     format;

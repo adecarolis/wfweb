@@ -52,6 +52,14 @@ udpHandler::udpHandler(QString ip, quint16 controlPort, quint16 civPort, quint16
         }
     }
 
+
+    // Set my computer name. Should this be configurable?
+    compName = "wfview";
+
+}
+
+void udpHandler::init()
+{
     udpBase::init(); // Perform UDP socket initialization.
 
     // Connect socket to my dataReceived function.
@@ -60,17 +68,18 @@ udpHandler::udpHandler(QString ip, quint16 controlPort, quint16 civPort, quint16
     /*
         Connect various timers
     */
-    connect(&tokenTimer, &QTimer::timeout, this, std::bind(&udpHandler::sendToken, this, 0x05));
-    connect(&areYouThereTimer, &QTimer::timeout, this, QOverload<>::of(&udpHandler::sendAreYouThere));
-    connect(&pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
-    connect(&idleTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, true, 0, 0));
+    tokenTimer = new QTimer();
+    areYouThereTimer = new QTimer();
+    pingTimer = new QTimer();
+    idleTimer = new QTimer();
+
+    connect(tokenTimer, &QTimer::timeout, this, std::bind(&udpHandler::sendToken, this, 0x05));
+    connect(areYouThereTimer, &QTimer::timeout, this, QOverload<>::of(&udpHandler::sendAreYouThere));
+    connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
+    connect(idleTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, true, 0, 0));
 
     // Start sending are you there packets - will be stopped once "I am here" received
-    areYouThereTimer.start(AREYOUTHERE_PERIOD);
-
-    // Set my computer name. Should this be configurable?
-    compName = "wfview";
-
+    areYouThereTimer->start(AREYOUTHERE_PERIOD);
 }
 
 udpHandler::~udpHandler()
@@ -120,11 +129,11 @@ void udpHandler::dataReceived()
                 control_packet_t in = (control_packet_t)r.constData();
                 if (in->type == 0x04) {
                     // If timer is active, stop it as they are obviously there!
-                    if (areYouThereTimer.isActive()) {
-                        areYouThereTimer.stop();
+                    if (areYouThereTimer->isActive()) {
+                        areYouThereTimer->stop();
                         // send ping packets every second
-                        pingTimer.start(PING_PERIOD);
-                        idleTimer.start(IDLE_PERIOD);
+                        pingTimer->start(PING_PERIOD);
+                        idleTimer->start(IDLE_PERIOD);
                     }
                 }
                 // This is "I am ready" in response to "Are you ready" so send login.
@@ -166,7 +175,7 @@ void udpHandler::dataReceived()
                     if (in->response == 0x0000)
                     {
                         qDebug() << this->metaObject()->className() << ": Token renewal successful";
-                        tokenTimer.start(TOKEN_RENEWAL);
+                        tokenTimer->start(TOKEN_RENEWAL);
                         gotAuthOK = true;
                         if (!streamOpened)
                         {
@@ -178,8 +187,10 @@ void udpHandler::dataReceived()
                     {
                         qWarning() << this->metaObject()->className() << ": Radio rejected token renewal, performing login";
                         remoteId = in->sentid;
-                        isAuthenticated = false;
-                        sendLogin(); // Try sending login packet (didn't seem to work?)
+                        tokRequest = in->tokrequest;
+                        token = in->token;
+                        // Got new token response
+                        sendToken(0x02); // Update it.
                     }
                     else
                     {
@@ -200,6 +211,17 @@ void udpHandler::dataReceived()
                 {
                     emit haveNetworkError(radioIP.toString(), "Got radio disconnected.");
                     qDebug() << this->metaObject()->className() << ": Got radio disconnected.";
+                    if (streamOpened) {
+                        // Close stream connections but keep connection open to the radio.
+                        if (audio != Q_NULLPTR) {
+                            delete audio;
+                        }
+
+                        if (civ != Q_NULLPTR) {
+                            delete civ;
+                        }
+                        streamOpened = false;
+                    }
                 }
                 break;
             }
@@ -220,7 +242,7 @@ void udpHandler::dataReceived()
                         qDebug() << this->metaObject()->className() << ": Received matching token response to our request";
                         token = in->token;
                         sendToken(0x02);
-                        tokenTimer.start(TOKEN_RENEWAL); // Start token request timer
+                        tokenTimer->start(TOKEN_RENEWAL); // Start token request timer
                         isAuthenticated = true;
                     }
                     else
@@ -402,7 +424,7 @@ void udpHandler::sendToken(uint8_t magic)
 
     authInnerSendSeq++;
     sendTrackedPacket(QByteArray::fromRawData((const char *)p.packet, sizeof(p)));
-    tokenTimer.start(100); // Set 100ms timer for retry (this will be cancelled if a response is received)
+    tokenTimer->start(100); // Set 100ms timer for retry (this will be cancelled if a response is received)
     return;
 }
 
@@ -424,13 +446,16 @@ udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort)
     /*
         Connect various timers
     */
-    connect(&pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
-    connect(&idleTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, true, 0, 0));
+    pingTimer = new QTimer();
+    idleTimer = new QTimer();
+
+    connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
+    connect(idleTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, true, 0, 0));
 
     // send ping packets every 100 ms (maybe change to less frequent?)
-    pingTimer.start(PING_PERIOD);
+    pingTimer->start(PING_PERIOD);
     // Send idle packets every 100ms, this timer will be reset everytime a non-idle packet is sent.
-    idleTimer.start(IDLE_PERIOD);
+    idleTimer->start(IDLE_PERIOD);
 }
 
 udpCivData::~udpCivData() {
@@ -608,23 +633,25 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     sendControl(false, 0x03, 0x00); // First connect packet
 
-    connect(&pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
-    pingTimer.start(PING_PERIOD); // send ping packets every 100ms
-    txAudioTimer.setTimerType(Qt::PreciseTimer);
-    connect(&txAudioTimer, &QTimer::timeout, this, &udpAudio::sendTxAudio);
-    txAudioTimer.start(TXAUDIO_PERIOD);
+    pingTimer = new QTimer();
+    connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
+    pingTimer->start(PING_PERIOD); // send ping packets every 100ms
 
     emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, bufferSize, txIsUlawCodec, true);
     emit setupRxAudio(rxNumSamples, rxChannelCount, rxSampleRate, bufferSize, rxIsUlawCodec, false);
 
-
+    txAudioTimer = new QTimer();
+    txAudioTimer->setTimerType(Qt::PreciseTimer);
+    connect(txAudioTimer, &QTimer::timeout, this, &udpAudio::sendTxAudio);
+    txAudioTimer->start(TXAUDIO_PERIOD);
 }
 
 udpAudio::~udpAudio()
 {
-    if (txAudioTimer.isActive())
+    if (txAudioTimer != Q_NULLPTR)
     {
-        txAudioTimer.stop();
+        txAudioTimer->stop();
+        delete txAudioTimer;
     }
 
     if (rxAudioThread) {
@@ -643,11 +670,12 @@ udpAudio::~udpAudio()
 void udpAudio::sendTxAudio()
 {
 
-    if (txaudio->chunkAvailable) {
+    if (txaudio->isChunkAvailable()) {
         QByteArray audio;
         txaudio->getNextAudioChunk(audio);
         int counter = 1;
         int len = 0;
+ 
         while (len < audio.length()) {
             QByteArray partial = audio.mid(len, 1364);
             txaudio_packet p;
@@ -655,15 +683,9 @@ void udpAudio::sendTxAudio()
             p.len = sizeof(p)+partial.length();
             p.sentid = myId;
             p.rcvdid = remoteId;
-            if (counter % 2 == 0)
-            {
-                p.ident = 0x0680;
-            }
-            else {
-                p.ident = 0x0681;
-            }
+            p.ident = 0x0080; // TX audio is always this?
             p.datalen = (quint16)qToBigEndian((quint16)partial.length());
-            p.sendseq = (quint16)qToBigEndian(sendAudioSeq); // THIS IS BIG ENDIAN!
+            p.sendseq = (quint16)qToBigEndian((quint16)sendAudioSeq); // THIS IS BIG ENDIAN!
             QByteArray tx = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
             tx.append(partial);
             len = len + partial.length();
@@ -754,14 +776,19 @@ udpBase::~udpBase()
         udp->close();
         delete udp;
     }
-    if (pingTimer.isActive())
+    if (pingTimer != Q_NULLPTR)
     {
-        pingTimer.stop();
+        pingTimer->stop();
+        delete pingTimer;
     }
-    if (idleTimer.isActive())
+    if (idleTimer != Q_NULLPTR)
     {
-        idleTimer.stop();
+        idleTimer->stop();
+        delete idleTimer;
     }
+    pingTimer = Q_NULLPTR;
+    idleTimer = Q_NULLPTR;
+
 }
 
 // Base class!
@@ -908,9 +935,6 @@ void udpBase::sendControl(bool tracked=true, quint8 type=0, quint16 seq=0)
     else {
         sendTrackedPacket(QByteArray::fromRawData((const char*)p.packet, sizeof(p)));
     }
-    if (idleTimer.isActive()) {
-        idleTimer.start(IDLE_PERIOD); // Reset idle counter if it's running
-    }
     return;
 }
 
@@ -948,8 +972,8 @@ void udpBase::sendTrackedPacket(QByteArray d)
 
     QMutexLocker locker(&mutex);
     udp->writeDatagram(d, radioIP, port);
-    if (idleTimer.isActive()) {
-        idleTimer.start(IDLE_PERIOD); // Reset idle counter if it's running
+    if (idleTimer != Q_NULLPTR && idleTimer->isActive()) {
+        idleTimer->start(IDLE_PERIOD); // Reset idle counter if it's running
     }
     packetsSent++;
     return;

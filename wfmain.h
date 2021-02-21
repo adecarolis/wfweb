@@ -580,8 +580,8 @@ private:
     satelliteSetup *sat;
     udpServerSetup *srv;
 
-    udpServer *udp = Q_NULLPTR;
-    QThread *serverThread = Q_NULLPTR;
+    udpServer* udp = Q_NULLPTR;
+    QThread* serverThread = Q_NULLPTR;
 
     void bandStackBtnClick();
     bool waitingForBandStackRtn;

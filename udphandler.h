@@ -27,7 +27,7 @@
 #define TOKEN_RENEWAL 60000
 #define PING_PERIOD 100
 #define IDLE_PERIOD 100
-#define TXAUDIO_PERIOD 10
+#define TXAUDIO_PERIOD 5 
 #define AREYOUTHERE_PERIOD 500
 
 
@@ -85,9 +85,9 @@ public:
 	void sendTrackedPacket(QByteArray d);
 	void purgeOldEntries();
 
-	QTimer areYouThereTimer; // Send are-you-there packets every second until a response is received.
-	QTimer pingTimer; // Start sending pings immediately.
-	QTimer idleTimer; // Start watchdog once we are connected.
+	QTimer* areYouThereTimer = Q_NULLPTR; // Send are-you-there packets every second until a response is received.
+	QTimer* pingTimer = Q_NULLPTR; // Start sending pings immediately.
+	QTimer* idleTimer = Q_NULLPTR; // Start watchdog once we are connected.
 
 	QDateTime lastPingSentTime;
 	uint16_t pingSendSeq = 0;
@@ -169,7 +169,7 @@ private:
 	audioHandler* txaudio=Q_NULLPTR;
 	QThread* txAudioThread=Q_NULLPTR;
 
-	QTimer txAudioTimer;
+	QTimer* txAudioTimer=Q_NULLPTR;
 
 };
 
@@ -195,7 +195,7 @@ public slots:
 	void receiveDataFromUserToRig(QByteArray); // This slot will send data on to 
 	void receiveFromCivStream(QByteArray);
 	void changeBufferSize(quint16 value);
-
+	void init();
 
 signals:
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
@@ -205,7 +205,6 @@ signals:
 
 private:
 	
-
 	void sendAreYouThere();
 
 	void dataReceived();
@@ -244,8 +243,8 @@ private:
 	char identa;
 	quint32 identb;
 
-	QTimer tokenTimer;
-	QTimer areYouThereTimer;
+	QTimer* tokenTimer = Q_NULLPTR;
+	QTimer* areYouThereTimer = Q_NULLPTR;
 
 	bool highBandwidthConnection = false;
 };

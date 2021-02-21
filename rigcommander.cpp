@@ -86,7 +86,22 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, quint16 cport
     this->password = password;
     */
     if (udp == Q_NULLPTR) {
-        udp = new udpHandler(ip, cport, sport, aport, username, password,buffer,rxsample,rxcodec,txsample,txcodec);
+
+        udp = new udpHandler(ip, cport, sport, aport, username, password, buffer, rxsample, rxcodec, txsample, txcodec);
+
+        udpHandlerThread = new QThread(this);
+
+        udp->moveToThread(udpHandlerThread);
+
+        connect(this, SIGNAL(initUdpHandler()), udp, SLOT(init()));
+        connect(udpHandlerThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
+
+
+        udpHandlerThread->start();
+
+        emit initUdpHandler();
+
+
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
 
         // data from the program to the comm port:
@@ -113,8 +128,9 @@ void rigCommander::closeComm()
     }
     comm = Q_NULLPTR;
 
-    if (udp != Q_NULLPTR) {
-        delete udp;
+    if (udpHandlerThread != Q_NULLPTR) {
+        udpHandlerThread->quit();
+        udpHandlerThread->wait();
     }
     udp = Q_NULLPTR;
 }
@@ -1438,7 +1454,7 @@ void rigCommander::getMeters(bool transmitting)
 {
     // Nice function to just grab every meter
     qDebug() << __func__ << ": grabbing all metering for mode " << (transmitting==true? "transmitting":"receiving") ;
-
+    
     if(transmitting)
     {
         getRFPowerMeter();
@@ -1452,6 +1468,7 @@ void rigCommander::getMeters(bool transmitting)
 
     getVdMeter();
     getIDMeter();
+    
 }
 
 void rigCommander::getSMeter()
