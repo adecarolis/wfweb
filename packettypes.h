@@ -169,19 +169,19 @@ typedef union login_response_packet {
         quint16 seq;                // 0x06
         quint32 sentid;             // 0x08 
         quint32 rcvdid;             // 0x0c
-        char unuseda[3];          // 0x10
+        char unuseda[3];            // 0x10
         quint16 code;               // 0x13
         quint16 res;                // 0x15
         quint16 innerseq;           // 0x17
-        char unusedc;             // 0x19
+        char unusedc;               // 0x19
         quint16 tokrequest;         // 0x1a
         quint32 token;              // 0x1c 
         quint16 authstartid;        // 0x20
-        char unusedd[14];         // 0x22
+        char unusedd[14];           // 0x22
         quint32 error;              // 0x30
-        char unusede[12];         // 0x34
-        char connection[16];      // 0x40
-        char unusedf[16];         // 0x50
+        char unusede[12];           // 0x34
+        char connection[16];        // 0x40
+        char unusedf[16];           // 0x50
     };
     char packet[LOGIN_RESPONSE_SIZE];
 } *login_response_packet_t;
@@ -195,18 +195,18 @@ typedef union login_packet {
         quint16 seq;                // 0x06
         quint32 sentid;             // 0x08 
         quint32 rcvdid;             // 0x0c
-        char unuseda[3];          // 0x10
+        char unuseda[3];            // 0x10
         quint16 code;               // 0x13
         quint16 res;                // 0x15
         quint16 innerseq;           // 0x17
-        char unusedb;             // 0x19
+        char unusedb;               // 0x19
         quint16 tokrequest;         // 0x1a
         quint32 token;              // 0x1c 
-        char unusedc[32];         // 0x20
-        char username[16];        // 0x40
-        char password[16];        // 0x50
-        char name[16];            // 0x60
-        char unusedf[16];         // 0x70
+        char unusedc[32];           // 0x20
+        char username[16];          // 0x40
+        char password[16];          // 0x50
+        char name[16];              // 0x60
+        char unusedf[16];           // 0x70
     };
     char packet[LOGIN_SIZE];
 } *login_packet_t;
@@ -244,7 +244,7 @@ typedef union conninfo_packet {
                 char unusedj[8];          // 0x78
             };
             struct { // Send
-                char ident[16];       // 0x60 // Not sure what this is?
+                char username[16];    // 0x60 
                 char rxenable;        // 0x70
                 char txenable;        // 0x71
                 char rxcodec;         // 0x72
@@ -253,9 +253,8 @@ typedef union conninfo_packet {
                 quint32 txsample;     // 0x78
                 quint32 civport;      // 0x7c
                 quint32 audioport;    // 0x80
-                quint32 txbuffer;     // 0x85
-                char    unusedk;      // 0x84
-                char unusedl[7];      // 0x89
+                quint32 txbuffer;     // 0x84
+                char unusedl[8];      // 0x88
             };
         };
     };

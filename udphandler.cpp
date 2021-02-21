@@ -352,7 +352,7 @@ void udpHandler::sendRequestStream()
     p.txenable = 1;
     p.rxcodec = rxCodec;
     p.txcodec = txCodec;
-    memcpy(&p.ident, QByteArrayLiteral("&96D7").constData(), 5);
+    memcpy(&p.username, usernameEncoded.constData(), usernameEncoded.length());
     p.rxsample = qToBigEndian((quint32)rxSampleRate);
     p.txsample = qToBigEndian((quint32)txSampleRate);
     p.civport = qToBigEndian((quint32)civPort);

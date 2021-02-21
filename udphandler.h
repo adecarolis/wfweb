@@ -243,6 +243,9 @@ private:
 	char identa;
 	quint32 identb;
 
+	QByteArray usernameEncoded;
+	QByteArray passwordEncoded;
+
 	QTimer* tokenTimer = Q_NULLPTR;
 	QTimer* areYouThereTimer = Q_NULLPTR;
 
