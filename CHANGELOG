@@ -1,5 +1,11 @@
 
 # CHANGELOG
+- 20210221	added working s-meter
+		added working power meter
+		added visual studio 2019 solution (windows builds)
+		changed packet handling, WIP
+		rigtype stays in view on status bar
+		added audio input gain slider
 
 - 20210218
 		added SQ slider
