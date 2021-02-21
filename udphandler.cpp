@@ -69,13 +69,13 @@ udpHandler::udpHandler(QString ip, quint16 controlPort, quint16 civPort, quint16
     areYouThereTimer.start(AREYOUTHERE_PERIOD);
 
     // Set my computer name. Should this be configurable?
-    compName = QString("wfview").toUtf8();
+    compName = "wfview";
 
 }
 
 udpHandler::~udpHandler()
 {
-    if (isAuthenticated) {
+    if (streamOpened) {
         if (audio != Q_NULLPTR) {
             delete audio;
         }
@@ -83,7 +83,6 @@ udpHandler::~udpHandler()
         if (civ != Q_NULLPTR) {
             delete civ;
         }
-
         qDebug() << "Sending token removal packet";
         sendToken(0x01);
     }
@@ -235,52 +234,50 @@ void udpHandler::dataReceived()
                     highBandwidthConnection = true;
                 }
     
-                qDebug() << this->metaObject()->className() << ": Detected connection speed " << QString::fromUtf8(parseNullTerminatedString(r, 0x40));
+                qDebug() << this->metaObject()->className() << ": Detected connection speed " << in->connection;
                 break;
             }
             case (CONNINFO_SIZE):
             {
                 conninfo_packet_t in = (conninfo_packet_t)r.constData();
     
-                if (!streamOpened && !in->ready)
+                devName = in->name;
+                QHostAddress ip = QHostAddress(qToBigEndian(in->ipaddress));
+                if (!streamOpened && in->busy)
                 {
-                    devName = parseNullTerminatedString(in->computer,0x00);
-                    QHostAddress ip = QHostAddress(in->ipaddress);
-                    if (!ip.isEqual(QHostAddress("0.0.0.0")) && parseNullTerminatedString(r, 0x64) != compName) //  || ip != localIP ) // TODO: More testing of IP address detection code!
+                    if (strcmp(in->computer,compName.toLocal8Bit())) 
                     {
-                        emit haveNetworkStatus(QString::fromUtf8(devName) + "in use by: " + QString::fromUtf8(parseNullTerminatedString(r, 0x64)) + " (" + ip.toString() + ")");
+                        emit haveNetworkStatus(devName + " in use by: " + in->computer + " (" + ip.toString() + ")");
                         sendControl(false, 0x00, in->seq); // Respond with an idle
                     }
                     else {
-                        emit haveNetworkStatus(QString::fromUtf8(devName) + " available");
+                        civ = new udpCivData(localIP, radioIP, civPort);
+                        audio = new udpAudio(localIP, radioIP, audioPort, rxBufferSize, rxSampleRate, rxCodec, txSampleRate, txCodec);
 
-                        identa = in->identa;
-                        identb = in->identb;
+                        QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
+                        QObject::connect(this, SIGNAL(haveChangeBufferSize(quint16)), audio, SLOT(changeBufferSize(quint16)));
 
-                        sendRequestStream();
+                        streamOpened = true;
+
+                        emit haveNetworkStatus(devName);
+
+                        qDebug() << this->metaObject()->className() << "Got serial and audio request success, device name: " << devName;
+
+                        // Stuff can change in the meantime because of a previous login...
+                        remoteId = in->sentid;
+                        myId = in->rcvdid;
+                        tokRequest = in->tokrequest;
+                        token = in->token;
                     }
                 }
-                else if (!streamOpened && in->ready)
+                else if (!streamOpened && !in->busy)
                 {
-                    devName = parseNullTerminatedString(in->computer, 0);
-    
-                    civ = new udpCivData(localIP, radioIP, civPort);
-                    audio = new udpAudio(localIP, radioIP, audioPort, rxBufferSize, rxSampleRate, rxCodec, txSampleRate, txCodec);
-    
-                    QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
-                    QObject::connect(this, SIGNAL(haveChangeBufferSize(quint16)), audio, SLOT(changeBufferSize(quint16)));
-    
-                    streamOpened = true;
-    
-                    emit haveNetworkStatus(QString::fromUtf8(devName));
-    
-                    qDebug() << this->metaObject()->className() << "Got serial and audio request success, device name: " << QString::fromUtf8(devName);
-    
-                    // Stuff can change in the meantime because of a previous login...
-                    remoteId = in->sentid;
-                    myId = in->rcvdid;
-                    tokRequest = in->tokrequest;
-                    token = in->token;
+                    emit haveNetworkStatus(devName + " available");
+
+                    identa = in->identa;
+                    identb = in->identb;
+
+                    sendRequestStream();
                 }
                 break;
             }
@@ -288,12 +285,12 @@ void udpHandler::dataReceived()
             case (CAPABILITIES_SIZE):
             {
                 capabilities_packet_t in = (capabilities_packet_t)r.constData();
-                audioType = parseNullTerminatedString(in->audio, 0);
-                devName = parseNullTerminatedString(in->name, 0);
+                audioType = in->audio;
+                devName = in->name;
                 //replyId = r.mid(0x42, 16);
                 qDebug() << this->metaObject()->className() << "Received radio capabilities, Name:" <<
-                    QString::fromUtf8(devName) << " Audio:" <<
-                    QString::fromUtf8(audioType);
+                    devName << " Audio:" <<
+                    audioType;
     
                 break;
             }
@@ -328,7 +325,7 @@ void udpHandler::sendRequestStream()
     p.innerseq = authInnerSendSeq;
     p.tokrequest = tokRequest;
     p.token = token;
-    memcpy(&p.name, devName.constData(), devName.length());
+    memcpy(&p.name, devName.toLocal8Bit().constData(), devName.length());
     p.rxenable = 1;
     p.txenable = 1;
     p.rxcodec = rxCodec;
@@ -381,7 +378,7 @@ void udpHandler::sendLogin() // Only used on control stream.
     p.tokrequest = tokRequest;
     memcpy(p.username, usernameEncoded.constData(), usernameEncoded.length());
     memcpy(p.password, passwordEncoded.constData(), passwordEncoded.length());
-    memcpy(p.name, compName.constData(), compName.length());
+    memcpy(p.name, compName.toLocal8Bit().constData(), compName.length());
 
     authInnerSendSeq++;
     sendTrackedPacket(QByteArray::fromRawData((const char*)p.packet, sizeof(p)));
@@ -469,18 +466,18 @@ void udpCivData::sendOpenClose(bool close)
         magic = 0x00;
     }
 
-    quint8 p[OPENCLOSE_SIZE];
-    memset(p, 0x0, sizeof(p));
-    qToLittleEndian((quint16)sizeof(p), p + 0x00);
-    qToLittleEndian(myId, p + 0x08);
-    qToLittleEndian(remoteId, p + 0x0c);
-    memcpy(p + 0x10, QByteArrayLiteral("\xc0\x01").constData(), 2);
-    qToLittleEndian(sendSeqB, p + 0x13);
-    p[0x15] = magic;
+    openclose_packet p;
+    memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
+    p.len = sizeof(p);
+    p.sentid = myId;
+    p.rcvdid = remoteId;
+    p.data = 0x01c0; // Not sure what other values are available:
+    p.sendseq = qToBigEndian(sendSeqB);
+    p.magic = magic;
 
     sendSeqB++;
 
-    sendTrackedPacket(QByteArray::fromRawData((const char*)p, sizeof(p)));
+    sendTrackedPacket(QByteArray::fromRawData((const char*)p.packet, sizeof(p)));
     return;
 }
 
@@ -613,7 +610,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     connect(&pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
     pingTimer.start(PING_PERIOD); // send ping packets every 100ms
-
+    txAudioTimer.setTimerType(Qt::PreciseTimer);
     connect(&txAudioTimer, &QTimer::timeout, this, &udpAudio::sendTxAudio);
     txAudioTimer.start(TXAUDIO_PERIOD);
 
@@ -987,8 +984,6 @@ void passcode(QString in, QByteArray& out)
 
     };
 
-    quint8* res = new quint8[16];
-    memset(res, 0, 16); // Make sure res buffer is empty!
     QByteArray ba = in.toLocal8Bit();
     uchar* ascii = (uchar*)ba.constData();
     for (int i = 0; i < in.length() && i < 16; i++)

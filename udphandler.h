@@ -234,10 +234,10 @@ private:
 	quint8 txCodec;
 
 	quint16 reauthInterval = 60000;
-	QByteArray devName;
-	QByteArray compName;
-	QByteArray audioType;
-	QByteArray replyId;
+	QString devName;
+	QString compName;
+	QString audioType;
+	//QByteArray replyId;
 	quint16 tokRequest;
 	quint32 token;
 	// These are for stream ident info.

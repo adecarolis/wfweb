@@ -35,6 +35,7 @@ typedef union control_packet {
 
 
 // 0x15 length ping packet 
+// Also used for the slightly different civ header packet.
 typedef union ping_packet {
     struct
     {
@@ -57,6 +58,24 @@ typedef union ping_packet {
     };
     char packet[PING_SIZE];
 } *ping_packet_t, * data_packet_t, data_packet;
+
+// 0x16 length open/close packet
+typedef union openclose_packet {
+    struct
+    {
+        quint32 len;        // 0x00
+        quint16 type;       // 0x04
+        quint16 seq;        // 0x06
+        quint32 sentid;     // 0x08
+        quint32 rcvdid;     // 0x0c
+        quint16 data;       // 0x10
+        char unused;        // 0x11
+        quint16 sendseq;    //0x13
+        char magic;         // 0x15
+
+    };
+    char packet[OPENCLOSE_SIZE];
+} *startstop_packet_t;
 
 
 // 0x18 length txaudio packet 
@@ -218,7 +237,7 @@ typedef union conninfo_packet {
         char unusedg[16];         // 0x50
         union { // This contains differences between the send/receive packet
             struct { // Receive
-                quint32 ready;            // 0x60
+                quint32 busy;            // 0x60
                 char computer[16];        // 0x64
                 char unusedi[16];         // 0x74
                 quint32 ipaddress;        // 0x84
