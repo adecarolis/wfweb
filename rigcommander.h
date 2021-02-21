@@ -15,7 +15,7 @@
 // note: using a define because switch case doesn't even work with const unsigned char. Surprised me.
 #define compCivAddr 0xE1
 
-enum duplexMode{
+enum duplexMode {
     dmSplitOff=0x00,
     dmSplitOn=0x01,
     dmSimplex=0x10,
@@ -24,6 +24,16 @@ enum duplexMode{
     dmDupRPS=0x13,
     dmDupAutoOn=0x26,
     dmDupAutoOff=0x36
+};
+
+enum meterKind {
+    meterS,
+    meterSWR,
+    meterPower,
+    meterALC,
+    meterComp,
+    meterVoltage,
+    meterCurrent
 };
 
 class rigCommander : public QObject
@@ -170,6 +180,7 @@ signals:
     void haveACCGain(unsigned char gain, unsigned char ab);
     void haveModSrcGain(rigInput input, unsigned char gain);
 
+    void haveMeter(meterKind meter, unsigned char level);
     void haveSMeter(unsigned char level);
     void haveRFMeter(unsigned char level);
     void haveSWRMeter(unsigned char);
