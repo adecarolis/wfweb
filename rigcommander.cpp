@@ -890,9 +890,9 @@ void rigCommander::parseLevels()
     // "INDEX: 00 01 02 03 04 "
     // "DATA:  14 02 00 78 fd "
 
-    if(payloadIn[0] = '\x14')
+
+    if(payloadIn[0] == '\x14')
     {
-        qDebug() <<__func__<< ": in payload[0] is 0x14";
         switch(payloadIn[1])
         {
             case '\x01':
@@ -901,7 +901,6 @@ void rigCommander::parseLevels()
                 break;
             case '\x02':
                 // RX RF Gain
-                qDebug() << __func__ << ": RF Gain: " << level;
                 emit haveRfGain(level);
                 break;
             case '\x03':
@@ -941,38 +940,37 @@ void rigCommander::parseLevels()
         return;
     }
 
-    if(payloadIn[0] = '\x15')
+    if(payloadIn[0] == '\x15')
     {
-        qDebug() <<__func__<< ": in payload[0] is 0x15";
         switch(payloadIn[1])
         {
             case '\x02':
                 // S-Meter
-                emit haveSMeter(level);
+                emit haveMeter(meterS, level);
                 break;
             case '\x11':
                 // RF-Power meter
-                emit haveRFMeter(level);
+                emit haveMeter(meterPower, level);
                 break;
             case '\x12':
                 // SWR
-                emit haveSWRMeter(level);
+                emit haveMeter(meterSWR, level);
                 break;
             case '\x13':
                 // ALC
-                emit haveALCMeter(level);
+                emit haveMeter(meterALC, level);
                 break;
             case '\x14':
                 // COMP dB reduction
-                emit haveCompMeter(level);
+                emit haveMeter(meterComp, level);
                 break;
             case '\x15':
                 // VD (12V)
-                emit haveVdMeter(level);
+                emit haveMeter(meterVoltage, level);
                 break;
             case '\x16':
                 // ID
-                emit haveIdMeter(level);
+                emit haveMeter(meterCurrent, level);
                 break;
 
             default:

@@ -181,6 +181,12 @@ private slots:
     void receiveLANGain(unsigned char level);
 
     // Meters:
+    void receiveMeter(meterKind meter, unsigned char level);
+//    void receiveSMeter(unsigned char level);
+//    void receivePowerMeter(unsigned char level);
+//    void receiveALCMeter(unsigned char level);
+//    void receiveCompMeter(unsigned char level);
+
 
     void receiveATUStatus(unsigned char atustatus);
     void receiveRigID(rigCapabilities rigCaps);
@@ -194,6 +200,7 @@ private slots:
     void handleWFScroll(QWheelEvent *);
     void handlePlotScroll(QWheelEvent *);
     void runDelayedCommand();
+    void runPeriodicCommands();
     void showStatusBarText(QString text);
     void serverConfigRequested(SERVERCONFIG conf, bool store);
 
@@ -432,6 +439,7 @@ private:
     QCPColorMapData * colorMapData;
     QCPColorScale * colorScale;
     QTimer * delayedCommand;
+    QTimer * periodicPollingTimer;
     QTimer * pttTimer;
 
 
@@ -464,9 +472,13 @@ private:
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
               cmdGetSql, cmdGetATUStatus, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
               cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
-              cmdGetCurrentModLevel};
+              cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdGetRxLevels, cmdGetTxLevels,
+              cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
+    QVector <cmds> periodicCmdQueue;
+    int pCmdNum = 0;
+
     freqMemory mem;
     struct colors {
         QColor Dark_PlotBackground;
@@ -540,6 +552,9 @@ private:
 
     void changeModLabelAndSlider(rigInput source);
 
+    void initPeriodicCommands();
+    void insertPeriodicCommand(cmds cmd, unsigned char priority);
+
 
     void changeMode(mode_kind mode);
     void changeMode(mode_kind mode, bool dataOn);
@@ -580,6 +595,7 @@ private:
 Q_DECLARE_METATYPE(struct rigCapabilities)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum duplexMode)
+Q_DECLARE_METATYPE(enum meterKind)
 
 
 #endif // WFMAIN_H

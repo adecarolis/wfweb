@@ -1509,7 +1509,11 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="modInputCombo"/>
+           <widget class="QComboBox" name="modInputCombo">
+            <property name="sizeAdjustPolicy">
+             <enum>QComboBox::AdjustToContents</enum>
+            </property>
+           </widget>
           </item>
           <item>
            <widget class="QLabel" name="label_29">
@@ -1519,7 +1523,11 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="modInputDataCombo"/>
+           <widget class="QComboBox" name="modInputDataCombo">
+            <property name="sizeAdjustPolicy">
+             <enum>QComboBox::AdjustToContents</enum>
+            </property>
+           </widget>
           </item>
           <item>
            <widget class="QCheckBox" name="tuneEnableChk">

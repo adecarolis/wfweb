@@ -272,11 +272,17 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     delayedCommand->setSingleShot(true);
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
 
+    periodicPollingTimer = new QTimer(this);
+    periodicPollingTimer->setInterval(100);
+    periodicPollingTimer->setSingleShot(false);
+    connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(runPeriodicCommands()));
+
     openRig();
 
     qRegisterMetaType<rigCapabilities>();
     qRegisterMetaType<duplexMode>();
     qRegisterMetaType<rigInput>();
+    qRegisterMetaType<meterKind>();
 
     connect(rig, SIGNAL(haveFrequency(double)), this, SLOT(receiveFreq(double)));
     connect(this, SIGNAL(getFrequency()), rig, SLOT(getFrequency()));
@@ -352,6 +358,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rig, SIGNAL(haveUSBGain(unsigned char)), this, SLOT(receiveUSBGain(unsigned char)));
     connect(rig, SIGNAL(haveLANGain(unsigned char)), this, SLOT(receiveLANGain(unsigned char)));
 
+    //Metering:
+    connect(this, SIGNAL(getMeters(bool)), rig, SLOT(getMeters(bool)));
+    connect(rig, SIGNAL(haveMeter(meterKind,unsigned char)), this, SLOT(receiveMeter(meterKind,unsigned char)));
+
+    // Rig and ATU info:
     connect(this, SIGNAL(startATU()), rig, SLOT(startATU()));
     connect(this, SIGNAL(setATU(bool)), rig, SLOT(setATU(bool)));
     connect(this, SIGNAL(getATUStatus()), rig, SLOT(getATUStatus()));
@@ -381,8 +392,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(wf, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handleWFScroll(QWheelEvent*)));
     connect(plot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handlePlotScroll(QWheelEvent*)));
 
-    // Metering
-    connect(this, SIGNAL(getMeters(bool)), rig, SLOT(getMeters(bool)));
 
     if (serverConfig.enabled && udp != Q_NULLPTR) {
         // Server
@@ -1253,6 +1262,7 @@ void wfmain:: getInitialRigState()
     cmdOutQue.append(cmdGetModDataInput);
 
     cmdOutQue.append(cmdNone);
+    cmdOutQue.append(cmdStartRegularPolling);
 
     if(rigCaps.hasATU)
     {
@@ -1372,6 +1382,136 @@ void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
     }
 }
 
+void wfmain::runPeriodicCommands()
+{
+    // These commands are run at a regular interval. They are to be used sparingly.
+    // For general radio state queries, use the runDelayedCommand() queue,
+    // accessed by the insertPeriodicCommands() function.
+
+    // To insert commands to this queue, uset the insertPeriodicCommands() function.
+
+    // TODO: Queue should not remove items, just hit a different item each time.
+    int nCmds = periodicCmdQueue.length();
+
+    cmds pcmd;
+
+    if(!periodicCmdQueue.isEmpty())
+    {
+        pcmd = periodicCmdQueue.at( (pCmdNum++)%nCmds );
+        switch(pcmd)
+        {
+            case cmdNone:
+                break;
+
+            // Metering commands:
+            case cmdGetRxLevels:
+            case cmdGetTxLevels:
+                emit getMeters(amTransmitting);
+                break;
+            case cmdGetSMeter:
+                break;
+            case cmdGetPowerMeter:
+                break;
+            case cmdGetALCMeter:
+                break;
+            case cmdGetCompMeter:
+                break;
+
+            case cmdGetRigID:
+                emit getRigID();
+                break;
+            case cmdGetRigCIV:
+                // if(!know rig civ already)
+                if(!haveRigCaps)
+                {
+                    emit getRigCIV();
+                    cmdOutQue.append(cmdGetRigCIV); // This way, we stay here until we get an answer.
+                }
+                break;
+            case cmdGetFreq:
+                emit getFrequency();
+                break;
+            case cmdGetMode:
+                emit getMode();
+                break;
+            case cmdGetDataMode:
+                // qDebug() << "Sending query for data mode";
+                emit getDataMode();
+                break;
+            case cmdSetDataModeOff:
+                emit setDataMode(false);
+                break;
+            case cmdSetDataModeOn:
+                emit setDataMode(true);
+                break;
+            case cmdGetModInput:
+                emit getModInput(false);
+                break;
+            case cmdGetModDataInput:
+                emit getModInput(true);
+                break;
+            case cmdGetCurrentModLevel:
+                emit getModInputLevel(currentModSrc);
+                emit getModInputLevel(currentModDataSrc);
+                break;
+            case cmdGetDuplexMode:
+                emit getDuplexMode();
+                break;
+            case cmdDispEnable:
+                emit scopeDisplayEnable();
+                break;
+            case cmdDispDisable:
+                emit scopeDisplayDisable();
+                break;
+            case cmdSpecOn:
+                emit spectOutputEnable();
+                break;
+            case cmdSpecOff:
+                emit spectOutputDisable();
+                break;
+            case cmdGetRxGain:
+                emit getRfGain();
+                break;
+            case cmdGetAfGain:
+                emit getAfGain();
+                break;
+            case cmdGetSql:
+                emit getSql();
+                break;
+            case cmdGetTxPower:
+                emit getTxPower();
+                break;
+            case cmdGetMicGain:
+                emit getMicGain();
+                break;
+            case cmdGetSpectrumRefLevel:
+                emit getSpectrumRefLevel();
+                break;
+            case cmdGetATUStatus:
+                emit getATUStatus();
+                break;
+            case cmdScopeCenterMode:
+                emit setScopeCenterMode(true);
+                break;
+            case cmdScopeFixedMode:
+                emit setScopeCenterMode(false);
+                break;
+            case cmdGetPTT:
+                emit getPTT();
+                break;
+            case cmdStartRegularPolling:
+                periodicPollingTimer->start();
+                break;
+            case cmdStopRegularPolling:
+                periodicPollingTimer->stop();
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+
 void wfmain::runDelayedCommand()
 {
     cmds qdCmd;
@@ -1480,6 +1620,12 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdGetPTT:
                 emit getPTT();
+                break;
+            case cmdStartRegularPolling:
+                periodicPollingTimer->start();
+                break;
+            case cmdStopRegularPolling:
+                periodicPollingTimer->stop();
                 break;
             default:
                 break;
@@ -1600,6 +1746,28 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // do all the initial grabs. For now, this hack of adding them here and there:
         cmdOutQue.append(cmdGetFreq);
         cmdOutQue.append(cmdGetMode);
+        initPeriodicCommands();
+    }
+}
+
+void wfmain::initPeriodicCommands()
+{
+    // This function places periodic polling commands into a queue.
+    // The commands are run using a timer,
+    // and the timer is started by the delayed command cmdStartPeriodicTimer.
+
+    insertPeriodicCommand(cmdGetRxLevels, 128);
+    insertPeriodicCommand(cmdGetTxLevels, 128);
+}
+
+void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
+{
+    // TODO: meaningful priority
+    if(priority < 10)
+    {
+        periodicCmdQueue.prepend(cmd);
+    } else {
+        periodicCmdQueue.append(cmd);
     }
 }
 
@@ -2878,6 +3046,31 @@ void wfmain::receiveUSBGain(unsigned char level)
 void wfmain::receiveLANGain(unsigned char level)
 {
     processModLevel(inputLAN, level);
+}
+
+void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
+{
+    switch(inMeter)
+    {
+        case meterS:
+            ui->levelIndicator->setValue((int)level);
+            break;
+        case meterSWR:
+            break;
+        case meterPower:
+            ui->levelIndicator->setValue((int)level);
+            break;
+        case meterALC:
+            break;
+        case meterComp:
+            break;
+        case meterCurrent:
+            break;
+        case meterVoltage:
+            break;
+        default:
+            break;
+    }
 }
 
 void wfmain::receiveCompLevel(unsigned char compLevel)
