@@ -168,6 +168,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     setDefaultColors(); // set of UI colors with defaults populated
     setDefPrefs(); // other default options
     loadSettings(); // Look for saved preferences
+    setTuningSteps(); // TODO: Combine into preferences
 
     // if setting for serial port is "auto" then...
 //    if(prefs.serialPortRadio == QString("auto"))
@@ -1170,50 +1171,106 @@ void wfmain::shortcutSlash()
     on_modeSelectCombo_activated( ui->modeSelectCombo->currentIndex() );
 }
 
+void wfmain::setTuningSteps()
+{
+    // TODO: interact with preferences, tuning step drop down box, and current operating mode
+    // Units are MHz:
+    tsPlusControl = 0.010;
+    tsPlus =        0.001;
+    tsPlusShift =   0.0001;
+    tsPage =        1.0;
+    tsPageShift =   0.5; // TODO, unbind this keystroke from the dial
+}
+
+double wfmain::roundFrequency(double frequency)
+{
+    return round(frequency*100000) / 100000.0;
+}
+
 void wfmain::shortcutMinus()
 {
-    ui->freqDial->setValue( ui->freqDial->value() - ui->freqDial->singleStep() );
+    if(freqLock) return;
+
+    freqMhz = roundFrequency(freqMhz - tsPlus);
+    knobFreqMhz = freqMhz;
+    emit setFrequency(freqMhz);
+    issueDelayedCommand(cmdGetFreq);
+    //ui->freqDial->setValue( ui->freqDial->value() - ui->freqDial->singleStep() );
 }
 
 void wfmain::shortcutPlus()
 {
-    ui->freqDial->setValue( ui->freqDial->value() + ui->freqDial->singleStep() );
+    if(freqLock) return;
+
+    knobFreqMhz = roundFrequency(freqMhz + tsPlus);
+    freqMhz = knobFreqMhz;
+    emit setFrequency(freqMhz);
+    issueDelayedCommand(cmdGetFreq);
+    //ui->freqDial->setValue( ui->freqDial->value() + ui->freqDial->singleStep() );
 }
 
 void wfmain::shortcutShiftMinus()
 {
-    ui->freqDial->setValue( ui->freqDial->value() - ui->freqDial->pageStep() );
+    if(freqLock) return;
+
+    freqMhz= roundFrequency(freqMhz-tsPlusShift);
+    knobFreqMhz = freqMhz;
+    emit setFrequency(freqMhz);
+    issueDelayedCommand(cmdGetFreq);
+    //ui->freqDial->setValue( ui->freqDial->value() - ui->freqDial->pageStep() );
 }
 
 void wfmain::shortcutShiftPlus()
 {
-    ui->freqDial->setValue( ui->freqDial->value() + ui->freqDial->pageStep() );
+    if(freqLock) return;
+
+    freqMhz= roundFrequency(freqMhz+tsPlusShift);
+    knobFreqMhz = freqMhz;
+    emit setFrequency(freqMhz);
+    issueDelayedCommand(cmdGetFreq);
+    //ui->freqDial->setValue( ui->freqDial->value() + ui->freqDial->pageStep() );
 }
 
 void wfmain::shortcutControlMinus()
 {
-    ui->freqDial->setValue( ui->freqDial->value() - ui->freqDial->pageStep() );
+    if(freqLock) return;
+
+    freqMhz= roundFrequency(freqMhz-tsPlusControl);
+    knobFreqMhz = freqMhz;
+    emit setFrequency(freqMhz);
+    issueDelayedCommand(cmdGetFreq);
+    //ui->freqDial->setValue( ui->freqDial->value() - ui->freqDial->pageStep() );
 }
 
 void wfmain::shortcutControlPlus()
 {
-    ui->freqDial->setValue( ui->freqDial->value() + ui->freqDial->pageStep() );
+    if(freqLock) return;
+
+    freqMhz= roundFrequency(freqMhz+tsPlusControl);
+    knobFreqMhz = freqMhz;
+    emit setFrequency(freqMhz);
+    issueDelayedCommand(cmdGetFreq);
+    //ui->freqDial->setValue( ui->freqDial->value() + ui->freqDial->pageStep() );
 }
 
 void wfmain::shortcutPageUp()
 {
-    emit setFrequency(this->freqMhz + 1.0);
-    cmdOutQue.append(cmdGetFreq);
-    //cmdOutQue.append(cmdGetMode); // maybe not really needed.
-    delayedCommand->start();
+    if(freqLock) return;
+
+    freqMhz = roundFrequency(freqMhz + tsPage);
+    knobFreqMhz = freqMhz;
+    emit setFrequency(freqMhz);
+    issueDelayedCommand(cmdGetFreq);
 }
 
 void wfmain::shortcutPageDown()
 {
-    emit setFrequency(this->freqMhz - 1.0);
-    cmdOutQue.append(cmdGetFreq);
-    //cmdOutQue.append(cmdGetMode); // maybe not really needed.
-    delayedCommand->start();
+    if(freqLock) return;
+
+    freqMhz = roundFrequency(freqMhz - tsPage);
+    knobFreqMhz = freqMhz;
+    emit setFrequency(freqMhz);
+    issueDelayedCommand(cmdGetFreq);
 }
 
 void wfmain::shortcutF()
@@ -2279,25 +2336,29 @@ void wfmain::on_modeSelectCombo_activated(int index)
     }
 }
 
-//void wfmain::on_freqDial_actionTriggered(int action)
-//{
-    //qDebug() << "Action: " << action; // "7" == changed?
-    // TODO: remove this
-//}
-
 void wfmain::on_freqDial_valueChanged(int value)
 {
-    // qDebug() << "Old value: " << oldFreqDialVal << " New value: " << value ;
+    int maxVal = ui->freqDial->maximum();
     double stepSize = 0.000100; // 100 Hz steps
     double newFreqMhz = 0;
     volatile int delta = 0;
-    int maxVal = ui->freqDial->maximum();
 
     int directPath = 0;
     int crossingPath = 0;
-    
+
     int distToMaxNew = 0;
     int distToMaxOld = 0;
+
+    if(freqLock)
+    {
+        ui->freqDial->blockSignals(true);
+        ui->freqDial->setValue(oldFreqDialVal);
+        ui->freqDial->blockSignals(false);
+        return;
+    }
+
+    // qDebug() << "Old value: " << oldFreqDialVal << " New value: " << value ;
+
     
     if(value == 0)
     {
@@ -2361,6 +2422,7 @@ void wfmain::on_freqDial_valueChanged(int value)
 
     ui->freqLabel->setText(QString("%1").arg(knobFreqMhz, 0, 'f'));
 
+    this->freqMhz = knobFreqMhz;
     emit setFrequency(newFreqMhz);
     //emit getFrequency();
 
@@ -3243,6 +3305,11 @@ void wfmain::processChangingCurrentModLevel(unsigned char level)
     //qDebug() << __func__ << ": setting current level: " << level;
 
     emit setModLevel(currentIn, level);
+}
+
+void wfmain::on_tuneLockChk_clicked(bool checked)
+{
+    freqLock = checked;
 }
 
 // --- DEBUG FUNCTION ---

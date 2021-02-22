@@ -373,6 +373,8 @@ private slots:
 
     void on_modInputDataCombo_activated(int index);
 
+    void on_tuneLockChk_clicked(bool checked);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -532,6 +534,8 @@ private:
     void setDefaultColors(); // populate with default values
     void useColors(); // set the plot up
     void setDefPrefs(); // populate default values to default prefs
+    void setTuningSteps();
+    double roundFrequency(double frequency);
 
     void changeTxBtn();
     void issueDelayedCommand(cmds cmd);
@@ -582,6 +586,17 @@ private:
     bool waitingForBandStackRtn;
     char bandStkBand;
     char bandStkRegCode;
+
+    bool freqLock;
+
+    float tsPlus;
+    float tsPlusShift;
+    float tsPlusControl;
+    float tsPage;
+    float tsPageShift;
+
+
+
 
     SERVERCONFIG serverConfig;
 
