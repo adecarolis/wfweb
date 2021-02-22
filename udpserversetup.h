@@ -2,6 +2,8 @@
 #define UDPSERVERSETUP_H
 
 #include <QDialog>
+#include <QComboBox>
+#include <QList>
 
 #include <QDebug>
 
@@ -44,6 +46,7 @@ signals:
 private:
     Ui::udpServerSetup* ui;
     void accept();
+    QList<QComboBox*> userTypes;
 };
 
 #endif // UDPSERVER_H

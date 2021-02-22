@@ -27,22 +27,38 @@ void udpServerSetup::receiveServerConfig(SERVERCONFIG conf)
     ui->audioPortText->setText(QString::number(conf.audioPort));
 
     int row = 0;
+  
     foreach  (SERVERUSER user, conf.users)
     {
-        if (ui->usersTable->rowCount() <= row) {
-            ui->usersTable->insertRow(ui->usersTable->rowCount());
+        if (user.username != "" && user.password != "")
+        {
+            if (ui->usersTable->rowCount() <= row) {
+                ui->usersTable->insertRow(ui->usersTable->rowCount());
+            }
+            ui->usersTable->setItem(row, 0, new QTableWidgetItem(user.username));
+            ui->usersTable->setItem(row, 1, new QTableWidgetItem(user.password));
+            QComboBox* comboBox = new QComboBox();
+            comboBox->insertItems(0, { "Admin User","Normal User","Read Only", "Receive Only" });
+            comboBox->setCurrentIndex(user.userType);
+            ui->usersTable->setCellWidget(row, 2, comboBox);
+            row++;
         }
-        ui->usersTable->setItem(row, 0, new QTableWidgetItem(user.username));
-        ui->usersTable->setItem(row, 1, new QTableWidgetItem(user.password));
-        row++;
     }
     // Delete any rows no longer needed
-    for (int count = row; count < ui->usersTable->rowCount(); count++) 
+
+    for (int count = row; count <= ui->usersTable->rowCount(); count++)
     {
-        ui->usersTable->removeRow(count);
+        if (count == conf.users.count()) {
+            ui->usersTable->insertRow(ui->usersTable->rowCount());
+            QComboBox* comboBox = new QComboBox();
+            comboBox->insertItems(0, { "Admin User","Normal User","Read Only", "Receive Only" });
+            ui->usersTable->setCellWidget(count, 2, comboBox);
+        }
+        else if (count > conf.users.count()) {
+            ui->usersTable->removeRow(count);
+        }
     }
-    ui->usersTable->insertRow(ui->usersTable->rowCount());
-    //ui->usersTable->setHorizontalHeaderItem(ui->usersTable->rowCount() - 1, new QTableWidgetItem("User " + QString::number(row + 1)));
+
 
 }
 
@@ -64,6 +80,8 @@ void udpServerSetup::accept()
             SERVERUSER user;
             user.username = ui->usersTable->item(row, 0)->text();
             user.password = ui->usersTable->item(row, 1)->text();
+            QComboBox* comboBox = (QComboBox*)ui->usersTable->cellWidget(row, 2);
+            user.userType = comboBox->currentIndex();
             config.users.append(user);
             
         }
@@ -82,6 +100,11 @@ void udpServerSetup::on_usersTable_cellClicked(int row, int col)
     qDebug() << "Clicked on " << row << "," << col;
     if (row == ui->usersTable->model()->rowCount() - 1 && ui->usersTable->item(row, 0) != NULL && ui->usersTable->item(row, 1) != NULL) {
         ui->usersTable->insertRow(ui->usersTable->rowCount());
+        QComboBox* comboBox = new QComboBox();
+        comboBox->insertItems(0, { "Admin User","Normal User","Read Only", "Receive Only" });
+        userTypes.append(comboBox);
+        ui->usersTable->setCellWidget(ui->usersTable->rowCount() - 1, 2, comboBox);
+
     }
 
 }

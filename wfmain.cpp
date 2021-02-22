@@ -254,7 +254,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->scopeBWCombo->insertItems(0, spans);
 
     edges << "1" << "2" << "3"; // yep
-    ui->scopeEdgeCombo->insertItems(0,edges);
+    ui->scopeEdgeCombo->insertItems(0, edges);
 
     ui->splitter->setHandleWidth(5);
 
@@ -827,6 +827,7 @@ void wfmain::loadSettings()
         SERVERUSER user;
         user.username = settings.value("ServerUsername_" + QString::number(f), "").toString();
         user.password = settings.value("ServerPassword_" + QString::number(f), "").toString();
+        user.userType = settings.value("ServerUserType_" + QString::number(f), 0).toInt();
         serverConfig.users.append(user);
     }
 
@@ -998,6 +999,7 @@ void wfmain::saveSettings()
     {
         settings.setValue("ServerUsername_" + QString::number(f), serverConfig.users[f].username);
         settings.setValue("ServerPassword_" + QString::number(f), serverConfig.users[f].password);
+        settings.setValue("ServerUserType_" + QString::number(f), serverConfig.users[f].userType);
     }
 
     settings.endGroup();
