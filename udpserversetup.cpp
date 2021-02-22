@@ -38,7 +38,7 @@ void udpServerSetup::receiveServerConfig(SERVERCONFIG conf)
             ui->usersTable->setItem(row, 0, new QTableWidgetItem(user.username));
             ui->usersTable->setItem(row, 1, new QTableWidgetItem(user.password));
             QComboBox* comboBox = new QComboBox();
-            comboBox->insertItems(0, { "Admin User","Normal User","Read Only", "Receive Only" });
+            comboBox->insertItems(0, { "Full User","Full with no TX","Monitor only" });
             comboBox->setCurrentIndex(user.userType);
             ui->usersTable->setCellWidget(row, 2, comboBox);
             row++;
@@ -51,7 +51,7 @@ void udpServerSetup::receiveServerConfig(SERVERCONFIG conf)
         if (count == conf.users.count()) {
             ui->usersTable->insertRow(ui->usersTable->rowCount());
             QComboBox* comboBox = new QComboBox();
-            comboBox->insertItems(0, { "Admin User","Normal User","Read Only", "Receive Only" });
+            comboBox->insertItems(0, { "Full User","Full with no TX","Monitor only" });
             ui->usersTable->setCellWidget(count, 2, comboBox);
         }
         else if (count > conf.users.count()) {
@@ -101,7 +101,7 @@ void udpServerSetup::on_usersTable_cellClicked(int row, int col)
     if (row == ui->usersTable->model()->rowCount() - 1 && ui->usersTable->item(row, 0) != NULL && ui->usersTable->item(row, 1) != NULL) {
         ui->usersTable->insertRow(ui->usersTable->rowCount());
         QComboBox* comboBox = new QComboBox();
-        comboBox->insertItems(0, { "Admin User","Normal User","Read Only", "Receive Only" });
+        comboBox->insertItems(0, { "Full User","Full with no TX","Monitor only" });
         userTypes.append(comboBox);
         ui->usersTable->setCellWidget(ui->usersTable->rowCount() - 1, 2, comboBox);
 
