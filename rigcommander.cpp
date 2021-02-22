@@ -142,7 +142,7 @@ void rigCommander::setup()
     spectSeqMax = 0; // this is now set after rig ID determined
     payloadPrefix = QByteArray("\xFE\xFE");
     payloadPrefix.append(civAddr);
-    payloadPrefix.append(compCivAddr);
+    payloadPrefix.append((char)compCivAddr);
 
     payloadSuffix = QByteArray("\xFD");
 
@@ -183,7 +183,7 @@ void rigCommander::findRigs()
     QByteArray data2;
     //data.setRawData("\xFE\xFE\xa2", 3);
     data.setRawData("\xFE\xFE\x00", 3);
-    data.append(compCivAddr); // wfview's address, 0xE1
+    data.append((char)compCivAddr); // wfview's address, 0xE1
     data2.setRawData("\x19\x00", 2); // get rig ID
     data.append(data2);
     data.append(payloadSuffix);
@@ -2152,7 +2152,7 @@ void rigCommander::determineRigCaps()
         this->civAddr = incomingCIVAddr; // Override and use immediately.
         payloadPrefix = QByteArray("\xFE\xFE");
         payloadPrefix.append(civAddr);
-        payloadPrefix.append(compCivAddr);
+        payloadPrefix.append((char)compCivAddr);
         // if there is a compile-time error, remove the following line, the "hex" part is the issue:
         qDebug() << "Using incomingCIVAddr: (int): " << this->civAddr << " hex: " << hex << this->civAddr;
         emit discoveredRigID(rigCaps);
