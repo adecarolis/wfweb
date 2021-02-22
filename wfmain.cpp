@@ -1175,11 +1175,11 @@ void wfmain::setTuningSteps()
 {
     // TODO: interact with preferences, tuning step drop down box, and current operating mode
     // Units are MHz:
-    tsPlusControl = 0.010;
-    tsPlus =        0.001;
-    tsPlusShift =   0.0001;
-    tsPage =        1.0;
-    tsPageShift =   0.5; // TODO, unbind this keystroke from the dial
+    tsPlusControl = 0.010f;
+    tsPlus =        0.001f;
+    tsPlusShift =   0.0001f;
+    tsPage =        1.0f;
+    tsPageShift =   0.5f; // TODO, unbind this keystroke from the dial
 }
 
 double wfmain::roundFrequency(double frequency)
