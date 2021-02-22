@@ -1,5 +1,8 @@
 
 # CHANGELOG
+
+- 20210222      f-lock works now
+
 - 20210221	added working s-meter
 		added working power meter
 		added visual studio 2019 solution (windows builds)
