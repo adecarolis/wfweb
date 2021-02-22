@@ -2018,7 +2018,7 @@ void wfmain::on_stopBtn_clicked()
 
 void wfmain::receiveMode(unsigned char mode, unsigned char filter)
 {
-    qDebug() << __func__ << "Received mode " << mode << " current mode: " << currentModeIndex;
+    //qDebug() << __func__ << "Received mode " << mode << " current mode: " << currentModeIndex;
 
     bool found=false;
 
@@ -2043,7 +2043,6 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
     if(!found)
     {
         qDebug() << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
-
     }
 
     if( (filter) && (filter < 4)){
@@ -2589,7 +2588,7 @@ void wfmain::on_afGainSlider_valueChanged(int value)
 
 void wfmain::receiveRfGain(unsigned char level)
 {
-    qDebug() << "Receive RF  level of" << (int)level << " = " << 100*level/255.0 << "%";
+    // qDebug() << "Receive RF  level of" << (int)level << " = " << 100*level/255.0 << "%";
     ui->rfGainSlider->blockSignals(true);
     ui->rfGainSlider->setValue(level);
     ui->rfGainSlider->blockSignals(false);
@@ -3250,7 +3249,7 @@ void wfmain::processChangingCurrentModLevel(unsigned char level)
     } else {
         currentIn = currentModSrc;
     }
-    qDebug() << __func__ << ": setting current level: " << level;
+    //qDebug() << __func__ << ": setting current level: " << level;
 
     emit setModLevel(currentIn, level);
 }

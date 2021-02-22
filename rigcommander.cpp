@@ -1438,7 +1438,6 @@ void rigCommander::getAntiVoxGain()
 void rigCommander::getLevels()
 {
     // Function to grab all levels
-    qDebug() << __func__ << ": grabbing all levels supported.";
     getRfGain(); //0x02
     getAfGain(); // 0x01
     getSql(); // 0x03
@@ -1453,7 +1452,6 @@ void rigCommander::getLevels()
 void rigCommander::getMeters(bool transmitting)
 {
     // Nice function to just grab every meter
-    qDebug() << __func__ << ": grabbing all metering for mode " << (transmitting==true? "transmitting":"receiving") ;
     
     if(transmitting)
     {
