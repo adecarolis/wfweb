@@ -2005,16 +2005,7 @@ void wfmain::on_scopeEnableWFBtn_clicked(bool checked)
     }
 }
 
-void wfmain::on_startBtn_clicked()
-{
-    emit spectOutputEnable();
-}
 
-void wfmain::on_stopBtn_clicked()
-{
-    emit spectOutputDisable();
-    //emit scopeDisplayDisable();
-}
 
 void wfmain::receiveMode(unsigned char mode, unsigned char filter)
 {
@@ -2517,11 +2508,6 @@ void wfmain::on_aboutBtn_clicked()
     msgBox.setText(aboutText);
     msgBox.exec();
 
-}
-
-void wfmain::on_aboutQtBtn_clicked()
-{
-    QMessageBox::aboutQt(this, "wfview");
 }
 
 void wfmain::on_fStoBtn_clicked()
@@ -3057,17 +3043,22 @@ void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
             ui->levelIndicator->setValue((int)level);
             break;
         case meterSWR:
+            //ui->levelIndicator->setValue((int)level);
             break;
         case meterPower:
             ui->levelIndicator->setValue((int)level);
             break;
         case meterALC:
+            //ui->levelIndicator->setValue((int)level);
             break;
         case meterComp:
+            //ui->levelIndicator->setValue((int)level);
             break;
         case meterCurrent:
+            //ui->levelIndicator->setValue((int)level);
             break;
         case meterVoltage:
+            //ui->levelIndicator->setValue((int)level);
             break;
         default:
             break;

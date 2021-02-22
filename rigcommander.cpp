@@ -819,7 +819,6 @@ void rigCommander::parseCommand()
             this->parseMode();
             break;
         case '\x0F':
-            qDebug() << "Received duplex mode: " << (unsigned char)payloadIn[1];
             emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
             break;
         case '\x14':

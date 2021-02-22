@@ -151,7 +151,6 @@ private slots:
 
     void handlePttLimit(); // hit at 3 min transmit length
 
-    void on_startBtn_clicked();
     void receiveCommReady();
     void receiveFreq(double);
     void receiveMode(unsigned char mode, unsigned char filter);
@@ -209,8 +208,6 @@ private slots:
     // void on_getModeBtn_clicked();
 
     // void on_debugBtn_clicked();
-
-    void on_stopBtn_clicked();
 
     void on_clearPeakBtn_clicked();
 
@@ -282,8 +279,6 @@ private slots:
     void on_bandGenbtn_clicked();
 
     void on_aboutBtn_clicked();
-
-    void on_aboutQtBtn_clicked();
 
     void on_fStoBtn_clicked();
 
