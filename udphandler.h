@@ -9,6 +9,7 @@
 #include <QMutex>
 #include <QDateTime>
 #include <QByteArray>
+#include <QVector>
 
 // Allow easy endian-ness conversions
 #include <QtEndian>
@@ -44,7 +45,9 @@ public:
 	void init();
 
 	void dataReceived(QByteArray r); 
-	void sendPing(); // Periodic type 0x07 ping packet sending
+	void sendPing();
+	void sendRetransmitRange(quint16 first, quint16 second, quint16 third);
+
 	void sendControl(bool tracked,quint8 id, quint16 seq);
 
 	QTime timeStarted;
@@ -56,7 +59,7 @@ public:
 	uint16_t innerSendSeq = 0x8304; // Not sure why?
 	uint16_t sendSeqB = 0;
 	uint16_t sendSeq = 1;
-	uint16_t lastReceivedSeq = 0;
+	uint16_t lastReceivedSeq = 1;
 	uint16_t pkt0SendSeq = 0;
 	uint16_t periodicSeq = 0;
 	quint64 latency = 0;
@@ -79,8 +82,9 @@ public:
 		QByteArray data;
 	};
 
-	QList <SEQBUFENTRY> txSeqBuf = QList<SEQBUFENTRY>();
-	std::vector< quint16 > rxSeqBuf;
+	QVector<SEQBUFENTRY> txSeqBuf = QVector<SEQBUFENTRY>();
+
+	QVector< quint16 > rxSeqBuf = QVector<quint16>();
 
 	void sendTrackedPacket(QByteArray d);
 	void purgeOldEntries();

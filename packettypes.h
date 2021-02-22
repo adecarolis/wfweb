@@ -9,7 +9,7 @@
 #define WATCHDOG_SIZE           0x14
 #define PING_SIZE               0x15
 #define OPENCLOSE_SIZE          0x16
-#define RETRANSMIT_SIZE         0x18
+#define RETRANSMIT_RANGE_SIZE   0x18
 #define TOKEN_SIZE              0x40
 #define STATUS_SIZE             0x50
 #define LOGIN_RESPONSE_SIZE     0x60
@@ -95,6 +95,23 @@ typedef union txaudio_packet {
     };
     char packet[TXAUDIO_SIZE];
 } *txaudio_packet_t;
+
+// 0x18 length retransmit_range packet 
+typedef union retransmit_range_packet {
+    struct
+    {
+        quint32 len;        // 0x00
+        quint16 type;       // 0x04
+        quint16 seq;        // 0x06
+        quint32 sentid;     // 0x08
+        quint32 rcvdid;     // 0x0c
+        quint16 first;      // 0x10
+        quint16 second;        // 0x12
+        quint16 third;      // 0x14
+        quint16 fourth;        // 0x16
+    };
+    char packet[RETRANSMIT_RANGE_SIZE];
+} *retransmit_range_packet_t;
 
 
 // 0x18 length txaudio packet 
