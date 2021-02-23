@@ -1,4 +1,5 @@
 #include "freqmemory.h"
+#include "logcategories.h"
 
 // Copytight 2017-2020 Elliott H. Liggett
 
@@ -60,6 +61,6 @@ void freqMemory::dumpMemory()
 {
     for(unsigned int p=0; p < numPresets; p++)
     {
-        qDebug() << "Index: " << p << " freq: " << presets[p].frequency << " Mode: " << presets[p].mode << " isSet: " << presets[p].isSet;
+        qDebug(logSystem()) << "Index: " << p << " freq: " << presets[p].frequency << " Mode: " << presets[p].mode << " isSet: " << presets[p].isSet;
     }
 }

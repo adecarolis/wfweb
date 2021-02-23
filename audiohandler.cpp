@@ -3,6 +3,7 @@
     but as the setup/handling if output (RX) and input (TX) devices is so similar I have combined them. 
 */
 #include "audiohandler.h"
+#include "logcategories.h"
 
 #define MULAW_BIAS 33
 #define MULAW_MAX 0x1fff
@@ -138,30 +139,30 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 
 bool audioHandler::setDevice(QAudioDeviceInfo deviceInfo)
 {
-    qDebug() << this->metaObject()->className() << ": setDevice() running :" << deviceInfo.deviceName();
+    qDebug(logAudio()) << this->metaObject()->className() << ": setDevice() running :" << deviceInfo.deviceName();
     if (!deviceInfo.isFormatSupported(format)) {
         if (deviceInfo.isNull())
         {
-            qDebug() << "No audio device was found. You probably need to install libqt5multimedia-plugins.";
+            qDebug(logAudio()) << "No audio device was found. You probably need to install libqt5multimedia-plugins.";
         }
         else {
-            qDebug() << "Audio Devices found: ";
+            qDebug(logAudio()) << "Audio Devices found: ";
             const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
             for (const QAudioDeviceInfo& deviceInfo : deviceInfos)
             {
-                qDebug() << "Device name: " << deviceInfo.deviceName();
-                qDebug() << "is null (probably not good):" << deviceInfo.isNull();
-                qDebug() << "channel count:" << deviceInfo.supportedChannelCounts();
-                qDebug() << "byte order:" << deviceInfo.supportedByteOrders();
-                qDebug() << "supported codecs:" << deviceInfo.supportedCodecs();
-                qDebug() << "sample rates:" << deviceInfo.supportedSampleRates();
-                qDebug() << "sample sizes:" << deviceInfo.supportedSampleSizes();
-                qDebug() << "sample types:" << deviceInfo.supportedSampleTypes();
+                qDebug(logAudio()) << "Device name: " << deviceInfo.deviceName();
+                qDebug(logAudio()) << "is null (probably not good):" << deviceInfo.isNull();
+                qDebug(logAudio()) << "channel count:" << deviceInfo.supportedChannelCounts();
+                qDebug(logAudio()) << "byte order:" << deviceInfo.supportedByteOrders();
+                qDebug(logAudio()) << "supported codecs:" << deviceInfo.supportedCodecs();
+                qDebug(logAudio()) << "sample rates:" << deviceInfo.supportedSampleRates();
+                qDebug(logAudio()) << "sample sizes:" << deviceInfo.supportedSampleSizes();
+                qDebug(logAudio()) << "sample types:" << deviceInfo.supportedSampleTypes();
             }
-            qDebug() << "----- done with audio info -----";
+            qDebug(logAudio()) << "----- done with audio info -----";
         }
 
-        qDebug() << "Format not supported, choosing nearest supported format - which may not work!";
+        qDebug(logAudio()) << "Format not supported, choosing nearest supported format - which may not work!";
         deviceInfo.nearestFormat(format);
     }
     this->deviceInfo = deviceInfo;
@@ -171,7 +172,7 @@ bool audioHandler::setDevice(QAudioDeviceInfo deviceInfo)
 
 void audioHandler::reinit()
 {
-    qDebug() << this->metaObject()->className() << ": reinit() running";
+    qDebug(logAudio()) << this->metaObject()->className() << ": reinit() running";
     if (audioOutput && audioOutput->state() != QAudio::StoppedState) {
         this->stop();
     }
@@ -211,7 +212,7 @@ void audioHandler::reinit()
 
 void audioHandler::start()
 {
-    qDebug() << this->metaObject()->className() << ": start() running";
+    qDebug(logAudio()) << this->metaObject()->className() << ": start() running";
 
     if ((audioOutput == Q_NULLPTR || audioOutput->state() != QAudio::StoppedState) &&
             (audioInput == Q_NULLPTR || audioInput->state() != QAudio::StoppedState) ) {
@@ -236,7 +237,7 @@ void audioHandler::setVolume(float volume)
 
 void audioHandler::flush()
 {
-    qDebug() << this->metaObject()->className() << ": flush() running";
+    qDebug(logAudio()) << this->metaObject()->className() << ": flush() running";
     this->stop();
     if (isInput) {
         audioInput->reset();
@@ -298,7 +299,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
         buffer.remove(0, outlen);
     }
     else {
-        qDebug() << "Sample bits MUST be 8 or 16 - got: " << radioSampleBits; // Should never happen?
+        qDebug(logAudio()) << "Sample bits MUST be 8 or 16 - got: " << radioSampleBits; // Should never happen?
     }
     return outlen;
 }
@@ -357,25 +358,25 @@ void audioHandler::notified()
 void audioHandler::stateChanged(QAudio::State state)
 {
     if (state == QAudio::IdleState && audioOutput->error() == QAudio::UnderrunError) {
-        qDebug() << this->metaObject()->className() << "RX:Buffer underrun";
+        qDebug(logAudio()) << this->metaObject()->className() << "RX:Buffer underrun";
         //if (buffer.length() < bufferSize) {
         //    audioOutput->suspend();
         //}
     }
-    //qDebug() << this->metaObject()->className() << ": state = " << state;
+    //qDebug(logAudio()) << this->metaObject()->className() << ": state = " << state;
 }
 
 
 
 void audioHandler::incomingAudio(const QByteArray& data)
 {
-    //qDebug() << "Got " << data.length() << " samples";
+    //qDebug(logAudio()) << "Got " << data.length() << " samples";
     if (audioOutput != Q_NULLPTR && audioOutput->state() != QAudio::StoppedState) {
         QMutexLocker locker(&mutex);
         buffer.append(data);
 
         if (audioOutput->state() == QAudio::SuspendedState) {
-            qDebug() << "RX Audio Suspended, Resuming...";
+            qDebug(logAudio()) << "RX Audio Suspended, Resuming...";
             audioOutput->resume();
         }
     }
@@ -384,7 +385,7 @@ void audioHandler::incomingAudio(const QByteArray& data)
 void audioHandler::changeBufferSize(const quint16 newSize)
 {
     QMutexLocker locker(&mutex);
-    qDebug() << this->metaObject()->className() << ": Changing buffer size to: " << newSize << " from " << bufferSize;
+    qDebug(logAudio()) << this->metaObject()->className() << ": Changing buffer size to: " << newSize << " from " << bufferSize;
     bufferSize = newSize;
 }
 

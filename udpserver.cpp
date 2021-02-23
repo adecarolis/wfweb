@@ -1,11 +1,12 @@
 #include "udpserver.h"
+#include "logcategories.h"
 
 #define STALE_CONNECTION 15
 
 udpServer::udpServer(SERVERCONFIG config) :
     config(config)
 {
-    qDebug() << "Starting udp server";
+    qDebug(logUdpServer()) << "Starting udp server";
 }
 
 void udpServer::init()
@@ -26,7 +27,7 @@ void udpServer::init()
 
     uint32_t addr = localIP.toIPv4Address();
 
-    qDebug() << " Got: " << QHostAddress(addr).toString();
+    qDebug(logUdpServer()) << " Got: " << QHostAddress(addr).toString();
 
 
     controlId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (config.controlPort & 0xffff);
@@ -42,9 +43,9 @@ void udpServer::init()
     udpAudio->bind(config.audioPort);
     udpCiv->bind(config.civPort);
 
-    qDebug() << "Server Binding Control to: " << config.controlPort;
-    qDebug() << "Server Binding CIV to: " << config.civPort;
-    qDebug() << "Server Binding Audio to: " << config.audioPort;
+    qDebug(logUdpServer()) << "Server Binding Control to: " << config.controlPort;
+    qDebug(logUdpServer()) << "Server Binding CIV to: " << config.civPort;
+    qDebug(logUdpServer()) << "Server Binding Audio to: " << config.audioPort;
 
 
     QUdpSocket::connect(udpControl, &QUdpSocket::readyRead, this, &udpServer::controlReceived);
@@ -55,7 +56,7 @@ void udpServer::init()
 
 udpServer::~udpServer()
 {
-    qDebug() << "Closing udpServer";
+    qDebug(logUdpServer()) << "Closing udpServer";
 
 
     foreach(CLIENT * client, controlClients)
@@ -169,7 +170,7 @@ void udpServer::controlReceived()
             current->idleTimer->start(100);
             current->wdTimer->start(10000);
             current->commonCap = 0x8010;
-            qDebug() << "New Control connection created from :" << current->ipAddress.toString() << ":" << QString::number(current->port);
+            qDebug(logUdpServer()) << "New Control connection created from :" << current->ipAddress.toString() << ":" << QString::number(current->port);
             controlClients.append(current);
         }
 
@@ -182,26 +183,26 @@ void udpServer::controlReceived()
                 control_packet_t in = (control_packet_t)r.constData();
                 if (in->type == 0x03)
                 {
-                    qDebug() << current->ipAddress.toString() << ": Received 'are you there'";
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'are you there'";
                     current->remoteId = in->sentid;
                     sendControl(current,0x04,in->seq);
                 } // This is This is "Are you ready" in response to "I am here".
                 else if (in->type == 0x06)
                 {
-                    qDebug() << current->ipAddress.toString() << ": Received 'Are you ready'";
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'Are you ready'";
                     current->remoteId = in->sentid;
                     sendControl(current,0x06,in->seq);
                 } // This is a retransmit request
                 else if (in->type == 0x01)
                 {
                     // Just send an idle for now!
-                    qDebug() << current->ipAddress.toString() << ": Received 'retransmit' request for " << in->seq;
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'retransmit' request for " << in->seq;
                     sendControl(current,0x00, in->seq);
 
                 } // This is a disconnect request
                 else if (in->type == 0x05)
                 {
-                    qDebug() << current->ipAddress.toString() << ": Received 'disconnect' request";
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'disconnect' request";
                     sendControl(current, 0x00, in->seq);
                     //current->wdTimer->stop(); // Keep watchdog running to delete stale connection.
                     deleteConnection(&controlClients, current);
@@ -232,7 +233,7 @@ void udpServer::controlReceived()
                             current->pingSeq++;
                         }
                         else {
-                            qDebug() << current->ipAddress.toString() << ": Server got out of sequence ping reply. Got: " << in->seq << " expecting: " << current->pingSeq;
+                            qDebug(logUdpServer()) << current->ipAddress.toString() << ": Server got out of sequence ping reply. Got: " << in->seq << " expecting: " << current->pingSeq;
                         }
                     }
                 }
@@ -246,17 +247,17 @@ void udpServer::controlReceived()
                 current->authInnerSeq = in->innerseq; 
                 if (in->res == 0x02) {
                     // Request for new token
-                    qDebug() << current->ipAddress.toString() << ": Received create token request";
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received create token request";
                     sendCapabilities(current);
                     sendConnectionInfo(current);
                 }
                 else if (in->res == 0x01) {
                     // Token disconnect
-                    qDebug() << current->ipAddress.toString() << ": Received token disconnect request";
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received token disconnect request";
                     sendTokenResponse(current, in->res);
                 }
                 else {
-                    qDebug() << current->ipAddress.toString() << ": Received token request";
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received token request";
                     sendTokenResponse(current, in->res);
                 }
                 break;
@@ -264,7 +265,7 @@ void udpServer::controlReceived()
             case (LOGIN_SIZE):
             {
                 login_packet_t in = (login_packet_t)r.constData();
-                qDebug() << current->ipAddress.toString() << ": Received 'login'";
+                qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'login'";
                 bool userOk = false;
                 foreach(SERVERUSER user, config.users)
                 {
@@ -289,11 +290,11 @@ void udpServer::controlReceived()
                 current->tokenTx =(quint8)rand() | (quint8)rand() << 8 | (quint8)rand() << 16 | (quint8)rand() << 24;
 
                 if (userOk) {
-                    qDebug() << current->ipAddress.toString() << ": User " << current->user.username << " login OK";
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": User " << current->user.username << " login OK";
                     sendLoginResponse(current, in->seq, true);
                 }
                 else {
-                    qDebug() << current->ipAddress.toString() << ": Incorrect username/password";
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Incorrect username/password";
 
                     sendLoginResponse(current, in->seq, false);
                 }
@@ -302,7 +303,7 @@ void udpServer::controlReceived()
             case (CONNINFO_SIZE):
             {
                 conninfo_packet_t in = (conninfo_packet_t)r.constData();
-                qDebug() << current->ipAddress.toString() << ": Received request for radio connection";
+                qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received request for radio connection";
                 // Request to start audio and civ!
                 current->isStreaming = true;
                 current->rxSeq = in->seq;
@@ -321,7 +322,7 @@ void udpServer::controlReceived()
             }
             default:
             {
-                qDebug() << "Unknown length packet received: " << r.length();
+                qDebug(logUdpServer()) << "Unknown length packet received: " << r.length();
                 break;
             }
         }
@@ -337,7 +338,7 @@ void udpServer::civReceived()
 
         CLIENT* current = Q_NULLPTR;
 
-        qDebug() << "Got CIV data";
+        qDebug(logUdpServer()) << "Got CIV data";
         if (datagram.senderAddress().isNull() || datagram.senderPort() == 65535 || datagram.senderPort() == 0)
             return;
 
@@ -373,7 +374,7 @@ void udpServer::civReceived()
             connect(current->idleTimer, &QTimer::timeout, this, std::bind(&udpServer::sendControl, this, current,0x00, (quint16)0x00));
             current->pingTimer->start(100);
             current->idleTimer->start(100);
-            qDebug() << "New CIV connection created from :" << current->ipAddress.toString() << ":" << QString::number(current->port);
+            qDebug(logUdpServer()) << "New CIV connection created from :" << current->ipAddress.toString() << ":" << QString::number(current->port);
             civClients.append(current);
         }
 
@@ -387,26 +388,26 @@ void udpServer::civReceived()
                 control_packet_t in = (control_packet_t)r.constData();
 
                 if (in->type == 0x03) {
-                    qDebug() << current->ipAddress.toString() << ": Received 'are you there'";
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'are you there'";
                     current->remoteId = qFromLittleEndian<quint32>(r.mid(8, 4));
                     sendControl(current, 0x04, gotSeq);
                 } // This is This is "Are you ready" in response to "I am here".
                 else if (in->type == 0x06)
                 {
-                    qDebug() << current->ipAddress.toString() << ": Received 'Are you ready'";
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'Are you ready'";
                     current->remoteId = qFromLittleEndian<quint32>(r.mid(8, 4));
                     sendControl(current, 0x06, gotSeq);
                 } // This is a retransmit request
                 else if (in->type == 0x01)
                 {
                     // Just send an idle for now, we need to be able to retransmit missing packets.
-                    qDebug() << current->ipAddress.toString() << ": Received 'retransmit' request for " << gotSeq;
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'retransmit' request for " << gotSeq;
                     sendControl(current, 0x00, gotSeq);
 
                 } // This is a disconnect request
                 else if (in->type == 0x05)
                 {
-                    qDebug() << current->ipAddress.toString() << ": Received 'disconnect' request";
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'disconnect' request";
                     sendControl(current, 0x00, gotSeq);
                     deleteConnection(&civClients, current);
 
@@ -436,7 +437,7 @@ void udpServer::civReceived()
                             current->pingSeq++;
                         }
                         else {
-                            qDebug() << current->ipAddress.toString() << ": Civ got out of sequence ping reply. Got: " << gotSeq << " expecting: " << current->pingSeq;
+                            qDebug(logUdpServer()) << current->ipAddress.toString() << ": Civ got out of sequence ping reply. Got: " << gotSeq << " expecting: " << current->pingSeq;
                         }
                     }
                 }
@@ -449,7 +450,7 @@ void udpServer::civReceived()
                     quint8 temp = r[0] - 0x15;
                     if ((quint8)r[16] == 0xc1 && (quint8)r[17] == temp)
                     {
-                        //qDebug() << "Got CIV from server: " << r.mid(21);
+                        //qDebug(logUdpServer()) << "Got CIV from server: " << r.mid(21);
                         emit haveDataFromServer(r.mid(21));
                     }
                 }
@@ -498,7 +499,7 @@ void udpServer::audioReceived()
             current->pingTimer = new QTimer();
             connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, &audioClients, current, (quint16)0x00, false));
             current->pingTimer->start(100);
-            qDebug() << "New Audio connection created from :" << current->ipAddress.toString() << ":" << QString::number(current->port);
+            qDebug(logUdpServer()) << "New Audio connection created from :" << current->ipAddress.toString() << ":" << QString::number(current->port);
             audioClients.append(current);
         }
 
@@ -511,26 +512,26 @@ void udpServer::audioReceived()
             {
                 control_packet_t in = (control_packet_t)r.constData();
                 if (in->type == 0x03) {
-                    qDebug() << current->ipAddress.toString() << ": Received 'are you there'";
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'are you there'";
                     current->remoteId = qFromLittleEndian<quint32>(r.mid(8, 4));
                     sendControl(current, 0x04, gotSeq);
                 } // This is This is "Are you ready" in response to "I am here".
                 else if (in->type == 0x06)
                 {
-                    qDebug() << current->ipAddress.toString() << ": Received 'Are you ready'";
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'Are you ready'";
                     current->remoteId = qFromLittleEndian<quint32>(r.mid(8, 4));
                     sendControl(current, 0x06, gotSeq);
                 } // This is a retransmit request
                 else if (in->type == 0x01)
                 {
                     // Just send an idle for now!
-                    qDebug() << current->ipAddress.toString() << ": Received 'retransmit' request for " << gotSeq;
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'retransmit' request for " << gotSeq;
                     sendControl(current, 0x00, gotSeq);
 
                 } // This is a disconnect request
                 else if (in->type == 0x05)
                 {
-                    qDebug() << current->ipAddress.toString() << ": Received 'disconnect' request";
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'disconnect' request";
                     sendControl(current, 0x00, gotSeq);
                     deleteConnection(&audioClients, current);
                 }
@@ -561,7 +562,7 @@ void udpServer::audioReceived()
                                 current->pingSeq++;
                             }
                             else {
-                                qDebug() << current->ipAddress.toString() << ": Civ got out of sequence ping reply. Got: " << gotSeq << " expecting: " << current->pingSeq;
+                                qDebug(logUdpServer()) << current->ipAddress.toString() << ": Civ got out of sequence ping reply. Got: " << gotSeq << " expecting: " << current->pingSeq;
                             }
                         }
                     }
@@ -588,7 +589,7 @@ void udpServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
         c->txSeq++;
     }
 
-    //qDebug() << c->ipAddress.toString() << ": Sending control packet: " << type;
+    //qDebug(logUdpServer()) << c->ipAddress.toString() << ": Sending control packet: " << type;
     control_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
     p.len = sizeof(p);
@@ -612,13 +613,13 @@ void udpServer::sendPing(QList<CLIENT*> *l,CLIENT* c, quint16 seq, bool reply)
 
     if (c->lastHeard.secsTo(now) > STALE_CONNECTION)
     {
-        qDebug() << "Deleting stale connection " << c->ipAddress.toString();
+        qDebug(logUdpServer()) << "Deleting stale connection " << c->ipAddress.toString();
         deleteConnection(l, c);
         return;
     }
 
 
-    //qDebug() << c->ipAddress.toString() << ": Sending Ping";
+    //qDebug(logUdpServer()) << c->ipAddress.toString() << ": Sending Ping";
 
     quint32 pingTime = 0;
     quint8 pingReply = 0;
@@ -650,7 +651,7 @@ void udpServer::sendPing(QList<CLIENT*> *l,CLIENT* c, quint16 seq, bool reply)
 
 void udpServer::sendLoginResponse(CLIENT* c,quint16 seq, bool allowed)
 {
-    qDebug() << c->ipAddress.toString() << ": Sending Login response: " << c->txSeq;
+    qDebug(logUdpServer()) << c->ipAddress.toString() << ": Sending Login response: " << c->txSeq;
 
     login_response_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -682,7 +683,7 @@ void udpServer::sendLoginResponse(CLIENT* c,quint16 seq, bool allowed)
 
 void udpServer::sendCapabilities(CLIENT* c)
 {
-    qDebug() << c->ipAddress.toString() << ": Sending Capabilities :" << c->txSeq;
+    qDebug(logUdpServer()) << c->ipAddress.toString() << ": Sending Capabilities :" << c->txSeq;
 
     capabilities_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -719,7 +720,7 @@ void udpServer::sendCapabilities(CLIENT* c)
 // Also used to display currently connected used information.
 void udpServer::sendConnectionInfo(CLIENT* c)
 {
-    qDebug() << c->ipAddress.toString() << ": Sending ConnectionInfo :" << c->txSeq;
+    qDebug(logUdpServer()) << c->ipAddress.toString() << ": Sending ConnectionInfo :" << c->txSeq;
     conninfo_packet p;
     memset(p.packet, 0x0, sizeof(p));
     p.len = sizeof(p);
@@ -755,7 +756,7 @@ void udpServer::sendConnectionInfo(CLIENT* c)
 
 void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
 {
-    qDebug() << c->ipAddress.toString() << ": Sending Token response for type: " << type;
+    qDebug(logUdpServer()) << c->ipAddress.toString() << ": Sending Token response for type: " << type;
 
     token_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -805,7 +806,7 @@ void udpServer::sendStatus(CLIENT* c)
 {
     QMutexLocker locker(&mutex);
 
-    qDebug() << c->ipAddress.toString() << ": Sending Status";
+    qDebug(logUdpServer()) << c->ipAddress.toString() << ": Sending Status";
 
     status_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -842,7 +843,7 @@ void udpServer::sendStatus(CLIENT* c)
 void udpServer::dataForServer(QByteArray d)
 {
 
-    //qDebug() << "Server got:" << d;
+    //qDebug(logUdpServer()) << "Server got:" << d;
     foreach(CLIENT * client, civClients)
     {
         if (client != Q_NULLPTR && client->connected) {
@@ -873,7 +874,7 @@ void udpServer::dataForServer(QByteArray d)
 // Needs to stop and delete all timers, remove the connection from the list and delete the connection.
 void udpServer::deleteConnection(QList<CLIENT*> *l, CLIENT* c)
 {
-    qDebug() << "Deleting connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
+    qDebug(logUdpServer()) << "Deleting connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
     if (c->idleTimer != Q_NULLPTR) {
         c->idleTimer->stop();
         delete c->idleTimer;
@@ -899,5 +900,5 @@ void udpServer::deleteConnection(QList<CLIENT*> *l, CLIENT* c)
     }
     delete c; // Is this needed or will the erase have done it?
     c = Q_NULLPTR;
-    qDebug() << "Current Number of clients connected: " << l->length();
+    qDebug(logUdpServer()) << "Current Number of clients connected: " << l->length();
 }

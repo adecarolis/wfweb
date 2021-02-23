@@ -1,5 +1,6 @@
 #include "udpserversetup.h"
 #include "ui_udpserversetup.h"
+#include "logcategories.h"
 
 udpServerSetup::udpServerSetup(QWidget* parent) :
     QDialog(parent),
