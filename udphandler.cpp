@@ -343,7 +343,7 @@ void udpHandler::sendRequestStream()
     p.rcvdid = remoteId;
     p.code = 0x0180;
     p.res = 0x03;
-    p.resb = 0x8010;
+    p.commoncap = 0x8010;
     p.identa = identa;
     p.identb = identb;
     p.innerseq = authInnerSendSeq;
@@ -803,16 +803,23 @@ void udpBase::dataReceived(QByteArray r)
                 // Send an idle with the requested seqnum if not found.
                 packetsLost++;
 
-                auto match = std::find_if(txSeqBuf.cbegin(), txSeqBuf.cend(), [&cs = in->seq](const SEQBUFENTRY& s) {
+                auto match = std::find_if(txSeqBuf.begin(), txSeqBuf.end(), [&cs = in->seq](SEQBUFENTRY& s) {
                     return s.seqNum == cs;
                 });
 
-                if (match != txSeqBuf.cend()) {
+                if (match != txSeqBuf.end()) {
                     // Found matching entry?
                     // Send "untracked" as it has already been sent once.
-                    QMutexLocker locker(&mutex);
-                    qDebug() << this->metaObject()->className() << ": Sending retransmit of " << match->seqNum;
-                    udp->writeDatagram(match->data, radioIP, port);
+                    // Don't constantly retransmit the same packet, give-up eventually
+                    if (match->retransmitCount < 4) {
+                        QMutexLocker locker(&mutex);
+                        qDebug() << this->metaObject()->className() << ": Sending retransmit of " << match->seqNum;
+                        match->retransmitCount++;
+                        udp->writeDatagram(match->data, radioIP, port);
+                    }
+                    else {
+                        sendControl(false, 0, in->seq);
+                    }
                     break;
                 }
                 else {
@@ -869,24 +876,27 @@ void udpBase::dataReceived(QByteArray r)
             {   // retransmit range request
                 qDebug() << this->metaObject()->className() << ": Retransmit range request for:" << in->first << ", " << in->second << ", " << in->third << ", " << in->fourth << ", ";
 
-                auto match = std::find_if(txSeqBuf.cbegin(), txSeqBuf.cend(), [&ca = in->first, &cb = in->second, &cc = in->third, &cd = in->fourth](const SEQBUFENTRY& s) {
+                auto match = std::find_if(txSeqBuf.begin(), txSeqBuf.end(), [&ca = in->first, &cb = in->second, &cc = in->third, &cd = in->fourth](SEQBUFENTRY& s) {
                     return s.seqNum == ca || s.seqNum == cb || s.seqNum == cc || s.seqNum == cd;
                 });
 
-                if (match == txSeqBuf.cend()) {
+                if (match == txSeqBuf.end()) {
                     qDebug() << this->metaObject()->className() << ": Could not find requested packet " << in->seq << ", sending idle.";
                     sendControl(false, 0, in->seq);
                 }
                 else {
-                    while (match != txSeqBuf.cend()) {
+                    while (match != txSeqBuf.end()) {
                         // Found matching entry?
                         // Send "untracked" as it has already been sent once.
-                        qDebug() << this->metaObject()->className() << ": Sending retransmit of " << match->seqNum;
-                        QMutexLocker locker(&mutex);
-                        udp->writeDatagram(match->data, radioIP, port);
-                        udp->writeDatagram(match->data, radioIP, port);
-                        match++;
-                        packetsLost++;
+                        if (match->retransmitCount <4) {
+                            qDebug() << this->metaObject()->className() << ": Sending retransmit of " << match->seqNum;
+                            QMutexLocker locker(&mutex);
+                            udp->writeDatagram(match->data, radioIP, port);
+                            udp->writeDatagram(match->data, radioIP, port);
+                            match->retransmitCount++;
+                            match++;
+                            packetsLost++;
+                        }
                     }
                 }
             }
@@ -940,16 +950,23 @@ void udpBase::dataReceived(QByteArray r)
                     second = *i;
                 else if (count == 2)
                     third = *i;
-                else {
-                    break;
-                }
+                
                 count++;
                 i++;                
             }
 
-            if (count == 1)
+            if (count > 6) // Something bad happened, clear the buffer.
+            {
+                qDebug() << this->metaObject()->className() << ": Excessive lost incoming packets, clearing buffer: " << count << " packets lost!";
+
+                rxSeqBuf.clear();
+                rxSeqBuf.append(in->seq);
+                lastReceivedSeq = in->seq;
+            }
+            else if (count == 1)
             {
                 qDebug() << this->metaObject()->className() << ": Requesting retransmit of: " << first;
+                rxSeqBuf.append(first);
                 sendControl(false, 0x01, first);
             } 
             else if (count == 2) {
@@ -960,6 +977,10 @@ void udpBase::dataReceived(QByteArray r)
             if (count == 3)
             {
                 qDebug() << this->metaObject()->className() << ": Requesting retransmit of: " << first << ", " << second << ", " << third;
+                rxSeqBuf.append(first);
+                rxSeqBuf.append(second);
+                if (second != third)
+                    rxSeqBuf.append(third);
                 sendRetransmitRange(first, second, third);
             }
         }
@@ -1057,10 +1078,12 @@ void udpBase::purgeOldEntries()
     }
     
     if (rxSeqBuf.length() > 2048) {
+
         // If the buffer is over 2K, remove the first 1K.
         std::sort(rxSeqBuf.begin(), rxSeqBuf.end());
         rxSeqBuf.remove(0,1024);
         lastReceivedSeq = *rxSeqBuf.begin();
+        qDebug() << this->metaObject()->className() << ": Purged buffer of old rx packets, new buffer: " << rxSeqBuf.first() << " - " << rxSeqBuf.last();
     }
 
 }

@@ -80,11 +80,12 @@ public:
 		time_t	timeSent;
 		uint16_t seqNum;
 		QByteArray data;
+		quint8 retransmitCount;
 	};
 
-	QVector<SEQBUFENTRY> txSeqBuf = QVector<SEQBUFENTRY>();
+	QVector<SEQBUFENTRY> txSeqBuf; //= QVector<SEQBUFENTRY>();
 
-	QVector< quint16 > rxSeqBuf = QVector<quint16>();
+	QVector<quint16> rxSeqBuf; // = QVector<quint16>();
 
 	void sendTrackedPacket(QByteArray d);
 	void purgeOldEntries();
