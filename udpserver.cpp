@@ -12,7 +12,7 @@ void udpServer::init()
 {
 
     srand(time(NULL)); // Generate random key
-
+    timeStarted.start();
     // Convoluted way to find the external IP address, there must be a better way????
     QString localhostname = QHostInfo::localHostName();
     QList<QHostAddress> hostList = QHostInfo::fromName(localhostname).addresses();
@@ -41,6 +41,11 @@ void udpServer::init()
 
     udpAudio->bind(config.audioPort);
     udpCiv->bind(config.civPort);
+
+    qDebug() << "Server Binding Control to: " << config.controlPort;
+    qDebug() << "Server Binding CIV to: " << config.civPort;
+    qDebug() << "Server Binding Audio to: " << config.audioPort;
+
 
     QUdpSocket::connect(udpControl, &QUdpSocket::readyRead, this, &udpServer::controlReceived);
     QUdpSocket::connect(udpAudio, &QUdpSocket::readyRead, this, &udpServer::audioReceived);
@@ -158,11 +163,12 @@ void udpServer::controlReceived()
             current->idleTimer = new QTimer();
             current->wdTimer = new QTimer();
             connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, &controlClients, current, (quint16)0x00, false));
-            connect(current->idleTimer, &QTimer::timeout, this, std::bind(&udpServer::sendIdle, this, current, (quint16)0x00));
+            connect(current->idleTimer, &QTimer::timeout, this, std::bind(&udpServer::sendControl, this, current, (quint8)0x00, (quint16)0x00));
             connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::sendWatchdog, this, current));
             current->pingTimer->start(100);
             current->idleTimer->start(100);
             current->wdTimer->start(10000);
+            current->commonCap = 0x8010;
             qDebug() << "New Control connection created from :" << current->ipAddress.toString() << ":" << QString::number(current->port);
             controlClients.append(current);
         }
@@ -178,25 +184,25 @@ void udpServer::controlReceived()
                 {
                     qDebug() << current->ipAddress.toString() << ": Received 'are you there'";
                     current->remoteId = in->sentid;
-                    sendIAmHere(current);
+                    sendControl(current,0x04,in->seq);
                 } // This is This is "Are you ready" in response to "I am here".
                 else if (in->type == 0x06)
                 {
                     qDebug() << current->ipAddress.toString() << ": Received 'Are you ready'";
                     current->remoteId = in->sentid;
-                    sendIAmReady(current);
+                    sendControl(current,0x06,in->seq);
                 } // This is a retransmit request
                 else if (in->type == 0x01)
                 {
                     // Just send an idle for now!
                     qDebug() << current->ipAddress.toString() << ": Received 'retransmit' request for " << in->seq;
-                    sendIdle(current, in->seq);
+                    sendControl(current,0x00, in->seq);
 
                 } // This is a disconnect request
                 else if (in->type == 0x05)
                 {
                     qDebug() << current->ipAddress.toString() << ": Received 'disconnect' request";
-                    sendIdle(current, in->seq);
+                    sendControl(current, 0x00, in->seq);
                     //current->wdTimer->stop(); // Keep watchdog running to delete stale connection.
                     deleteConnection(&controlClients, current);
                 }
@@ -217,7 +223,7 @@ void udpServer::controlReceived()
 
                     if (r[16] == (char)0x00)
                     {
-                        current->rxPingSeq = qFromLittleEndian<quint32>(r.mid(0x11, 4));
+                        current->rxPingTime = qFromLittleEndian<quint32>(r.mid(0x11, 4));
                         sendPing(&controlClients, current, in->seq, true);
                     }
                     else if (r[16] == (char)0x01) {
@@ -236,14 +242,18 @@ void udpServer::controlReceived()
             {
                 // Token request
                 token_packet_t in = (token_packet_t)r.constData();
-                current->authInnerSeq = in->innerseq;
+                current->rxSeq = in->seq;
+                current->authInnerSeq = in->innerseq; 
                 if (in->res == 0x02) {
                     // Request for new token
                     qDebug() << current->ipAddress.toString() << ": Received create token request";
-                    current->tokenRx = in->tokrequest;
                     sendCapabilities(current);
-                    current->authInnerSeq = 0x00;
                     sendConnectionInfo(current);
+                }
+                else if (in->res == 0x01) {
+                    // Token disconnect
+                    qDebug() << current->ipAddress.toString() << ": Received token disconnect request";
+                    sendTokenResponse(current, in->res);
                 }
                 else {
                     qDebug() << current->ipAddress.toString() << ": Received token request";
@@ -262,26 +272,30 @@ void udpServer::controlReceived()
                     passcode(user.username, usercomp);
                     QByteArray passcomp;
                     passcode(user.password, passcomp);
-                    if (!strcmp(in->username, usercomp) && !strcmp(in->password, passcomp))
+                    if (!strcmp(in->username, usercomp.constData()) && !strcmp(in->password, passcomp.constData()))
                     {
                         userOk = true;
+                        current->user = user;
                         break;
                     }
  
-                    // Generate login response
-                    current->clientName = in->name;
-                    current->authInnerSeq = in->innerseq;
-                    current->tokenRx = in->tokrequest;
-                    current->tokenTx = in->token;
 
-                    if (userOk) {
-                        sendLoginResponse(current, in->seq, true);
-                    }
-                    else {
-                        qDebug() << "Username no match!";
-                        sendLoginResponse(current, in->seq, false);
-                    }
+                }
+                // Generate login response
+                current->rxSeq = in->seq;
+                current->clientName = in->name;
+                current->authInnerSeq = in->innerseq;
+                current->tokenRx = in->tokrequest;
+                current->tokenTx =(quint8)rand() | (quint8)rand() << 8 | (quint8)rand() << 16 | (quint8)rand() << 24;
 
+                if (userOk) {
+                    qDebug() << current->ipAddress.toString() << ": User " << current->user.username << " login OK";
+                    sendLoginResponse(current, in->seq, true);
+                }
+                else {
+                    qDebug() << current->ipAddress.toString() << ": Incorrect username/password";
+
+                    sendLoginResponse(current, in->seq, false);
                 }
                 break;
             }
@@ -291,14 +305,16 @@ void udpServer::controlReceived()
                 qDebug() << current->ipAddress.toString() << ": Received request for radio connection";
                 // Request to start audio and civ!
                 current->isStreaming = true;
+                current->rxSeq = in->seq;
                 current->rxCodec = in->rxcodec;
                 current->txCodec = in->txcodec;
                 current->rxSampleRate = qFromBigEndian<quint16>(in->rxsample);
                 current->txSampleRate = qFromBigEndian<quint16>(in->txsample);
                 current->txBufferLen = qFromBigEndian<quint16>(in->txbuffer);
-                current->authInnerSeq = qFromLittleEndian<quint32>(in->innerseq);
-                current->connSeq = qFromLittleEndian<quint32>(in->identb);
+                current->authInnerSeq = in->innerseq;
+                current->connSeq = in->identb;
                 sendStatus(current);
+                current->authInnerSeq = 0x00; 
                 sendConnectionInfo(current);
 
                 break;
@@ -321,6 +337,7 @@ void udpServer::civReceived()
 
         CLIENT* current = Q_NULLPTR;
 
+        qDebug() << "Got CIV data";
         if (datagram.senderAddress().isNull() || datagram.senderPort() == 65535 || datagram.senderPort() == 0)
             return;
 
@@ -353,7 +370,7 @@ void udpServer::civReceived()
             current->idleTimer = new QTimer();
             current->wdTimer = new QTimer();
             connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, &civClients, current, (quint16)0x00, false));
-            connect(current->idleTimer, &QTimer::timeout, this, std::bind(&udpServer::sendIdle, this, current, (quint16)0x00));
+            connect(current->idleTimer, &QTimer::timeout, this, std::bind(&udpServer::sendControl, this, current,0x00, (quint16)0x00));
             current->pingTimer->start(100);
             current->idleTimer->start(100);
             qDebug() << "New CIV connection created from :" << current->ipAddress.toString() << ":" << QString::number(current->port);
@@ -365,70 +382,81 @@ void udpServer::civReceived()
 
         switch (r.length())
         {
-        case (0x10):
-            if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x03\x00\x00\x00")) {
-                qDebug() << current->ipAddress.toString() << ": Received 'are you there'";
-                current->remoteId = qFromLittleEndian<quint32>(r.mid(8, 4));
-                sendIAmHere(current);
-            } // This is This is "Are you ready" in response to "I am here".
-            else if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x06\x00\x01\x00"))
+            case (CONTROL_SIZE):
             {
-                qDebug() << current->ipAddress.toString() << ": Received 'Are you ready'";
-                current->remoteId = qFromLittleEndian<quint32>(r.mid(8, 4));
-                sendIAmReady(current);
-            } // This is a retransmit request
-            else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x01\x00"))
-            {
-                // Just send an idle for now, we need to be able to retransmit missing packets.
-                qDebug() << current->ipAddress.toString() << ": Received 'retransmit' request for " << gotSeq;
-                sendIdle(current, gotSeq);
+                control_packet_t in = (control_packet_t)r.constData();
 
-            } // This is a disconnect request
-            else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x05\x00"))
-            {
-                qDebug() << current->ipAddress.toString() << ": Received 'disconnect' request";
-                sendIdle(current, gotSeq);
-                deleteConnection(&civClients, current);
-
-            }
-            break;
-        case (0x14):
-            // Watchdog packet.
-            break;
-        case (0x15):
-            if (r.mid(1, 5) == QByteArrayLiteral("\x00\x00\x00\x07\x00"))
-            {
-                // It is a ping request/response
-
-                if (r[16] == (char)0x00)
+                if (in->type == 0x03) {
+                    qDebug() << current->ipAddress.toString() << ": Received 'are you there'";
+                    current->remoteId = qFromLittleEndian<quint32>(r.mid(8, 4));
+                    sendControl(current, 0x04, gotSeq);
+                } // This is This is "Are you ready" in response to "I am here".
+                else if (in->type == 0x06)
                 {
-                    current->rxPingSeq = qFromLittleEndian<quint32>(r.mid(0x11, 4));
-                    sendPing(&civClients, current, gotSeq, true);
-                }
-                else if (r[16] == (char)0x01) {
-                    // A Reply to our ping!
-                    if (gotSeq == current->pingSeq || gotSeq == current->pingSeq - 1) {
-                        current->pingSeq++;
-                    }
-                    else {
-                        qDebug() << current->ipAddress.toString() << ": Civ got out of sequence ping reply. Got: " << gotSeq << " expecting: " << current->pingSeq;
-                    }
-                }
-            }
-            break;
-        default:
-            if (r.length() > 21) {
-                // First check if we are missing any packets?
-                quint8 temp = r[0] - 0x15;
-                if ((quint8)r[16] == 0xc1 && (quint8)r[17] == temp)
+                    qDebug() << current->ipAddress.toString() << ": Received 'Are you ready'";
+                    current->remoteId = qFromLittleEndian<quint32>(r.mid(8, 4));
+                    sendControl(current, 0x06, gotSeq);
+                } // This is a retransmit request
+                else if (in->type == 0x01)
                 {
-                    //qDebug() << "Got CIV from server: " << r.mid(21);
-                    emit haveDataFromServer(r.mid(21));
+                    // Just send an idle for now, we need to be able to retransmit missing packets.
+                    qDebug() << current->ipAddress.toString() << ": Received 'retransmit' request for " << gotSeq;
+                    sendControl(current, 0x00, gotSeq);
+
+                } // This is a disconnect request
+                else if (in->type == 0x05)
+                {
+                    qDebug() << current->ipAddress.toString() << ": Received 'disconnect' request";
+                    sendControl(current, 0x00, gotSeq);
+                    deleteConnection(&civClients, current);
+
                 }
+                break;
             }
+            case (WATCHDOG_SIZE):
+            {
+                // Watchdog packet.
+                break;
+            }
+            case (PING_SIZE):
+            {
+                ping_packet_t in = (ping_packet_t)r.constData();
+                if (in->type == 0x07)
+                {
+                    // It is a ping request/response
+
+                    if (in->reply == 0x00)
+                    {
+                        current->rxPingTime = qFromLittleEndian<quint32>(r.mid(0x11, 4));
+                        sendPing(&civClients, current, gotSeq, true);
+                    }
+                    else if (in->reply == 0x01) {
+                        // A Reply to our ping!
+                        if (gotSeq == current->pingSeq || gotSeq == current->pingSeq - 1) {
+                            current->pingSeq++;
+                        }
+                        else {
+                            qDebug() << current->ipAddress.toString() << ": Civ got out of sequence ping reply. Got: " << gotSeq << " expecting: " << current->pingSeq;
+                        }
+                    }
+                }
+                break;
+            }
+            default:
+            {
+                if (r.length() > 21) {
+                    // First check if we are missing any packets?
+                    quint8 temp = r[0] - 0x15;
+                    if ((quint8)r[16] == 0xc1 && (quint8)r[17] == temp)
+                    {
+                        //qDebug() << "Got CIV from server: " << r.mid(21);
+                        emit haveDataFromServer(r.mid(21));
+                    }
+                }
 
 
-            break;
+                break;
+            }
         }
     }
 }
@@ -479,58 +507,71 @@ void udpServer::audioReceived()
 
         switch (r.length())
         {
-        case (0x10):
-            if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x03\x00\x00\x00")) {
-                qDebug() << current->ipAddress.toString() << ": Received 'are you there'";
-                current->remoteId = qFromLittleEndian<quint32>(r.mid(8, 4));
-                sendIAmHere(current);
-            } // This is This is "Are you ready" in response to "I am here".
-            else if (r.mid(0, 8) == QByteArrayLiteral("\x10\x00\x00\x00\x06\x00\x01\x00"))
+            case (CONTROL_SIZE):
             {
-                qDebug() << current->ipAddress.toString() << ": Received 'Are you ready'";
-                current->remoteId = qFromLittleEndian<quint32>(r.mid(8, 4));
-                sendIAmReady(current);
-            } // This is a retransmit request
-            else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x01\x00"))
-            {
-                // Just send an idle for now!
-                qDebug() << current->ipAddress.toString() << ": Received 'retransmit' request for " << gotSeq;
-                sendIdle(current, gotSeq);
-
-            } // This is a disconnect request
-            else if (r.mid(0, 6) == QByteArrayLiteral("\x10\x00\x00\x00\x05\x00"))
-            {
-                qDebug() << current->ipAddress.toString() << ": Received 'disconnect' request";
-                sendIdle(current, gotSeq);
-                deleteConnection(&audioClients, current);
-            }
-            break;
-        case (0x14):
-            // Watchdog packet.
-            break;
-        case (0x15):
-            if (r.mid(1, 5) == QByteArrayLiteral("\x00\x00\x00\x07\x00"))
-            {
-                // It is a ping request/response
-
-                if (r[16] == (char)0x00)
+                control_packet_t in = (control_packet_t)r.constData();
+                if (in->type == 0x03) {
+                    qDebug() << current->ipAddress.toString() << ": Received 'are you there'";
+                    current->remoteId = qFromLittleEndian<quint32>(r.mid(8, 4));
+                    sendControl(current, 0x04, gotSeq);
+                } // This is This is "Are you ready" in response to "I am here".
+                else if (in->type == 0x06)
                 {
-                    current->rxPingSeq = qFromLittleEndian<quint32>(r.mid(0x11, 4));
-                    sendPing(&audioClients, current, gotSeq, true);
+                    qDebug() << current->ipAddress.toString() << ": Received 'Are you ready'";
+                    current->remoteId = qFromLittleEndian<quint32>(r.mid(8, 4));
+                    sendControl(current, 0x06, gotSeq);
+                } // This is a retransmit request
+                else if (in->type == 0x01)
+                {
+                    // Just send an idle for now!
+                    qDebug() << current->ipAddress.toString() << ": Received 'retransmit' request for " << gotSeq;
+                    sendControl(current, 0x00, gotSeq);
+
+                } // This is a disconnect request
+                else if (in->type == 0x05)
+                {
+                    qDebug() << current->ipAddress.toString() << ": Received 'disconnect' request";
+                    sendControl(current, 0x00, gotSeq);
+                    deleteConnection(&audioClients, current);
                 }
-                if (gotSeq == current->pingSeq || gotSeq == current->pingSeq - 1) {
-                    // A Reply to our ping!
-                    if (gotSeq == current->pingSeq) {
-                        current->pingSeq++;
-                    }
-                    else {
-                        qDebug() << current->ipAddress.toString() << ": Civ got out of sequence ping reply. Got: " << gotSeq << " expecting: " << current->pingSeq;
-                    }
-                }
+                break;
             }
-            break;
-        default:
-            break;
+            case (WATCHDOG_SIZE):
+            {
+                // Watchdog packet.
+                break;
+            }
+            case (0x15):
+            {
+                ping_packet_t in = (ping_packet_t)r.constData();
+                if (in->type == 0x07)
+                {
+                    // It is a ping request/response
+
+                    if (in->reply == 0x00)
+                    {
+                        current->rxPingTime = qFromLittleEndian<quint32>(r.mid(0x11, 4));
+                        sendPing(&audioClients, current, gotSeq, true);
+                    } 
+                    else if (in->reply == 0x01) {
+                        if (gotSeq == current->pingSeq || gotSeq == current->pingSeq - 1)
+                        {
+                            // A Reply to our ping!
+                            if (gotSeq == current->pingSeq) {
+                                current->pingSeq++;
+                            }
+                            else {
+                                qDebug() << current->ipAddress.toString() << ": Civ got out of sequence ping reply. Got: " << gotSeq << " expecting: " << current->pingSeq;
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+            default:
+            {
+                break;
+            }
         }
 
     }
@@ -539,68 +580,30 @@ void udpServer::audioReceived()
 
 
 
-
-#define IDLE_SIZE 0x10
-
-void udpServer::sendIAmHere(CLIENT* c)
+void udpServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
 {
-    qDebug() << c->ipAddress.toString() << ": Sending I am here...";
-
-    quint8 p[IDLE_SIZE];
-    memset(p, 0x0, sizeof(p));
-    qToLittleEndian(sizeof(p), p + 0x00);
-    p[0x04] = (char)0x04;
-    qToLittleEndian(c->txSeq, p + 0x06);
-    qToLittleEndian(c->myId, p + 0x08);
-    qToLittleEndian(c->remoteId, p + 0x0c);
-
-    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), c->ipAddress, c->port);
-    c->txSeq++;
-    return;
-}
-
-void udpServer::sendIAmReady(CLIENT* c)
-{
-    qDebug() << c->ipAddress.toString() << ": Sending I am ready...";
-
-    quint8 p[IDLE_SIZE];
-    memset(p, 0x0, sizeof(p));
-    qToLittleEndian(sizeof(p), p + 0x00);
-    p[0x04] = (char)0x06;
-    qToLittleEndian(c->txSeq, p + 0x06);
-    qToLittleEndian(c->myId, p + 0x08);
-    qToLittleEndian(c->remoteId, p + 0x0c);
-
-    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), c->ipAddress, c->port);
-    c->txSeq++;
-    return;
-}
-
-void udpServer::sendIdle(CLIENT* c, quint16 seq)
-{
-    QMutexLocker locker(&mutex);
-
     if (seq == 0x00)
     {
         seq = c->txSeq;
         c->txSeq++;
     }
 
-    quint8 p[IDLE_SIZE];
-    memset(p, 0x0, sizeof(p));
-    qToLittleEndian(sizeof(p), p + 0x00);
-    qToLittleEndian(seq, p + 0x06);
-    qToLittleEndian(c->myId, p + 0x08);
-    qToLittleEndian(c->remoteId, p + 0x0c);
+    //qDebug() << c->ipAddress.toString() << ": Sending control packet: " << type;
+    control_packet p;
+    memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
+    p.len = sizeof(p);
+    p.type = type;
+    p.seq = seq;
+    p.sentid = c->myId;
+    p.rcvdid = c->remoteId;
 
-    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), c->ipAddress, c->port);
+    QMutexLocker locker(&mutex);
+    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), c->ipAddress, c->port);
     return;
 }
 
 
 
-
-#define PING_SIZE 0x15
 void udpServer::sendPing(QList<CLIENT*> *l,CLIENT* c, quint16 seq, bool reply)
 {
     QMutexLocker locker(&mutex);
@@ -617,97 +620,96 @@ void udpServer::sendPing(QList<CLIENT*> *l,CLIENT* c, quint16 seq, bool reply)
 
     //qDebug() << c->ipAddress.toString() << ": Sending Ping";
 
-    quint32 pingSeq = 0;
+    quint32 pingTime = 0;
     quint8 pingReply = 0;
     if (reply) {
-        pingSeq = c->rxPingSeq;
+        pingTime = c->rxPingTime;
         pingReply = 1;
     }
     else {
-        pingSeq = (quint32)((quint8)(rand() & 0xff)) | (quint16)c->innerPingSeq << 8 | (quint8)0x06 << 24;
+        pingTime = (quint32)timeStarted.msecsSinceStartOfDay();
         seq = c->pingSeq;
     }
 
     // First byte of pings "from" server can be either 0x00 or packet length!
-
-    quint8 p[PING_SIZE];
-    memset(p, 0x0, sizeof(p));
-    if (!reply) {
-        qToLittleEndian(sizeof(p), p + 0x00);
-    }
-    p[0x04] = (char)0x07;
-    qToLittleEndian(seq, p + 0x06);
-    qToLittleEndian(c->myId, p + 0x08);
-    qToLittleEndian(c->remoteId, p + 0x0c);
-    qToLittleEndian(pingSeq, p + 0x11);
-    p[0x10] = pingReply;
+    ping_packet p;
+    memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
+    p.len = sizeof(p);
+    p.type = 0x07;
+    p.seq = seq;
+    p.sentid = c->myId;
+    p.rcvdid = c->remoteId;
+    p.time = pingTime;
+    p.reply = pingReply;
 
     c->innerPingSeq++;
 
-    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), c->ipAddress, c->port);
+    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), c->ipAddress, c->port);
     return;
 }
 
-#define LOGINRESP_SIZE 0x60
 void udpServer::sendLoginResponse(CLIENT* c,quint16 seq, bool allowed)
 {
     qDebug() << c->ipAddress.toString() << ": Sending Login response: " << c->txSeq;
 
-    quint8 p[LOGINRESP_SIZE];
-    memset(p, 0x0, sizeof(p));
-    qToLittleEndian(sizeof(p), p + 0x00);
-    qToLittleEndian(seq, p + 0x06);
-    qToLittleEndian(c->myId, p + 0x08);
-    qToLittleEndian(c->remoteId, p + 0x0c);
-    memcpy(p + 0x13, QByteArrayLiteral("\x50\x02\00").constData(), 3);
-    qToLittleEndian(c->authInnerSeq, p + 0x16);
-    qToLittleEndian(c->tokenRx, p + 0x1a);
-    qToLittleEndian(c->tokenTx, p + 0x1c);
+    login_response_packet p;
+    memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
+    p.len = sizeof(p);
+    p.type = 0x00;
+    p.seq = seq;
+    p.sentid = c->myId;
+    p.rcvdid = c->remoteId;
+    p.innerseq = c->authInnerSeq;
+    p.tokrequest = c->tokenRx;
+    p.token = c->tokenTx;
+    p.code = 0x0250;
+
 
     if (!allowed) {
-        memcpy(p + 0x30, QByteArrayLiteral("\xFF\xFF\xFF\xFE").constData(), 4);
+        p.error = 0xFEFFFFFF;
         c->idleTimer->stop();
         c->pingTimer->stop();
         c->wdTimer->stop();
     }
     else {
-        //memcpy(p + 0x40, QByteArrayLiteral("FTTH").constData(), 4);
-        memcpy(p + 0x40, QByteArrayLiteral("WFVIEW").constData(), 6);
+        strcpy(p.connection,"WFVIEW");
     }
-    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), c->ipAddress, c->port);
+    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), c->ipAddress, c->port);
     c->idleTimer->start(100);
+    c->txSeq++;
     return;
 }
 
-#define CAP_SIZE 0xa8
 void udpServer::sendCapabilities(CLIENT* c)
 {
     qDebug() << c->ipAddress.toString() << ": Sending Capabilities :" << c->txSeq;
 
-    quint8 p[CAP_SIZE];
-    memset(p, 0x0, sizeof(p));
-    qToLittleEndian(sizeof(p), p + 0x00);
-    qToLittleEndian(c->txSeq, p + 0x06);
-    qToLittleEndian(c->myId, p + 0x08);
-    qToLittleEndian(c->remoteId, p + 0x0c);
-    memcpy(p + 0x13, QByteArrayLiteral("\x98\x02\02").constData(), 3);
-    qToLittleEndian(c->authInnerSeq, p + 0x16);
-    qToLittleEndian(c->tokenRx, p + 0x1a);
-    qToLittleEndian(c->tokenTx, p + 0x1c);
-    p[0x41] = (char)0x01;
-    p[0x49] = (char)0x10;
-    p[0x4a] = (char)0x80;
-    memcpy(p + 0x49, QByteArrayLiteral("\x10\x80").constData(), 2);
-    memcpy(p + 0x4d, QByteArrayLiteral("\x90\xc7\x0b\xe7").constData(), 4); // IC9700
-    memcpy(p + 0x92, QByteArrayLiteral("\x3f\x07\x00\x01\x8b\x01\x8b\x01\x01\x01\x00\x00\x4b").constData(), 13);
-    memcpy(p + 0xa0, QByteArrayLiteral("\x01\x50\x00\x90\x01").constData(), 5);
+    capabilities_packet p;
+    memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
+    p.len = sizeof(p);
+    p.type = 0x00;
+    p.seq = c->txSeq;
+    p.sentid = c->myId;
+    p.rcvdid = c->remoteId;
+    p.innerseq = c->authInnerSeq; 
+    p.tokrequest = c->tokenRx;
+    p.token = c->tokenTx;
+    p.code = 0x0298;
+    p.res = 0x02;
+    p.capa = 0x01;
+    p.commoncap = c->commonCap;
+    p.capc = (char)0x90;
 
-    p[0x94] = rigciv;
-    p[0x51] = (char)0x64;
-    memcpy(p + 0x52, rigname.toLocal8Bit(), rigname.length());
-    memcpy(p + 0x72, QByteArrayLiteral("ICOM_VAUDIO").constData(), 11);
+    memcpy(p.packet + 0x4d, QByteArrayLiteral("\x90\xc7\x0b\xe7").constData(), 4); // IC9700
+    memcpy(p.packet + 0x92, QByteArrayLiteral("\x3f\x07\x00\x01\x8b\x01\x8b\x01\x01\x01\x00\x00\x4b").constData(), 13);
+    memcpy(p.packet + 0xa0, QByteArrayLiteral("\x01\x50\x00\x90\x01").constData(), 5);
 
-    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), c->ipAddress, c->port);
+    p.packet[0x94] = rigciv;
+    p.packet[0x51] = (char)0x64;
+    memcpy(p.packet + 0x52, rigname.toLocal8Bit(), rigname.length());
+    memcpy(p.packet + 0x72, QByteArrayLiteral("ICOM_VAUDIO").constData(), 11);
+
+    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), c->ipAddress, c->port);
     c->idleTimer->start(100);
     c->txSeq++;
     return;
@@ -715,69 +717,65 @@ void udpServer::sendCapabilities(CLIENT* c)
 
 // When client has requested civ/audio connection, this will contain their details
 // Also used to display currently connected used information.
-#define CONNINFO_SIZE 0x90
 void udpServer::sendConnectionInfo(CLIENT* c)
 {
     qDebug() << c->ipAddress.toString() << ": Sending ConnectionInfo :" << c->txSeq;
-    quint8 p[CONNINFO_SIZE];
-    memset(p, 0x0, sizeof(p));
-    qToLittleEndian(sizeof(p), p + 0x00);
-    qToLittleEndian(c->txSeq, p + 0x06);
-    qToLittleEndian(c->myId, p + 0x08);
-    qToLittleEndian(c->remoteId, p + 0x0c);
-    p[0x13] = (char)0x80;
-    p[0x14] = (char)0x03;
-    qToLittleEndian(c->authInnerSeq, p + 0x16);
-    qToLittleEndian(c->tokenRx, p + 0x1a);
-    qToLittleEndian(c->tokenTx, p + 0x1c);
-    p[0x27] = (char)0x10;
-    p[0x28] = (char)0x80;
-    memcpy(p + 0x2b, QByteArrayLiteral("\x90\xc7\x0b\xe7\x64").constData(), 5);  // THIS SHOULD BE DYNAMIC?
+    conninfo_packet p;
+    memset(p.packet, 0x0, sizeof(p));
+    p.len = sizeof(p);
+    p.type = 0x00;
+    p.seq = c->txSeq;
+    p.sentid = c->myId;
+    p.rcvdid = c->remoteId;
+    p.innerseq = c->authInnerSeq;
+    p.tokrequest = c->tokenRx;
+    p.token = c->tokenTx;
+    p.code = 0x0380;
+    p.commoncap = c->commonCap;
+    p.identa = (char)0x90;
+    p.identb = 0x64e70bc7;
 
     // 0x1a-0x1f is authid (random number?
     // memcpy(p + 0x40, QByteArrayLiteral("IC-7851").constData(), 7);
 
-    memcpy(p + 0x40, rigname.toLocal8Bit(), rigname.length());
+    memcpy(p.packet + 0x40, rigname.toLocal8Bit(), rigname.length());
 
     // This is the current streaming client (should we support multiple clients?)
     if (c->isStreaming) {
-        p[0x60] = (char)0x01;
-        memcpy(p + 0x64, c->clientName.constData(), c->clientName.length());
-        qToBigEndian(c->ipAddress.toIPv4Address(), p + 0x84);
-        qToLittleEndian(c->connSeq, p + 0x2c);
-
+        p.busy = 0x01;
+        memcpy(p.computer, c->clientName.constData(), c->clientName.length());
+        p.ipaddress = qToBigEndian(c->ipAddress.toIPv4Address());
+        p.identb = c->connSeq;
     }
-    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), c->ipAddress, c->port);
+    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), c->ipAddress, c->port);
     c->idleTimer->start(100);
     c->txSeq++;
     return;
 }
 
-#define TOKEN_SIZE 0x40
 void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
 {
     qDebug() << c->ipAddress.toString() << ": Sending Token response for type: " << type;
 
-    quint8 p[TOKEN_SIZE];
-    memset(p, 0x0, sizeof(p));
-    qToLittleEndian(sizeof(p), p + 0x00);
-    qToLittleEndian(c->txSeq, p + 0x06);
-    qToLittleEndian(c->myId, p + 0x08);
-    qToLittleEndian(c->remoteId, p + 0x0c);
-    p[0x13] = (char)0x30;
-    p[0x14] = (char)0x02;
-    p[0x15] = (char)type;
-    qToLittleEndian(c->authInnerSeq, p + 0x16);
-    qToLittleEndian(c->tokenRx, p + 0x1a);
-    qToLittleEndian(c->tokenTx, p + 0x1c);
+    token_packet p;
+    memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
+    p.len = sizeof(p);
+    p.type = 0x00;
+    p.seq = c->txSeq;
+    p.sentid = c->myId;
+    p.rcvdid = c->remoteId;
+    p.innerseq = c->authInnerSeq;
+    p.tokrequest = c->tokenRx;
+    p.token = c->tokenTx;
+    p.code = 0x0230;
+    p.res = type;
 
-    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), c->ipAddress, c->port);
+    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), c->ipAddress, c->port);
     c->idleTimer->start(100);
     c->txSeq++;
     return;
 }
 
-#define WATCHDOG_SIZE 0x14
 void udpServer::sendWatchdog(CLIENT* c)
 {
     QMutexLocker locker(&mutex);
@@ -786,22 +784,22 @@ void udpServer::sendWatchdog(CLIENT* c)
 
     qint32 deciSeconds = (qint32)c->timeConnected.msecsTo(now) / 100;
 
-    quint8 p[WATCHDOG_SIZE];
-    memset(p, 0x0, sizeof(p));
-    qToLittleEndian(sizeof(p), p + 0x00);
-    p[0x04] = (char)0x01;
-    qToLittleEndian(c->myId, p + 0x08);
-    qToLittleEndian(c->remoteId, p + 0x0c);
-    qToLittleEndian(deciSeconds, p + 0x10);
-    qToLittleEndian(deciSeconds+1, p + 0x12);
+    watchdog_packet p;
+    memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
+    p.len = sizeof(p);
+    p.type = 0x00;
+    p.seq = c->txSeq;
+    p.sentid = c->myId;
+    p.rcvdid = c->remoteId;
+    p.secondsa = deciSeconds;
+    p.secondsb = deciSeconds + 1;
 
-    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), c->ipAddress, c->port);
-    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), c->ipAddress, c->port);
+    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), c->ipAddress, c->port);
+    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), c->ipAddress, c->port);
     return;
 
 
 }
-#define STATUS_SIZE 0x50
 
 void udpServer::sendStatus(CLIENT* c)
 {
@@ -809,38 +807,38 @@ void udpServer::sendStatus(CLIENT* c)
 
     qDebug() << c->ipAddress.toString() << ": Sending Status";
 
-    quint8 p[STATUS_SIZE];
-    memset(p, 0x0, sizeof(p));
-    qToLittleEndian(sizeof(p), p + 0x00);
-    qToLittleEndian(c->txSeq, p + 0x06);
-    qToLittleEndian(c->myId, p + 0x08);
-    qToLittleEndian(c->remoteId, p + 0x0c);
-    p[0x13] = (char)0x40;
-    p[0x14] = (char)0x02;
-    p[0x15] = (char)0x03;
-    qToLittleEndian(c->authInnerSeq, p + 0x16);
-    qToLittleEndian(c->tokenRx, p + 0x1a);
-    qToLittleEndian(c->tokenTx, p + 0x1c);
-    p[0x27] = (char)0x10;
-    p[0x28] = (char)0x80;
-    p[0x2b] = (char)0x90;
-    qToLittleEndian(c->connSeq, p + 0x2c);
+    status_packet p;
+    memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
+    p.len = sizeof(p);
+    p.type = 0x00;
+    p.seq = c->txSeq;
+    p.sentid = c->myId;
+    p.rcvdid = c->remoteId;
+    p.innerseq = c->authInnerSeq;
+    p.tokrequest = c->tokenRx;
+    p.token = c->tokenTx;
+    p.code = 0x0240;
+    p.res = 0x03;
+    p.unknown = 0x1000;
+    p.unusede = (char)0x80;
+    p.value[0] = (char)0x90;
 
-    qToBigEndian(c->civPort, p + 0x42);
-    qToBigEndian(c->audioPort, p + 0x46);
+    qToLittleEndian(c->connSeq, p.packet + 0x2c);
+
+    p.civport=qToBigEndian(c->civPort);
+    p.audioport=qToBigEndian(c->audioPort);
 
     // Send this to reject the request to tx/rx audio/civ
     //memcpy(p + 0x30, QByteArrayLiteral("\xff\xff\xff\xfe").constData(), 4);
 
 
     c->txSeq++;
-    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p, sizeof(p)), c->ipAddress, c->port);
+    c->socket->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), c->ipAddress, c->port);
 
 
 }
 
 
-#define SEND_SIZE 0x15
 void udpServer::dataForServer(QByteArray d)
 {
 
@@ -848,18 +846,16 @@ void udpServer::dataForServer(QByteArray d)
     foreach(CLIENT * client, civClients)
     {
         if (client != Q_NULLPTR && client->connected) {
-            quint8 p[SEND_SIZE];
-            memset(p, 0x0, sizeof(p));
-            qToLittleEndian(client->txSeq, p + 0x06);
-            qToLittleEndian(client->myId, p + 0x08);
-            qToLittleEndian(client->remoteId, p + 0x0c);
-            p[0x10] = (char)0xc1;
-            qToLittleEndian((quint16)d.length(), p + 0x11);
-            qToBigEndian(client->connSeq, p + 0x13); // THIS IS BIG ENDIAN!
-
-            QByteArray t = QByteArray::fromRawData((const char*)p, sizeof(p));
-            qToLittleEndian((quint16)t.length()+d.length(), p + 0x00);
-
+            data_packet p;
+            memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
+            p.seq = client->txSeq;
+            p.sentid = client->myId;
+            p.rcvdid = client->remoteId;
+            p.reply = (char)0xc1;
+            p.len = (quint16)d.length();
+            p.sendseq = client->connSeq;
+            p.len = (quint16)d.length() + sizeof(p);
+            QByteArray t = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
             t.append(d);
 
             QMutexLocker locker(&mutex);
