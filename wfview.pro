@@ -85,7 +85,8 @@ SOURCES += main.cpp\
     calibrationwindow.cpp \
     satellitesetup.cpp \
     udpserversetup.cpp \
-    udpserver.cpp
+    udpserver.cpp \
+    meter.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -99,7 +100,8 @@ HEADERS  += wfmain.h \
     satellitesetup.h \
     udpserversetup.h \
 	udpserver.h \
-	packettypes.h
+	packettypes.h \
+    meter.h
 
 
 FORMS    += wfmain.ui \
