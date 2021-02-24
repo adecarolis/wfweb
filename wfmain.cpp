@@ -1359,8 +1359,11 @@ void wfmain::setAppTheme(bool isCustom)
 {
     if(isCustom)
     {
-        // QFile f(":qdarkstyle/style.qss"); // built-in resource
+#ifdef Q_OS_WIN
+        QFile f(":"+prefs.stylesheetPath); // built-in resource
+#else
         QFile f("/usr/share/wfview/stylesheets/" + prefs.stylesheetPath);
+#endif
         if (!f.exists())
         {
             printf("Unable to set stylesheet, file not found\n");
