@@ -425,6 +425,10 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     drawPeaks = false;
 
+    SMeterReadings.fill(0,10);
+    powerMeterReadings.fill(0,10);
+
+
     ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
     ui->audioPortTxt->setValidator(new QIntValidator(this));
     ui->serialPortTxt->setValidator(new QIntValidator(this));
@@ -3099,16 +3103,41 @@ void wfmain::receiveLANGain(unsigned char level)
 
 void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
 {
+
+    int peak = 0;
+    int sum=0;
+    int average=0;
+
+
+
     switch(inMeter)
     {
         case meterS:
-            ui->levelIndicator->setValue((int)level);
+            SMeterReadings[(smeterPos++)%SMeterReadings.length()] = level;
+            for(int i=0; i < SMeterReadings.length(); i++)
+            {
+                if(SMeterReadings.at(i) > peak)
+                    peak = SMeterReadings.at(i);
+                sum += SMeterReadings.at(i);
+            }
+            average = sum / SMeterReadings.length();
+            ui->meterWidget->setLevels(level, peak, average);
+            //ui->levelIndicator->setValue((int)level);
             break;
         case meterSWR:
             //ui->levelIndicator->setValue((int)level);
             break;
         case meterPower:
-            ui->levelIndicator->setValue((int)level);
+            powerMeterReadings[(powerMeterPos++)%powerMeterReadings.length()] = level;
+            for(int i=0; i < powerMeterReadings.length(); i++)
+            {
+                if(powerMeterReadings.at(i) > peak)
+                    peak = powerMeterReadings.at(i);
+                sum += powerMeterReadings.at(i);
+            }
+            average = sum / powerMeterReadings.length();
+            ui->meterWidget->setLevels(level, peak, average);
+            //ui->levelIndicator->setValue((int)level);
             break;
         case meterALC:
             //ui->levelIndicator->setValue((int)level);
