@@ -24,11 +24,11 @@
 #include "audiohandler.h"
 #include "packettypes.h"
 
-#define PURGE_SECONDS 5
+#define PURGE_SECONDS 10
 #define TOKEN_RENEWAL 60000
 #define PING_PERIOD 100
 #define IDLE_PERIOD 100
-#define TXAUDIO_PERIOD 5 
+#define TXAUDIO_PERIOD 20 
 #define AREYOUTHERE_PERIOD 500
 
 
@@ -77,15 +77,17 @@ public:
 	QMutex mutex;
 
 	struct SEQBUFENTRY {
-		time_t	timeSent;
+		QTime	timeSent;
 		uint16_t seqNum;
 		QByteArray data;
 		quint8 retransmitCount;
 	};
 
-	QVector<SEQBUFENTRY> txSeqBuf; //= QVector<SEQBUFENTRY>();
+	QVector<SEQBUFENTRY> txSeqBuf;
 
-	QVector<quint16> rxSeqBuf; // = QVector<quint16>();
+	QVector<quint16> rxSeqBuf;
+
+	QVector<SEQBUFENTRY> rxMissing;
 
 	void sendTrackedPacket(QByteArray d);
 	void purgeOldEntries();

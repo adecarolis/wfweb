@@ -307,7 +307,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 qint64 audioHandler::writeData(const char* data, qint64 len)
 {
 
-//    QMutexLocker locker(&mutex);
+    QMutexLocker locker(&mutex);
     if (buffer.length() > bufferSize * 4)
     {
         qWarning() << "writeData() Buffer overflow";
@@ -359,9 +359,9 @@ void audioHandler::stateChanged(QAudio::State state)
 {
     if (state == QAudio::IdleState && audioOutput->error() == QAudio::UnderrunError) {
         qDebug(logAudio()) << this->metaObject()->className() << "RX:Buffer underrun";
-        //if (buffer.length() < bufferSize) {
-        //    audioOutput->suspend();
-        //}
+        QMutexLocker locker(&mutex);
+        audioOutput->suspend();
+        buffer.clear();
     }
     //qDebug(logAudio()) << this->metaObject()->className() << ": state = " << state;
 }
@@ -372,7 +372,7 @@ void audioHandler::incomingAudio(const QByteArray& data)
 {
     //qDebug(logAudio()) << "Got " << data.length() << " samples";
     if (audioOutput != Q_NULLPTR && audioOutput->state() != QAudio::StoppedState) {
-        //QMutexLocker locker(&mutex);
+        QMutexLocker locker(&mutex);
         buffer.append(data);
 
         if (audioOutput->state() == QAudio::SuspendedState) {
