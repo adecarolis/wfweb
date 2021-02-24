@@ -817,9 +817,10 @@ void udpBase::dataReceived(QByteArray r)
                         match->retransmitCount++;
                         udp->writeDatagram(match->data, radioIP, port);
                     }
-                    else {
-                        sendControl(false, 0, in->seq);
-                    }
+                    //else {
+                    //    qDebug(logUdp()) << this->metaObject()->className() << ": Sending idle as retransmit count exceeded " << match->seqNum;
+                    //    sendControl(false, 0, in->seq);
+                    //}
                     break;
                 }
                 else {
@@ -874,7 +875,7 @@ void udpBase::dataReceived(QByteArray r)
 
             if (in->type==0x01)
             {   // retransmit range request
-                qDebug(logUdp()) << this->metaObject()->className() << ": Retransmit range request for:" << in->first << ", " << in->second << ", " << in->third << ", " << in->fourth << ", ";
+                qDebug(logUdp()) << this->metaObject()->className() << ": Retransmit range request for:" << in->first << ", " << in->second << ", " << in->third << ", " << in->fourth;
 
                 auto match = std::find_if(txSeqBuf.begin(), txSeqBuf.end(), [&ca = in->first, &cb = in->second, &cc = in->third, &cd = in->fourth](SEQBUFENTRY& s) {
                     return s.seqNum == ca || s.seqNum == cb || s.seqNum == cc || s.seqNum == cd;
@@ -888,15 +889,20 @@ void udpBase::dataReceived(QByteArray r)
                     while (match != txSeqBuf.end()) {
                         // Found matching entry?
                         // Send "untracked" as it has already been sent once.
-                        if (match->retransmitCount <4) {
-                            qDebug(logUdp()) << this->metaObject()->className() << ": Sending retransmit of " << match->seqNum;
+                        if (match->retransmitCount <4 && (match->seqNum == in->first || match->seqNum == in->second || match->seqNum == in->third || match->seqNum == in->fourth)) {
+                            qDebug(logUdp()) << this->metaObject()->className() << ": Sending retransmit (range) of " << match->seqNum;
+                            match->retransmitCount++;
                             QMutexLocker locker(&mutex);
                             udp->writeDatagram(match->data, radioIP, port);
                             udp->writeDatagram(match->data, radioIP, port);
-                            match->retransmitCount++;
-                            match++;
-                            packetsLost++;
                         }
+                        //else if (match->retransmitCount == 4)
+                        //{
+                        //    // Just send idle packet.
+                        //    sendControl(false, 0, match->seqNum);
+                        //}
+                        match++;
+                        packetsLost++;
                     }
                 }
             }
@@ -917,7 +923,7 @@ void udpBase::dataReceived(QByteArray r)
 
     // All packets except ping and retransmit requests should trigger this.
     control_packet_t in = (control_packet_t)r.constData();
-    if (r.length() != PING_SIZE && in->type != (char)0x01 && in->seq != 0)
+    if (in->len != PING_SIZE && in->type == 0x00 && in->seq != 0x00)
     {
 
         if (in->seq < lastReceivedSeq)
@@ -940,24 +946,38 @@ void udpBase::dataReceived(QByteArray r)
         {
             std::sort(rxSeqBuf.begin(), rxSeqBuf.end());
             // Find all gaps in received packets (in reverse order)
-            quint16 first, second, third,count=0;
+            quint16 first=0, second=0, third=0, fourth=0, count=0;
             auto i = std::adjacent_find(rxSeqBuf.begin(), rxSeqBuf.end(), [](quint16 l, quint16 r) {return l + 1 < r; });
             while (i != rxSeqBuf.end())
             {
-                if (count == 0)
+                if (count == 0) {
                     first = *i;
-                else if (count == 1)
                     second = *i;
-                else if (count == 2)
                     third = *i;
-                
+                    fourth = *i;
+                }
+                else if (count == 1) {
+                    second = *i;
+                    third = *i;
+                    fourth = *i;
+                }
+                else if (count == 2) {
+                    third = *i;
+                    fourth = *i;
+                }
+                else if (count == 3) {
+                    fourth = *i;
+                }
+                else {
+                    break;
+                }
                 count++;
                 i++;                
             }
 
-            if (count > 6) // Something bad happened, clear the buffer.
+            if (abs(second-first) > 100 || abs(third-second) > 100 || abs(fourth-third) > 100)  // Something bad happened, clear the buffer.
             {
-                qDebug(logUdp()) << this->metaObject()->className() << ": Excessive lost incoming packets, clearing buffer: " << count << " packets lost!";
+                qDebug(logUdp()) << this->metaObject()->className() << ": Excessive packet lost difference, clearing buffer: " << count << " packets lost!";
 
                 rxSeqBuf.clear();
                 rxSeqBuf.append(in->seq);
@@ -969,24 +989,13 @@ void udpBase::dataReceived(QByteArray r)
                 rxSeqBuf.append(first);
                 sendControl(false, 0x01, first);
             } 
-            else if (count == 2) {
-                count = 3;
-                third=second;
-            }
-
-            if (count == 3)
+            else if(count != 0)
             {
-                qDebug(logUdp()) << this->metaObject()->className() << ": Requesting retransmit of: " << first << ", " << second << ", " << third;
-                rxSeqBuf.append(first);
-                rxSeqBuf.append(second);
-                if (second != third)
-                    rxSeqBuf.append(third);
-                sendRetransmitRange(first, second, third);
+                qDebug(logUdp()) << this->metaObject()->className() << ": Requesting retransmit of: " << first << ", " << second << ", " << third <<", " << fourth;
+                sendRetransmitRange(first, second, third,fourth);
             }
         }
     }
-
-
 }
 
 // Used to send idle and other "control" style messages
@@ -1027,7 +1036,7 @@ void udpBase::sendPing()
     return;
 }
 
-void udpBase::sendRetransmitRange(quint16 first, quint16 second, quint16 third)
+void udpBase::sendRetransmitRange(quint16 first, quint16 second, quint16 third,quint16 fourth)
 {
     retransmit_range_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -1036,9 +1045,9 @@ void udpBase::sendRetransmitRange(quint16 first, quint16 second, quint16 third)
     p.sentid = myId;
     p.rcvdid = remoteId;
     p.first = first;
-    p.second = first;
-    p.third = second;
-    p.fourth = third;
+    p.second = second;
+    p.third = third;
+    p.fourth = fourth;
     QMutexLocker locker(&mutex);
     udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
     return;
@@ -1053,6 +1062,7 @@ void udpBase::sendTrackedPacket(QByteArray d)
     SEQBUFENTRY s;
     s.seqNum = sendSeq;
     s.timeSent = time(NULL);
+    s.retransmitCount = 0;
     s.data = (d);
     txSeqBuf.append(s);
     purgeOldEntries(); // Delete entries older than PURGE_SECONDS seconds (currently 5)

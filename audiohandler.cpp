@@ -251,7 +251,7 @@ void audioHandler::flush()
 
 void audioHandler::stop()
 {
-    QMutexLocker locker(&mutex);
+    //QMutexLocker locker(&mutex);
     if (audioOutput && audioOutput->state() != QAudio::StoppedState) {
         // Stop audio output
         audioOutput->stop();
@@ -307,11 +307,11 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 qint64 audioHandler::writeData(const char* data, qint64 len)
 {
 
-    QMutexLocker locker(&mutex);
+//    QMutexLocker locker(&mutex);
     if (buffer.length() > bufferSize * 4)
     {
         qWarning() << "writeData() Buffer overflow";
-       // buffer.clear(); // Will cause a click!
+        buffer.clear(); // Will cause a click!
     }
 
     if (isUlaw) {
@@ -372,7 +372,7 @@ void audioHandler::incomingAudio(const QByteArray& data)
 {
     //qDebug(logAudio()) << "Got " << data.length() << " samples";
     if (audioOutput != Q_NULLPTR && audioOutput->state() != QAudio::StoppedState) {
-        QMutexLocker locker(&mutex);
+        //QMutexLocker locker(&mutex);
         buffer.append(data);
 
         if (audioOutput->state() == QAudio::SuspendedState) {
@@ -384,7 +384,6 @@ void audioHandler::incomingAudio(const QByteArray& data)
 
 void audioHandler::changeBufferSize(const quint16 newSize)
 {
-    QMutexLocker locker(&mutex);
     qDebug(logAudio()) << this->metaObject()->className() << ": Changing buffer size to: " << newSize << " from " << bufferSize;
     bufferSize = newSize;
 }
@@ -403,8 +402,8 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 {
     quint16 numSamples = radioSampleBits * 120;
     if (buffer.size() >= numSamples) {
-        QMutexLocker locker(&mutex);
         ret.append(buffer.mid(0, numSamples));
+        QMutexLocker locker(&mutex);
         buffer.remove(0, numSamples);
     }
     if (buffer.size() < numSamples)

@@ -46,7 +46,7 @@ public:
 
 	void dataReceived(QByteArray r); 
 	void sendPing();
-	void sendRetransmitRange(quint16 first, quint16 second, quint16 third);
+	void sendRetransmitRange(quint16 first, quint16 second, quint16 third,quint16 fourth);
 
 	void sendControl(bool tracked,quint8 id, quint16 seq);
 
