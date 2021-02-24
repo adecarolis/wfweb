@@ -3116,13 +3116,13 @@ void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
             SMeterReadings[(smeterPos++)%SMeterReadings.length()] = level;
             for(int i=0; i < SMeterReadings.length(); i++)
             {
-                if((unsigned int)SMeterReadings.at(i) > peak)
-                    peak = SMeterReadings.at(i);
-                sum += SMeterReadings.at(i);
+                if((unsigned char)SMeterReadings.at(i) > peak)
+                    peak = (unsigned char)SMeterReadings.at(i);
+                sum += (unsigned char)SMeterReadings.at(i);
             }
             average = sum / SMeterReadings.length();
             ui->meterWidget->setLevels(level, peak, average);
-            ui->meterWidget->update();
+            ui->meterWidget->repaint();
             //ui->levelIndicator->setValue((int)level);
             break;
         case meterSWR:
@@ -3132,9 +3132,9 @@ void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
             powerMeterReadings[(powerMeterPos++)%powerMeterReadings.length()] = level;
             for(int i=0; i < powerMeterReadings.length(); i++)
             {
-                if((unsigned int)powerMeterReadings.at(i) > peak)
-                    peak = (unsigned int)powerMeterReadings.at(i);
-                sum += (unsigned int)powerMeterReadings.at(i);
+                if((unsigned char)powerMeterReadings.at(i) > peak)
+                    peak = (unsigned char)powerMeterReadings.at(i);
+                sum += (unsigned char)powerMeterReadings.at(i);
             }
             average = sum / powerMeterReadings.length();
             ui->meterWidget->setLevels(level, peak, average);
@@ -3357,4 +3357,5 @@ void wfmain::on_debugBtn_clicked()
     // emit getMeters(amTransmitting);
 
     // emit getTSQL();
+    ui->meterWidget->update();
 }
