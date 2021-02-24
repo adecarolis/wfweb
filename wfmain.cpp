@@ -3108,9 +3108,9 @@ void wfmain::receiveLANGain(unsigned char level)
 void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
 {
 
-    int peak = 0;
-    int sum=0;
-    int average=0;
+    unsigned int peak = 0;
+    unsigned int sum=0;
+    unsigned int average=0;
 
 
 
@@ -3120,12 +3120,13 @@ void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
             SMeterReadings[(smeterPos++)%SMeterReadings.length()] = level;
             for(int i=0; i < SMeterReadings.length(); i++)
             {
-                if(SMeterReadings.at(i) > peak)
-                    peak = SMeterReadings.at(i);
-                sum += SMeterReadings.at(i);
+                if((unsigned char)SMeterReadings.at(i) > peak)
+                    peak = (unsigned char)SMeterReadings.at(i);
+                sum += (unsigned char)SMeterReadings.at(i);
             }
             average = sum / SMeterReadings.length();
             ui->meterWidget->setLevels(level, peak, average);
+            ui->meterWidget->repaint();
             //ui->levelIndicator->setValue((int)level);
             break;
         case meterSWR:
@@ -3135,12 +3136,13 @@ void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
             powerMeterReadings[(powerMeterPos++)%powerMeterReadings.length()] = level;
             for(int i=0; i < powerMeterReadings.length(); i++)
             {
-                if(powerMeterReadings.at(i) > peak)
-                    peak = powerMeterReadings.at(i);
-                sum += powerMeterReadings.at(i);
+                if((unsigned char)powerMeterReadings.at(i) > peak)
+                    peak = (unsigned char)powerMeterReadings.at(i);
+                sum += (unsigned char)powerMeterReadings.at(i);
             }
             average = sum / powerMeterReadings.length();
             ui->meterWidget->setLevels(level, peak, average);
+            ui->meterWidget->update();
             //ui->levelIndicator->setValue((int)level);
             break;
         case meterALC:
@@ -3359,4 +3361,5 @@ void wfmain::on_debugBtn_clicked()
     // emit getMeters(amTransmitting);
 
     // emit getTSQL();
+    ui->meterWidget->update();
 }

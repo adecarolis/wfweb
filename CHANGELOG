@@ -2,6 +2,7 @@
 # CHANGELOG
 
 - 20210224      fixed 785x lockup
+                Added scale and dampening/averaging to s-meter
 
 - 20210222      f-lock works now
 
