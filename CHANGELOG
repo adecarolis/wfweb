@@ -1,6 +1,8 @@
 
 # CHANGELOG
 
+- 20210224      fixed 785x lockup
+
 - 20210222      f-lock works now
 
 - 20210221	added working s-meter
