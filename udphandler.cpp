@@ -74,7 +74,7 @@ void udpHandler::init()
     idleTimer = new QTimer();
 
     connect(tokenTimer, &QTimer::timeout, this, std::bind(&udpHandler::sendToken, this, 0x05));
-    connect(areYouThereTimer, &QTimer::timeout, this, QOverload<>::of(&udpHandler::sendAreYouThere));
+    connect(areYouThereTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, false, 0x03, 0));
     connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
     connect(idleTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, true, 0, 0));
 
@@ -131,8 +131,8 @@ void udpHandler::dataReceived()
                 if (in->type == 0x04) {
                     // If timer is active, stop it as they are obviously there!
                     if (areYouThereTimer->isActive()) {
-                        areYouThereTimer->stop();
                         // send ping packets every second
+                        areYouThereTimer->stop();
                         pingTimer->start(PING_PERIOD);
                         idleTimer->start(IDLE_PERIOD);
                     }
@@ -458,14 +458,18 @@ udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort)
     */
     pingTimer = new QTimer();
     idleTimer = new QTimer();
+    areYouThereTimer = new QTimer();
 
     connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
     connect(idleTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, true, 0, 0));
+    connect(areYouThereTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, false, 0x03, 0));
 
+    // Start sending are you there packets - will be stopped once "I am here" received
     // send ping packets every 100 ms (maybe change to less frequent?)
     pingTimer->start(PING_PERIOD);
     // Send idle packets every 100ms, this timer will be reset everytime a non-idle packet is sent.
     idleTimer->start(IDLE_PERIOD);
+    areYouThereTimer->start(AREYOUTHERE_PERIOD);
 }
 
 udpCivData::~udpCivData() {
@@ -531,7 +535,11 @@ void udpCivData::dataReceived()
             case (CONTROL_SIZE): // Control packet
             {
                 control_packet_t in = (control_packet_t)r.constData();
-                if (in->type == 0x06)
+                if (in->type == 0x04)
+                {
+                    areYouThereTimer->stop();
+                }
+                else if (in->type == 0x06)
                 {
                     // Update remoteId
                     remoteId = in->sentid;
@@ -643,7 +651,13 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     txAudioTimer = new QTimer();
     txAudioTimer->setTimerType(Qt::PreciseTimer);
     connect(txAudioTimer, &QTimer::timeout, this, &udpAudio::sendTxAudio);
-    txAudioTimer->start(TXAUDIO_PERIOD);
+
+    areYouThereTimer = new QTimer();
+    connect(areYouThereTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, false, 0x03, 0));
+    areYouThereTimer->start(AREYOUTHERE_PERIOD);
+
+
+
 }
 
 udpAudio::~udpAudio()
@@ -715,6 +729,12 @@ void udpAudio::dataReceived()
         {
             case (16): // Response to control packet handled in udpBase
             {
+                control_packet_t in = (control_packet_t)r.constData();
+                if (in->type == 0x04)
+                {
+                    txAudioTimer->start(TXAUDIO_PERIOD);
+                }
+
                 break;
             }
             default:
@@ -812,7 +832,7 @@ void udpBase::dataReceived(QByteArray r)
                     // Send "untracked" as it has already been sent once.
                     // Don't constantly retransmit the same packet, give-up eventually
                     QMutexLocker locker(&mutex);
-                    qDebug(logUdp()) << this->metaObject()->className() << ": Sending retransmit of " << hex << match->seqNum;
+                    //qDebug(logUdp()) << this->metaObject()->className() << ": Sending retransmit of " << hex << match->seqNum;
                     match->retransmitCount++;
                     udp->writeDatagram(match->data, radioIP, port);
                 }
@@ -822,6 +842,10 @@ void udpBase::dataReceived(QByteArray r)
                 areYouThereCounter = 0;
                 // I don't think that we will ever receive an "I am here" other than in response to "Are you there?"
                 remoteId = in->sentid;
+                if (areYouThereTimer != Q_NULLPTR && areYouThereTimer->isActive()) {
+                    // send ping packets every second
+                    areYouThereTimer->stop();
+                }
                 sendControl(false, 0x06, 0x01); // Send Are you ready - untracked.
             }
             else if (in->type == 0x06)
@@ -901,7 +925,7 @@ void udpBase::dataReceived(QByteArray r)
             else {
                 // Found matching entry?
                 // Send "untracked" as it has already been sent once.
-                qDebug(logUdp()) << this->metaObject()->className() << ": Sending retransmit (range) of " << hex << match->seqNum;
+                //qDebug(logUdp()) << this->metaObject()->className() << ": Sending retransmit (range) of " << hex << match->seqNum;
                 match->retransmitCount++;
                 QMutexLocker locker(&mutex);
                 udp->writeDatagram(match->data, radioIP, port);
@@ -969,6 +993,7 @@ void udpBase::dataReceived(QByteArray r)
                             else {
                                 if (s->retransmitCount == 10)
                                 {
+                                    // We have tried 10 times to request this packet, time to give up!
                                     s = rxMissing.erase(s);
                                     rxSeqBuf.append(j); // Final thing is to add to received buffer!
                                 }
@@ -993,6 +1018,8 @@ void udpBase::dataReceived(QByteArray r)
                 {
                     missingSeqs.append(it->seqNum & 0xff);
                     missingSeqs.append(it->seqNum >> 8 & 0xff);
+                    missingSeqs.append(it->seqNum & 0xff);
+                    missingSeqs.append(it->seqNum >> 8 & 0xff);
                     it->retransmitCount++;
                 }
             }
@@ -1004,16 +1031,16 @@ void udpBase::dataReceived(QByteArray r)
                 p.seq = 0x0000;
                 p.sentid = myId;
                 p.rcvdid = remoteId;
-                if (missingSeqs.length() == 2)
+                if (missingSeqs.length() == 4) // This is just a single missing packet so send using a control.
                 {
                     p.seq = (missingSeqs[0] &0xff) |(quint16)(missingSeqs[1] << 8) ;
-                    qDebug(logUdp()) << this->metaObject()->className() << ": sending request for missing " << hex << p.seq;
+                    qDebug(logUdp()) << this->metaObject()->className() << ": sending request for missing packet : " << hex << p.seq;
                     QMutexLocker locker(&mutex);
                     udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
                 }
                 else 
                 {
-                    qDebug(logUdp()) << this->metaObject()->className() << ": sending multi request for missing: " <<missingSeqs.toHex();
+                    qDebug(logUdp()) << this->metaObject()->className() << ": sending request for multiple missing packets : " <<missingSeqs.toHex();
                     missingSeqs.insert(0, p.packet, sizeof(p.packet));
                     QMutexLocker locker(&mutex);
                     udp->writeDatagram(missingSeqs, radioIP, port);
