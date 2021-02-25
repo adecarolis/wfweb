@@ -920,7 +920,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
     {
         // Input buffer is 8bit and output buffer is 16bit 
         outlen = qMin(buffer.length(), (int)maxlen / 2);
-        for (quint32 f = 0; f < outlen; f++)
+        for (int f = 0; f < outlen; f++)
         {
             if (isUlaw)
                 qToLittleEndian<qint16>(ulaw_decode[(quint8)buffer.at(f)], data + (f * 2));
