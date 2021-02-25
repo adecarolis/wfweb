@@ -94,6 +94,18 @@ udpHandler::~udpHandler()
         }
         qDebug(logUdp()) << "Sending token removal packet";
         sendToken(0x01);
+        if (tokenTimer != Q_NULLPTR)
+        {
+            tokenTimer->stop();
+            delete tokenTimer;
+        }
+        if (watchdogTimer != Q_NULLPTR)
+        {
+            watchdogTimer->stop();
+            delete watchdogTimer;
+        }
+
+
     }
 }
 
@@ -119,7 +131,7 @@ void udpHandler::receiveDataFromUserToRig(QByteArray data)
 void udpHandler::dataReceived()
 {
     while (udp->hasPendingDatagrams()) {
-        lastReceived = time(0);
+        lastReceived = QTime::currentTime();
         QNetworkDatagram datagram = udp->receiveDatagram();
         QByteArray r = datagram.data();
 
@@ -307,6 +319,13 @@ void udpHandler::dataReceived()
 
                         sendRequestStream();
                     }
+                    else if (streamOpened) 
+                    /* If another client connects/disconnects from the server, the server will emit 
+                        a CONNINFO packet, send our details to confirm we still want the stream */
+                    {
+                        // Received while stream is open.
+                        sendRequestStream();
+                    }
                 }
                 break;
             }
@@ -459,11 +478,15 @@ udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort)
     pingTimer = new QTimer();
     idleTimer = new QTimer();
     areYouThereTimer = new QTimer();
+    startCivDataTimer = new QTimer();
+    watchdogTimer = new QTimer();
 
     connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
+    connect(watchdogTimer, &QTimer::timeout, this, &udpCivData::watchdog);
     connect(idleTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, true, 0, 0));
+    connect(startCivDataTimer, &QTimer::timeout, this, std::bind(&udpCivData::sendOpenClose, this, false));
     connect(areYouThereTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, false, 0x03, 0));
-
+    watchdogTimer->start(WATCHDOG_PERIOD);
     // Start sending are you there packets - will be stopped once "I am here" received
     // send ping packets every 100 ms (maybe change to less frequent?)
     pingTimer->start(PING_PERIOD);
@@ -472,8 +495,35 @@ udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort)
     areYouThereTimer->start(AREYOUTHERE_PERIOD);
 }
 
-udpCivData::~udpCivData() {
+udpCivData::~udpCivData() 
+{
     sendOpenClose(true);
+    if (startCivDataTimer != Q_NULLPTR)
+    {
+        startCivDataTimer->stop();
+        delete startCivDataTimer;
+        startCivDataTimer = Q_NULLPTR;
+    }
+}
+
+void udpCivData::watchdog()
+{
+    static bool alerted = false;
+    if (lastReceived.msecsTo(QTime::currentTime()) > 500)
+    {
+        if (!alerted) {
+            qDebug(logUdp()) << " CIV Watchdog: no CIV data received for 500ms, requesting data start.";
+            if (startCivDataTimer != Q_NULLPTR)
+            {
+                startCivDataTimer->start(100);
+            }
+            alerted = true;
+        }
+    }
+    else
+    {
+        alerted = false;
+    }
 }
 
 void udpCivData::send(QByteArray d)
@@ -498,7 +548,7 @@ void udpCivData::send(QByteArray d)
 
 void udpCivData::sendOpenClose(bool close)
 {
-    uint8_t magic = 0x05;
+    uint8_t magic = 0x04;
 
     if (close) 
     {
@@ -543,7 +593,12 @@ void udpCivData::dataReceived()
                 {
                     // Update remoteId
                     remoteId = in->sentid;
+                    // Manually send a CIV start request and start the timer if it isn't received.
+                    // The timer will be stopped as soon as valid CIV data is received.
                     sendOpenClose(false);
+                    if (startCivDataTimer != Q_NULLPTR) {
+                        startCivDataTimer->start(100);
+                    }
                 }
                 break;
             }
@@ -553,7 +608,11 @@ void udpCivData::dataReceived()
                 if (in->type != 0x01 && r.length() > 21) {
                     // Process this packet, any re-transmit requests will happen later.
                     //uint16_t gotSeq = qFromLittleEndian<quint16>(r.mid(6, 2));
-
+                    // We have received some Civ data so stop sending Start packets!
+                    if (startCivDataTimer != Q_NULLPTR) {
+                        startCivDataTimer->stop();
+                    }
+                    lastReceived = QTime::currentTime();
                     quint8 temp = r[0] - 0x15;
                     if ((quint8)r[16] == 0xc1 && (quint8)r[17] == temp)
                     {
@@ -648,6 +707,10 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, bufferSize, txIsUlawCodec, true);
     emit setupRxAudio(rxNumSamples, rxChannelCount, rxSampleRate, bufferSize, rxIsUlawCodec, false);
 
+    watchdogTimer = new QTimer();
+    connect(watchdogTimer, &QTimer::timeout, this, &udpAudio::watchdog);
+    watchdogTimer->start(WATCHDOG_PERIOD);
+
     txAudioTimer = new QTimer();
     txAudioTimer->setTimerType(Qt::PreciseTimer);
     connect(txAudioTimer, &QTimer::timeout, this, &udpAudio::sendTxAudio);
@@ -679,6 +742,24 @@ udpAudio::~udpAudio()
     }
 }
 
+void udpAudio::watchdog()
+{
+    static bool alerted = false;
+    if (lastReceived.msecsTo(QTime::currentTime()) > 500)
+    {
+        if (!alerted) {
+            /* Just log it at the moment, maybe try signalling the control channel that it needs to 
+                try requesting civ/audio again? */
+
+            qDebug(logUdp()) << " Audio Watchdog: no audio data received for 500ms, restart required";
+            alerted = true;
+        }
+    }
+    else
+    {
+        alerted = false;
+    }
+}
 
 
 void udpAudio::sendTxAudio()
@@ -753,7 +834,7 @@ void udpAudio::dataReceived()
                         r.mid(0, 2) == QByteArrayLiteral("\xd8\x03") ||
                         r.mid(0, 2) == QByteArrayLiteral("\x70\x04"))
                     {
-                        // First check if we are missing any packets as seq should be sequential.
+                        lastReceived = QTime::currentTime();
 
                         rxaudio->incomingAudio(r.mid(24));
                     }
@@ -789,6 +870,12 @@ udpBase::~udpBase()
         udp->close();
         delete udp;
     }
+    if (areYouThereTimer != Q_NULLPTR)
+    {
+        areYouThereTimer->stop();
+        delete areYouThereTimer;
+    }
+
     if (pingTimer != Q_NULLPTR)
     {
         pingTimer->stop();
@@ -799,8 +886,10 @@ udpBase::~udpBase()
         idleTimer->stop();
         delete idleTimer;
     }
+
     pingTimer = Q_NULLPTR;
     idleTimer = Q_NULLPTR;
+    areYouThereTimer = Q_NULLPTR;
 
 }
 
@@ -941,7 +1030,7 @@ void udpBase::dataReceived(QByteArray r)
         } 
         else 
         {
-            qSort(rxSeqBuf);
+            std::sort(rxSeqBuf.begin(), rxSeqBuf.end());
             if (in->seq < rxSeqBuf.front())
             {
                 qDebug(logUdp()) << this->metaObject()->className() << ": ******* seq number may have rolled over ****** previous highest: " << hex << rxSeqBuf.back() << " current: " << hex << in->seq;
@@ -961,7 +1050,7 @@ void udpBase::dataReceived(QByteArray r)
                     qDebug(logUdp()) << this->metaObject()->className() << ": Missing SEQ has been received! " << hex << in->seq;
                     s = rxMissing.erase(s);
                 }
-                qSort(rxSeqBuf); // Re-sort the buffer
+                std::sort(rxSeqBuf.begin(), rxSeqBuf.end());
             }
  
             // Find all gaps in received packets 
@@ -1144,7 +1233,8 @@ void udpBase::purgeOldEntries()
     rxMissing.erase(std::remove_if(rxMissing.begin(), rxMissing.end(), [](const SEQBUFENTRY& v)
     { return v.timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS; }), rxMissing.end());
 
-    qSort(rxSeqBuf);
+    std::sort(rxSeqBuf.begin(), rxSeqBuf.end());
+
     if (rxSeqBuf.length() > 400)
     {
         rxSeqBuf.remove(0, 200);

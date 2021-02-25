@@ -30,6 +30,7 @@
 #define IDLE_PERIOD 100
 #define TXAUDIO_PERIOD 20 
 #define AREYOUTHERE_PERIOD 500
+#define WATCHDOG_PERIOD 500
 
 
 void passcode(QString in, QByteArray& out);
@@ -73,7 +74,7 @@ public:
 	quint16 port=0;
 	bool periodicRunning = false;
 	bool sentPacketConnect2 = false;
-	time_t	lastReceived = time(0);
+	QTime	lastReceived =QTime::currentTime();
 	QMutex mutex;
 
 	struct SEQBUFENTRY {
@@ -95,6 +96,8 @@ public:
 	QTimer* areYouThereTimer = Q_NULLPTR; // Send are-you-there packets every second until a response is received.
 	QTimer* pingTimer = Q_NULLPTR; // Start sending pings immediately.
 	QTimer* idleTimer = Q_NULLPTR; // Start watchdog once we are connected.
+
+	QTimer* watchdogTimer = Q_NULLPTR;
 
 	QDateTime lastPingSentTime;
 	uint16_t pingSendSeq = 0;
@@ -125,8 +128,11 @@ public slots:
 
 
 private:
+	void watchdog();
 	void dataReceived();
 	void sendOpenClose(bool close);
+
+	QTimer* startCivDataTimer = Q_NULLPTR;
 };
 
 
@@ -154,6 +160,8 @@ private:
 
 	void sendTxAudio();
 	void dataReceived();
+	void watchdog();
+
 	QAudioFormat format;
 	quint16 bufferSize;
 	quint16 rxSampleRate;
