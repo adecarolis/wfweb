@@ -1006,8 +1006,8 @@ void audioHandler::stateChanged(QAudio::State state)
 {
     if (state == QAudio::IdleState && audioOutput->error() == QAudio::UnderrunError) {
         qDebug(logAudio()) << this->metaObject()->className() << "RX:Buffer underrun";
-        QMutexLocker locker(&mutex);
-        audioOutput->suspend();
+        //QMutexLocker locker(&mutex);
+        //audioOutput->suspend();
         //buffer.clear();
     }
     //qDebug(logAudio()) << this->metaObject()->className() << ": state = " << state;
