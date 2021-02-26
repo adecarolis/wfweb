@@ -867,8 +867,7 @@ void audioHandler::start()
         audioInput->start(this);
     }
     else {
-		//this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
-		this->open(QIODevice::ReadOnly);
+		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
 		audioOutput->start(this);
     }
 }
@@ -1022,11 +1021,12 @@ void audioHandler::incomingAudio(const QByteArray& data)
     if (audioOutput != Q_NULLPTR && audioOutput->state() != QAudio::StoppedState) {
         QMutexLocker locker(&mutex);
         buffer.append(data);
-
-        if (audioOutput->state() == QAudio::SuspendedState) {
-            qDebug(logAudio()) << "RX Audio Suspended, Resuming...";
-            audioOutput->resume();
-        }
+		// Restart playback once we have more than a couple of 20ms samples.
+		if ((buffer.length() > data.length()*2) && audioOutput->state() == QAudio::SuspendedState)
+		{
+				qDebug(logAudio()) << "RX Audio Suspended, Resuming...";
+				audioOutput->resume();
+		}
     }
 }
 
