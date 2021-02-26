@@ -867,7 +867,7 @@ void audioHandler::start()
         audioInput->start(this);
     }
     else {
-		this->open(QIODevice::ReadOnly);
+		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
 		audioOutput->start(this);
     }
 }
@@ -1006,9 +1006,10 @@ void audioHandler::stateChanged(QAudio::State state)
 {
     if (state == QAudio::IdleState && audioOutput->error() == QAudio::UnderrunError) {
         qDebug(logAudio()) << this->metaObject()->className() << "RX:Buffer underrun";
-        //QMutexLocker locker(&mutex);
-        //audioOutput->suspend();
-        //buffer.clear();
+#ifdef Q_OS_WIN
+        QMutexLocker locker(&mutex);
+        audioOutput->suspend();
+#endif
     }
     //qDebug(logAudio()) << this->metaObject()->className() << ": state = " << state;
 }

@@ -1226,21 +1226,26 @@ void udpBase::sendTrackedPacket(QByteArray d)
 void udpBase::purgeOldEntries()
 {
     // Erase old entries from the tx packet buffer
-    txSeqBuf.erase(std::remove_if(txSeqBuf.begin(), txSeqBuf.end(), [](const SEQBUFENTRY& v)
-    { return v.timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS; }), txSeqBuf.end());
-
-
-    // Erase old entries from the missing packets buffer
-    rxMissing.erase(std::remove_if(rxMissing.begin(), rxMissing.end(), [](const SEQBUFENTRY& v)
-    { return v.timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS; }), rxMissing.end());
-
-    std::sort(rxSeqBuf.begin(), rxSeqBuf.end());
-
-    if (rxSeqBuf.length() > 400)
+    if (!txSeqBuf.isEmpty())
     {
-        rxSeqBuf.remove(0, 200);
+        txSeqBuf.erase(std::remove_if(txSeqBuf.begin(), txSeqBuf.end(), [](const SEQBUFENTRY& v)
+        { return v.timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS; }), txSeqBuf.end());
     }
 
+    // Erase old entries from the missing packets buffer
+    if (!rxMissing.isEmpty()) {
+        rxMissing.erase(std::remove_if(rxMissing.begin(), rxMissing.end(), [](const SEQBUFENTRY& v)
+        { return v.timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS; }), rxMissing.end());
+    }
+
+    if (!rxSeqBuf.isEmpty()) {
+        std::sort(rxSeqBuf.begin(), rxSeqBuf.end());
+
+        if (rxSeqBuf.length() > 400)
+        {
+            rxSeqBuf.remove(0, 200);
+        }
+    }
 }
 
 /// <summary>
