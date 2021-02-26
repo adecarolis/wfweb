@@ -274,7 +274,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
 
     periodicPollingTimer = new QTimer(this);
-    periodicPollingTimer->setInterval(100);
+    periodicPollingTimer->setInterval(50);
     periodicPollingTimer->setSingleShot(false);
     connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(runPeriodicCommands()));
 

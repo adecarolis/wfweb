@@ -1455,16 +1455,16 @@ void rigCommander::getMeters(bool transmitting)
     if(transmitting)
     {
         getRFPowerMeter();
-        getSWRMeter();
-        getALCMeter();
-        getCompReductionMeter();
+        //getSWRMeter();
+        //getALCMeter();
+        //getCompReductionMeter();
 
     } else {
         getSMeter();
     }
 
-    getVdMeter();
-    getIDMeter();
+    //getVdMeter();
+    //getIDMeter();
     
 }
 
