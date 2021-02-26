@@ -2000,12 +2000,15 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
     double x;
     //double y;
     //double px;
-    x = plot->xAxis->pixelToCoord(me->pos().x());
-    //y = plot->yAxis->pixelToCoord(me->pos().y());
-    emit setFrequency(x);
-    cmdOut = cmdGetFreq;
-    delayedCommand->start();
-    showStatusBarText(QString("Going to %1 MHz").arg(x));
+    if(!freqLock)
+    {
+        //y = plot->yAxis->pixelToCoord(me->pos().y());
+        x = plot->xAxis->pixelToCoord(me->pos().x());
+        emit setFrequency(x);
+        cmdOut = cmdGetFreq;
+        delayedCommand->start();
+        showStatusBarText(QString("Going to %1 MHz").arg(x));
+    }
 }
 
 void wfmain::handleWFDoubleClick(QMouseEvent *me)
@@ -2015,11 +2018,14 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
     //x = wf->xAxis->pixelToCoord(me->pos().x());
     //y = wf->yAxis->pixelToCoord(me->pos().y());
     // cheap trick until I figure out how the axis works on the WF:
-    x = plot->xAxis->pixelToCoord(me->pos().x());
-    emit setFrequency(x);
-    cmdOut = cmdGetFreq;
-    delayedCommand->start();
-    showStatusBarText(QString("Going to %1 MHz").arg(x));
+    if(!freqLock)
+    {
+        x = plot->xAxis->pixelToCoord(me->pos().x());
+        emit setFrequency(x);
+        cmdOut = cmdGetFreq;
+        delayedCommand->start();
+        showStatusBarText(QString("Going to %1 MHz").arg(x));
+    }
 }
 
 void wfmain::handlePlotClick(QMouseEvent *me)
