@@ -674,7 +674,8 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     rxaudio->moveToThread(rxAudioThread);
 
     connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool)));
-    //connect(this, SIGNAL(haveAudioData(QByteArray)), rxaudio, SLOT(incomingAudio(QByteArray)));
+    connect(this, SIGNAL(haveAudioData(QByteArray)), rxaudio, SLOT(incomingAudio(QByteArray)));
+    connect(this, SIGNAL(haveChangeBufferSize(quint16)), rxaudio, SLOT(changeBufferSize(quint16)));
     connect(this, SIGNAL(haveChangeBufferSize(quint16)), rxaudio, SLOT(changeBufferSize(quint16)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
@@ -835,8 +836,8 @@ void udpAudio::dataReceived()
                         r.mid(0, 2) == QByteArrayLiteral("\x70\x04"))
                     {
                         lastReceived = QTime::currentTime();
-
-                        rxaudio->incomingAudio(r.mid(24));
+                        emit haveAudioData(r.mid(24));
+                        //rxaudio->incomingAudio(r.mid(24));
                     }
                 }
                 break;
