@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <iostream>
 #include "wfmain.h"
+#include "logcategories.h"
 
 // Copytight 2017-2021 Elliott H. Liggett
 
@@ -86,13 +87,13 @@ int main(int argc, char *argv[])
     // Set handler
     qInstallMessageHandler(messageHandler);
 
-    qDebug(logInfo()) << "Starting wfview";
+    qInfo(logSystem()) << "Starting wfview";
 
 
 #ifdef QT_DEBUG
-    qDebug(logDebug()) << "SerialPortCL as set by parser: " << serialPortCL;
-    qDebug(logDebug()) << "remote host as set by parser: " << hostCL;
-    qDebug(logDebug()) << "CIV as set by parser: " << civCL;
+    qInfo(logSystem()) << "SerialPortCL as set by parser: " << serialPortCL;
+    qInfo(logSystem()) << "remote host as set by parser: " << hostCL;
+    qInfo(logSystem()) << "CIV as set by parser: " << civCL;
 #endif
     a.setWheelScrollLines(1); // one line per wheel click
     wfmain w( serialPortCL, hostCL);
@@ -102,7 +103,7 @@ int main(int argc, char *argv[])
 
 
     return a.exec();
-    qDebug(logInfo()) << "wfview is finished";
+    qInfo(logSystem()) << "wfview is finished";
 
 }
 

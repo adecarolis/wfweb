@@ -56,13 +56,14 @@ private:
 		quint32 rxSeq;
 		quint32 connSeq;
 		quint16 pingSeq;
-		quint32 rxPingSeq; // 32bit as has other info
+		quint32 rxPingTime; // 32bit as has other info
 		quint32 authInnerSeq;
 		quint16 authSeq;
 		quint16 innerPingSeq;
 		quint16 innerSeq;
 		quint16 tokenRx;
 		quint32 tokenTx;
+		quint32 commonCap;
 		quint8 wdseq;
 		QUdpSocket* socket;
 
@@ -76,17 +77,14 @@ private:
 		quint8 txCodec;
 		quint16 rxSampleRate;
 		quint16 txSampleRate;
-
-
+		SERVERUSER user;
 	};
 
 	void controlReceived();
 	void civReceived();
 	void audioReceived();
-	void sendIAmHere(CLIENT* c);
-	void sendIAmReady(CLIENT* c);
 	void sendPing(QList<CLIENT*> *l,CLIENT* c, quint16 seq, bool reply);
-	void sendIdle(CLIENT* c, quint16 seq);
+	void sendControl(CLIENT* c, quint8 type, quint16 seq);
 	void sendLoginResponse(CLIENT* c, quint16 seq, bool allowed);
 	void sendCapabilities(CLIENT* c);
 	void sendConnectionInfo(CLIENT* c);
@@ -123,6 +121,7 @@ private:
 	QList <CLIENT*> controlClients = QList<CLIENT*>();
 	QList <CLIENT*> civClients = QList<CLIENT*>();
 	QList <CLIENT*> audioClients = QList<CLIENT*>();
+	QTime timeStarted;
 
 };
 

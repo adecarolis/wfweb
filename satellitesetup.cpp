@@ -1,5 +1,6 @@
 #include "satellitesetup.h"
 #include "ui_satellitesetup.h"
+#include "logcategories.h"
 
 satelliteSetup::satelliteSetup(QWidget *parent) :
     QDialog(parent),

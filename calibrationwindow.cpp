@@ -1,5 +1,6 @@
 #include "calibrationwindow.h"
 #include "ui_calibrationwindow.h"
+#include "logcategories.h"
 
 calibrationWindow::calibrationWindow(QWidget *parent) :
     QDialog(parent),

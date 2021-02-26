@@ -1,9 +1,11 @@
 
 # CHANGELOG
 
+- 20210224      fixed 785x lockup
+                Added scale and dampening/averaging to s-meter
 
-- 20210224      Added scale and dampening/averaging to s-meter
-                
+- 20210222      f-lock works now
+
 - 20210221	added working s-meter
 		added working power meter
 		added visual studio 2019 solution (windows builds)

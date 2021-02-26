@@ -1,4 +1,5 @@
 #include "rigidentities.h"
+#include "logcategories.h"
 
 // Copytight 2017-2021 Elliott H. Liggett
 

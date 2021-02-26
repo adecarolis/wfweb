@@ -2,6 +2,7 @@
 #include <QDebug>
 
 #include "rigidentities.h"
+#include "logcategories.h"
 
 // Copytight 2017-2020 Elliott H. Liggett
 
@@ -142,7 +143,7 @@ void rigCommander::setup()
     spectSeqMax = 0; // this is now set after rig ID determined
     payloadPrefix = QByteArray("\xFE\xFE");
     payloadPrefix.append(civAddr);
-    payloadPrefix.append(compCivAddr);
+    payloadPrefix.append((char)compCivAddr);
 
     payloadSuffix = QByteArray("\xFD");
 
@@ -164,7 +165,7 @@ void rigCommander::process()
 
 void rigCommander::handleSerialPortError(const QString port, const QString errorText)
 {
-    qDebug() << "Error using port " << port << " message: " << errorText;
+    qDebug(logRig()) << "Error using port " << port << " message: " << errorText;
     emit haveSerialPortError(port, errorText);
 }
 
@@ -183,14 +184,14 @@ void rigCommander::findRigs()
     QByteArray data2;
     //data.setRawData("\xFE\xFE\xa2", 3);
     data.setRawData("\xFE\xFE\x00", 3);
-    data.append(compCivAddr); // wfview's address, 0xE1
+    data.append((char)compCivAddr); // wfview's address, 0xE1
     data2.setRawData("\x19\x00", 2); // get rig ID
     data.append(data2);
     data.append(payloadSuffix);
 
     //check this:
 #ifdef QT_DEBUG
-    qDebug() << "About to request list of radios connected, using this command: ";
+    qDebug(logRig()) << "About to request list of radios connected, using this command: ";
     printHex(data, false, true);
 #endif
 
@@ -204,7 +205,7 @@ void rigCommander::prepDataAndSend(QByteArray data)
     //printHex(data, false, true);
     data.append(payloadSuffix);
 #ifdef QT_DEBUG
-    qDebug() << "Final payload in rig commander to be sent to rig: ";
+    qDebug(logRig()) << "Final payload in rig commander to be sent to rig: ";
     printHex(data, false, true);
 #endif
     emit dataForComm(data);
@@ -435,7 +436,7 @@ void rigCommander::getSpectrumRefLevel(unsigned char mainSub)
 
 void rigCommander::setSpectrumRefLevel(int level)
 {
-    //qDebug() << __func__ << ": Setting scope to level " << level;
+    //qDebug(logRig()) << __func__ << ": Setting scope to level " << level;
     QByteArray setting;
     QByteArray number;
     QByteArray pn;
@@ -453,7 +454,7 @@ void rigCommander::setSpectrumRefLevel(int level)
     setting.append(number);
     setting.append(pn);
 
-    //qDebug() << __func__ << ": scope reference number: " << number << ", PN to: " << pn;
+    //qDebug(logRig()) << __func__ << ": scope reference number: " << number << ", PN to: " << pn;
     //printHex(setting, false, true);
 
     prepDataAndSend(setting);
@@ -497,7 +498,7 @@ QByteArray rigCommander::makeFreqPayload(double freq)
         result.append(a);
         //printHex(result, false, true);
     }
-    //qDebug() << "encoded frequency for " << freq << " as int " << freqInt;
+    //qDebug(logRig()) << "encoded frequency for " << freq << " as int " << freqInt;
     //printHex(result, false, true);
     return result;
 
@@ -648,7 +649,7 @@ void rigCommander::parseData(QByteArray dataInput)
     // use this:
     QList <QByteArray> dataList = dataInput.split('\xFD');
     QByteArray data;
-    // qDebug() << "data list has this many elements: " << dataList.size();
+    // qDebug(logRig()) << "data list has this many elements: " << dataList.size();
     if (dataList.last().isEmpty())
     {
         dataList.removeLast(); // if the original ended in FD, then there is a blank entry at the end.
@@ -672,14 +673,14 @@ void rigCommander::parseData(QByteArray dataInput)
         // Data from the rig that was not asked for is sent to controller 0x00:
         // fe fe 00 94 ...... fd (for example, user rotates the tune control or changes the mode)
 
-        //qDebug() << "Data received: ";
+        //qDebug(logRig()) << "Data received: ";
         //printHex(data, false, true);
         if(data.length() < 4)
         {
             if(data.length())
             {
                 // Finally this almost never happens
-                // qDebug() << "Data length too short: " << data.length() << " bytes. Data:";
+                // qDebug(logRig()) << "Data length too short: " << data.length() << " bytes. Data:";
                 //printHex(data, false, true);
             }
             // no
@@ -690,18 +691,18 @@ void rigCommander::parseData(QByteArray dataInput)
 
         if(!data.startsWith("\xFE\xFE"))
         {
-            // qDebug() << "Warning: Invalid data received, did not start with FE FE.";
+            // qDebug(logRig()) << "Warning: Invalid data received, did not start with FE FE.";
             // find 94 e0 and shift over,
             // or look inside for a second FE FE
             // Often a local echo will miss a few bytes at the beginning.
             if(data.startsWith('\xFE'))
             {
                 data.prepend('\xFE');
-                // qDebug() << "Warning: Working with prepended data stream.";
+                // qDebug(logRig()) << "Warning: Working with prepended data stream.";
                 parseData(payloadIn);
                 return;
             } else {
-                //qDebug() << "Error: Could not reconstruct corrupted data: ";
+                //qDebug(logRig()) << "Error: Could not reconstruct corrupted data: ";
                 //printHex(data, false, true);
                 // data.right(data.length() - data.find('\xFE\xFE'));
                 // if found do not return and keep going.
@@ -714,7 +715,7 @@ void rigCommander::parseData(QByteArray dataInput)
             // data is or begins with an echoback from what we sent
             // find the first 'fd' and cut it. Then continue.
             //payloadIn = data.right(data.length() - data.indexOf('\xfd')-1);
-            // qDebug() << "[FOUND] Trimmed off echo:";
+            // qDebug(logRig()) << "[FOUND] Trimmed off echo:";
             //printHex(payloadIn, false, true);
             //parseData(payloadIn);
             //return;
@@ -728,7 +729,7 @@ void rigCommander::parseData(QByteArray dataInput)
             //        // data is or begins with an echoback from what we sent
             //        // find the first 'fd' and cut it. Then continue.
             //        payloadIn = data.right(data.length() - data.indexOf('\xfd')-1);
-            //        //qDebug() << "Trimmed off echo:";
+            //        //qDebug(logRig()) << "Trimmed off echo:";
             //        //printHex(payloadIn, false, true);
             //        parseData(payloadIn);
             //        break;
@@ -752,7 +753,7 @@ void rigCommander::parseData(QByteArray dataInput)
                     // The data are "to 00" and "from E1"
                     // Don't use it!
 #ifdef QT_DEBUG
-                    qDebug() << "Caught it! Found the echo'd broadcast request from us!";
+                    qDebug(logRig()) << "Caught it! Found the echo'd broadcast request from us!";
 #endif
                 } else {
                     payloadIn = data.right(data.length() - 4);
@@ -769,7 +770,7 @@ void rigCommander::parseData(QByteArray dataInput)
     /*
     if(dataList.length() > 1)
     {
-        qDebug() << "Recovered " << count << " frames from single data with size" << dataList.count();
+        qDebug(logRig()) << "Recovered " << count << " frames from single data with size" << dataList.count();
     }
     */
 }
@@ -803,19 +804,19 @@ void rigCommander::parseCommand()
             }
             break;
         case '\x01':
-            //qDebug() << "Have mode data";
+            //qDebug(logRig()) << "Have mode data";
             this->parseMode();
             break;
         case '\x04':
-            //qDebug() << "Have mode data";
+            //qDebug(logRig()) << "Have mode data";
             this->parseMode();
             break;
         case '\x05':
-            //qDebug() << "Have frequency data";
+            //qDebug(logRig()) << "Have frequency data";
             this->parseFrequency();
             break;
         case '\x06':
-            //qDebug() << "Have mode data";
+            //qDebug(logRig()) << "Have mode data";
             this->parseMode();
             break;
         case '\x0F':
@@ -830,11 +831,11 @@ void rigCommander::parseCommand()
             parseLevels();
             break;
         case '\x19':
-            // qDebug() << "Have rig ID: " << (unsigned int)payloadIn[2];
+            // qDebug(logRig()) << "Have rig ID: " << (unsigned int)payloadIn[2];
             // printHex(payloadIn, false, true);
             model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
             determineRigCaps();
-            qDebug() << "Have rig ID: decimal: " << (unsigned int)model;
+            qDebug(logRig()) << "Have rig ID: decimal: " << (unsigned int)model;
 
 
             break;
@@ -849,7 +850,7 @@ void rigCommander::parseCommand()
             break;
         case '\x27':
             // scope data
-            //qDebug() << "Have scope data";
+            //qDebug(logRig()) << "Have scope data";
             //printHex(payloadIn, false, true);
             parseWFData();
             //parseSpectrum();
@@ -871,7 +872,7 @@ void rigCommander::parseCommand()
         case '\xFA':
             // error
 #ifdef QT_DEBUG
-            qDebug() << "Error (FA) received from rig.";
+            qDebug(logRig()) << "Error (FA) received from rig.";
             printHex(payloadIn, false ,true);
 #endif
             break;
@@ -879,7 +880,7 @@ void rigCommander::parseCommand()
         default:
             // This gets hit a lot when the pseudo-term is
             // using commands wfview doesn't know yet.
-            // qDebug() << "Have other data with cmd: " << std::hex << payloadIn[00];
+            // qDebug(logRig()) << "Have other data with cmd: " << std::hex << payloadIn[00];
             // printHex(payloadIn, false, true);
             break;
     }
@@ -889,7 +890,7 @@ void rigCommander::parseCommand()
 
 void rigCommander::parseLevels()
 {
-    //qDebug() << "Received a level status readout: ";
+    //qDebug(logRig()) << "Received a level status readout: ";
     // printHex(payloadIn, false, true);
 
     // wrong: unsigned char level = (payloadIn[2] * 100) + payloadIn[03];
@@ -899,7 +900,7 @@ void rigCommander::parseLevels()
 
     unsigned char level = (100*hundreds) + (10*tens) + units;
 
-    //qDebug() << "Level is: " << (int)level << " or " << 100.0*level/255.0 << "%";
+    //qDebug(logRig()) << "Level is: " << (int)level << " or " << 100.0*level/255.0 << "%";
 
     // Typical RF gain response (rather low setting):
     // "INDEX: 00 01 02 03 04 "
@@ -948,7 +949,7 @@ void rigCommander::parseLevels()
                 break;
 
             default:
-                qDebug() << "Unknown control level (0x14) received at register " << payloadIn[1] << " with level " << level;
+                qDebug(logRig()) << "Unknown control level (0x14) received at register " << payloadIn[1] << " with level " << level;
                 break;
 
         }
@@ -989,7 +990,7 @@ void rigCommander::parseLevels()
                 break;
 
             default:
-                qDebug() << "Unknown meter level (0x15) received at register " << payloadIn[1] << " with level " << level;
+                qDebug(logRig()) << "Unknown meter level (0x15) received at register " << payloadIn[1] << " with level " << level;
                 break;
         }
 
@@ -1548,7 +1549,7 @@ void rigCommander::setRefAdjustCourse(unsigned char level)
 
 void rigCommander::setRefAdjustFine(unsigned char level)
 {
-    qDebug() << __FUNCTION__ << " level: " << level;
+    qDebug(logRig()) << __FUNCTION__ << " level: " << level;
     // 1A 05 00 73 0000-0255
     QByteArray payload;
     payload.setRawData("\x1A\x05\x00\x73", 4);
@@ -1611,7 +1612,7 @@ void rigCommander::parseRegisters1C()
 
 void rigCommander::parseATU()
 {
-    // qDebug() << "Have ATU status from radio. Emitting.";
+    // qDebug(logRig()) << "Have ATU status from radio. Emitting.";
     // Expect:
     // [0]: 0x1c
     // [1]: 0x01
@@ -1644,7 +1645,7 @@ void rigCommander::parseRegisters1A()
     //    01:   band stacking memory contents (last freq used is stored here per-band)
     //    03: filter width
     //    04: AGC rate
-    // qDebug() << "Looking at register 1A :";
+    // qDebug(logRig()) << "Looking at register 1A :";
     // printHex(payloadIn, false, true);
 
     // "INDEX: 00 01 02 03 04 "
@@ -1680,7 +1681,7 @@ void rigCommander::parseRegisters1A()
 
 void rigCommander::parseBandStackReg()
 {
-    // qDebug() << "Band stacking register response received: ";
+    // qDebug(logRig()) << "Band stacking register response received: ";
     // printHex(payloadIn, false, true);
     // Reference output, 20 meters, regCode 01 (latest):
     // "INDEX: 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 "
@@ -1699,8 +1700,8 @@ void rigCommander::parseBandStackReg()
     // 14, 15 tone squelch freq setting
     // if more, memory name (label) ascii
 
-    // qDebug() << "band: " << QString("%1").arg(band) << " regCode: " << (QString)regCode << " freq: " << freq;
-    // qDebug() << "mode: " << (QString)mode << " dataOn: " << dataOn;
+    // qDebug(logRig()) << "band: " << QString("%1").arg(band) << " regCode: " << (QString)regCode << " freq: " << freq;
+    // qDebug(logRig()) << "mode: " << (QString)mode << " dataOn: " << dataOn;
     emit haveBandStackReg(freq, mode, dataOn);
 }
 
@@ -1970,7 +1971,7 @@ void rigCommander::parseWFData()
         case 0x14:
             // fixed or center
             emit haveSpectrumFixedMode((bool)payloadIn[2]);
-            qDebug() << "received 0x14 command fix/center";
+            qDebug(logRig()) << "received 0x14 command fix/center";
             printHex(payloadIn, false, true);
             // [1] 0x14
             // [2] 0x00 (center), 0x01 (fixed)
@@ -1980,20 +1981,20 @@ void rigCommander::parseWFData()
             // [1] 0x15
             // [2] to [8] is span encoded as a frequency
             freqSpan = parseFrequency(payloadIn, 8);
-            qDebug() << "Received 0x15 center span data: for frequency " << freqSpan;
+            qDebug(logRig()) << "Received 0x15 center span data: for frequency " << freqSpan;
             printHex(payloadIn, false, true);
             break;
         case 0x16:
             // read edge mode center in edge mode
             emit haveScopeEdge((char)payloadIn[2]);
-            qDebug() << "Received 0x16 edge in center mode:";
+            qDebug(logRig()) << "Received 0x16 edge in center mode:";
             printHex(payloadIn, false, true);
             // [1] 0x16
             // [2] 0x01, 0x02, 0x03: Edge 1,2,3
             break;
         case 0x17:
             // Hold status (only 9700?)
-            qDebug() << "Received 0x17 hold status - need to deal with this!";
+            qDebug(logRig()) << "Received 0x17 hold status - need to deal with this!";
             printHex(payloadIn, false, true);
             break;
         case 0x19:
@@ -2006,7 +2007,7 @@ void rigCommander::parseWFData()
             parseSpectrumRefLevel();
             break;
         default:
-            qDebug() << "Unknown waveform data received: ";
+            qDebug(logRig()) << "Unknown waveform data received: ";
             printHex(payloadIn, false, true);
             break;
     }
@@ -2147,7 +2148,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
-            qDebug() << "Found unknown rig: " << rigCaps.modelName;
+            qDebug(logRig()) << "Found unknown rig: " << rigCaps.modelName;
             break;
 
     }
@@ -2157,14 +2158,14 @@ void rigCommander::determineRigCaps()
         lookingForRig = false;
         foundRig = true;
 #ifdef QT_DEBUG
-        qDebug() << "---Rig FOUND from broadcast query:";
+        qDebug(logRig()) << "---Rig FOUND from broadcast query:";
 #endif
         this->civAddr = incomingCIVAddr; // Override and use immediately.
         payloadPrefix = QByteArray("\xFE\xFE");
         payloadPrefix.append(civAddr);
-        payloadPrefix.append(compCivAddr);
+        payloadPrefix.append((char)compCivAddr);
         // if there is a compile-time error, remove the following line, the "hex" part is the issue:
-        qDebug() << "Using incomingCIVAddr: (int): " << this->civAddr << " hex: " << hex << this->civAddr;
+        qDebug(logRig()) << "Using incomingCIVAddr: (int): " << this->civAddr << " hex: " << hex << this->civAddr;
         emit discoveredRigID(rigCaps);
     } else {
         emit haveRigID(rigCaps);
@@ -2176,14 +2177,14 @@ void rigCommander::parseSpectrum()
     if(!haveRigCaps)
     {
 #ifdef QT_DEBUG
-        qDebug() << "Spectrum received in rigCommander, but rigID is incomplete.";
+        qDebug(logRig()) << "Spectrum received in rigCommander, but rigID is incomplete.";
 #endif
         return;
     }
     if(rigCaps.spectSeqMax == 0)
     {
         // there is a chance this will happen with rigs that support spectrum. Once our RigID query returns, we will parse correctly.
-        qDebug() << "Warning: Spectrum sequence max was zero, yet spectrum was received.";
+        qDebug(logRig()) << "Warning: Spectrum sequence max was zero, yet spectrum was received.";
         return;
     }
     // Here is what to expect:
@@ -2223,7 +2224,7 @@ void rigCommander::parseSpectrum()
 
 
     // unsigned char waveInfo = payloadIn[06]; // really just one byte?
-    //qDebug() << "Spectrum Data received: " << sequence << "/" << sequenceMax << " mode: " << scopeMode << " waveInfo: " << waveInfo << " length: " << payloadIn.length();
+    //qDebug(logRig()) << "Spectrum Data received: " << sequence << "/" << sequenceMax << " mode: " << scopeMode << " waveInfo: " << waveInfo << " length: " << payloadIn.length();
 
     // Sequnce 2, index 05 is the start of data
     // Sequence 11. index 05, is the last chunk
@@ -2269,13 +2270,13 @@ void rigCommander::parseSpectrum()
         // sequence numbers 2 through 10, 50 pixels each. Total after sequence 10 is 450 pixels.
         payloadIn.chop(1);
         spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 5)); // write over the FD, last one doesn't, oh well.
-        //qDebug() << "sequence: " << sequence << "spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
+        //qDebug(logRig()) << "sequence: " << sequence << "spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
     } else if (sequence == rigCaps.spectSeqMax)
     {
         // last spectrum, a little bit different (last 25 pixels). Total at end is 475 pixels (7300).
         payloadIn.chop(1);
         spectrumLine.insert(spectrumLine.length(), payloadIn.right(payloadIn.length() - 5));
-        //qDebug() << "sequence: " << sequence << " spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
+        //qDebug(logRig()) << "sequence: " << sequence << " spec index: " << (sequence-2)*55 << " payloadPosition: " << payloadIn.length() - 5 << " payload length: " << payloadIn.length();
         emit haveSpectrumData(spectrumLine, spectrumStartFreq, spectrumEndFreq);
     }
 }
@@ -2343,7 +2344,7 @@ QByteArray rigCommander::bcdEncodeInt(unsigned int num)
 {
     if(num > 9999)
     {
-        qDebug() << __FUNCTION__ << "Error, number is too big for four-digit conversion: " << num;
+        qDebug(logRig()) << __FUNCTION__ << "Error, number is too big for four-digit conversion: " << num;
         return QByteArray();
     }
 
@@ -2355,14 +2356,14 @@ QByteArray rigCommander::bcdEncodeInt(unsigned int num)
     char b0 = hundreds | (thousands << 4);
     char b1 = units | (tens << 4);
 
-    //qDebug() << __FUNCTION__ << " encoding value " << num << " as hex:";
+    //qDebug(logRig()) << __FUNCTION__ << " encoding value " << num << " as hex:";
     //printHex(QByteArray(b0), false, true);
     //printHex(QByteArray(b1), false, true);
 
 
     QByteArray result;
     result.append(b0).append(b1);
-    qDebug() << "Result: " << result;
+    qDebug(logRig()) << "Result: " << result;
     return result;
 }
 
@@ -2467,7 +2468,7 @@ void rigCommander::setATU(bool enabled)
 
 void rigCommander::getATUStatus()
 {
-    //qDebug() << "Sending out for ATU status in RC.";
+    //qDebug(logRig()) << "Sending out for ATU status in RC.";
     QByteArray payload("\x1C\x01");
     prepDataAndSend(payload);
 }
@@ -2532,7 +2533,7 @@ void rigCommander::printHex(const QByteArray &pdata)
 
 void rigCommander::printHex(const QByteArray &pdata, bool printVert, bool printHoriz)
 {
-    qDebug() << "---- Begin hex dump -----:";
+    qDebug(logRig()) << "---- Begin hex dump -----:";
     QString sdata("DATA:  ");
     QString index("INDEX: ");
     QStringList strings;
@@ -2549,21 +2550,21 @@ void rigCommander::printHex(const QByteArray &pdata, bool printVert, bool printH
         for(int i=0; i < strings.length(); i++)
         {
             //sdata = QString(strings.at(i));
-            qDebug() << strings.at(i);
+            qDebug(logRig()) << strings.at(i);
         }
     }
 
     if(printHoriz)
     {
-        qDebug() << index;
-        qDebug() << sdata;
+        qDebug(logRig()) << index;
+        qDebug(logRig()) << sdata;
     }
-    qDebug() << "----- End hex dump -----";
+    qDebug(logRig()) << "----- End hex dump -----";
 }
 
 void rigCommander::dataFromServer(QByteArray data)
 {
-    //qDebug() << "emit dataForComm()";
+    //qDebug(logRig()) << "emit dataForComm()";
     emit dataForComm(data);
 }
 

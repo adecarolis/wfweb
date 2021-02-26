@@ -9,6 +9,7 @@
 #include <QMutex>
 #include <QDateTime>
 #include <QByteArray>
+#include <QVector>
 
 // Allow easy endian-ness conversions
 #include <QtEndian>
@@ -23,12 +24,13 @@
 #include "audiohandler.h"
 #include "packettypes.h"
 
-#define PURGE_SECONDS 5
+#define PURGE_SECONDS 10
 #define TOKEN_RENEWAL 60000
 #define PING_PERIOD 100
 #define IDLE_PERIOD 100
-#define TXAUDIO_PERIOD 5 
+#define TXAUDIO_PERIOD 10 
 #define AREYOUTHERE_PERIOD 500
+#define WATCHDOG_PERIOD 500
 
 
 void passcode(QString in, QByteArray& out);
@@ -44,7 +46,9 @@ public:
 	void init();
 
 	void dataReceived(QByteArray r); 
-	void sendPing(); // Periodic type 0x07 ping packet sending
+	void sendPing();
+	void sendRetransmitRange(quint16 first, quint16 second, quint16 third,quint16 fourth);
+
 	void sendControl(bool tracked,quint8 id, quint16 seq);
 
 	QTime timeStarted;
@@ -56,7 +60,7 @@ public:
 	uint16_t innerSendSeq = 0x8304; // Not sure why?
 	uint16_t sendSeqB = 0;
 	uint16_t sendSeq = 1;
-	uint16_t lastReceivedSeq = 0;
+	uint16_t lastReceivedSeq = 1;
 	uint16_t pkt0SendSeq = 0;
 	uint16_t periodicSeq = 0;
 	quint64 latency = 0;
@@ -70,17 +74,21 @@ public:
 	quint16 port=0;
 	bool periodicRunning = false;
 	bool sentPacketConnect2 = false;
-	time_t	lastReceived = time(0);
+	QTime	lastReceived =QTime::currentTime();
 	QMutex mutex;
 
 	struct SEQBUFENTRY {
-		time_t	timeSent;
+		QTime	timeSent;
 		uint16_t seqNum;
 		QByteArray data;
+		quint8 retransmitCount;
 	};
 
-	QList <SEQBUFENTRY> txSeqBuf = QList<SEQBUFENTRY>();
-	std::vector< quint16 > rxSeqBuf;
+	QVector<SEQBUFENTRY> txSeqBuf;
+
+	QVector<quint16> rxSeqBuf;
+
+	QVector<SEQBUFENTRY> rxMissing;
 
 	void sendTrackedPacket(QByteArray d);
 	void purgeOldEntries();
@@ -88,6 +96,8 @@ public:
 	QTimer* areYouThereTimer = Q_NULLPTR; // Send are-you-there packets every second until a response is received.
 	QTimer* pingTimer = Q_NULLPTR; // Start sending pings immediately.
 	QTimer* idleTimer = Q_NULLPTR; // Start watchdog once we are connected.
+
+	QTimer* watchdogTimer = Q_NULLPTR;
 
 	QDateTime lastPingSentTime;
 	uint16_t pingSendSeq = 0;
@@ -118,8 +128,11 @@ public slots:
 
 
 private:
+	void watchdog();
 	void dataReceived();
 	void sendOpenClose(bool close);
+
+	QTimer* startCivDataTimer = Q_NULLPTR;
 };
 
 
@@ -147,6 +160,8 @@ private:
 
 	void sendTxAudio();
 	void dataReceived();
+	void watchdog();
+
 	QAudioFormat format;
 	quint16 bufferSize;
 	quint16 rxSampleRate;

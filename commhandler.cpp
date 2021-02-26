@@ -1,4 +1,5 @@
 #include "commhandler.h"
+#include "logcategories.h"
 
 #include <QDebug>
 
@@ -22,9 +23,9 @@ commHandler::commHandler()
 
     setupComm(); // basic parameters
     openPort();
-    //qDebug() << "Serial buffer size: " << port->readBufferSize();
+    //qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
     //port->setReadBufferSize(1024); // manually. 256 never saw any return from the radio. why...
-    //qDebug() << "Serial buffer size: " << port->readBufferSize();
+    //qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
 
     initializePt();
 
@@ -50,9 +51,9 @@ commHandler::commHandler(QString portName, quint32 baudRate)
 
     setupComm(); // basic parameters
     openPort();
-    // qDebug() << "Serial buffer size: " << port->readBufferSize();
+    // qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
     //port->setReadBufferSize(1024); // manually. 256 never saw any return from the radio. why...
-    //qDebug() << "Serial buffer size: " << port->readBufferSize();
+    //qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
 
 
     initializePt();
@@ -64,7 +65,7 @@ commHandler::commHandler(QString portName, quint32 baudRate)
 
 void commHandler::initializePt()
 {
-    // qDebug() << "init pt";
+    // qDebug(logSerial()) << "init pt";
     pseudoterm = new QSerialPort();
     setupPtComm();
     openPtPort();
@@ -72,7 +73,7 @@ void commHandler::initializePt()
 
 void commHandler::setupPtComm()
 {
-    qDebug() << "Setting up Pseudo Term";
+    qDebug(logSerial()) << "Setting up Pseudo Term";
     pseudoterm->setPortName("/dev/ptmx");
     // pseudoterm->setBaudRate(baudrate);
     // pseudoterm->setStopBits(QSerialPort::OneStop);
@@ -80,7 +81,7 @@ void commHandler::setupPtComm()
 
 void commHandler::openPtPort()
 {
-    // qDebug() << "opening pt port";
+    // qDebug(logSerial()) << "opening pt port";
     bool success;
 #ifndef Q_OS_WIN
     char ptname[128];
@@ -93,22 +94,22 @@ void commHandler::openPtPort()
 		
 #ifndef Q_OS_WIN
 
-        qDebug() << "Opened pt device, attempting to grant pt status";
+        qDebug(logSerial()) << "Opened pt device, attempting to grant pt status";
         ptfd = pseudoterm->handle();
-        qDebug() << "ptfd: " << ptfd;
+        qDebug(logSerial()) << "ptfd: " << ptfd;
         if(grantpt(ptfd))
         {
-            qDebug() << "Failed to grantpt";
+            qDebug(logSerial()) << "Failed to grantpt";
             return;
         }
         if(unlockpt(ptfd))
         {
-            qDebug() << "Failed to unlock pt";
+            qDebug(logSerial()) << "Failed to unlock pt";
             return;
         }
         // we're good!
-        qDebug() << "Opened pseudoterminal.";
-        qDebug() << "Slave name: " << ptsname(ptfd);
+        qDebug(logSerial()) << "Opened pseudoterminal.";
+        qDebug(logSerial()) << "Slave name: " << ptsname(ptfd);
 
         ptsname_r(ptfd, ptname, 128);
         ptDevSlave = QString::fromLocal8Bit(ptname);
@@ -118,13 +119,13 @@ void commHandler::openPtPort()
         sysResult = system(ptLinkCmd.toStdString().c_str());
         if(sysResult)
         {
-            qDebug() << "Received error from pseudo-terminal symlink command: code: [" << sysResult << "]" << " command: [" << ptLinkCmd << "]";
+            qDebug(logSerial()) << "Received error from pseudo-terminal symlink command: code: [" << sysResult << "]" << " command: [" << ptLinkCmd << "]";
         }
 #endif
 
     } else {
         ptfd = 0;
-        qDebug() << "Could not open pseudo-terminal.";
+        qDebug(logSerial()) << "Could not open pseudo-terminal.";
     }
 }
 
@@ -157,7 +158,7 @@ void commHandler::sendDataOut(const QByteArray &writeData)
     qint64 bytesWritten;
 
     bytesWritten = port->write(writeData);
-    qDebug() << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
+    qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
              << " size of byte array: " << writeData.size()\
              << " Wrote all bytes? " << (bool) (bytesWritten == (qint64)writeData.size());
 
@@ -176,7 +177,7 @@ void commHandler::sendDataOutPt(const QByteArray &writeData)
 #ifdef QT_DEBUG
     qint64 bytesWritten;
     bytesWritten = port->write(writeData);
-    qDebug() << "pseudo-term bytesWritten: " << bytesWritten << " length of byte array: " << \
+    qDebug(logSerial()) << "pseudo-term bytesWritten: " << bytesWritten << " length of byte array: " << \
                 writeData.length() << " size of byte array: " << writeData.size()\
              << ", wrote all: " << (bool)(bytesWritten == (qint64)writeData.size());
 #else
@@ -189,14 +190,14 @@ void commHandler::sendDataOutPt(const QByteArray &writeData)
 void commHandler::receiveDataInPt()
 {
     // We received data from the pseudo-term.
-    //qDebug() << "Sending data from pseudo-terminal to radio";
+    //qDebug(logSerial()) << "Sending data from pseudo-terminal to radio";
     // Send this data to the radio:
     //QByteArray ptdata = pseudoterm->readAll();
     // should check the data and rollback
     // for now though...
     //sendDataOut(ptdata);
     sendDataOut(pseudoterm->readAll());
-    //qDebug() << "Returned from sendDataOut with pseudo-terminal send data.";
+    //qDebug(logSerial()) << "Returned from sendDataOut with pseudo-terminal send data.";
 }
 
 void commHandler::receiveDataIn()
@@ -224,27 +225,27 @@ void commHandler::receiveDataIn()
                 // 0xE1 = wfview
                 // 0xE0 = pseudo-term host
                 // 0x00 = broadcast to all
-                //qDebug() << "Sending data from radio to pseudo-terminal";
+                //qDebug(logSerial()) << "Sending data from radio to pseudo-terminal";
                 sendDataOutPt(inPortData);
             }
 
             if(rolledBack)
             {
-                // qDebug() << "Rolled back and was successfull. Length: " << inPortData.length();
+                // qDebug(logSerial()) << "Rolled back and was successfull. Length: " << inPortData.length();
                 //printHex(inPortData, false, true);
                 rolledBack = false;
             }
         } else {
             // did not receive the entire thing so roll back:
-            // qDebug() << "Rolling back transaction. End not detected. Lenth: " << inPortData.length();
+            // qDebug(logSerial()) << "Rolling back transaction. End not detected. Lenth: " << inPortData.length();
             //printHex(inPortData, false, true);
             port->rollbackTransaction();
             rolledBack = true;
         }
     } else {
         port->commitTransaction(); // do not emit data, do not keep data.
-        //qDebug() << "Warning: received data with invalid start. Dropping data.";
-        //qDebug() << "THIS SHOULD ONLY HAPPEN ONCE!!";
+        //qDebug(logSerial()) << "Warning: received data with invalid start. Dropping data.";
+        //qDebug(logSerial()) << "THIS SHOULD ONLY HAPPEN ONCE!!";
         // THIS SHOULD ONLY HAPPEN ONCE!
 
         // unrecoverable. We did not receive the start and must
@@ -264,11 +265,11 @@ void commHandler::openPort()
     if(success)
     {
         isConnected = true;
-        //qDebug() << "Opened port!";
+        //qDebug(logSerial()) << "Opened port!";
         return;
     } else {
         // debug?
-        qDebug() << "Could not open serial port " << portName << " , please restart.";
+        qDebug(logSerial()) << "Could not open serial port " << portName << " , please restart.";
         isConnected = false;
         serialError = true;
         emit haveSerialPortError(portName, "Could not open port. Please restart.");
@@ -287,7 +288,7 @@ void commHandler::closePort()
 void commHandler::debugThis()
 {
     // Do not use, function is for debug only and subject to change.
-    qDebug() << "comm debug called.";
+    qDebug(logSerial()) << "comm debug called.";
 
     inPortData = port->readAll();
     emit haveDataFromPort(inPortData);
@@ -297,7 +298,7 @@ void commHandler::debugThis()
 
 void commHandler::printHex(const QByteArray &pdata, bool printVert, bool printHoriz)
 {
-    qDebug() << "---- Begin hex dump -----:";
+    qDebug(logSerial()) << "---- Begin hex dump -----:";
     QString sdata("DATA:  ");
     QString index("INDEX: ");
     QStringList strings;
@@ -314,16 +315,16 @@ void commHandler::printHex(const QByteArray &pdata, bool printVert, bool printHo
         for(int i=0; i < strings.length(); i++)
         {
             //sdata = QString(strings.at(i));
-            qDebug() << strings.at(i);
+            qDebug(logSerial()) << strings.at(i);
         }
     }
 
     if(printHoriz)
     {
-        qDebug() << index;
-        qDebug() << sdata;
+        qDebug(logSerial()) << index;
+        qDebug(logSerial()) << sdata;
     }
-    qDebug() << "----- End hex dump -----";
+    qDebug(logSerial()) << "----- End hex dump -----";
 }
 
 

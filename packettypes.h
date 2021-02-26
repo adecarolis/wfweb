@@ -9,7 +9,7 @@
 #define WATCHDOG_SIZE           0x14
 #define PING_SIZE               0x15
 #define OPENCLOSE_SIZE          0x16
-#define RETRANSMIT_SIZE         0x18
+#define RETRANSMIT_RANGE_SIZE   0x18
 #define TOKEN_SIZE              0x40
 #define STATUS_SIZE             0x50
 #define LOGIN_RESPONSE_SIZE     0x60
@@ -33,6 +33,21 @@ typedef union control_packet {
     };
     char packet[CONTROL_SIZE];
 } *control_packet_t;
+
+
+// 0x14 length watchdog packet
+typedef union watchdog_packet {
+    struct {
+        quint32 len;        // 0x00
+        quint16 type;       // 0x04
+        quint16 seq;        // 0x06
+        quint32 sentid;     // 0x08
+        quint32 rcvdid;     // 0x0c
+        quint16  secondsa;        // 0x10
+        quint16  secondsb;        // 0x12
+    };
+    char packet[WATCHDOG_SIZE];
+} *watchdog_packet_t;
 
 
 // 0x15 length ping packet 
@@ -96,6 +111,23 @@ typedef union txaudio_packet {
     char packet[TXAUDIO_SIZE];
 } *txaudio_packet_t;
 
+// 0x18 length retransmit_range packet 
+typedef union retransmit_range_packet {
+    struct
+    {
+        quint32 len;        // 0x00
+        quint16 type;       // 0x04
+        quint16 seq;        // 0x06
+        quint32 sentid;     // 0x08
+        quint32 rcvdid;     // 0x0c
+        quint16 first;      // 0x10
+        quint16 second;        // 0x12
+        quint16 third;      // 0x14
+        quint16 fourth;        // 0x16
+    };
+    char packet[RETRANSMIT_RANGE_SIZE];
+} *retransmit_range_packet_t;
+
 
 // 0x18 length txaudio packet 
 /*            tx[0] = static_cast<quint8>(tx.length() & 0xff);
@@ -150,13 +182,14 @@ typedef union status_packet {
         char unusede;             // 0x28
         char unusedf[2];          // 0x29
         char value[5];            // 0x2b
-        quint32 error;              // 0x30
+        quint32 error;             // 0x30
         char unusedg[12];         // 0x34
         char disc;                // 0x40
         char unusedh;             // 0x41
-        quint32 civport;            // 0x42 // Sent bigendian
-        quint32 audioport;          // 0x46 // Sent bigendian
-        char unusedi[5];          // 0x4a
+        quint16 civport;          // 0x42 // Sent bigendian
+        quint16 unusedi;          // 0x44 // Sent bigendian
+        quint16 audioport;        // 0x46 // Sent bigendian
+        char unusedj[7];          // 0x49
     };
     char packet[STATUS_SIZE];
 } *status_packet_t;
@@ -230,7 +263,7 @@ typedef union conninfo_packet {
         quint32 token;            // 0x1c 
         quint16 authstartid;      // 0x20
         char unusedd[5];          // 0x22
-        quint32 resb;             // 0x27
+        quint32 commoncap;        // 0x27
         char identa;              // 0x2b
         quint32 identb;           // 0x2c
         char unusedf[16];         // 0x30
@@ -281,7 +314,7 @@ typedef union capabilities_packet {
         char unusedd[33];         // 0x20
         char capa;                // 0x41
         char unusede[7];          // 0x42
-        quint16 capb;               // 0x49
+        quint16 commoncap;               // 0x49
         char unusedf[2];          // 0x4b
         char capc;                // 0x4d
         quint32 capd;               // 0x4e
