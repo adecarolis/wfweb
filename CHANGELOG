@@ -1,6 +1,17 @@
 
 # CHANGELOG
 
+- 20210226	Fixed minor bug where flock did not stop double-clicking on the
+    		spectrum.
+
+                S-meter ballistics:
+                Turned up the speed. Once you see fast meters, there's no going back.
+		Tested at 5ms without any issues, comitting at 10ms for now. Note that
+    		50ms in the first 'fixed' meter code is the same as 25ms now due to how
+    		the command queue is structured. So 10ms is only a bit faster than
+    		before.
+                Fixed meter polling issue
+
 - 20210224      fixed 785x lockup
                 Added scale and dampening/averaging to s-meter
 
