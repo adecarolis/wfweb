@@ -1008,7 +1008,7 @@ void audioHandler::stateChanged(QAudio::State state)
         qDebug(logAudio()) << this->metaObject()->className() << "RX:Buffer underrun";
         QMutexLocker locker(&mutex);
         audioOutput->suspend();
-        buffer.clear();
+        //buffer.clear();
     }
     //qDebug(logAudio()) << this->metaObject()->className() << ": state = " << state;
 }
@@ -1021,8 +1021,8 @@ void audioHandler::incomingAudio(const QByteArray& data)
     if (audioOutput != Q_NULLPTR && audioOutput->state() != QAudio::StoppedState) {
         QMutexLocker locker(&mutex);
         buffer.append(data);
-		// Restart playback once we have more than a couple of 20ms samples.
-		if ((buffer.length() > data.length()*2) && audioOutput->state() == QAudio::SuspendedState)
+		// Restart playback
+		if (audioOutput->state() == QAudio::SuspendedState)
 		{
 				qDebug(logAudio()) << "RX Audio Suspended, Resuming...";
 				audioOutput->resume();
