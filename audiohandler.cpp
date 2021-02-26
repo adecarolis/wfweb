@@ -867,8 +867,9 @@ void audioHandler::start()
         audioInput->start(this);
     }
     else {
-        this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
-        audioOutput->start(this);
+		//this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
+		this->open(QIODevice::ReadOnly);
+		audioOutput->start(this);
     }
 }
 
