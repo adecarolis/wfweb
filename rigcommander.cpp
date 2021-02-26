@@ -1448,24 +1448,34 @@ void rigCommander::getLevels()
 //    getAntiVoxGain(); // 0x17
 }
 
-void rigCommander::getMeters(bool transmitting)
+void rigCommander::getMeters(meterKind meter)
 {
-    // Nice function to just grab every meter
-    
-    if(transmitting)
+    switch(meter)
     {
-        getRFPowerMeter();
-        //getSWRMeter();
-        //getALCMeter();
-        //getCompReductionMeter();
-
-    } else {
-        getSMeter();
+        case meterS:
+            getSMeter();
+            break;
+        case meterSWR:
+            getSWRMeter();
+            break;
+        case meterPower:
+            getRFPowerMeter();
+            break;
+        case meterALC:
+            getALCMeter();
+            break;
+        case meterComp:
+            getCompReductionMeter();
+            break;
+        case meterVoltage:
+            getVdMeter();
+            break;
+        case meterCurrent:
+            getIDMeter();
+            break;
+        default:
+            break;
     }
-
-    //getVdMeter();
-    //getIDMeter();
-    
 }
 
 void rigCommander::getSMeter()

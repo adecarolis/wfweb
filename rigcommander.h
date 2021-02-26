@@ -103,7 +103,7 @@ public slots:
     void getVdMeter();
     void getIDMeter();
 
-    void getMeters(bool transmitting); // all supported meters per transmit or receive
+    void getMeters(meterKind meter); // all supported meters per transmit or receive
 
     void setSquelch(unsigned char level);
     void setRfGain(unsigned char level);

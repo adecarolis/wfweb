@@ -274,7 +274,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
 
     periodicPollingTimer = new QTimer(this);
-    periodicPollingTimer->setInterval(50);
+    periodicPollingTimer->setInterval(25);
     periodicPollingTimer->setSingleShot(false);
     connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(runPeriodicCommands()));
 
@@ -360,7 +360,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rig, SIGNAL(haveLANGain(unsigned char)), this, SLOT(receiveLANGain(unsigned char)));
 
     //Metering:
-    connect(this, SIGNAL(getMeters(bool)), rig, SLOT(getMeters(bool)));
+    connect(this, SIGNAL(getMeters(meterKind)), rig, SLOT(getMeters(meterKind)));
     connect(rig, SIGNAL(haveMeter(meterKind,unsigned char)), this, SLOT(receiveMeter(meterKind,unsigned char)));
 
     // Rig and ATU info:
@@ -1467,18 +1467,31 @@ void wfmain::runPeriodicCommands()
                 break;
 
             // Metering commands:
-            case cmdGetRxLevels:
-            case cmdGetTxLevels:
-                emit getMeters(amTransmitting);
-                break;
             case cmdGetSMeter:
+                if(!amTransmitting)
+                    emit getMeters(meterS);
                 break;
             case cmdGetPowerMeter:
+                if(amTransmitting)
+                    emit getMeters(meterPower);
+                break;
+            case cmdGetIdMeter:
+                emit getMeters(meterCurrent);
+                break;
+            case cmdGetVdMeter:
+                emit getMeters(meterVoltage);
                 break;
             case cmdGetALCMeter:
+                if(amTransmitting)
+                    emit getMeters(meterALC);
                 break;
             case cmdGetCompMeter:
+                if(amTransmitting)
+                    emit getMeters(meterComp);
                 break;
+
+
+            // Standard commands we are already checking:
 
             case cmdGetRigID:
                 emit getRigID();
@@ -1819,8 +1832,8 @@ void wfmain::initPeriodicCommands()
     // The commands are run using a timer,
     // and the timer is started by the delayed command cmdStartPeriodicTimer.
 
-    insertPeriodicCommand(cmdGetRxLevels, 128);
-    insertPeriodicCommand(cmdGetTxLevels, 128);
+    insertPeriodicCommand(cmdGetSMeter, 128);
+    insertPeriodicCommand(cmdGetPowerMeter, 128);
 }
 
 void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)

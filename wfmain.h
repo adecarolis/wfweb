@@ -83,7 +83,7 @@ signals:
     void setUSBGain(unsigned char level);
     void setLANGain(unsigned char level);
 
-    void getMeters(bool isTransmitting);
+    void getMeters(meterKind meter);
 
 
 
@@ -475,7 +475,7 @@ private:
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
               cmdGetSql, cmdGetATUStatus, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
               cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
-              cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdGetRxLevels, cmdGetTxLevels,
+              cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdGetVdMeter, cmdGetIdMeter,
               cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
