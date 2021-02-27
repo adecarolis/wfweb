@@ -1027,16 +1027,19 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 			int f = 0;
 			while (f < tosend)
 			{
+				assert(((f * multiplier) + sentlen) < len);
+				quint8 outdata=0;
 				if (isUlaw) {
 					qint16 enc = qFromLittleEndian<quint16>(data + ((f * multiplier) + sentlen));
 					if (enc >= 0)
-						current->data.append((quint8)ulaw_encode[enc]);
+						outdata=ulaw_encode[enc];
 					else
-						current->data.append((quint8)0x7f & ulaw_encode[-enc]);
+						outdata=0x7f & ulaw_encode[-enc];
 				}
 				else {
-					current->data.append((quint8)(((qFromLittleEndian<qint16>(data + ((f * multiplier) + sentlen)) >> 8) ^ 0x80) & 0xff));
+					outdata = (quint8)(((qFromLittleEndian<qint16>(data + ((f * multiplier) + sentlen)) >> 8) ^ 0x80) & 0xff);
 				}
+				current->data.append(outdata);
 				f++;
 			}
 		}
