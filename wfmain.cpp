@@ -255,7 +255,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     spans << "50k" << "100k" << "250k" << "500k";
     ui->scopeBWCombo->insertItems(0, spans);
 
-    edges << "1" << "2" << "3"; // yep
+    edges << "1" << "2" << "3" << "4"; // yep
     ui->scopeEdgeCombo->insertItems(0, edges);
 
     ui->splitter->setHandleWidth(5);

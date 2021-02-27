@@ -341,7 +341,7 @@ void rigCommander::setScopeEdge(char edge)
 {
     // 1 2 or 3
     // 27 16 00 0X
-    if((edge <1) || (edge >3))
+    if((edge <1) || (edge >4))
         return;
     QByteArray payload;
     payload.setRawData("\x27\x16\x00", 3);
