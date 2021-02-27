@@ -844,7 +844,6 @@ void audioHandler::reinit()
             delete audioOutput;
         audioOutput = Q_NULLPTR;
         audioOutput = new QAudioOutput(deviceInfo, format, this);
-        //audioOutput->setLatency(audioBuffer);
         connect(audioOutput, SIGNAL(notify()), SLOT(notified()));
         connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
     }
@@ -869,7 +868,8 @@ void audioHandler::start()
     else {
 		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
 		audioOutput->start(this);
-    }
+		audioOutput->suspend(); // Suspend until data has arrived to "kick-start" playback
+    }	
 }
 
 void audioHandler::setVolume(float volume)
@@ -888,26 +888,23 @@ void audioHandler::flush()
     else {
         audioOutput->reset();
     }
-    buffer.clear();
+
+	QMutexLocker locker(&mutex);
+    audioBuffer.clear();
     this->start();
 }
 
 void audioHandler::stop()
 {
-    //QMutexLocker locker(&mutex);
     if (audioOutput && audioOutput->state() != QAudio::StoppedState) {
         // Stop audio output
         audioOutput->stop();
-        QByteArray ret;
-		audioBuffer.clear();
-        //buffer.clear();
         this->close();
     }
 
     if (audioInput && audioInput->state() != QAudio::StoppedState) {
         // Stop audio output
         audioInput->stop();
-        buffer.clear();
         this->close();
     }
 }
@@ -921,7 +918,10 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 	if (!audioBuffer.isEmpty())
 	{
 		
-		// Sort the buffer by seq number.
+		// We must lock the mutex for the entire time that the buffer may be modified.
+		QMutexLocker locker(&mutex);
+
+		// Sort the buffer by seq number. This is important and audio packets may have arrived out-of-order
 		std::sort(audioBuffer.begin(), audioBuffer.end(),
 			[](const AUDIOPACKET& a, const AUDIOPACKET& b) -> bool
 		{
@@ -932,12 +932,11 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 		int divisor = 16 / radioSampleBits;
 
 		auto packet = audioBuffer.begin();
-		while (packet != audioBuffer.end() && sentlen<maxlen)
+		while (packet != audioBuffer.end() && sentlen < maxlen)
 		{
 			if (packet->time.msecsTo(QTime::currentTime()) > latency) {
 				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived too late (increase rx buffer size!) " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
-				QMutexLocker locker(&mutex);
-				packet=audioBuffer.erase(packet); // returns next packet
+				packet = audioBuffer.erase(packet); // returns next packet
 			}
 			else
 			{
@@ -971,7 +970,6 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 
 				if (send == packet->data.length())
 				{
-					QMutexLocker locker(&mutex);
 					packet = audioBuffer.erase(packet); // returns next packet
 					if (maxlen - sentlen == 0)
 					{						
@@ -992,7 +990,6 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 			} 
 		}
 	}
-	//qDebug(logAudio()) << "Returning: " << sentlen << " max: " << maxlen;
 
     return sentlen;
 }
@@ -1000,39 +997,58 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 qint64 audioHandler::writeData(const char* data, qint64 len)
 {
 
-    QMutexLocker locker(&mutex);
 
-    if (isUlaw) {
-        for (int f = 0; f < len / 2; f++)
-        {
-			qint16 enc = qFromLittleEndian<quint16>(data + f * 2);
-			if (enc >=0)
-				buffer.append((quint8)ulaw_encode[enc]);
-			else
-				buffer.append((quint8) 0x7f & ulaw_encode[-enc]);
+	// The radio expects packets in radioSampleBits * 120 size packets.
+	int chunkSize = radioSampleBits * 120;
+	int multiplier = 16 / radioSampleBits;
+	int sentlen = 0;
+
+	while (sentlen < len) {
+		QByteArray buffer;
+		if (radioSampleBits == 8) {
+			int f = 0;
+			while (f < chunkSize && f * multiplier + sentlen < len)
+			{
+				if (isUlaw) {
+					qint16 enc = qFromLittleEndian<quint16>(data + (f * multiplier + sentlen));
+					if (enc >= 0)
+						buffer.append((quint8)ulaw_encode[enc]);
+					else
+						buffer.append((quint8)0x7f & ulaw_encode[-enc]);
+				}
+				else {
+					buffer.append((quint8)(((qFromLittleEndian<qint16>(data + (f * multiplier + sentlen)) >> 8) ^ 0x80) & 0xff));
+				}
+				f++;
+			}
 		}
-    }
-    else if (radioSampleBits == 8) {
-        for (int f = 0; f < len / 2; f++)
-        {
-            buffer.append((quint8)(((qFromLittleEndian<qint16>(data + f * 2) >> 8) ^ 0x80) & 0xff));
-        }
-    }
-    else if (radioSampleBits == 16) {
-        buffer.append(QByteArray::fromRawData(data, len));
-    }
-    else {
-        qWarning() << "Unsupported number of bits! :" << radioSampleBits;
-    }
-    if (buffer.size() >= radioSampleBits * 120) {
-        chunkAvailable = true;
-    }
-    return (len); // Always return the same number as we received
+		else if (radioSampleBits == 16)
+		{
+			buffer.append(QByteArray::fromRawData(data+sentlen, chunkSize*multiplier));
+		}
+
+		sentlen = sentlen + (chunkSize*multiplier);
+		AUDIOPACKET tempAudio;
+		tempAudio.seq = 0; // Not used in TX
+		tempAudio.time = QTime::currentTime();
+		tempAudio.sent = 0;
+		tempAudio.data = buffer;
+		QMutexLocker locker(&mutex);
+		audioBuffer.append(tempAudio);
+		if (buffer.length() < chunkSize)
+		{
+			// We don't have enough for a full packet yet, what to do?
+			qDebug(logAudio) << "*** Small Packet *** " << buffer.length() << " less than " << chunkSize;
+		}
+
+	}
+
+    return (sentlen); // Always return the same number as we received
 }
 
 qint64 audioHandler::bytesAvailable() const
 {
-    return buffer.length() + QIODevice::bytesAvailable();
+    return 0;
 }
 
 bool audioHandler::isSequential() const
@@ -1049,10 +1065,7 @@ void audioHandler::stateChanged(QAudio::State state)
 {
     if (state == QAudio::IdleState && audioOutput->error() == QAudio::UnderrunError) {
         qDebug(logAudio()) << this->metaObject()->className() << "RX:Buffer underrun";
-#ifdef Q_OS_WIN
-        QMutexLocker locker(&mutex);
         audioOutput->suspend();
-#endif
     }
     //qDebug(logAudio()) << this->metaObject()->className() << ": state = " << state;
 }
@@ -1064,6 +1077,7 @@ void audioHandler::incomingAudio(const AUDIOPACKET data)
     if (audioOutput != Q_NULLPTR && audioOutput->state() != QAudio::StoppedState) {
         QMutexLocker locker(&mutex);
 		audioBuffer.push_back(data);
+		
 		// Restart playback
 		if (audioOutput->state() == QAudio::SuspendedState)
 		{
@@ -1086,21 +1100,28 @@ void audioHandler::getLatency()
 
 bool audioHandler::isChunkAvailable()
 {
-    return chunkAvailable;
+    return (!audioBuffer.isEmpty());
 }
 
 void audioHandler::getNextAudioChunk(QByteArray& ret)
 {
-    quint16 numSamples = radioSampleBits * 120;
-    if (buffer.size() >= numSamples) {
-        ret.append(buffer.mid(0, numSamples));
-        QMutexLocker locker(&mutex);
-        buffer.remove(0, numSamples);
-    }
-    if (buffer.size() < numSamples)
-    {
-        chunkAvailable = false;
-    }
+	if (!audioBuffer.isEmpty())
+	{
+		QMutexLocker locker(&mutex);
+		auto packet = audioBuffer.begin();
+		while (packet != audioBuffer.end())
+		{
+			if (packet->time.msecsTo(QTime::currentTime()) > 40) {
+				qDebug(logAudio()) << "TX Packet arrived too late " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
+				packet = audioBuffer.erase(packet); // returns next packet
+			}
+			else {
+				ret.append(packet->data);
+				packet = audioBuffer.erase(packet); // returns next packet
+				break; // We only want one packet.
+			}
+		}
+	}
     return;
 }
 

@@ -82,7 +82,6 @@ private:
     bool            isInput;   // Used to determine whether input or output audio
     float           volume;
 
-    QByteArray       buffer;
     QAudioFormat     format;
     QAudioDeviceInfo deviceInfo;
     quint16          radioSampleRate;

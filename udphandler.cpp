@@ -452,7 +452,7 @@ void udpHandler::sendToken(uint8_t magic)
 
     authInnerSendSeq++;
     sendTrackedPacket(QByteArray::fromRawData((const char *)p.packet, sizeof(p)));
-    // The radio should request a repeat of the token renewal!
+    // The radio should request a repeat of the token renewal packet via retransmission!
     //tokenTimer->start(100); // Set 100ms timer for retry (this will be cancelled if a response is received)
     return;
 }
@@ -839,9 +839,10 @@ void udpAudio::dataReceived()
                         tempAudio.time = lastReceived;
                         tempAudio.sent = 0;
                         tempAudio.data = r.mid(24);
+                        // Prefer signal/slot to forward audio as it is thread/safe
+                        // Need to do more testing but latency appears fine.
                         emit haveAudioData(tempAudio);
                         //rxaudio->incomingAudio(tempAudio);
-                        //rxaudio->incomingAudio(r.mid(24));
                     }
                 }
                 break;
