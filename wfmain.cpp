@@ -440,6 +440,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     pttTimer->setSingleShot(true);
     connect(pttTimer, SIGNAL(timeout()), this, SLOT(handlePttLimit()));
     amTransmitting = false;
+    ui->tuneLockChk->setChecked(false);
+    freqLock = false;
+
 
     // Not needed since we automate this now.
     /*
@@ -1191,6 +1194,7 @@ void wfmain::setTuningSteps()
     tsPlusShift =   0.0001f;
     tsPage =        1.0f;
     tsPageShift =   0.5f; // TODO, unbind this keystroke from the dial
+    tsWfScroll =    0.0001f;
 }
 
 double wfmain::roundFrequency(double frequency)
@@ -2053,36 +2057,54 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     // We will click the dial once for every 120 received.
     //QPoint delta = we->angleDelta();
 
-    // TODO: Use other method, knob has too few positions to be useful for large steps.
+    if(freqLock)
+        return;
 
-    int steps = we->angleDelta().y() / 120;
+    int clicks = we->angleDelta().y() / 120;
+
+    float steps = tsWfScroll * clicks;
+
     Qt::KeyboardModifiers key=  we->modifiers();
 
     if (key == Qt::ShiftModifier)
     {
-        steps *=20;
+        steps /= 10;
     } else if (key == Qt::ControlModifier)
     {
         steps *=10;
     }
 
-    ui->freqDial->setValue( ui->freqDial->value() + (steps)*ui->freqDial->singleStep() );
+    freqMhz = roundFrequency(freqMhz - steps);
+    knobFreqMhz = freqMhz;
+    emit setFrequency(freqMhz);
+    ui->freqLabel->setText(QString("%1").arg(freqMhz, 0, 'f'));
+    issueDelayedCommand(cmdGetFreq);
 }
 
 void wfmain::handlePlotScroll(QWheelEvent *we)
 {
-    int steps = we->angleDelta().y() / 120;
+    if(freqLock)
+        return;
+
+    int clicks = we->angleDelta().y() / 120;
+
+    float steps = tsWfScroll * clicks;
+
     Qt::KeyboardModifiers key=  we->modifiers();
 
     if (key == Qt::ShiftModifier)
     {
-        // TODO: Zoom
+        steps /= 10;
     } else if (key == Qt::ControlModifier)
     {
         steps *=10;
     }
 
-    ui->freqDial->setValue( ui->freqDial->value() + (steps)*ui->freqDial->singleStep() );
+    freqMhz = roundFrequency(freqMhz - steps);
+    knobFreqMhz = freqMhz;
+    emit setFrequency(freqMhz);
+    ui->freqLabel->setText(QString("%1").arg(freqMhz, 0, 'f'));
+    issueDelayedCommand(cmdGetFreq);
 }
 
 void wfmain::on_scopeEnableWFBtn_clicked(bool checked)
