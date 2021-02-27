@@ -1020,7 +1020,7 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		}
 		current = &audioBuffer.last();
 
-		tosend = qMin((int)((len - sentlen)/multiplier), (int)chunkSize-current->sent);
+		tosend = qMin((int)(qint64(len - sentlen)/multiplier), (int)chunkSize-current->sent);
 		qDebug(logAudio()) << "To send: " << tosend;
 
 		if (radioSampleBits == 8) {
