@@ -533,11 +533,11 @@ void wfmain::openRig()
         connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
         connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
         
-        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint16, quint16, quint16, QString, QString,quint16,quint16,quint8,quint16,quint8)), rig, SLOT(commSetup(unsigned char, QString, quint16, quint16, quint16, QString, QString,quint16,quint16,quint8,quint16,quint8)));
+        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint16, quint16, quint16, QString, QString,quint16,quint16,quint16,quint8,quint16,quint8)), rig, SLOT(commSetup(unsigned char, QString, quint16, quint16, quint16, QString, QString,quint16,quint16,quint16,quint8,quint16,quint8)));
         connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32)), rig, SLOT(commSetup(unsigned char, QString, quint32)));
 
         connect(this, SIGNAL(sendCloseComm()), rig, SLOT(closeComm()));
-        connect(this, SIGNAL(sendChangeBufferSize(quint16)), rig, SLOT(changeBufferSize(quint16)));
+        connect(this, SIGNAL(sendChangeLatency(quint16)), rig, SLOT(changeLatency(quint16)));
         connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
         connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
@@ -546,7 +546,7 @@ void wfmain::openRig()
     if (prefs.enableLAN)
     {
         emit sendCommSetup(prefs.radioCIVAddr, prefs.ipAddress, prefs.controlLANPort, 
-            prefs.serialLANPort, prefs.audioLANPort, prefs.username, prefs.password,prefs.audioRXBufferSize,prefs.audioRXSampleRate,prefs.audioRXCodec,prefs.audioTXSampleRate,prefs.audioTXCodec);
+            prefs.serialLANPort, prefs.audioLANPort, prefs.username, prefs.password,prefs.audioRXLatency,prefs.audioTXLatency,prefs.audioRXSampleRate,prefs.audioRXCodec,prefs.audioTXSampleRate,prefs.audioTXCodec);
     } else {
 
         if( (prefs.serialPortRadio == QString("auto")) && (serialPortCL.isEmpty()))
@@ -699,7 +699,8 @@ void wfmain::setDefPrefs()
     defPrefs.password = QString("");
     defPrefs.audioOutput = QAudioDeviceInfo::defaultOutputDevice().deviceName();
     defPrefs.audioInput = QAudioDeviceInfo::defaultInputDevice().deviceName();
-    defPrefs.audioRXBufferSize = 12000;
+    defPrefs.audioRXLatency = 150;
+    defPrefs.audioTXLatency = 150;
     defPrefs.audioRXSampleRate = 48000;
     defPrefs.audioRXCodec = 4;
     defPrefs.audioTXSampleRate = 48000;
@@ -769,10 +770,15 @@ void wfmain::loadSettings()
     ui->passwordTxt->setEnabled(ui->lanEnableChk->isChecked());
     ui->passwordTxt->setText(QString("%1").arg(prefs.password));
 
-    prefs.audioRXBufferSize = settings.value("AudioRXBufferSize", defPrefs.audioRXBufferSize).toInt();
-    ui->audioBufferSizeSlider->setEnabled(ui->lanEnableChk->isChecked());
-    ui->audioBufferSizeSlider->setValue(prefs.audioRXBufferSize);
-    ui->audioBufferSizeSlider->setTracking(false); // Stop it sending value on every change.
+    prefs.audioRXLatency = settings.value("AudioRXLatency", defPrefs.audioRXLatency).toInt();
+    ui->rxLatencySlider->setEnabled(ui->lanEnableChk->isChecked());
+    ui->txLatencySlider->setValue(prefs.audioRXLatency);
+    ui->rxLatencySlider->setTracking(false); // Stop it sending value on every change.
+
+    prefs.audioTXLatency = settings.value("AudioTXLatency", defPrefs.audioTXLatency).toInt();
+    ui->rxLatencySlider->setEnabled(ui->lanEnableChk->isChecked());
+    ui->rxLatencySlider->setValue(prefs.audioTXLatency);
+    ui->rxLatencySlider->setTracking(false); // Stop it sending value on every change.
 
     prefs.audioRXSampleRate = settings.value("AudioRXSampleRate", defPrefs.audioRXSampleRate).toInt();
     prefs.audioTXSampleRate = settings.value("AudioTXSampleRate", defPrefs.audioTXSampleRate).toInt();
@@ -917,10 +923,10 @@ void wfmain::saveSettings()
     settings.setValue("AudioLANPort", prefs.audioLANPort);
     settings.setValue("Username", prefs.username);
     settings.setValue("Password", prefs.password);
-    settings.setValue("AudioRXBufferSize", prefs.audioRXBufferSize);
+    settings.setValue("AudioRXLatency", prefs.audioRXLatency);
+    settings.setValue("AudioTXLatency", prefs.audioTXLatency);
     settings.setValue("AudioRXSampleRate", prefs.audioRXSampleRate);
     settings.setValue("AudioRXCodec", prefs.audioRXCodec);
-    settings.setValue("AudioTXBufferSize", prefs.audioRXBufferSize);
     settings.setValue("AudioTXSampleRate", prefs.audioRXSampleRate);
     settings.setValue("AudioTXCodec", prefs.audioTXCodec);
     settings.setValue("AudioOutput", prefs.audioOutput);
@@ -2866,11 +2872,17 @@ void wfmain::on_audioTXCodecCombo_currentIndexChanged(int value)
     prefs.audioTXCodec = ui->audioTXCodecCombo->itemData(value).toInt();
 }
 
-void wfmain::on_audioBufferSizeSlider_valueChanged(int value)
+void wfmain::on_rxLatencySlider_valueChanged(int value)
 {
-    prefs.audioRXBufferSize = value;
-    ui->bufferValue->setText(QString::number(value));
-    emit sendChangeBufferSize(value);
+    prefs.audioRXLatency = value;
+    ui->rxLatencyValue->setText(QString::number(value));
+    emit sendChangeLatency(value);
+}
+
+void wfmain::on_txLatencySlider_valueChanged(int value)
+{
+    prefs.audioTXLatency = value;
+    ui->txLatencyValue->setText(QString::number(value));
 }
 
 void wfmain::on_toFixedBtn_clicked()
