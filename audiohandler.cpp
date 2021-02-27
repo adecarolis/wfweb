@@ -935,7 +935,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 		while (packet != audioBuffer.end() && sentlen<maxlen)
 		{
 			if (packet->time.msecsTo(QTime::currentTime()) > latency) {
-				qDebug(logAudio()) << "Packet " << hex << packet->seq << "is too late, deleting" << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
+				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived too late (increase rx buffer size!) " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				QMutexLocker locker(&mutex);
 				packet=audioBuffer.erase(packet); // returns next packet
 			}
