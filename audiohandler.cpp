@@ -1116,9 +1116,11 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 				packet = audioBuffer.erase(packet); // returns next packet
 			}
 			else {
-				ret.append(packet->data);
-				packet = audioBuffer.erase(packet); // returns next packet
-				break; // We only want one packet.
+				if (ret.length() == 0) {
+					ret.append(packet->data);
+					packet = audioBuffer.erase(packet); // returns next packet
+					// Don't break so we can dispose of all old packets.
+				}
 			}
 		}
 	}
