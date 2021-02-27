@@ -1044,11 +1044,14 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 			qDebug(logAudio) << "*** Small Packet *** " << buffer.length() << " less than " << chunkSize;
 		}
 
+	}
+
+	if (!audioBuffer.isEmpty())
+	{
 		// Skip through audio buffer deleting any old entry.
 		auto packet = audioBuffer.begin(); 
 		while (packet != audioBuffer.end())
 		{
-			// I'm not sure if this is needed?
 			if (packet->time.msecsTo(QTime::currentTime()) > 100) {
 				qDebug(logAudio()) << "TX Packet too old " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				packet = audioBuffer.erase(packet); // returns next packet
@@ -1058,7 +1061,6 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 			}
 		}
 	}
-
 
     return (sentlen); // Always return the same number as we received
 }
