@@ -1111,7 +1111,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		auto packet = audioBuffer.begin();
 		while (packet != audioBuffer.end())
 		{
-			if (packet->time.msecsTo(QTime::currentTime()) > 40) {
+			if (packet->time.msecsTo(QTime::currentTime()) > 100) {
 				qDebug(logAudio()) << "TX Packet arrived too late " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				packet = audioBuffer.erase(packet); // returns next packet
 			}
