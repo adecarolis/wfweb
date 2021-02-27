@@ -999,7 +999,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 qint64 audioHandler::writeData(const char* data, qint64 len)
 {
 	int multiplier = (int)16 / radioSampleBits;
-	int sentlen = 0;
+	qint64 sentlen = 0;
 	int tosend = 0;
 	QMutexLocker locker(&mutex);
 	AUDIOPACKET *current;
@@ -1020,7 +1020,7 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		}
 		current = &audioBuffer.last();
 
-		tosend = qMin((int)(abs((len - sentlen)/multiplier)), (int)chunkSize-current->sent);
+		tosend = abs(qMin((int)((len - sentlen)/multiplier), (int)chunkSize-current->sent));
 		qDebug(logAudio()) << "To send: " << tosend;
 
 		if (radioSampleBits == 8) {
