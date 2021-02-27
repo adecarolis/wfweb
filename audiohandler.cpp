@@ -1024,10 +1024,13 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		}
 		else if (radioSampleBits == 16)
 		{
-			buffer.append(QByteArray::fromRawData(data+sentlen, chunkSize*multiplier));
+			buffer.append(QByteArray::fromRawData(data + sentlen, chunkSize * multiplier));
 		}
 
-		sentlen = sentlen + (chunkSize*multiplier);
+
+
+
+		sentlen = sentlen + (chunkSize * multiplier);
 		AUDIOPACKET tempAudio;
 		tempAudio.seq = 0; // Not used in TX
 		tempAudio.time = QTime::currentTime();
@@ -1041,7 +1044,21 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 			qDebug(logAudio) << "*** Small Packet *** " << buffer.length() << " less than " << chunkSize;
 		}
 
+		// Skip through audio buffer deleting any old entry.
+		auto packet = audioBuffer.begin(); 
+		while (packet != audioBuffer.end())
+		{
+			// I'm not sure if this is needed?
+			if (packet->time.msecsTo(QTime::currentTime()) > 100) {
+				qDebug(logAudio()) << "TX Packet too old " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
+				packet = audioBuffer.erase(packet); // returns next packet
+			}
+			else {
+				packet++;
+			}
+		}
 	}
+
 
     return (sentlen); // Always return the same number as we received
 }
@@ -1109,18 +1126,11 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 	{
 		QMutexLocker locker(&mutex);
 		auto packet = audioBuffer.begin();
-		while (packet != audioBuffer.end())
+		if (packet != audioBuffer.end())
 		{
-			if (packet->time.msecsTo(QTime::currentTime()) > 100) {
-				qDebug(logAudio()) << "TX Packet arrived too late " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
+			if (ret.length() == 0) {
+				ret.append(packet->data);
 				packet = audioBuffer.erase(packet); // returns next packet
-			}
-			else {
-				if (ret.length() == 0) {
-					ret.append(packet->data);
-					packet = audioBuffer.erase(packet); // returns next packet
-					// Don't break so we can dispose of all old packets.
-				}
 			}
 		}
 	}

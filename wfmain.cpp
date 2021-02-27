@@ -772,7 +772,7 @@ void wfmain::loadSettings()
 
     prefs.audioRXLatency = settings.value("AudioRXLatency", defPrefs.audioRXLatency).toInt();
     ui->rxLatencySlider->setEnabled(ui->lanEnableChk->isChecked());
-    ui->txLatencySlider->setValue(prefs.audioRXLatency);
+    ui->rxLatencySlider->setValue(prefs.audioRXLatency);
     ui->rxLatencySlider->setTracking(false); // Stop it sending value on every change.
 
     prefs.audioTXLatency = settings.value("AudioTXLatency", defPrefs.audioTXLatency).toInt();
