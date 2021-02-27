@@ -426,8 +426,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     drawPeaks = false;
 
-    SMeterReadings.fill(0,10);
-    powerMeterReadings.fill(0,10);
+    SMeterReadings.fill(0,30);
+    powerMeterReadings.fill(0,30);
 
 
     ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
