@@ -1061,21 +1061,6 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		
 	}
 
-	if (!audioBuffer.isEmpty())
-	{
-		// Skip through audio buffer deleting any old entry.
-		auto packet = audioBuffer.begin(); 
-		while (packet != audioBuffer.end())
-		{
-			if (packet->time.msecsTo(QTime::currentTime()) > 100) {
-				qDebug(logAudio()) << "TX Packet too old " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
-				packet = audioBuffer.erase(packet); // returns next packet
-			}
-			else {
-				packet++;
-			}
-		}
-	}
 
     return (sentlen); // Always return the same number as we received
 }
@@ -1141,12 +1126,27 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 {
 	if (!audioBuffer.isEmpty() && chunkAvailable)
 	{
+
 		QMutexLocker locker(&mutex);
+
+		// Skip through audio buffer deleting any old entry.
 		auto packet = audioBuffer.begin();
-		if (packet != audioBuffer.end() && packet->data.length() == chunkSize)
+		while (packet != audioBuffer.end())
 		{
-			ret.append(packet->data);
-			packet = audioBuffer.erase(packet); // returns next packet
+			if (packet->time.msecsTo(QTime::currentTime()) > 100) {
+				//qDebug(logAudio()) << "TX Packet too old " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
+				packet = audioBuffer.erase(packet); // returns next packet
+			}
+			else {
+				if (packet->data.length() == chunkSize && ret.length() == 0)
+				{
+					ret.append(packet->data);
+					packet = audioBuffer.erase(packet); // returns next packet
+				}
+				else {
+					packet++;
+				}
+			}
 		}
 	}
     return;
