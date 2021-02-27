@@ -1051,7 +1051,11 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		current->sent = current->data.length();
 		if (current->sent != chunkSize)
 		{
-			qDebug(logAudio()) << "Short chunk :" << current->sent;
+			qDebug(logAudio()) << "Short chunk :" << current->sent << " should be " << chunkSize;
+		}
+		else {
+			qDebug(logAudio()) << "Packet complete :" << current->sent;
+
 		}
 	}
 
