@@ -31,7 +31,9 @@
 #define TXAUDIO_PERIOD 10 
 #define AREYOUTHERE_PERIOD 500
 #define WATCHDOG_PERIOD 500
+#define RETRANSMIT_PERIOD 100
 
+Q_DECLARE_METATYPE(AUDIOPACKET)
 
 void passcode(QString in, QByteArray& out);
 QByteArray parseNullTerminatedString(QByteArray c, int s);
@@ -39,6 +41,7 @@ QByteArray parseNullTerminatedString(QByteArray c, int s);
 // Parent class that contains all common items.
 class udpBase : public QObject
 {
+
 
 public:
 	~udpBase();
@@ -98,6 +101,7 @@ public:
 	QTimer* idleTimer = Q_NULLPTR; // Start watchdog once we are connected.
 
 	QTimer* watchdogTimer = Q_NULLPTR;
+	QTimer* retransmitTimer = Q_NULLPTR;
 
 	QDateTime lastPingSentTime;
 	uint16_t pingSendSeq = 0;
@@ -106,6 +110,9 @@ public:
 
 	quint32 packetsSent=0;
 	quint32 packetsLost=0;
+
+private:
+	void sendRetransmitRequest();
 
 };
 
@@ -142,19 +149,19 @@ class udpAudio : public udpBase
 	Q_OBJECT
 
 public:
-	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
+	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
 	~udpAudio();
 
 signals:
-    void haveAudioData(QByteArray data);
+    void haveAudioData(AUDIOPACKET data);
 
-	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 bufferSize, const bool isUlaw, const bool isInput);
-	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 bufferSize, const bool isUlaw, const bool isInput);
+	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput);
+	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput);
 
-	void haveChangeBufferSize(quint16 value);
+	void haveChangeLatency(quint16 value);
 
 public slots:
-	void changeBufferSize(quint16 value);
+	void changeLatency(quint16 value);
 
 private:
 
@@ -163,7 +170,8 @@ private:
 	void watchdog();
 
 	QAudioFormat format;
-	quint16 bufferSize;
+	quint16 rxLatency;
+	quint16 txLatency;
 	quint16 rxSampleRate;
 	quint16 txSampleRate;
 	quint8 rxCodec;
@@ -197,7 +205,7 @@ class udpHandler: public udpBase
 
 public:
 	udpHandler(QString ip, quint16 cport, quint16 sport, quint16 aport, QString username, QString password, 
-					quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
+					quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
 	~udpHandler();
 
 	bool streamOpened = false;
@@ -209,14 +217,14 @@ public:
 public slots:
 	void receiveDataFromUserToRig(QByteArray); // This slot will send data on to 
 	void receiveFromCivStream(QByteArray);
-	void changeBufferSize(quint16 value);
+	void changeLatency(quint16 value);
 	void init();
 
 signals:
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
 	void haveNetworkError(QString, QString);
 	void haveNetworkStatus(QString);
-	void haveChangeBufferSize(quint16 value);
+	void haveChangeLatency(quint16 value);
 
 private:
 	
@@ -243,7 +251,8 @@ private:
 
 	quint16 rxSampleRate;
 	quint16 txSampleRate;
-	quint16 rxBufferSize;
+	quint16 rxLatency;
+	quint16 txLatency;
 	quint8 rxCodec;
 	quint8 txCodec;
 

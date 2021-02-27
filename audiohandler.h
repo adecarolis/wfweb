@@ -14,20 +14,31 @@
 #include <QIODevice>
 #include <QThread>
 #include <QTimer>
+#include <QTime>
 
 #include <QDebug>
 
 //#define BUFFER_SIZE (32*1024)
 
+
+struct AUDIOPACKET {
+    quint16 seq;
+    QTime time;
+    quint16 sent;
+    QByteArray data;
+};
+
+
 class audioHandler : public QIODevice
 {
     Q_OBJECT
+
 
 public:
     audioHandler(QObject* parent = 0);
     ~audioHandler();
 
-    void getBufferSize();
+    void getLatency();
 
     bool setDevice(QAudioDeviceInfo deviceInfo);
 
@@ -43,9 +54,9 @@ public:
     void getNextAudioChunk(QByteArray &data);
     bool isChunkAvailable();
 public slots:
-    bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 bufferSize, const bool isulaw, const bool isinput);
-    void incomingAudio(const QByteArray& data);
-    void changeBufferSize(const quint16 newSize);
+    bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isulaw, const bool isinput);
+    void incomingAudio(const AUDIOPACKET data);
+    void changeLatency(const quint16 newSize);
 
 private slots:
     void notified();
@@ -53,7 +64,7 @@ private slots:
 
 signals:
     void audioMessage(QString message);
-    void sendBufferSize(quint16 newSize);
+    void sendLatency(quint16 newSize);
     void haveAudioData(const QByteArray& data);
 
 
@@ -67,7 +78,7 @@ private:
     QAudioOutput*   audioOutput;
     QAudioInput*    audioInput;
     bool            isUlaw;
-    int             bufferSize;
+    quint16         latency;
     bool            isInput;   // Used to determine whether input or output audio
     float           volume;
 
@@ -76,8 +87,7 @@ private:
     QAudioDeviceInfo deviceInfo;
     quint16          radioSampleRate;
     quint8           radioSampleBits;
-
-
+    QVector<AUDIOPACKET> audioBuffer;
 };
 
 #endif // AUDIOHANDLER_H

@@ -48,7 +48,7 @@ public slots:
     void process();
     void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
     void commSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, 
-                    QString username, QString password, quint16 buffer, quint16 rxsample, quint8 rxcodec,quint16 txsample, quint8 txcodec);
+                    QString username, QString password, quint16 rxlatency,quint16 txlatency, quint16 rxsample, quint8 rxcodec,quint16 txsample, quint8 txcodec);
     void closeComm();
 
     void enableSpectOutput();
@@ -139,7 +139,7 @@ public slots:
     void handleNewData(const QByteArray &data);
     void handleSerialPortError(const QString port, const QString errorText);
     void handleStatusUpdate(const QString text);
-    void changeBufferSize(const quint16 value);
+    void changeLatency(const quint16 value);
     void sayFrequency();
     void sayMode();
     void sayAll();
@@ -197,7 +197,7 @@ signals:
     void finished();
     void havePTTStatus(bool pttOn);
     void haveATUStatus(unsigned char status);
-    void haveChangeBufferSize(quint16 value);
+    void haveChangeLatency(quint16 value);
     void haveDataForServer(QByteArray outData);
     void initUdpHandler();
 

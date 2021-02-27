@@ -64,7 +64,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
 }
 
 void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, 
-        QString username, QString password, quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec)
+        QString username, QString password, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -88,7 +88,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, quint16 cport
     */
     if (udp == Q_NULLPTR) {
 
-        udp = new udpHandler(ip, cport, sport, aport, username, password, buffer, rxsample, rxcodec, txsample, txcodec);
+        udp = new udpHandler(ip, cport, sport, aport, username, password, rxlatency, txlatency, rxsample, rxcodec, txsample, txcodec);
 
         udpHandlerThread = new QThread(this);
 
@@ -107,7 +107,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, quint16 cport
 
         // data from the program to the comm port:
         connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
-        connect(this, SIGNAL(haveChangeBufferSize(quint16)), udp, SLOT(changeBufferSize(quint16)));
+        connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
 
         // Connect for errors/alerts
         connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
@@ -2480,9 +2480,9 @@ void rigCommander::getRigID()
     prepDataAndSend(payload);
 }
 
-void rigCommander::changeBufferSize(const quint16 value)
+void rigCommander::changeLatency(const quint16 value)
 {
-    emit haveChangeBufferSize(value);
+    emit haveChangeLatency(value);
 }
 
 void rigCommander::sayAll()

@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -1765,20 +1765,23 @@
           <item>
            <widget class="QLabel" name="label_16">
             <property name="text">
-             <string>RX Audio Buffer Size</string>
+             <string>RX Latency (ms)</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QSlider" name="audioBufferSizeSlider">
+           <widget class="QSlider" name="rxLatencySlider">
             <property name="minimumSize">
              <size>
               <width>0</width>
               <height>0</height>
              </size>
             </property>
+            <property name="minimum">
+             <number>30</number>
+            </property>
             <property name="maximum">
-             <number>65536</number>
+             <number>500</number>
             </property>
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -1786,7 +1789,34 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="bufferValue">
+           <widget class="QLabel" name="rxLatencyValue">
+            <property name="text">
+             <string>0</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_24">
+            <property name="text">
+             <string>TX Latency (ms)</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSlider" name="txLatencySlider">
+            <property name="minimum">
+             <number>30</number>
+            </property>
+            <property name="maximum">
+             <number>500</number>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="txLatencyValue">
             <property name="text">
              <string>0</string>
             </property>
@@ -1948,7 +1978,7 @@
      <x>0</x>
      <y>0</y>
      <width>810</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

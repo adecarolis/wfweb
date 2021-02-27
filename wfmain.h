@@ -108,9 +108,9 @@ signals:
     void sayAll();
     void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
     void sendCommSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, 
-        QString username, QString password, quint16 buffer, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
+        QString username, QString password, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
     void sendCloseComm();
-    void sendChangeBufferSize(quint16 value);
+    void sendChangeLatency(quint16 latency);
     void initServer();
     void sendServerConfig(SERVERCONFIG conf);
 
@@ -329,7 +329,9 @@ private slots:
 
     void on_connectBtn_clicked();
 
-    void on_audioBufferSizeSlider_valueChanged(int value);
+    void on_rxLatencySlider_valueChanged(int value);
+
+    void on_txLatencySlider_valueChanged(int value);
 
     void on_audioRXCodecCombo_currentIndexChanged(int value);
 
@@ -527,7 +529,8 @@ private:
         QString password;
         QString audioOutput;
         QString audioInput;
-        quint16 audioRXBufferSize;
+        quint16 audioRXLatency;
+        quint16 audioTXLatency;
         quint16 audioRXSampleRate;
         quint8 audioRXCodec;
         quint16 audioTXSampleRate;
