@@ -1021,7 +1021,6 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		current = &audioBuffer.last();
 
 		tosend = qMin((int)((len - sentlen)/multiplier), (int)chunkSize-current->sent);
-		qDebug(logAudio()) << "To send: " << tosend << " current->sent " << current->sent;
 
 		if (radioSampleBits == 8) {
 			int f = 0;
@@ -1055,10 +1054,8 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		if (current->sent == chunkSize)
 		{
 			chunkAvailable = true;
-			qDebug(logAudio()) << "Packet complete :" << current->sent;
 		}
 		else if (audioBuffer.length()==1 && current->sent != chunkSize) {
-			qDebug(logAudio()) << "Short chunk :" << current->sent << " should be " << chunkSize;
 			chunkAvailable = false;
 		}
 		
