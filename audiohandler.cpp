@@ -1002,6 +1002,7 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 	int chunkSize = radioSampleBits * 120;
 	int multiplier = 16 / radioSampleBits;
 	int sentlen = 0;
+	QMutexLocker locker(&mutex);
 
 	while (sentlen < len) {
 		QByteArray buffer;
@@ -1036,7 +1037,6 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		tempAudio.time = QTime::currentTime();
 		tempAudio.sent = 0;
 		tempAudio.data = buffer;
-		QMutexLocker locker(&mutex);
 		audioBuffer.append(tempAudio);
 		if (buffer.length() < chunkSize)
 		{
