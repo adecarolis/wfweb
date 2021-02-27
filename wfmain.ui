@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -63,7 +63,11 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="scopeBWCombo"/>
+           <widget class="QComboBox" name="scopeBWCombo">
+            <property name="sizeAdjustPolicy">
+             <enum>QComboBox::AdjustToContents</enum>
+            </property>
+           </widget>
           </item>
           <item>
            <widget class="QLabel" name="label_7">
@@ -73,7 +77,11 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="scopeEdgeCombo"/>
+           <widget class="QComboBox" name="scopeEdgeCombo">
+            <property name="sizeAdjustPolicy">
+             <enum>QComboBox::AdjustToContents</enum>
+            </property>
+           </widget>
           </item>
           <item>
            <widget class="QPushButton" name="toFixedBtn">
@@ -247,6 +255,9 @@
               <property name="toolTip">
                <string>Tuning Step Selection possibly. Or not...</string>
               </property>
+              <property name="sizeAdjustPolicy">
+               <enum>QComboBox::AdjustToContents</enum>
+              </property>
              </widget>
             </item>
             <item>
@@ -277,7 +288,11 @@
              </widget>
             </item>
             <item>
-             <widget class="QComboBox" name="modeSelectCombo"/>
+             <widget class="QComboBox" name="modeSelectCombo">
+              <property name="sizeAdjustPolicy">
+               <enum>QComboBox::AdjustToContents</enum>
+              </property>
+             </widget>
             </item>
             <item>
              <widget class="QCheckBox" name="dataModeBtn">
@@ -297,7 +312,11 @@
              </widget>
             </item>
             <item>
-             <widget class="QComboBox" name="modeFilterCombo"/>
+             <widget class="QComboBox" name="modeFilterCombo">
+              <property name="sizeAdjustPolicy">
+               <enum>QComboBox::AdjustToContents</enum>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>
@@ -1978,7 +1997,7 @@
      <x>0</x>
      <y>0</y>
      <width>810</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>
