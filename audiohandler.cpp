@@ -1020,7 +1020,7 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		}
 		current = &audioBuffer.last();
 
-		tosend = abs(qMin((int)((len - sentlen)/multiplier), (int)chunkSize-current->sent));
+		tosend = qMin((int)((len - sentlen)/multiplier), (int)chunkSize-current->sent);
 		qDebug(logAudio()) << "To send: " << tosend << " current->sent " << current->sent;
 
 		if (radioSampleBits == 8) {
@@ -1050,7 +1050,7 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		sentlen = sentlen + (tosend * multiplier);
 		current->seq = 0; // Not used in TX
 		current->time = QTime::currentTime();
-		current->sent = current->sent + current->data.length();
+		current->sent = current->data.length();
 		
 		if (current->sent == chunkSize)
 		{
