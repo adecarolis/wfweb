@@ -1022,12 +1022,11 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		}
 		current = &audioBuffer.last();
 
-		tosend = qMin((int)(len - sentlen)/multiplier, chunkSize-current->sent);
+		tosend = qMin((int)((len - sentlen)/multiplier), (int)chunkSize-current->sent);
 		if (radioSampleBits == 8) {
 			int f = 0;
 			while (f < tosend)
 			{
-				assert(((f * multiplier) + sentlen) < len);
 				quint8 outdata=0;
 				if (isUlaw) {
 					qint16 enc = qFromLittleEndian<quint16>(data + ((f * multiplier) + sentlen));
@@ -1039,7 +1038,7 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 				else {
 					outdata = (quint8)(((qFromLittleEndian<qint16>(data + ((f * multiplier) + sentlen)) >> 8) ^ 0x80) & 0xff);
 				}
-				current->data.append(outdata);
+				current->data.append((char)outdata);
 				f++;
 			}
 		}
@@ -1051,17 +1050,18 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		sentlen = sentlen + (tosend * multiplier);
 		current->seq = 0; // Not used in TX
 		current->time = QTime::currentTime();
-		current->sent = current->data.length();
-		/*
-		if (current->sent != chunkSize)
+		current->sent = current->sent + current->data.length();
+		
+		if (current->sent == chunkSize || audioBuffer.length()>1)
 		{
-			qDebug(logAudio()) << "Short chunk :" << current->sent << " should be " << chunkSize;
+			chunkAvailable = true;
+			//qDebug(logAudio()) << "Packet complete :" << current->sent;
 		}
-		else {
-			qDebug(logAudio()) << "Packet complete :" << current->sent;
-
+		else if (audioBuffer.length()==1) {
+			//qDebug(logAudio()) << "Short chunk :" << current->sent << " should be " << chunkSize;
+			chunkAvailable = false;
 		}
-		*/
+		
 	}
 
 	if (!audioBuffer.isEmpty())
@@ -1137,21 +1137,19 @@ void audioHandler::getLatency()
 
 bool audioHandler::isChunkAvailable()
 {
-    return (!audioBuffer.isEmpty());
+    return (chunkAvailable);
 }
 
 void audioHandler::getNextAudioChunk(QByteArray& ret)
 {
-	if (!audioBuffer.isEmpty())
+	if (!audioBuffer.isEmpty() && chunkAvailable)
 	{
 		QMutexLocker locker(&mutex);
 		auto packet = audioBuffer.begin();
 		if (packet != audioBuffer.end())
 		{
-			if (ret.length() == 0) {
-				ret.append(packet->data);
-				packet = audioBuffer.erase(packet); // returns next packet
-			}
+			ret.append(packet->data);
+			packet = audioBuffer.erase(packet); // returns next packet
 		}
 	}
     return;
