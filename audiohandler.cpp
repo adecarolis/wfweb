@@ -1049,6 +1049,7 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		current->seq = 0; // Not used in TX
 		current->time = QTime::currentTime();
 		current->sent = current->data.length();
+		/*
 		if (current->sent != chunkSize)
 		{
 			qDebug(logAudio()) << "Short chunk :" << current->sent << " should be " << chunkSize;
@@ -1057,6 +1058,7 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 			qDebug(logAudio()) << "Packet complete :" << current->sent;
 
 		}
+		*/
 	}
 
 	if (!audioBuffer.isEmpty())
