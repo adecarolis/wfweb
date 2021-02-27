@@ -81,6 +81,7 @@ private:
     quint16         latency;
     bool            isInput;   // Used to determine whether input or output audio
     float           volume;
+    int             chunkSize;
 
     QAudioFormat     format;
     QAudioDeviceInfo deviceInfo;

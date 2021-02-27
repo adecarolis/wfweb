@@ -770,6 +770,8 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
     this->isInput = isinput;
     this->radioSampleBits = bits;
     this->radioSampleRate = samplerate;
+	this->chunkSize = this->radioSampleBits * 120;
+
 
     if (isInput)
         isInitialized = setDevice(QAudioDeviceInfo::defaultInputDevice());
@@ -996,10 +998,6 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 
 qint64 audioHandler::writeData(const char* data, qint64 len)
 {
-
-
-	// The radio expects packets in radioSampleBits * 120 size packets.
-	int chunkSize = radioSampleBits * 120;
 	int multiplier = 16 / radioSampleBits;
 	int sentlen = 0;
 	int tosend = 0;
@@ -1036,7 +1034,7 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 						outdata=0x7f & ulaw_encode[-enc];
 				}
 				else {
-					outdata = (quint8)(((qFromLittleEndian<qint16>(data + ((f * multiplier) + sentlen)) >> 8) ^ 0x80) & 0xff);
+					outdata = (quint8)(((qFromLittleEndian<qint16>((data + ((f * multiplier) + sentlen))) >> 8) ^ 0x80) & 0xff);
 				}
 				current->data.append((char)outdata);
 				f++;
@@ -1146,7 +1144,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 	{
 		QMutexLocker locker(&mutex);
 		auto packet = audioBuffer.begin();
-		if (packet != audioBuffer.end())
+		if (packet != audioBuffer.end() && packet->data.length() == chunkSize)
 		{
 			ret.append(packet->data);
 			packet = audioBuffer.erase(packet); // returns next packet
