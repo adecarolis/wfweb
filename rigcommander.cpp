@@ -241,7 +241,7 @@ void rigCommander::disableSpectrumDisplay()
 
 void rigCommander::setSpectrumBounds(double startFreq, double endFreq, unsigned char edgeNumber)
 {
-    if((edgeNumber > 3) || (!edgeNumber))
+    if((edgeNumber > 4) || (!edgeNumber))
     {
         return;
     }
@@ -306,7 +306,7 @@ void rigCommander::setSpectrumBounds(double startFreq, double endFreq, unsigned 
 
 
     }
-        QByteArray lowerEdge = makeFreqPayload(startFreq);
+    QByteArray lowerEdge = makeFreqPayload(startFreq);
     QByteArray higherEdge = makeFreqPayload(endFreq);
 
 
