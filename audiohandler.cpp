@@ -870,7 +870,6 @@ void audioHandler::start()
     else {
 		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
 		audioOutput->start(this);
-		audioOutput->suspend(); // Suspend until data has arrived to "kick-start" playback
     }	
 }
 
