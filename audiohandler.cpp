@@ -1002,48 +1002,57 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 	int chunkSize = radioSampleBits * 120;
 	int multiplier = 16 / radioSampleBits;
 	int sentlen = 0;
+	int tosend = 0;
 	QMutexLocker locker(&mutex);
+	AUDIOPACKET *current;
 
 	while (sentlen < len) {
-		QByteArray buffer;
+		if (!audioBuffer.isEmpty())
+		{
+			if (audioBuffer.last().sent == chunkSize)
+			{
+				audioBuffer.append(AUDIOPACKET());
+				audioBuffer.last().sent = 0;
+			}
+		}
+		else
+		{
+			audioBuffer.append(AUDIOPACKET());
+			audioBuffer.last().sent = 0;
+		}
+		current = &audioBuffer.last();
+
+		tosend = qMin((int)(len - sentlen)/multiplier, chunkSize-current->sent);
 		if (radioSampleBits == 8) {
 			int f = 0;
-			while (f < chunkSize && f * multiplier + sentlen < len)
+			while (f < tosend)
 			{
 				if (isUlaw) {
 					qint16 enc = qFromLittleEndian<quint16>(data + (f * multiplier + sentlen));
 					if (enc >= 0)
-						buffer.append((quint8)ulaw_encode[enc]);
+						current->data.append((quint8)ulaw_encode[enc]);
 					else
-						buffer.append((quint8)0x7f & ulaw_encode[-enc]);
+						current->data.append((quint8)0x7f & ulaw_encode[-enc]);
 				}
 				else {
-					buffer.append((quint8)(((qFromLittleEndian<qint16>(data + (f * multiplier + sentlen)) >> 8) ^ 0x80) & 0xff));
+					current->data.append((quint8)(((qFromLittleEndian<qint16>(data + (f * multiplier + sentlen)) >> 8) ^ 0x80) & 0xff));
 				}
 				f++;
 			}
 		}
 		else if (radioSampleBits == 16)
 		{
-			buffer.append(QByteArray::fromRawData(data + sentlen, chunkSize * multiplier));
+			current->data.append(QByteArray::fromRawData(data + sentlen, tosend ));
 		}
 
-
-
-
-		sentlen = sentlen + (chunkSize * multiplier);
-		AUDIOPACKET tempAudio;
-		tempAudio.seq = 0; // Not used in TX
-		tempAudio.time = QTime::currentTime();
-		tempAudio.sent = 0;
-		tempAudio.data = buffer;
-		audioBuffer.append(tempAudio);
-		if (buffer.length() < chunkSize)
+		sentlen = sentlen + (tosend * multiplier);
+		current->seq = 0; // Not used in TX
+		current->time = QTime::currentTime();
+		current->sent = current->data.length();
+		if (current->sent != chunkSize)
 		{
-			// We don't have enough for a full packet yet, what to do?
-			qDebug(logAudio) << "*** Small Packet *** " << buffer.length() << " less than " << chunkSize;
+			qDebug(logAudio()) << "Short chunk :" << current->sent;
 		}
-
 	}
 
 	if (!audioBuffer.isEmpty())
