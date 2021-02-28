@@ -2221,9 +2221,7 @@ void wfmain::on_goFreqBtn_clicked()
     if(ok)
     {
         emit setFrequency(freq);
-        // TODO: change to cmdQueue
-        cmdOut = cmdGetFreq;
-        delayedCommand->start();
+        issueDelayedCommand(cmdGetFreq);
     }
     ui->freqMhzLineEdit->selectAll();
     freqTextSelected = true;
