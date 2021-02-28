@@ -438,7 +438,7 @@ void udpServer::civReceived()
                     data_packet_t in = (data_packet_t)r.constData();
                     if (in->type != 0x01) 
                     {
-                        if (in->datalen + 0x15 == in->len)
+                        if (in->datalen + (quint8)0x15 == in->len)
                         {
                             emit haveDataFromServer(r.mid(0x15));
                         }

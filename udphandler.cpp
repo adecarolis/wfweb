@@ -620,7 +620,7 @@ void udpCivData::dataReceived()
                             startCivDataTimer->stop();
                         }
                         lastReceived = QTime::currentTime();
-                        if (in->datalen + 0x15 == in->len)
+                        if (in->datalen + (quint8)0x15 == in->len)
                         {
                             emit receive(r.mid(0x15));
                         }
