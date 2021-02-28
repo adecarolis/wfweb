@@ -864,11 +864,19 @@ void audioHandler::start()
     }
 
     if (isInput) {
-        this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
+#ifdef Q_OS_WIN
+		this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
+#else
+		this->open(QIODevice::WriteOnly);
+#endif
         audioInput->start(this);
     }
     else {
+#ifdef Q_OS_WIN
 		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
+#else
+		this->open(QIODevice::ReadOnly);
+#endif
 		audioOutput->start(this);
     }	
 }
@@ -921,13 +929,6 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 		
 		// We must lock the mutex for the entire time that the buffer may be modified.
 		QMutexLocker locker(&mutex);
-
-		// Sort the buffer by seq number. This is important and audio packets may have arrived out-of-order
-		std::sort(audioBuffer.begin(), audioBuffer.end(),
-			[](const AUDIOPACKET& a, const AUDIOPACKET& b) -> bool
-		{
-			return a.seq < b.seq;
-		});
 		
 		// Output buffer is ALWAYS 16 bit.
 		int divisor = 16 / radioSampleBits;
@@ -1102,6 +1103,14 @@ void audioHandler::incomingAudio(const AUDIOPACKET data)
 				qDebug(logAudio()) << "RX Audio Suspended, Resuming...";
 				audioOutput->resume();
 		}
+
+		// Sort the buffer by seq number. This is important and audio packets may have arrived out-of-order
+		std::sort(audioBuffer.begin(), audioBuffer.end(),
+			[](const AUDIOPACKET& a, const AUDIOPACKET& b) -> bool
+		{
+			return a.seq < b.seq;
+		});
+
     }
 }
 

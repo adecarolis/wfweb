@@ -113,6 +113,7 @@ signals:
     void sendChangeLatency(quint16 latency);
     void initServer();
     void sendServerConfig(SERVERCONFIG conf);
+    void sendRigCaps(rigCapabilities caps);
 
 private slots:
     void shortcutF1();

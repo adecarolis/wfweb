@@ -30,8 +30,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     connect(this, SIGNAL(sendServerConfig(SERVERCONFIG)), srv, SLOT(receiveServerConfig(SERVERCONFIG)));
     connect(srv, SIGNAL(serverConfig(SERVERCONFIG, bool)), this, SLOT(serverConfigRequested(SERVERCONFIG, bool)));
-
-
+       
 
     haveRigCaps = false;
 
@@ -208,6 +207,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
         serverThread->start();
 
         emit initServer();
+
+        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
+
     }
 
     plot = ui->plot; // rename it waterfall.
@@ -397,6 +399,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     if (serverConfig.enabled && udp != Q_NULLPTR) {
         // Server
+        connect(rig, SIGNAL(haveAudioData(AUDIOPACKET)), udp, SLOT(receiveAudioData(AUDIOPACKET)));
         connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
         connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
     }
@@ -1761,6 +1764,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         this->rigCaps = rigCaps;
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
         haveRigCaps = true;
+        // Added so that server receives rig capabilities.
+        emit sendRigCaps(rigCaps);
         if(rigCaps.model==model7850)
         {
             ui->modeSelectCombo->addItem("PSK", 0x12);

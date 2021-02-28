@@ -136,7 +136,8 @@ public slots:
     void getRefAdjustFine();
     void setRefAdjustCourse(unsigned char level);
     void setRefAdjustFine(unsigned char level);
-    void handleNewData(const QByteArray &data);
+    void handleNewData(const QByteArray& data);
+    void receiveAudioData(const AUDIOPACKET& data);
     void handleSerialPortError(const QString port, const QString errorText);
     void handleStatusUpdate(const QString text);
     void changeLatency(const quint16 value);
@@ -199,6 +200,7 @@ signals:
     void haveATUStatus(unsigned char status);
     void haveChangeLatency(quint16 value);
     void haveDataForServer(QByteArray outData);
+    void haveAudioData(AUDIOPACKET data);
     void initUdpHandler();
 
 private:

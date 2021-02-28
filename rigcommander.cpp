@@ -104,6 +104,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, quint16 cport
 
 
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
+        connect(udp, SIGNAL(haveAudioData(AUDIOPACKET)), this, SLOT(receiveAudioData(AUDIOPACKET)));
 
         // data from the program to the comm port:
         connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
@@ -631,10 +632,15 @@ void rigCommander::setCIVAddr(unsigned char civAddr)
     this->civAddr = civAddr;
 }
 
-void rigCommander::handleNewData(const QByteArray &data)
-{    
+void rigCommander::handleNewData(const QByteArray& data)
+{
     emit haveDataForServer(data);
     parseData(data);
+}
+
+void rigCommander::receiveAudioData(const AUDIOPACKET& data)
+{
+    emit haveAudioData(data);
 }
 
 void rigCommander::parseData(QByteArray dataInput)

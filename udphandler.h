@@ -217,11 +217,13 @@ public:
 public slots:
 	void receiveDataFromUserToRig(QByteArray); // This slot will send data on to 
 	void receiveFromCivStream(QByteArray);
+	void receiveAudioData(const AUDIOPACKET &data);
 	void changeLatency(quint16 value);
 	void init();
 
 signals:
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
+	void haveAudioData(AUDIOPACKET data); // emit this when we have data, connect to rigcommander
 	void haveNetworkError(QString, QString);
 	void haveNetworkStatus(QString);
 	void haveChangeLatency(quint16 value);
