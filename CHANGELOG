@@ -1,6 +1,9 @@
 
 # CHANGELOG
 
+- 20210227	changed the way udp audio traffic is handled
+                on both the TX and RX side.
+
 - 20210226	Fixed minor bug where flock did not stop double-clicking on the
     		spectrum.
 
@@ -33,7 +36,6 @@
 		added TX and RX codec selections
 		added RX audio buffer size slider
 		started adding server setup
-
 		
 - 20210210	added control over LAN for rigs that support it
                 has been tested on the 705, 7610, 785x, 9700.
