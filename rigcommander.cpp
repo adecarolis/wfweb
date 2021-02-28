@@ -16,7 +16,7 @@
 // The IC-7300 "full" manual also contains a command reference.
 
 // How to make spectrum display stop using rigctl:
-//  echo "w \0xFE\0xFE\0x94\0xE0\0x27\0x11\0x00\0xFD" | rigctl -m 373 -r /dev/ttyUSB0 -s 115200 -vvvvv
+//  echo "w \0xFE\0xFE\0x94\0xE0\0x27\0x11\0x00\0xFD" | rigctl -m 3073 -r /dev/ttyUSB0 -s 115200 -vvvvv
 
 // Note: When sending \x00, must use QByteArray.setRawData()
 
@@ -242,7 +242,7 @@ void rigCommander::disableSpectrumDisplay()
 
 void rigCommander::setSpectrumBounds(double startFreq, double endFreq, unsigned char edgeNumber)
 {
-    if((edgeNumber > 3) || (!edgeNumber))
+    if((edgeNumber > 4) || (!edgeNumber))
     {
         return;
     }
@@ -307,7 +307,7 @@ void rigCommander::setSpectrumBounds(double startFreq, double endFreq, unsigned 
 
 
     }
-        QByteArray lowerEdge = makeFreqPayload(startFreq);
+    QByteArray lowerEdge = makeFreqPayload(startFreq);
     QByteArray higherEdge = makeFreqPayload(endFreq);
 
 
@@ -342,7 +342,7 @@ void rigCommander::setScopeEdge(char edge)
 {
     // 1 2 or 3
     // 27 16 00 0X
-    if((edge <1) || (edge >3))
+    if((edge <1) || (edge >4))
         return;
     QByteArray payload;
     payload.setRawData("\x27\x16\x00", 3);

@@ -604,6 +604,7 @@ private:
     float tsPlusControl;
     float tsPage;
     float tsPageShift;
+    float tsWfScroll;
 
 
 
