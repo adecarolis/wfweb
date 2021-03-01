@@ -322,8 +322,8 @@ typedef union capabilities_packet {
         char audio[32];           // 0x72
         quint16 conntype;         // 0x92
         char civ;                 // 0x94
-        quint16 lena;             // 0x95
-        quint16 lenb;             // 0x97
+        quint16 rxsample;             // 0x95
+        quint16 txsample;             // 0x97
         quint8 enablea;           // 0x99
         quint8 enableb;           // 0x9a
         quint8 enablec;           // 0x9b

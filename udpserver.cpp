@@ -827,13 +827,25 @@ void udpServer::sendCapabilities(CLIENT* c)
     p.civ = rigCaps.civ;
     p.baudrate = (quint32)qToBigEndian(19200);
 
-    p.lena = 0x8b01; // rx sample frequency range somehow?
-    p.lenb = 0x8b01; // tx sample frequency range somehow?
+    //p.lena = 0x8b01; // rx sample frequencies supported
+    //p.lenb = 0x8b01; // tx sample frequencies supported
+    /*
+        0x80 = 12K only
+        0x40 = 44.1K only
+        0x20 = 22.05K only
+        0x10 = 11.025K only
+        0x08 = 48K only
+        0x04 = 32K only
+        0x02 = 16K only
+        0x01 = 8K only
+    */
+    p.rxsample = 0x0800; // rx sample frequency
+    p.txsample = 0x0800; // tx sample frequency
 
     // I still don't know what these are?
-    p.enablea = 0x01;
-    p.enableb = 0x01;
-    p.enablec = 0x01;
+    p.enablea = 0x00; // 0x01 enables TX 24K mode?
+    p.enableb = 0x01; // 0x01 doesn't seem to do anything?
+    p.enablec = 0x01; // 0x01 doesn't seem to do anything?
     p.capf = 0x5001; 
     p.capg = 0x0190;
 
