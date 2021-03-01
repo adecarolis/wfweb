@@ -287,7 +287,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     rigName = new QLabel(this);
     ui->statusBar->addPermanentWidget(rigName);
     rigName->setText("NONE");
-    rigName->setFixedWidth(40);
+    rigName->setFixedWidth(50);
 
     delayedCommand = new QTimer(this);
     delayedCommand->setInterval(250); // 250ms until we find rig civ and id, then 100ms.
