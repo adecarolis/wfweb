@@ -277,6 +277,18 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->statusBar->addPermanentWidget(rigStatus);
     ui->statusBar->showMessage("Connecting to rig...", 1000);
 
+    pttLed = new QLedLabel(this);
+    ui->statusBar->addPermanentWidget(pttLed);
+    pttLed->setState(QLedLabel::State::StateOk);
+
+    connectedLed = new QLedLabel(this);
+    ui->statusBar->addPermanentWidget(connectedLed);
+
+    rigName = new QLabel(this);
+    ui->statusBar->addPermanentWidget(rigName);
+    rigName->setText("NONE");
+    rigName->setFixedWidth(40);
+
     delayedCommand = new QTimer(this);
     delayedCommand->setInterval(250); // 250ms until we find rig civ and id, then 100ms.
     delayedCommand->setSingleShot(true);
@@ -1065,7 +1077,7 @@ void wfmain::prepareWf()
         spectRowCurrent = 0;
         wf->yAxis->setRangeReversed(true);
         wf->xAxis->setVisible(false);
-
+        rigName->setText(rigCaps.modelName);
     } else {
         qDebug(logSystem()) << "Cannot prepare WF view without rigCaps. Waiting on this.";
         return;
@@ -1891,6 +1903,14 @@ void wfmain::receivePTTstatus(bool pttOn)
 {
     // This is the only place where amTransmitting and the transmit button text should be changed:
     qDebug(logSystem()) << "PTT status: " << pttOn;
+    if (pttOn && !amTransmitting)
+    {
+        pttLed->setState(QLedLabel::State::StateError);
+    }
+    else if (!pttOn && amTransmitting)
+    {
+        pttLed->setState(QLedLabel::State::StateOk);
+    }
     amTransmitting = pttOn;
     changeTxBtn();
 }

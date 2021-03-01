@@ -86,7 +86,8 @@ SOURCES += main.cpp\
     satellitesetup.cpp \
     udpserversetup.cpp \
     udpserver.cpp \
-    meter.cpp
+    meter.cpp \
+    qledlabel.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -101,7 +102,8 @@ HEADERS  += wfmain.h \
     udpserversetup.h \
 	udpserver.h \
 	packettypes.h \
-    meter.h
+    meter.h \
+	qledlabel.h
 
 
 FORMS    += wfmain.ui \

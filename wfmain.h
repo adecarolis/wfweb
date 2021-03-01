@@ -20,6 +20,7 @@
 #include "satellitesetup.h"
 #include "udpserversetup.h"
 #include "udpserver.h"
+#include "qledlabel.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -448,6 +449,9 @@ private:
     QStringList edges;
     QStringList commPorts;
     QLabel* rigStatus;
+    QLabel* rigName;
+    QLedLabel* pttLed;
+    QLedLabel* connectedLed;
 
     quint16 spectWidth;
     quint16 wfLength;
