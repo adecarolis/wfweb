@@ -407,18 +407,6 @@ void rigCommander::setScopeSpan(char span)
     prepDataAndSend(payload);
 }
 
-void rigCommander::setSpectrumCenteredMode(bool centerEnable)
-{
-    QByteArray specModePayload;
-    if(centerEnable)
-    {
-        specModePayload.setRawData("\x27\x14\x00\x00", 4);
-    } else {
-        specModePayload.setRawData("\x27\x14\x00\x01", 4);
-    }
-    prepDataAndSend(specModePayload);
-}
-
 void rigCommander::setSpectrumMode(spectrumMode spectMode)
 {
     QByteArray specModePayload;
@@ -1985,7 +1973,6 @@ void rigCommander::parseWFData()
             break;
         case 0x14:
             // fixed or center
-            //emit haveSpectrumFixedMode((bool)payloadIn[2]);
             emit haveSpectrumMode(static_cast<spectrumMode>((unsigned char)payloadIn[3]));
             // [1] 0x14
             // [2] 0x00
@@ -2262,7 +2249,6 @@ void rigCommander::parseSpectrum()
             // 0x02 Scroll-C
             // 0x03 Scroll-F
             emit haveSpectrumMode(scopeMode);
-            emit haveSpectrumFixedMode(scopeMode==spectModeFixed);
             oldScopeMode = scopeMode;
         }
 

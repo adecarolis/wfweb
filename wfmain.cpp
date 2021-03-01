@@ -321,7 +321,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(setModInput(rigInput, bool)), rig, SLOT(setModInput(rigInput,bool)));
 
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
-    connect(rig, SIGNAL(haveSpectrumFixedMode(bool)), this, SLOT(receiveSpectrumFixedMode(bool)));
     connect(rig, SIGNAL(haveSpectrumMode(spectrumMode)), this, SLOT(receiveSpectrumMode(spectrumMode)));
     connect(this, SIGNAL(setScopeMode(spectrumMode)), rig, SLOT(setSpectrumMode(spectrumMode)));
     connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
@@ -2009,12 +2008,6 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         //qDebug(logSystem()) << "updating spectrum, new row is: " << spectRowCurrent;
 
     }
-}
-
-void wfmain::receiveSpectrumFixedMode(bool isFixed)
-{
-    qDebug() << __func__ << "Please remove this";
-    (void)isFixed;
 }
 
 void wfmain::receiveSpectrumMode(spectrumMode spectMode)

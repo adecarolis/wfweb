@@ -64,7 +64,6 @@ public slots:
     void enableSpectrumDisplay();
     void disableSpectrumDisplay();
     void setSpectrumBounds(double startFreq, double endFreq, unsigned char edgeNumber);
-    void setSpectrumCenteredMode(bool centerEnable); // centered or band-wise
     void setSpectrumMode(spectrumMode spectMode);
     void getSpectrumCenterMode();
     void getSpectrumMode();
@@ -170,7 +169,6 @@ signals:
     void haveBandStackReg(float freq, char mode, bool dataOn);
     void haveSpectrumBounds();
     void haveScopeSpan(char span);
-    void haveSpectrumFixedMode(bool fixedEnabled);
     void haveSpectrumMode(spectrumMode spectmode);
     void haveScopeEdge(char edge);
     void haveSpectrumRefLevel(int level);
