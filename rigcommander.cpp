@@ -150,7 +150,7 @@ void rigCommander::setup()
 
     lookingForRig = false;
     foundRig = false;
-    oldScopeMode = 3;
+    oldScopeMode = spectModeUnknown;
 
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
 }
@@ -327,7 +327,7 @@ void rigCommander::getScopeMode()
 {
     // center or fixed
     QByteArray payload;
-    payload.setRawData("\x27\x14", 2);
+    payload.setRawData("\x27\x14\x00", 3);
     prepDataAndSend(payload);
 }
 
@@ -408,15 +408,11 @@ void rigCommander::setScopeSpan(char span)
     prepDataAndSend(payload);
 }
 
-void rigCommander::setSpectrumCenteredMode(bool centerEnable)
+void rigCommander::setSpectrumMode(spectrumMode spectMode)
 {
     QByteArray specModePayload;
-    if(centerEnable)
-    {
-        specModePayload.setRawData("\x27\x14\x00\x00", 4);
-    } else {
-        specModePayload.setRawData("\x27\x14\x00\x01", 4);
-    }
+    specModePayload.setRawData("\x27\x14\x00", 3);
+    specModePayload.append( static_cast<unsigned char>(spectMode) );
     prepDataAndSend(specModePayload);
 }
 
@@ -463,6 +459,13 @@ void rigCommander::setSpectrumRefLevel(int level)
 
 
 void rigCommander::getSpectrumCenterMode()
+{
+    QByteArray specModePayload;
+    specModePayload.setRawData("\x27\x14", 2);
+    prepDataAndSend(specModePayload);
+}
+
+void rigCommander::getSpectrumMode()
 {
     QByteArray specModePayload;
     specModePayload.setRawData("\x27\x14", 2);
@@ -1976,11 +1979,10 @@ void rigCommander::parseWFData()
             break;
         case 0x14:
             // fixed or center
-            emit haveSpectrumFixedMode((bool)payloadIn[2]);
-            qDebug(logRig()) << "received 0x14 command fix/center";
-            printHex(payloadIn, false, true);
+            emit haveSpectrumMode(static_cast<spectrumMode>((unsigned char)payloadIn[3]));
             // [1] 0x14
-            // [2] 0x00 (center), 0x01 (fixed)
+            // [2] 0x00
+            // [3] 0x00 (center), 0x01 (fixed), 0x02, 0x03
             break;
         case 0x15:
             // read span in center mode
@@ -2242,22 +2244,27 @@ void rigCommander::parseSpectrum()
     if ((sequence == 1) && (sequence < rigCaps.spectSeqMax))
     {
 
-        unsigned char scopeMode = bcdHexToUChar(payloadIn[05]); // 0=center, 1=fixed
+        spectrumMode scopeMode = (spectrumMode)bcdHexToUChar(payloadIn[05]); // 0=center, 1=fixed
 
         if(scopeMode != oldScopeMode)
         {
-            //TODO: Figure out if this is the first spectrum, and if so, always emit.
-            emit haveSpectrumFixedMode(scopeMode==1);
+            //TODO: support the other two modes (firmware 1.40)
+            // Modes:
+            // 0x00 Center
+            // 0x01 Fixed
+            // 0x02 Scroll-C
+            // 0x03 Scroll-F
+            emit haveSpectrumMode(scopeMode);
             oldScopeMode = scopeMode;
         }
 
 
         // wave information
         spectrumLine.clear();
-        // parseFrequency(endPosition); // overload does not emit! Return? Where? how...
+        // For Fixed, and both scroll modes, the following produces correct information:
         spectrumStartFreq = parseFrequency(payloadIn, 9);
         spectrumEndFreq = parseFrequency(payloadIn, 14);
-        if(scopeMode == 0)
+        if(scopeMode == spectModeCenter)
         {
             // "center" mode, start is actuall center, end is bandwidth.
             spectrumStartFreq -= spectrumEndFreq;

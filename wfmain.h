@@ -96,7 +96,7 @@ signals:
     void spectOutputDisable();
     void scopeDisplayEnable();
     void scopeDisplayDisable();
-    void setScopeCenterMode(bool centerEnable);
+    void setScopeMode(spectrumMode spectMode);
     void setScopeSpan(char span);
     void setScopeEdge(char edge);
     void setScopeFixedEdge(double startFreq, double endFreq, unsigned char edgeNumber);
@@ -156,7 +156,7 @@ private slots:
     void receiveFreq(double);
     void receiveMode(unsigned char mode, unsigned char filter);
     void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);
-    void receiveSpectrumFixedMode(bool isFixed);
+    void receiveSpectrumMode(spectrumMode spectMode);
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(bool dataOn);
     void receiveBandStackReg(float freq, char mode, bool dataOn); // freq, mode, (filter,) datamode
@@ -235,9 +235,6 @@ private slots:
     void on_fBackbtn_clicked();
 
     void on_fCEbtn_clicked();
-
-
-    void on_scopeCenterModeChk_clicked(bool checked);
 
     void on_fEnterBtn_clicked();
 
@@ -378,6 +375,8 @@ private slots:
 
     void on_tuneLockChk_clicked(bool checked);
 
+    void on_spectrumModeCombo_currentIndexChanged(int index);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -476,7 +475,7 @@ private:
     double knobFreqMhz;
     enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
-              cmdGetSql, cmdGetATUStatus, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
+              cmdGetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
               cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdGetVdMeter, cmdGetIdMeter,
               cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter};
@@ -617,6 +616,6 @@ Q_DECLARE_METATYPE(struct rigCapabilities)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum duplexMode)
 Q_DECLARE_METATYPE(enum meterKind)
-
+Q_DECLARE_METATYPE(enum spectrumMode)
 
 #endif // WFMAIN_H

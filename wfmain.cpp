@@ -170,6 +170,12 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     loadSettings(); // Look for saved preferences
     setTuningSteps(); // TODO: Combine into preferences
 
+    ui->spectrumModeCombo->addItem("Center", (spectrumMode)spectModeCenter);
+    ui->spectrumModeCombo->addItem("Fixed", (spectrumMode)spectModeFixed);
+    ui->spectrumModeCombo->addItem("Scroll-C", (spectrumMode)spectModeScrollC);
+    ui->spectrumModeCombo->addItem("Scroll-F", (spectrumMode)spectModeScrollF);
+
+
     // if setting for serial port is "auto" then...
 //    if(prefs.serialPortRadio == QString("auto"))
 //    {
@@ -287,6 +293,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     qRegisterMetaType<duplexMode>();
     qRegisterMetaType<rigInput>();
     qRegisterMetaType<meterKind>();
+    qRegisterMetaType<spectrumMode>();
 
     connect(rig, SIGNAL(haveFrequency(double)), this, SLOT(receiveFreq(double)));
     connect(this, SIGNAL(getFrequency()), rig, SLOT(getFrequency()));
@@ -316,9 +323,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(setModInput(rigInput, bool)), rig, SLOT(setModInput(rigInput,bool)));
 
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
-    connect(rig, SIGNAL(haveSpectrumFixedMode(bool)), this, SLOT(receiveSpectrumFixedMode(bool)));
+    connect(rig, SIGNAL(haveSpectrumMode(spectrumMode)), this, SLOT(receiveSpectrumMode(spectrumMode)));
+    connect(this, SIGNAL(setScopeMode(spectrumMode)), rig, SLOT(setSpectrumMode(spectrumMode)));
+    connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
+
     connect(this, SIGNAL(setFrequency(double)), rig, SLOT(setFrequency(double)));
-    connect(this, SIGNAL(setScopeCenterMode(bool)), rig, SLOT(setSpectrumCenteredMode(bool)));
     connect(this, SIGNAL(setScopeEdge(char)), rig, SLOT(setScopeEdge(char)));
     connect(this, SIGNAL(setScopeSpan(char)), rig, SLOT(setScopeSpan(char)));
     connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
@@ -1584,10 +1593,10 @@ void wfmain::runPeriodicCommands()
                 emit getATUStatus();
                 break;
             case cmdScopeCenterMode:
-                emit setScopeCenterMode(true);
+                emit setScopeMode(spectModeCenter);
                 break;
             case cmdScopeFixedMode:
-                emit setScopeCenterMode(false);
+                emit setScopeMode(spectModeFixed);
                 break;
             case cmdGetPTT:
                 emit getPTT();
@@ -1678,6 +1687,9 @@ void wfmain::runDelayedCommand()
             case cmdDispDisable:
                 emit scopeDisplayDisable();
                 break;
+            case cmdGetSpectrumMode:
+                emit getScopeMode();
+                break;
             case cmdSpecOn:
                 emit spectOutputEnable();
                 break;
@@ -1706,10 +1718,10 @@ void wfmain::runDelayedCommand()
                 emit getATUStatus();
                 break;
             case cmdScopeCenterMode:
-                emit setScopeCenterMode(true);
+                emit setScopeMode(spectModeCenter);
                 break;
             case cmdScopeFixedMode:
-                emit setScopeCenterMode(false);
+                emit setScopeMode(spectModeFixed);
                 break;
             case cmdGetPTT:
                 emit getPTT();
@@ -2003,12 +2015,19 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     }
 }
 
-void wfmain::receiveSpectrumFixedMode(bool isFixed)
+void wfmain::receiveSpectrumMode(spectrumMode spectMode)
 {
-    ui->scopeCenterModeChk->blockSignals(true);
-    ui->scopeCenterModeChk->setChecked(!isFixed);
-    ui->scopeCenterModeChk->blockSignals(false);
+    for(int i=0; i < ui->spectrumModeCombo->count(); i++)
+    {
+        if(static_cast<spectrumMode>(ui->spectrumModeCombo->itemData(i).toInt()) == spectMode)
+        {
+            ui->spectrumModeCombo->blockSignals(true);
+            ui->spectrumModeCombo->setCurrentIndex(i);
+            ui->spectrumModeCombo->blockSignals(false);
+        }
+    }
 }
+
 
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 {
@@ -2319,9 +2338,9 @@ void wfmain::on_fCEbtn_clicked()
     freqTextSelected = false;
 }
 
-void wfmain::on_scopeCenterModeChk_clicked(bool checked)
+void wfmain::on_spectrumModeCombo_currentIndexChanged(int index)
 {
-    emit setScopeCenterMode(checked);
+    emit setScopeMode(static_cast<spectrumMode>(ui->spectrumModeCombo->itemData(index).toInt()));
 }
 
 void wfmain::on_fEnterBtn_clicked()
@@ -2912,9 +2931,9 @@ void wfmain::on_toFixedBtn_clicked()
 {
     emit setScopeFixedEdge(oldLowerFreq, oldUpperFreq, ui->scopeEdgeCombo->currentIndex()+1);
     emit setScopeEdge(ui->scopeEdgeCombo->currentIndex()+1);
-    cmdOutQue.append(cmdScopeFixedMode);
-    delayedCommand->start();
+    issueDelayedCommand(cmdScopeFixedMode);
 }
+
 
 void wfmain::on_connectBtn_clicked()
 {
@@ -3415,5 +3434,9 @@ void wfmain::on_debugBtn_clicked()
     // emit getMeters(amTransmitting);
 
     // emit getTSQL();
-    ui->meterWidget->update();
+    qDebug(logSystem()) << "Getting scope mode";
+    emit getScopeMode();
+
 }
+
+

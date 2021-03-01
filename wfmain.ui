@@ -49,11 +49,14 @@
            <number>0</number>
           </property>
           <item>
-           <widget class="QCheckBox" name="scopeCenterModeChk">
+           <widget class="QLabel" name="label_26">
             <property name="text">
-             <string>Center Mode</string>
+             <string>Spectrum Mode: </string>
             </property>
            </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="spectrumModeCombo"/>
           </item>
           <item>
            <widget class="QLabel" name="label_6">
