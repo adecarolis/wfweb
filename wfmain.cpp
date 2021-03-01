@@ -2876,16 +2876,6 @@ void wfmain::on_controlPortTxt_textChanged(QString text)
     udpPrefs.controlLANPort = text.toUInt();
 }
 
-void wfmain::on_serialPortTxt_textChanged(QString text)
-{
-    udpPrefs.serialLANPort = text.toUInt();
-}
-
-void wfmain::on_audioPortTxt_textChanged(QString text)
-{
-    udpPrefs.audioLANPort = text.toUInt();
-}
-
 void wfmain::on_usernameTxt_textChanged(QString text)
 {
     udpPrefs.username = text;

@@ -164,14 +164,14 @@ class udpAudio : public udpBase
 	Q_OBJECT
 
 public:
-	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
+	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QString outputPort, QString inputPort);
 	~udpAudio();
 
 signals:
     void haveAudioData(audioPacket data);
 
-	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput);
-	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput);
+	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QString port);
+	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QString port);
 
 	void haveChangeLatency(quint16 value);
 
@@ -272,6 +272,9 @@ private:
 	quint8 rxCodec;
 	quint8 txCodec;
 
+	QString audioInputPort;
+	QString audioOutputPort;
+
 	quint16 reauthInterval = 60000;
 	QString devName;
 	QString compName;
@@ -290,6 +293,7 @@ private:
 	QTimer* areYouThereTimer = Q_NULLPTR;
 
 	bool highBandwidthConnection = false;
+
 };
 
 Q_DECLARE_METATYPE(struct audioPacket)

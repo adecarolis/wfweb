@@ -752,7 +752,7 @@ audioHandler::~audioHandler()
     }
 }
 
-bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool ulaw, const bool isinput)
+bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool ulaw, const bool isinput, QString port)
 {
     if (isInitialized) {
         return false;
@@ -772,12 +772,29 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
     this->radioSampleRate = samplerate;
 	this->chunkSize = this->radioSampleBits * 120;
 
+	qDebug(logAudio()) << "Got audio port name: " << port;
 
-    if (isInput)
-        isInitialized = setDevice(QAudioDeviceInfo::defaultInputDevice());
-    else
-        isInitialized = setDevice(QAudioDeviceInfo::defaultOutputDevice());
-
+	if (isInput) {
+		const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
+		for (const QAudioDeviceInfo& deviceInfo : deviceInfos) {
+			if (deviceInfo.deviceName() == port) {
+				qDebug(logAudio()) << "Input Audio Device name: " << deviceInfo.deviceName();
+				isInitialized = setDevice(deviceInfo);
+				break;
+			}
+		}
+	}
+	else
+	{
+		const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
+		for (const QAudioDeviceInfo& deviceInfo : deviceInfos) {
+			if (deviceInfo.deviceName() == port) {
+				qDebug(logAudio()) << "Output Audio Device name: " << deviceInfo.deviceName();
+				isInitialized = setDevice(deviceInfo);
+				break;
+			}
+		}
+	}
     return isInitialized;
 }
 

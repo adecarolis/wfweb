@@ -5,17 +5,22 @@
 #include "logcategories.h"
 
 udpHandler::udpHandler(udpPreferences prefs) :
-    controlPort(prefs.controlLANPort)
+    controlPort(prefs.controlLANPort),
+    civPort(0),
+    audioPort(0),
+    rxSampleRate(prefs.audioRXSampleRate),
+    txSampleRate(prefs.audioRXSampleRate),
+    rxLatency(prefs.audioRXLatency),
+    txLatency(prefs.audioTXLatency),
+    rxCodec(prefs.audioRXCodec),
+    txCodec(prefs.audioTXCodec),
+    audioInputPort(prefs.audioInput),
+    audioOutputPort(prefs.audioOutput)
 {
+
     this->port = this->controlPort;
     this->username = prefs.username;
     this->password = prefs.password;
-    this->rxLatency = prefs.audioRXLatency;
-    this->txLatency = prefs.audioTXLatency;
-    this->rxSampleRate = prefs.audioRXSampleRate;
-    this->txSampleRate = prefs.audioTXSampleRate;
-    this->rxCodec = prefs.audioRXCodec;
-    this->txCodec = prefs.audioTXCodec;
 
     qDebug(logUdp()) << "Starting udpHandler user:" << username << " rx latency:" << rxLatency  << " tx latency:" << txLatency << " rx sample rate: " << rxSampleRate <<
         " rx codec: " << rxCodec << " tx sample rate: " << txSampleRate << " tx codec: " << txCodec;
@@ -298,12 +303,11 @@ void udpHandler::dataReceived()
                         }
                         else {
                             civ = new udpCivData(localIP, radioIP, civPort);
-                            audio = new udpAudio(localIP, radioIP, audioPort, rxLatency, txLatency, rxSampleRate, rxCodec, txSampleRate, txCodec);
+                            audio = new udpAudio(localIP, radioIP, audioPort, rxLatency, txLatency, rxSampleRate, rxCodec, txSampleRate, txCodec, audioOutputPort, audioInputPort);
 
                             QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
                             QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
-                            QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16)));
-
+                            QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16))); 
 
                             streamOpened = true;
 
@@ -640,7 +644,7 @@ void udpCivData::dataReceived()
 
 
 // Audio stream
-udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec)
+udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QString outputPort, QString inputPort)
 {
     qDebug(logUdp()) << "Starting udpAudio";
     this->localIP = local;
@@ -683,7 +687,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     rxaudio->moveToThread(rxAudioThread);
 
-    connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool)));
+    connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QString)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString)));
 
     qRegisterMetaType<audioPacket>();
     connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
@@ -702,7 +706,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     txaudio->moveToThread(txAudioThread);
 
-    connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool)));
+    connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool,QString)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString)));
     connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
     
     rxAudioThread->start();
@@ -715,8 +719,8 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
     pingTimer->start(PING_PERIOD); // send ping packets every 100ms
 
-    emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, txLatency, txIsUlawCodec, true);
-    emit setupRxAudio(rxNumSamples, rxChannelCount, rxSampleRate, txLatency, rxIsUlawCodec, false);
+    emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, txLatency, txIsUlawCodec, true, inputPort);
+    emit setupRxAudio(rxNumSamples, rxChannelCount, rxSampleRate, txLatency, rxIsUlawCodec, false, outputPort);
 
     watchdogTimer = new QTimer();
     connect(watchdogTimer, &QTimer::timeout, this, &udpAudio::watchdog);

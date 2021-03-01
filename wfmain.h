@@ -311,10 +311,6 @@ private slots:
 
     void on_controlPortTxt_textChanged(QString text);
 
-    void on_serialPortTxt_textChanged(QString text);
-
-    void on_audioPortTxt_textChanged(QString text);
-
     void on_usernameTxt_textChanged(QString text);
 
     void on_passwordTxt_textChanged(QString text);
