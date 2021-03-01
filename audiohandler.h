@@ -21,7 +21,7 @@
 //#define BUFFER_SIZE (32*1024)
 
 
-struct AUDIOPACKET {
+struct audioPacket {
     quint16 seq;
     QTime time;
     quint16 sent;
@@ -55,7 +55,7 @@ public:
     bool isChunkAvailable();
 public slots:
     bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isulaw, const bool isinput);
-    void incomingAudio(const AUDIOPACKET data);
+    void incomingAudio(const audioPacket data);
     void changeLatency(const quint16 newSize);
 
 private slots:
@@ -87,7 +87,7 @@ private:
     QAudioDeviceInfo deviceInfo;
     quint16          radioSampleRate;
     quint8           radioSampleBits;
-    QVector<AUDIOPACKET> audioBuffer;
+    QVector<audioPacket> audioBuffer;
 };
 
 #endif // AUDIOHANDLER_H

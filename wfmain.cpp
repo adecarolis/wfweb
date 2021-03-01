@@ -31,6 +31,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(sendServerConfig(SERVERCONFIG)), srv, SLOT(receiveServerConfig(SERVERCONFIG)));
     connect(srv, SIGNAL(serverConfig(SERVERCONFIG, bool)), this, SLOT(serverConfigRequested(SERVERCONFIG, bool)));
        
+    qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
 
     haveRigCaps = false;
 
@@ -420,7 +421,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     if (serverConfig.enabled && udp != Q_NULLPTR) {
         // Server
-        connect(rig, SIGNAL(haveAudioData(AUDIOPACKET)), udp, SLOT(receiveAudioData(AUDIOPACKET)));
+        connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
         connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
         connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
     }
@@ -455,8 +456,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
 
     ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
-    ui->audioPortTxt->setValidator(new QIntValidator(this));
-    ui->serialPortTxt->setValidator(new QIntValidator(this));
     ui->controlPortTxt->setValidator(new QIntValidator(this));
 
     pttTimer = new QTimer(this);
@@ -560,7 +559,7 @@ void wfmain::openRig()
         connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
         connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
         
-        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint16, quint16, quint16, QString, QString,quint16,quint16,quint16,quint8,quint16,quint8)), rig, SLOT(commSetup(unsigned char, QString, quint16, quint16, quint16, QString, QString,quint16,quint16,quint16,quint8,quint16,quint8)));
+        connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences)), rig, SLOT(commSetup(unsigned char, udpPreferences)));
         connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32)), rig, SLOT(commSetup(unsigned char, QString, quint32)));
 
         connect(this, SIGNAL(sendCloseComm()), rig, SLOT(closeComm()));
@@ -572,8 +571,7 @@ void wfmain::openRig()
 
     if (prefs.enableLAN)
     {
-        emit sendCommSetup(prefs.radioCIVAddr, prefs.ipAddress, prefs.controlLANPort, 
-            prefs.serialLANPort, prefs.audioLANPort, prefs.username, prefs.password,prefs.audioRXLatency,prefs.audioTXLatency,prefs.audioRXSampleRate,prefs.audioRXCodec,prefs.audioTXSampleRate,prefs.audioTXCodec);
+        emit sendCommSetup(prefs.radioCIVAddr, udpPrefs);
     } else {
 
         if( (prefs.serialPortRadio == QString("auto")) && (serialPortCL.isEmpty()))
@@ -717,21 +715,20 @@ void wfmain::setDefPrefs()
     defPrefs.enablePTT = false;
     defPrefs.niceTS = true;
 
-    defPrefs.enableLAN = false;
-    defPrefs.ipAddress = QString("");
-    defPrefs.controlLANPort = 50001;
-    defPrefs.serialLANPort = 50002;
-    defPrefs.audioLANPort = 50003;
-    defPrefs.username = QString("");
-    defPrefs.password = QString("");
-    defPrefs.audioOutput = QAudioDeviceInfo::defaultOutputDevice().deviceName();
-    defPrefs.audioInput = QAudioDeviceInfo::defaultInputDevice().deviceName();
-    defPrefs.audioRXLatency = 150;
-    defPrefs.audioTXLatency = 150;
-    defPrefs.audioRXSampleRate = 48000;
-    defPrefs.audioRXCodec = 4;
-    defPrefs.audioTXSampleRate = 48000;
-    defPrefs.audioTXCodec = 4;
+    udpDefPrefs.ipAddress = QString("");
+    udpDefPrefs.controlLANPort = 50001;
+    udpDefPrefs.serialLANPort = 50002;
+    udpDefPrefs.audioLANPort = 50003;
+    udpDefPrefs.username = QString("");
+    udpDefPrefs.password = QString("");
+    udpDefPrefs.audioOutput = QAudioDeviceInfo::defaultOutputDevice().deviceName();
+    udpDefPrefs.audioInput = QAudioDeviceInfo::defaultInputDevice().deviceName();
+    udpDefPrefs.audioRXLatency = 150;
+    udpDefPrefs.audioTXLatency = 150;
+    udpDefPrefs.audioRXSampleRate = 48000;
+    udpDefPrefs.audioRXCodec = 4;
+    udpDefPrefs.audioTXSampleRate = 48000;
+    udpDefPrefs.audioTXCodec = 4;
 
 
 }
@@ -770,47 +767,40 @@ void wfmain::loadSettings()
     settings.endGroup();
 
     settings.beginGroup("LAN");
+
     prefs.enableLAN = settings.value("EnableLAN", defPrefs.enableLAN).toBool();
     ui->lanEnableChk->setChecked(prefs.enableLAN);
     
-    prefs.ipAddress = settings.value("IPAddress", defPrefs.ipAddress).toString();
+    udpPrefs.ipAddress = settings.value("IPAddress", udpDefPrefs.ipAddress).toString();
     ui->ipAddressTxt->setEnabled(ui->lanEnableChk->isChecked());
-    ui->ipAddressTxt->setText(prefs.ipAddress);
+    ui->ipAddressTxt->setText(udpPrefs.ipAddress);
     
-    prefs.controlLANPort = settings.value("ControlLANPort", defPrefs.controlLANPort).toInt();
+    udpPrefs.controlLANPort = settings.value("ControlLANPort", udpDefPrefs.controlLANPort).toInt();
     ui->controlPortTxt->setEnabled(ui->lanEnableChk->isChecked());
-    ui->controlPortTxt->setText(QString("%1").arg(prefs.controlLANPort));
+    ui->controlPortTxt->setText(QString("%1").arg(udpPrefs.controlLANPort));
     
-    prefs.serialLANPort = settings.value("SerialLANPort", defPrefs.serialLANPort).toInt();
-    ui->serialPortTxt->setEnabled(ui->lanEnableChk->isChecked());
-    ui->serialPortTxt->setText(QString("%1").arg(prefs.serialLANPort));
-    
-    prefs.audioLANPort = settings.value("AudioLANPort", defPrefs.audioLANPort).toInt();
-    ui->audioPortTxt->setEnabled(ui->lanEnableChk->isChecked());
-    ui->audioPortTxt->setText(QString("%1").arg(prefs.audioLANPort));
-
-    prefs.username = settings.value("Username", defPrefs.username).toString();
+    udpPrefs.username = settings.value("Username", udpDefPrefs.username).toString();
     ui->usernameTxt->setEnabled(ui->lanEnableChk->isChecked());
-    ui->usernameTxt->setText(QString("%1").arg(prefs.username));
+    ui->usernameTxt->setText(QString("%1").arg(udpPrefs.username));
     
-    prefs.password = settings.value("Password", defPrefs.password).toString();
+    udpPrefs.password = settings.value("Password", udpDefPrefs.password).toString();
     ui->passwordTxt->setEnabled(ui->lanEnableChk->isChecked());
-    ui->passwordTxt->setText(QString("%1").arg(prefs.password));
+    ui->passwordTxt->setText(QString("%1").arg(udpPrefs.password));
 
-    prefs.audioRXLatency = settings.value("AudioRXLatency", defPrefs.audioRXLatency).toInt();
+    udpPrefs.audioRXLatency = settings.value("AudioRXLatency", udpDefPrefs.audioRXLatency).toInt();
     ui->rxLatencySlider->setEnabled(ui->lanEnableChk->isChecked());
-    ui->rxLatencySlider->setValue(prefs.audioRXLatency);
+    ui->rxLatencySlider->setValue(udpPrefs.audioRXLatency);
     ui->rxLatencySlider->setTracking(false); // Stop it sending value on every change.
 
-    prefs.audioTXLatency = settings.value("AudioTXLatency", defPrefs.audioTXLatency).toInt();
+    udpPrefs.audioTXLatency = settings.value("AudioTXLatency", udpDefPrefs.audioTXLatency).toInt();
     ui->txLatencySlider->setEnabled(ui->lanEnableChk->isChecked());
-    ui->txLatencySlider->setValue(prefs.audioTXLatency);
+    ui->txLatencySlider->setValue(udpPrefs.audioTXLatency);
     ui->txLatencySlider->setTracking(false); // Stop it sending value on every change.
 
-    prefs.audioRXSampleRate = settings.value("AudioRXSampleRate", defPrefs.audioRXSampleRate).toInt();
-    prefs.audioTXSampleRate = settings.value("AudioTXSampleRate", defPrefs.audioTXSampleRate).toInt();
+    udpPrefs.audioRXSampleRate = settings.value("AudioRXSampleRate", udpDefPrefs.audioRXSampleRate).toInt();
+    udpPrefs.audioTXSampleRate = settings.value("AudioTXSampleRate",udpDefPrefs.audioTXSampleRate).toInt();
     ui->audioSampleRateCombo->setEnabled(ui->lanEnableChk->isChecked());
-    int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(prefs.audioRXSampleRate));
+    int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(udpDefPrefs.audioRXSampleRate));
     if (audioSampleRateIndex != -1) {
         ui->audioOutputCombo->setCurrentIndex(audioSampleRateIndex);
     }
@@ -823,31 +813,31 @@ void wfmain::loadSettings()
     ui->audioRXCodecCombo->addItem("uLaw 2ch 8bit", 32);
     ui->audioRXCodecCombo->addItem("PCM 2ch 8bit", 8);
 
-    prefs.audioRXCodec = settings.value("AudioRXCodec", defPrefs.audioRXCodec).toInt();
+    udpPrefs.audioRXCodec = settings.value("AudioRXCodec", udpDefPrefs.audioRXCodec).toInt();
     ui->audioRXCodecCombo->setEnabled(ui->lanEnableChk->isChecked());
     for (int f = 0; f < ui->audioRXCodecCombo->count(); f++)
-        if (ui->audioRXCodecCombo->itemData(f).toInt() == prefs.audioRXCodec)
+        if (ui->audioRXCodecCombo->itemData(f).toInt() == udpPrefs.audioRXCodec)
             ui->audioRXCodecCombo->setCurrentIndex(f);
 
     ui->audioTXCodecCombo->addItem("LPCM 1ch 16bit", 4);
     ui->audioTXCodecCombo->addItem("LPCM 1ch 8bit", 2);
     ui->audioTXCodecCombo->addItem("uLaw 1ch 8bit", 1);
 
-    prefs.audioTXCodec = settings.value("AudioTXCodec", defPrefs.audioTXCodec).toInt();
+    udpPrefs.audioTXCodec = settings.value("AudioTXCodec", udpDefPrefs.audioTXCodec).toInt();
     ui->audioTXCodecCombo->setEnabled(ui->lanEnableChk->isChecked());
     for (int f = 0; f < ui->audioTXCodecCombo->count(); f++)
-        if (ui->audioTXCodecCombo->itemData(f).toInt() == prefs.audioTXCodec)
+        if (ui->audioTXCodecCombo->itemData(f).toInt() == udpPrefs.audioTXCodec)
             ui->audioTXCodecCombo->setCurrentIndex(f);
 
-    prefs.audioOutput = settings.value("AudioOutput", defPrefs.audioOutput).toString();
+    udpPrefs.audioOutput = settings.value("AudioOutput", udpDefPrefs.audioOutput).toString();
     ui->audioOutputCombo->setEnabled(ui->lanEnableChk->isChecked());
-    int audioOutputIndex = ui->audioOutputCombo->findText(prefs.audioOutput);
+    int audioOutputIndex = ui->audioOutputCombo->findText(udpPrefs.audioOutput);
     if (audioOutputIndex != -1)
         ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
 
-    prefs.audioInput = settings.value("AudioInput", defPrefs.audioInput).toString();
+    udpPrefs.audioInput = settings.value("AudioInput", udpDefPrefs.audioInput).toString();
     ui->audioInputCombo->setEnabled(ui->lanEnableChk->isChecked());
-    int audioInputIndex = ui->audioInputCombo->findText(prefs.audioInput);
+    int audioInputIndex = ui->audioInputCombo->findText(udpPrefs.audioInput);
     if (audioInputIndex != - 1)
         ui->audioOutputCombo->setCurrentIndex(audioInputIndex);
 
@@ -944,20 +934,20 @@ void wfmain::saveSettings()
 
     settings.beginGroup("LAN");
     settings.setValue("EnableLAN", prefs.enableLAN);
-    settings.setValue("IPAddress", prefs.ipAddress);
-    settings.setValue("ControlLANPort", prefs.controlLANPort);
-    settings.setValue("SerialLANPort", prefs.serialLANPort);
-    settings.setValue("AudioLANPort", prefs.audioLANPort);
-    settings.setValue("Username", prefs.username);
-    settings.setValue("Password", prefs.password);
-    settings.setValue("AudioRXLatency", prefs.audioRXLatency);
-    settings.setValue("AudioTXLatency", prefs.audioTXLatency);
-    settings.setValue("AudioRXSampleRate", prefs.audioRXSampleRate);
-    settings.setValue("AudioRXCodec", prefs.audioRXCodec);
-    settings.setValue("AudioTXSampleRate", prefs.audioRXSampleRate);
-    settings.setValue("AudioTXCodec", prefs.audioTXCodec);
-    settings.setValue("AudioOutput", prefs.audioOutput);
-    settings.setValue("AudioInput", prefs.audioInput);
+    settings.setValue("IPAddress", udpPrefs.ipAddress);
+    settings.setValue("ControlLANPort", udpPrefs.controlLANPort);
+    settings.setValue("SerialLANPort", udpPrefs.serialLANPort);
+    settings.setValue("AudioLANPort", udpPrefs.audioLANPort);
+    settings.setValue("Username", udpPrefs.username);
+    settings.setValue("Password", udpPrefs.password);
+    settings.setValue("AudioRXLatency", udpPrefs.audioRXLatency);
+    settings.setValue("AudioTXLatency", udpPrefs.audioTXLatency);
+    settings.setValue("AudioRXSampleRate", udpPrefs.audioRXSampleRate);
+    settings.setValue("AudioRXCodec", udpPrefs.audioRXCodec);
+    settings.setValue("AudioTXSampleRate", udpPrefs.audioRXSampleRate);
+    settings.setValue("AudioTXCodec", udpPrefs.audioTXCodec);
+    settings.setValue("AudioOutput", udpPrefs.audioOutput);
+    settings.setValue("AudioInput", udpPrefs.audioInput);
     settings.endGroup();
 
     // Memory channels
@@ -2868,8 +2858,6 @@ void wfmain::on_lanEnableChk_clicked(bool checked)
     prefs.enableLAN = checked;
     ui->ipAddressTxt->setEnabled(checked);
     ui->controlPortTxt->setEnabled(checked);
-    ui->serialPortTxt->setEnabled(checked);
-    ui->audioPortTxt->setEnabled(checked);
     ui->usernameTxt->setEnabled(checked);
     ui->passwordTxt->setEnabled(checked);
     if(checked)
@@ -2880,70 +2868,70 @@ void wfmain::on_lanEnableChk_clicked(bool checked)
 
 void wfmain::on_ipAddressTxt_textChanged(QString text)
 {
-    prefs.ipAddress = text;
+    udpPrefs.ipAddress = text;
 }
 
 void wfmain::on_controlPortTxt_textChanged(QString text)
 {
-    prefs.controlLANPort = text.toUInt();
+    udpPrefs.controlLANPort = text.toUInt();
 }
 
 void wfmain::on_serialPortTxt_textChanged(QString text)
 {
-    prefs.serialLANPort = text.toUInt();
+    udpPrefs.serialLANPort = text.toUInt();
 }
 
 void wfmain::on_audioPortTxt_textChanged(QString text)
 {
-    prefs.audioLANPort = text.toUInt();
+    udpPrefs.audioLANPort = text.toUInt();
 }
 
 void wfmain::on_usernameTxt_textChanged(QString text)
 {
-    prefs.username = text;
+    udpPrefs.username = text;
 }
 
 void wfmain::on_passwordTxt_textChanged(QString text)
 {
-    prefs.password = text;
+    udpPrefs.password = text;
 }
 
 void wfmain::on_audioOutputCombo_currentIndexChanged(QString text)
 {
-    prefs.audioOutput = text;
+    udpPrefs.audioOutput = text;
 }
 
 void wfmain::on_audioInputCombo_currentIndexChanged(QString text)
 {
-    prefs.audioInput = text;
+    udpPrefs.audioInput = text;
 }
 
 void wfmain::on_audioSampleRateCombo_currentIndexChanged(QString text)
 {
-    prefs.audioRXSampleRate = text.toInt();
-    prefs.audioTXSampleRate = text.toInt();
+    udpPrefs.audioRXSampleRate = text.toInt();
+    udpPrefs.audioTXSampleRate = text.toInt();
 }
 
 void wfmain::on_audioRXCodecCombo_currentIndexChanged(int value)
 {
-    prefs.audioRXCodec = ui->audioRXCodecCombo->itemData(value).toInt();
+    udpPrefs.audioRXCodec = ui->audioRXCodecCombo->itemData(value).toInt();
 }
 
 void wfmain::on_audioTXCodecCombo_currentIndexChanged(int value)
 {
-    prefs.audioTXCodec = ui->audioTXCodecCombo->itemData(value).toInt();
+    udpPrefs.audioTXCodec = ui->audioTXCodecCombo->itemData(value).toInt();
 }
 
 void wfmain::on_rxLatencySlider_valueChanged(int value)
 {
-    prefs.audioRXLatency = value;
+    udpPrefs.audioRXLatency = value;
     ui->rxLatencyValue->setText(QString::number(value));
     emit sendChangeLatency(value);
 }
 
 void wfmain::on_txLatencySlider_valueChanged(int value)
 {
-    prefs.audioTXLatency = value;
+    udpPrefs.audioTXLatency = value;
     ui->txLatencyValue->setText(QString::number(value));
 }
 

@@ -108,8 +108,7 @@ signals:
     void sayMode();
     void sayAll();
     void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
-    void sendCommSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, 
-        QString username, QString password, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
+    void sendCommSetup(unsigned char rigCivAddr, udpPreferences prefs);
     void sendCloseComm();
     void sendChangeLatency(quint16 latency);
     void initServer();
@@ -525,23 +524,11 @@ private:
         bool enablePTT;
         bool niceTS;
         bool enableLAN;
-        QString ipAddress;
-        quint16 controlLANPort;
-        quint16 serialLANPort;
-        quint16 audioLANPort;
-        QString username;
-        QString password;
-        QString audioOutput;
-        QString audioInput;
-        quint16 audioRXLatency;
-        quint16 audioTXLatency;
-        quint16 audioRXSampleRate;
-        quint8 audioRXCodec;
-        quint16 audioTXSampleRate;
-        quint8 audioTXCodec;
     } prefs;
 
     preferences defPrefs;
+    udpPreferences udpPrefs;
+    udpPreferences udpDefPrefs;
     colors defaultColors;
 
     void setDefaultColors(); // populate with default values
@@ -617,6 +604,7 @@ private:
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
+Q_DECLARE_METATYPE(struct udpPreferences)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum duplexMode)
 Q_DECLARE_METATYPE(enum meterKind)

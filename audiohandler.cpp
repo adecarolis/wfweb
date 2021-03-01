@@ -1002,20 +1002,20 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 	qint64 sentlen = 0;
 	int tosend = 0;
 	QMutexLocker locker(&mutex);
-	AUDIOPACKET *current;
+	audioPacket *current;
 
 	while (sentlen < len) {
 		if (!audioBuffer.isEmpty())
 		{
 			if (audioBuffer.last().sent == chunkSize)
 			{
-				audioBuffer.append(AUDIOPACKET());
+				audioBuffer.append(audioPacket());
 				audioBuffer.last().sent = 0;
 			}
 		}
 		else
 		{
-			audioBuffer.append(AUDIOPACKET());
+			audioBuffer.append(audioPacket());
 			audioBuffer.last().sent = 0;
 		}
 		current = &audioBuffer.last();
@@ -1091,7 +1091,7 @@ void audioHandler::stateChanged(QAudio::State state)
 
 
 
-void audioHandler::incomingAudio(const AUDIOPACKET data)
+void audioHandler::incomingAudio(const audioPacket data)
 {
     if (audioOutput != Q_NULLPTR && audioOutput->state() != QAudio::StoppedState) {
         QMutexLocker locker(&mutex);
@@ -1106,7 +1106,7 @@ void audioHandler::incomingAudio(const AUDIOPACKET data)
 
 		// Sort the buffer by seq number. This is important and audio packets may have arrived out-of-order
 		std::sort(audioBuffer.begin(), audioBuffer.end(),
-			[](const AUDIOPACKET& a, const AUDIOPACKET& b) -> bool
+			[](const audioPacket& a, const audioPacket& b) -> bool
 		{
 			return a.seq < b.seq;
 		});

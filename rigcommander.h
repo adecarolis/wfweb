@@ -55,8 +55,7 @@ public:
 public slots:
     void process();
     void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
-    void commSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, 
-                    QString username, QString password, quint16 rxlatency,quint16 txlatency, quint16 rxsample, quint8 rxcodec,quint16 txsample, quint8 txcodec);
+    void commSetup(unsigned char rigCivAddr, udpPreferences prefs);
     void closeComm();
 
     void enableSpectOutput();
@@ -146,7 +145,7 @@ public slots:
     void setRefAdjustCourse(unsigned char level);
     void setRefAdjustFine(unsigned char level);
     void handleNewData(const QByteArray& data);
-    void receiveAudioData(const AUDIOPACKET& data);
+    void receiveAudioData(const audioPacket& data);
     void handleSerialPortError(const QString port, const QString errorText);
     void handleStatusUpdate(const QString text);
     void changeLatency(const quint16 value);
@@ -209,7 +208,7 @@ signals:
     void haveATUStatus(unsigned char status);
     void haveChangeLatency(quint16 value);
     void haveDataForServer(QByteArray outData);
-    void haveAudioData(AUDIOPACKET data);
+    void haveAudioData(audioPacket data);
     void initUdpHandler();
 
 private:

@@ -44,7 +44,7 @@ public:
 public slots:
 	void init();
 	void dataForServer(QByteArray);
-	void receiveAudioData(const AUDIOPACKET &data);
+	void receiveAudioData(const audioPacket &data);
 	void receiveRigCaps(rigCapabilities caps);
 
 signals:

@@ -1054,7 +1054,7 @@ void udpServer::dataForServer(QByteArray d)
     return;
 }
 
-void udpServer::receiveAudioData(const AUDIOPACKET &d)
+void udpServer::receiveAudioData(const audioPacket &d)
 {
     //qDebug(logUdpServer()) << "Server got:" << d.data.length();
     foreach(CLIENT * client, audioClients)

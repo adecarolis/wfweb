@@ -33,7 +33,22 @@
 #define WATCHDOG_PERIOD 500
 #define RETRANSMIT_PERIOD 100
 
-Q_DECLARE_METATYPE(AUDIOPACKET)
+struct udpPreferences {
+	QString ipAddress;
+	quint16 controlLANPort;
+	quint16 serialLANPort;
+	quint16 audioLANPort;
+	QString username;
+	QString password;
+	QString audioOutput;
+	QString audioInput;
+	quint16 audioRXLatency;
+	quint16 audioTXLatency;
+	quint16 audioRXSampleRate;
+	quint8 audioRXCodec;
+	quint16 audioTXSampleRate;
+	quint8 audioTXCodec;
+};
 
 void passcode(QString in, QByteArray& out);
 QByteArray parseNullTerminatedString(QByteArray c, int s);
@@ -153,7 +168,7 @@ public:
 	~udpAudio();
 
 signals:
-    void haveAudioData(AUDIOPACKET data);
+    void haveAudioData(audioPacket data);
 
 	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput);
 	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput);
@@ -204,8 +219,7 @@ class udpHandler: public udpBase
 	Q_OBJECT
 
 public:
-	udpHandler(QString ip, quint16 cport, quint16 sport, quint16 aport, QString username, QString password, 
-					quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec);
+	udpHandler(udpPreferences prefs);
 	~udpHandler();
 
 	bool streamOpened = false;
@@ -217,13 +231,13 @@ public:
 public slots:
 	void receiveDataFromUserToRig(QByteArray); // This slot will send data on to 
 	void receiveFromCivStream(QByteArray);
-	void receiveAudioData(const AUDIOPACKET &data);
+	void receiveAudioData(const audioPacket &data);
 	void changeLatency(quint16 value);
 	void init();
 
 signals:
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
-	void haveAudioData(AUDIOPACKET data); // emit this when we have data, connect to rigcommander
+	void haveAudioData(audioPacket data); // emit this when we have data, connect to rigcommander
 	void haveNetworkError(QString, QString);
 	void haveNetworkStatus(QString);
 	void haveChangeLatency(quint16 value);
@@ -278,5 +292,6 @@ private:
 	bool highBandwidthConnection = false;
 };
 
+Q_DECLARE_METATYPE(struct audioPacket)
 
 #endif

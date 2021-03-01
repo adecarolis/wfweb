@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -1721,34 +1721,6 @@
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="QLabel" name="label_9">
-            <property name="text">
-             <string>Radio Serial Port</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="serialPortTxt">
-            <property name="placeholderText">
-             <string>50002</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="label_12">
-            <property name="text">
-             <string>Radio Audio Port</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLineEdit" name="audioPortTxt">
-            <property name="placeholderText">
-             <string>50003</string>
-            </property>
-           </widget>
-          </item>
          </layout>
         </item>
         <item>
@@ -2000,7 +1972,7 @@
      <x>0</x>
      <y>0</y>
      <width>810</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
