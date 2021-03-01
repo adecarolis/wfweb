@@ -36,6 +36,14 @@ enum meterKind {
     meterCurrent
 };
 
+enum spectrumMode {
+    spectModeCenter=0x00,
+    spectModeFixed=0x01,
+    spectModeScrollC=0x02,
+    spectModeScrollF=0x03,
+    spectModeUnknown=0xff
+};
+
 class rigCommander : public QObject
 {
     Q_OBJECT
@@ -57,7 +65,9 @@ public slots:
     void disableSpectrumDisplay();
     void setSpectrumBounds(double startFreq, double endFreq, unsigned char edgeNumber);
     void setSpectrumCenteredMode(bool centerEnable); // centered or band-wise
+    void setSpectrumMode(spectrumMode spectMode);
     void getSpectrumCenterMode();
+    void getSpectrumMode();
     void setSpectrumRefLevel(int level);
     void getSpectrumRefLevel();
     void getSpectrumRefLevel(unsigned char mainSub);
@@ -161,6 +171,7 @@ signals:
     void haveSpectrumBounds();
     void haveScopeSpan(char span);
     void haveSpectrumFixedMode(bool fixedEnabled);
+    void haveSpectrumMode(spectrumMode spectmode);
     void haveScopeEdge(char edge);
     void haveSpectrumRefLevel(int level);
 
@@ -260,7 +271,7 @@ private:
     quint8 spectSeqMax;
     quint16 spectAmpMax;
     quint16 spectLenMax;
-    unsigned char oldScopeMode;
+    spectrumMode oldScopeMode;
 
     bool usingNativeLAN; // indicates using OEM LAN connection (705,7610,9700,7850)
     bool lookingForRig;
