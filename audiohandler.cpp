@@ -783,6 +783,10 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 				break;
 			}
 		}
+		if (!isInitialized) {
+			qDebug(logAudio()) << "Input device " << deviceInfo.deviceName() << " not found, using default";
+			isInitialized = setDevice(QAudioDeviceInfo::defaultInputDevice());
+		}
 	}
 	else
 	{
@@ -793,6 +797,10 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 				isInitialized = setDevice(deviceInfo);
 				break;
 			}
+		}
+		if (!isInitialized) {
+			qDebug(logAudio()) << "Output device " << deviceInfo.deviceName() << " not found, using default";
+			isInitialized = setDevice(QAudioDeviceInfo::defaultOutputDevice());
 		}
 	}
     return isInitialized;
