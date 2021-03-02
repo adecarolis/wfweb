@@ -99,6 +99,12 @@
     <ClCompile Include="udpserver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="meter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qledlabel.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="commhandler.h">
@@ -138,6 +144,12 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="udpserver.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="meter.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="qledlabel.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
@@ -293,6 +305,8 @@
     <None Include="resources\wfview.png">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="resources\wfview.png" />
+    <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />

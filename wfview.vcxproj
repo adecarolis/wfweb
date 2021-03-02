@@ -57,6 +57,8 @@
     <IntDir>debug\</IntDir>
     <TargetName>wfview</TargetName>
     <IgnoreImportLibrary>true</IgnoreImportLibrary>
+    <IncludePath>$(IncludePath)</IncludePath>
+    <LibraryPath>$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>release\</OutDir>
@@ -202,9 +204,11 @@
     <ClCompile Include="calibrationwindow.cpp" />
     <ClCompile Include="commhandler.cpp" />
     <ClCompile Include="freqmemory.cpp" />
+    <ClCompile Include="qledlabel.cpp" />
     <ClCompile Include="logcategories.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="c:\qcustomplot\qcustomplot.cpp" />
+    <ClCompile Include="meter.cpp" />
     <ClCompile Include="rigcommander.cpp" />
     <ClCompile Include="rigidentities.cpp" />
     <ClCompile Include="audiohandler.cpp" />
@@ -223,11 +227,13 @@
     </QtMoc>
     <QtMoc Include="calibrationwindow.h" />
     <ClInclude Include="freqmemory.h" />
+    <QtMoc Include="qledlabel.h" />
     <ClInclude Include="logcategories.h" />
     <QtMoc Include="c:\qcustomplot\qcustomplot.h">
     </QtMoc>
     <QtMoc Include="rigcommander.h">
     </QtMoc>
+    <QtMoc Include="meter.h" />
     <ClInclude Include="packettypes.h" />
     <ClInclude Include="rigidentities.h" />
     <QtMoc Include="udphandler.h">
