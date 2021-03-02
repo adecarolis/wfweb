@@ -957,7 +957,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 				qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived too late (increase rx buffer size!) " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				packet = audioBuffer.erase(packet); // returns next packet
 			}
-			else if (timediff > (int)latency / 2)
+			else //if (timediff > (int)latency / 2)
 			{
 				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived on time " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				// Will this packet fit in the current buffer?
