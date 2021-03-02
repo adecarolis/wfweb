@@ -82,6 +82,7 @@ private:
     bool            isInput;   // Used to determine whether input or output audio
     float           volume;
     int             chunkSize;
+    quint16         lastSeq;
 
     QAudioFormat     format;
     QAudioDeviceInfo deviceInfo;

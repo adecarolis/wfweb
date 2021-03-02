@@ -959,8 +959,9 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived too late (increase rx buffer size!) " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				packet = audioBuffer.erase(packet); // returns next packet
 			}
-			else //if (timediff > (int)latency / 2)
+			else if (packet->seq == lastSeq+1 || packet->seq <= lastSeq)
 			{
+				lastSeq = packet->seq;
 				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived on time " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				// Will this packet fit in the current buffer?
 				int send = qMin((int)((maxlen/divisor) - (sentlen/divisor)), packet->data.length() - packet->sent);
@@ -992,6 +993,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 
 				if (send == packet->data.length())
 				{
+					lastSeq = packet->seq;
 					packet = audioBuffer.erase(packet); // returns next packet
 					if (maxlen - sentlen == 0)
 					{						
@@ -1010,7 +1012,10 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 					qDebug(logAudio()) << "Packet " << hex << packet->seq << " is partial, sent=" << dec << packet->sent << " sentlen=" << sentlen;
 					break;
 				}
-			} 
+			} else {
+				qDebug(logAudio()) << "Missing audio packet(s) from: " << lastSeq + 1 << " to " << packet->seq - 1;
+				lastSeq = packet->seq;
+			}
 		}
 	}
 
