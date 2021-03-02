@@ -970,7 +970,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived too late (increase rx buffer size!) " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				packet = audioBuffer.erase(packet); // returns next packet
 			}
-			else if (packet->time.msecsTo(QTime::currentTime()) > latency/2)
+			else if (packet->time.msecsTo(QTime::currentTime()) > (int)latency/4)
 			{
 				// Will this packet fit in the current buffer?
 				int send = qMin((int)((maxlen/divisor) - (sentlen/divisor)), packet->data.length() - packet->sent);
@@ -985,20 +985,20 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 						else
 							qToLittleEndian<qint16>((qint16)(packet->data[f+packet->sent] << 8) - 32640, data + (f * 2 + sentlen));
 					}
-					sentlen = sentlen + (send*divisor);
 				}
 				else if (divisor == 1)
 				{
 					// 16 bit audio so just copy it in place.
 					//qDebug(logAudio()) << "Adding packet to buffer:" << (*packet).seq << ": " << (*packet).data.length()-(*packet).sent;
 					memcpy(data+sentlen, packet->data.constData()+packet->sent, send);
-					sentlen = sentlen + (send*divisor);
 				} 
 				else
 				{
 					//qDebug(logAudio()) << "Invalid number of bits in audio " << radioSampleBits;
 					break;
 				}
+
+				sentlen = sentlen + (send * divisor);
 
 				if (send == packet->data.length())
 				{
