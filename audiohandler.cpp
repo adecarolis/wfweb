@@ -967,11 +967,12 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 		while (packet != audioBuffer.end() && sentlen < maxlen)
 		{
 			if (packet->time.msecsTo(QTime::currentTime()) > latency) {
-				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived too late (increase rx buffer size!) " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
+				qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived too late (increase rx buffer size!) " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				packet = audioBuffer.erase(packet); // returns next packet
 			}
 			else if (packet->time.msecsTo(QTime::currentTime()) > (int)latency/4)
 			{
+				qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived on time " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				// Will this packet fit in the current buffer?
 				int send = qMin((int)((maxlen/divisor) - (sentlen/divisor)), packet->data.length() - packet->sent);
 
