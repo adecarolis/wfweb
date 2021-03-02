@@ -852,19 +852,12 @@ void audioHandler::reinit()
         this->stop();
     }
 
-    // Calculate the minimum required audio buffer
-    // This may need work depending on how it performs on other platforms.
-    //int audioBuffer = format.sampleRate() / 10;
-    //audioBuffer = audioBuffer * (format.sampleSize() / 8);
-
     if (this->isInput)
     {
         // (Re)initialize audio input
         if (audioInput != Q_NULLPTR)
             delete audioInput;
         audioInput = new QAudioInput(deviceInfo, format, this);
-        //audioInput->setLatency(audioBuffer);
-        //audioInput->setNotifyInterval(20);
 
         connect(audioInput, SIGNAL(notify()), SLOT(notified()));
         connect(audioInput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
@@ -876,6 +869,7 @@ void audioHandler::reinit()
             delete audioOutput;
         audioOutput = Q_NULLPTR;
         audioOutput = new QAudioOutput(deviceInfo, format, this);
+		audioOutput->setBufferSize(3840);
         connect(audioOutput, SIGNAL(notify()), SLOT(notified()));
         connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
     }
@@ -894,19 +888,11 @@ void audioHandler::start()
     }
 
     if (isInput) {
-#ifdef Q_OS_WIN
 		this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
-#else
-		this->open(QIODevice::WriteOnly);
-#endif
         audioInput->start(this);
     }
     else {
-#ifdef Q_OS_WIN
 		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
-#else
-		this->open(QIODevice::ReadOnly);
-#endif
 		audioOutput->start(this);
     }	
 }
@@ -966,11 +952,12 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 		auto packet = audioBuffer.begin();
 		while (packet != audioBuffer.end() && sentlen < maxlen)
 		{
-			if (packet->time.msecsTo(QTime::currentTime()) > (int)latency*4) {
-				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived too late (increase rx buffer size!) " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
+			int timediff = packet->time.msecsTo(QTime::currentTime());
+			if (timediff > (int)latency * 2) {
+				qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived too late (increase rx buffer size!) " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				packet = audioBuffer.erase(packet); // returns next packet
 			}
-			else if (packet->time.msecsTo(QTime::currentTime()) >= (int)latency)
+			else if (timediff > (int)latency / 2)
 			{
 				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived on time " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				// Will this packet fit in the current buffer?
@@ -1018,6 +1005,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 				{
 					// We ended-up with a partial packet left so store where we left off.
 					packet->sent = send;
+					qDebug(logAudio()) << "Packet " << hex << packet->seq << " is partial, sent=" << dec << packet->sent << " sentlen=" << sentlen;
 					break;
 				}
 			} 
