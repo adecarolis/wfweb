@@ -939,6 +939,8 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
     // Calculate output length, always full samples
 	int sentlen = 0;
 
+	qDebug(logAudio()) << "Looking for: " << maxlen << " bytes";
+
 	// Get next packet from buffer.
 	if (!audioBuffer.isEmpty())
 	{
@@ -954,12 +956,12 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 		{
 			int timediff = packet->time.msecsTo(QTime::currentTime());
 			if (timediff > (int)latency * 2) {
-				qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived too late (increase rx buffer size!) " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
+				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived too late (increase rx buffer size!) " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				packet = audioBuffer.erase(packet); // returns next packet
 			}
 			else //if (timediff > (int)latency / 2)
 			{
-				qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived on time " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
+				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived on time " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				// Will this packet fit in the current buffer?
 				int send = qMin((int)((maxlen/divisor) - (sentlen/divisor)), packet->data.length() - packet->sent);
 
@@ -977,7 +979,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 				else if (divisor == 1)
 				{
 					// 16 bit audio so just copy it in place.
-					qDebug(logAudio()) << "Adding packet to buffer:" << (*packet).seq << ": " << (*packet).data.length()-(*packet).sent;
+					//qDebug(logAudio()) << "Adding packet to buffer:" << (*packet).seq << ": " << (*packet).data.length()-(*packet).sent;
 					memcpy(data+sentlen, packet->data.constData()+packet->sent, send);
 				} 
 				else
