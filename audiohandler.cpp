@@ -1113,7 +1113,7 @@ void audioHandler::stateChanged(QAudio::State state)
 	{
 		case QAudio::IdleState:
 		{
-			qDebug(logAudio()) << "Audio now in idle state.";
+			qDebug(logAudio()) << "Audio now in idle state: " << audioBuffer.length() << " packets in buffer";
 			if (audioOutput->error() == QAudio::UnderrunError)
 			{
 				qDebug(logAudio()) << this->metaObject()->className() << "RX:Buffer underrun";
@@ -1123,21 +1123,21 @@ void audioHandler::stateChanged(QAudio::State state)
 		}
 		case QAudio::ActiveState:
 		{
-			qDebug(logAudio()) << "Audio now in active state.";
+			qDebug(logAudio()) << "Audio now in active state: " << audioBuffer.length() << " packets in buffer";
 			break;
 		}
 		case QAudio::SuspendedState:
 		{
-			qDebug(logAudio()) << "Audio now in suspended state.";
+			qDebug(logAudio()) << "Audio now in suspended state: " << audioBuffer.length() << " packets in buffer";
 			break;
 		}
 		case QAudio::StoppedState:
 		{
-			qDebug(logAudio()) << "Audio now in stopped state.";
+			qDebug(logAudio()) << "Audio now in stopped state: " << audioBuffer.length() << " packets in buffer";
 			break;
 		}
 		default: {
-			qDebug(logAudio()) << "Unhandled audio state: " << state;
+			qDebug(logAudio()) << "Unhandled audio state: " << audioBuffer.length() << " packets in buffer" << state;
 		}
 	}
 }
