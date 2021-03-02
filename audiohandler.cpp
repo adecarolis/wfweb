@@ -966,11 +966,11 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 		auto packet = audioBuffer.begin();
 		while (packet != audioBuffer.end() && sentlen < maxlen)
 		{
-			if (packet->time.msecsTo(QTime::currentTime()) > latency) {
+			if (packet->time.msecsTo(QTime::currentTime()) > (int)latency*4) {
 				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived too late (increase rx buffer size!) " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				packet = audioBuffer.erase(packet); // returns next packet
 			}
-			else if (packet->time.msecsTo(QTime::currentTime()) > (int)latency/4)
+			else if (packet->time.msecsTo(QTime::currentTime()) >= (int)latency)
 			{
 				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived on time " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				// Will this packet fit in the current buffer?
@@ -1016,7 +1016,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 				}
 				else
 				{
-					// We ended-up with a partial packet left so add it to the buffer and store where we left off.
+					// We ended-up with a partial packet left so store where we left off.
 					packet->sent = send;
 					break;
 				}
@@ -1113,11 +1113,38 @@ void audioHandler::notified()
 
 void audioHandler::stateChanged(QAudio::State state)
 {
-    if (state == QAudio::IdleState && audioOutput->error() == QAudio::UnderrunError) {
-        qDebug(logAudio()) << this->metaObject()->className() << "RX:Buffer underrun";
-        audioOutput->suspend();
-    }
-    //qDebug(logAudio()) << this->metaObject()->className() << ": state = " << state;
+	// Process the state
+	switch (state)
+	{
+		case QAudio::IdleState:
+		{
+			qDebug(logAudio()) << "Audio now in idle state.";
+			if (audioOutput->error() == QAudio::UnderrunError)
+			{
+				qDebug(logAudio()) << this->metaObject()->className() << "RX:Buffer underrun";
+				audioOutput->suspend();
+			}
+			break;
+		}
+		case QAudio::ActiveState:
+		{
+			qDebug(logAudio()) << "Audio now in active state.";
+			break;
+		}
+		case QAudio::SuspendedState:
+		{
+			qDebug(logAudio()) << "Audio now in suspended state.";
+			break;
+		}
+		case QAudio::StoppedState:
+		{
+			qDebug(logAudio()) << "Audio now in stopped state.";
+			break;
+		}
+		default: {
+			qDebug(logAudio()) << "Unhandled audio state: " << state;
+		}
+	}
 }
 
 
