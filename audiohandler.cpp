@@ -809,13 +809,16 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 
 bool audioHandler::setDevice(QAudioDeviceInfo deviceInfo)
 {
+	bool ret = true;
     qDebug(logAudio()) << this->metaObject()->className() << ": setDevice() running :" << deviceInfo.deviceName();
     if (!deviceInfo.isFormatSupported(format)) {
         if (deviceInfo.isNull())
         {
             qDebug(logAudio()) << "No audio device was found. You probably need to install libqt5multimedia-plugins.";
+			ret = false;
         }
         else {
+			/*
             qDebug(logAudio()) << "Audio Devices found: ";
             const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
             for (const QAudioDeviceInfo& deviceInfo : deviceInfos)
@@ -830,6 +833,8 @@ bool audioHandler::setDevice(QAudioDeviceInfo deviceInfo)
                 qDebug(logAudio()) << "sample types:" << deviceInfo.supportedSampleTypes();
             }
             qDebug(logAudio()) << "----- done with audio info -----";
+			*/
+			ret=false;
         }
 
         qDebug(logAudio()) << "Format not supported, choosing nearest supported format - which may not work!";
@@ -837,7 +842,7 @@ bool audioHandler::setDevice(QAudioDeviceInfo deviceInfo)
     }
     this->deviceInfo = deviceInfo;
     this->reinit();
-    return true;
+    return ret;
 }
 
 void audioHandler::reinit()
