@@ -869,7 +869,7 @@ void audioHandler::reinit()
             delete audioOutput;
         audioOutput = Q_NULLPTR;
         audioOutput = new QAudioOutput(deviceInfo, format, this);
-		audioOutput->setBufferSize(3840);
+		audioOutput->setBufferSize((radioSampleRate/25)*(radioSampleBits/8)*2);
         connect(audioOutput, SIGNAL(notify()), SLOT(notified()));
         connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
     }
@@ -939,7 +939,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
     // Calculate output length, always full samples
 	int sentlen = 0;
 
-	qDebug(logAudio()) << "Looking for: " << maxlen << " bytes";
+	//qDebug(logAudio()) << "Looking for: " << maxlen << " bytes";
 
 	// Get next packet from buffer.
 	if (!audioBuffer.isEmpty())
@@ -1145,13 +1145,6 @@ void audioHandler::incomingAudio(const audioPacket data)
         QMutexLocker locker(&mutex);
 		audioBuffer.push_back(data);
 		
-		// Restart playback
-		if (audioOutput->state() == QAudio::SuspendedState)
-		{
-				qDebug(logAudio()) << "RX Audio Suspended, Resuming...";
-				audioOutput->resume();
-		}
-
 		// Sort the buffer by seq number. This is important and audio packets may have arrived out-of-order
 		std::sort(audioBuffer.begin(), audioBuffer.end(),
 			[](const audioPacket& a, const audioPacket& b) -> bool
@@ -1159,7 +1152,13 @@ void audioHandler::incomingAudio(const audioPacket data)
 			return a.seq < b.seq;
 		});
 
-    }
+		// Restart playback
+		if (audioOutput->state() == QAudio::SuspendedState)
+		{
+			qDebug(logAudio()) << "RX Audio Suspended, Resuming...";
+			audioOutput->resume();
+		}
+	}
 }
 
 void audioHandler::changeLatency(const quint16 newSize)
