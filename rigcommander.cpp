@@ -63,8 +63,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
 
 }
 
-void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, quint16 cport, quint16 sport, quint16 aport, 
-        QString username, QString password, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec)
+void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -88,7 +87,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, quint16 cport
     */
     if (udp == Q_NULLPTR) {
 
-        udp = new udpHandler(ip, cport, sport, aport, username, password, rxlatency, txlatency, rxsample, rxcodec, txsample, txcodec);
+        udp = new udpHandler(prefs);
 
         udpHandlerThread = new QThread(this);
 
@@ -104,6 +103,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString ip, quint16 cport
 
 
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
+        connect(udp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
 
         // data from the program to the comm port:
         connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
@@ -634,10 +634,15 @@ void rigCommander::setCIVAddr(unsigned char civAddr)
     this->civAddr = civAddr;
 }
 
-void rigCommander::handleNewData(const QByteArray &data)
-{    
+void rigCommander::handleNewData(const QByteArray& data)
+{
     emit haveDataForServer(data);
     parseData(data);
+}
+
+void rigCommander::receiveAudioData(const audioPacket& data)
+{
+    emit haveAudioData(data);
 }
 
 void rigCommander::parseData(QByteArray dataInput)

@@ -19,7 +19,7 @@
 
 // Variable size packets + payload
 #define CIV_SIZE                0x15
-#define TXAUDIO_SIZE            0x18
+#define AUDIO_SIZE            0x18
 #define DATA_SIZE               0x15
 
 // 0x10 length control packet (connect/disconnect/idle.)
@@ -94,8 +94,8 @@ typedef union openclose_packet {
 } *startstop_packet_t;
 
 
-// 0x18 length txaudio packet 
-typedef union txaudio_packet {
+// 0x18 length audio packet 
+typedef union audio_packet {
     struct
     {
         quint32 len;        // 0x00
@@ -108,8 +108,8 @@ typedef union txaudio_packet {
         quint16 unused;     // 0x14
         quint16 datalen;    // 0x16
     };
-    char packet[TXAUDIO_SIZE];
-} *txaudio_packet_t;
+    char packet[AUDIO_SIZE];
+} *audio_packet_t;
 
 // 0x18 length retransmit_range packet 
 typedef union retransmit_range_packet {
@@ -181,7 +181,8 @@ typedef union status_packet {
         quint16 unknown;            // 0x26
         char unusede;             // 0x28
         char unusedf[2];          // 0x29
-        char value[5];            // 0x2b
+        char identa;              // 0x2b
+        quint32 identb;           // 0x2c
         quint32 error;             // 0x30
         char unusedg[12];         // 0x34
         char disc;                // 0x40
@@ -299,33 +300,37 @@ typedef union conninfo_packet {
 typedef union capabilities_packet {
     struct
     {
-        quint32 len;                // 0x00
-        quint16 type;               // 0x04
-        quint16 seq;                // 0x06
-        quint32 sentid;             // 0x08 
-        quint32 rcvdid;             // 0x0c
+        quint32 len;              // 0x00
+        quint16 type;             // 0x04
+        quint16 seq;              // 0x06
+        quint32 sentid;           // 0x08 
+        quint32 rcvdid;           // 0x0c
         char unuseda[3];          // 0x10
-        quint16 code;               // 0x13
-        quint16 res;                // 0x15
-        quint16 innerseq;           // 0x17
+        quint16 code;             // 0x13
+        quint16 res;              // 0x15
+        quint16 innerseq;         // 0x17
         char unusedc;             // 0x19
-        quint16 tokrequest;         // 0x1a
-        quint32 token;              // 0x1c 
+        quint16 tokrequest;       // 0x1a
+        quint32 token;            // 0x1c 
         char unusedd[33];         // 0x20
         char capa;                // 0x41
         char unusede[7];          // 0x42
-        quint16 commoncap;               // 0x49
-        char unusedf[2];          // 0x4b
-        char capc;                // 0x4d
-        quint32 capd;               // 0x4e
+        quint16 commoncap;        // 0x49
+        char unused;              // 0x4b
+        char macaddress[6];       // 0x4c
         char name[32];            // 0x52
         char audio[32];           // 0x72
-        char caparray[10];        // 0x92
-        char unusedh[2];          // 0x9c
-        quint16 cape;               // 0x9e
-        quint16 capf;               // 0xa0
+        quint16 conntype;         // 0x92
+        char civ;                 // 0x94
+        quint16 rxsample;             // 0x95
+        quint16 txsample;             // 0x97
+        quint8 enablea;           // 0x99
+        quint8 enableb;           // 0x9a
+        quint8 enablec;           // 0x9b
+        quint32 baudrate;         // 0x9c
+        quint16 capf;             // 0xa0
         char unusedi;             // 0xa2
-        quint16 capg;               // 0xa3
+        quint16 capg;             // 0xa3
         char unusedj[3];          // 0xa5
     };
     char packet[CAPABILITIES_SIZE];
