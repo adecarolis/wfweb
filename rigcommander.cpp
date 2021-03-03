@@ -205,8 +205,12 @@ void rigCommander::prepDataAndSend(QByteArray data)
     //printHex(data, false, true);
     data.append(payloadSuffix);
 #ifdef QT_DEBUG
-    qDebug(logRig()) << "Final payload in rig commander to be sent to rig: ";
-    printHex(data, false, true);
+    if(data[4] != '\x15')
+    {
+        // We don't print out requests for meter levels
+        qDebug(logRig()) << "Final payload in rig commander to be sent to rig: ";
+        printHex(data);
+    }
 #endif
     emit dataForComm(data);
 }
@@ -788,10 +792,11 @@ void rigCommander::parseCommand()
     // note: data already is trimmed of the beginning FE FE E0 94 stuff.
 
 #ifdef QT_DEBUG
-    if(payloadIn[00] != '\x27')
+    if( (payloadIn[00] != '\x27') && (payloadIn[00] != '\x15') )
     {
-        // debug only
-        printHex(payloadIn, false, true);
+        // We do not log spectrum and meter data,
+        // as they tend to clog up any useful logging.
+        printHex(payloadIn);
     }
 #endif
 
