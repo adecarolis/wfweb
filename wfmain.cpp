@@ -571,9 +571,10 @@ void wfmain::openRig()
 
     if (prefs.enableLAN)
     {
+        ui->lanEnableBtn->setChecked(true);
         emit sendCommSetup(prefs.radioCIVAddr, udpPrefs);
     } else {
-
+        ui->serialEnableBtn->setChecked(true);
         if( (prefs.serialPortRadio == QString("auto")) && (serialPortCL.isEmpty()))
         {
             // Find the ICOM
@@ -769,37 +770,37 @@ void wfmain::loadSettings()
     settings.beginGroup("LAN");
 
     prefs.enableLAN = settings.value("EnableLAN", defPrefs.enableLAN).toBool();
-    ui->lanEnableChk->setChecked(prefs.enableLAN);
+    ui->lanEnableBtn->setChecked(prefs.enableLAN);
     
     udpPrefs.ipAddress = settings.value("IPAddress", udpDefPrefs.ipAddress).toString();
-    ui->ipAddressTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->ipAddressTxt->setEnabled(ui->lanEnableBtn->isChecked());
     ui->ipAddressTxt->setText(udpPrefs.ipAddress);
     
     udpPrefs.controlLANPort = settings.value("ControlLANPort", udpDefPrefs.controlLANPort).toInt();
-    ui->controlPortTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->controlPortTxt->setEnabled(ui->lanEnableBtn->isChecked());
     ui->controlPortTxt->setText(QString("%1").arg(udpPrefs.controlLANPort));
     
     udpPrefs.username = settings.value("Username", udpDefPrefs.username).toString();
-    ui->usernameTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->usernameTxt->setEnabled(ui->lanEnableBtn->isChecked());
     ui->usernameTxt->setText(QString("%1").arg(udpPrefs.username));
     
     udpPrefs.password = settings.value("Password", udpDefPrefs.password).toString();
-    ui->passwordTxt->setEnabled(ui->lanEnableChk->isChecked());
+    ui->passwordTxt->setEnabled(ui->lanEnableBtn->isChecked());
     ui->passwordTxt->setText(QString("%1").arg(udpPrefs.password));
 
     udpPrefs.audioRXLatency = settings.value("AudioRXLatency", udpDefPrefs.audioRXLatency).toInt();
-    ui->rxLatencySlider->setEnabled(ui->lanEnableChk->isChecked());
+    ui->rxLatencySlider->setEnabled(ui->lanEnableBtn->isChecked());
     ui->rxLatencySlider->setValue(udpPrefs.audioRXLatency);
     ui->rxLatencySlider->setTracking(false); // Stop it sending value on every change.
 
     udpPrefs.audioTXLatency = settings.value("AudioTXLatency", udpDefPrefs.audioTXLatency).toInt();
-    ui->txLatencySlider->setEnabled(ui->lanEnableChk->isChecked());
+    ui->txLatencySlider->setEnabled(ui->lanEnableBtn->isChecked());
     ui->txLatencySlider->setValue(udpPrefs.audioTXLatency);
     ui->txLatencySlider->setTracking(false); // Stop it sending value on every change.
 
     udpPrefs.audioRXSampleRate = settings.value("AudioRXSampleRate", udpDefPrefs.audioRXSampleRate).toInt();
     udpPrefs.audioTXSampleRate = settings.value("AudioTXSampleRate",udpDefPrefs.audioTXSampleRate).toInt();
-    ui->audioSampleRateCombo->setEnabled(ui->lanEnableChk->isChecked());
+    ui->audioSampleRateCombo->setEnabled(ui->lanEnableBtn->isChecked());
     int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(udpDefPrefs.audioRXSampleRate));
     if (audioSampleRateIndex != -1) {
         ui->audioOutputCombo->setCurrentIndex(audioSampleRateIndex);
@@ -814,7 +815,7 @@ void wfmain::loadSettings()
     ui->audioRXCodecCombo->addItem("PCM 2ch 8bit", 8);
 
     udpPrefs.audioRXCodec = settings.value("AudioRXCodec", udpDefPrefs.audioRXCodec).toInt();
-    ui->audioRXCodecCombo->setEnabled(ui->lanEnableChk->isChecked());
+    ui->audioRXCodecCombo->setEnabled(ui->lanEnableBtn->isChecked());
     for (int f = 0; f < ui->audioRXCodecCombo->count(); f++)
         if (ui->audioRXCodecCombo->itemData(f).toInt() == udpPrefs.audioRXCodec)
             ui->audioRXCodecCombo->setCurrentIndex(f);
@@ -824,19 +825,19 @@ void wfmain::loadSettings()
     ui->audioTXCodecCombo->addItem("uLaw 1ch 8bit", 1);
 
     udpPrefs.audioTXCodec = settings.value("AudioTXCodec", udpDefPrefs.audioTXCodec).toInt();
-    ui->audioTXCodecCombo->setEnabled(ui->lanEnableChk->isChecked());
+    ui->audioTXCodecCombo->setEnabled(ui->lanEnableBtn->isChecked());
     for (int f = 0; f < ui->audioTXCodecCombo->count(); f++)
         if (ui->audioTXCodecCombo->itemData(f).toInt() == udpPrefs.audioTXCodec)
             ui->audioTXCodecCombo->setCurrentIndex(f);
 
     udpPrefs.audioOutput = settings.value("AudioOutput", udpDefPrefs.audioOutput).toString();
-    ui->audioOutputCombo->setEnabled(ui->lanEnableChk->isChecked());
+    ui->audioOutputCombo->setEnabled(ui->lanEnableBtn->isChecked());
     int audioOutputIndex = ui->audioOutputCombo->findText(udpPrefs.audioOutput);
     if (audioOutputIndex != -1)
         ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
 
     udpPrefs.audioInput = settings.value("AudioInput", udpDefPrefs.audioInput).toString();
-    ui->audioInputCombo->setEnabled(ui->lanEnableChk->isChecked());
+    ui->audioInputCombo->setEnabled(ui->lanEnableBtn->isChecked());
     int audioInputIndex = ui->audioInputCombo->findText(udpPrefs.audioInput);
     if (audioInputIndex != - 1)
         ui->audioOutputCombo->setCurrentIndex(audioInputIndex);
@@ -2853,7 +2854,18 @@ void wfmain::on_pttEnableChk_clicked(bool checked)
     prefs.enablePTT = checked;
 }
 
-void wfmain::on_lanEnableChk_clicked(bool checked)
+void wfmain::on_serialEnableBtn_clicked(bool checked)
+{
+    prefs.enableLAN = !checked;
+    ui->serialDeviceListCombo->setEnabled(checked);
+
+    ui->ipAddressTxt->setEnabled(!checked);
+    ui->controlPortTxt->setEnabled(!checked);
+    ui->usernameTxt->setEnabled(!checked);
+    ui->passwordTxt->setEnabled(!checked);
+}
+
+void wfmain::on_lanEnableBtn_clicked(bool checked)
 {
     prefs.enableLAN = checked;
     ui->ipAddressTxt->setEnabled(checked);
@@ -3436,5 +3448,3 @@ void wfmain::on_debugBtn_clicked()
     emit getScopeMode();
 
 }
-
-

@@ -1626,10 +1626,13 @@
            <number>0</number>
           </property>
           <item>
-           <widget class="QCheckBox" name="checkBox">
+           <widget class="QRadioButton" name="serialEnableBtn">
             <property name="text">
              <string>Enable USB (serial)</string>
             </property>
+            <attribute name="buttonGroup">
+             <string notr="true">radioConnectionSerialNetworkGrp</string>
+            </attribute>
            </widget>
           </item>
           <item>
@@ -1660,10 +1663,13 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_5">
           <item>
-           <widget class="QCheckBox" name="lanEnableChk">
+           <widget class="QRadioButton" name="lanEnableBtn">
             <property name="text">
              <string>Enable LAN</string>
             </property>
+            <attribute name="buttonGroup">
+             <string notr="true">radioConnectionSerialNetworkGrp</string>
+            </attribute>
            </widget>
           </item>
           <item>
@@ -1972,7 +1978,7 @@
      <x>0</x>
      <y>0</y>
      <width>810</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>
@@ -1995,5 +2001,6 @@
  <connections/>
  <buttongroups>
   <buttongroup name="duplexBtnGrp"/>
+  <buttongroup name="radioConnectionSerialNetworkGrp"/>
  </buttongroups>
 </ui>
