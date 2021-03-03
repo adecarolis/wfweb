@@ -1970,11 +1970,11 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         y[i] = (unsigned char)spectrum.at(i);
         if(drawPeaks)
         {
-            if((unsigned char)spectrum.at(i) > spectrumPeaks.at(i))
+            if((unsigned char)spectrum.at(i) > (unsigned char)spectrumPeaks.at(i))
             {
                 spectrumPeaks[i] = spectrum.at(i);
             }
-            y2[i] = spectrumPeaks.at(i);
+            y2[i] = (unsigned char)spectrumPeaks.at(i);
         }
 
     }
