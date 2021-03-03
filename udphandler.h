@@ -93,7 +93,9 @@ public:
 	bool periodicRunning = false;
 	bool sentPacketConnect2 = false;
 	QTime	lastReceived =QTime::currentTime();
-	QMutex mutex;
+	QMutex udpMutex;
+	QMutex txBufferMutex;
+	QMutex rxBufferMutex;
 
 	struct SEQBUFENTRY {
 		QTime	timeSent;

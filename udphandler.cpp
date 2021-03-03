@@ -939,6 +939,7 @@ void udpBase::dataReceived(QByteArray r)
             control_packet_t in = (control_packet_t)r.constData();
             if (in->type == 0x01)
             {
+                QMutexLocker txlocker(&txBufferMutex);
                 // Single packet request
                 packetsLost++;
 
@@ -950,9 +951,9 @@ void udpBase::dataReceived(QByteArray r)
                     // Found matching entry?
                     // Send "untracked" as it has already been sent once.
                     // Don't constantly retransmit the same packet, give-up eventually
-                    QMutexLocker locker(&mutex);
                     //qDebug(logUdp()) << this->metaObject()->className() << ": Sending retransmit of " << hex << match->seqNum;
                     match->retransmitCount++;
+                    QMutexLocker udplocker(&udpMutex);
                     udp->writeDatagram(match->data, radioIP, port);
                 }
             }
@@ -990,7 +991,7 @@ void udpBase::dataReceived(QByteArray r)
                     p.reply = 0x01;
                     p.seq = in->seq;
                     p.time = in->time;
-                    QMutexLocker locker(&mutex);
+                    QMutexLocker udplocker(&udpMutex);
                     udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
                 }
                 else if (in->reply == 0x01) {
@@ -1030,6 +1031,7 @@ void udpBase::dataReceived(QByteArray r)
     // This is a variable length retransmit request!
     if (in->type == 0x01 && in->len != 0x10)
     {
+        QMutexLocker txlocker(&txBufferMutex);
         for (quint16 i = 0x10; i < r.length(); i = i + 2)
         {
             quint16 seq = (quint8)r[i] | (quint8)r[i + 1] << 8;
@@ -1046,7 +1048,7 @@ void udpBase::dataReceived(QByteArray r)
                 // Send "untracked" as it has already been sent once.
                 //qDebug(logUdp()) << this->metaObject()->className() << ": Sending retransmit (range) of " << hex << match->seqNum;
                 match->retransmitCount++;
-                QMutexLocker locker(&mutex);
+                QMutexLocker udplocker(&udpMutex);
                 udp->writeDatagram(match->data, radioIP, port);
                 match++;
                 packetsLost++;
@@ -1055,8 +1057,8 @@ void udpBase::dataReceived(QByteArray r)
     } 
     else if (in->len != PING_SIZE && in->type == 0x00 && in->seq != 0x00)
     {
+        QMutexLocker rxlocker(&rxBufferMutex);
         if (rxSeqBuf.isEmpty()) {
-            QMutexLocker locker(&mutex);
             rxSeqBuf.append(in->seq);
         } 
         else
@@ -1067,7 +1069,6 @@ void udpBase::dataReceived(QByteArray r)
                 qDebug(logUdp()) << this->metaObject()->className() << ": ******* seq number may have rolled over ****** previous highest: " << hex << rxSeqBuf.back() << " current: " << hex << in->seq;
 
                 // Looks like it has rolled over so clear buffer and start again.
-                QMutexLocker locker(&mutex);
                 rxSeqBuf.clear();
                 return;
             }
@@ -1081,7 +1082,6 @@ void udpBase::dataReceived(QByteArray r)
                 if (s != rxMissing.end())
                 {
                     qDebug(logUdp()) << this->metaObject()->className() << ": Missing SEQ has been received! " << hex << in->seq;
-                    QMutexLocker locker(&mutex);
                     s = rxMissing.erase(s);
                 }
             }
@@ -1098,6 +1098,8 @@ void udpBase::sendRetransmitRequest()
     // This will run every 100ms so out-of-sequence packets will not trigger a retransmit request.
 
     QByteArray missingSeqs;
+
+    QMutexLocker rxlocker(&rxBufferMutex);
 
     auto i = std::adjacent_find(rxSeqBuf.begin(), rxSeqBuf.end(), [](quint16 l, quint16 r) {return l + 1 < r; });
     while (i != rxSeqBuf.end())
@@ -1118,7 +1120,6 @@ void udpBase::sendRetransmitRequest()
                         b.seqNum = j;
                         b.retransmitCount = 0;
                         b.timeSent = QTime::currentTime();
-                        QMutexLocker locker(&mutex);
                         rxMissing.append(b);
                         packetsLost++;
                     }
@@ -1126,7 +1127,6 @@ void udpBase::sendRetransmitRequest()
                         if (s->retransmitCount == 4)
                         {
                             // We have tried 4 times to request this packet, time to give up!
-                            QMutexLocker locker(&mutex);
                             s = rxMissing.erase(s);
                             rxSeqBuf.append(j); // Final thing is to add to received buffer!
                         }
@@ -1136,7 +1136,6 @@ void udpBase::sendRetransmitRequest()
             }
             else {
                 qDebug(logUdp()) << this->metaObject()->className() << ": Too many missing, flushing buffers";
-                QMutexLocker locker(&mutex);
                 rxSeqBuf.clear();
                 missingSeqs.clear();
                 break;
@@ -1167,16 +1166,16 @@ void udpBase::sendRetransmitRequest()
         p.rcvdid = remoteId;
         if (missingSeqs.length() == 4) // This is just a single missing packet so send using a control.
         {
-            QMutexLocker locker(&mutex);
             p.seq = (missingSeqs[0] & 0xff) | (quint16)(missingSeqs[1] << 8);
             qDebug(logUdp()) << this->metaObject()->className() << ": sending request for missing packet : " << hex << p.seq;
+            QMutexLocker udplocker(&udpMutex);
             udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
         }
         else
         {
-            QMutexLocker locker(&mutex);
             qDebug(logUdp()) << this->metaObject()->className() << ": sending request for multiple missing packets : " << missingSeqs.toHex();
             missingSeqs.insert(0, p.packet, sizeof(p.packet));
+            QMutexLocker udplocker(&udpMutex);
             udp->writeDatagram(missingSeqs, radioIP, port);
         }
     }
@@ -1197,7 +1196,7 @@ void udpBase::sendControl(bool tracked=true, quint8 type=0, quint16 seq=0)
 
     if (!tracked) {
         p.seq = seq;
-        QMutexLocker locker(&mutex);
+        QMutexLocker udplocker(&udpMutex);
         udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
     }
     else {
@@ -1218,7 +1217,7 @@ void udpBase::sendPing()
     p.seq = pingSendSeq;
     p.time = timeStarted.msecsSinceStartOfDay();
     lastPingSentTime = QDateTime::currentDateTime();
-    QMutexLocker locker(&mutex);
+    QMutexLocker udplocker(&udpMutex);
     udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
     return;
 }
@@ -1235,7 +1234,7 @@ void udpBase::sendRetransmitRange(quint16 first, quint16 second, quint16 third,q
     p.second = second;
     p.third = third;
     p.fourth = fourth;
-    QMutexLocker locker(&mutex);
+    QMutexLocker udplocker(&udpMutex);
     udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
     return;
 }
@@ -1251,11 +1250,13 @@ void udpBase::sendTrackedPacket(QByteArray d)
     s.timeSent = QTime::currentTime();
     s.retransmitCount = 0;
     s.data = d;
-    QMutexLocker locker(&mutex);
+    QMutexLocker txlocker(&txBufferMutex);
     txSeqBuf.append(s);
+    QMutexLocker rxlocker(&rxBufferMutex);
     purgeOldEntries(); // Delete entries older than PURGE_SECONDS seconds (currently 5)
     sendSeq++;
 
+    QMutexLocker udplocker(&udpMutex);
     udp->writeDatagram(d, radioIP, port);
     if (idleTimer != Q_NULLPTR && idleTimer->isActive()) {
         idleTimer->start(IDLE_PERIOD); // Reset idle counter if it's running
