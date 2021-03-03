@@ -189,12 +189,6 @@ void rigCommander::findRigs()
     data.append(data2);
     data.append(payloadSuffix);
 
-    //check this:
-#ifdef QT_DEBUG
-    qDebug(logRig()) << "About to request list of radios connected, using this command: ";
-    printHex(data, false, true);
-#endif
-
     emit dataForComm(data);
     return;
 }
