@@ -73,15 +73,15 @@ private:
 
     QMutex          mutex;
 
-    bool            chunkAvailable;
     bool            isInitialized;
     QAudioOutput*   audioOutput;
     QAudioInput*    audioInput;
     bool            isUlaw;
     quint16         latency;
     bool            isInput;   // Used to determine whether input or output audio
-    float           volume;
     int             chunkSize;
+    bool            chunkAvailable;
+
     quint16         lastSeq;
 
     QAudioFormat     format;

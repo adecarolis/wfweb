@@ -737,7 +737,7 @@ audioHandler::audioHandler(QObject* parent) :
     isUlaw(false),
     latency(0),
     isInput(0),
-    volume(1.0f)
+	chunkAvailable(false)
 {
 }
 
@@ -897,11 +897,6 @@ void audioHandler::start()
     }	
 }
 
-void audioHandler::setVolume(float volume)
-{
-    volume = volume;
-}
-
 
 void audioHandler::flush()
 {
@@ -941,13 +936,13 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 
 	//qDebug(logAudio()) << "Looking for: " << maxlen << " bytes";
 
+	// We must lock the mutex for the entire time that the buffer may be modified.
+	QMutexLocker locker(&mutex);
 	// Get next packet from buffer.
 	if (!audioBuffer.isEmpty())
 	{
 		
-		// We must lock the mutex for the entire time that the buffer may be modified.
-		QMutexLocker locker(&mutex);
-		
+
 		// Output buffer is ALWAYS 16 bit.
 		int divisor = 16 / radioSampleBits;
 
