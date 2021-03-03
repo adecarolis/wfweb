@@ -305,7 +305,7 @@ private slots:
 
     void on_pttEnableChk_clicked(bool checked);
 
-    void on_lanEnableChk_clicked(bool checked);
+    void on_lanEnableBtn_clicked(bool checked);
 
     void on_ipAddressTxt_textChanged(QString text);
 
@@ -372,6 +372,8 @@ private slots:
     void on_tuneLockChk_clicked(bool checked);
 
     void on_spectrumModeCombo_currentIndexChanged(int index);
+
+    void on_serialEnableBtn_clicked(bool checked);
 
 private:
     Ui::wfmain *ui;
