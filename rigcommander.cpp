@@ -2263,6 +2263,7 @@ void rigCommander::parseSpectrum()
             // "center" mode, start is actuall center, end is bandwidth.
             spectrumStartFreq -= spectrumEndFreq;
             spectrumEndFreq = spectrumStartFreq + 2*(spectrumEndFreq);
+            // emit haveSpectrumCenterSpan(span);
         }
         if (payloadIn.length() > 400) // Must be a LAN packet.
         {
