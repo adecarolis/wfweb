@@ -281,7 +281,16 @@ void commHandler::openPort()
 
 void commHandler::closePort()
 {
-    port->close();
+    if(port)
+    {
+        port->close();
+        delete port;
+    }
+    if(pseudoterm)
+    {
+        pseudoterm->close();
+        delete pseudoterm;
+    }
     isConnected = false;
 }
 
