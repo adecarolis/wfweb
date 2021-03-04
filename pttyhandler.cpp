@@ -155,7 +155,7 @@ void pttyHandler::sendDataOut(const QByteArray& writeData)
 
     qint64 bytesWritten=0;
 
-    if (writeData[2] != (char)0xE1 && writeData[3] != (char)0xE1) {
+    if ((unsigned char)writeData[2] != 0xE1 && (unsigned char)writeData[3] != 0xE1) {
         bytesWritten = port->write(writeData);
         if (bytesWritten != writeData.length()) {
             qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
