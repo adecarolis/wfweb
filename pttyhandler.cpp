@@ -63,8 +63,8 @@ void pttyHandler::setupPtty()
     qDebug(logSerial()) << "Setting up Pseudo Term";
     serialError = false;
     port->setPortName(portName);
-    port->setBaudRate(baudRate);
-    port->setStopBits(QSerialPort::OneStop);// OneStop is other option
+    //port->setBaudRate(baudRate);
+    //port->setStopBits(QSerialPort::OneStop);// OneStop is other option
 }
 
 
