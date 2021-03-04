@@ -72,8 +72,6 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
 
 }
 
-
-
 void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs)
 {
     // construct
