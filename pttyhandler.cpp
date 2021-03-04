@@ -21,8 +21,6 @@ pttyHandler::pttyHandler()
 
 #ifdef Q_OS_WIN
     portName = "COM20";
-#else
-    portName = "/dev/ttyUSB0";
 #endif
     setupPtty(); // basic parameters
     openPort();
