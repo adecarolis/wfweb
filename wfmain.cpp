@@ -1228,7 +1228,6 @@ void wfmain::setTuningSteps()
 
 void wfmain::on_tuningStepCombo_currentIndexChanged(int index)
 {
-    qDebug() << __func__ << ": changing tuning step to index: " << index << " with value: " << ui->tuningStepCombo->itemData(index).toFloat();
     tsWfScroll = ui->tuningStepCombo->itemData(index).toFloat();
     tsKnobMHz = ui->tuningStepCombo->itemData(index).toFloat();
 }
