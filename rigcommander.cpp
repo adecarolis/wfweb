@@ -49,16 +49,25 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
     this->rigBaudRate = rigBaudRate;
 
     comm = new commHandler(rigSerialPort, rigBaudRate);
+    ptty = new pttyHandler();
 
     // data from the comm port to the program:
     connect(comm, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
 
+    // data from the ptty to the rig:
+    connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
+
     // data from the program to the comm port:
     connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
 
+    // data from the rig to the ptty:
+    connect(this, SIGNAL(dataForComm(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
+
     connect(comm, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
+    connect(ptty, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
 
     connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
+    connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
     emit commReady();
 
 }
@@ -102,16 +111,36 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs)
         emit initUdpHandler();
 
 
+        this->rigSerialPort = rigSerialPort;
+        this->rigBaudRate = rigBaudRate;
+
+        ptty = new pttyHandler();
+
+
+
+
+
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
+        // data from the rig to the ptty:
+        connect(udp, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
+
         connect(udp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+
 
         // data from the program to the comm port:
         connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+        // data from the ptty to the rig:
+        connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+
         connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
 
         // Connect for errors/alerts
         connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
         connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(handleStatusUpdate(QString)));
+
+        connect(ptty, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
+        connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
+
     }
 
     // data from the comm port to the program:
@@ -134,6 +163,10 @@ void rigCommander::closeComm()
         udpHandlerThread->wait();
     }
     udp = Q_NULLPTR;
+
+    if (ptty != Q_NULLPTR) {
+        delete ptty;
+    }
 }
 
 void rigCommander::setup()

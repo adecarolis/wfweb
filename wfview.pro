@@ -87,7 +87,8 @@ SOURCES += main.cpp\
     udpserversetup.cpp \
     udpserver.cpp \
     meter.cpp \
-    qledlabel.cpp
+    qledlabel.cpp \
+	pttyhandler.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -103,7 +104,8 @@ HEADERS  += wfmain.h \
 	udpserver.h \
 	packettypes.h \
     meter.h \
-	qledlabel.h
+	qledlabel.h \
+	pttyhandler.h
 
 
 FORMS    += wfmain.ui \

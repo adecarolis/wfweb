@@ -204,6 +204,7 @@
     <ClCompile Include="calibrationwindow.cpp" />
     <ClCompile Include="commhandler.cpp" />
     <ClCompile Include="freqmemory.cpp" />
+    <ClCompile Include="pttyhandler.cpp" />
     <ClCompile Include="qledlabel.cpp" />
     <ClCompile Include="logcategories.cpp" />
     <ClCompile Include="main.cpp" />
@@ -235,6 +236,7 @@
     </QtMoc>
     <QtMoc Include="meter.h" />
     <ClInclude Include="packettypes.h" />
+    <QtMoc Include="pttyhandler.h" />
     <ClInclude Include="rigidentities.h" />
     <QtMoc Include="udphandler.h">
     </QtMoc>

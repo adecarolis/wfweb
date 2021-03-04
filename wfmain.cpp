@@ -695,9 +695,9 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     receiveRigID(rigCaps);
     getInitialRigState();
 
-    QString message = QString("Found model: ").append(rigCaps.modelName);
+    //QString message = QString("Found model: ").append(rigCaps.modelName);
 
-    ui->statusBar->showMessage(message, 0);
+    //ui->statusBar->showMessage(message, 0);
 
     return;
 }
