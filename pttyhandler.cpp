@@ -110,7 +110,7 @@ void pttyHandler::openPort()
             qDebug(logSerial()) << "Received error from pseudo-terminal symlink command: code: [" << sysResult << "]" << " command: [" << ptLinkCmd << "]";
         }
 
-        isConected = true;
+        isConnected = true;
 #endif
 
     }
