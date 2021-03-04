@@ -1,6 +1,17 @@
 
 # CHANGELOG
 
+- 20210304	Tuning steps! Still need to zero out those lower digits while scrolling
+    		if box is checked.
+
+    		Fix spectrum peaks as well.
+
+		Fix spectrum 'flattening' with strong signal
+
+		Add separate mutex for udp/buffers.
+
+		supported rigs IC705, IC7300 (over USB, no sound), IC7610, IC785x
+
 - 20210227	changed the way udp audio traffic is handled
                 on both the TX and RX side.
 
