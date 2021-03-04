@@ -375,6 +375,8 @@ private slots:
 
     void on_serialEnableBtn_clicked(bool checked);
 
+    void on_tuningStepCombo_currentIndexChanged(int index);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -474,6 +476,8 @@ private:
     double oldUpperFreq;
     double freqMhz;
     double knobFreqMhz;
+    float tsKnobMHz;
+
     enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
               cmdGetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,

@@ -258,7 +258,19 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->modeFilterCombo->addItem("3", 3);
     ui->modeFilterCombo->addItem("Setup...", 99);
 
-
+    ui->tuningStepCombo->blockSignals(true);
+    ui->tuningStepCombo->addItem("1 Hz",     0.000001f);
+    ui->tuningStepCombo->addItem("10 Hz",    0.000010f);
+    ui->tuningStepCombo->addItem("100 Hz",   0.000100f);
+    ui->tuningStepCombo->addItem("1 kHz",    0.001000f);
+    ui->tuningStepCombo->addItem("2.5 kHz",  0.002500f);
+    ui->tuningStepCombo->addItem("5 kHz",    0.005000f);
+    ui->tuningStepCombo->addItem("10 kHz",   0.010000f);
+    ui->tuningStepCombo->addItem("12.5 kHz", 0.012500f);
+    ui->tuningStepCombo->addItem("100 kHz",  0.100000f);
+    ui->tuningStepCombo->addItem("250 kHz",  0.250000f);
+    ui->tuningStepCombo->setCurrentIndex(2);
+    ui->tuningStepCombo->blockSignals(false);
 
     spans << "2.5k" << "5.0k" << "10k" << "25k";
     spans << "50k" << "100k" << "250k" << "500k";
@@ -771,6 +783,7 @@ void wfmain::loadSettings()
 
     prefs.enableLAN = settings.value("EnableLAN", defPrefs.enableLAN).toBool();
     ui->lanEnableBtn->setChecked(prefs.enableLAN);
+    ui->connectBtn->setEnabled(prefs.enableLAN);
     
     udpPrefs.ipAddress = settings.value("IPAddress", udpDefPrefs.ipAddress).toString();
     ui->ipAddressTxt->setEnabled(ui->lanEnableBtn->isChecked());
@@ -1210,11 +1223,19 @@ void wfmain::setTuningSteps()
     tsPage =        1.0f;
     tsPageShift =   0.5f; // TODO, unbind this keystroke from the dial
     tsWfScroll =    0.0001f;
+    tsKnobMHz =     0.0001f;
+}
+
+void wfmain::on_tuningStepCombo_currentIndexChanged(int index)
+{
+    qDebug() << __func__ << ": changing tuning step to index: " << index << " with value: " << ui->tuningStepCombo->itemData(index).toFloat();
+    tsWfScroll = ui->tuningStepCombo->itemData(index).toFloat();
+    tsKnobMHz = ui->tuningStepCombo->itemData(index).toFloat();
 }
 
 double wfmain::roundFrequency(double frequency)
 {
-    return round(frequency*100000) / 100000.0;
+    return round(frequency*1000000) / 1000000.0;
 }
 
 void wfmain::shortcutMinus()
@@ -2425,7 +2446,7 @@ void wfmain::on_modeSelectCombo_activated(int index)
 void wfmain::on_freqDial_valueChanged(int value)
 {
     int maxVal = ui->freqDial->maximum();
-    double stepSize = 0.000100; // 100 Hz steps
+    double stepSize = (double)tsKnobMHz;
     double newFreqMhz = 0;
     volatile int delta = 0;
 
@@ -2859,6 +2880,7 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
     prefs.enableLAN = !checked;
     ui->serialDeviceListCombo->setEnabled(checked);
 
+    ui->connectBtn->setEnabled(!checked);
     ui->ipAddressTxt->setEnabled(!checked);
     ui->controlPortTxt->setEnabled(!checked);
     ui->usernameTxt->setEnabled(!checked);
@@ -2868,6 +2890,7 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
 void wfmain::on_lanEnableBtn_clicked(bool checked)
 {
     prefs.enableLAN = checked;
+    ui->connectBtn->setEnabled(checked);
     ui->ipAddressTxt->setEnabled(checked);
     ui->controlPortTxt->setEnabled(checked);
     ui->usernameTxt->setEnabled(checked);
@@ -3430,6 +3453,7 @@ void wfmain::on_tuneLockChk_clicked(bool checked)
     freqLock = checked;
 }
 
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
@@ -3448,3 +3472,4 @@ void wfmain::on_debugBtn_clicked()
     emit getScopeMode();
 
 }
+
