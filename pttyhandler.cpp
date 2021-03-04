@@ -146,24 +146,24 @@ void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
 
 void pttyHandler::sendDataOut(const QByteArray& writeData)
 {
+    if (writeData[2] != (char)0xE1 && writeData[3] != (char)0xE1) {
 
-    mutex.lock();
+        qint64 bytesWritten = 0;
 
+        qDebug(logSerial()) << "Data to term:";
+        printHex(writeData, false, true);
 
-    qDebug(logSerial()) << "Data to term:";
-    printHex(writeData, false, true);
+        mutex.lock();
 
-    qint64 bytesWritten=0;
-
-    if ((unsigned char)writeData[2] != 0xE1 && (unsigned char)writeData[3] != 0xE1) {
         bytesWritten = port->write(writeData);
         if (bytesWritten != writeData.length()) {
             qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
                 << " size of byte array: " << writeData.size()\
                 << " Wrote all bytes? " << (bool)(bytesWritten == (qint64)writeData.size());
         }
+
+        mutex.unlock();
     }
-    mutex.unlock();
 }
 
 
