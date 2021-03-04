@@ -151,6 +151,9 @@ void pttyHandler::sendDataOut(const QByteArray& writeData)
 
 #ifdef QT_DEBUG
 
+    qDebug(logSerial()) << "Data to term:";
+    printHex(writeData, false, true);
+
     qint64 bytesWritten;
 
     bytesWritten = port->write(writeData);
@@ -189,6 +192,8 @@ void pttyHandler::receiveDataIn()
             if (inPortData.length()>6 && inPortData[4] != (char)0x1A && inPortData[5] != (char)0x05 && inPortData[6] != (char)0x01 && inPortData[7] != (char)0x12)
             {
                 emit haveDataFromPort(inPortData);
+                qDebug(logSerial()) << "Data from pseudo term:";
+                printHex(inPortData, false, true);
             }
 
             if (rolledBack)
