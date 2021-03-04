@@ -131,7 +131,7 @@ pttyHandler::~pttyHandler()
 
 void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
 {
-    if (data[2] != (char)0xE1)
+    if (data[2] != (char)0xE1 && data[3] != (char)0xE1)
     {
         // send to the pseudo port as well
         // index 2 is dest, 0xE1 is wfview, 0xE0 is assumed to be the other device.
@@ -146,24 +146,21 @@ void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
 
 void pttyHandler::sendDataOut(const QByteArray& writeData)
 {
-    if (writeData[2] != (char)0xE1 && writeData[3] != (char)0xE1) {
 
-        qint64 bytesWritten = 0;
+    qint64 bytesWritten = 0;
 
-        qDebug(logSerial()) << "Data to term:";
-        printHex(writeData, false, true);
+    qDebug(logSerial()) << "Data to term:";
+    printHex(writeData, false, true);
 
-        mutex.lock();
+    mutex.lock();
 
-        bytesWritten = port->write(writeData);
-        if (bytesWritten != writeData.length()) {
-            qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
-                << " size of byte array: " << writeData.size()\
-                << " Wrote all bytes? " << (bool)(bytesWritten == (qint64)writeData.size());
-        }
-
-        mutex.unlock();
+    bytesWritten = port->write(writeData);
+    if (bytesWritten != writeData.length()) {
+        qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
+            << " size of byte array: " << writeData.size()\
+            << " Wrote all bytes? " << (bool)(bytesWritten == (qint64)writeData.size());
     }
+    mutex.unlock();
 }
 
 
