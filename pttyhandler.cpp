@@ -63,8 +63,10 @@ void pttyHandler::setupPtty()
     qDebug(logSerial()) << "Setting up Pseudo Term";
     serialError = false;
     port->setPortName(portName);
-    //port->setBaudRate(baudRate);
-    //port->setStopBits(QSerialPort::OneStop);// OneStop is other option
+#ifdef Q_OS_WIN
+    port->setBaudRate(baudRate);
+    port->setStopBits(QSerialPort::OneStop);// OneStop is other option
+#endif
 }
 
 
@@ -131,11 +133,11 @@ pttyHandler::~pttyHandler()
 
 void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
 {
-    if (data[2] != (char)0xE1 && data[3] != (char)0xE1)
+    if ((unsigned char)data[2] != (unsigned char)0xE1 && (unsigned char)data[3] != (unsigned char)0xE1)
     {
         // send to the pseudo port as well
         // index 2 is dest, 0xE1 is wfview, 0xE0 is assumed to be the other device.
-        // Maybe change to "Not 0xE1"
+        // Changed to "Not 0xE1"
         // 0xE1 = wfview
         // 0xE0 = pseudo-term host
         // 0x00 = broadcast to all
@@ -146,11 +148,10 @@ void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
 
 void pttyHandler::sendDataOut(const QByteArray& writeData)
 {
-
     qint64 bytesWritten = 0;
 
-    qDebug(logSerial()) << "Data to term:";
-    printHex(writeData, false, true);
+    //qDebug(logSerial()) << "Data to pseudo term:";
+    //printHex(writeData, false, true);
 
     mutex.lock();
 
@@ -181,12 +182,22 @@ void pttyHandler::receiveDataIn()
             // good!
             port->commitTransaction();
 
-            // filter 1A 05 01 12 = C-IV transceive command before forwarding on.
-            if (inPortData.length()>6 && inPortData[4] != (char)0x1A && inPortData[5] != (char)0x05 && inPortData[6] != (char)0x01 && inPortData[7] != (char)0x12)
+            // filter 1A 05 01 12/27 = C-IV transceive command before forwarding on.
+            if (inPortData.length() > 7 && (inPortData.mid(4, 4) == QByteArrayLiteral("\x1a\x05\x01\x12") && (inPortData.mid(4, 4) == QByteArrayLiteral("\x1a\x05\x01\x27"))))
+            {
+                //qDebug(logSerial()) << "Filtered transceive command";
+                //printHex(inPortData, false, true);
+                QByteArray reply= QByteArrayLiteral("\xfe\xfe\x00\x00\xfb\xfd");
+                reply[2] = inPortData[3];
+                reply[3] = inPortData[2];
+                sendDataOut(inPortData); // Echo command back
+                sendDataOut(reply);
+            }
+            else
             {
                 emit haveDataFromPort(inPortData);
-                qDebug(logSerial()) << "Data from pseudo term:";
-                printHex(inPortData, false, true);
+                //qDebug(logSerial()) << "Data from pseudo term:";
+                //printHex(inPortData, false, true);
             }
 
             if (rolledBack)

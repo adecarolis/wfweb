@@ -61,7 +61,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
     connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
 
     // data from the rig to the ptty:
-    connect(this, SIGNAL(dataForComm(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
+    connect(comm, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
 
     connect(comm, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
     connect(ptty, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
@@ -105,30 +105,27 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs)
         connect(this, SIGNAL(initUdpHandler()), udp, SLOT(init()));
         connect(udpHandlerThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
 
-
         udpHandlerThread->start();
 
         emit initUdpHandler();
 
-
-        this->rigSerialPort = rigSerialPort;
-        this->rigBaudRate = rigBaudRate;
+        //this->rigSerialPort = rigSerialPort;
+        //this->rigBaudRate = rigBaudRate;
 
         ptty = new pttyHandler();
 
-
-
-
-
+        // Data from UDP to the program
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
+
         // data from the rig to the ptty:
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
 
+        // Audio from UDP
         connect(udp, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
 
-
-        // data from the program to the comm port:
+        // data from the program to the rig:
         connect(this, SIGNAL(dataForComm(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+
         // data from the ptty to the rig:
         connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
 
@@ -167,6 +164,7 @@ void rigCommander::closeComm()
     if (ptty != Q_NULLPTR) {
         delete ptty;
     }
+    ptty = Q_NULLPTR;
 }
 
 void rigCommander::setup()
