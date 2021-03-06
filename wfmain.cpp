@@ -844,16 +844,20 @@ void wfmain::loadSettings()
             ui->audioTXCodecCombo->setCurrentIndex(f);
 
     udpPrefs.audioOutput = settings.value("AudioOutput", udpDefPrefs.audioOutput).toString();
+    qDebug(logGui()) << "Got Audio Output: " << udpPrefs.audioOutput;
     ui->audioOutputCombo->setEnabled(ui->lanEnableBtn->isChecked());
     int audioOutputIndex = ui->audioOutputCombo->findText(udpPrefs.audioOutput);
-    if (audioOutputIndex != -1)
+    if (audioOutputIndex != -1) {
         ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
+    }
 
     udpPrefs.audioInput = settings.value("AudioInput", udpDefPrefs.audioInput).toString();
+    qDebug(logGui()) << "Got Audio Input: " << udpPrefs.audioInput;
     ui->audioInputCombo->setEnabled(ui->lanEnableBtn->isChecked());
     int audioInputIndex = ui->audioInputCombo->findText(udpPrefs.audioInput);
-    if (audioInputIndex != - 1)
-        ui->audioOutputCombo->setCurrentIndex(audioInputIndex);
+    if (audioInputIndex != -1) {
+        ui->audioInputCombo->setCurrentIndex(audioInputIndex);
+    }
 
     settings.endGroup();
 
@@ -1831,8 +1835,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         }
         QString inName;
         // Clear input combos before adding known inputs.
-        //ui->modInputCombo->clear();
-        //ui->modInputDataCombo->clear();
+        ui->modInputCombo->clear();
+        ui->modInputDataCombo->clear();
 
         for(int i=0; i < rigCaps.inputs.length(); i++)
         {
