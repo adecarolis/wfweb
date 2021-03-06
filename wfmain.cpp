@@ -1830,6 +1830,10 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->adjRefBtn->setDisabled(true);
         }
         QString inName;
+        // Clear input combos before adding known inputs.
+        //ui->modInputCombo->clear();
+        //ui->modInputDataCombo->clear();
+
         for(int i=0; i < rigCaps.inputs.length(); i++)
         {
             switch(rigCaps.inputs.at(i))

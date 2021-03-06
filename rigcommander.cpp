@@ -2067,6 +2067,8 @@ void rigCommander::determineRigCaps()
     rigCaps.spectAmpMax = 0;
     rigCaps.spectLenMax = 0;
 
+    // Clear inputs list in case we have re-connected.
+    rigCaps.inputs.clear(); 
     rigCaps.inputs.append(inputMic);
 
 
