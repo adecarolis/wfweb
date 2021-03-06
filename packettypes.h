@@ -150,7 +150,8 @@ typedef union token_packet {
         char unuseda[3];          // 0x10
         quint16 code;               // 0x13
         quint16 res;                // 0x15
-        quint16 innerseq;           // 0x17
+        quint8 innerseq;          // 0x17
+        char unusedb;             // 0x18
         char unusedc;             // 0x19
         quint16 tokrequest;         // 0x1a
         quint32 token;              // 0x1c
@@ -173,7 +174,8 @@ typedef union status_packet {
         char unuseda[3];          // 0x10
         quint16 code;               // 0x13
         quint16 res;                // 0x15
-        quint16 innerseq;           // 0x17
+        quint8 innerseq;           // 0x17
+        char unusedb;             // 0x18
         char unusedc;             // 0x19
         quint16 tokrequest;         // 0x1a
         quint32 token;              // 0x1c 
@@ -207,7 +209,8 @@ typedef union login_response_packet {
         char unuseda[3];            // 0x10
         quint16 code;               // 0x13
         quint16 res;                // 0x15
-        quint16 innerseq;           // 0x17
+        quint8 innerseq;            // 0x17
+        char unusedb;               // 0x18
         char unusedc;               // 0x19
         quint16 tokrequest;         // 0x1a
         quint32 token;              // 0x1c 
@@ -233,7 +236,8 @@ typedef union login_packet {
         char unuseda[3];            // 0x10
         quint16 code;               // 0x13
         quint16 res;                // 0x15
-        quint16 innerseq;           // 0x17
+        quint8 innerseq;            // 0x17
+        char unusedaa;              // 0x18;
         char unusedb;               // 0x19
         quint16 tokrequest;         // 0x1a
         quint32 token;              // 0x1c 
@@ -258,7 +262,8 @@ typedef union conninfo_packet {
         char unuseda[3];          // 0x10
         quint16 code;             // 0x13
         quint16 res;              // 0x15
-        quint16 innerseq;         // 0x17
+        quint8 innerseq;          // 0x17
+        char unusedaa;            // 0x18
         char unusedb;             // 0x19
         quint16 tokrequest;       // 0x1a
         quint32 token;            // 0x1c 
@@ -308,7 +313,8 @@ typedef union capabilities_packet {
         char unuseda[3];          // 0x10
         quint16 code;             // 0x13
         quint16 res;              // 0x15
-        quint16 innerseq;         // 0x17
+        quint8 innerseq;          // 0x17
+        char unusedb;             // 0x18
         char unusedc;             // 0x19
         quint16 tokrequest;       // 0x1a
         quint32 token;            // 0x1c 
