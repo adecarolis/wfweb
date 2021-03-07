@@ -377,6 +377,8 @@ private slots:
 
     void on_tuningStepCombo_currentIndexChanged(int index);
 
+    void on_serialDeviceListCombo_activated(const QString &arg1);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;

@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -1643,7 +1643,11 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="serialDeviceListCombo"/>
+           <widget class="QComboBox" name="serialDeviceListCombo">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select a serial port here. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Once selected, check &amp;quot;Enable USB(serial),  press &amp;quot;Save Settings&amp;quot;, exit, and re-start wfview. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+           </widget>
           </item>
           <item>
            <spacer name="tuneSpacer">
@@ -2000,7 +2004,7 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="radioConnectionSerialNetworkGrp"/>
   <buttongroup name="duplexBtnGrp"/>
+  <buttongroup name="radioConnectionSerialNetworkGrp"/>
  </buttongroups>
 </ui>

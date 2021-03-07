@@ -312,6 +312,18 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     periodicPollingTimer->setSingleShot(false);
     connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(runPeriodicCommands()));
 
+
+    ui->serialDeviceListCombo->blockSignals(true);
+    ui->serialDeviceListCombo->addItem("Auto", 0);
+    int i=0;
+    foreach (const QSerialPortInfo &serialPortInfo, QSerialPortInfo::availablePorts())
+    {
+        portList.append(serialPortInfo.portName());
+        ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
+    }
+    ui->serialDeviceListCombo->addItem("Manual...", 256);
+    ui->serialDeviceListCombo->blockSignals(false);
+
     openRig();
 
     qRegisterMetaType<rigCapabilities>();
@@ -479,14 +491,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     freqLock = false;
 
 
-    // Not needed since we automate this now.
-    /*
-    foreach (const QSerialPortInfo &serialPortInfo, QSerialPortInfo::availablePorts())
-    {
-        portList.append(serialPortInfo.portName());
-        // ui->commPortDrop->addItem(serialPortInfo.portName());
-    }
-    */
 
 
 #ifdef QT_DEBUG
@@ -3464,6 +3468,41 @@ void wfmain::on_tuneLockChk_clicked(bool checked)
     freqLock = checked;
 }
 
+void wfmain::on_serialDeviceListCombo_activated(const QString &arg1)
+{
+    QString manualPort;
+    bool ok;
+    if(arg1==QString("Manual..."))
+    {
+        manualPort = QInputDialog::getText(this, tr("Manual port assignment"),
+                                           tr("Enter serial port assignment:"),
+                                           QLineEdit::Normal,
+                                           tr("/dev/device"), &ok);
+        if(manualPort.isEmpty() || !ok)
+        {
+            ui->serialDeviceListCombo->blockSignals(true);
+            ui->serialDeviceListCombo->setCurrentIndex(0);
+            ui->serialDeviceListCombo->blockSignals(false);
+            return;
+        } else {
+            prefs.serialPortRadio = manualPort;
+            showStatusBarText("Setting preferences to use manually-assigned serial port: " + manualPort);
+            ui->serialEnableBtn->setChecked(true);
+            return;
+        }
+    }
+    if(arg1==QString("Auto"))
+    {
+        prefs.serialPortRadio = "Auto";
+        showStatusBarText("Setting preferences to automatically find rig serial port.");
+        ui->serialEnableBtn->setChecked(true);
+        return;
+    }
+
+    prefs.serialPortRadio = arg1;
+    showStatusBarText("Setting preferences to use manually-assigned serial port: " + arg1);
+    ui->serialEnableBtn->setChecked(true);
+}
 
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
@@ -3483,4 +3522,3 @@ void wfmain::on_debugBtn_clicked()
     emit getScopeMode();
 
 }
-
