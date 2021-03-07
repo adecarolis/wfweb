@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -574,10 +574,10 @@
                <number>200</number>
               </property>
               <property name="singleStep">
-               <number>5</number>
+               <number>1</number>
               </property>
               <property name="pageStep">
-               <number>5</number>
+               <number>10</number>
               </property>
               <property name="orientation">
                <enum>Qt::Vertical</enum>

@@ -276,15 +276,30 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     spans << "50k" << "100k" << "250k" << "500k";
     ui->scopeBWCombo->insertItems(0, spans);
 
-    edges << "1" << "2" << "3" << "4"; // yep
+    edges << "1" << "2" << "3" << "4";
     ui->scopeEdgeCombo->insertItems(0, edges);
 
     ui->splitter->setHandleWidth(5);
 
+    // Set scroll wheel response (tick interval)
+    // and set arrow key response (single step)
     ui->rfGainSlider->setTickInterval(100);
-    ui->rfGainSlider->setSingleStep(100);
-    ui->afGainSlider->setSingleStep(100);
-    ui->afGainSlider->setSingleStep(100);
+    ui->rfGainSlider->setSingleStep(10);
+
+    ui->afGainSlider->setTickInterval(100);
+    ui->afGainSlider->setSingleStep(10);
+
+    ui->sqlSlider->setTickInterval(100);
+    ui->sqlSlider->setSingleStep(10);
+
+    ui->txPowerSlider->setTickInterval(100);
+    ui->txPowerSlider->setSingleStep(10);
+
+    ui->micGainSlider->setTickInterval(100);
+    ui->micGainSlider->setSingleStep(10);
+
+    ui->scopeRefLevelSlider->setTickInterval(50);
+    ui->scopeRefLevelSlider->setSingleStep(20);
 
     rigStatus = new QLabel(this);
     ui->statusBar->addPermanentWidget(rigStatus);
