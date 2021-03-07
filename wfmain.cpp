@@ -1228,7 +1228,6 @@ void wfmain::setTuningSteps()
 
 void wfmain::on_tuningStepCombo_currentIndexChanged(int index)
 {
-    qDebug() << __func__ << ": changing tuning step to index: " << index << " with value: " << ui->tuningStepCombo->itemData(index).toFloat();
     tsWfScroll = ui->tuningStepCombo->itemData(index).toFloat();
     tsKnobMHz = ui->tuningStepCombo->itemData(index).toFloat();
 }
@@ -2520,7 +2519,11 @@ void wfmain::on_freqDial_valueChanged(int value)
 
     if(ui->tuningFloorZerosChk->isChecked())
     {
-        newFreqMhz = (double)round(newFreqMhz*10000) / 10000.0;
+        // 1000000 = 1 Hz
+        //  100000 = 10 Hz
+        // It will round but not nicely. This is clearly the wrong way to do this.
+        double fudge = 1000000 / ( stepSize*1E6);
+        newFreqMhz = (double)round(newFreqMhz*fudge) / fudge;
     }
 
     this->knobFreqMhz = newFreqMhz; // the frequency we think we should be on.
