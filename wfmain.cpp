@@ -1940,7 +1940,7 @@ void wfmain::receiveFreq(double freqMhz)
 void wfmain::receivePTTstatus(bool pttOn)
 {
     // This is the only place where amTransmitting and the transmit button text should be changed:
-    qDebug(logSystem()) << "PTT status: " << pttOn;
+    //qDebug(logSystem()) << "PTT status: " << pttOn;
     if (pttOn && !amTransmitting)
     {
         pttLed->setState(QLedLabel::State::StateError);

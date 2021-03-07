@@ -183,7 +183,7 @@ void pttyHandler::receiveDataIn()
             port->commitTransaction();
 
             // filter 1A 05 01 12/27 = C-IV transceive command before forwarding on.
-            if (inPortData.length() > 7 && (inPortData.mid(4, 4) == QByteArrayLiteral("\x1a\x05\x01\x12") && (inPortData.mid(4, 4) == QByteArrayLiteral("\x1a\x05\x01\x27"))))
+            if (inPortData.contains(QByteArrayLiteral("\x1a\x05\x01\x12")) || inPortData.contains(QByteArrayLiteral("\x1a\x05\x01\x27")))
             {
                 //qDebug(logSerial()) << "Filtered transceive command";
                 //printHex(inPortData, false, true);
