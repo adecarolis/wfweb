@@ -2408,7 +2408,6 @@ QByteArray rigCommander::bcdEncodeInt(unsigned int num)
 
     QByteArray result;
     result.append(b0).append(b1);
-    qDebug(logRig()) << "Result: " << result;
     return result;
 }
 
