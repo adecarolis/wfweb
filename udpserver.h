@@ -70,7 +70,7 @@ private:
 		quint16 connSeq;
 		quint16 pingSeq;
 		quint32 rxPingTime; // 32bit as has other info
-		quint32 authInnerSeq;
+		quint8 authInnerSeq;
 		quint16 authSeq;
 		quint16 innerSeq;
 		quint16 sendAudioSeq;

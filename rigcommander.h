@@ -5,6 +5,7 @@
 #include <QDebug>
 
 #include "commhandler.h"
+#include "pttyhandler.h"
 #include "udphandler.h"
 #include "rigidentities.h"
 
@@ -245,7 +246,8 @@ private:
     void printHex(const QByteArray &pdata);
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
 
-    commHandler * comm=Q_NULLPTR;
+    commHandler* comm = Q_NULLPTR;
+    pttyHandler* ptty = Q_NULLPTR;
     udpHandler* udp=Q_NULLPTR;
     QThread* udpHandlerThread = Q_NULLPTR;
 

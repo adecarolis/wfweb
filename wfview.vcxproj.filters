@@ -105,6 +105,9 @@
     <ClCompile Include="qledlabel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="pttyhandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="commhandler.h">
@@ -150,6 +153,9 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="qledlabel.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="pttyhandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
@@ -305,6 +311,7 @@
     <None Include="resources\wfview.png">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />

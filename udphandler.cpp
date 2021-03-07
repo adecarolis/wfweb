@@ -210,8 +210,10 @@ void udpHandler::dataReceived()
                         remoteId = in->sentid;
                         tokRequest = in->tokrequest;
                         token = in->token;
+                        streamOpened = false;
+                        sendRequestStream();
                         // Got new token response
-                        sendToken(0x02); // Update it.
+                        //sendToken(0x02); // Update it.
                     }
                     else
                     {
@@ -383,7 +385,7 @@ void udpHandler::sendRequestStream()
     p.commoncap = 0x8010;
     p.identa = identa;
     p.identb = identb;
-    p.innerseq = authInnerSendSeq;
+    p.innerseq = authSeq++;
     p.tokrequest = tokRequest;
     p.token = token;
     memcpy(&p.name, devName.toLocal8Bit().constData(), devName.length());
@@ -397,8 +399,6 @@ void udpHandler::sendRequestStream()
     p.civport = qToBigEndian((quint32)civPort);
     p.audioport = qToBigEndian((quint32)audioPort);
     p.txbuffer = qToBigEndian((quint32)txLatency);
-
-    authInnerSendSeq++;
 
     sendTrackedPacket(QByteArray::fromRawData((const char*)p.packet, sizeof(p)));
     return;
@@ -435,13 +435,12 @@ void udpHandler::sendLogin() // Only used on control stream.
     p.sentid = myId;
     p.rcvdid = remoteId;
     p.code = 0x0170; // Not sure what this is?
-    p.innerseq = authInnerSendSeq;
+    p.innerseq = authSeq++;
     p.tokrequest = tokRequest;
     memcpy(p.username, usernameEncoded.constData(), usernameEncoded.length());
     memcpy(p.password, passwordEncoded.constData(), passwordEncoded.length());
     memcpy(p.name, compName.toLocal8Bit().constData(), compName.length());
 
-    authInnerSendSeq++;
     sendTrackedPacket(QByteArray::fromRawData((const char*)p.packet, sizeof(p)));
     return;
 }
@@ -457,11 +456,10 @@ void udpHandler::sendToken(uint8_t magic)
     p.rcvdid = remoteId;
     p.code = 0x0130; // Not sure what this is?
     p.res = magic;
-    p.innerseq = authInnerSendSeq;
+    p.innerseq = authSeq++;
     p.tokrequest = tokRequest;
     p.token = token;
 
-    authInnerSendSeq++;
     sendTrackedPacket(QByteArray::fromRawData((const char *)p.packet, sizeof(p)));
     // The radio should request a repeat of the token renewal packet via retransmission!
     //tokenTimer->start(100); // Set 100ms timer for retry (this will be cancelled if a response is received)
