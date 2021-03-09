@@ -15,17 +15,20 @@
 #include <QThread>
 #include <QTimer>
 #include <QTime>
+#include "resampler/speex_resampler.h"
 
 #include <QDebug>
 
 //#define BUFFER_SIZE (32*1024)
 
+#define INTERNAL_SAMPLE_RATE 48000
 
 struct audioPacket {
     quint16 seq;
     QTime time;
     quint16 sent;
-    QByteArray data;
+    QByteArray datain;
+    QByteArray dataout;
 };
 
 
@@ -54,7 +57,7 @@ public:
     void getNextAudioChunk(QByteArray &data);
     bool isChunkAvailable();
 public slots:
-    bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isulaw, const bool isinput, QString port);
+    bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isulaw, const bool isinput, QString port, quint8 resampleQuality);
     void incomingAudio(const audioPacket data);
     void changeLatency(const quint16 newSize);
 
@@ -88,7 +91,12 @@ private:
     QAudioDeviceInfo deviceInfo;
     quint16          radioSampleRate;
     quint8           radioSampleBits;
+    quint8          radioChannels;
     QVector<audioPacket> audioBuffer;
+
+    SpeexResamplerState* resampler;
+    unsigned int ratioNum;
+    unsigned int ratioDen;
 };
 
 #endif // AUDIOHANDLER_H

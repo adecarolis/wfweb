@@ -152,7 +152,7 @@
       <ExceptionHandling>Sync</ExceptionHandling>
       <ObjectFileName>debug\</ObjectFileName>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_OPENGL;HOST=1;UNAME=1;GITSHORT=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_OPENGL;HOST=1;UNAME=1;GITSHORT=1;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -210,6 +210,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="c:\qcustomplot\qcustomplot.cpp" />
     <ClCompile Include="meter.cpp" />
+    <ClCompile Include="resampler\resample.c" />
     <ClCompile Include="rigcommander.cpp" />
     <ClCompile Include="rigidentities.cpp" />
     <ClCompile Include="audiohandler.cpp" />
@@ -237,6 +238,7 @@
     <QtMoc Include="meter.h" />
     <ClInclude Include="packettypes.h" />
     <QtMoc Include="pttyhandler.h" />
+    <ClInclude Include="resampler\speex_resampler.h" />
     <ClInclude Include="rigidentities.h" />
     <QtMoc Include="udphandler.h">
     </QtMoc>

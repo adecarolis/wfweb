@@ -750,9 +750,13 @@ audioHandler::~audioHandler()
     if (audioInput != Q_NULLPTR) {
         delete audioInput;
     }
+
+	if (resampler) {
+		speex_resampler_destroy(resampler);
+	}
 }
 
-bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool ulaw, const bool isinput, QString port)
+bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool ulaw, const bool isinput, QString port, quint8 resampleQuality)
 {
     if (isInitialized) {
         return false;
@@ -760,7 +764,7 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
     /* Always use 16 bit 48K samples internally*/
     format.setSampleSize(16);
     format.setChannelCount(channels);
-    format.setSampleRate(48000);
+    format.setSampleRate(INTERNAL_SAMPLE_RATE);
     format.setCodec("audio/pcm");
     format.setByteOrder(QAudioFormat::LittleEndian);
     format.setSampleType(QAudioFormat::SignedInt);
@@ -770,7 +774,27 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
     this->isInput = isinput;
     this->radioSampleBits = bits;
     this->radioSampleRate = samplerate;
-	this->chunkSize = this->radioSampleBits * 120;
+	this->radioChannels = channels;
+
+	//this->chunkSize = (INTERNAL_SAMPLE_RATE / 25) * (radioSampleBits / 8)/2;
+
+	this->chunkSize = 1920*radioChannels;
+
+	qDebug(logAudio()) << "Audio chunkSize: " << this->chunkSize;
+
+	int resample_error=0;
+	if (isinput) {
+		resampler = wf_resampler_init(radioChannels, INTERNAL_SAMPLE_RATE, samplerate, resampleQuality, &resample_error);
+	}
+	else
+	{
+		resampler = wf_resampler_init(radioChannels, samplerate, INTERNAL_SAMPLE_RATE, resampleQuality, &resample_error);
+	}
+
+
+	wf_resampler_get_ratio(resampler, &ratioNum, &ratioDen);
+	
+	qDebug(logAudio()) << "wf_resampler_init() returned: " << resample_error << " ratioNum" << ratioNum << " ratioDen" << ratioDen << " input " << isinput;
 
 	qDebug(logAudio()) << "Got audio port name: " << port;
 
@@ -869,8 +893,8 @@ void audioHandler::reinit()
             delete audioOutput;
         audioOutput = Q_NULLPTR;
         audioOutput = new QAudioOutput(deviceInfo, format, this);
-		audioOutput->setBufferSize((radioSampleRate/25)*(radioSampleBits/8)*2);
-        connect(audioOutput, SIGNAL(notify()), SLOT(notified()));
+		audioOutput->setBufferSize((radioSampleRate / 25) * (radioSampleBits / 8) * 2);
+		connect(audioOutput, SIGNAL(notify()), SLOT(notified()));
         connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
     }
 
@@ -929,10 +953,17 @@ void audioHandler::stop()
     }
 }
 
+/// <summary>
+/// This function processes the incoming audio FROM the radio and pushes it into the playback buffer *data
+/// </summary>
+/// <param name="data"></param>
+/// <param name="maxlen"></param>
+/// <returns></returns>
 qint64 audioHandler::readData(char* data, qint64 maxlen)
 {
     // Calculate output length, always full samples
 	int sentlen = 0;
+
 
 	//qDebug(logAudio()) << "Looking for: " << maxlen << " bytes";
 
@@ -941,11 +972,8 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 	// Get next packet from buffer.
 	if (!audioBuffer.isEmpty())
 	{
-		
 
 		// Output buffer is ALWAYS 16 bit.
-		int divisor = 16 / radioSampleBits;
-
 		auto packet = audioBuffer.begin();
 		while (packet != audioBuffer.end() && sentlen < maxlen)
 		{
@@ -956,44 +984,18 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 			}
 			else if (packet->seq == lastSeq+1 || packet->seq <= lastSeq)
 			{
+				int send = qMin((int)maxlen-sentlen, packet->dataout.length() - packet->sent);
 				lastSeq = packet->seq;
 				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived on time " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
-				// Will this packet fit in the current buffer?
-				int send = qMin((int)((maxlen/divisor) - (sentlen/divisor)), packet->data.length() - packet->sent);
 
-				if (divisor == 2)
-				{
-					// Input buffer is 8bit and output buffer is 16bit 
-					for (int f = 0; f < send; f++)
-					{
-						if (isUlaw)
-							qToLittleEndian<qint16>(ulaw_decode[(quint8)packet->data[f+packet->sent]], data + (f * 2 + sentlen));
-						else
-							qToLittleEndian<qint16>((qint16)(packet->data[f+packet->sent] << 8) - 32640, data + (f * 2 + sentlen));
-					}
-				}
-				else if (divisor == 1)
-				{
-					// 16 bit audio so just copy it in place.
-					//qDebug(logAudio()) << "Adding packet to buffer:" << (*packet).seq << ": " << (*packet).data.length()-(*packet).sent;
-					memcpy(data+sentlen, packet->data.constData()+packet->sent, send);
-				} 
-				else
-				{
-					//qDebug(logAudio()) << "Invalid number of bits in audio " << radioSampleBits;
-					break;
-				}
+				memcpy(data + sentlen, packet->dataout.constData() + packet->sent, send);
 
-				sentlen = sentlen + (send * divisor);
+				sentlen = sentlen + send;
 
-				if (send == packet->data.length())
+				if (send == packet->dataout.length())
 				{
-					lastSeq = packet->seq;
+					//qDebug(logAudio()) << "Get next packet";
 					packet = audioBuffer.erase(packet); // returns next packet
-					if (maxlen - sentlen == 0)
-					{						
-						break;
-					}
 				} 
 				else if (send == 0)
 				{
@@ -1019,9 +1021,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 
 qint64 audioHandler::writeData(const char* data, qint64 len)
 {
-	int multiplier = (int)16 / radioSampleBits;
 	qint64 sentlen = 0;
-	int tosend = 0;
 	QMutexLocker locker(&mutex);
 	audioPacket *current;
 
@@ -1041,36 +1041,15 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		}
 		current = &audioBuffer.last();
 
-		tosend = qMin((int)((len - sentlen)/multiplier), (int)chunkSize-current->sent);
+		int send = qMin((int)(len - sentlen), (int)chunkSize-current->sent);
 
-		if (radioSampleBits == 8) {
-			int f = 0;
-			while (f < tosend)
-			{
-				quint8 outdata=0;
-				if (isUlaw) {
-					qint16 enc = qFromLittleEndian<quint16>(data + ((f * multiplier) + sentlen));
-					if (enc >= 0)
-						outdata=ulaw_encode[enc];
-					else
-						outdata=0x7f & ulaw_encode[-enc];
-				}
-				else {
-					outdata = (quint8)(((qFromLittleEndian<qint16>((data + ((f * multiplier) + sentlen))) >> 8) ^ 0x80) & 0xff);
-				}
-				current->data.append((char)outdata);
-				f++;
-			}
-		}
-		else if (radioSampleBits == 16)
-		{
-			current->data.append(QByteArray::fromRawData(data + sentlen, tosend ));
-		}
+		current->datain.append(QByteArray::fromRawData(data + sentlen, send ));
 
-		sentlen = sentlen + (tosend * multiplier);
+		sentlen = sentlen + send;
+
 		current->seq = 0; // Not used in TX
 		current->time = QTime::currentTime();
-		current->sent = current->data.length();
+		current->sent = current->datain.length();
 		
 		if (current->sent == chunkSize)
 		{
@@ -1081,7 +1060,6 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		}
 		
 	}
-
 
     return (sentlen); // Always return the same number as we received
 }
@@ -1139,10 +1117,59 @@ void audioHandler::stateChanged(QAudio::State state)
 
 
 
-void audioHandler::incomingAudio(const audioPacket data)
+void audioHandler::incomingAudio(audioPacket data)
 {
     if (audioOutput != Q_NULLPTR && audioOutput->state() != QAudio::StoppedState) {
         QMutexLocker locker(&mutex);
+
+		// Incoming data is 8bits?
+		if (radioSampleBits == 8)
+		{
+			QByteArray inPacket((int)data.datain.length() * 2, (char)0xff);
+			qint16* in = (qint16*)inPacket.data();
+			for (int f = 0; f < data.datain.length(); f++)
+			{
+				if (isUlaw)
+				{
+					in[f] = ulaw_decode[(quint8)data.datain[f]];
+				}
+				else
+				{
+					// Convert 8-bit sample to 16-bit
+					in[f] = (qint16)(((quint8)data.datain[f] << 8) - 32640);
+				}
+			}
+			data.datain = inPacket; // Replace incoming data with converted.
+		}
+
+		//qDebug(logAudio()) << "Adding packet to buffer:" << (*packet).seq << ": " << inPacket.length();
+
+		/*	We now have an array of 16bit samples in the NATIVE samplerate of the radio
+			If the radio sample rate is below 48000, we need to resample.
+		 */
+
+		if (ratioDen != 1) {
+
+			// We need to resample
+			quint32 outFrames = ((data.datain.length() / 2) * ratioDen) / radioChannels;
+			quint32 inFrames = (data.datain.length() / 2) / radioChannels;
+			data.dataout.resize(outFrames * 2 * radioChannels); // Preset the output buffer size.
+
+			int err = 0;
+			if (this->radioChannels == 1) {
+				err = wf_resampler_process_int(resampler, 0, (const qint16*)data.datain.constData(), &inFrames, (qint16*)data.dataout.data(), &outFrames);
+			}
+			else {
+				err = wf_resampler_process_interleaved_int(resampler, (const qint16*)data.datain.constData(), &inFrames, (qint16*)data.dataout.data(), &outFrames);
+			}
+			if (err) {
+				qDebug(logAudio()) << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
+			}
+		}
+		else {
+			data.dataout = data.datain; 
+		}
+
 		audioBuffer.push_back(data);
 		
 		// Sort the buffer by seq number. This is important and audio packets may have arrived out-of-order
@@ -1193,9 +1220,63 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 				packet = audioBuffer.erase(packet); // returns next packet
 			}
 			else {
-				if (packet->data.length() == chunkSize && ret.length() == 0)
+				if (packet->datain.length() == chunkSize && ret.length() == 0)
 				{
-					ret.append(packet->data);
+					/*	We now have an array of samples in the computer native format (48000)
+						If the radio sample rate is below 48000, we need to resample.
+					*/
+
+					if (ratioNum != 1) 
+					{
+						// We need to resample (we are STILL 16 bit!)
+						quint32 outFrames = ((packet->datain.length() / 2) / ratioNum) / radioChannels;
+						quint32 inFrames = (packet->datain.length() / 2) / radioChannels;
+						packet->dataout.resize(outFrames * 2 * radioChannels); // Preset the output buffer size.
+
+						int err = 0;
+						if (this->radioChannels == 1) {
+							err = wf_resampler_process_int(resampler, 0, (const qint16*)packet->datain.constData(), &inFrames, (qint16*)packet->dataout.data(), &outFrames);
+						}
+						else {
+							err = wf_resampler_process_interleaved_int(resampler, (const qint16*)packet->datain.constData(), &inFrames, (qint16*)packet->dataout.data(), &outFrames);
+						}
+						if (err) {
+							qDebug(logAudio()) << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
+						}
+						//qDebug(logAudio()) << "Resampler run " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
+						//qDebug(logAudio()) << "Resampler run inLen:" << packet->datain.length() << " outLen:" << packet->dataout.length();
+						if (radioSampleBits == 8)
+						{
+							packet->datain = packet->dataout; // Copy packet back to input buffer.
+						}
+					}
+					else if (radioSampleBits == 16 ){
+						// Only copy buffer if radioSampleBits is 16, as it will be handled below otherwise.
+						packet->dataout = packet->datain;
+					}
+
+					// Do we need to convert 16-bit to 8-bit?
+					if (radioSampleBits == 8) {
+						packet->dataout.resize(packet->datain.length() / 2);
+						qint16* in = (qint16*)packet->datain.data();
+						for (int f = 0; f < packet->dataout.length(); f++)
+						{
+							quint8 outdata = 0;
+							if (isUlaw) {
+								qint16 enc = qFromLittleEndian<quint16>(in + f);
+								if (enc >= 0)
+									outdata = ulaw_encode[enc];
+								else
+									outdata = 0x7f & ulaw_encode[-enc];
+							}
+							else {
+								outdata = (quint8)(((qFromLittleEndian<qint16>(in + f) >> 8) ^ 0x80) & 0xff);
+							}
+							packet->dataout[f] = (char)outdata;
+							f++;
+						}
+					}
+					ret.append(packet->dataout);
 					packet = audioBuffer.erase(packet); // returns next packet
 				}
 				else {

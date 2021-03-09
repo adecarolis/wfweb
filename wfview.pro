@@ -31,6 +31,10 @@ QMAKE_LFLAGS += -O2 -march=native -s
 DEFINES += QT_DEPRECATED_WARNINGS
 DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 
+# These defines are used for the resampler
+DEFINES += OUTSIDE_SPEEX
+DEFINES += RANDOM_PREFIX=wf
+
 linux:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
 
 linux:DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""
@@ -88,7 +92,8 @@ SOURCES += main.cpp\
     udpserver.cpp \
     meter.cpp \
     qledlabel.cpp \
-	pttyhandler.cpp
+	pttyhandler.cpp \
+	resampler/resample.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -105,7 +110,10 @@ HEADERS  += wfmain.h \
 	packettypes.h \
     meter.h \
 	qledlabel.h \
-	pttyhandler.h
+	pttyhandler.h \
+	resampler/speex_resampler.h \
+	resampler/arch.h \
+	resampler/resample_sse.h
 
 
 FORMS    += wfmain.ui \

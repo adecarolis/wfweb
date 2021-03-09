@@ -1062,14 +1062,14 @@ void udpServer::receiveAudioData(const audioPacket &d)
         if (client != Q_NULLPTR && client->connected) {
             audio_packet p;
             memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
-            p.len = sizeof(p) + d.data.length();
+            p.len = sizeof(p) + d.datain.length();
             p.sentid = client->myId;
             p.rcvdid = client->remoteId;
             p.ident = 0x0080; // audio is always this?
-            p.datalen = (quint16)qToBigEndian((quint16)d.data.length());
+            p.datalen = (quint16)qToBigEndian((quint16)d.datain.length());
             p.sendseq = (quint16)qToBigEndian((quint16)client->sendAudioSeq); // THIS IS BIG ENDIAN!
             QByteArray t = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
-            t.append(d.data);
+            t.append(d.datain);
             QMutexLocker locker(&mutex);
             client->txSeqBuf.append(SEQBUFENTRY());
             client->txSeqBuf.last().seqNum = p.seq;

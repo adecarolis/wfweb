@@ -294,7 +294,8 @@ typedef union conninfo_packet {
                 quint32 civport;      // 0x7c
                 quint32 audioport;    // 0x80
                 quint32 txbuffer;     // 0x84
-                char unusedl[8];      // 0x88
+                quint8 convert;      // 0x88
+                char unusedl[7];      // 0x89
             };
         };
     };

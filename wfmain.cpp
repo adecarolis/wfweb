@@ -761,8 +761,7 @@ void wfmain::setDefPrefs()
     udpDefPrefs.audioRXCodec = 4;
     udpDefPrefs.audioTXSampleRate = 48000;
     udpDefPrefs.audioTXCodec = 4;
-
-
+    udpDefPrefs.resampleQuality = 4;
 }
 
 void wfmain::loadSettings()
@@ -878,6 +877,8 @@ void wfmain::loadSettings()
         ui->audioInputCombo->setCurrentIndex(audioInputIndex);
     }
 
+    udpPrefs.resampleQuality = settings.value("ResampleQuality", udpDefPrefs.resampleQuality).toInt();
+
     settings.endGroup();
 
     settings.beginGroup("Server");
@@ -985,6 +986,7 @@ void wfmain::saveSettings()
     settings.setValue("AudioTXCodec", udpPrefs.audioTXCodec);
     settings.setValue("AudioOutput", udpPrefs.audioOutput);
     settings.setValue("AudioInput", udpPrefs.audioInput);
+    settings.setValue("ResampleQuality", udpPrefs.resampleQuality);
     settings.endGroup();
 
     // Memory channels

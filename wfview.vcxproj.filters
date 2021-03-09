@@ -108,6 +108,9 @@
     <ClCompile Include="pttyhandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="resampler\resample.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="commhandler.h">
@@ -323,6 +326,10 @@
     <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />
+    <None Include="resources\wfview.png" />
+    <None Include="resources\wfview.png" />
+    <None Include="resources\wfview.png" />
+    <None Include="resources\wfview.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\install.sh">
@@ -337,6 +344,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="packettypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resampler\speex_resampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

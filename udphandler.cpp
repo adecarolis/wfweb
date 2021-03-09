@@ -15,7 +15,8 @@ udpHandler::udpHandler(udpPreferences prefs) :
     rxCodec(prefs.audioRXCodec),
     txCodec(prefs.audioTXCodec),
     audioInputPort(prefs.audioInput),
-    audioOutputPort(prefs.audioOutput)
+    audioOutputPort(prefs.audioOutput),
+    resampleQuality(prefs.resampleQuality)
 {
 
     this->port = this->controlPort;
@@ -150,6 +151,8 @@ void udpHandler::dataReceived()
                 control_packet_t in = (control_packet_t)r.constData();
                 if (in->type == 0x04) {
                     // If timer is active, stop it as they are obviously there!
+                    qDebug(logUdp()) << this->metaObject()->className() << ": Received I am here from: " <<datagram.senderAddress();
+
                     if (areYouThereTimer->isActive()) {
                         // send ping packets every second
                         areYouThereTimer->stop();
@@ -305,7 +308,7 @@ void udpHandler::dataReceived()
                         }
                         else {
                             civ = new udpCivData(localIP, radioIP, civPort);
-                            audio = new udpAudio(localIP, radioIP, audioPort, rxLatency, txLatency, rxSampleRate, rxCodec, txSampleRate, txCodec, audioOutputPort, audioInputPort);
+                            audio = new udpAudio(localIP, radioIP, audioPort, rxLatency, txLatency, rxSampleRate, rxCodec, txSampleRate, txCodec, audioOutputPort, audioInputPort,resampleQuality);
 
                             QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
                             QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
@@ -399,7 +402,7 @@ void udpHandler::sendRequestStream()
     p.civport = qToBigEndian((quint32)civPort);
     p.audioport = qToBigEndian((quint32)audioPort);
     p.txbuffer = qToBigEndian((quint32)txLatency);
-
+    p.convert = 1;
     sendTrackedPacket(QByteArray::fromRawData((const char*)p.packet, sizeof(p)));
     return;
 }
@@ -642,7 +645,7 @@ void udpCivData::dataReceived()
 
 
 // Audio stream
-udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QString outputPort, QString inputPort)
+udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QString outputPort, QString inputPort,quint8 resampleQuality)
 {
     qDebug(logUdp()) << "Starting udpAudio";
     this->localIP = local;
@@ -685,7 +688,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     rxaudio->moveToThread(rxAudioThread);
 
-    connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QString)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString)));
+    connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString, quint8)));
 
     qRegisterMetaType<audioPacket>();
     connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
@@ -704,7 +707,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     txaudio->moveToThread(txAudioThread);
 
-    connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool,QString)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString)));
+    connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool,QString,quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString,quint8)));
     connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
     
     rxAudioThread->start();
@@ -717,8 +720,8 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
     pingTimer->start(PING_PERIOD); // send ping packets every 100ms
 
-    emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, txLatency, txIsUlawCodec, true, inputPort);
-    emit setupRxAudio(rxNumSamples, rxChannelCount, rxSampleRate, txLatency, rxIsUlawCodec, false, outputPort);
+    emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, txLatency, txIsUlawCodec, true, inputPort,resampleQuality);
+    emit setupRxAudio(rxNumSamples, rxChannelCount, rxSampleRate, txLatency, rxIsUlawCodec, false, outputPort,resampleQuality);
 
     watchdogTimer = new QTimer();
     connect(watchdogTimer, &QTimer::timeout, this, &udpAudio::watchdog);
@@ -788,7 +791,12 @@ void udpAudio::sendTxAudio()
             p.len = sizeof(p) + partial.length();
             p.sentid = myId;
             p.rcvdid = remoteId;
-            p.ident = 0x0080; // TX audio is always this?
+            if (partial.length() == 0xa0) {
+                p.ident = 0x9781;
+            }
+            else {
+                p.ident = 0x0080; // TX audio is always this?
+            }
             p.datalen = (quint16)qToBigEndian((quint16)partial.length());
             p.sendseq = (quint16)qToBigEndian((quint16)sendAudioSeq); // THIS IS BIG ENDIAN!
             QByteArray tx = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
@@ -838,23 +846,18 @@ void udpAudio::dataReceived()
 
                 */
                 control_packet_t in = (control_packet_t)r.constData();
-                if (in->type != 0x01) {
-                    if (r.mid(0, 2) == QByteArrayLiteral("\x6c\x05") ||
-                        r.mid(0, 2) == QByteArrayLiteral("\x44\x02") ||
-                        r.mid(0, 2) == QByteArrayLiteral("\xd8\x03") ||
-                        r.mid(0, 2) == QByteArrayLiteral("\x70\x04"))
-                    {
-                        lastReceived = QTime::currentTime();
-                        audioPacket tempAudio;
-                        tempAudio.seq = in->seq;
-                        tempAudio.time = lastReceived;
-                        tempAudio.sent = 0;
-                        tempAudio.data = r.mid(0x18);
-                        // Prefer signal/slot to forward audio as it is thread/safe
-                        // Need to do more testing but latency appears fine.
-                        emit haveAudioData(tempAudio);
-                        //rxaudio->incomingAudio(tempAudio);
-                    }
+                if (in->type != 0x01 && in->len >= 0xAC) {
+                    // 0xac is the smallest possible audio packet.
+                    lastReceived = QTime::currentTime();
+                    audioPacket tempAudio;
+                    tempAudio.seq = in->seq;
+                    tempAudio.time = lastReceived;
+                    tempAudio.sent = 0;
+                    tempAudio.datain = r.mid(0x18);
+                    // Prefer signal/slot to forward audio as it is thread/safe
+                    // Need to do more testing but latency appears fine.
+                    emit haveAudioData(tempAudio);
+                    //rxaudio->incomingAudio(tempAudio);
                 }
                 break;
             }
@@ -956,7 +959,7 @@ void udpBase::dataReceived(QByteArray r)
                 }
             }
             if (in->type == 0x04) {
-                qDebug(logUdp()) << this->metaObject()->className() << ": Received I am here";
+                qDebug(logUdp()) << this->metaObject()->className() << ": Received I am here ";
                 areYouThereCounter = 0;
                 // I don't think that we will ever receive an "I am here" other than in response to "Are you there?"
                 remoteId = in->sentid;
