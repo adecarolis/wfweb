@@ -93,7 +93,7 @@ SOURCES += main.cpp\
     meter.cpp \
     qledlabel.cpp \
 	pttyhandler.cpp \
-	resampler/resample.cpp
+	resampler/resample.c
 
 HEADERS  += wfmain.h \
     commhandler.h \
