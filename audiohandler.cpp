@@ -893,7 +893,7 @@ void audioHandler::reinit()
             delete audioOutput;
         audioOutput = Q_NULLPTR;
         audioOutput = new QAudioOutput(deviceInfo, format, this);
-		audioOutput->setBufferSize((radioSampleRate / 25) * (radioSampleBits / 8) * 2);
+		audioOutput->setBufferSize(chunkSize);
 		connect(audioOutput, SIGNAL(notify()), SLOT(notified()));
         connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
     }
