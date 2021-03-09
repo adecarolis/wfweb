@@ -778,7 +778,8 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 
 	//this->chunkSize = (INTERNAL_SAMPLE_RATE / 25) * (radioSampleBits / 8)/2;
 
-	this->chunkSize = 1920*radioChannels;
+	// chunk size is always relative to Internal Sample Rate.
+	this->chunkSize = (INTERNAL_SAMPLE_RATE / 25) * radioChannels;
 
 	qDebug(logAudio()) << "Audio chunkSize: " << this->chunkSize;
 
@@ -893,7 +894,10 @@ void audioHandler::reinit()
             delete audioOutput;
         audioOutput = Q_NULLPTR;
         audioOutput = new QAudioOutput(deviceInfo, format, this);
-		audioOutput->setBufferSize(chunkSize*4);
+
+		// This seems to only be needed on Linux but is critical in aligning buffer sizes.
+		audioOutput->setBufferSize(chunkSize*4); 
+
 		connect(audioOutput, SIGNAL(notify()), SLOT(notified()));
         connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
     }
@@ -1233,12 +1237,14 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 						quint32 inFrames = (packet->datain.length() / 2) / radioChannels;
 						packet->dataout.resize(outFrames * 2 * radioChannels); // Preset the output buffer size.
 
+						const qint16* in = (qint16*)packet->datain.constData();
+						qint16* out = (qint16*)packet->dataout.data();
 						int err = 0;
 						if (this->radioChannels == 1) {
-							err = wf_resampler_process_int(resampler, 0, (const qint16*)packet->datain.constData(), &inFrames, (qint16*)packet->dataout.data(), &outFrames);
+							err = wf_resampler_process_int(resampler, 0, in, &inFrames, out, &outFrames);
 						}
 						else {
-							err = wf_resampler_process_interleaved_int(resampler, (const qint16*)packet->datain.constData(), &inFrames, (qint16*)packet->dataout.data(), &outFrames);
+							err = wf_resampler_process_interleaved_int(resampler, in, &inFrames, out, &outFrames);
 						}
 						if (err) {
 							qDebug(logAudio()) << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
@@ -1247,7 +1253,8 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 						//qDebug(logAudio()) << "Resampler run inLen:" << packet->datain.length() << " outLen:" << packet->dataout.length();
 						if (radioSampleBits == 8)
 						{
-							packet->datain = packet->dataout; // Copy packet back to input buffer.
+							packet->datain=packet->dataout; // Copy output packet back to input buffer.
+							packet->dataout.clear(); // Buffer MUST be cleared ready to be re-filled by the upsampling below.
 						}
 					}
 					else if (radioSampleBits == 16 ){
@@ -1276,7 +1283,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 							f++;
 						}
 					}
-					ret.append(packet->dataout);
+					ret=packet->dataout;
 					packet = audioBuffer.erase(packet); // returns next packet
 				}
 				else {
