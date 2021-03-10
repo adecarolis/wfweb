@@ -1,6 +1,11 @@
 
 # CHANGELOG
 
+- 20210310	audio resampling added / opus
+		updates on virtual serial port 
+		fixed input combo boxes from growing
+		fixed 4:15 rollover/disconnect issue		
+
 - 20210304	Tuning steps! Still need to zero out those lower digits while scrolling
     		if box is checked.
 
