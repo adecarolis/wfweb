@@ -867,7 +867,7 @@ bool audioHandler::setDevice(QAudioDeviceInfo deviceInfo)
 void audioHandler::reinit()
 {
     qDebug(logAudio()) << this->metaObject()->className() << ": reinit() running";
-    if (audioOutput && audioOutput->state() != QAudio::StoppedState) {
+    if (audioOutput != Q_NULLPTR && audioOutput->state() != QAudio::StoppedState) {
         this->stop();
     }
 
@@ -938,13 +938,13 @@ void audioHandler::flush()
 
 void audioHandler::stop()
 {
-    if (audioOutput && audioOutput->state() != QAudio::StoppedState) {
+    if (audioOutput != Q_NULLPTR && audioOutput->state() != QAudio::StoppedState) {
         // Stop audio output
         audioOutput->stop();
         this->close();
     }
 
-    if (audioInput && audioInput->state() != QAudio::StoppedState) {
+    if (audioInput != Q_NULLPTR && audioInput->state() != QAudio::StoppedState) {
         // Stop audio output
         audioInput->stop();
         this->close();
@@ -962,17 +962,17 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
     // Calculate output length, always full samples
 	int sentlen = 0;
 
-
 	//qDebug(logAudio()) << "Looking for: " << maxlen << " bytes";
 
 	// We must lock the mutex for the entire time that the buffer may be modified.
-	QMutexLocker locker(&mutex);
 	// Get next packet from buffer.
 	if (!audioBuffer.isEmpty())
 	{
 
 		// Output buffer is ALWAYS 16 bit.
+        QMutexLocker locker(&mutex);
 		auto packet = audioBuffer.begin();
+        
 		while (packet != audioBuffer.end() && sentlen < maxlen)
 		{
 			int timediff = packet->time.msecsTo(QTime::currentTime());
@@ -984,13 +984,13 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 			{
 				int send = qMin((int)maxlen-sentlen, packet->dataout.length() - packet->sent);
 				lastSeq = packet->seq;
-				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived on time " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
+				//qDebug(logAudio()) << "Packet " << Qt::hex << packet->seq << " arrived on time " << Qt::dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 
 				memcpy(data + sentlen, packet->dataout.constData() + packet->sent, send);
 
 				sentlen = sentlen + send;
 
-				if (send == packet->dataout.length())
+				if (send == packet->dataout.length() - packet->sent)
 				{
 					//qDebug(logAudio()) << "Get next packet";
 					packet = audioBuffer.erase(packet); // returns next packet
@@ -1004,7 +1004,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 				{
 					// We ended-up with a partial packet left so store where we left off.
 					packet->sent = send;
-					qDebug(logAudio()) << "Packet " << hex << packet->seq << " is partial, sent=" << dec << packet->sent << " sentlen=" << sentlen;
+					//qDebug(logAudio()) << "Packet " << Qt::hex << packet->seq << " is partial, sent=" << Qt::dec << packet->sent << " sentlen=" << sentlen;
 					break;
 				}
 			} else {
@@ -1084,31 +1084,31 @@ void audioHandler::stateChanged(QAudio::State state)
 	{
 		case QAudio::IdleState:
 		{
-			qDebug(logAudio()) << "Audio now in idle state: " << audioBuffer.length() << " packets in buffer";
-			if (audioOutput->error() == QAudio::UnderrunError)
+			qDebug(logAudio()) << "Audio now in idle state: " << audioBuffer.length() << " packets in buffer, isInput=" << isInput;
+			if (audioOutput != Q_NULLPTR && audioOutput->error() == QAudio::UnderrunError)
 			{
-				qDebug(logAudio()) << this->metaObject()->className() << "RX:Buffer underrun";
+				qDebug(logAudio()) << this->metaObject()->className() << "RX:Buffer underrun, isInput=" << isInput;
 				audioOutput->suspend();
 			}
 			break;
 		}
 		case QAudio::ActiveState:
 		{
-			qDebug(logAudio()) << "Audio now in active state: " << audioBuffer.length() << " packets in buffer";
+			qDebug(logAudio()) << "Audio now in active state: " << audioBuffer.length() << " packets in buffer, isInput=" << isInput;
 			break;
 		}
 		case QAudio::SuspendedState:
 		{
-			qDebug(logAudio()) << "Audio now in suspended state: " << audioBuffer.length() << " packets in buffer";
+			qDebug(logAudio()) << "Audio now in suspended state: " << audioBuffer.length() << " packets in buffer, isInput=" << isInput;
 			break;
 		}
 		case QAudio::StoppedState:
 		{
-			qDebug(logAudio()) << "Audio now in stopped state: " << audioBuffer.length() << " packets in buffer";
+			qDebug(logAudio()) << "Audio now in stopped state: " << audioBuffer.length() << " packets in buffer, isInput=" << isInput;
 			break;
 		}
 		default: {
-			qDebug(logAudio()) << "Unhandled audio state: " << audioBuffer.length() << " packets in buffer" << state;
+			qDebug(logAudio()) << "Unhandled audio state: " << audioBuffer.length() << " packets in buffer, isInput=" << isInput;
 		}
 	}
 }
@@ -1140,7 +1140,7 @@ void audioHandler::incomingAudio(audioPacket data)
 			data.datain = inPacket; // Replace incoming data with converted.
 		}
 
-		//qDebug(logAudio()) << "Adding packet to buffer:" << (*packet).seq << ": " << inPacket.length();
+		//qDebug(logAudio()) << "Adding packet to buffer:" << data.seq << ": " << data.datain.length();
 
 		/*	We now have an array of 16bit samples in the NATIVE samplerate of the radio
 			If the radio sample rate is below 48000, we need to resample.
@@ -1274,7 +1274,6 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 								outdata = (quint8)(((qFromLittleEndian<qint16>(in + f) >> 8) ^ 0x80) & 0xff);
 							}
 							packet->dataout[f] = (char)outdata;
-							f++;
 						}
 					}
 					ret=packet->dataout;

@@ -35,9 +35,12 @@ DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 DEFINES += OUTSIDE_SPEEX
 DEFINES += RANDOM_PREFIX=wf
 
-linux:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
+macos:INCLUDEPATH += /usr/local/include
+macos:LIBS += -L/usr/local/lib
 
-linux:DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""
+!win32:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
+
+!win32:DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""
 
 win32:INCLUDEPATH += c:/qcustomplot
 win32:DEFINES += HOST=1
@@ -72,7 +75,7 @@ CONFIG(debug, release|debug) {
   else: QCPLIB = qcustomplot
 }
 
-QCPLIB = qcustomplot
+# QCPLIB = qcustomplot
 
 LIBS += -L./ -l$$QCPLIB
 

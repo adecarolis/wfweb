@@ -688,13 +688,15 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     rxaudio->moveToThread(rxAudioThread);
 
+    rxAudioThread->start();
+
     connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString, quint8)));
 
     qRegisterMetaType<audioPacket>();
     connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
     connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
-
+    
     if (txCodec == 0x01)
         txIsUlawCodec = true;
     else if (txCodec == 0x04)
@@ -706,13 +708,11 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     txAudioThread = new QThread(this);
 
     txaudio->moveToThread(txAudioThread);
-
+    
+    txAudioThread->start();
+    
     connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool,QString,quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString,quint8)));
     connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
-    
-    rxAudioThread->start();
-
-    txAudioThread->start();
 
     sendControl(false, 0x03, 0x00); // First connect packet
 
@@ -744,12 +744,12 @@ udpAudio::~udpAudio()
         delete txAudioTimer;
     }
 
-    if (rxAudioThread) {
+    if (rxAudioThread != Q_NULLPTR) {
         rxAudioThread->quit();
         rxAudioThread->wait();
     }
 
-    if (txAudioThread) {
+    if (txAudioThread != Q_NULLPTR) {
         txAudioThread->quit();
         txAudioThread->wait();
     }
@@ -778,7 +778,7 @@ void udpAudio::watchdog()
 void udpAudio::sendTxAudio()
 {
 
-    if (txaudio->isChunkAvailable()) {
+    if (txaudio && txaudio->isChunkAvailable()) {
         QByteArray audio;
         txaudio->getNextAudioChunk(audio);
         int counter = 1;
