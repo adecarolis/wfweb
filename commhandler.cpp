@@ -149,7 +149,7 @@ void commHandler::openPort()
     if(success)
     {
         isConnected = true;
-        //qDebug(logSerial()) << "Opened port!";
+        qDebug(logSerial()) << "Opened port: " << portName;
         return;
     } else {
         // debug?
