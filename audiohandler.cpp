@@ -984,7 +984,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 			{
 				int send = qMin((int)maxlen-sentlen, packet->dataout.length() - packet->sent);
 				lastSeq = packet->seq;
-				//qDebug(logAudio()) << "Packet " << Qt::hex << packet->seq << " arrived on time " << Qt::dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
+				//qDebug(logAudio()) << "Packet " << hex << packet->seq << " arrived on time " << Qt::dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 
 				memcpy(data + sentlen, packet->dataout.constData() + packet->sent, send);
 
@@ -1004,7 +1004,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 				{
 					// We ended-up with a partial packet left so store where we left off.
 					packet->sent = send;
-					//qDebug(logAudio()) << "Packet " << Qt::hex << packet->seq << " is partial, sent=" << Qt::dec << packet->sent << " sentlen=" << sentlen;
+					//qDebug(logAudio()) << "Packet " << hex << packet->seq << " is partial, sent=" << Qt::dec << packet->sent << " sentlen=" << sentlen;
 					break;
 				}
 			} else {
