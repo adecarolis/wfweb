@@ -1429,7 +1429,7 @@ void wfmain::setAppTheme(bool isCustom)
 {
     if(isCustom)
     {
-#ifdef Q_OS_WIN
+#ifndef Q_OS_LINUX
         QFile f(":"+prefs.stylesheetPath); // built-in resource
 #else
         QFile f("/usr/share/wfview/stylesheets/" + prefs.stylesheetPath);
