@@ -2491,9 +2491,6 @@ void wfmain::on_freqDial_valueChanged(int value)
         ui->freqDial->blockSignals(false);
         return;
     }
-
-    // qDebug(logSystem()) << "Old value: " << oldFreqDialVal << " New value: " << value ;
-
     
     if(value == 0)
     {
@@ -2521,7 +2518,7 @@ void wfmain::on_freqDial_valueChanged(int value)
     {
         // use crossing path, it is shorter
         delta = crossingPath;
-        // mnow calculate the direction:
+        // now calculate the direction:
         if( value > oldFreqDialVal)
         {
             // CW
@@ -2531,16 +2528,13 @@ void wfmain::on_freqDial_valueChanged(int value)
             delta *= -1;
         }
 
-
     } else {
         // use direct path
         // crossing path is larger than direct path, use direct path
         //delta = directPath;
         // now calculate the direction
         delta = value - oldFreqDialVal;
-
     }
-
 
     newFreqMhz = knobFreqMhz + ((double)delta  * stepSize);
 
@@ -2572,8 +2566,6 @@ void wfmain::on_freqDial_valueChanged(int value)
 
     this->freqMhz = knobFreqMhz;
     emit setFrequency(newFreqMhz);
-    //emit getFrequency();
-
 }
 
 void wfmain::receiveBandStackReg(float freq, char mode, bool dataOn)
