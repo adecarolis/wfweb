@@ -2491,9 +2491,6 @@ void wfmain::on_freqDial_valueChanged(int value)
         ui->freqDial->blockSignals(false);
         return;
     }
-
-    // qDebug(logSystem()) << "Old value: " << oldFreqDialVal << " New value: " << value ;
-
     
     if(value == 0)
     {
@@ -2521,7 +2518,7 @@ void wfmain::on_freqDial_valueChanged(int value)
     {
         // use crossing path, it is shorter
         delta = crossingPath;
-        // mnow calculate the direction:
+        // now calculate the direction:
         if( value > oldFreqDialVal)
         {
             // CW
@@ -2531,28 +2528,34 @@ void wfmain::on_freqDial_valueChanged(int value)
             delta *= -1;
         }
 
-
     } else {
         // use direct path
         // crossing path is larger than direct path, use direct path
         //delta = directPath;
         // now calculate the direction
         delta = value - oldFreqDialVal;
-
     }
 
+    newFreqMhz = knobFreqMhz + ((double)delta  * stepSize);
 
-    newFreqMhz = knobFreqMhz + (delta  * stepSize);
-
-    // qDebug(logSystem()) << "old freq: " << knobFreqMhz << " new freq: " << newFreqMhz << "knobDelta: " << delta << " freq delta: " << newFreqMhz - knobFreqMhz;
-
-    if(ui->tuningFloorZerosChk->isChecked())
+    if(ui->tuningFloorZerosChk->isChecked() && (stepSize > (double)0.0000019))
     {
-        // 1000000 = 1 Hz
-        //  100000 = 10 Hz
-        // It will round but not nicely. This is clearly the wrong way to do this.
-        double fudge = 1000000 / ( stepSize*1E6);
-        newFreqMhz = (double)round(newFreqMhz*fudge) / fudge;
+        unsigned int Hz = (newFreqMhz - ((int)newFreqMhz))*1E6;
+        unsigned int MHz = (unsigned int)newFreqMhz;
+        unsigned int tsHz = ((float)(tsKnobMHz*1000000.0));
+
+        // The following is necessary because the newFreqMhz calculated prior to this if(..checked..) code is prone to errors from
+        // multiplying the delta times the stepSize. Basically, an upward step of 100 hz can sometimes come out as 99hz.
+        // Thus, the following code actually rounds up or down as needed, depending upon the level of "error" when the float and int
+        // calculations are compared.
+        if( ((float(Hz)/float(tsHz)) - (float)((int)Hz/(int)tsHz)) > 0.5  )
+        {
+            Hz = ((Hz / tsHz) + 1) * (tsHz);
+        } else {
+            Hz = (Hz / tsHz) * (tsHz);
+        }
+
+        newFreqMhz = MHz + (Hz/1E6);
     }
 
     this->knobFreqMhz = newFreqMhz; // the frequency we think we should be on.
@@ -2563,8 +2566,6 @@ void wfmain::on_freqDial_valueChanged(int value)
 
     this->freqMhz = knobFreqMhz;
     emit setFrequency(newFreqMhz);
-    //emit getFrequency();
-
 }
 
 void wfmain::receiveBandStackReg(float freq, char mode, bool dataOn)
