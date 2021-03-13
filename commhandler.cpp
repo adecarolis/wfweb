@@ -152,15 +152,12 @@ void commHandler::openPort()
         qDebug(logSerial()) << "Opened port: " << portName;
         return;
     } else {
-        // debug?
         qDebug(logSerial()) << "Could not open serial port " << portName << " , please restart.";
         isConnected = false;
         serialError = true;
         emit haveSerialPortError(portName, "Could not open port. Please restart.");
         return;
     }
-
-
 }
 
 void commHandler::closePort()
@@ -201,7 +198,6 @@ void commHandler::printHex(const QByteArray &pdata, bool printVert, bool printHo
     {
         for(int i=0; i < strings.length(); i++)
         {
-            //sdata = QString(strings.at(i));
             qDebug(logSerial()) << strings.at(i);
         }
     }
