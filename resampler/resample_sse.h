@@ -39,7 +39,7 @@
 #define OVERRIDE_INNER_PRODUCT_SINGLE
 static inline float inner_product_single(const float *a, const float *b, unsigned int len)
 {
-   int i;
+   unsigned int i;
    float ret;
    __m128 sum = _mm_setzero_ps();
    for (i=0;i<len;i+=8)
@@ -55,7 +55,7 @@ static inline float inner_product_single(const float *a, const float *b, unsigne
 
 #define OVERRIDE_INTERPOLATE_PRODUCT_SINGLE
 static inline float interpolate_product_single(const float *a, const float *b, unsigned int len, const spx_uint32_t oversample, float *frac) {
-  int i;
+  unsigned int i;
   float ret;
   __m128 sum = _mm_setzero_ps();
   __m128 f = _mm_loadu_ps(frac);
@@ -77,7 +77,7 @@ static inline float interpolate_product_single(const float *a, const float *b, u
 
 static inline double inner_product_double(const float *a, const float *b, unsigned int len)
 {
-   int i;
+   unsigned int i;
    double ret;
    __m128d sum = _mm_setzero_pd();
    __m128 t;
@@ -98,7 +98,7 @@ static inline double inner_product_double(const float *a, const float *b, unsign
 
 #define OVERRIDE_INTERPOLATE_PRODUCT_DOUBLE
 static inline double interpolate_product_double(const float *a, const float *b, unsigned int len, const spx_uint32_t oversample, float *frac) {
-  int i;
+  unsigned int i;
   double ret;
   __m128d sum;
   __m128d sum1 = _mm_setzero_pd();

@@ -103,7 +103,6 @@ int main(int argc, char *argv[])
 
 
     return a.exec();
-    qInfo(logSystem()) << "wfview is finished";
 
 }
 

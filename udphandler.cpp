@@ -1040,7 +1040,7 @@ void udpBase::dataReceived(QByteArray r)
                 return s.seqNum == cs;
             });
             if (match == txSeqBuf.end()) {
-                qDebug(logUdp()) << this->metaObject()->className() << ": Requested packet " << hex << seq << " not found";
+                qDebug(logUdp()) << this->metaObject()->className() << ": Requested packet " << Qt::hex << seq << " not found";
                 // Just send idle packet.
                 sendControl(false, 0, match->seqNum);
             }
@@ -1067,7 +1067,7 @@ void udpBase::dataReceived(QByteArray r)
             std::sort(rxSeqBuf.begin(), rxSeqBuf.end());
             if (in->seq < rxSeqBuf.front())
             {
-                qDebug(logUdp()) << this->metaObject()->className() << ": ******* seq number may have rolled over ****** previous highest: " << hex << rxSeqBuf.back() << " current: " << hex << in->seq;
+                qDebug(logUdp()) << this->metaObject()->className() << ": ******* seq number may have rolled over ****** previous highest: " << Qt::hex << rxSeqBuf.back() << " current: " << Qt::hex << in->seq;
 
                 // Looks like it has rolled over so clear buffer and start again.
                 rxSeqBuf.clear();
@@ -1082,7 +1082,7 @@ void udpBase::dataReceived(QByteArray r)
                 auto s = std::find_if(rxMissing.begin(), rxMissing.end(), [&cs = in->seq](SEQBUFENTRY& s) { return s.seqNum == cs; });
                 if (s != rxMissing.end())
                 {
-                    qDebug(logUdp()) << this->metaObject()->className() << ": Missing SEQ has been received! " << hex << in->seq;
+                    qDebug(logUdp()) << this->metaObject()->className() << ": Missing SEQ has been received! " << Qt::hex << in->seq;
                     s = rxMissing.erase(s);
                 }
             }
@@ -1168,7 +1168,7 @@ void udpBase::sendRetransmitRequest()
         if (missingSeqs.length() == 4) // This is just a single missing packet so send using a control.
         {
             p.seq = (missingSeqs[0] & 0xff) | (quint16)(missingSeqs[1] << 8);
-            qDebug(logUdp()) << this->metaObject()->className() << ": sending request for missing packet : " << hex << p.seq;
+            qDebug(logUdp()) << this->metaObject()->className() << ": sending request for missing packet : " << Qt::hex << p.seq;
             QMutexLocker udplocker(&udpMutex);
             udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
         }

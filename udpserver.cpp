@@ -584,7 +584,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
                     // Found matching entry?
                     // Don't constantly retransmit the same packet, give-up eventually
                     QMutexLocker locker(&mutex);
-                    qDebug(logUdpServer()) << this->metaObject()->className() << ": Sending retransmit of " << hex << match->seqNum;
+                    qDebug(logUdpServer()) << this->metaObject()->className() << ": Sending retransmit of " << Qt::hex << match->seqNum;
                     match->retransmitCount++;
                     current->socket->writeDatagram(match->data, current->ipAddress, current->port);
                 } else {
@@ -611,7 +611,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
                 return s.seqNum == cs;
             });
             if (match == current->txSeqBuf.end()) {
-                qDebug(logUdpServer()) << current->ipAddress.toString() << ":" << current->port << ": Requested packet " << hex << in->seq << " not found";
+                qDebug(logUdpServer()) << current->ipAddress.toString() << ":" << current->port << ": Requested packet " << Qt::hex << in->seq << " not found";
                 // Just send idle packet.
                 sendControl(current, 0, in->seq);
             }
@@ -620,7 +620,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
                 // Found matching entry?
                 // Send "untracked" as it has already been sent once.
                 QMutexLocker locker(&mutex);
-                qDebug(logUdpServer()) << current->ipAddress.toString() << ":" << current->port << ": Sending retransmit of " << hex << match->seqNum;
+                qDebug(logUdpServer()) << current->ipAddress.toString() << ":" << current->port << ": Sending retransmit of " << Qt::hex << match->seqNum;
                 match->retransmitCount++;
                 current->socket->writeDatagram(match->data, current->ipAddress, current->port);
                 match++;
@@ -639,7 +639,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
             std::sort(current->rxSeqBuf.begin(), current->rxSeqBuf.end());
             if (in->seq < current->rxSeqBuf.front())
             {
-                qDebug(logUdpServer()) << current->ipAddress.toString() << ": ******* seq number may have rolled over ****** previous highest: " << hex << current->rxSeqBuf.back() << " current: " << hex << in->seq;
+                qDebug(logUdpServer()) << current->ipAddress.toString() << ": ******* seq number may have rolled over ****** previous highest: " << Qt::hex << current->rxSeqBuf.back() << " current: " << Qt::hex << in->seq;
                 // Looks like it has rolled over so clear buffer and start again.
                 current->rxSeqBuf.clear();
                 return;
@@ -653,7 +653,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
                 auto s = std::find_if(current->rxMissing.begin(), current->rxMissing.end(), [&cs = in->seq](SEQBUFENTRY& s) { return s.seqNum == cs; });
                 if (s != current->rxMissing.end())
                 {
-                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Missing SEQ has been received! " << hex << in->seq;
+                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Missing SEQ has been received! " << Qt::hex << in->seq;
                     s = current->rxMissing.erase(s);
                 }
             }
@@ -1163,7 +1163,7 @@ void udpServer::sendRetransmitRequest(CLIENT *c)
         if (missingSeqs.length() == 4) // This is just a single missing packet so send using a control.
         {
             p.seq = (missingSeqs[0] & 0xff) | (quint16)(missingSeqs[1] << 8);
-            qDebug(logUdpServer()) << c->ipAddress.toString() << ": sending request for missing packet : " << hex << p.seq;
+            qDebug(logUdpServer()) << c->ipAddress.toString() << ": sending request for missing packet : " << Qt::hex << p.seq;
             c->socket->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), c->ipAddress, c->port);
         }
         else

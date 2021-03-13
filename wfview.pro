@@ -38,6 +38,8 @@ DEFINES += RANDOM_PREFIX=wf
 macos:INCLUDEPATH += /usr/local/include
 macos:LIBS += -L/usr/local/lib
 
+macx:ICON = resources/wfview.icns
+
 !win32:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
 
 !win32:DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""

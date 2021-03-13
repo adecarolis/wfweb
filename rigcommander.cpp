@@ -2204,7 +2204,7 @@ void rigCommander::determineRigCaps()
         payloadPrefix.append(civAddr);
         payloadPrefix.append((char)compCivAddr);
         // if there is a compile-time error, remove the following line, the "hex" part is the issue:
-        qDebug(logRig()) << "Using incomingCIVAddr: (int): " << this->civAddr << " hex: " << hex << this->civAddr;
+        qDebug(logRig()) << "Using incomingCIVAddr: (int): " << this->civAddr << " Qt::hex: " << Qt::hex << this->civAddr;
         emit discoveredRigID(rigCaps);
     } else {
         emit haveRigID(rigCaps);
