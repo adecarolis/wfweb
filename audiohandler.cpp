@@ -776,30 +776,16 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
     this->radioSampleRate = samplerate;
 	this->radioChannels = channels;
 
-	//this->chunkSize = (INTERNAL_SAMPLE_RATE / 25) * (radioSampleBits / 8)/2;
-
 	// chunk size is always relative to Internal Sample Rate.
 	this->chunkSize = (INTERNAL_SAMPLE_RATE / 25) * radioChannels;
 
 	qDebug(logAudio()) << "Audio chunkSize: " << this->chunkSize;
 
 	int resample_error=0;
-	if (isinput) {
-		resampler = wf_resampler_init(radioChannels, INTERNAL_SAMPLE_RATE, samplerate, resampleQuality, &resample_error);
-	}
-	else
-	{
-		resampler = wf_resampler_init(radioChannels, samplerate, INTERNAL_SAMPLE_RATE, resampleQuality, &resample_error);
-	}
-
-
-	wf_resampler_get_ratio(resampler, &ratioNum, &ratioDen);
-	
-	qDebug(logAudio()) << "wf_resampler_init() returned: " << resample_error << " ratioNum" << ratioNum << " ratioDen" << ratioDen << " input " << isinput;
-
-	qDebug(logAudio()) << "Got audio port name: " << port;
 
 	if (isInput) {
+		resampler = wf_resampler_init(radioChannels, INTERNAL_SAMPLE_RATE, samplerate, resampleQuality, &resample_error);
+
 		const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
 		for (const QAudioDeviceInfo& deviceInfo : deviceInfos) {
 			if (deviceInfo.deviceName() == port) {
@@ -815,6 +801,8 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	}
 	else
 	{
+		resampler = wf_resampler_init(radioChannels, samplerate, INTERNAL_SAMPLE_RATE, resampleQuality, &resample_error);
+
 		const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
 		for (const QAudioDeviceInfo& deviceInfo : deviceInfos) {
 			if (deviceInfo.deviceName() == port) {
@@ -828,7 +816,13 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 			isInitialized = setDevice(QAudioDeviceInfo::defaultOutputDevice());
 		}
 	}
-    return isInitialized;
+
+	wf_resampler_get_ratio(resampler, &ratioNum, &ratioDen);
+	qDebug(logAudio()) << "wf_resampler_init() returned: " << resample_error << " ratioNum" << ratioNum << " ratioDen" << ratioDen << " input " << isinput;
+
+	qDebug(logAudio()) << "Got audio port name: " << port;
+	
+	return isInitialized;
 }
 
 

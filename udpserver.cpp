@@ -1086,11 +1086,13 @@ void udpServer::receiveAudioData(const audioPacket &d)
     return;
 }
 
-
+/// <summary>
+/// Find all gaps in received packets and then send requests for them.
+/// This will run every 100ms so out-of-sequence packets will not trigger a retransmit request.
+/// </summary>
+/// <param name="c"></param>
 void udpServer::sendRetransmitRequest(CLIENT *c)
 {
-    // Find all gaps in received packets and then send requests for them.
-    // This will run every 100ms so out-of-sequence packets will not trigger a retransmit request.
 
     QMutexLocker locker(&mutex);
 
@@ -1174,8 +1176,12 @@ void udpServer::sendRetransmitRequest(CLIENT *c)
 }
 
 
-// This function is passed a pointer to the list of connection objects and a pointer to the object itself
-// Needs to stop and delete all timers, remove the connection from the list and delete the connection.
+/// <summary>
+/// This function is passed a pointer to the list of connection objects and a pointer to the object itself
+/// Needs to stop and delete all timers, remove the connection from the list and delete the connection. 
+/// </summary>
+/// <param name="l"></param>
+/// <param name="c"></param>
 void udpServer::deleteConnection(QList<CLIENT*> *l, CLIENT* c)
 {
     qDebug(logUdpServer()) << "Deleting connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
