@@ -976,15 +976,24 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 		while (packet != audioBuffer.end() && sentlen < maxlen)
 		{
 			int timediff = packet->time.msecsTo(QTime::currentTime());
+            
 			if (timediff > (int)latency * 2) {
                 qDebug(logAudio()) << "Packet " << hex << packet->seq <<
                     " arrived too late (increase rx latency!) " <<
                     dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
                 while (packet !=audioBuffer.end() && timediff > (int)latency) {
+                    timediff = packet->time.msecsTo(QTime::currentTime());
+                    lastSeq=packet->seq;
                     packet = audioBuffer.erase(packet); // returns next packet
                 }
+                if (packet == audioBuffer.end()) {
+                    break;
+                }
 			}
-			else if (packet->seq == lastSeq+1 || packet->seq <= lastSeq)
+            
+            // If we got here then packet time must be within latency threshold
+            
+			if (packet->seq == lastSeq+1 || packet->seq <= lastSeq)
 			{
 				int send = qMin((int)maxlen-sentlen, packet->dataout.length() - packet->sent);
 				lastSeq = packet->seq;
@@ -999,20 +1008,14 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 					//qDebug(logAudio()) << "Get next packet";
 					packet = audioBuffer.erase(packet); // returns next packet
 				} 
-				else if (send == 0)
-				{
-					// We have no more space or no packets so just break.
-					break;
-				}
 				else
 				{
-					// We ended-up with a partial packet left so store where we left off.
-					packet->sent = send;
-					//qDebug(logAudio()) << "Packet " << hex << packet->seq << " is partial, sent=" << Qt::dec << packet->sent << " sentlen=" << sentlen;
-					break;
-				}
+					// Store sent amount (could be zero if audioOutput buffer full) then break.
+                    packet->sent = send;
+                    break;
+                }
 			} else {
-				qDebug(logAudio()) << "Missing audio packet(s) from: " << lastSeq + 1 << " to " << packet->seq - 1;
+				qDebug(logAudio()) << "Missing audio packet(s) from: " << hex << lastSeq + 1 << " to " << hex << packet->seq - 1;
 				lastSeq = packet->seq;
 			}
 		}
