@@ -24,7 +24,7 @@
 #define INTERNAL_SAMPLE_RATE 48000
 
 struct audioPacket {
-    quint16 seq;
+    quint32 seq;
     QTime time;
     quint16 sent;
     QByteArray datain;
@@ -85,7 +85,7 @@ private:
     int             chunkSize;
     bool            chunkAvailable;
 
-    quint16         lastSeq;
+    quint32        lastSeq;
 
     QAudioFormat     format;
     QAudioDeviceInfo deviceInfo;

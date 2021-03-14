@@ -846,11 +846,19 @@ void udpAudio::dataReceived()
 
                 */
                 control_packet_t in = (control_packet_t)r.constData();
+
+                
                 if (in->type != 0x01 && in->len >= 0xAC) {
+                    if (in->seq == 0)
+                    {
+                        // Seq number has rolled over.
+                        seqPrefix++;
+                    }
+                    
                     // 0xac is the smallest possible audio packet.
                     lastReceived = QTime::currentTime();
                     audioPacket tempAudio;
-                    tempAudio.seq = in->seq;
+                    tempAudio.seq = (quint32)seqPrefix << 16 | in->seq;
                     tempAudio.time = lastReceived;
                     tempAudio.sent = 0;
                     tempAudio.datain = r.mid(0x18);
@@ -1067,8 +1075,8 @@ void udpBase::dataReceived(QByteArray r)
             std::sort(rxSeqBuf.begin(), rxSeqBuf.end());
             if (in->seq < rxSeqBuf.front())
             {
-                qDebug(logUdp()) << this->metaObject()->className() << ": ******* seq number may have rolled over ****** previous highest: " << hex << rxSeqBuf.back() << " current: " << hex << in->seq;
-
+                qDebug(logUdp()) << this->metaObject()->className() << ": ******* seq number has rolled over ****** previous highest: " << hex << rxSeqBuf.back() << " current: " << hex << in->seq;
+                //seqPrefix++;
                 // Looks like it has rolled over so clear buffer and start again.
                 rxSeqBuf.clear();
                 return;

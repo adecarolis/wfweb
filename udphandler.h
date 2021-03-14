@@ -129,6 +129,8 @@ public:
 	quint32 packetsSent=0;
 	quint32 packetsLost=0;
 
+    quint16 seqPrefix=0;
+
 private:
 	void sendRetransmitRequest();
 

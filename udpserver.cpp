@@ -620,7 +620,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
                 // Found matching entry?
                 // Send "untracked" as it has already been sent once.
                 QMutexLocker locker(&mutex);
-                qDebug(logUdpServer()) << current->ipAddress.toString() << ":" << current->port << ": Sending retransmit of " << Qt::hex << match->seqNum;
+                qDebug(logUdpServer()) << current->ipAddress.toString() << ":" << current->port << ": Sending retransmit of " << hex << match->seqNum;
                 match->retransmitCount++;
                 current->socket->writeDatagram(match->data, current->ipAddress, current->port);
                 match++;
