@@ -35,10 +35,11 @@ DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 DEFINES += OUTSIDE_SPEEX
 DEFINES += RANDOM_PREFIX=wf
 
-macos:INCLUDEPATH += /usr/local/include
-macos:LIBS += -L/usr/local/lib
+macx:INCLUDEPATH += /usr/local/include
+macx:LIBS += -L/usr/local/lib
 
-macx:ICON = resources/wfview.icns
+macx:ICON = wfview.icns
+
 
 !win32:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
 
