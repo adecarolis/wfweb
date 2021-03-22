@@ -827,6 +827,15 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	return isInitialized;
 }
 
+void audioHandler::setVolume(quint8 volume)
+{
+	if (audioOutput != Q_NULLPTR) {
+		audioOutput->setVolume((qreal)(volume / 255.0));
+	}
+	else if (audioInput != Q_NULLPTR) {
+		audioInput->setVolume((qreal)(volume / 255.0));
+	}
+}
 
 bool audioHandler::setDevice(QAudioDeviceInfo deviceInfo)
 {

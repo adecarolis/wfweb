@@ -46,7 +46,7 @@ public:
     bool setDevice(QAudioDeviceInfo deviceInfo);
 
     void start();
-    void setVolume(float volume);
+    void setVolume(quint8 volume);
     void flush();
     void stop();
 
