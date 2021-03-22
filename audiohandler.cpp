@@ -745,9 +745,11 @@ audioHandler::~audioHandler()
 {
     stop();    
     if (audioOutput != Q_NULLPTR) {
+		audioOutput->stop();
         delete audioOutput;
     }
     if (audioInput != Q_NULLPTR) {
+		audioInput->stop();
         delete audioInput;
     }
 

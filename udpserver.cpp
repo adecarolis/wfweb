@@ -649,27 +649,25 @@ void udpServer::audioReceived()
                         current->seqPrefix++;
                     }
 
-                    // 0xac is the smallest possible audio packet.
-                    audioPacket tempAudio;
-                    tempAudio.seq = (quint32)current->seqPrefix << 16 | in->seq;
-                    tempAudio.time = QTime::currentTime();;
-                    tempAudio.sent = 0;
-                    tempAudio.datain = r.mid(0x18);
-                    // Prefer signal/slot to forward audio as it is thread/safe
-                    // Need to do more testing but latency appears fine.
-                    //if (hasTxAudio == datagram.senderAddress())
-                    //{
-                        qDebug(logUdpServer()) << "sending tx audio " << in->seq;
+                    if (hasTxAudio == datagram.senderAddress())
+                    {
+                        // 0xac is the smallest possible audio packet.
+                        audioPacket tempAudio;
+                        tempAudio.seq = (quint32)current->seqPrefix << 16 | in->seq;
+                        tempAudio.time = QTime::currentTime();;
+                        tempAudio.sent = 0;
+                        tempAudio.datain = r.mid(0x18);
+                        //qDebug(logUdpServer()) << "sending tx audio " << in->seq;
                         emit haveAudioData(tempAudio);
-                    //}
-                    //rxaudio->incomingAudio(tempAudio);
+                    }
                 }
                 break;
             }
 
         }
-        commonReceived(&audioClients, current, r);
-
+        if (current != Q_NULLPTR) {
+            commonReceived(&audioClients, current, r);
+        }
     }
 }
 
