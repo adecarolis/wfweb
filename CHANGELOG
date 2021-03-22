@@ -1,5 +1,14 @@
-
 # CHANGELOG
+
+- 20210311      Add local volume control for UDP connections.
+                add volume control to audiohandler
+                Small fixes to UDP server
+                Add USB audio handling to UDP server
+                Changed frequency parameters to (mostly) unsigned 64-bit ints. This
+                makes all the rounding code very simple and removes many annoying lines
+                of code designed to handle errors induced by using doubles for the
+                frequency.
+
 
 - 20210310	audio resampling added / opus
 		updates on virtual serial port 
