@@ -41,7 +41,7 @@ public:
 
 signals:
     void getFrequency();
-    void setFrequency(double freq);
+    void setFrequency(freqt freq);
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
     void setDataMode(bool dataOn);
@@ -153,7 +153,7 @@ private slots:
     void handlePttLimit(); // hit at 3 min transmit length
 
     void receiveCommReady();
-    void receiveFreq(double);
+    void receiveFreq(freqt);
     void receiveMode(unsigned char mode, unsigned char filter);
     void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);
     void receiveSpectrumMode(spectrumMode spectMode);
@@ -476,8 +476,7 @@ private:
 
     double oldLowerFreq;
     double oldUpperFreq;
-    double freqMhz;
-    double knobFreqMhz;
+    freqt freq;
     float tsKnobMHz;
 
     enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
@@ -539,11 +538,22 @@ private:
     void useColors(); // set the plot up
     void setDefPrefs(); // populate default values to default prefs
     void setTuningSteps();
-    double roundFrequency(double frequency);
+    //double roundFrequency(double frequency);
+    //double roundFrequency(double frequency, unsigned int tsHz);
+    //double roundFrequencyWithStep(double oldFreq, int steps,
+    //                              unsigned int tsHz);
+
+    quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
+    quint64 roundFrequencyWithStep(quint64 oldFreq, int steps,\
+                                   unsigned int tsHz);
+
+    void setUIFreq(double frequency);
+    void setUIFreq();
 
     void changeTxBtn();
     void issueDelayedCommand(cmds cmd);
     void issueDelayedCommandPriority(cmds cmd);
+    void issueDelayedCommandUnique(cmds cmd);
     void changeSliderQuietly(QSlider *slider, int value);
 
     void processModLevel(rigInput source, unsigned char level);
@@ -600,7 +610,13 @@ private:
     float tsPageShift;
     float tsWfScroll;
 
-
+    unsigned int tsPlusHz;
+    unsigned int tsPlusShiftHz;
+    unsigned int tsPlusControlHz;
+    unsigned int tsPageHz;
+    unsigned int tsPageShiftHz;
+    unsigned int tsWfScrollHz;
+    unsigned int tsKnobHz;
 
 
     SERVERCONFIG serverConfig;
@@ -608,6 +624,7 @@ private:
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
+Q_DECLARE_METATYPE(struct freqt)
 Q_DECLARE_METATYPE(struct udpPreferences)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum duplexMode)

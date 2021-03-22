@@ -500,8 +500,9 @@ void rigCommander::getSpectrumMode()
     prepDataAndSend(specModePayload);
 }
 
-void rigCommander::setFrequency(double freq)
+void rigCommander::setFrequency(freqt freq)
 {
+    //QByteArray freqPayload = makeFreqPayload(freq);
     QByteArray freqPayload = makeFreqPayload(freq);
     QByteArray cmdPayload;
 
@@ -510,6 +511,31 @@ void rigCommander::setFrequency(double freq)
 
     //printHex(cmdPayload, false, true);
     prepDataAndSend(cmdPayload);
+}
+
+QByteArray rigCommander::makeFreqPayload(freqt freq)
+{
+    QByteArray result;
+    quint64 freqInt = freq.Hz;
+
+    unsigned char a;
+    int numchars = 5;
+    for (int i = 0; i < numchars; i++) {
+        a = 0;
+        a |= (freqInt) % 10;
+        freqInt /= 10;
+        a |= ((freqInt) % 10)<<4;
+
+        freqInt /= 10;
+
+        result.append(a);
+        //printHex(result, false, true);
+    }
+    qDebug(logRig()) << __func__ << ": encoded frequency for Hz: " << freq.Hz  <<\
+                     ", double: " << freq.MHzDouble << " as 64-bit uint: " << freqInt;
+    printHex(result, false, true);
+
+    return result;
 }
 
 QByteArray rigCommander::makeFreqPayload(double freq)
@@ -533,7 +559,6 @@ QByteArray rigCommander::makeFreqPayload(double freq)
     //qDebug(logRig()) << "encoded frequency for " << freq << " as int " << freqInt;
     //printHex(result, false, true);
     return result;
-
 }
 
 void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
@@ -838,7 +863,7 @@ void rigCommander::parseCommand()
         case '\x25':
             if((int)payloadIn[1] == 0)
             {
-                emit haveFrequency((double)parseFrequency(payloadIn, 5));
+                emit haveFrequency(parseFrequency(payloadIn, 5));
             }
             break;
         case '\x01':
@@ -1726,7 +1751,9 @@ void rigCommander::parseBandStackReg()
     // "DATA:  1a 01 05 01 60 03 23 14 00 00 03 10 00 08 85 00 08 85 fd "
     // char band = payloadIn[2];
     // char regCode = payloadIn[3];
-    float freq = parseFrequency(payloadIn, 7);
+    freqt freqs = parseFrequency(payloadIn, 7);
+    float freq = (float)freqs.MHzDouble;
+
     bool dataOn = (payloadIn[11] & 0x10) >> 4; // not sure...
     char mode = payloadIn[9];
 
@@ -1993,7 +2020,7 @@ void rigCommander::parseDetailedRegisters1A05()
 
 void rigCommander::parseWFData()
 {
-    float freqSpan = 0.0;
+    //float freqSpan = 0.0;
     switch(payloadIn[1])
     {
         case 0:
@@ -2017,9 +2044,9 @@ void rigCommander::parseWFData()
             // read span in center mode
             // [1] 0x15
             // [2] to [8] is span encoded as a frequency
-            freqSpan = parseFrequency(payloadIn, 8);
-            qDebug(logRig()) << "Received 0x15 center span data: for frequency " << freqSpan;
-            printHex(payloadIn, false, true);
+            //freqSpan = parseFrequency(payloadIn, 8);
+            //qDebug(logRig()) << "Received 0x15 center span data: for frequency " << freqSpan;
+            //printHex(payloadIn, false, true);
             break;
         case 0x16:
             // read edge mode center in edge mode
@@ -2258,6 +2285,9 @@ void rigCommander::parseSpectrum()
     // 11    10    26        31     Minimum wave information w/waveform data
     // 1     1     0         18     Only Wave Information without waveform data
 
+    freqt fStart;
+    freqt fEnd;
+
     unsigned char sequence = bcdHexToUChar(payloadIn[03]);
     //unsigned char sequenceMax = bcdHexToDecimal(payloadIn[04]);
 
@@ -2293,8 +2323,10 @@ void rigCommander::parseSpectrum()
         // wave information
         spectrumLine.clear();
         // For Fixed, and both scroll modes, the following produces correct information:
-        spectrumStartFreq = parseFrequency(payloadIn, 9);
-        spectrumEndFreq = parseFrequency(payloadIn, 14);
+        fStart = parseFrequency(payloadIn, 9);
+        spectrumStartFreq = fStart.MHzDouble;
+        fEnd = parseFrequency(payloadIn, 14);
+        spectrumEndFreq = fEnd.MHzDouble;
         if(scopeMode == spectModeCenter)
         {
             // "center" mode, start is actuall center, end is bandwidth.
@@ -2413,6 +2445,10 @@ QByteArray rigCommander::bcdEncodeInt(unsigned int num)
 
 void rigCommander::parseFrequency()
 {
+    freqt freq;
+    freq.Hz = 0;
+    freq.MHzDouble = 0;
+
     // process payloadIn, which is stripped.
     // float frequencyMhz
     //    payloadIn[04] = ; // XX MHz
@@ -2428,24 +2464,43 @@ void rigCommander::parseFrequency()
         // IC-705 or IC-9700 with higher frequency data available.
         frequencyMhz += 100*(payloadIn[05] & 0x0f);
         frequencyMhz += (1000*((payloadIn[05] & 0xf0) >> 4));
+
+        freq.Hz += (payloadIn[05] & 0x0f) * 1E6 *          100;
+        freq.Hz += ((payloadIn[05] & 0xf0) >> 4) * 1E6 *  1000;
+
     }
+
+    freq.Hz += (payloadIn[04] & 0x0f) * 1E6;
+    freq.Hz += ((payloadIn[04] & 0xf0) >> 4) * 1E6 *        10;
 
     frequencyMhz += payloadIn[04] & 0x0f;
     frequencyMhz += 10*((payloadIn[04] & 0xf0) >> 4);
 
+    // KHz land:
     frequencyMhz += ((payloadIn[03] & 0xf0) >>4)/10.0 ;
     frequencyMhz += (payloadIn[03] & 0x0f) / 100.0;
 
     frequencyMhz += ((payloadIn[02] & 0xf0) >> 4) / 1000.0;
     frequencyMhz += (payloadIn[02] & 0x0f) / 10000.0;
 
-    frequencyMhz += ((payloadIn[01] & 0xf0) >> 4) / 100000.0;
-    frequencyMhz += (payloadIn[01] & 0x0f) / 1000000.0;
+    frequencyMhz += ((payloadIn[01] & 0xf0) >> 4) /  100000.0;
+    frequencyMhz += (payloadIn[01] & 0x0f)        / 1000000.0;
 
-    emit haveFrequency(frequencyMhz);
+    freq.Hz += payloadIn[01] & 0x0f;
+    freq.Hz += ((payloadIn[01] & 0xf0) >> 4)*      10;
+
+    freq.Hz  += (payloadIn[02] & 0x0f) *           100;
+    freq.Hz  += ((payloadIn[02] & 0xf0) >> 4) *   1000;
+
+    freq.Hz  += (payloadIn[03] & 0x0f) *         10000;
+    freq.Hz  += ((payloadIn[03] & 0xf0) >>4) *  100000;
+
+    freq.MHzDouble = frequencyMhz;
+
+    emit haveFrequency(freq);
 }
 
-float rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
+freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
 {
     // process payloadIn, which is stripped.
     // float frequencyMhz
@@ -2458,12 +2513,24 @@ float rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
 
     float freq = 0.0;
 
+    freqt freqs;
+    freqs.MHzDouble = 0;
+    freqs.Hz = 0;
+
+    // MHz:
     freq += 100*(data[lastPosition+1] & 0x0f);
     freq += (1000*((data[lastPosition+1] & 0xf0) >> 4));
 
     freq += data[lastPosition] & 0x0f;
     freq += 10*((data[lastPosition] & 0xf0) >> 4);
 
+    freqs.Hz += (data[lastPosition] & 0x0f) * 1E6;
+    freqs.Hz += ((data[lastPosition] & 0xf0) >> 4) * 1E6 *     10;
+    freqs.Hz += (data[lastPosition+1] & 0x0f) * 1E6 *         100;
+    freqs.Hz += ((data[lastPosition+1] & 0xf0) >> 4) * 1E6 * 1000;
+
+
+    // Hz:
     freq += ((data[lastPosition-1] & 0xf0) >>4)/10.0 ;
     freq += (data[lastPosition-1] & 0x0f) / 100.0;
 
@@ -2473,7 +2540,18 @@ float rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
     freq += ((data[lastPosition-3] & 0xf0) >> 4) / 100000.0;
     freq += (data[lastPosition-3] & 0x0f) / 1000000.0;
 
-    return freq;
+    freqs.Hz += (data[lastPosition-1] & 0x0f);
+    freqs.Hz += ((data[lastPosition-1] & 0xf0) >> 4) *     10;
+
+    freqs.Hz += (data[lastPosition-2] & 0x0f) *           100;
+    freqs.Hz += ((data[lastPosition-2] & 0xf0) >> 4) *   1000;
+
+    freqs.Hz += (data[lastPosition-3] & 0x0f) *         10000;
+    freqs.Hz += ((data[lastPosition-3] & 0xf0) >> 4) * 100000;
+
+    freqs.MHzDouble = (double)freq;
+
+    return freqs;
 }
 
 

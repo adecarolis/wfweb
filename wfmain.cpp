@@ -259,6 +259,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->modeFilterCombo->addItem("Setup...", 99);
 
     ui->tuningStepCombo->blockSignals(true);
+    /*
     ui->tuningStepCombo->addItem("1 Hz",     0.000001f);
     ui->tuningStepCombo->addItem("10 Hz",    0.000010f);
     ui->tuningStepCombo->addItem("100 Hz",   0.000100f);
@@ -269,6 +270,20 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->tuningStepCombo->addItem("12.5 kHz", 0.012500f);
     ui->tuningStepCombo->addItem("100 kHz",  0.100000f);
     ui->tuningStepCombo->addItem("250 kHz",  0.250000f);
+    */
+
+    ui->tuningStepCombo->addItem("1 Hz",    (unsigned int)      1);
+    ui->tuningStepCombo->addItem("10 Hz",   (unsigned int)     10);
+    ui->tuningStepCombo->addItem("100 Hz",  (unsigned int)    100);
+    ui->tuningStepCombo->addItem("1 kHz",   (unsigned int)   1000);
+    ui->tuningStepCombo->addItem("2.5 kHz", (unsigned int)   2500);
+    ui->tuningStepCombo->addItem("5 kHz",   (unsigned int)   5000);
+    ui->tuningStepCombo->addItem("10 kHz",  (unsigned int)  10000);
+    ui->tuningStepCombo->addItem("12.5 kHz",(unsigned int)  12500);
+    ui->tuningStepCombo->addItem("100 kHz", (unsigned int) 100000);
+    ui->tuningStepCombo->addItem("250 kHz", (unsigned int) 250000);
+
+
     ui->tuningStepCombo->setCurrentIndex(2);
     ui->tuningStepCombo->blockSignals(false);
 
@@ -339,6 +354,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->serialDeviceListCombo->addItem("Manual...", 256);
     ui->serialDeviceListCombo->blockSignals(false);
 
+    freq.MHzDouble = 0.0;
+    freq.Hz = 0;
+
     openRig();
 
     qRegisterMetaType<rigCapabilities>();
@@ -346,8 +364,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     qRegisterMetaType<rigInput>();
     qRegisterMetaType<meterKind>();
     qRegisterMetaType<spectrumMode>();
+    qRegisterMetaType<freqt>();
 
-    connect(rig, SIGNAL(haveFrequency(double)), this, SLOT(receiveFreq(double)));
+    connect(rig, SIGNAL(haveFrequency(freqt)), this, SLOT(receiveFreq(freqt)));
     connect(this, SIGNAL(getFrequency()), rig, SLOT(getFrequency()));
     connect(this, SIGNAL(getMode()), rig, SLOT(getMode()));
     connect(this, SIGNAL(getDataMode()), rig, SLOT(getDataMode()));
@@ -379,7 +398,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(setScopeMode(spectrumMode)), rig, SLOT(setSpectrumMode(spectrumMode)));
     connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
 
-    connect(this, SIGNAL(setFrequency(double)), rig, SLOT(setFrequency(double)));
+    connect(this, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
     connect(this, SIGNAL(setScopeEdge(char)), rig, SLOT(setScopeEdge(char)));
     connect(this, SIGNAL(setScopeSpan(char)), rig, SLOT(setScopeSpan(char)));
     connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
@@ -1247,105 +1266,163 @@ void wfmain::setTuningSteps()
     tsPlusShift =   0.0001f;
     tsPage =        1.0f;
     tsPageShift =   0.5f; // TODO, unbind this keystroke from the dial
-    tsWfScroll =    0.0001f;
-    tsKnobMHz =     0.0001f;
+    tsWfScroll =    0.0001f; // modified by tuning step selector
+    tsKnobMHz =     0.0001f; // modified by tuning step selector
+
+    // Units are in Hz:
+    tsPlusControlHz =   10000;
+    tsPlusHz =           1000;
+    tsPlusShiftHz =       100;
+    tsPageHz =        1000000;
+    tsPageShiftHz =    500000; // TODO, unbind this keystroke from the dial
+    tsWfScrollHz =        100; // modified by tuning step selector
+    tsKnobHz =            100; // modified by tuning step selector
+
 }
 
 void wfmain::on_tuningStepCombo_currentIndexChanged(int index)
 {
-    tsWfScroll = ui->tuningStepCombo->itemData(index).toFloat();
-    tsKnobMHz = ui->tuningStepCombo->itemData(index).toFloat();
+    tsWfScroll = (float)ui->tuningStepCombo->itemData(index).toUInt() / 1000000.0;
+    tsKnobMHz =  (float)ui->tuningStepCombo->itemData(index).toUInt() / 1000000.0;
+
+    tsWfScrollHz = ui->tuningStepCombo->itemData(index).toUInt();
+    tsKnobHz = ui->tuningStepCombo->itemData(index).toUInt();
 }
 
-double wfmain::roundFrequency(double frequency)
+quint64 wfmain::roundFrequency(quint64 frequency, unsigned int tsHz)
 {
-    return round(frequency*1000000) / 1000000.0;
+    quint64 rounded = 0;
+    if(ui->tuningFloorZerosChk->isChecked())
+    {
+        rounded = ((frequency % tsHz) > tsHz/2) ? frequency + tsHz - frequency%tsHz : frequency - frequency%tsHz;
+        return rounded;
+    } else {
+        return frequency;
+    }
+}
+
+quint64 wfmain::roundFrequencyWithStep(quint64 frequency, int steps, unsigned int tsHz)
+{
+    quint64 rounded = 0;
+
+    if(steps > 0)
+    {
+        frequency = frequency + (quint64)(steps*tsHz);
+    } else {
+        frequency = frequency - (quint64)(abs(steps)*tsHz);
+    }
+
+    if(ui->tuningFloorZerosChk->isChecked())
+    {
+        rounded = ((frequency % tsHz) > tsHz/2) ? frequency + tsHz - frequency%tsHz : frequency - frequency%tsHz;
+        return rounded;
+    } else {
+        return frequency;
+    }
 }
 
 void wfmain::shortcutMinus()
 {
     if(freqLock) return;
 
-    freqMhz = roundFrequency(freqMhz - tsPlus);
-    knobFreqMhz = freqMhz;
-    emit setFrequency(freqMhz);
-    issueDelayedCommand(cmdGetFreq);
-    //ui->freqDial->setValue( ui->freqDial->value() - ui->freqDial->singleStep() );
+    freqt f;
+    f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsPlusHz);
+
+    f.MHzDouble = f.Hz / (double)1E6;
+    setUIFreq();
+    emit setFrequency(f);
+    issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutPlus()
 {
     if(freqLock) return;
 
-    knobFreqMhz = roundFrequency(freqMhz + tsPlus);
-    freqMhz = knobFreqMhz;
-    emit setFrequency(freqMhz);
-    issueDelayedCommand(cmdGetFreq);
-    //ui->freqDial->setValue( ui->freqDial->value() + ui->freqDial->singleStep() );
+    freqt f;
+    f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsPlusHz);
+
+    f.MHzDouble = f.Hz / (double)1E6;
+    setUIFreq();
+    emit setFrequency(f);
+    issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutShiftMinus()
 {
     if(freqLock) return;
 
-    freqMhz= roundFrequency(freqMhz-tsPlusShift);
-    knobFreqMhz = freqMhz;
-    emit setFrequency(freqMhz);
-    issueDelayedCommand(cmdGetFreq);
-    //ui->freqDial->setValue( ui->freqDial->value() - ui->freqDial->pageStep() );
+    freqt f;
+    f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsPlusShiftHz);
+
+    f.MHzDouble = f.Hz / (double)1E6;
+    setUIFreq();
+    emit setFrequency(f);
+    issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutShiftPlus()
 {
     if(freqLock) return;
 
-    freqMhz= roundFrequency(freqMhz+tsPlusShift);
-    knobFreqMhz = freqMhz;
-    emit setFrequency(freqMhz);
-    issueDelayedCommand(cmdGetFreq);
-    //ui->freqDial->setValue( ui->freqDial->value() + ui->freqDial->pageStep() );
+    freqt f;
+    f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsPlusShiftHz);
+
+    f.MHzDouble = f.Hz / (double)1E6;
+    setUIFreq();
+    emit setFrequency(f);
+    issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutControlMinus()
 {
     if(freqLock) return;
 
-    freqMhz= roundFrequency(freqMhz-tsPlusControl);
-    knobFreqMhz = freqMhz;
-    emit setFrequency(freqMhz);
-    issueDelayedCommand(cmdGetFreq);
-    //ui->freqDial->setValue( ui->freqDial->value() - ui->freqDial->pageStep() );
+    freqt f;
+    f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsPlusControlHz);
+
+    f.MHzDouble = f.Hz / (double)1E6;
+    setUIFreq();
+    emit setFrequency(f);
+    issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutControlPlus()
 {
     if(freqLock) return;
 
-    freqMhz= roundFrequency(freqMhz+tsPlusControl);
-    knobFreqMhz = freqMhz;
-    emit setFrequency(freqMhz);
-    issueDelayedCommand(cmdGetFreq);
-    //ui->freqDial->setValue( ui->freqDial->value() + ui->freqDial->pageStep() );
+    freqt f;
+    f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsPlusControlHz);
+
+    f.MHzDouble = f.Hz / (double)1E6;
+    setUIFreq();
+    emit setFrequency(f);
+    issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutPageUp()
 {
     if(freqLock) return;
 
-    freqMhz = roundFrequency(freqMhz + tsPage);
-    knobFreqMhz = freqMhz;
-    emit setFrequency(freqMhz);
-    issueDelayedCommand(cmdGetFreq);
+    freqt f;
+    f.Hz = freq.Hz + tsPageHz;
+
+    f.MHzDouble = f.Hz / (double)1E6;
+    setUIFreq();
+    emit setFrequency(f);
+    issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutPageDown()
 {
     if(freqLock) return;
 
-    freqMhz = roundFrequency(freqMhz - tsPage);
-    knobFreqMhz = freqMhz;
-    emit setFrequency(freqMhz);
-    issueDelayedCommand(cmdGetFreq);
+    freqt f;
+    f.Hz = freq.Hz - tsPageHz;
+
+    f.MHzDouble = f.Hz / (double)1E6;
+    setUIFreq();
+    emit setFrequency(f);
+    issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutF()
@@ -1360,6 +1437,17 @@ void wfmain::shortcutM()
     emit sayMode();
 }
 
+void wfmain::setUIFreq(double frequency)
+{
+    ui->freqLabel->setText(QString("%1").arg(frequency, 0, 'f'));
+}
+
+void wfmain::setUIFreq()
+{
+    // Call this function, without arguments, if you know that the
+    // freqMhz variable is already set correctly.
+    setUIFreq(freq.MHzDouble);
+}
 
 void wfmain:: getInitialRigState()
 {
@@ -1809,6 +1897,18 @@ void wfmain::issueDelayedCommandPriority(cmds cmd)
     delayedCommand->start();
 }
 
+void wfmain::issueDelayedCommandUnique(cmds cmd)
+{
+    // Use this function to insert commands where
+    // multiple (redundant) commands don't make sense.
+    if(!cmdOutQue.contains(cmd))
+    {
+        cmdOutQue.prepend(cmd);
+        delayedCommand->start();
+    }
+}
+
+
 void wfmain::receiveRigID(rigCapabilities rigCaps)
 {
     // Note: We intentionally request rigID several times
@@ -1930,12 +2030,12 @@ void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
     }
 }
 
-void wfmain::receiveFreq(double freqMhz)
+void wfmain::receiveFreq(freqt freqStruct)
 {
+
     //qDebug(logSystem()) << "HEY WE GOT A Frequency: " << freqMhz;
-    ui->freqLabel->setText(QString("%1").arg(freqMhz, 0, 'f'));
-    this->freqMhz = freqMhz;
-    this->knobFreqMhz = freqMhz;
+    ui->freqLabel->setText(QString("%1").arg(freqStruct.MHzDouble, 0, 'f'));
+    freq = freqStruct;
     //showStatusBarText(QString("Frequency: %1").arg(freqMhz));
 }
 
@@ -2030,10 +2130,10 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
     //ui->qcp->addGraph();
     plot->graph(0)->setData(x,y);
-    if((freqMhz < endFreq) && (freqMhz > startFreq))
+    if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
     {
         // tracer->setGraphKey(freqMhz);
-        tracer->setGraphKey(knobFreqMhz);
+        tracer->setGraphKey(freq.MHzDouble);
 
     }
     if(drawPeaks)
@@ -2092,13 +2192,15 @@ void wfmain::receiveSpectrumMode(spectrumMode spectMode)
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 {
     double x;
+    freqt freq;
     //double y;
     //double px;
     if(!freqLock)
     {
         //y = plot->yAxis->pixelToCoord(me->pos().y());
         x = plot->xAxis->pixelToCoord(me->pos().x());
-        emit setFrequency(x);
+        freq.Hz = x*1E6;
+        emit setFrequency(freq);
         issueDelayedCommand(cmdGetFreq);
         showStatusBarText(QString("Going to %1 MHz").arg(x));
     }
@@ -2107,6 +2209,7 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 void wfmain::handleWFDoubleClick(QMouseEvent *me)
 {
     double x;
+    freqt freq;
     //double y;
     //x = wf->xAxis->pixelToCoord(me->pos().x());
     //y = wf->yAxis->pixelToCoord(me->pos().y());
@@ -2114,7 +2217,8 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
     if(!freqLock)
     {
         x = plot->xAxis->pixelToCoord(me->pos().x());
-        emit setFrequency(x);
+        freq.Hz = x*1E6;
+        emit setFrequency(freq);
         issueDelayedCommand(cmdGetFreq);
         showStatusBarText(QString("Going to %1 MHz").arg(x));
     }
@@ -2142,51 +2246,39 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     if(freqLock)
         return;
 
+    freqt f;
+    f.Hz = 0;
+    f.MHzDouble = 0;
+
     int clicks = we->angleDelta().y() / 120;
 
-    float steps = tsWfScroll * clicks;
+    if(!clicks)
+        return;
+
+    unsigned int stepsHz = tsWfScrollHz;
 
     Qt::KeyboardModifiers key=  we->modifiers();
 
-    if (key == Qt::ShiftModifier)
+    if ((key == Qt::ShiftModifier) && (stepsHz !=1))
     {
-        steps /= 10;
+        stepsHz /= 10;
     } else if (key == Qt::ControlModifier)
     {
-        steps *=10;
+        stepsHz *= 10;
     }
 
-    freqMhz = roundFrequency(freqMhz - steps);
-    knobFreqMhz = freqMhz;
-    emit setFrequency(freqMhz);
-    ui->freqLabel->setText(QString("%1").arg(freqMhz, 0, 'f'));
-    issueDelayedCommand(cmdGetFreq);
+    f.Hz = roundFrequencyWithStep(freq.Hz, clicks, stepsHz);
+    f.MHzDouble = f.Hz / (double)1E6;
+    freq = f;
+
+    emit setFrequency(f);
+    ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
+    issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::handlePlotScroll(QWheelEvent *we)
 {
-    if(freqLock)
-        return;
-
-    int clicks = we->angleDelta().y() / 120;
-
-    float steps = tsWfScroll * clicks;
-
-    Qt::KeyboardModifiers key=  we->modifiers();
-
-    if (key == Qt::ShiftModifier)
-    {
-        steps /= 10;
-    } else if (key == Qt::ControlModifier)
-    {
-        steps *=10;
-    }
-
-    freqMhz = roundFrequency(freqMhz - steps);
-    knobFreqMhz = freqMhz;
-    emit setFrequency(freqMhz);
-    ui->freqLabel->setText(QString("%1").arg(freqMhz, 0, 'f'));
-    issueDelayedCommand(cmdGetFreq);
+    handleWFScroll(we);
 }
 
 void wfmain::on_scopeEnableWFBtn_clicked(bool checked)
@@ -2298,11 +2390,13 @@ void wfmain::on_fullScreenChk_clicked(bool checked)
 
 void wfmain::on_goFreqBtn_clicked()
 {
+    freqt f;
     bool ok = false;
     double freq = ui->freqMhzLineEdit->text().toDouble(&ok);
     if(ok)
     {
-        emit setFrequency(freq);
+        f.Hz = freq*1E6;
+        emit setFrequency(f);
         issueDelayedCommand(cmdGetFreq);
     }
     ui->freqMhzLineEdit->selectAll();
@@ -2474,8 +2568,11 @@ void wfmain::on_modeSelectCombo_activated(int index)
 void wfmain::on_freqDial_valueChanged(int value)
 {
     int maxVal = ui->freqDial->maximum();
-    double stepSize = (double)tsKnobMHz;
-    double newFreqMhz = 0;
+
+    freqt f;
+    f.Hz = 0;
+    f.MHzDouble = 0;
+
     volatile int delta = 0;
 
     int directPath = 0;
@@ -2536,43 +2633,27 @@ void wfmain::on_freqDial_valueChanged(int value)
         delta = value - oldFreqDialVal;
     }
 
-    newFreqMhz = knobFreqMhz + ((double)delta  * stepSize);
+    // With the number of steps and direction of steps established,
+    // we can now adjust the frequeny:
 
-    if(ui->tuningFloorZerosChk->isChecked() && (stepSize > (double)0.0000019))
-    {
-        unsigned int Hz = (newFreqMhz - ((int)newFreqMhz))*1E6;
-        unsigned int MHz = (unsigned int)newFreqMhz;
-        unsigned int tsHz = ((float)(tsKnobMHz*1000000.0));
-
-        // The following is necessary because the newFreqMhz calculated prior to this if(..checked..) code is prone to errors from
-        // multiplying the delta times the stepSize. Basically, an upward step of 100 hz can sometimes come out as 99hz.
-        // Thus, the following code actually rounds up or down as needed, depending upon the level of "error" when the float and int
-        // calculations are compared.
-        if( ((float(Hz)/float(tsHz)) - (float)((int)Hz/(int)tsHz)) > 0.5  )
-        {
-            Hz = ((Hz / tsHz) + 1) * (tsHz);
-        } else {
-            Hz = (Hz / tsHz) * (tsHz);
-        }
-
-        newFreqMhz = MHz + (Hz/1E6);
-    }
-
-    this->knobFreqMhz = newFreqMhz; // the frequency we think we should be on.
+    f.Hz = roundFrequencyWithStep(freq.Hz, delta, tsKnobHz);
+    f.MHzDouble = f.Hz / (double)1E6;
+    freq = f;
 
     oldFreqDialVal = value;
 
-    ui->freqLabel->setText(QString("%1").arg(knobFreqMhz, 0, 'f'));
+    ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 
-    this->freqMhz = knobFreqMhz;
-    emit setFrequency(newFreqMhz);
+    emit setFrequency(f);
 }
 
 void wfmain::receiveBandStackReg(float freq, char mode, bool dataOn)
 {
     // read the band stack and apply by sending out commands
 
-    setFrequency(freq);
+    freqt f;
+    f.Hz = freq * 1E6;
+    setFrequency(f);
     int filterSelection = ui->modeFilterCombo->currentData().toInt();
     setMode(mode, (unsigned char)filterSelection); // make sure this is what you think it is
 
@@ -2656,7 +2737,9 @@ void wfmain::on_band60mbtn_clicked()
     // Channel 5: 5403.5 kHz
     // Really not sure what the best strategy here is, don't want to
     // clutter the UI with 60M channel buttons...
-    setFrequency(5.3305);
+    freqt f;
+    f.Hz = (5.3305) * 1E6;
+    setFrequency(f);
 }
 
 void wfmain::on_band80mbtn_clicked()
@@ -2728,8 +2811,8 @@ void wfmain::on_fStoBtn_clicked()
     if(ok && (preset_number >= 0) && (preset_number < 100))
     {
         // TODO: keep an enum around with the current mode
-        mem.setPreset(preset_number, freqMhz, (mode_kind)ui->modeSelectCombo->currentIndex());
-        showStatusBarText( QString("Storing frequency %1 to memory location %2").arg( freqMhz ).arg(preset_number) );
+        mem.setPreset(preset_number, freq.MHzDouble, (mode_kind)ui->modeSelectCombo->currentIndex());
+        showStatusBarText( QString("Storing frequency %1 to memory location %2").arg( freq.MHzDouble ).arg(preset_number) );
     } else {
         showStatusBarText(QString("Could not store preset to %1. Valid preset numbers are 0 to 99").arg(preset_number));
     }
