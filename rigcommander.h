@@ -45,6 +45,11 @@ enum spectrumMode {
     spectModeUnknown=0xff
 };
 
+struct freqt {
+    quint64 Hz;
+    double MHzDouble;
+};
+
 class rigCommander : public QObject
 {
     Q_OBJECT
@@ -75,7 +80,7 @@ public slots:
     void setScopeEdge(char edge);
     void getScopeEdge();
     void getScopeMode();
-    void setFrequency(double freq);
+    void setFrequency(freqt freq);
     void setMode(unsigned char mode, unsigned char modeFilter);
     void getFrequency();
     void getBandStackReg(char band, char regCode);
@@ -163,7 +168,7 @@ signals:
     void discoveredRigID(rigCapabilities rigCaps);
     void haveSerialPortError(const QString port, const QString errorText);
     void haveStatusUpdate(const QString text);
-    void haveFrequency(double frequencyMhz);
+    void haveFrequency(freqt freqStruct);
     void haveMode(unsigned char mode, unsigned char filter);
     void haveDataMode(bool dataModeEnabled);
     void haveDuplexMode(duplexMode);
@@ -222,8 +227,9 @@ private:
     unsigned int bcdHexToUInt(unsigned char hundreds, unsigned char tensunits);
     QByteArray bcdEncodeInt(unsigned int);
     void parseFrequency();
-    float parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
+    freqt parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
     QByteArray makeFreqPayload(double frequency);
+    QByteArray makeFreqPayload(freqt freq);
     void parseMode();
     void parseSpectrum();
     void parseWFData();
