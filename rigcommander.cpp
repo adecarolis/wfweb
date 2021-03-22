@@ -130,6 +130,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs)
         connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
 
         connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
+        connect(this, SIGNAL(haveSetVolume(unsigned char)), udp, SLOT(setVolume(unsigned char)));
 
         // Connect for errors/alerts
         connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
@@ -1597,7 +1598,12 @@ void rigCommander::setRfGain(unsigned char level)
 
 void rigCommander::setAfGain(unsigned char level)
 {
-    sendLevelCmd(0x01, level);
+    if (udp == Q_NULLPTR) {
+        sendLevelCmd(0x01, level);
+    }
+    else {
+        emit haveSetVolume(level);
+    }
 }
 
 void rigCommander::setRefAdjustCourse(unsigned char level)

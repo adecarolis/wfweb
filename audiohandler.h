@@ -46,7 +46,6 @@ public:
     bool setDevice(QAudioDeviceInfo deviceInfo);
 
     void start();
-    void setVolume(quint8 volume);
     void flush();
     void stop();
 
@@ -64,6 +63,7 @@ public slots:
 private slots:
     void notified();
     void stateChanged(QAudio::State state);
+    void setVolume(unsigned char volume);
 
 signals:
     void audioMessage(QString message);

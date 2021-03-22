@@ -2860,7 +2860,7 @@ void wfmain::on_rfGainSlider_valueChanged(int value)
 void wfmain::on_afGainSlider_valueChanged(int value)
 {
     // qDebug(logSystem()) << "Setting AF gain to " << value;
-    emit setAfGain((unsigned char) value);
+    emit setAfGain((unsigned char)value);
 }
 
 void wfmain::receiveRfGain(unsigned char level)

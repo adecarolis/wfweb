@@ -330,6 +330,7 @@
     <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />
+    <None Include="resources\wfview.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\install.sh">

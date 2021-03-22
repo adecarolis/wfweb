@@ -119,6 +119,11 @@ void udpHandler::changeLatency(quint16 value)
     emit haveChangeLatency(value);
 }
 
+void udpHandler::setVolume(unsigned char value)
+{
+    emit haveSetVolume(value);
+}
+
 void udpHandler::receiveFromCivStream(QByteArray data)
 {
     emit haveDataFromPort(data);
@@ -312,7 +317,8 @@ void udpHandler::dataReceived()
 
                             QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
                             QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
-                            QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16))); 
+                            QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16)));
+                            QObject::connect(this, SIGNAL(haveSetVolume(unsigned char)), audio, SLOT(setVolume(unsigned char)));
 
                             streamOpened = true;
 
@@ -695,6 +701,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     qRegisterMetaType<audioPacket>();
     connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
     connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
+    connect(this, SIGNAL(haveSetVolume(unsigned char)), rxaudio, SLOT(setVolume(unsigned char)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
     
     if (txCodec == 0x01)
@@ -815,7 +822,10 @@ void udpAudio::changeLatency(quint16 value)
     emit haveChangeLatency(value);
 }
 
-
+void udpAudio::setVolume(unsigned char value)
+{
+    emit haveSetVolume(value);
+}
 
 void udpAudio::dataReceived()
 {

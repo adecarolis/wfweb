@@ -216,6 +216,7 @@ signals:
     void haveDataForServer(QByteArray outData);
     void haveAudioData(audioPacket data);
     void initUdpHandler();
+    void haveSetVolume(unsigned char level);
 
 private:
     void setup();

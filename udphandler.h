@@ -179,9 +179,11 @@ signals:
 	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QString port, quint8 resampleQuality);
 
 	void haveChangeLatency(quint16 value);
+	void haveSetVolume(unsigned char value);
 
 public slots:
 	void changeLatency(quint16 value);
+	void setVolume(unsigned char value);
 
 private:
 
@@ -238,14 +240,16 @@ public slots:
 	void receiveFromCivStream(QByteArray);
 	void receiveAudioData(const audioPacket &data);
 	void changeLatency(quint16 value);
+	void setVolume(unsigned char value);
 	void init();
 
 signals:
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
 	void haveAudioData(audioPacket data); // emit this when we have data, connect to rigcommander
 	void haveNetworkError(QString, QString);
-	void haveNetworkStatus(QString);
 	void haveChangeLatency(quint16 value);
+	void haveSetVolume(unsigned char value);
+	void haveNetworkStatus(QString);
 
 private:
 	

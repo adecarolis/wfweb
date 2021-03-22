@@ -69,7 +69,7 @@
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <QtInstall>msvc2019_64_5</QtInstall>
-    <QtModules>core;opengl;network;gui;multimedia;widgets;serialport;printsupport</QtModules>
+    <QtModules>core;network;gui;multimedia;widgets;serialport;printsupport</QtModules>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <QtInstall>msvc2019_64_5</QtInstall>
