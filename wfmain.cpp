@@ -201,6 +201,12 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     // Start server if enabled in config
     if (serverConfig.enabled) {
+        serverConfig.lan = prefs.enableLAN;
+        if (!serverConfig.lan) {
+            serverConfig.resampleQuality = udpPrefs.resampleQuality;
+            serverConfig.audioInput = udpPrefs.audioInput;
+            serverConfig.audioOutput = udpPrefs.audioOutput;
+        }
         udp = new udpServer(serverConfig);
 
         serverThread = new QThread(this);
@@ -863,7 +869,7 @@ void wfmain::loadSettings()
 
     udpPrefs.audioOutput = settings.value("AudioOutput", udpDefPrefs.audioOutput).toString();
     qDebug(logGui()) << "Got Audio Output: " << udpPrefs.audioOutput;
-    ui->audioOutputCombo->setEnabled(ui->lanEnableBtn->isChecked());
+    //ui->audioOutputCombo->setEnabled(ui->lanEnableBtn->isChecked());
     int audioOutputIndex = ui->audioOutputCombo->findText(udpPrefs.audioOutput);
     if (audioOutputIndex != -1) {
         ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
@@ -871,7 +877,7 @@ void wfmain::loadSettings()
 
     udpPrefs.audioInput = settings.value("AudioInput", udpDefPrefs.audioInput).toString();
     qDebug(logGui()) << "Got Audio Input: " << udpPrefs.audioInput;
-    ui->audioInputCombo->setEnabled(ui->lanEnableBtn->isChecked());
+    //ui->audioInputCombo->setEnabled(ui->lanEnableBtn->isChecked());
     int audioInputIndex = ui->audioInputCombo->findText(udpPrefs.audioInput);
     if (audioInputIndex != -1) {
         ui->audioInputCombo->setCurrentIndex(audioInputIndex);
@@ -2918,6 +2924,14 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
     ui->controlPortTxt->setEnabled(!checked);
     ui->usernameTxt->setEnabled(!checked);
     ui->passwordTxt->setEnabled(!checked);
+    ui->audioRXCodecCombo->setEnabled(!checked);
+    ui->audioTXCodecCombo->setEnabled(!checked);
+    ui->audioSampleRateCombo->setEnabled(!checked);
+    ui->rxLatencySlider->setEnabled(!checked);
+    ui->txLatencySlider->setEnabled(!checked);
+    ui->rxLatencyValue->setEnabled(!checked);
+    ui->txLatencyValue->setEnabled(!checked);
+
 }
 
 void wfmain::on_lanEnableBtn_clicked(bool checked)

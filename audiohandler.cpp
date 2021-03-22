@@ -979,7 +979,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
             
 			if (timediff > (int)latency * 2) {
                 qDebug(logAudio()) << "Packet " << hex << packet->seq <<
-                    " arrived too late (increase rx latency!) " <<
+                    " arrived too late (increase output latency!) " <<
                     dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
                 while (packet !=audioBuffer.end() && timediff > (int)latency) {
                     timediff = packet->time.msecsTo(QTime::currentTime());
@@ -1060,7 +1060,7 @@ qint64 audioHandler::writeData(const char* data, qint64 len)
 		{
 			chunkAvailable = true;
 		}
-		else if (audioBuffer.length()==1 && current->sent != chunkSize) {
+		else if (audioBuffer.length()<=1 && current->sent != chunkSize) {
 			chunkAvailable = false;
 		}
 		
@@ -1094,7 +1094,7 @@ void audioHandler::stateChanged(QAudio::State state)
 			qDebug(logAudio()) << "Audio now in idle state: " << audioBuffer.length() << " packets in buffer, isInput=" << isInput;
 			if (audioOutput != Q_NULLPTR && audioOutput->error() == QAudio::UnderrunError)
 			{
-				qDebug(logAudio()) << this->metaObject()->className() << "RX:Buffer underrun, isInput=" << isInput;
+				qDebug(logAudio()) << this->metaObject()->className() << "Output buffer underrun, isInput=" << isInput;
 				audioOutput->suspend();
 			}
 			break;
@@ -1187,7 +1187,7 @@ void audioHandler::incomingAudio(audioPacket data)
 		// Restart playback
 		if (audioOutput->state() == QAudio::SuspendedState)
 		{
-			qDebug(logAudio()) << "RX Audio Suspended, Resuming...";
+			qDebug(logAudio()) << "Output Audio Suspended, Resuming...";
 			audioOutput->resume();
 		}
 	}

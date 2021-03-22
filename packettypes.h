@@ -147,17 +147,21 @@ typedef union token_packet {
         quint16 seq;                // 0x06
         quint32 sentid;             // 0x08 
         quint32 rcvdid;             // 0x0c
-        char unuseda[3];          // 0x10
+        char unuseda[3];            // 0x10
         quint16 code;               // 0x13
         quint16 res;                // 0x15
-        quint8 innerseq;          // 0x17
-        char unusedb;             // 0x18
-        char unusedc;             // 0x19
+        quint8 innerseq;            // 0x17
+        char unusedb;               // 0x18
+        char unusedc;               // 0x19
         quint16 tokrequest;         // 0x1a
         quint32 token;              // 0x1c
-        char unusedd[16];         // 0x20
+        char unusedd[7];            // 0x20
+        quint16 commoncap;          // 0x27
+        char unuseddd[2];           // 0x29
+        char identa;                // 0x2b
+        quint32 identb;             // 0x2c
         quint32 response;           // 0x30
-        char unusede[12];         // 0x34
+        char unusede[12];           // 0x34
     };
     char packet[TOKEN_SIZE];
 } *token_packet_t;

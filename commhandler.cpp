@@ -76,22 +76,15 @@ void commHandler::receiveDataFromUserToRig(const QByteArray &data)
 
 void commHandler::sendDataOut(const QByteArray &writeData)
 {
-
     mutex.lock();
 
-#ifdef QT_DEBUG
-
     qint64 bytesWritten;
-
     bytesWritten = port->write(writeData);
-    qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
-             << " size of byte array: " << writeData.size()\
-             << " Wrote all bytes? " << (bool) (bytesWritten == (qint64)writeData.size());
-
-#else
-    port->write(writeData);
-
-#endif
+    if (bytesWritten != writeData.length()) {
+        qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
+            << " size of byte array: " << writeData.size()\
+            << " Wrote all bytes? " << (bool)(bytesWritten == (qint64)writeData.size());
+    }
     mutex.unlock();
 }
 

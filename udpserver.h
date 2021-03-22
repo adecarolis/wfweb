@@ -49,6 +49,10 @@ public slots:
 
 signals:
 	void haveDataFromServer(QByteArray);
+	void haveAudioData(audioPacket data);
+	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QString port, quint8 resampleQuality);
+	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QString port, quint8 resampleQuality);
+
 
 private:
 
@@ -74,7 +78,8 @@ private:
 		quint16 authSeq;
 		quint16 innerSeq;
 		quint16 sendAudioSeq;
-		quint32 ident;
+		quint8 identa;
+		quint32 identb;
 		quint16 tokenRx;
 		quint32 tokenTx;
 		quint32 commonCap;
@@ -97,7 +102,7 @@ private:
 		QVector <SEQBUFENTRY> txSeqBuf;
 		QVector <quint16> rxSeqBuf;
 		QVector <SEQBUFENTRY> rxMissing;
-
+		quint16 seqPrefix;
 	};
 
 	void controlReceived();
@@ -114,6 +119,7 @@ private:
 	void sendStatus(CLIENT* c);
 	void sendRetransmitRequest(CLIENT* c);
 	void watchdog(CLIENT* c);
+	void sendRxAudio();
 	void deleteConnection(QList<CLIENT*> *l, CLIENT* c);
 
 	SERVERCONFIG config;
@@ -128,7 +134,6 @@ private:
 	quint32 civId = 0;
 	quint32 audioId = 0;
 
-	QString rigname = "IC-9700";
 	quint8 rigciv = 0xa2;
 
 	QMutex mutex; // Used for critical operations.
@@ -138,6 +143,20 @@ private:
 	QList <CLIENT*> audioClients = QList<CLIENT*>();
 	QTime timeStarted;
 	rigCapabilities rigCaps;
+
+	audioHandler* rxaudio = Q_NULLPTR;
+	QThread* rxAudioThread = Q_NULLPTR;
+
+	audioHandler* txaudio = Q_NULLPTR;
+	QThread* txAudioThread = Q_NULLPTR;
+
+	QTimer* rxAudioTimer=Q_NULLPTR;
+	quint16 rxSampleRate = 0;
+	quint16 txSampleRate = 0;
+	quint8 rxCodec = 0;
+	quint8 txCodec = 0;
+
+	QHostAddress hasTxAudio;
 };
 
 

@@ -16,9 +16,14 @@ struct SERVERUSER {
 
 struct SERVERCONFIG {
     bool enabled;
+    bool lan;
     quint16 controlPort;
     quint16 civPort;
     quint16 audioPort;
+    QString audioOutput;
+    QString audioInput;
+    quint8 resampleQuality;
+
     QList <SERVERUSER> users;
 };
 

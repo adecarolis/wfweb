@@ -129,7 +129,7 @@ public:
 	quint32 packetsSent=0;
 	quint32 packetsLost=0;
 
-    quint16 seqPrefix=0;
+	quint16 seqPrefix = 0;
 
 private:
 	void sendRetransmitRequest();
@@ -173,10 +173,10 @@ public:
 	~udpAudio();
 
 signals:
-    void haveAudioData(audioPacket data);
+	void haveAudioData(audioPacket data);
 
-	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QString port,quint8 resampleQuality);
-	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QString port,quint8 resampleQuality);
+	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QString port, quint8 resampleQuality);
+	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QString port, quint8 resampleQuality);
 
 	void haveChangeLatency(quint16 value);
 
@@ -206,11 +206,11 @@ private:
 	bool sentPacketConnect2 = false;
 	uint16_t sendAudioSeq = 0;
 
-	audioHandler* rxaudio=Q_NULLPTR;
-	QThread* rxAudioThread=Q_NULLPTR;
+	audioHandler* rxaudio = Q_NULLPTR;
+	QThread* rxAudioThread = Q_NULLPTR;
 
-	audioHandler* txaudio=Q_NULLPTR;
-	QThread* txAudioThread=Q_NULLPTR;
+	audioHandler* txaudio = Q_NULLPTR;
+	QThread* txAudioThread = Q_NULLPTR;
 
 	QTimer* txAudioTimer=Q_NULLPTR;
 

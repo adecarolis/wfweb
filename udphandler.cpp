@@ -783,7 +783,7 @@ void udpAudio::sendTxAudio()
         txaudio->getNextAudioChunk(audio);
         int counter = 1;
         int len = 0;
- 
+
         while (len < audio.length()) {
             QByteArray partial = audio.mid(len, 1364);
             audio_packet p;

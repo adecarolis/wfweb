@@ -56,6 +56,7 @@ void udpServer::init()
     udpAudio = new QUdpSocket(this);
     udpAudio->bind(config.audioPort);
     QUdpSocket::connect(udpAudio, &QUdpSocket::readyRead, this, &udpServer::audioReceived);
+
 }
 
 udpServer::~udpServer()
@@ -124,7 +125,21 @@ udpServer::~udpServer()
         audioClients.removeAll(client);
     }
 
+    if (rxAudioTimer != Q_NULLPTR) {
+        rxAudioTimer->stop();
+        delete rxAudioTimer;
+        rxAudioTimer = Q_NULLPTR;
+    }
 
+    if (rxAudioThread != Q_NULLPTR) {
+        rxAudioThread->quit();
+        rxAudioThread->wait();
+    }
+
+    if (txAudioThread != Q_NULLPTR) {
+        txAudioThread->quit();
+        txAudioThread->wait();
+    }
 
     if (udpControl != Q_NULLPTR) {
         udpControl->close();
@@ -138,7 +153,6 @@ udpServer::~udpServer()
         udpAudio->close();
         delete udpAudio;
     }
-
     
 }
 
@@ -257,6 +271,8 @@ void udpServer::controlReceived()
                 token_packet_t in = (token_packet_t)r.constData();
                 current->rxSeq = in->seq;
                 current->authInnerSeq = in->innerseq; 
+                current->identa = in->identa;
+                current->identb = in->identb;
                 if (in->res == 0x02) {
                     // Request for new token
                     qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received create token request";
@@ -267,6 +283,12 @@ void udpServer::controlReceived()
                     // Token disconnect
                     qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received token disconnect request";
                     sendTokenResponse(current, in->res);
+                }
+                else if (in->res == 0x04) {
+                    // Disconnect audio/civ
+                    sendTokenResponse(current, in->res);
+                    current->isStreaming = false;
+                    sendConnectionInfo(current);
                 }
                 else {
                     qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received token request";
@@ -321,14 +343,92 @@ void udpServer::controlReceived()
                 current->rxSeq = in->seq;
                 current->rxCodec = in->rxcodec;
                 current->txCodec = in->txcodec;
-                current->rxSampleRate = qFromBigEndian<quint16>(in->rxsample);
-                current->txSampleRate = qFromBigEndian<quint16>(in->txsample);
-                current->txBufferLen = qFromBigEndian<quint16>(in->txbuffer);
+                current->rxSampleRate = qFromBigEndian<quint32>(in->rxsample);
+                current->txSampleRate = qFromBigEndian<quint32>(in->txsample);
+                current->txBufferLen = qFromBigEndian<quint32>(in->txbuffer);
                 current->authInnerSeq = in->innerseq;
-                current->ident = in->identb;
+                current->identa = in->identa;
+                current->identb = in->identb;
                 sendStatus(current);
                 current->authInnerSeq = 0x00; 
                 sendConnectionInfo(current);
+                qDebug(logUdpServer()) << "rxCodec:" << current->rxCodec << " txCodec:" << current->txCodec <<
+                    " rxSampleRate" << current->rxSampleRate <<
+                    " txSampleRate" << current->rxSampleRate <<
+                    " txBufferLen" << current->txBufferLen;
+
+                if (!config.lan) {
+                    // Radio is connected by USB/Serial and we assume that audio is connected as well.
+                    // Create audio TX/RX threads if they don't already exist (first client chooses samplerate/codec)
+                    if (txaudio == Q_NULLPTR)
+                    {
+                        bool uLaw = false;
+                        quint8 channels = 1;
+                        quint8 samples = 8;
+                        txSampleRate = current->txSampleRate;
+                        txCodec = current->txCodec;
+
+                        if (current->txCodec == 0x01 || current->txCodec == 0x20) {
+                            uLaw = true;
+                        }
+                        if (current->txCodec == 0x08 || current->txCodec == 0x10 || current->txCodec == 0x20) {
+                            channels = 2;
+                        }
+                        if (current->txCodec == 0x04 || current->txCodec == 0x10) {
+                            samples = 16;
+                        }
+
+
+                        txaudio = new audioHandler();
+                        txAudioThread = new QThread(this);
+                        txaudio->moveToThread(txAudioThread);
+
+                        txAudioThread->start();
+
+                        connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)));
+                        connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
+
+                        emit setupTxAudio(samples, channels, current->txSampleRate, in->txbuffer, uLaw, false, config.audioOutput, config.resampleQuality);
+                        hasTxAudio=datagram.senderAddress();
+
+                        connect(this, SIGNAL(haveAudioData(audioPacket)), txaudio, SLOT(incomingAudio(audioPacket)));
+
+                    }
+                    if (rxaudio == Q_NULLPTR)
+                    {
+                        bool uLaw = false;
+                        quint8 channels = 1;
+                        quint8 samples = 8;
+                        rxSampleRate = current->rxSampleRate;
+                        rxCodec = current->rxCodec;
+
+                        if (current->rxCodec == 0x01 || current->rxCodec == 0x20) {
+                            uLaw = true;
+                        }
+                        if (current->rxCodec == 0x08 || current->rxCodec == 0x10 || current->rxCodec == 0x20) {
+                            channels = 2;
+                        }
+                        if (current->rxCodec == 0x04 || current->rxCodec == 0x10) {
+                            samples = 16;
+                        }
+
+
+                        rxaudio = new audioHandler();
+                        rxAudioThread = new QThread(this);
+                        rxaudio->moveToThread(rxAudioThread);
+                        rxAudioThread->start();
+
+                        connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)));
+                        connect(rxAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
+
+                        emit setupRxAudio(samples, channels, current->rxSampleRate, 150, uLaw, true, config.audioInput, config.resampleQuality);
+
+                        rxAudioTimer = new QTimer();
+                        connect(rxAudioTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRxAudio, this));
+                        rxAudioTimer->start(10);
+                    }
+
+                }
 
                 break;
             }
@@ -497,7 +597,7 @@ void udpServer::audioReceived()
             current->retransmitTimer = new QTimer();
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
             current->retransmitTimer->start(RETRANSMIT_PERIOD);
-
+            current->seqPrefix = 0;
             qDebug(logUdpServer()) << "New Audio connection created from :" << current->ipAddress.toString() << ":" << QString::number(current->port);
             audioClients.append(current);
         }
@@ -531,11 +631,42 @@ void udpServer::audioReceived()
                 }
                 break;
             }
-
             default:
             {
+                /* Audio packets start as follows:
+                        PCM 16bit and PCM8/uLAW stereo: 0x44,0x02 for first packet and 0x6c,0x05 for second.
+                        uLAW 8bit/PCM 8bit 0xd8,0x03 for all packets
+                        PCM 16bit stereo 0x6c,0x05 first & second 0x70,0x04 third
+
+
+                */
+                control_packet_t in = (control_packet_t)r.constData();
+
+                if (in->type != 0x01 && in->len >= 0xAC) {
+                    if (in->seq == 0)
+                    {
+                        // Seq number has rolled over.
+                        current->seqPrefix++;
+                    }
+
+                    // 0xac is the smallest possible audio packet.
+                    audioPacket tempAudio;
+                    tempAudio.seq = (quint32)current->seqPrefix << 16 | in->seq;
+                    tempAudio.time = QTime::currentTime();;
+                    tempAudio.sent = 0;
+                    tempAudio.datain = r.mid(0x18);
+                    // Prefer signal/slot to forward audio as it is thread/safe
+                    // Need to do more testing but latency appears fine.
+                    //if (hasTxAudio == datagram.senderAddress())
+                    //{
+                        qDebug(logUdpServer()) << "sending tx audio " << in->seq;
+                        emit haveAudioData(tempAudio);
+                    //}
+                    //rxaudio->incomingAudio(tempAudio);
+                }
                 break;
             }
+
         }
         commonReceived(&audioClients, current, r);
 
@@ -563,13 +694,13 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
             if (in->type == 0x03) {
                 qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'are you there'";
                 current->remoteId = in->sentid;
-                sendControl(current, 0x04, 0x00);
+                sendControl(current, 0x04, in->seq);
             } // This is This is "Are you ready" in response to "I am here".
             else if (in->type == 0x06)
             {
                 qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'Are you ready'";
                 current->remoteId = in->sentid;
-                sendControl(current, 0x06, 0x00);
+                sendControl(current, 0x06, in->seq);
             } // This is a retransmit request
             else if (in->type == 0x01)
             {
@@ -801,7 +932,7 @@ void udpServer::sendCapabilities(CLIENT* c)
     p.seq = c->txSeq;
     p.sentid = c->myId;
     p.rcvdid = c->remoteId;
-    p.innerseq = c->authInnerSeq; 
+    p.innerseq = c->authInnerSeq;
     p.tokrequest = c->tokenRx;
     p.token = c->tokenTx;
     p.code = 0x0298;
@@ -809,26 +940,23 @@ void udpServer::sendCapabilities(CLIENT* c)
     p.capa = 0x01;
     p.commoncap = c->commonCap;
 
-    memcpy(p.macaddress, macAddress.toLocal8Bit(), 6); 
+    memcpy(p.macaddress, macAddress.toLocal8Bit(), 6);
     // IRU seems to expect an "Icom" mac address so replace the first 3 octets of our Mac with one in their range!
     memcpy(p.macaddress, QByteArrayLiteral("\x00\x90\xc7").constData(), 3);
 
 
-    memcpy(p.name, rigCaps.modelName.toLocal8Bit(), rigname.length());
+    memcpy(p.name, rigCaps.modelName.toLocal8Bit(), rigCaps.modelName.length());
     memcpy(p.audio, QByteArrayLiteral("ICOM_VAUDIO").constData(), 11);
 
     if (rigCaps.hasWiFi && !rigCaps.hasEthernet) {
         p.conntype = 0x0707; // 0x0707 for wifi rig.
     }
     else {
-        p.conntype = 0x073f; // 0x0707 for ethernet rig.
+        p.conntype = 0x073f; // 0x073f for ethernet rig.
     }
 
     p.civ = rigCaps.civ;
     p.baudrate = (quint32)qToBigEndian(19200);
-
-    //p.lena = 0x8b01; // rx sample frequencies supported
-    //p.lenb = 0x8b01; // tx sample frequencies supported
     /*
         0x80 = 12K only
         0x40 = 44.1K only
@@ -839,11 +967,52 @@ void udpServer::sendCapabilities(CLIENT* c)
         0x02 = 16K only
         0x01 = 8K only
     */
-    p.rxsample = 0x0800; // rx sample frequency
-    p.txsample = 0x0800; // tx sample frequency
+    if (rxaudio == Q_NULLPTR) {
+        p.rxsample = 0x8b01; // all rx sample frequencies supported
+    }
+    else {
+        if (rxSampleRate == 48000) {
+            p.rxsample = 0x0800; // fixed rx sample frequency
+        }
+        else if (rxSampleRate == 32000) {
+            p.rxsample = 0x0400;
+        }
+        else if (rxSampleRate == 24000) {
+            p.rxsample = 0x0001;
+        }
+        else if (rxSampleRate == 16000) {
+            p.rxsample = 0x0200;
+        }
+        else if (rxSampleRate == 12000) {
+            p.rxsample = 0x8000;
+        }
+    }
+
+    if (txaudio == Q_NULLPTR) {
+        p.txsample = 0x8b01; // all tx sample frequencies supported
+        p.enablea = 0x01; // 0x01 enables TX 24K mode?
+    }
+    else {
+        p.enablea = 0x00; // 0x01 enables TX 24K mode?
+        if (txSampleRate == 48000) {
+            p.txsample = 0x0800; // fixed tx sample frequency
+        }
+        else if (txSampleRate == 32000) {
+            p.txsample = 0x0400;
+        }
+        else if (txSampleRate == 24000) {
+            p.txsample = 0x0000;
+            p.enablea = 0x01;
+        }
+        else if (txSampleRate == 16000) {
+            p.txsample = 0x0200;
+        }
+        else if (txSampleRate == 12000) {
+            p.txsample = 0x8000;
+        }
+    }
 
     // I still don't know what these are?
-    p.enablea = 0x00; // 0x01 enables TX 24K mode?
     p.enableb = 0x01; // 0x01 doesn't seem to do anything?
     p.enablec = 0x01; // 0x01 doesn't seem to do anything?
     p.capf = 0x5001; 
@@ -882,20 +1051,21 @@ void udpServer::sendConnectionInfo(CLIENT* c)
     p.token = c->tokenTx;
     p.code = 0x0380;
     p.commoncap = c->commonCap;
-    p.identa = (char)0x90;
-    p.identb = c->ident;
+    p.identa = c->identa;
+    p.identb = c->identb;
 
     // 0x1a-0x1f is authid (random number?
     // memcpy(p + 0x40, QByteArrayLiteral("IC-7851").constData(), 7);
 
-    memcpy(p.packet + 0x40, rigname.toLocal8Bit(), rigname.length());
+    memcpy(p.packet + 0x40, rigCaps.modelName.toLocal8Bit(), rigCaps.modelName.length());
 
     // This is the current streaming client (should we support multiple clients?)
     if (c->isStreaming) {
         p.busy = 0x01;
         memcpy(p.computer, c->clientName.constData(), c->clientName.length());
         p.ipaddress = qToBigEndian(c->ipAddress.toIPv4Address());
-        p.identb = c->ident;
+        p.identa = c->identa;
+        p.identb = c->identb;
     }
 
     QMutexLocker locker(&mutex);
@@ -929,6 +1099,9 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
     p.tokrequest = c->tokenRx;
     p.token = c->tokenTx;
     p.code = 0x0230;
+    p.identa = c->identa;
+    p.identb = c->identb;
+    p.commoncap = c->commonCap;
     p.res = type;
 
     QMutexLocker locker(&mutex);
@@ -996,8 +1169,8 @@ void udpServer::sendStatus(CLIENT* c)
     p.res = 0x03;
     p.unknown = 0x1000;
     p.unusede = (char)0x80;
-    p.identa = (char)0x90;
-    p.identb = c->ident;
+    p.identa = c->identa;
+    p.identb = c->identb;
 
     p.civport=qToBigEndian(c->civPort);
     p.audioport=qToBigEndian(c->audioPort);
@@ -1054,6 +1227,24 @@ void udpServer::dataForServer(QByteArray d)
     return;
 }
 
+void udpServer::sendRxAudio()
+{
+    if (rxaudio && rxaudio->isChunkAvailable()) {
+        QByteArray audio;
+        rxaudio->getNextAudioChunk(audio);
+        int len = 0;
+
+        while (len < audio.length()) {
+            audioPacket partial;
+            partial.datain = audio.mid(len, 1364);
+            receiveAudioData(partial);
+            len = len + partial.datain.length();
+        }
+    }
+}
+
+
+
 void udpServer::receiveAudioData(const audioPacket &d)
 {
     //qDebug(logUdpServer()) << "Server got:" << d.data.length();
@@ -1068,6 +1259,7 @@ void udpServer::receiveAudioData(const audioPacket &d)
             p.ident = 0x0080; // audio is always this?
             p.datalen = (quint16)qToBigEndian((quint16)d.datain.length());
             p.sendseq = (quint16)qToBigEndian((quint16)client->sendAudioSeq); // THIS IS BIG ENDIAN!
+            p.seq = client->txSeq;
             QByteArray t = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
             t.append(d.datain);
             QMutexLocker locker(&mutex);
@@ -1216,4 +1408,28 @@ void udpServer::deleteConnection(QList<CLIENT*> *l, CLIENT* c)
     delete c; // Is this needed or will the erase have done it?
     c = Q_NULLPTR;
     qDebug(logUdpServer()) << "Current Number of clients connected: " << l->length();
+
+    if (l->length() == 0) {
+
+        if (rxAudioTimer != Q_NULLPTR) {
+            rxAudioTimer->stop();
+            delete rxAudioTimer;
+            rxAudioTimer = Q_NULLPTR;
+        }
+
+        if (rxAudioThread != Q_NULLPTR) {
+            rxAudioThread->quit();
+            rxAudioThread->wait();
+            rxaudio = Q_NULLPTR;
+            rxAudioThread = Q_NULLPTR;
+        }
+
+        if (txAudioThread != Q_NULLPTR) {
+            txAudioThread->quit();
+            txAudioThread->wait();
+            txaudio = Q_NULLPTR;
+            txAudioThread = Q_NULLPTR;
+        }
+        
+    }
 }
