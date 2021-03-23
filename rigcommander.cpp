@@ -138,7 +138,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs)
 
         connect(ptty, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
         connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
-
+        emit haveAfGain(255);
     }
 
     // data from the comm port to the program:
@@ -976,8 +976,10 @@ void rigCommander::parseLevels()
         switch(payloadIn[1])
         {
             case '\x01':
-                // AF level
-                emit haveAfGain(level);
+                // AF level - ignore if LAN connection.
+                if (udp == Q_NULLPTR) {
+                    emit haveAfGain(level);
+                }
                 break;
             case '\x02':
                 // RX RF Gain
