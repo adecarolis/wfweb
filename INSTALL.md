@@ -60,8 +60,6 @@ sudo usermod -aG dialout $USER
 ### opensuse install ###
 ---
 
-the following is a raw - only one time tested piece of information 
-
 install suse 15.x  (did this on a kde virtual machine leap 15.2)
 
 qt5:
@@ -70,10 +68,13 @@ wget http://download.qt.io/official_releases/online_installers/qt-unified-linux-
 
 - chmod +x qt-unified-linux-x64-online.run
 - sudo zypper in --type pattern devel_basis
+- sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel libqt5-qtmultimedia-devel 
 - kdesu ./qt-unified-linux-x64-online.run
-- install base qt5 default qt5 desktop development
 
-- sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel 
+  Qt 5.15.2 for GCC for desktop application development
+
+
+in your homedir:
 
 - mkdir src
 - cd src
@@ -81,7 +82,7 @@ wget http://download.qt.io/official_releases/online_installers/qt-unified-linux-
 - cd ../
 - mkdir build 
 - cd build
-- qmake-qt5 ../src/wfview/wvfiew.pro
+- qqmake-qt5 ../wfview/wfview.pro
 - make -j
 - sudo ./install.sh
 
