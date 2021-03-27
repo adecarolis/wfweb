@@ -787,6 +787,7 @@ void wfmain::setDefPrefs()
     udpDefPrefs.audioTXSampleRate = 48000;
     udpDefPrefs.audioTXCodec = 4;
     udpDefPrefs.resampleQuality = 4;
+    udpDefPrefs.clientName = QHostInfo::localHostName();
 }
 
 void wfmain::loadSettings()
@@ -843,6 +844,7 @@ void wfmain::loadSettings()
     udpPrefs.password = settings.value("Password", udpDefPrefs.password).toString();
     ui->passwordTxt->setEnabled(ui->lanEnableBtn->isChecked());
     ui->passwordTxt->setText(QString("%1").arg(udpPrefs.password));
+
 
     udpPrefs.audioRXLatency = settings.value("AudioRXLatency", udpDefPrefs.audioRXLatency).toInt();
     ui->rxLatencySlider->setEnabled(ui->lanEnableBtn->isChecked());
@@ -903,6 +905,7 @@ void wfmain::loadSettings()
     }
 
     udpPrefs.resampleQuality = settings.value("ResampleQuality", udpDefPrefs.resampleQuality).toInt();
+    udpPrefs.clientName = settings.value("ClientName", udpDefPrefs.clientName).toString();
 
     settings.endGroup();
 
@@ -1012,6 +1015,7 @@ void wfmain::saveSettings()
     settings.setValue("AudioOutput", udpPrefs.audioOutput);
     settings.setValue("AudioInput", udpPrefs.audioInput);
     settings.setValue("ResampleQuality", udpPrefs.resampleQuality);
+    settings.setValue("clientName", udpPrefs.clientName);
     settings.endGroup();
 
     // Memory channels

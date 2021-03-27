@@ -49,6 +49,7 @@ struct udpPreferences {
 	quint16 audioTXSampleRate;
 	quint8 audioTXCodec;
 	quint8 resampleQuality;
+	QString clientName;
 };
 
 void passcode(QString in, QByteArray& out);

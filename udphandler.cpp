@@ -22,6 +22,7 @@ udpHandler::udpHandler(udpPreferences prefs) :
     this->port = this->controlPort;
     this->username = prefs.username;
     this->password = prefs.password;
+    this->compName = prefs.clientName.mid(0,8) + "-wfview";
 
     qDebug(logUdp()) << "Starting udpHandler user:" << username << " rx latency:" << rxLatency  << " tx latency:" << txLatency << " rx sample rate: " << rxSampleRate <<
         " rx codec: " << rxCodec << " tx sample rate: " << txSampleRate << " tx codec: " << txCodec;
@@ -55,10 +56,6 @@ udpHandler::udpHandler(udpPreferences prefs) :
             localIP = QHostAddress(address.toString());
         }
     }
-
-
-    // Set my computer name. Should this be configurable?
-    compName = "wfview";
 
 }
 
