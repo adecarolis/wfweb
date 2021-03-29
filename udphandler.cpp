@@ -244,11 +244,14 @@ void udpHandler::dataReceived()
                             // Close stream connections but keep connection open to the radio.
                             if (audio != Q_NULLPTR) {
                                 delete audio;
+                                audio = Q_NULLPTR;
                             }
 
                             if (civ != Q_NULLPTR) {
                                 delete civ;
+                                civ = Q_NULLPTR;
                             }
+                            
                             streamOpened = false;
                         }
                     }
@@ -519,6 +522,24 @@ udpCivData::~udpCivData()
         delete startCivDataTimer;
         startCivDataTimer = Q_NULLPTR;
     }
+    if (pingTimer != Q_NULLPTR)
+    {
+        pingTimer->stop();
+        delete pingTimer;
+        pingTimer = Q_NULLPTR;
+    }
+    if (idleTimer != Q_NULLPTR)
+    {
+        idleTimer->stop();
+        delete idleTimer;
+        idleTimer = Q_NULLPTR;
+    }
+    if (watchdogTimer != Q_NULLPTR)
+    {
+        watchdogTimer->stop();
+        delete watchdogTimer;
+        watchdogTimer = Q_NULLPTR;
+    }
 }
 
 void udpCivData::watchdog()
@@ -742,6 +763,27 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
 udpAudio::~udpAudio()
 {
+    if (pingTimer != Q_NULLPTR)
+    {
+        pingTimer->stop();
+        delete pingTimer;
+        pingTimer = Q_NULLPTR;
+    }
+
+    if (idleTimer != Q_NULLPTR)
+    {
+        idleTimer->stop();
+        delete idleTimer;
+        idleTimer = Q_NULLPTR;
+    }
+
+    if (watchdogTimer != Q_NULLPTR)
+    {
+        watchdogTimer->stop();
+        delete watchdogTimer;
+        watchdogTimer = Q_NULLPTR;
+    }
+
     if (txAudioTimer != Q_NULLPTR)
     {
         txAudioTimer->stop();
