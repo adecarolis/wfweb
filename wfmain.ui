@@ -663,6 +663,13 @@
               </attribute>
              </widget>
             </item>
+            <item>
+             <widget class="QPushButton" name="rptSetupBtn">
+              <property name="text">
+               <string>Repeater</string>
+              </property>
+             </widget>
+            </item>
            </layout>
           </item>
           <item>
@@ -2004,7 +2011,7 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="duplexBtnGrp"/>
   <buttongroup name="radioConnectionSerialNetworkGrp"/>
+  <buttongroup name="duplexBtnGrp"/>
  </buttongroups>
 </ui>

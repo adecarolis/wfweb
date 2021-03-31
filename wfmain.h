@@ -15,8 +15,10 @@
 #include "rigcommander.h"
 #include "freqmemory.h"
 #include "rigidentities.h"
+#include "repeaterattributes.h"
 
 #include "calibrationwindow.h"
+#include "repeatersetup.h"
 #include "satellitesetup.h"
 #include "udpserversetup.h"
 #include "udpserver.h"
@@ -379,6 +381,8 @@ private slots:
 
     void on_serialDeviceListCombo_activated(const QString &arg1);
 
+    void on_rptSetupBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -590,6 +594,7 @@ private:
     unsigned char lanGain=0;
 
     calibrationWindow *cal;
+    repeaterSetup *rpt;
     satelliteSetup *sat;
     udpServerSetup *srv;
 

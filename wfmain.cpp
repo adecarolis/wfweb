@@ -25,6 +25,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     this->hostCL = hostCL;
 
     cal = new calibrationWindow();
+    rpt = new repeaterSetup();
     sat = new satelliteSetup();
     srv = new udpServerSetup();
 
@@ -3621,6 +3622,11 @@ void wfmain::on_serialDeviceListCombo_activated(const QString &arg1)
     prefs.serialPortRadio = arg1;
     showStatusBarText("Setting preferences to use manually-assigned serial port: " + arg1);
     ui->serialEnableBtn->setChecked(true);
+}
+
+void wfmain::on_rptSetupBtn_clicked()
+{
+    rpt->show();
 }
 
 // --- DEBUG FUNCTION ---

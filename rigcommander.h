@@ -8,6 +8,7 @@
 #include "pttyhandler.h"
 #include "udphandler.h"
 #include "rigidentities.h"
+#include "repeaterattributes.h"
 
 // This file figures out what to send to the comm and also
 // parses returns into useful things.
@@ -15,17 +16,6 @@
 // 0xE1 is new default, 0xE0 was before.
 // note: using a define because switch case doesn't even work with const unsigned char. Surprised me.
 #define compCivAddr 0xE1
-
-enum duplexMode {
-    dmSplitOff=0x00,
-    dmSplitOn=0x01,
-    dmSimplex=0x10,
-    dmDupMinus=0x11,
-    dmDupPlus=0x12,
-    dmDupRPS=0x13,
-    dmDupAutoOn=0x26,
-    dmDupAutoOff=0x36
-};
 
 enum meterKind {
     meterS,
