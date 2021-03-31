@@ -15,6 +15,7 @@ repeaterSetup::~repeaterSetup()
 
 void repeaterSetup::receiveDuplexMode(duplexMode dm)
 {
+    currentdm = dm;
     switch(dm)
     {
         case dmSimplex:
@@ -57,4 +58,9 @@ void repeaterSetup::on_rptAutoBtn_clicked()
     // Auto Rptr (enable this feature)
     // TODO: Hide an AutoOff button somewhere for non-US users
     emit setDuplexMode(dmDupAutoOn);
+}
+
+void repeaterSetup::on_rptReadRigBtn_clicked()
+{
+    emit getDuplexMode();
 }

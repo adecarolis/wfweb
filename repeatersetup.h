@@ -21,8 +21,10 @@ signals:
     void getDuplexMode();
     void setDuplexMode(duplexMode dm);
 
-private slots:
+public slots:
     void receiveDuplexMode(duplexMode dm);
+
+private slots:
 
 
     void on_rptSimplexBtn_clicked();
@@ -33,8 +35,12 @@ private slots:
 
     void on_rptAutoBtn_clicked();
 
+    void on_rptReadRigBtn_clicked();
+
 private:
     Ui::repeaterSetup *ui;
+
+    duplexMode currentdm;
 };
 
 #endif // REPEATERSETUP_H

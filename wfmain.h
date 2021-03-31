@@ -49,7 +49,7 @@ signals:
     void setDataMode(bool dataOn);
     void getDataMode();
     void getDuplexMode();
-    void setDuplexMode(duplexMode dm);
+    //void setDuplexMode(duplexMode dm);
     void getModInput(bool dataOn);
     void setModInput(rigInput input, bool dataOn);
     void getPTT();
@@ -163,7 +163,7 @@ private slots:
     void receiveDataModeStatus(bool dataOn);
     void receiveBandStackReg(float freq, char mode, bool dataOn); // freq, mode, (filter,) datamode
     void receiveModInput(rigInput input, bool dataOn);
-    void receiveDuplexMode(duplexMode dm);
+    //void receiveDuplexMode(duplexMode dm);
 
 
 
@@ -356,14 +356,6 @@ private slots:
     void on_micGainSlider_valueChanged(int value);
 
     void on_scopeRefLevelSlider_valueChanged(int value);
-
-    void on_rptDupPlusBtn_clicked();
-
-    void on_rptSimplexBtn_clicked();
-
-    void on_rptDupMinusBtn_clicked();
-
-    void on_rptAutoBtn_clicked();
 
     void on_useSystemThemeChk_clicked(bool checked);
 
