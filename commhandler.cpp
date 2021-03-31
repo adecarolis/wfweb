@@ -84,10 +84,12 @@ void commHandler::sendDataOut(const QByteArray &writeData)
     qint64 bytesWritten;
 
     bytesWritten = port->write(writeData);
-    // TODO: if(log.level == logLevelCrazy){...
-    //qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
-    //         << " size of byte array: " << writeData.size()\
-    //         << " Wrote all bytes? " << (bool) (bytesWritten == (qint64)writeData.size());
+    if(bytesWritten != (qint64)writeData.size())
+    {
+    qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
+             << " size of byte array: " << writeData.size()\
+             << " Wrote all bytes? " << (bool) (bytesWritten == (qint64)writeData.size());
+    }
 
 #else
     port->write(writeData);
