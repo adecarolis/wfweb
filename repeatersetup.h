@@ -17,6 +17,22 @@ public:
     explicit repeaterSetup(QWidget *parent = 0);
     ~repeaterSetup();
 
+signals:
+    void getDuplexMode();
+    void setDuplexMode(duplexMode dm);
+
+private slots:
+    void receiveDuplexMode(duplexMode dm);
+
+
+    void on_rptSimplexBtn_clicked();
+
+    void on_rptDupPlusBtn_clicked();
+
+    void on_rptDupMinusBtn_clicked();
+
+    void on_rptAutoBtn_clicked();
+
 private:
     Ui::repeaterSetup *ui;
 };
