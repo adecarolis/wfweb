@@ -650,7 +650,7 @@
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_19">
                <item>
-                <widget class="QRadioButton" name="radioButton">
+                <widget class="QRadioButton" name="preattNone">
                  <property name="text">
                   <string>None</string>
                  </property>
@@ -659,14 +659,14 @@
                <item>
                 <layout class="QHBoxLayout" name="horizontalLayout_23">
                  <item>
-                  <widget class="QRadioButton" name="radioButton_2">
+                  <widget class="QRadioButton" name="preampEnable">
                    <property name="text">
                     <string>Preamp</string>
                    </property>
                   </widget>
                  </item>
                  <item>
-                  <widget class="QComboBox" name="comboBox_2"/>
+                  <widget class="QComboBox" name="preampSelCombo"/>
                  </item>
                 </layout>
                </item>
@@ -679,14 +679,14 @@
                   <number>0</number>
                  </property>
                  <item>
-                  <widget class="QRadioButton" name="radioButton_3">
+                  <widget class="QRadioButton" name="attEnable">
                    <property name="text">
                     <string>Attenuator</string>
                    </property>
                   </widget>
                  </item>
                  <item>
-                  <widget class="QComboBox" name="comboBox"/>
+                  <widget class="QComboBox" name="attSelCombo"/>
                  </item>
                 </layout>
                </item>
@@ -726,7 +726,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="comboBox_3"/>
+                 <widget class="QComboBox" name="antennaSelCombo"/>
                 </item>
                </layout>
               </item>
