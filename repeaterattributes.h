@@ -1,5 +1,6 @@
 #ifndef REPEATERATTRIBUTES_H
 #define REPEATERATTRIBUTES_H
+#include <QMetaType>
 
 enum duplexMode {
     dmSplitOff=0x00,
@@ -11,5 +12,7 @@ enum duplexMode {
     dmDupAutoOn=0x26,
     dmDupAutoOff=0x36
 };
+
+Q_DECLARE_METATYPE(enum duplexMode)
 
 #endif // REPEATERATTRIBUTES_H

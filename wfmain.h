@@ -624,7 +624,6 @@ Q_DECLARE_METATYPE(struct rigCapabilities)
 Q_DECLARE_METATYPE(struct freqt)
 Q_DECLARE_METATYPE(struct udpPreferences)
 Q_DECLARE_METATYPE(enum rigInput)
-Q_DECLARE_METATYPE(enum duplexMode)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
 
