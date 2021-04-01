@@ -432,6 +432,9 @@
                 <height>80</height>
                </size>
               </property>
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Squelch&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
               <property name="maximum">
                <number>255</number>
               </property>
@@ -1982,7 +1985,7 @@
      <x>0</x>
      <y>0</y>
      <width>810</width>
-     <height>22</height>
+     <height>30</height>
     </rect>
    </property>
   </widget>
@@ -2004,7 +2007,7 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="duplexBtnGrp"/>
   <buttongroup name="radioConnectionSerialNetworkGrp"/>
+  <buttongroup name="duplexBtnGrp"/>
  </buttongroups>
 </ui>
