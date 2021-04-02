@@ -111,6 +111,9 @@
     <ClCompile Include="resampler\resample.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="repeatersetup.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="commhandler.h">
@@ -161,6 +164,9 @@
     <QtMoc Include="pttyhandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="repeatersetup.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="debug\moc_predefs.h.cbt">
@@ -181,6 +187,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="udpserversetup.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="repeatersetup.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
@@ -314,6 +323,7 @@
     <None Include="resources\wfview.png">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />

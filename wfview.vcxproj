@@ -210,6 +210,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="c:\qcustomplot\qcustomplot.cpp" />
     <ClCompile Include="meter.cpp" />
+    <ClCompile Include="repeatersetup.cpp" />
     <ClCompile Include="resampler\resample.c" />
     <ClCompile Include="rigcommander.cpp" />
     <ClCompile Include="rigidentities.cpp" />
@@ -238,6 +239,7 @@
     <QtMoc Include="meter.h" />
     <ClInclude Include="packettypes.h" />
     <QtMoc Include="pttyhandler.h" />
+    <QtMoc Include="repeatersetup.h" />
     <ClInclude Include="resampler\speex_resampler.h" />
     <ClInclude Include="rigidentities.h" />
     <QtMoc Include="udphandler.h">
@@ -265,6 +267,7 @@
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="calibrationwindow.ui" />
+    <QtUic Include="repeatersetup.ui" />
     <QtUic Include="satellitesetup.ui" />
     <QtUic Include="udpserversetup.ui" />
     <QtUic Include="wfmain.ui">
