@@ -99,7 +99,8 @@ SOURCES += main.cpp\
     meter.cpp \
     qledlabel.cpp \
 	pttyhandler.cpp \
-	resampler/resample.c
+	resampler/resample.c \
+    repeatersetup.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -119,13 +120,16 @@ HEADERS  += wfmain.h \
 	pttyhandler.h \
 	resampler/speex_resampler.h \
 	resampler/arch.h \
-	resampler/resample_sse.h
+	resampler/resample_sse.h \
+    repeatersetup.h \
+    repeaterattributes.h
 
 
 FORMS    += wfmain.ui \
     calibrationwindow.ui \
     satellitesetup.ui \
-    udpserversetup.ui
+    udpserversetup.ui \
+    repeatersetup.ui
 
 
 

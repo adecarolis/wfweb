@@ -25,6 +25,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     this->hostCL = hostCL;
 
     cal = new calibrationWindow();
+    rpt = new repeaterSetup();
     sat = new satelliteSetup();
     srv = new udpServerSetup();
 
@@ -391,9 +392,13 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rig, SIGNAL(haveMode(unsigned char, unsigned char)), this, SLOT(receiveMode(unsigned char, unsigned char)));
     connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
 
+    connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
+    connect(rpt, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
+    connect(rig, SIGNAL(haveDuplexMode(duplexMode)), rpt, SLOT(receiveDuplexMode(duplexMode)));
+
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
-    connect(this, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
-    connect(rig, SIGNAL(haveDuplexMode(duplexMode)), this, SLOT(receiveDuplexMode(duplexMode)));
+    //connect(this, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
+    //connect(rig, SIGNAL(haveDuplexMode(duplexMode)), this, SLOT(receiveDuplexMode(duplexMode)));
 
     connect(this, SIGNAL(getModInput(bool)), rig, SLOT(getModInput(bool)));
     connect(rig, SIGNAL(haveModInput(rigInput,bool)), this, SLOT(receiveModInput(rigInput, bool)));
@@ -3301,25 +3306,6 @@ void wfmain::receiveModInput(rigInput input, bool dataOn)
         qDebug(logSystem()) << "Could not find modulation input: " << (int)input;
 }
 
-void wfmain::receiveDuplexMode(duplexMode dm)
-{
-    switch(dm)
-    {
-        case dmSimplex:
-            ui->rptSimplexBtn->setChecked(true);
-            break;
-        case dmDupPlus:
-            ui->rptDupPlusBtn->setChecked(true);
-            break;
-        case dmDupMinus:
-            ui->rptDupMinusBtn->setChecked(true);
-            break;
-        default:
-            break;
-    }
-    (void)dm;
-}
-
 void wfmain::receiveACCGain(unsigned char level, unsigned char ab)
 {
     if(ab==1)
@@ -3459,35 +3445,6 @@ void wfmain::serverConfigRequested(SERVERCONFIG conf, bool store)
 
 }
 
-
-void wfmain::on_rptDupPlusBtn_clicked()
-{
-    // DUP+
-    emit setDuplexMode(dmDupAutoOff);
-    emit setDuplexMode(dmDupPlus);
-}
-
-void wfmain::on_rptSimplexBtn_clicked()
-{
-    // Simplex
-    emit setDuplexMode(dmDupAutoOff);
-    emit setDuplexMode(dmSimplex);
-}
-
-void wfmain::on_rptDupMinusBtn_clicked()
-{
-    // DUP-
-    emit setDuplexMode(dmDupAutoOff);
-    emit setDuplexMode(dmDupMinus);
-}
-
-void wfmain::on_rptAutoBtn_clicked()
-{
-    // Auto Rptr (enable this feature)
-    // TODO: Hide an AutoOff button somewhere for non-US users
-    emit setDuplexMode(dmDupAutoOn);
-}
-
 void wfmain::on_modInputCombo_activated(int index)
 {
     emit setModInput( (rigInput)ui->modInputCombo->currentData().toInt(), false );
@@ -3621,6 +3578,11 @@ void wfmain::on_serialDeviceListCombo_activated(const QString &arg1)
     prefs.serialPortRadio = arg1;
     showStatusBarText("Setting preferences to use manually-assigned serial port: " + arg1);
     ui->serialEnableBtn->setChecked(true);
+}
+
+void wfmain::on_rptSetupBtn_clicked()
+{
+    rpt->show();
 }
 
 // --- DEBUG FUNCTION ---

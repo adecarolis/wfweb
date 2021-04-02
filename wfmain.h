@@ -15,8 +15,10 @@
 #include "rigcommander.h"
 #include "freqmemory.h"
 #include "rigidentities.h"
+#include "repeaterattributes.h"
 
 #include "calibrationwindow.h"
+#include "repeatersetup.h"
 #include "satellitesetup.h"
 #include "udpserversetup.h"
 #include "udpserver.h"
@@ -47,7 +49,7 @@ signals:
     void setDataMode(bool dataOn);
     void getDataMode();
     void getDuplexMode();
-    void setDuplexMode(duplexMode dm);
+    //void setDuplexMode(duplexMode dm);
     void getModInput(bool dataOn);
     void setModInput(rigInput input, bool dataOn);
     void getPTT();
@@ -161,7 +163,7 @@ private slots:
     void receiveDataModeStatus(bool dataOn);
     void receiveBandStackReg(float freq, char mode, bool dataOn); // freq, mode, (filter,) datamode
     void receiveModInput(rigInput input, bool dataOn);
-    void receiveDuplexMode(duplexMode dm);
+    //void receiveDuplexMode(duplexMode dm);
 
 
 
@@ -355,14 +357,6 @@ private slots:
 
     void on_scopeRefLevelSlider_valueChanged(int value);
 
-    void on_rptDupPlusBtn_clicked();
-
-    void on_rptSimplexBtn_clicked();
-
-    void on_rptDupMinusBtn_clicked();
-
-    void on_rptAutoBtn_clicked();
-
     void on_useSystemThemeChk_clicked(bool checked);
 
     void on_modInputCombo_activated(int index);
@@ -378,6 +372,8 @@ private slots:
     void on_tuningStepCombo_currentIndexChanged(int index);
 
     void on_serialDeviceListCombo_activated(const QString &arg1);
+
+    void on_rptSetupBtn_clicked();
 
 private:
     Ui::wfmain *ui;
@@ -590,6 +586,7 @@ private:
     unsigned char lanGain=0;
 
     calibrationWindow *cal;
+    repeaterSetup *rpt;
     satelliteSetup *sat;
     udpServerSetup *srv;
 
@@ -627,7 +624,6 @@ Q_DECLARE_METATYPE(struct rigCapabilities)
 Q_DECLARE_METATYPE(struct freqt)
 Q_DECLARE_METATYPE(struct udpPreferences)
 Q_DECLARE_METATYPE(enum rigInput)
-Q_DECLARE_METATYPE(enum duplexMode)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
 
