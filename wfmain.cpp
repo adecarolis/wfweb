@@ -571,6 +571,7 @@ wfmain::~wfmain()
         serverThread->quit();
         serverThread->wait();
     }
+    delete rpt;
     delete ui;
 }
 
