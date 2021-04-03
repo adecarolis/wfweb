@@ -209,6 +209,21 @@ void repeaterSetup::receiveDuplexMode(duplexMode dm)
     }
 }
 
+void repeaterSetup::handleToneMode(rptAccessTxRx tmode)
+{
+    (void)tmode;
+}
+
+void repeaterSetup::handleCTCSS(quint16 tone)
+{
+    (void)tone;
+}
+
+void repeaterSetup::handleDCS(quint16 dcode)
+{
+    (void)dcode;
+}
+
 void repeaterSetup::on_rptSimplexBtn_clicked()
 {
     // Simplex
@@ -245,13 +260,13 @@ void repeaterSetup::on_rptReadRigBtn_clicked()
 void repeaterSetup::on_rptToneCombo_activated(int index)
 {
     quint16 ctcss=0;
-    ctcss = ui->rptToneCombo->itemData(index);
+    ctcss = ui->rptToneCombo->itemData(index).toUInt();
     emit setCTCSS(ctcss);
 }
 
 void repeaterSetup::on_rptDTCSCombo_activated(int index)
 {
     quint16 dcode=0;
-    dcode = ui->rptDTCSCombo->itemData(index);
+    dcode = ui->rptDTCSCombo->itemData(index).toUInt();
     emit setDCS(dcode);
 }

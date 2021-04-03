@@ -22,9 +22,14 @@ signals:
     void setDuplexMode(duplexMode dm);
     void setCTCSS(quint16 tone);
     void setDCS(quint16 dcode);
+    void setToneMode(rptAccessTxRx tmode);
+    void getToneMode();
 
 public slots:
     void receiveDuplexMode(duplexMode dm);
+    void handleToneMode(rptAccessTxRx tmode);
+    void handleCTCSS(quint16 tone);
+    void handleDCS(quint16 dcode);
 
 private slots:
 
