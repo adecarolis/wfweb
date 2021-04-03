@@ -20,9 +20,16 @@ public:
 signals:
     void getDuplexMode();
     void setDuplexMode(duplexMode dm);
+    void setCTCSS(quint16 tone);
+    void setDCS(quint16 dcode);
+    void setToneMode(rptAccessTxRx tmode);
+    void getToneMode();
 
 public slots:
     void receiveDuplexMode(duplexMode dm);
+    void handleToneMode(rptAccessTxRx tmode);
+    void handleCTCSS(quint16 tone);
+    void handleDCS(quint16 dcode);
 
 private slots:
 
@@ -37,8 +44,15 @@ private slots:
 
     void on_rptReadRigBtn_clicked();
 
+    void on_rptToneCombo_activated(int index);
+
+    void on_rptDTCSCombo_activated(int index);
+
 private:
     Ui::repeaterSetup *ui;
+
+    void populateTones();
+    void populateDTCS();
 
     duplexMode currentdm;
 };
