@@ -54,6 +54,7 @@ public slots:
     void commSetup(unsigned char rigCivAddr, udpPreferences prefs);
     void closeComm();
 
+    // Spectrum:
     void enableSpectOutput();
     void disableSpectOutput();
     void enableSpectrumDisplay();
@@ -70,20 +71,38 @@ public slots:
     void setScopeEdge(char edge);
     void getScopeEdge();
     void getScopeMode();
+
+    // Frequency, Mode, PTT:
     void setFrequency(freqt freq);
-    void setMode(unsigned char mode, unsigned char modeFilter);
     void getFrequency();
-    void getBandStackReg(char band, char regCode);
+    void setMode(unsigned char mode, unsigned char modeFilter);
     void getMode();
-    void getPTT();
-    void setPTT(bool pttOn);
     void setDataMode(bool dataOn);
     void getDataMode();
+    void getBandStackReg(char band, char regCode);
+
+    // PTT and ATU:
+    void getPTT();
+    void setPTT(bool pttOn);
+    void startATU();
+    void setATU(bool enabled);
+    void getATUStatus();
+
+    // Repeater:
     void setDuplexMode(duplexMode dm);
     void getDuplexMode();
+    void getTransmitFrequency();
+    void setTone(quint16 tone);
+    void setTSQL(quint16 tsql);
+    void getTSQL();
+    void getTone();
+    void setDTCS(quint16 dcscode, bool tinv, bool rinv);
+    void getDTCS();
+    void setRptAccessMode(rptAccessTxRx ratr);
+    void getRptAccessMode();
 
+    // Get Levels:
     void getLevels(); // all supported levels
-
     void getRfGain();
     void getAfGain();
     void getSql();
@@ -97,18 +116,10 @@ public slots:
     void getLANGain();
     void getACCGain();
     void getACCGain(unsigned char ab);
+    void getModInput(bool dataOn);
+    void getModInputLevel(rigInput input);
 
-
-    void getSMeter();
-    void getRFPowerMeter();
-    void getSWRMeter();
-    void getALCMeter();
-    void getCompReductionMeter();
-    void getVdMeter();
-    void getIDMeter();
-
-    void getMeters(meterKind meter); // all supported meters per transmit or receive
-
+    // Set Levels:
     void setSquelch(unsigned char level);
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
@@ -118,57 +129,109 @@ public slots:
     void setLANGain(unsigned char gain);
     void setACCGain(unsigned char gain);
     void setACCGain(unsigned char gain, unsigned char ab);
-
     void setCompLevel(unsigned char compLevel);
     void setMonitorLevel(unsigned char monitorLevel);
     void setVoxGain(unsigned char gain);
     void setAntiVoxGain(unsigned char gain);
-
-    void getModInput(bool dataOn);
     void setModInput(rigInput input, bool dataOn);
-
     void setModInputLevel(rigInput input, unsigned char level);
-    void getModInputLevel(rigInput input);
 
-    void startATU();
-    void setATU(bool enabled);
-    void getATUStatus();
+    // NB, NR, IP+:
+    void setIPP(bool enabled);
+    void getIPP();
+    // Maybe put some of these into a struct?
+    // setReceiverDSPParam(dspParam param);
+    //void getNRLevel();
+    //void getNREnabled();
+    //void getNBLevel();
+    //void getNBEnabled();
+    //void getNotchEnabled();
+    //void getNotchLevel();
+    //void setNotchEnabled(bool enabled);
+    //void setNotchLevel(unsigned char level);
+
+
+    // Meters:
+    void getSMeter();
+    void getRFPowerMeter();
+    void getSWRMeter();
+    void getALCMeter();
+    void getCompReductionMeter();
+    void getVdMeter();
+    void getIDMeter();
+    void getMeters(meterKind meter); // all supported meters per transmit or receive
+
+    // Rig ID and CIV:
     void getRigID();
     void findRigs();
     void setCIVAddr(unsigned char civAddr);
+
+    // Calibration:
     void getRefAdjustCourse();
     void getRefAdjustFine();
     void setRefAdjustCourse(unsigned char level);
     void setRefAdjustFine(unsigned char level);
+
+    // Satellite:
+    void setSatelliteMode(bool enabled);
+    void getSatelliteMode();
+
+    // UDP:
     void handleNewData(const QByteArray& data);
     void receiveAudioData(const audioPacket& data);
     void handleSerialPortError(const QString port, const QString errorText);
-    void handleStatusUpdate(const QString text);
     void changeLatency(const quint16 value);
+    void dataFromServer(QByteArray data);
+
+    // Speech:
     void sayFrequency();
     void sayMode();
     void sayAll();
+
+    // Housekeeping:
+    void handleStatusUpdate(const QString text);
     void getDebug();
-    void dataFromServer(QByteArray data);
 
 signals:
+    // Communication:
     void commReady();
-    void haveSpectrumData(QByteArray spectrum, double startFreq, double endFreq); // pass along data to UI
-    void haveRigID(rigCapabilities rigCaps);
-    void discoveredRigID(rigCapabilities rigCaps);
     void haveSerialPortError(const QString port, const QString errorText);
     void haveStatusUpdate(const QString text);
-    void haveFrequency(freqt freqStruct);
-    void haveMode(unsigned char mode, unsigned char filter);
-    void haveDataMode(bool dataModeEnabled);
-    void haveDuplexMode(duplexMode);
-    void haveBandStackReg(float freq, char mode, bool dataOn);
+    void dataForComm(const QByteArray &outData);
+
+    // UDP:
+    void haveChangeLatency(quint16 value);
+    void haveDataForServer(QByteArray outData);
+    void haveAudioData(audioPacket data);
+    void initUdpHandler();
+    void haveSetVolume(unsigned char level);
+
+    // Spectrum:
+    void haveSpectrumData(QByteArray spectrum, double startFreq, double endFreq); // pass along data to UI
     void haveSpectrumBounds();
     void haveScopeSpan(char span);
     void haveSpectrumMode(spectrumMode spectmode);
     void haveScopeEdge(char edge);
     void haveSpectrumRefLevel(int level);
 
+    // Rig ID:
+    void haveRigID(rigCapabilities rigCaps);
+    void discoveredRigID(rigCapabilities rigCaps);
+
+    // Frequency, Mode, data, and bandstack:
+    void haveFrequency(freqt freqStruct);
+    void haveMode(unsigned char mode, unsigned char filter);
+    void haveDataMode(bool dataModeEnabled);
+    void haveBandStackReg(float freq, char mode, bool dataOn);
+
+    // Repeater:
+    void haveDuplexMode(duplexMode);
+    void haveRptAccessMode(rptAccessTxRx ratr);
+    void haveTone(quint16 tone);
+    void haveTSQL(quint16 tsql);
+    void haveDTCS(quint16 dcscode);
+
+    // Levels:
     void haveRfGain(unsigned char level);
     void haveAfGain(unsigned char level);
     void haveSql(unsigned char level);
@@ -179,12 +242,14 @@ signals:
     void haveVoxGain(unsigned char gain);
     void haveAntiVoxGain(unsigned char gain);
 
+    // Modulation source and gain:
     void haveModInput(rigInput input, bool isData);
     void haveLANGain(unsigned char gain);
     void haveUSBGain(unsigned char gain);
     void haveACCGain(unsigned char gain, unsigned char ab);
     void haveModSrcGain(rigInput input, unsigned char gain);
 
+    // Meters:
     void haveMeter(meterKind meter, unsigned char level);
     void haveSMeter(unsigned char level);
     void haveRFMeter(unsigned char level);
@@ -194,19 +259,17 @@ signals:
     void haveVdMeter(unsigned char voltage);
     void haveIdMeter(unsigned char current);
 
-    void thing();
+    // Calibration:
     void haveRefAdjustCourse(unsigned char level);
     void haveRefAdjustFine(unsigned char level);
-    void dataForComm(const QByteArray &outData);
-    void getMoreDebug();
-    void finished();
+
+    // PTT and ATU:
     void havePTTStatus(bool pttOn);
     void haveATUStatus(unsigned char status);
-    void haveChangeLatency(quint16 value);
-    void haveDataForServer(QByteArray outData);
-    void haveAudioData(audioPacket data);
-    void initUdpHandler();
-    void haveSetVolume(unsigned char level);
+
+    // Housekeeping:
+    void getMoreDebug();
+    void finished();
 
 private:
     void setup();
@@ -276,9 +339,8 @@ private:
     bool foundRig;
 
     double frequencyMhz;
-    unsigned char civAddr; // IC-7300: 0x94 is default = 148decimal
+    unsigned char civAddr;
     unsigned char incomingCIVAddr; // place to store the incoming CIV.
-    //const unsigned char compCivAddr = 0xE1; // 0xE1 is new default, 0xE0 was before.
     bool pttAllowed;
 
     QString rigSerialPort;

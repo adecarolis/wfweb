@@ -86,14 +86,6 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs)
     setup();
     // ---
 
-    /* is this used for anything now???
-    this->ip = ip;
-    this->cport = cport;
-    this->sport = sport;
-    this->aport = aport;
-    this->username = username;
-    this->password = password;
-    */
     if (udp == Q_NULLPTR) {
 
         udp = new udpHandler(prefs);
@@ -651,8 +643,133 @@ void rigCommander::getDuplexMode()
     prepDataAndSend(payload);
 }
 
+void rigCommander::getTransmitFrequency()
+{
+    QByteArray payload;
+    payload.setRawData("\x1C\x03", 2);
+    prepDataAndSend(payload);
+}
 
+void rigCommander::setTone(quint16 tone)
+{
+    freqt f;
+    f.Hz = tone;
+    QByteArray fenc = makeFreqPayload(f);
+    qDebug() << __func__ << "tone encoded: ";
+    printHex(fenc);
 
+    QByteArray payload;
+    payload.setRawData("\x1B\x00", 2);
+    payload.append(fenc);
+    //prepDataAndSend(payload);
+}
+
+void rigCommander::setTSQL(quint16 tsql)
+{
+    freqt f;
+    f.Hz = tsql;
+    QByteArray fenc = makeFreqPayload(f);
+    qDebug() << __func__ << "tsql encoded: ";
+    printHex(fenc);
+
+    QByteArray payload;
+    payload.setRawData("\x1B\x00", 2);
+    payload.append(fenc);
+    //prepDataAndSend(payload);
+}
+
+void rigCommander::setDTCS(quint16 dcscode, bool tinv, bool rinv)
+{
+    freqt f;
+    f.Hz = dcscode;
+    QByteArray denc = makeFreqPayload(f);
+    qDebug() << __func__ << "dtcs encoded: ";
+    printHex(denc);
+
+    (void)tinv;
+    (void)rinv;
+
+    QByteArray payload;
+    payload.setRawData("\x1B\x02", 2);
+    payload.append(denc);
+    //prepDataAndSend(payload);
+}
+
+void rigCommander::getTone()
+{
+    QByteArray payload;
+    payload.setRawData("\x1B\x00", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getTSQL()
+{
+    QByteArray payload;
+    payload.setRawData("\x1B\x01", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getDTCS()
+{
+    QByteArray payload;
+    payload.setRawData("\x1B\x02", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getRptAccessMode()
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x5D", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setRptAccessMode(rptAccessTxRx ratr)
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x5D", 2);
+    payload.append((unsigned char)ratr);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setIPP(bool enabled)
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x65", 2);
+    if(enabled)
+    {
+        payload.append("\x01");
+    } else {
+        payload.append("\x00");
+    }
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getIPP()
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x65", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setSatelliteMode(bool enabled)
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x5A", 2);
+    if(enabled)
+    {
+        payload.append("\x01");
+    } else {
+        payload.append("\x00");
+    }
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getSatelliteMode()
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x5A", 2);
+    prepDataAndSend(payload);
+}
 
 void rigCommander::getPTT()
 {

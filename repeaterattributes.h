@@ -27,5 +27,6 @@ enum rptAccessTxRx {
 };
 
 Q_DECLARE_METATYPE(enum duplexMode)
+Q_DECLARE_METATYPE(enum rptAccessTxRx)
 
 #endif // REPEATERATTRIBUTES_H
