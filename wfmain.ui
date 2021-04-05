@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>810</width>
+    <width>905</width>
     <height>582</height>
    </rect>
   </property>
@@ -2053,8 +2053,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>810</width>
-     <height>30</height>
+     <width>905</width>
+     <height>22</height>
     </rect>
    </property>
   </widget>
@@ -2077,6 +2077,5 @@
  <connections/>
  <buttongroups>
   <buttongroup name="radioConnectionSerialNetworkGrp"/>
-  <buttongroup name="duplexBtnGrp"/>
  </buttongroups>
 </ui>

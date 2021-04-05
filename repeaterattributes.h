@@ -16,7 +16,7 @@ enum duplexMode {
 // Here, T=tone, D=DCS, N=none
 // And the naming convention order is Transmit Receive
 enum rptAccessTxRx {
-    ratrNone=0x00,
+    ratrNN=0x00,
     ratrTN=0x01, // "TONE" (T only)
     ratrNT=0x02, // "TSQL" (R only)
     ratrDD=0x03, // "DTCS" (TR)
@@ -27,5 +27,6 @@ enum rptAccessTxRx {
 };
 
 Q_DECLARE_METATYPE(enum duplexMode)
+Q_DECLARE_METATYPE(enum rptAccessTxRx)
 
 #endif // REPEATERATTRIBUTES_H

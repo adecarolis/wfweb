@@ -61,6 +61,9 @@ struct rigCapabilities {
     bool hasDV;
     bool hasATU;
 
+    bool hasCTCSS;
+    bool hasDTCS;
+
     bool hasTransmit;
 
 };

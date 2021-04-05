@@ -12,7 +12,6 @@ repeaterSetup::repeaterSetup(QWidget *parent) :
 
     // populate the DCS combo box:
     populateDTCS();
-
 }
 
 repeaterSetup::~repeaterSetup()
@@ -26,6 +25,7 @@ void repeaterSetup::populateTones()
     ui->rptToneCombo->addItem("69.3", quint16(693));
     ui->rptToneCombo->addItem("71.9", quint16(719));
     ui->rptToneCombo->addItem("74.4", quint16(744));
+    ui->rptToneCombo->addItem("77.0", quint16(770));
     ui->rptToneCombo->addItem("79.7", quint16(797));
     ui->rptToneCombo->addItem("82.5", quint16(825));
     ui->rptToneCombo->addItem("85.4", quint16(854));
@@ -45,7 +45,6 @@ void repeaterSetup::populateTones()
     ui->rptToneCombo->addItem("136.5", quint16(1365));
     ui->rptToneCombo->addItem("141.3", quint16(1413));
     ui->rptToneCombo->addItem("146.2", quint16(1462));
-    ui->rptToneCombo->addItem("150.0", quint16(1500)); // NATO
     ui->rptToneCombo->addItem("151.4", quint16(1514));
     ui->rptToneCombo->addItem("156.7", quint16(1567));
     ui->rptToneCombo->addItem("159.8", quint16(1598));
@@ -209,19 +208,48 @@ void repeaterSetup::receiveDuplexMode(duplexMode dm)
     }
 }
 
-void repeaterSetup::handleToneMode(rptAccessTxRx tmode)
+void repeaterSetup::handleRptAccessMode(rptAccessTxRx tmode)
 {
+    switch(tmode)
+    {
+        case ratrNN:
+            ui->toneNone->setChecked(true);
+            break;
+        case ratrTT:
+            ui->toneTSQL->setChecked(true);
+            break;
+        case ratrTN:
+            ui->toneTone->setChecked(true);
+            break;
+        case ratrDD:
+            ui->toneDTCS->setChecked(true);
+            break;
+        default:
+            break;
+    }
+
     (void)tmode;
 }
 
-void repeaterSetup::handleCTCSS(quint16 tone)
+void repeaterSetup::handleTone(quint16 tone)
 {
-    (void)tone;
+    int tindex = ui->rptToneCombo->findData(tone);
+    ui->rptToneCombo->setCurrentIndex(tindex);
 }
 
-void repeaterSetup::handleDCS(quint16 dcode)
+void repeaterSetup::handleTSQL(quint16 tsql)
 {
-    (void)dcode;
+    //int tindex = ui->rptToneCombo->findData(tone);
+    //ui->rptToneCombo->setCurrentIndex(tindex);
+    (void)tsql;
+}
+
+void repeaterSetup::handleDTCS(quint16 dcode, bool tinv, bool rinv)
+{
+    int dindex = ui->rptDTCSCombo->findData(dcode);
+    ui->rptDTCSCombo->setCurrentIndex(dindex);
+    ui->rptDTCSInvertTx->setChecked(tinv);
+    ui->rptDTCSInvertRx->setChecked(rinv);
 }
 
 void repeaterSetup::on_rptSimplexBtn_clicked()
@@ -259,14 +287,25 @@ void repeaterSetup::on_rptReadRigBtn_clicked()
 
 void repeaterSetup::on_rptToneCombo_activated(int index)
 {
-    quint16 ctcss=0;
-    ctcss = ui->rptToneCombo->itemData(index).toUInt();
-    emit setCTCSS(ctcss);
+    quint16 tsql=0;
+    tsql = (quint16)ui->rptToneCombo->itemData(index).toUInt();
+    //if(selected mode == TSQL)... send this way... otherwise if just tone, send other way...
+    emit setTone(tsql);
 }
 
 void repeaterSetup::on_rptDTCSCombo_activated(int index)
 {
     quint16 dcode=0;
-    dcode = ui->rptDTCSCombo->itemData(index).toUInt();
-    emit setDCS(dcode);
+    bool tinv = ui->rptDTCSInvertTx->isChecked();
+    bool rinv = ui->rptDTCSInvertRx->isChecked();
+    dcode = (quint16)ui->rptDTCSCombo->itemData(index).toUInt();
+    emit setDTCS(dcode, tinv, rinv);
+}
+
+void repeaterSetup::on_debugBtn_clicked()
+{
+    //emit getTone();
+    //emit getTSQL();
+    //emit getDTCS();
+    emit getRptAccessMode();
 }
