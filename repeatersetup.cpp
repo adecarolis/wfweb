@@ -271,7 +271,8 @@ void repeaterSetup::on_rptToneCombo_activated(int index)
 {
     quint16 tsql=0;
     tsql = (quint16)ui->rptToneCombo->itemData(index).toUInt();
-    emit setTSQL(tsql);
+    //if(selected mode == TSQL)... send this way... otherwise if just tone, send other way...
+    emit setTone(tsql);
 }
 
 void repeaterSetup::on_rptDTCSCombo_activated(int index)
@@ -285,7 +286,7 @@ void repeaterSetup::on_rptDTCSCombo_activated(int index)
 
 void repeaterSetup::on_debugBtn_clicked()
 {
-    emit getTSQL();
     //emit getTone();
-    //emit getDTCS();
+    //emit getTSQL();
+    emit getDTCS();
 }

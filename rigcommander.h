@@ -229,7 +229,7 @@ signals:
     void haveRptAccessMode(rptAccessTxRx ratr);
     void haveTone(quint16 tone);
     void haveTSQL(quint16 tsql);
-    void haveDTCS(quint16 dcscode);
+    void haveDTCS(quint16 dcscode, bool tinv, bool rinv);
 
     // Levels:
     void haveRfGain(unsigned char level);
@@ -284,14 +284,20 @@ private:
     freqt parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
     QByteArray makeFreqPayload(double frequency);
     QByteArray makeFreqPayload(freqt freq);
+    QByteArray encodeTone(quint16 tone, bool tinv, bool rinv);
+    QByteArray encodeTone(quint16 tone);
+    quint16 decodeTone(QByteArray eTone);
+    quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
+
     void parseMode();
     void parseSpectrum();
     void parseWFData();
     void parseSpectrumRefLevel();
     void parseDetailedRegisters1A05();
     void parseRegisters1A();
-    void parseBandStackReg();
+    void parseRegister1B();
     void parseRegisters1C();
+    void parseBandStackReg();
     void parsePTT();
     void parseATU();
     void parseLevels(); // register 0x14

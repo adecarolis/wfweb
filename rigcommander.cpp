@@ -652,47 +652,101 @@ void rigCommander::getTransmitFrequency()
 
 void rigCommander::setTone(quint16 tone)
 {
-    freqt f;
-    f.Hz = tone;
-    QByteArray fenc = makeFreqPayload(f);
-    qDebug() << __func__ << "tone encoded: ";
-    printHex(fenc);
+    QByteArray fenc = encodeTone(tone);
 
     QByteArray payload;
     payload.setRawData("\x1B\x00", 2);
     payload.append(fenc);
-    //prepDataAndSend(payload);
+
+    //qDebug() << __func__ << "TONE encoded payload: ";
+    printHex(payload);
+
+    prepDataAndSend(payload);
 }
 
 void rigCommander::setTSQL(quint16 tsql)
 {
-    freqt f;
-    f.Hz = tsql;
-    QByteArray fenc = makeFreqPayload(f);
-    qDebug() << __func__ << "tsql encoded: ";
-    printHex(fenc);
+    QByteArray fenc = encodeTone(tsql);
 
     QByteArray payload;
-    payload.setRawData("\x1B\x00", 2);
+    payload.setRawData("\x1B\x01", 2);
     payload.append(fenc);
-    //prepDataAndSend(payload);
+
+    //qDebug() << __func__ << "TSQL encoded payload: ";
+    printHex(payload);
+
+    prepDataAndSend(payload);
 }
 
 void rigCommander::setDTCS(quint16 dcscode, bool tinv, bool rinv)
 {
-    freqt f;
-    f.Hz = dcscode;
-    QByteArray denc = makeFreqPayload(f);
-    qDebug() << __func__ << "dtcs encoded: ";
-    printHex(denc);
 
-    (void)tinv;
-    (void)rinv;
+    QByteArray denc = encodeTone(dcscode, tinv, rinv);
 
     QByteArray payload;
     payload.setRawData("\x1B\x02", 2);
     payload.append(denc);
-    //prepDataAndSend(payload);
+
+    //qDebug() << __func__ << "DTCS encoded payload: ";
+    printHex(payload);
+
+    prepDataAndSend(payload);
+}
+
+QByteArray rigCommander::encodeTone(quint16 tone)
+{
+    return encodeTone(tone, false, false);
+}
+
+QByteArray rigCommander::encodeTone(quint16 tone, bool tinv, bool rinv)
+{
+    // This function is fine to use for DTCS and TONE
+    QByteArray enct;
+
+    unsigned char inv=0;
+    inv = inv | (unsigned char)rinv;
+    inv = inv | ((unsigned char)tinv) << 4;
+
+    enct.append(inv);
+
+    unsigned char hundreds = tone / 1000;
+    unsigned char tens = (tone-(hundreds*1000)) / 100;
+    unsigned char ones = (tone -(hundreds*1000)-(tens*100)) / 10;
+    unsigned char dec =  (tone -(hundreds*1000)-(tens*100)-(ones*10));
+
+    enct.append(tens | (hundreds<<4));
+    enct.append(dec | (ones <<4));
+
+    return enct;
+}
+
+quint16 rigCommander::decodeTone(QByteArray eTone)
+{
+    bool t;
+    bool r;
+    return decodeTone(eTone, t, r);
+}
+
+quint16 rigCommander::decodeTone(QByteArray eTone, bool &tinv, bool &rinv)
+{
+    // index:  00 01  02 03 04
+    // CTCSS:  1B 01  00 12 73 = PL 127.3, decode as 1273
+    // D(T)CS: 1B 01  TR 01 23 = T/R Invert bits + DCS code 123
+
+    tinv = false; rinv = false;
+    quint16 result = 0;
+
+    if((eTone.at(2) & 0x01) == 0x01)
+        tinv = true;
+    if((eTone.at(2) & 0x10) == 0x10)
+        rinv = true;
+
+    result += (eTone.at(4) & 0x0f);
+    result += ((eTone.at(4) & 0xf0) >> 4) *   10;
+    result += (eTone.at(3) & 0x0f) *  100;
+    result += ((eTone.at(3) & 0xf0) >> 4) * 1000;
+
+    return result;
 }
 
 void rigCommander::getTone()
@@ -1043,6 +1097,9 @@ void rigCommander::parseCommand()
             } else {
                 parseRegisters1A();
             }
+            break;
+        case '\x1B':
+            parseRegister1B();
             break;
         case '\x1C':
             parseRegisters1C();
@@ -1867,6 +1924,37 @@ void rigCommander::parseRegisters1A()
     }
 }
 
+void rigCommander::parseRegister1B()
+{
+    quint16 tone=0;
+    bool tinv = false;
+    bool rinv = false;
+
+    switch(payloadIn[01])
+    {
+        case '\x00':
+            // "Repeater tone"
+            tone = decodeTone(payloadIn);
+            emit haveTone(tone);
+            break;
+        case '\x01':
+            // "TSQL tone"
+            tone = decodeTone(payloadIn);
+            emit haveTSQL(tone);
+            break;
+        case '\x02':
+            // DTCS (DCS)
+            tone = decodeTone(payloadIn, tinv, rinv);
+            emit haveDTCS(tone, tinv, rinv);
+            break;
+        case '\x07':
+            // "CSQL code (DV mode)"
+            break;
+        default:
+            break;
+    }
+}
+
 void rigCommander::parseBandStackReg()
 {
     // qDebug(logRig()) << "Band stacking register response received: ";
@@ -2215,6 +2303,9 @@ void rigCommander::determineRigCaps()
     rigCaps.hasDV = false;
     rigCaps.hasATU = false;
 
+    rigCaps.hasCTCSS = false;
+    rigCaps.hasDTCS = false;
+
     rigCaps.spectSeqMax = 0;
     rigCaps.spectAmpMax = 0;
     rigCaps.spectLenMax = 0;
@@ -2239,6 +2330,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
             rigCaps.hasATU = true;
+            rigCaps.hasCTCSS = true;
             break;
         case modelR8600:
             rigCaps.modelName = QString("IC-R8600");
@@ -2251,6 +2343,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
             rigCaps.hasTransmit = false;
+            rigCaps.hasCTCSS = true;
+            rigCaps.hasDTCS = true;
             break;
         case model9700:
             rigCaps.modelName = QString("IC-9700");
@@ -2266,6 +2360,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasDD = true;
             rigCaps.hasDV = true;
+            rigCaps.hasCTCSS = true;
+            rigCaps.hasDTCS = true;
             break;
         case model7610:
             rigCaps.modelName = QString("IC-7610");
@@ -2279,6 +2375,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = true;
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
+            rigCaps.hasCTCSS = true;
             break;
         case model7850:
             rigCaps.modelName = QString("IC-785x");
@@ -2294,6 +2391,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
             rigCaps.hasATU = true;
+            rigCaps.hasCTCSS = true;
             break;
         case model705:
             rigCaps.modelName = QString("IC-705");
@@ -2309,6 +2407,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasDD = true;
             rigCaps.hasDV = true;
             rigCaps.hasATU = true;
+            rigCaps.hasCTCSS = true;
+            rigCaps.hasDTCS = true;
             break;
         case model7100:
             rigCaps.modelName = QString("IC-7100");
@@ -2319,6 +2419,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
             rigCaps.hasATU = true;
+            rigCaps.hasCTCSS = true;
+            rigCaps.hasDTCS = true;
             break;
         case model706:
             rigCaps.modelName = QString("IC-706");
