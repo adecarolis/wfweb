@@ -210,6 +210,24 @@ void repeaterSetup::receiveDuplexMode(duplexMode dm)
 
 void repeaterSetup::handleRptAccessMode(rptAccessTxRx tmode)
 {
+    switch(tmode)
+    {
+        case ratrNN:
+            ui->toneNone->setChecked(true);
+            break;
+        case ratrTT:
+            ui->toneTSQL->setChecked(true);
+            break;
+        case ratrTN:
+            ui->toneTone->setChecked(true);
+            break;
+        case ratrDD:
+            ui->toneDTCS->setChecked(true);
+            break;
+        default:
+            break;
+    }
+
     (void)tmode;
 }
 
@@ -288,5 +306,6 @@ void repeaterSetup::on_debugBtn_clicked()
 {
     //emit getTone();
     //emit getTSQL();
-    emit getDTCS();
+    //emit getDTCS();
+    emit getRptAccessMode();
 }

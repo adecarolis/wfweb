@@ -1065,6 +1065,9 @@ void rigCommander::parseCommand()
             // Metering such as s, power, etc
             parseLevels();
             break;
+        case '\x16':
+            parseRptrAccessMode();
+            break;
         case '\x19':
             // qDebug(logRig()) << "Have rig ID: " << (unsigned int)payloadIn[2];
             // printHex(payloadIn, false, true);
@@ -1953,6 +1956,15 @@ void rigCommander::parseRegister1B()
         default:
             break;
     }
+}
+
+void rigCommander::parseRptrAccessMode()
+{
+    //"INDEX: 00 01 02 03 "
+    //"DATA:  16 5d 00 fd "
+    //               ^-- mode info here
+
+    emit haveRptAccessMode((rptAccessTxRx)payloadIn.at(2));
 }
 
 void rigCommander::parseBandStackReg()

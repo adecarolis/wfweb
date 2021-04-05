@@ -126,7 +126,7 @@
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_3">
          <item>
-          <widget class="QRadioButton" name="radioButton">
+          <widget class="QRadioButton" name="toneNone">
            <property name="text">
             <string>None</string>
            </property>
@@ -136,7 +136,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QRadioButton" name="radioButton_2">
+          <widget class="QRadioButton" name="toneTone">
            <property name="text">
             <string>Transmit Tone only</string>
            </property>
@@ -146,7 +146,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QRadioButton" name="radioButton_3">
+          <widget class="QRadioButton" name="toneTSQL">
            <property name="text">
             <string>Tone Squelch</string>
            </property>
@@ -156,7 +156,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QRadioButton" name="radioButton_4">
+          <widget class="QRadioButton" name="toneDTCS">
            <property name="text">
             <string>DTCS</string>
            </property>

@@ -297,6 +297,7 @@ private:
     void parseRegisters1A();
     void parseRegister1B();
     void parseRegisters1C();
+    void parseRptrAccessMode();
     void parseBandStackReg();
     void parsePTT();
     void parseATU();
