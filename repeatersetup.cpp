@@ -45,7 +45,6 @@ void repeaterSetup::populateTones()
     ui->rptToneCombo->addItem("136.5", quint16(1365));
     ui->rptToneCombo->addItem("141.3", quint16(1413));
     ui->rptToneCombo->addItem("146.2", quint16(1462));
-    ui->rptToneCombo->addItem("150.0", quint16(1500)); // NATO
     ui->rptToneCombo->addItem("151.4", quint16(1514));
     ui->rptToneCombo->addItem("156.7", quint16(1567));
     ui->rptToneCombo->addItem("159.8", quint16(1598));
