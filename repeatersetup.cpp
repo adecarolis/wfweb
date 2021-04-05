@@ -25,6 +25,7 @@ void repeaterSetup::populateTones()
     ui->rptToneCombo->addItem("69.3", quint16(693));
     ui->rptToneCombo->addItem("71.9", quint16(719));
     ui->rptToneCombo->addItem("74.4", quint16(744));
+    ui->rptToneCombo->addItem("77.0", quint16(770));
     ui->rptToneCombo->addItem("79.7", quint16(797));
     ui->rptToneCombo->addItem("82.5", quint16(825));
     ui->rptToneCombo->addItem("85.4", quint16(854));
