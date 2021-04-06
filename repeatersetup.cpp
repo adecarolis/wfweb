@@ -239,9 +239,9 @@ void repeaterSetup::handleTone(quint16 tone)
 
 void repeaterSetup::handleTSQL(quint16 tsql)
 {
-    //int tindex = ui->rptToneCombo->findData(tone);
-    //ui->rptToneCombo->setCurrentIndex(tindex);
-    (void)tsql;
+    // TODO: Consider a second combo box for the TSQL
+    int tindex = ui->rptToneCombo->findData(tsql);
+    ui->rptToneCombo->setCurrentIndex(tindex);
 }
 
 void repeaterSetup::handleDTCS(quint16 dcode, bool tinv, bool rinv)
@@ -287,10 +287,14 @@ void repeaterSetup::on_rptReadRigBtn_clicked()
 
 void repeaterSetup::on_rptToneCombo_activated(int index)
 {
-    quint16 tsql=0;
-    tsql = (quint16)ui->rptToneCombo->itemData(index).toUInt();
-    //if(selected mode == TSQL)... send this way... otherwise if just tone, send other way...
-    emit setTone(tsql);
+    quint16 tone=0;
+    tone = (quint16)ui->rptToneCombo->itemData(index).toUInt();
+    if(ui->toneTone->isChecked())
+    {
+        emit setTone(tone);
+    } else if (ui->toneTSQL->isChecked()) {
+        emit setTSQL(tone);
+    }
 }
 
 void repeaterSetup::on_rptDTCSCombo_activated(int index)
@@ -308,4 +312,32 @@ void repeaterSetup::on_debugBtn_clicked()
     //emit getTSQL();
     //emit getDTCS();
     emit getRptAccessMode();
+}
+
+void repeaterSetup::on_toneNone_clicked()
+{
+    rptAccessTxRx rm;
+    rm = ratrNN;
+    emit setRptAccessMode(rm);
+}
+
+void repeaterSetup::on_toneTone_clicked()
+{
+    rptAccessTxRx rm;
+    rm = ratrTN;
+    emit setRptAccessMode(rm);
+}
+
+void repeaterSetup::on_toneTSQL_clicked()
+{
+    rptAccessTxRx rm;
+    rm = ratrTT;
+    emit setRptAccessMode(rm);
+}
+
+void repeaterSetup::on_toneDTCS_clicked()
+{
+    rptAccessTxRx rm;
+    rm = ratrDD;
+    emit setRptAccessMode(rm);
 }
