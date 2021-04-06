@@ -22,11 +22,11 @@ Ubuntu 20.04.2
 
 ### for all, the following is appicable:
 ~~~
-### mkdir -p ~/src/build 
-### cd ~/src/build 
-### wget https://wfview.org/downloads/latest.tar.gz   (filepath/name tbd -- currently: mail roeland, pa3met for files)
-### tar zxvf latest.tar.gz
-### sudo ./install.sh
+mkdir -p ~/src/build 
+cd ~/src/build 
+wget https://wfview.org/downloads/latest.tar.gz   (filepath/name tbd -- currently: mail roeland, pa3met for files)
+tar zxvf latest.tar.gz
+sudo ./install.sh
 ~~~
 this will install the binary and a few other files to your system.
 
