@@ -1,4 +1,4 @@
-# How to install wfview without  building yourself on selecyed linux versions
+# How to install wfview without  building yourself on selected linux versions
 
 
 
