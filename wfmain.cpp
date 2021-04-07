@@ -2422,13 +2422,29 @@ void wfmain::on_goFreqBtn_clicked()
 {
     freqt f;
     bool ok = false;
-    double freq = ui->freqMhzLineEdit->text().toDouble(&ok);
-    if(ok)
+    double freq = 0;
+    int KHz = 0;
+
+    if(ui->freqMhzLineEdit->text().contains("."))
     {
-        f.Hz = freq*1E6;
-        emit setFrequency(f);
-        issueDelayedCommand(cmdGetFreq);
+
+        freq = ui->freqMhzLineEdit->text().toDouble(&ok);
+        if(ok)
+        {
+            f.Hz = freq*1E6;
+            emit setFrequency(f);
+            issueDelayedCommand(cmdGetFreq);
+        }
+    } else {
+        KHz = ui->freqMhzLineEdit->text().toInt(&ok);
+        if(ok)
+        {
+            f.Hz = KHz*1E3;
+            emit setFrequency(f);
+            issueDelayedCommand(cmdGetFreq);
+        }
     }
+
     ui->freqMhzLineEdit->selectAll();
     freqTextSelected = true;
     ui->tabWidget->setCurrentIndex(0);
