@@ -345,6 +345,7 @@ void repeaterSetup::on_toneDTCS_clicked()
 
 void repeaterSetup::on_debugBtn_clicked()
 {
+    // TODO: Move these four commands to wfview's startup command list (place at the end)
     //emit getTone();
     //emit getTSQL();
     //emit getDTCS();
