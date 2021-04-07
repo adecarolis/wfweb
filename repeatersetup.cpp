@@ -12,11 +12,49 @@ repeaterSetup::repeaterSetup(QWidget *parent) :
 
     // populate the DCS combo box:
     populateDTCS();
+
+#ifdef QT_DEBUG
+    ui->debugBtn->setVisible(true);
+    ui->rptReadRigBtn->setVisible(true);
+#else
+    ui->debugBtn->setVisible(false);
+    ui->rptReadRigBtn->setVisible(false);
+#endif
+
 }
 
 repeaterSetup::~repeaterSetup()
 {
     delete ui;
+}
+
+void repeaterSetup::setRig(rigCapabilities rig)
+{
+    this->rig = rig;
+    haveRig = true;
+    if(rig.hasCTCSS)
+    {
+        ui->rptToneCombo->setDisabled(false);
+        ui->toneTone->setDisabled(false);
+        ui->toneTSQL->setDisabled(false);
+    } else {
+        ui->rptToneCombo->setDisabled(true);
+        ui->toneTone->setDisabled(true);
+        ui->toneTSQL->setDisabled(true);
+    }
+
+    if(rig.hasDTCS)
+    {
+        ui->rptDTCSCombo->setDisabled(false);
+        ui->toneDTCS->setDisabled(false);
+        ui->rptDTCSInvertRx->setDisabled(false);
+        ui->rptDTCSInvertTx->setDisabled(false);
+    } else {
+        ui->rptDTCSCombo->setDisabled(true);
+        ui->toneDTCS->setDisabled(true);
+        ui->rptDTCSInvertRx->setDisabled(true);
+        ui->rptDTCSInvertTx->setDisabled(true);
+    }
 }
 
 void repeaterSetup::populateTones()
@@ -239,9 +277,9 @@ void repeaterSetup::handleTone(quint16 tone)
 
 void repeaterSetup::handleTSQL(quint16 tsql)
 {
-    //int tindex = ui->rptToneCombo->findData(tone);
-    //ui->rptToneCombo->setCurrentIndex(tindex);
-    (void)tsql;
+    // TODO: Consider a second combo box for the TSQL
+    int tindex = ui->rptToneCombo->findData(tsql);
+    ui->rptToneCombo->setCurrentIndex(tindex);
 }
 
 void repeaterSetup::handleDTCS(quint16 dcode, bool tinv, bool rinv)
@@ -285,12 +323,16 @@ void repeaterSetup::on_rptReadRigBtn_clicked()
     emit getDuplexMode();
 }
 
-void repeaterSetup::on_rptToneCombo_activated(int index)
+void repeaterSetup::on_rptToneCombo_activated(int tindex)
 {
-    quint16 tsql=0;
-    tsql = (quint16)ui->rptToneCombo->itemData(index).toUInt();
-    //if(selected mode == TSQL)... send this way... otherwise if just tone, send other way...
-    emit setTone(tsql);
+    quint16 tone=0;
+    tone = (quint16)ui->rptToneCombo->itemData(tindex).toUInt();
+    if(ui->toneTone->isChecked())
+    {
+        emit setTone(tone);
+    } else if (ui->toneTSQL->isChecked()) {
+        emit setTSQL(tone);
+    }
 }
 
 void repeaterSetup::on_rptDTCSCombo_activated(int index)
@@ -302,8 +344,46 @@ void repeaterSetup::on_rptDTCSCombo_activated(int index)
     emit setDTCS(dcode, tinv, rinv);
 }
 
+void repeaterSetup::on_toneNone_clicked()
+{
+    rptAccessTxRx rm;
+    rm = ratrNN;
+    emit setRptAccessMode(rm);
+}
+
+void repeaterSetup::on_toneTone_clicked()
+{
+    rptAccessTxRx rm;
+    rm = ratrTN;
+    emit setRptAccessMode(rm);
+    emit setTone((quint16)ui->rptToneCombo->currentData().toUInt());
+}
+
+void repeaterSetup::on_toneTSQL_clicked()
+{
+    rptAccessTxRx rm;
+    rm = ratrTT;
+    emit setRptAccessMode(rm);
+    emit setTSQL((quint16)ui->rptToneCombo->currentData().toUInt());
+}
+
+void repeaterSetup::on_toneDTCS_clicked()
+{
+    rptAccessTxRx rm;
+    quint16 dcode=0;
+
+    rm = ratrDD;
+    emit setRptAccessMode(rm);
+
+    bool tinv = ui->rptDTCSInvertTx->isChecked();
+    bool rinv = ui->rptDTCSInvertRx->isChecked();
+    dcode = (quint16)ui->rptDTCSCombo->currentData().toUInt();
+    emit setDTCS(dcode, tinv, rinv);
+}
+
 void repeaterSetup::on_debugBtn_clicked()
 {
+    // TODO: Move these four commands to wfview's startup command list (place at the end)
     //emit getTone();
     //emit getTSQL();
     //emit getDTCS();

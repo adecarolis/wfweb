@@ -1,5 +1,57 @@
 # CHANGELOG
 
+- 20210406 	The repeater setup now disables elements for things your rig doesn't do.
+
+    		We now query the repeater-related things on startup, such that the
+    		repeater UI is populated correctly.
+
+ 	   	We now have kHz as the assumed input format if there isn't a dot in the
+    		entry box. Enjoy that!
+
+    		Minor change so that we track the selected tone to mode changes, keeping
+    		the radio in sync with the UI.
+
+    		Tone, Tone Squelch, and D(T)CS seem to work as expected. Mode can be
+    		selected.
+
+
+- 20210405	removed 150 Hz CTCSS / NATO as it can't make that by itself
+
+    		added 77.0 Hz tone to CTCSS
+
+    		We can now read the repeater access mode and update the UI. What remains
+    		is to be able to set the mode.
+
+    		Working read/write of Tone, TSQL, and DTCS tones/code. Some code is also
+    		present now to change the mode being used (tone, tsql, DTCS, or some
+    		combo of the two).
+
+
+- 20210404	Tone, TSQL, and DTCS code added, but not complete.
+
+    		better tone mode names
+
+    		Started work on the tone mode interface.
+
+
+- 20210401	Added placeholders for attenuator, preamp, and antenna selection UI
+    		controls.
+
+    		Moved some repeater-related things out from rig commander and into a
+    		shared header.
+
+
+- 20210331	Adjusting signals and slots for repeater duplex.
+
+    		Basic duplex code copied from wfmain to the new repeatersetup window.
+
+
+- 20210330	Added conditional to debug on serial data write size.
+
+
+- 20210329	Fix crash when radio is shutdown while wfview is connected.
+
+
 - 20210311      Add local volume control for UDP connections.
 
                 add volume control to audiohandler

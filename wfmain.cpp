@@ -411,6 +411,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
 
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
+    connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
+    connect(this, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
+    connect(this, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
     //connect(this, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
     //connect(rig, SIGNAL(haveDuplexMode(duplexMode)), this, SLOT(receiveDuplexMode(duplexMode)));
 
@@ -1513,6 +1516,18 @@ void wfmain:: getInitialRigState()
     cmdOutQue.append(cmdGetModInput);
     cmdOutQue.append(cmdGetModDataInput);
 
+    if(rigCaps.hasCTCSS)
+    {
+        cmdOutQue.append(cmdGetTone);
+        cmdOutQue.append(cmdGetTSQL);
+    }
+    if(rigCaps.hasDTCS)
+    {
+        cmdOutQue.append(cmdGetDTCS);
+    }
+    cmdOutQue.append(cmdGetRptAccessMode);
+
+
     cmdOutQue.append(cmdNone);
     cmdOutQue.append(cmdStartRegularPolling);
 
@@ -1847,6 +1862,15 @@ void wfmain::runDelayedCommand()
             case cmdGetDuplexMode:
                 emit getDuplexMode();
                 break;
+            case cmdGetTone:
+                emit getTone();
+                break;
+            case cmdGetTSQL:
+                emit getTSQL();
+                break;
+            case cmdGetRptAccessMode:
+                emit getRptAccessMode();
+                break;
             case cmdDispEnable:
                 emit scopeDisplayEnable();
                 break;
@@ -1960,6 +1984,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         haveRigCaps = true;
         // Added so that server receives rig capabilities.
         emit sendRigCaps(rigCaps);
+        rpt->setRig(rigCaps);
         if(rigCaps.model==model7850)
         {
             ui->modeSelectCombo->addItem("PSK", 0x12);
@@ -2422,13 +2447,29 @@ void wfmain::on_goFreqBtn_clicked()
 {
     freqt f;
     bool ok = false;
-    double freq = ui->freqMhzLineEdit->text().toDouble(&ok);
-    if(ok)
+    double freq = 0;
+    int KHz = 0;
+
+    if(ui->freqMhzLineEdit->text().contains("."))
     {
-        f.Hz = freq*1E6;
-        emit setFrequency(f);
-        issueDelayedCommand(cmdGetFreq);
+
+        freq = ui->freqMhzLineEdit->text().toDouble(&ok);
+        if(ok)
+        {
+            f.Hz = freq*1E6;
+            emit setFrequency(f);
+            issueDelayedCommand(cmdGetFreq);
+        }
+    } else {
+        KHz = ui->freqMhzLineEdit->text().toInt(&ok);
+        if(ok)
+        {
+            f.Hz = KHz*1E3;
+            emit setFrequency(f);
+            issueDelayedCommand(cmdGetFreq);
+        }
     }
+
     ui->freqMhzLineEdit->selectAll();
     freqTextSelected = true;
     ui->tabWidget->setCurrentIndex(0);
