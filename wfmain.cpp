@@ -1984,6 +1984,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         haveRigCaps = true;
         // Added so that server receives rig capabilities.
         emit sendRigCaps(rigCaps);
+        rpt->setRig(rigCaps);
         if(rigCaps.model==model7850)
         {
             ui->modeSelectCombo->addItem("PSK", 0x12);

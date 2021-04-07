@@ -12,11 +12,49 @@ repeaterSetup::repeaterSetup(QWidget *parent) :
 
     // populate the DCS combo box:
     populateDTCS();
+
+#ifdef QT_DEBUG
+    ui->debugBtn->setVisible(true);
+    ui->rptReadRigBtn->setVisible(true);
+#else
+    ui->debugBtn->setVisible(false);
+    ui->rptReadRigBtn->setVisible(false);
+#endif
+
 }
 
 repeaterSetup::~repeaterSetup()
 {
     delete ui;
+}
+
+void repeaterSetup::setRig(rigCapabilities rig)
+{
+    this->rig = rig;
+    haveRig = true;
+    if(rig.hasCTCSS)
+    {
+        ui->rptToneCombo->setDisabled(false);
+        ui->toneTone->setDisabled(false);
+        ui->toneTSQL->setDisabled(false);
+    } else {
+        ui->rptToneCombo->setDisabled(true);
+        ui->toneTone->setDisabled(true);
+        ui->toneTSQL->setDisabled(true);
+    }
+
+    if(rig.hasDTCS)
+    {
+        ui->rptDTCSCombo->setDisabled(false);
+        ui->toneDTCS->setDisabled(false);
+        ui->rptDTCSInvertRx->setDisabled(false);
+        ui->rptDTCSInvertTx->setDisabled(false);
+    } else {
+        ui->rptDTCSCombo->setDisabled(true);
+        ui->toneDTCS->setDisabled(true);
+        ui->rptDTCSInvertRx->setDisabled(true);
+        ui->rptDTCSInvertTx->setDisabled(true);
+    }
 }
 
 void repeaterSetup::populateTones()

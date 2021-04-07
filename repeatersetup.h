@@ -4,6 +4,7 @@
 #include <QMainWindow>
 
 #include "repeaterattributes.h"
+#include "rigidentities.h"
 
 namespace Ui {
 class repeaterSetup;
@@ -16,6 +17,7 @@ class repeaterSetup : public QMainWindow
 public:
     explicit repeaterSetup(QWidget *parent = 0);
     ~repeaterSetup();
+    void setRig(rigCapabilities rig);
 
 signals:
     void getDuplexMode();
@@ -55,7 +57,8 @@ private:
 
     void populateTones();
     void populateDTCS();
-
+    rigCapabilities rig;
+    bool haveRig = false;
     duplexMode currentdm;
 };
 
