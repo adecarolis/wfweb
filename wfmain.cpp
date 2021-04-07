@@ -411,6 +411,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
 
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
+    connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
+    connect(this, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
+    connect(this, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
     //connect(this, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
     //connect(rig, SIGNAL(haveDuplexMode(duplexMode)), this, SLOT(receiveDuplexMode(duplexMode)));
 
@@ -1513,6 +1516,18 @@ void wfmain:: getInitialRigState()
     cmdOutQue.append(cmdGetModInput);
     cmdOutQue.append(cmdGetModDataInput);
 
+    if(rigCaps.hasCTCSS)
+    {
+        cmdOutQue.append(cmdGetTone);
+        cmdOutQue.append(cmdGetTSQL);
+    }
+    if(rigCaps.hasDTCS)
+    {
+        cmdOutQue.append(cmdGetDTCS);
+    }
+    cmdOutQue.append(cmdGetRptAccessMode);
+
+
     cmdOutQue.append(cmdNone);
     cmdOutQue.append(cmdStartRegularPolling);
 
@@ -1846,6 +1861,15 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdGetDuplexMode:
                 emit getDuplexMode();
+                break;
+            case cmdGetTone:
+                emit getTone();
+                break;
+            case cmdGetTSQL:
+                emit getTSQL();
+                break;
+            case cmdGetRptAccessMode:
+                emit getRptAccessMode();
                 break;
             case cmdDispEnable:
                 emit scopeDisplayEnable();

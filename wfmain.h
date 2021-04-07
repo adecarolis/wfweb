@@ -48,14 +48,19 @@ signals:
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
     void setDataMode(bool dataOn);
     void getDataMode();
-    void getDuplexMode();
-    //void setDuplexMode(duplexMode dm);
     void getModInput(bool dataOn);
     void setModInput(rigInput input, bool dataOn);
     void getPTT();
     void setPTT(bool pttOn);
     void getBandStackReg(char band, char regCode);
     void getDebug();
+
+    // Repeater:
+    void getDuplexMode();
+    void getTone();
+    void getTSQL();
+    void getDTCS();
+    void getRptAccessMode();
 
     // Level get:
     void getLevels(); // get all levels
@@ -480,7 +485,8 @@ private:
               cmdGetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
               cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdGetVdMeter, cmdGetIdMeter,
-              cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter};
+              cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter,
+              cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode};
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     QVector <cmds> periodicCmdQueue;

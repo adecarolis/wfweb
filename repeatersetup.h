@@ -44,15 +44,10 @@ private slots:
     void on_rptReadRigBtn_clicked();
     void on_rptToneCombo_activated(int index);
     void on_rptDTCSCombo_activated(int index);
-
     void on_debugBtn_clicked();
-
     void on_toneNone_clicked();
-
     void on_toneTone_clicked();
-
     void on_toneTSQL_clicked();
-
     void on_toneDTCS_clicked();
 
 private:
