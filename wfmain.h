@@ -50,8 +50,6 @@ signals:
     void getDataMode();
     void getModInput(bool dataOn);
     void setModInput(rigInput input, bool dataOn);
-    void getPTT();
-    void setPTT(bool pttOn);
     void getBandStackReg(char band, char regCode);
     void getDebug();
 
@@ -94,10 +92,19 @@ signals:
     void getMeters(meterKind meter);
 
 
-
+    // PTT, ATU, ATT, Antenna, Preamp:
+    void getPTT();
+    void setPTT(bool pttOn);
+    void getAttenuator();
+    void getPreamp();
+    void getAntenna();
+    void setAttenuator(unsigned char att);
+    void setPreamp(unsigned char pre);
+    void setAntenna(unsigned char ant);
     void startATU();
     void setATU(bool atuEnabled);
     void getATUStatus();
+
     void getRigID(); // this is the model of the rig
     void getRigCIV(); // get the rig's CIV addr
     void spectOutputEnable();
@@ -379,6 +386,8 @@ private slots:
     void on_serialDeviceListCombo_activated(const QString &arg1);
 
     void on_rptSetupBtn_clicked();
+
+    void on_attSelCombo_activated(int index);
 
 private:
     Ui::wfmain *ui;
