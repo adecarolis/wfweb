@@ -13,6 +13,7 @@ different versions of linux in alphabetical order. Note that all are click-click
 Debian 11  (Debian 10 is outdated)
 Fedora 33
 Fedora 34
+mint 20.1 
 openSUSE 15.x
 openSUSE Tumbleweed
 SLES 15.x
@@ -43,6 +44,13 @@ start wfview
 ### Fedora 33/34:
 ~~~
 sudo dnf install qcustomplot-qt5 qt5-qtmultimedia qt5-qtserialport
+sudo ln  -s  /usr/lib64/libqcustomplot-qt5.so.2 /usr/lib64/libqcustomplot.so.2
+start wfview
+~~~
+
+### Mint 20.1
+~~~
+apt install libqcustomplot2.0 libqt5multimedia5 libqt5serialport5
 sudo ln  -s  /usr/lib64/libqcustomplot-qt5.so.2 /usr/lib64/libqcustomplot.so.2
 start wfview
 ~~~
