@@ -406,7 +406,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rpt, SIGNAL(setRptAccessMode(rptAccessTxRx)), rig, SLOT(setRptAccessMode(rptAccessTxRx)));
     connect(rig, SIGNAL(haveTone(quint16)), rpt, SLOT(handleTone(quint16)));
     connect(rig, SIGNAL(haveTSQL(quint16)), rpt, SLOT(handleTSQL(quint16)));
-    connect(rig, SIGNAL(haveDTCS(quint16)), rpt, SLOT(handleDTCS(quint16,bool,bool)));
+    connect(rig, SIGNAL(haveDTCS(quint16,bool,bool)), rpt, SLOT(handleDTCS(quint16,bool,bool)));
     connect(rig, SIGNAL(haveRptAccessMode(rptAccessTxRx)), rpt, SLOT(handleRptAccessMode(rptAccessTxRx)));
 
 
