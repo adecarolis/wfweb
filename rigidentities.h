@@ -70,6 +70,7 @@ struct rigCapabilities {
     bool hasAttenuator;
     //QVector <unsigned char> attenuators;
     std::vector <unsigned char> attenuators;
+    std::vector <unsigned char> preamps;
 };
 
 
