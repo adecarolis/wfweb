@@ -406,7 +406,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rpt, SIGNAL(setRptAccessMode(rptAccessTxRx)), rig, SLOT(setRptAccessMode(rptAccessTxRx)));
     connect(rig, SIGNAL(haveTone(quint16)), rpt, SLOT(handleTone(quint16)));
     connect(rig, SIGNAL(haveTSQL(quint16)), rpt, SLOT(handleTSQL(quint16)));
-    connect(rig, SIGNAL(haveDTCS(quint16)), rpt, SLOT(handleDTCS(quint16,bool,bool)));
+    connect(rig, SIGNAL(haveDTCS(quint16,bool,bool)), rpt, SLOT(handleDTCS(quint16,bool,bool)));
     connect(rig, SIGNAL(haveRptAccessMode(rptAccessTxRx)), rpt, SLOT(handleRptAccessMode(rptAccessTxRx)));
 
 
@@ -481,6 +481,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(getRigID()), rig, SLOT(getRigID()));
     connect(rig, SIGNAL(haveATUStatus(unsigned char)), this, SLOT(receiveATUStatus(unsigned char)));
     connect(rig, SIGNAL(haveRigID(rigCapabilities)), this, SLOT(receiveRigID(rigCapabilities)));
+    connect(this, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
 
     // Speech (emitted from rig speaker)
     connect(this, SIGNAL(sayAll()), rig, SLOT(sayAll()));
@@ -2049,6 +2050,14 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->modInputCombo->addItem("None", inputNone);
             ui->modInputDataCombo->addItem("None", inputNone);
         }
+
+        ui->attSelCombo->clear();
+        for(unsigned int i=0; i < rigCaps.attenuators.size(); i++)
+        {
+            inName = QString("%1").arg(rigCaps.attenuators.at(i), 0, 16);
+            ui->attSelCombo->addItem(inName, rigCaps.attenuators.at(i));
+        }
+
 
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
@@ -3639,6 +3648,12 @@ void wfmain::on_serialDeviceListCombo_activated(const QString &arg1)
 void wfmain::on_rptSetupBtn_clicked()
 {
     rpt->show();
+}
+
+void wfmain::on_attSelCombo_activated(int index)
+{
+    unsigned char att = (unsigned char)ui->attSelCombo->itemData(index).toInt();
+    emit setAttenuator(att);
 }
 
 // --- DEBUG FUNCTION ---

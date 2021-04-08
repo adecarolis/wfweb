@@ -72,7 +72,7 @@ public slots:
     void getScopeEdge();
     void getScopeMode();
 
-    // Frequency, Mode, PTT:
+    // Frequency, Mode, BSR:
     void setFrequency(freqt freq);
     void getFrequency();
     void setMode(unsigned char mode, unsigned char modeFilter);
@@ -81,12 +81,18 @@ public slots:
     void getDataMode();
     void getBandStackReg(char band, char regCode);
 
-    // PTT and ATU:
+    // PTT, ATU, ATT, Antenna, and Preamp:
     void getPTT();
     void setPTT(bool pttOn);
     void startATU();
     void setATU(bool enabled);
     void getATUStatus();
+    void getAttenuator();
+    void getPreamp();
+    void getAntenna();
+    void setAttenuator(unsigned char att);
+    void setPreamp(unsigned char pre);
+    void setAntenna(unsigned char ant);
 
     // Repeater:
     void setDuplexMode(duplexMode dm);

@@ -4,6 +4,7 @@
 #include <QtNumeric>
 #include <QString>
 #include <QList>
+#include <vector>
 
 // Credit for parts of CIV list:
 // http://www.docksideradio.com/Icom%20Radio%20Hex%20Addresses.htm
@@ -66,6 +67,10 @@ struct rigCapabilities {
 
     bool hasTransmit;
 
+    bool hasAttenuator;
+    //QVector <unsigned char> attenuators;
+    std::vector <unsigned char> attenuators;
+    std::vector <unsigned char> preamps;
 };
 
 

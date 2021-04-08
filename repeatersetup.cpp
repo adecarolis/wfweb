@@ -28,9 +28,9 @@ repeaterSetup::~repeaterSetup()
     delete ui;
 }
 
-void repeaterSetup::setRig(rigCapabilities rig)
+void repeaterSetup::setRig(rigCapabilities inRig)
 {
-    this->rig = rig;
+    this->rig = inRig;
     haveRig = true;
     if(rig.hasCTCSS)
     {

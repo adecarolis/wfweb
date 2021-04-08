@@ -2326,6 +2326,9 @@ void rigCommander::determineRigCaps()
     rigCaps.inputs.clear(); 
     rigCaps.inputs.append(inputMic);
 
+    rigCaps.hasAttenuator = true; // Verify that all recent rigs have attenuators
+    rigCaps.attenuators.push_back('\x00');
+    rigCaps.preamps.push_back('\x00');
 
     rigCaps.hasTransmit = true;
 
@@ -2343,6 +2346,9 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
+            rigCaps.attenuators.push_back('\x20');
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
             break;
         case modelR8600:
             rigCaps.modelName = QString("IC-R8600");
@@ -2357,6 +2363,11 @@ void rigCommander::determineRigCaps()
             rigCaps.hasTransmit = false;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.attenuators.push_back('\x10');
+            rigCaps.attenuators.push_back('\x20');
+            rigCaps.attenuators.push_back('\x30');
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
             break;
         case model9700:
             rigCaps.modelName = QString("IC-9700");
@@ -2374,6 +2385,9 @@ void rigCommander::determineRigCaps()
             rigCaps.hasDV = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.attenuators.push_back('\x10');
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');  // also 3 and 4, but these are external preamp control
             break;
         case model7610:
             rigCaps.modelName = QString("IC-7610");
@@ -2388,6 +2402,13 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
             rigCaps.hasCTCSS = true;
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(),
+                                      {'\x03', '\x06', '\x09', '\x12',\
+                                       '\x15', '\x18', '\x21', '\x24',\
+                                       '\x27', '\x30', '\x33', '\x36',
+                                       '\x39', '\x42', '\x45'});
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
             break;
         case model7850:
             rigCaps.modelName = QString("IC-785x");
@@ -2404,6 +2425,11 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(),
+                                      {'\x03', '\x06', '\x09',
+                                       '\x12', '\x15', '\x18', '\x21'});
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
             break;
         case model705:
             rigCaps.modelName = QString("IC-705");
@@ -2421,6 +2447,9 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x10' , '\x20'});
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
             break;
         case model7100:
             rigCaps.modelName = QString("IC-7100");
@@ -2433,6 +2462,9 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.attenuators.push_back('\x12');
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
             break;
         case model706:
             rigCaps.modelName = QString("IC-706");
@@ -2442,6 +2474,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
             rigCaps.hasATU = true;
+            rigCaps.attenuators.push_back('\x20');
             break;
         default:
             rigCaps.modelName = QString("IC-RigID: 0x%1").arg(rigCaps.model, 0, 16);
@@ -2453,9 +2486,10 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.attenuators.push_back('\x10');
+            rigCaps.attenuators.push_back('\x20');
             qDebug(logRig()) << "Found unknown rig: " << rigCaps.modelName;
             break;
-
     }
     haveRigCaps = true;
     if(lookingForRig)
@@ -2831,6 +2865,49 @@ void rigCommander::getATUStatus()
 {
     //qDebug(logRig()) << "Sending out for ATU status in RC.";
     QByteArray payload("\x1C\x01");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getAttenuator()
+{
+    QByteArray payload("\x11");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getPreamp()
+{
+    QByteArray payload("\x16\x02");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getAntenna()
+{
+    // This one might neet some thought
+    // as it seems each antenna has to be checked.
+    // Maybe 0x12 alone will do it.
+    QByteArray payload("\x12");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setAttenuator(unsigned char att)
+{
+    QByteArray payload("\x11");
+    payload.append(att);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setPreamp(unsigned char pre)
+{
+    QByteArray payload("\x16\x02");
+    payload.append(pre);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setAntenna(unsigned char ant)
+{
+    QByteArray payload("\x12");
+    payload.append(ant);
+    payload.append("\x01"); // "on", presumably the other ones turn off...
     prepDataAndSend(payload);
 }
 
