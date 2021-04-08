@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>905</width>
+    <width>934</width>
     <height>582</height>
    </rect>
   </property>
@@ -431,6 +431,9 @@
                 <width>16777215</width>
                 <height>80</height>
                </size>
+              </property>
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Squelch&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="maximum">
                <number>255</number>
@@ -2050,8 +2053,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>905</width>
-     <height>22</height>
+     <width>934</width>
+     <height>30</height>
     </rect>
    </property>
   </widget>
