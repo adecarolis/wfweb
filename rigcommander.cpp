@@ -852,7 +852,6 @@ void rigCommander::setPTT(bool pttOn)
     }
 }
 
-
 void rigCommander::setCIVAddr(unsigned char civAddr)
 {
     // Note: This is the radio's CIV address
@@ -2387,7 +2386,6 @@ void rigCommander::determineRigCaps()
             rigCaps.hasDTCS = true;
             rigCaps.attenuators.push_back('\x10');
             rigCaps.preamps.push_back('\x01');
-            rigCaps.preamps.push_back('\x02');  // also 3 and 4, but these are external preamp control
             break;
         case model7610:
             rigCaps.modelName = QString("IC-7610");
@@ -2487,6 +2485,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
             rigCaps.attenuators.push_back('\x10');
+            rigCaps.attenuators.push_back('\x12');
             rigCaps.attenuators.push_back('\x20');
             qDebug(logRig()) << "Found unknown rig: " << rigCaps.modelName;
             break;

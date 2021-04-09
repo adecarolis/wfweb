@@ -482,6 +482,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rig, SIGNAL(haveATUStatus(unsigned char)), this, SLOT(receiveATUStatus(unsigned char)));
     connect(rig, SIGNAL(haveRigID(rigCapabilities)), this, SLOT(receiveRigID(rigCapabilities)));
     connect(this, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
+    connect(this, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
+
 
     // Speech (emitted from rig speaker)
     connect(this, SIGNAL(sayAll()), rig, SLOT(sayAll()));
@@ -2054,9 +2056,17 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->attSelCombo->clear();
         for(unsigned int i=0; i < rigCaps.attenuators.size(); i++)
         {
-            inName = QString("%1").arg(rigCaps.attenuators.at(i), 0, 16);
+            inName = (i==0)?QString("0dB"):QString("-%1 dB").arg(rigCaps.attenuators.at(i), 0, 16);
             ui->attSelCombo->addItem(inName, rigCaps.attenuators.at(i));
         }
+
+        for(unsigned int i=0; i < rigCaps.preamps.size(); i++)
+        {
+            inName = (i==0)?QString("Disabled"):QString("Pre #%1").arg(rigCaps.preamps.at(i), 0, 16);
+            ui->preampSelCombo->addItem(inName, rigCaps.preamps.at(i));
+        }
+
+
 
 
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
@@ -3656,6 +3666,12 @@ void wfmain::on_attSelCombo_activated(int index)
     emit setAttenuator(att);
 }
 
+void wfmain::on_preampSelCombo_activated(int index)
+{
+    unsigned char pre = (unsigned char)ui->preampSelCombo->itemData(index).toInt();
+    emit setPreamp(pre);
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
@@ -3674,3 +3690,4 @@ void wfmain::on_debugBtn_clicked()
     emit getScopeMode();
 
 }
+
