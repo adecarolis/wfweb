@@ -653,18 +653,11 @@
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_19">
                <item>
-                <widget class="QRadioButton" name="preattNone">
-                 <property name="text">
-                  <string>None</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
                 <layout class="QHBoxLayout" name="horizontalLayout_23">
                  <item>
-                  <widget class="QRadioButton" name="preampEnable">
+                  <widget class="QLabel" name="label_12">
                    <property name="text">
-                    <string>Preamp</string>
+                    <string>Preamp:</string>
                    </property>
                   </widget>
                  </item>
@@ -682,9 +675,9 @@
                   <number>0</number>
                  </property>
                  <item>
-                  <widget class="QRadioButton" name="attEnable">
+                  <widget class="QLabel" name="label_30">
                    <property name="text">
-                    <string>Attenuator</string>
+                    <string>Attenuator:</string>
                    </property>
                   </widget>
                  </item>
@@ -724,7 +717,7 @@
                 <item>
                  <widget class="QLabel" name="label_9">
                   <property name="text">
-                   <string>Antenna</string>
+                   <string>Antenna:</string>
                   </property>
                  </widget>
                 </item>
@@ -2054,7 +2047,7 @@
      <x>0</x>
      <y>0</y>
      <width>934</width>
-     <height>30</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>
