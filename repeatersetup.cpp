@@ -25,6 +25,11 @@ repeaterSetup::repeaterSetup(QWidget *parent) :
 
 repeaterSetup::~repeaterSetup()
 {
+    // Trying this for more consistant destruction
+    rig.inputs.clear();
+    rig.preamps.clear();
+    rig.attenuators.clear();
+
     delete ui;
 }
 

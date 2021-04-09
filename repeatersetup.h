@@ -2,6 +2,7 @@
 #define REPEATERSETUP_H
 
 #include <QMainWindow>
+#include <QDebug>
 
 #include "repeaterattributes.h"
 #include "rigidentities.h"
