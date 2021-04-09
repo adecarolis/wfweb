@@ -391,6 +391,8 @@ private slots:
 
     void on_preampSelCombo_activated(int index);
 
+    void on_antennaSelCombo_activated(int index);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;

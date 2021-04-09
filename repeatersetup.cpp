@@ -29,6 +29,7 @@ repeaterSetup::~repeaterSetup()
     rig.inputs.clear();
     rig.preamps.clear();
     rig.attenuators.clear();
+    rig.antennas.clear();
 
     delete ui;
 }

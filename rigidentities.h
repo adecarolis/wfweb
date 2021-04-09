@@ -66,11 +66,13 @@ struct rigCapabilities {
     bool hasDTCS;
 
     bool hasTransmit;
-
     bool hasAttenuator;
+    bool hasPreamp;
+    bool hasAntennaSel;
     //QVector <unsigned char> attenuators;
     std::vector <unsigned char> attenuators;
     std::vector <unsigned char> preamps;
+    std::vector <unsigned char> antennas;
 };
 
 

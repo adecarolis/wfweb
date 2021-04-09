@@ -2327,7 +2327,10 @@ void rigCommander::determineRigCaps()
 
     rigCaps.hasAttenuator = true; // Verify that all recent rigs have attenuators
     rigCaps.attenuators.push_back('\x00');
+    rigCaps.hasPreamp = true;
     rigCaps.preamps.push_back('\x00');
+
+    rigCaps.hasAntennaSel = false;
 
     rigCaps.hasTransmit = true;
 
@@ -2367,6 +2370,8 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.push_back('\x30');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
+            rigCaps.hasAntennaSel = true;
+            rigCaps.antennas = {0x00, 0x01, 0x02};
             break;
         case model9700:
             rigCaps.modelName = QString("IC-9700");
@@ -2407,6 +2412,8 @@ void rigCommander::determineRigCaps()
                                        '\x39', '\x42', '\x45'});
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
+            rigCaps.hasAntennaSel = true;
+            rigCaps.antennas = {0x00, 0x01};
             break;
         case model7850:
             rigCaps.modelName = QString("IC-785x");
@@ -2428,6 +2435,8 @@ void rigCommander::determineRigCaps()
                                        '\x12', '\x15', '\x18', '\x21'});
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
+            rigCaps.hasAntennaSel = true;
+            rigCaps.antennas = {0x00, 0x01, 0x02, 0x03};
             break;
         case model705:
             rigCaps.modelName = QString("IC-705");
@@ -2484,6 +2493,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasPreamp = false;
+            rigCaps.hasAntennaSel = false;
             rigCaps.attenuators.push_back('\x10');
             rigCaps.attenuators.push_back('\x12');
             rigCaps.attenuators.push_back('\x20');

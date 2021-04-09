@@ -483,6 +483,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rig, SIGNAL(haveRigID(rigCapabilities)), this, SLOT(receiveRigID(rigCapabilities)));
     connect(this, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
     connect(this, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
+    connect(this, SIGNAL(setAntenna(unsigned char)), rig, SLOT(setAntenna(unsigned char)));
 
 
     // Speech (emitted from rig speaker)
@@ -2054,18 +2055,43 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         }
 
         ui->attSelCombo->clear();
-        for(unsigned int i=0; i < rigCaps.attenuators.size(); i++)
+        if(rigCaps.hasAttenuator)
         {
-            inName = (i==0)?QString("0dB"):QString("-%1 dB").arg(rigCaps.attenuators.at(i), 0, 16);
-            ui->attSelCombo->addItem(inName, rigCaps.attenuators.at(i));
+            ui->attSelCombo->setDisabled(false);
+            for(unsigned int i=0; i < rigCaps.attenuators.size(); i++)
+            {
+                inName = (i==0)?QString("0dB"):QString("-%1 dB").arg(rigCaps.attenuators.at(i), 0, 16);
+                ui->attSelCombo->addItem(inName, rigCaps.attenuators.at(i));
+            }
+        } else {
+            ui->attSelCombo->setDisabled(true);
         }
 
-        for(unsigned int i=0; i < rigCaps.preamps.size(); i++)
+        ui->preampSelCombo->clear();
+        if(rigCaps.hasPreamp)
         {
-            inName = (i==0)?QString("Disabled"):QString("Pre #%1").arg(rigCaps.preamps.at(i), 0, 16);
-            ui->preampSelCombo->addItem(inName, rigCaps.preamps.at(i));
+            ui->preampSelCombo->setDisabled(false);
+            for(unsigned int i=0; i < rigCaps.preamps.size(); i++)
+            {
+                inName = (i==0)?QString("Disabled"):QString("Pre #%1").arg(rigCaps.preamps.at(i), 0, 16);
+                ui->preampSelCombo->addItem(inName, rigCaps.preamps.at(i));
+            }
+        } else {
+            ui->preampSelCombo->setDisabled(true);
         }
 
+        ui->antennaSelCombo->clear();
+        if(rigCaps.hasAntennaSel)
+        {
+            ui->antennaSelCombo->setDisabled(false);
+            for(unsigned int i=0; i < rigCaps.antennas.size(); i++)
+            {
+                inName = QString("%1").arg(rigCaps.antennas.at(i), 0, 16);
+                ui->antennaSelCombo->addItem(inName, rigCaps.antennas.at(i));
+            }
+        } else {
+            ui->antennaSelCombo->setDisabled(true);
+        }
 
 
 
@@ -3670,6 +3696,12 @@ void wfmain::on_preampSelCombo_activated(int index)
 {
     unsigned char pre = (unsigned char)ui->preampSelCombo->itemData(index).toInt();
     emit setPreamp(pre);
+}
+
+void wfmain::on_antennaSelCombo_activated(int index)
+{
+    unsigned char ant = (unsigned char)ui->antennaSelCombo->itemData(index).toInt();
+    emit setAntenna(ant);
 }
 
 // --- DEBUG FUNCTION ---
