@@ -1,5 +1,13 @@
 # CHANGELOG
 
+- 20210408    	Preamp data is now tracked (but not used yet)
+
+
+- 20210407 	Minor disconnect in the getDTCS call
+
+    		Attenuators are in! Please try them out!
+
+
 - 20210406 	The repeater setup now disables elements for things your rig doesn't do.
 
     		We now query the repeater-related things on startup, such that the
