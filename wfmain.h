@@ -501,7 +501,8 @@ private:
               cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdGetVdMeter, cmdGetIdMeter,
               cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter,
-              cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode};
+              cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna};
+
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     QVector <cmds> periodicCmdQueue;

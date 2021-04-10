@@ -449,7 +449,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
     connect(this, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
     connect(this, SIGNAL(setAntenna(unsigned char)), rig, SLOT(setAntenna(unsigned char)));
-
+    connect(this, SIGNAL(getPreamp()), rig, SLOT(getPreamp()));
+    connect(this, SIGNAL(getAttenuator()), rig, SLOT(getAttenuator()));
+    connect(this, SIGNAL(getAntenna()), rig, SLOT(getAntenna));
 
     // Speech (emitted from rig speaker)
     connect(this, SIGNAL(sayAll()), rig, SLOT(sayAll()));
@@ -1474,6 +1476,18 @@ void wfmain:: getInitialRigState()
     }
     cmdOutQue.append(cmdGetRptAccessMode);
 
+    if(rigCaps.hasAntennaSel)
+    {
+        cmdOutQue.append(cmdGetAntenna);
+    }
+    if(rigCaps.hasAttenuator)
+    {
+        cmdOutQue.append(cmdGetAttenuator);
+    }
+    if(rigCaps.hasPreamp)
+    {
+        cmdOutQue.append(cmdGetPreamp);
+    }
 
     cmdOutQue.append(cmdNone);
     cmdOutQue.append(cmdStartRegularPolling);
@@ -1815,6 +1829,9 @@ void wfmain::runDelayedCommand()
             case cmdGetTSQL:
                 emit getTSQL();
                 break;
+            case cmdGetDTCS:
+                emit getDTCS();
+                break;
             case cmdGetRptAccessMode:
                 emit getRptAccessMode();
                 break;
@@ -1853,6 +1870,15 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdGetATUStatus:
                 emit getATUStatus();
+                break;
+            case cmdGetAttenuator:
+                emit getAttenuator();
+                break;
+            case cmdGetPreamp:
+                emit getPreamp();
+                break;
+            case cmdGetAntenna:
+                emit getAntenna();
                 break;
             case cmdScopeCenterMode:
                 emit setScopeMode(spectModeCenter);
