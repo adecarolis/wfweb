@@ -177,29 +177,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->spectrumModeCombo->addItem("Scroll-C", (spectrumMode)spectModeScrollC);
     ui->spectrumModeCombo->addItem("Scroll-F", (spectrumMode)spectModeScrollF);
 
-
-    // if setting for serial port is "auto" then...
-//    if(prefs.serialPortRadio == QString("auto"))
-//    {
-//        // Find the ICOM IC-7300.
-//        qDebug(logSystem()) << "Searching for serial port...";
-//        QDirIterator it("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
-
-//        while (it.hasNext())
-//            qDebug(logSystem()) << it.next();
-//        // if (it.isEmpty()) // fail or default to ttyUSB0 if present
-//        // iterator might not make sense
-//        serialPortRig = it.filePath(); // first? last?
-//        if(serialPortRig.isEmpty())
-//        {
-//            qDebug(logSystem()) << "Cannot find IC-7300 serial port. Trying /dev/ttyUSB0";
-//            serialPortRig = QString("/dev/ttyUSB0");
-//        }
-//        // end finding the 7300 code
-//    } else {
-//        serialPortRig = prefs.serialPortRadio;
-//    }
-
     // Start server if enabled in config
     if (serverConfig.enabled) {
         serverConfig.lan = prefs.enableLAN;
@@ -236,19 +213,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     tracer->setPen(QPen(Qt::green));
     tracer->setBrush(Qt::green);
     tracer->setSize(30);
-
-//    spectWidth = 475; // fixed for now
-//    wfLength = 160; // fixed for now, time-length of waterfall
-
-//    // Initialize before use!
-
-//    QByteArray empty((int)spectWidth, '\x01');
-//    spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
-//    for(quint16 i=0; i<wfLength; i++)
-//    {
-//        wfimage.append(empty);
-//    }
-
 
     ui->modeSelectCombo->addItem("LSB",  0x00);
     ui->modeSelectCombo->addItem("USB",  0x01);
@@ -749,10 +713,6 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     delayedCommand->setInterval(100); // faster polling is ok now.
     receiveRigID(rigCaps);
     getInitialRigState();
-
-    //QString message = QString("Found model: ").append(rigCaps.modelName);
-
-    //ui->statusBar->showMessage(message, 0);
 
     return;
 }
@@ -2240,21 +2200,14 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         {
             for(int col = 0; col < spectWidth; col++)
             {
-                //colorMap->data()->cellToCoord(xIndex, yIndex, &x, &y)
-                // Very fast but doesn't roll downward:
-                //colorMap->data()->setCell( col, spectRowCurrent, spectrum.at(col) );
-                // Slow but rolls:
                 colorMap->data()->setCell( col, row, wfimage.at(row).at(col));
             }
         }
 
-        //colorMap->data()->setRange(QCPRange(startFreq, endFreq), QCPRange(0,wfLength-1));
         wf->yAxis->setRange(0,wfLength - 1);
         wf->xAxis->setRange(0, spectWidth-1);
         wf->replot();
         spectRowCurrent = (spectRowCurrent + 1) % wfLength;
-        //qDebug(logSystem()) << "updating spectrum, new row is: " << spectRowCurrent;
-
     }
 }
 
