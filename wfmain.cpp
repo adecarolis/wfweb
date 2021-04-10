@@ -716,23 +716,6 @@ void wfmain::openRig()
 
     ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
 
-/*
-    if(prefs.radioCIVAddr == 0)
-    {
-        // tell rigCommander to broadcast a request for all rig IDs.
-        // qDebug(logSystem()) << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
-        ui->statusBar->showMessage(QString("Searching CIV bus for connected radios."), 1000);
-        emit getRigCIV();
-        cmdOutQue.append(cmdGetRigCIV);
-        delayedCommand->start();
-    } else {
-        // don't bother, they told us the CIV they want, stick with it.
-        // We still query the rigID to find the model, but at least we know the CIV.
-        qDebug(logSystem()) << "Skipping automatic CIV, using user-supplied value of " << prefs.radioCIVAddr;
-        getInitialRigState();
-    }
-*/
-
 }
 
 void wfmain::receiveCommReady()
@@ -1153,7 +1136,6 @@ void wfmain::prepareWf()
             wfimage.append(empty);
         }
 
-        // from line 305-313:
         colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
         colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
         colorMap->setDataRange(QCPRange(0, rigCaps.spectAmpMax));
