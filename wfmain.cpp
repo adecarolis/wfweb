@@ -266,18 +266,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->modeFilterCombo->addItem("Setup...", 99);
 
     ui->tuningStepCombo->blockSignals(true);
-    /*
-    ui->tuningStepCombo->addItem("1 Hz",     0.000001f);
-    ui->tuningStepCombo->addItem("10 Hz",    0.000010f);
-    ui->tuningStepCombo->addItem("100 Hz",   0.000100f);
-    ui->tuningStepCombo->addItem("1 kHz",    0.001000f);
-    ui->tuningStepCombo->addItem("2.5 kHz",  0.002500f);
-    ui->tuningStepCombo->addItem("5 kHz",    0.005000f);
-    ui->tuningStepCombo->addItem("10 kHz",   0.010000f);
-    ui->tuningStepCombo->addItem("12.5 kHz", 0.012500f);
-    ui->tuningStepCombo->addItem("100 kHz",  0.100000f);
-    ui->tuningStepCombo->addItem("250 kHz",  0.250000f);
-    */
 
     ui->tuningStepCombo->addItem("1 Hz",    (unsigned int)      1);
     ui->tuningStepCombo->addItem("10 Hz",   (unsigned int)     10);
