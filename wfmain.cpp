@@ -294,6 +294,19 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->tuningStepCombo->setCurrentIndex(2);
     ui->tuningStepCombo->blockSignals(false);
 
+    ui->wfthemeCombo->addItem("Jet", QCPColorGradient::gpJet);
+    ui->wfthemeCombo->addItem("Cold", QCPColorGradient::gpCold);
+    ui->wfthemeCombo->addItem("Hot", QCPColorGradient::gpHot);
+    ui->wfthemeCombo->addItem("Thermal", QCPColorGradient::gpThermal);
+    ui->wfthemeCombo->addItem("Night", QCPColorGradient::gpNight);
+    ui->wfthemeCombo->addItem("Ion", QCPColorGradient::gpIon);
+    ui->wfthemeCombo->addItem("Gray", QCPColorGradient::gpGrayscale);
+    ui->wfthemeCombo->addItem("Geography", QCPColorGradient::gpGeography);
+    ui->wfthemeCombo->addItem("Hues", QCPColorGradient::gpHues);
+    ui->wfthemeCombo->addItem("Polar", QCPColorGradient::gpPolar);
+    ui->wfthemeCombo->addItem("Spectrum", QCPColorGradient::gpSpectrum);
+    ui->wfthemeCombo->addItem("Candy", QCPColorGradient::gpCandy);
+
     spans << "2.5k" << "5.0k" << "10k" << "25k";
     spans << "50k" << "100k" << "250k" << "500k";
     ui->scopeBWCombo->insertItems(0, spans);
@@ -3704,6 +3717,11 @@ void wfmain::on_antennaSelCombo_activated(int index)
     emit setAntenna(ant);
 }
 
+void wfmain::on_wfthemeCombo_activated(int index)
+{
+    colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(ui->wfthemeCombo->itemData(index).toInt()));
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
@@ -3720,6 +3738,4 @@ void wfmain::on_debugBtn_clicked()
     // emit getTSQL();
     qDebug(logSystem()) << "Getting scope mode";
     emit getScopeMode();
-
 }
-

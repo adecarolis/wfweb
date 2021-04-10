@@ -393,6 +393,8 @@ private slots:
 
     void on_antennaSelCombo_activated(int index);
 
+    void on_wfthemeCombo_activated(int index);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;

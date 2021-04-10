@@ -114,6 +114,16 @@
            </widget>
           </item>
           <item>
+           <widget class="QLabel" name="label_31">
+            <property name="text">
+             <string>Theme:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="wfthemeCombo"/>
+          </item>
+          <item>
            <spacer name="horizontalSpacer_2">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
