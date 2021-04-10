@@ -403,6 +403,7 @@ private:
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
     QCPItemTracer * tracer; // marker of current frequency
+    QCPItemLine * freqIndicatorLine;
     //commHandler *comm;
     void setAppTheme(bool isCustom);
     void setPlotTheme(QCustomPlot *plot, bool isDark);

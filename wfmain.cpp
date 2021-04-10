@@ -214,6 +214,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     tracer->setBrush(Qt::green);
     tracer->setSize(30);
 
+    freqIndicatorLine = new QCPItemLine(plot);
+    freqIndicatorLine->setAntialiased(true);
+    freqIndicatorLine->setPen(QPen(Qt::blue));
+
+
     ui->modeSelectCombo->addItem("LSB",  0x00);
     ui->modeSelectCombo->addItem("USB",  0x01);
     ui->modeSelectCombo->addItem("AM",   0x02);
@@ -2201,9 +2206,9 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     plot->graph(0)->setData(x,y);
     if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
     {
-        // tracer->setGraphKey(freqMhz);
         tracer->setGraphKey(freq.MHzDouble);
-
+        freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
+        freqIndicatorLine->end->setCoords(freq.MHzDouble,160);
     }
     if(drawPeaks)
     {
