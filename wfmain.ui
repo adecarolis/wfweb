@@ -634,6 +634,26 @@
              </widget>
             </item>
             <item>
+             <widget class="QCheckBox" name="tuneEnableChk">
+              <property name="toolTip">
+               <string>Enable the Automatic Antenna Tuner</string>
+              </property>
+              <property name="text">
+               <string>Enable ATU</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="tuneNowBtn">
+              <property name="toolTip">
+               <string>Start the automatic antenna tuner cycle</string>
+              </property>
+              <property name="text">
+               <string>Tune</string>
+              </property>
+             </widget>
+            </item>
+            <item>
              <widget class="QPushButton" name="rptSetupBtn">
               <property name="text">
                <string>Repeater</string>
@@ -1619,20 +1639,6 @@
            <widget class="QComboBox" name="modInputDataCombo">
             <property name="sizeAdjustPolicy">
              <enum>QComboBox::AdjustToContents</enum>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="tuneEnableChk">
-            <property name="text">
-             <string>Enable ATU</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="tuneNowBtn">
-            <property name="text">
-             <string>Tune Now</string>
             </property>
            </widget>
           </item>
