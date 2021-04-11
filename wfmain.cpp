@@ -455,8 +455,12 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
     connect(this, SIGNAL(setAntenna(unsigned char)), rig, SLOT(setAntenna(unsigned char)));
     connect(this, SIGNAL(getPreamp()), rig, SLOT(getPreamp()));
+    connect(rig, SIGNAL(havePreamp(unsigned char)), this, SLOT(receivePreamp(unsigned char)));
     connect(this, SIGNAL(getAttenuator()), rig, SLOT(getAttenuator()));
+    connect(rig, SIGNAL(haveAttenuator(unsigned char)), this, SLOT(receiveAttenuator(unsigned char)));
     connect(this, SIGNAL(getAntenna()), rig, SLOT(getAntenna));
+    //connect(rig, SIGNAL(haveAntenna(unsigned char)), this, SLOT(receiveAntennaSel(unsigned char)));
+
 
     // Speech (emitted from rig speaker)
     connect(this, SIGNAL(sayAll()), rig, SLOT(sayAll()));
@@ -3657,12 +3661,14 @@ void wfmain::on_attSelCombo_activated(int index)
 {
     unsigned char att = (unsigned char)ui->attSelCombo->itemData(index).toInt();
     emit setAttenuator(att);
+    issueDelayedCommand(cmdGetPreamp);
 }
 
 void wfmain::on_preampSelCombo_activated(int index)
 {
     unsigned char pre = (unsigned char)ui->preampSelCombo->itemData(index).toInt();
     emit setPreamp(pre);
+    issueDelayedCommand(cmdGetAttenuator);
 }
 
 void wfmain::on_antennaSelCombo_activated(int index)
@@ -3674,6 +3680,18 @@ void wfmain::on_antennaSelCombo_activated(int index)
 void wfmain::on_wfthemeCombo_activated(int index)
 {
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(ui->wfthemeCombo->itemData(index).toInt()));
+}
+
+void wfmain::receivePreamp(unsigned char pre)
+{
+    int preindex = ui->preampSelCombo->findData(pre);
+    ui->preampSelCombo->setCurrentIndex(preindex);
+}
+
+void wfmain::receiveAttenuator(unsigned char att)
+{
+    int attindex = ui->attSelCombo->findData(att);
+    ui->attSelCombo->setCurrentIndex(attindex);
 }
 
 // --- DEBUG FUNCTION ---

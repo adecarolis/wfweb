@@ -272,6 +272,9 @@ signals:
     // PTT and ATU:
     void havePTTStatus(bool pttOn);
     void haveATUStatus(unsigned char status);
+    void haveAttenuator(unsigned char att);
+    void havePreamp(unsigned char pre);
+    void haveAntenna(unsigned char ant);
 
     // Housekeeping:
     void getMoreDebug();
@@ -303,7 +306,7 @@ private:
     void parseRegisters1A();
     void parseRegister1B();
     void parseRegisters1C();
-    void parseRptrAccessMode();
+    void parseRegister16();
     void parseBandStackReg();
     void parsePTT();
     void parseATU();

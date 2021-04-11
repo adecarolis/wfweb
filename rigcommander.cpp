@@ -1056,6 +1056,9 @@ void rigCommander::parseCommand()
         case '\x0F':
             emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
             break;
+        case '\x11':
+            emit haveAttenuator((unsigned char)payloadIn.at(1));
+            break;
         case '\x14':
             // read levels
             parseLevels();
@@ -1065,7 +1068,7 @@ void rigCommander::parseCommand()
             parseLevels();
             break;
         case '\x16':
-            parseRptrAccessMode();
+            parseRegister16();
             break;
         case '\x19':
             // qDebug(logRig()) << "Have rig ID: " << (unsigned int)payloadIn[2];
@@ -1957,13 +1960,23 @@ void rigCommander::parseRegister1B()
     }
 }
 
-void rigCommander::parseRptrAccessMode()
+void rigCommander::parseRegister16()
 {
     //"INDEX: 00 01 02 03 "
     //"DATA:  16 5d 00 fd "
     //               ^-- mode info here
-
-    emit haveRptAccessMode((rptAccessTxRx)payloadIn.at(2));
+    switch(payloadIn.at(1))
+    {
+        case '\x5d':
+            emit haveRptAccessMode((rptAccessTxRx)payloadIn.at(2));
+            break;
+        case '\x02':
+            // Preamp
+            emit havePreamp((unsigned char)payloadIn.at(2));
+            break;
+        default:
+            break;
+    }
 }
 
 void rigCommander::parseBandStackReg()
