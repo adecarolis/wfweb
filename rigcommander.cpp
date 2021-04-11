@@ -373,8 +373,14 @@ void rigCommander::setScopeEdge(char edge)
 
 void rigCommander::getScopeSpan()
 {
+    getScopeSpan(false);
+}
+
+void rigCommander::getScopeSpan(bool isSub)
+{
     QByteArray payload;
     payload.setRawData("\x27\x15", 2);
+    payload.append(static_cast<unsigned char>(isSub));
     prepDataAndSend(payload);
 }
 
@@ -1013,7 +1019,9 @@ void rigCommander::parseCommand()
     // note: data already is trimmed of the beginning FE FE E0 94 stuff.
 
 #ifdef QT_DEBUG
-    if( (payloadIn[00] != '\x27') && (payloadIn[00] != '\x15') )
+    bool isSpectrumData = payloadIn.startsWith(QByteArray().setRawData("\x27\x00", 2));
+
+    if( (!isSpectrumData) && (payloadIn[00] != '\x15') )
     {
         // We do not log spectrum and meter data,
         // as they tend to clog up any useful logging.
@@ -2257,7 +2265,8 @@ void rigCommander::parseDetailedRegisters1A05()
 
 void rigCommander::parseWFData()
 {
-    //float freqSpan = 0.0;
+    freqt freqSpan;
+    bool isSub;
     switch(payloadIn[1])
     {
         case 0:
@@ -2281,8 +2290,10 @@ void rigCommander::parseWFData()
             // read span in center mode
             // [1] 0x15
             // [2] to [8] is span encoded as a frequency
-            //freqSpan = parseFrequency(payloadIn, 8);
-            //qDebug(logRig()) << "Received 0x15 center span data: for frequency " << freqSpan;
+            isSub = payloadIn.at(2)==0x01;
+            freqSpan = parseFrequency(payloadIn, 6);
+            emit haveScopeSpan(freqSpan, isSub);
+            qDebug(logRig()) << "Received 0x15 center span data: for frequency " << freqSpan.Hz;
             //printHex(payloadIn, false, true);
             break;
         case 0x16:
@@ -2806,6 +2817,10 @@ freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
     //    payloadIn[01] = ; //      . XX KHz
 
     //printHex(data, false, true);
+
+    // TODO: Check length of data array prior to reading +/- position
+
+    // TODO: 64-bit value is incorrect, multiplying by wrong numbers.
 
     float freq = 0.0;
 

@@ -399,9 +399,10 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
     connect(this, SIGNAL(setScopeEdge(char)), rig, SLOT(setScopeEdge(char)));
     connect(this, SIGNAL(setScopeSpan(char)), rig, SLOT(setScopeSpan(char)));
-    connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
+    //connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
     connect(this, SIGNAL(getScopeEdge()), rig, SLOT(getScopeEdge()));
     connect(this, SIGNAL(getScopeSpan()), rig, SLOT(getScopeSpan()));
+    connect(rig, SIGNAL(haveScopeSpan(freqt,bool)), this, SLOT(receiveSpectrumSpan(freqt,bool)));
     connect(this, SIGNAL(setScopeFixedEdge(double,double,unsigned char)), rig, SLOT(setSpectrumBounds(double,double,unsigned char)));
 
     connect(this, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
@@ -1498,6 +1499,9 @@ void wfmain:: getInitialRigState()
         cmdOutQue.append(cmdGetPreamp);
     }
 
+    cmdOutQue.append(cmdGetSpectrumMode);
+    cmdOutQue.append(cmdGetSpectrumSpan);
+
     cmdOutQue.append(cmdNone);
     cmdOutQue.append(cmdStartRegularPolling);
 
@@ -1852,6 +1856,9 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdGetSpectrumMode:
                 emit getScopeMode();
+                break;
+            case cmdGetSpectrumSpan:
+                emit getScopeSpan();
                 break;
             case cmdSpecOn:
                 emit spectOutputEnable();
@@ -3694,6 +3701,44 @@ void wfmain::receiveAttenuator(unsigned char att)
     ui->attSelCombo->setCurrentIndex(attindex);
 }
 
+void wfmain::receiveSpectrumSpan(freqt freqspan, bool isSub)
+{
+    if(!isSub)
+    {
+       switch((int)(freqspan.MHzDouble * 1000000.0))
+       {
+           case(2500):
+               ui->scopeBWCombo->setCurrentIndex(0);
+               break;
+           case(5000):
+               ui->scopeBWCombo->setCurrentIndex(1);
+               break;
+           case(10000):
+               ui->scopeBWCombo->setCurrentIndex(2);
+               break;
+           case(25000):
+               ui->scopeBWCombo->setCurrentIndex(3);
+               break;
+           case(50000):
+               ui->scopeBWCombo->setCurrentIndex(4);
+               break;
+           case(100000):
+               ui->scopeBWCombo->setCurrentIndex(5);
+               break;
+           case(250000):
+               ui->scopeBWCombo->setCurrentIndex(6);
+               break;
+           case(500000):
+               ui->scopeBWCombo->setCurrentIndex(7);
+               break;
+           default:
+               qDebug(logSystem()) << __func__ << "Could not match: " << freqspan.MHzDouble << " to anything like: " << (int)(freqspan.MHzDouble*1E6);
+               break;
+       }
+
+    }
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
@@ -3709,5 +3754,5 @@ void wfmain::on_debugBtn_clicked()
 
     // emit getTSQL();
     qDebug(logSystem()) << "Getting scope mode";
-    emit getScopeMode();
+    emit getScopeMode(); // center or fixed
 }

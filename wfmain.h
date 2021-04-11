@@ -171,6 +171,7 @@ private slots:
     void receiveMode(unsigned char mode, unsigned char filter);
     void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);
     void receiveSpectrumMode(spectrumMode spectMode);
+    void receiveSpectrumSpan(freqt freqspan, bool isSub);
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(bool dataOn);
     void receiveBandStackReg(float freq, char mode, bool dataOn); // freq, mode, (filter,) datamode
@@ -501,7 +502,7 @@ private:
 
     enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
-              cmdGetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
+              cmdGetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
               cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdGetVdMeter, cmdGetIdMeter,
               cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter,

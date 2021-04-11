@@ -67,7 +67,9 @@ public slots:
     void getSpectrumRefLevel();
     void getSpectrumRefLevel(unsigned char mainSub);
     void setScopeSpan(char span);
+    void getScopeSpan(bool isSub);
     void getScopeSpan();
+
     void setScopeEdge(char edge);
     void getScopeEdge();
     void getScopeMode();
@@ -215,7 +217,7 @@ signals:
     // Spectrum:
     void haveSpectrumData(QByteArray spectrum, double startFreq, double endFreq); // pass along data to UI
     void haveSpectrumBounds();
-    void haveScopeSpan(char span);
+    void haveScopeSpan(freqt span, bool isSub);
     void haveSpectrumMode(spectrumMode spectmode);
     void haveScopeEdge(char edge);
     void haveSpectrumRefLevel(int level);
