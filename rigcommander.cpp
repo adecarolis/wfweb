@@ -2438,6 +2438,7 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x02');
             rigCaps.hasAntennaSel = true;
             rigCaps.antennas = {0x00, 0x01};
+            rigCaps.hasATU = true;
             break;
         case model7850:
             rigCaps.modelName = QString("IC-785x");
