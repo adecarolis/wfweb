@@ -236,16 +236,20 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     ui->tuningStepCombo->blockSignals(true);
 
-    ui->tuningStepCombo->addItem("1 Hz",    (unsigned int)      1);
-    ui->tuningStepCombo->addItem("10 Hz",   (unsigned int)     10);
-    ui->tuningStepCombo->addItem("100 Hz",  (unsigned int)    100);
-    ui->tuningStepCombo->addItem("1 kHz",   (unsigned int)   1000);
-    ui->tuningStepCombo->addItem("2.5 kHz", (unsigned int)   2500);
-    ui->tuningStepCombo->addItem("5 kHz",   (unsigned int)   5000);
-    ui->tuningStepCombo->addItem("10 kHz",  (unsigned int)  10000);
-    ui->tuningStepCombo->addItem("12.5 kHz",(unsigned int)  12500);
-    ui->tuningStepCombo->addItem("100 kHz", (unsigned int) 100000);
-    ui->tuningStepCombo->addItem("250 kHz", (unsigned int) 250000);
+    ui->tuningStepCombo->addItem("1 Hz",      (unsigned int)       1);
+    ui->tuningStepCombo->addItem("10 Hz",     (unsigned int)      10);
+    ui->tuningStepCombo->addItem("100 Hz",    (unsigned int)     100);
+    ui->tuningStepCombo->addItem("1 kHz",     (unsigned int)    1000);
+    ui->tuningStepCombo->addItem("2.5 kHz",   (unsigned int)    2500);
+    ui->tuningStepCombo->addItem("5 kHz",     (unsigned int)    5000);
+    ui->tuningStepCombo->addItem("6.125 kHz", (unsigned int)    6125);	// PMR 
+    ui->tuningStepCombo->addItem("8.333 kHz", (unsigned int)    8333);	// airband stepsize
+    ui->tuningStepCombo->addItem("9 kHz",     (unsigned int)    9000);	// European medium wave stepsize
+    ui->tuningStepCombo->addItem("10 kHz",    (unsigned int)   10000);
+    ui->tuningStepCombo->addItem("12.5 kHz",  (unsigned int)   12500);
+    ui->tuningStepCombo->addItem("100 kHz",   (unsigned int)  100000);
+    ui->tuningStepCombo->addItem("250 kHz",   (unsigned int)  250000);
+    ui->tuningStepCombo->addItem("1 MHz",     (unsigned int) 1000000);  //for 23 cm and HF 
 
 
     ui->tuningStepCombo->setCurrentIndex(2);
