@@ -304,8 +304,6 @@ private slots:
 
     void on_afGainSlider_valueChanged(int value);
 
-    void on_drawTracerChk_toggled(bool checked);
-
     void on_tuneNowBtn_clicked();
 
     void on_tuneEnableChk_clicked(bool checked);
@@ -406,7 +404,6 @@ private:
     void saveSettings();
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
-    QCPItemTracer * tracer; // marker of current frequency
     QCPItemLine * freqIndicatorLine;
     //commHandler *comm;
     void setAppTheme(bool isCustom);
@@ -523,7 +520,6 @@ private:
         QColor Dark_PlotTickLabel;
         QColor Dark_PlotBasePen;
         QColor Dark_PlotTickPen;
-        QColor Dark_PlotFreqTracer;
 
         QColor Light_PlotBackground;
         QColor Light_PlotAxisPen;
@@ -533,7 +529,6 @@ private:
         QColor Light_PlotTickLabel;
         QColor Light_PlotBasePen;
         QColor Light_PlotTickPen;
-        QColor Light_PlotFreqTracer;
 
     } colorScheme;
 
@@ -542,7 +537,6 @@ private:
         bool useDarkMode;
         bool useSystemTheme;
         bool drawPeaks;
-        bool drawTracer;
         QString stylesheetPath;
         unsigned char radioCIVAddr;
         QString serialPortRadio;
