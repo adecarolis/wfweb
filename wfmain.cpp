@@ -529,7 +529,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     freqLock = false;
 
 
-
+    freqIndicatorLine->start->setCoords(0.5,0);
+    freqIndicatorLine->end->setCoords(0.5,160);
 
 #ifdef QT_DEBUG
     qDebug(logSystem()) << "Running with debugging options enabled.";
