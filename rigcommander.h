@@ -40,6 +40,11 @@ struct freqt {
     double MHzDouble;
 };
 
+struct rigStateStruct {
+    freqt vfoAFreq;
+    freqt vfoBFreq;
+};
+
 class rigCommander : public QObject
 {
     Q_OBJECT
@@ -345,6 +350,9 @@ private:
     double spectrumEndFreq;
 
     struct rigCapabilities rigCaps;
+    
+    rigStateStruct rigState;
+
     bool haveRigCaps;
     model_kind model;
     quint8 spectSeqMax;

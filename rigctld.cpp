@@ -68,13 +68,12 @@ void rigCtlClient::socketReadyRead()
     {
         // Process command
         qDebug(logRigCtlD()) << sessionId << "command received" << commandBuffer;
-        QString cmd = commandBuffer[0];
 
-        if (cmd.toLower() == "q")
+        if (commandBuffer[0].toLower() == "q")
         {
             closeSocket();
         }
-        else if (cmd == "1")
+        else if (commandBuffer[0] == "1")
         {
             dumpCaps();
         }

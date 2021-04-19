@@ -552,6 +552,7 @@ private:
     preferences defPrefs;
     udpPreferences udpPrefs;
     udpPreferences udpDefPrefs;
+
     colors defaultColors;
 
     void setDefaultColors(); // populate with default values
