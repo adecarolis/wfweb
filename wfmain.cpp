@@ -212,14 +212,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     }
     plot = ui->plot; // rename it waterfall.
     wf = ui->waterfall;
-    tracer = new QCPItemTracer(plot);
-    //tracer->setGraphKey(5.5);
-    tracer->setInterpolating(true);
-    tracer->setStyle(QCPItemTracer::tsCrosshair);
-
-    tracer->setPen(QPen(Qt::green));
-    tracer->setBrush(Qt::green);
-    tracer->setSize(30);
 
     freqIndicatorLine = new QCPItemLine(plot);
     freqIndicatorLine->setAntialiased(true);
@@ -243,16 +235,20 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     ui->tuningStepCombo->blockSignals(true);
 
-    ui->tuningStepCombo->addItem("1 Hz",    (unsigned int)      1);
-    ui->tuningStepCombo->addItem("10 Hz",   (unsigned int)     10);
-    ui->tuningStepCombo->addItem("100 Hz",  (unsigned int)    100);
-    ui->tuningStepCombo->addItem("1 kHz",   (unsigned int)   1000);
-    ui->tuningStepCombo->addItem("2.5 kHz", (unsigned int)   2500);
-    ui->tuningStepCombo->addItem("5 kHz",   (unsigned int)   5000);
-    ui->tuningStepCombo->addItem("10 kHz",  (unsigned int)  10000);
-    ui->tuningStepCombo->addItem("12.5 kHz",(unsigned int)  12500);
-    ui->tuningStepCombo->addItem("100 kHz", (unsigned int) 100000);
-    ui->tuningStepCombo->addItem("250 kHz", (unsigned int) 250000);
+    ui->tuningStepCombo->addItem("1 Hz",      (unsigned int)       1);
+    ui->tuningStepCombo->addItem("10 Hz",     (unsigned int)      10);
+    ui->tuningStepCombo->addItem("100 Hz",    (unsigned int)     100);
+    ui->tuningStepCombo->addItem("1 kHz",     (unsigned int)    1000);
+    ui->tuningStepCombo->addItem("2.5 kHz",   (unsigned int)    2500);
+    ui->tuningStepCombo->addItem("5 kHz",     (unsigned int)    5000);
+    ui->tuningStepCombo->addItem("6.125 kHz", (unsigned int)    6125);	// PMR 
+    ui->tuningStepCombo->addItem("8.333 kHz", (unsigned int)    8333);	// airband stepsize
+    ui->tuningStepCombo->addItem("9 kHz",     (unsigned int)    9000);	// European medium wave stepsize
+    ui->tuningStepCombo->addItem("10 kHz",    (unsigned int)   10000);
+    ui->tuningStepCombo->addItem("12.5 kHz",  (unsigned int)   12500);
+    ui->tuningStepCombo->addItem("100 kHz",   (unsigned int)  100000);
+    ui->tuningStepCombo->addItem("250 kHz",   (unsigned int)  250000);
+    ui->tuningStepCombo->addItem("1 MHz",     (unsigned int) 1000000);  //for 23 cm and HF 
 
 
     ui->tuningStepCombo->setCurrentIndex(2);
@@ -503,7 +499,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->plot->addGraph(); // primary
     ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first?
     ui->waterfall->addGraph();
-    tracer->setGraph(plot->graph(0));
 
 
 
@@ -541,7 +536,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     freqLock = false;
 
 
-
+    freqIndicatorLine->start->setCoords(0.5,0);
+    freqIndicatorLine->end->setCoords(0.5,160);
 
 #ifdef QT_DEBUG
     qDebug(logSystem()) << "Running with debugging options enabled.";
@@ -1050,7 +1046,6 @@ void wfmain::saveSettings()
     settings.setValue("Dark_PlotTickLabel", QColor(Qt::white));
     settings.setValue("Dark_PlotBasePen", QColor(Qt::white));
     settings.setValue("Dark_PlotTickPen", QColor(Qt::white));
-    settings.setValue("Dark_PlotFreqTracer", QColor(Qt::yellow));
 
     settings.endGroup();
 
@@ -1066,7 +1061,6 @@ void wfmain::saveSettings()
     settings.setValue("Light_PlotTickLabel", QColor(Qt::black));
     settings.setValue("Light_PlotBasePen", QColor(Qt::black));
     settings.setValue("Light_PlotTickPen", QColor(Qt::black));
-    settings.setValue("Light_PlotFreqTracer", QColor(Qt::blue));
 
     settings.endGroup();
 
@@ -1584,7 +1578,6 @@ void wfmain::setDefaultColors()
     defaultColors.Dark_PlotTickLabel = QColor(Qt::white);
     defaultColors.Dark_PlotBasePen = QColor(Qt::white);
     defaultColors.Dark_PlotTickPen = QColor(Qt::white);
-    defaultColors.Dark_PlotFreqTracer = QColor(Qt::yellow);
 
     defaultColors.Light_PlotBackground = QColor(255,255,255,255);
     defaultColors.Light_PlotAxisPen = QColor(200,200,200,255);
@@ -1594,7 +1587,6 @@ void wfmain::setDefaultColors()
     defaultColors.Light_PlotTickLabel = QColor(Qt::black);
     defaultColors.Light_PlotBasePen = QColor(Qt::black);
     defaultColors.Light_PlotTickPen = QColor(Qt::black);
-    defaultColors.Light_PlotFreqTracer = QColor(Qt::blue);
 }
 
 void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
@@ -2234,7 +2226,6 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     plot->graph(0)->setData(x,y);
     if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
     {
-        tracer->setGraphKey(freq.MHzDouble);
         freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
         freqIndicatorLine->end->setCoords(freq.MHzDouble,160);
     }
@@ -2987,12 +2978,6 @@ void wfmain::receiveAfGain(unsigned char level)
 void wfmain::receiveSql(unsigned char level)
 {
     ui->sqlSlider->setValue(level);
-}
-
-void wfmain::on_drawTracerChk_toggled(bool checked)
-{
-    tracer->setVisible(checked);
-    prefs.drawTracer = checked;
 }
 
 void wfmain::on_tuneNowBtn_clicked()

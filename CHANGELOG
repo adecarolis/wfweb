@@ -1,6 +1,43 @@
 # CHANGELOG
 
+
+- 20210416	added support info for prebuild-systems
+
+
+- 20210412	added airband, dPMR, lw/mw European and fast HF/70/23cm 1 MHz tuning steps
+
+
+- 20210411	Added ATU feature on 7610.
+
+    		Now grabs scope state on startup. Found bug, did not fix, in the
+    		frequency parsing code. Worked aroud it by using doubles for now.
+
+
+- 20210410	Preamp and attenuator are now queried on startup. Additionally, the
+    		preamp is checked when the attenuator is changed, and the attenuator is
+    		checked with the preamp is changed. This helps the user understand if
+    		the rig allows only one or the other to be active (such as the IC-9700).
+
+    		Added frequency line. Let's see how we like it.
+
+    		Add some preliminary parts of getting the attenuator, preamp, and
+   		antenna selection on startup. UI not updated yet but getting there.
+
+
+- 20210409	Moved ATU controls to main tab.
+
+		Added waterfall theme combo box
+
+    		Removed buttons from attenuator preamp UI controls.
+
+    		Antenna selection might work, untested.
+
+    		Preamp code is in. Can't read the current preamp state yet but we can
+    		set it. Nicer names for preamp and attenuator menu items.
+
+
 - 20210408    	Preamp data is now tracked (but not used yet)
+		re-added lost tooptip for SQ slider
 
 
 - 20210407 	Minor disconnect in the getDTCS call

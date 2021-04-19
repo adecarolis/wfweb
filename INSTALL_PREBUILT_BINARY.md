@@ -9,6 +9,14 @@ In the future we may at some point start distributing packages and/or images lik
 Instructions how to use this w/o building yourself. We are using a precompiled version that has been tested on a few 
 different versions of linux in alphabetical order. Note that all are click-click-next-next-finish installs.
 
+not supported: 
+
+centos7			-- no qt support
+debian 10 		-- outdated
+devuan 3.1.1.1          -- outdated
+redhat7 		-- no qt support
+
+
 ~~~
 Debian 11  (Debian 10 is outdated)
 Fedora 33
