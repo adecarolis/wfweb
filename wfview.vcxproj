@@ -213,6 +213,7 @@
     <ClCompile Include="repeatersetup.cpp" />
     <ClCompile Include="resampler\resample.c" />
     <ClCompile Include="rigcommander.cpp" />
+    <ClCompile Include="rigctld.cpp" />
     <ClCompile Include="rigidentities.cpp" />
     <ClCompile Include="audiohandler.cpp" />
     <ClCompile Include="satellitesetup.cpp" />
@@ -241,6 +242,7 @@
     <QtMoc Include="pttyhandler.h" />
     <QtMoc Include="repeatersetup.h" />
     <ClInclude Include="resampler\speex_resampler.h" />
+    <QtMoc Include="rigctld.h" />
     <ClInclude Include="rigidentities.h" />
     <QtMoc Include="udphandler.h">
     </QtMoc>

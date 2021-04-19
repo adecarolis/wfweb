@@ -203,6 +203,13 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     }
 
+    // Start rigctld
+    if (prefs.enableRigCtlD) {
+        rigCtl = new rigCtlD(this);
+
+        rigCtl->startServer(prefs.rigCtlPort);
+        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), rigCtl, SLOT(receiveRigCaps(rigCapabilities)));
+    }
     plot = ui->plot; // rename it waterfall.
     wf = ui->waterfall;
     tracer = new QCPItemTracer(plot);
@@ -569,6 +576,9 @@ wfmain::~wfmain()
         serverThread->quit();
         serverThread->wait();
     }
+    if (rigCtl != Q_NULLPTR) {
+        delete rigCtl;
+    }
     delete rpt;
     delete ui;
 }
@@ -754,6 +764,8 @@ void wfmain::setDefPrefs()
     defPrefs.serialPortBaud = 115200;
     defPrefs.enablePTT = false;
     defPrefs.niceTS = true;
+    defPrefs.enableRigCtlD = false;
+    defPrefs.rigCtlPort = 4533;
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -811,7 +823,10 @@ void wfmain::loadSettings()
     prefs.enableLAN = settings.value("EnableLAN", defPrefs.enableLAN).toBool();
     ui->lanEnableBtn->setChecked(prefs.enableLAN);
     ui->connectBtn->setEnabled(prefs.enableLAN);
-    
+
+    prefs.enableRigCtlD = settings.value("EnableRigCtlD", defPrefs.enableRigCtlD).toBool();
+    prefs.rigCtlPort = settings.value("RigCtlPort", defPrefs.rigCtlPort).toInt();
+
     udpPrefs.ipAddress = settings.value("IPAddress", udpDefPrefs.ipAddress).toString();
     ui->ipAddressTxt->setEnabled(ui->lanEnableBtn->isChecked());
     ui->ipAddressTxt->setText(udpPrefs.ipAddress);
@@ -983,6 +998,8 @@ void wfmain::saveSettings()
 
     settings.beginGroup("LAN");
     settings.setValue("EnableLAN", prefs.enableLAN);
+    settings.setValue("EnableRigCtlD", prefs.enableRigCtlD);
+    settings.setValue("RigCtlPort", prefs.rigCtlPort);
     settings.setValue("IPAddress", udpPrefs.ipAddress);
     settings.setValue("ControlLANPort", udpPrefs.controlLANPort);
     settings.setValue("SerialLANPort", udpPrefs.serialLANPort);
@@ -998,7 +1015,7 @@ void wfmain::saveSettings()
     settings.setValue("AudioOutput", udpPrefs.audioOutput);
     settings.setValue("AudioInput", udpPrefs.audioInput);
     settings.setValue("ResampleQuality", udpPrefs.resampleQuality);
-    settings.setValue("clientName", udpPrefs.clientName);
+    settings.setValue("ClientName", udpPrefs.clientName);
     settings.endGroup();
 
     // Memory channels

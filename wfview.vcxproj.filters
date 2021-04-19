@@ -114,6 +114,9 @@
     <ClCompile Include="repeatersetup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="rigctld.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="commhandler.h">
@@ -165,6 +168,9 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="repeatersetup.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="rigctld.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
@@ -323,6 +329,7 @@
     <None Include="resources\wfview.png">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />

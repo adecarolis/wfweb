@@ -23,6 +23,7 @@
 #include "udpserversetup.h"
 #include "udpserver.h"
 #include "qledlabel.h"
+#include "rigctld.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -550,6 +551,8 @@ private:
         bool enablePTT;
         bool niceTS;
         bool enableLAN;
+        bool enableRigCtlD;
+        quint16 rigCtlPort;
     } prefs;
 
     preferences defPrefs;
@@ -618,6 +621,7 @@ private:
     udpServerSetup *srv;
 
     udpServer* udp = Q_NULLPTR;
+    rigCtlD* rigCtl = Q_NULLPTR;
     QThread* serverThread = Q_NULLPTR;
 
     void bandStackBtnClick();

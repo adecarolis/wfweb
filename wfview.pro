@@ -100,7 +100,8 @@ SOURCES += main.cpp\
     qledlabel.cpp \
 	pttyhandler.cpp \
 	resampler/resample.c \
-    repeatersetup.cpp
+    repeatersetup.cpp \
+	rigctld.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -122,7 +123,8 @@ HEADERS  += wfmain.h \
 	resampler/arch.h \
 	resampler/resample_sse.h \
     repeatersetup.h \
-    repeaterattributes.h
+    repeaterattributes.h \
+	rigctld.h
 
 
 FORMS    += wfmain.ui \
