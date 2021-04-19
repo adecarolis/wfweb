@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+- 20210419	Initial commit of rigctld (doesn't currently do anything useful!)
+
+
+- 20210417	Adding a default position for the frequency indicator line.
+
+    		Goodbye tracer
+
+
 - 20210416	added support info for prebuild-systems
 
 
