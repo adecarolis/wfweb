@@ -462,7 +462,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rig, SIGNAL(havePreamp(unsigned char)), this, SLOT(receivePreamp(unsigned char)));
     connect(this, SIGNAL(getAttenuator()), rig, SLOT(getAttenuator()));
     connect(rig, SIGNAL(haveAttenuator(unsigned char)), this, SLOT(receiveAttenuator(unsigned char)));
-    connect(this, SIGNAL(getAntenna()), rig, SLOT(getAntenna));
+    connect(this, SIGNAL(getAntenna()), rig, SLOT(getAntenna()));
     //connect(rig, SIGNAL(haveAntenna(unsigned char)), this, SLOT(receiveAntennaSel(unsigned char)));
 
 
