@@ -347,6 +347,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     qRegisterMetaType<spectrumMode>();
     qRegisterMetaType<freqt>();
 
+    connect(this, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
+    connect(this, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
+
     connect(rig, SIGNAL(haveFrequency(freqt)), this, SLOT(receiveFreq(freqt)));
     connect(this, SIGNAL(getFrequency()), rig, SLOT(getFrequency()));
     connect(this, SIGNAL(getMode()), rig, SLOT(getMode()));
@@ -3738,6 +3741,21 @@ void wfmain::receiveSpectrumSpan(freqt freqspan, bool isSub)
                break;
        }
 
+    }
+}
+
+void wfmain::on_rigPowerOnBtn_clicked()
+{
+    emit sendPowerOn();
+}
+
+void wfmain::on_rigPowerOffBtn_clicked()
+{
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Power", "Power down the radio?",
+                                  QMessageBox::Yes|QMessageBox::No);
+    if (reply == QMessageBox::Yes) {
+        //emit sendPowerOff();
     }
 }
 

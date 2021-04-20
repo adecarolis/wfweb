@@ -1677,6 +1677,20 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="rigPowerOnBtn">
+            <property name="text">
+             <string>Rig Power On</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="rigPowerOffBtn">
+            <property name="text">
+             <string>Rig Power Off</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="horizontalSpacer_5">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>

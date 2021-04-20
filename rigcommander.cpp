@@ -233,6 +233,35 @@ void rigCommander::prepDataAndSend(QByteArray data)
     emit dataForComm(data);
 }
 
+void rigCommander::powerOn()
+{
+    QByteArray payload;
+
+    for(int i=0; i < 150; i++)
+    {
+        payload.append("\xFE");
+    }
+
+    payload.append(payloadPrefix); // FE FE 94 E1
+    payload.append("\x18\x01");
+    payload.append(payloadSuffix); // FD
+
+#ifdef QT_DEBUG
+    qDebug(logRig()) << "Power ON command in rigcommander to be sent to rig: ";
+    printHex(payload);
+#endif
+
+    emit dataForComm(payload);
+
+}
+
+void rigCommander::powerOff()
+{
+    QByteArray payload;
+    payload.setRawData("\x18\x00", 2);
+    prepDataAndSend(payload);
+}
+
 void rigCommander::enableSpectOutput()
 {
     QByteArray payload("\x27\x11\x01");

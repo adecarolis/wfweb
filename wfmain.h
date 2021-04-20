@@ -43,6 +43,11 @@ public:
     ~wfmain();
 
 signals:
+    // Power
+    void sendPowerOn();
+    void sendPowerOff();
+
+    // Frequency, mode, band:
     void getFrequency();
     void setFrequency(freqt freq);
     void getMode();
@@ -397,6 +402,10 @@ private slots:
     void on_antennaSelCombo_activated(int index);
 
     void on_wfthemeCombo_activated(int index);
+
+    void on_rigPowerOnBtn_clicked();
+
+    void on_rigPowerOffBtn_clicked();
 
 private:
     Ui::wfmain *ui;
