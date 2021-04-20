@@ -43,6 +43,9 @@ struct freqt {
 struct rigStateStruct {
     freqt vfoAFreq;
     freqt vfoBFreq;
+    unsigned char ptt;
+    unsigned char mode;
+    unsigned char filter;
 };
 
 class rigCommander : public QObject
@@ -286,6 +289,9 @@ signals:
     void haveAttenuator(unsigned char att);
     void havePreamp(unsigned char pre);
     void haveAntenna(unsigned char ant);
+
+    // Rig State
+    void stateInfo(rigStateStruct* state);
 
     // Housekeeping:
     void getMoreDebug();

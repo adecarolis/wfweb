@@ -22,7 +22,9 @@
 
 rigCommander::rigCommander()
 {
-
+    rigState.filter = 0;
+    rigState.mode = 0;
+    rigState.ptt = 0;
 }
 
 rigCommander::~rigCommander()
@@ -136,6 +138,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs)
     // data from the comm port to the program:
 
     emit commReady();
+    emit stateInfo(&rigState);
 
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
 
@@ -1919,6 +1922,7 @@ void rigCommander::parsePTT()
         // PTT on
         emit havePTTStatus(true);
     }
+    rigState.ptt = (unsigned char)payloadIn[2];
 
 }
 
@@ -2834,6 +2838,7 @@ void rigCommander::parseFrequency()
 
     freq.MHzDouble = frequencyMhz;
 
+    rigState.vfoAFreq = freq;
     emit haveFrequency(freq);
 }
 
@@ -2891,7 +2896,6 @@ freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
     freqs.Hz += ((data[lastPosition-3] & 0xf0) >> 4) * 100000;
 
     freqs.MHzDouble = (double)freq;
-
     return freqs;
 }
 
@@ -2905,7 +2909,8 @@ void rigCommander::parseMode()
     } else {
         filter = 0;
     }
-
+    rigState.mode = (unsigned char)payloadIn[01];
+    rigState.filter = filter;
     emit haveMode((unsigned char)payloadIn[01], filter);
 }
 

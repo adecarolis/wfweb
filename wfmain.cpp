@@ -203,13 +203,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     }
 
-    // Start rigctld
-    if (prefs.enableRigCtlD) {
-        rigCtl = new rigCtlD(this);
-
-        rigCtl->startServer(prefs.rigCtlPort);
-        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), rigCtl, SLOT(receiveRigCaps(rigCapabilities)));
-    }
     plot = ui->plot; // rename it waterfall.
     wf = ui->waterfall;
 
@@ -615,6 +608,14 @@ void wfmain::openRig()
     }
 #endif
 
+    // Start rigctld
+    if (prefs.enableRigCtlD) {
+        rigCtl = new rigCtlD(this);
+
+        rigCtl->startServer(prefs.rigCtlPort);
+        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), rigCtl, SLOT(receiveRigCaps(rigCapabilities)));
+    }
+
     if (rigThread == Q_NULLPTR)
     {
         rig = new rigCommander();
@@ -636,6 +637,11 @@ void wfmain::openRig()
         connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
         connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
+        if (rigCtl != Q_NULLPTR) {
+            connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
+            connect(rigCtl, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
+            connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
+        }
     }
 
     if (prefs.enableLAN)

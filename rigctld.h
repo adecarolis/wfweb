@@ -27,12 +27,17 @@ signals:
     void onStarted();
     void onStopped();
     void sendData(QString data);
+    void setFrequency(freqt freq);
+    void setPTT(bool state);
 
 public slots:
     virtual void incomingConnection(qintptr socketDescriptor);
     void receiveRigCaps(rigCapabilities caps);
+    void receiveStateInfo(rigStateStruct* state);
+    void receiveFrequency(freqt freq);
 
-
+private: 
+    rigStateStruct* rigState = Q_NULLPTR;
 };
 
 
@@ -42,7 +47,7 @@ class rigCtlClient : public QObject
 
 public:
 
-    explicit rigCtlClient(int socket, rigCapabilities caps, rigCtlD* parent = Q_NULLPTR);
+    explicit rigCtlClient(int socket, rigCapabilities caps, rigStateStruct *state, rigCtlD* parent = Q_NULLPTR);
     int getSocketId();
 
 
@@ -58,9 +63,10 @@ protected:
     QString commandBuffer;
 
 private:
-    void dumpCaps();
+    void dumpCaps(QString sep);
     rigCapabilities rigCaps;
-
+    rigStateStruct* rigState = Q_NULLPTR;
+    rigCtlD* parent;
 };
 
 #endif
