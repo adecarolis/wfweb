@@ -62,6 +62,10 @@ public slots:
     void commSetup(unsigned char rigCivAddr, udpPreferences prefs);
     void closeComm();
 
+    // Power:
+    void powerOn();
+    void powerOff();
+
     // Spectrum:
     void enableSpectOutput();
     void disableSpectOutput();
