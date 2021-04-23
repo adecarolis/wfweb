@@ -3761,7 +3761,7 @@ void wfmain::on_rigPowerOffBtn_clicked()
     reply = QMessageBox::question(this, "Power", "Power down the radio?",
                                   QMessageBox::Yes|QMessageBox::No);
     if (reply == QMessageBox::Yes) {
-        //emit sendPowerOff();
+        emit sendPowerOff();
     }
 }
 
