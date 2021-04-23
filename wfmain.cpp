@@ -3753,6 +3753,21 @@ void wfmain::receiveSpectrumSpan(freqt freqspan, bool isSub)
 void wfmain::on_rigPowerOnBtn_clicked()
 {
     emit sendPowerOn();
+    if(ui->scopeEnableWFBtn->isChecked())
+    {
+        issueDelayedCommand(cmdNone);
+        issueDelayedCommand(cmdNone);
+        // TODO: issue these two commands after a few seconds delay
+        // so that the rig can fully boot up.
+
+        // idea: just change the time on the delayed command
+        // temporarily to a few seconds, and then back.
+
+        // we can add two cmds to alter the time in-queue.
+        issueDelayedCommand(cmdDispEnable);
+        issueDelayedCommand(cmdSpecOn);
+    }
+
 }
 
 void wfmain::on_rigPowerOffBtn_clicked()
