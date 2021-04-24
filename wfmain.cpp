@@ -1929,6 +1929,9 @@ void wfmain::runDelayedCommand()
             case cmdStopRegularPolling:
                 periodicPollingTimer->stop();
                 break;
+            case cmdQueNormalSpeed:
+                delayedCommand->setInterval(100);
+                break;
             default:
                 break;
         }
@@ -3752,22 +3755,7 @@ void wfmain::receiveSpectrumSpan(freqt freqspan, bool isSub)
 
 void wfmain::on_rigPowerOnBtn_clicked()
 {
-    emit sendPowerOn();
-    if(ui->scopeEnableWFBtn->isChecked())
-    {
-        issueDelayedCommand(cmdNone);
-        issueDelayedCommand(cmdNone);
-        // TODO: issue these two commands after a few seconds delay
-        // so that the rig can fully boot up.
-
-        // idea: just change the time on the delayed command
-        // temporarily to a few seconds, and then back.
-
-        // we can add two cmds to alter the time in-queue.
-        issueDelayedCommand(cmdDispEnable);
-        issueDelayedCommand(cmdSpecOn);
-    }
-
+    powerRigOn();
 }
 
 void wfmain::on_rigPowerOffBtn_clicked()
@@ -3776,19 +3764,41 @@ void wfmain::on_rigPowerOffBtn_clicked()
     reply = QMessageBox::question(this, "Power", "Power down the radio?",
                                   QMessageBox::Yes|QMessageBox::No);
     if (reply == QMessageBox::Yes) {
-        emit sendPowerOff();
+        powerRigOff();
     }
+}
+
+void wfmain::powerRigOn()
+{
+    emit sendPowerOn();
+
+    delayedCommand->setInterval(3000); // 3 seconds
+    if(ui->scopeEnableWFBtn->isChecked())
+    {
+    issueDelayedCommand(cmdDispEnable);
+    issueDelayedCommand(cmdQueNormalSpeed);
+    issueDelayedCommand(cmdSpecOn);
+    issueDelayedCommand(cmdStartRegularPolling); // s-meter, etc
+    } else {
+        issueDelayedCommand(cmdQueNormalSpeed);
+    }
+    delayedCommand->start();
+
+}
+
+void wfmain::powerRigOff()
+{
+    periodicPollingTimer->stop();
+    delayedCommand->stop();
+    cmdOutQue.clear();
+
+    emit sendPowerOff();
 }
 
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
     qDebug(logSystem()) << "Debug button pressed.";
-
-    // TODO: Why don't these commands work?!
-    //emit getScopeMode();
-    //emit getScopeEdge(); // 1,2,3 only in "fixed" mode
-    //emit getScopeSpan(); // in khz, only in "center" mode
 
     // emit getLevels();
     // emit getMeters(amTransmitting);

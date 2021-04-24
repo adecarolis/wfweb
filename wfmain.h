@@ -421,6 +421,8 @@ private:
     void prepareWf();
     void getInitialRigState();
     void openRig();
+    void powerRigOff();
+    void powerRigOn();
     QWidget * theParent;
     QStringList portList;
     QString serialPortRig;
@@ -511,7 +513,8 @@ private:
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
               cmdGetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
               cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
-              cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdGetVdMeter, cmdGetIdMeter,
+              cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
+              cmdGetVdMeter, cmdGetIdMeter,
               cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter,
               cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna};
 
