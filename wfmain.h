@@ -58,6 +58,10 @@ signals:
     void setModInput(rigInput input, bool dataOn);
     void getBandStackReg(char band, char regCode);
     void getDebug();
+    void getRitEnabled();
+    void getRitValue();
+    void setRitValue(int ritValue);
+    void setRitEnable(bool ritEnabled);
 
     // Repeater:
     void getDuplexMode();
@@ -406,6 +410,10 @@ private slots:
     void on_rigPowerOnBtn_clicked();
 
     void on_rigPowerOffBtn_clicked();
+
+    void on_ritTuneDial_valueChanged(int value);
+
+    void on_ritEnableChk_clicked(bool checked);
 
 private:
     Ui::wfmain *ui;

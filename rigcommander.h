@@ -94,6 +94,10 @@ public slots:
     void setDataMode(bool dataOn);
     void getDataMode();
     void getBandStackReg(char band, char regCode);
+    void getRitEnabled();
+    void getRitValue();
+    void setRitValue(int ritValue);
+    void setRitEnable(bool ritEnabled);
 
     // PTT, ATU, ATT, Antenna, and Preamp:
     void getPTT();

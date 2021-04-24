@@ -592,6 +592,63 @@ QByteArray rigCommander::makeFreqPayload(double freq)
     return result;
 }
 
+void rigCommander::setRitEnable(bool ritEnabled)
+{
+    QByteArray payload;
+
+    if(ritEnabled)
+    {
+        payload.setRawData("\x21\x01\x01", 3);
+    } else {
+        payload.setRawData("\x21\x01\x00", 3);
+    }
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getRitEnabled()
+{
+    QByteArray payload;
+    payload.setRawData("\x21\x01", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getRitValue()
+{
+    QByteArray payload;
+    payload.setRawData("\x21\x00", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setRitValue(int ritValue)
+{
+    QByteArray payload;
+    QByteArray freqBytes;
+    freqt f;
+
+    bool isNegative = false;
+    payload.setRawData("\x21\x00", 2);
+
+    if(ritValue < 0)
+    {
+        isNegative = true;
+        ritValue *= -1;
+    }
+
+    if(ritValue > 9999)
+        return;
+
+    f.Hz = ritValue;
+
+    freqBytes = makeFreqPayload(f);
+
+    freqBytes.truncate(2);
+    payload.append(freqBytes);
+
+    payload.append(QByteArray(1,(char)isNegative));
+
+    prepDataAndSend(payload);
+}
+
 void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
 {
     QByteArray payload;

@@ -353,6 +353,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
     connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
     connect(rig, SIGNAL(haveBandStackReg(float,char,bool)), this, SLOT(receiveBandStackReg(float,char,bool)));
+    connect(this, SIGNAL(setRitEnable(bool)), rig, SLOT(setRitEnable(bool)));
+    connect(this, SIGNAL(setRitValue(int)), rig, SLOT(setRitValue(int)));
     connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
 
     connect(this, SIGNAL(spectOutputDisable()), rig, SLOT(disableSpectOutput()));
@@ -3788,6 +3790,16 @@ void wfmain::powerRigOff()
     cmdOutQue.clear();
 
     emit sendPowerOff();
+}
+
+void wfmain::on_ritTuneDial_valueChanged(int value)
+{
+    emit setRitValue(value);
+}
+
+void wfmain::on_ritEnableChk_clicked(bool checked)
+{
+    emit setRitEnable(checked);
 }
 
 // --- DEBUG FUNCTION ---
