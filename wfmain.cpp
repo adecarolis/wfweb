@@ -1786,7 +1786,6 @@ void wfmain::runPeriodicCommands()
     }
 }
 
-
 void wfmain::runDelayedCommand()
 {
     cmds qdCmd;
@@ -3302,7 +3301,6 @@ void wfmain::changeSliderQuietly(QSlider *slider, int value)
     slider->blockSignals(true);
     slider->setValue(value);
     slider->blockSignals(false);
-
 }
 
 void wfmain::receiveTxPower(unsigned char power)
@@ -3430,8 +3428,6 @@ void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
     unsigned int peak = 0;
     unsigned int sum=0;
     unsigned int average=0;
-
-
 
     switch(inMeter)
     {
@@ -3783,7 +3779,6 @@ void wfmain::powerRigOn()
         issueDelayedCommand(cmdQueNormalSpeed);
     }
     delayedCommand->start();
-
 }
 
 void wfmain::powerRigOff()
