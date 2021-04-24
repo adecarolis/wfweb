@@ -2168,6 +2168,8 @@ void rigCommander::parseDetailedRegisters1A05()
                 case 62:
                     emit haveLANGain(level);
                     break;
+                default:
+                    break;
             }
         case model7610:
             switch(subcmd)
@@ -2240,6 +2242,8 @@ void rigCommander::parseDetailedRegisters1A05()
                     break;
                 case 91:
                     emit haveModInput(input, true);
+                    break;
+                default:
                     break;
             }
         case model705:
