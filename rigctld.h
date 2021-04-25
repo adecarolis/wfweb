@@ -69,7 +69,7 @@ private:
     rigStateStruct* rigState = Q_NULLPTR;
     rigCtlD* parent;
     QString getMode(unsigned char mode, bool datamode);
-    unsigned char rigCtlClient::getMode(QString modeString);
+    unsigned char getMode(QString modeString);
     QString getFilter(unsigned char mode, unsigned char filter);
 };
 
