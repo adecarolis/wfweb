@@ -68,9 +68,9 @@ private:
     rigCapabilities rigCaps;
     rigStateStruct* rigState = Q_NULLPTR;
     rigCtlD* parent;
-    QString rigCtlClient::getMode(unsigned char mode, bool datamode);
+    QString getMode(unsigned char mode, bool datamode);
     unsigned char rigCtlClient::getMode(QString modeString);
-    QString rigCtlClient::getFilter(unsigned char mode, unsigned char filter);
+    QString getFilter(unsigned char mode, unsigned char filter);
 };
 
 #endif
