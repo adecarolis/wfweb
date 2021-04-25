@@ -3828,7 +3828,7 @@ void wfmain::receiveRITStatus(bool ritEnabled)
 
 void wfmain::receiveRITValue(int ritValHz)
 {
-    if((ritValHz > -500) and (ritValHz < 500))
+    if((ritValHz > -500) && (ritValHz < 500))
     {
         ui->ritTuneDial->blockSignals(true);
         ui->ritTuneDial->setValue(ritValHz);
