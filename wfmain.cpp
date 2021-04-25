@@ -305,8 +305,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     rigName->setText("NONE");
     rigName->setFixedWidth(50);
 
-    delayedCmdInterval_ms = 100; // interval for regular delayed commands
-    delayedCmdStartupInterval_ms = 100; // interval for initial rig state polling
+    delayedCmdInterval_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
+    delayedCmdStartupInterval_ms = 250; // interval for rigID polling
     delayedCommand = new QTimer(this);
     delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
     delayedCommand->setSingleShot(true);
