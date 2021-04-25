@@ -305,8 +305,10 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     rigName->setText("NONE");
     rigName->setFixedWidth(50);
 
+    delayedCmdInterval_ms = 100; // interval for regular delayed commands
+    delayedCmdStartupInterval_ms = 100; // interval for initial rig state polling
     delayedCommand = new QTimer(this);
-    delayedCommand->setInterval(250); // 250ms until we find rig civ and id, then 100ms.
+    delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
     delayedCommand->setSingleShot(true);
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
 
@@ -355,6 +357,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rig, SIGNAL(haveBandStackReg(float,char,bool)), this, SLOT(receiveBandStackReg(float,char,bool)));
     connect(this, SIGNAL(setRitEnable(bool)), rig, SLOT(setRitEnable(bool)));
     connect(this, SIGNAL(setRitValue(int)), rig, SLOT(setRitValue(int)));
+    connect(rig, SIGNAL(haveRitEnabled(bool)), this, SLOT(receiveRITStatus(bool)));
+    connect(rig, SIGNAL(haveRitFrequency(int)), this, SLOT(receiveRITValue(int)));
+    connect(this, SIGNAL(getRitEnabled()), rig, SLOT(getRitEnabled()));
+    connect(this, SIGNAL(getRitValue()), rig, SLOT(getRitValue()));
+
     connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
 
     connect(this, SIGNAL(spectOutputDisable()), rig, SLOT(disableSpectOutput()));
@@ -739,7 +746,7 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     //now we know what the rig ID is:
     //qDebug(logSystem()) << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
 
-    delayedCommand->setInterval(100); // faster polling is ok now.
+    delayedCommand->setInterval(delayedCmdInterval_ms); // faster polling is ok now.
     receiveRigID(rigCaps);
     getInitialRigState();
 
@@ -1521,6 +1528,9 @@ void wfmain:: getInitialRigState()
         cmdOutQue.append(cmdGetPreamp);
     }
 
+    cmdOutQue.append(cmdGetRitEnabled);
+    cmdOutQue.append(cmdGetRitValue);
+
     cmdOutQue.append(cmdGetSpectrumMode);
     cmdOutQue.append(cmdGetSpectrumSpan);
 
@@ -1842,6 +1852,12 @@ void wfmain::runDelayedCommand()
             case cmdSetDataModeOn:
                 emit setDataMode(true);
                 break;
+            case cmdGetRitEnabled:
+                emit getRitEnabled();
+                break;
+            case cmdGetRitValue:
+                emit getRitValue();
+                break;
             case cmdGetModInput:
                 emit getModInput(false);
                 break;
@@ -1931,7 +1947,7 @@ void wfmain::runDelayedCommand()
                 periodicPollingTimer->stop();
                 break;
             case cmdQueNormalSpeed:
-                delayedCommand->setInterval(100);
+                delayedCommand->setInterval(delayedCmdInterval_ms);
                 break;
             default:
                 break;
@@ -3802,15 +3818,30 @@ void wfmain::on_ritEnableChk_clicked(bool checked)
     emit setRitEnable(checked);
 }
 
+void wfmain::receiveRITStatus(bool ritEnabled)
+{
+    ui->ritEnableChk->blockSignals(true);
+    ui->ritEnableChk->setChecked(ritEnabled);
+    ui->ritEnableChk->blockSignals(false);
+}
+
+void wfmain::receiveRITValue(int ritValHz)
+{
+    if((ritValHz > -500) and (ritValHz < 500))
+    {
+        ui->ritTuneDial->blockSignals(true);
+        ui->ritTuneDial->setValue(ritValHz);
+        ui->ritTuneDial->blockSignals(false);
+    } else {
+        qDebug(logSystem()) << "Warning: out of range RIT value received: " << ritValHz << " Hz";
+    }
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
     qDebug(logSystem()) << "Debug button pressed.";
 
-    // emit getLevels();
-    // emit getMeters(amTransmitting);
-
-    // emit getTSQL();
-    qDebug(logSystem()) << "Getting scope mode";
-    emit getScopeMode(); // center or fixed
+    qDebug(logSystem()) << "Getting RIT enabled status: ";
+    emit getRitValue();
 }

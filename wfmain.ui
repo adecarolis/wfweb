@@ -306,7 +306,7 @@
                  <bool>false</bool>
                 </property>
                 <property name="notchTarget">
-                 <double>50.000000000000000</double>
+                 <double>10.000000000000000</double>
                 </property>
                 <property name="notchesVisible">
                  <bool>true</bool>

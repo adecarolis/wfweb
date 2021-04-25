@@ -247,6 +247,8 @@ signals:
     void haveMode(unsigned char mode, unsigned char filter);
     void haveDataMode(bool dataModeEnabled);
     void haveBandStackReg(float freq, char mode, bool dataOn);
+    void haveRitEnabled(bool ritEnabled);
+    void haveRitFrequency(int ritHz);
 
     // Repeater:
     void haveDuplexMode(duplexMode);
@@ -328,6 +330,7 @@ private:
     void parseRegister1B();
     void parseRegisters1C();
     void parseRegister16();
+    void parseRegister21();
     void parseBandStackReg();
     void parsePTT();
     void parseATU();
