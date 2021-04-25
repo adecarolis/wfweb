@@ -29,6 +29,7 @@ signals:
     void sendData(QString data);
     void setFrequency(freqt freq);
     void setPTT(bool state);
+    void setMode(unsigned char mode, unsigned char modeFilter);
 
 public slots:
     virtual void incomingConnection(qintptr socketDescriptor);
@@ -67,6 +68,9 @@ private:
     rigCapabilities rigCaps;
     rigStateStruct* rigState = Q_NULLPTR;
     rigCtlD* parent;
+    QString rigCtlClient::getMode(unsigned char mode, bool datamode);
+    unsigned char rigCtlClient::getMode(QString modeString);
+    QString rigCtlClient::getFilter(unsigned char mode, unsigned char filter);
 };
 
 #endif
