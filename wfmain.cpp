@@ -305,8 +305,10 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     rigName->setText("NONE");
     rigName->setFixedWidth(50);
 
+    delayedCmdInterval_ms = 100; // interval for regular delayed commands
+    delayedCmdStartupInterval_ms = 100; // interval for initial rig state polling
     delayedCommand = new QTimer(this);
-    delayedCommand->setInterval(250); // 250ms until we find rig civ and id, then 100ms.
+    delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
     delayedCommand->setSingleShot(true);
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
 
@@ -353,6 +355,13 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
     connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
     connect(rig, SIGNAL(haveBandStackReg(float,char,bool)), this, SLOT(receiveBandStackReg(float,char,bool)));
+    connect(this, SIGNAL(setRitEnable(bool)), rig, SLOT(setRitEnable(bool)));
+    connect(this, SIGNAL(setRitValue(int)), rig, SLOT(setRitValue(int)));
+    connect(rig, SIGNAL(haveRitEnabled(bool)), this, SLOT(receiveRITStatus(bool)));
+    connect(rig, SIGNAL(haveRitFrequency(int)), this, SLOT(receiveRITValue(int)));
+    connect(this, SIGNAL(getRitEnabled()), rig, SLOT(getRitEnabled()));
+    connect(this, SIGNAL(getRitValue()), rig, SLOT(getRitValue()));
+
     connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
 
     connect(this, SIGNAL(spectOutputDisable()), rig, SLOT(disableSpectOutput()));
@@ -738,7 +747,7 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     //now we know what the rig ID is:
     //qDebug(logSystem()) << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
 
-    delayedCommand->setInterval(100); // faster polling is ok now.
+    delayedCommand->setInterval(delayedCmdInterval_ms); // faster polling is ok now.
     receiveRigID(rigCaps);
     getInitialRigState();
 
@@ -1520,6 +1529,9 @@ void wfmain:: getInitialRigState()
         cmdOutQue.append(cmdGetPreamp);
     }
 
+    cmdOutQue.append(cmdGetRitEnabled);
+    cmdOutQue.append(cmdGetRitValue);
+
     cmdOutQue.append(cmdGetSpectrumMode);
     cmdOutQue.append(cmdGetSpectrumSpan);
 
@@ -1787,7 +1799,6 @@ void wfmain::runPeriodicCommands()
     }
 }
 
-
 void wfmain::runDelayedCommand()
 {
     cmds qdCmd;
@@ -1841,6 +1852,12 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdSetDataModeOn:
                 emit setDataMode(true);
+                break;
+            case cmdGetRitEnabled:
+                emit getRitEnabled();
+                break;
+            case cmdGetRitValue:
+                emit getRitValue();
                 break;
             case cmdGetModInput:
                 emit getModInput(false);
@@ -1929,6 +1946,9 @@ void wfmain::runDelayedCommand()
                 break;
             case cmdStopRegularPolling:
                 periodicPollingTimer->stop();
+                break;
+            case cmdQueNormalSpeed:
+                delayedCommand->setInterval(delayedCmdInterval_ms);
                 break;
             default:
                 break;
@@ -3300,7 +3320,6 @@ void wfmain::changeSliderQuietly(QSlider *slider, int value)
     slider->blockSignals(true);
     slider->setValue(value);
     slider->blockSignals(false);
-
 }
 
 void wfmain::receiveTxPower(unsigned char power)
@@ -3428,8 +3447,6 @@ void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
     unsigned int peak = 0;
     unsigned int sum=0;
     unsigned int average=0;
-
-
 
     switch(inMeter)
     {
@@ -3753,7 +3770,7 @@ void wfmain::receiveSpectrumSpan(freqt freqspan, bool isSub)
 
 void wfmain::on_rigPowerOnBtn_clicked()
 {
-    emit sendPowerOn();
+    powerRigOn();
 }
 
 void wfmain::on_rigPowerOffBtn_clicked()
@@ -3762,7 +3779,62 @@ void wfmain::on_rigPowerOffBtn_clicked()
     reply = QMessageBox::question(this, "Power", "Power down the radio?",
                                   QMessageBox::Yes|QMessageBox::No);
     if (reply == QMessageBox::Yes) {
-        //emit sendPowerOff();
+        powerRigOff();
+    }
+}
+
+void wfmain::powerRigOn()
+{
+    emit sendPowerOn();
+
+    delayedCommand->setInterval(3000); // 3 seconds
+    if(ui->scopeEnableWFBtn->isChecked())
+    {
+    issueDelayedCommand(cmdDispEnable);
+    issueDelayedCommand(cmdQueNormalSpeed);
+    issueDelayedCommand(cmdSpecOn);
+    issueDelayedCommand(cmdStartRegularPolling); // s-meter, etc
+    } else {
+        issueDelayedCommand(cmdQueNormalSpeed);
+    }
+    delayedCommand->start();
+}
+
+void wfmain::powerRigOff()
+{
+    periodicPollingTimer->stop();
+    delayedCommand->stop();
+    cmdOutQue.clear();
+
+    emit sendPowerOff();
+}
+
+void wfmain::on_ritTuneDial_valueChanged(int value)
+{
+    emit setRitValue(value);
+}
+
+void wfmain::on_ritEnableChk_clicked(bool checked)
+{
+    emit setRitEnable(checked);
+}
+
+void wfmain::receiveRITStatus(bool ritEnabled)
+{
+    ui->ritEnableChk->blockSignals(true);
+    ui->ritEnableChk->setChecked(ritEnabled);
+    ui->ritEnableChk->blockSignals(false);
+}
+
+void wfmain::receiveRITValue(int ritValHz)
+{
+    if((ritValHz > -500) and (ritValHz < 500))
+    {
+        ui->ritTuneDial->blockSignals(true);
+        ui->ritTuneDial->setValue(ritValHz);
+        ui->ritTuneDial->blockSignals(false);
+    } else {
+        qDebug(logSystem()) << "Warning: out of range RIT value received: " << ritValHz << " Hz";
     }
 }
 
@@ -3771,15 +3843,6 @@ void wfmain::on_debugBtn_clicked()
 {
     qDebug(logSystem()) << "Debug button pressed.";
 
-    // TODO: Why don't these commands work?!
-    //emit getScopeMode();
-    //emit getScopeEdge(); // 1,2,3 only in "fixed" mode
-    //emit getScopeSpan(); // in khz, only in "center" mode
-
-    // emit getLevels();
-    // emit getMeters(amTransmitting);
-
-    // emit getTSQL();
-    qDebug(logSystem()) << "Getting scope mode";
-    emit getScopeMode(); // center or fixed
+    qDebug(logSystem()) << "Getting RIT enabled status: ";
+    emit getRitValue();
 }

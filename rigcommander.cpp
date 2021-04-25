@@ -593,6 +593,63 @@ QByteArray rigCommander::makeFreqPayload(double freq)
     return result;
 }
 
+void rigCommander::setRitEnable(bool ritEnabled)
+{
+    QByteArray payload;
+
+    if(ritEnabled)
+    {
+        payload.setRawData("\x21\x01\x01", 3);
+    } else {
+        payload.setRawData("\x21\x01\x00", 3);
+    }
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getRitEnabled()
+{
+    QByteArray payload;
+    payload.setRawData("\x21\x01", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getRitValue()
+{
+    QByteArray payload;
+    payload.setRawData("\x21\x00", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setRitValue(int ritValue)
+{
+    QByteArray payload;
+    QByteArray freqBytes;
+    freqt f;
+
+    bool isNegative = false;
+    payload.setRawData("\x21\x00", 2);
+
+    if(ritValue < 0)
+    {
+        isNegative = true;
+        ritValue *= -1;
+    }
+
+    if(ritValue > 9999)
+        return;
+
+    f.Hz = ritValue;
+
+    freqBytes = makeFreqPayload(f);
+
+    freqBytes.truncate(2);
+    payload.append(freqBytes);
+
+    payload.append(QByteArray(1,(char)isNegative));
+
+    prepDataAndSend(payload);
+}
+
 void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
 {
     QByteArray payload;
@@ -1123,6 +1180,10 @@ void rigCommander::parseCommand()
             qDebug(logRig()) << "Have rig ID: decimal: " << (unsigned int)model;
 
 
+            break;
+        case '\x21':
+            // RIT and Delta TX:
+            parseRegister21();
             break;
         case '\x26':
             if((int)payloadIn[1] == 0)
@@ -1905,6 +1966,45 @@ void rigCommander::parseRegisters1C()
     }
 }
 
+void rigCommander::parseRegister21()
+{
+    // Register 21 is RIT and Delta TX
+    int ritHz = 0;
+    freqt f;
+    QByteArray longfreq;
+
+    // Example RIT value reply:
+    // Index: 00 01 02 03 04 05
+    // DATA:  21 00 32 03 00 fd
+
+    switch(payloadIn[01])
+    {
+        case '\x00':
+            // RIT frequency
+            //
+            longfreq = payloadIn.mid(2,2);
+            longfreq.append(QByteArray(3,'\x00'));
+            f = parseFrequency(longfreq, 3);
+            ritHz = f.Hz*((payloadIn.at(4)=='\x01')?-1:1);
+            emit haveRitFrequency(ritHz);
+            break;
+        case '\x01':
+            // RIT on/off
+            if(payloadIn.at(02) == '\x01')
+            {
+                emit haveRitEnabled(true);
+            } else {
+                emit haveRitEnabled(false);
+            }
+            break;
+        case '\x02':
+            // Delta TX setting on/off
+            break;
+        default:
+            break;
+    }
+}
+
 void rigCommander::parseATU()
 {
     // qDebug(logRig()) << "Have ATU status from radio. Emitting.";
@@ -2174,6 +2274,8 @@ void rigCommander::parseDetailedRegisters1A05()
                 case 62:
                     emit haveLANGain(level);
                     break;
+                default:
+                    break;
             }
         case model7610:
             switch(subcmd)
@@ -2246,6 +2348,8 @@ void rigCommander::parseDetailedRegisters1A05()
                     break;
                 case 91:
                     emit haveModInput(input, true);
+                    break;
+                default:
                     break;
             }
         case model705:
@@ -2861,6 +2965,9 @@ freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
 
     // TODO: Check length of data array prior to reading +/- position
 
+    // NOTE: This function was written on the IC-7300, which has no need for 100 MHz and 1 GHz.
+    //       Therefore, this function has to go to position +1 to retrieve those numbers for the IC-9700.
+
     // TODO: 64-bit value is incorrect, multiplying by wrong numbers.
 
     float freq = 0.0;
@@ -2877,9 +2984,13 @@ freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
     freq += 10*((data[lastPosition] & 0xf0) >> 4);
 
     freqs.Hz += (data[lastPosition] & 0x0f) * 1E6;
-    freqs.Hz += ((data[lastPosition] & 0xf0) >> 4) * 1E6 *     10;
-    freqs.Hz += (data[lastPosition+1] & 0x0f) * 1E6 *         100;
-    freqs.Hz += ((data[lastPosition+1] & 0xf0) >> 4) * 1E6 * 1000;
+    freqs.Hz += ((data[lastPosition] & 0xf0) >> 4) * 1E6 *     10; //   10 MHz
+
+    if(data.length() >= lastPosition+1)
+    {
+        freqs.Hz += (data[lastPosition+1] & 0x0f) * 1E6 *         100; //  100 MHz
+        freqs.Hz += ((data[lastPosition+1] & 0xf0) >> 4) * 1E6 * 1000; // 1000 MHz
+    }
 
 
     // Hz:
@@ -2892,14 +3003,14 @@ freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
     freq += ((data[lastPosition-3] & 0xf0) >> 4) / 100000.0;
     freq += (data[lastPosition-3] & 0x0f) / 1000000.0;
 
-    freqs.Hz += (data[lastPosition-1] & 0x0f);
-    freqs.Hz += ((data[lastPosition-1] & 0xf0) >> 4) *     10;
+    freqs.Hz += (data[lastPosition-1] & 0x0f) *          10E3; // 10 KHz
+    freqs.Hz += ((data[lastPosition-1] & 0xf0) >> 4) *  100E3; // 100 KHz
 
-    freqs.Hz += (data[lastPosition-2] & 0x0f) *           100;
-    freqs.Hz += ((data[lastPosition-2] & 0xf0) >> 4) *   1000;
+    freqs.Hz += (data[lastPosition-2] & 0x0f) *           100; // 100 Hz
+    freqs.Hz += ((data[lastPosition-2] & 0xf0) >> 4) *   1000; // 1 KHz
 
-    freqs.Hz += (data[lastPosition-3] & 0x0f) *         10000;
-    freqs.Hz += ((data[lastPosition-3] & 0xf0) >> 4) * 100000;
+    freqs.Hz += (data[lastPosition-3] & 0x0f) *             1; // 1 Hz
+    freqs.Hz += ((data[lastPosition-3] & 0xf0) >> 4) *     10; // 10 Hz
 
     freqs.MHzDouble = (double)freq;
     return freqs;

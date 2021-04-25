@@ -58,6 +58,10 @@ signals:
     void setModInput(rigInput input, bool dataOn);
     void getBandStackReg(char band, char regCode);
     void getDebug();
+    void getRitEnabled();
+    void getRitValue();
+    void setRitValue(int ritValue);
+    void setRitEnable(bool ritEnabled);
 
     // Repeater:
     void getDuplexMode();
@@ -181,6 +185,8 @@ private slots:
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(bool dataOn);
     void receiveBandStackReg(float freq, char mode, bool dataOn); // freq, mode, (filter,) datamode
+    void receiveRITStatus(bool ritEnabled);
+    void receiveRITValue(int ritValHz);
     void receiveModInput(rigInput input, bool dataOn);
     //void receiveDuplexMode(duplexMode dm);
 
@@ -407,6 +413,10 @@ private slots:
 
     void on_rigPowerOffBtn_clicked();
 
+    void on_ritTuneDial_valueChanged(int value);
+
+    void on_ritEnableChk_clicked(bool checked);
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -421,6 +431,8 @@ private:
     void prepareWf();
     void getInitialRigState();
     void openRig();
+    void powerRigOff();
+    void powerRigOn();
     QWidget * theParent;
     QStringList portList;
     QString serialPortRig;
@@ -507,18 +519,21 @@ private:
     freqt freq;
     float tsKnobMHz;
 
-    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetDataModeOn, cmdSetDataModeOff,
+    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode,
+              cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
               cmdGetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
               cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
-              cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdGetVdMeter, cmdGetIdMeter,
-              cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter,
+              cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
+              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter,
               cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna};
 
     cmds cmdOut;
     QVector <cmds> cmdOutQue;
     QVector <cmds> periodicCmdQueue;
     int pCmdNum = 0;
+    int delayedCmdInterval_ms = 100;
+    int delayedCmdStartupInterval_ms = 100;
 
     freqMemory mem;
     struct colors {
@@ -568,10 +583,6 @@ private:
     void useColors(); // set the plot up
     void setDefPrefs(); // populate default values to default prefs
     void setTuningSteps();
-    //double roundFrequency(double frequency);
-    //double roundFrequency(double frequency, unsigned int tsHz);
-    //double roundFrequencyWithStep(double oldFreq, int steps,
-    //                              unsigned int tsHz);
 
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
     quint64 roundFrequencyWithStep(quint64 oldFreq, int steps,\

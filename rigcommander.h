@@ -95,6 +95,10 @@ public slots:
     void setDataMode(bool dataOn);
     void getDataMode();
     void getBandStackReg(char band, char regCode);
+    void getRitEnabled();
+    void getRitValue();
+    void setRitValue(int ritValue);
+    void setRitEnable(bool ritEnabled);
 
     // PTT, ATU, ATT, Antenna, and Preamp:
     void getPTT();
@@ -244,6 +248,8 @@ signals:
     void haveMode(unsigned char mode, unsigned char filter);
     void haveDataMode(bool dataModeEnabled);
     void haveBandStackReg(float freq, char mode, bool dataOn);
+    void haveRitEnabled(bool ritEnabled);
+    void haveRitFrequency(int ritHz);
 
     // Repeater:
     void haveDuplexMode(duplexMode);
@@ -325,6 +331,7 @@ private:
     void parseRegister1B();
     void parseRegisters1C();
     void parseRegister16();
+    void parseRegister21();
     void parseBandStackReg();
     void parsePTT();
     void parseATU();
