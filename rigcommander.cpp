@@ -2466,6 +2466,16 @@ void rigCommander::determineRigCaps()
 {
     //TODO: Determine available bands (low priority, rig will reject out of band requests anyway)
 
+    std::vector <bandType> standardHF;
+    std::vector <bandType> standardVU;
+
+    // Most commonly supported "HF" bands:
+    standardHF = {band6m, band10m, band10m, band12m,
+                 band15m, band17m, band20m, band30m,
+                 band40m, band60m, band80m, band160m};
+
+    standardVU = {band70cm, band2m};
+
 
     rigCaps.model = model;
     rigCaps.modelID = model; // may delete later
@@ -2495,6 +2505,32 @@ void rigCommander::determineRigCaps()
 
     rigCaps.hasTransmit = true;
 
+    // Common, reasonable defaults for most supported HF rigs:
+    rigCaps.bsr[band160m] = 0x01;
+    rigCaps.bsr[band80m] = 0x02;
+    rigCaps.bsr[band40m] = 0x03;
+    rigCaps.bsr[band30m] = 0x04;
+    rigCaps.bsr[band20m] = 0x05;
+    rigCaps.bsr[band17m] = 0x06;
+    rigCaps.bsr[band15m] = 0x07;
+    rigCaps.bsr[band12m] = 0x08;
+    rigCaps.bsr[band10m] = 0x09;
+    rigCaps.bsr[band6m] = 0x10;
+    rigCaps.bsr[bandGen] = 0x11;
+
+    // Bands that seem to change with every model:
+    rigCaps.bsr[band2m] = 0x00;
+    rigCaps.bsr[band70cm] = 0x00;
+    rigCaps.bsr[band23cm] = 0x00;
+
+    // These bands generally aren't defined:
+    rigCaps.bsr[band4m] = 0x00;
+    rigCaps.bsr[band60m] = 0x00;
+    rigCaps.bsr[bandWFM] = 0x00;
+    rigCaps.bsr[bandAir] = 0x00;
+    rigCaps.bsr[band630m] = 0x00;
+    rigCaps.bsr[band2200m] = 0x00;
+
     switch(model){
         case model7300:
             rigCaps.modelName = QString("IC-7300");
@@ -2512,6 +2548,9 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
+            rigCaps.bands = standardHF;
+            rigCaps.bands.push_back(band4m);
+            rigCaps.bands.push_back(bandGen);
             break;
         case modelR8600:
             rigCaps.modelName = QString("IC-R8600");
@@ -2533,6 +2572,9 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x02');
             rigCaps.hasAntennaSel = true;
             rigCaps.antennas = {0x00, 0x01, 0x02};
+            rigCaps.bands = standardHF;
+            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+            rigCaps.bands.insert(rigCaps.bands.end(), {band23cm, band4m, band630m, band2200m, bandGen});
             break;
         case model9700:
             rigCaps.modelName = QString("IC-9700");
@@ -2552,6 +2594,11 @@ void rigCommander::determineRigCaps()
             rigCaps.hasDTCS = true;
             rigCaps.attenuators.push_back('\x10');
             rigCaps.preamps.push_back('\x01');
+            rigCaps.bands = standardVU;
+            rigCaps.bands.push_back(band23cm);
+            rigCaps.bsr[band23cm] = 0x03;
+            rigCaps.bsr[band70cm] = 0x02;
+            rigCaps.bsr[band2m] = 0x01;
             break;
         case model7610:
             rigCaps.modelName = QString("IC-7610");
@@ -2576,6 +2623,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasAntennaSel = true;
             rigCaps.antennas = {0x00, 0x01};
             rigCaps.hasATU = true;
+            rigCaps.bands = standardHF;
+            rigCaps.bands.push_back(bandGen);
             break;
         case model7850:
             rigCaps.modelName = QString("IC-785x");
@@ -2599,6 +2648,8 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x02');
             rigCaps.hasAntennaSel = true;
             rigCaps.antennas = {0x00, 0x01, 0x02, 0x03};
+            rigCaps.bands = standardHF;
+            rigCaps.bands.push_back(bandGen);
             break;
         case model705:
             rigCaps.modelName = QString("IC-705");
@@ -2619,6 +2670,14 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x10' , '\x20'});
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
+            rigCaps.bands = standardHF;
+            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.bsr[band70cm] = 0x14;
+            rigCaps.bsr[band2m] = 0x13;
+            rigCaps.bsr[bandAir] = 0x12;
+            rigCaps.bsr[bandWFM] = 0x11;
+            rigCaps.bsr[bandGen] = 0x15;
             break;
         case model7100:
             rigCaps.modelName = QString("IC-7100");
@@ -2634,6 +2693,13 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.push_back('\x12');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
+            rigCaps.bands = standardHF;
+            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+            rigCaps.bands.push_back(band4m);
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.bsr[band2m] = 0x11;
+            rigCaps.bsr[band70cm] = 0x12;
+            rigCaps.bsr[bandGen] = 0x13;
             break;
         case model706:
             rigCaps.modelName = QString("IC-706");
@@ -2644,6 +2710,9 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasATU = true;
             rigCaps.attenuators.push_back('\x20');
+            rigCaps.bands = standardHF;
+            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+            rigCaps.bands.push_back(bandGen);
             break;
         default:
             rigCaps.modelName = QString("IC-RigID: 0x%1").arg(rigCaps.model, 0, 16);
@@ -2660,6 +2729,9 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.push_back('\x10');
             rigCaps.attenuators.push_back('\x12');
             rigCaps.attenuators.push_back('\x20');
+            rigCaps.bands = standardHF;
+            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+            rigCaps.bands.insert(rigCaps.bands.end(), {band23cm, band4m, band630m, band2200m, bandGen});
             qDebug(logRig()) << "Found unknown rig: " << rigCaps.modelName;
             break;
     }

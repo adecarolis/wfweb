@@ -2116,7 +2116,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->antennaSelCombo->setDisabled(true);
         }
 
-
+        setBandButtons();
 
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
@@ -2662,6 +2662,9 @@ void wfmain::changeMode(mode_kind mode, bool dataOn)
 {
     int filter = ui->modeFilterCombo->currentData().toInt();
     emit setMode((unsigned char)mode, filter);
+
+    currentMode = mode;
+
     if(dataOn)
     {
         issueDelayedCommand(cmdSetDataModeOn);
@@ -2691,7 +2694,7 @@ void wfmain::on_modeSelectCombo_activated(int index)
         // oops, we forgot to reset the combo box
     } else {
         qDebug(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
-
+        currentMode = (mode_kind)newMode;
         emit setMode(newMode, filterSelection);
     }
 }
@@ -2809,6 +2812,37 @@ void wfmain::bandStackBtnClick()
     emit getBandStackReg(bandStkBand, bandStkRegCode);
 }
 
+void wfmain::on_band23cmbtn_clicked()
+{
+    bandStkBand = rigCaps.bsr[band23cm]; // 23cm
+    bandStackBtnClick();
+}
+
+void wfmain::on_band70cmbtn_clicked()
+{
+    bandStkBand = rigCaps.bsr[band70cm]; // 70cm
+    bandStackBtnClick();
+}
+
+void wfmain::on_band2mbtn_clicked()
+{
+    bandStkBand = rigCaps.bsr[band2m]; // 2m
+    bandStackBtnClick();
+}
+
+void wfmain::on_band4mbtn_clicked()
+{
+    // There isn't a BSR for this one:
+    freqt f;
+    if((currentMode == modeAM) || (currentMode == modeFM))
+    {
+        f.Hz = (70.260) * 1E6;
+    } else {
+        f.Hz = (70.200) * 1E6;
+    }
+    setFrequency(f);
+}
+
 void wfmain::on_band6mbtn_clicked()
 {
     bandStkBand = 0x10; // 6 meters
@@ -2885,11 +2919,25 @@ void wfmain::on_band160mbtn_clicked()
     bandStackBtnClick();
 }
 
+void wfmain::on_band630mbtn_clicked()
+{
+    freqt f;
+    f.Hz = 475 * 1E3;
+    setFrequency(f);
+}
+
+void wfmain::on_band2200mbtn_clicked()
+{
+    freqt f;
+    f.Hz = 136 * 1E3;
+    setFrequency(f);
+}
+
 void wfmain::on_bandGenbtn_clicked()
 {
     // "GENE" general coverage frequency outside the ham bands
     // which does probably include any 60 meter frequencies used.
-    bandStkBand = 0x11; // GEN
+    bandStkBand = rigCaps.bsr[bandGen]; // GEN
     bandStackBtnClick();
 }
 
@@ -3827,7 +3875,7 @@ void wfmain::receiveRITStatus(bool ritEnabled)
 
 void wfmain::receiveRITValue(int ritValHz)
 {
-    if((ritValHz > -500) and (ritValHz < 500))
+    if((ritValHz > -500) && (ritValHz < 500))
     {
         ui->ritTuneDial->blockSignals(true);
         ui->ritTuneDial->setValue(ritValHz);
@@ -3837,11 +3885,116 @@ void wfmain::receiveRITValue(int ritValHz)
     }
 }
 
+void wfmain::showButton(QPushButton *btn)
+{
+    btn->setHidden(false);
+}
+
+void wfmain::hideButton(QPushButton *btn)
+{
+    btn->setHidden(true);
+}
+
+void wfmain::setBandButtons()
+{
+    // Turn off each button first:
+    hideButton(ui->band23cmbtn);
+    hideButton(ui->band70cmbtn);
+    hideButton(ui->band2mbtn);
+    hideButton(ui->band4mbtn);
+    hideButton(ui->band6mbtn);
+
+    hideButton(ui->band10mbtn);
+    hideButton(ui->band12mbtn);
+    hideButton(ui->band15mbtn);
+    hideButton(ui->band17mbtn);
+    hideButton(ui->band20mbtn);
+    hideButton(ui->band30mbtn);
+    hideButton(ui->band40mbtn);
+    hideButton(ui->band60mbtn);
+    hideButton(ui->band80mbtn);
+    hideButton(ui->band160mbtn);
+
+    hideButton(ui->band630mbtn);
+    hideButton(ui->band2200mbtn);
+    hideButton(ui->bandGenbtn);
+
+    bandType bandSel;
+
+    //for (auto band = rigCaps.bands.begin(); band != rigCaps.bands.end(); ++band) // no worky
+    for(unsigned int i=0; i < rigCaps.bands.size(); i++)
+    {
+        bandSel = rigCaps.bands.at(i);
+        switch(bandSel)
+        {
+            case(band23cm):
+                showButton(ui->band23cmbtn);
+                break;
+            case(band70cm):
+                showButton(ui->band70cmbtn);
+                break;
+            case(band2m):
+                showButton(ui->band2mbtn);
+                break;
+            case(band4m):
+                showButton(ui->band4mbtn);
+                break;
+            case(band6m):
+                showButton(ui->band6mbtn);
+                break;
+
+            case(band10m):
+                showButton(ui->band10mbtn);
+                break;
+            case(band12m):
+                showButton(ui->band12mbtn);
+                break;
+            case(band15m):
+                showButton(ui->band15mbtn);
+                break;
+            case(band17m):
+                showButton(ui->band17mbtn);
+                break;
+            case(band20m):
+                showButton(ui->band20mbtn);
+                break;
+            case(band30m):
+                showButton(ui->band30mbtn);
+                break;
+            case(band40m):
+                showButton(ui->band40mbtn);
+                break;
+            case(band60m):
+                showButton(ui->band60mbtn);
+                break;
+            case(band80m):
+                showButton(ui->band80mbtn);
+                break;
+            case(band160m):
+                showButton(ui->band160mbtn);
+                break;
+
+            case(band630m):
+                showButton(ui->band630mbtn);
+                break;
+            case(band2200m):
+                showButton(ui->band2200mbtn);
+                break;
+            case(bandGen):
+                showButton(ui->bandGenbtn);
+                break;
+
+            default:
+                break;
+        }
+    }
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
     qDebug(logSystem()) << "Debug button pressed.";
 
-    qDebug(logSystem()) << "Getting RIT enabled status: ";
-    emit getRitValue();
+    qDebug(logSystem()) << "Changing band buttons: ";
+    setBandButtons();
 }

@@ -417,6 +417,18 @@ private slots:
 
     void on_ritEnableChk_clicked(bool checked);
 
+    void on_band23cmbtn_clicked();
+
+    void on_band70cmbtn_clicked();
+
+    void on_band2mbtn_clicked();
+
+    void on_band4mbtn_clicked();
+
+    void on_band630mbtn_clicked();
+
+    void on_band2200mbtn_clicked();
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -430,6 +442,10 @@ private:
     void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
     void getInitialRigState();
+    void setBandButtons();
+    void showButton(QPushButton *btn);
+    void hideButton(QPushButton *btn);
+
     void openRig();
     void powerRigOff();
     void powerRigOn();
@@ -618,6 +634,7 @@ private:
     rigCapabilities rigCaps;
     rigInput currentModSrc = inputUnknown;
     rigInput currentModDataSrc = inputUnknown;
+    mode_kind currentMode = modeUSB;
 
     bool haveRigCaps;
     bool amTransmitting;
