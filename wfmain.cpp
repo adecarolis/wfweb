@@ -2882,6 +2882,7 @@ void wfmain::on_band4mbtn_clicked()
         f.Hz = (70.200) * 1E6;
     }
     emit setFrequency(f);
+        issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::on_band6mbtn_clicked()
