@@ -37,6 +37,28 @@ enum rigInput{ inputMic=0,
                inputUnknown=0xff
 };
 
+enum bandType { band23cm=1,
+                band70cm,
+                band2m,
+                bandAir,
+                bandWFM,
+                band4m,
+                band6m,
+                band10m,
+                band12m,
+                band15m,
+                band17m,
+                band20m,
+                band30m,
+                band40m,
+                band60m,
+                band80m,
+                band160m,
+                band630m,
+                band2200m,
+                bandGen
+};
+
 model_kind determineRadioModel(unsigned char rigID);
 
 struct rigCapabilities {
@@ -69,10 +91,12 @@ struct rigCapabilities {
     bool hasAttenuator;
     bool hasPreamp;
     bool hasAntennaSel;
-    //QVector <unsigned char> attenuators;
+
     std::vector <unsigned char> attenuators;
     std::vector <unsigned char> preamps;
     std::vector <unsigned char> antennas;
+    std::vector <bandType> bands;
+    unsigned char bsr[20] = {0};
 };
 
 

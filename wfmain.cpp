@@ -305,8 +305,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     rigName->setText("NONE");
     rigName->setFixedWidth(50);
 
-    delayedCmdInterval_ms = 100; // interval for regular delayed commands
-    delayedCmdStartupInterval_ms = 100; // interval for initial rig state polling
+    delayedCmdInterval_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
+    delayedCmdStartupInterval_ms = 250; // interval for rigID polling
     delayedCommand = new QTimer(this);
     delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
     delayedCommand->setSingleShot(true);
@@ -819,6 +819,40 @@ void wfmain::loadSettings()
     setWindowState(Qt::WindowActive); // Works around QT bug to returns window+keyboard focus.
     settings.endGroup();
 
+    // Load color schemes:
+    // Per this bug: https://forum.qt.io/topic/24725/solved-qvariant-will-drop-alpha-value-when-save-qcolor/5
+    // the alpha channel is dropped when converting raw qvariant of QColor. Therefore, we are storing as unsigned int and converting back.
+
+    settings.beginGroup("DarkColors");
+    prefs.colorScheme.Dark_PlotBackground = QColor::fromRgba(settings.value("Dark_PlotBackground", defaultColors.Dark_PlotBackground.rgba()).toUInt());
+    prefs.colorScheme.Dark_PlotAxisPen = QColor::fromRgba(settings.value("Dark_PlotAxisPen", defaultColors.Dark_PlotAxisPen.rgba()).toUInt());
+
+    prefs.colorScheme.Dark_PlotLegendTextColor = QColor::fromRgba(settings.value("Dark_PlotLegendTextColor", defaultColors.Dark_PlotLegendTextColor.rgba()).toUInt());
+    prefs.colorScheme.Dark_PlotLegendBorderPen = QColor::fromRgba(settings.value("Dark_PlotLegendBorderPen", defaultColors.Dark_PlotLegendBorderPen.rgba()).toUInt());
+    prefs.colorScheme.Dark_PlotLegendBrush = QColor::fromRgba(settings.value("Dark_PlotLegendBrush", defaultColors.Dark_PlotLegendBrush.rgba()).toUInt());
+
+    prefs.colorScheme.Dark_PlotTickLabel = QColor::fromRgba(settings.value("Dark_PlotTickLabel", defaultColors.Dark_PlotTickLabel.rgba()).toUInt());
+    prefs.colorScheme.Dark_PlotBasePen = QColor::fromRgba(settings.value("Dark_PlotBasePen", defaultColors.Dark_PlotBasePen.rgba()).toUInt());
+    prefs.colorScheme.Dark_PlotTickPen = QColor::fromRgba(settings.value("Dark_PlotTickPen", defaultColors.Dark_PlotTickPen.rgba()).toUInt());
+
+    prefs.colorScheme.Dark_PeakPlotLine = QColor::fromRgba(settings.value("Dark_PeakPlotLine", defaultColors.Dark_PeakPlotLine.rgba()).toUInt());
+    prefs.colorScheme.Dark_TuningLine = QColor::fromRgba(settings.value("Dark_TuningLine", defaultColors.Dark_TuningLine.rgba()).toUInt());
+    settings.endGroup();
+
+    settings.beginGroup("LightColors");
+    prefs.colorScheme.Light_PlotBackground = QColor::fromRgba(settings.value("Light_PlotBackground", defaultColors.Light_PlotBackground.rgba()).toUInt());
+    prefs.colorScheme.Light_PlotAxisPen = QColor::fromRgba(settings.value("Light_PlotAxisPen", defaultColors.Light_PlotAxisPen.rgba()).toUInt());
+    prefs.colorScheme.Light_PlotLegendTextColor = QColor::fromRgba(settings.value("Light_PlotLegendTextColo", defaultColors.Light_PlotLegendTextColor.rgba()).toUInt());
+    prefs.colorScheme.Light_PlotLegendBorderPen = QColor::fromRgba(settings.value("Light_PlotLegendBorderPen", defaultColors.Light_PlotLegendBorderPen.rgba()).toUInt());
+    prefs.colorScheme.Light_PlotLegendBrush = QColor::fromRgba(settings.value("Light_PlotLegendBrush", defaultColors.Light_PlotLegendBrush.rgba()).toUInt());
+    prefs.colorScheme.Light_PlotTickLabel = QColor::fromRgba(settings.value("Light_PlotTickLabel", defaultColors.Light_PlotTickLabel.rgba()).toUInt());
+    prefs.colorScheme.Light_PlotBasePen = QColor::fromRgba(settings.value("Light_PlotBasePen", defaultColors.Light_PlotBasePen.rgba()).toUInt());
+    prefs.colorScheme.Light_PlotTickPen = QColor::fromRgba(settings.value("Light_PlotTickPen", defaultColors.Light_PlotTickPen.rgba()).toUInt());
+    prefs.colorScheme.Light_PeakPlotLine = QColor::fromRgba(settings.value("Light_PeakPlotLine", defaultColors.Light_PeakPlotLine.rgba()).toUInt());
+    prefs.colorScheme.Light_TuningLine = QColor::fromRgba(settings.value("Light_TuningLine", defaultColors.Light_TuningLine.rgba()).toUInt());
+    settings.endGroup();
+
+
     // Radio and Comms: C-IV addr, port to use
     settings.beginGroup("Radio");
     prefs.radioCIVAddr = (unsigned char) settings.value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
@@ -1054,48 +1088,47 @@ void wfmain::saveSettings()
     // Note: X and Y get the same colors. See setPlotTheme() function
 
     settings.beginGroup("DarkColors");
-
-    settings.setValue("Dark_PlotBackground", QColor(0,0,0,255));
-    settings.setValue("Dark_PlotAxisPen", QColor(75,75,75,255));
-
-    settings.setValue("Dark_PlotLegendTextColor", QColor(255,255,255,255));
-    settings.setValue("Dark_PlotLegendBorderPen", QColor(255,255,255,255));
-    settings.setValue("Dark_PlotLegendBrush", QColor(0,0,0,200));
-
-    settings.setValue("Dark_PlotTickLabel", QColor(Qt::white));
-    settings.setValue("Dark_PlotBasePen", QColor(Qt::white));
-    settings.setValue("Dark_PlotTickPen", QColor(Qt::white));
-
+    settings.setValue("Dark_PlotBackground", prefs.colorScheme.Dark_PlotBackground.rgba());
+    settings.setValue("Dark_PlotAxisPen", prefs.colorScheme.Dark_PlotAxisPen.rgba());
+    settings.setValue("Dark_PlotLegendTextColor", prefs.colorScheme.Dark_PlotLegendTextColor.rgba());
+    settings.setValue("Dark_PlotLegendBorderPen", prefs.colorScheme.Dark_PlotLegendBorderPen.rgba());
+    settings.setValue("Dark_PlotLegendBrush", prefs.colorScheme.Dark_PlotLegendBrush.rgba());
+    settings.setValue("Dark_PlotTickLabel", prefs.colorScheme.Dark_PlotTickLabel.rgba());
+    settings.setValue("Dark_PlotBasePen", prefs.colorScheme.Dark_PlotBasePen.rgba());
+    settings.setValue("Dark_PlotTickPen", prefs.colorScheme.Dark_PlotTickPen.rgba());
+    settings.setValue("Dark_PeakPlotLine", prefs.colorScheme.Dark_PeakPlotLine.rgba());
+    settings.setValue("Dark_TuningLine", prefs.colorScheme.Dark_TuningLine.rgba());
     settings.endGroup();
 
     settings.beginGroup("LightColors");
-
-    settings.setValue("Light_PlotBackground", QColor(255,255,255,255));
-    settings.setValue("Light_PlotAxisPen", QColor(200,200,200,255));
-
-    settings.setValue("Light_PlotLegendTextColor", QColor(0,0,0,255));
-    settings.setValue("Light_PlotLegendBorderPen", QColor(0,0,0,255));
-    settings.setValue("Light_PlotLegendBrush", QColor(255,255,255,200));
-
-    settings.setValue("Light_PlotTickLabel", QColor(Qt::black));
-    settings.setValue("Light_PlotBasePen", QColor(Qt::black));
-    settings.setValue("Light_PlotTickPen", QColor(Qt::black));
+    settings.setValue("Light_PlotBackground", prefs.colorScheme.Light_PlotBackground.rgba());
+    settings.setValue("Light_PlotAxisPen", prefs.colorScheme.Light_PlotAxisPen.rgba());
+    settings.setValue("Light_PlotLegendTextColor", prefs.colorScheme.Light_PlotLegendTextColor.rgba());
+    settings.setValue("Light_PlotLegendBorderPen", prefs.colorScheme.Light_PlotLegendBorderPen.rgba());
+    settings.setValue("Light_PlotLegendBrush", prefs.colorScheme.Light_PlotLegendBrush.rgba());
+    settings.setValue("Light_PlotTickLabel", prefs.colorScheme.Light_PlotTickLabel.rgba());
+    settings.setValue("Light_PlotBasePen", prefs.colorScheme.Light_PlotBasePen.rgba());
+    settings.setValue("Light_PlotTickPen", prefs.colorScheme.Light_PlotTickPen.rgba());
+    settings.setValue("Light_PeakPlotLine", prefs.colorScheme.Light_PeakPlotLine.rgba());
+    settings.setValue("Light_TuningLine", prefs.colorScheme.Light_TuningLine.rgba());
 
     settings.endGroup();
 
     // This is a reference to see how the preference file is encoded.
     settings.beginGroup("StandardColors");
 
-    settings.setValue("white", QColor(Qt::white));
-    settings.setValue("black", QColor(Qt::black));
+    settings.setValue("white", QColor(Qt::white).rgba());
+    settings.setValue("black", QColor(Qt::black).rgba());
 
-    settings.setValue("red_opaque", QColor(Qt::red));
-    settings.setValue("red_translucent", QColor(255,0,0,128));
-    settings.setValue("green_opaque", QColor(Qt::green));
-    settings.setValue("green_translucent", QColor(0,255,0,128));
-    settings.setValue("blue_opaque", QColor(Qt::blue));
-    settings.setValue("blue_translucent", QColor(0,0,255,128));
-
+    settings.setValue("red_opaque", QColor(Qt::red).rgba());
+    settings.setValue("red_translucent", QColor(255,0,0,128).rgba());
+    settings.setValue("green_opaque", QColor(Qt::green).rgba());
+    settings.setValue("green_translucent", QColor(0,255,0,128).rgba());
+    settings.setValue("blue_opaque", QColor(Qt::blue).rgba());
+    settings.setValue("blue_translucent", QColor(0,0,255,128).rgba());
+    settings.setValue("cyan", QColor(Qt::cyan).rgba());
+    settings.setValue("magenta", QColor(Qt::magenta).rgba());
+    settings.setValue("yellow", QColor(Qt::yellow).rgba());
     settings.endGroup();
 
     settings.beginGroup("Server");
@@ -1600,6 +1633,8 @@ void wfmain::setDefaultColors()
     defaultColors.Dark_PlotTickLabel = QColor(Qt::white);
     defaultColors.Dark_PlotBasePen = QColor(Qt::white);
     defaultColors.Dark_PlotTickPen = QColor(Qt::white);
+    defaultColors.Dark_PeakPlotLine = QColor(Qt::yellow);
+    defaultColors.Dark_TuningLine = QColor(Qt::blue);
 
     defaultColors.Light_PlotBackground = QColor(255,255,255,255);
     defaultColors.Light_PlotAxisPen = QColor(200,200,200,255);
@@ -1609,51 +1644,57 @@ void wfmain::setDefaultColors()
     defaultColors.Light_PlotTickLabel = QColor(Qt::black);
     defaultColors.Light_PlotBasePen = QColor(Qt::black);
     defaultColors.Light_PlotTickPen = QColor(Qt::black);
+    defaultColors.Light_PeakPlotLine = QColor(Qt::blue);
+    defaultColors.Light_TuningLine = QColor(Qt::blue);
 }
 
 void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
 {
     if(isDark)
     {
-        plot->setBackground(QColor(0,0,0,255));
-        plot->xAxis->grid()->setPen(QColor(75,75,75,255));
-        plot->yAxis->grid()->setPen(QColor(75,75,75,255));
+        plot->setBackground(prefs.colorScheme.Dark_PlotBackground);
+        //plot->setBackground(QColor(0,0,0,255));
 
-        plot->legend->setTextColor(QColor(255,255,255,255));
-        plot->legend->setBorderPen(QColor(255,255,255,255));
-        plot->legend->setBrush(QColor(0,0,0,200));
+        plot->xAxis->grid()->setPen(prefs.colorScheme.Dark_PlotAxisPen);
+        plot->yAxis->grid()->setPen(prefs.colorScheme.Dark_PlotAxisPen);
 
-        plot->xAxis->setTickLabelColor(Qt::white);
-        plot->xAxis->setLabelColor(Qt::white);
-        plot->yAxis->setTickLabelColor(Qt::white);
-        plot->yAxis->setLabelColor(Qt::white);
-        plot->xAxis->setBasePen(QPen(Qt::white));
-        plot->xAxis->setTickPen(QPen(Qt::white));
-        plot->yAxis->setBasePen(QPen(Qt::white));
-        plot->yAxis->setTickPen(QPen(Qt::white));
-        plot->graph(0)->setPen(QPen(Qt::yellow)); // magenta, yellow, green, lightGray
+        plot->legend->setTextColor(prefs.colorScheme.Dark_PlotLegendTextColor);
+        plot->legend->setBorderPen(prefs.colorScheme.Dark_PlotLegendBorderPen);
+        plot->legend->setBrush(prefs.colorScheme.Dark_PlotLegendBrush);
+
+        plot->xAxis->setTickLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
+        plot->xAxis->setLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
+        plot->yAxis->setTickLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
+        plot->yAxis->setLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
+
+        plot->xAxis->setBasePen(prefs.colorScheme.Dark_PlotBasePen);
+        plot->xAxis->setTickPen(prefs.colorScheme.Dark_PlotTickPen);
+        plot->yAxis->setBasePen(prefs.colorScheme.Dark_PlotBasePen);
+        plot->yAxis->setTickPen(prefs.colorScheme.Dark_PlotTickPen);
+        plot->graph(0)->setPen(prefs.colorScheme.Dark_PeakPlotLine);
+        freqIndicatorLine->setPen(prefs.colorScheme.Dark_TuningLine);
     } else {
         //color = ui->groupBox->palette().color(QPalette::Button);
 
-        plot->setBackground(QColor(255,255,255,255));
-        //plot->setBackground(color);
+        plot->setBackground(prefs.colorScheme.Light_PlotBackground);
+        plot->xAxis->grid()->setPen(prefs.colorScheme.Light_PlotAxisPen);
+        plot->yAxis->grid()->setPen(prefs.colorScheme.Light_PlotAxisPen);
 
-        plot->xAxis->grid()->setPen(QColor(200,200,200,255));
-        plot->yAxis->grid()->setPen(QColor(200,200,200,255));
+        plot->legend->setTextColor(prefs.colorScheme.Light_PlotLegendTextColor);
+        plot->legend->setBorderPen(prefs.colorScheme.Light_PlotLegendBorderPen);
+        plot->legend->setBrush(prefs.colorScheme.Light_PlotLegendBrush);
 
-        plot->legend->setTextColor(QColor(0,0,0,255));
-        plot->legend->setBorderPen(QColor(0,0,0,255));
-        plot->legend->setBrush(QColor(255,255,255,200));
+        plot->xAxis->setTickLabelColor(prefs.colorScheme.Light_PlotTickLabel);
+        plot->xAxis->setLabelColor(prefs.colorScheme.Light_PlotTickLabel);
+        plot->yAxis->setTickLabelColor(prefs.colorScheme.Light_PlotTickLabel);
+        plot->yAxis->setLabelColor(prefs.colorScheme.Light_PlotTickLabel);
 
-        plot->xAxis->setTickLabelColor(Qt::black);
-        plot->xAxis->setLabelColor(Qt::black);
-        plot->yAxis->setTickLabelColor(Qt::black);
-        plot->yAxis->setLabelColor(Qt::black);
-        plot->xAxis->setBasePen(QPen(Qt::black));
-        plot->xAxis->setTickPen(QPen(Qt::black));
-        plot->yAxis->setBasePen(QPen(Qt::black));
-        plot->yAxis->setTickPen(QPen(Qt::black));
-        plot->graph(0)->setPen(QPen(Qt::blue));
+        plot->xAxis->setBasePen(prefs.colorScheme.Light_PlotBasePen);
+        plot->xAxis->setTickPen(prefs.colorScheme.Light_PlotTickPen);
+        plot->yAxis->setBasePen(prefs.colorScheme.Light_PlotBasePen);
+        plot->yAxis->setTickPen(prefs.colorScheme.Light_PlotTickLabel);
+        plot->graph(0)->setPen(prefs.colorScheme.Light_PeakPlotLine);
+        freqIndicatorLine->setPen(prefs.colorScheme.Light_TuningLine);
     }
 }
 
@@ -2117,7 +2158,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->antennaSelCombo->setDisabled(true);
         }
 
-
+        setBandButtons();
 
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
@@ -2663,6 +2704,9 @@ void wfmain::changeMode(mode_kind mode, bool dataOn)
 {
     int filter = ui->modeFilterCombo->currentData().toInt();
     emit setMode((unsigned char)mode, filter);
+
+    currentMode = mode;
+
     if(dataOn)
     {
         issueDelayedCommand(cmdSetDataModeOn);
@@ -2692,7 +2736,7 @@ void wfmain::on_modeSelectCombo_activated(int index)
         // oops, we forgot to reset the combo box
     } else {
         qDebug(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
-
+        currentMode = (mode_kind)newMode;
         emit setMode(newMode, filterSelection);
     }
 }
@@ -2810,6 +2854,37 @@ void wfmain::bandStackBtnClick()
     emit getBandStackReg(bandStkBand, bandStkRegCode);
 }
 
+void wfmain::on_band23cmbtn_clicked()
+{
+    bandStkBand = rigCaps.bsr[band23cm]; // 23cm
+    bandStackBtnClick();
+}
+
+void wfmain::on_band70cmbtn_clicked()
+{
+    bandStkBand = rigCaps.bsr[band70cm]; // 70cm
+    bandStackBtnClick();
+}
+
+void wfmain::on_band2mbtn_clicked()
+{
+    bandStkBand = rigCaps.bsr[band2m]; // 2m
+    bandStackBtnClick();
+}
+
+void wfmain::on_band4mbtn_clicked()
+{
+    // There isn't a BSR for this one:
+    freqt f;
+    if((currentMode == modeAM) || (currentMode == modeFM))
+    {
+        f.Hz = (70.260) * 1E6;
+    } else {
+        f.Hz = (70.200) * 1E6;
+    }
+    setFrequency(f);
+}
+
 void wfmain::on_band6mbtn_clicked()
 {
     bandStkBand = 0x10; // 6 meters
@@ -2886,11 +2961,25 @@ void wfmain::on_band160mbtn_clicked()
     bandStackBtnClick();
 }
 
+void wfmain::on_band630mbtn_clicked()
+{
+    freqt f;
+    f.Hz = 475 * 1E3;
+    setFrequency(f);
+}
+
+void wfmain::on_band2200mbtn_clicked()
+{
+    freqt f;
+    f.Hz = 136 * 1E3;
+    setFrequency(f);
+}
+
 void wfmain::on_bandGenbtn_clicked()
 {
     // "GENE" general coverage frequency outside the ham bands
     // which does probably include any 60 meter frequencies used.
-    bandStkBand = 0x11; // GEN
+    bandStkBand = rigCaps.bsr[bandGen]; // GEN
     bandStackBtnClick();
 }
 
@@ -3838,11 +3927,116 @@ void wfmain::receiveRITValue(int ritValHz)
     }
 }
 
+void wfmain::showButton(QPushButton *btn)
+{
+    btn->setHidden(false);
+}
+
+void wfmain::hideButton(QPushButton *btn)
+{
+    btn->setHidden(true);
+}
+
+void wfmain::setBandButtons()
+{
+    // Turn off each button first:
+    hideButton(ui->band23cmbtn);
+    hideButton(ui->band70cmbtn);
+    hideButton(ui->band2mbtn);
+    hideButton(ui->band4mbtn);
+    hideButton(ui->band6mbtn);
+
+    hideButton(ui->band10mbtn);
+    hideButton(ui->band12mbtn);
+    hideButton(ui->band15mbtn);
+    hideButton(ui->band17mbtn);
+    hideButton(ui->band20mbtn);
+    hideButton(ui->band30mbtn);
+    hideButton(ui->band40mbtn);
+    hideButton(ui->band60mbtn);
+    hideButton(ui->band80mbtn);
+    hideButton(ui->band160mbtn);
+
+    hideButton(ui->band630mbtn);
+    hideButton(ui->band2200mbtn);
+    hideButton(ui->bandGenbtn);
+
+    bandType bandSel;
+
+    //for (auto band = rigCaps.bands.begin(); band != rigCaps.bands.end(); ++band) // no worky
+    for(unsigned int i=0; i < rigCaps.bands.size(); i++)
+    {
+        bandSel = rigCaps.bands.at(i);
+        switch(bandSel)
+        {
+            case(band23cm):
+                showButton(ui->band23cmbtn);
+                break;
+            case(band70cm):
+                showButton(ui->band70cmbtn);
+                break;
+            case(band2m):
+                showButton(ui->band2mbtn);
+                break;
+            case(band4m):
+                showButton(ui->band4mbtn);
+                break;
+            case(band6m):
+                showButton(ui->band6mbtn);
+                break;
+
+            case(band10m):
+                showButton(ui->band10mbtn);
+                break;
+            case(band12m):
+                showButton(ui->band12mbtn);
+                break;
+            case(band15m):
+                showButton(ui->band15mbtn);
+                break;
+            case(band17m):
+                showButton(ui->band17mbtn);
+                break;
+            case(band20m):
+                showButton(ui->band20mbtn);
+                break;
+            case(band30m):
+                showButton(ui->band30mbtn);
+                break;
+            case(band40m):
+                showButton(ui->band40mbtn);
+                break;
+            case(band60m):
+                showButton(ui->band60mbtn);
+                break;
+            case(band80m):
+                showButton(ui->band80mbtn);
+                break;
+            case(band160m):
+                showButton(ui->band160mbtn);
+                break;
+
+            case(band630m):
+                showButton(ui->band630mbtn);
+                break;
+            case(band2200m):
+                showButton(ui->band2200mbtn);
+                break;
+            case(bandGen):
+                showButton(ui->bandGenbtn);
+                break;
+
+            default:
+                break;
+        }
+    }
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
     qDebug(logSystem()) << "Debug button pressed.";
 
-    qDebug(logSystem()) << "Getting RIT enabled status: ";
-    emit getRitValue();
+    qDebug(logSystem()) << "Changing band buttons: ";
+    setBandButtons();
 }
