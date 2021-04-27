@@ -213,11 +213,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     ui->modeSelectCombo->addItem("LSB",  0x00);
     ui->modeSelectCombo->addItem("USB",  0x01);
+    ui->modeSelectCombo->addItem("FM",   0x05);
     ui->modeSelectCombo->addItem("AM",   0x02);
     ui->modeSelectCombo->addItem("CW",   0x03);
-    ui->modeSelectCombo->addItem("RTTY", 0x04);
-    ui->modeSelectCombo->addItem("FM",   0x05);
     ui->modeSelectCombo->addItem("CW-R", 0x07);
+    ui->modeSelectCombo->addItem("RTTY", 0x04);
     ui->modeSelectCombo->addItem("RTTY-R", 0x08);
 
 
