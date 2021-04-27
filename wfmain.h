@@ -561,6 +561,8 @@ private:
         QColor Dark_PlotTickLabel;
         QColor Dark_PlotBasePen;
         QColor Dark_PlotTickPen;
+        QColor Dark_PeakPlotLine;
+        QColor Dark_TuningLine;
 
         QColor Light_PlotBackground;
         QColor Light_PlotAxisPen;
@@ -570,6 +572,8 @@ private:
         QColor Light_PlotTickLabel;
         QColor Light_PlotBasePen;
         QColor Light_PlotTickPen;
+        QColor Light_PeakPlotLine;
+        QColor Light_TuningLine;
 
     } colorScheme;
 
@@ -587,6 +591,7 @@ private:
         bool enableLAN;
         bool enableRigCtlD;
         quint16 rigCtlPort;
+        colors colorScheme;
     } prefs;
 
     preferences defPrefs;
