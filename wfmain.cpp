@@ -2946,6 +2946,7 @@ void wfmain::on_band60mbtn_clicked()
     freqt f;
     f.Hz = (5.3305) * 1E6;
     emit setFrequency(f);
+        issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::on_band80mbtn_clicked()
@@ -2965,6 +2966,7 @@ void wfmain::on_band630mbtn_clicked()
     freqt f;
     f.Hz = 475 * 1E3;
     emit setFrequency(f);
+        issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::on_band2200mbtn_clicked()
@@ -2972,6 +2974,7 @@ void wfmain::on_band2200mbtn_clicked()
     freqt f;
     f.Hz = 136 * 1E3;
     emit setFrequency(f);
+        issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::on_bandGenbtn_clicked()
