@@ -2673,6 +2673,8 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
             rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(bandAir);
+            rigCaps.bands.push_back(bandWFM);
             rigCaps.bsr[band70cm] = 0x14;
             rigCaps.bsr[band2m] = 0x13;
             rigCaps.bsr[bandAir] = 0x12;

@@ -429,6 +429,10 @@ private slots:
 
     void on_band2200mbtn_clicked();
 
+    void on_bandAirbtn_clicked();
+
+    void on_bandWFMbtn_clicked();
+
 private:
     Ui::wfmain *ui;
     QSettings settings;

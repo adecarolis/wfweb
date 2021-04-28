@@ -2871,6 +2871,18 @@ void wfmain::on_band2mbtn_clicked()
     bandStackBtnClick();
 }
 
+void wfmain::on_bandAirbtn_clicked()
+{
+    bandStkBand = rigCaps.bsr[bandAir]; // VHF Aircraft
+    bandStackBtnClick();
+}
+
+void wfmain::on_bandWFMbtn_clicked()
+{
+    bandStkBand = rigCaps.bsr[bandWFM]; // Broadcast FM
+    bandStackBtnClick();
+}
+
 void wfmain::on_band4mbtn_clicked()
 {
     // There isn't a BSR for this one:
@@ -3942,6 +3954,8 @@ void wfmain::setBandButtons()
     hideButton(ui->band23cmbtn);
     hideButton(ui->band70cmbtn);
     hideButton(ui->band2mbtn);
+    hideButton(ui->bandAirbtn);
+    hideButton(ui->bandWFMbtn);
     hideButton(ui->band4mbtn);
     hideButton(ui->band6mbtn);
 
@@ -3976,6 +3990,12 @@ void wfmain::setBandButtons()
                 break;
             case(band2m):
                 showButton(ui->band2mbtn);
+                break;
+            case(bandAir):
+                showButton(ui->bandAirbtn);
+                break;
+            case(bandWFM):
+                showButton(ui->bandWFMbtn);
                 break;
             case(band4m):
                 showButton(ui->band4mbtn);
