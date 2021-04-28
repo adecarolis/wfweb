@@ -547,8 +547,10 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 #ifdef QT_DEBUG
     qDebug(logSystem()) << "Running with debugging options enabled.";
     ui->debugBtn->setVisible(true);
+    ui->satOpsBtn->setVisible(true);
 #else
     ui->debugBtn->setVisible(false);
+    ui->satOpsBtn->setVisible(false));
 #endif
 
     // Initial state of UI:
@@ -2960,8 +2962,8 @@ void wfmain::on_band60mbtn_clicked()
     freqt f;
     f.Hz = (5.3305) * 1E6;
     emit setFrequency(f);
-        issueDelayedCommandUnique(cmdGetFreq);
-        ui->tabWidget->setCurrentIndex(0);
+    issueDelayedCommandUnique(cmdGetFreq);
+    ui->tabWidget->setCurrentIndex(0);
 }
 
 void wfmain::on_band80mbtn_clicked()
@@ -2981,8 +2983,8 @@ void wfmain::on_band630mbtn_clicked()
     freqt f;
     f.Hz = 475 * 1E3;
     emit setFrequency(f);
-        issueDelayedCommandUnique(cmdGetFreq);
-        ui->tabWidget->setCurrentIndex(0);
+    issueDelayedCommandUnique(cmdGetFreq);
+    ui->tabWidget->setCurrentIndex(0);
 }
 
 void wfmain::on_band2200mbtn_clicked()
@@ -2990,8 +2992,8 @@ void wfmain::on_band2200mbtn_clicked()
     freqt f;
     f.Hz = 136 * 1E3;
     emit setFrequency(f);
-        issueDelayedCommandUnique(cmdGetFreq);
-        ui->tabWidget->setCurrentIndex(0);
+    issueDelayedCommandUnique(cmdGetFreq);
+    ui->tabWidget->setCurrentIndex(0);
 }
 
 void wfmain::on_bandGenbtn_clicked()
