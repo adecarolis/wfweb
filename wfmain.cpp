@@ -2894,6 +2894,8 @@ void wfmain::on_band4mbtn_clicked()
         f.Hz = (70.200) * 1E6;
     }
     emit setFrequency(f);
+        issueDelayedCommandUnique(cmdGetFreq);
+        ui->tabWidget->setCurrentIndex(0);
 }
 
 void wfmain::on_band6mbtn_clicked()
@@ -2958,6 +2960,8 @@ void wfmain::on_band60mbtn_clicked()
     freqt f;
     f.Hz = (5.3305) * 1E6;
     emit setFrequency(f);
+        issueDelayedCommandUnique(cmdGetFreq);
+        ui->tabWidget->setCurrentIndex(0);
 }
 
 void wfmain::on_band80mbtn_clicked()
@@ -2977,6 +2981,8 @@ void wfmain::on_band630mbtn_clicked()
     freqt f;
     f.Hz = 475 * 1E3;
     emit setFrequency(f);
+        issueDelayedCommandUnique(cmdGetFreq);
+        ui->tabWidget->setCurrentIndex(0);
 }
 
 void wfmain::on_band2200mbtn_clicked()
@@ -2984,6 +2990,8 @@ void wfmain::on_band2200mbtn_clicked()
     freqt f;
     f.Hz = 136 * 1E3;
     emit setFrequency(f);
+        issueDelayedCommandUnique(cmdGetFreq);
+        ui->tabWidget->setCurrentIndex(0);
 }
 
 void wfmain::on_bandGenbtn_clicked()
