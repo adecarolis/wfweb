@@ -54,9 +54,11 @@ sudo ./install.sh
 sudo chown $USER /dev/ttyUSB*
 ~~~
 
-- most linux systems just need to have you added to the dialout group as that's persistent and more secure.
+Note, on most linux systems, you just need to add your user to the dialout group, which is persistent and more secure:
 
+~~~
 sudo usermod -aG dialout $USER 
+~~~
 (don't forget to log out and log in)
 
 
