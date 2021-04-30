@@ -550,7 +550,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->satOpsBtn->setVisible(true);
 #else
     ui->debugBtn->setVisible(false);
-    ui->satOpsBtn->setVisible(false));
+    ui->satOpsBtn->setVisible(false);
 #endif
 
     // Initial state of UI:
