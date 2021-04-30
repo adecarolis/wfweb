@@ -542,6 +542,7 @@ void rigCommander::setFrequency(freqt freq)
 
     //printHex(cmdPayload, false, true);
     prepDataAndSend(cmdPayload);
+    rigState.vfoAFreq = freq;
 }
 
 QByteArray rigCommander::makeFreqPayload(freqt freq)
@@ -670,6 +671,8 @@ void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
             payload.append(modeFilter);
         }
         prepDataAndSend(payload);
+        rigState.mode = mode;
+        rigState.filter = modeFilter;
     }
 }
 
@@ -686,6 +689,7 @@ void rigCommander::setDataMode(bool dataOn)
         payload.append("\x00\x00", 2); // data mode off, bandwidth not defined per ICD.
     }
     prepDataAndSend(payload);
+    rigState.datamode = dataOn;
 }
 
 void rigCommander::getFrequency()
@@ -944,6 +948,7 @@ void rigCommander::setPTT(bool pttOn)
         QByteArray payload("\x1C\x00", 2);
         payload.append((char)pttOn);
         prepDataAndSend(payload);
+        rigState.ptt = pttOn;
     }
 }
 
@@ -2061,6 +2066,7 @@ void rigCommander::parseRegisters1A()
             // YY: filter selected, 01 through 03.;
             // if YY is 00 then XX was also set to 00
             emit haveDataMode((bool)payloadIn[03]);
+            rigState.datamode = (bool)payloadIn[03];
             break;
         case '\x07':
             // IP+ status

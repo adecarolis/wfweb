@@ -1,0 +1,11 @@
+The Band tab:
+
+The band tab reflects what bands the rig supports. It directly will
+switch the rig to that band and you will be switched back to the View tab
+
+the bands offered follow generally what the rig's capabilities are.
+Some bands will either be RX only for some people (4m/60m/630m/2200m)
+
+Band stacking gives you the opportunity to use the band stacking registers
+which is filled by the rig itself.
+

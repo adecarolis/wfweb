@@ -46,6 +46,7 @@ struct rigStateStruct {
     unsigned char ptt;
     unsigned char mode;
     unsigned char filter;
+    bool datamode;
 };
 
 class rigCommander : public QObject

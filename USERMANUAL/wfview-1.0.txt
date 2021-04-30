@@ -1,0 +1,172 @@
+
+
+View:
+
+
+buttons
+
+spectrum scope/waterfall:
+
+spectrum mode
+
+depending on the rig you can select: 
+
+center
+fixed
+scroll-center
+scroll-fixed
+
+spectrum span
+
+the spectrum span is active in center modes and you can select
+here the span you like, just as on the rig.
+
+spectrum edge
+
+here you can select the edge number as programmed in the rig.
+Most rigs will accept four edges. 
+
+
+tofixed
+
+clear peaks
+
+here you can clear the peaks. Currently we only support persistent
+peaks and at some point we are changing that to be able to have it
+go away after 10 seconds, like the rig does.
+
+enable/disable wf
+
+on/off switch for the scope/waterfall
+
+wf theme
+
+Currently fixed selections how the scope and waterfall look like 
+with colors. At som epoint we may add the ability to accept the 
+RGB values like the rig does.
+
+
+
+mode
+
+
+here you can select the mode used for tx and rx. To enable data mode there is 
+a separate button to select.
+
+
+Data mode
+
+switch the D mode on/off on the selected mode.
+
+receive (and tx) filter
+
+Select the predefined filter settings of the rig.
+Rigs also will change the TX width accordingly.
+
+transmit/receive
+
+this button alternates between TX and RX; Note that to 
+enable TX, you need to do that first on the Settings tab
+
+enable/disable atu
+
+if your rig supports an internal ATU, you can enable
+disable it here. Note that we have not tested external 
+ATU's yet. It may follow, it may not...
+
+enable/disable rit
+
+Enable the RIT function; currently no feedback on the rx shift.
+
+tune
+
+Button to initiate the ATU. Note that we have not tested external
+ATU's yet. It may follow, it may not...
+
+
+repeater setup (expand)
+
+TODO
+
+preamp
+
+You can select the preamp mode(s). Some rigs can only accept
+preamp OR att.
+
+attenuator
+
+you can select the rig attenuator here. Some rigs can only accept
+preamp OR att.
+
+
+antenna selection
+
+TODO 
+
+controls
+
+main dial (there is no sub dial yet)
+
+by turning the dial, or using mouse wheel or clicking on the scope
+you can change the current frequency. The step size is below the 
+main dial and you can select most known stepsizes there.
+An Flock button will effectively lock the freq to prevent accidental 
+mis clicking/rotating mouse actions.
+  
+
+rit  dial
+
+the rit dial will effectively modify the offset in RX; useful on the VHF
+bands and up. Note that you need to switch on RIT for that
+You can use the mouse wheel to change the offset/shift.
+
+rf gain
+
+This slider controls the RF gain of the rig
+
+af gain (defaults to 100%
+
+This controls the AF Gain locally, defaults to 100% and does not 
+increase/decrease the AF gain on the rig itself. 
+(Else, a remotely controlled rig could make a lot of noise ;-))
+
+sq
+
+The squelch control
+
+tx power
+
+Control that sets the power in % with the same accuracy as the rig
+so if your rig is 50 Watt at 47%, this slider will too.
+
+mic gain
+
+The mic gain slider sets the modulation level on the rig.
+
+scope reference level
+
+The scope reference level can be set here and TODO because 
+need to check if this follows per band or not.
+
+
+=============================
+Frequency
+
+On this tab you can insert a free frequency in kHz.
+
+examples:
+
+7100 --> 7.1 kHz
+430. --> 430 MHz
+
+e.g. the dot itself defines currently that you specify MHz.
+It will not accept anything beyond the dot. E.g. 430.125
+will end up doing nothing.
+
+After entering, you will be switched back to the View tab.
+
+STO/RCL: TODO
+
+Settings
+
+
