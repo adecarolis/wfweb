@@ -1,6 +1,253 @@
-
 # CHANGELOG
 
+- 20210427
+
+    		Minor changes to hide sat button until we have time to work on that
+    		feature.
+
+    		Additional bands added, Airband, WFM
+
+    		added 630/2200m for 705; probably like the 7300 hardly useable for TX though. Also added auomatic switching to the view pane after non-BSR bands are selected
+
+    		added 630/2200m to 7300/7610/785x
+
+    		derp: fixed main dial freq display for non-BSR 4m band; see also previous commit
+
+    		fixed main dial freq display for non-BSR bands 60, 630, 2200m if such a band was selected in the band select menu
+
+    		Minor change to set frequency, which was lacking "emit" at the start.
+
+    		changed the modeSelectCombo-addItem sequence a bit to have modes grouped; CW and CW-R are now grouped, as well as RTTY/RTTY-R; AM and FM are grouped now
+
+- 20210426
+
+    		Well, that was fun. Color preferences now work, and colors can be
+    		modified from the preference file for custom plot colors.
+    
+    		The preference file now stores colors as unsigned int. To convert the
+    		colors in the file to standard AARRGGBB format (AA = Alpha channel), use
+    		python's hex() function. Maybe one day we will fix the qt bug and make
+    		this save in a better format.
+
+    		Added dynamic band buttons. Fixed multiple bugs related to various
+    		differences in band stacking register addresses (for example, the GEN
+    		band on the 705 has a different address from the 7100 and the 7300).
+    		This code was only tested with the 9700.
+
+    		started rough docs for the usermanual
+
+- 20210425
+
+    		More work on rigctld
+
+		Faster polling. Clarified in comments around line 309 in wfmain.cpp.
+
+    		Added ability to read RIT status. Added RIT to initial rig query. Added
+
+    		Added ability to read RIT status. Added RIT to initial rig query. Added
+    		variables to handle delayed command timing values. Fixed bug in
+    		frequency parsing code that had existed for some time. Changed tic marks
+    		on RIT knob because I wanted more of them. Bumped startup initial rig
+    		state queries to 100ms. May consider faster queries on startup since we
+    		are going to need more things queried on startup.
+
+- 20210424
+
+    		Receiver Incremental Tuning is in. The UI does not check the rig's
+    		initial state yet, but the functions are partially in rigCommander for
+    		that purpose.
+
+
+- 20210423
+
+		Found two missing defaults in switch cases inside rigcommander.cpp.
+
+		Modified rig power management to stop command ques (s-meter and others).
+		Upon rig power up, the command queue is repurposed as a 3 second delay
+		for bootup, and then, commands are issued to restore the spectrum
+		display (if the wf checkbox was checked). I've made new functions,
+		powerRigOff and powerRigOn, for these purposes.
+
+    		work in progress on spectrum enable after power off/on.
+
+		powerOff should work now.
+
+- 20210420
+
+    		rigctl working (sort of) with WSJT-X
+
+- 20210419	Initial commit of rigctld (doesn't currently do anything useful!)
+
+
+- 20210417	Adding a default position for the frequency indicator line.
+
+    		Goodbye tracer
+
+
+- 20210416	added support info for prebuild-systems
+
+
+- 20210412	added airband, dPMR, lw/mw European and fast HF/70/23cm 1 MHz tuning steps
+
+
+- 20210411	Added ATU feature on 7610.
+
+    		Now grabs scope state on startup. Found bug, did not fix, in the
+    		frequency parsing code. Worked aroud it by using doubles for now.
+
+
+- 20210410	Preamp and attenuator are now queried on startup. Additionally, the
+    		preamp is checked when the attenuator is changed, and the attenuator is
+    		checked with the preamp is changed. This helps the user understand if
+    		the rig allows only one or the other to be active (such as the IC-9700).
+
+    		Added frequency line. Let's see how we like it.
+
+    		Add some preliminary parts of getting the attenuator, preamp, and
+   		antenna selection on startup. UI not updated yet but getting there.
+
+
+- 20210409	Moved ATU controls to main tab.
+
+		Added waterfall theme combo box
+
+    		Removed buttons from attenuator preamp UI controls.
+
+    		Antenna selection might work, untested.
+
+    		Preamp code is in. Can't read the current preamp state yet but we can
+    		set it. Nicer names for preamp and attenuator menu items.
+
+
+- 20210408    	Preamp data is now tracked (but not used yet)
+		re-added lost tooptip for SQ slider
+
+
+- 20210407 	Minor disconnect in the getDTCS call
+
+    		Attenuators are in! Please try them out!
+
+
+- 20210406 	The repeater setup now disables elements for things your rig doesn't do.
+
+    		We now query the repeater-related things on startup, such that the
+    		repeater UI is populated correctly.
+
+ 	   	We now have kHz as the assumed input format if there isn't a dot in the
+    		entry box. Enjoy that!
+
+    		Minor change so that we track the selected tone to mode changes, keeping
+    		the radio in sync with the UI.
+
+    		Tone, Tone Squelch, and D(T)CS seem to work as expected. Mode can be
+    		selected.
+
+
+- 20210405	removed 150 Hz CTCSS / NATO as it can't make that by itself
+
+    		added 77.0 Hz tone to CTCSS
+
+    		We can now read the repeater access mode and update the UI. What remains
+    		is to be able to set the mode.
+
+    		Working read/write of Tone, TSQL, and DTCS tones/code. Some code is also
+    		present now to change the mode being used (tone, tsql, DTCS, or some
+    		combo of the two).
+
+
+- 20210404	Tone, TSQL, and DTCS code added, but not complete.
+
+    		better tone mode names
+
+    		Started work on the tone mode interface.
+
+
+- 20210401	Added placeholders for attenuator, preamp, and antenna selection UI
+    		controls.
+
+    		Moved some repeater-related things out from rig commander and into a
+    		shared header.
+
+
+- 20210331	Adjusting signals and slots for repeater duplex.
+
+    		Basic duplex code copied from wfmain to the new repeatersetup window.
+
+
+- 20210330	Added conditional to debug on serial data write size.
+
+
+- 20210329	Fix crash when radio is shutdown while wfview is connected.
+
+
+- 20210311      Add local volume control for UDP connections.
+
+                add volume control to audiohandler
+
+                Small fixes to UDP server
+
+                Add USB audio handling to UDP server
+
+                Changed frequency parameters to (mostly) unsigned 64-bit ints. This
+                makes all the rounding code very simple and removes many annoying lines
+                of code designed to handle errors induced by using doubles for the
+                frequency.
+
+- 20210310	audio resampling added / opus
+
+		updates on virtual serial port 
+
+		fixed input combo boxes from growing
+
+		fixed 4:15 rollover/disconnect issue		
+
+- 20210304	Tuning steps! Still need to zero out those lower digits while scrolling
+    		if box is checked.
+
+    		Fix spectrum peaks as well.
+
+		Fix spectrum 'flattening' with strong signal
+
+		Add separate mutex for udp/buffers.
+
+		supported rigs IC705, IC7300 (over USB, no sound), IC7610, IC785x
+
+- 20210227	changed the way udp audio traffic is handled
+                on both the TX and RX side.
+
+- 20210226	Fixed minor bug where flock did not stop double-clicking on the
+    		spectrum.
+
+                S-meter ballistics:
+                Turned up the speed. Once you see fast meters, there's no going back.
+		Tested at 5ms without any issues, comitting at 10ms for now. Note that
+    		50ms in the first 'fixed' meter code is the same as 25ms now due to how
+    		the command queue is structured. So 10ms is only a bit faster than
+    		before.
+                Fixed meter polling issue
+
+- 20210224      fixed 785x lockup
+                Added scale and dampening/averaging to s-meter
+
+- 20210222      f-lock works now
+
+- 20210221	added working s-meter
+		added working power meter
+		added visual studio 2019 solution (windows builds)
+		changed packet handling, WIP
+		rigtype stays in view on status bar
+		added audio input gain slider
+
+- 20210218
+		added SQ slider
+		added TX power slider
+		added TX button
+		added simplex/duplex/auto shifts
+		added debug logging
+		added TX and RX codec selections
+		added RX audio buffer size slider
+		started adding server setup
+		
 - 20210210	added control over LAN for rigs that support it
                 has been tested on the 705, 7610, 785x, 9700.
 		should work on 7700, 7800, other rigs.

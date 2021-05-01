@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <iostream>
 #include "wfmain.h"
+#include "logcategories.h"
 
 // Copytight 2017-2021 Elliott H. Liggett
 
@@ -15,8 +16,8 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     //a.setStyle( "Fusion" );
 
-    a.setOrganizationName("eliggett");
-    a.setOrganizationDomain("nodomain");
+    a.setOrganizationName("wfview");
+    a.setOrganizationDomain("wfview.org");
     a.setApplicationName("wfview");
 
 
@@ -28,7 +29,8 @@ int main(int argc, char *argv[])
 
     QString currentArg;
 
-    const QString helpText = QString("Usage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr, -l --logfile filename.log"); // TODO...
+
+    const QString helpText = QString("\nUsage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr, -l --logfile filename.log\n"); // TODO...
 
     for(int c=1; c<argc; c++)
     {
@@ -72,7 +74,8 @@ int main(int argc, char *argv[])
         } else {
             std::cout << "Unrecognized option: " << currentArg.toStdString();
             std::cout << helpText.toStdString();
-            return -1;
+
+	    return -1;
         }
 
     }
@@ -84,13 +87,13 @@ int main(int argc, char *argv[])
     // Set handler
     qInstallMessageHandler(messageHandler);
 
-    qDebug(logInfo()) << "Starting wfview";
+    qInfo(logSystem()) << "Starting wfview";
 
 
 #ifdef QT_DEBUG
-    qDebug(logDebug()) << "SerialPortCL as set by parser: " << serialPortCL;
-    qDebug(logDebug()) << "remote host as set by parser: " << hostCL;
-    qDebug(logDebug()) << "CIV as set by parser: " << civCL;
+    qInfo(logSystem()) << "SerialPortCL as set by parser: " << serialPortCL;
+    qInfo(logSystem()) << "remote host as set by parser: " << hostCL;
+    qInfo(logSystem()) << "CIV as set by parser: " << civCL;
 #endif
     a.setWheelScrollLines(1); // one line per wheel click
     wfmain w( serialPortCL, hostCL);
@@ -100,7 +103,6 @@ int main(int argc, char *argv[])
 
 
     return a.exec();
-    qDebug(logInfo()) << "wfview is finished";
 
 }
 

@@ -51,8 +51,10 @@ sudo ./install.sh
 
 ### 4. You can now launch wfview, either from the terminal or from your desktop environment. If you encounter issues using the serial port, run the following command: 
 ~~~
+
+if you are using the wireless 705 or any networked rig like the 7610, 7800, 785x, there is no need to use USB so below is not needed.
+
 sudo chown $USER /dev/ttyUSB*
-~~~
 
 Note, on most linux systems, you just need to add your user to the dialout group, which is persistent and more secure:
 
@@ -61,34 +63,39 @@ sudo usermod -aG dialout $USER
 ~~~
 (don't forget to log out and log in)
 
+~~~
 
-### opensuse install ###
+### opensuse/sles/tumbleweed install ###
 ---
 
-the following is a raw - only one time tested piece of information 
+install wfview on suse 15.x sles 15.x or tumbleweed; this was done on a clean install/updated OS. 
 
-install suse 15.x  (did this on a kde virtual machine leap 15.2)
+we need to add packages to be able to build the stuff.
 
-qt5:
-
-wget http://download.qt.io/official_releases/online_installers/qt-unified-linux-x64-online.run
-
-- chmod +x qt-unified-linux-x64-online.run
 - sudo zypper in --type pattern devel_basis
+- sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel libqt5-qtmultimedia-devel 
+
+now get and install qt5:
+
+- wget http://download.qt.io/official_releases/online_installers/qt-unified-linux-x64-online.run
+- chmod +x qt-unified-linux-x64-online.run
+
+
 - kdesu ./qt-unified-linux-x64-online.run
-- install base qt5 default qt5 desktop development
 
-- sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel 
+install Qt 5.15.2 for GCC for desktop application development
 
-- mkdir src
-- cd src
+when done, create the place where to build:
+
+in this case, use your homedir:
+
+- mkdir -p ~/src/build && cd src
 - git clone https://gitlab.com/eliggett/wfview.git
-- cd ../
-- mkdir build 
 - cd build
-- qmake-qt5 ../src/wfview/wvfiew.pro
+- qmake-qt5 ../wfview/wfview.pro
 - make -j
 - sudo ./install.sh
 
+wfview is now installed in /usr/local/bin
 
 ---

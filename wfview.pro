@@ -31,9 +31,19 @@ QMAKE_LFLAGS += -O2 -march=native -s
 DEFINES += QT_DEPRECATED_WARNINGS
 DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 
-linux:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
+# These defines are used for the resampler
+DEFINES += OUTSIDE_SPEEX
+DEFINES += RANDOM_PREFIX=wf
 
-linux:DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""
+macx:INCLUDEPATH += /usr/local/include
+macx:LIBS += -L/usr/local/lib
+
+macx:ICON = wfview.icns
+
+
+!win32:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
+
+!win32:DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""
 
 win32:INCLUDEPATH += c:/qcustomplot
 win32:DEFINES += HOST=1
@@ -68,7 +78,7 @@ CONFIG(debug, release|debug) {
   else: QCPLIB = qcustomplot
 }
 
-QCPLIB = qcustomplot
+# QCPLIB = qcustomplot
 
 LIBS += -L./ -l$$QCPLIB
 
@@ -81,7 +91,17 @@ SOURCES += main.cpp\
     rigidentities.cpp \
 	udphandler.cpp \
 	logcategories.cpp \
-    rxaudiohandler.cpp
+    audiohandler.cpp \
+    calibrationwindow.cpp \
+    satellitesetup.cpp \
+    udpserversetup.cpp \
+    udpserver.cpp \
+    meter.cpp \
+    qledlabel.cpp \
+	pttyhandler.cpp \
+	resampler/resample.c \
+    repeatersetup.cpp \
+	rigctld.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -90,8 +110,28 @@ HEADERS  += wfmain.h \
     rigidentities.h \
 	udphandler.h \
 	logcategories.h \
-    rxaudiohandler.h
+    audiohandler.h \
+    calibrationwindow.h \
+    satellitesetup.h \
+    udpserversetup.h \
+	udpserver.h \
+	packettypes.h \
+    meter.h \
+	qledlabel.h \
+	pttyhandler.h \
+	resampler/speex_resampler.h \
+	resampler/arch.h \
+	resampler/resample_sse.h \
+    repeatersetup.h \
+    repeaterattributes.h \
+	rigctld.h
 
-FORMS    += wfmain.ui
+
+FORMS    += wfmain.ui \
+    calibrationwindow.ui \
+    satellitesetup.ui \
+    udpserversetup.ui \
+    repeatersetup.ui
+
 
 
