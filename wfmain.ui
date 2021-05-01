@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -734,7 +734,11 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QComboBox" name="preampSelCombo"/>
+                  <widget class="QComboBox" name="preampSelCombo">
+                   <property name="sizeAdjustPolicy">
+                    <enum>QComboBox::AdjustToContents</enum>
+                   </property>
+                  </widget>
                  </item>
                 </layout>
                </item>
@@ -754,7 +758,11 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QComboBox" name="attSelCombo"/>
+                  <widget class="QComboBox" name="attSelCombo">
+                   <property name="sizeAdjustPolicy">
+                    <enum>QComboBox::AdjustToContents</enum>
+                   </property>
+                  </widget>
                  </item>
                 </layout>
                </item>
@@ -794,7 +802,11 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="antennaSelCombo"/>
+                 <widget class="QComboBox" name="antennaSelCombo">
+                  <property name="sizeAdjustPolicy">
+                   <enum>QComboBox::AdjustToContents</enum>
+                  </property>
+                 </widget>
                 </item>
                </layout>
               </item>

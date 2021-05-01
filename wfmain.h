@@ -552,8 +552,10 @@ private:
     QVector <cmds> cmdOutQue;
     QVector <cmds> periodicCmdQueue;
     int pCmdNum = 0;
-    int delayedCmdInterval_ms = 100;
+    int delayedCmdIntervalLAN_ms = 100;
+    int delayedCmdIntervalSerial_ms = 100;
     int delayedCmdStartupInterval_ms = 100;
+    bool usingLAN = false;
 
     freqMemory mem;
     struct colors {

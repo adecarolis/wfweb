@@ -201,6 +201,11 @@ void rigCommander::handleStatusUpdate(const QString text)
     emit haveStatusUpdate(text);
 }
 
+bool rigCommander::usingLAN()
+{
+    return usingNativeLAN;
+}
+
 void rigCommander::findRigs()
 {
     // This function sends data to 0x00 ("broadcast") to look for any connected rig.
@@ -2660,8 +2665,8 @@ void rigCommander::determineRigCaps()
             rigCaps.antennas = {0x00, 0x01, 0x02, 0x03};
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(bandGen);
-	    rigCaps.bands.push_back(band630m);	
-	    rigCaps.bands.push_back(band2200m);	
+            rigCaps.bands.push_back(band630m);
+            rigCaps.bands.push_back(band2200m);
             break;
         case model705:
             rigCaps.modelName = QString("IC-705");

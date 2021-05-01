@@ -305,7 +305,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     rigName->setText("NONE");
     rigName->setFixedWidth(50);
 
-    delayedCmdInterval_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
+    delayedCmdIntervalLAN_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
+    delayedCmdIntervalSerial_ms = 50; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdStartupInterval_ms = 250; // interval for rigID polling
     delayedCommand = new QTimer(this);
     delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
@@ -749,7 +750,14 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     //now we know what the rig ID is:
     //qDebug(logSystem()) << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
 
-    delayedCommand->setInterval(delayedCmdInterval_ms); // faster polling is ok now.
+    if(rig->usingLAN())
+    {
+        usingLAN = true;
+        delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
+    } else {
+        usingLAN = false;
+        delayedCommand->setInterval(delayedCmdIntervalSerial_ms);
+    }
     receiveRigID(rigCaps);
     getInitialRigState();
 
@@ -1991,7 +1999,12 @@ void wfmain::runDelayedCommand()
                 periodicPollingTimer->stop();
                 break;
             case cmdQueNormalSpeed:
-                delayedCommand->setInterval(delayedCmdInterval_ms);
+                if(usingLAN)
+                {
+                    delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
+                } else {
+                    delayedCommand->setInterval(delayedCmdIntervalSerial_ms);
+                }
                 break;
             default:
                 break;
