@@ -2578,6 +2578,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasTransmit = false;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasDV = true;
             rigCaps.attenuators.push_back('\x10');
             rigCaps.attenuators.push_back('\x20');
             rigCaps.attenuators.push_back('\x30');

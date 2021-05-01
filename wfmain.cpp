@@ -2085,6 +2085,21 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->modeSelectCombo->addItem("DD", 0x22);
         }
 
+        if(rigCaps.model==modelR8600)
+        {
+            ui->modeSelectCombo->addItem("WFM", 0x06);
+            ui->modeSelectCombo->addItem("FSK-R", 0x08);
+            ui->modeSelectCombo->addItem("WFM", 0x06);
+            ui->modeSelectCombo->addItem("S-AM (D)", 0x11);
+            ui->modeSelectCombo->addItem("S-AM (L)", 0x14);
+            ui->modeSelectCombo->addItem("S-AM (U)", 0x15);
+            ui->modeSelectCombo->addItem("P25", 0x16);
+            ui->modeSelectCombo->addItem("dPMR", 0x18);
+            ui->modeSelectCombo->addItem("NXDN-VN", 0x19);
+            ui->modeSelectCombo->addItem("NXDN-N", 0x20);
+            ui->modeSelectCombo->addItem("DCR", 0x21);
+        }
+
         if(rigCaps.model == model9700)
         {
             ui->satOpsBtn->setDisabled(false);
