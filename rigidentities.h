@@ -37,7 +37,7 @@ enum rigInput{ inputMic=0,
                inputUnknown=0xff
 };
 
-enum bandType { band23cm=1,
+enum bandType { band23cm=0,
                 band70cm,
                 band2m,
                 bandAir,
