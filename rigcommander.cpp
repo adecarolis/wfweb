@@ -201,6 +201,11 @@ void rigCommander::handleStatusUpdate(const QString text)
     emit haveStatusUpdate(text);
 }
 
+bool rigCommander::usingLAN()
+{
+    return usingNativeLAN;
+}
+
 void rigCommander::findRigs()
 {
     // This function sends data to 0x00 ("broadcast") to look for any connected rig.
@@ -2557,6 +2562,8 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(band4m);
             rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(band630m);
+            rigCaps.bands.push_back(band2200m);
             break;
         case modelR8600:
             rigCaps.modelName = QString("IC-R8600");
@@ -2571,6 +2578,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasTransmit = false;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasDV = true;
             rigCaps.attenuators.push_back('\x10');
             rigCaps.attenuators.push_back('\x20');
             rigCaps.attenuators.push_back('\x30');
@@ -2631,6 +2639,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(band630m);
+            rigCaps.bands.push_back(band2200m);
             break;
         case model7850:
             rigCaps.modelName = QString("IC-785x");
@@ -2656,6 +2666,8 @@ void rigCommander::determineRigCaps()
             rigCaps.antennas = {0x00, 0x01, 0x02, 0x03};
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(band630m);
+            rigCaps.bands.push_back(band2200m);
             break;
         case model705:
             rigCaps.modelName = QString("IC-705");
@@ -2679,11 +2691,15 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
             rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(bandAir);
+            rigCaps.bands.push_back(bandWFM);
             rigCaps.bsr[band70cm] = 0x14;
             rigCaps.bsr[band2m] = 0x13;
             rigCaps.bsr[bandAir] = 0x12;
             rigCaps.bsr[bandWFM] = 0x11;
             rigCaps.bsr[bandGen] = 0x15;
+            rigCaps.bands.push_back(band630m);
+            rigCaps.bands.push_back(band2200m);
             break;
         case model7100:
             rigCaps.modelName = QString("IC-7100");

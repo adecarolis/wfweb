@@ -429,6 +429,10 @@ private slots:
 
     void on_band2200mbtn_clicked();
 
+    void on_bandAirbtn_clicked();
+
+    void on_bandWFMbtn_clicked();
+
 private:
     Ui::wfmain *ui;
     QSettings settings;
@@ -548,8 +552,10 @@ private:
     QVector <cmds> cmdOutQue;
     QVector <cmds> periodicCmdQueue;
     int pCmdNum = 0;
-    int delayedCmdInterval_ms = 100;
+    int delayedCmdIntervalLAN_ms = 100;
+    int delayedCmdIntervalSerial_ms = 100;
     int delayedCmdStartupInterval_ms = 100;
+    bool usingLAN = false;
 
     freqMemory mem;
     struct colors {

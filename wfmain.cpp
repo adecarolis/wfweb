@@ -305,7 +305,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     rigName->setText("NONE");
     rigName->setFixedWidth(50);
 
-    delayedCmdInterval_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
+    delayedCmdIntervalLAN_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
+    delayedCmdIntervalSerial_ms = 50; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdStartupInterval_ms = 250; // interval for rigID polling
     delayedCommand = new QTimer(this);
     delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
@@ -547,8 +548,10 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 #ifdef QT_DEBUG
     qDebug(logSystem()) << "Running with debugging options enabled.";
     ui->debugBtn->setVisible(true);
+    ui->satOpsBtn->setVisible(true);
 #else
     ui->debugBtn->setVisible(false);
+    ui->satOpsBtn->setVisible(false);
 #endif
 
     // Initial state of UI:
@@ -747,7 +750,14 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     //now we know what the rig ID is:
     //qDebug(logSystem()) << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
 
-    delayedCommand->setInterval(delayedCmdInterval_ms); // faster polling is ok now.
+    if(rig->usingLAN())
+    {
+        usingLAN = true;
+        delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
+    } else {
+        usingLAN = false;
+        delayedCommand->setInterval(delayedCmdIntervalSerial_ms);
+    }
     receiveRigID(rigCaps);
     getInitialRigState();
 
@@ -1989,7 +1999,12 @@ void wfmain::runDelayedCommand()
                 periodicPollingTimer->stop();
                 break;
             case cmdQueNormalSpeed:
-                delayedCommand->setInterval(delayedCmdInterval_ms);
+                if(usingLAN)
+                {
+                    delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
+                } else {
+                    delayedCommand->setInterval(delayedCmdIntervalSerial_ms);
+                }
                 break;
             default:
                 break;
@@ -2068,6 +2083,21 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         if(rigCaps.hasDD)
         {
             ui->modeSelectCombo->addItem("DD", 0x22);
+        }
+
+        if(rigCaps.model==modelR8600)
+        {
+            ui->modeSelectCombo->addItem("WFM", 0x06);
+            ui->modeSelectCombo->addItem("FSK-R", 0x08);
+            ui->modeSelectCombo->addItem("WFM", 0x06);
+            ui->modeSelectCombo->addItem("S-AM (D)", 0x11);
+            ui->modeSelectCombo->addItem("S-AM (L)", 0x14);
+            ui->modeSelectCombo->addItem("S-AM (U)", 0x15);
+            ui->modeSelectCombo->addItem("P25", 0x16);
+            ui->modeSelectCombo->addItem("dPMR", 0x18);
+            ui->modeSelectCombo->addItem("NXDN-VN", 0x19);
+            ui->modeSelectCombo->addItem("NXDN-N", 0x20);
+            ui->modeSelectCombo->addItem("DCR", 0x21);
         }
 
         if(rigCaps.model == model9700)
@@ -2872,6 +2902,18 @@ void wfmain::on_band2mbtn_clicked()
     bandStackBtnClick();
 }
 
+void wfmain::on_bandAirbtn_clicked()
+{
+    bandStkBand = rigCaps.bsr[bandAir]; // VHF Aircraft
+    bandStackBtnClick();
+}
+
+void wfmain::on_bandWFMbtn_clicked()
+{
+    bandStkBand = rigCaps.bsr[bandWFM]; // Broadcast FM
+    bandStackBtnClick();
+}
+
 void wfmain::on_band4mbtn_clicked()
 {
     // There isn't a BSR for this one:
@@ -2884,6 +2926,7 @@ void wfmain::on_band4mbtn_clicked()
     }
     emit setFrequency(f);
         issueDelayedCommandUnique(cmdGetFreq);
+        ui->tabWidget->setCurrentIndex(0);
 }
 
 void wfmain::on_band6mbtn_clicked()
@@ -2948,7 +2991,8 @@ void wfmain::on_band60mbtn_clicked()
     freqt f;
     f.Hz = (5.3305) * 1E6;
     emit setFrequency(f);
-        issueDelayedCommandUnique(cmdGetFreq);
+    issueDelayedCommandUnique(cmdGetFreq);
+    ui->tabWidget->setCurrentIndex(0);
 }
 
 void wfmain::on_band80mbtn_clicked()
@@ -2968,7 +3012,8 @@ void wfmain::on_band630mbtn_clicked()
     freqt f;
     f.Hz = 475 * 1E3;
     emit setFrequency(f);
-        issueDelayedCommandUnique(cmdGetFreq);
+    issueDelayedCommandUnique(cmdGetFreq);
+    ui->tabWidget->setCurrentIndex(0);
 }
 
 void wfmain::on_band2200mbtn_clicked()
@@ -2976,7 +3021,8 @@ void wfmain::on_band2200mbtn_clicked()
     freqt f;
     f.Hz = 136 * 1E3;
     emit setFrequency(f);
-        issueDelayedCommandUnique(cmdGetFreq);
+    issueDelayedCommandUnique(cmdGetFreq);
+    ui->tabWidget->setCurrentIndex(0);
 }
 
 void wfmain::on_bandGenbtn_clicked()
@@ -3947,6 +3993,8 @@ void wfmain::setBandButtons()
     hideButton(ui->band23cmbtn);
     hideButton(ui->band70cmbtn);
     hideButton(ui->band2mbtn);
+    hideButton(ui->bandAirbtn);
+    hideButton(ui->bandWFMbtn);
     hideButton(ui->band4mbtn);
     hideButton(ui->band6mbtn);
 
@@ -3981,6 +4029,12 @@ void wfmain::setBandButtons()
                 break;
             case(band2m):
                 showButton(ui->band2mbtn);
+                break;
+            case(bandAir):
+                showButton(ui->bandAirbtn);
+                break;
+            case(bandWFM):
+                showButton(ui->bandWFMbtn);
                 break;
             case(band4m):
                 showButton(ui->band4mbtn);

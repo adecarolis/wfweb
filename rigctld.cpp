@@ -272,6 +272,7 @@ QString rigCtlClient::getFilter(unsigned char mode, unsigned char filter) {
 }
 
 QString rigCtlClient::getMode(unsigned char mode, bool datamode) {
+    (void)datamode;
     switch (mode) {
     case 0:
         return QString("LSB");

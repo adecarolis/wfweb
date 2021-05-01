@@ -1,5 +1,80 @@
 # CHANGELOG
 
+- 20210427
+
+    		Minor changes to hide sat button until we have time to work on that
+    		feature.
+
+    		Additional bands added, Airband, WFM
+
+    		added 630/2200m for 705; probably like the 7300 hardly useable for TX though. Also added auomatic switching to the view pane after non-BSR bands are selected
+
+    		added 630/2200m to 7300/7610/785x
+
+    		derp: fixed main dial freq display for non-BSR 4m band; see also previous commit
+
+    		fixed main dial freq display for non-BSR bands 60, 630, 2200m if such a band was selected in the band select menu
+
+    		Minor change to set frequency, which was lacking "emit" at the start.
+
+    		changed the modeSelectCombo-addItem sequence a bit to have modes grouped; CW and CW-R are now grouped, as well as RTTY/RTTY-R; AM and FM are grouped now
+
+- 20210426
+
+    		Well, that was fun. Color preferences now work, and colors can be
+    		modified from the preference file for custom plot colors.
+    
+    		The preference file now stores colors as unsigned int. To convert the
+    		colors in the file to standard AARRGGBB format (AA = Alpha channel), use
+    		python's hex() function. Maybe one day we will fix the qt bug and make
+    		this save in a better format.
+
+    		Added dynamic band buttons. Fixed multiple bugs related to various
+    		differences in band stacking register addresses (for example, the GEN
+    		band on the 705 has a different address from the 7100 and the 7300).
+    		This code was only tested with the 9700.
+
+    		started rough docs for the usermanual
+
+- 20210425
+
+    		More work on rigctld
+
+		Faster polling. Clarified in comments around line 309 in wfmain.cpp.
+
+    		Added ability to read RIT status. Added RIT to initial rig query. Added
+
+    		Added ability to read RIT status. Added RIT to initial rig query. Added
+    		variables to handle delayed command timing values. Fixed bug in
+    		frequency parsing code that had existed for some time. Changed tic marks
+    		on RIT knob because I wanted more of them. Bumped startup initial rig
+    		state queries to 100ms. May consider faster queries on startup since we
+    		are going to need more things queried on startup.
+
+- 20210424
+
+    		Receiver Incremental Tuning is in. The UI does not check the rig's
+    		initial state yet, but the functions are partially in rigCommander for
+    		that purpose.
+
+
+- 20210423
+
+		Found two missing defaults in switch cases inside rigcommander.cpp.
+
+		Modified rig power management to stop command ques (s-meter and others).
+		Upon rig power up, the command queue is repurposed as a 3 second delay
+		for bootup, and then, commands are issued to restore the spectrum
+		display (if the wf checkbox was checked). I've made new functions,
+		powerRigOff and powerRigOn, for these purposes.
+
+    		work in progress on spectrum enable after power off/on.
+
+		powerOff should work now.
+
+- 20210420
+
+    		rigctl working (sort of) with WSJT-X
 
 - 20210419	Initial commit of rigctld (doesn't currently do anything useful!)
 

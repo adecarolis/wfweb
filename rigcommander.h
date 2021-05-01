@@ -57,6 +57,8 @@ public:
     rigCommander();
     ~rigCommander();
 
+    bool usingLAN();
+
 public slots:
     void process();
     void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
