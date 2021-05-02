@@ -2850,13 +2850,21 @@ void wfmain::on_freqDial_valueChanged(int value)
 
     f.Hz = roundFrequencyWithStep(freq.Hz, delta, tsKnobHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    freq = f;
+    if(f.Hz > 0)
+    {
+        freq = f;
 
-    oldFreqDialVal = value;
+        oldFreqDialVal = value;
 
-    ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
+        ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 
-    emit setFrequency(f);
+        emit setFrequency(f);
+    } else {
+        ui->freqDial->blockSignals(true);
+        ui->freqDial->setValue(oldFreqDialVal);
+        ui->freqDial->blockSignals(false);
+        return;
+    }
 }
 
 void wfmain::receiveBandStackReg(float freq, char mode, bool dataOn)
