@@ -2387,6 +2387,9 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
         //y = plot->yAxis->pixelToCoord(me->pos().y());
         x = plot->xAxis->pixelToCoord(me->pos().x());
         freq.Hz = x*1E6;
+
+        freq.Hz = roundFrequency(freq.Hz, tsWfScrollHz);
+
         emit setFrequency(freq);
         issueDelayedCommand(cmdGetFreq);
         showStatusBarText(QString("Going to %1 MHz").arg(x));
@@ -2405,6 +2408,9 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
     {
         x = plot->xAxis->pixelToCoord(me->pos().x());
         freq.Hz = x*1E6;
+
+        freq.Hz = roundFrequency(freq.Hz, tsWfScrollHz);
+
         emit setFrequency(freq);
         issueDelayedCommand(cmdGetFreq);
         showStatusBarText(QString("Going to %1 MHz").arg(x));
