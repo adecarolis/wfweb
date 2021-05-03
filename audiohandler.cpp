@@ -1031,6 +1031,12 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 			}
 		}
 	}
+	else {
+		// Fool audio system into thinking it has valid data, this seems to be required 
+		// for MacOS Built in audio but shouldn't cause any issues with other platforms.
+		memset(data, 0x0, maxlen);
+		return maxlen;
+	}
 
     return sentlen;
 }
