@@ -9,6 +9,9 @@ sudo apt-get install qt5-default
 sudo apt-get install libqt5core5a
 sudo apt-get install qtbase5-dev
 sudo apt-get install libqt5serialport5 libqt5serialport5-dev
+sudo apt-get install libqt5multimedia5
+sudo apt-get install libqt5multimedia5-plugins
+sudo apt-get install qtmultimedia5-dev
 sudo apt-get install git 
 ~~~
 Now you need to install qcustomplot. There are two versions that are commonly found in linux distros: 1.3 and 2.0. Either will work fine. If you are not sure which version your linux install comes with, simply run both commands. One will work and the other will fail, and that's fine!
@@ -53,9 +56,11 @@ if you are using the wireless 705 or any networked rig like the 7610, 7800, 785x
 
 sudo chown $USER /dev/ttyUSB*
 
-- most linux systems just need to have you added to the dialout group as that's persistent and more secure.
+Note, on most linux systems, you just need to add your user to the dialout group, which is persistent and more secure:
 
+~~~
 sudo usermod -aG dialout $USER 
+~~~
 (don't forget to log out and log in)
 
 ~~~

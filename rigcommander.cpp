@@ -2873,6 +2873,7 @@ void rigCommander::parseSpectrum()
             spectrumEndFreq = spectrumStartFreq + 2*(spectrumEndFreq);
             // emit haveSpectrumCenterSpan(span);
         }
+
         if (payloadIn.length() > 400) // Must be a LAN packet.
         {
             payloadIn.chop(1);
@@ -3100,7 +3101,7 @@ freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
     freqs.Hz += (data[lastPosition-3] & 0x0f) *             1; // 1 Hz
     freqs.Hz += ((data[lastPosition-3] & 0xf0) >> 4) *     10; // 10 Hz
 
-    freqs.MHzDouble = (double)freq;
+    freqs.MHzDouble = (double)(freqs.Hz / 1000000.0);
     return freqs;
 }
 

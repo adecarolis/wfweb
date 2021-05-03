@@ -2391,6 +2391,9 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
         //y = plot->yAxis->pixelToCoord(me->pos().y());
         x = plot->xAxis->pixelToCoord(me->pos().x());
         freq.Hz = x*1E6;
+
+        freq.Hz = roundFrequency(freq.Hz, tsWfScrollHz);
+
         emit setFrequency(freq);
         issueDelayedCommand(cmdGetFreq);
         showStatusBarText(QString("Going to %1 MHz").arg(x));
@@ -2409,6 +2412,9 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
     {
         x = plot->xAxis->pixelToCoord(me->pos().x());
         freq.Hz = x*1E6;
+
+        freq.Hz = roundFrequency(freq.Hz, tsWfScrollHz);
+
         emit setFrequency(freq);
         issueDelayedCommand(cmdGetFreq);
         showStatusBarText(QString("Going to %1 MHz").arg(x));
@@ -2848,13 +2854,21 @@ void wfmain::on_freqDial_valueChanged(int value)
 
     f.Hz = roundFrequencyWithStep(freq.Hz, delta, tsKnobHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    freq = f;
+    if(f.Hz > 0)
+    {
+        freq = f;
 
-    oldFreqDialVal = value;
+        oldFreqDialVal = value;
 
-    ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
+        ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 
-    emit setFrequency(f);
+        emit setFrequency(f);
+    } else {
+        ui->freqDial->blockSignals(true);
+        ui->freqDial->setValue(oldFreqDialVal);
+        ui->freqDial->blockSignals(false);
+        return;
+    }
 }
 
 void wfmain::receiveBandStackReg(float freq, char mode, bool dataOn)

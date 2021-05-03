@@ -3,6 +3,7 @@
 
 [wfview](https://gitlab.com/eliggett/wfview) is an open-source front-end application for the 
 
+- [Icom IC-705 ](https://www.icomamerica.com/en/products/amateur/hf/705/default.aspx) HF portable SDR Amateur Radio
 - [Icom IC-7300](https://www.icomamerica.com/en/products/amateur/hf/7300/default.aspx) HF SDR Amateur Radio
 - [Icom IC-7610](https://www.icomamerica.com/en/products/amateur/hf/7610/default.aspx) HF SDR Amateur Radio
 - [Icom IC-7850](https://www.icomamerica.com/en/products/amateur/hf/7850/default.aspx) HF Hybrid SDR Amateur Radio
@@ -10,6 +11,8 @@
 - [Icom IC-9700](https://www.icomamerica.com/en/products/amateur/hf/9700/default.aspx) VHF/UHF SDR Amateur Radio
 
 Other models to be tested/added (including the IC-705).. 
+
+website - [WFVIEW](https://wfview.org/) wfview.org
 
 wfview supports viewing the spectrum display waterfall and most normal radio controls. Using wfview, the radio can be operated using the mouse, or just the keyboard (great for those with visual impairments), or even a touch screen display. The gorgous waterfall spectrum can be displayed on a monitor of any size, and can even projected onto a wall for a presentation. Even a VNC session can make use of wfview for interesting remote rig posibilities. wfview runs on humble hardware, ranging from the $35 Raspberry Pi, to laptops, to desktops. wfview is designed to run on GNU Linux, but can probably be adapted to run on other operating systems. In fact we do have  working example in windows as well.
 
@@ -40,7 +43,7 @@ wfview is copyright 2017-2020 Elliott H. Liggett. All rights reserved. wfview so
 5. libqcustomplot-dev 
 
 ### Recommended:
-* Debian-based Linux system (Debian Linux, Linux Mint, Ubuntu, etc). Any recent Linux system will do though!
+* Debian-based Linux system (Debian Linux, Linux Mint, Ubuntu, etc) or opensuse 15.x. Any recent Linux system will do though!
 * QT Creator for building, designing, and debugging w/gdb
 
 ### Build directions:
