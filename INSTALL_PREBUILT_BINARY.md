@@ -31,10 +31,10 @@ Ubuntu 20.04.2
 
 ### for all, the following is appicable:
 ~~~
-mkdir -p ~/src/build 
-cd ~/src/build 
-wget https://wfview.org/downloads/latest.tar.gz   (filepath/name tbd -- currently: mail roeland, pa3met for files)
-tar zxvf latest.tar.gz
+download the tar.gz file here: https://wfview.org/download/test-linux-build/ 
+
+tar zxvf latest.tar.gz                           (it unpacks in ./dist)
+cd dist
 sudo ./install.sh
 ~~~
 this will install the binary and a few other files to your system.
