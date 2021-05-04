@@ -2585,7 +2585,7 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.hasAntennaSel = true;
-            rigCaps.antennas = {0x00, 0x01, 0x02};
+            rigCaps.antennas = {0x01, 0x02, 0x03};
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
             rigCaps.bands.insert(rigCaps.bands.end(), {band23cm, band4m, band630m, band2200m, bandGen});
@@ -2635,7 +2635,7 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.hasAntennaSel = true;
-            rigCaps.antennas = {0x00, 0x01};
+            rigCaps.antennas = {0x01, 0x02};
             rigCaps.hasATU = true;
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(bandGen);
@@ -2663,7 +2663,7 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.hasAntennaSel = true;
-            rigCaps.antennas = {0x00, 0x01, 0x02, 0x03};
+            rigCaps.antennas = {0x01, 0x02, 0x03, 0x04};
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(bandGen);
             rigCaps.bands.push_back(band630m);
