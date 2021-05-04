@@ -2181,7 +2181,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->antennaSelCombo->setDisabled(false);
             for(unsigned int i=0; i < rigCaps.antennas.size(); i++)
             {
-                inName = QString("%1").arg(rigCaps.antennas.at(i), 0, 16);
+                inName = QString("%1").arg(rigCaps.antennas.at(i)+1, 0, 16);		// adding 1 to have the combobox start with ant 1 insted of 0
                 ui->antennaSelCombo->addItem(inName, rigCaps.antennas.at(i));
             }
         } else {
