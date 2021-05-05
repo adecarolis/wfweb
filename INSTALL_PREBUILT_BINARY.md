@@ -58,7 +58,7 @@ start wfview
 
 ### Mint 20.1
 ~~~
-apt install libqcustomplot2.0 libqt5multimedia5 libqt5serialport5
+sudo apt install libqcustomplot2.0 libqt5multimedia5 libqt5serialport5
 sudo ln  -s  /usr/lib64/libqcustomplot-qt5.so.2 /usr/lib64/libqcustomplot.so.2
 start wfview
 ~~~
@@ -71,7 +71,7 @@ start wfview
 
 ### UBUNTU:
 ~~~
-sudo apt install libqcustomplot2.0 libQt5Multimedia libqt5serialport5
+sudo apt install libqcustomplot2.0 libqt5multimedia5 libqt5serialport5
 sudo ln -s /usr/lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /usr/lib/x86_64-linux-gnu/libqcustomplot.so.2
 start wfview
 ~~~
