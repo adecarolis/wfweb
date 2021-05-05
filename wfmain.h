@@ -131,8 +131,8 @@ signals:
     void sayFrequency();
     void sayMode();
     void sayAll();
-    void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate);
-    void sendCommSetup(unsigned char rigCivAddr, udpPreferences prefs);
+    void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp);
+    void sendCommSetup(unsigned char rigCivAddr, udpPreferences prefs, QString vsp);
     void sendCloseComm();
     void sendChangeLatency(quint16 latency);
     void initServer();
@@ -360,6 +360,10 @@ private slots:
     void on_audioTXCodecCombo_currentIndexChanged(int value);
 
     void on_audioSampleRateCombo_currentIndexChanged(QString text);
+
+    void on_vspCombo_currentIndexChanged(int value);
+
+    void on_vspeCheck_clicked(bool checked);
 
     void on_scopeEnableWFBtn_clicked(bool checked);
 
@@ -598,6 +602,8 @@ private:
         bool enableRigCtlD;
         quint16 rigCtlPort;
         colors colorScheme;
+        bool enableVSPE;
+        QString virtualSerialPort;
     } prefs;
 
     preferences defPrefs;
