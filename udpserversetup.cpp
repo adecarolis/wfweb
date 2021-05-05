@@ -46,8 +46,9 @@ void udpServerSetup::receiveServerConfig(SERVERCONFIG conf)
         }
     }
     // Delete any rows no longer needed
+    int count=0;
 
-    for (int count = row; count <= ui->usersTable->rowCount(); count++)
+    for (count = row; count <= ui->usersTable->rowCount(); count++)
     {
         if (count == conf.users.count()) {
             ui->usersTable->insertRow(ui->usersTable->rowCount());
@@ -60,6 +61,12 @@ void udpServerSetup::receiveServerConfig(SERVERCONFIG conf)
         }
     }
 
+    if (count == 0) {
+        ui->usersTable->insertRow(ui->usersTable->rowCount());
+        QComboBox* comboBox = new QComboBox();
+        comboBox->insertItems(0, { "Full User","Full with no TX","Monitor only" });
+        ui->usersTable->setCellWidget(count, 2, comboBox);
+    }
 
 }
 
