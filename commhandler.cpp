@@ -151,6 +151,8 @@ void commHandler::openPort()
     success = port->open(QIODevice::ReadWrite);
     if(success)
     {
+        port->setDataTerminalReady(false);
+        port->setRequestToSend(false);
         isConnected = true;
         qDebug(logSerial()) << "Opened port: " << portName;
         return;
