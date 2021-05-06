@@ -178,28 +178,16 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->serialDeviceListCombo->addItem("Manual...", 256);
     ui->serialDeviceListCombo->blockSignals(false);
 
-    // vspe checkbox is Currently disabled as not implemented!
-    ui->vspeCheck->setVisible(false);
 #ifndef Q_OS_WIN
     ui->vspCombo->setVisible(false);
     ui->vspLabel->setVisible(false);
-    ui->vspeCheck->setVisible(false);
 #else
     i = 0;
     ui->vspCombo->blockSignals(true);
     ui->vspCombo->addItem(QString("None"), i++);
-    if (!ui->vspeCheck->isChecked())
+    foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
     {
-        int i = 0;
-        foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
-        {
-            ui->vspCombo->addItem(serialPortInfo.portName(), i++);
-        }
-    }
-    else {
-        for (int f = 1; f < 100; f++) {
-            ui->vspCombo->addItem(QString("COM%1").arg(f), f);
-        }
+        ui->vspCombo->addItem(serialPortInfo.portName(), i++);
     }
     ui->vspCombo->blockSignals(false);
 
@@ -819,7 +807,6 @@ void wfmain::setDefPrefs()
     defPrefs.niceTS = true;
     defPrefs.enableRigCtlD = false;
     defPrefs.rigCtlPort = 4533;
-    defPrefs.enableVSPE = false;
     defPrefs.virtualSerialPort = QString("none");
 
     udpDefPrefs.ipAddress = QString("");
@@ -898,13 +885,11 @@ void wfmain::loadSettings()
     prefs.radioCIVAddr = (unsigned char) settings.value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
     prefs.serialPortRadio = settings.value("SerialPortRadio", defPrefs.serialPortRadio).toString();
     prefs.serialPortBaud = (quint32) settings.value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
-    prefs.enableVSPE = settings.value("EnableVSPE", defPrefs.enableVSPE).toBool();
     prefs.virtualSerialPort = settings.value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
     int vspIndex = ui->vspCombo->findText(prefs.virtualSerialPort);
     if (vspIndex != -1) {
         ui->vspCombo->setCurrentIndex(vspIndex);
     }
-    ui->vspeCheck->setChecked(prefs.enableVSPE);
     settings.endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
@@ -1084,7 +1069,6 @@ void wfmain::saveSettings()
     settings.setValue("RigCIVuInt", prefs.radioCIVAddr);
     settings.setValue("SerialPortRadio", prefs.serialPortRadio);
     settings.setValue("SerialPortBaud", prefs.serialPortBaud);
-    settings.setValue("EnableVSPE", prefs.enableVSPE);
     settings.setValue("VirtualSerialPort", prefs.virtualSerialPort);
     settings.endGroup();
 
@@ -3410,11 +3394,6 @@ void wfmain::on_vspCombo_currentIndexChanged(int value)
 {
     Q_UNUSED(value);
     prefs.virtualSerialPort = ui->vspCombo->currentText();
-}
-
-void wfmain::on_vspeCheck_clicked(bool checked)
-{
-    prefs.enableVSPE = checked;
 }
 
 void wfmain::on_toFixedBtn_clicked()

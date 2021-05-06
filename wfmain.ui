@@ -2086,13 +2086,6 @@
           <item>
            <widget class="QComboBox" name="vspCombo"/>
           </item>
-          <item>
-           <widget class="QCheckBox" name="vspeCheck">
-            <property name="text">
-             <string>Use VSPE Driver</string>
-            </property>
-           </widget>
-          </item>
          </layout>
         </item>
         <item>

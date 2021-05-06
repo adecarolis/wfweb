@@ -363,8 +363,6 @@ private slots:
 
     void on_vspCombo_currentIndexChanged(int value);
 
-    void on_vspeCheck_clicked(bool checked);
-
     void on_scopeEnableWFBtn_clicked(bool checked);
 
     void on_sqlSlider_valueChanged(int value);
@@ -602,7 +600,6 @@ private:
         bool enableRigCtlD;
         quint16 rigCtlPort;
         colors colorScheme;
-        bool enableVSPE;
         QString virtualSerialPort;
     } prefs;
 
