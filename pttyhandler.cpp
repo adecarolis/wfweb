@@ -22,6 +22,7 @@ pttyHandler::pttyHandler(QString pty)
 #ifdef Q_OS_WIN
     portName = pty;
 #else
+    Q_UNUSED(pty);
     portName = "/dev/ptmx";
 #endif
     if (portName != "" && portName != "None") {
