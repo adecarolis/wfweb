@@ -2133,19 +2133,21 @@ void rigCommander::parseRegister16()
 
 void rigCommander::parseBandStackReg()
 {
-    // qDebug(logRig()) << "Band stacking register response received: ";
-    // printHex(payloadIn, false, true);
+    qDebug(logRig()) << "Band stacking register response received: ";
+    printHex(payloadIn, false, true);
+
     // Reference output, 20 meters, regCode 01 (latest):
     // "INDEX: 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 "
     // "DATA:  1a 01 05 01 60 03 23 14 00 00 03 10 00 08 85 00 08 85 fd "
-    // char band = payloadIn[2];
-    // char regCode = payloadIn[3];
+
+    //char band = payloadIn[2];
+    //char regCode = payloadIn[3];
     freqt freqs = parseFrequency(payloadIn, 7);
-    float freq = (float)freqs.MHzDouble;
+    //float freq = (float)freqs.MHzDouble;
 
     bool dataOn = (payloadIn[11] & 0x10) >> 4; // not sure...
     char mode = payloadIn[9];
-
+    char filter = payloadIn[10];
     // 09, 10 mode
     // 11 digit RH: data mode on (1) or off (0)
     // 11 digit LH: CTCSS 0 = off, 1 = TONE, 2 = TSQL
@@ -2154,9 +2156,11 @@ void rigCommander::parseBandStackReg()
     // 14, 15 tone squelch freq setting
     // if more, memory name (label) ascii
 
-    // qDebug(logRig()) << "band: " << QString("%1").arg(band) << " regCode: " << (QString)regCode << " freq: " << freq;
-    // qDebug(logRig()) << "mode: " << (QString)mode << " dataOn: " << dataOn;
-    emit haveBandStackReg(freq, mode, dataOn);
+    //qDebug(logRig()) << "band: " << QString("%1").arg(band) << " regCode: " << (QString)regCode << " freq float: " << freq;
+    //qDebug(logRig()) << "mode: " << (QString)mode << " dataOn: " << dataOn;
+    //qDebug(logRig()) << "Freq Hz: " << freqs.Hz;
+
+    emit haveBandStackReg(freqs, mode, filter, dataOn);
 }
 
 void rigCommander::parseDetailedRegisters1A05()

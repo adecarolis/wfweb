@@ -184,7 +184,7 @@ private slots:
     void receiveSpectrumSpan(freqt freqspan, bool isSub);
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(bool dataOn);
-    void receiveBandStackReg(float freq, char mode, bool dataOn); // freq, mode, (filter,) datamode
+    void receiveBandStackReg(freqt f, char mode, char filter, bool dataOn); // freq, mode, (filter,) datamode
     void receiveRITStatus(bool ritEnabled);
     void receiveRITValue(int ritValHz);
     void receiveModInput(rigInput input, bool dataOn);

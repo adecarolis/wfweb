@@ -249,7 +249,7 @@ signals:
     void haveFrequency(freqt freqStruct);
     void haveMode(unsigned char mode, unsigned char filter);
     void haveDataMode(bool dataModeEnabled);
-    void haveBandStackReg(float freq, char mode, bool dataOn);
+    void haveBandStackReg(freqt f, char mode, char filter, bool dataOn);
     void haveRitEnabled(bool ritEnabled);
     void haveRitFrequency(int ritHz);
 

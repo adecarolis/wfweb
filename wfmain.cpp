@@ -334,7 +334,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     rigName->setFixedWidth(50);
 
     delayedCmdIntervalLAN_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
-    delayedCmdIntervalSerial_ms = 50; // interval for regular delayed commands, including initial rig/UI state queries
+    delayedCmdIntervalSerial_ms = 100; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdStartupInterval_ms = 250; // interval for rigID polling
     delayedCommand = new QTimer(this);
     delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
@@ -371,7 +371,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
     connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
     connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
-    connect(rig, SIGNAL(haveBandStackReg(float,char,bool)), this, SLOT(receiveBandStackReg(float,char,bool)));
+    connect(rig, SIGNAL(haveBandStackReg(freqt,char,char,bool)), this, SLOT(receiveBandStackReg(freqt,char,char,bool)));
     connect(this, SIGNAL(setRitEnable(bool)), rig, SLOT(setRitEnable(bool)));
     connect(this, SIGNAL(setRitValue(int)), rig, SLOT(setRitValue(int)));
     connect(rig, SIGNAL(haveRitEnabled(bool)), this, SLOT(receiveRITStatus(bool)));
@@ -2899,15 +2899,15 @@ void wfmain::on_freqDial_valueChanged(int value)
     }
 }
 
-void wfmain::receiveBandStackReg(float freq, char mode, bool dataOn)
+void wfmain::receiveBandStackReg(freqt freq, char mode, char filter, bool dataOn)
 {
     // read the band stack and apply by sending out commands
 
-    freqt f;
-    f.Hz = freq * 1E6;
-    setFrequency(f);
-    int filterSelection = ui->modeFilterCombo->currentData().toInt();
-    setMode(mode, (unsigned char)filterSelection); // make sure this is what you think it is
+    //freqt f;
+    //f.Hz = freq * 1E6;
+    setFrequency(freq);
+    //int filterSelection = ui->modeFilterCombo->currentData().toInt();
+    setMode((unsigned char)mode, (unsigned char)filter); // make sure this is what you think it is
 
     // setDataMode(dataOn); // signal out
     if(dataOn)
