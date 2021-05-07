@@ -33,7 +33,7 @@ rigCommander::~rigCommander()
 }
 
 
-void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate)
+void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -51,7 +51,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
     this->rigBaudRate = rigBaudRate;
 
     comm = new commHandler(rigSerialPort, rigBaudRate);
-    ptty = new pttyHandler();
+    ptty = new pttyHandler(vsp);
 
     // data from the comm port to the program:
     connect(comm, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
@@ -74,7 +74,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
 
 }
 
-void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs)
+void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, QString vsp)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -106,7 +106,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs)
         //this->rigSerialPort = rigSerialPort;
         //this->rigBaudRate = rigBaudRate;
 
-        ptty = new pttyHandler();
+        ptty = new pttyHandler(vsp);
 
         // Data from UDP to the program
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));

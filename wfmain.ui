@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -2064,7 +2064,7 @@
            </widget>
           </item>
           <item>
-           <spacer name="horizontalSpacer_8">
+           <spacer name="horizontalSpacer_10">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
@@ -2075,6 +2075,16 @@
              </size>
             </property>
            </spacer>
+          </item>
+          <item>
+           <widget class="QLabel" name="vspLabel">
+            <property name="text">
+             <string>Virtual Serial Port</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="vspCombo"/>
           </item>
          </layout>
         </item>
@@ -2358,7 +2368,7 @@
      <x>0</x>
      <y>0</y>
      <width>934</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

@@ -167,6 +167,34 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
         ui->audioInputCombo->addItem(deviceInfo.deviceName());
     }
 
+    ui->serialDeviceListCombo->blockSignals(true);
+    ui->serialDeviceListCombo->addItem("Auto", 0);
+    int i = 0;
+    foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
+    {
+        portList.append(serialPortInfo.portName());
+        ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
+    }
+    ui->serialDeviceListCombo->addItem("Manual...", 256);
+    ui->serialDeviceListCombo->blockSignals(false);
+
+#ifndef Q_OS_WIN
+    ui->vspCombo->setVisible(false);
+    ui->vspLabel->setVisible(false);
+#else
+    i = 0;
+    ui->vspCombo->blockSignals(true);
+    ui->vspCombo->addItem(QString("None"), i++);
+    foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
+    {
+        ui->vspCombo->addItem(serialPortInfo.portName(), i++);
+    }
+    ui->vspCombo->blockSignals(false);
+
+#endif
+
+
+
     setDefaultColors(); // set of UI colors with defaults populated
     setDefPrefs(); // other default options
     loadSettings(); // Look for saved preferences
@@ -317,18 +345,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     periodicPollingTimer->setInterval(10);
     periodicPollingTimer->setSingleShot(false);
     connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(runPeriodicCommands()));
-
-
-    ui->serialDeviceListCombo->blockSignals(true);
-    ui->serialDeviceListCombo->addItem("Auto", 0);
-    int i=0;
-    foreach (const QSerialPortInfo &serialPortInfo, QSerialPortInfo::availablePorts())
-    {
-        portList.append(serialPortInfo.portName());
-        ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
-    }
-    ui->serialDeviceListCombo->addItem("Manual...", 256);
-    ui->serialDeviceListCombo->blockSignals(false);
 
     freq.MHzDouble = 0.0;
     freq.Hz = 0;
@@ -641,8 +657,8 @@ void wfmain::openRig()
         connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
         connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
         
-        connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences)), rig, SLOT(commSetup(unsigned char, udpPreferences)));
-        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32)), rig, SLOT(commSetup(unsigned char, QString, quint32)));
+        connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences,QString)), rig, SLOT(commSetup(unsigned char, udpPreferences,QString)));
+        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32,QString)), rig, SLOT(commSetup(unsigned char, QString, quint32,QString)));
 
         connect(this, SIGNAL(sendCloseComm()), rig, SLOT(closeComm()));
         connect(this, SIGNAL(sendChangeLatency(quint16)), rig, SLOT(changeLatency(quint16)));
@@ -660,7 +676,7 @@ void wfmain::openRig()
     if (prefs.enableLAN)
     {
         ui->lanEnableBtn->setChecked(true);
-        emit sendCommSetup(prefs.radioCIVAddr, udpPrefs);
+        emit sendCommSetup(prefs.radioCIVAddr, udpPrefs,prefs.virtualSerialPort);
     } else {
         ui->serialEnableBtn->setChecked(true);
         if( (prefs.serialPortRadio == QString("auto")) && (serialPortCL.isEmpty()))
@@ -715,7 +731,7 @@ void wfmain::openRig()
         // Here, the radioCIVAddr is being set from a default preference, which is for the 7300.
         // However, we will not use it initially. OTOH, if it is set explicitedly to a value in the prefs,
         // then we skip auto detection.
-        emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud);
+        emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort);
     }
 
     ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
@@ -791,6 +807,7 @@ void wfmain::setDefPrefs()
     defPrefs.niceTS = true;
     defPrefs.enableRigCtlD = false;
     defPrefs.rigCtlPort = 4533;
+    defPrefs.virtualSerialPort = QString("none");
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -868,6 +885,11 @@ void wfmain::loadSettings()
     prefs.radioCIVAddr = (unsigned char) settings.value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
     prefs.serialPortRadio = settings.value("SerialPortRadio", defPrefs.serialPortRadio).toString();
     prefs.serialPortBaud = (quint32) settings.value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
+    prefs.virtualSerialPort = settings.value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
+    int vspIndex = ui->vspCombo->findText(prefs.virtualSerialPort);
+    if (vspIndex != -1) {
+        ui->vspCombo->setCurrentIndex(vspIndex);
+    }
     settings.endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
@@ -1047,6 +1069,7 @@ void wfmain::saveSettings()
     settings.setValue("RigCIVuInt", prefs.radioCIVAddr);
     settings.setValue("SerialPortRadio", prefs.serialPortRadio);
     settings.setValue("SerialPortBaud", prefs.serialPortBaud);
+    settings.setValue("VirtualSerialPort", prefs.virtualSerialPort);
     settings.endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
@@ -3365,6 +3388,12 @@ void wfmain::on_txLatencySlider_valueChanged(int value)
 {
     udpPrefs.audioTXLatency = value;
     ui->txLatencyValue->setText(QString::number(value));
+}
+
+void wfmain::on_vspCombo_currentIndexChanged(int value) 
+{
+    Q_UNUSED(value);
+    prefs.virtualSerialPort = ui->vspCombo->currentText();
 }
 
 void wfmain::on_toFixedBtn_clicked()

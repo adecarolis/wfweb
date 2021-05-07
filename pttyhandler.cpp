@@ -5,7 +5,7 @@
 
 // Copyright 2017-2021 Elliott H. Liggett & Phil Taylor 
 
-pttyHandler::pttyHandler()
+pttyHandler::pttyHandler(QString pty)
 {
     //constructor
     // grab baud rate and other comm port details
@@ -20,17 +20,19 @@ pttyHandler::pttyHandler()
     stopBits = 1;
 
 #ifdef Q_OS_WIN
-    portName = "COM20";
+    portName = pty;
 #else
     portName = "/dev/ptmx";
 #endif
-    setupPtty(); // basic parameters
-    openPort();
-    //qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
-    //port->setReadBufferSize(1024); // manually. 256 never saw any return from the radio. why...
-    //qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
+    if (portName != "" && portName != "None") {
+        setupPtty(); // basic parameters
+        openPort();
+        //qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
+        //port->setReadBufferSize(1024); // manually. 256 never saw any return from the radio. why...
+        //qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
 
-    connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
+        connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
+    }
 }
 
 pttyHandler::pttyHandler(QString portName, quint32 baudRate)
@@ -60,7 +62,7 @@ pttyHandler::pttyHandler(QString portName, quint32 baudRate)
 
 void pttyHandler::setupPtty()
 {
-    qDebug(logSerial()) << "Setting up Pseudo Term";
+    qDebug(logSerial()) << "Setting up Pseudo Term: " << portName;
     serialError = false;
     port->setPortName(portName);
 #ifdef Q_OS_WIN
