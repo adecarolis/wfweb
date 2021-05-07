@@ -884,6 +884,11 @@ void wfmain::loadSettings()
     settings.beginGroup("Radio");
     prefs.radioCIVAddr = (unsigned char) settings.value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
     prefs.serialPortRadio = settings.value("SerialPortRadio", defPrefs.serialPortRadio).toString();
+    int serialIndex = ui->serialDeviceListCombo->findText(prefs.serialPortRadio);
+    if (serialIndex != -1) {
+        ui->serialDeviceListCombo->setCurrentIndex(serialIndex);
+    }
+
     prefs.serialPortBaud = (quint32) settings.value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
     prefs.virtualSerialPort = settings.value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
     int vspIndex = ui->vspCombo->findText(prefs.virtualSerialPort);
