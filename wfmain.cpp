@@ -1923,8 +1923,10 @@ void wfmain::runDelayedCommand()
                 emit getMode();
                 break;
             case cmdGetDataMode:
-                // qDebug(logSystem()) << "Sending query for data mode";
                 emit getDataMode();
+                break;
+            case cmdSetModeFilter:
+                emit setMode(setModeVal, setFilterVal);
                 break;
             case cmdSetDataModeOff:
                 emit setDataMode(false);
@@ -2903,24 +2905,23 @@ void wfmain::receiveBandStackReg(freqt freq, char mode, char filter, bool dataOn
 {
     // read the band stack and apply by sending out commands
 
-    //freqt f;
-    //f.Hz = freq * 1E6;
-    setFrequency(freq);
-    //int filterSelection = ui->modeFilterCombo->currentData().toInt();
-    setMode((unsigned char)mode, (unsigned char)filter); // make sure this is what you think it is
+    emit setFrequency(freq);
+    setModeVal = (unsigned char) mode;
+    setFilterVal = (unsigned char) filter;
 
-    // setDataMode(dataOn); // signal out
+    issueDelayedCommand(cmdSetModeFilter);
+
     if(dataOn)
     {
-        cmdOutQue.append(cmdSetDataModeOn);
+        issueDelayedCommand(cmdSetDataModeOn);
     } else {
-        cmdOutQue.append(cmdSetDataModeOff);
+        issueDelayedCommand(cmdSetDataModeOff);
     }
-    cmdOutQue.append(cmdGetFreq);
-    cmdOutQue.append(cmdGetMode);
+    issueDelayedCommand(cmdGetFreq);
+    issueDelayedCommand(cmdGetMode);
     ui->tabWidget->setCurrentIndex(0);
 
-    delayedCommand->start();
+    receiveMode((unsigned char) mode, (unsigned char) filter); // update UI
 }
 
 void wfmain::bandStackBtnClick()
@@ -4146,7 +4147,6 @@ void wfmain::setBandButtons()
 void wfmain::on_debugBtn_clicked()
 {
     qDebug(logSystem()) << "Debug button pressed.";
-
-    qDebug(logSystem()) << "Changing band buttons: ";
-    setBandButtons();
+    qDebug(logSystem()) << "getting mode.";
+    getMode();
 }

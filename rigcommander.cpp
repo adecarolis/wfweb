@@ -675,9 +675,11 @@ void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
         } else {
             payload.append(modeFilter);
         }
+
         prepDataAndSend(payload);
         rigState.mode = mode;
         rigState.filter = modeFilter;
+
     }
 }
 
@@ -2133,8 +2135,8 @@ void rigCommander::parseRegister16()
 
 void rigCommander::parseBandStackReg()
 {
-    qDebug(logRig()) << "Band stacking register response received: ";
-    printHex(payloadIn, false, true);
+    //qDebug(logRig()) << "Band stacking register response received: ";
+    //printHex(payloadIn, false, true);
 
     // Reference output, 20 meters, regCode 01 (latest):
     // "INDEX: 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 "
