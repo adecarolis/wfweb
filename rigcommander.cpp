@@ -2405,6 +2405,8 @@ void rigCommander::parseDetailedRegisters1A05()
                     }
                     emit haveModInput(input, true);
                     break;
+                default:
+                    break;
             }
             break;
 
