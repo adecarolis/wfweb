@@ -2619,6 +2619,25 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[band70cm] = 0x02;
             rigCaps.bsr[band2m] = 0x01;
             break;
+        case model910h:
+            rigCaps.modelName = QString("IC-910H");
+            rigCaps.hasSpectrum = false;
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasDD = false;
+            rigCaps.hasDV = false;
+            rigCaps.hasCTCSS = true;
+            rigCaps.hasDTCS = true;
+            rigCaps.hasATU = false;
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x10' , '\x20', '\x30'});
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.bands = standardVU;
+            rigCaps.bands.push_back(band23cm);
+            rigCaps.bsr[band23cm] = 0x03;
+            rigCaps.bsr[band70cm] = 0x02;
+            rigCaps.bsr[band2m] = 0x01;
+            break;
         case model7610:
             rigCaps.modelName = QString("IC-7610");
             rigCaps.hasSpectrum = true;
