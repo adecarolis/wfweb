@@ -3129,7 +3129,7 @@ void wfmain::on_fStoBtn_clicked()
     if(ok && (preset_number >= 0) && (preset_number < 100))
     {
         // TODO: keep an enum around with the current mode
-        mem.setPreset(preset_number, freq.MHzDouble, (mode_kind)ui->modeSelectCombo->currentIndex());
+        mem.setPreset(preset_number, freq.MHzDouble, (mode_kind)ui->modeSelectCombo->currentData().toInt() );
         showStatusBarText( QString("Storing frequency %1 to memory location %2").arg( freq.MHzDouble ).arg(preset_number) );
     } else {
         showStatusBarText(QString("Could not store preset to %1. Valid preset numbers are 0 to 99").arg(preset_number));
@@ -3154,10 +3154,16 @@ void wfmain::on_fRclBtn_clicked()
     if(ok && (preset_number >= 0) && (preset_number < 100))
     {
         temp = mem.getPreset(preset_number);
+        // TODO: change to int hz
+        // TODO: store filter setting as well.
         freqString = QString("%1").arg(temp.frequency);
         ui->freqMhzLineEdit->setText( freqString );
         ui->goFreqBtn->click();
-
+        setModeVal = temp.mode;
+        setFilterVal = ui->modeFilterCombo->currentIndex()+1; // TODO, add to memory
+        issueDelayedCommand(cmdSetModeFilter);
+        issueDelayedCommand(cmdGetFreq);
+        issueDelayedCommand(cmdGetMode);
     } else {
         qDebug(logSystem()) << "Could not recall preset. Valid presets are 0 through 99.";
     }
