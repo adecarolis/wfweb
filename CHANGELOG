@@ -1,5 +1,85 @@
 # CHANGELOG
 
+
+- 20210507
+
+    		Added serial port iterators for the IC-7610 and IC-R8600. Untested.
+
+    		removing debug info we didn't need.
+
+    		Adding /dev/ to discovered serial devices, also ignoring case on "auto"
+    		for serial port device.
+
+    		wfview's own memory system now tracks mode correctly. *however*, it
+    		needs work:
+   		It should track the selected filter, since this information is generally
+    		available and useful, and it should also be storing the frequencies in Hz. 
+		I am also not sure how well the stored memory mode specification
+    		will work across multiple rigs.
+
+    		Added more mode shortcuts: A = airband, $ = 4 meter band (shift-4), W =
+    		WFM, V = 2M, U = 70cm, Shift-S = 23cm (S-band)
+
+    		Fixed BSR mode and filter selection.
+
+    		The band stacking register now uses the newer integer frequency parsing.
+    		We also communicate a little slower to the serial rigs, which seems more
+    		reliable.
+
+    		Updater serialDeviceListCombo with current COM/tty port setting
+
+    		pttyHandler doesn't use pty parameter in Linux so set to Q_UNUSED to eliminate warning
+
+
+- 20210506
+
+    		Force DTR/RTS to false to stop rigs going into TX if USB Send is enabled
+
+    		Convert project to 32bit default on Windows and remove beginnings of VSPE code.
+
+
+- 20210505
+
+    		Add code to select virtual serial port
+
+    		fixed a typo in mint instructions and ubuntu instructions
+
+- 20210504
+
+    		fixed the display instead of rigcaps so that ant sel starts with 1 instead of 0
+
+    		Fix to add a blank user line in server if no users are configured.
+
+    		small changes where to find the release; removed the src/build target directory requirement as the release unpacks in ./dist
+
+- 20310503
+
+    		Fix for Built-in audio on MacOS
+
+- 20210501
+
+    		Fixed bug 007, which allowed negative frequencies to be dialed.
+
+    		Double-clicking the waterfall now obeys the tuning step and rounding
+    		option in the settings.
+
+    		Unified frequency-type MHz to use same code as Hz.
+
+    		Add WFM mode for IC705 and remove duplicate WFM mode for IC-R8600
+
+    		make bandType start at 0 so it doesn't overflow rigCaps.bsr
+
+    		Fix windows release build
+
+    		Changed the organization and domain to wfview and wfview.org.
+
+    		Added more modes for the IC-R8600.
+
+- 20210430
+
+		Different timing on command polling for serial rigs.
+
+
 - 20210427
 
     		Minor changes to hide sat button until we have time to work on that
