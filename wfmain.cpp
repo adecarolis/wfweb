@@ -173,7 +173,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
     {
         portList.append(serialPortInfo.portName());
+#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
+        ui->serialDeviceListCombo->addItem(QString("/dev/")+serialPortInfo.portName(), i++);
+#else
         ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
+#endif
     }
     ui->serialDeviceListCombo->addItem("Manual...", 256);
     ui->serialDeviceListCombo->blockSignals(false);
@@ -679,7 +683,7 @@ void wfmain::openRig()
         emit sendCommSetup(prefs.radioCIVAddr, udpPrefs,prefs.virtualSerialPort);
     } else {
         ui->serialEnableBtn->setChecked(true);
-        if( (prefs.serialPortRadio == QString("auto")) && (serialPortCL.isEmpty()))
+        if( (prefs.serialPortRadio.toLower() == QString("auto")) && (serialPortCL.isEmpty()))
         {
             // Find the ICOM
             // qDebug(logSystem()) << "Searching for serial port...";
@@ -3875,7 +3879,7 @@ void wfmain::on_serialDeviceListCombo_activated(const QString &arg1)
     }
     if(arg1==QString("Auto"))
     {
-        prefs.serialPortRadio = "Auto";
+        prefs.serialPortRadio = "auto";
         showStatusBarText("Setting preferences to automatically find rig serial port.");
         ui->serialEnableBtn->setChecked(true);
         return;
