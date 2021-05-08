@@ -173,7 +173,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
     {
         portList.append(serialPortInfo.portName());
+#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
+        ui->serialDeviceListCombo->addItem(QString("/dev/")+serialPortInfo.portName(), i++);
+#else
         ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
+#endif
     }
     ui->serialDeviceListCombo->addItem("Manual...", 256);
     ui->serialDeviceListCombo->blockSignals(false);
@@ -334,7 +338,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     rigName->setFixedWidth(50);
 
     delayedCmdIntervalLAN_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
-    delayedCmdIntervalSerial_ms = 50; // interval for regular delayed commands, including initial rig/UI state queries
+    delayedCmdIntervalSerial_ms = 100; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdStartupInterval_ms = 250; // interval for rigID polling
     delayedCommand = new QTimer(this);
     delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
@@ -371,7 +375,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
     connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
     connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
-    connect(rig, SIGNAL(haveBandStackReg(float,char,bool)), this, SLOT(receiveBandStackReg(float,char,bool)));
+    connect(rig, SIGNAL(haveBandStackReg(freqt,char,char,bool)), this, SLOT(receiveBandStackReg(freqt,char,char,bool)));
     connect(this, SIGNAL(setRitEnable(bool)), rig, SLOT(setRitEnable(bool)));
     connect(this, SIGNAL(setRitValue(int)), rig, SLOT(setRitValue(int)));
     connect(rig, SIGNAL(haveRitEnabled(bool)), this, SLOT(receiveRITStatus(bool)));
@@ -679,7 +683,7 @@ void wfmain::openRig()
         emit sendCommSetup(prefs.radioCIVAddr, udpPrefs,prefs.virtualSerialPort);
     } else {
         ui->serialEnableBtn->setChecked(true);
-        if( (prefs.serialPortRadio == QString("auto")) && (serialPortCL.isEmpty()))
+        if( (prefs.serialPortRadio.toLower() == QString("auto")) && (serialPortCL.isEmpty()))
         {
             // Find the ICOM
             // qDebug(logSystem()) << "Searching for serial port...";
@@ -687,24 +691,34 @@ void wfmain::openRig()
             QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*A*", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator it785x("/dev/serial", QStringList() << "*IC-785*A*", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator it7610("/dev/serial", QStringList() << "*IC-7610*A", QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator itR8600("/dev/serial", QStringList() << "*IC-R8600*A", QDir::Files, QDirIterator::Subdirectories);
 
 
             if(!it73.filePath().isEmpty())
             {
-                // use
+                // IC-7300
                 serialPortRig = it73.filePath(); // first
             } else if(!it97.filePath().isEmpty())
             {
-                // IC-9700 port
+                // IC-9700
                 serialPortRig = it97.filePath();
             } else if(!it785x.filePath().isEmpty())
             {
-                // IC-785x port
+                // IC-785x
                 serialPortRig = it785x.filePath();
             } else if(!it705.filePath().isEmpty())
             {
                 // IC-705
                 serialPortRig = it705.filePath();
+            } else if(!it7610.filePath().isEmpty())
+            {
+                // IC-7610
+                serialPortRig = it7610.filePath();
+            } else if(!itR8600.filePath().isEmpty())
+            {
+                // IC-R8600
+                serialPortRig = itR8600.filePath();
             } else {
                 //fall back:
                 qDebug(logSystem()) << "Could not find Icom serial port. Falling back to OS default. Use --port to specify, or modify preferences.";
@@ -1923,8 +1937,10 @@ void wfmain::runDelayedCommand()
                 emit getMode();
                 break;
             case cmdGetDataMode:
-                // qDebug(logSystem()) << "Sending query for data mode";
                 emit getDataMode();
+                break;
+            case cmdSetModeFilter:
+                emit setMode(setModeVal, setFilterVal);
                 break;
             case cmdSetDataModeOff:
                 emit setDataMode(false);
@@ -2899,28 +2915,27 @@ void wfmain::on_freqDial_valueChanged(int value)
     }
 }
 
-void wfmain::receiveBandStackReg(float freq, char mode, bool dataOn)
+void wfmain::receiveBandStackReg(freqt freq, char mode, char filter, bool dataOn)
 {
     // read the band stack and apply by sending out commands
 
-    freqt f;
-    f.Hz = freq * 1E6;
-    setFrequency(f);
-    int filterSelection = ui->modeFilterCombo->currentData().toInt();
-    setMode(mode, (unsigned char)filterSelection); // make sure this is what you think it is
+    emit setFrequency(freq);
+    setModeVal = (unsigned char) mode;
+    setFilterVal = (unsigned char) filter;
 
-    // setDataMode(dataOn); // signal out
+    issueDelayedCommand(cmdSetModeFilter);
+
     if(dataOn)
     {
-        cmdOutQue.append(cmdSetDataModeOn);
+        issueDelayedCommand(cmdSetDataModeOn);
     } else {
-        cmdOutQue.append(cmdSetDataModeOff);
+        issueDelayedCommand(cmdSetDataModeOff);
     }
-    cmdOutQue.append(cmdGetFreq);
-    cmdOutQue.append(cmdGetMode);
+    issueDelayedCommand(cmdGetFreq);
+    issueDelayedCommand(cmdGetMode);
     ui->tabWidget->setCurrentIndex(0);
 
-    delayedCommand->start();
+    receiveMode((unsigned char) mode, (unsigned char) filter); // update UI
 }
 
 void wfmain::bandStackBtnClick()
@@ -3128,7 +3143,7 @@ void wfmain::on_fStoBtn_clicked()
     if(ok && (preset_number >= 0) && (preset_number < 100))
     {
         // TODO: keep an enum around with the current mode
-        mem.setPreset(preset_number, freq.MHzDouble, (mode_kind)ui->modeSelectCombo->currentIndex());
+        mem.setPreset(preset_number, freq.MHzDouble, (mode_kind)ui->modeSelectCombo->currentData().toInt() );
         showStatusBarText( QString("Storing frequency %1 to memory location %2").arg( freq.MHzDouble ).arg(preset_number) );
     } else {
         showStatusBarText(QString("Could not store preset to %1. Valid preset numbers are 0 to 99").arg(preset_number));
@@ -3153,10 +3168,16 @@ void wfmain::on_fRclBtn_clicked()
     if(ok && (preset_number >= 0) && (preset_number < 100))
     {
         temp = mem.getPreset(preset_number);
+        // TODO: change to int hz
+        // TODO: store filter setting as well.
         freqString = QString("%1").arg(temp.frequency);
         ui->freqMhzLineEdit->setText( freqString );
         ui->goFreqBtn->click();
-
+        setModeVal = temp.mode;
+        setFilterVal = ui->modeFilterCombo->currentIndex()+1; // TODO, add to memory
+        issueDelayedCommand(cmdSetModeFilter);
+        issueDelayedCommand(cmdGetFreq);
+        issueDelayedCommand(cmdGetMode);
     } else {
         qDebug(logSystem()) << "Could not recall preset. Valid presets are 0 through 99.";
     }
@@ -3868,7 +3889,7 @@ void wfmain::on_serialDeviceListCombo_activated(const QString &arg1)
     }
     if(arg1==QString("Auto"))
     {
-        prefs.serialPortRadio = "Auto";
+        prefs.serialPortRadio = "auto";
         showStatusBarText("Setting preferences to automatically find rig serial port.");
         ui->serialEnableBtn->setChecked(true);
         return;
@@ -4146,7 +4167,6 @@ void wfmain::setBandButtons()
 void wfmain::on_debugBtn_clicked()
 {
     qDebug(logSystem()) << "Debug button pressed.";
-
-    qDebug(logSystem()) << "Changing band buttons: ";
-    setBandButtons();
+    qDebug(logSystem()) << "getting mode.";
+    getMode();
 }

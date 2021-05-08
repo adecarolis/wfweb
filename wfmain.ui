@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -867,6 +867,9 @@
                <property name="text">
                 <string>23cm</string>
                </property>
+               <property name="shortcut">
+                <string/>
+               </property>
               </widget>
              </item>
              <item>
@@ -885,6 +888,9 @@
                </property>
                <property name="text">
                 <string>70cm</string>
+               </property>
+               <property name="shortcut">
+                <string>U</string>
                </property>
               </widget>
              </item>
@@ -905,6 +911,9 @@
                <property name="text">
                 <string>2m</string>
                </property>
+               <property name="shortcut">
+                <string>V</string>
+               </property>
               </widget>
              </item>
              <item>
@@ -923,6 +932,9 @@
                </property>
                <property name="text">
                 <string>Air</string>
+               </property>
+               <property name="shortcut">
+                <string>A</string>
                </property>
               </widget>
              </item>
@@ -943,6 +955,9 @@
                <property name="text">
                 <string>WFM</string>
                </property>
+               <property name="shortcut">
+                <string>W</string>
+               </property>
               </widget>
              </item>
              <item>
@@ -961,6 +976,9 @@
                </property>
                <property name="text">
                 <string>4m</string>
+               </property>
+               <property name="shortcut">
+                <string>$</string>
                </property>
               </widget>
              </item>
@@ -2368,7 +2386,7 @@
      <x>0</x>
      <y>0</y>
      <width>934</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>
