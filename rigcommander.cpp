@@ -568,9 +568,6 @@ QByteArray rigCommander::makeFreqPayload(freqt freq)
         result.append(a);
         //printHex(result, false, true);
     }
-    qDebug(logRig()) << __func__ << ": encoded frequency for Hz: " << freq.Hz  <<\
-                     ", double: " << freq.MHzDouble << " as 64-bit uint: " << freqInt;
-    printHex(result, false, true);
 
     return result;
 }
