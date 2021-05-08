@@ -691,24 +691,34 @@ void wfmain::openRig()
             QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*A*", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator it785x("/dev/serial", QStringList() << "*IC-785*A*", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator it7610("/dev/serial", QStringList() << "*IC-7610*A", QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator itR8600("/dev/serial", QStringList() << "*IC-R8600*A", QDir::Files, QDirIterator::Subdirectories);
 
 
             if(!it73.filePath().isEmpty())
             {
-                // use
+                // IC-7300
                 serialPortRig = it73.filePath(); // first
             } else if(!it97.filePath().isEmpty())
             {
-                // IC-9700 port
+                // IC-9700
                 serialPortRig = it97.filePath();
             } else if(!it785x.filePath().isEmpty())
             {
-                // IC-785x port
+                // IC-785x
                 serialPortRig = it785x.filePath();
             } else if(!it705.filePath().isEmpty())
             {
                 // IC-705
                 serialPortRig = it705.filePath();
+            } else if(!it7610.filePath().isEmpty())
+            {
+                // IC-7610
+                serialPortRig = it7610.filePath();
+            } else if(!itR8600.filePath().isEmpty())
+            {
+                // IC-R8600
+                serialPortRig = itR8600.filePath();
             } else {
                 //fall back:
                 qDebug(logSystem()) << "Could not find Icom serial port. Falling back to OS default. Use --port to specify, or modify preferences.";
