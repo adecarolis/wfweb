@@ -11,8 +11,6 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 TARGET = wfview
 TEMPLATE = app
 
-QMAKE_CXXFLAGS += -march=native
-
 CONFIG(debug, release|debug) {
 # For Debug builds only:
 
@@ -21,7 +19,7 @@ CONFIG(debug, release|debug) {
 QMAKE_CXXFLAGS += -s
 QMAKE_CXXFLAGS += -fvisibility=hidden
 QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
-QMAKE_LFLAGS += -O2 -march=native -s
+QMAKE_LFLAGS += -O2 -s
 }
 
 # The following define makes your compiler emit warnings if you use
