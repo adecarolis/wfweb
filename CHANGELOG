@@ -1,5 +1,14 @@
 # CHANGELOG
 
+- 20210508
+
+    		Data Mode now sends the currently selected filter.
+
+    		Removed -march=native compiler and linker flags. This should make the
+    		binary builds more compatible, and also eliminate an issue on Pop! OS,
+    		where the default optimizations clashed.
+
+		Preliminary IC910H support
 
 - 20210507
 
