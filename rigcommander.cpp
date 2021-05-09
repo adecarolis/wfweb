@@ -680,14 +680,15 @@ void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
     }
 }
 
-void rigCommander::setDataMode(bool dataOn)
+void rigCommander::setDataMode(bool dataOn, unsigned char filter)
 {
     QByteArray payload;
 
     payload.setRawData("\x1A\x06", 2);
     if(dataOn)
     {
-        payload.append("\x01\x03", 2); // data mode on, wide bandwidth
+        payload.append("\x01", 1); // data mode on, wide bandwidth
+        payload.append(filter);
 
     } else {
         payload.append("\x00\x00", 2); // data mode off, bandwidth not defined per ICD.
