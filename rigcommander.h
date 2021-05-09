@@ -94,7 +94,7 @@ public slots:
     void getFrequency();
     void setMode(unsigned char mode, unsigned char modeFilter);
     void getMode();
-    void setDataMode(bool dataOn);
+    void setDataMode(bool dataOn, unsigned char filter);
     void getDataMode();
     void getBandStackReg(char band, char regCode);
     void getRitEnabled();
