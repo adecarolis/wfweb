@@ -37,6 +37,7 @@ macx:INCLUDEPATH += /usr/local/include
 macx:LIBS += -L/usr/local/lib
 
 macx:ICON = wfview.icns
+QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.13
 
 
 !win32:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
@@ -76,10 +77,10 @@ CONFIG(debug, release|debug) {
   else: QCPLIB = qcustomplot
 }
 
-# QCPLIB = qcustomplot
+!macx:LIBS += -L./ -l$$QCPLIB
 
-LIBS += -L./ -l$$QCPLIB
-
+macx:SOURCES += ../qcustomplot/qcustomplot.cpp
+macx:HEADERS += ../qcustomplot/qcustomplot.h
 
 SOURCES += main.cpp\
         wfmain.cpp \
