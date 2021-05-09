@@ -370,7 +370,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(this, SIGNAL(getFrequency()), rig, SLOT(getFrequency()));
     connect(this, SIGNAL(getMode()), rig, SLOT(getMode()));
     connect(this, SIGNAL(getDataMode()), rig, SLOT(getDataMode()));
-    connect(this, SIGNAL(setDataMode(bool)), rig, SLOT(setDataMode(bool)));
+    connect(this, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
     connect(this, SIGNAL(getBandStackReg(char,char)), rig, SLOT(getBandStackReg(char,char)));
     connect(rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
     connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
@@ -1820,10 +1820,10 @@ void wfmain::runPeriodicCommands()
                 emit getDataMode();
                 break;
             case cmdSetDataModeOff:
-                emit setDataMode(false);
+                emit setDataMode(false, (unsigned char) ui->modeFilterCombo->currentData().toInt());
                 break;
             case cmdSetDataModeOn:
-                emit setDataMode(true);
+                emit setDataMode(true, (unsigned char) ui->modeFilterCombo->currentData().toInt());
                 break;
             case cmdGetModInput:
                 emit getModInput(false);
@@ -1943,10 +1943,10 @@ void wfmain::runDelayedCommand()
                 emit setMode(setModeVal, setFilterVal);
                 break;
             case cmdSetDataModeOff:
-                emit setDataMode(false);
+                emit setDataMode(false, (unsigned char)ui->modeFilterCombo->currentData().toInt());
                 break;
             case cmdSetDataModeOn:
-                emit setDataMode(true);
+                emit setDataMode(true, (unsigned char)ui->modeFilterCombo->currentData().toInt());
                 break;
             case cmdGetRitEnabled:
                 emit getRitEnabled();
@@ -2787,7 +2787,7 @@ void wfmain::changeMode(mode_kind mode)
 void wfmain::changeMode(mode_kind mode, bool dataOn)
 {
     int filter = ui->modeFilterCombo->currentData().toInt();
-    emit setMode((unsigned char)mode, filter);
+    emit setMode((unsigned char)mode, (unsigned char)filter);
 
     currentMode = mode;
 
@@ -3479,7 +3479,7 @@ void wfmain::on_modeFilterCombo_activated(int index)
 
 void wfmain::on_dataModeBtn_toggled(bool checked)
 {
-    setDataMode(checked);
+    emit setDataMode(checked, (unsigned char)ui->modeFilterCombo->currentData().toInt());
     usingDataMode = checked;
     if(usingDataMode)
     {

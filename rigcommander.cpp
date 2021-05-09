@@ -680,14 +680,15 @@ void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
     }
 }
 
-void rigCommander::setDataMode(bool dataOn)
+void rigCommander::setDataMode(bool dataOn, unsigned char filter)
 {
     QByteArray payload;
 
     payload.setRawData("\x1A\x06", 2);
     if(dataOn)
     {
-        payload.append("\x01\x03", 2); // data mode on, wide bandwidth
+        payload.append("\x01", 1); // data mode on, wide bandwidth
+        payload.append(filter);
 
     } else {
         payload.append("\x00\x00", 2); // data mode off, bandwidth not defined per ICD.
@@ -2405,6 +2406,8 @@ void rigCommander::parseDetailedRegisters1A05()
                     }
                     emit haveModInput(input, true);
                     break;
+                default:
+                    break;
             }
             break;
 
@@ -2610,6 +2613,25 @@ void rigCommander::determineRigCaps()
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
             rigCaps.attenuators.push_back('\x10');
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.bands = standardVU;
+            rigCaps.bands.push_back(band23cm);
+            rigCaps.bsr[band23cm] = 0x03;
+            rigCaps.bsr[band70cm] = 0x02;
+            rigCaps.bsr[band2m] = 0x01;
+            break;
+        case model910h:
+            rigCaps.modelName = QString("IC-910H");
+            rigCaps.hasSpectrum = false;
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasDD = false;
+            rigCaps.hasDV = false;
+            rigCaps.hasCTCSS = true;
+            rigCaps.hasDTCS = true;
+            rigCaps.hasATU = false;
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x10' , '\x20', '\x30'});
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardVU;
             rigCaps.bands.push_back(band23cm);

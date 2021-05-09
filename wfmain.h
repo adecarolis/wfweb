@@ -52,7 +52,7 @@ signals:
     void setFrequency(freqt freq);
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
-    void setDataMode(bool dataOn);
+    void setDataMode(bool dataOn, unsigned char filter);
     void getDataMode();
     void getModInput(bool dataOn);
     void setModInput(rigInput input, bool dataOn);
