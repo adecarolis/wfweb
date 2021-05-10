@@ -56,7 +56,14 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="spectrumModeCombo"/>
+           <widget class="QComboBox" name="spectrumModeCombo">
+            <property name="accessibleName">
+             <string>Spectrum Mode</string>
+            </property>
+            <property name="accessibleDescription">
+             <string>Spectrum Mode</string>
+            </property>
+           </widget>
           </item>
           <item>
            <widget class="QLabel" name="label_6">
@@ -67,6 +74,12 @@
           </item>
           <item>
            <widget class="QComboBox" name="scopeBWCombo">
+            <property name="accessibleName">
+             <string>Spectrum Span</string>
+            </property>
+            <property name="accessibleDescription">
+             <string/>
+            </property>
             <property name="sizeAdjustPolicy">
              <enum>QComboBox::AdjustToContents</enum>
             </property>
@@ -81,6 +94,12 @@
           </item>
           <item>
            <widget class="QComboBox" name="scopeEdgeCombo">
+            <property name="accessibleName">
+             <string>Spectrum Edge</string>
+            </property>
+            <property name="accessibleDescription">
+             <string/>
+            </property>
             <property name="sizeAdjustPolicy">
              <enum>QComboBox::AdjustToContents</enum>
             </property>
@@ -121,7 +140,14 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="wfthemeCombo"/>
+           <widget class="QComboBox" name="wfthemeCombo">
+            <property name="accessibleName">
+             <string>Spectrum color theme</string>
+            </property>
+            <property name="accessibleDescription">
+             <string>Selects the theme for the color waterfall dispaly</string>
+            </property>
+           </widget>
           </item>
           <item>
            <spacer name="horizontalSpacer_2">
@@ -181,6 +207,9 @@
                   <family>DejaVu Sans</family>
                   <pointsize>20</pointsize>
                  </font>
+                </property>
+                <property name="accessibleName">
+                 <string>Current Frequency in MHZ</string>
                 </property>
                 <property name="text">
                  <string>0000.000000</string>
@@ -255,6 +284,9 @@
                 <height>60</height>
                </size>
               </property>
+              <property name="accessibleName">
+               <string>Tuning Dial</string>
+              </property>
               <property name="wrapping">
                <bool>true</bool>
               </property>
@@ -268,6 +300,9 @@
               <property name="toolTip">
                <string>Tuning Step Selection possibly. Or not...</string>
               </property>
+              <property name="accessibleName">
+               <string>Tuning Step Selection</string>
+              </property>
               <property name="sizeAdjustPolicy">
                <enum>QComboBox::AdjustToContents</enum>
               </property>
@@ -275,6 +310,9 @@
             </item>
             <item>
              <widget class="QCheckBox" name="tuneLockChk">
+              <property name="accessibleName">
+               <string>Frequency Lock</string>
+              </property>
               <property name="text">
                <string>F Lock</string>
               </property>
@@ -289,6 +327,9 @@
                   <width>30</width>
                   <height>30</height>
                  </size>
+                </property>
+                <property name="accessibleName">
+                 <string>R I T Dial</string>
                 </property>
                 <property name="minimum">
                  <number>-500</number>
@@ -315,6 +356,9 @@
               </item>
               <item>
                <widget class="QCheckBox" name="ritEnableChk">
+                <property name="accessibleName">
+                 <string>R I T Enable</string>
+                </property>
                 <property name="text">
                  <string>RIT</string>
                 </property>
@@ -344,6 +388,9 @@
             </item>
             <item>
              <widget class="QComboBox" name="modeSelectCombo">
+              <property name="accessibleName">
+               <string>Mode Selector</string>
+              </property>
               <property name="sizeAdjustPolicy">
                <enum>QComboBox::AdjustToContents</enum>
               </property>
@@ -351,6 +398,9 @@
             </item>
             <item>
              <widget class="QCheckBox" name="dataModeBtn">
+              <property name="accessibleName">
+               <string>Data Mode Enable</string>
+              </property>
               <property name="text">
                <string>Data</string>
               </property>
@@ -368,6 +418,9 @@
             </item>
             <item>
              <widget class="QComboBox" name="modeFilterCombo">
+              <property name="accessibleName">
+               <string>Receive Filter Selection</string>
+              </property>
               <property name="sizeAdjustPolicy">
                <enum>QComboBox::AdjustToContents</enum>
               </property>
@@ -396,6 +449,12 @@
               </property>
               <property name="toolTip">
                <string>RX RF Gain</string>
+              </property>
+              <property name="accessibleName">
+               <string>RF Gain</string>
+              </property>
+              <property name="accessibleDescription">
+               <string>Receiver RF Gain</string>
               </property>
               <property name="maximum">
                <number>255</number>
@@ -442,6 +501,12 @@
               <property name="toolTip">
                <string>RX AF Gain</string>
               </property>
+              <property name="accessibleName">
+               <string>AF Gain</string>
+              </property>
+              <property name="accessibleDescription">
+               <string>Receive Audio Level. Sets rig volume on USB rigs, and sets PC volume on LAN rigs.</string>
+              </property>
               <property name="maximum">
                <number>255</number>
               </property>
@@ -486,6 +551,12 @@
               </property>
               <property name="toolTip">
                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Squelch&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="accessibleName">
+               <string>Squelch</string>
+              </property>
+              <property name="accessibleDescription">
+               <string>Squelch control. Top is fully-muted, bottom is wide open.</string>
               </property>
               <property name="maximum">
                <number>255</number>
@@ -532,6 +603,12 @@
               <property name="toolTip">
                <string>Transmit Power</string>
               </property>
+              <property name="accessibleName">
+               <string>Transmit Power</string>
+              </property>
+              <property name="accessibleDescription">
+               <string>Transmit power level</string>
+              </property>
               <property name="maximum">
                <number>255</number>
               </property>
@@ -577,6 +654,12 @@
               <property name="toolTip">
                <string>Mic Gain</string>
               </property>
+              <property name="accessibleName">
+               <string>Transmit Audio Gain</string>
+              </property>
+              <property name="accessibleDescription">
+               <string>Sets the gain for the transmit audio source, for example mic gain or accessory port gain</string>
+              </property>
               <property name="maximum">
                <number>255</number>
               </property>
@@ -621,6 +704,12 @@
               </property>
               <property name="toolTip">
                <string>Spectrum Reference Level Adjust</string>
+              </property>
+              <property name="accessibleName">
+               <string>Reference Level for Waterfall</string>
+              </property>
+              <property name="accessibleDescription">
+               <string>Reference level for the waterfall display</string>
               </property>
               <property name="minimum">
                <number>-200</number>
@@ -680,6 +769,12 @@
               <property name="toolTip">
                <string>Enable the Automatic Antenna Tuner</string>
               </property>
+              <property name="accessibleName">
+               <string>Enable ATU</string>
+              </property>
+              <property name="accessibleDescription">
+               <string>Enable or disable the automatic antenna tuner</string>
+              </property>
               <property name="text">
                <string>Enable ATU</string>
               </property>
@@ -735,6 +830,9 @@
                  </item>
                  <item>
                   <widget class="QComboBox" name="preampSelCombo">
+                   <property name="accessibleName">
+                    <string>Preamp selector</string>
+                   </property>
                    <property name="sizeAdjustPolicy">
                     <enum>QComboBox::AdjustToContents</enum>
                    </property>
@@ -759,6 +857,9 @@
                  </item>
                  <item>
                   <widget class="QComboBox" name="attSelCombo">
+                   <property name="accessibleName">
+                    <string>Attenuator selector</string>
+                   </property>
                    <property name="sizeAdjustPolicy">
                     <enum>QComboBox::AdjustToContents</enum>
                    </property>
@@ -803,6 +904,9 @@
                 </item>
                 <item>
                  <widget class="QComboBox" name="antennaSelCombo">
+                  <property name="accessibleName">
+                   <string>Antenna port selector</string>
+                  </property>
                   <property name="sizeAdjustPolicy">
                    <enum>QComboBox::AdjustToContents</enum>
                   </property>
@@ -1919,6 +2023,12 @@
           </item>
           <item>
            <widget class="QComboBox" name="modInputCombo">
+            <property name="accessibleName">
+             <string>Modulation Input</string>
+            </property>
+            <property name="accessibleDescription">
+             <string>Transmit modulation source</string>
+            </property>
             <property name="sizeAdjustPolicy">
              <enum>QComboBox::AdjustToContents</enum>
             </property>
@@ -1933,6 +2043,12 @@
           </item>
           <item>
            <widget class="QComboBox" name="modInputDataCombo">
+            <property name="accessibleName">
+             <string>Data Modulation Input</string>
+            </property>
+            <property name="accessibleDescription">
+             <string>Transmit Data-mode modulation input source</string>
+            </property>
             <property name="sizeAdjustPolicy">
              <enum>QComboBox::AdjustToContents</enum>
             </property>
@@ -2038,6 +2154,9 @@
             <property name="toolTip">
              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select a serial port here. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Once selected, check &amp;quot;Enable USB(serial),  press &amp;quot;Save Settings&amp;quot;, exit, and re-start wfview. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
+            <property name="accessibleName">
+             <string>Serial Device Selector</string>
+            </property>
            </widget>
           </item>
           <item>
@@ -2102,7 +2221,11 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="vspCombo"/>
+           <widget class="QComboBox" name="vspCombo">
+            <property name="accessibleName">
+             <string>Virtual Serial Port Selector</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
@@ -2235,7 +2358,11 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="audioRXCodecCombo"/>
+           <widget class="QComboBox" name="audioRXCodecCombo">
+            <property name="accessibleName">
+             <string>Receive Audio Codec Selector</string>
+            </property>
+           </widget>
           </item>
           <item>
            <widget class="QLabel" name="label_20">
@@ -2245,7 +2372,11 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="audioTXCodecCombo"/>
+           <widget class="QComboBox" name="audioTXCodecCombo">
+            <property name="accessibleName">
+             <string>Transmit Audio Codec Selector</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
@@ -2260,6 +2391,9 @@
           </item>
           <item>
            <widget class="QComboBox" name="audioSampleRateCombo">
+            <property name="accessibleName">
+             <string>Audio Sample Rate Selector</string>
+            </property>
             <item>
              <property name="text">
               <string>48000</string>
@@ -2290,7 +2424,11 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="audioOutputCombo"/>
+           <widget class="QComboBox" name="audioOutputCombo">
+            <property name="accessibleName">
+             <string>Audio Output Selector</string>
+            </property>
+           </widget>
           </item>
           <item>
            <widget class="QLabel" name="label_18">
@@ -2300,7 +2438,11 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="audioInputCombo"/>
+           <widget class="QComboBox" name="audioInputCombo">
+            <property name="accessibleName">
+             <string>Audio Input Selector</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>
