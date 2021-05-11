@@ -4,10 +4,11 @@
 #include <QDebug>
 #include <QFile>
 
-#include <sstream>
+#ifndef Q_OS_WIN
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#endif
 
 // Copyright 2017-2021 Elliott H. Liggett & Phil Taylor 
 
@@ -37,11 +38,15 @@ void pttyHandler::openPort()
     bool success=false;
 
 #ifdef Q_OS_WIN
+    port = new QSerialPort();
     port->setPortName(portName);
     port->setBaudRate(baudRate);
     port->setStopBits(QSerialPort::OneStop);// OneStop is other option
     success = port->open(QIODevice::ReadWrite);
-    connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn(0)));
+
+    if (success) {
+        connect(port, &QSerialPort::readyRead, this, std::bind(&pttyHandler::receiveDataIn, this, (int)0));
+    }
 #else
     // Generic method in Linux/MacOS to find a pty
     ptfd = ::posix_openpt(O_RDWR | O_NOCTTY);
