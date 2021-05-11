@@ -1,5 +1,15 @@
 # CHANGELOG
 
+- 20210511
+
+    		Fixes for virtual serial port in Windows.
+
+    		Initial commit of pty rewrite
+
+- 20210509
+
+    		Enhanced accessibility for the UI.
+
 - 20210508
 
     		Data Mode now sends the currently selected filter.
