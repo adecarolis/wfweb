@@ -86,3 +86,41 @@ see also the wiki:
 - [feature requests](https://gitlab.com/eliggett/wfview/-/wikis/Feature-requests)
 - [raspberry pi server](https://gitlab.com/eliggett/wfview/-/wikis/raspi-server-functionality-for-7300,7100-etc)
 
+
+### THIRD PARTY code/hardware:
+
+the following projects we would like to thank in alphabetical order:
+
+
+
+- ICOM for their well designed rigs
+
+see ICOM Japan (https://www.icomjapan.com/)
+
+- ICOM for their well written RS-BA1 software
+
+see ICOM JAPAN products page (https://www.icomjapan.com/lineup/options/RS-BA1_Version2/)
+
+- kappanhang which inspired us to enhance the original wfview project:
+
+  Akos Marton           ES1AKOS
+  Elliot LiggettW6EL    (passcode algorithm)
+  Norbert Varga HA2NON  nonoo@nonoo.hu
+
+see for their fine s/w here [kappanhang](https://github.com/nonoo/kappanhang)
+
+- resampling code from the opus project:
+  [Xiph.Org Foundation] (https://xiph.org/)
+
+see [sources] (https://github.com/xiph/opus/tree/master/silk)
+
+- QCP: the marvellous qt custom plot code
+  
+  Emanuel Eichhammer
+
+see [QCP] (https://www.qcustomplot.com/)
+
+
+
+If you feel that we forgot ayone, just drop a mail.
+
