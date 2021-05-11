@@ -39,7 +39,6 @@ macx:LIBS += -L/usr/local/lib
 macx:ICON = wfview.icns
 QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.13
 
-
 !win32:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
 
 !win32:DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""

@@ -5,6 +5,8 @@
 
 #include <QMutex>
 #include <QDataStream>
+#include <QIODevice>
+#include <QSocketNotifier>
 #include <QtSerialPort/QSerialPort>
 
 // This class abstracts the comm port in a useful way and connects to
@@ -22,7 +24,7 @@ public:
     ~pttyHandler();
 
 private slots:
-    void receiveDataIn(); // from physical port
+    void receiveDataIn(int fd); // from physical port
     void receiveDataFromRigToPtty(const QByteArray& data);
     void debugThis();
 
@@ -63,6 +65,8 @@ private:
     bool isConnected; // port opened
     mutable QMutex mutex;
     void printHex(const QByteArray& pdata, bool printVert, bool printHoriz);
+
+    QSocketNotifier *ptReader = nullptr;
 
 };
 
