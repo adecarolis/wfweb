@@ -198,8 +198,8 @@ void pttyHandler::receiveDataIn(int fd) {
             else
             {
                 emit haveDataFromPort(inPortData);
-                qDebug(logSerial()) << "Data from pseudo term:";
-                printHex(inPortData, false, true);
+                //qDebug(logSerial()) << "Data from pseudo term:";
+                //printHex(inPortData, false, true);
             }
 
             if (rolledBack)
