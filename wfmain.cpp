@@ -195,7 +195,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     // Provide reasonable names for the symbolic link to the pty device
     QString vspName=QDir::homePath()+"/rig-pty";
     for (i=1;i<8;i++) {
-        ui->vspCombo->addItem(vspName+QString::number(i));
+        ui->vspCombo->addItem(vspName + QString::number(i));
 
         if (QFile::exists(vspName+QString::number(i))) {
             auto * model = qobject_cast<QStandardItemModel*>(ui->vspCombo->model());
@@ -207,7 +207,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->vspCombo->addItem(QString("None"), i++);
 
 #endif
-
+    ui->vspCombo->setEditable(true);
     ui->vspCombo->blockSignals(false);
 
 
@@ -921,6 +921,13 @@ void wfmain::loadSettings()
     if (vspIndex != -1) {
         ui->vspCombo->setCurrentIndex(vspIndex);
     }
+    else
+    {
+        ui->vspCombo->addItem(prefs.virtualSerialPort);
+        ui->vspCombo->setCurrentIndex(ui->vspCombo->count()-1);
+    }
+
+
     settings.endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
