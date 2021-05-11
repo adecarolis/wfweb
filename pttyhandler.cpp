@@ -2,94 +2,59 @@
 #include "logcategories.h"
 
 #include <QDebug>
+#include <QFile>
+
+#ifndef Q_OS_WIN
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+#endif
 
 // Copyright 2017-2021 Elliott H. Liggett & Phil Taylor 
 
 pttyHandler::pttyHandler(QString pty)
 {
     //constructor
-    // grab baud rate and other comm port details
-    // if they need to be changed later, please
-    // destroy this and create a new one.
-    port = new QSerialPort();
+    portName = pty;
 
+#ifdef Q_OS_WIN
+    port = new QSerialPort();
     // TODO: The following should become arguments and/or functions
     // Add signal/slot everywhere for comm port setup.
     // Consider how to "re-setup" and how to save the state for next time.
     baudRate = 115200;
     stopBits = 1;
-
-#ifdef Q_OS_WIN
     portName = pty;
-#else
-    Q_UNUSED(pty);
-    portName = "/dev/ptmx";
 #endif
-    if (portName != "" && portName != "None") {
-        setupPtty(); // basic parameters
-        openPort();
-        //qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
-        //port->setReadBufferSize(1024); // manually. 256 never saw any return from the radio. why...
-        //qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
 
-        connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
-    }
-}
-
-pttyHandler::pttyHandler(QString portName, quint32 baudRate)
-{
-    //constructor
-    // grab baud rate and other comm port details
-    // if they need to be changed later, please
-    // destroy this and create a new one.
-
-    port = new QSerialPort();
-
-    this->portName = portName;
-    this->baudRate = baudRate;
-
-    setupPtty(); // basic parameters
     openPort();
 
-    // TODO: The following should become arguments and/or functions
-    // Add signal/slot everywhere for comm port setup.
-    // Consider how to "re-setup" and how to save the state for next time.
-    // qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
-    //port->setReadBufferSize(1024); // manually. 256 never saw any return from the radio. why...
-    //qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
-
-    connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
-}
-
-void pttyHandler::setupPtty()
-{
-    qDebug(logSerial()) << "Setting up Pseudo Term: " << portName;
-    serialError = false;
-    port->setPortName(portName);
-#ifdef Q_OS_WIN
-    port->setBaudRate(baudRate);
-    port->setStopBits(QSerialPort::OneStop);// OneStop is other option
-#endif
 }
 
 
 void pttyHandler::openPort()
 {
-    // qDebug(logSerial()) << "opening pt port";
-    bool success;
-#ifndef Q_OS_WIN
-    char ptname[128];
-    int sysResult = 0;
-    QString ptLinkCmd = "ln -s ";
-#endif
-    success = port->open(QIODevice::ReadWrite);
-    if (success)
-    {
-#ifndef Q_OS_WIN
+    serialError = false;
+    bool success=false;
 
-        qDebug(logSerial()) << "Opened pt device, attempting to grant pt status";
-        ptfd = port->handle();
-        qDebug(logSerial()) << "ptfd: " << ptfd;
+#ifdef Q_OS_WIN
+    port = new QSerialPort();
+    port->setPortName(portName);
+    port->setBaudRate(baudRate);
+    port->setStopBits(QSerialPort::OneStop);// OneStop is other option
+    success = port->open(QIODevice::ReadWrite);
+
+    if (success) {
+        connect(port, &QSerialPort::readyRead, this, std::bind(&pttyHandler::receiveDataIn, this, (int)0));
+    }
+#else
+    // Generic method in Linux/MacOS to find a pty
+    ptfd = ::posix_openpt(O_RDWR | O_NOCTTY);
+
+    if (ptfd >=0)
+    {
+        qDebug(logSerial()) << "Opened pt device: " << ptfd << ", attempting to grant pt status";
+
         if (grantpt(ptfd))
         {
             qDebug(logSerial()) << "Failed to grantpt";
@@ -101,32 +66,42 @@ void pttyHandler::openPort()
             return;
         }
         // we're good!
-        qDebug(logSerial()) << "Opened pseudoterminal.";
-        qDebug(logSerial()) << "Slave name: " << ptsname(ptfd);
+        qDebug(logSerial()) << "Opened pseudoterminal, slave name :" << ptsname(ptfd);
 
-        ptsname_r(ptfd, ptname, 128);
-        ptDevSlave = QString::fromLocal8Bit(ptname);
-        ptLinkCmd.append(ptDevSlave);
-        ptLinkCmd.append(" /tmp/rig");
-        sysResult = system("rm /tmp/rig");
-        sysResult = system(ptLinkCmd.toStdString().c_str());
-        if (sysResult)
-        {
-            qDebug(logSerial()) << "Received error from pseudo-terminal symlink command: code: [" << sysResult << "]" << " command: [" << ptLinkCmd << "]";
-        }
+        ptReader = new QSocketNotifier(ptfd, QSocketNotifier::Read, this);
+        connect(ptReader, &QSocketNotifier::activated,
+                this, &pttyHandler::receiveDataIn);
 
-        isConnected = true;
+        success=true;
+    }
 #endif
 
-    }
-    else {
+    if (!success)
+    {
         ptfd = 0;
-        qDebug(logSerial()) << "Could not open pseudo terminal port " << portName << " , please restart.";
+        qDebug(logSerial()) << "Could not open pseudo terminal port, please restart.";
         isConnected = false;
         serialError = true;
         emit haveSerialPortError(portName, "Could not open pseudo terminal port. Please restart.");
         return;
     }
+
+
+#ifndef Q_OS_WIN
+    ptDevSlave = QString::fromLocal8Bit(ptsname(ptfd));
+
+    if (portName != "" && portName != "none")
+    {
+        if (!QFile::link(ptDevSlave, portName))
+        {
+            qDebug(logSerial()) << "Error creating link to" << ptDevSlave << "from" << portName;
+        } else {
+            qDebug(logSerial()) << "Created link to" << ptDevSlave << "from" << portName;
+        }
+    }
+#endif
+
+    isConnected = true;
 }
 
 pttyHandler::~pttyHandler()
@@ -157,8 +132,11 @@ void pttyHandler::sendDataOut(const QByteArray& writeData)
     //printHex(writeData, false, true);
 
     mutex.lock();
-
+#ifdef Q_OS_WIN
     bytesWritten = port->write(writeData);
+#else
+    bytesWritten = ::write(ptfd, writeData.constData(), writeData.size());
+#endif
     if (bytesWritten != writeData.length()) {
         qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
             << " size of byte array: " << writeData.size()\
@@ -167,23 +145,44 @@ void pttyHandler::sendDataOut(const QByteArray& writeData)
     mutex.unlock();
 }
 
+void pttyHandler::receiveDataIn(int fd) {
 
-void pttyHandler::receiveDataIn()
-{
-    // connected to comm port data signal
+#ifndef Q_OS_WIN
+    ssize_t available = 255; // Read up to 'available' bytes
+#else
+    Q_UNUSED(fd);
+#endif
 
-    // Here we get a little specific to CIV radios
-    // because we know what constitutes a valid "frame" of data.
+   // Linux will correctly return the number of available bytes with the FIONREAD ioctl
+   // Sadly MacOS always returns zero!
+#ifdef Q_OS_LINUX
+    int ret = ::ioctl(fd, FIONREAD, (char *) &available);
+    if (ret != 0)
+        return;
+#endif
 
-    // new code:
+#ifdef Q_OS_WIN
     port->startTransaction();
     inPortData = port->readAll();
+#else
+    inPortData.resize(available);
+    ssize_t got = ::read(fd, inPortData.data(), available);
+    int err = errno;
+    if (got < 0) {
+        qDebug(logSerial()) << tr("Read failed: %1").arg(QString::fromLatin1(strerror(err)));
+        return;
+    }
+    inPortData.resize(got);
+#endif
+
     if (inPortData.startsWith("\xFE\xFE"))
     {
         if (inPortData.endsWith("\xFD"))
         {
             // good!
+#ifdef Q_OS_WIN
             port->commitTransaction();
+#endif
 
             // filter 1A 05 01 12/27 = C-IV transceive command before forwarding on.
             if (inPortData.contains(QByteArrayLiteral("\x1a\x05\x01\x12")) || inPortData.contains(QByteArrayLiteral("\x1a\x05\x01\x27")))
@@ -199,8 +198,8 @@ void pttyHandler::receiveDataIn()
             else
             {
                 emit haveDataFromPort(inPortData);
-                //qDebug(logSerial()) << "Data from pseudo term:";
-                //printHex(inPortData, false, true);
+                qDebug(logSerial()) << "Data from pseudo term:";
+                printHex(inPortData, false, true);
             }
 
             if (rolledBack)
@@ -214,8 +213,9 @@ void pttyHandler::receiveDataIn()
             // did not receive the entire thing so roll back:
             // qDebug(logSerial()) << "Rolling back transaction. End not detected. Lenth: " << inPortData.length();
             //printHex(inPortData, false, true);
-            port->rollbackTransaction();
             rolledBack = true;
+#ifdef Q_OS_WIN
+            port->rollbackTransaction();
         }
     }
     else {
@@ -223,23 +223,29 @@ void pttyHandler::receiveDataIn()
         //qDebug(logSerial()) << "Warning: received data with invalid start. Dropping data.";
         //qDebug(logSerial()) << "THIS SHOULD ONLY HAPPEN ONCE!!";
         // THIS SHOULD ONLY HAPPEN ONCE!
-
-        // unrecoverable. We did not receive the start and must
-        // have missed it earlier because we did not roll back to
-        // preserve the beginning.
-
-        //printHex(inPortData, false, true);
-
     }
+#else
+        }
+    }
+#endif
 }
+
+
 
 void pttyHandler::closePort()
 {
+#ifdef Q_OS_WIN
     if (port)
     {
         port->close();
         delete port;
     }
+#else
+    if (portName != "" && portName != "none")
+    {
+        QFile::remove(portName);
+    }
+#endif
     isConnected = false;
 }
 

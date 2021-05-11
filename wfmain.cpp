@@ -182,21 +182,33 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     ui->serialDeviceListCombo->addItem("Manual...", 256);
     ui->serialDeviceListCombo->blockSignals(false);
 
-#ifndef Q_OS_WIN
-    ui->vspCombo->setVisible(false);
-    ui->vspLabel->setVisible(false);
-#else
-    i = 0;
     ui->vspCombo->blockSignals(true);
+
+#ifdef Q_OS_WIN
     ui->vspCombo->addItem(QString("None"), i++);
+
     foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
     {
-        ui->vspCombo->addItem(serialPortInfo.portName(), i++);
+        ui->vspCombo->addItem(serialPortInfo.portName());
     }
-    ui->vspCombo->blockSignals(false);
+#else
+    // Provide reasonable names for the symbolic link to the pty device
+    QString vspName=QDir::homePath()+"/rig-pty";
+    for (i=1;i<8;i++) {
+        ui->vspCombo->addItem(vspName+QString::number(i));
+
+        if (QFile::exists(vspName+QString::number(i))) {
+            auto * model = qobject_cast<QStandardItemModel*>(ui->vspCombo->model());
+            auto *item = model->item(ui->vspCombo->count()-1);
+            item->setEnabled(false);
+        }
+    }
+    ui->vspCombo->addItem(vspName+QString::number(i));
+    ui->vspCombo->addItem(QString("None"), i++);
 
 #endif
 
+    ui->vspCombo->blockSignals(false);
 
 
     setDefaultColors(); // set of UI colors with defaults populated
