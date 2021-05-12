@@ -1,5 +1,17 @@
 # CHANGELOG
 
+- 20210511
+
+    		Fixes for virtual serial port in Windows.
+
+    		Initial commit of pty rewrite
+		There is a new combobox in Settings which shows the file that the pty device is mapped to. 
+		You can select from ~/rig-pty[1-8] which should work if you have multiple instances of wfview.
+
+- 20210509
+
+    		Enhanced accessibility for the UI.
+
 - 20210508
 
     		Data Mode now sends the currently selected filter.
