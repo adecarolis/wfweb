@@ -15,10 +15,15 @@
 pttyHandler::pttyHandler(QString pty)
 {
     //constructor
+    if (pty == "" || pty == "None")
+    {
+        // Just return if pty is not configured.
+        return;
+    }
+
     portName = pty;
 
 #ifdef Q_OS_WIN
-    port = new QSerialPort();
     // TODO: The following should become arguments and/or functions
     // Add signal/slot everywhere for comm port setup.
     // Consider how to "re-setup" and how to save the state for next time.
@@ -36,7 +41,6 @@ void pttyHandler::openPort()
 {
     serialError = false;
     bool success=false;
-
 #ifdef Q_OS_WIN
     port = new QSerialPort();
     port->setPortName(portName);
@@ -90,7 +94,7 @@ void pttyHandler::openPort()
 #ifndef Q_OS_WIN
     ptDevSlave = QString::fromLocal8Bit(ptsname(ptfd));
 
-    if (portName != "" && portName != "none")
+    if (portName != "" && portName != "None")
     {
         if (!QFile::link(ptDevSlave, portName))
         {
@@ -111,7 +115,7 @@ pttyHandler::~pttyHandler()
 
 void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
 {
-    if ((unsigned char)data[2] != (unsigned char)0xE1 && (unsigned char)data[3] != (unsigned char)0xE1)
+    if (isConnected && (unsigned char)data[2] != (unsigned char)0xE1 && (unsigned char)data[3] != (unsigned char)0xE1)
     {
         // send to the pseudo port as well
         // index 2 is dest, 0xE1 is wfview, 0xE0 is assumed to be the other device.
@@ -130,19 +134,20 @@ void pttyHandler::sendDataOut(const QByteArray& writeData)
 
     //qDebug(logSerial()) << "Data to pseudo term:";
     //printHex(writeData, false, true);
-
-    mutex.lock();
+    if (isConnected) {
+        mutex.lock();
 #ifdef Q_OS_WIN
-    bytesWritten = port->write(writeData);
+        bytesWritten = port->write(writeData);
 #else
-    bytesWritten = ::write(ptfd, writeData.constData(), writeData.size());
+        bytesWritten = ::write(ptfd, writeData.constData(), writeData.size());
 #endif
-    if (bytesWritten != writeData.length()) {
-        qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
-            << " size of byte array: " << writeData.size()\
-            << " Wrote all bytes? " << (bool)(bytesWritten == (qint64)writeData.size());
+        if (bytesWritten != writeData.length()) {
+            qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
+                << " size of byte array: " << writeData.size()\
+                << " Wrote all bytes? " << (bool)(bytesWritten == (qint64)writeData.size());
+        }
+        mutex.unlock();
     }
-    mutex.unlock();
 }
 
 void pttyHandler::receiveDataIn(int fd) {
@@ -241,7 +246,7 @@ void pttyHandler::closePort()
         delete port;
     }
 #else
-    if (portName != "" && portName != "none")
+    if (isConnected && portName != "" && portName != "None")
     {
         QFile::remove(portName);
     }
