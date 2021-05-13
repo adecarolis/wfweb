@@ -240,7 +240,7 @@ void pttyHandler::receiveDataIn(int fd) {
 void pttyHandler::closePort()
 {
 #ifdef Q_OS_WIN
-    if (port)
+    if (port != Q_NULLPTR)
     {
         port->close();
         delete port;

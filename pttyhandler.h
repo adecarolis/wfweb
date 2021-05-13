@@ -53,7 +53,7 @@ private:
     unsigned char buffer[256];
 
     QString portName;
-    QSerialPort* port;
+    QSerialPort* port = Q_NULLPTR;
     qint32 baudRate;
     unsigned char stopBits;
     bool rolledBack;
