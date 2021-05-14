@@ -1,6 +1,10 @@
 # CHANGELOG
 
-- 20210514	Hopefully improve stability of pty by filtering traffic for any other CIV id.
+- 20210514	Make UDP port textboxes expanding.
+
+    		Fixes to UDP server
+
+		Hopefully improve stability of pty by filtering traffic for any other CIV id.
 
 - 20210513	Additional search path for macports compatibility (macOS only).
 
