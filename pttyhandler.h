@@ -67,7 +67,7 @@ private:
     void printHex(const QByteArray& pdata, bool printVert, bool printHoriz);
 
     QSocketNotifier *ptReader = nullptr;
-
+    quint8 civId=0;
 };
 
 #endif // PTTYHANDLER_H
