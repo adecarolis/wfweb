@@ -798,7 +798,13 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
         delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
     } else {
         usingLAN = false;
-        delayedCommand->setInterval(delayedCmdIntervalSerial_ms);
+        if(prefs.serialPortBaud < 115200)
+        {
+            delayedCommand->setInterval(delayedCmdIntervalSerial_ms*2);
+            periodicPollingTimer->setInterval(100); // slower for s-meter polling
+        } else {
+            delayedCommand->setInterval(delayedCmdIntervalSerial_ms);
+        }
     }
     receiveRigID(rigCaps);
     getInitialRigState();
