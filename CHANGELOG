@@ -1,20 +1,26 @@
 # CHANGELOG
 
-- 20210511
+- 20210514	Hopefully improve stability of pty by filtering traffic for any other CIV id.
 
-    		Fixes for virtual serial port in Windows.
+- 20210513	Additional search path for macports compatibility (macOS only).
+
+    		Slower polling for older rigs using lower serial baud.
+
+    		Fix CI-V packet length bug in udphandler
+
+    		Set pty serial port to NULL by default
+
+- 20210512	Fix for crash on MacOS
+
+- 20210511	Fixes for virtual serial port in Windows.
 
     		Initial commit of pty rewrite
 		There is a new combobox in Settings which shows the file that the pty device is mapped to. 
 		You can select from ~/rig-pty[1-8] which should work if you have multiple instances of wfview.
 
-- 20210509
+- 20210509	Enhanced accessibility for the UI.
 
-    		Enhanced accessibility for the UI.
-
-- 20210508
-
-    		Data Mode now sends the currently selected filter.
+- 20210508	Data Mode now sends the currently selected filter.
 
     		Removed -march=native compiler and linker flags. This should make the
     		binary builds more compatible, and also eliminate an issue on Pop! OS,
@@ -22,9 +28,7 @@
 
 		Preliminary IC910H support
 
-- 20210507
-
-    		Added serial port iterators for the IC-7610 and IC-R8600. Untested.
+- 20210507	Added serial port iterators for the IC-7610 and IC-R8600. Untested.
 
     		removing debug info we didn't need.
 
@@ -52,34 +56,24 @@
     		pttyHandler doesn't use pty parameter in Linux so set to Q_UNUSED to eliminate warning
 
 
-- 20210506
-
-    		Force DTR/RTS to false to stop rigs going into TX if USB Send is enabled
+- 20210506	Force DTR/RTS to false to stop rigs going into TX if USB Send is enabled
 
     		Convert project to 32bit default on Windows and remove beginnings of VSPE code.
 
 
-- 20210505
-
-    		Add code to select virtual serial port
+- 20210505	Add code to select virtual serial port
 
     		fixed a typo in mint instructions and ubuntu instructions
 
-- 20210504
-
-    		fixed the display instead of rigcaps so that ant sel starts with 1 instead of 0
+- 20210504	fixed the display instead of rigcaps so that ant sel starts with 1 instead of 0
 
     		Fix to add a blank user line in server if no users are configured.
 
     		small changes where to find the release; removed the src/build target directory requirement as the release unpacks in ./dist
 
-- 20310503
+- 20310503	Fix for Built-in audio on MacOS
 
-    		Fix for Built-in audio on MacOS
-
-- 20210501
-
-    		Fixed bug 007, which allowed negative frequencies to be dialed.
+- 20210501	Fixed bug 007, which allowed negative frequencies to be dialed.
 
     		Double-clicking the waterfall now obeys the tuning step and rounding
     		option in the settings.
@@ -96,14 +90,10 @@
 
     		Added more modes for the IC-R8600.
 
-- 20210430
-
-		Different timing on command polling for serial rigs.
+- 20210430	Different timing on command polling for serial rigs.
 
 
-- 20210427
-
-    		Minor changes to hide sat button until we have time to work on that
+- 20210427	Minor changes to hide sat button until we have time to work on that
     		feature.
 
     		Additional bands added, Airband, WFM
@@ -120,9 +110,7 @@
 
     		changed the modeSelectCombo-addItem sequence a bit to have modes grouped; CW and CW-R are now grouped, as well as RTTY/RTTY-R; AM and FM are grouped now
 
-- 20210426
-
-    		Well, that was fun. Color preferences now work, and colors can be
+- 20210426	Well, that was fun. Color preferences now work, and colors can be
     		modified from the preference file for custom plot colors.
     
     		The preference file now stores colors as unsigned int. To convert the
@@ -137,9 +125,7 @@
 
     		started rough docs for the usermanual
 
-- 20210425
-
-    		More work on rigctld
+- 20210425	More work on rigctld
 
 		Faster polling. Clarified in comments around line 309 in wfmain.cpp.
 
@@ -152,16 +138,12 @@
     		state queries to 100ms. May consider faster queries on startup since we
     		are going to need more things queried on startup.
 
-- 20210424
-
-    		Receiver Incremental Tuning is in. The UI does not check the rig's
+- 20210424	Receiver Incremental Tuning is in. The UI does not check the rig's
     		initial state yet, but the functions are partially in rigCommander for
     		that purpose.
 
 
-- 20210423
-
-		Found two missing defaults in switch cases inside rigcommander.cpp.
+- 20210423	Found two missing defaults in switch cases inside rigcommander.cpp.
 
 		Modified rig power management to stop command ques (s-meter and others).
 		Upon rig power up, the command queue is repurposed as a 3 second delay
@@ -173,9 +155,7 @@
 
 		powerOff should work now.
 
-- 20210420
-
-    		rigctl working (sort of) with WSJT-X
+- 20210420 	rigctl working (sort of) with WSJT-X
 
 - 20210419	Initial commit of rigctld (doesn't currently do anything useful!)
 
