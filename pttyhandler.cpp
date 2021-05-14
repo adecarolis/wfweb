@@ -190,10 +190,15 @@ void pttyHandler::receiveDataIn(int fd) {
 #endif
 
             int lastFE = inPortData.lastIndexOf((char)0xfe);
-            if (inPortData.length() > lastFE + 2 && (quint8)inPortData[lastFE + 2] > (quint8)0xdf && (quint8)inPortData[lastFE + 2] < (quint8)0xef) {
+            if (civId == 0 && inPortData.length() > lastFE + 2 && (quint8)inPortData[lastFE + 2] > (quint8)0xdf && (quint8)inPortData[lastFE + 2] < (quint8)0xef) {
                 // This is (should be) the remotes CIV id.
                 civId = (quint8)inPortData[lastFE + 2];
                 qDebug(logSerial()) << "pty detected remote CI-V:" << hex << civId;
+            }
+            else if (civId != 0 && inPortData.length() > lastFE + 2 && (quint8)inPortData[lastFE + 2] != civId)
+            {
+                civId = (quint8)inPortData[lastFE + 2];
+                qDebug(logSerial()) << "pty remote CI-V changed:" << hex << (quint8)civId;
             }
 
             // filter 1A 05 01 12/27 = C-IV transceive command before forwarding on.
