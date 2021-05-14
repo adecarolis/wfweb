@@ -33,8 +33,8 @@ DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 DEFINES += OUTSIDE_SPEEX
 DEFINES += RANDOM_PREFIX=wf
 
-macx:INCLUDEPATH += /usr/local/include
-macx:LIBS += -L/usr/local/lib
+macx:INCLUDEPATH += /usr/local/include /opt/local/include
+macx:LIBS += -L/usr/local/lib -L/opt/local/lib
 
 macx:ICON = wfview.icns
 QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.13
