@@ -58,6 +58,7 @@ private:
 
 	struct CLIENT {
 		bool connected = false;
+		QString type;
 		QHostAddress ipAddress;
 		quint16 port;
 		QByteArray clientName;
@@ -102,7 +103,13 @@ private:
 		QVector <SEQBUFENTRY> txSeqBuf;
 		QVector <quint16> rxSeqBuf;
 		QVector <SEQBUFENTRY> rxMissing;
+		QMutex txMutex;
+		QMutex rxMutex;
+		QMutex missMutex;
+
 		quint16 seqPrefix;
+
+		quint8 civId;
 	};
 
 	void controlReceived();
@@ -136,7 +143,8 @@ private:
 
 	quint8 rigciv = 0xa2;
 
-	QMutex mutex; // Used for critical operations.
+	QMutex udpMutex; // Used for critical operations.
+	QMutex connMutex;
 
 	QList <CLIENT*> controlClients = QList<CLIENT*>();
 	QList <CLIENT*> civClients = QList<CLIENT*>();
