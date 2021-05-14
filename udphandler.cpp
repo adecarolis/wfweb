@@ -567,7 +567,7 @@ void udpCivData::send(QByteArray d)
     // qDebug(logUdp()) << "Sending: (" << d.length() << ") " << d;
     data_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
-    p.len = sizeof(p);
+    p.len = sizeof(p)+d.length();
     p.sentid = myId;
     p.rcvdid = remoteId;
     p.reply = (char)0xc1;
@@ -1300,7 +1300,7 @@ void udpBase::sendRetransmitRange(quint16 first, quint16 second, quint16 third,q
 
 void udpBase::sendTrackedPacket(QByteArray d)
 {
-    // As the radio can request retransmission of these packets, store them in a buffer (eventually!)
+    // As the radio can request retransmission of these packets, store them in a buffer
     d[6] = sendSeq & 0xff;
     d[7] = (sendSeq >> 8) & 0xff;
     SEQBUFENTRY s;

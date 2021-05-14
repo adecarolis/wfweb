@@ -53,7 +53,7 @@ private:
     unsigned char buffer[256];
 
     QString portName;
-    QSerialPort* port;
+    QSerialPort* port = Q_NULLPTR;
     qint32 baudRate;
     unsigned char stopBits;
     bool rolledBack;
@@ -67,7 +67,7 @@ private:
     void printHex(const QByteArray& pdata, bool printVert, bool printHoriz);
 
     QSocketNotifier *ptReader = nullptr;
-
+    quint8 civId=0;
 };
 
 #endif // PTTYHANDLER_H
