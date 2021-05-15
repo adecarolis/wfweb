@@ -2827,6 +2827,11 @@ void rigCommander::determineRigCaps()
         qInfo(logRig()) << "Using incomingCIVAddr: (int): " << this->civAddr << " hex: " << hex << this->civAddr;
         emit discoveredRigID(rigCaps);
     } else {
+        if(!foundRig)
+        {
+            emit discoveredRigID(rigCaps);
+            foundRig = true;
+        }
         emit haveRigID(rigCaps);
     }
 }
