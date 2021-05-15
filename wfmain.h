@@ -2,6 +2,7 @@
 #define WFMAIN_H
 
 #include <QMainWindow>
+#include <QCloseEvent>
 #include <QThread>
 #include <QString>
 #include <QVector>
@@ -437,6 +438,7 @@ private slots:
 
 private:
     Ui::wfmain *ui;
+    void closeEvent(QCloseEvent *event);
     QSettings settings;
     void loadSettings();
     void saveSettings();

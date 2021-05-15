@@ -619,6 +619,20 @@ wfmain::~wfmain()
     delete ui;
 }
 
+void wfmain::closeEvent(QCloseEvent *event)
+{
+    // Are you sure?
+    QMessageBox::StandardButton resBtn = QMessageBox::question( this, QString("Confirm close"),
+                                                                tr("Are you sure you wish to exit?\n"),
+                                                                QMessageBox::No | QMessageBox::Yes,
+                                                                QMessageBox::Yes);
+    if (resBtn == QMessageBox::Yes) {
+        QApplication::exit();
+    } else {
+        event->ignore();
+    }
+}
+
 void wfmain::openRig()
 {
     // This function is intended to handle opening a connection to the rig.
