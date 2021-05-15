@@ -2844,7 +2844,7 @@ void wfmain::on_modeSelectCombo_activated(int index)
     {
         // oops, we forgot to reset the combo box
     } else {
-        qDebug(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
+        //qDebug(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
         currentMode = (mode_kind)newMode;
         emit setMode(newMode, filterSelection);
     }
@@ -3493,11 +3493,14 @@ void wfmain::on_modeFilterCombo_activated(int index)
         //
 
     } else {
-
         unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->currentData().toUInt());
         currentModeIndex = newMode; // we track this for other functions
-
-        emit setMode(newMode, (unsigned char)filterSelection);
+        if(ui->dataModeBtn->isChecked())
+        {
+            emit setDataMode(true, (unsigned char)filterSelection);
+        } else {
+            emit setMode(newMode, (unsigned char)filterSelection);
+        }
     }
 
 }

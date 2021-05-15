@@ -687,7 +687,7 @@ void rigCommander::setDataMode(bool dataOn, unsigned char filter)
     payload.setRawData("\x1A\x06", 2);
     if(dataOn)
     {
-        payload.append("\x01", 1); // data mode on, wide bandwidth
+        payload.append("\x01", 1); // data mode on
         payload.append(filter);
 
     } else {
