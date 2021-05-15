@@ -1621,9 +1621,11 @@ void wfmain:: getInitialRigState()
     cmdOutQue.append(cmdGetSpectrumRefLevel);
     cmdOutQue.append(cmdGetDuplexMode);
 
-    cmdOutQue.append(cmdDispEnable);
-    cmdOutQue.append(cmdSpecOn);
-
+    if(rigCaps.hasSpectrum)
+    {
+        cmdOutQue.append(cmdDispEnable);
+        cmdOutQue.append(cmdSpecOn);
+    }
     cmdOutQue.append(cmdGetModInput);
     cmdOutQue.append(cmdGetModDataInput);
 
@@ -1654,8 +1656,11 @@ void wfmain:: getInitialRigState()
     cmdOutQue.append(cmdGetRitEnabled);
     cmdOutQue.append(cmdGetRitValue);
 
-    cmdOutQue.append(cmdGetSpectrumMode);
-    cmdOutQue.append(cmdGetSpectrumSpan);
+    if(rigCaps.hasSpectrum)
+    {
+        cmdOutQue.append(cmdGetSpectrumMode);
+        cmdOutQue.append(cmdGetSpectrumSpan);
+    }
 
     cmdOutQue.append(cmdNone);
     cmdOutQue.append(cmdStartRegularPolling);
@@ -4204,5 +4209,5 @@ void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
     qInfo(logSystem()) << "getting mode.";
-    getMode();
+    emit getRigID();
 }
