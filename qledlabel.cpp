@@ -17,7 +17,7 @@ QLedLabel::QLedLabel(QWidget* parent) :
 
 void QLedLabel::setState(State state)
 {
-    qDebug() << "setState" << state;
+    qInfo() << "setState" << state;
     switch (state) {
     case StateOk:
         setStyleSheet(greenSS);

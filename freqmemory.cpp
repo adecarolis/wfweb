@@ -15,7 +15,7 @@ freqMemory::freqMemory()
 
 void freqMemory::initializePresets()
 {
-    // qDebug() << "Initializing " << numPresets << " memory channels";
+    // qInfo() << "Initializing " << numPresets << " memory channels";
 
     for(unsigned int p=0; p < numPresets; p++)
     {
@@ -61,6 +61,6 @@ void freqMemory::dumpMemory()
 {
     for(unsigned int p=0; p < numPresets; p++)
     {
-        qDebug(logSystem()) << "Index: " << p << " freq: " << presets[p].frequency << " Mode: " << presets[p].mode << " isSet: " << presets[p].isSet;
+        qInfo(logSystem()) << "Index: " << p << " freq: " << presets[p].frequency << " Mode: " << presets[p].mode << " isSet: " << presets[p].isSet;
     }
 }

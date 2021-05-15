@@ -104,7 +104,6 @@ private:
     unsigned char getMode(QString modeString);
     QString getFilter(unsigned char mode, unsigned char filter);
 
-    //Interface commands;
 };
 
 

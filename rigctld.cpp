@@ -18,7 +18,7 @@ void rigCtlD::receiveFrequency(freqt freq)
 
 void rigCtlD::receiveStateInfo(rigStateStruct* state)
 {
-    qDebug("Setting rig state");
+    qInfo("Setting rig state");
     rigState = state;
 }
 
@@ -27,12 +27,12 @@ void rigCtlD::receiveStateInfo(rigStateStruct* state)
 int rigCtlD::startServer(qint16 port)
 {
     if (!this->listen(QHostAddress::Any, port)) {
-        qDebug(logRigCtlD()) << "could not start on port " << port;
+        qInfo(logRigCtlD()) << "could not start on port " << port;
         return -1;
     }
     else
     {
-        qDebug(logRigCtlD()) << "started on port " << port;
+        qInfo(logRigCtlD()) << "started on port " << port;
     }
     return 0;
 }
@@ -45,13 +45,13 @@ void rigCtlD::incomingConnection(qintptr socket) {
 
 void rigCtlD::stopServer()
 {
-    qDebug(logRigCtlD()) << "stopping server";
+    qInfo(logRigCtlD()) << "stopping server";
     emit onStopped();
 }
 
 void rigCtlD::receiveRigCaps(rigCapabilities caps)
 {
-    qDebug(logRigCtlD()) << "Got rigcaps for:" << caps.modelName;
+    qInfo(logRigCtlD()) << "Got rigcaps for:" << caps.modelName;
     this->rigCaps = caps;
 }
 
@@ -66,13 +66,13 @@ rigCtlClient::rigCtlClient(int socketId, rigCapabilities caps, rigStateStruct* s
     this->parent = parent;
     if (!socket->setSocketDescriptor(sessionId))
     {
-        qDebug(logRigCtlD()) << " error binding socket: " << sessionId;
+        qInfo(logRigCtlD()) << " error binding socket: " << sessionId;
         return;
     }
     connect(socket, SIGNAL(readyRead()), this, SLOT(socketReadyRead()), Qt::DirectConnection);
     connect(socket, SIGNAL(disconnected()), this, SLOT(socketDisconnected()), Qt::DirectConnection);
     connect(parent, SIGNAL(sendData(QString)), this, SLOT(sendData(QString)), Qt::DirectConnection);
-    qDebug(logRigCtlD()) << " session connected: " << sessionId;
+    qInfo(logRigCtlD()) << " session connected: " << sessionId;
 }
 
 void rigCtlClient::socketReadyRead()
@@ -84,7 +84,7 @@ void rigCtlClient::socketReadyRead()
     bool longReply = false;
     if (commandBuffer.endsWith('\n'))
     {
-        qDebug(logRigCtlD()) << sessionId << "command received" << commandBuffer;
+        qInfo(logRigCtlD()) << sessionId << "command received" << commandBuffer;
         commandBuffer.chop(1); // Remove \n character
         if (commandBuffer.endsWith('\r'))
         {
@@ -95,7 +95,7 @@ void rigCtlClient::socketReadyRead()
 
         if (rigState == Q_NULLPTR)
         {
-            qDebug(logRigCtlD()) << "no rigState!";
+            qInfo(logRigCtlD()) << "no rigState!";
             return;
         }
 
@@ -181,7 +181,7 @@ void rigCtlClient::socketReadyRead()
         {
             // Set mode
             if (command.length() > 1) {
-                qDebug(logRigCtlD()) << "setting mode: " << getMode(command[1]);
+                qInfo(logRigCtlD()) << "setting mode: " << getMode(command[1]);
                 emit parent->setMode(getMode(command[1]), 0x06);
             }
             sendData(QString("RPRT 0\n"));
@@ -198,7 +198,7 @@ void rigCtlClient::socketReadyRead()
 
 void rigCtlClient::socketDisconnected()
 {
-    qDebug(logRigCtlD()) << sessionId << "disconnected";
+    qInfo(logRigCtlD()) << sessionId << "disconnected";
     socket->deleteLater();
     this->deleteLater();
 }
@@ -210,14 +210,14 @@ void rigCtlClient::closeSocket()
 
 void rigCtlClient::sendData(QString data)
 {
-    qDebug(logRigCtlD()) << "Sending:" << data;
+    qInfo(logRigCtlD()) << "Sending:" << data;
     if (socket != Q_NULLPTR && socket->isValid() && socket->isOpen())
     {
         socket->write(data.toLatin1());
     }
     else
     {
-        qDebug(logRigCtlD()) << "socket not open!";
+        qInfo(logRigCtlD()) << "socket not open!";
     }
 }
 

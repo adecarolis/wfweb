@@ -23,9 +23,9 @@ commHandler::commHandler()
 
     setupComm(); // basic parameters
     openPort();
-    //qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
+    //qInfo(logSerial()) << "Serial buffer size: " << port->readBufferSize();
     //port->setReadBufferSize(1024); // manually. 256 never saw any return from the radio. why...
-    //qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
+    //qInfo(logSerial()) << "Serial buffer size: " << port->readBufferSize();
 
     connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
 }
@@ -48,9 +48,9 @@ commHandler::commHandler(QString portName, quint32 baudRate)
 
     setupComm(); // basic parameters
     openPort();
-    // qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
+    // qInfo(logSerial()) << "Serial buffer size: " << port->readBufferSize();
     //port->setReadBufferSize(1024); // manually. 256 never saw any return from the radio. why...
-    //qDebug(logSerial()) << "Serial buffer size: " << port->readBufferSize();
+    //qInfo(logSerial()) << "Serial buffer size: " << port->readBufferSize();
 
     connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
 }
@@ -79,11 +79,9 @@ void commHandler::sendDataOut(const QByteArray &writeData)
 
     mutex.lock();
 
-#ifdef QT_DEBUG
-
     qint64 bytesWritten;
-
     bytesWritten = port->write(writeData);
+
     if(bytesWritten != (qint64)writeData.size())
     {
     qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
@@ -91,10 +89,6 @@ void commHandler::sendDataOut(const QByteArray &writeData)
              << " Wrote all bytes? " << (bool) (bytesWritten == (qint64)writeData.size());
     }
 
-#else
-    port->write(writeData);
-
-#endif
     mutex.unlock();
 }
 
@@ -118,21 +112,21 @@ void commHandler::receiveDataIn()
 
             if(rolledBack)
             {
-                // qDebug(logSerial()) << "Rolled back and was successfull. Length: " << inPortData.length();
+                // qInfo(logSerial()) << "Rolled back and was successfull. Length: " << inPortData.length();
                 //printHex(inPortData, false, true);
                 rolledBack = false;
             }
         } else {
             // did not receive the entire thing so roll back:
-            // qDebug(logSerial()) << "Rolling back transaction. End not detected. Lenth: " << inPortData.length();
+            // qInfo(logSerial()) << "Rolling back transaction. End not detected. Lenth: " << inPortData.length();
             //printHex(inPortData, false, true);
             port->rollbackTransaction();
             rolledBack = true;
         }
     } else {
         port->commitTransaction(); // do not emit data, do not keep data.
-        //qDebug(logSerial()) << "Warning: received data with invalid start. Dropping data.";
-        //qDebug(logSerial()) << "THIS SHOULD ONLY HAPPEN ONCE!!";
+        //qInfo(logSerial()) << "Warning: received data with invalid start. Dropping data.";
+        //qInfo(logSerial()) << "THIS SHOULD ONLY HAPPEN ONCE!!";
         // THIS SHOULD ONLY HAPPEN ONCE!
 
         // unrecoverable. We did not receive the start and must
@@ -154,10 +148,10 @@ void commHandler::openPort()
         port->setDataTerminalReady(false);
         port->setRequestToSend(false);
         isConnected = true;
-        qDebug(logSerial()) << "Opened port: " << portName;
+        qInfo(logSerial()) << "Opened port: " << portName;
         return;
     } else {
-        qDebug(logSerial()) << "Could not open serial port " << portName << " , please restart.";
+        qInfo(logSerial()) << "Could not open serial port " << portName << " , please restart.";
         isConnected = false;
         serialError = true;
         emit haveSerialPortError(portName, "Could not open port. Please restart.");
@@ -178,7 +172,7 @@ void commHandler::closePort()
 void commHandler::debugThis()
 {
     // Do not use, function is for debug only and subject to change.
-    qDebug(logSerial()) << "comm debug called.";
+    qInfo(logSerial()) << "comm debug called.";
 
     inPortData = port->readAll();
     emit haveDataFromPort(inPortData);
