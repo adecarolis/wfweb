@@ -20,7 +20,7 @@ udpServerSetup::~udpServerSetup()
 // Slot to receive config.
 void udpServerSetup::receiveServerConfig(SERVERCONFIG conf)
 {
-    qDebug() << "Getting server config";
+    qInfo() << "Getting server config";
 
     ui->enableCheckbox->setChecked(conf.enabled);
     ui->controlPortText->setText(QString::number(conf.controlPort));
@@ -72,7 +72,7 @@ void udpServerSetup::receiveServerConfig(SERVERCONFIG conf)
 
 void udpServerSetup::accept() 
 {
-    qDebug() << "Server config stored";
+    qInfo() << "Server config stored";
     SERVERCONFIG config;
     config.enabled = ui->enableCheckbox->isChecked();
     config.controlPort = ui->controlPortText->text().toInt();
@@ -105,7 +105,7 @@ void udpServerSetup::accept()
 
 void udpServerSetup::on_usersTable_cellClicked(int row, int col)
 {
-    qDebug() << "Clicked on " << row << "," << col;
+    qInfo() << "Clicked on " << row << "," << col;
     if (row == ui->usersTable->model()->rowCount() - 1 && ui->usersTable->item(row, 0) != NULL && ui->usersTable->item(row, 1) != NULL) {
         ui->usersTable->insertRow(ui->usersTable->rowCount());
         QComboBox* comboBox = new QComboBox();

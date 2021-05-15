@@ -577,8 +577,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     freqIndicatorLine->start->setCoords(0.5,0);
     freqIndicatorLine->end->setCoords(0.5,160);
 
-#ifdef QT_DEBUG
     qDebug(logSystem()) << "Running with debugging options enabled.";
+#ifdef QT_DEBUG
     ui->debugBtn->setVisible(true);
     ui->satOpsBtn->setVisible(true);
 #else
@@ -652,7 +652,6 @@ void wfmain::openRig()
 
 
     // TODO: Use these if they are found
-#ifdef QT_DEBUG
     if(!serialPortCL.isEmpty())
     {
         qDebug(logSystem()) << "Serial port specified by user: " << serialPortCL;
@@ -664,7 +663,6 @@ void wfmain::openRig()
     {
         qDebug(logSystem()) << "Remote host name specified by user: " << hostCL;
     }
-#endif
 
     // Start rigctld
     if (prefs.enableRigCtlD) {
@@ -712,7 +710,7 @@ void wfmain::openRig()
         if( (prefs.serialPortRadio.toLower() == QString("auto")) && (serialPortCL.isEmpty()))
         {
             // Find the ICOM
-            // qDebug(logSystem()) << "Searching for serial port...";
+            // qInfo(logSystem()) << "Searching for serial port...";
             QDirIterator it73("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*A*", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator it785x("/dev/serial", QStringList() << "*IC-785*A*", QDir::Files, QDirIterator::Subdirectories);
@@ -747,7 +745,7 @@ void wfmain::openRig()
                 serialPortRig = itR8600.filePath();
             } else {
                 //fall back:
-                qDebug(logSystem()) << "Could not find Icom serial port. Falling back to OS default. Use --port to specify, or modify preferences.";
+                qInfo(logSystem()) << "Could not find Icom serial port. Falling back to OS default. Use --port to specify, or modify preferences.";
 #ifdef Q_OS_MAC
                 serialPortRig = QString("/dev/tty.SLAB_USBtoUART");
 #endif
@@ -780,12 +778,12 @@ void wfmain::openRig()
 
 void wfmain::receiveCommReady()
 {
-    qDebug(logSystem()) << "Received CommReady!! ";
+    qInfo(logSystem()) << "Received CommReady!! ";
     // taken from above:
     if(prefs.radioCIVAddr == 0)
     {
         // tell rigCommander to broadcast a request for all rig IDs.
-        // qDebug(logSystem()) << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
+        // qInfo(logSystem()) << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
         ui->statusBar->showMessage(QString("Searching CIV bus for connected radios."), 1000);
         emit getRigCIV();
         cmdOutQue.append(cmdGetRigCIV);
@@ -793,7 +791,7 @@ void wfmain::receiveCommReady()
     } else {
         // don't bother, they told us the CIV they want, stick with it.
         // We still query the rigID to find the model, but at least we know the CIV.
-        qDebug(logSystem()) << "Skipping automatic CIV, using user-supplied value of " << prefs.radioCIVAddr;
+        qInfo(logSystem()) << "Skipping automatic CIV, using user-supplied value of " << prefs.radioCIVAddr;
         getInitialRigState();
     }
 
@@ -804,7 +802,7 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
 {
     // Entry point for unknown rig being identified at the start of the program.
     //now we know what the rig ID is:
-    //qDebug(logSystem()) << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
+    //qInfo(logSystem()) << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
 
     if(rig->usingLAN())
     {
@@ -828,7 +826,7 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
 
 void wfmain::receiveSerialPortError(QString port, QString errorText)
 {
-    qDebug(logSystem()) << "wfmain: received serial port error for port: " << port << " with message: " << errorText;
+    qInfo(logSystem()) << "wfmain: received serial port error for port: " << port << " with message: " << errorText;
     ui->statusBar->showMessage(QString("ERROR: using port ").append(port).append(": ").append(errorText), 10000);
 
     // TODO: Dialog box, exit, etc
@@ -875,7 +873,7 @@ void wfmain::setDefPrefs()
 
 void wfmain::loadSettings()
 {
-    qDebug(logSystem()) << "Loading settings from " << settings.fileName();
+    qInfo(logSystem()) << "Loading settings from " << settings.fileName();
 
     // Basic things to load:
     // UI: (full screen, dark theme, draw peaks, colors, etc)
@@ -1026,7 +1024,7 @@ void wfmain::loadSettings()
             ui->audioTXCodecCombo->setCurrentIndex(f);
 
     udpPrefs.audioOutput = settings.value("AudioOutput", udpDefPrefs.audioOutput).toString();
-    qDebug(logGui()) << "Got Audio Output: " << udpPrefs.audioOutput;
+    qInfo(logGui()) << "Got Audio Output: " << udpPrefs.audioOutput;
     //ui->audioOutputCombo->setEnabled(ui->lanEnableBtn->isChecked());
     int audioOutputIndex = ui->audioOutputCombo->findText(udpPrefs.audioOutput);
     if (audioOutputIndex != -1) {
@@ -1034,7 +1032,7 @@ void wfmain::loadSettings()
     }
 
     udpPrefs.audioInput = settings.value("AudioInput", udpDefPrefs.audioInput).toString();
-    qDebug(logGui()) << "Got Audio Input: " << udpPrefs.audioInput;
+    qInfo(logGui()) << "Got Audio Input: " << udpPrefs.audioInput;
     //ui->audioInputCombo->setEnabled(ui->lanEnableBtn->isChecked());
     int audioInputIndex = ui->audioInputCombo->findText(udpPrefs.audioInput);
     if (audioInputIndex != -1) {
@@ -1107,7 +1105,7 @@ void wfmain::loadSettings()
 
 void wfmain::saveSettings()
 {
-    qDebug(logSystem()) << "Saving settings to " << settings.fileName();
+    qInfo(logSystem()) << "Saving settings to " << settings.fileName();
     // Basic things to load:
 
     // UI: (full screen, dark theme, draw peaks, colors, etc)
@@ -1273,7 +1271,7 @@ void wfmain::prepareWf()
         wf->xAxis->setVisible(false);
         rigName->setText(rigCaps.modelName);
     } else {
-        qDebug(logSystem()) << "Cannot prepare WF view without rigCaps. Waiting on this.";
+        qInfo(logSystem()) << "Cannot prepare WF view without rigCaps. Waiting on this.";
         return;
     }
 
@@ -1364,7 +1362,7 @@ void wfmain::shortcutF12()
 void wfmain::shortcutControlT()
 {
     // Transmit
-    qDebug(logSystem()) << "Activated Control-T shortcut";
+    qInfo(logSystem()) << "Activated Control-T shortcut";
     showStatusBarText(QString("Transmitting. Press Control-R to receive."));
     ui->pttOnBtn->click();
 }
@@ -1855,7 +1853,7 @@ void wfmain::runPeriodicCommands()
                 emit getMode();
                 break;
             case cmdGetDataMode:
-                // qDebug(logSystem()) << "Sending query for data mode";
+                // qInfo(logSystem()) << "Sending query for data mode";
                 emit getDataMode();
                 break;
             case cmdSetDataModeOff:
@@ -1956,7 +1954,7 @@ void wfmain::runDelayedCommand()
         switch(qdCmd)
         {
             case cmdNone:
-                //qDebug(logSystem()) << "NOOP";
+                //qInfo(logSystem()) << "NOOP";
                 break;
             case cmdGetRigID:
                 emit getRigID();
@@ -2138,14 +2136,13 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
     {
         return;
     } else {
-#ifdef QT_DEBUG
         qDebug(logSystem()) << "Rig name: " << rigCaps.modelName;
         qDebug(logSystem()) << "Has LAN capabilities: " << rigCaps.hasLan;
         qDebug(logSystem()) << "Rig ID received into wfmain: spectLenMax: " << rigCaps.spectLenMax;
         qDebug(logSystem()) << "Rig ID received into wfmain: spectAmpMax: " << rigCaps.spectAmpMax;
         qDebug(logSystem()) << "Rig ID received into wfmain: spectSeqMax: " << rigCaps.spectSeqMax;
         qDebug(logSystem()) << "Rig ID received into wfmain: hasSpectrum: " << rigCaps.hasSpectrum;
-#endif
+
         this->rigCaps = rigCaps;
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
         haveRigCaps = true;
@@ -2315,7 +2312,7 @@ void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
 void wfmain::receiveFreq(freqt freqStruct)
 {
 
-    //qDebug(logSystem()) << "HEY WE GOT A Frequency: " << freqMhz;
+    //qInfo(logSystem()) << "HEY WE GOT A Frequency: " << freqMhz;
     ui->freqLabel->setText(QString("%1").arg(freqStruct.MHzDouble, 0, 'f'));
     freq = freqStruct;
     //showStatusBarText(QString("Frequency: %1").arg(freqMhz));
@@ -2324,7 +2321,7 @@ void wfmain::receiveFreq(freqt freqStruct)
 void wfmain::receivePTTstatus(bool pttOn)
 {
     // This is the only place where amTransmitting and the transmit button text should be changed:
-    //qDebug(logSystem()) << "PTT status: " << pttOn;
+    //qInfo(logSystem()) << "PTT status: " << pttOn;
     if (pttOn && !amTransmitting)
     {
         pttLed->setState(QLedLabel::State::StateError);
@@ -2352,9 +2349,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 {
     if(!haveRigCaps)
     {
-#ifdef QT_DEBUG
         qDebug(logSystem()) << "Spectrum received, but RigID incomplete.";
-#endif
         return;
     }
 
@@ -2372,19 +2367,17 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     oldLowerFreq = startFreq;
     oldUpperFreq = endFreq;
 
-    //qDebug(logSystem()) << "start: " << startFreq << " end: " << endFreq;
+    //qInfo(logSystem()) << "start: " << startFreq << " end: " << endFreq;
     quint16 specLen = spectrum.length();
-    //qDebug(logSystem()) << "Spectrum data received at UI! Length: " << specLen;
+    //qInfo(logSystem()) << "Spectrum data received at UI! Length: " << specLen;
     //if( (specLen != 475) || (specLen!=689) )
 
     if( specLen != rigCaps.spectLenMax )
     {
-#ifdef QT_DEBUG
         qDebug(logSystem()) << "-------------------------------------------";
         qDebug(logSystem()) << "------ Unusual spectrum received, length: " << specLen;
         qDebug(logSystem()) << "------ Expected spectrum length: " << rigCaps.spectLenMax;
         qDebug(logSystem()) << "------ This should happen once at most. ";
-#endif
         return; // safe. Using these unusual length things is a problem.
     }
 
@@ -2575,7 +2568,7 @@ void wfmain::on_scopeEnableWFBtn_clicked(bool checked)
 
 void wfmain::receiveMode(unsigned char mode, unsigned char filter)
 {
-    //qDebug(logSystem()) << __func__ << "Received mode " << mode << " current mode: " << currentModeIndex;
+    //qInfo(logSystem()) << __func__ << "Received mode " << mode << " current mode: " << currentModeIndex;
 
     bool found=false;
 
@@ -2594,12 +2587,12 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
         }
         currentModeIndex = mode;
     } else {
-        qDebug(logSystem()) << __func__ << "Invalid mode " << mode << " received. ";
+        qInfo(logSystem()) << __func__ << "Invalid mode " << mode << " received. ";
     }
 
     if(!found)
     {
-        qDebug(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
+        qInfo(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
     }
 
     if( (filter) && (filter < 4)){
@@ -2858,7 +2851,7 @@ void wfmain::on_modeSelectCombo_activated(int index)
     {
         // oops, we forgot to reset the combo box
     } else {
-        //qDebug(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
+        //qInfo(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
         currentMode = (mode_kind)newMode;
         emit setMode(newMode, filterSelection);
     }
@@ -2958,6 +2951,7 @@ void wfmain::receiveBandStackReg(freqt freq, char mode, char filter, bool dataOn
 {
     // read the band stack and apply by sending out commands
 
+    qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freq.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
     emit setFrequency(freq);
     setModeVal = (unsigned char) mode;
     setFilterVal = (unsigned char) filter;
@@ -3218,7 +3212,7 @@ void wfmain::on_fRclBtn_clicked()
         issueDelayedCommand(cmdGetFreq);
         issueDelayedCommand(cmdGetMode);
     } else {
-        qDebug(logSystem()) << "Could not recall preset. Valid presets are 0 through 99.";
+        qInfo(logSystem()) << "Could not recall preset. Valid presets are 0 through 99.";
     }
 
 }
@@ -3230,13 +3224,13 @@ void wfmain::on_rfGainSlider_valueChanged(int value)
 
 void wfmain::on_afGainSlider_valueChanged(int value)
 {
-    // qDebug(logSystem()) << "Setting AF gain to " << value;
+    // qInfo(logSystem()) << "Setting AF gain to " << value;
     emit setAfGain((unsigned char)value);
 }
 
 void wfmain::receiveRfGain(unsigned char level)
 {
-    // qDebug(logSystem()) << "Receive RF  level of" << (int)level << " = " << 100*level/255.0 << "%";
+    // qInfo(logSystem()) << "Receive RF  level of" << (int)level << " = " << 100*level/255.0 << "%";
     ui->rfGainSlider->blockSignals(true);
     ui->rfGainSlider->setValue(level);
     ui->rfGainSlider->blockSignals(false);
@@ -3244,7 +3238,7 @@ void wfmain::receiveRfGain(unsigned char level)
 
 void wfmain::receiveAfGain(unsigned char level)
 {
-    // qDebug(logSystem()) << "Receive AF  level of" << (int)level << " = " << 100*level/255.0 << "%";
+    // qInfo(logSystem()) << "Receive AF  level of" << (int)level << " = " << 100*level/255.0 << "%";
     ui->afGainSlider->blockSignals(true);
     ui->afGainSlider->setValue(level);
     ui->afGainSlider->blockSignals(false);
@@ -3325,7 +3319,7 @@ void wfmain::on_saveSettingsBtn_clicked()
 
 void wfmain::receiveATUStatus(unsigned char atustatus)
 {
-    // qDebug(logSystem()) << "Received ATU status update: " << (unsigned int) atustatus;
+    // qInfo(logSystem()) << "Received ATU status update: " << (unsigned int) atustatus;
     switch(atustatus)
     {
         case 0x00:
@@ -3345,14 +3339,14 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
         case 0x02:
             // ATU tuning in-progress.
             // Add command queue to check again and update status bar
-            // qDebug(logSystem()) << "Received ATU status update that *tuning* is taking place";
+            // qInfo(logSystem()) << "Received ATU status update that *tuning* is taking place";
             showStatusBarText("ATU is Tuning...");
             cmdOutQue.append(cmdGetATUStatus); // Sometimes the first hit seems to be missed.
             cmdOutQue.append(cmdGetATUStatus);
             delayedCommand->start();
             break;
         default:
-            qDebug(logSystem()) << "Did not understand ATU status: " << (unsigned int) atustatus;
+            qInfo(logSystem()) << "Did not understand ATU status: " << (unsigned int) atustatus;
             break;
     }
 }
@@ -3667,7 +3661,7 @@ void wfmain::receiveModInput(rigInput input, bool dataOn)
         changeModLabel(input);
     }
     if(!found)
-        qDebug(logSystem()) << "Could not find modulation input: " << (int)input;
+        qInfo(logSystem()) << "Could not find modulation input: " << (int)input;
 }
 
 void wfmain::receiveACCGain(unsigned char level, unsigned char ab)
@@ -3801,7 +3795,7 @@ void wfmain::serverConfigRequested(SERVERCONFIG conf, bool store)
     }
     else {
         // Store config in file!
-        qDebug(logSystem()) << "Storing server config";
+        qInfo(logSystem()) << "Storing server config";
         serverConfig = conf;
     }
 
@@ -3896,7 +3890,7 @@ void wfmain::processChangingCurrentModLevel(unsigned char level)
     } else {
         currentIn = currentModSrc;
     }
-    //qDebug(logSystem()) << __func__ << ": setting current level: " << level;
+    //qInfo(logSystem()) << __func__ << ": setting current level: " << level;
 
     emit setModLevel(currentIn, level);
 }
@@ -4015,7 +4009,7 @@ void wfmain::receiveSpectrumSpan(freqt freqspan, bool isSub)
                ui->scopeBWCombo->setCurrentIndex(7);
                break;
            default:
-               qDebug(logSystem()) << __func__ << "Could not match: " << freqspan.MHzDouble << " to anything like: " << (int)(freqspan.MHzDouble*1E6);
+               qInfo(logSystem()) << __func__ << "Could not match: " << freqspan.MHzDouble << " to anything like: " << (int)(freqspan.MHzDouble*1E6);
                break;
        }
 
@@ -4088,7 +4082,7 @@ void wfmain::receiveRITValue(int ritValHz)
         ui->ritTuneDial->setValue(ritValHz);
         ui->ritTuneDial->blockSignals(false);
     } else {
-        qDebug(logSystem()) << "Warning: out of range RIT value received: " << ritValHz << " Hz";
+        qInfo(logSystem()) << "Warning: out of range RIT value received: " << ritValHz << " Hz";
     }
 }
 
@@ -4208,7 +4202,7 @@ void wfmain::setBandButtons()
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
-    qDebug(logSystem()) << "Debug button pressed.";
-    qDebug(logSystem()) << "getting mode.";
+    qInfo(logSystem()) << "Debug button pressed.";
+    qInfo(logSystem()) << "getting mode.";
     getMode();
 }

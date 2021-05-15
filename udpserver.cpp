@@ -6,7 +6,7 @@
 udpServer::udpServer(SERVERCONFIG config) :
     config(config)
 {
-    qDebug(logUdpServer()) << "Starting udp server";
+    qInfo(logUdpServer()) << "Starting udp server";
 }
 
 void udpServer::init()
@@ -35,24 +35,24 @@ void udpServer::init()
 
     uint32_t addr = localIP.toIPv4Address();
 
-    qDebug(logUdpServer()) << " My IP Address: " << QHostAddress(addr).toString() << " My MAC Address: " << macAddress;
+    qInfo(logUdpServer()) << " My IP Address: " << QHostAddress(addr).toString() << " My MAC Address: " << macAddress;
 
 
     controlId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (config.controlPort & 0xffff);
     civId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (config.civPort & 0xffff);
     audioId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (config.audioPort & 0xffff);
 
-    qDebug(logUdpServer()) << "Server Binding Control to: " << config.controlPort;
+    qInfo(logUdpServer()) << "Server Binding Control to: " << config.controlPort;
     udpControl = new QUdpSocket(this);
     udpControl->bind(config.controlPort); 
     QUdpSocket::connect(udpControl, &QUdpSocket::readyRead, this, &udpServer::controlReceived);
 
-    qDebug(logUdpServer()) << "Server Binding CIV to: " << config.civPort;
+    qInfo(logUdpServer()) << "Server Binding CIV to: " << config.civPort;
     udpCiv = new QUdpSocket(this);
     udpCiv->bind(config.civPort);
     QUdpSocket::connect(udpCiv, &QUdpSocket::readyRead, this, &udpServer::civReceived);
 
-    qDebug(logUdpServer()) << "Server Binding Audio to: " << config.audioPort;
+    qInfo(logUdpServer()) << "Server Binding Audio to: " << config.audioPort;
     udpAudio = new QUdpSocket(this);
     udpAudio->bind(config.audioPort);
     QUdpSocket::connect(udpAudio, &QUdpSocket::readyRead, this, &udpServer::audioReceived);
@@ -60,7 +60,7 @@ void udpServer::init()
 
 udpServer::~udpServer()
 {
-    qDebug(logUdpServer()) << "Closing udpServer";
+    qInfo(logUdpServer()) << "Closing udpServer";
 
     connMutex.lock();
 
@@ -221,7 +221,7 @@ void udpServer::controlReceived()
 
 
             current->commonCap = 0x8010;
-            qDebug(logUdpServer()) << current->ipAddress.toString() << ": New Control connection created";
+            qInfo(logUdpServer()) << current->ipAddress.toString() << ": New Control connection created";
             connMutex.lock();
             controlClients.append(current);
             connMutex.unlock();
@@ -238,7 +238,7 @@ void udpServer::controlReceived()
                 control_packet_t in = (control_packet_t)r.constData();
                 if (in->type == 0x05)
                 {
-                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'disconnect' request";
+                    qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received 'disconnect' request";
                     sendControl(current, 0x00, in->seq);
                     //current->wdTimer->stop(); // Keep watchdog running to delete stale connection.
                     deleteConnection(&controlClients, current);
@@ -265,7 +265,7 @@ void udpServer::controlReceived()
                                 current->pingSeq++;
                             }
                             else {
-                                qDebug(logUdpServer()) << current->ipAddress.toString() << ": got out of sequence ping reply. Got: " << in->seq << " expecting: " << current->pingSeq;
+                                qInfo(logUdpServer()) << current->ipAddress.toString() << ": got out of sequence ping reply. Got: " << in->seq << " expecting: " << current->pingSeq;
                             }
                         }
                     }
@@ -282,13 +282,13 @@ void udpServer::controlReceived()
                 current->identb = in->identb;
                 if (in->res == 0x02) {
                     // Request for new token
-                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received create token request";
+                    qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received create token request";
                     sendCapabilities(current);
                     sendConnectionInfo(current);
                 }
                 else if (in->res == 0x01) {
                     // Token disconnect
-                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received token disconnect request";
+                    qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received token disconnect request";
                     sendTokenResponse(current, in->res);
                 }
                 else if (in->res == 0x04) {
@@ -298,7 +298,7 @@ void udpServer::controlReceived()
                     sendConnectionInfo(current);
                 }
                 else {
-                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received token request";
+                    qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received token request";
                     sendTokenResponse(current, in->res);
                 }
                 break;
@@ -306,7 +306,7 @@ void udpServer::controlReceived()
             case (LOGIN_SIZE):
             {
                 login_packet_t in = (login_packet_t)r.constData();
-                qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received 'login'";
+                qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received 'login'";
                 bool userOk = false;
                 foreach(SERVERUSER user, config.users)
                 {
@@ -331,11 +331,11 @@ void udpServer::controlReceived()
                 current->tokenTx =(quint8)rand() | (quint8)rand() << 8 | (quint8)rand() << 16 | (quint8)rand() << 24;
 
                 if (userOk) {
-                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": User " << current->user.username << " login OK";
+                    qInfo(logUdpServer()) << current->ipAddress.toString() << ": User " << current->user.username << " login OK";
                     sendLoginResponse(current, true);
                 }
                 else {
-                    qDebug(logUdpServer()) << current->ipAddress.toString() << ": Incorrect username/password";
+                    qInfo(logUdpServer()) << current->ipAddress.toString() << ": Incorrect username/password";
 
                     sendLoginResponse(current, false);
                 }
@@ -344,7 +344,7 @@ void udpServer::controlReceived()
             case (CONNINFO_SIZE):
             {
                 conninfo_packet_t in = (conninfo_packet_t)r.constData();
-                qDebug(logUdpServer()) << current->ipAddress.toString() << ": Received request for radio connection";
+                qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received request for radio connection";
                 // Request to start audio and civ!
                 current->isStreaming = true;
                 current->rxSeq = in->seq;
@@ -359,7 +359,7 @@ void udpServer::controlReceived()
                 sendStatus(current);
                 current->authInnerSeq = 0x00; 
                 sendConnectionInfo(current);
-                qDebug(logUdpServer()) << current->ipAddress.toString() << ": rxCodec:" << current->rxCodec << " txCodec:" << current->txCodec <<
+                qInfo(logUdpServer()) << current->ipAddress.toString() << ": rxCodec:" << current->rxCodec << " txCodec:" << current->txCodec <<
                     " rxSampleRate" << current->rxSampleRate <<
                     " txSampleRate" << current->rxSampleRate <<
                     " txBufferLen" << current->txBufferLen;
@@ -504,7 +504,7 @@ void udpServer::civReceived()
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
             current->retransmitTimer->start(RETRANSMIT_PERIOD);
 
-            qDebug(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): New connection created";
+            qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): New connection created";
             connMutex.lock();
             civClients.append(current);
             connMutex.unlock();
@@ -537,7 +537,7 @@ void udpServer::civReceived()
                                 current->pingSeq++;
                             }
                             else {
-                                qDebug(logUdpServer()) << current->ipAddress.toString() << ": got out of sequence ping reply. Got: " << in->seq << " expecting: " << current->pingSeq;
+                                qInfo(logUdpServer()) << current->ipAddress.toString() << ": got out of sequence ping reply. Got: " << in->seq << " expecting: " << current->pingSeq;
                             }
                         }
                     }
@@ -555,22 +555,22 @@ void udpServer::civReceived()
                         {
                             // Strip all '0xFE' command preambles first:
                             int lastFE = r.lastIndexOf((char)0xfe);
-                            //qDebug(logUdpServer()) << "Got:" << r.mid(lastFE);
+                            //qInfo(logUdpServer()) << "Got:" << r.mid(lastFE);
                             if (current->civId == 0 && r.length() > lastFE + 2 && (quint8)r[lastFE + 2] > (quint8)0xdf && (quint8)r[lastFE + 2] < (quint8)0xef) {
                                 // This is (should be) the remotes CIV id.
                                 current->civId = (quint8)r[lastFE + 2];
-                                qDebug(logUdpServer()) << current->ipAddress.toString() << ": Detected remote CI-V:" << hex << current->civId;
+                                qInfo(logUdpServer()) << current->ipAddress.toString() << ": Detected remote CI-V:" << hex << current->civId;
                             }
                             else if (current->civId != 0 && r.length() > lastFE + 2 && (quint8)r[lastFE + 2] != current->civId)
                             {
                                 current->civId = (quint8)r[lastFE + 2];
-                                qDebug(logUdpServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << hex << current->civId;
+                                qInfo(logUdpServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << hex << current->civId;
                             }
 
                             emit haveDataFromServer(r.mid(0x15));
                         }
                         else {
-                            qDebug(logUdpServer()) << current->ipAddress.toString() << ": Datalen mismatch " << quint16(in->datalen + 0x15) << ":" << (quint16)in->len;
+                            qInfo(logUdpServer()) << current->ipAddress.toString() << ": Datalen mismatch " << quint16(in->datalen + 0x15) << ":" << (quint16)in->len;
 
                         }
                     }
@@ -632,7 +632,7 @@ void udpServer::audioReceived()
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
             current->retransmitTimer->start(RETRANSMIT_PERIOD);
             current->seqPrefix = 0;
-            qDebug(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): New connection created";
+            qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): New connection created";
             connMutex.lock();
             audioClients.append(current);
             connMutex.unlock();
@@ -662,7 +662,7 @@ void udpServer::audioReceived()
                                 current->pingSeq++;
                             }
                             else {
-                                qDebug(logUdpServer()) << current->ipAddress.toString() << ": got out of sequence ping reply. Got: " << in->seq << " expecting: " << current->pingSeq;
+                                qInfo(logUdpServer()) << current->ipAddress.toString() << ": got out of sequence ping reply. Got: " << in->seq << " expecting: " << current->pingSeq;
                             }
                         }
                     }
@@ -695,7 +695,7 @@ void udpServer::audioReceived()
                         tempAudio.time = QTime::currentTime();;
                         tempAudio.sent = 0;
                         tempAudio.datain = r.mid(0x18);
-                        //qDebug(logUdpServer()) << "sending tx audio " << in->seq;
+                        //qInfo(logUdpServer()) << "sending tx audio " << in->seq;
                         emit haveAudioData(tempAudio);
                     }
                 }
@@ -718,7 +718,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
     if (r.length() < 0x10)
     {
         // Invalid packet
-        qDebug(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Invalid packet received, len: " << r.length();
+        qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Invalid packet received, len: " << r.length();
         return;
     }
 
@@ -728,13 +728,13 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
         {
             control_packet_t in = (control_packet_t)r.constData();
             if (in->type == 0x03) {
-                qDebug(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'are you there'";
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'are you there'";
                 current->remoteId = in->sentid;
                 sendControl(current, 0x04, in->seq);
             } // This is This is "Are you ready" in response to "I am here".
             else if (in->type == 0x06)
             {
-                qDebug(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'Are you ready'";
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'Are you ready'";
                 current->remoteId = in->sentid;
                 sendControl(current, 0x06, in->seq);
                 if (current->idleTimer != Q_NULLPTR && !current->idleTimer->isActive()) {
@@ -744,7 +744,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
             else if (in->type == 0x01)
             {
                 // Single packet request
-                qDebug(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'retransmit' request for " << in->seq;
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'retransmit' request for " << in->seq;
 
                 auto match = std::find_if(current->txSeqBuf.begin(), current->txSeqBuf.end(), [&cs = in->seq](SEQBUFENTRY& s) {
                     return s.seqNum == cs;
@@ -753,7 +753,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
                 if (match != current->txSeqBuf.end() && match->retransmitCount < 5) {
                     // Found matching entry?
                     // Don't constantly retransmit the same packet, give-up eventually
-                    qDebug(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending retransmit of " << hex << match->seqNum;
+                    qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending retransmit of " << hex << match->seqNum;
                     match->retransmitCount++;
                     udpMutex.lock();
                     current->socket->writeDatagram(match->data, current->ipAddress, current->port);
@@ -782,7 +782,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
                 return s.seqNum == cs;
             });
             if (match == current->txSeqBuf.end()) {
-                qDebug(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Requested packet " << hex << in->seq << " not found";
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Requested packet " << hex << in->seq << " not found";
                 // Just send idle packet.
                 sendControl(current, 0, in->seq);
             }
@@ -790,7 +790,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
             {
                 // Found matching entry?
                 // Send "untracked" as it has already been sent once.
-                qDebug(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending retransmit of " << hex << match->seqNum;
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending retransmit of " << hex << match->seqNum;
                 match->retransmitCount++;
                 udpMutex.lock();
                 current->socket->writeDatagram(match->data, current->ipAddress, current->port);
@@ -802,7 +802,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
     else if (in->type == 0x00 && in->seq != 0x00)
     {
         //if (current->type == "CIV") {
-        //    qDebug(logUdpServer()) << "Got:" << in->seq;
+        //    qInfo(logUdpServer()) << "Got:" << in->seq;
         //}
         current->rxMutex.lock();
         if (current->rxSeqBuf.isEmpty())
@@ -814,7 +814,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
             std::sort(current->rxSeqBuf.begin(), current->rxSeqBuf.end());
             if (in->seq < current->rxSeqBuf.front())
             {
-                qDebug(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): ******* seq number may have rolled over ****** previous highest: " << hex << current->rxSeqBuf.back() << " current: " << hex << in->seq;
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): ******* seq number may have rolled over ****** previous highest: " << hex << current->rxSeqBuf.back() << " current: " << hex << in->seq;
                 // Looks like it has rolled over so clear buffer and start again.
                 current->rxSeqBuf.clear();
                 current->rxMutex.unlock(); // Must unlock the Mutex!
@@ -831,7 +831,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
                 auto s = std::find_if(current->rxMissing.begin(), current->rxMissing.end(), [&cs = in->seq](SEQBUFENTRY& s) { return s.seqNum == cs; });
                 if (s != current->rxMissing.end())
                 {
-                    qDebug(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Missing SEQ has been received! " << hex << in->seq;
+                    qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Missing SEQ has been received! " << hex << in->seq;
                     s = current->rxMissing.erase(s);
                 }
                 current->missMutex.unlock();
@@ -846,7 +846,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
 void udpServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
 {
 
-    //qDebug(logUdpServer()) << c->ipAddress.toString() << ": Sending control packet: " << type;
+    //qInfo(logUdpServer()) << c->ipAddress.toString() << ": Sending control packet: " << type;
 
     control_packet p;
     memset(p.packet, 0x0, CONTROL_SIZE); // We can't be sure it is initialized with 0x00!
@@ -892,13 +892,13 @@ void udpServer::sendPing(QList<CLIENT*> *l,CLIENT* c, quint16 seq, bool reply)
 
     if (c->lastHeard.secsTo(now) > STALE_CONNECTION)
     {
-        qDebug(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Deleting stale connection ";
+        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Deleting stale connection ";
         deleteConnection(l, c);
         return;
     }
 
 
-    //qDebug(logUdpServer()) << c->ipAddress.toString() << ": Sending Ping";
+    //qInfo(logUdpServer()) << c->ipAddress.toString() << ": Sending Ping";
 
     quint32 pingTime = 0;
     if (reply) {
@@ -932,7 +932,7 @@ void udpServer::sendPing(QList<CLIENT*> *l,CLIENT* c, quint16 seq, bool reply)
 
 void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
 {
-    qDebug(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Login response: " << c->txSeq;
+    qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Login response: " << c->txSeq;
 
     login_response_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -982,7 +982,7 @@ void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
 
 void udpServer::sendCapabilities(CLIENT* c)
 {
-    qDebug(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Capabilities :" << c->txSeq;
+    qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Capabilities :" << c->txSeq;
 
     capabilities_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -1101,7 +1101,7 @@ void udpServer::sendCapabilities(CLIENT* c)
 // Also used to display currently connected used information.
 void udpServer::sendConnectionInfo(CLIENT* c)
 {
-    qDebug(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending ConnectionInfo :" << c->txSeq;
+    qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending ConnectionInfo :" << c->txSeq;
     conninfo_packet p;
     memset(p.packet, 0x0, sizeof(p));
     p.len = sizeof(p);
@@ -1152,7 +1152,7 @@ void udpServer::sendConnectionInfo(CLIENT* c)
 
 void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
 {
-    qDebug(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Token response for type: " << type;
+    qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Token response for type: " << type;
 
     token_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -1194,7 +1194,7 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
 void udpServer::watchdog(CLIENT* c)
 {
     c->txMutex.lock();
-    //qDebug(logUdpServer()) << c->ipAddress.toString() << ":" << c->port << ":Buffers tx:"<< c->txSeqBuf.length() << " rx:" << c->rxSeqBuf.length();
+    //qInfo(logUdpServer()) << c->ipAddress.toString() << ":" << c->port << ":Buffers tx:"<< c->txSeqBuf.length() << " rx:" << c->rxSeqBuf.length();
     // Erase old entries from the tx packet buffer. Keep the first 100 sent packets as we seem to get asked for these?
     if (!c->txSeqBuf.isEmpty())
     {
@@ -1226,7 +1226,7 @@ void udpServer::watchdog(CLIENT* c)
 void udpServer::sendStatus(CLIENT* c)
 {
 
-    qDebug(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Status";
+    qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Status";
 
     status_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -1271,7 +1271,7 @@ void udpServer::sendStatus(CLIENT* c)
 void udpServer::dataForServer(QByteArray d)
 {
 
-    //qDebug(logUdpServer()) << "Server got:" << d;
+    //qInfo(logUdpServer()) << "Server got:" << d;
     foreach(CLIENT * client, civClients)
     {
         int lastFE = d.lastIndexOf((quint8)0xfe);
@@ -1295,7 +1295,7 @@ void udpServer::dataForServer(QByteArray d)
             client->txSeqBuf.last().data = t;
             client->txMutex.unlock();
 
-            //qDebug(logUdpServer()) << "Sending:" << d;
+            //qInfo(logUdpServer()) << "Sending:" << d;
             udpMutex.lock();
             client->socket->writeDatagram(t, client->ipAddress, client->port);
             udpMutex.unlock();
@@ -1327,7 +1327,7 @@ void udpServer::sendRxAudio()
 
 void udpServer::receiveAudioData(const audioPacket &d)
 {
-    //qDebug(logUdpServer()) << "Server got:" << d.data.length();
+    //qInfo(logUdpServer()) << "Server got:" << d.data.length();
     foreach(CLIENT * client, audioClients)
     {
         if (client != Q_NULLPTR && client->connected) {
@@ -1383,12 +1383,12 @@ void udpServer::sendRetransmitRequest(CLIENT *c)
             {
                 for (quint16 j = *i + 1; j < *(i + 1); j++)
                 {
-                    qDebug(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Found missing seq between " << *i << " : " << *(i + 1) << " (" << j << ")";
+                    qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Found missing seq between " << *i << " : " << *(i + 1) << " (" << j << ")";
                     auto s = std::find_if(c->rxMissing.begin(), c->rxMissing.end(), [&cs = j](SEQBUFENTRY& s) { return s.seqNum == cs; });
                     if (s == c->rxMissing.end())
                     {
                         // We haven't seen this missing packet before
-                        qDebug(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Adding to missing buffer (len="<< c->rxMissing.length() << "): " << j;
+                        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Adding to missing buffer (len="<< c->rxMissing.length() << "): " << j;
                         c->rxMissing.append(SEQBUFENTRY());
                         c->rxMissing.last().seqNum = j;
                         c->rxMissing.last().retransmitCount = 0;
@@ -1409,7 +1409,7 @@ void udpServer::sendRetransmitRequest(CLIENT *c)
                 }
             }
             else {
-                qDebug(logUdpServer()) << c->ipAddress.toString() << ": Too many missing, flushing buffers";
+                qInfo(logUdpServer()) << c->ipAddress.toString() << ": Too many missing, flushing buffers";
                 c->rxMutex.lock();
                 c->rxSeqBuf.clear();
                 c->rxMutex.unlock();
@@ -1443,14 +1443,14 @@ void udpServer::sendRetransmitRequest(CLIENT *c)
         if (missingSeqs.length() == 4) // This is just a single missing packet so send using a control.
         {
             p.seq = (missingSeqs[0] & 0xff) | (quint16)(missingSeqs[1] << 8);
-            qDebug(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): sending request for missing packet : " << hex << p.seq;
+            qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): sending request for missing packet : " << hex << p.seq;
             udpMutex.lock();
             c->socket->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), c->ipAddress, c->port);
             udpMutex.unlock();
         }
         else
         {
-            qDebug(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): sending request for multiple missing packets : " << missingSeqs.toHex();
+            qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): sending request for multiple missing packets : " << missingSeqs.toHex();
             missingSeqs.insert(0, p.packet, sizeof(p.packet));
             udpMutex.lock();
             c->socket->writeDatagram(missingSeqs, c->ipAddress, c->port);
@@ -1472,7 +1472,7 @@ void udpServer::deleteConnection(QList<CLIENT*> *l, CLIENT* c)
 {
     connMutex.lock();
 
-    qDebug(logUdpServer()) << "Deleting connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
+    qInfo(logUdpServer()) << "Deleting connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
     if (c->idleTimer != Q_NULLPTR) {
         c->idleTimer->stop();
         delete c->idleTimer;
@@ -1503,7 +1503,7 @@ void udpServer::deleteConnection(QList<CLIENT*> *l, CLIENT* c)
     }
     delete c; // Is this needed or will the erase have done it?
     c = Q_NULLPTR;
-    qDebug(logUdpServer()) << "Current Number of clients connected: " << l->length();
+    qInfo(logUdpServer()) << "Current Number of clients connected: " << l->length();
 
     if (l->length() == 0) {
 
