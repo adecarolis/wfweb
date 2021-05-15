@@ -1711,7 +1711,7 @@ void wfmain::setDefaultColors()
     defaultColors.Dark_PlotBasePen = QColor(Qt::white);
     defaultColors.Dark_PlotTickPen = QColor(Qt::white);
     defaultColors.Dark_PeakPlotLine = QColor(Qt::yellow);
-    defaultColors.Dark_TuningLine = QColor(Qt::blue);
+    defaultColors.Dark_TuningLine = QColor(Qt::cyan);
 
     defaultColors.Light_PlotBackground = QColor(255,255,255,255);
     defaultColors.Light_PlotAxisPen = QColor(200,200,200,255);
