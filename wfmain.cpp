@@ -619,6 +619,20 @@ wfmain::~wfmain()
     delete ui;
 }
 
+void wfmain::closeEvent(QCloseEvent *event)
+{
+    // Are you sure?
+    QMessageBox::StandardButton resBtn = QMessageBox::question( this, QString("Confirm close"),
+                                                                tr("Are you sure you wish to exit?\n"),
+                                                                QMessageBox::No | QMessageBox::Yes,
+                                                                QMessageBox::Yes);
+    if (resBtn == QMessageBox::Yes) {
+        QApplication::exit();
+    } else {
+        event->ignore();
+    }
+}
+
 void wfmain::openRig()
 {
     // This function is intended to handle opening a connection to the rig.
@@ -1711,7 +1725,7 @@ void wfmain::setDefaultColors()
     defaultColors.Dark_PlotBasePen = QColor(Qt::white);
     defaultColors.Dark_PlotTickPen = QColor(Qt::white);
     defaultColors.Dark_PeakPlotLine = QColor(Qt::yellow);
-    defaultColors.Dark_TuningLine = QColor(Qt::blue);
+    defaultColors.Dark_TuningLine = QColor(Qt::cyan);
 
     defaultColors.Light_PlotBackground = QColor(255,255,255,255);
     defaultColors.Light_PlotAxisPen = QColor(200,200,200,255);
@@ -2844,7 +2858,7 @@ void wfmain::on_modeSelectCombo_activated(int index)
     {
         // oops, we forgot to reset the combo box
     } else {
-        qDebug(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
+        //qDebug(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
         currentMode = (mode_kind)newMode;
         emit setMode(newMode, filterSelection);
     }
@@ -3493,11 +3507,14 @@ void wfmain::on_modeFilterCombo_activated(int index)
         //
 
     } else {
-
         unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->currentData().toUInt());
         currentModeIndex = newMode; // we track this for other functions
-
-        emit setMode(newMode, (unsigned char)filterSelection);
+        if(ui->dataModeBtn->isChecked())
+        {
+            emit setDataMode(true, (unsigned char)filterSelection);
+        } else {
+            emit setMode(newMode, (unsigned char)filterSelection);
+        }
     }
 
 }
