@@ -2140,8 +2140,8 @@ void rigCommander::parseBandStackReg()
     // "INDEX: 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 "
     // "DATA:  1a 01 05 01 60 03 23 14 00 00 03 10 00 08 85 00 08 85 fd "
 
-    //char band = payloadIn[2];
-    //char regCode = payloadIn[3];
+    char band = payloadIn[2];
+    char regCode = payloadIn[3];
     freqt freqs = parseFrequency(payloadIn, 7);
     //float freq = (float)freqs.MHzDouble;
 
@@ -2156,7 +2156,7 @@ void rigCommander::parseBandStackReg()
     // 14, 15 tone squelch freq setting
     // if more, memory name (label) ascii
 
-    //qDebug(logRig()) << "band: " << QString("%1").arg(band) << " regCode: " << (QString)regCode << " freq float: " << freq;
+    qDebug(logRig()) << "BSR in rigCommander: band: " << QString("%1").arg(band) << " regCode: " << (QString)regCode << " freq Hz: " << freqs.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << " data: " << dataOn;
     //qDebug(logRig()) << "mode: " << (QString)mode << " dataOn: " << dataOn;
     //qDebug(logRig()) << "Freq Hz: " << freqs.Hz;
 

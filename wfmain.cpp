@@ -2958,6 +2958,7 @@ void wfmain::receiveBandStackReg(freqt freq, char mode, char filter, bool dataOn
 {
     // read the band stack and apply by sending out commands
 
+    qDebug(logSystem()) << __func__ << "BSR received into main: Freq: " << freq.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
     emit setFrequency(freq);
     setModeVal = (unsigned char) mode;
     setFilterVal = (unsigned char) filter;
