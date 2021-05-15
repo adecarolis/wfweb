@@ -1,6 +1,27 @@
 # CHANGELOG
 
+
+
+- 20210515 	Small fixes for rigctld
+
 - 20210514	Make UDP port textboxes expanding.
+
+    		Selecting an antenna now sets that antenna for TX and RX.
+                
+    		wfview now closes when the main window is closed.
+                
+    		Filter selection now checks for data mode.
+                
+    		Preliminary IC-7000 support. TODO: Input selection, modes, filters,
+    		reported bug with frequency input and s-meter.
+                
+    		Moved the power buttons.
+
+    		Cyan for the tuning line.
+
+    		Resize UDP port text boxes (again!)
+
+    		ake UDP port textboxes expanding.
 
     		Fixes to UDP server
 
