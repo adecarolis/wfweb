@@ -1339,7 +1339,7 @@ void rigCommander::parseLevels()
                 break;
 
             default:
-                qInfo(logRig()) << "Unknown meter level (0x15) received at register " << payloadIn[1] << " with level " << level;
+                qInfo(logRig()) << "Unknown meter level (0x15) received at register " << (unsigned int) payloadIn[1] << " with level " << level;
                 break;
         }
 
