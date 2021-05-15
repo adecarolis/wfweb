@@ -20,6 +20,7 @@ enum model_kind {
     model7610 = 0x98,
     model7700 = 0x74,
     model7800 = 0x6A,
+    model7000 = 0x70,
     model7850 = 0x8E,
     model9700 = 0xA2,
     model705 = 0xA4,

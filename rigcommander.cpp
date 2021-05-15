@@ -2726,6 +2726,25 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(band630m);
             rigCaps.bands.push_back(band2200m);
             break;
+        case model7000:
+            rigCaps.modelName = QString("IC-7000");
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.append(inputACC);
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasATU = true;
+            rigCaps.hasCTCSS = true;
+            rigCaps.hasDTCS = true;
+            rigCaps.attenuators.push_back('\x12');
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.bands = standardHF;
+            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.bsr[band2m] = 0x11;
+            rigCaps.bsr[band70cm] = 0x12;
+            rigCaps.bsr[bandGen] = 0x13;
+            break;
         case model7100:
             rigCaps.modelName = QString("IC-7100");
             rigCaps.hasSpectrum = false;
