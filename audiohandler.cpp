@@ -828,7 +828,7 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 
 void audioHandler::setVolume(unsigned char volume)
 {
-	qDebug(logAudio()) << (isInput ? "Input" : "Output") << "setVolume: " << volume << "(" << (qreal)(volume/255.0) << ")";
+	//qDebug(logAudio()) << (isInput ? "Input" : "Output") << "setVolume: " << volume << "(" << (qreal)(volume/255.0) << ")";
 	if (audioOutput != Q_NULLPTR) {
 		audioOutput->setVolume((qreal)(volume / 255.0));
 	}
