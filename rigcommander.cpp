@@ -3230,7 +3230,7 @@ void rigCommander::setAntenna(unsigned char ant)
 {
     QByteArray payload("\x12");
     payload.append(ant);
-    payload.append("\x01"); // "on", presumably the other ones turn off...
+    payload.append("\x00"); // 0x00 = use for TX and RX
     prepDataAndSend(payload);
 }
 
