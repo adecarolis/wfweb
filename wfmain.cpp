@@ -175,11 +175,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
         portList.append(serialPortInfo.portName());
 #if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
         ui->serialDeviceListCombo->addItem(QString("/dev/")+serialPortInfo.portName(), i++);
+        ui->serialDeviceListCombo->addItem("Manual...", 256);
 #else
         ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
 #endif
     }
-    ui->serialDeviceListCombo->addItem("Manual...", 256);
     ui->serialDeviceListCombo->blockSignals(false);
 
     ui->vspCombo->blockSignals(true);
@@ -374,6 +374,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     qRegisterMetaType<meterKind>();
     qRegisterMetaType<spectrumMode>();
     qRegisterMetaType<freqt>();
+    qRegisterMetaType<audioPacket>();
+
 
     connect(this, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
     connect(this, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
