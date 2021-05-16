@@ -16,6 +16,8 @@ udpHandler::udpHandler(udpPreferences prefs) :
     txCodec(prefs.audioTXCodec),
     audioInputPort(prefs.audioInput),
     audioOutputPort(prefs.audioOutput),
+    audioInputDevice(prefs.audioInputDevice),
+    audioOutputDevice(prefs.audioOutputDevice),
     resampleQuality(prefs.resampleQuality)
 {
 
@@ -313,7 +315,7 @@ void udpHandler::dataReceived()
                         }
                         else {
                             civ = new udpCivData(localIP, radioIP, civPort);
-                            audio = new udpAudio(localIP, radioIP, audioPort, rxLatency, txLatency, rxSampleRate, rxCodec, txSampleRate, txCodec, audioOutputPort, audioInputPort,resampleQuality);
+                            audio = new udpAudio(localIP, radioIP, audioPort, rxLatency, txLatency, rxSampleRate, rxCodec, txSampleRate, txCodec, audioOutputPort, audioOutputDevice, audioInputPort,audioInputDevice, resampleQuality);
 
                             QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
                             QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
@@ -669,7 +671,7 @@ void udpCivData::dataReceived()
 
 
 // Audio stream
-udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QString outputPort, QString inputPort,quint8 resampleQuality)
+udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QString outputPort, int outputDevice, QString inputPort, int inputDevice, quint8 resampleQuality)
 {
     qInfo(logUdp()) << "Starting udpAudio";
     this->localIP = local;
@@ -714,7 +716,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     rxAudioThread->start();
 
-    connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString, quint8)));
+    connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QString,int, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString, int, quint8)));
 
     qRegisterMetaType<audioPacket>();
     connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
@@ -736,7 +738,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     
     txAudioThread->start();
     
-    connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool,QString,quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString,quint8)));
+    connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool,QString, int,quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString,int,quint8)));
     connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
     sendControl(false, 0x03, 0x00); // First connect packet
@@ -745,8 +747,8 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
     pingTimer->start(PING_PERIOD); // send ping packets every 100ms
 
-    emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, txLatency, txIsUlawCodec, true, inputPort,resampleQuality);
-    emit setupRxAudio(rxNumSamples, rxChannelCount, rxSampleRate, txLatency, rxIsUlawCodec, false, outputPort,resampleQuality);
+    emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, txLatency, txIsUlawCodec, true, inputPort,inputDevice, resampleQuality);
+    emit setupRxAudio(rxNumSamples, rxChannelCount, rxSampleRate, txLatency, rxIsUlawCodec, false, outputPort,outputDevice, resampleQuality);
 
     watchdogTimer = new QTimer();
     connect(watchdogTimer, &QTimer::timeout, this, &udpAudio::watchdog);

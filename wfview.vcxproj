@@ -374,6 +374,7 @@
     </QtUic>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="audiohandler_rt.cpp" />
     <ClCompile Include="calibrationwindow.cpp" />
     <ClCompile Include="commhandler.cpp" />
     <ClCompile Include="freqmemory.cpp" />

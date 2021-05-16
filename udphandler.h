@@ -42,6 +42,8 @@ struct udpPreferences {
 	QString password;
 	QString audioOutput;
 	QString audioInput;
+	int audioInputDevice;
+	int audioOutputDevice;
 	quint16 audioRXLatency;
 	quint16 audioTXLatency;
 	quint16 audioRXSampleRate;
@@ -170,14 +172,14 @@ class udpAudio : public udpBase
 	Q_OBJECT
 
 public:
-	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QString outputPort, QString inputPort,quint8 resampleQuality);
+	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QString outputPort, int outputDevice, QString inputPort, int inputDevice, quint8 resampleQuality);
 	~udpAudio();
 
 signals:
 	void haveAudioData(audioPacket data);
 
-	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QString port, quint8 resampleQuality);
-	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QString port, quint8 resampleQuality);
+	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QString port, int device, quint8 resampleQuality);
+	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QString port, int device, quint8 resampleQuality);
 
 	void haveChangeLatency(quint16 value);
 	void haveSetVolume(unsigned char value);
@@ -284,6 +286,8 @@ private:
 
 	QString audioInputPort;
 	QString audioOutputPort;
+	int audioInputDevice;
+	int audioOutputDevice;
 	
 	quint8 resampleQuality;
 

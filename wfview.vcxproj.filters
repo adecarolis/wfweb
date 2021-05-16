@@ -120,6 +120,9 @@
     <ClCompile Include="rtaudio\RtAudio.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="audiohandler_rt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="commhandler.h">

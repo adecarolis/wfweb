@@ -189,25 +189,24 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     for (unsigned int i = 0; i < devices; i++) {
         info = audio.getDeviceInfo(i);
         if (info.outputChannels > 0) {
-            qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "Output Device : " << QString::fromStdString(info.name);
-                ui->audioOutputCombo->addItem(QString::fromStdString(info.name),i);
+            qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name);
+            ui->audioOutputCombo->addItem(QString::fromStdString(info.name), i);
         }
-    }
-    for (unsigned int i = 0; i < devices; i++) {
-        info = audio.getDeviceInfo(i);
-        if (info.inputChannels > 0) {
-            qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "Input Device  : " << QString::fromStdString(info.name);
+        else if (info.inputChannels > 0) {
+            qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name);
             ui->audioInputCombo->addItem(QString::fromStdString(info.name), i);
         }
     }
 #else if defined(USE_QTAUDIO)
     const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
-    for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
-        ui->audioOutputCombo->addItem(deviceInfo.deviceName());
+    for (const QAudioDeviceInfo deviceInfo : audioOutputs) {
+        qInfo(logAudio()) << "Output Device : " << deviceInfo.deviceName();
+        ui->audioOutputCombo->addItem(deviceInfo.deviceName(), 0);
     }
     const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
-    for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
-        ui->audioInputCombo->addItem(deviceInfo.deviceName());
+    for (const QAudioDeviceInfo deviceInfo : audioInputs) {
+        qInfo(logAudio()) << "Input Device  : " << deviceInfo.deviceName();
+        ui->audioInputCombo->addItem(deviceInfo.deviceName(), 0);
     }
 #endif
 
@@ -911,6 +910,8 @@ void wfmain::setDefPrefs()
     udpDefPrefs.audioOutput = QAudioDeviceInfo::defaultOutputDevice().deviceName();
     udpDefPrefs.audioInput = QAudioDeviceInfo::defaultInputDevice().deviceName();
 #endif
+    udpDefPrefs.audioInputDevice = 0;
+    udpDefPrefs.audioOutputDevice = 0;
     udpDefPrefs.audioRXLatency = 150;
     udpDefPrefs.audioTXLatency = 150;
     udpDefPrefs.audioRXSampleRate = 48000;
@@ -1079,6 +1080,7 @@ void wfmain::loadSettings()
     int audioOutputIndex = ui->audioOutputCombo->findText(udpPrefs.audioOutput);
     if (audioOutputIndex != -1) {
         ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
+        udpPrefs.audioOutputDevice = ui->audioOutputCombo->itemData(audioOutputIndex).toInt();
     }
 
     udpPrefs.audioInput = settings.value("AudioInput", udpDefPrefs.audioInput).toString();
@@ -1087,6 +1089,7 @@ void wfmain::loadSettings()
     int audioInputIndex = ui->audioInputCombo->findText(udpPrefs.audioInput);
     if (audioInputIndex != -1) {
         ui->audioInputCombo->setCurrentIndex(audioInputIndex);
+        udpPrefs.audioInputDevice = ui->audioInputCombo->itemData(audioInputIndex).toInt();
     }
 
     udpPrefs.resampleQuality = settings.value("ResampleQuality", udpDefPrefs.resampleQuality).toInt();
@@ -3465,14 +3468,16 @@ void wfmain::on_passwordTxt_textChanged(QString text)
     udpPrefs.password = text;
 }
 
-void wfmain::on_audioOutputCombo_currentIndexChanged(QString text)
+void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
 {
-    udpPrefs.audioOutput = text;
+    udpPrefs.audioOutput = ui->audioOutputCombo->currentText();
+    udpPrefs.audioOutputDevice = ui->audioOutputCombo->itemData(value).toInt();
 }
 
-void wfmain::on_audioInputCombo_currentIndexChanged(QString text)
+void wfmain::on_audioInputCombo_currentIndexChanged(int value)
 {
-    udpPrefs.audioInput = text;
+    udpPrefs.audioInput = ui->audioInputCombo->currentText();
+    udpPrefs.audioInputDevice = ui->audioOutputCombo->itemData(value).toInt();
 }
 
 void wfmain::on_audioSampleRateCombo_currentIndexChanged(QString text)

@@ -22,6 +22,8 @@ struct SERVERCONFIG {
     quint16 audioPort;
     QString audioOutput;
     QString audioInput;
+    int audioInputDevice;
+    int audioOutputDevice;
     quint8 resampleQuality;
 
     QList <SERVERUSER> users;
