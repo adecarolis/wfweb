@@ -792,6 +792,7 @@ void wfmain::receiveCommReady()
         // don't bother, they told us the CIV they want, stick with it.
         // We still query the rigID to find the model, but at least we know the CIV.
         qInfo(logSystem()) << "Skipping automatic CIV, using user-supplied value of " << prefs.radioCIVAddr;
+        emit getRigID();
         getInitialRigState();
     }
 
@@ -813,7 +814,7 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
         if(prefs.serialPortBaud < 115200)
         {
             delayedCommand->setInterval(delayedCmdIntervalSerial_ms*2);
-            periodicPollingTimer->setInterval(100); // slower for s-meter polling
+            periodicPollingTimer->setInterval(200); // slower for s-meter polling
         } else {
             delayedCommand->setInterval(delayedCmdIntervalSerial_ms);
         }
@@ -1621,9 +1622,11 @@ void wfmain:: getInitialRigState()
     cmdOutQue.append(cmdGetSpectrumRefLevel);
     cmdOutQue.append(cmdGetDuplexMode);
 
-    cmdOutQue.append(cmdDispEnable);
-    cmdOutQue.append(cmdSpecOn);
-
+    if(rigCaps.hasSpectrum)
+    {
+        cmdOutQue.append(cmdDispEnable);
+        cmdOutQue.append(cmdSpecOn);
+    }
     cmdOutQue.append(cmdGetModInput);
     cmdOutQue.append(cmdGetModDataInput);
 
@@ -1654,8 +1657,11 @@ void wfmain:: getInitialRigState()
     cmdOutQue.append(cmdGetRitEnabled);
     cmdOutQue.append(cmdGetRitValue);
 
-    cmdOutQue.append(cmdGetSpectrumMode);
-    cmdOutQue.append(cmdGetSpectrumSpan);
+    if(rigCaps.hasSpectrum)
+    {
+        cmdOutQue.append(cmdGetSpectrumMode);
+        cmdOutQue.append(cmdGetSpectrumSpan);
+    }
 
     cmdOutQue.append(cmdNone);
     cmdOutQue.append(cmdStartRegularPolling);
@@ -4204,5 +4210,5 @@ void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
     qInfo(logSystem()) << "getting mode.";
-    getMode();
+    emit getRigID();
 }

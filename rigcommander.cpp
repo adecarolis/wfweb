@@ -1339,7 +1339,7 @@ void rigCommander::parseLevels()
                 break;
 
             default:
-                qInfo(logRig()) << "Unknown meter level (0x15) received at register " << payloadIn[1] << " with level " << level;
+                qInfo(logRig()) << "Unknown meter level (0x15) received at register " << (unsigned int) payloadIn[1] << " with level " << level;
                 break;
         }
 
@@ -1467,12 +1467,33 @@ void rigCommander::setModInput(rigInput input, bool dataOn, bool isQuery)
             payload.setRawData("\x1A\x05\x00\x90", 4);
             payload.append((unsigned char)input);
             break;
+        case model7200:
+            payload.setRawData("\x1A\x03\x23", 3);
+            switch(input)
+            {
+                case inputMic:
+                    payload.setRawData("\x00", 1);
+                    break;
+                case inputUSB:
+                    payload.setRawData("\x03", 1);
+                    break;
+                case inputACC:
+                    payload.setRawData("\x01", 1);
+                    break;
+                default:
+                    return;
+            }
         default:
             break;
     }
     if(dataOn)
     {
-        payload[3] = payload[3] + 1;
+        if(rigCaps.model==model7200)
+        {
+            payload[2] = payload[2] + 1;
+        } else {
+            payload[3] = payload[3] + 1;
+        }
     }
 
     if(isQuery)
@@ -1561,6 +1582,9 @@ QByteArray rigCommander::getUSBAddr()
             break;
         case model9700:
             payload.setRawData("\x1A\x05\x01\x13", 4);
+            break;
+        case model7200:
+            payload.setRawData("\x1A\x03\x25", 3);
             break;
         case model7100:
         case model7610:
@@ -2778,6 +2802,23 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[band70cm] = 0x12;
             rigCaps.bsr[bandGen] = 0x13;
             break;
+        case model7200:
+            rigCaps.modelName = QString("IC-7200");
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.append(inputUSB);
+            rigCaps.inputs.append(inputACC);
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasATU = true;
+            rigCaps.hasCTCSS = true;
+            rigCaps.hasDTCS = true;
+            rigCaps.attenuators.push_back('\x20');
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.bands = standardHF;
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.bsr[bandGen] = 0x11;
+            break;
         case model706:
             rigCaps.modelName = QString("IC-706");
             rigCaps.hasSpectrum = false;
@@ -2827,6 +2868,11 @@ void rigCommander::determineRigCaps()
         qInfo(logRig()) << "Using incomingCIVAddr: (int): " << this->civAddr << " hex: " << hex << this->civAddr;
         emit discoveredRigID(rigCaps);
     } else {
+        if(!foundRig)
+        {
+            emit discoveredRigID(rigCaps);
+            foundRig = true;
+        }
         emit haveRigID(rigCaps);
     }
 }
