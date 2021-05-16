@@ -716,7 +716,6 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString, quint8)));
 
-    qRegisterMetaType<audioPacket>();
     connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
     connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
     connect(this, SIGNAL(haveSetVolume(unsigned char)), rxaudio, SLOT(setVolume(unsigned char)));
