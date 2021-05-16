@@ -1,8 +1,20 @@
 # CHANGELOG
 
+- 20210516 	Added IC-7200 support. This has not been tested.
 
+- 20210515	Change to correct bug when CI-V is user-specified and rigCaps were never
+    		populated.
 
-- 20210515 	Small fixes for rigctld
+    		Making the s-meter error command easier to read.
+
+    		Added IC-706 to rigCaps. Support for the IC-706 is currently broken but
+    		development is in progress.
+
+    		Added check for if the rig has spectrum during initial state queries.
+
+    		BSR debug code.
+
+		Small fixes for rigctld
 
 - 20210514	Make UDP port textboxes expanding.
 
