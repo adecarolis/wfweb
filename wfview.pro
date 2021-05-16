@@ -33,6 +33,23 @@ DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 DEFINES += OUTSIDE_SPEEX
 DEFINES += RANDOM_PREFIX=wf
 
+# RTAudio defines
+win32:DEFINES += __WINDOWS_WASAPI__
+#win32:DEFINES += __WINDOWS_DS__ # Requires DirectSound libraries
+linux:DEFINES += __LINUX_ALSA__
+#linux:DEFINES += __LINUX_OSS__
+#linux:DEFINES += __LINUX_PULSE__
+macx:DEFINES += __MACOSX_CORE__
+
+option(RTAUDIO_API_DS "Build DirectSound API" OFF)
+option(RTAUDIO_API_ASIO "Build ASIO API" OFF)
+option(RTAUDIO_API_WASAPI "Build WASAPI API" ${WIN32})
+option(RTAUDIO_API_OSS "Build OSS4 API" ${xBSD})
+option(RTAUDIO_API_ALSA "Build ALSA API" ${LINUX})
+option(RTAUDIO_API_PULSE "Build PulseAudio API" ${pulse_FOUND})
+option(RTAUDIO_API_JACK "Build JACK audio server API" ${HAVE_JACK})
+option(RTAUDIO_API_CORE "Build CoreAudio API" ${APPLE})
+
 macx:INCLUDEPATH += /usr/local/include /opt/local/include
 macx:LIBS += -L/usr/local/lib -L/opt/local/lib
 
@@ -99,7 +116,8 @@ SOURCES += main.cpp\
 	pttyhandler.cpp \
 	resampler/resample.c \
     repeatersetup.cpp \
-	rigctld.cpp
+	rigctld.cpp \
+	rtaudio/RTAudio.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -122,7 +140,8 @@ HEADERS  += wfmain.h \
 	resampler/resample_sse.h \
     repeatersetup.h \
     repeaterattributes.h \
-	rigctld.h
+	rigctld.h \
+	rtaudio/RTAudio.h
 
 
 FORMS    += wfmain.ui \

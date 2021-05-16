@@ -325,7 +325,7 @@
       <ExceptionHandling>Sync</ExceptionHandling>
       <ObjectFileName>debug\</ObjectFileName>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_OPENGL;HOST=1;UNAME=1;GITSHORT=1;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_OPENGL;HOST=1;UNAME=1;GITSHORT=1;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;__WINDOWS_WASAPI__;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -389,6 +389,7 @@
     <ClCompile Include="rigctld.cpp" />
     <ClCompile Include="rigidentities.cpp" />
     <ClCompile Include="audiohandler.cpp" />
+    <ClCompile Include="rtaudio\RtAudio.cpp" />
     <ClCompile Include="satellitesetup.cpp" />
     <ClCompile Include="udphandler.cpp" />
     <ClCompile Include="udpserver.cpp" />
@@ -396,6 +397,7 @@
     <ClCompile Include="wfmain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="rtaudio\RtAudio.h" />
     <QtMoc Include="udpserver.h" />
     <QtMoc Include="udpserversetup.h" />
     <QtMoc Include="satellitesetup.h" />

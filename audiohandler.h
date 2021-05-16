@@ -1,21 +1,33 @@
 #ifndef AUDIOHANDLER_H
 #define AUDIOHANDLER_H
 
+#define USE_RTAUDIO
+#define USE_QTAUDIO
+
 #include <QObject>
 
 #include <QtMultimedia/QAudioOutput>
 #include <QMutexLocker>
 #include <QByteArray>
 #include <QtEndian>
+
+#ifdef USE_QTAUDIO
 #include <QAudioFormat>
 #include <QAudioDeviceInfo>
 #include <QAudioOutput>
 #include <QAudioInput>
 #include <QIODevice>
+#endif
+
+#ifdef USE_RTAUDIO
+#include "rtaudio/RtAudio.h"
+#endif
+
 #include <QThread>
 #include <QTimer>
 #include <QTime>
 #include "resampler/speex_resampler.h"
+
 
 #include <QDebug>
 

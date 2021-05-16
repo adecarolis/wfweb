@@ -158,6 +158,49 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
 
     // Enumerate audio devices, need to do before settings are loaded.
+#ifdef USE_RTAUDIO
+    std::map<int, std::string> apiMap;
+    apiMap[RtAudio::MACOSX_CORE] = "OS-X Core Audio";
+    apiMap[RtAudio::WINDOWS_ASIO] = "Windows ASIO";
+    apiMap[RtAudio::WINDOWS_DS] = "Windows DirectSound";
+    apiMap[RtAudio::WINDOWS_WASAPI] = "Windows WASAPI";
+    apiMap[RtAudio::UNIX_JACK] = "Jack Client";
+    apiMap[RtAudio::LINUX_ALSA] = "Linux ALSA";
+    apiMap[RtAudio::LINUX_PULSE] = "Linux PulseAudio";
+    apiMap[RtAudio::LINUX_OSS] = "Linux OSS";
+    apiMap[RtAudio::RTAUDIO_DUMMY] = "RtAudio Dummy";
+
+    std::vector< RtAudio::Api > apis;
+    RtAudio::getCompiledApi(apis);
+
+    qInfo(logAudio()) << "RtAudio Version " << QString::fromStdString(RtAudio::getVersion());
+
+    qInfo(logAudio()) << "Compiled APIs:";
+    for (unsigned int i = 0; i < apis.size(); i++) {
+       qInfo(logAudio()) << "  " << QString::fromStdString(apiMap[apis[i]]);
+    }
+
+    RtAudio::DeviceInfo info;
+    qInfo(logAudio()) << "Current API: " << QString::fromStdString(apiMap[audio.getCurrentApi()]);
+
+    unsigned int devices = audio.getDeviceCount();
+    qInfo(logAudio()) << "Found " << devices << " audio device(s) ...";
+
+    for (unsigned int i = 0; i < devices; i++) {
+        info = audio.getDeviceInfo(i);
+        if (info.outputChannels > 0) {
+            qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "Output Device : " << QString::fromStdString(info.name);
+                ui->audioOutputCombo->addItem(QString::fromStdString(info.name),i);
+        }
+    }
+    for (unsigned int i = 0; i < devices; i++) {
+        info = audio.getDeviceInfo(i);
+        if (info.inputChannels > 0) {
+            qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "Input Device  : " << QString::fromStdString(info.name);
+            ui->audioInputCombo->addItem(QString::fromStdString(info.name), i);
+        }
+    }
+#else if defined(USE_QTAUDIO)
     const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
     for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
         ui->audioOutputCombo->addItem(deviceInfo.deviceName());
@@ -166,6 +209,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
         ui->audioInputCombo->addItem(deviceInfo.deviceName());
     }
+#endif
 
     ui->serialDeviceListCombo->blockSignals(true);
     ui->serialDeviceListCombo->addItem("Auto", 0);
@@ -860,8 +904,13 @@ void wfmain::setDefPrefs()
     udpDefPrefs.audioLANPort = 50003;
     udpDefPrefs.username = QString("");
     udpDefPrefs.password = QString("");
+#if defined(USE_RTAUDIO)
+    udpDefPrefs.audioOutput = QString::fromStdString(audio.getDeviceInfo(audio.getDefaultOutputDevice()).name);
+    udpDefPrefs.audioInput = QString::fromStdString(audio.getDeviceInfo(audio.getDefaultInputDevice()).name);
+#elif defined(USE_QTAUDIO)
     udpDefPrefs.audioOutput = QAudioDeviceInfo::defaultOutputDevice().deviceName();
     udpDefPrefs.audioInput = QAudioDeviceInfo::defaultInputDevice().deviceName();
+#endif
     udpDefPrefs.audioRXLatency = 150;
     udpDefPrefs.audioTXLatency = 150;
     udpDefPrefs.audioRXSampleRate = 48000;

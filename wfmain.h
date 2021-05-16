@@ -700,6 +700,8 @@ private:
 
     SERVERCONFIG serverConfig;
 
+    RtAudio audio;
+
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
