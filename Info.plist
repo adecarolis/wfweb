@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key>
+	<string>wfview</string>
+	<key>CFBundleIconFile</key>
+	<string>wfview.icns</string>
+	<key>CFBundleIdentifier</key>
+	<string>org.wfview.wfview</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>10.13</string>
+	<key>NOTE</key>
+	<string>Open Source interface for Icom transceivers</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
+        <key>NSMicrophoneUsageDescription</key>
+        <string>Microphone required for TX audio</string>
+        <key>NSDownloadsFolderUsageDescription</key>
+        <string>Storing temporary files</string>
+</dict>
+</plist>
