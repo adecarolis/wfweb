@@ -10,6 +10,7 @@
 #include <QDateTime>
 #include <QByteArray>
 #include <QVector>
+#include <QMap>
 
 // Allow easy endian-ness conversions
 #include <QtEndian>
@@ -98,6 +99,7 @@ public:
 	QMutex udpMutex;
 	QMutex txBufferMutex;
 	QMutex rxBufferMutex;
+	QMutex missingMutex;
 
 	struct SEQBUFENTRY {
 		QTime	timeSent;
@@ -106,11 +108,14 @@ public:
 		quint8 retransmitCount;
 	};
 
-	QVector<SEQBUFENTRY> txSeqBuf;
+	QMap<quint16, QTime> rxSeqBuf;
+	QMap<quint16, SEQBUFENTRY> txSeqBuf;
+	QMap<quint16, int> rxMissing;
+	//QVector<SEQBUFENTRY> txSeqBuf;
 
-	QVector<quint16> rxSeqBuf;
+	//QVector<quint16> rxSeqBuf;
 
-	QVector<SEQBUFENTRY> rxMissing;
+	//QVector<SEQBUFENTRY> rxMissing;
 
 	void sendTrackedPacket(QByteArray d);
 	void purgeOldEntries();
@@ -131,6 +136,9 @@ public:
 	quint32 packetsLost=0;
 
 	quint16 seqPrefix = 0;
+
+	int congestion = 0;
+
 
 private:
 	void sendRetransmitRequest();
