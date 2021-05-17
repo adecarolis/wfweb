@@ -193,7 +193,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     }
 #else
     // Provide reasonable names for the symbolic link to the pty device
+#ifdef Q_OS_MAC
+    QString vspName = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/rig-pty";
+#else
     QString vspName=QDir::homePath()+"/rig-pty";
+#endif
     for (i=1;i<8;i++) {
         ui->vspCombo->addItem(vspName + QString::number(i));
 
