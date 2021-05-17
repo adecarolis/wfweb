@@ -977,14 +977,14 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 
 	// We must lock the mutex for the entire time that the buffer may be modified.
 	// Get next packet from buffer.
-	if (!audioBuffer.isEmpty())
+	if (!inputBuffer.isEmpty())
 	{
 
 		// Output buffer is ALWAYS 16 bit.
         QMutexLocker locker(&mutex);
-		auto packet = audioBuffer.begin();
+		auto packet = inputBuffer.begin();
         
-		while (packet != audioBuffer.end() && sentlen < maxlen)
+		while (packet != inputBuffer.end() && sentlen < maxlen)
 		{
 			int timediff = packet->time.msecsTo(QTime::currentTime());
             
@@ -992,12 +992,12 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
                 qInfo(logAudio()) << (isInput ? "Input" : "Output") << "Packet " << hex << packet->seq <<
                     " arrived too late (increase output latency!) " <<
                     dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
-                while (packet !=audioBuffer.end() && timediff > (int)latency) {
+                while (packet !=inputBuffer.end() && timediff > (int)latency) {
                     timediff = packet->time.msecsTo(QTime::currentTime());
                     lastSeq=packet->seq;
-                    packet = audioBuffer.erase(packet); // returns next packet
+                    packet = inputBuffer.erase(packet); // returns next packet
                 }
-                if (packet == audioBuffer.end()) {
+                if (packet == inputBuffer.end()) {
                     break;
                 }
 			}
@@ -1017,7 +1017,7 @@ qint64 audioHandler::readData(char* data, qint64 maxlen)
 				if (send == packet->dataout.length() - packet->sent)
 				{
 					//qInfo(logAudio()) << "Get next packet";
-					packet = audioBuffer.erase(packet); // returns next packet
+					packet = inputBuffer.erase(packet); // returns next packet
 				} 
 				else
 				{
@@ -1192,14 +1192,7 @@ void audioHandler::incomingAudio(audioPacket data)
 			data.dataout = data.datain; 
 		}
 
-		audioBuffer.push_back(data);
-		
-		// Sort the buffer by seq number. This is important and audio packets may have arrived out-of-order
-		std::sort(audioBuffer.begin(), audioBuffer.end(),
-			[](const audioPacket& a, const audioPacket& b) -> bool
-		{
-			return a.seq < b.seq;
-		});
+		inputBuffer.insert(data.seq, data);
 
 		// Restart playback
 		if (audioOutput->state() == QAudio::SuspendedState)

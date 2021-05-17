@@ -316,6 +316,4 @@ private:
 
 };
 
-Q_DECLARE_METATYPE(struct audioPacket)
-
 #endif

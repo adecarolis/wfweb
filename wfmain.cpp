@@ -374,6 +374,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     qRegisterMetaType<meterKind>();
     qRegisterMetaType<spectrumMode>();
     qRegisterMetaType<freqt>();
+    qRegisterMetaType<audioPacket>();
 
     connect(this, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
     connect(this, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
