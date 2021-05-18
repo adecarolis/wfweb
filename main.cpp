@@ -28,7 +28,11 @@ int main(int argc, char *argv[])
     QString serialPortCL;
     QString hostCL;
     QString civCL;
+#ifdef Q_OS_MAC
+    QString logFilename= QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/wfview.log";
+#else
     QString logFilename= QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0] + "/wfview.log";
+#endif
 
     QString currentArg;
 
