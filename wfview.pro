@@ -36,20 +36,19 @@ DEFINES += RANDOM_PREFIX=wf
 macx:INCLUDEPATH += /usr/local/include /opt/local/include
 macx:LIBS += -L/usr/local/lib -L/opt/local/lib
 
-macx:ICON = ../wfview/wfview.icns
-
+macx:ICON = ../wfview/resources/wfview.icns
+win32:RC_ICONS = ../wfview/resources/wfview.ico
 QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.13
 QMAKE_TARGET_BUNDLE_PREFIX = org.wfview
 MY_ENTITLEMENTS.name = CODE_SIGN_ENTITLEMENTS
-MY_ENTITLEMENTS.value = ../wfview/wfview.entitlements
+MY_ENTITLEMENTS.value = ../wfview/resources/wfview.entitlements
 QMAKE_MAC_XCODE_SETTINGS += MY_ENTITLEMENTS
-QMAKE_INFO_PLIST = ../wfview/Info.plist
+QMAKE_INFO_PLIST = ../wfview/resources/Info.plist
 
 !win32:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
 
 !win32:DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""
 
-win32:INCLUDEPATH += c:/qcustomplot
 win32:DEFINES += HOST=1
 win32:DEFINES += UNAME=1
 win32:DEFINES += GITSHORT=1
@@ -75,17 +74,16 @@ linux:QMAKE_POST_LINK += echo; echo; echo "Run install.sh as root from the build
 # CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 
 CONFIG(debug, release|debug) {
-  win32:QCPLIB = qcustomplotd1
-  else: QCPLIB = qcustomplotd
+  linux: QCPLIB = qcustomplotd
 } else {
-  win32:QCPLIB = qcustomplot1
-  else: QCPLIB = qcustomplot
+  linux: QCPLIB = qcustomplot
 }
 
-!macx:LIBS += -L./ -l$$QCPLIB
+linux:LIBS += -L./ -l$$QCPLIB
 
-macx:SOURCES += ../qcustomplot/qcustomplot.cpp
-macx:HEADERS += ../qcustomplot/qcustomplot.h
+!linux:SOURCES += ../qcustomplot/qcustomplot.cpp
+!linux:HEADERS += ../qcustomplot/qcustomplot.h
+!linux:INCLUDEPATH += ../qcustomplot
 
 SOURCES += main.cpp\
         wfmain.cpp \
