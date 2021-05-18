@@ -436,6 +436,10 @@ private slots:
 
     void on_bandWFMbtn_clicked();
 
+    void on_rigCIVManualAddrChk_clicked(bool checked);
+
+    void on_rigCIVaddrHexLine_editingFinished();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -710,5 +714,7 @@ Q_DECLARE_METATYPE(struct audioPacket)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
+Q_DECLARE_METATYPE(struct audioPacket)
+
 
 #endif // WFMAIN_H

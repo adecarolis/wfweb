@@ -959,6 +959,7 @@ void rigCommander::setCIVAddr(unsigned char civAddr)
 {
     // Note: This is the radio's CIV address
     // the computer's CIV address is defined in the header file.
+    // TODO: this function *could* be written to re-write the CIV preamble.
     this->civAddr = civAddr;
 }
 
@@ -2753,7 +2754,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
-            rigCaps.attenuators.push_back('\x20');
+            rigCaps.attenuators.push_back('\x12');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());

@@ -319,4 +319,5 @@ private:
 	quint16 txSampleRates = 0;
 };
 
+
 #endif
