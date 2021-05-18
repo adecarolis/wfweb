@@ -930,6 +930,17 @@ void wfmain::loadSettings()
     // Radio and Comms: C-IV addr, port to use
     settings.beginGroup("Radio");
     prefs.radioCIVAddr = (unsigned char) settings.value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
+    if(prefs.radioCIVAddr!=0)
+    {
+        ui->rigCIVManualAddrChk->setChecked(true);
+        ui->rigCIVaddrHexLine->blockSignals(true);
+        ui->rigCIVaddrHexLine->setText(QString("%1").arg(prefs.radioCIVAddr, 2, 16));
+        ui->rigCIVaddrHexLine->setEnabled(true);
+        ui->rigCIVaddrHexLine->blockSignals(false);
+    } else {
+        ui->rigCIVManualAddrChk->setChecked(false);
+        ui->rigCIVaddrHexLine->setEnabled(false);
+    }
     prefs.serialPortRadio = settings.value("SerialPortRadio", defPrefs.serialPortRadio).toString();
     int serialIndex = ui->serialDeviceListCombo->findText(prefs.serialPortRadio);
     if (serialIndex != -1) {
