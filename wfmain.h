@@ -714,7 +714,6 @@ Q_DECLARE_METATYPE(struct audioPacket)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
-Q_DECLARE_METATYPE(struct audioPacket)
 
 
 #endif // WFMAIN_H
