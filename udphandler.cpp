@@ -313,6 +313,12 @@ void udpHandler::dataReceived()
                         }
                         else {
                             civ = new udpCivData(localIP, radioIP, civPort);
+    
+                            // TX is not supported
+                            if (txSampleRates <2 ) { 
+                                txSampleRate = 0;
+                                txCodec = 0;
+                            }
                             audio = new udpAudio(localIP, radioIP, audioPort, rxLatency, txLatency, rxSampleRate, rxCodec, txSampleRate, txCodec, audioOutputPort, audioInputPort,resampleQuality);
 
                             QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
@@ -360,10 +366,19 @@ void udpHandler::dataReceived()
                 {
                     audioType = in->audio;
                     devName = in->name;
+                    civId = in->civ;
+                    rxSampleRates = in->rxsample;
+                    txSampleRates = in->txsample;
                     //replyId = r.mid(0x42, 16);
                     qInfo(logUdp()) << this->metaObject()->className() << "Received radio capabilities, Name:" <<
                         devName << " Audio:" <<
-                        audioType;
+                        audioType << "CIV:" << hex << civId; 
+
+                    if (txSampleRates < 2)
+                    {
+                        // TX not supported
+                        qInfo(logUdp()) << this->metaObject()->className() << "TX audio is disabled";
+                    }
                 }
                 break;
             }
@@ -399,9 +414,11 @@ void udpHandler::sendRequestStream()
     p.token = token;
     memcpy(&p.name, devName.toLocal8Bit().constData(), devName.length());
     p.rxenable = 1;
-    p.txenable = 1;
+    if (this->txSampleRates > 1) {
+        p.txenable = 1;
+        p.txcodec = txCodec;
+    }
     p.rxcodec = rxCodec;
-    p.txcodec = txCodec;
     memcpy(&p.username, usernameEncoded.constData(), usernameEncoded.length());
     p.rxsample = qToBigEndian((quint32)rxSampleRate);
     p.txsample = qToBigEndian((quint32)txSampleRate);
@@ -682,6 +699,10 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     this->rxCodec = rxcodec;
     this->txCodec = txcodec;
 
+    if (txSampleRate == 0) {
+        enableTx = false;
+    }
+
     init(); // Perform connection
 
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::dataReceived);
@@ -721,6 +742,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     connect(this, SIGNAL(haveSetVolume(unsigned char)), rxaudio, SLOT(setVolume(unsigned char)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
     
+
     if (txCodec == 0x01)
         txIsUlawCodec = true;
     else if (txCodec == 0x04)
@@ -744,7 +766,10 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
     pingTimer->start(PING_PERIOD); // send ping packets every 100ms
 
-    emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, txLatency, txIsUlawCodec, true, inputPort,resampleQuality);
+    if (enableTx) {
+        emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, txLatency, txIsUlawCodec, true, inputPort, resampleQuality);
+    }
+
     emit setupRxAudio(rxNumSamples, rxChannelCount, rxSampleRate, txLatency, rxIsUlawCodec, false, outputPort,resampleQuality);
 
     watchdogTimer = new QTimer();
@@ -877,7 +902,7 @@ void udpAudio::dataReceived()
             case (16): // Response to control packet handled in udpBase
             {
                 control_packet_t in = (control_packet_t)r.constData();
-                if (in->type == 0x04)
+                if (in->type == 0x04 && enableTx)
                 {
                     txAudioTimer->start(TXAUDIO_PERIOD);
                 }

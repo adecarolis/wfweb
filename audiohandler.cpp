@@ -753,7 +753,7 @@ audioHandler::~audioHandler()
         delete audioInput;
     }
 
-	if (resampler) {
+	if (resampler != NULL) {
 		speex_resampler_destroy(resampler);
 	}
 }

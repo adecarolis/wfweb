@@ -224,6 +224,7 @@ private:
 	QThread* txAudioThread = Q_NULLPTR;
 
 	QTimer* txAudioTimer=Q_NULLPTR;
+	bool enableTx = 1;
 
 };
 
@@ -313,7 +314,9 @@ private:
 	QTimer* areYouThereTimer = Q_NULLPTR;
 
 	bool highBandwidthConnection = false;
-
+	quint8 civId = 0;
+	quint16 rxSampleRates = 0;
+	quint16 txSampleRates = 0;
 };
 
 #endif

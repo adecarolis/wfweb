@@ -96,7 +96,7 @@ private:
     QVector <audioPacket> audioBuffer;
     QMap<quint32, audioPacket>inputBuffer;
 
-    SpeexResamplerState* resampler;
+    SpeexResamplerState* resampler=NULL;
     unsigned int ratioNum;
     unsigned int ratioDen;
 };
