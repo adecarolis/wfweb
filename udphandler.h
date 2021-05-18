@@ -78,7 +78,6 @@ public:
 	uint32_t myId = 0;
 	uint32_t remoteId = 0;
 	uint8_t authSeq = 0x00;
-	//uint16_t innerSendSeq = 0x8304; // Not sure why?
 	uint16_t sendSeqB = 0;
 	uint16_t sendSeq = 1;
 	uint16_t lastReceivedSeq = 1;
@@ -111,11 +110,6 @@ public:
 	QMap<quint16, QTime> rxSeqBuf;
 	QMap<quint16, SEQBUFENTRY> txSeqBuf;
 	QMap<quint16, int> rxMissing;
-	//QVector<SEQBUFENTRY> txSeqBuf;
-
-	//QVector<quint16> rxSeqBuf;
-
-	//QVector<SEQBUFENTRY> rxMissing;
 
 	void sendTrackedPacket(QByteArray d);
 	void purgeOldEntries();
