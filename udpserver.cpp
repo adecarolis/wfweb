@@ -426,7 +426,7 @@ void udpServer::controlReceived()
                         rxAudioThread->start();
 
                         connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)));
-                        connect(rxAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
+                        connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
                         emit setupRxAudio(samples, channels, current->rxSampleRate, 150, uLaw, true, config.audioInput, config.resampleQuality);
 
