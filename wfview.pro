@@ -48,10 +48,10 @@ QMAKE_INFO_PLIST = ../wfview/resources/Info.plist
 !win32:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
 
 !win32:DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""
+win32:DEFINES += GITSHORT=\\\"$$system(git -C $$PWD rev-parse --short HEAD)\\\"
 
-win32:DEFINES += HOST=1
-win32:DEFINES += UNAME=1
-win32:DEFINES += GITSHORT=1
+win32:DEFINES += HOST=\\\"wfview.org\\\"
+win32:DEFINES += UNAME=\\\"build\\\"
 
 
 RESOURCES += qdarkstyle/style.qrc \
