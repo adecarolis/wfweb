@@ -786,7 +786,7 @@ void wfmain::receiveCommReady()
     {
         // tell rigCommander to broadcast a request for all rig IDs.
         // qInfo(logSystem()) << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
-        ui->statusBar->showMessage(QString("Searching CIV bus for connected radios."), 1000);
+        ui->statusBar->showMessage(QString("Searching CI-V bus for connected radios."), 1000);
         emit getRigCIV();
         cmdOutQue.append(cmdGetRigCIV);
         delayedCommand->start();
@@ -794,10 +794,10 @@ void wfmain::receiveCommReady()
         // don't bother, they told us the CIV they want, stick with it.
         // We still query the rigID to find the model, but at least we know the CIV.
         qInfo(logSystem()) << "Skipping automatic CIV, using user-supplied value of " << prefs.radioCIVAddr;
+        showStatusBarText(QString("Using user-supplied radio CI-V address of 0x%1").arg(prefs.radioCIVAddr, 2, 16));
         emit getRigID();
         getInitialRigState();
     }
-
 }
 
 
@@ -2144,6 +2144,9 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
     {
         return;
     } else {
+
+        showStatusBarText(QString("Found radio at address 0x%1 of name %2 and model ID %3.").arg(rigCaps.civ,2,16).arg(rigCaps.modelName).arg(rigCaps.modelID));
+
         qDebug(logSystem()) << "Rig name: " << rigCaps.modelName;
         qDebug(logSystem()) << "Has LAN capabilities: " << rigCaps.hasLan;
         qDebug(logSystem()) << "Rig ID received into wfmain: spectLenMax: " << rigCaps.spectLenMax;
@@ -4206,6 +4209,37 @@ void wfmain::setBandButtons()
         }
     }
 }
+
+void wfmain::on_rigCIVManualAddrChk_clicked(bool checked)
+{
+    if(checked)
+    {
+        ui->rigCIVaddrHexLine->setEnabled(true);
+        ui->rigCIVaddrHexLine->setText(QString("%1").arg(prefs.radioCIVAddr, 2, 16));
+    } else {
+        ui->rigCIVaddrHexLine->setText("auto");
+        ui->rigCIVaddrHexLine->setEnabled(false);
+        prefs.radioCIVAddr = 0; // auto
+        showStatusBarText("Setting radio CI-V address to: 'auto'. Make sure CI-V Transceive is enabled on the radio.");
+    }
+}
+
+void wfmain::on_rigCIVaddrHexLine_editingFinished()
+{
+    bool okconvert=false;
+
+    unsigned char propCIVAddr = (unsigned char) ui->rigCIVaddrHexLine->text().toUInt(&okconvert, 16);
+
+    if(okconvert && (propCIVAddr < 0x7F) && (propCIVAddr != 0))
+    {
+        prefs.radioCIVAddr = propCIVAddr;
+        showStatusBarText(QString("Setting radio CI-V address to: 0x%1. Press Save Settings to retain.").arg(propCIVAddr, 2, 16));
+    } else {
+        showStatusBarText(QString("Could not use provided CI-V address."));
+    }
+
+}
+
 
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()

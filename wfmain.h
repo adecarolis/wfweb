@@ -436,6 +436,10 @@ private slots:
 
     void on_bandWFMbtn_clicked();
 
+    void on_rigCIVManualAddrChk_clicked(bool checked);
+
+    void on_rigCIVaddrHexLine_editingFinished();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
