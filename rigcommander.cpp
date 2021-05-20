@@ -1176,8 +1176,9 @@ void rigCommander::parseCommand()
             // qInfo(logRig()) << "Have rig ID: " << (unsigned int)payloadIn[2];
             // printHex(payloadIn, false, true);
             model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
+            rigCaps.modelID = payloadIn[2];
             determineRigCaps();
-            qInfo(logRig()) << "Have rig ID: decimal: " << (unsigned int)model;
+            qInfo(logRig()) << "Have rig ID: decimal: " << (unsigned int)rigCaps.modelID;
 
 
             break;
@@ -2513,7 +2514,6 @@ void rigCommander::determineRigCaps()
 
 
     rigCaps.model = model;
-    rigCaps.modelID = model; // may delete later
     rigCaps.civ = incomingCIVAddr;
 
     rigCaps.hasDD = false;
@@ -2834,7 +2834,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             break;
         default:
-            rigCaps.modelName = QString("IC-RigID: 0x%1").arg(rigCaps.model, 0, 16);
+            rigCaps.modelName = QString("IC-RigID: 0x%1").arg(rigCaps.modelID, 2, 16);
             rigCaps.hasSpectrum = false;
             rigCaps.spectSeqMax = 0;
             rigCaps.spectAmpMax = 0;
@@ -2851,7 +2851,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
             rigCaps.bands.insert(rigCaps.bands.end(), {band23cm, band4m, band630m, band2200m, bandGen});
-            qInfo(logRig()) << "Found unknown rig: " << rigCaps.modelName;
+            qInfo(logRig()) << "Found unknown rig: " << rigCaps.modelID;
             break;
     }
     haveRigCaps = true;
