@@ -461,7 +461,6 @@ private:
     void openRig();
     void powerRigOff();
     void powerRigOn();
-    QWidget * theParent;
     QStringList portList;
     QString serialPortRig;
 

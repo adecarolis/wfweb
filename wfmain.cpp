@@ -17,7 +17,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     setWindowIcon(QIcon( QString(":resources/wfview.png")));
     ui->setupUi(this);
-    theParent = parent;
 
     setWindowTitle(QString("wfview"));
 
