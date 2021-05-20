@@ -1263,39 +1263,48 @@ void rigCommander::parseLevels()
                 // AF level - ignore if LAN connection.
                 if (udp == Q_NULLPTR) {
                     emit haveAfGain(level);
+                    rigState.afGain = level;
                 }
                 break;
             case '\x02':
                 // RX RF Gain
                 emit haveRfGain(level);
+                rigState.rfGain = level;
                 break;
             case '\x03':
                 // Squelch level
                 emit haveSql(level);
+                rigState.squelch = level;
                 break;
             case '\x0A':
                 // TX RF level
                 emit haveTxPower(level);
+                rigState.txPower = level;
                 break;
             case '\x0B':
                 // Mic Gain
                 emit haveMicGain(level);
+                rigState.micGain = level;
                 break;
             case '\x0E':
                 // compressor level
                 emit haveCompLevel(level);
+                rigState.compLevel = level;
                 break;
             case '\x15':
                 // monitor level
                 emit haveMonitorLevel(level);
+                rigState.monitorLevel = level;
                 break;
             case '\x16':
                 // VOX gain
                 emit haveVoxGain(level);
+                rigState.voxGain = level;
                 break;
             case '\x17':
                 // anti-VOX gain
                 emit haveAntiVoxGain(level);
+                rigState.antiVoxGain = level;
                 break;
 
             default:
@@ -1313,30 +1322,37 @@ void rigCommander::parseLevels()
             case '\x02':
                 // S-Meter
                 emit haveMeter(meterS, level);
+                rigState.sMeter = level;
                 break;
             case '\x11':
                 // RF-Power meter
                 emit haveMeter(meterPower, level);
+                rigState.powerMeter = level;
                 break;
             case '\x12':
                 // SWR
                 emit haveMeter(meterSWR, level);
+                rigState.swrMeter = level;
                 break;
             case '\x13':
                 // ALC
                 emit haveMeter(meterALC, level);
+                rigState.alcMeter = level;
                 break;
             case '\x14':
                 // COMP dB reduction
                 emit haveMeter(meterComp, level);
+                rigState.compMeter = level;
                 break;
             case '\x15':
                 // VD (12V)
                 emit haveMeter(meterVoltage, level);
+                rigState.voltageMeter = level;
                 break;
             case '\x16':
                 // ID
                 emit haveMeter(meterCurrent, level);
+                rigState.currentMeter = level;
                 break;
 
             default:
@@ -2111,19 +2127,24 @@ void rigCommander::parseRegister1B()
             // "Repeater tone"
             tone = decodeTone(payloadIn);
             emit haveTone(tone);
+            rigState.ctcss = tone;
             break;
         case '\x01':
             // "TSQL tone"
             tone = decodeTone(payloadIn);
             emit haveTSQL(tone);
+            rigState.tsql = tone;
             break;
         case '\x02':
             // DTCS (DCS)
             tone = decodeTone(payloadIn, tinv, rinv);
             emit haveDTCS(tone, tinv, rinv);
+            rigState.dtcs = tone;
             break;
         case '\x07':
             // "CSQL code (DV mode)"
+            tone = decodeTone(payloadIn);
+            rigState.csql = tone;
             break;
         default:
             break;
@@ -2143,6 +2164,7 @@ void rigCommander::parseRegister16()
         case '\x02':
             // Preamp
             emit havePreamp((unsigned char)payloadIn.at(2));
+            rigState.preamp = (unsigned char)payloadIn.at(2);
             break;
         default:
             break;
