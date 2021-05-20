@@ -2834,7 +2834,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             break;
         default:
-            rigCaps.modelName = QString("IC-RigID: 0x%1").arg(rigCaps.modelID, 2, 16);
+            rigCaps.modelName = QString("IC-0x%1").arg(rigCaps.modelID, 2, 16);
             rigCaps.hasSpectrum = false;
             rigCaps.spectSeqMax = 0;
             rigCaps.spectAmpMax = 0;
