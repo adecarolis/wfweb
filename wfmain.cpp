@@ -235,9 +235,10 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     {
         QString file = settingsFile;
         QFile info(settingsFile);
-        auto path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+        QString path="";
         if (!QFileInfo(info).isAbsolute())
         {
+            path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
             if (path.isEmpty())
             {
                 path = QDir::homePath();
@@ -246,6 +247,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
             file = info.fileName();
         }
 
+        qDebug() << "Loading settings from:" << path + file;
         settings = new QSettings(path + file, QSettings::Format::IniFormat);
     }
     loadSettings(); // Look for saved preferences
