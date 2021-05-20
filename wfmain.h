@@ -38,7 +38,7 @@ class wfmain : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent = 0);
+    explicit wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, QWidget *parent = 0);
     QString serialPortCL;
     QString hostCL;
     ~wfmain();
@@ -445,7 +445,7 @@ private slots:
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
-    QSettings settings;
+    QSettings *settings=Q_NULLPTR;
     void loadSettings();
     void saveSettings();
     QCustomPlot *plot; // line plot
