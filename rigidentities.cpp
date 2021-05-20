@@ -52,6 +52,9 @@ model_kind determineRadioModel(unsigned char rigID)
         case model705:
             rig = model705;
             break;
+        case model756proiii:
+            rig = model756proiii;
+            break;
         default:
             rig = modelUnknown;
             break;
