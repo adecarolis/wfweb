@@ -90,11 +90,20 @@ int main(int argc, char *argv[])
         }
         else if ((currentArg == "--help"))
         {
+#ifdef Q_OS_WIN
+            QMessageBox::information(0, "wfview help", helpText);
+#else
             std::cout << helpText.toStdString();
+#endif
             return 0;
         } else {
+
+#ifdef Q_OS_WIN
+            QMessageBox::information(0, "wfview unrecognised argument", helpText);
+#else
             std::cout << "Unrecognized option: " << currentArg.toStdString();
             std::cout << helpText.toStdString();
+#endif
 
 	    return -1;
         }
