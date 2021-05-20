@@ -33,7 +33,9 @@ Ubuntu 20.04.2
 ~~~
 download the tar.gz file here: https://wfview.org/download/test-linux-build/ 
 
-tar zxvf latest.tar.gz                           (it unpacks in ./dist)
+the file below will unpack in ./dist
+
+tar zxvf wfview-linux.tar.gz                  
 cd dist
 sudo ./install.sh
 ~~~

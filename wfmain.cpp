@@ -17,7 +17,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     setWindowIcon(QIcon( QString(":resources/wfview.png")));
     ui->setupUi(this);
-    theParent = parent;
 
     setWindowTitle(QString("wfview"));
 
@@ -156,6 +155,18 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     keyM = new QShortcut(this);
     keyM->setKey(Qt::Key_M);
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
+
+    ui->baudRateCombo->insertItem(0, QString("115200"), 115200);
+    ui->baudRateCombo->insertItem(1, QString("57600"), 57600);
+    ui->baudRateCombo->insertItem(2, QString("38400"), 38400);
+    ui->baudRateCombo->insertItem(3, QString("28800"), 28800);
+    ui->baudRateCombo->insertItem(4, QString("19200"), 19200);
+    ui->baudRateCombo->insertItem(5, QString("9600"), 9600);
+    ui->baudRateCombo->insertItem(6, QString("4800"), 4800);
+    ui->baudRateCombo->insertItem(7, QString("2400"), 2400);
+    ui->baudRateCombo->insertItem(8, QString("1200"), 1200);
+    ui->baudRateCombo->insertItem(9, QString("300"), 300);
+
 
     // Enumerate audio devices, need to do before settings are loaded.
     const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
@@ -951,6 +962,11 @@ void wfmain::loadSettings()
     }
 
     prefs.serialPortBaud = (quint32) settings.value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
+
+    ui->baudRateCombo->blockSignals(true);
+    ui->baudRateCombo->setCurrentIndex( ui->baudRateCombo->findData(prefs.serialPortBaud) );
+    ui->baudRateCombo->blockSignals(false);
+
     prefs.virtualSerialPort = settings.value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
     int vspIndex = ui->vspCombo->findText(prefs.virtualSerialPort);
     if (vspIndex != -1) {
@@ -975,6 +991,17 @@ void wfmain::loadSettings()
     settings.beginGroup("LAN");
 
     prefs.enableLAN = settings.value("EnableLAN", defPrefs.enableLAN).toBool();
+    if(prefs.enableLAN)
+    {
+        ui->baudRateCombo->setEnabled(false);
+        ui->serialDeviceListCombo->setEnabled(false);
+        ui->udpServerSetupBtn->setEnabled(false);
+    } else {
+        ui->baudRateCombo->setEnabled(true);
+        ui->serialDeviceListCombo->setEnabled(true);
+        ui->udpServerSetupBtn->setEnabled(true);
+    }
+
     ui->lanEnableBtn->setChecked(prefs.enableLAN);
     ui->connectBtn->setEnabled(prefs.enableLAN);
 
@@ -3154,12 +3181,6 @@ void wfmain::on_bandGenbtn_clicked()
 
 void wfmain::on_aboutBtn_clicked()
 {
-    // Show.....
-    // Build date, time, git checksum (short)
-    // QT library version
-    // stylesheet credit
-    // contact information
-
     QMessageBox msgBox(this);
     msgBox.setWindowTitle("Abou wfview");
     msgBox.setTextFormat(Qt::RichText);
@@ -3169,19 +3190,49 @@ void wfmain::on_aboutBtn_clicked()
     QString head = QString("<html><head></head><body>");
     QString copyright = QString("Copyright 2017-2021 Elliott H. Liggett, W6EL. All rights reserved.");
     QString nacode = QString("<br/><br/>Networking and audio code written by Phil Taylor, M0VSE");
-    QString doctest = QString("<br/><br/>Testing, documentation, bug fixes, and development mentorship from Roeland Jansen, PA3MET, and Jim Nijkamp, PA8E.");
-    QString ssCredit = QString("<br/><br/>Stylesheet qdarkstyle used under MIT license, stored in /usr/share/wfview/stylesheets/.");
-    QString website = QString("<br/><br/>Get the latest version from our gitlab repo: <a href='https://gitlab.com/eliggett/wfview' style='color: cyan;'>https://gitlab.com/eliggett/wfview</a>");
-    QString docs = QString("<br/>Also see the <a href='https://gitlab.com/eliggett/wfview/-/wikis/home'  style='color: cyan;'>wiki</a> for the <a href='https://gitlab.com/eliggett/wfview/-/wikis/User-FAQ' style='color: cyan;'>FAQ</a>, <a href='https://gitlab.com/eliggett/wfview/-/wikis/Keystrokes' style='color: cyan;'>Keystrokes</a>, and more.");
+    QString doctest = QString("<br/><br/>Testing, documentation, bug fixes, and development mentorship from<br/>Roeland Jansen, PA3MET, and Jim Nijkamp, PA8E.");
+    QString ssCredit = QString("<br/><br/>Stylesheet <a href=\"https://github.com/ColinDuquesnoy/QDarkStyleSheet/tree/master/qdarkstyle\"  style=\"color: cyan;\">qdarkstyle</a> used under MIT license, stored in /usr/share/wfview/stylesheets/.");
+    QString rsCredit = QString("<br/><br/><a href=\"https://www.speex.org/\"  style=\"color: cyan;\">Speex</a> Resample library Copyright 2003-2008 Jean-Marc Valin");
+    QString website = QString("<br/><br/>Please visit <a href=\"https://wfview.org/\"  style=\"color: cyan;\">https://wfview.org/</a> for the latest information.");
+    QString docs = QString("<br/><br/>Be sure to check the <a href=\"https://wfview.org/wfview-user-manual/\"  style=\"color: cyan;\">User Manual</a> and <a href=\"https://forum.wfview.org/\"  style=\"color: cyan;\">the Forum</a> if you have any questions.");
+
+    QString gitcodelink = QString("<a href=\"https://gitlab.com/eliggett/wfview/-/tree/%1\"  style=\"color: cyan;\">").arg(GITSHORT);
+
     QString contact = QString("<br/>email the author: kilocharlie8@gmail.com or W6EL on the air!");
-    QString buildInfo = QString("<br/><br/>Build " + QString(GITSHORT) + " on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
+
+    QString buildInfo = QString("<br/><br/>Build " + gitcodelink + QString(GITSHORT) + "</a> on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
     QString end = QString("</body></html>");
 
-    QString aboutText = head + copyright + "\n" + nacode + "\n" + doctest + "\n" + ssCredit + "\n";
+    QString aboutText = head + copyright + "\n" + nacode + "\n" + doctest + "\n" + ssCredit + "\n" + rsCredit + "\n";
     aboutText.append(website + "\n"+ docs + contact +"\n" + buildInfo + end);
 
     msgBox.setText(aboutText);
     msgBox.exec();
+
+    volatile QString sxcreditcopyright = QString("Speex copyright notice:\
+Copyright (C) 2003 Jean-Marc Valin\n\
+Redistribution and use in source and binary forms, with or without\
+modification, are permitted provided that the following conditions\
+are met:\n\
+- Redistributions of source code must retain the above copyright\
+notice, this list of conditions and the following disclaimer.\n\
+- Redistributions in binary form must reproduce the above copyright\
+notice, this list of conditions and the following disclaimer in the\
+documentation and/or other materials provided with the distribution.\n\
+- Neither the name of the Xiph.org Foundation nor the names of its\
+contributors may be used to endorse or promote products derived from\
+this software without specific prior written permission.\n\
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\
+``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\
+A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR\
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,\
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF\
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING\
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
 
 }
 
@@ -3195,7 +3246,6 @@ void wfmain::on_fStoBtn_clicked()
     // press STO
 
     bool ok;
-    QString freqString;
     int preset_number = ui->freqMhzLineEdit->text().toInt(&ok);
 
     if(ok && (preset_number >= 0) && (preset_number < 100))
@@ -3398,7 +3448,9 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
     ui->txLatencySlider->setEnabled(!checked);
     ui->rxLatencyValue->setEnabled(!checked);
     ui->txLatencyValue->setEnabled(!checked);
-
+    ui->baudRateCombo->setEnabled(checked);
+    ui->serialDeviceListCombo->setEnabled(checked);
+    ui->udpServerSetupBtn->setEnabled(true);
 }
 
 void wfmain::on_lanEnableBtn_clicked(bool checked)
@@ -3409,6 +3461,9 @@ void wfmain::on_lanEnableBtn_clicked(bool checked)
     ui->controlPortTxt->setEnabled(checked);
     ui->usernameTxt->setEnabled(checked);
     ui->passwordTxt->setEnabled(checked);
+    ui->baudRateCombo->setEnabled(!checked);
+    ui->serialDeviceListCombo->setEnabled(!checked);
+    ui->udpServerSetupBtn->setEnabled(false);
     if(checked)
     {
         showStatusBarText("After filling in values, press Save Settings and re-start wfview.");
@@ -4249,11 +4304,20 @@ void wfmain::on_rigCIVaddrHexLine_editingFinished()
         prefs.radioCIVAddr = propCIVAddr;
         showStatusBarText(QString("Setting radio CI-V address to: 0x%1. Press Save Settings to retain.").arg(propCIVAddr, 2, 16));
     } else {
-        showStatusBarText(QString("Could not use provided CI-V address."));
+        showStatusBarText(QString("Could not use provided CI-V address. Address must be < 0x7E"));
     }
 
 }
-
+void wfmain::on_baudRateCombo_activated()
+{
+    bool ok = false;
+    quint32 baud = ui->baudRateCombo->currentData().toUInt(&ok);
+    if(ok)
+    {
+        prefs.serialPortBaud = baud;
+        showStatusBarText(QString("Changed baud rate to %1 bps. Press Save Settings to retain.").arg(baud));
+    }
+}
 
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()

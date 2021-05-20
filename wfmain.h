@@ -440,6 +440,8 @@ private slots:
 
     void on_rigCIVaddrHexLine_editingFinished();
 
+    void on_baudRateCombo_activated();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -461,7 +463,6 @@ private:
     void openRig();
     void powerRigOff();
     void powerRigOn();
-    QWidget * theParent;
     QStringList portList;
     QString serialPortRig;
 

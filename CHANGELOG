@@ -1,5 +1,46 @@
 # CHANGELOG
 
+- 20210518
+
+    		Remove unused variables
+
+    		Make windows build include git version
+    
+    		Command line version of git must be available in the path.
+
+    		Various file tidying for Windows/Mac builds
+
+    		Flush buffers if too many lost packets.
+
+    		remove duplicate audioPacket metatype
+
+    		Fix silly error in udpserver audio
+
+    		Allow receive only in udpHandler
+
+    		Manual CIV is now read from the preferences and populates the UI
+    		accordingly.
+
+    		Changed UI a little, and added manual CI-V options. Seems to work well.
+
+- 20210517
+
+    		Fixes for MacOS build - sandbox
+
+    		Fixes for mac logging/pty since adding sandbox
+
+    		Make audio input buffer a qMap
+
+    		Use qMap instead of qVector for buffers as they are auto-sorted.
+
+- 20210516
+
+    		Fixed attenuator on IC-7000
+
+    		register audio metatype in wfmain with all of the others
+
+    		Move manual serial port so linux/mac only
+
 - 20210516 	Added IC-7200 support. This has not been tested.
 
 - 20210515	Change to correct bug when CI-V is user-specified and rigCaps were never
