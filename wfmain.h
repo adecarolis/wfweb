@@ -440,6 +440,8 @@ private slots:
 
     void on_rigCIVaddrHexLine_editingFinished();
 
+    void on_baudRateCombo_activated();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);

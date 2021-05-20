@@ -156,6 +156,18 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
     keyM->setKey(Qt::Key_M);
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
 
+    ui->baudRateCombo->insertItem(0, QString("115200"), 115200);
+    ui->baudRateCombo->insertItem(1, QString("57600"), 57600);
+    ui->baudRateCombo->insertItem(2, QString("38400"), 38400);
+    ui->baudRateCombo->insertItem(3, QString("28800"), 28800);
+    ui->baudRateCombo->insertItem(4, QString("19200"), 19200);
+    ui->baudRateCombo->insertItem(5, QString("9600"), 9600);
+    ui->baudRateCombo->insertItem(6, QString("4800"), 4800);
+    ui->baudRateCombo->insertItem(7, QString("2400"), 2400);
+    ui->baudRateCombo->insertItem(8, QString("1200"), 1200);
+    ui->baudRateCombo->insertItem(9, QString("300"), 300);
+
+
     // Enumerate audio devices, need to do before settings are loaded.
     const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
     for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
@@ -950,6 +962,11 @@ void wfmain::loadSettings()
     }
 
     prefs.serialPortBaud = (quint32) settings.value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
+
+    ui->baudRateCombo->blockSignals(true);
+    ui->baudRateCombo->setCurrentIndex( ui->baudRateCombo->findData(prefs.serialPortBaud) );
+    ui->baudRateCombo->blockSignals(false);
+
     prefs.virtualSerialPort = settings.value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
     int vspIndex = ui->vspCombo->findText(prefs.virtualSerialPort);
     if (vspIndex != -1) {
@@ -974,6 +991,17 @@ void wfmain::loadSettings()
     settings.beginGroup("LAN");
 
     prefs.enableLAN = settings.value("EnableLAN", defPrefs.enableLAN).toBool();
+    if(prefs.enableLAN)
+    {
+        ui->baudRateCombo->setEnabled(false);
+        ui->serialDeviceListCombo->setEnabled(false);
+        ui->udpServerSetupBtn->setEnabled(false);
+    } else {
+        ui->baudRateCombo->setEnabled(true);
+        ui->serialDeviceListCombo->setEnabled(true);
+        ui->udpServerSetupBtn->setEnabled(true);
+    }
+
     ui->lanEnableBtn->setChecked(prefs.enableLAN);
     ui->connectBtn->setEnabled(prefs.enableLAN);
 
@@ -3420,7 +3448,9 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
     ui->txLatencySlider->setEnabled(!checked);
     ui->rxLatencyValue->setEnabled(!checked);
     ui->txLatencyValue->setEnabled(!checked);
-
+    ui->baudRateCombo->setEnabled(checked);
+    ui->serialDeviceListCombo->setEnabled(checked);
+    ui->udpServerSetupBtn->setEnabled(true);
 }
 
 void wfmain::on_lanEnableBtn_clicked(bool checked)
@@ -3431,6 +3461,9 @@ void wfmain::on_lanEnableBtn_clicked(bool checked)
     ui->controlPortTxt->setEnabled(checked);
     ui->usernameTxt->setEnabled(checked);
     ui->passwordTxt->setEnabled(checked);
+    ui->baudRateCombo->setEnabled(!checked);
+    ui->serialDeviceListCombo->setEnabled(!checked);
+    ui->udpServerSetupBtn->setEnabled(false);
     if(checked)
     {
         showStatusBarText("After filling in values, press Save Settings and re-start wfview.");
@@ -4271,11 +4304,20 @@ void wfmain::on_rigCIVaddrHexLine_editingFinished()
         prefs.radioCIVAddr = propCIVAddr;
         showStatusBarText(QString("Setting radio CI-V address to: 0x%1. Press Save Settings to retain.").arg(propCIVAddr, 2, 16));
     } else {
-        showStatusBarText(QString("Could not use provided CI-V address."));
+        showStatusBarText(QString("Could not use provided CI-V address. Address must be < 0x7E"));
     }
 
 }
-
+void wfmain::on_baudRateCombo_activated()
+{
+    bool ok = false;
+    quint32 baud = ui->baudRateCombo->currentData().toUInt(&ok);
+    if(ok)
+    {
+        prefs.serialPortBaud = baud;
+        showStatusBarText(QString("Changed baud rate to %1 bps. Press Save Settings to retain.").arg(baud));
+    }
+}
 
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()

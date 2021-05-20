@@ -2176,6 +2176,26 @@
            </widget>
           </item>
           <item>
+           <widget class="QLabel" name="label_32">
+            <property name="text">
+             <string>Baud:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="baudRateCombo">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Baud rate selection menu. &lt;/p&gt;&lt;p&gt;For the IC-7300 select 115200. &lt;/p&gt;&lt;p&gt;Older rigs may require other settings. &lt;/p&gt;&lt;p&gt;Be sure to match what baud rate the rig is set to. Using the highese supported baud rate for the radio is recommended. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="accessibleName">
+             <string>baud rate</string>
+            </property>
+            <property name="accessibleDescription">
+             <string>baud rate selection menu</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="udpServerSetupBtn">
             <property name="toolTip">
              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press here to set up the built-in rig server. The built-in server is intended to allow access over the network to a serial or USB-connected radio. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
