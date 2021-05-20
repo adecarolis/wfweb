@@ -3153,12 +3153,6 @@ void wfmain::on_bandGenbtn_clicked()
 
 void wfmain::on_aboutBtn_clicked()
 {
-    // Show.....
-    // Build date, time, git checksum (short)
-    // QT library version
-    // stylesheet credit
-    // contact information
-
     QMessageBox msgBox(this);
     msgBox.setWindowTitle("Abou wfview");
     msgBox.setTextFormat(Qt::RichText);
@@ -3168,19 +3162,49 @@ void wfmain::on_aboutBtn_clicked()
     QString head = QString("<html><head></head><body>");
     QString copyright = QString("Copyright 2017-2021 Elliott H. Liggett, W6EL. All rights reserved.");
     QString nacode = QString("<br/><br/>Networking and audio code written by Phil Taylor, M0VSE");
-    QString doctest = QString("<br/><br/>Testing, documentation, bug fixes, and development mentorship from Roeland Jansen, PA3MET, and Jim Nijkamp, PA8E.");
-    QString ssCredit = QString("<br/><br/>Stylesheet qdarkstyle used under MIT license, stored in /usr/share/wfview/stylesheets/.");
-    QString website = QString("<br/><br/>Get the latest version from our gitlab repo: <a href='https://gitlab.com/eliggett/wfview' style='color: cyan;'>https://gitlab.com/eliggett/wfview</a>");
-    QString docs = QString("<br/>Also see the <a href='https://gitlab.com/eliggett/wfview/-/wikis/home'  style='color: cyan;'>wiki</a> for the <a href='https://gitlab.com/eliggett/wfview/-/wikis/User-FAQ' style='color: cyan;'>FAQ</a>, <a href='https://gitlab.com/eliggett/wfview/-/wikis/Keystrokes' style='color: cyan;'>Keystrokes</a>, and more.");
+    QString doctest = QString("<br/><br/>Testing, documentation, bug fixes, and development mentorship from<br/>Roeland Jansen, PA3MET, and Jim Nijkamp, PA8E.");
+    QString ssCredit = QString("<br/><br/>Stylesheet <a href=\"https://github.com/ColinDuquesnoy/QDarkStyleSheet/tree/master/qdarkstyle\"  style=\"color: cyan;\">qdarkstyle</a> used under MIT license, stored in /usr/share/wfview/stylesheets/.");
+    QString rsCredit = QString("<br/><br/><a href=\"https://www.speex.org/\"  style=\"color: cyan;\">Speex</a> Resample library Copyright 2003-2008 Jean-Marc Valin");
+    QString website = QString("<br/><br/>Please visit <a href=\"https://wfview.org/\"  style=\"color: cyan;\">https://wfview.org/</a> for the latest information.");
+    QString docs = QString("<br/><br/>Be sure to check the <a href=\"https://wfview.org/wfview-user-manual/\"  style=\"color: cyan;\">User Manual</a> and <a href=\"https://forum.wfview.org/\"  style=\"color: cyan;\">the Forum</a> if you have any questions.");
+
+    QString gitcodelink = QString("<a href=\"https://gitlab.com/eliggett/wfview/-/tree/%1\"  style=\"color: cyan;\">").arg(GITSHORT);
+
     QString contact = QString("<br/>email the author: kilocharlie8@gmail.com or W6EL on the air!");
-    QString buildInfo = QString("<br/><br/>Build " + QString(GITSHORT) + " on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
+
+    QString buildInfo = QString("<br/><br/>Build " + gitcodelink + QString(GITSHORT) + "</a> on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
     QString end = QString("</body></html>");
 
-    QString aboutText = head + copyright + "\n" + nacode + "\n" + doctest + "\n" + ssCredit + "\n";
+    QString aboutText = head + copyright + "\n" + nacode + "\n" + doctest + "\n" + ssCredit + "\n" + rsCredit + "\n";
     aboutText.append(website + "\n"+ docs + contact +"\n" + buildInfo + end);
 
     msgBox.setText(aboutText);
     msgBox.exec();
+
+    volatile QString sscreditcopyright = QString("Speex copyright notice:\
+Copyright (C) 2003 Jean-Marc Valin\n\
+Redistribution and use in source and binary forms, with or without\
+modification, are permitted provided that the following conditions\
+are met:\n\
+- Redistributions of source code must retain the above copyright\
+notice, this list of conditions and the following disclaimer.\n\
+- Redistributions in binary form must reproduce the above copyright\
+notice, this list of conditions and the following disclaimer in the\
+documentation and/or other materials provided with the distribution.\n\
+- Neither the name of the Xiph.org Foundation nor the names of its\
+contributors may be used to endorse or promote products derived from\
+this software without specific prior written permission.\n\
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\
+``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\
+A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR\
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,\
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF\
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING\
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
 
 }
 
@@ -3194,7 +3218,6 @@ void wfmain::on_fStoBtn_clicked()
     // press STO
 
     bool ok;
-    QString freqString;
     int preset_number = ui->freqMhzLineEdit->text().toInt(&ok);
 
     if(ok && (preset_number >= 0) && (preset_number < 100))
