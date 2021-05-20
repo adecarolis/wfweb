@@ -440,7 +440,7 @@ private slots:
 
     void on_rigCIVaddrHexLine_editingFinished();
 
-    void on_baudRateCombo_activated();
+    void on_baudRateCombo_activated(int);
 
 private:
     Ui::wfmain *ui;
