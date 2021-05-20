@@ -2855,6 +2855,22 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
             rigCaps.bands.push_back(bandGen);
             break;
+        case model756pro:
+            rigCaps.modelName = QString("IC-756 Pro");
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.clear();
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasATU = true;
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
+            rigCaps.antennas = {0x00, 0x01};
+            rigCaps.bands = standardHF;
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.bsr[bandGen] = 0x11;
+            break;
         case model756proiii:
             rigCaps.modelName = QString("IC-756 Pro III");
             rigCaps.hasSpectrum = false;
@@ -2863,7 +2879,6 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
             rigCaps.hasATU = true;
-            rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
