@@ -3181,7 +3181,7 @@ void wfmain::on_aboutBtn_clicked()
     msgBox.setText(aboutText);
     msgBox.exec();
 
-    volatile QString sscreditcopyright = QString("Speex copyright notice:\
+    volatile QString sxcreditcopyright = QString("Speex copyright notice:\
 Copyright (C) 2003 Jean-Marc Valin\n\
 Redistribution and use in source and binary forms, with or without\
 modification, are permitted provided that the following conditions\
