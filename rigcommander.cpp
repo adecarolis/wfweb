@@ -2265,7 +2265,7 @@ void rigCommander::parseDetailedRegisters1A05()
                 default:
                     break;
             }
-            return;
+            break;
         case model7850:
             switch(subcmd)
             {
@@ -2332,6 +2332,7 @@ void rigCommander::parseDetailedRegisters1A05()
                 default:
                     break;
             }
+            break;
         case model7610:
             switch(subcmd)
             {
@@ -2407,6 +2408,7 @@ void rigCommander::parseDetailedRegisters1A05()
                 default:
                     break;
             }
+            break;
         case model705:
             switch(subcmd)
             {
