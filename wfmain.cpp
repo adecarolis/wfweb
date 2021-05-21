@@ -825,20 +825,32 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     //now we know what the rig ID is:
     //qInfo(logSystem()) << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
 
+    // baud on the serial port reflects the actual rig connection,
+    // even if a client-server connection is being used.
+    // Computed time for a 10 byte message, with a safety factor of 2.
+    unsigned int usPerByte = 9600*1000 / prefs.serialPortBaud;
+    unsigned int msMinTiming=usPerByte * 10*2/1000;
+    if(msMinTiming < 35)
+        msMinTiming = 35;
+
+    delayedCommand->setInterval( msMinTiming * 2); // 20 byte message
+    periodicPollingTimer->setInterval( msMinTiming ); // slower for s-meter poll
+
+    // Normal:
+    delayedCmdIntervalLAN_ms =  msMinTiming * 2;
+    delayedCmdIntervalSerial_ms =  msMinTiming * 2;
+
+    // startup initial state:
+    delayedCmdStartupInterval_ms =  msMinTiming * 2;
+
     if(rig->usingLAN())
     {
         usingLAN = true;
-        delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
+        //delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
     } else {
         usingLAN = false;
-        if(prefs.serialPortBaud < 115200)
-        {
-            delayedCommand->setInterval(delayedCmdIntervalSerial_ms*2);
-            periodicPollingTimer->setInterval(200); // slower for s-meter polling
-        } else {
-            delayedCommand->setInterval(delayedCmdIntervalSerial_ms);
-        }
     }
+
     receiveRigID(rigCaps);
     getInitialRigState();
 
