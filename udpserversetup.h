@@ -23,6 +23,7 @@ struct SERVERCONFIG {
     QString audioOutput;
     QString audioInput;
     quint8 resampleQuality;
+    quint32 baudRate;
 
     QList <SERVERUSER> users;
 };

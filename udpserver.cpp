@@ -1015,7 +1015,7 @@ void udpServer::sendCapabilities(CLIENT* c)
     }
 
     p.civ = rigCaps.civ;
-    p.baudrate = (quint32)qToBigEndian(19200);
+    p.baudrate = (quint32)qToBigEndian(config.baudRate);
     /*
         0x80 = 12K only
         0x40 = 44.1K only

@@ -254,6 +254,7 @@ signals:
 	void haveChangeLatency(quint16 value);
 	void haveSetVolume(unsigned char value);
 	void haveNetworkStatus(QString);
+	void haveBaudRate(quint32 baudrate);
 
 private:
 	

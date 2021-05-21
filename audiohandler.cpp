@@ -1230,8 +1230,8 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		auto packet = audioBuffer.begin();
 		while (packet != audioBuffer.end())
 		{
-			if (packet->time.msecsTo(QTime::currentTime()) > 100) {
-				//qInfo(logAudio()) << "TX Packet too old " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
+            if (packet->time.msecsTo(QTime::currentTime()) > latency) {
+                //qInfo(logAudio()) << "TX Packet too old " << dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
 				packet = audioBuffer.erase(packet); // returns next packet
 			}
 			else {
