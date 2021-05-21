@@ -8,8 +8,11 @@
 #include <QSet>
 #include <QDataStream>
 
-#include "rigcommander.h"
+#include <map>
+#include <vector>
+#include <typeindex>
 
+#include "rigcommander.h"
 
 class rigCtlD : public QTcpServer
 {
@@ -71,6 +74,8 @@ private:
     QString getMode(unsigned char mode, bool datamode);
     unsigned char getMode(QString modeString);
     QString getFilter(unsigned char mode, unsigned char filter);
+
 };
+
 
 #endif

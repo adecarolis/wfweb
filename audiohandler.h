@@ -15,6 +15,7 @@
 #include <QThread>
 #include <QTimer>
 #include <QTime>
+#include <QMap>
 #include "resampler/speex_resampler.h"
 
 #include <QDebug>
@@ -92,9 +93,10 @@ private:
     quint16          radioSampleRate;
     quint8           radioSampleBits;
     quint8          radioChannels;
-    QVector<audioPacket> audioBuffer;
+    QVector <audioPacket> audioBuffer;
+    QMap<quint32, audioPacket>inputBuffer;
 
-    SpeexResamplerState* resampler;
+    SpeexResamplerState* resampler=NULL;
     unsigned int ratioNum;
     unsigned int ratioDen;
 };

@@ -2,6 +2,7 @@
 #define WFMAIN_H
 
 #include <QMainWindow>
+#include <QCloseEvent>
 #include <QThread>
 #include <QString>
 #include <QVector>
@@ -435,8 +436,15 @@ private slots:
 
     void on_bandWFMbtn_clicked();
 
+    void on_rigCIVManualAddrChk_clicked(bool checked);
+
+    void on_rigCIVaddrHexLine_editingFinished();
+
+    void on_baudRateCombo_activated(int);
+
 private:
     Ui::wfmain *ui;
+    void closeEvent(QCloseEvent *event);
     QSettings settings;
     void loadSettings();
     void saveSettings();
@@ -455,7 +463,6 @@ private:
     void openRig();
     void powerRigOff();
     void powerRigOn();
-    QWidget * theParent;
     QStringList portList;
     QString serialPortRig;
 
@@ -704,8 +711,10 @@ Q_DECLARE_METATYPE(struct rigCapabilities)
 Q_DECLARE_METATYPE(struct freqt)
 Q_DECLARE_METATYPE(struct udpPreferences)
 Q_DECLARE_METATYPE(struct rigStateStruct)
+Q_DECLARE_METATYPE(struct audioPacket)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
+
 
 #endif // WFMAIN_H

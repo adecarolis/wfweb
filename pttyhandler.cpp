@@ -57,20 +57,20 @@ void pttyHandler::openPort()
 
     if (ptfd >=0)
     {
-        qDebug(logSerial()) << "Opened pt device: " << ptfd << ", attempting to grant pt status";
+        qInfo(logSerial()) << "Opened pt device: " << ptfd << ", attempting to grant pt status";
 
         if (grantpt(ptfd))
         {
-            qDebug(logSerial()) << "Failed to grantpt";
+            qInfo(logSerial()) << "Failed to grantpt";
             return;
         }
         if (unlockpt(ptfd))
         {
-            qDebug(logSerial()) << "Failed to unlock pt";
+            qInfo(logSerial()) << "Failed to unlock pt";
             return;
         }
         // we're good!
-        qDebug(logSerial()) << "Opened pseudoterminal, slave name :" << ptsname(ptfd);
+        qInfo(logSerial()) << "Opened pseudoterminal, slave name :" << ptsname(ptfd);
 
         ptReader = new QSocketNotifier(ptfd, QSocketNotifier::Read, this);
         connect(ptReader, &QSocketNotifier::activated,
@@ -83,7 +83,7 @@ void pttyHandler::openPort()
     if (!success)
     {
         ptfd = 0;
-        qDebug(logSerial()) << "Could not open pseudo terminal port, please restart.";
+        qInfo(logSerial()) << "Could not open pseudo terminal port, please restart.";
         isConnected = false;
         serialError = true;
         emit haveSerialPortError(portName, "Could not open pseudo terminal port. Please restart.");
@@ -98,9 +98,9 @@ void pttyHandler::openPort()
     {
         if (!QFile::link(ptDevSlave, portName))
         {
-            qDebug(logSerial()) << "Error creating link to" << ptDevSlave << "from" << portName;
+            qInfo(logSerial()) << "Error creating link to" << ptDevSlave << "from" << portName;
         } else {
-            qDebug(logSerial()) << "Created link to" << ptDevSlave << "from" << portName;
+            qInfo(logSerial()) << "Created link to" << ptDevSlave << "from" << portName;
         }
     }
 #endif
@@ -123,7 +123,7 @@ void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
         // 0xE1 = wfview
         // 0xE0 = pseudo-term host
         // 0x00 = broadcast to all
-        //qDebug(logSerial()) << "Sending data from radio to pseudo-terminal";
+        //qInfo(logSerial()) << "Sending data from radio to pseudo-terminal";
         sendDataOut(data);
     }
 }
@@ -132,7 +132,7 @@ void pttyHandler::sendDataOut(const QByteArray& writeData)
 {
     qint64 bytesWritten = 0;
 
-    //qDebug(logSerial()) << "Data to pseudo term:";
+    //qInfo(logSerial()) << "Data to pseudo term:";
     //printHex(writeData, false, true);
     if (isConnected) {
         mutex.lock();
@@ -142,7 +142,7 @@ void pttyHandler::sendDataOut(const QByteArray& writeData)
         bytesWritten = ::write(ptfd, writeData.constData(), writeData.size());
 #endif
         if (bytesWritten != writeData.length()) {
-            qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
+            qInfo(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
                 << " size of byte array: " << writeData.size()\
                 << " Wrote all bytes? " << (bool)(bytesWritten == (qint64)writeData.size());
         }
@@ -174,7 +174,7 @@ void pttyHandler::receiveDataIn(int fd) {
     ssize_t got = ::read(fd, inPortData.data(), available);
     int err = errno;
     if (got < 0) {
-        qDebug(logSerial()) << tr("Read failed: %1").arg(QString::fromLatin1(strerror(err)));
+        qInfo(logSerial()) << tr("Read failed: %1").arg(QString::fromLatin1(strerror(err)));
         return;
     }
     inPortData.resize(got);
@@ -193,18 +193,18 @@ void pttyHandler::receiveDataIn(int fd) {
             if (civId == 0 && inPortData.length() > lastFE + 2 && (quint8)inPortData[lastFE + 2] > (quint8)0xdf && (quint8)inPortData[lastFE + 2] < (quint8)0xef) {
                 // This is (should be) the remotes CIV id.
                 civId = (quint8)inPortData[lastFE + 2];
-                qDebug(logSerial()) << "pty detected remote CI-V:" << hex << civId;
+                qInfo(logSerial()) << "pty detected remote CI-V:" << hex << civId;
             }
             else if (civId != 0 && inPortData.length() > lastFE + 2 && (quint8)inPortData[lastFE + 2] != civId)
             {
                 civId = (quint8)inPortData[lastFE + 2];
-                qDebug(logSerial()) << "pty remote CI-V changed:" << hex << (quint8)civId;
+                qInfo(logSerial()) << "pty remote CI-V changed:" << hex << (quint8)civId;
             }
 
             // filter 1A 05 01 12/27 = C-IV transceive command before forwarding on.
             if (inPortData.contains(QByteArrayLiteral("\x1a\x05\x01\x12")) || inPortData.contains(QByteArrayLiteral("\x1a\x05\x01\x27")))
             {
-                //qDebug(logSerial()) << "Filtered transceive command";
+                //qInfo(logSerial()) << "Filtered transceive command";
                 //printHex(inPortData, false, true);
                 QByteArray reply= QByteArrayLiteral("\xfe\xfe\x00\x00\xfb\xfd");
                 reply[2] = inPortData[3];
@@ -215,20 +215,20 @@ void pttyHandler::receiveDataIn(int fd) {
             else if (inPortData.length() > lastFE + 2 && ((quint8)inPortData[lastFE + 1] == civId || (quint8)inPortData[lastFE + 2] == civId))
             {
                 emit haveDataFromPort(inPortData);
-                //qDebug(logSerial()) << "Data from pseudo term:";
+                //qInfo(logSerial()) << "Data from pseudo term:";
                 //printHex(inPortData, false, true);
             }
 
             if (rolledBack)
             {
-                // qDebug(logSerial()) << "Rolled back and was successfull. Length: " << inPortData.length();
+                // qInfo(logSerial()) << "Rolled back and was successfull. Length: " << inPortData.length();
                 //printHex(inPortData, false, true);
                 rolledBack = false;
             }
         }
         else {
             // did not receive the entire thing so roll back:
-            // qDebug(logSerial()) << "Rolling back transaction. End not detected. Lenth: " << inPortData.length();
+            // qInfo(logSerial()) << "Rolling back transaction. End not detected. Lenth: " << inPortData.length();
             //printHex(inPortData, false, true);
             rolledBack = true;
 #ifdef Q_OS_WIN
@@ -237,8 +237,8 @@ void pttyHandler::receiveDataIn(int fd) {
     }
     else {
         port->commitTransaction(); // do not emit data, do not keep data.
-        //qDebug(logSerial()) << "Warning: received data with invalid start. Dropping data.";
-        //qDebug(logSerial()) << "THIS SHOULD ONLY HAPPEN ONCE!!";
+        //qInfo(logSerial()) << "Warning: received data with invalid start. Dropping data.";
+        //qInfo(logSerial()) << "THIS SHOULD ONLY HAPPEN ONCE!!";
         // THIS SHOULD ONLY HAPPEN ONCE!
     }
 #else
@@ -270,7 +270,7 @@ void pttyHandler::closePort()
 void pttyHandler::debugThis()
 {
     // Do not use, function is for debug only and subject to change.
-    qDebug(logSerial()) << "comm debug called.";
+    qInfo(logSerial()) << "comm debug called.";
 
     inPortData = port->readAll();
     emit haveDataFromPort(inPortData);

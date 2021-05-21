@@ -24,7 +24,7 @@ udpHandler::udpHandler(udpPreferences prefs) :
     this->password = prefs.password;
     this->compName = prefs.clientName.mid(0,8) + "-wfview";
 
-    qDebug(logUdp()) << "Starting udpHandler user:" << username << " rx latency:" << rxLatency  << " tx latency:" << txLatency << " rx sample rate: " << rxSampleRate <<
+    qInfo(logUdp()) << "Starting udpHandler user:" << username << " rx latency:" << rxLatency  << " tx latency:" << txLatency << " rx sample rate: " << rxSampleRate <<
         " rx codec: " << rxCodec << " tx sample rate: " << txSampleRate << " tx codec: " << txCodec;
 
     // Try to set the IP address, if it is a hostname then perform a DNS lookup.
@@ -35,13 +35,13 @@ udpHandler::udpHandler(udpPreferences prefs) :
         {
             if (addr.protocol() == QAbstractSocket::IPv4Protocol) {
                 radioIP = addr;
-                qDebug(logUdp()) << "Got IP Address :" << prefs.ipAddress << ": " << addr.toString();
+                qInfo(logUdp()) << "Got IP Address :" << prefs.ipAddress << ": " << addr.toString();
                 break;
             }
         }
         if (radioIP.isNull())
         { 
-            qDebug(logUdp()) << "Error obtaining IP Address for :" << prefs.ipAddress << ": " << remote.errorString();
+            qInfo(logUdp()) << "Error obtaining IP Address for :" << prefs.ipAddress << ": " << remote.errorString();
             return;
         }
     }
@@ -93,7 +93,7 @@ udpHandler::~udpHandler()
         if (civ != Q_NULLPTR) {
             delete civ;
         }
-        qDebug(logUdp()) << "Sending token removal packet";
+        qInfo(logUdp()) << "Sending token removal packet";
         sendToken(0x01);
         if (tokenTimer != Q_NULLPTR)
         {
@@ -153,7 +153,7 @@ void udpHandler::dataReceived()
                 control_packet_t in = (control_packet_t)r.constData();
                 if (in->type == 0x04) {
                     // If timer is active, stop it as they are obviously there!
-                    qDebug(logUdp()) << this->metaObject()->className() << ": Received I am here from: " <<datagram.senderAddress();
+                    qInfo(logUdp()) << this->metaObject()->className() << ": Received I am here from: " <<datagram.senderAddress();
 
                     if (areYouThereTimer->isActive()) {
                         // send ping packets every second
@@ -165,7 +165,7 @@ void udpHandler::dataReceived()
                 // This is "I am ready" in response to "Are you ready" so send login.
                 else if (in->type == 0x06)
                 {
-                    qDebug(logUdp()) << this->metaObject()->className() << ": Received I am ready";
+                    qInfo(logUdp()) << this->metaObject()->className() << ": Received I am ready";
                     sendLogin(); // send login packet
                 }
                 break;
@@ -234,12 +234,12 @@ void udpHandler::dataReceived()
                     if (in->error == 0x00ffffff && !streamOpened)
                     {
                         emit haveNetworkError(radioIP.toString(), "Auth failed, try rebooting the radio.");
-                        qDebug(logUdp()) << this->metaObject()->className() << ": Auth failed, try rebooting the radio.";
+                        qInfo(logUdp()) << this->metaObject()->className() << ": Auth failed, try rebooting the radio.";
                     }
                     else if (in->error == 0x00000000 && in->disc == 0x01)
                     {
                         emit haveNetworkError(radioIP.toString(), "Got radio disconnected.");
-                        qDebug(logUdp()) << this->metaObject()->className() << ": Got radio disconnected.";
+                        qInfo(logUdp()) << this->metaObject()->className() << ": Got radio disconnected.";
                         if (streamOpened) {
                             // Close stream connections but keep connection open to the radio.
                             if (audio != Q_NULLPTR) {
@@ -269,7 +269,7 @@ void udpHandler::dataReceived()
                     if (in->error == 0xfeffffff)
                     {
                         emit haveNetworkStatus("Invalid Username/Password");
-                        qDebug(logUdp()) << this->metaObject()->className() << ": Invalid Username/Password";
+                        qInfo(logUdp()) << this->metaObject()->className() << ": Invalid Username/Password";
                     }
                     else if (!isAuthenticated)
                     {
@@ -277,7 +277,7 @@ void udpHandler::dataReceived()
                         if (in->tokrequest == tokRequest)
                         {
                             emit haveNetworkStatus("Radio Login OK!");
-                            qDebug(logUdp()) << this->metaObject()->className() << ": Received matching token response to our request";
+                            qInfo(logUdp()) << this->metaObject()->className() << ": Received matching token response to our request";
                             token = in->token;
                             sendToken(0x02);
                             tokenTimer->start(TOKEN_RENEWAL); // Start token request timer
@@ -285,7 +285,7 @@ void udpHandler::dataReceived()
                         }
                         else
                         {
-                            qDebug(logUdp()) << this->metaObject()->className() << ": Token response did not match, sent:" << tokRequest << " got " << in->tokrequest;
+                            qInfo(logUdp()) << this->metaObject()->className() << ": Token response did not match, sent:" << tokRequest << " got " << in->tokrequest;
                         }
                     }
 
@@ -294,7 +294,7 @@ void udpHandler::dataReceived()
                         highBandwidthConnection = true;
                     }
 
-                    qDebug(logUdp()) << this->metaObject()->className() << ": Detected connection speed " << in->connection;
+                    qInfo(logUdp()) << this->metaObject()->className() << ": Detected connection speed " << in->connection;
                 }
                 break;
             }
@@ -313,6 +313,12 @@ void udpHandler::dataReceived()
                         }
                         else {
                             civ = new udpCivData(localIP, radioIP, civPort);
+    
+                            // TX is not supported
+                            if (txSampleRates <2 ) { 
+                                txSampleRate = 0;
+                                txCodec = 0;
+                            }
                             audio = new udpAudio(localIP, radioIP, audioPort, rxLatency, txLatency, rxSampleRate, rxCodec, txSampleRate, txCodec, audioOutputPort, audioInputPort,resampleQuality);
 
                             QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
@@ -324,7 +330,7 @@ void udpHandler::dataReceived()
 
                             emit haveNetworkStatus(devName);
 
-                            qDebug(logUdp()) << this->metaObject()->className() << "Got serial and audio request success, device name: " << devName;
+                            qInfo(logUdp()) << this->metaObject()->className() << "Got serial and audio request success, device name: " << devName;
 
                             // Stuff can change in the meantime because of a previous login...
                             remoteId = in->sentid;
@@ -360,10 +366,19 @@ void udpHandler::dataReceived()
                 {
                     audioType = in->audio;
                     devName = in->name;
+                    civId = in->civ;
+                    rxSampleRates = in->rxsample;
+                    txSampleRates = in->txsample;
                     //replyId = r.mid(0x42, 16);
-                    qDebug(logUdp()) << this->metaObject()->className() << "Received radio capabilities, Name:" <<
+                    qInfo(logUdp()) << this->metaObject()->className() << "Received radio capabilities, Name:" <<
                         devName << " Audio:" <<
-                        audioType;
+                        audioType << "CIV:" << hex << civId; 
+
+                    if (txSampleRates < 2)
+                    {
+                        // TX not supported
+                        qInfo(logUdp()) << this->metaObject()->className() << "TX audio is disabled";
+                    }
                 }
                 break;
             }
@@ -399,9 +414,11 @@ void udpHandler::sendRequestStream()
     p.token = token;
     memcpy(&p.name, devName.toLocal8Bit().constData(), devName.length());
     p.rxenable = 1;
-    p.txenable = 1;
+    if (this->txSampleRates > 1) {
+        p.txenable = 1;
+        p.txcodec = txCodec;
+    }
     p.rxcodec = rxCodec;
-    p.txcodec = txCodec;
     memcpy(&p.username, usernameEncoded.constData(), usernameEncoded.length());
     p.rxsample = qToBigEndian((quint32)rxSampleRate);
     p.txsample = qToBigEndian((quint32)txSampleRate);
@@ -417,10 +434,10 @@ void udpHandler::sendAreYouThere()
 {
     if (areYouThereCounter == 20)
     {
-        qDebug(logUdp()) << this->metaObject()->className() << ": Radio not responding.";
+        qInfo(logUdp()) << this->metaObject()->className() << ": Radio not responding.";
         emit haveNetworkStatus("Radio not responding!");
     }
-    qDebug(logUdp()) << this->metaObject()->className() << ": Sending Are You There...";
+    qInfo(logUdp()) << this->metaObject()->className() << ": Sending Are You There...";
 
     areYouThereCounter++;
     udpBase::sendControl(false,0x03,0x00);
@@ -429,7 +446,7 @@ void udpHandler::sendAreYouThere()
 void udpHandler::sendLogin() // Only used on control stream.
 {
 
-    qDebug(logUdp()) << this->metaObject()->className() << ": Sending login packet";
+    qInfo(logUdp()) << this->metaObject()->className() << ": Sending login packet";
 
     tokRequest = static_cast<quint16>(rand() | rand() << 8); // Generate random token request.
 
@@ -479,7 +496,7 @@ void udpHandler::sendToken(uint8_t magic)
 // Class that manages all Civ Data to/from the rig
 udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort) 
 {
-    qDebug(logUdp()) << "Starting udpCivData";
+    qInfo(logUdp()) << "Starting udpCivData";
     localIP = local;
     port = civPort;
     radioIP = ip;
@@ -545,10 +562,10 @@ udpCivData::~udpCivData()
 void udpCivData::watchdog()
 {
     static bool alerted = false;
-    if (lastReceived.msecsTo(QTime::currentTime()) > 500)
+    if (lastReceived.msecsTo(QTime::currentTime()) > 2000)
     {
         if (!alerted) {
-            qDebug(logUdp()) << " CIV Watchdog: no CIV data received for 500ms, requesting data start.";
+            qInfo(logUdp()) << " CIV Watchdog: no CIV data received for 2s, requesting data start.";
             if (startCivDataTimer != Q_NULLPTR)
             {
                 startCivDataTimer->start(100);
@@ -564,7 +581,7 @@ void udpCivData::watchdog()
 
 void udpCivData::send(QByteArray d)
 {
-    // qDebug(logUdp()) << "Sending: (" << d.length() << ") " << d;
+    // qInfo(logUdp()) << "Sending: (" << d.length() << ") " << d;
     data_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
     p.len = sizeof(p)+d.length();
@@ -613,7 +630,7 @@ void udpCivData::dataReceived()
     while (udp->hasPendingDatagrams()) 
     {
         QNetworkDatagram datagram = udp->receiveDatagram();
-        //qDebug(logUdp()) << "Received: " << datagram.data();
+        //qInfo(logUdp()) << "Received: " << datagram.data();
         QByteArray r = datagram.data();
 
         switch (r.length())
@@ -671,7 +688,7 @@ void udpCivData::dataReceived()
 // Audio stream
 udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QString outputPort, QString inputPort,quint8 resampleQuality)
 {
-    qDebug(logUdp()) << "Starting udpAudio";
+    qInfo(logUdp()) << "Starting udpAudio";
     this->localIP = local;
     this->port = audioPort;
     this->radioIP = ip;
@@ -681,6 +698,10 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     this->txSampleRate = txsample;
     this->rxCodec = rxcodec;
     this->txCodec = txcodec;
+
+    if (txSampleRate == 0) {
+        enableTx = false;
+    }
 
     init(); // Perform connection
 
@@ -716,12 +737,12 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString, quint8)));
 
-    qRegisterMetaType<audioPacket>();
     connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
     connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
     connect(this, SIGNAL(haveSetVolume(unsigned char)), rxaudio, SLOT(setVolume(unsigned char)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
     
+
     if (txCodec == 0x01)
         txIsUlawCodec = true;
     else if (txCodec == 0x04)
@@ -745,7 +766,10 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
     pingTimer->start(PING_PERIOD); // send ping packets every 100ms
 
-    emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, txLatency, txIsUlawCodec, true, inputPort,resampleQuality);
+    if (enableTx) {
+        emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, txLatency, txIsUlawCodec, true, inputPort, resampleQuality);
+    }
+
     emit setupRxAudio(rxNumSamples, rxChannelCount, rxSampleRate, txLatency, rxIsUlawCodec, false, outputPort,resampleQuality);
 
     watchdogTimer = new QTimer();
@@ -804,13 +828,13 @@ udpAudio::~udpAudio()
 void udpAudio::watchdog()
 {
     static bool alerted = false;
-    if (lastReceived.msecsTo(QTime::currentTime()) > 500)
+    if (lastReceived.msecsTo(QTime::currentTime()) > 2000)
     {
         if (!alerted) {
             /* Just log it at the moment, maybe try signalling the control channel that it needs to 
                 try requesting civ/audio again? */
 
-            qDebug(logUdp()) << " Audio Watchdog: no audio data received for 500ms, restart required";
+            qInfo(logUdp()) << " Audio Watchdog: no audio data received for 2s, restart required";
             alerted = true;
         }
     }
@@ -848,7 +872,7 @@ void udpAudio::sendTxAudio()
             QByteArray tx = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
             tx.append(partial);
             len = len + partial.length();
-            //qDebug(logUdp()) << "Sending audio packet length: " << tx.length();
+            //qInfo(logUdp()) << "Sending audio packet length: " << tx.length();
             sendTrackedPacket(tx);
             sendAudioSeq++;
             counter++;
@@ -870,7 +894,7 @@ void udpAudio::dataReceived()
 {
     while (udp->hasPendingDatagrams()) {
         QNetworkDatagram datagram = udp->receiveDatagram();
-        //qDebug(logUdp()) << "Received: " << datagram.data();
+        //qInfo(logUdp()) << "Received: " << datagram.data();
         QByteArray r = datagram.data();
 
         switch (r.length())
@@ -878,7 +902,7 @@ void udpAudio::dataReceived()
             case (16): // Response to control packet handled in udpBase
             {
                 control_packet_t in = (control_packet_t)r.constData();
-                if (in->type == 0x04)
+                if (in->type == 0x04 && enableTx)
                 {
                     txAudioTimer->start(TXAUDIO_PERIOD);
                 }
@@ -934,7 +958,7 @@ void udpBase::init()
     udp = new QUdpSocket(this);
     udp->bind(); // Bind to random port.
     localPort = udp->localPort();
-    qDebug(logUdp()) << "UDP Stream bound to local port:" << localPort << " remote port:" << port;
+    qInfo(logUdp()) << "UDP Stream bound to local port:" << localPort << " remote port:" << port;
     uint32_t addr = localIP.toIPv4Address();
     myId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (localPort & 0xffff);
 
@@ -946,7 +970,7 @@ void udpBase::init()
 
 udpBase::~udpBase()
 {
-    qDebug(logUdp()) << "Closing UDP stream :" << radioIP.toString() << ":" << port;
+    qInfo(logUdp()) << "Closing UDP stream :" << radioIP.toString() << ":" << port;
     if (udp != Q_NULLPTR) {
         sendControl(false, 0x05, 0x00); // Send disconnect
         udp->close();
@@ -997,26 +1021,25 @@ void udpBase::dataReceived(QByteArray r)
             control_packet_t in = (control_packet_t)r.constData();
             if (in->type == 0x01)
             {
-                QMutexLocker txlocker(&txBufferMutex);
                 // Single packet request
                 packetsLost++;
-
-                auto match = std::find_if(txSeqBuf.begin(), txSeqBuf.end(), [&cs = in->seq](SEQBUFENTRY& s) {
-                    return s.seqNum == cs;
-                });
-
+                congestion ++;
+                txBufferMutex.lock();
+                QMap<quint16,SEQBUFENTRY>::iterator match = txSeqBuf.find(in->seq);
                 if (match != txSeqBuf.end()) {
                     // Found matching entry?
                     // Send "untracked" as it has already been sent once.
                     // Don't constantly retransmit the same packet, give-up eventually
-                    //qDebug(logUdp()) << this->metaObject()->className() << ": Sending retransmit of " << hex << match->seqNum;
+                    qDebug(logUdp()) << this->metaObject()->className() << ": Sending retransmit of " << hex << match->seqNum;
                     match->retransmitCount++;
-                    QMutexLocker udplocker(&udpMutex);
+                    udpMutex.lock();
                     udp->writeDatagram(match->data, radioIP, port);
+                    udpMutex.unlock();
                 }
+                txBufferMutex.unlock();
             }
             if (in->type == 0x04) {
-                qDebug(logUdp()) << this->metaObject()->className() << ": Received I am here ";
+                qInfo(logUdp()) << this->metaObject()->className() << ": Received I am here ";
                 areYouThereCounter = 0;
                 // I don't think that we will ever receive an "I am here" other than in response to "Are you there?"
                 remoteId = in->sentid;
@@ -1049,8 +1072,9 @@ void udpBase::dataReceived(QByteArray r)
                     p.reply = 0x01;
                     p.seq = in->seq;
                     p.time = in->time;
-                    QMutexLocker udplocker(&udpMutex);
+                    udpMutex.lock();
                     udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
+                    udpMutex.unlock();
                 }
                 else if (in->reply == 0x01) {
                     if (in->seq == pingSendSeq)
@@ -1060,11 +1084,11 @@ void udpBase::dataReceived(QByteArray r)
                     }
                     else {
                         // Not sure what to do here, need to spend more time with the protocol but will try sending ping with same seq next time.
-                        //qDebug(logUdp()) << this->metaObject()->className() << "Received out-of-sequence ping response. Sent:" << pingSendSeq << " received " << in->seq;
+                        //qInfo(logUdp()) << this->metaObject()->className() << "Received out-of-sequence ping response. Sent:" << pingSendSeq << " received " << in->seq;
                     }
                 }
                 else {
-                    qDebug(logUdp()) << this->metaObject()->className() << "Unhandled response to ping. I have never seen this! 0x10=" << r[16];
+                    qInfo(logUdp()) << this->metaObject()->className() << "Unhandled response to ping. I have never seen this! 0x10=" << r[16];
                 }
     
             }
@@ -1089,13 +1113,12 @@ void udpBase::dataReceived(QByteArray r)
     // This is a variable length retransmit request!
     if (in->type == 0x01 && in->len != 0x10)
     {
-        QMutexLocker txlocker(&txBufferMutex);
+
         for (quint16 i = 0x10; i < r.length(); i = i + 2)
         {
             quint16 seq = (quint8)r[i] | (quint8)r[i + 1] << 8;
-            auto match = std::find_if(txSeqBuf.begin(), txSeqBuf.end(), [&cs = seq](SEQBUFENTRY& s) {
-                return s.seqNum == cs;
-            });
+            txBufferMutex.lock();
+            QMap<quint16, SEQBUFENTRY>::iterator match = txSeqBuf.find(seq);
             if (match == txSeqBuf.end()) {
                 qDebug(logUdp()) << this->metaObject()->className() << ": Requested packet " << hex << seq << " not found";
                 // Just send idle packet.
@@ -1104,51 +1127,65 @@ void udpBase::dataReceived(QByteArray r)
             else {
                 // Found matching entry?
                 // Send "untracked" as it has already been sent once.
-                //qDebug(logUdp()) << this->metaObject()->className() << ": Sending retransmit (range) of " << hex << match->seqNum;
+                qDebug(logUdp()) << this->metaObject()->className() << ": Sending retransmit (range) of " << hex << match->seqNum;
                 match->retransmitCount++;
-                QMutexLocker udplocker(&udpMutex);
+                udpMutex.lock();
                 udp->writeDatagram(match->data, radioIP, port);
+                udpMutex.unlock();
                 match++;
                 packetsLost++;
+                congestion++;
             }
+            txBufferMutex.unlock();
         }
     } 
     else if (in->len != PING_SIZE && in->type == 0x00 && in->seq != 0x00)
     {
-        QMutexLocker rxlocker(&rxBufferMutex);
+        rxBufferMutex.lock();
         if (rxSeqBuf.isEmpty()) {
-            rxSeqBuf.append(in->seq);
+            rxSeqBuf.insert(in->seq, QTime::currentTime());
         } 
         else
         {
-            std::sort(rxSeqBuf.begin(), rxSeqBuf.end());
-            if (in->seq < rxSeqBuf.front())
+            //std::sort(rxSeqBuf.begin(), rxSeqBuf.end());
+            if (in->seq < rxSeqBuf.firstKey())
             {
-                qDebug(logUdp()) << this->metaObject()->className() << ": ******* seq number has rolled over ****** previous highest: " << hex << rxSeqBuf.back() << " current: " << hex << in->seq;
+                qInfo(logUdp()) << this->metaObject()->className() << ": ******* seq number has rolled over ****** previous highest: " << hex << rxSeqBuf.lastKey() << " current: " << hex << in->seq;
                 //seqPrefix++;
                 // Looks like it has rolled over so clear buffer and start again.
                 rxSeqBuf.clear();
+                rxMissing.clear();
+                rxBufferMutex.unlock();
                 return;
             }
 
             if (!rxSeqBuf.contains(in->seq))
             {
                 // Add incoming packet to the received buffer and if it is in the missing buffer, remove it.
-                rxSeqBuf.append(in->seq);
-                // Check whether this is one of our missing ones!
-                auto s = std::find_if(rxMissing.begin(), rxMissing.end(), [&cs = in->seq](SEQBUFENTRY& s) { return s.seqNum == cs; });
+                rxSeqBuf.insert(in->seq, QTime::currentTime());
+            }
+            else {
+                // This is probably one of our missing packets!
+                missingMutex.lock();
+                QMap<quint16,int>::iterator s = rxMissing.find(in->seq);
                 if (s != rxMissing.end())
                 {
                     qDebug(logUdp()) << this->metaObject()->className() << ": Missing SEQ has been received! " << hex << in->seq;
                     s = rxMissing.erase(s);
                 }
+                missingMutex.unlock();
+
             }
 
         }
+        rxBufferMutex.unlock();
+
     }
 }
 
-
+bool missing(quint16 i, quint16 j) {
+    return (i + 1 != j);
+}
 
 void udpBase::sendRetransmitRequest()
 {
@@ -1157,63 +1194,62 @@ void udpBase::sendRetransmitRequest()
 
     QByteArray missingSeqs;
 
-    QMutexLocker rxlocker(&rxBufferMutex);
-
-    auto i = std::adjacent_find(rxSeqBuf.begin(), rxSeqBuf.end(), [](quint16 l, quint16 r) {return l + 1 < r; });
-    while (i != rxSeqBuf.end())
-    {
-        if (i + 1 != rxSeqBuf.end())
+    rxBufferMutex.lock();
+    if (!rxSeqBuf.empty() && rxSeqBuf.size() <= rxSeqBuf.lastKey() - rxSeqBuf.firstKey())
+    {   
+        if ((rxSeqBuf.lastKey() - rxSeqBuf.firstKey() - rxSeqBuf.size()) > 20)
         {
-            if (*(i + 1) - *i < 30)
-            {
-                for (quint16 j = *i + 1; j < *(i + 1); j++)
-                {
-                    //qDebug(logUdp()) << this->metaObject()->className() << ": Found missing seq between " << *i << " : " << *(i + 1) << " (" << j << ")";
-                    auto s = std::find_if(rxMissing.begin(), rxMissing.end(), [&cs = j](SEQBUFENTRY& s) { return s.seqNum == cs; });
+            // Too many packets to process, flush buffers and start again!
+            qDebug(logUdp()) << "Too many missing packets, flushing buffer: " << rxSeqBuf.lastKey() << "missing=" << rxSeqBuf.lastKey() - rxSeqBuf.firstKey() - rxSeqBuf.size() + 1;
+            rxMissing.clear();
+            missingMutex.lock();
+            rxSeqBuf.clear();
+            missingMutex.unlock();
+        }
+        else {
+            // We have at least 1 missing packet!
+            qDebug(logUdp()) << "Missing Seq: size=" << rxSeqBuf.size() << "firstKey=" << rxSeqBuf.firstKey() << "lastKey=" << rxSeqBuf.lastKey() << "missing=" << rxSeqBuf.lastKey() - rxSeqBuf.firstKey() - rxSeqBuf.size() + 1;
+            // We are missing packets so iterate through the buffer and add the missing ones to missing packet list
+            for (int i = 0; i < rxSeqBuf.keys().length() - 1; i++) {
+                missingMutex.lock();
+                for (quint16 j = rxSeqBuf.keys()[i] + 1; j < rxSeqBuf.keys()[i + 1]; j++) {
+                    auto s = rxMissing.find(j);
                     if (s == rxMissing.end())
                     {
                         // We haven't seen this missing packet before
-                        //qDebug(logUdp()) << this->metaObject()->className() << ": Adding to missing buffer (len="<< rxMissing.length() << "): " << j;
-                        SEQBUFENTRY b;
-                        b.seqNum = j;
-                        b.retransmitCount = 0;
-                        b.timeSent = QTime::currentTime();
-                        rxMissing.append(b);
+                        qDebug(logUdp()) << this->metaObject()->className() << ": Adding to missing buffer (len=" << rxMissing.size() << "): " << j;
+                        rxMissing.insert(j, 0);
+                        rxSeqBuf.insert(j, QTime::currentTime()); // Add this missing packet to the rxbuffer as we now long about it.
                         packetsLost++;
                     }
                     else {
-                        if (s->retransmitCount == 4)
+                        if (s.value() == 4)
                         {
                             // We have tried 4 times to request this packet, time to give up!
                             s = rxMissing.erase(s);
-                            rxSeqBuf.append(j); // Final thing is to add to received buffer!
                         }
 
                     }
                 }
-            }
-            else {
-                qDebug(logUdp()) << this->metaObject()->className() << ": Too many missing, flushing buffers";
-                rxSeqBuf.clear();
-                missingSeqs.clear();
-                break;
+                missingMutex.unlock();
             }
         }
-        i++;
     }
+    rxBufferMutex.unlock();
 
-
+    missingMutex.lock();
     for (auto it = rxMissing.begin(); it != rxMissing.end(); ++it)
     {
-        if (it->retransmitCount < 10)
+        if (it.value() < 10)
         {
-            missingSeqs.append(it->seqNum & 0xff);
-            missingSeqs.append(it->seqNum >> 8 & 0xff);
-            missingSeqs.append(it->seqNum & 0xff);
-            missingSeqs.append(it->seqNum >> 8 & 0xff);
-            it->retransmitCount++;
+            missingSeqs.append(it.key() & 0xff);
+            missingSeqs.append(it.key() >> 8 & 0xff);
+            missingSeqs.append(it.key() & 0xff);
+            missingSeqs.append(it.key() >> 8 & 0xff);
+            it.value()++;
         }
     }
+    missingMutex.unlock();
     if (missingSeqs.length() != 0)
     {
         control_packet p;
@@ -1226,15 +1262,20 @@ void udpBase::sendRetransmitRequest()
         {
             p.seq = (missingSeqs[0] & 0xff) | (quint16)(missingSeqs[1] << 8);
             qDebug(logUdp()) << this->metaObject()->className() << ": sending request for missing packet : " << hex << p.seq;
-            QMutexLocker udplocker(&udpMutex);
+            udpMutex.lock();
             udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
+            udpMutex.unlock();
         }
         else
         {
             qDebug(logUdp()) << this->metaObject()->className() << ": sending request for multiple missing packets : " << missingSeqs.toHex();
+            missingMutex.lock();
             missingSeqs.insert(0, p.packet, sizeof(p.packet));
-            QMutexLocker udplocker(&udpMutex);
+            missingMutex.unlock();
+
+            udpMutex.lock();
             udp->writeDatagram(missingSeqs, radioIP, port);
+            udpMutex.unlock();
         }
     }
 
@@ -1243,7 +1284,7 @@ void udpBase::sendRetransmitRequest()
 
 
 // Used to send idle and other "control" style messages
-void udpBase::sendControl(bool tracked=true, quint8 type=0, quint16 seq=0)
+void udpBase::sendControl(bool tracked = true, quint8 type = 0, quint16 seq = 0)
 {
     control_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -1254,8 +1295,9 @@ void udpBase::sendControl(bool tracked=true, quint8 type=0, quint16 seq=0)
 
     if (!tracked) {
         p.seq = seq;
-        QMutexLocker udplocker(&udpMutex);
+        udpMutex.lock();
         udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
+        udpMutex.unlock();
     }
     else {
         sendTrackedPacket(QByteArray::fromRawData((const char*)p.packet, sizeof(p)));
@@ -1275,12 +1317,13 @@ void udpBase::sendPing()
     p.seq = pingSendSeq;
     p.time = timeStarted.msecsSinceStartOfDay();
     lastPingSentTime = QDateTime::currentDateTime();
-    QMutexLocker udplocker(&udpMutex);
+    udpMutex.lock();
     udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
+    udpMutex.unlock();
     return;
 }
 
-void udpBase::sendRetransmitRange(quint16 first, quint16 second, quint16 third,quint16 fourth)
+void udpBase::sendRetransmitRange(quint16 first, quint16 second, quint16 third, quint16 fourth)
 {
     retransmit_range_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
@@ -1292,8 +1335,9 @@ void udpBase::sendRetransmitRange(quint16 first, quint16 second, quint16 third,q
     p.second = second;
     p.third = third;
     p.fourth = fourth;
-    QMutexLocker udplocker(&udpMutex);
+    udpMutex.lock();
     udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
+    udpMutex.unlock();
     return;
 }
 
@@ -1308,17 +1352,29 @@ void udpBase::sendTrackedPacket(QByteArray d)
     s.timeSent = QTime::currentTime();
     s.retransmitCount = 0;
     s.data = d;
-    QMutexLocker txlocker(&txBufferMutex);
-    txSeqBuf.append(s);
-    QMutexLocker rxlocker(&rxBufferMutex);
+    txBufferMutex.lock();
+   
+    if (sendSeq == 0) { 
+        // We are either the first ever sent packet or have rolled-over so clear the buffer.
+        txSeqBuf.clear();
+        congestion = 0;
+    }
+    txSeqBuf.insert(sendSeq,s);
+    txBufferMutex.unlock();
     purgeOldEntries(); // Delete entries older than PURGE_SECONDS seconds (currently 5)
     sendSeq++;
 
-    QMutexLocker udplocker(&udpMutex);
+    udpMutex.lock();
     udp->writeDatagram(d, radioIP, port);
+    if (congestion>10) { // Poor quality connection?
+        udp->writeDatagram(d, radioIP, port);
+        if (congestion>20) // Even worse so send again.
+            udp->writeDatagram(d, radioIP, port);
+    }
     if (idleTimer != Q_NULLPTR && idleTimer->isActive()) {
         idleTimer->start(IDLE_PERIOD); // Reset idle counter if it's running
     }
+    udpMutex.unlock();
     packetsSent++;
     return;
 }
@@ -1330,26 +1386,46 @@ void udpBase::sendTrackedPacket(QByteArray d)
 void udpBase::purgeOldEntries()
 {
     // Erase old entries from the tx packet buffer
+    txBufferMutex.lock();
+
     if (!txSeqBuf.isEmpty())
     {
-        txSeqBuf.erase(std::remove_if(txSeqBuf.begin(), txSeqBuf.end(), [](const SEQBUFENTRY& v)
-        { return v.timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS; }), txSeqBuf.end());
-    }
-
-    // Erase old entries from the missing packets buffer
-    if (!rxMissing.isEmpty()) {
-        rxMissing.erase(std::remove_if(rxMissing.begin(), rxMissing.end(), [](const SEQBUFENTRY& v)
-        { return v.timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS; }), rxMissing.end());
-    }
-
-    if (!rxSeqBuf.isEmpty()) {
-        std::sort(rxSeqBuf.begin(), rxSeqBuf.end());
-
-        if (rxSeqBuf.length() > 400)
-        {
-            rxSeqBuf.remove(0, 200);
+        // Loop through the earliest items in the buffer and delete if older than PURGE_SECONDS
+        for (auto it = txSeqBuf.begin(); it != txSeqBuf.end();) {
+            if (it.value().timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS) {
+                txSeqBuf.erase(it++);
+            } 
+            else {
+                break;
+            }
         }
     }
+
+    txBufferMutex.unlock();
+
+    rxBufferMutex.lock();
+    if (!rxSeqBuf.isEmpty()) {
+        // Loop through the earliest items in the buffer and delete if older than PURGE_SECONDS
+        for (auto it = rxSeqBuf.begin(); it != rxSeqBuf.end();) {
+            if (it.value().secsTo(QTime::currentTime()) > PURGE_SECONDS) {
+                rxSeqBuf.erase(it++);
+            }
+            else {
+                break;
+            }
+        }
+    }
+    rxBufferMutex.unlock();
+
+    missingMutex.lock();
+    // Erase old entries from the missing packets buffer
+    if (!rxMissing.isEmpty() && rxMissing.size() > 50) {
+        for (size_t i = 0; i < 25; ++i) {
+            rxMissing.erase(rxMissing.begin());
+        }
+    }
+    missingMutex.unlock();
+
 }
 
 /// <summary>
