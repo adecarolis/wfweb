@@ -4331,7 +4331,7 @@ void wfmain::on_rigCIVaddrHexLine_editingFinished()
     }
 
 }
-void wfmain::on_baudRateCombo_activated()
+void wfmain::on_baudRateCombo_activated(int index)
 {
     bool ok = false;
     quint32 baud = ui->baudRateCombo->currentData().toUInt(&ok);
@@ -4340,6 +4340,7 @@ void wfmain::on_baudRateCombo_activated()
         prefs.serialPortBaud = baud;
         showStatusBarText(QString("Changed baud rate to %1 bps. Press Save Settings to retain.").arg(baud));
     }
+    (void)index;
 }
 
 // --- DEBUG FUNCTION ---
