@@ -4337,7 +4337,7 @@ void wfmain::on_rigCIVaddrHexLine_editingFinished()
         prefs.radioCIVAddr = propCIVAddr;
         showStatusBarText(QString("Setting radio CI-V address to: 0x%1. Press Save Settings to retain.").arg(propCIVAddr, 2, 16));
     } else {
-        showStatusBarText(QString("Could not use provided CI-V address. Address must be < 0x7E"));
+        showStatusBarText(QString("Could not use provided CI-V address. Address must be < 0xE0"));
     }
 
 }
