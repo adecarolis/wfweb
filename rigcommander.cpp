@@ -125,6 +125,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, QSt
 
         connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
         connect(this, SIGNAL(haveSetVolume(unsigned char)), udp, SLOT(setVolume(unsigned char)));
+        connect(udp, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
 
         // Connect for errors/alerts
         connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
@@ -204,6 +205,10 @@ void rigCommander::handleStatusUpdate(const QString text)
 bool rigCommander::usingLAN()
 {
     return usingNativeLAN;
+}
+
+void rigCommander::receiveBaudRate(quint32 baudrate) {
+    emit haveBaudRate(baudrate);
 }
 
 void rigCommander::findRigs()

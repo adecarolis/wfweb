@@ -369,6 +369,7 @@ void udpHandler::dataReceived()
                     civId = in->civ;
                     rxSampleRates = in->rxsample;
                     txSampleRates = in->txsample;
+                    emit haveBaudRate(qFromBigEndian(in->baudrate));
                     //replyId = r.mid(0x42, 16);
                     qInfo(logUdp()) << this->metaObject()->className() << "Received radio capabilities, Name:" <<
                         devName << " Audio:" <<

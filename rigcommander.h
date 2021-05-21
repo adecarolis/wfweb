@@ -234,6 +234,7 @@ public slots:
     void handleSerialPortError(const QString port, const QString errorText);
     void changeLatency(const quint16 value);
     void dataFromServer(QByteArray data);
+    void receiveBaudRate(quint32 baudrate);
 
     // Speech:
     void sayFrequency();
@@ -257,6 +258,7 @@ signals:
     void haveAudioData(audioPacket data);
     void initUdpHandler();
     void haveSetVolume(unsigned char level);
+    void haveBaudRate(quint32 baudrate);
 
     // Spectrum:
     void haveSpectrumData(QByteArray spectrum, double startFreq, double endFreq); // pass along data to UI

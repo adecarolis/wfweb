@@ -265,6 +265,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
             serverConfig.resampleQuality = udpPrefs.resampleQuality;
             serverConfig.audioInput = udpPrefs.audioInput;
             serverConfig.audioOutput = udpPrefs.audioOutput;
+            serverConfig.baudRate = prefs.serialPortBaud;
         }
         udp = new udpServer(serverConfig);
 
@@ -724,14 +725,17 @@ void wfmain::openRig()
         connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
         connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
         
-        connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences,QString)), rig, SLOT(commSetup(unsigned char, udpPreferences,QString)));
+        connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences, QString)), rig, SLOT(commSetup(unsigned char, udpPreferences, QString)));
         connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32,QString)), rig, SLOT(commSetup(unsigned char, QString, quint32,QString)));
+
+        connect(rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
 
         connect(this, SIGNAL(sendCloseComm()), rig, SLOT(closeComm()));
         connect(this, SIGNAL(sendChangeLatency(quint16)), rig, SLOT(changeLatency(quint16)));
         connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
         connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
+
         if (rigCtl != Q_NULLPTR) {
             connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
             connect(rigCtl, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
@@ -4117,6 +4121,12 @@ void wfmain::receiveSpectrumSpan(freqt freqspan, bool isSub)
        }
 
     }
+}
+
+void wfmain::receiveBaudRate(quint32 baud)
+{
+    qInfo() << "Received serial port baud rate from remote server:" << baud;
+    prefs.serialPortBaud = baud;
 }
 
 void wfmain::on_rigPowerOnBtn_clicked()
