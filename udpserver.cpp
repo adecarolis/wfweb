@@ -714,7 +714,9 @@ void udpServer::audioReceived()
 void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
 {
     Q_UNUSED(l); // We might need it later!
-
+    if (current == Q_NULLPTR || r.isNull()) {
+        return;
+    }
     current->lastHeard = QDateTime::currentDateTime();
     if (r.length() < 0x10)
     {
