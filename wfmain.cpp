@@ -4322,7 +4322,7 @@ void wfmain::on_rigCIVaddrHexLine_editingFinished()
 
     unsigned char propCIVAddr = (unsigned char) ui->rigCIVaddrHexLine->text().toUInt(&okconvert, 16);
 
-    if(okconvert && (propCIVAddr < 0x7F) && (propCIVAddr != 0))
+    if(okconvert && (propCIVAddr < 0xe0) && (propCIVAddr != 0))
     {
         prefs.radioCIVAddr = propCIVAddr;
         showStatusBarText(QString("Setting radio CI-V address to: 0x%1. Press Save Settings to retain.").arg(propCIVAddr, 2, 16));
