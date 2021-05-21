@@ -782,6 +782,7 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	this->chunkSize = (INTERNAL_SAMPLE_RATE / 25) * radioChannels;
 
 	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "chunkSize: " << this->chunkSize;
+	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "bufferLength (latency): " << this->latency;
 
 	int resample_error=0;
 
