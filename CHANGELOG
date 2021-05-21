@@ -2,6 +2,13 @@
 
 - 20210520
 
+    		Added IC-756 Pro. Tested UI and back-end response with 7300 and fake
+    		RigID reply.
+
+    		Added additional support for the IC-756 Pro III. Essentially untested.
+
+    		Cleaned up warning and UI help text.
+
     		Add more features to rigstate
 
 - 20210519
