@@ -727,13 +727,15 @@ void wfmain::openRig()
         {
             // Find the ICOM
             // qInfo(logSystem()) << "Searching for serial port...";
-            QDirIterator it73("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator it73("/dev/serial/by-id", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*A*", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator it785x("/dev/serial", QStringList() << "*IC-785*A*", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator it7610("/dev/serial", QStringList() << "*IC-7610*A", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator itR8600("/dev/serial", QStringList() << "*IC-R8600*A", QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator itTest("/tmp/test", QStringList() << "*radio*", QDir::NoFilter, QDirIterator::Subdirectories);
 
+            qDebug() << "test iterator isEmpty: " << itTest.filePath().isEmpty();
 
             if(!it73.filePath().isEmpty())
             {
@@ -761,6 +763,8 @@ void wfmain::openRig()
                 serialPortRig = itR8600.filePath();
             } else {
                 //fall back:
+
+
                 qInfo(logSystem()) << "Could not find Icom serial port. Falling back to OS default. Use --port to specify, or modify preferences.";
 #ifdef Q_OS_MAC
                 serialPortRig = QString("/dev/tty.SLAB_USBtoUART");
