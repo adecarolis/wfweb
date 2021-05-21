@@ -1,11 +1,36 @@
 # CHANGELOG
 
+- 20210520
+
+    		Add more features to rigstate
+
+- 20210519
+
+    		Model ID text format fixed. Shows IC-0x followed by the raw rig ID
+    		received.
+
+    		Fixed issue where unknown rigs were identified as 0xff. All rigs are now
+    		identified using rigCaps.modelID, populated with the raw response from
+    		the Rig ID query. Enumerations of known rig types continue to fall into
+    		rigCaps.model, and unknwn rigs will match to rigCaps.model=modelUnknown,
+    		as before.
+
+    		Serial baud rate is in the UI now. Added some enable/disable code to
+    		prevent confusion about which options can be used with which types of
+    		connections.
+
+    		Better about box.
+
+    		fixed filename in instructions
+
+		Add MacOS serial port entitlement
+
+
 - 20210518
 
     		Remove unused variables
 
     		Make windows build include git version
-    
     		Command line version of git must be available in the path.
 
     		Various file tidying for Windows/Mac builds

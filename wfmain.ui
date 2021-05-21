@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -2168,7 +2168,7 @@
           <item>
            <widget class="QComboBox" name="serialDeviceListCombo">
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select a serial port here. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Once selected, check &amp;quot;Enable USB(serial),  press &amp;quot;Save Settings&amp;quot;, exit, and re-start wfview. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select a serial port here. &lt;/p&gt;&lt;p&gt;Once selected, check &amp;quot;Enable USB(serial), press &amp;quot;Save Settings&amp;quot;, exit, and re-start wfview. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="accessibleName">
              <string>Serial Device Selector</string>
@@ -2185,7 +2185,7 @@
           <item>
            <widget class="QComboBox" name="baudRateCombo">
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Baud rate selection menu. &lt;/p&gt;&lt;p&gt;For the IC-7300 select 115200. &lt;/p&gt;&lt;p&gt;Older rigs may require other settings. &lt;/p&gt;&lt;p&gt;Be sure to match what baud rate the rig is set to. Using the highese supported baud rate for the radio is recommended. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Baud rate selection menu. &lt;/p&gt;&lt;p&gt;For the IC-7300 select 115200. &lt;/p&gt;&lt;p&gt;Older rigs may require other settings. &lt;/p&gt;&lt;p&gt;Be sure to match what baud rate the rig is set to. Using the highese supported baud rate for the radio is recommended. &lt;/p&gt;&lt;p&gt;Please press &amp;quot;Save Settings&amp;quot; and re-launc wfview for this to take effect.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="accessibleName">
              <string>baud rate</string>
@@ -2208,7 +2208,7 @@
           <item>
            <widget class="QCheckBox" name="rigCIVManualAddrChk">
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If you are using an older (year 2010) radio, you may need to enable this option to manually specify the CI-V address. This option is also useful for radios that do not have CI-V Transceive enabled and thus will not answer our broadcast query for connected rigs on the CI-V bus.&lt;/p&gt;&lt;p&gt;If you have a modern radio with CI-V Transceive enabled, you should not need to check this box. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If you are using an older (year 2010) radio, you may need to enable this option to manually specify the CI-V address. This option is also useful for radios that do not have CI-V Transceive enabled and thus will not answer our broadcast query for connected rigs on the CI-V bus.&lt;/p&gt;&lt;p&gt;If you have a modern radio with CI-V Transceive enabled, you should not need to check this box. &lt;/p&gt;&lt;p&gt;You will need to Save Settings and re-launch wfview for this to take effect. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
              <string>Manual Radio CI-V Address:</string>
@@ -2234,12 +2234,17 @@
             </property>
             <property name="toolTip">
              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the address in as hexidecimal, without any prefix, just as the radio presents the address in the menu. &lt;/p&gt;&lt;p&gt;Here are some common examples:&lt;/p&gt;
-IC-706: 58
-&lt;br/&gt;IC-756: 6E
+&lt;p&gt;IC-706: 58 
+&lt;br/&gt;IC-756: 50
+&lt;br/&gt;IC-756 Pro: 5C
+&lt;br/&gt;IC-756 Pro II: 64
+&lt;br/&gt;IC-756 Pro III: 6E
 &lt;br/&gt;IC-7000: 70
 &lt;br/&gt;IC-7100: 88
-&lt;br/&gt;IC-7200: 76
-&lt;p&gt;This setting is typically needed for older radios and for radios that do not have CI-V Transceive enabled. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;br/&gt;IC-7200: 76 
+&lt;br/&gt;IC-7300: 94
+&lt;/p&gt;&lt;p&gt;This setting is typically needed for older radios and for radios that do not have CI-V Transceive enabled. &lt;/p&gt;
+&lt;p&gt;After changing, press Save Settings and re-launch wfview.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
              <string>auto</string>
