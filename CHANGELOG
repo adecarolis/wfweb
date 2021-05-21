@@ -1,5 +1,14 @@
 # CHANGELOG
 
+- 20210521
+
+    		Add baud rate detection for remote rigs
+
+    		Correct propCIVAddr to work if less than 0xe0
+
+    		Change audiohandler to use latency for tx audio
+
+
 - 20210520
 
     		Added IC-756 Pro. Tested UI and back-end response with 7300 and fake
