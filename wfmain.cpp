@@ -8,7 +8,7 @@
 // This code is copyright 2017-2020 Elliott H. Liggett
 // All rights reserved
 
-wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent ) :
+wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, QWidget *parent ) :
     QMainWindow(parent),
     ui(new Ui::wfmain)
 {
@@ -228,6 +228,28 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent
 
     setDefaultColors(); // set of UI colors with defaults populated
     setDefPrefs(); // other default options
+    if (settingsFile.isNull()) {
+        settings = new QSettings();
+    }
+    else
+    {
+        QString file = settingsFile;
+        QFile info(settingsFile);
+        QString path="";
+        if (!QFileInfo(info).isAbsolute())
+        {
+            path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+            if (path.isEmpty())
+            {
+                path = QDir::homePath();
+            }
+            path = path + "/";
+            file = info.fileName();
+        }
+
+        qDebug() << "Loading settings from:" << path + file;
+        settings = new QSettings(path + file, QSettings::Format::IniFormat);
+    }
     loadSettings(); // Look for saved preferences
     setTuningSteps(); // TODO: Combine into preferences
 
@@ -633,6 +655,7 @@ wfmain::~wfmain()
     }
     delete rpt;
     delete ui;
+    delete settings;
 }
 
 void wfmain::closeEvent(QCloseEvent *event)
@@ -890,60 +913,60 @@ void wfmain::setDefPrefs()
 
 void wfmain::loadSettings()
 {
-    qInfo(logSystem()) << "Loading settings from " << settings.fileName();
+    qInfo(logSystem()) << "Loading settings from " << settings->fileName();
 
     // Basic things to load:
     // UI: (full screen, dark theme, draw peaks, colors, etc)
-    settings.beginGroup("Interface");
-    prefs.useFullScreen = settings.value("UseFullScreen", defPrefs.useFullScreen).toBool();
-    prefs.useDarkMode = settings.value("UseDarkMode", defPrefs.useDarkMode).toBool();
-    prefs.useSystemTheme = settings.value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
-    prefs.drawPeaks = settings.value("DrawPeaks", defPrefs.drawPeaks).toBool();
-    prefs.stylesheetPath = settings.value("StylesheetPath", defPrefs.stylesheetPath).toString();
-    ui->splitter->restoreState(settings.value("splitter").toByteArray());
+    settings->beginGroup("Interface");
+    prefs.useFullScreen = settings->value("UseFullScreen", defPrefs.useFullScreen).toBool();
+    prefs.useDarkMode = settings->value("UseDarkMode", defPrefs.useDarkMode).toBool();
+    prefs.useSystemTheme = settings->value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
+    prefs.drawPeaks = settings->value("DrawPeaks", defPrefs.drawPeaks).toBool();
+    prefs.stylesheetPath = settings->value("StylesheetPath", defPrefs.stylesheetPath).toString();
+    ui->splitter->restoreState(settings->value("splitter").toByteArray());
 
-    restoreGeometry(settings.value("windowGeometry").toByteArray());
-    restoreState(settings.value("windowState").toByteArray());
+    restoreGeometry(settings->value("windowGeometry").toByteArray());
+    restoreState(settings->value("windowState").toByteArray());
     setWindowState(Qt::WindowActive); // Works around QT bug to returns window+keyboard focus.
-    settings.endGroup();
+    settings->endGroup();
 
     // Load color schemes:
     // Per this bug: https://forum.qt.io/topic/24725/solved-qvariant-will-drop-alpha-value-when-save-qcolor/5
     // the alpha channel is dropped when converting raw qvariant of QColor. Therefore, we are storing as unsigned int and converting back.
 
-    settings.beginGroup("DarkColors");
-    prefs.colorScheme.Dark_PlotBackground = QColor::fromRgba(settings.value("Dark_PlotBackground", defaultColors.Dark_PlotBackground.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotAxisPen = QColor::fromRgba(settings.value("Dark_PlotAxisPen", defaultColors.Dark_PlotAxisPen.rgba()).toUInt());
+    settings->beginGroup("DarkColors");
+    prefs.colorScheme.Dark_PlotBackground = QColor::fromRgba(settings->value("Dark_PlotBackground", defaultColors.Dark_PlotBackground.rgba()).toUInt());
+    prefs.colorScheme.Dark_PlotAxisPen = QColor::fromRgba(settings->value("Dark_PlotAxisPen", defaultColors.Dark_PlotAxisPen.rgba()).toUInt());
 
-    prefs.colorScheme.Dark_PlotLegendTextColor = QColor::fromRgba(settings.value("Dark_PlotLegendTextColor", defaultColors.Dark_PlotLegendTextColor.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotLegendBorderPen = QColor::fromRgba(settings.value("Dark_PlotLegendBorderPen", defaultColors.Dark_PlotLegendBorderPen.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotLegendBrush = QColor::fromRgba(settings.value("Dark_PlotLegendBrush", defaultColors.Dark_PlotLegendBrush.rgba()).toUInt());
+    prefs.colorScheme.Dark_PlotLegendTextColor = QColor::fromRgba(settings->value("Dark_PlotLegendTextColor", defaultColors.Dark_PlotLegendTextColor.rgba()).toUInt());
+    prefs.colorScheme.Dark_PlotLegendBorderPen = QColor::fromRgba(settings->value("Dark_PlotLegendBorderPen", defaultColors.Dark_PlotLegendBorderPen.rgba()).toUInt());
+    prefs.colorScheme.Dark_PlotLegendBrush = QColor::fromRgba(settings->value("Dark_PlotLegendBrush", defaultColors.Dark_PlotLegendBrush.rgba()).toUInt());
 
-    prefs.colorScheme.Dark_PlotTickLabel = QColor::fromRgba(settings.value("Dark_PlotTickLabel", defaultColors.Dark_PlotTickLabel.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotBasePen = QColor::fromRgba(settings.value("Dark_PlotBasePen", defaultColors.Dark_PlotBasePen.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotTickPen = QColor::fromRgba(settings.value("Dark_PlotTickPen", defaultColors.Dark_PlotTickPen.rgba()).toUInt());
+    prefs.colorScheme.Dark_PlotTickLabel = QColor::fromRgba(settings->value("Dark_PlotTickLabel", defaultColors.Dark_PlotTickLabel.rgba()).toUInt());
+    prefs.colorScheme.Dark_PlotBasePen = QColor::fromRgba(settings->value("Dark_PlotBasePen", defaultColors.Dark_PlotBasePen.rgba()).toUInt());
+    prefs.colorScheme.Dark_PlotTickPen = QColor::fromRgba(settings->value("Dark_PlotTickPen", defaultColors.Dark_PlotTickPen.rgba()).toUInt());
 
-    prefs.colorScheme.Dark_PeakPlotLine = QColor::fromRgba(settings.value("Dark_PeakPlotLine", defaultColors.Dark_PeakPlotLine.rgba()).toUInt());
-    prefs.colorScheme.Dark_TuningLine = QColor::fromRgba(settings.value("Dark_TuningLine", defaultColors.Dark_TuningLine.rgba()).toUInt());
-    settings.endGroup();
+    prefs.colorScheme.Dark_PeakPlotLine = QColor::fromRgba(settings->value("Dark_PeakPlotLine", defaultColors.Dark_PeakPlotLine.rgba()).toUInt());
+    prefs.colorScheme.Dark_TuningLine = QColor::fromRgba(settings->value("Dark_TuningLine", defaultColors.Dark_TuningLine.rgba()).toUInt());
+    settings->endGroup();
 
-    settings.beginGroup("LightColors");
-    prefs.colorScheme.Light_PlotBackground = QColor::fromRgba(settings.value("Light_PlotBackground", defaultColors.Light_PlotBackground.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotAxisPen = QColor::fromRgba(settings.value("Light_PlotAxisPen", defaultColors.Light_PlotAxisPen.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotLegendTextColor = QColor::fromRgba(settings.value("Light_PlotLegendTextColo", defaultColors.Light_PlotLegendTextColor.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotLegendBorderPen = QColor::fromRgba(settings.value("Light_PlotLegendBorderPen", defaultColors.Light_PlotLegendBorderPen.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotLegendBrush = QColor::fromRgba(settings.value("Light_PlotLegendBrush", defaultColors.Light_PlotLegendBrush.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotTickLabel = QColor::fromRgba(settings.value("Light_PlotTickLabel", defaultColors.Light_PlotTickLabel.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotBasePen = QColor::fromRgba(settings.value("Light_PlotBasePen", defaultColors.Light_PlotBasePen.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotTickPen = QColor::fromRgba(settings.value("Light_PlotTickPen", defaultColors.Light_PlotTickPen.rgba()).toUInt());
-    prefs.colorScheme.Light_PeakPlotLine = QColor::fromRgba(settings.value("Light_PeakPlotLine", defaultColors.Light_PeakPlotLine.rgba()).toUInt());
-    prefs.colorScheme.Light_TuningLine = QColor::fromRgba(settings.value("Light_TuningLine", defaultColors.Light_TuningLine.rgba()).toUInt());
-    settings.endGroup();
+    settings->beginGroup("LightColors");
+    prefs.colorScheme.Light_PlotBackground = QColor::fromRgba(settings->value("Light_PlotBackground", defaultColors.Light_PlotBackground.rgba()).toUInt());
+    prefs.colorScheme.Light_PlotAxisPen = QColor::fromRgba(settings->value("Light_PlotAxisPen", defaultColors.Light_PlotAxisPen.rgba()).toUInt());
+    prefs.colorScheme.Light_PlotLegendTextColor = QColor::fromRgba(settings->value("Light_PlotLegendTextColo", defaultColors.Light_PlotLegendTextColor.rgba()).toUInt());
+    prefs.colorScheme.Light_PlotLegendBorderPen = QColor::fromRgba(settings->value("Light_PlotLegendBorderPen", defaultColors.Light_PlotLegendBorderPen.rgba()).toUInt());
+    prefs.colorScheme.Light_PlotLegendBrush = QColor::fromRgba(settings->value("Light_PlotLegendBrush", defaultColors.Light_PlotLegendBrush.rgba()).toUInt());
+    prefs.colorScheme.Light_PlotTickLabel = QColor::fromRgba(settings->value("Light_PlotTickLabel", defaultColors.Light_PlotTickLabel.rgba()).toUInt());
+    prefs.colorScheme.Light_PlotBasePen = QColor::fromRgba(settings->value("Light_PlotBasePen", defaultColors.Light_PlotBasePen.rgba()).toUInt());
+    prefs.colorScheme.Light_PlotTickPen = QColor::fromRgba(settings->value("Light_PlotTickPen", defaultColors.Light_PlotTickPen.rgba()).toUInt());
+    prefs.colorScheme.Light_PeakPlotLine = QColor::fromRgba(settings->value("Light_PeakPlotLine", defaultColors.Light_PeakPlotLine.rgba()).toUInt());
+    prefs.colorScheme.Light_TuningLine = QColor::fromRgba(settings->value("Light_TuningLine", defaultColors.Light_TuningLine.rgba()).toUInt());
+    settings->endGroup();
 
 
     // Radio and Comms: C-IV addr, port to use
-    settings.beginGroup("Radio");
-    prefs.radioCIVAddr = (unsigned char) settings.value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
+    settings->beginGroup("Radio");
+    prefs.radioCIVAddr = (unsigned char) settings->value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
     if(prefs.radioCIVAddr!=0)
     {
         ui->rigCIVManualAddrChk->setChecked(true);
@@ -955,19 +978,19 @@ void wfmain::loadSettings()
         ui->rigCIVManualAddrChk->setChecked(false);
         ui->rigCIVaddrHexLine->setEnabled(false);
     }
-    prefs.serialPortRadio = settings.value("SerialPortRadio", defPrefs.serialPortRadio).toString();
+    prefs.serialPortRadio = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
     int serialIndex = ui->serialDeviceListCombo->findText(prefs.serialPortRadio);
     if (serialIndex != -1) {
         ui->serialDeviceListCombo->setCurrentIndex(serialIndex);
     }
 
-    prefs.serialPortBaud = (quint32) settings.value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
+    prefs.serialPortBaud = (quint32) settings->value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
 
     ui->baudRateCombo->blockSignals(true);
     ui->baudRateCombo->setCurrentIndex( ui->baudRateCombo->findData(prefs.serialPortBaud) );
     ui->baudRateCombo->blockSignals(false);
 
-    prefs.virtualSerialPort = settings.value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
+    prefs.virtualSerialPort = settings->value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
     int vspIndex = ui->vspCombo->findText(prefs.virtualSerialPort);
     if (vspIndex != -1) {
         ui->vspCombo->setCurrentIndex(vspIndex);
@@ -979,18 +1002,18 @@ void wfmain::loadSettings()
     }
 
 
-    settings.endGroup();
+    settings->endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
-    settings.beginGroup("Controls");
-    prefs.enablePTT = settings.value("EnablePTT", defPrefs.enablePTT).toBool();
+    settings->beginGroup("Controls");
+    prefs.enablePTT = settings->value("EnablePTT", defPrefs.enablePTT).toBool();
     ui->pttEnableChk->setChecked(prefs.enablePTT);
-    prefs.niceTS = settings.value("NiceTS", defPrefs.niceTS).toBool();
-    settings.endGroup();
+    prefs.niceTS = settings->value("NiceTS", defPrefs.niceTS).toBool();
+    settings->endGroup();
 
-    settings.beginGroup("LAN");
+    settings->beginGroup("LAN");
 
-    prefs.enableLAN = settings.value("EnableLAN", defPrefs.enableLAN).toBool();
+    prefs.enableLAN = settings->value("EnableLAN", defPrefs.enableLAN).toBool();
     if(prefs.enableLAN)
     {
         ui->baudRateCombo->setEnabled(false);
@@ -1005,38 +1028,38 @@ void wfmain::loadSettings()
     ui->lanEnableBtn->setChecked(prefs.enableLAN);
     ui->connectBtn->setEnabled(prefs.enableLAN);
 
-    prefs.enableRigCtlD = settings.value("EnableRigCtlD", defPrefs.enableRigCtlD).toBool();
-    prefs.rigCtlPort = settings.value("RigCtlPort", defPrefs.rigCtlPort).toInt();
+    prefs.enableRigCtlD = settings->value("EnableRigCtlD", defPrefs.enableRigCtlD).toBool();
+    prefs.rigCtlPort = settings->value("RigCtlPort", defPrefs.rigCtlPort).toInt();
 
-    udpPrefs.ipAddress = settings.value("IPAddress", udpDefPrefs.ipAddress).toString();
+    udpPrefs.ipAddress = settings->value("IPAddress", udpDefPrefs.ipAddress).toString();
     ui->ipAddressTxt->setEnabled(ui->lanEnableBtn->isChecked());
     ui->ipAddressTxt->setText(udpPrefs.ipAddress);
     
-    udpPrefs.controlLANPort = settings.value("ControlLANPort", udpDefPrefs.controlLANPort).toInt();
+    udpPrefs.controlLANPort = settings->value("ControlLANPort", udpDefPrefs.controlLANPort).toInt();
     ui->controlPortTxt->setEnabled(ui->lanEnableBtn->isChecked());
     ui->controlPortTxt->setText(QString("%1").arg(udpPrefs.controlLANPort));
     
-    udpPrefs.username = settings.value("Username", udpDefPrefs.username).toString();
+    udpPrefs.username = settings->value("Username", udpDefPrefs.username).toString();
     ui->usernameTxt->setEnabled(ui->lanEnableBtn->isChecked());
     ui->usernameTxt->setText(QString("%1").arg(udpPrefs.username));
     
-    udpPrefs.password = settings.value("Password", udpDefPrefs.password).toString();
+    udpPrefs.password = settings->value("Password", udpDefPrefs.password).toString();
     ui->passwordTxt->setEnabled(ui->lanEnableBtn->isChecked());
     ui->passwordTxt->setText(QString("%1").arg(udpPrefs.password));
 
 
-    udpPrefs.audioRXLatency = settings.value("AudioRXLatency", udpDefPrefs.audioRXLatency).toInt();
+    udpPrefs.audioRXLatency = settings->value("AudioRXLatency", udpDefPrefs.audioRXLatency).toInt();
     ui->rxLatencySlider->setEnabled(ui->lanEnableBtn->isChecked());
     ui->rxLatencySlider->setValue(udpPrefs.audioRXLatency);
     ui->rxLatencySlider->setTracking(false); // Stop it sending value on every change.
 
-    udpPrefs.audioTXLatency = settings.value("AudioTXLatency", udpDefPrefs.audioTXLatency).toInt();
+    udpPrefs.audioTXLatency = settings->value("AudioTXLatency", udpDefPrefs.audioTXLatency).toInt();
     ui->txLatencySlider->setEnabled(ui->lanEnableBtn->isChecked());
     ui->txLatencySlider->setValue(udpPrefs.audioTXLatency);
     ui->txLatencySlider->setTracking(false); // Stop it sending value on every change.
 
-    udpPrefs.audioRXSampleRate = settings.value("AudioRXSampleRate", udpDefPrefs.audioRXSampleRate).toInt();
-    udpPrefs.audioTXSampleRate = settings.value("AudioTXSampleRate",udpDefPrefs.audioTXSampleRate).toInt();
+    udpPrefs.audioRXSampleRate = settings->value("AudioRXSampleRate", udpDefPrefs.audioRXSampleRate).toInt();
+    udpPrefs.audioTXSampleRate = settings->value("AudioTXSampleRate",udpDefPrefs.audioTXSampleRate).toInt();
     ui->audioSampleRateCombo->setEnabled(ui->lanEnableBtn->isChecked());
     int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(udpDefPrefs.audioRXSampleRate));
     if (audioSampleRateIndex != -1) {
@@ -1051,7 +1074,7 @@ void wfmain::loadSettings()
     ui->audioRXCodecCombo->addItem("uLaw 2ch 8bit", 32);
     ui->audioRXCodecCombo->addItem("PCM 2ch 8bit", 8);
 
-    udpPrefs.audioRXCodec = settings.value("AudioRXCodec", udpDefPrefs.audioRXCodec).toInt();
+    udpPrefs.audioRXCodec = settings->value("AudioRXCodec", udpDefPrefs.audioRXCodec).toInt();
     ui->audioRXCodecCombo->setEnabled(ui->lanEnableBtn->isChecked());
     for (int f = 0; f < ui->audioRXCodecCombo->count(); f++)
         if (ui->audioRXCodecCombo->itemData(f).toInt() == udpPrefs.audioRXCodec)
@@ -1061,13 +1084,13 @@ void wfmain::loadSettings()
     ui->audioTXCodecCombo->addItem("LPCM 1ch 8bit", 2);
     ui->audioTXCodecCombo->addItem("uLaw 1ch 8bit", 1);
 
-    udpPrefs.audioTXCodec = settings.value("AudioTXCodec", udpDefPrefs.audioTXCodec).toInt();
+    udpPrefs.audioTXCodec = settings->value("AudioTXCodec", udpDefPrefs.audioTXCodec).toInt();
     ui->audioTXCodecCombo->setEnabled(ui->lanEnableBtn->isChecked());
     for (int f = 0; f < ui->audioTXCodecCombo->count(); f++)
         if (ui->audioTXCodecCombo->itemData(f).toInt() == udpPrefs.audioTXCodec)
             ui->audioTXCodecCombo->setCurrentIndex(f);
 
-    udpPrefs.audioOutput = settings.value("AudioOutput", udpDefPrefs.audioOutput).toString();
+    udpPrefs.audioOutput = settings->value("AudioOutput", udpDefPrefs.audioOutput).toString();
     qInfo(logGui()) << "Got Audio Output: " << udpPrefs.audioOutput;
     //ui->audioOutputCombo->setEnabled(ui->lanEnableBtn->isChecked());
     int audioOutputIndex = ui->audioOutputCombo->findText(udpPrefs.audioOutput);
@@ -1075,7 +1098,7 @@ void wfmain::loadSettings()
         ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
     }
 
-    udpPrefs.audioInput = settings.value("AudioInput", udpDefPrefs.audioInput).toString();
+    udpPrefs.audioInput = settings->value("AudioInput", udpDefPrefs.audioInput).toString();
     qInfo(logGui()) << "Got Audio Input: " << udpPrefs.audioInput;
     //ui->audioInputCombo->setEnabled(ui->lanEnableBtn->isChecked());
     int audioInputIndex = ui->audioInputCombo->findText(udpPrefs.audioInput);
@@ -1083,34 +1106,34 @@ void wfmain::loadSettings()
         ui->audioInputCombo->setCurrentIndex(audioInputIndex);
     }
 
-    udpPrefs.resampleQuality = settings.value("ResampleQuality", udpDefPrefs.resampleQuality).toInt();
-    udpPrefs.clientName = settings.value("ClientName", udpDefPrefs.clientName).toString();
+    udpPrefs.resampleQuality = settings->value("ResampleQuality", udpDefPrefs.resampleQuality).toInt();
+    udpPrefs.clientName = settings->value("ClientName", udpDefPrefs.clientName).toString();
 
-    settings.endGroup();
+    settings->endGroup();
 
-    settings.beginGroup("Server");
+    settings->beginGroup("Server");
 
-    serverConfig.enabled = settings.value("ServerEnabled", false).toBool();
-    serverConfig.controlPort = settings.value("ServerControlPort", 50001).toInt();
-    serverConfig.civPort = settings.value("ServerCivPort", 50002).toInt();
-    serverConfig.audioPort = settings.value("ServerAudioPort", 50003).toInt();
-    int numUsers = settings.value("ServerNumUsers", 2).toInt();
+    serverConfig.enabled = settings->value("ServerEnabled", false).toBool();
+    serverConfig.controlPort = settings->value("ServerControlPort", 50001).toInt();
+    serverConfig.civPort = settings->value("ServerCivPort", 50002).toInt();
+    serverConfig.audioPort = settings->value("ServerAudioPort", 50003).toInt();
+    int numUsers = settings->value("ServerNumUsers", 2).toInt();
     serverConfig.users.clear();
     for (int f = 0; f < numUsers; f++)
     {
         SERVERUSER user;
-        user.username = settings.value("ServerUsername_" + QString::number(f), "").toString();
-        user.password = settings.value("ServerPassword_" + QString::number(f), "").toString();
-        user.userType = settings.value("ServerUserType_" + QString::number(f), 0).toInt();
+        user.username = settings->value("ServerUsername_" + QString::number(f), "").toString();
+        user.password = settings->value("ServerPassword_" + QString::number(f), "").toString();
+        user.userType = settings->value("ServerUserType_" + QString::number(f), 0).toInt();
         serverConfig.users.append(user);
     }
 
-    settings.endGroup();
+    settings->endGroup();
 
     // Memory channels
 
-    settings.beginGroup("Memory");
-    int size = settings.beginReadArray("Channel");
+    settings->beginGroup("Memory");
+    int size = settings->beginReadArray("Channel");
     int chan = 0;
     double freq;
     unsigned char mode;
@@ -1126,11 +1149,11 @@ void wfmain::loadSettings()
 
     for(int i=0; i < size; i++)
     {
-        settings.setArrayIndex(i);
-        chan = settings.value("chan", 0).toInt();
-        freq = settings.value("freq", 12.345).toDouble();
-        mode = settings.value("mode", 0).toInt();
-        isSet = settings.value("isSet", false).toBool();
+        settings->setArrayIndex(i);
+        chan = settings->value("chan", 0).toInt();
+        freq = settings->value("freq", 12.345).toDouble();
+        mode = settings->value("mode", 0).toInt();
+        isSet = settings->value("isSet", false).toBool();
 
         if(isSet)
         {
@@ -1138,8 +1161,8 @@ void wfmain::loadSettings()
         }
     }
 
-    settings.endArray();
-    settings.endGroup();
+    settings->endArray();
+    settings->endGroup();
 
     emit sendServerConfig(serverConfig);
 
@@ -1149,140 +1172,140 @@ void wfmain::loadSettings()
 
 void wfmain::saveSettings()
 {
-    qInfo(logSystem()) << "Saving settings to " << settings.fileName();
+    qInfo(logSystem()) << "Saving settings to " << settings->fileName();
     // Basic things to load:
 
     // UI: (full screen, dark theme, draw peaks, colors, etc)
-    settings.beginGroup("Interface");
-    settings.setValue("UseFullScreen", prefs.useFullScreen);
-    settings.setValue("UseSystemTheme", prefs.useSystemTheme);
-    settings.setValue("UseDarkMode", prefs.useDarkMode);
-    settings.setValue("DrawPeaks", prefs.drawPeaks);
-    settings.setValue("StylesheetPath", prefs.stylesheetPath);
-    settings.setValue("splitter", ui->splitter->saveState());
-    settings.setValue("windowGeometry", saveGeometry());
-    settings.setValue("windowState", saveState());
-    settings.endGroup();
+    settings->beginGroup("Interface");
+    settings->setValue("UseFullScreen", prefs.useFullScreen);
+    settings->setValue("UseSystemTheme", prefs.useSystemTheme);
+    settings->setValue("UseDarkMode", prefs.useDarkMode);
+    settings->setValue("DrawPeaks", prefs.drawPeaks);
+    settings->setValue("StylesheetPath", prefs.stylesheetPath);
+    settings->setValue("splitter", ui->splitter->saveState());
+    settings->setValue("windowGeometry", saveGeometry());
+    settings->setValue("windowState", saveState());
+    settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
-    settings.beginGroup("Radio");
-    settings.setValue("RigCIVuInt", prefs.radioCIVAddr);
-    settings.setValue("SerialPortRadio", prefs.serialPortRadio);
-    settings.setValue("SerialPortBaud", prefs.serialPortBaud);
-    settings.setValue("VirtualSerialPort", prefs.virtualSerialPort);
-    settings.endGroup();
+    settings->beginGroup("Radio");
+    settings->setValue("RigCIVuInt", prefs.radioCIVAddr);
+    settings->setValue("SerialPortRadio", prefs.serialPortRadio);
+    settings->setValue("SerialPortBaud", prefs.serialPortBaud);
+    settings->setValue("VirtualSerialPort", prefs.virtualSerialPort);
+    settings->endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
-    settings.beginGroup("Controls");
-    settings.setValue("EnablePTT", prefs.enablePTT);
-    settings.setValue("NiceTS", prefs.niceTS);
-    settings.endGroup();
+    settings->beginGroup("Controls");
+    settings->setValue("EnablePTT", prefs.enablePTT);
+    settings->setValue("NiceTS", prefs.niceTS);
+    settings->endGroup();
 
-    settings.beginGroup("LAN");
-    settings.setValue("EnableLAN", prefs.enableLAN);
-    settings.setValue("EnableRigCtlD", prefs.enableRigCtlD);
-    settings.setValue("RigCtlPort", prefs.rigCtlPort);
-    settings.setValue("IPAddress", udpPrefs.ipAddress);
-    settings.setValue("ControlLANPort", udpPrefs.controlLANPort);
-    settings.setValue("SerialLANPort", udpPrefs.serialLANPort);
-    settings.setValue("AudioLANPort", udpPrefs.audioLANPort);
-    settings.setValue("Username", udpPrefs.username);
-    settings.setValue("Password", udpPrefs.password);
-    settings.setValue("AudioRXLatency", udpPrefs.audioRXLatency);
-    settings.setValue("AudioTXLatency", udpPrefs.audioTXLatency);
-    settings.setValue("AudioRXSampleRate", udpPrefs.audioRXSampleRate);
-    settings.setValue("AudioRXCodec", udpPrefs.audioRXCodec);
-    settings.setValue("AudioTXSampleRate", udpPrefs.audioRXSampleRate);
-    settings.setValue("AudioTXCodec", udpPrefs.audioTXCodec);
-    settings.setValue("AudioOutput", udpPrefs.audioOutput);
-    settings.setValue("AudioInput", udpPrefs.audioInput);
-    settings.setValue("ResampleQuality", udpPrefs.resampleQuality);
-    settings.setValue("ClientName", udpPrefs.clientName);
-    settings.endGroup();
+    settings->beginGroup("LAN");
+    settings->setValue("EnableLAN", prefs.enableLAN);
+    settings->setValue("EnableRigCtlD", prefs.enableRigCtlD);
+    settings->setValue("RigCtlPort", prefs.rigCtlPort);
+    settings->setValue("IPAddress", udpPrefs.ipAddress);
+    settings->setValue("ControlLANPort", udpPrefs.controlLANPort);
+    settings->setValue("SerialLANPort", udpPrefs.serialLANPort);
+    settings->setValue("AudioLANPort", udpPrefs.audioLANPort);
+    settings->setValue("Username", udpPrefs.username);
+    settings->setValue("Password", udpPrefs.password);
+    settings->setValue("AudioRXLatency", udpPrefs.audioRXLatency);
+    settings->setValue("AudioTXLatency", udpPrefs.audioTXLatency);
+    settings->setValue("AudioRXSampleRate", udpPrefs.audioRXSampleRate);
+    settings->setValue("AudioRXCodec", udpPrefs.audioRXCodec);
+    settings->setValue("AudioTXSampleRate", udpPrefs.audioRXSampleRate);
+    settings->setValue("AudioTXCodec", udpPrefs.audioTXCodec);
+    settings->setValue("AudioOutput", udpPrefs.audioOutput);
+    settings->setValue("AudioInput", udpPrefs.audioInput);
+    settings->setValue("ResampleQuality", udpPrefs.resampleQuality);
+    settings->setValue("ClientName", udpPrefs.clientName);
+    settings->endGroup();
 
     // Memory channels
-    settings.beginGroup("Memory");
-    settings.beginWriteArray("Channel", (int)mem.getNumPresets());
+    settings->beginGroup("Memory");
+    settings->beginWriteArray("Channel", (int)mem.getNumPresets());
 
     preset_kind temp;
     for(int i=0; i < (int)mem.getNumPresets(); i++)
     {
         temp = mem.getPreset((int)i);
-        settings.setArrayIndex(i);
-        settings.setValue("chan", i);
-        settings.setValue("freq", temp.frequency);
-        settings.setValue("mode", temp.mode);
-        settings.setValue("isSet", temp.isSet);
+        settings->setArrayIndex(i);
+        settings->setValue("chan", i);
+        settings->setValue("freq", temp.frequency);
+        settings->setValue("mode", temp.mode);
+        settings->setValue("isSet", temp.isSet);
     }
 
-    settings.endArray();
-    settings.endGroup();
+    settings->endArray();
+    settings->endGroup();
 
     // Note: X and Y get the same colors. See setPlotTheme() function
 
-    settings.beginGroup("DarkColors");
-    settings.setValue("Dark_PlotBackground", prefs.colorScheme.Dark_PlotBackground.rgba());
-    settings.setValue("Dark_PlotAxisPen", prefs.colorScheme.Dark_PlotAxisPen.rgba());
-    settings.setValue("Dark_PlotLegendTextColor", prefs.colorScheme.Dark_PlotLegendTextColor.rgba());
-    settings.setValue("Dark_PlotLegendBorderPen", prefs.colorScheme.Dark_PlotLegendBorderPen.rgba());
-    settings.setValue("Dark_PlotLegendBrush", prefs.colorScheme.Dark_PlotLegendBrush.rgba());
-    settings.setValue("Dark_PlotTickLabel", prefs.colorScheme.Dark_PlotTickLabel.rgba());
-    settings.setValue("Dark_PlotBasePen", prefs.colorScheme.Dark_PlotBasePen.rgba());
-    settings.setValue("Dark_PlotTickPen", prefs.colorScheme.Dark_PlotTickPen.rgba());
-    settings.setValue("Dark_PeakPlotLine", prefs.colorScheme.Dark_PeakPlotLine.rgba());
-    settings.setValue("Dark_TuningLine", prefs.colorScheme.Dark_TuningLine.rgba());
-    settings.endGroup();
+    settings->beginGroup("DarkColors");
+    settings->setValue("Dark_PlotBackground", prefs.colorScheme.Dark_PlotBackground.rgba());
+    settings->setValue("Dark_PlotAxisPen", prefs.colorScheme.Dark_PlotAxisPen.rgba());
+    settings->setValue("Dark_PlotLegendTextColor", prefs.colorScheme.Dark_PlotLegendTextColor.rgba());
+    settings->setValue("Dark_PlotLegendBorderPen", prefs.colorScheme.Dark_PlotLegendBorderPen.rgba());
+    settings->setValue("Dark_PlotLegendBrush", prefs.colorScheme.Dark_PlotLegendBrush.rgba());
+    settings->setValue("Dark_PlotTickLabel", prefs.colorScheme.Dark_PlotTickLabel.rgba());
+    settings->setValue("Dark_PlotBasePen", prefs.colorScheme.Dark_PlotBasePen.rgba());
+    settings->setValue("Dark_PlotTickPen", prefs.colorScheme.Dark_PlotTickPen.rgba());
+    settings->setValue("Dark_PeakPlotLine", prefs.colorScheme.Dark_PeakPlotLine.rgba());
+    settings->setValue("Dark_TuningLine", prefs.colorScheme.Dark_TuningLine.rgba());
+    settings->endGroup();
 
-    settings.beginGroup("LightColors");
-    settings.setValue("Light_PlotBackground", prefs.colorScheme.Light_PlotBackground.rgba());
-    settings.setValue("Light_PlotAxisPen", prefs.colorScheme.Light_PlotAxisPen.rgba());
-    settings.setValue("Light_PlotLegendTextColor", prefs.colorScheme.Light_PlotLegendTextColor.rgba());
-    settings.setValue("Light_PlotLegendBorderPen", prefs.colorScheme.Light_PlotLegendBorderPen.rgba());
-    settings.setValue("Light_PlotLegendBrush", prefs.colorScheme.Light_PlotLegendBrush.rgba());
-    settings.setValue("Light_PlotTickLabel", prefs.colorScheme.Light_PlotTickLabel.rgba());
-    settings.setValue("Light_PlotBasePen", prefs.colorScheme.Light_PlotBasePen.rgba());
-    settings.setValue("Light_PlotTickPen", prefs.colorScheme.Light_PlotTickPen.rgba());
-    settings.setValue("Light_PeakPlotLine", prefs.colorScheme.Light_PeakPlotLine.rgba());
-    settings.setValue("Light_TuningLine", prefs.colorScheme.Light_TuningLine.rgba());
+    settings->beginGroup("LightColors");
+    settings->setValue("Light_PlotBackground", prefs.colorScheme.Light_PlotBackground.rgba());
+    settings->setValue("Light_PlotAxisPen", prefs.colorScheme.Light_PlotAxisPen.rgba());
+    settings->setValue("Light_PlotLegendTextColor", prefs.colorScheme.Light_PlotLegendTextColor.rgba());
+    settings->setValue("Light_PlotLegendBorderPen", prefs.colorScheme.Light_PlotLegendBorderPen.rgba());
+    settings->setValue("Light_PlotLegendBrush", prefs.colorScheme.Light_PlotLegendBrush.rgba());
+    settings->setValue("Light_PlotTickLabel", prefs.colorScheme.Light_PlotTickLabel.rgba());
+    settings->setValue("Light_PlotBasePen", prefs.colorScheme.Light_PlotBasePen.rgba());
+    settings->setValue("Light_PlotTickPen", prefs.colorScheme.Light_PlotTickPen.rgba());
+    settings->setValue("Light_PeakPlotLine", prefs.colorScheme.Light_PeakPlotLine.rgba());
+    settings->setValue("Light_TuningLine", prefs.colorScheme.Light_TuningLine.rgba());
 
-    settings.endGroup();
+    settings->endGroup();
 
     // This is a reference to see how the preference file is encoded.
-    settings.beginGroup("StandardColors");
+    settings->beginGroup("StandardColors");
 
-    settings.setValue("white", QColor(Qt::white).rgba());
-    settings.setValue("black", QColor(Qt::black).rgba());
+    settings->setValue("white", QColor(Qt::white).rgba());
+    settings->setValue("black", QColor(Qt::black).rgba());
 
-    settings.setValue("red_opaque", QColor(Qt::red).rgba());
-    settings.setValue("red_translucent", QColor(255,0,0,128).rgba());
-    settings.setValue("green_opaque", QColor(Qt::green).rgba());
-    settings.setValue("green_translucent", QColor(0,255,0,128).rgba());
-    settings.setValue("blue_opaque", QColor(Qt::blue).rgba());
-    settings.setValue("blue_translucent", QColor(0,0,255,128).rgba());
-    settings.setValue("cyan", QColor(Qt::cyan).rgba());
-    settings.setValue("magenta", QColor(Qt::magenta).rgba());
-    settings.setValue("yellow", QColor(Qt::yellow).rgba());
-    settings.endGroup();
+    settings->setValue("red_opaque", QColor(Qt::red).rgba());
+    settings->setValue("red_translucent", QColor(255,0,0,128).rgba());
+    settings->setValue("green_opaque", QColor(Qt::green).rgba());
+    settings->setValue("green_translucent", QColor(0,255,0,128).rgba());
+    settings->setValue("blue_opaque", QColor(Qt::blue).rgba());
+    settings->setValue("blue_translucent", QColor(0,0,255,128).rgba());
+    settings->setValue("cyan", QColor(Qt::cyan).rgba());
+    settings->setValue("magenta", QColor(Qt::magenta).rgba());
+    settings->setValue("yellow", QColor(Qt::yellow).rgba());
+    settings->endGroup();
 
-    settings.beginGroup("Server");
+    settings->beginGroup("Server");
 
-    settings.setValue("ServerEnabled", serverConfig.enabled);
-    settings.setValue("ServerControlPort", serverConfig.controlPort);
-    settings.setValue("ServerCivPort", serverConfig.civPort);
-    settings.setValue("ServerAudioPort", serverConfig.audioPort);
-    settings.setValue("ServerNumUsers", serverConfig.users.count());
+    settings->setValue("ServerEnabled", serverConfig.enabled);
+    settings->setValue("ServerControlPort", serverConfig.controlPort);
+    settings->setValue("ServerCivPort", serverConfig.civPort);
+    settings->setValue("ServerAudioPort", serverConfig.audioPort);
+    settings->setValue("ServerNumUsers", serverConfig.users.count());
     for (int f = 0; f < serverConfig.users.count(); f++)
     {
-        settings.setValue("ServerUsername_" + QString::number(f), serverConfig.users[f].username);
-        settings.setValue("ServerPassword_" + QString::number(f), serverConfig.users[f].password);
-        settings.setValue("ServerUserType_" + QString::number(f), serverConfig.users[f].userType);
+        settings->setValue("ServerUsername_" + QString::number(f), serverConfig.users[f].username);
+        settings->setValue("ServerPassword_" + QString::number(f), serverConfig.users[f].password);
+        settings->setValue("ServerUserType_" + QString::number(f), serverConfig.users[f].userType);
     }
 
-    settings.endGroup();
+    settings->endGroup();
 
 
 
-    settings.sync(); // Automatic, not needed (supposedly)
+    settings->sync(); // Automatic, not needed (supposedly)
 }
 
 void wfmain::prepareWf()
@@ -2842,7 +2865,7 @@ void wfmain::on_fEnterBtn_clicked()
 {
     // TODO: do not jump to main tab on enter, only on return
     // or something.
-    // Maybe this should be an option in settings.
+    // Maybe this should be an option in settings->
     on_goFreqBtn_clicked();
 }
 
