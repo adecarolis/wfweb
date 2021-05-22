@@ -863,6 +863,9 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     delayedCommand->setInterval( msMinTiming * 2); // 20 byte message
     periodicPollingTimer->setInterval( msMinTiming ); // slower for s-meter poll
 
+    qInfo(logSystem()) << "Delay command interval timing: " << msMinTiming * 2 << "ms";
+    qInfo(logSystem()) << "Periodic polling timer: " << msMinTiming << "ms";
+
     // Normal:
     delayedCmdIntervalLAN_ms =  msMinTiming * 2;
     delayedCmdIntervalSerial_ms =  msMinTiming * 2;
@@ -2244,40 +2247,19 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // Added so that server receives rig capabilities.
         emit sendRigCaps(rigCaps);
         rpt->setRig(rigCaps);
-        if(rigCaps.model==model7850)
+
+        // Set the mode combo box up:
+
+        ui->modeSelectCombo->blockSignals(true);
+        ui->modeSelectCombo->clear();
+
+        for(unsigned int i=0; i < rigCaps.modes.size(); i++)
         {
-            ui->modeSelectCombo->addItem("PSK", 0x12);
-            ui->modeSelectCombo->addItem("PSK-R", 0x13);
+            ui->modeSelectCombo->addItem(rigCaps.modes.at(i).name,
+                                            rigCaps.modes.at(i).reg);
         }
 
-        if(rigCaps.hasDV)
-        {
-            ui->modeSelectCombo->addItem("DV", 0x17);
-        }
-
-        if(rigCaps.hasDD)
-        {
-            ui->modeSelectCombo->addItem("DD", 0x22);
-        }
-
-        if(rigCaps.model==modelR8600)
-        {
-            ui->modeSelectCombo->addItem("WFM", 0x06);
-            ui->modeSelectCombo->addItem("FSK-R", 0x08);
-            ui->modeSelectCombo->addItem("S-AM (D)", 0x11);
-            ui->modeSelectCombo->addItem("S-AM (L)", 0x14);
-            ui->modeSelectCombo->addItem("S-AM (U)", 0x15);
-            ui->modeSelectCombo->addItem("P25", 0x16);
-            ui->modeSelectCombo->addItem("dPMR", 0x18);
-            ui->modeSelectCombo->addItem("NXDN-VN", 0x19);
-            ui->modeSelectCombo->addItem("NXDN-N", 0x20);
-            ui->modeSelectCombo->addItem("DCR", 0x21);
-        }
-        
-        if (rigCaps.model == model705)
-        {
-            ui->modeSelectCombo->addItem("WFM", 0x06);
-        }
+        ui->modeSelectCombo->blockSignals(false);
 
         if(rigCaps.model == model9700)
         {
