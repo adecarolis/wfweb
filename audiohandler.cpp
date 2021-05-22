@@ -914,11 +914,13 @@ void audioHandler::start()
     }
 
     if (isInput) {
-		this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
-        audioInput->start(this);
+		//this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
+		this->open(QIODevice::WriteOnly);
+		audioInput->start(this);
     }
     else {
-		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
+		//this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
+		this->open(QIODevice::ReadOnly);
 		audioOutput->start(this);
     }	
 }
