@@ -1085,7 +1085,7 @@ void wfmain::loadSettings()
     ui->audioSampleRateCombo->setEnabled(ui->lanEnableBtn->isChecked());
     int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(udpDefPrefs.audioRXSampleRate));
     if (audioSampleRateIndex != -1) {
-        ui->audioOutputCombo->setCurrentIndex(audioSampleRateIndex);
+        ui->audioSampleRateCombo->setCurrentIndex(audioSampleRateIndex);
     }
 
     // Add codec combobox items here so that we can add userdata!

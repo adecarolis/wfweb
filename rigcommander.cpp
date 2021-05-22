@@ -147,6 +147,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, QSt
 
 void rigCommander::closeComm()
 {
+    qDebug(logRig()) << "Closing rig comms";
     if (comm != Q_NULLPTR) {
         delete comm;
     }

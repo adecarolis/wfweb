@@ -747,14 +747,17 @@ audioHandler::~audioHandler()
     if (audioOutput != Q_NULLPTR) {
 		audioOutput->stop();
         delete audioOutput;
+        qDebug(logAudio()) << "Audio output stopped";
     }
     if (audioInput != Q_NULLPTR) {
 		audioInput->stop();
         delete audioInput;
+        qDebug(logAudio()) << "Audio input stopped";
     }
 
 	if (resampler != NULL) {
 		speex_resampler_destroy(resampler);
+        qDebug(logAudio()) << "Resampler closed";
 	}
 }
 
