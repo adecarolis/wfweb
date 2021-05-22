@@ -902,11 +902,11 @@ void audioHandler::reinit()
         audioOutput = new QAudioOutput(deviceInfo, format, this);
 
 		// This seems to only be needed on Linux but is critical in aligning buffer sizes.
-#ifdef Q_OS_MAC
+//#ifdef Q_OS_MAC
         audioOutput->setBufferSize(chunkSize*8);
-#else
-        audioOutput->setBufferSize(chunkSize*4);
-#endif
+//#else
+//        audioOutput->setBufferSize(chunkSize*4);
+//#endif
 
 		connect(audioOutput, SIGNAL(notify()), SLOT(notified()));
         connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
