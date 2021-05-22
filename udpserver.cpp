@@ -396,7 +396,7 @@ void udpServer::controlReceived()
                         connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
                         emit setupTxAudio(samples, channels, current->txSampleRate, current->txBufferLen, uLaw, false, config.outputDevice, config.resampleQuality);
-                        hasTxAudio=datagram.senderAddress();
+                        hasTxAudio = datagram.senderAddress();
 
                         connect(this, SIGNAL(haveAudioData(audioPacket)), txaudio, SLOT(incomingAudio(audioPacket)));
 
@@ -688,7 +688,7 @@ void udpServer::audioReceived()
                         current->seqPrefix++;
                     }
 
-                    if (hasTxAudio == datagram.senderAddress())
+                    if (hasTxAudio == current->ipAddress)
                     {
                         // 0xac is the smallest possible audio packet.
                         audioPacket tempAudio;
@@ -1053,25 +1053,11 @@ void udpServer::sendCapabilities(CLIENT* c)
     if (txaudio == Q_NULLPTR) {
         p.txsample = 0x8b01; // all tx sample frequencies supported
         p.enablea = 0x01; // 0x01 enables TX 24K mode?
+        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Client will have TX audio";
     }
     else {
-        p.enablea = 0x00; // 0x01 enables TX 24K mode?
-        if (txSampleRate == 48000) {
-            p.txsample = 0x0800; // fixed tx sample frequency
-        }
-        else if (txSampleRate == 32000) {
-            p.txsample = 0x0400;
-        }
-        else if (txSampleRate == 24000) {
-            p.txsample = 0x0000;
-            p.enablea = 0x01;
-        }
-        else if (txSampleRate == 16000) {
-            p.txsample = 0x0200;
-        }
-        else if (txSampleRate == 12000) {
-            p.txsample = 0x8000;
-        }
+        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Disable tx audio for client";
+        p.txsample = 0;
     }
 
     // I still don't know what these are?
@@ -1474,6 +1460,17 @@ void udpServer::sendRetransmitRequest(CLIENT *c)
 void udpServer::deleteConnection(QList<CLIENT*> *l, CLIENT* c)
 {
     connMutex.lock();
+
+    if (hasTxAudio == c->ipAddress)
+    {
+        // If current client has TX audio, delete it and make it available.
+        hasTxAudio = Q_NULLPTR;
+        if (txAudioThread != Q_NULLPTR) {
+            txAudioThread->quit();
+            txAudioThread->wait();
+        }
+        txaudio = Q_NULLPTR;
+    }
 
     qInfo(logUdpServer()) << "Deleting connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
     if (c->idleTimer != Q_NULLPTR) {
