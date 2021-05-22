@@ -2553,9 +2553,12 @@ void rigCommander::determineRigCaps()
     rigCaps.spectSeqMax = 0;
     rigCaps.spectAmpMax = 0;
     rigCaps.spectLenMax = 0;
+    
 
-    // Clear inputs list in case we have re-connected.
-    rigCaps.inputs.clear(); 
+    // Clear inputs/preamps/attenuators lists in case we have re-connected.
+    rigCaps.preamps.clear();
+    rigCaps.attenuators.clear();
+    rigCaps.inputs.clear();
     rigCaps.inputs.append(inputMic);
 
     rigCaps.hasAttenuator = true; // Verify that all recent rigs have attenuators
