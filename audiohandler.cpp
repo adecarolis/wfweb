@@ -758,7 +758,7 @@ audioHandler::~audioHandler()
 	}
 }
 
-bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool ulaw, const bool isinput, QString port, quint8 resampleQuality)
+bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool ulaw, const bool isinput, QAudioDeviceInfo port, quint8 resampleQuality)
 {
     if (isInitialized) {
         return false;
@@ -789,14 +789,8 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	if (isInput) {
 		resampler = wf_resampler_init(radioChannels, INTERNAL_SAMPLE_RATE, samplerate, resampleQuality, &resample_error);
 
-		const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
-		for (const QAudioDeviceInfo& deviceInfo : deviceInfos) {
-			if (deviceInfo.deviceName() == port) {
-				qInfo(logAudio()) << "Input Audio Device name: " << deviceInfo.deviceName();
-				isInitialized = setDevice(deviceInfo);
-				break;
-			}
-		}
+		isInitialized = setDevice(port);
+
 		if (!isInitialized) {
 			qInfo(logAudio()) << "Input device " << deviceInfo.deviceName() << " not found, using default";
 			isInitialized = setDevice(QAudioDeviceInfo::defaultInputDevice());
@@ -806,14 +800,8 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	{
 		resampler = wf_resampler_init(radioChannels, samplerate, INTERNAL_SAMPLE_RATE, resampleQuality, &resample_error);
 
-		const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
-		for (const QAudioDeviceInfo& deviceInfo : deviceInfos) {
-			if (deviceInfo.deviceName() == port) {
-				qInfo(logAudio()) << "Output Audio Device name: " << deviceInfo.deviceName();
-				isInitialized = setDevice(deviceInfo);
-				break;
-			}
-		}
+		isInitialized = setDevice(port);
+
 		if (!isInitialized) {
 			qInfo(logAudio()) << "Output device " << deviceInfo.deviceName() << " not found, using default";
 			isInitialized = setDevice(QAudioDeviceInfo::defaultOutputDevice());
@@ -823,7 +811,7 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	wf_resampler_get_ratio(resampler, &ratioNum, &ratioDen);
 	qInfo(logAudio()) << (isInput ? "Input" : "Output") <<  "wf_resampler_init() returned: " << resample_error << " ratioNum" << ratioNum << " ratioDen" << ratioDen;
 
-	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "audio port name: " << port;
+	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "audio port name: " << port.deviceName();
  	return isInitialized;
 }
 

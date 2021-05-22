@@ -392,10 +392,10 @@ void udpServer::controlReceived()
 
                         txAudioThread->start();
 
-                        connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)));
+                        connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool, QAudioDeviceInfo, quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QAudioDeviceInfo, quint8)));
                         connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
-                        emit setupTxAudio(samples, channels, current->txSampleRate, current->txBufferLen, uLaw, false, config.audioOutput, config.resampleQuality);
+                        emit setupTxAudio(samples, channels, current->txSampleRate, current->txBufferLen, uLaw, false, config.outputDevice, config.resampleQuality);
                         hasTxAudio=datagram.senderAddress();
 
                         connect(this, SIGNAL(haveAudioData(audioPacket)), txaudio, SLOT(incomingAudio(audioPacket)));
@@ -425,10 +425,10 @@ void udpServer::controlReceived()
                         rxaudio->moveToThread(rxAudioThread);
                         rxAudioThread->start();
 
-                        connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)));
+                        connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QAudioDeviceInfo, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QAudioDeviceInfo, quint8)));
                         connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
-                        emit setupRxAudio(samples, channels, current->rxSampleRate, 150, uLaw, true, config.audioInput, config.resampleQuality);
+                        emit setupRxAudio(samples, channels, current->rxSampleRate, 150, uLaw, true, config.inputDevice, config.resampleQuality);
 
                         rxAudioTimer = new QTimer();
                         rxAudioTimer->setTimerType(Qt::PreciseTimer);

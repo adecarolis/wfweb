@@ -14,8 +14,8 @@ udpHandler::udpHandler(udpPreferences prefs) :
     txLatency(prefs.audioTXLatency),
     rxCodec(prefs.audioRXCodec),
     txCodec(prefs.audioTXCodec),
-    audioInputPort(prefs.audioInput),
-    audioOutputPort(prefs.audioOutput),
+    audioInputPort(prefs.inputDevice),
+    audioOutputPort(prefs.outputDevice),
     resampleQuality(prefs.resampleQuality)
 {
 
@@ -687,7 +687,7 @@ void udpCivData::dataReceived()
 
 
 // Audio stream
-udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QString outputPort, QString inputPort,quint8 resampleQuality)
+udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QAudioDeviceInfo outputPort, QAudioDeviceInfo inputPort,quint8 resampleQuality)
 {
     qInfo(logUdp()) << "Starting udpAudio";
     this->localIP = local;
@@ -736,7 +736,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     rxAudioThread->start();
 
-    connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString, quint8)));
+    connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QAudioDeviceInfo, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QAudioDeviceInfo, quint8)));
 
     connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
     connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
@@ -758,7 +758,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     
     txAudioThread->start();
     
-    connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool,QString,quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString,quint8)));
+    connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool,QAudioDeviceInfo,quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QAudioDeviceInfo,quint8)));
     connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
     sendControl(false, 0x03, 0x00); // First connect packet
