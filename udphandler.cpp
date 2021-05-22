@@ -14,8 +14,8 @@ udpHandler::udpHandler(udpPreferences prefs) :
     txLatency(prefs.audioTXLatency),
     rxCodec(prefs.audioRXCodec),
     txCodec(prefs.audioTXCodec),
-    audioInputPort(prefs.audioInput),
-    audioOutputPort(prefs.audioOutput),
+    audioInputPort(prefs.inputDevice),
+    audioOutputPort(prefs.outputDevice),
     resampleQuality(prefs.resampleQuality)
 {
 
@@ -687,7 +687,7 @@ void udpCivData::dataReceived()
 
 
 // Audio stream
-udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QString outputPort, QString inputPort,quint8 resampleQuality)
+udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QAudioDeviceInfo outputPort, QAudioDeviceInfo inputPort,quint8 resampleQuality)
 {
     qInfo(logUdp()) << "Starting udpAudio";
     this->localIP = local;
@@ -736,7 +736,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     rxAudioThread->start();
 
-    connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString, quint8)));
+    connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QAudioDeviceInfo, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QAudioDeviceInfo, quint8)));
 
     connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
     connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
@@ -758,7 +758,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     
     txAudioThread->start();
     
-    connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool,QString,quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QString,quint8)));
+    connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool,QAudioDeviceInfo,quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QAudioDeviceInfo,quint8)));
     connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
     sendControl(false, 0x03, 0x00); // First connect packet
@@ -790,6 +790,7 @@ udpAudio::~udpAudio()
 {
     if (pingTimer != Q_NULLPTR)
     {
+        qDebug(logUdp()) << "Stopping pingTimer";
         pingTimer->stop();
         delete pingTimer;
         pingTimer = Q_NULLPTR;
@@ -797,6 +798,7 @@ udpAudio::~udpAudio()
 
     if (idleTimer != Q_NULLPTR)
     {
+        qDebug(logUdp()) << "Stopping idleTimer";
         idleTimer->stop();
         delete idleTimer;
         idleTimer = Q_NULLPTR;
@@ -804,6 +806,7 @@ udpAudio::~udpAudio()
 
     if (watchdogTimer != Q_NULLPTR)
     {
+        qDebug(logUdp()) << "Stopping watchdogTimer";
         watchdogTimer->stop();
         delete watchdogTimer;
         watchdogTimer = Q_NULLPTR;
@@ -811,19 +814,23 @@ udpAudio::~udpAudio()
 
     if (txAudioTimer != Q_NULLPTR)
     {
+        qDebug(logUdp()) << "Stopping txaudio timer";
         txAudioTimer->stop();
         delete txAudioTimer;
     }
 
     if (rxAudioThread != Q_NULLPTR) {
+        qDebug(logUdp()) << "Stopping rxaudio thread";
         rxAudioThread->quit();
         rxAudioThread->wait();
     }
 
     if (txAudioThread != Q_NULLPTR) {
+        qDebug(logUdp()) << "Stopping txaudio thread";
         txAudioThread->quit();
         txAudioThread->wait();
     }
+    qDebug(logUdp()) << "udpHandler successfully closed";
 }
 
 void udpAudio::watchdog()
@@ -895,7 +902,7 @@ void udpAudio::dataReceived()
 {
     while (udp->hasPendingDatagrams()) {
         QNetworkDatagram datagram = udp->receiveDatagram();
-        //qInfo(logUdp()) << "Received: " << datagram.data();
+        //qInfo(logUdp()) << "Received: " << datagram.data().mid(0,10);
         QByteArray r = datagram.data();
 
         switch (r.length())
@@ -1118,7 +1125,6 @@ void udpBase::dataReceived(QByteArray r)
         for (quint16 i = 0x10; i < r.length(); i = i + 2)
         {
             quint16 seq = (quint8)r[i] | (quint8)r[i + 1] << 8;
-            txBufferMutex.lock();
             QMap<quint16, SEQBUFENTRY>::iterator match = txSeqBuf.find(seq);
             if (match == txSeqBuf.end()) {
                 qDebug(logUdp()) << this->metaObject()->className() << ": Requested packet " << hex << seq << " not found";
@@ -1137,7 +1143,6 @@ void udpBase::dataReceived(QByteArray r)
                 packetsLost++;
                 congestion++;
             }
-            txBufferMutex.unlock();
         }
     } 
     else if (in->len != PING_SIZE && in->type == 0x00 && in->seq != 0x00)
@@ -1353,15 +1358,19 @@ void udpBase::sendTrackedPacket(QByteArray d)
     s.timeSent = QTime::currentTime();
     s.retransmitCount = 0;
     s.data = d;
-    txBufferMutex.lock();
+    if (txBufferMutex.tryLock(100))
+    {
    
-    if (sendSeq == 0) { 
-        // We are either the first ever sent packet or have rolled-over so clear the buffer.
-        txSeqBuf.clear();
-        congestion = 0;
+        if (sendSeq == 0) {
+            // We are either the first ever sent packet or have rolled-over so clear the buffer.
+            txSeqBuf.clear();
+            congestion = 0;
+        }
+        txSeqBuf.insert(sendSeq,s);
+        txBufferMutex.unlock();
+    } else {
+        qInfo(logUdp()) << this->metaObject()->className() << ": txBuffer mutex is locked";
     }
-    txSeqBuf.insert(sendSeq,s);
-    txBufferMutex.unlock();
     purgeOldEntries(); // Delete entries older than PURGE_SECONDS seconds (currently 5)
     sendSeq++;
 
@@ -1387,46 +1396,58 @@ void udpBase::sendTrackedPacket(QByteArray d)
 void udpBase::purgeOldEntries()
 {
     // Erase old entries from the tx packet buffer
-    txBufferMutex.lock();
-
-    if (!txSeqBuf.isEmpty())
+    if (txBufferMutex.tryLock(100))
     {
-        // Loop through the earliest items in the buffer and delete if older than PURGE_SECONDS
-        for (auto it = txSeqBuf.begin(); it != txSeqBuf.end();) {
-            if (it.value().timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS) {
-                txSeqBuf.erase(it++);
-            } 
-            else {
-                break;
+        if (!txSeqBuf.isEmpty())
+        {
+            // Loop through the earliest items in the buffer and delete if older than PURGE_SECONDS
+            for (auto it = txSeqBuf.begin(); it != txSeqBuf.end();) {
+                if (it.value().timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS) {
+                   txSeqBuf.erase(it++);
+                }
+                else {
+                   break;
+                }
             }
         }
+        txBufferMutex.unlock();
+
+    } else {
+        qInfo(logUdp()) << this->metaObject()->className() << ": txBuffer mutex is locked";
     }
 
-    txBufferMutex.unlock();
 
-    rxBufferMutex.lock();
-    if (!rxSeqBuf.isEmpty()) {
-        // Loop through the earliest items in the buffer and delete if older than PURGE_SECONDS
-        for (auto it = rxSeqBuf.begin(); it != rxSeqBuf.end();) {
-            if (it.value().secsTo(QTime::currentTime()) > PURGE_SECONDS) {
-                rxSeqBuf.erase(it++);
-            }
-            else {
-                break;
+
+    if (rxBufferMutex.tryLock(100))
+    {
+        if (!rxSeqBuf.isEmpty()) {
+            // Loop through the earliest items in the buffer and delete if older than PURGE_SECONDS
+            for (auto it = rxSeqBuf.begin(); it != rxSeqBuf.end();) {
+                if (it.value().secsTo(QTime::currentTime()) > PURGE_SECONDS) {
+                    rxSeqBuf.erase(it++);
+                }
+                else {
+                   break;
+                }
+           }
+        }
+        rxBufferMutex.unlock();
+    } else {
+        qInfo(logUdp()) << this->metaObject()->className() << ": rxBuffer mutex is locked";
+    }
+
+    if (missingMutex.tryLock(100))
+    {
+        // Erase old entries from the missing packets buffer
+        if (!rxMissing.isEmpty() && rxMissing.size() > 50) {
+            for (size_t i = 0; i < 25; ++i) {
+                rxMissing.erase(rxMissing.begin());
             }
         }
+        missingMutex.unlock();
+    } else {
+        qInfo(logUdp()) << this->metaObject()->className() << ": missingBuffer mutex is locked";
     }
-    rxBufferMutex.unlock();
-
-    missingMutex.lock();
-    // Erase old entries from the missing packets buffer
-    if (!rxMissing.isEmpty() && rxMissing.size() > 50) {
-        for (size_t i = 0; i < 25; ++i) {
-            rxMissing.erase(rxMissing.begin());
-        }
-    }
-    missingMutex.unlock();
-
 }
 
 /// <summary>
