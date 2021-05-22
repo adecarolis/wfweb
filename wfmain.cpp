@@ -754,13 +754,15 @@ void wfmain::openRig()
         {
             // Find the ICOM
             // qInfo(logSystem()) << "Searching for serial port...";
-            QDirIterator it73("/dev/serial", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator it73("/dev/serial/by-id", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*A*", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator it785x("/dev/serial", QStringList() << "*IC-785*A*", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator it7610("/dev/serial", QStringList() << "*IC-7610*A", QDir::Files, QDirIterator::Subdirectories);
             QDirIterator itR8600("/dev/serial", QStringList() << "*IC-R8600*A", QDir::Files, QDirIterator::Subdirectories);
+            QDirIterator itTest("/tmp/test", QStringList() << "*radio*", QDir::NoFilter, QDirIterator::Subdirectories);
 
+            qDebug() << "test iterator isEmpty: " << itTest.filePath().isEmpty();
 
             if(!it73.filePath().isEmpty())
             {
@@ -788,6 +790,8 @@ void wfmain::openRig()
                 serialPortRig = itR8600.filePath();
             } else {
                 //fall back:
+
+
                 qInfo(logSystem()) << "Could not find Icom serial port. Falling back to OS default. Use --port to specify, or modify preferences.";
 #ifdef Q_OS_MAC
                 serialPortRig = QString("/dev/tty.SLAB_USBtoUART");
@@ -848,20 +852,35 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     //now we know what the rig ID is:
     //qInfo(logSystem()) << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
 
+    // baud on the serial port reflects the actual rig connection,
+    // even if a client-server connection is being used.
+    // Computed time for a 10 byte message, with a safety factor of 2.
+    unsigned int usPerByte = 9600*1000 / prefs.serialPortBaud;
+    unsigned int msMinTiming=usPerByte * 10*2/1000;
+    if(msMinTiming < 35)
+        msMinTiming = 35;
+
+    delayedCommand->setInterval( msMinTiming * 2); // 20 byte message
+    periodicPollingTimer->setInterval( msMinTiming ); // slower for s-meter poll
+
+    qInfo(logSystem()) << "Delay command interval timing: " << msMinTiming * 2 << "ms";
+    qInfo(logSystem()) << "Periodic polling timer: " << msMinTiming << "ms";
+
+    // Normal:
+    delayedCmdIntervalLAN_ms =  msMinTiming * 2;
+    delayedCmdIntervalSerial_ms =  msMinTiming * 2;
+
+    // startup initial state:
+    delayedCmdStartupInterval_ms =  msMinTiming * 2;
+
     if(rig->usingLAN())
     {
         usingLAN = true;
-        delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
+        //delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
     } else {
         usingLAN = false;
-        if(prefs.serialPortBaud < 115200)
-        {
-            delayedCommand->setInterval(delayedCmdIntervalSerial_ms*2);
-            periodicPollingTimer->setInterval(200); // slower for s-meter polling
-        } else {
-            delayedCommand->setInterval(delayedCmdIntervalSerial_ms);
-        }
     }
+
     receiveRigID(rigCaps);
     getInitialRigState();
 
@@ -2228,40 +2247,19 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // Added so that server receives rig capabilities.
         emit sendRigCaps(rigCaps);
         rpt->setRig(rigCaps);
-        if(rigCaps.model==model7850)
+
+        // Set the mode combo box up:
+
+        ui->modeSelectCombo->blockSignals(true);
+        ui->modeSelectCombo->clear();
+
+        for(unsigned int i=0; i < rigCaps.modes.size(); i++)
         {
-            ui->modeSelectCombo->addItem("PSK", 0x12);
-            ui->modeSelectCombo->addItem("PSK-R", 0x13);
+            ui->modeSelectCombo->addItem(rigCaps.modes.at(i).name,
+                                            rigCaps.modes.at(i).reg);
         }
 
-        if(rigCaps.hasDV)
-        {
-            ui->modeSelectCombo->addItem("DV", 0x17);
-        }
-
-        if(rigCaps.hasDD)
-        {
-            ui->modeSelectCombo->addItem("DD", 0x22);
-        }
-
-        if(rigCaps.model==modelR8600)
-        {
-            ui->modeSelectCombo->addItem("WFM", 0x06);
-            ui->modeSelectCombo->addItem("FSK-R", 0x08);
-            ui->modeSelectCombo->addItem("S-AM (D)", 0x11);
-            ui->modeSelectCombo->addItem("S-AM (L)", 0x14);
-            ui->modeSelectCombo->addItem("S-AM (U)", 0x15);
-            ui->modeSelectCombo->addItem("P25", 0x16);
-            ui->modeSelectCombo->addItem("dPMR", 0x18);
-            ui->modeSelectCombo->addItem("NXDN-VN", 0x19);
-            ui->modeSelectCombo->addItem("NXDN-N", 0x20);
-            ui->modeSelectCombo->addItem("DCR", 0x21);
-        }
-        
-        if (rigCaps.model == model705)
-        {
-            ui->modeSelectCombo->addItem("WFM", 0x06);
-        }
+        ui->modeSelectCombo->blockSignals(false);
 
         if(rigCaps.model == model9700)
         {
@@ -4337,7 +4335,7 @@ void wfmain::on_rigCIVaddrHexLine_editingFinished()
         prefs.radioCIVAddr = propCIVAddr;
         showStatusBarText(QString("Setting radio CI-V address to: 0x%1. Press Save Settings to retain.").arg(propCIVAddr, 2, 16));
     } else {
-        showStatusBarText(QString("Could not use provided CI-V address. Address must be < 0x7E"));
+        showStatusBarText(QString("Could not use provided CI-V address. Address must be < 0xE0"));
     }
 
 }

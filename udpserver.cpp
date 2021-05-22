@@ -395,7 +395,7 @@ void udpServer::controlReceived()
                         connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)));
                         connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
-                        emit setupTxAudio(samples, channels, current->txSampleRate, in->txbuffer, uLaw, false, config.audioOutput, config.resampleQuality);
+                        emit setupTxAudio(samples, channels, current->txSampleRate, current->txBufferLen, uLaw, false, config.audioOutput, config.resampleQuality);
                         hasTxAudio=datagram.senderAddress();
 
                         connect(this, SIGNAL(haveAudioData(audioPacket)), txaudio, SLOT(incomingAudio(audioPacket)));
@@ -431,8 +431,9 @@ void udpServer::controlReceived()
                         emit setupRxAudio(samples, channels, current->rxSampleRate, 150, uLaw, true, config.audioInput, config.resampleQuality);
 
                         rxAudioTimer = new QTimer();
+                        rxAudioTimer->setTimerType(Qt::PreciseTimer);
                         connect(rxAudioTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRxAudio, this));
-                        rxAudioTimer->start(10);
+                        rxAudioTimer->start(20);
                     }
 
                 }
@@ -713,7 +714,9 @@ void udpServer::audioReceived()
 void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
 {
     Q_UNUSED(l); // We might need it later!
-
+    if (current == Q_NULLPTR || r.isNull()) {
+        return;
+    }
     current->lastHeard = QDateTime::currentDateTime();
     if (r.length() < 0x10)
     {

@@ -2265,7 +2265,7 @@ void rigCommander::parseDetailedRegisters1A05()
                 default:
                     break;
             }
-            return;
+            break;
         case model7850:
             switch(subcmd)
             {
@@ -2332,6 +2332,7 @@ void rigCommander::parseDetailedRegisters1A05()
                 default:
                     break;
             }
+            break;
         case model7610:
             switch(subcmd)
             {
@@ -2407,6 +2408,7 @@ void rigCommander::parseDetailedRegisters1A05()
                 default:
                     break;
             }
+            break;
         case model705:
             switch(subcmd)
             {
@@ -2525,6 +2527,16 @@ void rigCommander::parseWFData()
     }
 }
 
+
+mode_info rigCommander::createMode(mode_kind m, unsigned char reg, QString name)
+{
+    mode_info mode;
+    mode.mk = m;
+    mode.reg = reg;
+    mode.name = name;
+    return mode;
+}
+
 void rigCommander::determineRigCaps()
 {
     //TODO: Determine available bands (low priority, rig will reject out of band requests anyway)
@@ -2538,6 +2550,14 @@ void rigCommander::determineRigCaps()
                  band40m, band60m, band80m, band160m};
 
     standardVU = {band70cm, band2m};
+
+    std::vector <mode_info> commonModes;
+    commonModes = { createMode(modeLSB, 0x00, "LSB"), createMode(modeUSB, 0x01, "USB"),
+                    createMode(modeFM, 0x05, "FM"), createMode(modeAM, 0x02, "AM"),
+                    createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
+                    createMode(modeRTTY, 0x04, "RTTY"), createMode(modeRTTY_R, 0x08, "RTTY-R")
+                  };
+
 
 
     rigCaps.model = model;
@@ -2615,6 +2635,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.bands.push_back(band630m);
             rigCaps.bands.push_back(band2200m);
+            rigCaps.modes = commonModes;
             break;
         case modelR8600:
             rigCaps.modelName = QString("IC-R8600");
@@ -2640,6 +2661,13 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
             rigCaps.bands.insert(rigCaps.bands.end(), {band23cm, band4m, band630m, band2200m, bandGen});
+            rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), {
+                                     createMode(modeWFM, 0x06, "WFM"), createMode(modeS_AMD, 0x11, "S-AM (D)"),
+                                     createMode(modeS_AML, 0x14, "S-AM(L)"), createMode(modeS_AMU, 0x15, "S-AM(U)"),
+                                     createMode(modeP25, 0x16, "P25"), createMode(modedPMR, 0x18, "dPMR"),
+                                     createMode(modeNXDN_VN, 0x19, "NXDN-VN"), createMode(modeNXDN_N, 0x20, "NXDN-N"),
+                                     createMode(modeDCR, 0x21, "DCR")});
             break;
         case model9700:
             rigCaps.modelName = QString("IC-9700");
@@ -2664,6 +2692,9 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[band23cm] = 0x03;
             rigCaps.bsr[band70cm] = 0x02;
             rigCaps.bsr[band2m] = 0x01;
+            rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeDV, 0x17, "DV"),
+                                                       createMode(modeDD, 0x22, "DD")});
             break;
         case model910h:
             rigCaps.modelName = QString("IC-910H");
@@ -2683,6 +2714,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[band23cm] = 0x03;
             rigCaps.bsr[band70cm] = 0x02;
             rigCaps.bsr[band2m] = 0x01;
+            rigCaps.modes = commonModes;
             break;
         case model7610:
             rigCaps.modelName = QString("IC-7610");
@@ -2711,6 +2743,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.bands.push_back(band630m);
             rigCaps.bands.push_back(band2200m);
+            rigCaps.modes = commonModes;
             break;
         case model7850:
             rigCaps.modelName = QString("IC-785x");
@@ -2738,6 +2771,9 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.bands.push_back(band630m);
             rigCaps.bands.push_back(band2200m);
+            rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
+                                                       createMode(modePSK_R, 0x13, "PSK-R")});
             break;
         case model705:
             rigCaps.modelName = QString("IC-705");
@@ -2770,6 +2806,9 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[bandGen] = 0x15;
             rigCaps.bands.push_back(band630m);
             rigCaps.bands.push_back(band2200m);
+            rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeWFM, 0x06, "WFM"),
+                                                       createMode(modeDV, 0x17, "DV")});
             break;
         case model7000:
             rigCaps.modelName = QString("IC-7000");
@@ -2789,6 +2828,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[band2m] = 0x11;
             rigCaps.bsr[band70cm] = 0x12;
             rigCaps.bsr[bandGen] = 0x13;
+            rigCaps.modes = commonModes;
             break;
         case model7410:
             rigCaps.modelName = QString("IC-7410");
@@ -2807,6 +2847,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
+            rigCaps.modes = commonModes;
             break;
         case model7100:
             rigCaps.modelName = QString("IC-7100");
@@ -2829,6 +2870,9 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[band2m] = 0x11;
             rigCaps.bsr[band70cm] = 0x12;
             rigCaps.bsr[bandGen] = 0x13;
+            rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeWFM, 0x06, "WFM"),
+                                                       createMode(modeDV, 0x17, "DV")});
             break;
         case model7200:
             rigCaps.modelName = QString("IC-7200");
@@ -2846,6 +2890,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
+            rigCaps.modes = commonModes;
             break;
         case model706:
             rigCaps.modelName = QString("IC-706");
@@ -2859,6 +2904,8 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
             rigCaps.bands.push_back(bandGen);
+            rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), createMode(modeWFM, 0x06, "WFM"));
             break;
         case model756pro:
             rigCaps.modelName = QString("IC-756 Pro");
@@ -2875,6 +2922,24 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
+            rigCaps.modes = commonModes;
+            break;
+        case model756proii:
+            rigCaps.modelName = QString("IC-756 Pro II");
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.clear();
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasATU = true;
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
+            rigCaps.antennas = {0x00, 0x01};
+            rigCaps.bands = standardHF;
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.bsr[bandGen] = 0x11;
+            rigCaps.modes = commonModes;
             break;
         case model756proiii:
             rigCaps.modelName = QString("IC-756 Pro III");
@@ -2891,6 +2956,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
+            rigCaps.modes = commonModes;
             break;
         default:
             rigCaps.modelName = QString("IC-0x%1").arg(rigCaps.modelID, 2, 16);
@@ -2910,7 +2976,8 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
             rigCaps.bands.insert(rigCaps.bands.end(), {band23cm, band4m, band630m, band2200m, bandGen});
-            qInfo(logRig()) << "Found unknown rig: " << rigCaps.modelID;
+            rigCaps.modes = commonModes;
+            qInfo(logRig()) << "Found unknown rig: 0x" << QString("%1").arg(rigCaps.modelID, 2, 16);
             break;
     }
     haveRigCaps = true;

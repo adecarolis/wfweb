@@ -6,6 +6,8 @@
 #include <QList>
 #include <vector>
 
+#include "freqmemory.h"
+
 // Credit for parts of CIV list:
 // http://www.docksideradio.com/Icom%20Radio%20Hex%20Addresses.htm
 
@@ -27,6 +29,7 @@ enum model_kind {
     model705 = 0xA4,
     model706 = 0x58,
     model756pro = 0x5C,
+    model756proii = 0x64,
     model756proiii = 0x6E,
     model910h = 0x60,
     modelUnknown = 0xFF
@@ -102,6 +105,8 @@ struct rigCapabilities {
     std::vector <unsigned char> antennas;
     std::vector <bandType> bands;
     unsigned char bsr[20] = {0};
+
+    std::vector <mode_info> modes;
 };
 
 

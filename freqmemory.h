@@ -20,7 +20,24 @@ enum mode_kind {
     modeLSB_D=0x80,
     modeUSB_D=0x81,
     modeDV=0x17,
-    modeDD=0x27
+    modeDD=0x27,
+    modeWFM,
+    modeS_AMD,
+    modeS_AML,
+    modeS_AMU,
+    modeP25,
+    modedPMR,
+    modeNXDN_VN,
+    modeNXDN_N,
+    modeDCR,
+    modePSK,
+    modePSK_R
+};
+
+struct mode_info {
+    mode_kind mk;
+    unsigned char reg;
+    QString name;
 };
 
 struct preset_kind {

@@ -782,6 +782,7 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	this->chunkSize = (INTERNAL_SAMPLE_RATE / 25) * radioChannels;
 
 	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "chunkSize: " << this->chunkSize;
+	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "bufferLength (latency): " << this->latency;
 
 	int resample_error=0;
 
@@ -901,7 +902,11 @@ void audioHandler::reinit()
         audioOutput = new QAudioOutput(deviceInfo, format, this);
 
 		// This seems to only be needed on Linux but is critical in aligning buffer sizes.
-		audioOutput->setBufferSize(chunkSize*4); 
+#ifdef Q_OS_MAC
+        audioOutput->setBufferSize(chunkSize*8);
+#else
+        audioOutput->setBufferSize(chunkSize*4);
+#endif
 
 		connect(audioOutput, SIGNAL(notify()), SLOT(notified()));
         connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
