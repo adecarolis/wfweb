@@ -10,6 +10,7 @@
 #include <QDateTime>
 #include <QByteArray>
 #include <QVector>
+#include <QMap>
 
 // Allow easy endian-ness conversions
 #include <QtEndian>
@@ -40,10 +41,9 @@ struct udpPreferences {
 	quint16 audioLANPort;
 	QString username;
 	QString password;
-	QString audioOutput;
-	QString audioInput;
-	int audioInputDevice;
-	int audioOutputDevice;
+	int audioOutput;
+	int audioInput;
+
 	quint16 audioRXLatency;
 	quint16 audioTXLatency;
 	quint16 audioRXSampleRate;
@@ -79,7 +79,6 @@ public:
 	uint32_t myId = 0;
 	uint32_t remoteId = 0;
 	uint8_t authSeq = 0x00;
-	//uint16_t innerSendSeq = 0x8304; // Not sure why?
 	uint16_t sendSeqB = 0;
 	uint16_t sendSeq = 1;
 	uint16_t lastReceivedSeq = 1;
@@ -100,6 +99,7 @@ public:
 	QMutex udpMutex;
 	QMutex txBufferMutex;
 	QMutex rxBufferMutex;
+	QMutex missingMutex;
 
 	struct SEQBUFENTRY {
 		QTime	timeSent;
@@ -108,11 +108,9 @@ public:
 		quint8 retransmitCount;
 	};
 
-	QVector<SEQBUFENTRY> txSeqBuf;
-
-	QVector<quint16> rxSeqBuf;
-
-	QVector<SEQBUFENTRY> rxMissing;
+	QMap<quint16, QTime> rxSeqBuf;
+	QMap<quint16, SEQBUFENTRY> txSeqBuf;
+	QMap<quint16, int> rxMissing;
 
 	void sendTrackedPacket(QByteArray d);
 	void purgeOldEntries();
@@ -133,6 +131,9 @@ public:
 	quint32 packetsLost=0;
 
 	quint16 seqPrefix = 0;
+
+	int congestion = 0;
+
 
 private:
 	void sendRetransmitRequest();
@@ -172,14 +173,14 @@ class udpAudio : public udpBase
 	Q_OBJECT
 
 public:
-	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QString outputPort, int outputDevice, QString inputPort, int inputDevice, quint8 resampleQuality);
+	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, int outputPort, int inputPort, quint8 resampleQuality);
 	~udpAudio();
 
 signals:
 	void haveAudioData(audioPacket data);
 
-	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QString port, int device, quint8 resampleQuality);
-	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QString port, int device, quint8 resampleQuality);
+	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, int port, quint8 resampleQuality);
+	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, int port, quint8 resampleQuality);
 
 	void haveChangeLatency(quint16 value);
 	void haveSetVolume(unsigned char value);
@@ -218,6 +219,7 @@ private:
 	QThread* txAudioThread = Q_NULLPTR;
 
 	QTimer* txAudioTimer=Q_NULLPTR;
+	bool enableTx = 1;
 
 };
 
@@ -253,6 +255,7 @@ signals:
 	void haveChangeLatency(quint16 value);
 	void haveSetVolume(unsigned char value);
 	void haveNetworkStatus(QString);
+	void haveBaudRate(quint32 baudrate);
 
 private:
 	
@@ -284,10 +287,8 @@ private:
 	quint8 rxCodec;
 	quint8 txCodec;
 
-	QString audioInputPort;
-	QString audioOutputPort;
-	int audioInputDevice;
-	int audioOutputDevice;
+	int audioInputPort;
+	int audioOutputPort;
 	
 	quint8 resampleQuality;
 
@@ -309,9 +310,10 @@ private:
 	QTimer* areYouThereTimer = Q_NULLPTR;
 
 	bool highBandwidthConnection = false;
-
+	quint8 civId = 0;
+	quint16 rxSampleRates = 0;
+	quint16 txSampleRates = 0;
 };
 
-Q_DECLARE_METATYPE(struct audioPacket)
 
 #endif

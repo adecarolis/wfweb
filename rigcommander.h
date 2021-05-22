@@ -47,6 +47,31 @@ struct rigStateStruct {
     unsigned char mode;
     unsigned char filter;
     bool datamode;
+    // Tones
+    quint16 ctcss;
+    quint16 tsql;
+    quint16 dtcs;
+    quint16 csql;
+    // Levels
+    unsigned char preamp;
+    unsigned char modInput;
+    unsigned char afGain;
+    unsigned char rfGain;
+    unsigned char squelch;
+    unsigned char txPower;
+    unsigned char micGain;
+    unsigned char compLevel;
+    unsigned char monitorLevel;
+    unsigned char voxGain;
+    unsigned char antiVoxGain;
+    // Meters
+    unsigned char sMeter;
+    unsigned char powerMeter;
+    unsigned char swrMeter;
+    unsigned char alcMeter;
+    unsigned char compMeter;
+    unsigned char voltageMeter;
+    unsigned char currentMeter;
 };
 
 class rigCommander : public QObject
@@ -209,6 +234,7 @@ public slots:
     void handleSerialPortError(const QString port, const QString errorText);
     void changeLatency(const quint16 value);
     void dataFromServer(QByteArray data);
+    void receiveBaudRate(quint32 baudrate);
 
     // Speech:
     void sayFrequency();
@@ -232,6 +258,7 @@ signals:
     void haveAudioData(audioPacket data);
     void initUdpHandler();
     void haveSetVolume(unsigned char level);
+    void haveBaudRate(quint32 baudrate);
 
     // Spectrum:
     void haveSpectrumData(QByteArray spectrum, double startFreq, double endFreq); // pass along data to UI

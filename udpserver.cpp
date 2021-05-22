@@ -392,7 +392,7 @@ void udpServer::controlReceived()
 
                         txAudioThread->start();
 
-                        connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, int, quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QString, int, quint8)));
+                        connect(this, SIGNAL(setupTxAudio(quint8,quint8,quint16,quint16,bool,bool,int,quint8)), txaudio, SLOT(init(quint8,quint8,quint16,quint16,bool,bool,int,quint8)));
                         connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
                         emit setupTxAudio(samples, channels, current->txSampleRate, in->txbuffer, uLaw, false, config.audioOutput,config.audioOutputDevice, config.resampleQuality);
@@ -425,14 +425,15 @@ void udpServer::controlReceived()
                         rxaudio->moveToThread(rxAudioThread);
                         rxAudioThread->start();
 
-                        connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, int, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QString, int, quint8)));
+                        connect(this, SIGNAL(setupRxAudio(quint8,quint8,quint16,quint16,bool,bool,QString,int,quint8)), rxaudio, SLOT(init(quint8,quint8,quint16,quint16,bool,bool,int,quint8)));
                         connect(rxAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
                         emit setupRxAudio(samples, channels, current->rxSampleRate, 150, uLaw, true, config.audioInput, config.audioInputDevice, config.resampleQuality);
 
                         rxAudioTimer = new QTimer();
+                        rxAudioTimer->setTimerType(Qt::PreciseTimer);
                         connect(rxAudioTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRxAudio, this));
-                        rxAudioTimer->start(10);
+                        rxAudioTimer->start(20);
                     }
 
                 }
@@ -687,7 +688,7 @@ void udpServer::audioReceived()
                         current->seqPrefix++;
                     }
 
-                    if (hasTxAudio == datagram.senderAddress())
+                    if (hasTxAudio == current->ipAddress)
                     {
                         // 0xac is the smallest possible audio packet.
                         audioPacket tempAudio;
@@ -713,7 +714,9 @@ void udpServer::audioReceived()
 void udpServer::commonReceived(QList<CLIENT*>* l,CLIENT* current, QByteArray r)
 {
     Q_UNUSED(l); // We might need it later!
-
+    if (current == Q_NULLPTR || r.isNull()) {
+        return;
+    }
     current->lastHeard = QDateTime::currentDateTime();
     if (r.length() < 0x10)
     {
@@ -1015,7 +1018,7 @@ void udpServer::sendCapabilities(CLIENT* c)
     }
 
     p.civ = rigCaps.civ;
-    p.baudrate = (quint32)qToBigEndian(19200);
+    p.baudrate = (quint32)qToBigEndian(config.baudRate);
     /*
         0x80 = 12K only
         0x40 = 44.1K only
@@ -1050,25 +1053,11 @@ void udpServer::sendCapabilities(CLIENT* c)
     if (txaudio == Q_NULLPTR) {
         p.txsample = 0x8b01; // all tx sample frequencies supported
         p.enablea = 0x01; // 0x01 enables TX 24K mode?
+        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Client will have TX audio";
     }
     else {
-        p.enablea = 0x00; // 0x01 enables TX 24K mode?
-        if (txSampleRate == 48000) {
-            p.txsample = 0x0800; // fixed tx sample frequency
-        }
-        else if (txSampleRate == 32000) {
-            p.txsample = 0x0400;
-        }
-        else if (txSampleRate == 24000) {
-            p.txsample = 0x0000;
-            p.enablea = 0x01;
-        }
-        else if (txSampleRate == 16000) {
-            p.txsample = 0x0200;
-        }
-        else if (txSampleRate == 12000) {
-            p.txsample = 0x8000;
-        }
+        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Disable tx audio for client";
+        p.txsample = 0;
     }
 
     // I still don't know what these are?

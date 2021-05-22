@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QComboBox>
 #include <QList>
+#include <QAudioDeviceInfo>
 
 #include <QDebug>
 
@@ -20,11 +21,10 @@ struct SERVERCONFIG {
     quint16 controlPort;
     quint16 civPort;
     quint16 audioPort;
-    QString audioOutput;
-    QString audioInput;
-    int audioInputDevice;
-    int audioOutputDevice;
+    int audioOutput;
+    int audioInput;
     quint8 resampleQuality;
+    quint32 baudRate;
 
     QList <SERVERUSER> users;
 };

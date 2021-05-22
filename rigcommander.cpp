@@ -125,6 +125,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, QSt
 
         connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
         connect(this, SIGNAL(haveSetVolume(unsigned char)), udp, SLOT(setVolume(unsigned char)));
+        connect(udp, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
 
         // Connect for errors/alerts
         connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
@@ -204,6 +205,10 @@ void rigCommander::handleStatusUpdate(const QString text)
 bool rigCommander::usingLAN()
 {
     return usingNativeLAN;
+}
+
+void rigCommander::receiveBaudRate(quint32 baudrate) {
+    emit haveBaudRate(baudrate);
 }
 
 void rigCommander::findRigs()
@@ -959,6 +964,7 @@ void rigCommander::setCIVAddr(unsigned char civAddr)
 {
     // Note: This is the radio's CIV address
     // the computer's CIV address is defined in the header file.
+    // TODO: this function *could* be written to re-write the CIV preamble.
     this->civAddr = civAddr;
 }
 
@@ -1175,8 +1181,9 @@ void rigCommander::parseCommand()
             // qInfo(logRig()) << "Have rig ID: " << (unsigned int)payloadIn[2];
             // printHex(payloadIn, false, true);
             model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
+            rigCaps.modelID = payloadIn[2];
             determineRigCaps();
-            qInfo(logRig()) << "Have rig ID: decimal: " << (unsigned int)model;
+            qInfo(logRig()) << "Have rig ID: decimal: " << (unsigned int)rigCaps.modelID;
 
 
             break;
@@ -1262,39 +1269,48 @@ void rigCommander::parseLevels()
                 // AF level - ignore if LAN connection.
                 if (udp == Q_NULLPTR) {
                     emit haveAfGain(level);
+                    rigState.afGain = level;
                 }
                 break;
             case '\x02':
                 // RX RF Gain
                 emit haveRfGain(level);
+                rigState.rfGain = level;
                 break;
             case '\x03':
                 // Squelch level
                 emit haveSql(level);
+                rigState.squelch = level;
                 break;
             case '\x0A':
                 // TX RF level
                 emit haveTxPower(level);
+                rigState.txPower = level;
                 break;
             case '\x0B':
                 // Mic Gain
                 emit haveMicGain(level);
+                rigState.micGain = level;
                 break;
             case '\x0E':
                 // compressor level
                 emit haveCompLevel(level);
+                rigState.compLevel = level;
                 break;
             case '\x15':
                 // monitor level
                 emit haveMonitorLevel(level);
+                rigState.monitorLevel = level;
                 break;
             case '\x16':
                 // VOX gain
                 emit haveVoxGain(level);
+                rigState.voxGain = level;
                 break;
             case '\x17':
                 // anti-VOX gain
                 emit haveAntiVoxGain(level);
+                rigState.antiVoxGain = level;
                 break;
 
             default:
@@ -1312,30 +1328,37 @@ void rigCommander::parseLevels()
             case '\x02':
                 // S-Meter
                 emit haveMeter(meterS, level);
+                rigState.sMeter = level;
                 break;
             case '\x11':
                 // RF-Power meter
                 emit haveMeter(meterPower, level);
+                rigState.powerMeter = level;
                 break;
             case '\x12':
                 // SWR
                 emit haveMeter(meterSWR, level);
+                rigState.swrMeter = level;
                 break;
             case '\x13':
                 // ALC
                 emit haveMeter(meterALC, level);
+                rigState.alcMeter = level;
                 break;
             case '\x14':
                 // COMP dB reduction
                 emit haveMeter(meterComp, level);
+                rigState.compMeter = level;
                 break;
             case '\x15':
                 // VD (12V)
                 emit haveMeter(meterVoltage, level);
+                rigState.voltageMeter = level;
                 break;
             case '\x16':
                 // ID
                 emit haveMeter(meterCurrent, level);
+                rigState.currentMeter = level;
                 break;
 
             default:
@@ -2110,19 +2133,24 @@ void rigCommander::parseRegister1B()
             // "Repeater tone"
             tone = decodeTone(payloadIn);
             emit haveTone(tone);
+            rigState.ctcss = tone;
             break;
         case '\x01':
             // "TSQL tone"
             tone = decodeTone(payloadIn);
             emit haveTSQL(tone);
+            rigState.tsql = tone;
             break;
         case '\x02':
             // DTCS (DCS)
             tone = decodeTone(payloadIn, tinv, rinv);
             emit haveDTCS(tone, tinv, rinv);
+            rigState.dtcs = tone;
             break;
         case '\x07':
             // "CSQL code (DV mode)"
+            tone = decodeTone(payloadIn);
+            rigState.csql = tone;
             break;
         default:
             break;
@@ -2142,6 +2170,7 @@ void rigCommander::parseRegister16()
         case '\x02':
             // Preamp
             emit havePreamp((unsigned char)payloadIn.at(2));
+            rigState.preamp = (unsigned char)payloadIn.at(2);
             break;
         default:
             break;
@@ -2512,7 +2541,6 @@ void rigCommander::determineRigCaps()
 
 
     rigCaps.model = model;
-    rigCaps.modelID = model; // may delete later
     rigCaps.civ = incomingCIVAddr;
 
     rigCaps.hasDD = false;
@@ -2525,9 +2553,12 @@ void rigCommander::determineRigCaps()
     rigCaps.spectSeqMax = 0;
     rigCaps.spectAmpMax = 0;
     rigCaps.spectLenMax = 0;
+    
 
-    // Clear inputs list in case we have re-connected.
-    rigCaps.inputs.clear(); 
+    // Clear inputs/preamps/attenuators lists in case we have re-connected.
+    rigCaps.preamps.clear();
+    rigCaps.attenuators.clear();
+    rigCaps.inputs.clear();
     rigCaps.inputs.append(inputMic);
 
     rigCaps.hasAttenuator = true; // Verify that all recent rigs have attenuators
@@ -2753,7 +2784,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
-            rigCaps.attenuators.push_back('\x20');
+            rigCaps.attenuators.push_back('\x12');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
@@ -2832,8 +2863,40 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
             rigCaps.bands.push_back(bandGen);
             break;
+        case model756pro:
+            rigCaps.modelName = QString("IC-756 Pro");
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.clear();
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasATU = true;
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
+            rigCaps.antennas = {0x00, 0x01};
+            rigCaps.bands = standardHF;
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.bsr[bandGen] = 0x11;
+            break;
+        case model756proiii:
+            rigCaps.modelName = QString("IC-756 Pro III");
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.clear();
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasATU = true;
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
+            rigCaps.antennas = {0x00, 0x01};
+            rigCaps.bands = standardHF;
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.bsr[bandGen] = 0x11;
+            break;
         default:
-            rigCaps.modelName = QString("IC-RigID: 0x%1").arg(rigCaps.model, 0, 16);
+            rigCaps.modelName = QString("IC-0x%1").arg(rigCaps.modelID, 2, 16);
             rigCaps.hasSpectrum = false;
             rigCaps.spectSeqMax = 0;
             rigCaps.spectAmpMax = 0;
@@ -2850,7 +2913,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
             rigCaps.bands.insert(rigCaps.bands.end(), {band23cm, band4m, band630m, band2200m, bandGen});
-            qInfo(logRig()) << "Found unknown rig: " << rigCaps.modelName;
+            qInfo(logRig()) << "Found unknown rig: " << rigCaps.modelID;
             break;
     }
     haveRigCaps = true;

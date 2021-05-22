@@ -38,7 +38,7 @@ class wfmain : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit wfmain(const QString serialPortCL, const QString hostCL, QWidget *parent = 0);
+    explicit wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, QWidget *parent = 0);
     QString serialPortCL;
     QString hostCL;
     ~wfmain();
@@ -234,6 +234,7 @@ private slots:
     void runPeriodicCommands();
     void showStatusBarText(QString text);
     void serverConfigRequested(SERVERCONFIG conf, bool store);
+    void receiveBaudRate(quint32 baudrate);
 
     // void on_getFreqBtn_clicked();
 
@@ -436,10 +437,16 @@ private slots:
 
     void on_bandWFMbtn_clicked();
 
+    void on_rigCIVManualAddrChk_clicked(bool checked);
+
+    void on_rigCIVaddrHexLine_editingFinished();
+
+    void on_baudRateCombo_activated(int);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
-    QSettings settings;
+    QSettings *settings=Q_NULLPTR;
     void loadSettings();
     void saveSettings();
     QCustomPlot *plot; // line plot
@@ -457,7 +464,6 @@ private:
     void openRig();
     void powerRigOff();
     void powerRigOn();
-    QWidget * theParent;
     QStringList portList;
     QString serialPortRig;
 
@@ -708,8 +714,10 @@ Q_DECLARE_METATYPE(struct rigCapabilities)
 Q_DECLARE_METATYPE(struct freqt)
 Q_DECLARE_METATYPE(struct udpPreferences)
 Q_DECLARE_METATYPE(struct rigStateStruct)
+Q_DECLARE_METATYPE(struct audioPacket)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
+
 
 #endif // WFMAIN_H

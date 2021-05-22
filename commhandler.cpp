@@ -102,6 +102,22 @@ void commHandler::receiveDataIn()
     // new code:
     port->startTransaction();
     inPortData = port->readAll();
+
+    if(inPortData.size() == 1)
+    {
+        // Generally for baud <= 9600
+        if (inPortData == "\xFE")
+        {
+            // This will get hit twice.
+            // After the FE FE, we transition into
+            // the normal .startsWith FE FE block
+            // where the normal rollback code can handle things.
+            port->rollbackTransaction();
+            rolledBack = true;
+            return;
+        }
+    }
+
     if(inPortData.startsWith("\xFE\xFE"))
     {
         if(inPortData.endsWith("\xFD"))

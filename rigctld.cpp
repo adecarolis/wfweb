@@ -84,7 +84,7 @@ void rigCtlClient::socketReadyRead()
     bool longReply = false;
     if (commandBuffer.endsWith('\n'))
     {
-        qInfo(logRigCtlD()) << sessionId << "command received" << commandBuffer;
+        qDebug(logRigCtlD()) << sessionId << "command received" << commandBuffer;
         commandBuffer.chop(1); // Remove \n character
         if (commandBuffer.endsWith('\r'))
         {
@@ -210,7 +210,7 @@ void rigCtlClient::closeSocket()
 
 void rigCtlClient::sendData(QString data)
 {
-    qInfo(logRigCtlD()) << "Sending:" << data;
+    qDebug(logRigCtlD()) << "Sending:" << data;
     if (socket != Q_NULLPTR && socket->isValid() && socket->isOpen())
     {
         socket->write(data.toLatin1());

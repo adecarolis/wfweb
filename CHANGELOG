@@ -1,6 +1,105 @@
 # CHANGELOG
 
+- 20210520
+
+    		Add more features to rigstate
+
+- 20210519
+
+    		Model ID text format fixed. Shows IC-0x followed by the raw rig ID
+    		received.
+
+    		Fixed issue where unknown rigs were identified as 0xff. All rigs are now
+    		identified using rigCaps.modelID, populated with the raw response from
+    		the Rig ID query. Enumerations of known rig types continue to fall into
+    		rigCaps.model, and unknwn rigs will match to rigCaps.model=modelUnknown,
+    		as before.
+
+    		Serial baud rate is in the UI now. Added some enable/disable code to
+    		prevent confusion about which options can be used with which types of
+    		connections.
+
+    		Better about box.
+
+    		fixed filename in instructions
+
+		Add MacOS serial port entitlement
+
+
+- 20210518
+
+    		Remove unused variables
+
+    		Make windows build include git version
+    		Command line version of git must be available in the path.
+
+    		Various file tidying for Windows/Mac builds
+
+    		Flush buffers if too many lost packets.
+
+    		remove duplicate audioPacket metatype
+
+    		Fix silly error in udpserver audio
+
+    		Allow receive only in udpHandler
+
+    		Manual CIV is now read from the preferences and populates the UI
+    		accordingly.
+
+    		Changed UI a little, and added manual CI-V options. Seems to work well.
+
+- 20210517
+
+    		Fixes for MacOS build - sandbox
+
+    		Fixes for mac logging/pty since adding sandbox
+
+    		Make audio input buffer a qMap
+
+    		Use qMap instead of qVector for buffers as they are auto-sorted.
+
+- 20210516
+
+    		Fixed attenuator on IC-7000
+
+    		register audio metatype in wfmain with all of the others
+
+    		Move manual serial port so linux/mac only
+
+- 20210516 	Added IC-7200 support. This has not been tested.
+
+- 20210515	Change to correct bug when CI-V is user-specified and rigCaps were never
+    		populated.
+
+    		Making the s-meter error command easier to read.
+
+    		Added IC-706 to rigCaps. Support for the IC-706 is currently broken but
+    		development is in progress.
+
+    		Added check for if the rig has spectrum during initial state queries.
+
+    		BSR debug code.
+
+		Small fixes for rigctld
+
 - 20210514	Make UDP port textboxes expanding.
+
+    		Selecting an antenna now sets that antenna for TX and RX.
+                
+    		wfview now closes when the main window is closed.
+                
+    		Filter selection now checks for data mode.
+                
+    		Preliminary IC-7000 support. TODO: Input selection, modes, filters,
+    		reported bug with frequency input and s-meter.
+                
+    		Moved the power buttons.
+
+    		Cyan for the tuning line.
+
+    		Resize UDP port text boxes (again!)
+
+    		ake UDP port textboxes expanding.
 
     		Fixes to UDP server
 

@@ -31,6 +31,7 @@ typedef signed short  MY_TYPE;
 #include <QThread>
 #include <QTimer>
 #include <QTime>
+#include <QMap>
 #include "resampler/speex_resampler.h"
 
 
@@ -797,8 +798,7 @@ public:
     bool isSequential() const;
     void getNextAudioChunk(QByteArray &data);
     bool isChunkAvailable();
-public slots:
-    bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isulaw, const bool isinput, QString port, int device, quint8 resampleQuality);
+    bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isulaw, const bool isinput, int port, quint8 resampleQuality);
     void incomingAudio(const audioPacket data);
     void changeLatency(const quint16 newSize);
 
@@ -844,7 +844,10 @@ private:
     quint16          radioSampleRate;
     quint8           radioSampleBits;
     quint8          radioChannels;
-    QVector<audioPacket> audioBuffer;
+    QVector <audioPacket> audioBuffer;
+    QMap<quint32, audioPacket>inputBuffer;
+
+    SpeexResamplerState* resampler=NULL;
 
     unsigned int ratioNum;
     unsigned int ratioDen;

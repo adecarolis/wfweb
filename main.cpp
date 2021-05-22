@@ -28,12 +28,16 @@ int main(int argc, char *argv[])
     QString serialPortCL;
     QString hostCL;
     QString civCL;
+#ifdef Q_OS_MAC
+    QString logFilename= QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/wfview.log";
+#else
     QString logFilename= QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0] + "/wfview.log";
-
+#endif
+    QString settingsFile = NULL;
     QString currentArg;
 
 
-    const QString helpText = QString("\nUsage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr, -l --logfile filename.log, -d --debug\n"); // TODO...
+    const QString helpText = QString("\nUsage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr, -l --logfile filename.log, -s --settings filename.ini, -d --debug\n"); // TODO...
 
     for(int c=1; c<argc; c++)
     {
@@ -48,7 +52,7 @@ int main(int argc, char *argv[])
                 c += 1;
             }
         }
-        else if((currentArg == "-d") || (currentArg == "--debug"))
+        else if ((currentArg == "-d") || (currentArg == "--debug"))
         {
             debugMode = true;
         } 
@@ -75,13 +79,31 @@ int main(int argc, char *argv[])
                 logFilename = argv[c + 1];
                 c += 1;
             }
-        } else if ((currentArg == "--help"))
+        }
+        else if ((currentArg == "-s") || (currentArg == "--settings"))
         {
+            if (argc > c)
+            {
+                settingsFile = argv[c + 1];
+                c += 1;
+            }
+        }
+        else if ((currentArg == "--help"))
+        {
+#ifdef Q_OS_WIN
+            QMessageBox::information(0, "wfview help", helpText);
+#else
             std::cout << helpText.toStdString();
+#endif
             return 0;
         } else {
+
+#ifdef Q_OS_WIN
+            QMessageBox::information(0, "wfview unrecognised argument", helpText);
+#else
             std::cout << "Unrecognized option: " << currentArg.toStdString();
             std::cout << helpText.toStdString();
+#endif
 
 	    return -1;
         }
@@ -102,7 +124,7 @@ int main(int argc, char *argv[])
     qDebug(logSystem()) << "remote host as set by parser: " << hostCL;
     qDebug(logSystem()) << "CIV as set by parser: " << civCL;
     a.setWheelScrollLines(1); // one line per wheel click
-    wfmain w( serialPortCL, hostCL);
+    wfmain w( serialPortCL, hostCL, settingsFile);
 
     w.show();
 
