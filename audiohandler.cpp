@@ -747,18 +747,21 @@ audioHandler::~audioHandler()
     if (audioOutput != Q_NULLPTR) {
 		audioOutput->stop();
         delete audioOutput;
+        qDebug(logAudio()) << "Audio output stopped";
     }
     if (audioInput != Q_NULLPTR) {
 		audioInput->stop();
         delete audioInput;
+        qDebug(logAudio()) << "Audio input stopped";
     }
 
 	if (resampler != NULL) {
 		speex_resampler_destroy(resampler);
+        qDebug(logAudio()) << "Resampler closed";
 	}
 }
 
-bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool ulaw, const bool isinput, QString port, quint8 resampleQuality)
+bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool ulaw, const bool isinput, QAudioDeviceInfo port, quint8 resampleQuality)
 {
     if (isInitialized) {
         return false;
@@ -789,16 +792,10 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	if (isInput) {
 		resampler = wf_resampler_init(radioChannels, INTERNAL_SAMPLE_RATE, samplerate, resampleQuality, &resample_error);
 
-		const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
-		for (const QAudioDeviceInfo& deviceInfo : deviceInfos) {
-			if (deviceInfo.deviceName() == port) {
-				qInfo(logAudio()) << "Input Audio Device name: " << deviceInfo.deviceName();
-				isInitialized = setDevice(deviceInfo);
-				break;
-			}
-		}
+		isInitialized = setDevice(port);
+
 		if (!isInitialized) {
-			qInfo(logAudio()) << "Input device " << deviceInfo.deviceName() << " not found, using default";
+            qInfo(logAudio()) << "Input device " << port.deviceName() << " not found, using default";
 			isInitialized = setDevice(QAudioDeviceInfo::defaultInputDevice());
 		}
 	}
@@ -806,16 +803,10 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	{
 		resampler = wf_resampler_init(radioChannels, samplerate, INTERNAL_SAMPLE_RATE, resampleQuality, &resample_error);
 
-		const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
-		for (const QAudioDeviceInfo& deviceInfo : deviceInfos) {
-			if (deviceInfo.deviceName() == port) {
-				qInfo(logAudio()) << "Output Audio Device name: " << deviceInfo.deviceName();
-				isInitialized = setDevice(deviceInfo);
-				break;
-			}
-		}
+		isInitialized = setDevice(port);
+
 		if (!isInitialized) {
-			qInfo(logAudio()) << "Output device " << deviceInfo.deviceName() << " not found, using default";
+            qInfo(logAudio()) << "Output device " << deviceInfo.deviceName() << " not found, using default";
 			isInitialized = setDevice(QAudioDeviceInfo::defaultOutputDevice());
 		}
 	}
@@ -823,7 +814,7 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	wf_resampler_get_ratio(resampler, &ratioNum, &ratioDen);
 	qInfo(logAudio()) << (isInput ? "Input" : "Output") <<  "wf_resampler_init() returned: " << resample_error << " ratioNum" << ratioNum << " ratioDen" << ratioDen;
 
-	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "audio port name: " << port;
+    qInfo(logAudio()) << (isInput ? "Input" : "Output") << "audio port name: " << deviceInfo.deviceName();
  	return isInitialized;
 }
 
@@ -902,11 +893,11 @@ void audioHandler::reinit()
         audioOutput = new QAudioOutput(deviceInfo, format, this);
 
 		// This seems to only be needed on Linux but is critical in aligning buffer sizes.
-#ifdef Q_OS_MAC
+//#ifdef Q_OS_MAC
         audioOutput->setBufferSize(chunkSize*8);
-#else
-        audioOutput->setBufferSize(chunkSize*4);
-#endif
+//#else
+//        audioOutput->setBufferSize(chunkSize*4);
+//#endif
 
 		connect(audioOutput, SIGNAL(notify()), SLOT(notified()));
         connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
@@ -926,11 +917,13 @@ void audioHandler::start()
     }
 
     if (isInput) {
-		this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
-        audioInput->start(this);
+		//this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
+		this->open(QIODevice::WriteOnly);
+		audioInput->start(this);
     }
     else {
-		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
+		//this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
+		this->open(QIODevice::ReadOnly);
 		audioOutput->start(this);
     }	
 }

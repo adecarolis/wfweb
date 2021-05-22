@@ -392,11 +392,11 @@ void udpServer::controlReceived()
 
                         txAudioThread->start();
 
-                        connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)));
+                        connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool, QAudioDeviceInfo, quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QAudioDeviceInfo, quint8)));
                         connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
-                        emit setupTxAudio(samples, channels, current->txSampleRate, current->txBufferLen, uLaw, false, config.audioOutput, config.resampleQuality);
-                        hasTxAudio=datagram.senderAddress();
+                        emit setupTxAudio(samples, channels, current->txSampleRate, current->txBufferLen, uLaw, false, config.outputDevice, config.resampleQuality);
+                        hasTxAudio = datagram.senderAddress();
 
                         connect(this, SIGNAL(haveAudioData(audioPacket)), txaudio, SLOT(incomingAudio(audioPacket)));
 
@@ -425,10 +425,10 @@ void udpServer::controlReceived()
                         rxaudio->moveToThread(rxAudioThread);
                         rxAudioThread->start();
 
-                        connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QString, quint8)));
+                        connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QAudioDeviceInfo, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QAudioDeviceInfo, quint8)));
                         connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
-                        emit setupRxAudio(samples, channels, current->rxSampleRate, 150, uLaw, true, config.audioInput, config.resampleQuality);
+                        emit setupRxAudio(samples, channels, current->rxSampleRate, 150, uLaw, true, config.inputDevice, config.resampleQuality);
 
                         rxAudioTimer = new QTimer();
                         rxAudioTimer->setTimerType(Qt::PreciseTimer);
@@ -688,7 +688,7 @@ void udpServer::audioReceived()
                         current->seqPrefix++;
                     }
 
-                    if (hasTxAudio == datagram.senderAddress())
+                    if (hasTxAudio == current->ipAddress)
                     {
                         // 0xac is the smallest possible audio packet.
                         audioPacket tempAudio;
@@ -1053,25 +1053,11 @@ void udpServer::sendCapabilities(CLIENT* c)
     if (txaudio == Q_NULLPTR) {
         p.txsample = 0x8b01; // all tx sample frequencies supported
         p.enablea = 0x01; // 0x01 enables TX 24K mode?
+        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Client will have TX audio";
     }
     else {
-        p.enablea = 0x00; // 0x01 enables TX 24K mode?
-        if (txSampleRate == 48000) {
-            p.txsample = 0x0800; // fixed tx sample frequency
-        }
-        else if (txSampleRate == 32000) {
-            p.txsample = 0x0400;
-        }
-        else if (txSampleRate == 24000) {
-            p.txsample = 0x0000;
-            p.enablea = 0x01;
-        }
-        else if (txSampleRate == 16000) {
-            p.txsample = 0x0200;
-        }
-        else if (txSampleRate == 12000) {
-            p.txsample = 0x8000;
-        }
+        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Disable tx audio for client";
+        p.txsample = 0;
     }
 
     // I still don't know what these are?

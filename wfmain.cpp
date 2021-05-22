@@ -171,11 +171,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     // Enumerate audio devices, need to do before settings are loaded.
     const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
     for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
-        ui->audioOutputCombo->addItem(deviceInfo.deviceName());
+        ui->audioOutputCombo->addItem(deviceInfo.deviceName(),QVariant::fromValue(deviceInfo));
     }
     const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
     for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
-        ui->audioInputCombo->addItem(deviceInfo.deviceName());
+        ui->audioInputCombo->addItem(deviceInfo.deviceName(),QVariant::fromValue(deviceInfo));
     }
 
     ui->serialDeviceListCombo->blockSignals(true);
@@ -266,6 +266,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
             serverConfig.audioInput = udpPrefs.audioInput;
             serverConfig.audioOutput = udpPrefs.audioOutput;
             serverConfig.baudRate = prefs.serialPortBaud;
+            serverConfig.inputDevice = udpPrefs.inputDevice;
+            serverConfig.outputDevice = udpPrefs.outputDevice;
         }
         udp = new udpServer(serverConfig);
 
@@ -1086,7 +1088,7 @@ void wfmain::loadSettings()
     ui->audioSampleRateCombo->setEnabled(ui->lanEnableBtn->isChecked());
     int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(udpDefPrefs.audioRXSampleRate));
     if (audioSampleRateIndex != -1) {
-        ui->audioOutputCombo->setCurrentIndex(audioSampleRateIndex);
+        ui->audioSampleRateCombo->setCurrentIndex(audioSampleRateIndex);
     }
 
     // Add codec combobox items here so that we can add userdata!
@@ -1119,6 +1121,8 @@ void wfmain::loadSettings()
     int audioOutputIndex = ui->audioOutputCombo->findText(udpPrefs.audioOutput);
     if (audioOutputIndex != -1) {
         ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
+        QVariant v = ui->audioOutputCombo->currentData();
+        udpPrefs.outputDevice = v.value<QAudioDeviceInfo>();
     }
 
     udpPrefs.audioInput = settings->value("AudioInput", udpDefPrefs.audioInput).toString();
@@ -1127,6 +1131,8 @@ void wfmain::loadSettings()
     int audioInputIndex = ui->audioInputCombo->findText(udpPrefs.audioInput);
     if (audioInputIndex != -1) {
         ui->audioInputCombo->setCurrentIndex(audioInputIndex);
+        QVariant v = ui->audioInputCombo->currentData();
+        udpPrefs.inputDevice = v.value<QAudioDeviceInfo>();
     }
 
     udpPrefs.resampleQuality = settings->value("ResampleQuality", udpDefPrefs.resampleQuality).toInt();
@@ -3518,11 +3524,15 @@ void wfmain::on_passwordTxt_textChanged(QString text)
 void wfmain::on_audioOutputCombo_currentIndexChanged(QString text)
 {
     udpPrefs.audioOutput = text;
+    QVariant v = ui->audioOutputCombo->currentData();
+    udpPrefs.outputDevice = v.value<QAudioDeviceInfo>();
 }
 
 void wfmain::on_audioInputCombo_currentIndexChanged(QString text)
 {
     udpPrefs.audioInput = text;
+    QVariant v = ui->audioInputCombo->currentData();
+    udpPrefs.inputDevice = v.value<QAudioDeviceInfo>();
 }
 
 void wfmain::on_audioSampleRateCombo_currentIndexChanged(QString text)

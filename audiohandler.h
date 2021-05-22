@@ -57,7 +57,7 @@ public:
     void getNextAudioChunk(QByteArray &data);
     bool isChunkAvailable();
 public slots:
-    bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isulaw, const bool isinput, QString port, quint8 resampleQuality);
+    bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isulaw, const bool isinput, QAudioDeviceInfo port, quint8 resampleQuality);
     void incomingAudio(const audioPacket data);
     void changeLatency(const quint16 newSize);
 
