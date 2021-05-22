@@ -1461,17 +1461,6 @@ void udpServer::deleteConnection(QList<CLIENT*> *l, CLIENT* c)
 {
     connMutex.lock();
 
-    if (hasTxAudio == c->ipAddress)
-    {
-        // If current client has TX audio, delete it and make it available.
-        hasTxAudio = Q_NULLPTR;
-        if (txAudioThread != Q_NULLPTR) {
-            txAudioThread->quit();
-            txAudioThread->wait();
-        }
-        txaudio = Q_NULLPTR;
-    }
-
     qInfo(logUdpServer()) << "Deleting connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
     if (c->idleTimer != Q_NULLPTR) {
         c->idleTimer->stop();

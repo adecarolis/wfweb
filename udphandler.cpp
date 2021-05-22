@@ -1118,7 +1118,6 @@ void udpBase::dataReceived(QByteArray r)
         for (quint16 i = 0x10; i < r.length(); i = i + 2)
         {
             quint16 seq = (quint8)r[i] | (quint8)r[i + 1] << 8;
-            txBufferMutex.lock();
             QMap<quint16, SEQBUFENTRY>::iterator match = txSeqBuf.find(seq);
             if (match == txSeqBuf.end()) {
                 qDebug(logUdp()) << this->metaObject()->className() << ": Requested packet " << hex << seq << " not found";
@@ -1137,7 +1136,6 @@ void udpBase::dataReceived(QByteArray r)
                 packetsLost++;
                 congestion++;
             }
-            txBufferMutex.unlock();
         }
     } 
     else if (in->len != PING_SIZE && in->type == 0x00 && in->seq != 0x00)
@@ -1353,15 +1351,19 @@ void udpBase::sendTrackedPacket(QByteArray d)
     s.timeSent = QTime::currentTime();
     s.retransmitCount = 0;
     s.data = d;
-    txBufferMutex.lock();
+    if (txBufferMutex.tryLock(100))
+    {
    
-    if (sendSeq == 0) { 
-        // We are either the first ever sent packet or have rolled-over so clear the buffer.
-        txSeqBuf.clear();
-        congestion = 0;
+        if (sendSeq == 0) {
+            // We are either the first ever sent packet or have rolled-over so clear the buffer.
+            txSeqBuf.clear();
+            congestion = 0;
+        }
+        txSeqBuf.insert(sendSeq,s);
+        txBufferMutex.unlock();
+    } else {
+        qInfo(logUdp()) << this->metaObject()->className() << ": txBuffer mutex is locked";
     }
-    txSeqBuf.insert(sendSeq,s);
-    txBufferMutex.unlock();
     purgeOldEntries(); // Delete entries older than PURGE_SECONDS seconds (currently 5)
     sendSeq++;
 
@@ -1387,46 +1389,58 @@ void udpBase::sendTrackedPacket(QByteArray d)
 void udpBase::purgeOldEntries()
 {
     // Erase old entries from the tx packet buffer
-    txBufferMutex.lock();
-
-    if (!txSeqBuf.isEmpty())
+    if (txBufferMutex.tryLock(100))
     {
-        // Loop through the earliest items in the buffer and delete if older than PURGE_SECONDS
-        for (auto it = txSeqBuf.begin(); it != txSeqBuf.end();) {
-            if (it.value().timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS) {
-                txSeqBuf.erase(it++);
-            } 
-            else {
-                break;
+        if (!txSeqBuf.isEmpty())
+        {
+            // Loop through the earliest items in the buffer and delete if older than PURGE_SECONDS
+            for (auto it = txSeqBuf.begin(); it != txSeqBuf.end();) {
+                if (it.value().timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS) {
+                   txSeqBuf.erase(it++);
+                }
+                else {
+                   break;
+                }
             }
         }
+        txBufferMutex.unlock();
+
+    } else {
+        qInfo(logUdp()) << this->metaObject()->className() << ": txBuffer mutex is locked";
     }
 
-    txBufferMutex.unlock();
 
-    rxBufferMutex.lock();
-    if (!rxSeqBuf.isEmpty()) {
-        // Loop through the earliest items in the buffer and delete if older than PURGE_SECONDS
-        for (auto it = rxSeqBuf.begin(); it != rxSeqBuf.end();) {
-            if (it.value().secsTo(QTime::currentTime()) > PURGE_SECONDS) {
-                rxSeqBuf.erase(it++);
-            }
-            else {
-                break;
+
+    if (rxBufferMutex.tryLock(100))
+    {
+        if (!rxSeqBuf.isEmpty()) {
+            // Loop through the earliest items in the buffer and delete if older than PURGE_SECONDS
+            for (auto it = rxSeqBuf.begin(); it != rxSeqBuf.end();) {
+                if (it.value().secsTo(QTime::currentTime()) > PURGE_SECONDS) {
+                    rxSeqBuf.erase(it++);
+                }
+                else {
+                   break;
+                }
+           }
+        }
+        rxBufferMutex.unlock();
+    } else {
+        qInfo(logUdp()) << this->metaObject()->className() << ": rxBuffer mutex is locked";
+    }
+
+    if (missingMutex.tryLock(100))
+    {
+        // Erase old entries from the missing packets buffer
+        if (!rxMissing.isEmpty() && rxMissing.size() > 50) {
+            for (size_t i = 0; i < 25; ++i) {
+                rxMissing.erase(rxMissing.begin());
             }
         }
+        missingMutex.unlock();
+    } else {
+        qInfo(logUdp()) << this->metaObject()->className() << ": missingBuffer mutex is locked";
     }
-    rxBufferMutex.unlock();
-
-    missingMutex.lock();
-    // Erase old entries from the missing packets buffer
-    if (!rxMissing.isEmpty() && rxMissing.size() > 50) {
-        for (size_t i = 0; i < 25; ++i) {
-            rxMissing.erase(rxMissing.begin());
-        }
-    }
-    missingMutex.unlock();
-
 }
 
 /// <summary>
