@@ -810,8 +810,6 @@ private:
     void reinit();
     quint16 getBuffer(int);
 
-    std::mutex mutex;
-
     bool            isInitialized;
     RtAudio audio;
     int audioDevice = 0;

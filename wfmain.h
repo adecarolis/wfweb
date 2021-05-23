@@ -26,7 +26,7 @@
 #include "qledlabel.h"
 #include "rigctld.h"
 
-#include <../qcustomplot/qcustomplot.h>
+#include <qcustomplot.h>
 #include <qserialportinfo.h>
 
 namespace Ui {
