@@ -1043,11 +1043,11 @@ void wfmain::loadSettings()
     {
         ui->baudRateCombo->setEnabled(false);
         ui->serialDeviceListCombo->setEnabled(false);
-        ui->udpServerSetupBtn->setEnabled(false);
+        //ui->udpServerSetupBtn->setEnabled(false);
     } else {
         ui->baudRateCombo->setEnabled(true);
         ui->serialDeviceListCombo->setEnabled(true);
-        ui->udpServerSetupBtn->setEnabled(true);
+        //ui->udpServerSetupBtn->setEnabled(true);
     }
 
     ui->lanEnableBtn->setChecked(prefs.enableLAN);
@@ -3481,7 +3481,7 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
     ui->txLatencyValue->setEnabled(!checked);
     ui->baudRateCombo->setEnabled(checked);
     ui->serialDeviceListCombo->setEnabled(checked);
-    ui->udpServerSetupBtn->setEnabled(true);
+    //ui->udpServerSetupBtn->setEnabled(true);
 }
 
 void wfmain::on_lanEnableBtn_clicked(bool checked)
@@ -3494,7 +3494,7 @@ void wfmain::on_lanEnableBtn_clicked(bool checked)
     ui->passwordTxt->setEnabled(checked);
     ui->baudRateCombo->setEnabled(!checked);
     ui->serialDeviceListCombo->setEnabled(!checked);
-    ui->udpServerSetupBtn->setEnabled(false);
+    //ui->udpServerSetupBtn->setEnabled(false);
     if(checked)
     {
         showStatusBarText("After filling in values, press Save Settings and re-start wfview.");
