@@ -834,7 +834,7 @@ private:
 
     quint16 *buf;
 
-    std::map<quint32, audioPacket>audioBuffer;
+    QMap<quint32, audioPacket>audioBuffer;
 
     unsigned int ratioNum;
     unsigned int ratioDen;

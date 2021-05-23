@@ -90,7 +90,7 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	if (isInput) {
 		resampler = wf_resampler_init(radioChannels, INTERNAL_SAMPLE_RATE, samplerate, resampleQuality, &resample_error);
 		try {
-			audio.openStream(NULL, &aParams, RTAUDIO_SINT16, INTERNAL_SAMPLE_RATE, &this->chunkSize, &staticWrite);
+			audio.openStream(NULL, &aParams, RTAUDIO_SINT16, INTERNAL_SAMPLE_RATE, &this->chunkSize, &staticWrite, this);
 			audio.startStream();
 		}
 		catch (RtAudioError& e) {
@@ -103,7 +103,7 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 		resampler = wf_resampler_init(radioChannels, samplerate, INTERNAL_SAMPLE_RATE, resampleQuality, &resample_error);
 		try {
 			unsigned int length = chunkSize / 2;
-			audio.openStream(&aParams, NULL, RTAUDIO_SINT16, INTERNAL_SAMPLE_RATE, &length, &staticRead);
+			audio.openStream(&aParams, NULL, RTAUDIO_SINT16, INTERNAL_SAMPLE_RATE, &length, &staticRead, this);
 			audio.startStream();
 		}
 		catch (RtAudioError& e) {
@@ -137,15 +137,69 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 	// Calculate output length, always full samples
 	int sentlen = 0;
 	qint16* buffer = (qint16*)outputBuffer;
-	qDebug(logAudio()) << "looking for: " << nFrames;
+	//qDebug(logAudio()) << "looking for: " << nFrames << this->audioBuffer.size();
 
-	for (int f = 0; f < nFrames; f++)
+
+	if (!audioBuffer.isEmpty())
 	{
-		qDebug(logAudio()) << "*";
-		
-		*buffer++ = getBuffer(f);
-		//*buffer++ = f;
+
+		// Output buffer is ALWAYS 16 bit.
+		auto packet = audioBuffer.begin();
+
+		while (packet != audioBuffer.end() && sentlen < nFrames/2)
+		{
+			int timediff = packet->time.msecsTo(QTime::currentTime());
+
+			if (timediff > (int)audioLatency * 2) {
+				qInfo(logAudio()) << (isInput ? "Input" : "Output") << "Packet " << hex << packet->seq <<
+					" arrived too late (increase output latency!) " <<
+					dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
+				while (packet != audioBuffer.end() && timediff > (int)audioLatency) {
+					timediff = packet->time.msecsTo(QTime::currentTime());
+					lastSeq = packet->seq;
+					packet = audioBuffer.erase(packet); // returns next packet
+				}
+				if (packet == audioBuffer.end()) {
+					break;
+				}
+			}
+
+			// If we got here then packet time must be within latency threshold
+
+			if (packet->seq == lastSeq + 1 || packet->seq <= lastSeq)
+			{
+				int send = qMin((int)nFrames*2 - sentlen, packet->dataout.length() - packet->sent);
+				lastSeq = packet->seq;
+				//qInfo(logAudio()) << "Packet " << hex << packet->seq << " arrived on time " << Qt::dec << packet->time.msecsTo(QTime::currentTime()) << "ms";
+
+				memcpy(buffer + sentlen, packet->dataout.constData() + packet->sent, send);
+
+				sentlen = sentlen + send;
+
+				if (send == packet->dataout.length() - packet->sent)
+				{
+					//qInfo(logAudio()) << "Get next packet";
+					packet = audioBuffer.erase(packet); // returns next packet
+				}
+				else
+				{
+					// Store sent amount (could be zero if audioOutput buffer full) then break.
+					packet->sent = send;
+					break;
+				}
+			}
+			else {
+				qInfo(logAudio()) << (isInput ? "Input" : "Output") << "Missing audio packet(s) from: " << hex << lastSeq + 1 << " to " << hex << packet->seq - 1;
+				lastSeq = packet->seq;
+			}
+		}
 	}
+	else {
+		// Fool audio system into thinking it has valid data, this seems to be required 
+		// for MacOS Built in audio but shouldn't cause any issues with other platforms.
+		return 0;
+	}
+
 
 	return 0;
 }
@@ -224,7 +278,11 @@ void audioHandler::stateChanged(QAudio::State state)
 
 void audioHandler::incomingAudio(audioPacket data)
 {
-
+	// No point buffering audio until stream is actually running.
+	if (!audio.isStreamRunning())
+	{
+		return;
+	}
 		// Incoming data is 8bits?
 		if (radioSampleBits == 8)
 		{
@@ -245,7 +303,7 @@ void audioHandler::incomingAudio(audioPacket data)
 			data.datain = inPacket; // Replace incoming data with converted.
 		}
 
-		qInfo(logAudio()) << "Adding packet to buffer:" << data.seq << ": " << data.datain.length();
+		//qInfo(logAudio()) << "Adding packet to buffer:" << data.seq << ": " << data.datain.length();
 
 		/*	We now have an array of 16bit samples in the NATIVE samplerate of the radio
 			If the radio sample rate is below 48000, we need to resample.
@@ -273,9 +331,9 @@ void audioHandler::incomingAudio(audioPacket data)
 			data.dataout = data.datain;
 		}
 
-		memcpy(buf, data.dataout.constData(), data.dataout.length());
-		qDebug(logAudio()) << "Got data: " << data.dataout.length();
-		//audioBuffer.insert({ data.seq, data });
+		//memcpy(buf, data.dataout.constData(), data.dataout.length());
+		//qDebug(logAudio()) << "Got data: " << data.dataout.length();
+		audioBuffer.insert( data.seq, data );
 }
 
 void audioHandler::changeLatency(const quint16 newSize)
