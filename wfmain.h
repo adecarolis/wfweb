@@ -26,7 +26,7 @@
 #include "qledlabel.h"
 #include "rigctld.h"
 
-#include <qcustomplot.h>
+#include <../qcustomplot/qcustomplot.h>
 #include <qserialportinfo.h>
 
 namespace Ui {
@@ -705,9 +705,7 @@ private:
 
 
     SERVERCONFIG serverConfig;
-#ifdef USE_RTAUDIO
     RtAudio audio;
-#endif
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)

@@ -43,6 +43,8 @@ struct udpPreferences {
 	QString password;
 	int audioOutput;
 	int audioInput;
+	QString audioOutputName;
+	QString audioInputName;
 
 	quint16 audioRXLatency;
 	quint16 audioTXLatency;

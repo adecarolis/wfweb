@@ -395,7 +395,7 @@ void udpServer::controlReceived()
                         connect(this, SIGNAL(setupTxAudio(quint8,quint8,quint16,quint16,bool,bool,int,quint8)), txaudio, SLOT(init(quint8,quint8,quint16,quint16,bool,bool,int,quint8)));
                         connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
-                        emit setupTxAudio(samples, channels, current->txSampleRate, in->txbuffer, uLaw, false, config.audioOutput,config.audioOutputDevice, config.resampleQuality);
+                        emit setupTxAudio(samples, channels, current->txSampleRate, in->txbuffer, uLaw, false, config.audioOutput, config.resampleQuality);
                         hasTxAudio=datagram.senderAddress();
 
                         connect(this, SIGNAL(haveAudioData(audioPacket)), txaudio, SLOT(incomingAudio(audioPacket)));
@@ -428,7 +428,7 @@ void udpServer::controlReceived()
                         connect(this, SIGNAL(setupRxAudio(quint8,quint8,quint16,quint16,bool,bool,QString,int,quint8)), rxaudio, SLOT(init(quint8,quint8,quint16,quint16,bool,bool,int,quint8)));
                         connect(rxAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
-                        emit setupRxAudio(samples, channels, current->rxSampleRate, 150, uLaw, true, config.audioInput, config.audioInputDevice, config.resampleQuality);
+                        emit setupRxAudio(samples, channels, current->rxSampleRate, 150, uLaw, true, config.audioInput, config.resampleQuality);
 
                         rxAudioTimer = new QTimer();
                         rxAudioTimer->setTimerType(Qt::PreciseTimer);

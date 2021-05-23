@@ -169,7 +169,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
 
     // Enumerate audio devices, need to do before settings are loaded.
-#ifdef USE_RTAUDIO
     std::map<int, std::string> apiMap;
     apiMap[RtAudio::MACOSX_CORE] = "OS-X Core Audio";
     apiMap[RtAudio::WINDOWS_ASIO] = "Windows ASIO";
@@ -197,7 +196,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     unsigned int devices = audio.getDeviceCount();
     qInfo(logAudio()) << "Found " << devices << " audio device(s) ...";
 
-    for (unsigned int i = 0; i < devices; i++) {
+    for (unsigned int i = 1; i < devices; i++) {
         info = audio.getDeviceInfo(i);
         if (info.outputChannels > 0) {
             qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name);
@@ -297,8 +296,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
             serverConfig.audioInput = udpPrefs.audioInput;
             serverConfig.audioOutput = udpPrefs.audioOutput;
             serverConfig.baudRate = prefs.serialPortBaud;
-            serverConfig.inputDevice = udpPrefs.inputDevice;
-            serverConfig.outputDevice = udpPrefs.outputDevice;
+            serverConfig.audioInput = udpPrefs.audioInput;
+            serverConfig.audioOutput = udpPrefs.audioOutput;
         }
         udp = new udpServer(serverConfig);
 
@@ -952,15 +951,8 @@ void wfmain::setDefPrefs()
     udpDefPrefs.audioLANPort = 50003;
     udpDefPrefs.username = QString("");
     udpDefPrefs.password = QString("");
-#if defined(USE_RTAUDIO)
-    udpDefPrefs.audioOutput = QString::fromStdString(audio.getDeviceInfo(audio.getDefaultOutputDevice()).name);
-    udpDefPrefs.audioInput = QString::fromStdString(audio.getDeviceInfo(audio.getDefaultInputDevice()).name);
-#elif defined(USE_QTAUDIO)
-    udpDefPrefs.audioOutput = QAudioDeviceInfo::defaultOutputDevice().deviceName();
-    udpDefPrefs.audioInput = QAudioDeviceInfo::defaultInputDevice().deviceName();
-#endif
-    udpDefPrefs.audioInputDevice = 0;
-    udpDefPrefs.audioOutputDevice = 0;
+    udpDefPrefs.audioOutput = 0;
+    udpDefPrefs.audioInput = 0;
     udpDefPrefs.audioRXLatency = 150;
     udpDefPrefs.audioTXLatency = 150;
     udpDefPrefs.audioRXSampleRate = 48000;
@@ -1123,7 +1115,7 @@ void wfmain::loadSettings()
     ui->audioSampleRateCombo->setEnabled(ui->lanEnableBtn->isChecked());
     int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(udpDefPrefs.audioRXSampleRate));
     if (audioSampleRateIndex != -1) {
-        ui->audioOutputCombo->setCurrentIndex(audioSampleRateIndex);
+        ui->audioSampleRateCombo->setCurrentIndex(audioSampleRateIndex);
     }
 
     // Add codec combobox items here so that we can add userdata!
@@ -1150,22 +1142,20 @@ void wfmain::loadSettings()
         if (ui->audioTXCodecCombo->itemData(f).toInt() == udpPrefs.audioTXCodec)
             ui->audioTXCodecCombo->setCurrentIndex(f);
 
-    udpPrefs.audioOutput = settings->value("AudioOutput", udpDefPrefs.audioOutput).toString();
-    qInfo(logGui()) << "Got Audio Output: " << udpPrefs.audioOutput;
-    //ui->audioOutputCombo->setEnabled(ui->lanEnableBtn->isChecked());
-    int audioOutputIndex = ui->audioOutputCombo->findText(udpPrefs.audioOutput);
+    udpPrefs.audioOutputName = settings->value("AudioOutput", udpDefPrefs.audioOutputName).toString();
+    qInfo(logGui()) << "Got Audio Output: " << udpPrefs.audioOutputName;
+    int audioOutputIndex = ui->audioOutputCombo->findText(udpPrefs.audioOutputName);
     if (audioOutputIndex != -1) {
         ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
-        udpPrefs.audioOutputDevice = ui->audioOutputCombo->itemData(audioOutputIndex).toInt();
+        udpPrefs.audioOutput = ui->audioOutputCombo->itemData(audioOutputIndex).toInt();
     }
 
-    udpPrefs.audioInput = settings->value("AudioInput", udpDefPrefs.audioInput).toString();
-    qInfo(logGui()) << "Got Audio Input: " << udpPrefs.audioInput;
-    //ui->audioInputCombo->setEnabled(ui->lanEnableBtn->isChecked());
-    int audioInputIndex = ui->audioInputCombo->findText(udpPrefs.audioInput);
+    udpPrefs.audioInputName = settings->value("AudioInput", udpDefPrefs.audioInputName).toString();
+    qInfo(logGui()) << "Got Audio Input: " << udpPrefs.audioInputName;
+    int audioInputIndex = ui->audioInputCombo->findText(udpPrefs.audioInputName);
     if (audioInputIndex != -1) {
         ui->audioInputCombo->setCurrentIndex(audioInputIndex);
-        udpPrefs.audioInputDevice = ui->audioInputCombo->itemData(audioInputIndex).toInt();
+        udpPrefs.audioInput = ui->audioInputCombo->itemData(audioInputIndex).toInt();
     }
 
     udpPrefs.resampleQuality = settings->value("ResampleQuality", udpDefPrefs.resampleQuality).toInt();
@@ -1279,8 +1269,8 @@ void wfmain::saveSettings()
     settings->setValue("AudioRXCodec", udpPrefs.audioRXCodec);
     settings->setValue("AudioTXSampleRate", udpPrefs.audioRXSampleRate);
     settings->setValue("AudioTXCodec", udpPrefs.audioTXCodec);
-    settings->setValue("AudioOutput", udpPrefs.audioOutput);
-    settings->setValue("AudioInput", udpPrefs.audioInput);
+    settings->setValue("AudioOutput", udpPrefs.audioOutputName);
+    settings->setValue("AudioInput", udpPrefs.audioInputName);
     settings->setValue("ResampleQuality", udpPrefs.resampleQuality);
     settings->setValue("ClientName", udpPrefs.clientName);
     settings->endGroup();
@@ -3577,14 +3567,14 @@ void wfmain::on_passwordTxt_textChanged(QString text)
 
 void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
 {
-    udpPrefs.audioOutput = ui->audioOutputCombo->currentText();
-    udpPrefs.audioOutputDevice = ui->audioOutputCombo->itemData(value).toInt();
+    udpPrefs.audioOutput = ui->audioOutputCombo->itemData(value).toInt();
+    udpPrefs.audioOutputName = ui->audioOutputCombo->itemText(value);
 }
 
 void wfmain::on_audioInputCombo_currentIndexChanged(int value)
 {
-    udpPrefs.audioInput = ui->audioInputCombo->currentText();
-    udpPrefs.audioInputDevice = ui->audioOutputCombo->itemData(value).toInt();
+    udpPrefs.audioInput = ui->audioInputCombo->itemData(value).toInt();
+    udpPrefs.audioInputName = ui->audioInputCombo->itemText(value);
 }
 
 void wfmain::on_audioSampleRateCombo_currentIndexChanged(QString text)

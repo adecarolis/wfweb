@@ -374,7 +374,8 @@
     </QtUic>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="audiohandler_rt.cpp" />
+    <ClCompile Include="..\qcustomplot\qcustomplot.cpp" />
+    <ClCompile Include="audiohandler.cpp" />
     <ClCompile Include="calibrationwindow.cpp" />
     <ClCompile Include="commhandler.cpp" />
     <ClCompile Include="freqmemory.cpp" />
@@ -382,14 +383,12 @@
     <ClCompile Include="qledlabel.cpp" />
     <ClCompile Include="logcategories.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="c:\qcustomplot\qcustomplot.cpp" />
     <ClCompile Include="meter.cpp" />
     <ClCompile Include="repeatersetup.cpp" />
     <ClCompile Include="resampler\resample.c" />
     <ClCompile Include="rigcommander.cpp" />
     <ClCompile Include="rigctld.cpp" />
     <ClCompile Include="rigidentities.cpp" />
-    <ClCompile Include="audiohandler.cpp" />
     <ClCompile Include="rtaudio\RtAudio.cpp" />
     <ClCompile Include="satellitesetup.cpp" />
     <ClCompile Include="udphandler.cpp" />
@@ -398,6 +397,7 @@
     <ClCompile Include="wfmain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <QtMoc Include="..\qcustomplot\qcustomplot.h" />
     <ClInclude Include="rtaudio\RtAudio.h" />
     <QtMoc Include="udpserver.h" />
     <QtMoc Include="udpserversetup.h" />
@@ -409,8 +409,6 @@
     <ClInclude Include="freqmemory.h" />
     <QtMoc Include="qledlabel.h" />
     <ClInclude Include="logcategories.h" />
-    <QtMoc Include="c:\qcustomplot\qcustomplot.h">
-    </QtMoc>
     <QtMoc Include="rigcommander.h">
     </QtMoc>
     <QtMoc Include="meter.h" />
