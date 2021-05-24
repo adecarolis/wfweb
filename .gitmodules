@@ -1,0 +1,3 @@
+[submodule "opus-tools"]
+	path = opus-tools
+	url = https://github.com/xiph/opus-tools.git
