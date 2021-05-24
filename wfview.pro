@@ -16,10 +16,10 @@ CONFIG(debug, release|debug) {
 
 } else {
 # For Release builds only:
-QMAKE_CXXFLAGS += -s
+linux:QMAKE_CXXFLAGS += -s
 QMAKE_CXXFLAGS += -fvisibility=hidden
 QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
-QMAKE_LFLAGS += -O2 -s
+linux:QMAKE_LFLAGS += -O2 -s
 }
 
 # The following define makes your compiler emit warnings if you use
@@ -102,6 +102,9 @@ linux:LIBS += -L./ -l$$QCPLIB
 !linux:HEADERS += ../qcustomplot/qcustomplot.h
 !linux:INCLUDEPATH += ../qcustomplot
 
+INCLUDEPATH += opus-tools/src
+INCLUDEPATH += rtaudio
+
 SOURCES += main.cpp\
         wfmain.cpp \
     commhandler.cpp \
@@ -118,7 +121,7 @@ SOURCES += main.cpp\
     meter.cpp \
     qledlabel.cpp \
 	pttyhandler.cpp \
-	resampler/resample.c \
+	opus-tools/src/resample.c \
     repeatersetup.cpp \
 	rigctld.cpp \
 	rtaudio/RtAudio.cpp
@@ -139,13 +142,14 @@ HEADERS  += wfmain.h \
     meter.h \
 	qledlabel.h \
 	pttyhandler.h \
-	resampler/speex_resampler.h \
-	resampler/arch.h \
-	resampler/resample_sse.h \
+	opus-tools/src/speex_resampler.h \
+	opus-tools/src/arch.h \
+	opus-tools/src/resample_sse.h \
     repeatersetup.h \
     repeaterattributes.h \
 	rigctld.h \
-	rtaudio/RtAudio.h
+	rtaudio/RtAudio.h \
+	ulaw.h
 
 
 FORMS    += wfmain.ui \

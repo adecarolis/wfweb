@@ -5,7 +5,7 @@
 #include "audiohandler.h"
 
 #include "logcategories.h"
-
+#include "ulaw.h"
 
 audioHandler::audioHandler(QObject* parent) :
 	isInitialized(false),
@@ -26,8 +26,8 @@ audioHandler::~audioHandler()
 	if (audio.isStreamRunning())
 	{
 		audio.stopStream();
+		audio.closeStream();
 	}
-	delete buf;
 }
 
 bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool ulaw, const bool isinput, int port, quint8 resampleQuality)
@@ -58,9 +58,13 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	aParams.nChannels = channels;
 	aParams.firstChannel = 0;
 
-	info = audio.getDeviceInfo(aParams.deviceId);
-
-	buf = new quint16[960];
+	try {
+		info = audio.getDeviceInfo(aParams.deviceId);
+	}
+	catch (RtAudioError& e) {
+		qInfo(logAudio()) << "Device error:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
+		return false;
+	}
 
 	if (info.probed)
 	{
@@ -201,9 +205,6 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 	return 0;
 }
 
-quint16 audioHandler::getBuffer(int i) {
-	return buf[i];
-}
 
 int audioHandler::writeData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status)
 {

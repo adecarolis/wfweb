@@ -57,6 +57,15 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="rtaudio\RtAudio.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="audiohandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="calibrationwindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="commhandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -69,59 +78,62 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="rigcommander.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="rigidentities.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="udphandler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="wfmain.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="calibrationwindow.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="satellitesetup.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="udpserversetup.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="udpserver.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="meter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="qledlabel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pttyhandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="resampler\resample.c">
+    <ClCompile Include="..\qcustomplot\qcustomplot.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qledlabel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="repeatersetup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="opus-tools\src\resample.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="rigcommander.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="rigctld.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="rtaudio\RtAudio.cpp">
+    <ClCompile Include="rigidentities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="audiohandler.cpp">
+    <ClCompile Include="satellitesetup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\qcustomplot\qcustomplot.cpp">
+    <ClCompile Include="udphandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="udpserver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="udpserversetup.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="wfmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="rtaudio\RtAudio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="opus-tools\src\arch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <QtMoc Include="audiohandler.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="calibrationwindow.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="commhandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -131,51 +143,60 @@
     <ClInclude Include="logcategories.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <QtMoc Include="rigcommander.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <ClInclude Include="rigidentities.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <QtMoc Include="udphandler.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="wfmain.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="audiohandler.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="calibrationwindow.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="satellitesetup.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="udpserversetup.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="udpserver.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <QtMoc Include="meter.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="qledlabel.h">
+    <ClInclude Include="packettypes.h">
       <Filter>Header Files</Filter>
-    </QtMoc>
+    </ClInclude>
     <QtMoc Include="pttyhandler.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="repeatersetup.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="rigctld.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="..\qcustomplot\qcustomplot.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="qledlabel.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <ClInclude Include="repeaterattributes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <QtMoc Include="repeatersetup.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <ClInclude Include="opus-tools\src\resample_sse.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <QtMoc Include="rigcommander.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="rigctld.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <ClInclude Include="rigidentities.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <QtMoc Include="satellitesetup.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <ClInclude Include="opus-tools\src\speex_resampler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <QtMoc Include="udphandler.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="udpserver.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="udpserversetup.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="wfmain.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <ClInclude Include="ulaw.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="debug\moc_predefs.h.cbt">
@@ -186,10 +207,10 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <QtUic Include="wfmain.ui">
+    <QtUic Include="calibrationwindow.ui">
       <Filter>Form Files</Filter>
     </QtUic>
-    <QtUic Include="calibrationwindow.ui">
+    <QtUic Include="repeatersetup.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="satellitesetup.ui">
@@ -198,7 +219,7 @@
     <QtUic Include="udpserversetup.ui">
       <Filter>Form Files</Filter>
     </QtUic>
-    <QtUic Include="repeatersetup.ui">
+    <QtUic Include="wfmain.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
@@ -333,31 +354,6 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\install.sh">
@@ -371,14 +367,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="packettypes.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="resampler\speex_resampler.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="rtaudio\RtAudio.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+    <ResourceCompile Include=".\wfview_resource.rc" />
   </ItemGroup>
 </Project>
