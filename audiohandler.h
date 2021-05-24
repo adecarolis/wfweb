@@ -5,7 +5,7 @@
 
 #include <QtMultimedia/QAudioOutput>
 #include <QByteArray>
-
+#include <QMutex>
 #include "rtaudio/RtAudio.h"
 
 typedef signed short  MY_TYPE;
@@ -836,6 +836,8 @@ private:
 
     unsigned int ratioNum;
     unsigned int ratioDen;
+    QMutex mutex;
+    volatile bool lock=false;
 };
 
 #endif // AUDIOHANDLER_H

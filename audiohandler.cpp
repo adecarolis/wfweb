@@ -138,11 +138,13 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 	int sentlen = 0;
 	qint16* buffer = (qint16*)outputBuffer;
 	//qDebug(logAudio()) << "looking for: " << nFrames << this->audioBuffer.size();
+	if (status == RTAUDIO_OUTPUT_UNDERFLOW)
+		qDebug(logAudio()) << "Underflow detected";
 
 
 	if (!audioBuffer.isEmpty())
 	{
-
+		mutex.lock();
 		// Output buffer is ALWAYS 16 bit.
 		auto packet = audioBuffer.begin();
 
@@ -193,13 +195,8 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 				lastSeq = packet->seq;
 			}
 		}
+		mutex.unlock();
 	}
-	else {
-		// Fool audio system into thinking it has valid data, this seems to be required 
-		// for MacOS Built in audio but shouldn't cause any issues with other platforms.
-		return 0;
-	}
-
 
 	return 0;
 }
@@ -331,9 +328,9 @@ void audioHandler::incomingAudio(audioPacket data)
 			data.dataout = data.datain;
 		}
 
-		//memcpy(buf, data.dataout.constData(), data.dataout.length());
-		//qDebug(logAudio()) << "Got data: " << data.dataout.length();
+		mutex.lock();
 		audioBuffer.insert( data.seq, data );
+		mutex.unlock();
 }
 
 void audioHandler::changeLatency(const quint16 newSize)
