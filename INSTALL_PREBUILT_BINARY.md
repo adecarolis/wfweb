@@ -29,7 +29,7 @@ Ubuntu 20.04.2
 ~~~
 
 
-### for all, the following is appicable:
+### for all, the following is applicable:
 ~~~
 download the tar.gz file here: https://wfview.org/download/test-linux-build/ 
 
