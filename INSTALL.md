@@ -99,3 +99,27 @@ in this case, use your homedir:
 wfview is now installed in /usr/local/bin
 
 ---
+
+### Fedora install ###
+---
+
+Tested under Fedora 33/34.
+
+Install qt5 dependencies:
+- sudo dnf install qt5-qtbase-common qt5-qtbase qt5-qtbase-gui qt5-qtserialport qt5-qtmultimedia mingw64-qt5-qmake qt5-qtbase-devel qt5-qtserialport-devel qt5-qtmultimedia-devel 
+
+Install qcustomplot:
+- sudo dnf install qcustomplot qcustomplot-devel
+
+When done, create a build area, clone the repo, build and install:
+
+- mkdir -p ~/src/build && cd src
+- git clone https://gitlab.com/eliggett/wfview.git
+- cd build
+- qmake-qt5 ../wfview/wfview.pro
+- make -j
+- sudo ./install.sh
+
+wfview is now installed in /usr/local/bin
+
+---
