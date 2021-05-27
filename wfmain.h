@@ -28,6 +28,7 @@
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
+#include "shuttle.h"
 
 namespace Ui {
 class wfmain;
@@ -705,6 +706,7 @@ private:
 
 
     SERVERCONFIG serverConfig;
+    shuttle *shuttleDev;
 
 };
 

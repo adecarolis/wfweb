@@ -17,7 +17,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     setWindowIcon(QIcon( QString(":resources/wfview.png")));
     ui->setupUi(this);
-
+    shuttleDev = new shuttle();
     setWindowTitle(QString("wfview"));
 
     this->serialPortCL = serialPortCL;
@@ -659,6 +659,7 @@ wfmain::~wfmain()
     delete rpt;
     delete ui;
     delete settings;
+    delete shuttleDev;
 }
 
 void wfmain::closeEvent(QCloseEvent *event)

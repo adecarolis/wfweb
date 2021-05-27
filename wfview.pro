@@ -6,6 +6,8 @@
 
 QT       += core gui serialport network multimedia
 
+QT += usb
+
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
 TARGET = wfview
@@ -103,7 +105,8 @@ SOURCES += main.cpp\
 	pttyhandler.cpp \
 	resampler/resample.c \
     repeatersetup.cpp \
-	rigctld.cpp
+	rigctld.cpp \
+	shuttle.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -126,7 +129,8 @@ HEADERS  += wfmain.h \
 	resampler/resample_sse.h \
     repeatersetup.h \
     repeaterattributes.h \
-	rigctld.h
+	rigctld.h \
+	shuttle.h
 
 
 FORMS    += wfmain.ui \

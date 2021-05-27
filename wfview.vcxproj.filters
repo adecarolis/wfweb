@@ -117,6 +117,9 @@
     <ClCompile Include="wfmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="shuttle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resampler\arch.h">
@@ -190,51 +193,12 @@
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
-    
-    
-    
-    
-    
-    
-    
-    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="calibrationwindow.ui">
@@ -383,6 +347,7 @@
     <None Include="resources\wfview.png">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="resources\wfview.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\install.sh">
@@ -396,6 +361,11 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="C:\Users\Phil\source\repos\wfview\wfview_resource.rc" />
+    <ResourceCompile Include=".\wfview_resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="shuttle.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
 </Project>
