@@ -398,7 +398,7 @@ void udpServer::controlReceived()
                         emit setupTxAudio(samples, channels, current->txSampleRate, current->txBufferLen, uLaw, false, config.audioOutput, config.resampleQuality);
                         hasTxAudio=datagram.senderAddress();
 
-                        connect(this, SIGNAL(haveAudioData(audioPacket)), txaudio, SLOT(incomingAudio(audioPacket)));
+                        //connect(this, SIGNAL(haveAudioData(audioPacket)), txaudio, SLOT(incomingAudio(audioPacket)));
 
                     }
                     if (rxaudio == Q_NULLPTR)
@@ -425,7 +425,7 @@ void udpServer::controlReceived()
                         rxaudio->moveToThread(rxAudioThread);
                         rxAudioThread->start();
 
-                        connect(this, SIGNAL(setupRxAudio(quint8,quint8,quint16,quint16,bool,bool,QString,int,quint8)), rxaudio, SLOT(init(quint8,quint8,quint16,quint16,bool,bool,int,quint8)));
+                        connect(this, SIGNAL(setupRxAudio(quint8,quint8,quint16,quint16,bool,bool,int,quint8)), rxaudio, SLOT(init(quint8,quint8,quint16,quint16,bool,bool,int,quint8)));
                         connect(rxAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
                         emit setupRxAudio(samples, channels, current->rxSampleRate, 150, uLaw, true, config.audioInput, config.resampleQuality);
