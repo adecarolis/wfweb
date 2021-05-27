@@ -106,13 +106,13 @@ INCLUDEPATH += opus-tools/src
 INCLUDEPATH += rtaudio
 
 SOURCES += main.cpp\
-        wfmain.cpp \
+    wfmain.cpp \
     commhandler.cpp \
     rigcommander.cpp \
     freqmemory.cpp \
     rigidentities.cpp \
-	udphandler.cpp \
-	logcategories.cpp \
+    udphandler.cpp \
+    logcategories.cpp \
     audiohandler.cpp \
     calibrationwindow.cpp \
     satellitesetup.cpp \
@@ -120,36 +120,38 @@ SOURCES += main.cpp\
     udpserver.cpp \
     meter.cpp \
     qledlabel.cpp \
-	pttyhandler.cpp \
-	opus-tools/src/resample.c \
+    pttyhandler.cpp \
+    opus-tools/src/resample.c \
     repeatersetup.cpp \
-	rigctld.cpp \
-	rtaudio/RtAudio.cpp
+    rigctld.cpp \
+    rtaudio/RtAudio.cpp
+    ring/ring.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
     rigcommander.h \
     freqmemory.h \
     rigidentities.h \
-	udphandler.h \
-	logcategories.h \
+    udphandler.h \
+    logcategories.h \
     audiohandler.h \
     calibrationwindow.h \
     satellitesetup.h \
     udpserversetup.h \
-	udpserver.h \
-	packettypes.h \
+    udpserver.h \
+    packettypes.h \
     meter.h \
-	qledlabel.h \
-	pttyhandler.h \
-	opus-tools/src/speex_resampler.h \
-	opus-tools/src/arch.h \
-	opus-tools/src/resample_sse.h \
+    qledlabel.h \
+    pttyhandler.h \
+    opus-tools/src/speex_resampler.h \
+    opus-tools/src/arch.h \
+    opus-tools/src/resample_sse.h \
     repeatersetup.h \
     repeaterattributes.h \
-	rigctld.h \
-	rtaudio/RtAudio.h \
-	ulaw.h
+    rigctld.h \
+    rtaudio/RtAudio.h \
+    ulaw.h \
+    ring/ring.h
 
 
 FORMS    += wfmain.ui \
