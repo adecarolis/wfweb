@@ -6,6 +6,7 @@
 #include <QtMultimedia/QAudioOutput>
 #include <QByteArray>
 #include <QMutex>
+#include <QtEndian>
 #include "rtaudio/RtAudio.h"
 
 typedef signed short  MY_TYPE;
@@ -116,6 +117,7 @@ private:
     volatile bool ready = false;
     audioPacket tempBuf;
     quint16 currentLatency;
+    qreal volume=1.0;
 
 };
 

@@ -858,10 +858,12 @@ void udpAudio::watchdog()
 
 void udpAudio::sendTxAudio()
 {
-
-    if (txaudio && txaudio->isChunkAvailable()) {
-        QByteArray audio;
-        txaudio->getNextAudioChunk(audio);
+    if (txaudio == Q_NULLPTR) {
+        return;
+    }
+    QByteArray audio;
+    txaudio->getNextAudioChunk(audio);
+    if (audio.length() > 0) {
         int counter = 1;
         int len = 0;
 
