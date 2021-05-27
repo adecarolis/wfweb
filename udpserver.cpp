@@ -697,7 +697,8 @@ void udpServer::audioReceived()
                         tempAudio.sent = 0;
                         tempAudio.data = r.mid(0x18);
                         //qInfo(logUdpServer()) << "sending tx audio " << in->seq;
-                        emit haveAudioData(tempAudio);
+                        //emit haveAudioData(tempAudio);
+                        txaudio->incomingAudio(tempAudio);
                     }
                 }
                 break;
@@ -1298,11 +1299,10 @@ void udpServer::dataForServer(QByteArray d)
 
 void udpServer::sendRxAudio()
 {
-    if (rxaudio && rxaudio->isChunkAvailable()) {
+    if (rxaudio) {
         QByteArray audio;
         rxaudio->getNextAudioChunk(audio);
         int len = 0;
-
         while (len < audio.length()) {
             audioPacket partial;
             partial.data = audio.mid(len, 1364);
