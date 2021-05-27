@@ -398,6 +398,7 @@ void udpServer::controlReceived()
                         emit setupTxAudio(samples, channels, current->txSampleRate, current->txBufferLen, uLaw, false, config.audioOutput, config.resampleQuality);
                         hasTxAudio=datagram.senderAddress();
 
+                        // signal/slot not currently used.
                         //connect(this, SIGNAL(haveAudioData(audioPacket)), txaudio, SLOT(incomingAudio(audioPacket)));
 
                     }
