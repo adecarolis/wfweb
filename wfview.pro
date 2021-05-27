@@ -96,7 +96,7 @@ CONFIG(debug, release|debug) {
   linux: QCPLIB = qcustomplot
 }
 
-linux:LIBS += -L./ -l$$QCPLIB
+linux:LIBS += -L./ -l$$QCPLIB -lasound
 
 !linux:SOURCES += ../qcustomplot/qcustomplot.cpp
 !linux:HEADERS += ../qcustomplot/qcustomplot.h
