@@ -131,8 +131,8 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 
 void audioHandler::setVolume(unsigned char volume)
 {
-	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "setVolume: " << volume << "(" << (qreal)(volume/255.0) << ")";
-	this->volume = (qreal)(volume / 255.0);
+	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "setVolume: " << volume << "(" << (qreal)(volume / 255.0) << ")";
+	this->volume = (qreal)(volume/255.0);
 }
 
 
@@ -267,13 +267,13 @@ void audioHandler::stateChanged(QAudio::State state)
 
 
 
-int audioHandler::incomingAudio(audioPacket data)
+void audioHandler::incomingAudio(audioPacket data)
 {
 	// No point buffering audio until stream is actually running.
 	if (!audio.isStreamRunning())
 	{
 		qDebug(logAudio()) << "Packet received before stream was started";
-		return currentLatency;
+		return;
 	}
 	// Incoming data is 8bits?
 	if (radioSampleBits == 8)
@@ -349,7 +349,7 @@ int audioHandler::incomingAudio(audioPacket data)
 	{
 		qDebug(logAudio()) << "Buffer full! capacity:" << ringBuf->capacity() << "length" << ringBuf->size();
 	}
-	return currentLatency;
+	return;
 }
 
 void audioHandler::changeLatency(const quint16 newSize)
@@ -358,9 +358,9 @@ void audioHandler::changeLatency(const quint16 newSize)
 	audioLatency = newSize;
 }
 
-void audioHandler::getLatency()
+int audioHandler::getLatency()
 {
-	emit sendLatency(audioLatency);
+	return currentLatency;
 }
 
 bool audioHandler::isChunkAvailable()

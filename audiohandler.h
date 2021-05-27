@@ -13,6 +13,7 @@ typedef signed short  MY_TYPE;
 #define FORMAT RTAUDIO_SINT16
 #define SCALE  32767.0
 
+#define LOG100 4.60517018599
 
 #include <QThread>
 #include <QTimer>
@@ -46,7 +47,7 @@ public:
     audioHandler(QObject* parent = 0);
     ~audioHandler();
 
-    void getLatency();
+    int getLatency();
 
     bool setDevice(QAudioDeviceInfo deviceInfo);
 
@@ -58,7 +59,6 @@ public:
     bool isSequential() const;
     void getNextAudioChunk(QByteArray &data);
     bool isChunkAvailable();
-    int incomingAudio(const audioPacket data);
 
 private slots:
     bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isulaw, const bool isinput, int port, quint8 resampleQuality);
@@ -66,6 +66,7 @@ private slots:
     void notified();
     void stateChanged(QAudio::State state);
     void setVolume(unsigned char volume);
+    void incomingAudio(const audioPacket data);
 
 signals:
     void audioMessage(QString message);

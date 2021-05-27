@@ -398,8 +398,7 @@ void udpServer::controlReceived()
                         emit setupTxAudio(samples, channels, current->txSampleRate, current->txBufferLen, uLaw, false, config.audioOutput, config.resampleQuality);
                         hasTxAudio=datagram.senderAddress();
 
-                        // signal/slot not currently used.
-                        //connect(this, SIGNAL(haveAudioData(audioPacket)), txaudio, SLOT(incomingAudio(audioPacket)));
+                        connect(this, SIGNAL(haveAudioData(audioPacket)), txaudio, SLOT(incomingAudio(audioPacket)));
 
                     }
                     if (rxaudio == Q_NULLPTR)
@@ -698,8 +697,7 @@ void udpServer::audioReceived()
                         tempAudio.sent = 0;
                         tempAudio.data = r.mid(0x18);
                         //qInfo(logUdpServer()) << "sending tx audio " << in->seq;
-                        //emit haveAudioData(tempAudio);
-                        txaudio->incomingAudio(tempAudio);
+                        emit haveAudioData(tempAudio);
                     }
                 }
                 break;
