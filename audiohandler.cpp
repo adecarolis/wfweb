@@ -180,9 +180,9 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 			}
 
 			if (currentLatency > (int)audioLatency) {
-				qInfo(logAudio()) << (isInput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
-					" arrived too late (increase output latency!) " <<
-					dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
+				//qInfo(logAudio()) << (isInput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
+				//	" arrived too late (increase output latency!) " <<
+				//	dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
 				//lastSeq = packet.seq;
 				//if (!ringBuf->try_read(packet))
 				//	return sentlen;
