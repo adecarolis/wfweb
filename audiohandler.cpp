@@ -219,7 +219,7 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 int audioHandler::writeData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status)
 {
 	int sentlen = 0;
-	unsigned int nBytes = nFrames * 2; // This is ALWAYS 2 bytes per sample and 1 channels
+	unsigned int nBytes = nFrames * 2; // This is ALWAYS 2 bytes per sample and 1 channel
 	const char* data = (const char*)inputBuffer;
 	while (sentlen < nBytes) {
 		if (tempBuf.sent != chunkSize)
@@ -235,6 +235,7 @@ int audioHandler::writeData(void* outputBuffer, void* inputBuffer, unsigned int 
 			if (!ringBuf->try_write(tempBuf))
 			{
 				qDebug(logAudio()) << "outgoing audio buffer full!";
+				break;
 			}
 			tempBuf.data.clear();
 			tempBuf.sent = 0;
