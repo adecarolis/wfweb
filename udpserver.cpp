@@ -695,7 +695,7 @@ void udpServer::audioReceived()
                         tempAudio.seq = (quint32)current->seqPrefix << 16 | in->seq;
                         tempAudio.time = QTime::currentTime();;
                         tempAudio.sent = 0;
-                        tempAudio.datain = r.mid(0x18);
+                        tempAudio.data = r.mid(0x18);
                         //qInfo(logUdpServer()) << "sending tx audio " << in->seq;
                         emit haveAudioData(tempAudio);
                     }
@@ -1305,9 +1305,9 @@ void udpServer::sendRxAudio()
 
         while (len < audio.length()) {
             audioPacket partial;
-            partial.datain = audio.mid(len, 1364);
+            partial.data = audio.mid(len, 1364);
             receiveAudioData(partial);
-            len = len + partial.datain.length();
+            len = len + partial.data.length();
         }
     }
 }
@@ -1322,15 +1322,15 @@ void udpServer::receiveAudioData(const audioPacket &d)
         if (client != Q_NULLPTR && client->connected) {
             audio_packet p;
             memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
-            p.len = sizeof(p) + d.datain.length();
+            p.len = sizeof(p) + d.data.length();
             p.sentid = client->myId;
             p.rcvdid = client->remoteId;
             p.ident = 0x0080; // audio is always this?
-            p.datalen = (quint16)qToBigEndian((quint16)d.datain.length());
+            p.datalen = (quint16)qToBigEndian((quint16)d.data.length());
             p.sendseq = (quint16)qToBigEndian((quint16)client->sendAudioSeq); // THIS IS BIG ENDIAN!
             p.seq = client->txSeq;
             QByteArray t = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
-            t.append(d.datain);
+            t.append(d.data);
             client->txMutex.lock();
             client->txSeqBuf.append(SEQBUFENTRY());
             client->txSeqBuf.last().seqNum = p.seq;

@@ -199,6 +199,7 @@
     </QtUic>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ring\ring.cpp" />
     <ClCompile Include="rtaudio\RtAudio.cpp" />
     <ClCompile Include="audiohandler.cpp" />
     <ClCompile Include="calibrationwindow.cpp" />
@@ -222,6 +223,7 @@
     <ClCompile Include="wfmain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ring\ring.h" />
     <ClInclude Include="rtaudio\RtAudio.h" />
     <ClInclude Include="opus-tools\src\arch.h" />
     <ClInclude Include="ulaw.h" />

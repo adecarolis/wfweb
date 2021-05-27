@@ -18,6 +18,7 @@ typedef signed short  MY_TYPE;
 #include <QTime>
 #include <QMap>
 #include "resampler/speex_resampler.h"
+#include "ring/ring.h"
 
 
 #include <QDebug>
@@ -33,8 +34,7 @@ struct audioPacket {
     quint32 seq;
     QTime time;
     quint16 sent;
-    QByteArray datain;
-    QByteArray dataout;
+    QByteArray data;
 };
 
 class audioHandler : public QObject
@@ -57,10 +57,10 @@ public:
     bool isSequential() const;
     void getNextAudioChunk(QByteArray &data);
     bool isChunkAvailable();
+    int incomingAudio(const audioPacket data);
 
 private slots:
     bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isulaw, const bool isinput, int port, quint8 resampleQuality);
-    void incomingAudio(const audioPacket data);
     void changeLatency(const quint16 newSize);
     void notified();
     void stateChanged(QAudio::State state);
@@ -111,8 +111,12 @@ private:
 
     unsigned int ratioNum;
     unsigned int ratioDen;
-    QMutex mutex;
-    volatile bool lock=false;
+
+    wilt::Ring<audioPacket> *ringBuf=Q_NULLPTR;
+    volatile bool ready = false;
+    audioPacket tempBuf;
+    quint16 currentLatency;
+
 };
 
 #endif // AUDIOHANDLER_H

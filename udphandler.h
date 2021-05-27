@@ -178,6 +178,8 @@ public:
 	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, int outputPort, int inputPort, quint8 resampleQuality);
 	~udpAudio();
 
+	int audioLatency = 0;
+
 signals:
 	void haveAudioData(audioPacket data);
 

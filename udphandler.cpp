@@ -189,7 +189,16 @@ void udpHandler::dataReceived()
                         totallost = totallost + civ->packetsLost;
                     }
 
-                    emit haveNetworkStatus(" rtt: " + QString::number(latency) + " ms, loss: (" + QString::number(totallost) + "/" + QString::number(totalsent) + ")");
+                    QString tempLatency;
+                    if (rxLatency > audio->audioLatency)
+                    {
+                        tempLatency = QString::number(audio->audioLatency) + "ms";
+                    }
+                    else {
+                        tempLatency = "<span style = \"color:red\">" + QString::number(audio->audioLatency) + "ms</span>";
+                    }
+
+                    emit haveNetworkStatus("rx latency: " + tempLatency + " ms / rtt: " + QString::number(latency) + " ms, loss: (" + QString::number(totallost) + "/" + QString::number(totalsent) + ")");
                 }
                 break;
             }
@@ -936,11 +945,11 @@ void udpAudio::dataReceived()
                     tempAudio.seq = (quint32)seqPrefix << 16 | in->seq;
                     tempAudio.time = lastReceived;
                     tempAudio.sent = 0;
-                    tempAudio.datain = r.mid(0x18);
+                    tempAudio.data = r.mid(0x18);
                     // Prefer signal/slot to forward audio as it is thread/safe
                     // Need to do more testing but latency appears fine.
-                    emit haveAudioData(tempAudio);
-                    //rxaudio->incomingAudio(tempAudio);
+                    //emit haveAudioData(tempAudio);
+                    audioLatency=rxaudio->incomingAudio(tempAudio);
                 }
                 break;
             }

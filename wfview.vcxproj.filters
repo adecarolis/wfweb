@@ -120,6 +120,9 @@
     <ClCompile Include="wfmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ring\ring.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="rtaudio\RtAudio.h">
@@ -195,6 +198,9 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <ClInclude Include="ulaw.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ring\ring.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -353,6 +359,7 @@
     <None Include="resources\wfview.png">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="resources\wfview.png" />
     <None Include="resources\wfview.png" />
   </ItemGroup>
   <ItemGroup>
