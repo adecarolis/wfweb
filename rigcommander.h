@@ -9,6 +9,7 @@
 #include "udphandler.h"
 #include "rigidentities.h"
 #include "repeaterattributes.h"
+#include "freqmemory.h"
 
 // This file figures out what to send to the comm and also
 // parses returns into useful things.
@@ -375,6 +376,7 @@ private:
     void debugMe();
     void printHex(const QByteArray &pdata);
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
+    mode_info createMode(mode_kind m, unsigned char reg, QString name);
 
     commHandler* comm = Q_NULLPTR;
     pttyHandler* ptty = Q_NULLPTR;

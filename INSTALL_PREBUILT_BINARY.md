@@ -29,13 +29,13 @@ Ubuntu 20.04.2
 ~~~
 
 
-### for all, the following is appicable:
+### for all, the following is applicable:
 ~~~
 download the tar.gz file here: https://wfview.org/download/test-linux-build/ 
 
 the file below will unpack in ./dist
 
-tar zxvf wfview-linux.tar.gz                  
+tar zxvf wfview-linux.tar.gz        (change the filename accordingly)          
 cd dist
 sudo ./install.sh
 ~~~
@@ -48,34 +48,34 @@ Now for the system specifics; pick your version:
 ~~~
 sudo apt install libqcustomplot2.0 libqt5multimedia5 libqt5serialport5
 sudo ln -s /usr/lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /usr/lib/x86_64-linux-gnu/libqcustomplot.so.2
-start wfview
+wfview
 ~~~
 
 ### Fedora 33/34:
 ~~~
 sudo dnf install qcustomplot-qt5 qt5-qtmultimedia qt5-qtserialport
 sudo ln  -s  /usr/lib64/libqcustomplot-qt5.so.2 /usr/lib64/libqcustomplot.so.2
-start wfview
+wfview
 ~~~
 
 ### Mint 20.1
 ~~~
 sudo apt install libqcustomplot2.0 libqt5multimedia5 libqt5serialport5
 sudo ln  -s  /usr/lib64/libqcustomplot-qt5.so.2 /usr/lib64/libqcustomplot.so.2
-start wfview
+wfview
 ~~~
 
 ### openSUSE/Tumbleweed/SLES:
 ~~~
 sudo zypper in libqcustomplot2 libQt5SerialPort5
-start wfview
+wfview
 ~~~
 
 ### UBUNTU:
 ~~~
 sudo apt install libqcustomplot2.0 libqt5multimedia5 libqt5serialport5
 sudo ln -s /usr/lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /usr/lib/x86_64-linux-gnu/libqcustomplot.so.2
-start wfview
+wfview
 ~~~
 
 
