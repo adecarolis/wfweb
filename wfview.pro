@@ -97,6 +97,7 @@ CONFIG(debug, release|debug) {
 }
 
 linux:LIBS += -L./ -l$$QCPLIB -lasound
+macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread
 
 !linux:SOURCES += ../qcustomplot/qcustomplot.cpp
 !linux:HEADERS += ../qcustomplot/qcustomplot.h

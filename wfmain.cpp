@@ -202,7 +202,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
             qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name);
             ui->audioOutputCombo->addItem(QString::fromStdString(info.name), i);
         }
-        else if (info.inputChannels > 0) {
+        if (info.inputChannels > 0) {
             qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name);
             ui->audioInputCombo->addItem(QString::fromStdString(info.name), i);
         }
