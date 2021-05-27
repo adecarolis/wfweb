@@ -124,7 +124,7 @@ SOURCES += main.cpp\
     opus-tools/src/resample.c \
     repeatersetup.cpp \
     rigctld.cpp \
-    rtaudio/RtAudio.cpp
+    rtaudio/RtAudio.cpp \
     ring/ring.cpp
 
 HEADERS  += wfmain.h \
