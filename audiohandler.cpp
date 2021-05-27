@@ -84,6 +84,10 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 				(info.nativeFormats & RTAUDIO_FLOAT32 ? "32-bit float," : "") <<
 				(info.nativeFormats & RTAUDIO_FLOAT64 ? "64-bit float," : "");
 			qInfo(logAudio()) << "		Preferred sample rate:" << info.preferredSampleRate;
+			if (isInput)
+				qInfo(logAudio()) << "		Input Channels:" << info.inputChannels;
+			else
+				qInfo(logAudio()) << "		Output Channels:" << info.outputChannels;
 		}
 
 		qInfo(logAudio())  << "		chunkSize: " << chunkSize;
@@ -96,10 +100,10 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	int resample_error = 0;
 
 	if (isInput) {
-		resampler = wf_resampler_init(radioChannels, INTERNAL_SAMPLE_RATE, samplerate, resampleQuality, &resample_error);
+		resampler = wf_resampler_init(radioChannels, info.preferredSampleRate, samplerate, resampleQuality, &resample_error);
 		try {
-			aParams.nChannels = 1; // Internally this is always 2 channels
-			audio.openStream(NULL, &aParams, RTAUDIO_SINT16, INTERNAL_SAMPLE_RATE, &this->chunkSize, &staticWrite, this);
+			aParams.nChannels = radioChannels; 
+			audio.openStream(NULL, &aParams, RTAUDIO_SINT16, info.preferredSampleRate, &this->chunkSize, &staticWrite, this);
 			audio.startStream();
 		}
 		catch (RtAudioError& e) {
@@ -109,11 +113,11 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	}
 	else
 	{
-		resampler = wf_resampler_init(radioChannels, samplerate, INTERNAL_SAMPLE_RATE, resampleQuality, &resample_error);
+		resampler = wf_resampler_init(radioChannels, samplerate, info.preferredSampleRate, resampleQuality, &resample_error);
 		try {
 			unsigned int length = chunkSize / 2;
 			aParams.nChannels = 2; // Internally this is always 2 channels
-			audio.openStream(&aParams, NULL, RTAUDIO_SINT16, INTERNAL_SAMPLE_RATE, &length, &staticRead, this);
+			audio.openStream(&aParams, NULL, RTAUDIO_SINT16, info.preferredSampleRate, &length, &staticRead, this);
 			audio.startStream();
 		}
 		catch (RtAudioError& e) {
@@ -176,16 +180,16 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 				memcpy(buffer + sentlen, tempBuf.data.constData() + tempBuf.sent, send);
 				tempBuf.sent = tempBuf.sent + send;
 				sentlen = sentlen + send;
-				qDebug(logAudio()) << "Adding partial:" << send;
+				//qDebug(logAudio()) << "Adding partial:" << send;
 			}
 
 			if (currentLatency > (int)audioLatency) {
-				//qInfo(logAudio()) << (isInput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
-				//	" arrived too late (increase output latency!) " <<
-				//	dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
-				//lastSeq = packet.seq;
-				//if (!ringBuf->try_read(packet))
-				//	return sentlen;
+				qInfo(logAudio()) << (isInput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
+					" arrived too late (increase output latency!) " <<
+					dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
+				lastSeq = packet.seq;
+				if (!ringBuf->try_read(packet))
+					return sentlen;
 				currentLatency = packet.time.msecsTo(QTime::currentTime());
 			}
 
@@ -194,18 +198,18 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 			sentlen = sentlen + send;
 			if (send < packet.data.length())
 			{
-				qDebug(logAudio()) << "Asking for partial, sent:" << send << "packet length" << packet.data.length();
+				//qDebug(logAudio()) << "Asking for partial, sent:" << send << "packet length" << packet.data.length();
 				tempBuf = packet;
 				tempBuf.sent = tempBuf.sent + send;
-				//lastSeq = packet.seq;
-				//break;
+				lastSeq = packet.seq;
+				break;
 			}
 
 			if (packet.seq <= lastSeq) {
-				qInfo(logAudio()) << (isInput ? "Input" : "Output") << "Duplicate/early audio packet: " << hex << lastSeq << " got " << hex << packet.seq;
+				qDebug(logAudio()) << (isInput ? "Input" : "Output") << "Duplicate/early audio packet: " << hex << lastSeq << " got " << hex << packet.seq;
 			}
 			else if (packet.seq != lastSeq + 1) {
-				qInfo(logAudio()) << (isInput ? "Input" : "Output") << "Missing audio packet(s) from: " << hex << lastSeq + 1 << " to " << hex << packet.seq - 1;
+				qDebug(logAudio()) << (isInput ? "Input" : "Output") << "Missing audio packet(s) from: " << hex << lastSeq + 1 << " to " << hex << packet.seq - 1;
 			}
 			lastSeq = packet.seq;
 		}
@@ -219,7 +223,7 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 int audioHandler::writeData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status)
 {
 	int sentlen = 0;
-	unsigned int nBytes = nFrames * 2; // This is ALWAYS 2 bytes per sample and 1 channel
+	unsigned int nBytes = nFrames * 2 * radioChannels; // This is ALWAYS 2 bytes per sample
 	const char* data = (const char*)inputBuffer;
 	while (sentlen < nBytes) {
 		if (tempBuf.sent != chunkSize)
@@ -229,7 +233,7 @@ int audioHandler::writeData(void* outputBuffer, void* inputBuffer, unsigned int 
 			sentlen = sentlen + send;
 			tempBuf.seq = 0; // Not used in TX
 			tempBuf.time = QTime::currentTime();
-			tempBuf.sent = tempBuf.data.length();
+			tempBuf.sent = tempBuf.sent + send;
 		}
 		else {
 			if (!ringBuf->try_write(tempBuf))
