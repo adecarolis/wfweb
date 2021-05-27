@@ -395,7 +395,7 @@ void udpServer::controlReceived()
                         connect(this, SIGNAL(setupTxAudio(quint8,quint8,quint16,quint16,bool,bool,int,quint8)), txaudio, SLOT(init(quint8,quint8,quint16,quint16,bool,bool,int,quint8)));
                         connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
-                        emit setupTxAudio(samples, channels, current->txSampleRate, in->txbuffer, uLaw, false, config.audioOutput, config.resampleQuality);
+                        emit setupTxAudio(samples, channels, current->txSampleRate, current->txBufferLen, uLaw, false, config.audioOutput, config.resampleQuality);
                         hasTxAudio=datagram.senderAddress();
 
                         connect(this, SIGNAL(haveAudioData(audioPacket)), txaudio, SLOT(incomingAudio(audioPacket)));
