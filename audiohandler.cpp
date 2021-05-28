@@ -180,6 +180,11 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 				memcpy(buffer + sentlen, tempBuf.data.constData() + tempBuf.sent, send);
 				tempBuf.sent = tempBuf.sent + send;
 				sentlen = sentlen + send;
+				if (tempBuf.sent != tempBuf.data.length())
+				{
+					// We still don't have enough buffer space for this?
+					return 0;
+				}
 				//qDebug(logAudio()) << "Adding partial:" << send;
 			}
 
