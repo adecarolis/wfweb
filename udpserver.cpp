@@ -428,7 +428,7 @@ void udpServer::controlReceived()
                         connect(this, SIGNAL(setupRxAudio(quint8,quint8,quint16,quint16,bool,bool,int,quint8)), rxaudio, SLOT(init(quint8,quint8,quint16,quint16,bool,bool,int,quint8)));
                         connect(rxAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
-                        emit setupRxAudio(samples, channels, current->rxSampleRate, 150, uLaw, true, config.audioInput, config.resampleQuality);
+                        emit setupRxAudio(samples, channels, current->rxSampleRate,150, uLaw, true, config.audioInput, config.resampleQuality);
 
                         rxAudioTimer = new QTimer();
                         rxAudioTimer->setTimerType(Qt::PreciseTimer);
@@ -1298,8 +1298,9 @@ void udpServer::dataForServer(QByteArray d)
 
 void udpServer::sendRxAudio()
 {
+    QByteArray audio;
     if (rxaudio) {
-        QByteArray audio;
+        audio.clear();
         rxaudio->getNextAudioChunk(audio);
         int len = 0;
         while (len < audio.length()) {
