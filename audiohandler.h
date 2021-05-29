@@ -7,6 +7,7 @@
 #include <QByteArray>
 #include <QMutex>
 #include <QtEndian>
+#include <QtMath>
 #include "rtaudio/RtAudio.h"
 
 typedef signed short  MY_TYPE;
@@ -119,7 +120,6 @@ private:
     audioPacket tempBuf;
     quint16 currentLatency;
     qreal volume=1.0;
-
 };
 
 #endif // AUDIOHANDLER_H

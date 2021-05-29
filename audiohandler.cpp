@@ -32,7 +32,7 @@ audioHandler::~audioHandler()
 		delete ringBuf;
 }
 
-bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool ulaw, const bool isinput, int port, quint8 resampleQuality)
+bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16 samplerate, const quint16 latency, const bool ulaw, const bool isinput, int port, quint8 resampleQuality)
 {
 	if (isInitialized) {
 		return false;
@@ -43,10 +43,9 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	this->isInput = isinput;
 	this->radioSampleBits = bits;
 	this->radioSampleRate = samplerate;
-	this->radioChannels = channels;
+	this->radioChannels = radioChan;
 
 	// chunk size is always relative to Internal Sample Rate.
-	this->chunkSize = (INTERNAL_SAMPLE_RATE / 25) * radioChannels;
 
 	ringBuf = new wilt::Ring<audioPacket>(100); // Should be customizable.
 	tempBuf.sent = 0;
@@ -61,6 +60,7 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 		aParams.deviceId = audio.getDefaultOutputDevice();
 	}
 	aParams.firstChannel = 0;
+	aParams.nChannels = 2; // Internally this is always 2 channels for TX and RX.
 
 	try {
 		info = audio.getDeviceInfo(aParams.deviceId);
@@ -72,6 +72,9 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 
 	if (info.probed)
 	{
+		// Per channel chunk size.
+		this->chunkSize = (info.preferredSampleRate / 50);
+
 		qInfo(logAudio()) << (isInput ? "Input" : "Output") << QString::fromStdString(info.name) << "(" << aParams.deviceId << ") successfully probed";
 		if (info.nativeFormats == 0)
 			qInfo(logAudio()) << "		No natively supported data formats!";
@@ -100,9 +103,8 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	int resample_error = 0;
 
 	if (isInput) {
-		resampler = wf_resampler_init(radioChannels, info.preferredSampleRate, samplerate, resampleQuality, &resample_error);
+		resampler = wf_resampler_init(2, info.preferredSampleRate, samplerate, resampleQuality, &resample_error);
 		try {
-			aParams.nChannels = radioChannels; 
 			audio.openStream(NULL, &aParams, RTAUDIO_SINT16, info.preferredSampleRate, &this->chunkSize, &staticWrite, this);
 			audio.startStream();
 		}
@@ -113,11 +115,9 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	}
 	else
 	{
-		resampler = wf_resampler_init(radioChannels, samplerate, info.preferredSampleRate, resampleQuality, &resample_error);
+		resampler = wf_resampler_init(2, samplerate, info.preferredSampleRate, resampleQuality, &resample_error);
 		try {
-			unsigned int length = chunkSize / 2;
-			aParams.nChannels = 2; // Internally this is always 2 channels
-			audio.openStream(&aParams, NULL, RTAUDIO_SINT16, info.preferredSampleRate, &length, &staticRead, this);
+			audio.openStream(&aParams, NULL, RTAUDIO_SINT16, info.preferredSampleRate, &this->chunkSize, &staticRead, this);
 			audio.startStream();
 		}
 		catch (RtAudioError& e) {
@@ -127,6 +127,8 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 	}
 	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "device successfully opened";
 
+	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "detected latency:" <<audio.getStreamLatency();
+
 	wf_resampler_get_ratio(resampler, &ratioNum, &ratioDen);
 	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "wf_resampler_init() returned: " << resample_error << " ratioNum" << ratioNum << " ratioDen" << ratioDen;
 
@@ -135,8 +137,8 @@ bool audioHandler::init(const quint8 bits, const quint8 channels, const quint16 
 
 void audioHandler::setVolume(unsigned char volume)
 {
-	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "setVolume: " << volume << "(" << (qreal)(volume / 255.0) << ")";
-	this->volume = (qreal)(volume/255.0);
+	this->volume = (qreal)volume/255.0;
+	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
 }
 
 
@@ -149,26 +151,27 @@ void audioHandler::setVolume(unsigned char volume)
 /// <returns></returns>
 int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status)
 {
+	Q_UNUSED(inputBuffer);
+	Q_UNUSED(streamTime);
 	// Calculate output length, always full samples
 	int sentlen = 0;
-
 	quint8* buffer = (quint8*)outputBuffer; 
 	if (status == RTAUDIO_OUTPUT_UNDERFLOW)
 		qDebug(logAudio()) << "Underflow detected";
 
-	unsigned int nBytes = nFrames * 2 * 2; // This is ALWAYS 2 bytes per sample and 2 channels
+	int nBytes = nFrames * 2 * 2; // This is ALWAYS 2 bytes per sample and 2 channels
 
 	if (ringBuf->size()>0)
 	{
 		// Output buffer is ALWAYS 16 bit.
-
+		//qDebug(logAudio()) << "Read: nFrames" << nFrames << "nBytes" << nBytes;
 		while (sentlen < nBytes)
 		{
 			audioPacket packet;
 			if (!ringBuf->try_read(packet))
 			{
 				qDebug() << "No more data available but buffer is not full! sentlen:" << sentlen << " nBytes:" << nBytes ;
-				return 0;
+				break;
 			}
 			currentLatency = packet.time.msecsTo(QTime::currentTime());
 
@@ -183,7 +186,7 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 				if (tempBuf.sent != tempBuf.data.length())
 				{
 					// We still don't have enough buffer space for this?
-					return 0;
+					break;
 				}
 				//qDebug(logAudio()) << "Adding partial:" << send;
 			}
@@ -194,7 +197,7 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 					dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
 				lastSeq = packet.seq;
 				if (!ringBuf->try_read(packet))
-					return sentlen;
+					break;
 				currentLatency = packet.time.msecsTo(QTime::currentTime());
 			}
 
@@ -227,13 +230,16 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 
 int audioHandler::writeData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status)
 {
+	Q_UNUSED(outputBuffer);
+	Q_UNUSED(streamTime);
 	int sentlen = 0;
-	unsigned int nBytes = nFrames * 2 * radioChannels; // This is ALWAYS 2 bytes per sample
+	int nBytes = nFrames * 2 * 2; // This is ALWAYS 2 bytes per sample
 	const char* data = (const char*)inputBuffer;
+	//qDebug(logAudio()) << "nFrames" << nFrames << "nBytes" << nBytes;
 	while (sentlen < nBytes) {
-		if (tempBuf.sent != chunkSize)
+		if (tempBuf.sent != nBytes)
 		{
-			int send = qMin((int)(nBytes - sentlen), (int)chunkSize - tempBuf.sent);
+			int send = qMin((int)(nBytes - sentlen), (int)nBytes - tempBuf.sent);
 			tempBuf.data.append(QByteArray::fromRawData(data + sentlen, send));
 			sentlen = sentlen + send;
 			tempBuf.seq = 0; // Not used in TX
@@ -250,6 +256,8 @@ int audioHandler::writeData(void* outputBuffer, void* inputBuffer, unsigned int 
 			tempBuf.sent = 0;
 		}
 	}
+
+	//qDebug(logAudio()) << "sentlen" << sentlen;
 
 	return 0; 
 }
@@ -276,85 +284,113 @@ void audioHandler::stateChanged(QAudio::State state)
 
 
 
-void audioHandler::incomingAudio(audioPacket data)
+void audioHandler::incomingAudio(audioPacket inPacket)
 {
 	// No point buffering audio until stream is actually running.
+	// Regardless of the radio stream format, the buffered audio will ALWAYS be
+	// 16bit sample interleaved stereo 48K (or whatever the native sample rate is)
+
 	if (!audio.isStreamRunning())
 	{
 		qDebug(logAudio()) << "Packet received before stream was started";
 		return;
 	}
+	//qDebug(logAudio()) << "Got" << radioSampleBits << "bits, length" << inPacket.data.length();
 	// Incoming data is 8bits?
 	if (radioSampleBits == 8)
 	{
-		QByteArray outPacket((int)data.data.length() * 2, (char)0xff);
+		// Current packet is 8bit so need to create a new buffer that is 16bit 
+		QByteArray outPacket((int)inPacket.data.length() * 2 *(2/radioChannels), (char)0xff);
 		qint16* out = (qint16*)outPacket.data();
-		for (int f = 0; f < data.data.length(); f++)
+		for (int f = 0; f < inPacket.data.length(); f++)
 		{
 			if (isUlaw)
 			{
-				out[f] = ulaw_decode[(quint8)data.data[f]];
+				if (radioChannels == 1)
+				{
+					*out++ = ulaw_decode[(quint8)inPacket.data[f]] * this->volume;
+					*out++ = ulaw_decode[(quint8)inPacket.data[f]] * this->volume;
+				}
+				else
+				{
+					// This is already 2 channel.
+					*out++ = ulaw_decode[(quint8)inPacket.data[f]] * this->volume;
+				}
 			}
 			else
 			{
 				// Convert 8-bit sample to 16-bit
-				out[f] = (qint16)(((quint8)data.data[f] << 8) - 32640);
+				if (radioChannels == 1)
+				{
+					*out++ = (qint16)(((quint8)inPacket.data[f] << 8) - 32640) * this->volume;
+					*out++ = (qint16)(((quint8)inPacket.data[f] << 8) - 32640) * this->volume;
+				}
+				else
+				{
+					*out++ = (qint16)(((quint8)inPacket.data[f] << 8) - 32640 * this->volume);
+				}
 			}
 		}
-		data.data.clear();
-		data.data = outPacket; // Replace incoming data with converted.
+		inPacket.data.clear();
+		inPacket.data = outPacket; // Replace incoming data with converted.
 	}
+	else 
+	{
+		// This is already a 16bit stream, do we need to convert to stereo?
+		if (radioChannels == 1) {
+			// Yes
+			QByteArray outPacket(inPacket.data.length() * 2, (char)0xff); // Preset the output buffer size.
+			qint16* in = (qint16*)inPacket.data.data();
+			qint16* out = (qint16*)outPacket.data();
+			for (int f = 0; f < inPacket.data.length() / 2; f++)
+			{
+				*out++ = (qint16)*in * this->volume;
+				*out++ = (qint16)*in++ * this->volume;
+			}
+			inPacket.data.clear();
+			inPacket.data = outPacket; // Replace incoming data with converted.
+		}
+		else 
+		{
+			// We already have two channels so just update volume.
+			qint16* in = (qint16*)inPacket.data.data();
+			for (int f = 0; f < inPacket.data.length() / 2; f++)
+			{
+				*in = *in++ * this->volume;
+			}
+		}
 
-	//qInfo(logAudio()) << "Adding packet to buffer:" << data.seq << ": " << data.data.length();
+	}
 
 	/*	We now have an array of 16bit samples in the NATIVE samplerate of the radio
 		If the radio sample rate is below 48000, we need to resample.
 		*/
+	//qDebug(logAudio()) << "Now 16 bit stereo, length" << inPacket.data.length();
 
 	if (ratioDen != 1) {
 
 		// We need to resample
-		quint32 outFrames = ((data.data.length() / 2) * ratioDen) / radioChannels;
-		quint32 inFrames = (data.data.length() / 2) / radioChannels;
-		QByteArray outPacket(outFrames * 2 * radioChannels, 0xff); // Preset the output buffer size.
+		// We have a stereo 16bit stream.
+		quint32 outFrames = ((inPacket.data.length() / 4) * ratioDen);
+		quint32 inFrames = (inPacket.data.length() / 4);
+		QByteArray outPacket(outFrames * 4, (char)0xff); // Preset the output buffer size.
+
+		const qint16* in = (qint16*)inPacket.data.constData();
+		qint16* out = (qint16*)outPacket.data();
 
 		int err = 0;
-		if (this->radioChannels == 1) {
-			err = wf_resampler_process_int(resampler, 0, (const qint16*)data.data.constData(), &inFrames, (qint16*)outPacket.data(), &outFrames);
-		}
-		else {
-			err = wf_resampler_process_interleaved_int(resampler, (const qint16*)data.data.constData(), &inFrames, (qint16*)outPacket.data(), &outFrames);
-		}
+		err = wf_resampler_process_interleaved_int(resampler, in, &inFrames, out, &outFrames);
 		if (err) {
 			qInfo(logAudio()) << (isInput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
 		}
-		data.data.clear();
-		data.data = outPacket; // Replace incoming data with converted.
+		inPacket.data.clear();
+		inPacket.data = outPacket; // Replace incoming data with converted.
 	}
 
-	if (radioChannels == 1) {
-		// Convert to stereo and set volume.
-		QByteArray outPacket(data.data.length()*2, 0xff); // Preset the output buffer size.
-		qint16* in = (qint16*)data.data.data();
-		qint16* out = (qint16*)outPacket.data();
-		for (int f = 0; f < data.data.length()/2; f++)
-		{
-			*out++ = *in * volume;
-			*out++ = *in++ * volume;
-		}
-		data.data.clear();
-		data.data = outPacket; // Replace incoming data with converted.
-	} else {
-		// We already have two channels so just update volume.
-		qint16* in = (qint16*)data.data.data();
-		for (int f = 0; f < data.data.length() / 2; f++)
-		{
-			in[f] = in[f] * volume;
-		}
-	}
+	//qInfo(logAudio()) << "Adding packet to buffer:" << data.seq << ": " << data.data.length();
+	//qDebug(logAudio()) << "Now 16 bit stereo, length" << inPacket.data.length();
 
-
-	if (!ringBuf->try_write(data))
+	if (!ringBuf->try_write(inPacket))
 	{
 		qDebug(logAudio()) << "Buffer full! capacity:" << ringBuf->capacity() << "length" << ringBuf->size();
 	}
@@ -381,38 +417,57 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 {
 	audioPacket packet;
 	packet.sent = 0;
+
 	if (ringBuf != Q_NULLPTR && ringBuf->try_read(packet))
 	{
+
+		//qDebug(logAudio) << "Chunksize" << this->chunkSize << "Packet size" << packet.data.length();
+		// Packet will arrive as stereo interleaved 16bit 48K
 		if (ratioNum != 1)
 		{
-			// We need to resample (we are STILL 16 bit!)
-			quint32 outFrames = ((packet.data.length() / 2) / ratioNum) / radioChannels;
-			quint32 inFrames = (packet.data.length() / 2) / radioChannels;
-			QByteArray inPacket((int)outFrames * 2 * radioChannels, (char)0xff);
+			quint32 outFrames = ((packet.data.length() / 4) / ratioNum);
+			quint32 inFrames = (packet.data.length() / 4);
+			QByteArray outPacket((int)outFrames * 4, (char)0xff);
 
 			const qint16* in = (qint16*)packet.data.constData();
-			qint16* out = (qint16*)inPacket.data();
+			qint16* out = (qint16*)outPacket.data();
+
 			int err = 0;
-			if (this->radioChannels == 1) {
-				err = wf_resampler_process_int(resampler, 0, in, &inFrames, out, &outFrames);
-			}
-			else {
-				err = wf_resampler_process_interleaved_int(resampler, in, &inFrames, out, &outFrames);
-			}
+			err = wf_resampler_process_interleaved_int(resampler, in, &inFrames, out, &outFrames);
 			if (err) {
 				qInfo(logAudio()) << (isInput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
 			}
 			//qInfo(logAudio()) << "Resampler run " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
 			//qInfo(logAudio()) << "Resampler run inLen:" << packet->datain.length() << " outLen:" << packet->dataout.length();
 			packet.data.clear();
-			packet.data = inPacket; // Copy output packet back to input buffer.
+			packet.data = outPacket; // Copy output packet back to input buffer.
 		}
+
+		//qDebug(logAudio()) << "Now resampled, length" << packet.data.length();
+
+		// Do we need to convert mono to stereo?
+		if (radioChannels == 1)
+		{
+			// Strip out right channel?
+			QByteArray outPacket(packet.data.length()/2, (char)0xff);
+			const qint16* in = (qint16*)packet.data.constData();
+			qint16* out = (qint16*)outPacket.data();
+			for (int f = 0; f < outPacket.length()/2; f++)
+			{
+				*out++ = *in++;
+				*++in; // Skip each even channel.
+			}
+			packet.data.clear();
+			packet.data = outPacket; // Copy output packet back to input buffer.
+		}
+		
+		//qDebug(logAudio()) << "Now mono, length" << packet.data.length();
 
 		// Do we need to convert 16-bit to 8-bit?
 		if (radioSampleBits == 8) {
-			QByteArray inPacket((int)packet.data.length() / 2, (char)0xff);
+			QByteArray outPacket((int)packet.data.length() / 2, (char)0xff);
 			qint16* in = (qint16*)packet.data.data();
-			for (int f = 0; f < inPacket.length(); f++)
+			for (int f = 0; f < outPacket.length(); f++)
 			{
 				quint8 outdata = 0;
 				if (isUlaw) {
@@ -425,13 +480,15 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 				else {
 					outdata = (quint8)(((qFromLittleEndian<qint16>(in + f) >> 8) ^ 0x80) & 0xff);
 				}
-				inPacket[f] = (char)outdata;
+				outPacket[f] = (char)outdata;
 			}
 			packet.data.clear();
-			packet.data = inPacket; // Copy output packet back to input buffer.
+			packet.data = outPacket; // Copy output packet back to input buffer.
 		}
 		ret = packet.data;
+		//qDebug(logAudio()) << "Now radio format, length" << packet.data.length();
 	}
+
 
 	return;
 
