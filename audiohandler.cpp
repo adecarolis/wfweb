@@ -234,7 +234,7 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 			lastSeq = packet.seq;
 		}
 	}
-	//qDebug(logAudio()) << "looking for: " << nBytes << " got: " << sentlen;
+    //qDebug(logAudio()) << "looking for: " << nBytes << " got: " << sentlen;
 
 	return 0;
 }
@@ -307,7 +307,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		qDebug(logAudio()) << "Packet received before stream was started";
 		return;
 	}
-	//qDebug(logAudio()) << "Got" << radioSampleBits << "bits, length" << inPacket.data.length();
+    //qDebug(logAudio()) << "Got" << radioSampleBits << "bits, length" << inPacket.data.length();
 	// Incoming data is 8bits?
 	if (radioSampleBits == 8)
 	{
@@ -349,7 +349,8 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			qint16* in = (qint16*)inPacket.data.data();
 			for (int f = 0; f < inPacket.data.length() / 2; f++)
 			{
-				*in = *in++ * this->volume;
+                *in = *in * this->volume;
+                *in++;
 			}
 		}
 
@@ -358,7 +359,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	/*	We now have an array of 16bit samples in the NATIVE samplerate of the radio
 		If the radio sample rate is below 48000, we need to resample.
 		*/
-	//qDebug(logAudio()) << "Now 16 bit stereo, length" << inPacket.data.length();
+    //qDebug(logAudio()) << "Now 16 bit stereo, length" << inPacket.data.length();
 
 	if (ratioDen != 1) {
 
@@ -380,8 +381,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		inPacket.data = outPacket; // Replace incoming data with converted.
 	}
 
-	//qInfo(logAudio()) << "Adding packet to buffer:" << data.seq << ": " << data.data.length();
-	//qDebug(logAudio()) << "Now 16 bit stereo, length" << inPacket.data.length();
+    //qDebug(logAudio()) << "Adding packet to buffer:" << inPacket.seq << ": " << inPacket.data.length();
 
 	if (!ringBuf->try_write(inPacket))
 	{
