@@ -194,7 +194,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qInfo(logAudio()) << "Current API: " << QString::fromStdString(apiMap[audio.getCurrentApi()]);
 
     unsigned int devices = audio.getDeviceCount();
-    qInfo(logAudio()) << "Found " << devices << " audio device(s) ...";
+    qInfo(logAudio()) << "Found " << devices << " audio device(s) *=default";
 
     for (unsigned int i = 1; i < devices; i++) {
         info = audio.getDeviceInfo(i);
