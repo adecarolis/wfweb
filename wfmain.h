@@ -524,6 +524,9 @@ private:
     void setUIToPrefs();
     void setSerialDevicesUI();
     void setAudioDevicesUI();
+    void setServerToPrefs();
+    void setInitialTiming();
+    void getSettingsFilePath(QString settingsFile);
 
     QStringList modes;
     int currentModeIndex;

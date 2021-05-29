@@ -51,32 +51,10 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     setAudioDevicesUI();
 
-    setDefaultColors(); // set of UI colors with defaults populated
-    setDefPrefs(); // other default options
+    setDefaultColors();
+    setDefPrefs();
 
-
-    if (settingsFile.isNull()) {
-        settings = new QSettings();
-    }
-    else
-    {
-        QString file = settingsFile;
-        QFile info(settingsFile);
-        QString path="";
-        if (!QFileInfo(info).isAbsolute())
-        {
-            path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-            if (path.isEmpty())
-            {
-                path = QDir::homePath();
-            }
-            path = path + "/";
-            file = info.fileName();
-        }
-
-        qDebug() << "Loading settings from:" << path + file;
-        settings = new QSettings(path + file, QSettings::Format::IniFormat);
-    }
+    getSettingsFilePath(settingsFile);
 
     setupPlots();
     loadSettings(); // Look for saved preferences
@@ -84,63 +62,13 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     setUIToPrefs();
 
-    // Start server if enabled in config
-    if (serverConfig.enabled) {
-        serverConfig.lan = prefs.enableLAN;
-        if (!serverConfig.lan) {
-            serverConfig.resampleQuality = udpPrefs.resampleQuality;
-            serverConfig.audioInput = udpPrefs.audioInput;
-            serverConfig.audioOutput = udpPrefs.audioOutput;
-            serverConfig.baudRate = prefs.serialPortBaud;
-            serverConfig.inputDevice = udpPrefs.inputDevice;
-            serverConfig.outputDevice = udpPrefs.outputDevice;
-        }
-        udp = new udpServer(serverConfig);
+    setServerToPrefs();
 
-        serverThread = new QThread(this);
-
-        udp->moveToThread(serverThread);
-
-        connect(this, SIGNAL(initServer()), udp, SLOT(init()));
-        connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
-
-
-        serverThread->start();
-
-        emit initServer();
-
-        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
-
-    }
-
-    delayedCmdIntervalLAN_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
-    delayedCmdIntervalSerial_ms = 100; // interval for regular delayed commands, including initial rig/UI state queries
-    delayedCmdStartupInterval_ms = 250; // interval for rigID polling
-    delayedCommand = new QTimer(this);
-    delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
-    delayedCommand->setSingleShot(true);
-    connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
-
-    periodicPollingTimer = new QTimer(this);
-    periodicPollingTimer->setInterval(10);
-    periodicPollingTimer->setSingleShot(false);
-    connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(runPeriodicCommands()));
-
-    freq.MHzDouble = 0.0;
-    freq.Hz = 0;
+    setInitialTiming();
 
     openRig();
 
     rigConnections();
-
-    // Plot user interaction
-    connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
-    connect(wf, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handleWFDoubleClick(QMouseEvent*)));
-    connect(plot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handlePlotClick(QMouseEvent*)));
-    connect(wf, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handleWFClick(QMouseEvent*)));
-    connect(wf, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handleWFScroll(QWheelEvent*)));
-    connect(plot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handlePlotScroll(QWheelEvent*)));
-
 
     if (serverConfig.enabled && udp != Q_NULLPTR) {
         // Server
@@ -149,20 +77,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
         connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
     }
 
-
-    SMeterReadings.fill(0,30);
-    powerMeterReadings.fill(0,30);
-
-    pttTimer = new QTimer(this);
-    pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
-    pttTimer->setSingleShot(true);
-    connect(pttTimer, SIGNAL(timeout()), this, SLOT(handlePttLimit()));
     amTransmitting = false;
-    ui->tuneLockChk->setChecked(false);
-    freqLock = false;
-
-    //getInitialRigState();
-    oldFreqDialVal = ui->freqDial->value();
 }
 
 wfmain::~wfmain()
@@ -638,6 +553,15 @@ void wfmain::setupPlots()
 
     freqIndicatorLine->start->setCoords(0.5,0);
     freqIndicatorLine->end->setCoords(0.5,160);
+
+    // Plot user interaction
+    connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
+    connect(wf, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handleWFDoubleClick(QMouseEvent*)));
+    connect(plot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handlePlotClick(QMouseEvent*)));
+    connect(wf, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handleWFClick(QMouseEvent*)));
+    connect(wf, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handleWFScroll(QWheelEvent*)));
+    connect(plot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handlePlotScroll(QWheelEvent*)));
+
 }
 
 void wfmain::setupMainUI()
@@ -768,6 +692,96 @@ void wfmain::setupMainUI()
     ui->statusBar->addPermanentWidget(rigName);
     rigName->setText("NONE");
     rigName->setFixedWidth(50);
+
+    SMeterReadings.fill(0,30);
+    powerMeterReadings.fill(0,30);
+
+    freq.MHzDouble = 0.0;
+    freq.Hz = 0;
+    oldFreqDialVal = ui->freqDial->value();
+
+    ui->tuneLockChk->setChecked(false);
+    freqLock = false;
+}
+
+void wfmain::getSettingsFilePath(QString settingsFile)
+{
+    if (settingsFile.isNull()) {
+        settings = new QSettings();
+    }
+    else
+    {
+        QString file = settingsFile;
+        QFile info(settingsFile);
+        QString path="";
+        if (!QFileInfo(info).isAbsolute())
+        {
+            path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+            if (path.isEmpty())
+            {
+                path = QDir::homePath();
+            }
+            path = path + "/";
+            file = info.fileName();
+        }
+
+        qInfo(logSystem()) << "Loading settings from:" << path + file;
+        settings = new QSettings(path + file, QSettings::Format::IniFormat);
+    }
+}
+
+
+void wfmain::setInitialTiming()
+{
+    delayedCmdIntervalLAN_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
+    delayedCmdIntervalSerial_ms = 100; // interval for regular delayed commands, including initial rig/UI state queries
+    delayedCmdStartupInterval_ms = 250; // interval for rigID polling
+    delayedCommand = new QTimer(this);
+    delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
+    delayedCommand->setSingleShot(true);
+    connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
+
+    periodicPollingTimer = new QTimer(this);
+    periodicPollingTimer->setInterval(10);
+    periodicPollingTimer->setSingleShot(false);
+    connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(runPeriodicCommands()));
+
+    pttTimer = new QTimer(this);
+    pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
+    pttTimer->setSingleShot(true);
+    connect(pttTimer, SIGNAL(timeout()), this, SLOT(handlePttLimit()));
+}
+
+void wfmain::setServerToPrefs()
+{
+    // Start server if enabled in config
+    if (serverConfig.enabled) {
+        serverConfig.lan = prefs.enableLAN;
+        if (!serverConfig.lan) {
+            serverConfig.resampleQuality = udpPrefs.resampleQuality;
+            serverConfig.audioInput = udpPrefs.audioInput;
+            serverConfig.audioOutput = udpPrefs.audioOutput;
+            serverConfig.baudRate = prefs.serialPortBaud;
+            serverConfig.inputDevice = udpPrefs.inputDevice;
+            serverConfig.outputDevice = udpPrefs.outputDevice;
+        }
+        udp = new udpServer(serverConfig);
+
+        serverThread = new QThread(this);
+
+        udp->moveToThread(serverThread);
+
+        connect(this, SIGNAL(initServer()), udp, SLOT(init()));
+        connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
+
+
+        serverThread->start();
+
+        emit initServer();
+
+        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
+
+    }
 }
 
 void wfmain::setUIToPrefs()
