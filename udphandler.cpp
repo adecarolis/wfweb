@@ -800,6 +800,7 @@ udpAudio::~udpAudio()
 {
     if (pingTimer != Q_NULLPTR)
     {
+        qDebug(logUdp()) << "Stopping pingTimer";
         pingTimer->stop();
         delete pingTimer;
         pingTimer = Q_NULLPTR;
@@ -807,6 +808,7 @@ udpAudio::~udpAudio()
 
     if (idleTimer != Q_NULLPTR)
     {
+        qDebug(logUdp()) << "Stopping idleTimer";
         idleTimer->stop();
         delete idleTimer;
         idleTimer = Q_NULLPTR;
@@ -814,6 +816,7 @@ udpAudio::~udpAudio()
 
     if (watchdogTimer != Q_NULLPTR)
     {
+        qDebug(logUdp()) << "Stopping watchdogTimer";
         watchdogTimer->stop();
         delete watchdogTimer;
         watchdogTimer = Q_NULLPTR;
@@ -821,19 +824,23 @@ udpAudio::~udpAudio()
 
     if (txAudioTimer != Q_NULLPTR)
     {
+        qDebug(logUdp()) << "Stopping txaudio timer";
         txAudioTimer->stop();
         delete txAudioTimer;
     }
 
     if (rxAudioThread != Q_NULLPTR) {
+        qDebug(logUdp()) << "Stopping rxaudio thread";
         rxAudioThread->quit();
         rxAudioThread->wait();
     }
 
     if (txAudioThread != Q_NULLPTR) {
+        qDebug(logUdp()) << "Stopping txaudio thread";
         txAudioThread->quit();
         txAudioThread->wait();
     }
+    qDebug(logUdp()) << "udpHandler successfully closed";
 }
 
 void udpAudio::watchdog()
@@ -907,7 +914,7 @@ void udpAudio::dataReceived()
 {
     while (udp->hasPendingDatagrams()) {
         QNetworkDatagram datagram = udp->receiveDatagram();
-        //qInfo(logUdp()) << "Received: " << datagram.data();
+        //qInfo(logUdp()) << "Received: " << datagram.data().mid(0,10);
         QByteArray r = datagram.data();
 
         switch (r.length())
