@@ -120,6 +120,7 @@ private:
     audioPacket tempBuf;
     quint16 currentLatency;
     qreal volume=1.0;
+    int devChannels;
 };
 
 #endif // AUDIOHANDLER_H
