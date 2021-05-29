@@ -513,6 +513,15 @@ private:
     QTimer * periodicPollingTimer;
     QTimer * pttTimer;
 
+    void setupPlots();
+    void makeRig();
+    void rigConnections();
+    void removeRig();
+    void findSerialPort();
+
+    void setupKeyShortcuts();
+    void setupMainUI();
+    void setUIToPrefs();
 
     QStringList modes;
     int currentModeIndex;
