@@ -522,6 +522,8 @@ private:
     void setupKeyShortcuts();
     void setupMainUI();
     void setUIToPrefs();
+    void setSerialDevicesUI();
+    void setAudioDevicesUI();
 
     QStringList modes;
     int currentModeIndex;

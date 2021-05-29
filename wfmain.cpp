@@ -32,6 +32,14 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     connect(srv, SIGNAL(serverConfig(SERVERCONFIG, bool)), this, SLOT(serverConfigRequested(SERVERCONFIG, bool)));
        
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
+    qRegisterMetaType<rigCapabilities>();
+    qRegisterMetaType<duplexMode>();
+    qRegisterMetaType<rptAccessTxRx>();
+    qRegisterMetaType<rigInput>();
+    qRegisterMetaType<meterKind>();
+    qRegisterMetaType<spectrumMode>();
+    qRegisterMetaType<freqt>();
+    qRegisterMetaType<audioPacket>();
 
     haveRigCaps = false;
 
@@ -39,63 +47,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     setupMainUI();
 
-    // Enumerate audio devices, need to do before settings are loaded.
-    const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
-    for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
-        ui->audioOutputCombo->addItem(deviceInfo.deviceName(),QVariant::fromValue(deviceInfo));
-    }
-    const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
-    for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
-        ui->audioInputCombo->addItem(deviceInfo.deviceName(),QVariant::fromValue(deviceInfo));
-    }
+    setSerialDevicesUI();
 
-    ui->serialDeviceListCombo->blockSignals(true);
-    ui->serialDeviceListCombo->addItem("Auto", 0);
-    int i = 0;
-    foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
-    {
-        portList.append(serialPortInfo.portName());
-#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
-        ui->serialDeviceListCombo->addItem(QString("/dev/")+serialPortInfo.portName(), i++);
-        ui->serialDeviceListCombo->addItem("Manual...", 256);
-#else
-        ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
-#endif
-    }
-    ui->serialDeviceListCombo->blockSignals(false);
-
-    ui->vspCombo->blockSignals(true);
-
-#ifdef Q_OS_WIN
-    ui->vspCombo->addItem(QString("None"), i++);
-
-    foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
-    {
-        ui->vspCombo->addItem(serialPortInfo.portName());
-    }
-#else
-    // Provide reasonable names for the symbolic link to the pty device
-#ifdef Q_OS_MAC
-    QString vspName = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/rig-pty";
-#else
-    QString vspName=QDir::homePath()+"/rig-pty";
-#endif
-    for (i=1;i<8;i++) {
-        ui->vspCombo->addItem(vspName + QString::number(i));
-
-        if (QFile::exists(vspName+QString::number(i))) {
-            auto * model = qobject_cast<QStandardItemModel*>(ui->vspCombo->model());
-            auto *item = model->item(ui->vspCombo->count()-1);
-            item->setEnabled(false);
-        }
-    }
-    ui->vspCombo->addItem(vspName+QString::number(i));
-    ui->vspCombo->addItem(QString("None"), i++);
-
-#endif
-    ui->vspCombo->setEditable(true);
-    ui->vspCombo->blockSignals(false);
-
+    setAudioDevicesUI();
 
     setDefaultColors(); // set of UI colors with defaults populated
     setDefPrefs(); // other default options
@@ -159,22 +113,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     }
 
-    rigStatus = new QLabel(this);
-    ui->statusBar->addPermanentWidget(rigStatus);
-    ui->statusBar->showMessage("Connecting to rig...", 1000);
-
-    pttLed = new QLedLabel(this);
-    ui->statusBar->addPermanentWidget(pttLed);
-    pttLed->setState(QLedLabel::State::StateOk);
-
-    connectedLed = new QLedLabel(this);
-    ui->statusBar->addPermanentWidget(connectedLed);
-
-    rigName = new QLabel(this);
-    ui->statusBar->addPermanentWidget(rigName);
-    rigName->setText("NONE");
-    rigName->setFixedWidth(50);
-
     delayedCmdIntervalLAN_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdIntervalSerial_ms = 100; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdStartupInterval_ms = 250; // interval for rigID polling
@@ -193,18 +131,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     openRig();
 
-    qRegisterMetaType<rigCapabilities>();
-    qRegisterMetaType<duplexMode>();
-    qRegisterMetaType<rptAccessTxRx>();
-    qRegisterMetaType<rigInput>();
-    qRegisterMetaType<meterKind>();
-    qRegisterMetaType<spectrumMode>();
-    qRegisterMetaType<freqt>();
-    qRegisterMetaType<audioPacket>();
-
     rigConnections();
-
-
 
     // Plot user interaction
     connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
@@ -340,8 +267,6 @@ void wfmain::openRig()
 
 void wfmain::rigConnections()
 {
-    // from line 413..
-
     connect(this, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
     connect(this, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
 
@@ -828,6 +753,21 @@ void wfmain::setupMainUI()
     ui->satOpsBtn->setVisible(false);
 #endif
 
+    rigStatus = new QLabel(this);
+    ui->statusBar->addPermanentWidget(rigStatus);
+    ui->statusBar->showMessage("Connecting to rig...", 1000);
+
+    pttLed = new QLedLabel(this);
+    ui->statusBar->addPermanentWidget(pttLed);
+    pttLed->setState(QLedLabel::State::StateOk);
+
+    connectedLed = new QLedLabel(this);
+    ui->statusBar->addPermanentWidget(connectedLed);
+
+    rigName = new QLabel(this);
+    ui->statusBar->addPermanentWidget(rigName);
+    rigName->setText("NONE");
+    rigName->setFixedWidth(50);
 }
 
 void wfmain::setUIToPrefs()
@@ -844,8 +784,73 @@ void wfmain::setUIToPrefs()
     ui->drawPeakChk->setChecked(prefs.drawPeaks);
     on_drawPeakChk_clicked(prefs.drawPeaks);
     drawPeaks = prefs.drawPeaks;
-
 }
+
+void wfmain::setAudioDevicesUI()
+{
+    // Enumerate audio devices, need to do before settings are loaded.
+    const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
+    for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
+        ui->audioOutputCombo->addItem(deviceInfo.deviceName(),QVariant::fromValue(deviceInfo));
+    }
+    const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
+    for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
+        ui->audioInputCombo->addItem(deviceInfo.deviceName(),QVariant::fromValue(deviceInfo));
+    }
+}
+
+void wfmain::setSerialDevicesUI()
+{
+    ui->serialDeviceListCombo->blockSignals(true);
+    ui->serialDeviceListCombo->addItem("Auto", 0);
+    int i = 0;
+    foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
+    {
+        portList.append(serialPortInfo.portName());
+#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
+        ui->serialDeviceListCombo->addItem(QString("/dev/")+serialPortInfo.portName(), i++);
+#else
+        ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
+#endif
+    }
+#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
+    ui->serialDeviceListCombo->addItem("Manual...", 256);
+#endif
+    ui->serialDeviceListCombo->blockSignals(false);
+
+    ui->vspCombo->blockSignals(true);
+
+#ifdef Q_OS_WIN
+    ui->vspCombo->addItem(QString("None"), i++);
+
+    foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
+    {
+        ui->vspCombo->addItem(serialPortInfo.portName());
+    }
+#else
+    // Provide reasonable names for the symbolic link to the pty device
+#ifdef Q_OS_MAC
+    QString vspName = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/rig-pty";
+#else
+    QString vspName=QDir::homePath()+"/rig-pty";
+#endif
+    for (i=1;i<8;i++) {
+        ui->vspCombo->addItem(vspName + QString::number(i));
+
+        if (QFile::exists(vspName+QString::number(i))) {
+            auto * model = qobject_cast<QStandardItemModel*>(ui->vspCombo->model());
+            auto *item = model->item(ui->vspCombo->count()-1);
+            item->setEnabled(false);
+        }
+    }
+    ui->vspCombo->addItem(vspName+QString::number(i));
+    ui->vspCombo->addItem(QString("None"), i++);
+
+#endif
+    ui->vspCombo->setEditable(true);
+    ui->vspCombo->blockSignals(false);
+}
+
 
 void wfmain::setupKeyShortcuts()
 {
