@@ -44,6 +44,9 @@ public:
     ~wfmain();
 
 signals:
+    // Basic to rig:
+    void setCIVAddr(unsigned char);
+
     // Power
     void sendPowerOn();
     void sendPowerOff();

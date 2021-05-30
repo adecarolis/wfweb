@@ -182,6 +182,8 @@ void wfmain::openRig()
 
 void wfmain::rigConnections()
 {
+    connect(this, SIGNAL(setCIVAddr(unsigned char)), rig, SLOT(setCIVAddr(unsigned char)));
+
     connect(this, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
     connect(this, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
 
@@ -4426,6 +4428,7 @@ void wfmain::on_rigCIVaddrHexLine_editingFinished()
     if(okconvert && (propCIVAddr < 0xe0) && (propCIVAddr != 0))
     {
         prefs.radioCIVAddr = propCIVAddr;
+        emit setCIVAddr(propCIVAddr);
         showStatusBarText(QString("Setting radio CI-V address to: 0x%1. Press Save Settings to retain.").arg(propCIVAddr, 2, 16));
     } else {
         showStatusBarText(QString("Could not use provided CI-V address. Address must be < 0xE0"));
