@@ -236,6 +236,10 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 	}
     //qDebug(logAudio()) << "looking for: " << nBytes << " got: " << sentlen;
 
+    // fill the rest of the buffer with silence
+    if (nBytes > sentlen) {
+        memset(buffer+sentlen,0,nBytes-sentlen);
+    }
 	return 0;
 }
 
