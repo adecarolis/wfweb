@@ -14,6 +14,7 @@ audioHandler::audioHandler(QObject* parent) :
 	isInput(0),
 	chunkAvailable(false)
 {
+	Q_UNUSED(parent)
 }
 
 audioHandler::~audioHandler()
@@ -248,6 +249,7 @@ int audioHandler::writeData(void* outputBuffer, void* inputBuffer, unsigned int 
 {
 	Q_UNUSED(outputBuffer);
 	Q_UNUSED(streamTime);
+	Q_UNUSED(status);
 	int sentlen = 0;
 	int nBytes = nFrames * devChannels * 2; // This is ALWAYS 2 bytes per sample
 	const char* data = (const char*)inputBuffer;
@@ -277,27 +279,6 @@ int audioHandler::writeData(void* outputBuffer, void* inputBuffer, unsigned int 
 
 	return 0; 
 }
-
-qint64 audioHandler::bytesAvailable() const
-{
-	return 0;
-}
-
-bool audioHandler::isSequential() const
-{
-	return true;
-}
-
-void audioHandler::notified()
-{
-}
-
-
-void audioHandler::stateChanged(QAudio::State state)
-{
-	
-}
-
 
 
 void audioHandler::incomingAudio(audioPacket inPacket)
@@ -354,7 +335,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			for (int f = 0; f < inPacket.data.length() / 2; f++)
 			{
                 *in = *in * this->volume;
-                *in++;
+                in++;
 			}
 		}
 
@@ -405,11 +386,6 @@ int audioHandler::getLatency()
 	return currentLatency;
 }
 
-bool audioHandler::isChunkAvailable()
-{
-	return (chunkAvailable);
-}
-
 void audioHandler::getNextAudioChunk(QByteArray& ret)
 {
 	audioPacket packet;
@@ -452,7 +428,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			for (int f = 0; f < outPacket.length()/2; f++)
 			{
 				*out++ = *in++;
-				*in++; // Skip each even channel.
+				in++; // Skip each even channel.
 			}
 			packet.data.clear();
 			packet.data = outPacket; // Copy output packet back to input buffer.

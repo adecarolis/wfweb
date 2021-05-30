@@ -50,22 +50,11 @@ public:
 
     int getLatency();
 
-    bool setDevice(QAudioDeviceInfo deviceInfo);
-
-    void start();
-    void flush();
-    void stop();
-
-    qint64 bytesAvailable() const;
-    bool isSequential() const;
     void getNextAudioChunk(QByteArray &data);
-    bool isChunkAvailable();
 
 private slots:
     bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isulaw, const bool isinput, int port, quint8 resampleQuality);
     void changeLatency(const quint16 newSize);
-    void notified();
-    void stateChanged(QAudio::State state);
     void setVolume(unsigned char volume);
     void incomingAudio(const audioPacket data);
 
