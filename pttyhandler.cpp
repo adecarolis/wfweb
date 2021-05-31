@@ -53,7 +53,7 @@ void pttyHandler::openPort()
     }
 #else
     // Generic method in Linux/MacOS to find a pty
-    ptfd = ::posix_openpt(O_RDWR | O_NOCTTY);
+    ptfd = ::posix_openpt(O_RDWR | O_NONBLOCK);
 
     if (ptfd >=0)
     {
@@ -115,6 +115,7 @@ pttyHandler::~pttyHandler()
 
 void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
 {
+
     int fePos=data.lastIndexOf((char)0xfe);
     if (fePos>0)
         fePos=fePos-1;
@@ -133,7 +134,7 @@ void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
         // 0xE0 = pseudo-term host
         // 0x00 = broadcast to all
         //qInfo(logSerial()) << "Sending data from radio to pseudo-terminal";
-        sendDataOut(data.mid(fePos));
+        sendDataOut(data);
     }
 }
 
