@@ -769,6 +769,7 @@ void wfmain::setServerToPrefs()
             serverConfig.baudRate = prefs.serialPortBaud;
             serverConfig.audioInput = udpPrefs.audioInput;
             serverConfig.audioOutput = udpPrefs.audioOutput;
+        }
 
         udp = new udpServer(serverConfig);
 
@@ -1204,7 +1205,7 @@ void wfmain::loadSettings()
     udpPrefs.audioRXSampleRate = settings->value("AudioRXSampleRate", udpDefPrefs.audioRXSampleRate).toInt();
     udpPrefs.audioTXSampleRate = settings->value("AudioTXSampleRate",udpDefPrefs.audioTXSampleRate).toInt();
     ui->audioSampleRateCombo->setEnabled(ui->lanEnableBtn->isChecked());
-    int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(udpDefPrefs.audioRXSampleRate));
+    int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(udpPrefs.audioRXSampleRate));
     if (audioSampleRateIndex != -1) {
         ui->audioSampleRateCombo->setCurrentIndex(audioSampleRateIndex);
     }
@@ -1358,7 +1359,7 @@ void wfmain::saveSettings()
     settings->setValue("AudioTXLatency", udpPrefs.audioTXLatency);
     settings->setValue("AudioRXSampleRate", udpPrefs.audioRXSampleRate);
     settings->setValue("AudioRXCodec", udpPrefs.audioRXCodec);
-    settings->setValue("AudioTXSampleRate", udpPrefs.audioRXSampleRate);
+    settings->setValue("AudioTXSampleRate", udpPrefs.audioTXSampleRate);
     settings->setValue("AudioTXCodec", udpPrefs.audioTXCodec);
     settings->setValue("AudioOutput", udpPrefs.audioOutputName);
     settings->setValue("AudioInput", udpPrefs.audioInputName);
@@ -1486,7 +1487,7 @@ void wfmain::prepareWf(unsigned int wfLength)
             wfimage.remove(wfLength, wfimage.size()-wfLength);
         }
         wfimage.squeeze();
-        colorMap->clearData();
+        //colorMap->clearData();
         colorMap->data()->clear();
 
         colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
