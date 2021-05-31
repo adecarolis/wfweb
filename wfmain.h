@@ -45,7 +45,7 @@ public:
 
 signals:
     // Basic to rig:
-    void setCIVAddr(unsigned char);
+    void setCIVAddr(unsigned char newRigCIVAddr);
 
     // Power
     void sendPowerOn();
@@ -446,6 +446,8 @@ private slots:
 
     void on_baudRateCombo_activated(int);
 
+    void on_wfLengthSlider_valueChanged(int value);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -459,6 +461,7 @@ private:
     void setAppTheme(bool isCustom);
     void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
+    void prepareWf(unsigned int wfLength);
     void getInitialRigState();
     void setBandButtons();
     void showButton(QPushButton *btn);
@@ -543,8 +546,7 @@ private:
 
     quint16 spectWidth;
     quint16 wfLength;
-
-    quint16 spectRowCurrent;
+    bool spectrumDrawLock;
 
     QByteArray spectrumPeaks;
 

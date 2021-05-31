@@ -142,7 +142,7 @@ void wfmain::openRig()
     }
 
     // Start rigctld
-    if (prefs.enableRigCtlD) {
+    if (prefs.enableRigCtlD && rigCtl == Q_NULLPTR) {
         rigCtl = new rigCtlD(this);
 
         rigCtl->startServer(prefs.rigCtlPort);
@@ -525,6 +525,7 @@ void wfmain::setupPlots()
 {
 
 // Line 290--
+    spectrumDrawLock = true;
     plot = ui->plot; // rename it waterfall.
     wf = ui->waterfall;
 
@@ -563,7 +564,7 @@ void wfmain::setupPlots()
     connect(wf, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handleWFClick(QMouseEvent*)));
     connect(wf, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handleWFScroll(QWheelEvent*)));
     connect(plot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handlePlotScroll(QWheelEvent*)));
-
+    spectrumDrawLock = false;
 }
 
 void wfmain::setupMainUI()
@@ -1136,7 +1137,7 @@ void wfmain::loadSettings()
     }
 
     ui->lanEnableBtn->setChecked(prefs.enableLAN);
-    ui->connectBtn->setEnabled(prefs.enableLAN);
+    ui->connectBtn->setEnabled(true);
 
     prefs.enableRigCtlD = settings->value("EnableRigCtlD", defPrefs.enableRigCtlD).toBool();
     prefs.rigCtlPort = settings->value("RigCtlPort", defPrefs.rigCtlPort).toInt();
@@ -1422,35 +1423,66 @@ void wfmain::saveSettings()
     settings->sync(); // Automatic, not needed (supposedly)
 }
 
+
 void wfmain::prepareWf()
+{
+    prepareWf(160);
+}
+
+void wfmain::prepareWf(unsigned int wfLength)
 {
     // All this code gets moved in from the constructor of wfmain.
 
     if(haveRigCaps)
     {
-        // do things
-        spectWidth = rigCaps.spectLenMax; // was fixed at 475
-        wfLength = 160; // fixed for now, time-length of waterfall
+        // TODO: Lock the function that draws on the spectrum while we are updating.
+        spectrumDrawLock = true;
+
+        spectWidth = rigCaps.spectLenMax;
+        this->wfLength = wfLength; // fixed for now, time-length of waterfall
 
         // Initialize before use!
 
         QByteArray empty((int)spectWidth, '\x01');
         spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
-        for(quint16 i=0; i<wfLength; i++)
+
+        if((unsigned int)wfimage.size() < wfLength)
         {
-            wfimage.append(empty);
+            unsigned int i=0;
+            unsigned int oldSize = wfimage.size();
+            // Note: apparently .append() in this case does not add to the initial size.
+            // So if the initial size is 100 and you append 50 times,
+            // the end size is 50.
+            for(i=oldSize; i<(wfLength); i++)
+            {
+                wfimage.append(empty);
+            }
+        } else {
+            wfimage.remove(wfLength, wfimage.size()-wfLength);
         }
+        wfimage.squeeze();
+        colorMap->clearData();
+        colorMap->data()->clear();
 
         colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
         colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
         colorMap->setDataRange(QCPRange(0, rigCaps.spectAmpMax));
         colorMap->setGradient(QCPColorGradient::gpJet); // TODO: Add preference
-        colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
+
+        if(colorMapData == Q_NULLPTR)
+        {
+            colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
+        } else {
+            //delete colorMapData; // TODO: Figure out why it crashes if we delete first.
+            colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
+        }
         colorMap->setData(colorMapData);
-        spectRowCurrent = 0;
+
         wf->yAxis->setRangeReversed(true);
         wf->xAxis->setVisible(false);
         rigName->setText(rigCaps.modelName);
+
+        spectrumDrawLock = false;
     } else {
         qInfo(logSystem()) << "Cannot prepare WF view without rigCaps. Waiting on this.";
         return;
@@ -2571,42 +2603,44 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
     }
 
-    //ui->qcp->addGraph();
-    plot->graph(0)->setData(x,y);
-    if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
+    if(!spectrumDrawLock)
     {
-        freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
-        freqIndicatorLine->end->setCoords(freq.MHzDouble,160);
-    }
-    if(drawPeaks)
-    {
-        plot->graph(1)->setData(x,y2); // peaks
-    }
-    plot->yAxis->setRange(0, rigCaps.spectAmpMax+1);
-    plot->xAxis->setRange(startFreq, endFreq);
-    plot->replot();
-
-    if(specLen == spectWidth)
-    {
-        wfimage.prepend(spectrum);
-        if(wfimage.length() >  wfLength)
+        //ui->qcp->addGraph();
+        plot->graph(0)->setData(x,y);
+        if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
         {
-            wfimage.remove(wfLength);
+            freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
+            freqIndicatorLine->end->setCoords(freq.MHzDouble,160);
         }
-
-        // Waterfall:
-        for(int row = 0; row < wfLength; row++)
+        if(drawPeaks)
         {
-            for(int col = 0; col < spectWidth; col++)
+            plot->graph(1)->setData(x,y2); // peaks
+        }
+        plot->yAxis->setRange(0, rigCaps.spectAmpMax+1);
+        plot->xAxis->setRange(startFreq, endFreq);
+        plot->replot();
+
+        if(specLen == spectWidth)
+        {
+            wfimage.prepend(spectrum);
+            if(wfimage.length() >  wfLength)
             {
-                colorMap->data()->setCell( col, row, wfimage.at(row).at(col));
+                wfimage.remove(wfLength);
             }
-        }
 
-        wf->yAxis->setRange(0,wfLength - 1);
-        wf->xAxis->setRange(0, spectWidth-1);
-        wf->replot();
-        spectRowCurrent = (spectRowCurrent + 1) % wfLength;
+            // Waterfall:
+            for(int row = 0; row < wfLength; row++)
+            {
+                for(int col = 0; col < spectWidth; col++)
+                {
+                    colorMap->data()->setCell( col, row, wfimage.at(row).at(col));
+                }
+            }
+
+           wf->yAxis->setRange(0,wfLength - 1);
+           wf->xAxis->setRange(0, spectWidth-1);
+           wf->replot();
+        }
     }
 }
 
@@ -3552,7 +3586,7 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
     prefs.enableLAN = !checked;
     ui->serialDeviceListCombo->setEnabled(checked);
 
-    ui->connectBtn->setEnabled(!checked);
+    ui->connectBtn->setEnabled(true);
     ui->ipAddressTxt->setEnabled(!checked);
     ui->controlPortTxt->setEnabled(!checked);
     ui->usernameTxt->setEnabled(!checked);
@@ -3572,7 +3606,7 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
 void wfmain::on_lanEnableBtn_clicked(bool checked)
 {
     prefs.enableLAN = checked;
-    ui->connectBtn->setEnabled(checked);
+    ui->connectBtn->setEnabled(true);
     ui->ipAddressTxt->setEnabled(checked);
     ui->controlPortTxt->setEnabled(checked);
     ui->usernameTxt->setEnabled(checked);
@@ -4447,10 +4481,15 @@ void wfmain::on_baudRateCombo_activated(int index)
     (void)index;
 }
 
+void wfmain::on_wfLengthSlider_valueChanged(int value)
+{
+    prepareWf(value);
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    qInfo(logSystem()) << "getting mode.";
-    emit getRigID();
+    prepareWf(160);
+
 }

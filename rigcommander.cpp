@@ -171,7 +171,6 @@ void rigCommander::setup()
     setCIVAddr(civAddr);
     spectSeqMax = 0; // this is now set after rig ID determined
 
-
     payloadSuffix = QByteArray("\xFD");
 
     lookingForRig = false;
