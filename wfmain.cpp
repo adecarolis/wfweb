@@ -32,411 +32,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     connect(srv, SIGNAL(serverConfig(SERVERCONFIG, bool)), this, SLOT(serverConfigRequested(SERVERCONFIG, bool)));
        
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
-
-    haveRigCaps = false;
-
-    ui->bandStkLastUsedBtn->setVisible(false);
-    ui->bandStkVoiceBtn->setVisible(false);
-    ui->bandStkDataBtn->setVisible(false);
-    ui->bandStkCWBtn->setVisible(false);
-
-    keyF1 = new QShortcut(this);
-    keyF1->setKey(Qt::Key_F1);
-    connect(keyF1, SIGNAL(activated()), this, SLOT(shortcutF1()));
-
-    keyF2 = new QShortcut(this);
-    keyF2->setKey(Qt::Key_F2);
-    connect(keyF2, SIGNAL(activated()), this, SLOT(shortcutF2()));
-
-    keyF3 = new QShortcut(this);
-    keyF3->setKey(Qt::Key_F3);
-    connect(keyF3, SIGNAL(activated()), this, SLOT(shortcutF3()));
-
-    keyF4 = new QShortcut(this);
-    keyF4->setKey(Qt::Key_F4);
-    connect(keyF4, SIGNAL(activated()), this, SLOT(shortcutF4()));
-
-    keyF5 = new QShortcut(this);
-    keyF5->setKey(Qt::Key_F5);
-    connect(keyF5, SIGNAL(activated()), this, SLOT(shortcutF5()));
-
-    keyF6 = new QShortcut(this);
-    keyF6->setKey(Qt::Key_F6);
-    connect(keyF6, SIGNAL(activated()), this, SLOT(shortcutF6()));
-
-    keyF7 = new QShortcut(this);
-    keyF7->setKey(Qt::Key_F7);
-    connect(keyF7, SIGNAL(activated()), this, SLOT(shortcutF7()));
-
-    keyF8 = new QShortcut(this);
-    keyF8->setKey(Qt::Key_F8);
-    connect(keyF8, SIGNAL(activated()), this, SLOT(shortcutF8()));
-
-    keyF9 = new QShortcut(this);
-    keyF9->setKey(Qt::Key_F9);
-    connect(keyF9, SIGNAL(activated()), this, SLOT(shortcutF9()));
-
-    keyF10 = new QShortcut(this);
-    keyF10->setKey(Qt::Key_F10);
-    connect(keyF10, SIGNAL(activated()), this, SLOT(shortcutF10()));
-
-    keyF11 = new QShortcut(this);
-    keyF11->setKey(Qt::Key_F11);
-    connect(keyF11, SIGNAL(activated()), this, SLOT(shortcutF11()));
-
-    keyF12 = new QShortcut(this);
-    keyF12->setKey(Qt::Key_F12);
-    connect(keyF12, SIGNAL(activated()), this, SLOT(shortcutF12()));
-
-    keyControlT = new QShortcut(this);
-    keyControlT->setKey(Qt::CTRL + Qt::Key_T);
-    connect(keyControlT, SIGNAL(activated()), this, SLOT(shortcutControlT()));
-
-    keyControlR = new QShortcut(this);
-    keyControlR->setKey(Qt::CTRL + Qt::Key_R);
-    connect(keyControlR, SIGNAL(activated()), this, SLOT(shortcutControlR()));
-
-    keyControlI = new QShortcut(this);
-    keyControlI->setKey(Qt::CTRL + Qt::Key_I);
-    connect(keyControlI, SIGNAL(activated()), this, SLOT(shortcutControlI()));
-
-    keyControlU = new QShortcut(this);
-    keyControlU->setKey(Qt::CTRL + Qt::Key_U);
-    connect(keyControlU, SIGNAL(activated()), this, SLOT(shortcutControlU()));
-
-    keyStar = new QShortcut(this);
-    keyStar->setKey(Qt::Key_Asterisk);
-    connect(keyStar, SIGNAL(activated()), this, SLOT(shortcutStar()));
-
-    keySlash = new QShortcut(this);
-    keySlash->setKey(Qt::Key_Slash);
-    connect(keySlash, SIGNAL(activated()), this, SLOT(shortcutSlash()));
-
-    keyMinus = new QShortcut(this);
-    keyMinus->setKey(Qt::Key_Minus);
-    connect(keyMinus, SIGNAL(activated()), this, SLOT(shortcutMinus()));
-
-    keyPlus = new QShortcut(this);
-    keyPlus->setKey(Qt::Key_Plus);
-    connect(keyPlus, SIGNAL(activated()), this, SLOT(shortcutPlus()));
-
-    keyShiftMinus = new QShortcut(this);
-    keyShiftMinus->setKey(Qt::SHIFT + Qt::Key_Minus);
-    connect(keyShiftMinus, SIGNAL(activated()), this, SLOT(shortcutShiftMinus()));
-
-    keyShiftPlus = new QShortcut(this);
-    keyShiftPlus->setKey(Qt::SHIFT + Qt::Key_Plus);
-    connect(keyShiftPlus, SIGNAL(activated()), this, SLOT(shortcutShiftPlus()));
-
-    keyControlMinus = new QShortcut(this);
-    keyControlMinus->setKey(Qt::CTRL + Qt::Key_Minus);
-    connect(keyControlMinus, SIGNAL(activated()), this, SLOT(shortcutControlMinus()));
-
-    keyControlPlus = new QShortcut(this);
-    keyControlPlus->setKey(Qt::CTRL + Qt::Key_Plus);
-    connect(keyControlPlus, SIGNAL(activated()), this, SLOT(shortcutControlPlus()));
-
-    keyQuit = new QShortcut(this);
-    keyQuit->setKey(Qt::CTRL + Qt::Key_Q);
-    connect(keyQuit, SIGNAL(activated()), this, SLOT(on_exitBtn_clicked()));
-
-    keyPageUp = new QShortcut(this);
-    keyPageUp->setKey(Qt::Key_PageUp);
-    connect(keyPageUp, SIGNAL(activated()), this, SLOT(shortcutPageUp()));
-
-    keyPageDown = new QShortcut(this);
-    keyPageDown->setKey(Qt::Key_PageDown);
-    connect(keyPageDown, SIGNAL(activated()), this, SLOT(shortcutPageDown()));
-
-    keyF = new QShortcut(this);
-    keyF->setKey(Qt::Key_F);
-    connect(keyF, SIGNAL(activated()), this, SLOT(shortcutF()));
-
-    keyM = new QShortcut(this);
-    keyM->setKey(Qt::Key_M);
-    connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
-
-    ui->baudRateCombo->insertItem(0, QString("115200"), 115200);
-    ui->baudRateCombo->insertItem(1, QString("57600"), 57600);
-    ui->baudRateCombo->insertItem(2, QString("38400"), 38400);
-    ui->baudRateCombo->insertItem(3, QString("28800"), 28800);
-    ui->baudRateCombo->insertItem(4, QString("19200"), 19200);
-    ui->baudRateCombo->insertItem(5, QString("9600"), 9600);
-    ui->baudRateCombo->insertItem(6, QString("4800"), 4800);
-    ui->baudRateCombo->insertItem(7, QString("2400"), 2400);
-    ui->baudRateCombo->insertItem(8, QString("1200"), 1200);
-    ui->baudRateCombo->insertItem(9, QString("300"), 300);
-
-
-    // Enumerate audio devices, need to do before settings are loaded.
-    std::map<int, std::string> apiMap;
-    apiMap[RtAudio::MACOSX_CORE] = "OS-X Core Audio";
-    apiMap[RtAudio::WINDOWS_ASIO] = "Windows ASIO";
-    apiMap[RtAudio::WINDOWS_DS] = "Windows DirectSound";
-    apiMap[RtAudio::WINDOWS_WASAPI] = "Windows WASAPI";
-    apiMap[RtAudio::UNIX_JACK] = "Jack Client";
-    apiMap[RtAudio::LINUX_ALSA] = "Linux ALSA";
-    apiMap[RtAudio::LINUX_PULSE] = "Linux PulseAudio";
-    apiMap[RtAudio::LINUX_OSS] = "Linux OSS";
-    apiMap[RtAudio::RTAUDIO_DUMMY] = "RtAudio Dummy";
-
-    std::vector< RtAudio::Api > apis;
-    RtAudio::getCompiledApi(apis);
-
-    qInfo(logAudio()) << "RtAudio Version " << QString::fromStdString(RtAudio::getVersion());
-
-    qInfo(logAudio()) << "Compiled APIs:";
-    for (unsigned int i = 0; i < apis.size(); i++) {
-       qInfo(logAudio()) << "  " << QString::fromStdString(apiMap[apis[i]]);
-    }
-
-    RtAudio::DeviceInfo info;
-    qInfo(logAudio()) << "Current API: " << QString::fromStdString(apiMap[audio.getCurrentApi()]);
-
-    unsigned int devices = audio.getDeviceCount();
-    qInfo(logAudio()) << "Found " << devices << " audio device(s) *=default";
-
-    for (unsigned int i = 1; i < devices; i++) {
-        info = audio.getDeviceInfo(i);
-        if (info.outputChannels > 0) {
-            qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name);
-            ui->audioOutputCombo->addItem(QString::fromStdString(info.name), i);
-        }
-        if (info.inputChannels > 0) {
-            qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name);
-            ui->audioInputCombo->addItem(QString::fromStdString(info.name), i);
-        }
-    }
-
-    ui->serialDeviceListCombo->blockSignals(true);
-    ui->serialDeviceListCombo->addItem("Auto", 0);
-    int i = 0;
-    foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
-    {
-        portList.append(serialPortInfo.portName());
-#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
-        ui->serialDeviceListCombo->addItem(QString("/dev/")+serialPortInfo.portName(), i++);
-        ui->serialDeviceListCombo->addItem("Manual...", 256);
-#else
-        ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
-#endif
-    }
-    ui->serialDeviceListCombo->blockSignals(false);
-
-    ui->vspCombo->blockSignals(true);
-
-#ifdef Q_OS_WIN
-    ui->vspCombo->addItem(QString("None"), i++);
-
-    foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
-    {
-        ui->vspCombo->addItem(serialPortInfo.portName());
-    }
-#else
-    // Provide reasonable names for the symbolic link to the pty device
-#ifdef Q_OS_MAC
-    QString vspName = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/rig-pty";
-#else
-    QString vspName=QDir::homePath()+"/rig-pty";
-#endif
-    for (i=1;i<8;i++) {
-        ui->vspCombo->addItem(vspName + QString::number(i));
-
-        if (QFile::exists(vspName+QString::number(i))) {
-            auto * model = qobject_cast<QStandardItemModel*>(ui->vspCombo->model());
-            auto *item = model->item(ui->vspCombo->count()-1);
-            item->setEnabled(false);
-        }
-    }
-    ui->vspCombo->addItem(vspName+QString::number(i));
-    ui->vspCombo->addItem(QString("None"), i++);
-
-#endif
-    ui->vspCombo->setEditable(true);
-    ui->vspCombo->blockSignals(false);
-
-
-    setDefaultColors(); // set of UI colors with defaults populated
-    setDefPrefs(); // other default options
-    if (settingsFile.isNull()) {
-        settings = new QSettings();
-    }
-    else
-    {
-        QString file = settingsFile;
-        QFile info(settingsFile);
-        QString path="";
-        if (!QFileInfo(info).isAbsolute())
-        {
-            path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-            if (path.isEmpty())
-            {
-                path = QDir::homePath();
-            }
-            path = path + "/";
-            file = info.fileName();
-        }
-
-        qDebug() << "Loading settings from:" << path + file;
-        settings = new QSettings(path + file, QSettings::Format::IniFormat);
-    }
-    loadSettings(); // Look for saved preferences
-    setTuningSteps(); // TODO: Combine into preferences
-
-    ui->spectrumModeCombo->addItem("Center", (spectrumMode)spectModeCenter);
-    ui->spectrumModeCombo->addItem("Fixed", (spectrumMode)spectModeFixed);
-    ui->spectrumModeCombo->addItem("Scroll-C", (spectrumMode)spectModeScrollC);
-    ui->spectrumModeCombo->addItem("Scroll-F", (spectrumMode)spectModeScrollF);
-
-    // Start server if enabled in config
-    if (serverConfig.enabled) {
-        serverConfig.lan = prefs.enableLAN;
-        if (!serverConfig.lan) {
-            serverConfig.resampleQuality = udpPrefs.resampleQuality;
-            serverConfig.audioInput = udpPrefs.audioInput;
-            serverConfig.audioOutput = udpPrefs.audioOutput;
-            serverConfig.baudRate = prefs.serialPortBaud;
-            serverConfig.audioInput = udpPrefs.audioInput;
-            serverConfig.audioOutput = udpPrefs.audioOutput;
-        }
-        udp = new udpServer(serverConfig);
-
-        serverThread = new QThread(this);
-
-        udp->moveToThread(serverThread);
-
-        connect(this, SIGNAL(initServer()), udp, SLOT(init()));
-        connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
-
-
-        serverThread->start();
-
-        emit initServer();
-
-        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
-
-    }
-
-    plot = ui->plot; // rename it waterfall.
-    wf = ui->waterfall;
-
-    freqIndicatorLine = new QCPItemLine(plot);
-    freqIndicatorLine->setAntialiased(true);
-    freqIndicatorLine->setPen(QPen(Qt::blue));
-
-
-    ui->modeSelectCombo->addItem("LSB",  0x00);
-    ui->modeSelectCombo->addItem("USB",  0x01);
-    ui->modeSelectCombo->addItem("FM",   0x05);
-    ui->modeSelectCombo->addItem("AM",   0x02);
-    ui->modeSelectCombo->addItem("CW",   0x03);
-    ui->modeSelectCombo->addItem("CW-R", 0x07);
-    ui->modeSelectCombo->addItem("RTTY", 0x04);
-    ui->modeSelectCombo->addItem("RTTY-R", 0x08);
-
-
-    ui->modeFilterCombo->addItem("1", 1);
-    ui->modeFilterCombo->addItem("2", 2);
-    ui->modeFilterCombo->addItem("3", 3);
-    ui->modeFilterCombo->addItem("Setup...", 99);
-
-    ui->tuningStepCombo->blockSignals(true);
-
-    ui->tuningStepCombo->addItem("1 Hz",      (unsigned int)       1);
-    ui->tuningStepCombo->addItem("10 Hz",     (unsigned int)      10);
-    ui->tuningStepCombo->addItem("100 Hz",    (unsigned int)     100);
-    ui->tuningStepCombo->addItem("1 kHz",     (unsigned int)    1000);
-    ui->tuningStepCombo->addItem("2.5 kHz",   (unsigned int)    2500);
-    ui->tuningStepCombo->addItem("5 kHz",     (unsigned int)    5000);
-    ui->tuningStepCombo->addItem("6.125 kHz", (unsigned int)    6125);	// PMR 
-    ui->tuningStepCombo->addItem("8.333 kHz", (unsigned int)    8333);	// airband stepsize
-    ui->tuningStepCombo->addItem("9 kHz",     (unsigned int)    9000);	// European medium wave stepsize
-    ui->tuningStepCombo->addItem("10 kHz",    (unsigned int)   10000);
-    ui->tuningStepCombo->addItem("12.5 kHz",  (unsigned int)   12500);
-    ui->tuningStepCombo->addItem("100 kHz",   (unsigned int)  100000);
-    ui->tuningStepCombo->addItem("250 kHz",   (unsigned int)  250000);
-    ui->tuningStepCombo->addItem("1 MHz",     (unsigned int) 1000000);  //for 23 cm and HF 
-
-
-    ui->tuningStepCombo->setCurrentIndex(2);
-    ui->tuningStepCombo->blockSignals(false);
-
-    ui->wfthemeCombo->addItem("Jet", QCPColorGradient::gpJet);
-    ui->wfthemeCombo->addItem("Cold", QCPColorGradient::gpCold);
-    ui->wfthemeCombo->addItem("Hot", QCPColorGradient::gpHot);
-    ui->wfthemeCombo->addItem("Thermal", QCPColorGradient::gpThermal);
-    ui->wfthemeCombo->addItem("Night", QCPColorGradient::gpNight);
-    ui->wfthemeCombo->addItem("Ion", QCPColorGradient::gpIon);
-    ui->wfthemeCombo->addItem("Gray", QCPColorGradient::gpGrayscale);
-    ui->wfthemeCombo->addItem("Geography", QCPColorGradient::gpGeography);
-    ui->wfthemeCombo->addItem("Hues", QCPColorGradient::gpHues);
-    ui->wfthemeCombo->addItem("Polar", QCPColorGradient::gpPolar);
-    ui->wfthemeCombo->addItem("Spectrum", QCPColorGradient::gpSpectrum);
-    ui->wfthemeCombo->addItem("Candy", QCPColorGradient::gpCandy);
-
-    spans << "2.5k" << "5.0k" << "10k" << "25k";
-    spans << "50k" << "100k" << "250k" << "500k";
-    ui->scopeBWCombo->insertItems(0, spans);
-
-    edges << "1" << "2" << "3" << "4";
-    ui->scopeEdgeCombo->insertItems(0, edges);
-
-    ui->splitter->setHandleWidth(5);
-
-    // Set scroll wheel response (tick interval)
-    // and set arrow key response (single step)
-    ui->rfGainSlider->setTickInterval(100);
-    ui->rfGainSlider->setSingleStep(10);
-
-    ui->afGainSlider->setTickInterval(100);
-    ui->afGainSlider->setSingleStep(10);
-
-    ui->sqlSlider->setTickInterval(100);
-    ui->sqlSlider->setSingleStep(10);
-
-    ui->txPowerSlider->setTickInterval(100);
-    ui->txPowerSlider->setSingleStep(10);
-
-    ui->micGainSlider->setTickInterval(100);
-    ui->micGainSlider->setSingleStep(10);
-
-    ui->scopeRefLevelSlider->setTickInterval(50);
-    ui->scopeRefLevelSlider->setSingleStep(20);
-
-    rigStatus = new QLabel(this);
-    ui->statusBar->addPermanentWidget(rigStatus);
-    ui->statusBar->showMessage("Connecting to rig...", 1000);
-
-    pttLed = new QLedLabel(this);
-    ui->statusBar->addPermanentWidget(pttLed);
-    pttLed->setState(QLedLabel::State::StateOk);
-
-    connectedLed = new QLedLabel(this);
-    ui->statusBar->addPermanentWidget(connectedLed);
-
-    rigName = new QLabel(this);
-    ui->statusBar->addPermanentWidget(rigName);
-    rigName->setText("NONE");
-    rigName->setFixedWidth(50);
-
-    delayedCmdIntervalLAN_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
-    delayedCmdIntervalSerial_ms = 100; // interval for regular delayed commands, including initial rig/UI state queries
-    delayedCmdStartupInterval_ms = 250; // interval for rigID polling
-    delayedCommand = new QTimer(this);
-    delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
-    delayedCommand->setSingleShot(true);
-    connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
-
-    periodicPollingTimer = new QTimer(this);
-    periodicPollingTimer->setInterval(10);
-    periodicPollingTimer->setSingleShot(false);
-    connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(runPeriodicCommands()));
-
-    freq.MHzDouble = 0.0;
-    freq.Hz = 0;
-
-    openRig();
-
     qRegisterMetaType<rigCapabilities>();
     qRegisterMetaType<duplexMode>();
     qRegisterMetaType<rptAccessTxRx>();
@@ -445,6 +40,150 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType<spectrumMode>();
     qRegisterMetaType<freqt>();
     qRegisterMetaType<audioPacket>();
+
+    haveRigCaps = false;
+
+    setupKeyShortcuts();
+
+    setupMainUI();
+
+    setSerialDevicesUI();
+
+    setAudioDevicesUI();
+
+    setDefaultColors();
+    setDefPrefs();
+
+    getSettingsFilePath(settingsFile);
+
+    setupPlots();
+    loadSettings(); // Look for saved preferences
+    setTuningSteps(); // TODO: Combine into preferences
+
+    setUIToPrefs();
+
+    setServerToPrefs();
+
+    setInitialTiming();
+
+    openRig();
+
+    rigConnections();
+
+    if (serverConfig.enabled && udp != Q_NULLPTR) {
+        // Server
+        connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
+        connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
+        connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
+    }
+
+    amTransmitting = false;
+}
+
+wfmain::~wfmain()
+{
+    rigThread->quit();
+    rigThread->wait();
+    if (serverThread != Q_NULLPTR) {
+        serverThread->quit();
+        serverThread->wait();
+    }
+    if (rigCtl != Q_NULLPTR) {
+        delete rigCtl;
+    }
+    delete rpt;
+    delete ui;
+    delete settings;
+}
+
+void wfmain::closeEvent(QCloseEvent *event)
+{
+    // Are you sure?
+    QMessageBox::StandardButton resBtn = QMessageBox::question( this, QString("Confirm close"),
+                                                                tr("Are you sure you wish to exit?\n"),
+                                                                QMessageBox::No | QMessageBox::Yes,
+                                                                QMessageBox::Yes);
+    if (resBtn == QMessageBox::Yes) {
+        QApplication::exit();
+    } else {
+        event->ignore();
+    }
+}
+
+void wfmain::openRig()
+{
+    // This function is intended to handle opening a connection to the rig.
+    // the connection can be either serial or network,
+    // and this function is also responsible for initiating the search for a rig model and capabilities.
+    // Any errors, such as unable to open connection or unable to open port, are to be reported to the user.
+
+    //TODO: if(hasRunPreviously)
+
+    //TODO: if(useNetwork){...
+
+    // } else {
+
+    // if (prefs.fileWasNotFound) {
+    //     showRigSettings(); // rig setting dialog box for network/serial, CIV, hostname, port, baud rate, serial device, etc
+    // TODO: How do we know if the setting was loaded?
+
+
+    // TODO: Use these if they are found
+    if(!serialPortCL.isEmpty())
+    {
+        qDebug(logSystem()) << "Serial port specified by user: " << serialPortCL;
+    } else {
+        qDebug(logSystem()) << "Serial port not specified. ";
+    }
+
+    if(!hostCL.isEmpty())
+    {
+        qDebug(logSystem()) << "Remote host name specified by user: " << hostCL;
+    }
+
+    // Start rigctld
+    if (prefs.enableRigCtlD && rigCtl == Q_NULLPTR) {
+        rigCtl = new rigCtlD(this);
+
+        rigCtl->startServer(prefs.rigCtlPort);
+        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), rigCtl, SLOT(receiveRigCaps(rigCapabilities)));
+    }
+
+    makeRig();
+
+    if (prefs.enableLAN)
+    {
+        ui->lanEnableBtn->setChecked(true);
+        emit sendCommSetup(prefs.radioCIVAddr, udpPrefs,prefs.virtualSerialPort);
+    } else {
+        ui->serialEnableBtn->setChecked(true);
+        if( (prefs.serialPortRadio.toLower() == QString("auto")) && (serialPortCL.isEmpty()))
+        {
+            findSerialPort();
+
+        } else {
+            if(serialPortCL.isEmpty())
+            {
+                serialPortRig = prefs.serialPortRadio;
+            } else {
+                serialPortRig = serialPortCL;
+            }
+        }
+
+        // Here, the radioCIVAddr is being set from a default preference, which is for the 7300.
+        // However, we will not use it initially. OTOH, if it is set explicitedly to a value in the prefs,
+        // then we skip auto detection.
+        emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort);
+    }
+
+    ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
+
+
+}
+
+void wfmain::rigConnections()
+{
+    connect(this, SIGNAL(setCIVAddr(unsigned char)), rig, SLOT(setCIVAddr(unsigned char)));
 
     connect(this, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
     connect(this, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
@@ -588,177 +327,34 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     connect(cal, SIGNAL(setRefAdjustCourse(unsigned char)), rig, SLOT(setRefAdjustCourse(unsigned char)));
     connect(cal, SIGNAL(setRefAdjustFine(unsigned char)), rig, SLOT(setRefAdjustFine(unsigned char)));
 
-
-    // Plot user interaction
-    connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
-    connect(wf, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handleWFDoubleClick(QMouseEvent*)));
-    connect(plot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handlePlotClick(QMouseEvent*)));
-    connect(wf, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handleWFClick(QMouseEvent*)));
-    connect(wf, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handleWFScroll(QWheelEvent*)));
-    connect(plot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handlePlotScroll(QWheelEvent*)));
-
-
-    if (serverConfig.enabled && udp != Q_NULLPTR) {
-        // Server
-        connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
-        connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
-        connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
-    }
-
-    ui->plot->addGraph(); // primary
-    ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first?
-    ui->waterfall->addGraph();
-
-
-
-    colorMap = new QCPColorMap(wf->xAxis, wf->yAxis);
-    colorMapData = NULL;
-
-#if QCUSTOMPLOT_VERSION < 0x020001
-    wf->addPlottable(colorMap);
-#endif
-
-    colorScale = new QCPColorScale(wf);
-
-    ui->tabWidget->setCurrentIndex(0);
-
-    QColor color(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
-    plot->graph(1)->setLineStyle(QCPGraph::lsLine);
-    plot->graph(1)->setPen(QPen(color.lighter(200)));
-    plot->graph(1)->setBrush(QBrush(color));
-
-    drawPeaks = false;
-
-    SMeterReadings.fill(0,30);
-    powerMeterReadings.fill(0,30);
-
-
-    ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
-    ui->controlPortTxt->setValidator(new QIntValidator(this));
-
-    pttTimer = new QTimer(this);
-    pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
-    pttTimer->setSingleShot(true);
-    connect(pttTimer, SIGNAL(timeout()), this, SLOT(handlePttLimit()));
-    amTransmitting = false;
-    ui->tuneLockChk->setChecked(false);
-    freqLock = false;
-
-
-    freqIndicatorLine->start->setCoords(0.5,0);
-    freqIndicatorLine->end->setCoords(0.5,160);
-
-    qDebug(logSystem()) << "Running with debugging options enabled.";
-#ifdef QT_DEBUG
-    ui->debugBtn->setVisible(true);
-    ui->satOpsBtn->setVisible(true);
-#else
-    ui->debugBtn->setVisible(false);
-    ui->satOpsBtn->setVisible(false);
-#endif
-
-    // Initial state of UI:
-    ui->fullScreenChk->setChecked(prefs.useFullScreen);
-    on_fullScreenChk_clicked(prefs.useFullScreen);
-
-    ui->useDarkThemeChk->setChecked(prefs.useDarkMode);
-    on_useDarkThemeChk_clicked(prefs.useDarkMode);
-
-    ui->useSystemThemeChk->setChecked(prefs.useSystemTheme);
-    on_useSystemThemeChk_clicked(prefs.useSystemTheme);
-
-    ui->drawPeakChk->setChecked(prefs.drawPeaks);
-    on_drawPeakChk_clicked(prefs.drawPeaks);
-    drawPeaks = prefs.drawPeaks;
-
-    //getInitialRigState();
-    oldFreqDialVal = ui->freqDial->value();
 }
 
-wfmain::~wfmain()
+//void wfmain::removeRigConnections()
+//{
+
+//}
+
+void wfmain::makeRig()
 {
-    rigThread->quit();
-    rigThread->wait();
-    if (serverThread != Q_NULLPTR) {
-        serverThread->quit();
-        serverThread->wait();
-    }
-    if (rigCtl != Q_NULLPTR) {
-        delete rigCtl;
-    }
-    delete rpt;
-    delete ui;
-    delete settings;
-}
-
-void wfmain::closeEvent(QCloseEvent *event)
-{
-    // Are you sure?
-    QMessageBox::StandardButton resBtn = QMessageBox::question( this, QString("Confirm close"),
-                                                                tr("Are you sure you wish to exit?\n"),
-                                                                QMessageBox::No | QMessageBox::Yes,
-                                                                QMessageBox::Yes);
-    if (resBtn == QMessageBox::Yes) {
-        QApplication::exit();
-    } else {
-        event->ignore();
-    }
-}
-
-void wfmain::openRig()
-{
-    // This function is intended to handle opening a connection to the rig.
-    // the connection can be either serial or network,
-    // and this function is also responsible for initiating the search for a rig model and capabilities.
-    // Any errors, such as unable to open connection or unable to open port, are to be reported to the user.
-
-    //TODO: if(hasRunPreviously)
-
-    //TODO: if(useNetwork){...
-
-    // } else {
-
-    // if (prefs.fileWasNotFound) {
-    //     showRigSettings(); // rig setting dialog box for network/serial, CIV, hostname, port, baud rate, serial device, etc
-    // TODO: How do we know if the setting was loaded?
-
-
-    // TODO: Use these if they are found
-    if(!serialPortCL.isEmpty())
-    {
-        qDebug(logSystem()) << "Serial port specified by user: " << serialPortCL;
-    } else {
-        qDebug(logSystem()) << "Serial port not specified. ";
-    }
-
-    if(!hostCL.isEmpty())
-    {
-        qDebug(logSystem()) << "Remote host name specified by user: " << hostCL;
-    }
-
-    // Start rigctld
-    if (prefs.enableRigCtlD) {
-        rigCtl = new rigCtlD(this);
-
-        rigCtl->startServer(prefs.rigCtlPort);
-        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), rigCtl, SLOT(receiveRigCaps(rigCapabilities)));
-    }
-
     if (rigThread == Q_NULLPTR)
     {
         rig = new rigCommander();
         rigThread = new QThread(this);
 
+        // Thread:
         rig->moveToThread(rigThread);
-
         connect(rigThread, SIGNAL(started()), rig, SLOT(process()));
         connect(rigThread, SIGNAL(finished()), rig, SLOT(deleteLater()));
         rigThread->start();
+
+        // Rig status and Errors:
         connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
         connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
-        
+
+        // Rig comm setup:
         connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences, QString)), rig, SLOT(commSetup(unsigned char, udpPreferences, QString)));
         connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32,QString)), rig, SLOT(commSetup(unsigned char, QString, quint32,QString)));
+
 
         connect(rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
 
@@ -775,84 +371,78 @@ void wfmain::openRig()
             connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
         }
     }
+}
 
-    if (prefs.enableLAN)
+void wfmain::removeRig()
+{
+    if (rigThread != Q_NULLPTR)
     {
-        ui->lanEnableBtn->setChecked(true);
-        emit sendCommSetup(prefs.radioCIVAddr, udpPrefs,prefs.virtualSerialPort);
-    } else {
-        ui->serialEnableBtn->setChecked(true);
-        if( (prefs.serialPortRadio.toLower() == QString("auto")) && (serialPortCL.isEmpty()))
-        {
-            // Find the ICOM
-            // qInfo(logSystem()) << "Searching for serial port...";
-            QDirIterator it73("/dev/serial/by-id", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
-            QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*A*", QDir::Files, QDirIterator::Subdirectories);
-            QDirIterator it785x("/dev/serial", QStringList() << "*IC-785*A*", QDir::Files, QDirIterator::Subdirectories);
-            QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
-            QDirIterator it7610("/dev/serial", QStringList() << "*IC-7610*A", QDir::Files, QDirIterator::Subdirectories);
-            QDirIterator itR8600("/dev/serial", QStringList() << "*IC-R8600*A", QDir::Files, QDirIterator::Subdirectories);
-            QDirIterator itTest("/tmp/test", QStringList() << "*radio*", QDir::NoFilter, QDirIterator::Subdirectories);
-
-            qDebug() << "test iterator isEmpty: " << itTest.filePath().isEmpty();
-
-            if(!it73.filePath().isEmpty())
-            {
-                // IC-7300
-                serialPortRig = it73.filePath(); // first
-            } else if(!it97.filePath().isEmpty())
-            {
-                // IC-9700
-                serialPortRig = it97.filePath();
-            } else if(!it785x.filePath().isEmpty())
-            {
-                // IC-785x
-                serialPortRig = it785x.filePath();
-            } else if(!it705.filePath().isEmpty())
-            {
-                // IC-705
-                serialPortRig = it705.filePath();
-            } else if(!it7610.filePath().isEmpty())
-            {
-                // IC-7610
-                serialPortRig = it7610.filePath();
-            } else if(!itR8600.filePath().isEmpty())
-            {
-                // IC-R8600
-                serialPortRig = itR8600.filePath();
-            } else {
-                //fall back:
-
-
-                qInfo(logSystem()) << "Could not find Icom serial port. Falling back to OS default. Use --port to specify, or modify preferences.";
-#ifdef Q_OS_MAC
-                serialPortRig = QString("/dev/tty.SLAB_USBtoUART");
-#endif
-#ifdef Q_OS_LINUX
-                serialPortRig = QString("/dev/ttyUSB0");
-#endif
-#ifdef Q_OS_WIN
-                serialPortRig = QString("COM1");
-#endif
-            }
-
-        } else {
-            if(serialPortCL.isEmpty())
-            {
-                serialPortRig = prefs.serialPortRadio;
-            } else {
-                serialPortRig = serialPortCL;
-            }
+        if (rigCtl != Q_NULLPTR) {
+            rigCtl->disconnect();
         }
+        rigThread->disconnect();
 
-        // Here, the radioCIVAddr is being set from a default preference, which is for the 7300.
-        // However, we will not use it initially. OTOH, if it is set explicitedly to a value in the prefs,
-        // then we skip auto detection.
-        emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort);
+        rig->disconnect();
+
+        delete rigThread;
+        delete rig;
+
     }
 
-    ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
+}
 
+
+void wfmain::findSerialPort()
+{
+    // Find the ICOM radio connected, or, if none, fall back to OS default.
+    // qInfo(logSystem()) << "Searching for serial port...";
+    QDirIterator it73("/dev/serial/by-id", QStringList() << "*IC-7300*", QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator it97("/dev/serial", QStringList() << "*IC-9700*A*", QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator it785x("/dev/serial", QStringList() << "*IC-785*A*", QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator it7610("/dev/serial", QStringList() << "*IC-7610*A", QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator itR8600("/dev/serial", QStringList() << "*IC-R8600*A", QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator itTest("/tmp/test", QStringList() << "*radio*", QDir::NoFilter, QDirIterator::Subdirectories);
+
+    qDebug() << "test iterator isEmpty: " << itTest.filePath().isEmpty();
+
+    if(!it73.filePath().isEmpty())
+    {
+        // IC-7300
+        serialPortRig = it73.filePath(); // first
+    } else if(!it97.filePath().isEmpty())
+    {
+        // IC-9700
+        serialPortRig = it97.filePath();
+    } else if(!it785x.filePath().isEmpty())
+    {
+        // IC-785x
+        serialPortRig = it785x.filePath();
+    } else if(!it705.filePath().isEmpty())
+    {
+        // IC-705
+        serialPortRig = it705.filePath();
+    } else if(!it7610.filePath().isEmpty())
+    {
+        // IC-7610
+        serialPortRig = it7610.filePath();
+    } else if(!itR8600.filePath().isEmpty())
+    {
+        // IC-R8600
+        serialPortRig = itR8600.filePath();
+    } else {
+        //fall back:
+        qInfo(logSystem()) << "Could not find Icom serial port. Falling back to OS default. Use --port to specify, or modify preferences.";
+#ifdef Q_OS_MAC
+        serialPortRig = QString("/dev/tty.SLAB_USBtoUART");
+#endif
+#ifdef Q_OS_LINUX
+        serialPortRig = QString("/dev/ttyUSB0");
+#endif
+#ifdef Q_OS_WIN
+        serialPortRig = QString("COM1");
+#endif
+    }
 }
 
 void wfmain::receiveCommReady()
@@ -930,6 +520,505 @@ void wfmain::receiveSerialPortError(QString port, QString errorText)
 void wfmain::receiveStatusUpdate(QString text)
 {
     this->rigStatus->setText(text);
+}
+
+void wfmain::setupPlots()
+{
+
+// Line 290--
+    spectrumDrawLock = true;
+    plot = ui->plot; // rename it waterfall.
+    wf = ui->waterfall;
+
+    freqIndicatorLine = new QCPItemLine(plot);
+    freqIndicatorLine->setAntialiased(true);
+    freqIndicatorLine->setPen(QPen(Qt::blue));
+//
+
+    ui->plot->addGraph(); // primary
+    ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first?
+    ui->waterfall->addGraph();
+
+    colorMap = new QCPColorMap(wf->xAxis, wf->yAxis);
+    colorMapData = NULL;
+
+#if QCUSTOMPLOT_VERSION < 0x020001
+    wf->addPlottable(colorMap);
+#endif
+
+    colorScale = new QCPColorScale(wf);
+
+    ui->tabWidget->setCurrentIndex(0);
+
+    QColor color(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
+    plot->graph(1)->setLineStyle(QCPGraph::lsLine);
+    plot->graph(1)->setPen(QPen(color.lighter(200)));
+    plot->graph(1)->setBrush(QBrush(color));
+
+    freqIndicatorLine->start->setCoords(0.5,0);
+    freqIndicatorLine->end->setCoords(0.5,160);
+
+    // Plot user interaction
+    connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
+    connect(wf, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handleWFDoubleClick(QMouseEvent*)));
+    connect(plot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handlePlotClick(QMouseEvent*)));
+    connect(wf, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handleWFClick(QMouseEvent*)));
+    connect(wf, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handleWFScroll(QWheelEvent*)));
+    connect(plot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handlePlotScroll(QWheelEvent*)));
+    spectrumDrawLock = false;
+}
+
+void wfmain::setupMainUI()
+{
+    ui->bandStkLastUsedBtn->setVisible(false);
+    ui->bandStkVoiceBtn->setVisible(false);
+    ui->bandStkDataBtn->setVisible(false);
+    ui->bandStkCWBtn->setVisible(false);
+
+    ui->baudRateCombo->insertItem(0, QString("115200"), 115200);
+    ui->baudRateCombo->insertItem(1, QString("57600"), 57600);
+    ui->baudRateCombo->insertItem(2, QString("38400"), 38400);
+    ui->baudRateCombo->insertItem(3, QString("28800"), 28800);
+    ui->baudRateCombo->insertItem(4, QString("19200"), 19200);
+    ui->baudRateCombo->insertItem(5, QString("9600"), 9600);
+    ui->baudRateCombo->insertItem(6, QString("4800"), 4800);
+    ui->baudRateCombo->insertItem(7, QString("2400"), 2400);
+    ui->baudRateCombo->insertItem(8, QString("1200"), 1200);
+    ui->baudRateCombo->insertItem(9, QString("300"), 300);
+
+    ui->spectrumModeCombo->addItem("Center", (spectrumMode)spectModeCenter);
+    ui->spectrumModeCombo->addItem("Fixed", (spectrumMode)spectModeFixed);
+    ui->spectrumModeCombo->addItem("Scroll-C", (spectrumMode)spectModeScrollC);
+    ui->spectrumModeCombo->addItem("Scroll-F", (spectrumMode)spectModeScrollF);
+
+    ui->modeSelectCombo->addItem("LSB",  0x00);
+    ui->modeSelectCombo->addItem("USB",  0x01);
+    ui->modeSelectCombo->addItem("FM",   0x05);
+    ui->modeSelectCombo->addItem("AM",   0x02);
+    ui->modeSelectCombo->addItem("CW",   0x03);
+    ui->modeSelectCombo->addItem("CW-R", 0x07);
+    ui->modeSelectCombo->addItem("RTTY", 0x04);
+    ui->modeSelectCombo->addItem("RTTY-R", 0x08);
+
+
+    ui->modeFilterCombo->addItem("1", 1);
+    ui->modeFilterCombo->addItem("2", 2);
+    ui->modeFilterCombo->addItem("3", 3);
+    ui->modeFilterCombo->addItem("Setup...", 99);
+
+    ui->tuningStepCombo->blockSignals(true);
+
+    ui->tuningStepCombo->addItem("1 Hz",      (unsigned int)       1);
+    ui->tuningStepCombo->addItem("10 Hz",     (unsigned int)      10);
+    ui->tuningStepCombo->addItem("100 Hz",    (unsigned int)     100);
+    ui->tuningStepCombo->addItem("1 kHz",     (unsigned int)    1000);
+    ui->tuningStepCombo->addItem("2.5 kHz",   (unsigned int)    2500);
+    ui->tuningStepCombo->addItem("5 kHz",     (unsigned int)    5000);
+    ui->tuningStepCombo->addItem("6.125 kHz", (unsigned int)    6125);	// PMR
+    ui->tuningStepCombo->addItem("8.333 kHz", (unsigned int)    8333);	// airband stepsize
+    ui->tuningStepCombo->addItem("9 kHz",     (unsigned int)    9000);	// European medium wave stepsize
+    ui->tuningStepCombo->addItem("10 kHz",    (unsigned int)   10000);
+    ui->tuningStepCombo->addItem("12.5 kHz",  (unsigned int)   12500);
+    ui->tuningStepCombo->addItem("100 kHz",   (unsigned int)  100000);
+    ui->tuningStepCombo->addItem("250 kHz",   (unsigned int)  250000);
+    ui->tuningStepCombo->addItem("1 MHz",     (unsigned int) 1000000);  //for 23 cm and HF
+
+
+    ui->tuningStepCombo->setCurrentIndex(2);
+    ui->tuningStepCombo->blockSignals(false);
+
+    ui->wfthemeCombo->addItem("Jet", QCPColorGradient::gpJet);
+    ui->wfthemeCombo->addItem("Cold", QCPColorGradient::gpCold);
+    ui->wfthemeCombo->addItem("Hot", QCPColorGradient::gpHot);
+    ui->wfthemeCombo->addItem("Thermal", QCPColorGradient::gpThermal);
+    ui->wfthemeCombo->addItem("Night", QCPColorGradient::gpNight);
+    ui->wfthemeCombo->addItem("Ion", QCPColorGradient::gpIon);
+    ui->wfthemeCombo->addItem("Gray", QCPColorGradient::gpGrayscale);
+    ui->wfthemeCombo->addItem("Geography", QCPColorGradient::gpGeography);
+    ui->wfthemeCombo->addItem("Hues", QCPColorGradient::gpHues);
+    ui->wfthemeCombo->addItem("Polar", QCPColorGradient::gpPolar);
+    ui->wfthemeCombo->addItem("Spectrum", QCPColorGradient::gpSpectrum);
+    ui->wfthemeCombo->addItem("Candy", QCPColorGradient::gpCandy);
+
+    spans << "2.5k" << "5.0k" << "10k" << "25k";
+    spans << "50k" << "100k" << "250k" << "500k";
+    ui->scopeBWCombo->insertItems(0, spans);
+
+    edges << "1" << "2" << "3" << "4";
+    ui->scopeEdgeCombo->insertItems(0, edges);
+
+    ui->splitter->setHandleWidth(5);
+
+    // Set scroll wheel response (tick interval)
+    // and set arrow key response (single step)
+    ui->rfGainSlider->setTickInterval(100);
+    ui->rfGainSlider->setSingleStep(10);
+
+    ui->afGainSlider->setTickInterval(100);
+    ui->afGainSlider->setSingleStep(10);
+
+    ui->sqlSlider->setTickInterval(100);
+    ui->sqlSlider->setSingleStep(10);
+
+    ui->txPowerSlider->setTickInterval(100);
+    ui->txPowerSlider->setSingleStep(10);
+
+    ui->micGainSlider->setTickInterval(100);
+    ui->micGainSlider->setSingleStep(10);
+
+    ui->scopeRefLevelSlider->setTickInterval(50);
+    ui->scopeRefLevelSlider->setSingleStep(20);
+
+    ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
+    ui->controlPortTxt->setValidator(new QIntValidator(this));
+
+    qDebug(logSystem()) << "Running with debugging options enabled.";
+#ifdef QT_DEBUG
+    ui->debugBtn->setVisible(true);
+    ui->satOpsBtn->setVisible(true);
+#else
+    ui->debugBtn->setVisible(false);
+    ui->satOpsBtn->setVisible(false);
+#endif
+
+    rigStatus = new QLabel(this);
+    ui->statusBar->addPermanentWidget(rigStatus);
+    ui->statusBar->showMessage("Connecting to rig...", 1000);
+
+    pttLed = new QLedLabel(this);
+    ui->statusBar->addPermanentWidget(pttLed);
+    pttLed->setState(QLedLabel::State::StateOk);
+
+    connectedLed = new QLedLabel(this);
+    ui->statusBar->addPermanentWidget(connectedLed);
+
+    rigName = new QLabel(this);
+    ui->statusBar->addPermanentWidget(rigName);
+    rigName->setText("NONE");
+    rigName->setFixedWidth(50);
+
+    SMeterReadings.fill(0,30);
+    powerMeterReadings.fill(0,30);
+
+    freq.MHzDouble = 0.0;
+    freq.Hz = 0;
+    oldFreqDialVal = ui->freqDial->value();
+
+    ui->tuneLockChk->setChecked(false);
+    freqLock = false;
+}
+
+void wfmain::getSettingsFilePath(QString settingsFile)
+{
+    if (settingsFile.isNull()) {
+        settings = new QSettings();
+    }
+    else
+    {
+        QString file = settingsFile;
+        QFile info(settingsFile);
+        QString path="";
+        if (!QFileInfo(info).isAbsolute())
+        {
+            path = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+            if (path.isEmpty())
+            {
+                path = QDir::homePath();
+            }
+            path = path + "/";
+            file = info.fileName();
+        }
+
+        qInfo(logSystem()) << "Loading settings from:" << path + file;
+        settings = new QSettings(path + file, QSettings::Format::IniFormat);
+    }
+}
+
+
+void wfmain::setInitialTiming()
+{
+    delayedCmdIntervalLAN_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
+    delayedCmdIntervalSerial_ms = 100; // interval for regular delayed commands, including initial rig/UI state queries
+    delayedCmdStartupInterval_ms = 250; // interval for rigID polling
+    delayedCommand = new QTimer(this);
+    delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
+    delayedCommand->setSingleShot(true);
+    connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
+
+    periodicPollingTimer = new QTimer(this);
+    periodicPollingTimer->setInterval(10);
+    periodicPollingTimer->setSingleShot(false);
+    connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(runPeriodicCommands()));
+
+    pttTimer = new QTimer(this);
+    pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
+    pttTimer->setSingleShot(true);
+    connect(pttTimer, SIGNAL(timeout()), this, SLOT(handlePttLimit()));
+}
+
+void wfmain::setServerToPrefs()
+{
+	
+    // Start server if enabled in config
+    if (serverConfig.enabled) {
+        serverConfig.lan = prefs.enableLAN;
+        if (!serverConfig.lan) {
+            serverConfig.resampleQuality = udpPrefs.resampleQuality;
+            serverConfig.audioInput = udpPrefs.audioInput;
+            serverConfig.audioOutput = udpPrefs.audioOutput;
+            serverConfig.baudRate = prefs.serialPortBaud;
+            serverConfig.audioInput = udpPrefs.audioInput;
+            serverConfig.audioOutput = udpPrefs.audioOutput;
+        }
+
+        udp = new udpServer(serverConfig);
+
+        serverThread = new QThread(this);
+
+        udp->moveToThread(serverThread);
+
+        connect(this, SIGNAL(initServer()), udp, SLOT(init()));
+        connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
+
+
+        serverThread->start();
+
+        emit initServer();
+
+        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
+
+    }
+}
+
+void wfmain::setUIToPrefs()
+{
+    ui->fullScreenChk->setChecked(prefs.useFullScreen);
+    on_fullScreenChk_clicked(prefs.useFullScreen);
+
+    ui->useDarkThemeChk->setChecked(prefs.useDarkMode);
+    on_useDarkThemeChk_clicked(prefs.useDarkMode);
+
+    ui->useSystemThemeChk->setChecked(prefs.useSystemTheme);
+    on_useSystemThemeChk_clicked(prefs.useSystemTheme);
+
+    ui->drawPeakChk->setChecked(prefs.drawPeaks);
+    on_drawPeakChk_clicked(prefs.drawPeaks);
+    drawPeaks = prefs.drawPeaks;
+}
+
+void wfmain::setAudioDevicesUI()
+{
+    // Enumerate audio devices, need to do before settings are loaded.
+    std::map<int, std::string> apiMap;
+    apiMap[RtAudio::MACOSX_CORE] = "OS-X Core Audio";
+    apiMap[RtAudio::WINDOWS_ASIO] = "Windows ASIO";
+    apiMap[RtAudio::WINDOWS_DS] = "Windows DirectSound";
+    apiMap[RtAudio::WINDOWS_WASAPI] = "Windows WASAPI";
+    apiMap[RtAudio::UNIX_JACK] = "Jack Client";
+    apiMap[RtAudio::LINUX_ALSA] = "Linux ALSA";
+    apiMap[RtAudio::LINUX_PULSE] = "Linux PulseAudio";
+    apiMap[RtAudio::LINUX_OSS] = "Linux OSS";
+    apiMap[RtAudio::RTAUDIO_DUMMY] = "RtAudio Dummy";
+
+    std::vector< RtAudio::Api > apis;
+    RtAudio::getCompiledApi(apis);
+
+    qInfo(logAudio()) << "RtAudio Version " << QString::fromStdString(RtAudio::getVersion());
+
+    qInfo(logAudio()) << "Compiled APIs:";
+    for (unsigned int i = 0; i < apis.size(); i++) {
+       qInfo(logAudio()) << "  " << QString::fromStdString(apiMap[apis[i]]);
+    }
+
+    RtAudio::DeviceInfo info;
+    qInfo(logAudio()) << "Current API: " << QString::fromStdString(apiMap[audio.getCurrentApi()]);
+
+    unsigned int devices = audio.getDeviceCount();
+    qInfo(logAudio()) << "Found " << devices << " audio device(s) *=default";
+
+    for (unsigned int i = 1; i < devices; i++) {
+        info = audio.getDeviceInfo(i);
+        if (info.outputChannels > 0) {
+            qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name);
+            ui->audioOutputCombo->addItem(QString::fromStdString(info.name), i);
+        }
+        if (info.inputChannels > 0) {
+            qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name);
+            ui->audioInputCombo->addItem(QString::fromStdString(info.name), i);
+        }
+    }
+}
+
+void wfmain::setSerialDevicesUI()
+{
+    ui->serialDeviceListCombo->blockSignals(true);
+    ui->serialDeviceListCombo->addItem("Auto", 0);
+    int i = 0;
+    foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
+    {
+        portList.append(serialPortInfo.portName());
+#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
+        ui->serialDeviceListCombo->addItem(QString("/dev/")+serialPortInfo.portName(), i++);
+#else
+        ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
+#endif
+    }
+#if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
+    ui->serialDeviceListCombo->addItem("Manual...", 256);
+#endif
+    ui->serialDeviceListCombo->blockSignals(false);
+
+    ui->vspCombo->blockSignals(true);
+
+#ifdef Q_OS_WIN
+    ui->vspCombo->addItem(QString("None"), i++);
+
+    foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
+    {
+        ui->vspCombo->addItem(serialPortInfo.portName());
+    }
+#else
+    // Provide reasonable names for the symbolic link to the pty device
+#ifdef Q_OS_MAC
+    QString vspName = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/rig-pty";
+#else
+    QString vspName=QDir::homePath()+"/rig-pty";
+#endif
+    for (i=1;i<8;i++) {
+        ui->vspCombo->addItem(vspName + QString::number(i));
+
+        if (QFile::exists(vspName+QString::number(i))) {
+            auto * model = qobject_cast<QStandardItemModel*>(ui->vspCombo->model());
+            auto *item = model->item(ui->vspCombo->count()-1);
+            item->setEnabled(false);
+        }
+    }
+    ui->vspCombo->addItem(vspName+QString::number(i));
+    ui->vspCombo->addItem(QString("None"), i++);
+
+#endif
+    ui->vspCombo->setEditable(true);
+    ui->vspCombo->blockSignals(false);
+}
+
+
+void wfmain::setupKeyShortcuts()
+{
+    keyF1 = new QShortcut(this);
+    keyF1->setKey(Qt::Key_F1);
+    connect(keyF1, SIGNAL(activated()), this, SLOT(shortcutF1()));
+
+    keyF2 = new QShortcut(this);
+    keyF2->setKey(Qt::Key_F2);
+    connect(keyF2, SIGNAL(activated()), this, SLOT(shortcutF2()));
+
+    keyF3 = new QShortcut(this);
+    keyF3->setKey(Qt::Key_F3);
+    connect(keyF3, SIGNAL(activated()), this, SLOT(shortcutF3()));
+
+    keyF4 = new QShortcut(this);
+    keyF4->setKey(Qt::Key_F4);
+    connect(keyF4, SIGNAL(activated()), this, SLOT(shortcutF4()));
+
+    keyF5 = new QShortcut(this);
+    keyF5->setKey(Qt::Key_F5);
+    connect(keyF5, SIGNAL(activated()), this, SLOT(shortcutF5()));
+
+    keyF6 = new QShortcut(this);
+    keyF6->setKey(Qt::Key_F6);
+    connect(keyF6, SIGNAL(activated()), this, SLOT(shortcutF6()));
+
+    keyF7 = new QShortcut(this);
+    keyF7->setKey(Qt::Key_F7);
+    connect(keyF7, SIGNAL(activated()), this, SLOT(shortcutF7()));
+
+    keyF8 = new QShortcut(this);
+    keyF8->setKey(Qt::Key_F8);
+    connect(keyF8, SIGNAL(activated()), this, SLOT(shortcutF8()));
+
+    keyF9 = new QShortcut(this);
+    keyF9->setKey(Qt::Key_F9);
+    connect(keyF9, SIGNAL(activated()), this, SLOT(shortcutF9()));
+
+    keyF10 = new QShortcut(this);
+    keyF10->setKey(Qt::Key_F10);
+    connect(keyF10, SIGNAL(activated()), this, SLOT(shortcutF10()));
+
+    keyF11 = new QShortcut(this);
+    keyF11->setKey(Qt::Key_F11);
+    connect(keyF11, SIGNAL(activated()), this, SLOT(shortcutF11()));
+
+    keyF12 = new QShortcut(this);
+    keyF12->setKey(Qt::Key_F12);
+    connect(keyF12, SIGNAL(activated()), this, SLOT(shortcutF12()));
+
+    keyControlT = new QShortcut(this);
+    keyControlT->setKey(Qt::CTRL + Qt::Key_T);
+    connect(keyControlT, SIGNAL(activated()), this, SLOT(shortcutControlT()));
+
+    keyControlR = new QShortcut(this);
+    keyControlR->setKey(Qt::CTRL + Qt::Key_R);
+    connect(keyControlR, SIGNAL(activated()), this, SLOT(shortcutControlR()));
+
+    keyControlI = new QShortcut(this);
+    keyControlI->setKey(Qt::CTRL + Qt::Key_I);
+    connect(keyControlI, SIGNAL(activated()), this, SLOT(shortcutControlI()));
+
+    keyControlU = new QShortcut(this);
+    keyControlU->setKey(Qt::CTRL + Qt::Key_U);
+    connect(keyControlU, SIGNAL(activated()), this, SLOT(shortcutControlU()));
+
+    keyStar = new QShortcut(this);
+    keyStar->setKey(Qt::Key_Asterisk);
+    connect(keyStar, SIGNAL(activated()), this, SLOT(shortcutStar()));
+
+    keySlash = new QShortcut(this);
+    keySlash->setKey(Qt::Key_Slash);
+    connect(keySlash, SIGNAL(activated()), this, SLOT(shortcutSlash()));
+
+    keyMinus = new QShortcut(this);
+    keyMinus->setKey(Qt::Key_Minus);
+    connect(keyMinus, SIGNAL(activated()), this, SLOT(shortcutMinus()));
+
+    keyPlus = new QShortcut(this);
+    keyPlus->setKey(Qt::Key_Plus);
+    connect(keyPlus, SIGNAL(activated()), this, SLOT(shortcutPlus()));
+
+    keyShiftMinus = new QShortcut(this);
+    keyShiftMinus->setKey(Qt::SHIFT + Qt::Key_Minus);
+    connect(keyShiftMinus, SIGNAL(activated()), this, SLOT(shortcutShiftMinus()));
+
+    keyShiftPlus = new QShortcut(this);
+    keyShiftPlus->setKey(Qt::SHIFT + Qt::Key_Plus);
+    connect(keyShiftPlus, SIGNAL(activated()), this, SLOT(shortcutShiftPlus()));
+
+    keyControlMinus = new QShortcut(this);
+    keyControlMinus->setKey(Qt::CTRL + Qt::Key_Minus);
+    connect(keyControlMinus, SIGNAL(activated()), this, SLOT(shortcutControlMinus()));
+
+    keyControlPlus = new QShortcut(this);
+    keyControlPlus->setKey(Qt::CTRL + Qt::Key_Plus);
+    connect(keyControlPlus, SIGNAL(activated()), this, SLOT(shortcutControlPlus()));
+
+    keyQuit = new QShortcut(this);
+    keyQuit->setKey(Qt::CTRL + Qt::Key_Q);
+    connect(keyQuit, SIGNAL(activated()), this, SLOT(on_exitBtn_clicked()));
+
+    keyPageUp = new QShortcut(this);
+    keyPageUp->setKey(Qt::Key_PageUp);
+    connect(keyPageUp, SIGNAL(activated()), this, SLOT(shortcutPageUp()));
+
+    keyPageDown = new QShortcut(this);
+    keyPageDown->setKey(Qt::Key_PageDown);
+    connect(keyPageDown, SIGNAL(activated()), this, SLOT(shortcutPageDown()));
+
+    keyF = new QShortcut(this);
+    keyF->setKey(Qt::Key_F);
+    connect(keyF, SIGNAL(activated()), this, SLOT(shortcutF()));
+
+    keyM = new QShortcut(this);
+    keyM->setKey(Qt::Key_M);
+    connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
 }
 
 void wfmain::setDefPrefs()
@@ -1081,7 +1170,7 @@ void wfmain::loadSettings()
     }
 
     ui->lanEnableBtn->setChecked(prefs.enableLAN);
-    ui->connectBtn->setEnabled(prefs.enableLAN);
+    ui->connectBtn->setEnabled(true);
 
     prefs.enableRigCtlD = settings->value("EnableRigCtlD", defPrefs.enableRigCtlD).toBool();
     prefs.rigCtlPort = settings->value("RigCtlPort", defPrefs.rigCtlPort).toInt();
@@ -1116,7 +1205,7 @@ void wfmain::loadSettings()
     udpPrefs.audioRXSampleRate = settings->value("AudioRXSampleRate", udpDefPrefs.audioRXSampleRate).toInt();
     udpPrefs.audioTXSampleRate = settings->value("AudioTXSampleRate",udpDefPrefs.audioTXSampleRate).toInt();
     ui->audioSampleRateCombo->setEnabled(ui->lanEnableBtn->isChecked());
-    int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(udpDefPrefs.audioRXSampleRate));
+    int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(udpPrefs.audioRXSampleRate));
     if (audioSampleRateIndex != -1) {
         ui->audioSampleRateCombo->setCurrentIndex(audioSampleRateIndex);
     }
@@ -1270,7 +1359,7 @@ void wfmain::saveSettings()
     settings->setValue("AudioTXLatency", udpPrefs.audioTXLatency);
     settings->setValue("AudioRXSampleRate", udpPrefs.audioRXSampleRate);
     settings->setValue("AudioRXCodec", udpPrefs.audioRXCodec);
-    settings->setValue("AudioTXSampleRate", udpPrefs.audioRXSampleRate);
+    settings->setValue("AudioTXSampleRate", udpPrefs.audioTXSampleRate);
     settings->setValue("AudioTXCodec", udpPrefs.audioTXCodec);
     settings->setValue("AudioOutput", udpPrefs.audioOutputName);
     settings->setValue("AudioInput", udpPrefs.audioInputName);
@@ -1363,35 +1452,63 @@ void wfmain::saveSettings()
     settings->sync(); // Automatic, not needed (supposedly)
 }
 
+
 void wfmain::prepareWf()
+{
+    prepareWf(160);
+}
+
+void wfmain::prepareWf(unsigned int wfLength)
 {
     // All this code gets moved in from the constructor of wfmain.
 
     if(haveRigCaps)
     {
-        // do things
-        spectWidth = rigCaps.spectLenMax; // was fixed at 475
-        wfLength = 160; // fixed for now, time-length of waterfall
+        // TODO: Lock the function that draws on the spectrum while we are updating.
+        spectrumDrawLock = true;
+
+        spectWidth = rigCaps.spectLenMax;
+        this->wfLength = wfLength; // fixed for now, time-length of waterfall
 
         // Initialize before use!
 
         QByteArray empty((int)spectWidth, '\x01');
         spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
-        for(quint16 i=0; i<wfLength; i++)
+
+        if((unsigned int)wfimage.size() < wfLength)
         {
-            wfimage.append(empty);
+            unsigned int i=0;
+            unsigned int oldSize = wfimage.size();
+            for(i=oldSize; i<(wfLength); i++)
+            {
+                wfimage.append(empty);
+            }
+        } else {
+            wfimage.remove(wfLength, wfimage.size()-wfLength);
         }
+        wfimage.squeeze();
+        //colorMap->clearData();
+        colorMap->data()->clear();
 
         colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
         colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
         colorMap->setDataRange(QCPRange(0, rigCaps.spectAmpMax));
-        colorMap->setGradient(QCPColorGradient::gpJet); // TODO: Add preference
-        colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
+        colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(ui->wfthemeCombo->currentData().toInt()));
+
+        if(colorMapData == Q_NULLPTR)
+        {
+            colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
+        } else {
+            //delete colorMapData; // TODO: Figure out why it crashes if we delete first.
+            colorMapData = new QCPColorMapData(spectWidth, wfLength, QCPRange(0, spectWidth-1), QCPRange(0, wfLength-1));
+        }
         colorMap->setData(colorMapData);
-        spectRowCurrent = 0;
+
         wf->yAxis->setRangeReversed(true);
         wf->xAxis->setVisible(false);
         rigName->setText(rigCaps.modelName);
+
+        spectrumDrawLock = false;
     } else {
         qInfo(logSystem()) << "Cannot prepare WF view without rigCaps. Waiting on this.";
         return;
@@ -2512,42 +2629,44 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
     }
 
-    //ui->qcp->addGraph();
-    plot->graph(0)->setData(x,y);
-    if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
+    if(!spectrumDrawLock)
     {
-        freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
-        freqIndicatorLine->end->setCoords(freq.MHzDouble,160);
-    }
-    if(drawPeaks)
-    {
-        plot->graph(1)->setData(x,y2); // peaks
-    }
-    plot->yAxis->setRange(0, rigCaps.spectAmpMax+1);
-    plot->xAxis->setRange(startFreq, endFreq);
-    plot->replot();
-
-    if(specLen == spectWidth)
-    {
-        wfimage.prepend(spectrum);
-        if(wfimage.length() >  wfLength)
+        //ui->qcp->addGraph();
+        plot->graph(0)->setData(x,y);
+        if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
         {
-            wfimage.remove(wfLength);
+            freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
+            freqIndicatorLine->end->setCoords(freq.MHzDouble,160);
         }
-
-        // Waterfall:
-        for(int row = 0; row < wfLength; row++)
+        if(drawPeaks)
         {
-            for(int col = 0; col < spectWidth; col++)
+            plot->graph(1)->setData(x,y2); // peaks
+        }
+        plot->yAxis->setRange(0, rigCaps.spectAmpMax+1);
+        plot->xAxis->setRange(startFreq, endFreq);
+        plot->replot();
+
+        if(specLen == spectWidth)
+        {
+            wfimage.prepend(spectrum);
+            if(wfimage.length() >  wfLength)
             {
-                colorMap->data()->setCell( col, row, wfimage.at(row).at(col));
+                wfimage.remove(wfLength);
             }
-        }
 
-        wf->yAxis->setRange(0,wfLength - 1);
-        wf->xAxis->setRange(0, spectWidth-1);
-        wf->replot();
-        spectRowCurrent = (spectRowCurrent + 1) % wfLength;
+            // Waterfall:
+            for(int row = 0; row < wfLength; row++)
+            {
+                for(int col = 0; col < spectWidth; col++)
+                {
+                    colorMap->data()->setCell( col, row, wfimage.at(row).at(col));
+                }
+            }
+
+           wf->yAxis->setRange(0,wfLength - 1);
+           wf->xAxis->setRange(0, spectWidth-1);
+           wf->replot();
+        }
     }
 }
 
@@ -3493,7 +3612,7 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
     prefs.enableLAN = !checked;
     ui->serialDeviceListCombo->setEnabled(checked);
 
-    ui->connectBtn->setEnabled(!checked);
+    ui->connectBtn->setEnabled(true);
     ui->ipAddressTxt->setEnabled(!checked);
     ui->controlPortTxt->setEnabled(!checked);
     ui->usernameTxt->setEnabled(!checked);
@@ -3513,7 +3632,7 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
 void wfmain::on_lanEnableBtn_clicked(bool checked)
 {
     prefs.enableLAN = checked;
-    ui->connectBtn->setEnabled(checked);
+    ui->connectBtn->setEnabled(true);
     ui->ipAddressTxt->setEnabled(checked);
     ui->controlPortTxt->setEnabled(checked);
     ui->usernameTxt->setEnabled(checked);
@@ -4367,6 +4486,7 @@ void wfmain::on_rigCIVaddrHexLine_editingFinished()
     if(okconvert && (propCIVAddr < 0xe0) && (propCIVAddr != 0))
     {
         prefs.radioCIVAddr = propCIVAddr;
+        emit setCIVAddr(propCIVAddr);
         showStatusBarText(QString("Setting radio CI-V address to: 0x%1. Press Save Settings to retain.").arg(propCIVAddr, 2, 16));
     } else {
         showStatusBarText(QString("Could not use provided CI-V address. Address must be < 0xE0"));
@@ -4385,10 +4505,15 @@ void wfmain::on_baudRateCombo_activated(int index)
     (void)index;
 }
 
+void wfmain::on_wfLengthSlider_valueChanged(int value)
+{
+    prepareWf(value);
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    qInfo(logSystem()) << "getting mode.";
-    emit getRigID();
+    prepareWf(160);
+
 }

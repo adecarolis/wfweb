@@ -170,9 +170,6 @@ void rigCommander::setup()
     // common elements between the two constructors go here:
     setCIVAddr(civAddr);
     spectSeqMax = 0; // this is now set after rig ID determined
-    payloadPrefix = QByteArray("\xFE\xFE");
-    payloadPrefix.append(civAddr);
-    payloadPrefix.append((char)compCivAddr);
 
     payloadSuffix = QByteArray("\xFD");
 
@@ -182,6 +179,8 @@ void rigCommander::setup()
 
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
 }
+
+
 
 void rigCommander::process()
 {
@@ -963,10 +962,13 @@ void rigCommander::setPTT(bool pttOn)
 
 void rigCommander::setCIVAddr(unsigned char civAddr)
 {
-    // Note: This is the radio's CIV address
+    // Note: This sets the radio's CIV address
     // the computer's CIV address is defined in the header file.
-    // TODO: this function *could* be written to re-write the CIV preamble.
+
     this->civAddr = civAddr;
+    payloadPrefix = QByteArray("\xFE\xFE");
+    payloadPrefix.append(civAddr);
+    payloadPrefix.append((char)compCivAddr);
 }
 
 void rigCommander::handleNewData(const QByteArray& data)
