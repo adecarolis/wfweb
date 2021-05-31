@@ -1450,9 +1450,6 @@ void wfmain::prepareWf(unsigned int wfLength)
         {
             unsigned int i=0;
             unsigned int oldSize = wfimage.size();
-            // Note: apparently .append() in this case does not add to the initial size.
-            // So if the initial size is 100 and you append 50 times,
-            // the end size is 50.
             for(i=oldSize; i<(wfLength); i++)
             {
                 wfimage.append(empty);
