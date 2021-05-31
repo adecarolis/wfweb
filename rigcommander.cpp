@@ -1662,6 +1662,9 @@ QByteArray rigCommander::getLANAddr()
         case model7850:
             payload.setRawData("\x1A\x05\x00\x62", 4);
             break;
+        case model7700:
+            payload.setRawData("\x1A\x05\x01\x92", 4);
+            break;
         default:
             break;
     }
@@ -1715,6 +1718,9 @@ QByteArray rigCommander::getACCAddr(unsigned char ab)
                 // B
                 payload.setRawData("\x1A\x05\x00\x59", 4);
             }
+            break;
+        case model7700:
+            payload.setRawData("\x1A\x05\x00\x30", 4);
             break;
         default:
             break;
@@ -2897,6 +2903,31 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
+            break;    
+        case model7700:
+            rigCaps.modelName = QString("IC-7700");
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.append(inputLAN);
+            //rigCaps.inputs.append(inputSPDIF);
+            rigCaps.inputs.append(inputACC);
+            rigCaps.hasLan = true;
+            rigCaps.hasEthernet = true;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasCTCSS = true;
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(),
+                                      {'\x06', '\x12', '\x18'});
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
+            rigCaps.hasAntennaSel = true;
+            rigCaps.antennas = {0x00, 0x01, 0x02, 0x03}; // not sure if 0x03 works
+            rigCaps.hasATU = true;
+            rigCaps.bands = standardHF;
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(band630m);
+            rigCaps.bands.push_back(band2200m);
+            rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
+                                                       createMode(modePSK_R, 0x13, "PSK-R")});
             break;
         case model706:
             rigCaps.modelName = QString("IC-706");
