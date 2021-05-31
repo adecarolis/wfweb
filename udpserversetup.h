@@ -21,10 +21,8 @@ struct SERVERCONFIG {
     quint16 controlPort;
     quint16 civPort;
     quint16 audioPort;
-    QString audioOutput;
-    QString audioInput;
-    QAudioDeviceInfo inputDevice;
-    QAudioDeviceInfo outputDevice;
+    int audioOutput;
+    int audioInput;
     quint8 resampleQuality;
     quint32 baudRate;
 

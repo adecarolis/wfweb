@@ -392,11 +392,11 @@ void udpServer::controlReceived()
 
                         txAudioThread->start();
 
-                        connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool, QAudioDeviceInfo, quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QAudioDeviceInfo, quint8)));
+                        connect(this, SIGNAL(setupTxAudio(quint8,quint8,quint16,quint16,bool,bool,int,quint8)), txaudio, SLOT(init(quint8,quint8,quint16,quint16,bool,bool,int,quint8)));
                         connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
-                        emit setupTxAudio(samples, channels, current->txSampleRate, current->txBufferLen, uLaw, false, config.outputDevice, config.resampleQuality);
-                        hasTxAudio = datagram.senderAddress();
+                        emit setupTxAudio(samples, channels, current->txSampleRate, current->txBufferLen, uLaw, false, config.audioOutput, config.resampleQuality);
+                        hasTxAudio=datagram.senderAddress();
 
                         connect(this, SIGNAL(haveAudioData(audioPacket)), txaudio, SLOT(incomingAudio(audioPacket)));
 
@@ -425,10 +425,10 @@ void udpServer::controlReceived()
                         rxaudio->moveToThread(rxAudioThread);
                         rxAudioThread->start();
 
-                        connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QAudioDeviceInfo, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, QAudioDeviceInfo, quint8)));
-                        connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
+                        connect(this, SIGNAL(setupRxAudio(quint8,quint8,quint16,quint16,bool,bool,int,quint8)), rxaudio, SLOT(init(quint8,quint8,quint16,quint16,bool,bool,int,quint8)));
+                        connect(rxAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
-                        emit setupRxAudio(samples, channels, current->rxSampleRate, 150, uLaw, true, config.inputDevice, config.resampleQuality);
+                        emit setupRxAudio(samples, channels, current->rxSampleRate,150, uLaw, true, config.audioInput, config.resampleQuality);
 
                         rxAudioTimer = new QTimer();
                         rxAudioTimer->setTimerType(Qt::PreciseTimer);
@@ -695,7 +695,7 @@ void udpServer::audioReceived()
                         tempAudio.seq = (quint32)current->seqPrefix << 16 | in->seq;
                         tempAudio.time = QTime::currentTime();;
                         tempAudio.sent = 0;
-                        tempAudio.datain = r.mid(0x18);
+                        tempAudio.data = r.mid(0x18);
                         //qInfo(logUdpServer()) << "sending tx audio " << in->seq;
                         emit haveAudioData(tempAudio);
                     }
@@ -1298,16 +1298,16 @@ void udpServer::dataForServer(QByteArray d)
 
 void udpServer::sendRxAudio()
 {
-    if (rxaudio && rxaudio->isChunkAvailable()) {
-        QByteArray audio;
+    QByteArray audio;
+    if (rxaudio) {
+        audio.clear();
         rxaudio->getNextAudioChunk(audio);
         int len = 0;
-
         while (len < audio.length()) {
             audioPacket partial;
-            partial.datain = audio.mid(len, 1364);
+            partial.data = audio.mid(len, 1364);
             receiveAudioData(partial);
-            len = len + partial.datain.length();
+            len = len + partial.data.length();
         }
     }
 }
@@ -1322,15 +1322,15 @@ void udpServer::receiveAudioData(const audioPacket &d)
         if (client != Q_NULLPTR && client->connected) {
             audio_packet p;
             memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
-            p.len = sizeof(p) + d.datain.length();
+            p.len = sizeof(p) + d.data.length();
             p.sentid = client->myId;
             p.rcvdid = client->remoteId;
             p.ident = 0x0080; // audio is always this?
-            p.datalen = (quint16)qToBigEndian((quint16)d.datain.length());
+            p.datalen = (quint16)qToBigEndian((quint16)d.data.length());
             p.sendseq = (quint16)qToBigEndian((quint16)client->sendAudioSeq); // THIS IS BIG ENDIAN!
             p.seq = client->txSeq;
             QByteArray t = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
-            t.append(d.datain);
+            t.append(d.data);
             client->txMutex.lock();
             client->txSeqBuf.append(SEQBUFENTRY());
             client->txSeqBuf.last().seqNum = p.seq;

@@ -45,6 +45,9 @@ public:
     ~wfmain();
 
 signals:
+    // Basic to rig:
+    void setCIVAddr(unsigned char newRigCIVAddr);
+
     // Power
     void sendPowerOn();
     void sendPowerOff();
@@ -346,9 +349,9 @@ private slots:
 
     void on_passwordTxt_textChanged(QString text);
 
-    void on_audioOutputCombo_currentIndexChanged(QString text);
+    void on_audioOutputCombo_currentIndexChanged(int value);
 
-    void on_audioInputCombo_currentIndexChanged(QString text);
+    void on_audioInputCombo_currentIndexChanged(int value);
 
     void on_toFixedBtn_clicked();
 
@@ -444,6 +447,8 @@ private slots:
 
     void on_baudRateCombo_activated(int);
 
+    void on_wfLengthSlider_valueChanged(int value);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -457,6 +462,7 @@ private:
     void setAppTheme(bool isCustom);
     void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
+    void prepareWf(unsigned int wfLength);
     void getInitialRigState();
     void setBandButtons();
     void showButton(QPushButton *btn);
@@ -514,6 +520,20 @@ private:
     QTimer * periodicPollingTimer;
     QTimer * pttTimer;
 
+    void setupPlots();
+    void makeRig();
+    void rigConnections();
+    void removeRig();
+    void findSerialPort();
+
+    void setupKeyShortcuts();
+    void setupMainUI();
+    void setUIToPrefs();
+    void setSerialDevicesUI();
+    void setAudioDevicesUI();
+    void setServerToPrefs();
+    void setInitialTiming();
+    void getSettingsFilePath(QString settingsFile);
 
     QStringList modes;
     int currentModeIndex;
@@ -527,8 +547,7 @@ private:
 
     quint16 spectWidth;
     quint16 wfLength;
-
-    quint16 spectRowCurrent;
+    bool spectrumDrawLock;
 
     QByteArray spectrumPeaks;
 
@@ -708,6 +727,7 @@ private:
     SERVERCONFIG serverConfig;
     shuttle *shuttleDev;
 
+    RtAudio audio;
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)

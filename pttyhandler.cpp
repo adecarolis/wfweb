@@ -15,7 +15,7 @@
 pttyHandler::pttyHandler(QString pty)
 {
     //constructor
-    if (pty == "" || pty == "None")
+    if (pty == "" || pty.toLower() == "none")
     {
         // Just return if pty is not configured.
         return;
@@ -53,7 +53,7 @@ void pttyHandler::openPort()
     }
 #else
     // Generic method in Linux/MacOS to find a pty
-    ptfd = ::posix_openpt(O_RDWR | O_NOCTTY);
+    ptfd = ::posix_openpt(O_RDWR | O_NONBLOCK);
 
     if (ptfd >=0)
     {
@@ -94,7 +94,7 @@ void pttyHandler::openPort()
 #ifndef Q_OS_WIN
     ptDevSlave = QString::fromLocal8Bit(ptsname(ptfd));
 
-    if (portName != "" && portName != "None")
+    if (portName != "" && portName.toLower() != "none")
     {
         if (!QFile::link(ptDevSlave, portName))
         {
@@ -115,7 +115,17 @@ pttyHandler::~pttyHandler()
 
 void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
 {
-    if (isConnected && (unsigned char)data[2] != (unsigned char)0xE1 && (unsigned char)data[3] != (unsigned char)0xE1)
+
+    int fePos=data.lastIndexOf((char)0xfe);
+    if (fePos>0)
+        fePos=fePos-1;
+    else
+    {
+        qDebug(logSerial()) << "Invalid command";
+        printHex(data,false,true);
+    }
+
+    if (isConnected && (unsigned char)data.mid(fePos)[2] != (unsigned char)0xE1 && (unsigned char)data.mid(fePos)[3] != (unsigned char)0xE1)
     {
         // send to the pseudo port as well
         // index 2 is dest, 0xE1 is wfview, 0xE0 is assumed to be the other device.
@@ -258,7 +268,7 @@ void pttyHandler::closePort()
         delete port;
     }
 #else
-    if (isConnected && portName != "" && portName != "None")
+    if (isConnected && portName != "" && portName.toLower() != "none")
     {
         QFile::remove(portName);
     }
