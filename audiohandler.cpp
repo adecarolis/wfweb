@@ -145,6 +145,7 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 	wf_resampler_get_ratio(resampler, &ratioNum, &ratioDen);
 	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "wf_resampler_init() returned: " << resample_error << " ratioNum" << ratioNum << " ratioDen" << ratioDen;
 
+    qInfo(logAudio()) << (isInput ? "Input" : "Output") << "thread id" << QThread::currentThreadId();
 	return isInitialized;
 }
 

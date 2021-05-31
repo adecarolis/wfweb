@@ -590,7 +590,7 @@ void udpCivData::watchdog()
 
 void udpCivData::send(QByteArray d)
 {
-    // qInfo(logUdp()) << "Sending: (" << d.length() << ") " << d;
+    //qInfo(logUdp()) << "Sending: (" << d.length() << ") " << d;
     data_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
     p.len = sizeof(p)+d.length();
@@ -642,6 +642,7 @@ void udpCivData::dataReceived()
         //qInfo(logUdp()) << "Received: " << datagram.data();
         QByteArray r = datagram.data();
 
+
         switch (r.length())
         {
             case (CONTROL_SIZE): // Control packet
@@ -678,7 +679,9 @@ void udpCivData::dataReceived()
                         lastReceived = QTime::currentTime();
                         if (quint16(in->datalen + 0x15) == (quint16)in->len)
                         {
-                            emit receive(r.mid(0x15));
+                            //if (r.mid(0x15).length() != 157)
+                               emit receive(r.mid(0x15));
+                            //qDebug(logUdp()) << "Got incoming CIV datagram" << r.mid(0x15).length();
                         }
 
                     }
@@ -687,6 +690,7 @@ void udpCivData::dataReceived()
             }
         }
         udpBase::dataReceived(r); // Call parent function to process the rest.
+
         r.clear();
         datagram.clear();
 
@@ -852,7 +856,7 @@ void udpAudio::watchdog()
             /* Just log it at the moment, maybe try signalling the control channel that it needs to 
                 try requesting civ/audio again? */
 
-            qInfo(logUdp()) << " Audio Watchdog: no audio data received for 2s, restart required";
+            qInfo(logUdp()) << " Audio Watchdog: no audio data received for 2s, restart required?";
             alerted = true;
         }
     }
