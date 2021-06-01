@@ -433,7 +433,7 @@ void udpServer::controlReceived()
                     rxAudioTimer = new QTimer();
                     rxAudioTimer->setTimerType(Qt::PreciseTimer);
                     connect(rxAudioTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRxAudio, this));
-                    rxAudioTimer->start(10);
+                    rxAudioTimer->start(20);
                 }
 
             }
@@ -1464,7 +1464,6 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
 /// <param name="c"></param>
 void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
 {
-    connMutex.lock();
 
     qInfo(logUdpServer()) << "Deleting connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
     if (c->idleTimer != Q_NULLPTR) {
@@ -1485,6 +1484,8 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         delete c->retransmitTimer;
     }
 
+    connMutex.lock();
+
     QList<CLIENT*>::iterator it = l->begin();
     while (it != l->end()) {
         CLIENT* client = *it;
@@ -1498,6 +1499,7 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
     delete c; // Is this needed or will the erase have done it?
     c = Q_NULLPTR;
     qInfo(logUdpServer()) << "Current Number of clients connected: " << l->length();
+    connMutex.unlock();
 
     if (l->length() == 0) {
 
@@ -1522,6 +1524,5 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         }
 
     }
-    connMutex.unlock();
 
 }
