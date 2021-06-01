@@ -213,7 +213,7 @@ void udpServer::controlReceived()
 
             current->wdTimer = new QTimer();
             connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::watchdog, this, current));
-            current->wdTimer->start(1000);
+            //current->wdTimer->start(1000);
 
             current->retransmitTimer = new QTimer();
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
@@ -499,7 +499,7 @@ void udpServer::civReceived()
 
             current->wdTimer = new QTimer();
             connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::watchdog, this, current));
-            current->wdTimer->start(1000);
+            //current->wdTimer->start(1000);
 
             current->retransmitTimer = new QTimer();
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
@@ -627,7 +627,7 @@ void udpServer::audioReceived()
 
             current->wdTimer = new QTimer();
             connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::watchdog, this, current));
-            current->wdTimer->start(1000);
+            //current->wdTimer->start(1000);
 
             current->retransmitTimer = new QTimer();
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
