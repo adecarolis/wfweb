@@ -428,12 +428,12 @@ void udpServer::controlReceived()
                     connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, int, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, int, quint8)));
                     connect(rxAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
-                    emit setupRxAudio(samples, channels, current->rxSampleRate, 150, uLaw, true, config.audioInput, config.resampleQuality);
+                    emit setupRxAudio(samples, channels, current->rxSampleRate, 250, uLaw, true, config.audioInput, config.resampleQuality);
 
                     rxAudioTimer = new QTimer();
                     rxAudioTimer->setTimerType(Qt::PreciseTimer);
                     connect(rxAudioTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRxAudio, this));
-                    rxAudioTimer->start(20);
+                    rxAudioTimer->start(10);
                 }
 
             }
