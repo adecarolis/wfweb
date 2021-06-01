@@ -266,11 +266,13 @@ int audioHandler::writeData(void* outputBuffer, void* inputBuffer, unsigned int 
 			tempBuf.sent = tempBuf.sent + send;
 		}
 		else {
+			ringBuf->write(tempBuf);
+			/*
 			if (!ringBuf->try_write(tempBuf))
 			{
 				qDebug(logAudio()) << "outgoing audio buffer full!";
 				break;
-			}
+			} */
 			tempBuf.data.clear();
 			tempBuf.sent = 0;
 		}
