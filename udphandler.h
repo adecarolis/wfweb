@@ -41,10 +41,11 @@ struct udpPreferences {
 	quint16 audioLANPort;
 	QString username;
 	QString password;
-	QString audioOutput;
-	QString audioInput;
-	QAudioDeviceInfo inputDevice;
-	QAudioDeviceInfo outputDevice;
+	int audioOutput;
+	int audioInput;
+	QString audioOutputName;
+	QString audioInputName;
+
 	quint16 audioRXLatency;
 	quint16 audioTXLatency;
 	quint16 audioRXSampleRate;
@@ -174,14 +175,16 @@ class udpAudio : public udpBase
 	Q_OBJECT
 
 public:
-	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QAudioDeviceInfo outputPort, QAudioDeviceInfo inputPort,quint8 resampleQuality);
+	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, int outputPort, int inputPort, quint8 resampleQuality);
 	~udpAudio();
+
+	int audioLatency = 0;
 
 signals:
 	void haveAudioData(audioPacket data);
 
-	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QAudioDeviceInfo port, quint8 resampleQuality);
-	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QAudioDeviceInfo port, quint8 resampleQuality);
+	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, int port, quint8 resampleQuality);
+	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, int port, quint8 resampleQuality);
 
 	void haveChangeLatency(quint16 value);
 	void haveSetVolume(unsigned char value);
@@ -288,8 +291,8 @@ private:
 	quint8 rxCodec;
 	quint8 txCodec;
 
-	QAudioDeviceInfo audioInputPort;
-	QAudioDeviceInfo audioOutputPort;
+	int audioInputPort;
+	int audioOutputPort;
 	
 	quint8 resampleQuality;
 

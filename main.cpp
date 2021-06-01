@@ -117,12 +117,12 @@ int main(int argc, char *argv[])
     // Set handler
     qInstallMessageHandler(messageHandler);
 
-    qInfo(logSystem()) << "Starting wfview";
-
-
-    qDebug(logSystem()) << "SerialPortCL as set by parser: " << serialPortCL;
-    qDebug(logSystem()) << "remote host as set by parser: " << hostCL;
-    qDebug(logSystem()) << "CIV as set by parser: " << civCL;
+    qInfo(logSystem()) << QString("Starting wfview: build %1 on %2 at %3 by %5@%6").arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST);
+    qInfo(logSystem()) << QString("Operating System: %1 (%2)").arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture());
+    qInfo(logSystem()) << QString("Build Qt Version %1. Current Qt Version: %2").arg(QT_VERSION_STR).arg(qVersion());
+    qDebug(logSystem()) << QString("SerialPortCL as set by parser: %1").arg(serialPortCL);
+    qDebug(logSystem()) << QString("remote host as set by parser: %1").arg(hostCL);
+    qDebug(logSystem()) << QString("CIV as set by parser: %1").arg(civCL);
     a.setWheelScrollLines(1); // one line per wheel click
     wfmain w( serialPortCL, hostCL, settingsFile);
 
