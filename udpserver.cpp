@@ -1182,34 +1182,35 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
 
 void udpServer::watchdog(CLIENT* c)
 {
-    c->txMutex.lock();
-    //qInfo(logUdpServer()) << c->ipAddress.toString() << ":" << c->port << ":Buffers tx:"<< c->txSeqBuf.length() << " rx:" << c->rxSeqBuf.length();
-    // Erase old entries from the tx packet buffer. Keep the first 100 sent packets as we seem to get asked for these?
-    if (!c->txSeqBuf.isEmpty())
-    {
-        c->txSeqBuf.erase(std::remove_if(c->txSeqBuf.begin(), c->txSeqBuf.end(), [](const SEQBUFENTRY& v)
-        { return v.timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS; }), c->txSeqBuf.end());
-    }
-    c->txMutex.unlock();
-
-    // Erase old entries from the missing packets buffer
-    c->missMutex.lock();
-    if (!c->rxMissing.isEmpty()) {
-        c->rxMissing.erase(std::remove_if(c->rxMissing.begin(), c->rxMissing.end(), [](const SEQBUFENTRY& v)
-        { return v.timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS; }), c->rxMissing.end());
-    }
-    c->missMutex.unlock();
-
-    c->rxMutex.lock();
-    if (!c->rxSeqBuf.isEmpty()) {
-        std::sort(c->rxSeqBuf.begin(), c->rxSeqBuf.end());
-
-        if (c->rxSeqBuf.length() > 400)
+    if (c->txMutex.tryLock()) {
+        //qInfo(logUdpServer()) << c->ipAddress.toString() << ":" << c->port << ":Buffers tx:"<< c->txSeqBuf.length() << " rx:" << c->rxSeqBuf.length();
+        // Erase old entries from the tx packet buffer. Keep the first 100 sent packets as we seem to get asked for these?
+        if (!c->txSeqBuf.isEmpty())
         {
-            c->rxSeqBuf.remove(0, 200);
+            c->txSeqBuf.erase(std::remove_if(c->txSeqBuf.begin(), c->txSeqBuf.end(), [](const SEQBUFENTRY& v)
+            { return v.timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS; }), c->txSeqBuf.end());
         }
+        c->txMutex.unlock();
     }
-    c->rxMutex.unlock();
+    // Erase old entries from the missing packets buffer
+    if (c->missMutex.tryLock()) {
+        if (!c->rxMissing.isEmpty()) {
+            c->rxMissing.erase(std::remove_if(c->rxMissing.begin(), c->rxMissing.end(), [](const SEQBUFENTRY& v)
+            { return v.timeSent.secsTo(QTime::currentTime()) > PURGE_SECONDS; }), c->rxMissing.end());
+        }
+        c->missMutex.unlock();
+    }
+    if (c->rxMutex.tryLock()) {
+        if (!c->rxSeqBuf.isEmpty()) {
+            std::sort(c->rxSeqBuf.begin(), c->rxSeqBuf.end());
+
+            if (c->rxSeqBuf.length() > 400)
+            {
+                c->rxSeqBuf.remove(0, 200);
+            }
+        }
+        c->rxMutex.unlock();
+    }
 }
 
 void udpServer::sendStatus(CLIENT* c)
@@ -1339,10 +1340,13 @@ void udpServer::receiveAudioData(const audioPacket &d)
             client->txSeqBuf.last().data = t;
             client->txMutex.unlock();
 
-            udpMutex.lock();
-            client->socket->writeDatagram(t, client->ipAddress, client->port);
-            udpMutex.unlock();
-
+            if (udpMutex.tryLock()) {
+                client->socket->writeDatagram(t, client->ipAddress, client->port);
+                    udpMutex.unlock();
+            }
+            else {
+                qDebug(logUdpServer()) << "Failed to lock udpMutex()";
+            }
             client->txSeq++;
             client->sendAudioSeq++;
         }

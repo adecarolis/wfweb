@@ -128,8 +128,8 @@ SOURCES += main.cpp\
     repeatersetup.cpp \
     rigctld.cpp \
     rtaudio/RtAudio.cpp \
-    ring/ring.cpp
-	shuttle.cpp \
+    ring/ring.cpp \
+	shuttle.cpp 
 
 HEADERS  += wfmain.h \
     commhandler.h \

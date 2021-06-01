@@ -1,29 +1,11 @@
 #include "shuttle.h"
 #include <QDebug>
 
-shuttle::shuttle(QObject* parent)
-    : QObject(parent), m_hid_dev(new QHidDevice())
+shuttle::shuttle(int vid, int pid):
+    vid(vid),
+    pid(pid)
 {
 
-    auto list = m_usb.devices();
-
-    for (auto l : list)
-    {
-        qDebug() << "   Device:" << QString(l);
-    }
-
-    m_send.append(static_cast<char>(0x81u));
-    m_send.append(static_cast<char>(0x01u));
-
-    if (this->openDevice()) {
-        qInfo("Device open!");
-        //this->write(&m_send);
-        qDebug() << "Manufacturer:" << m_hid_dev->manufacturer();
-        qDebug() << "Product:" << m_hid_dev->product();
-    }
-    else {
-        qWarning("Could not open device!");
-    }
 }
 
 shuttle::~shuttle()
@@ -33,11 +15,18 @@ shuttle::~shuttle()
 }
 
 
-bool shuttle::openDevice()
+void shuttle::init()
 {
-    qDebug("Opening");
+    m_hid_dev = new QHidDevice();
 
-    return m_hid_dev->open(0x0b33, 0x0020);
+    qDebug("Opening shuttle");
+
+    m_hid_dev->open(vid, pid);
+
+    qDebug() << "Manufacturer:" << m_hid_dev->manufacturer();
+    qDebug() << "Product:" << m_hid_dev->product();
+
+    return;
 }
 
 void shuttle::closeDevice()
@@ -66,3 +55,39 @@ void shuttle::write(QByteArray* buf)
     }
 }
 
+void shuttle::process()
+{
+    quint8 jogpos=0;
+    qDebug() << "Starting shuttle process";
+    while (true) {
+        QByteArray b(128, '0');
+        if (m_hid_dev != Q_NULLPTR) {
+            m_hid_dev->read(&b, b.size(), 100);
+
+            //qDebug() << "Reading" << b << b.size();
+            if (b.size() == 5)
+            {
+                qDebug() << "Shuttle Data received: " << hex << (quint8)b[0] << ":"
+                    << hex << (quint8)b[1] << ":"
+                    << hex << (quint8)b[2] << ":"
+                    << hex << (quint8)b[3] << ":"
+                    << hex << (quint8)b[4];
+                if ((quint8)b[1] != jogpos) {
+                    if ((quint8)b[1] > jogpos && ((quint8)b[1] != 0x00 && jogpos != 0xff))
+                    {
+                        qDebug() << "Jog UP";
+                    }
+                    else {
+                        qDebug() << "Jog Down";
+                    }
+                    jogpos = (quint8)b[1];
+                }
+            }
+        }
+        else {
+            QThread::yieldCurrentThread();
+            QThread::msleep(100);
+        }
+
+    }
+}

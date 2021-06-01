@@ -17,7 +17,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     setWindowIcon(QIcon( QString(":resources/wfview.png")));
     ui->setupUi(this);
-    shuttleDev = new shuttle();
     setWindowTitle(QString("wfview"));
 
     this->serialPortCL = serialPortCL;
@@ -50,6 +49,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     setSerialDevicesUI();
 
     setAudioDevicesUI();
+
+    setupShuttleDevice();
 
     setDefaultColors();
     setDefPrefs();
@@ -94,7 +95,10 @@ wfmain::~wfmain()
     delete rpt;
     delete ui;
     delete settings;
-    delete shuttleDev;
+    if (shuttleThread != Q_NULLPTR) {
+        shuttleThread->quit();
+        shuttleThread->wait();
+    }
 }
 
 void wfmain::closeEvent(QCloseEvent *event)
@@ -1020,6 +1024,41 @@ void wfmain::setupKeyShortcuts()
     keyM = new QShortcut(this);
     keyM->setKey(Qt::Key_M);
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
+}
+
+void wfmain::setupShuttleDevice()
+{
+    return;
+    auto list = QUsb::devices();
+    int vid = 0;
+    int pid = 0;
+    for (auto l : list)
+    {
+        if (l.vid == 0x0B33 && l.pid == 0x0020) {
+            qDebug(logSystem()) << "Found ShuttleXpress" << QString(l);
+        }
+        else if (l.vid == 0x0B33 && l.pid == 0x0030) {
+            qDebug(logSystem()) << "Found ShuttlePro" << QString(l);
+        }
+        else {
+            continue;
+        }
+        vid = l.vid;
+        pid = l.pid;
+    }
+
+    if (vid != 0 && pid != 0) {
+        shuttleThread = new QThread;
+        shuttleDev = new shuttle(vid, pid);
+        shuttleDev->moveToThread(shuttleThread);
+        connect(this, SIGNAL(openShuttle()), shuttleDev, SLOT(init()));
+        connect(shuttleThread, SIGNAL(started()), shuttleDev, SLOT(process()));
+        connect(shuttleDev, SIGNAL(finished()), shuttleThread, SLOT(quit()));
+        connect(shuttleDev, SIGNAL(finished()), shuttleDev, SLOT(deleteLater()));
+        connect(shuttleThread, SIGNAL(finished()), shuttleThread, SLOT(deleteLater()));
+        shuttleThread->start();
+        emit openShuttle();
+    }
 }
 
 void wfmain::setDefPrefs()

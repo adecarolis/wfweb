@@ -9,6 +9,7 @@
 #include <QTimer>
 #include <QSettings>
 #include <QShortcut>
+#include <QThread>
 #include <QMetaType>
 
 #include "logcategories.h"
@@ -143,6 +144,7 @@ signals:
     void initServer();
     void sendServerConfig(SERVERCONFIG conf);
     void sendRigCaps(rigCapabilities caps);
+    void openShuttle();
 
 private slots:
     void shortcutF1();
@@ -532,6 +534,7 @@ private:
     void setSerialDevicesUI();
     void setAudioDevicesUI();
     void setServerToPrefs();
+    void setupShuttleDevice();
     void setInitialTiming();
     void getSettingsFilePath(QString settingsFile);
 
@@ -725,8 +728,8 @@ private:
 
 
     SERVERCONFIG serverConfig;
-    shuttle *shuttleDev;
-
+    shuttle *shuttleDev = Q_NULLPTR;
+    QThread *shuttleThread = Q_NULLPTR;
     RtAudio audio;
 };
 
