@@ -12,6 +12,7 @@
 #include <QByteArray>
 #include <QList>
 #include <QVector>
+#include <QMap>
 
 // Allow easy endian-ness conversions
 #include <QtEndian>
@@ -102,9 +103,11 @@ private:
 		quint16 txSampleRate;
 		SERVERUSER user;
 
-		QVector <SEQBUFENTRY> txSeqBuf;
-		QVector <quint16> rxSeqBuf;
-		QVector <SEQBUFENTRY> rxMissing;
+
+		QMap<quint16, QTime> rxSeqBuf;
+		QMap<quint16, SEQBUFENTRY> txSeqBuf;
+		QMap<quint16, int> rxMissing;
+
 		QMutex txMutex;
 		QMutex rxMutex;
 		QMutex missMutex;
