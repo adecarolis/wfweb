@@ -1528,6 +1528,8 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
     qInfo(logUdpServer()) << "Current Number of clients connected: " << l->length();
     connMutex.unlock();
 
+    // Deleting the audio seems to screw everything up!
+    /*
     if (l->length() == 0) {
 
         if (rxAudioTimer != Q_NULLPTR) {
@@ -1551,5 +1553,5 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         }
 
     }
-
+    */
 }
