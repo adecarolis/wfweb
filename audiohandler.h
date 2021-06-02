@@ -3,7 +3,6 @@
 
 #include <QObject>
 
-#include <QtMultimedia/QAudioOutput>
 #include <QByteArray>
 #include <QMutex>
 #include <QtEndian>
