@@ -90,7 +90,7 @@ CONFIG(debug, release|debug) {
 }
 
 #linux:LIBS += -L./ -l$$QCPLIB -lpulse -lpulse-simple -lpthread
-linux:LIBS += -L./ -l$$QCPLIB -lasound -lpthread
+linux:LIBS += -L./ -l$$QCPLIB -lasound -lpthread -lrtaudio
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread
 
 !linux:SOURCES += ../qcustomplot/qcustomplot.cpp
@@ -98,7 +98,6 @@ macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread
 !linux:INCLUDEPATH += ../qcustomplot
 
 INCLUDEPATH += opus-tools/src
-INCLUDEPATH += rtaudio
 
 SOURCES += main.cpp\
     wfmain.cpp \
@@ -119,7 +118,6 @@ SOURCES += main.cpp\
     opus-tools/src/resample.c \
     repeatersetup.cpp \
     rigctld.cpp \
-    rtaudio/RtAudio.cpp \
     ring/ring.cpp
 
 HEADERS  += wfmain.h \
@@ -144,7 +142,6 @@ HEADERS  += wfmain.h \
     repeatersetup.h \
     repeaterattributes.h \
     rigctld.h \
-    rtaudio/RtAudio.h \
     ulaw.h \
     ring/ring.h
 

@@ -7,7 +7,7 @@
 #include <QMutex>
 #include <QtEndian>
 #include <QtMath>
-#include "rtaudio/RtAudio.h"
+#include <rtaudio/RtAudio.h>
 
 typedef signed short  MY_TYPE;
 #define FORMAT RTAUDIO_SINT16
