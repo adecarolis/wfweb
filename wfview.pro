@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui serialport network multimedia
+QT       += core gui serialport network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
@@ -13,13 +13,15 @@ TEMPLATE = app
 
 CONFIG(debug, release|debug) {
 # For Debug builds only:
+QMAKE_CXXFLAGS += -faligned-new
 
 } else {
 # For Release builds only:
-QMAKE_CXXFLAGS += -s
+linux:QMAKE_CXXFLAGS += -s
 QMAKE_CXXFLAGS += -fvisibility=hidden
 QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
-QMAKE_LFLAGS += -O2 -s
+QMAKE_CXXFLAGS += -faligned-new
+linux:QMAKE_LFLAGS += -O2 -s
 }
 
 # The following define makes your compiler emit warnings if you use
@@ -32,6 +34,14 @@ DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 # These defines are used for the resampler
 DEFINES += OUTSIDE_SPEEX
 DEFINES += RANDOM_PREFIX=wf
+
+# RTAudio defines
+win32:DEFINES += __WINDOWS_WASAPI__
+#win32:DEFINES += __WINDOWS_DS__ # Requires DirectSound libraries
+linux:DEFINES += __LINUX_ALSA__
+#linux:DEFINES += __LINUX_OSS__
+#linux:DEFINES += __LINUX_PULSE__
+macx:DEFINES += __MACOSX_CORE__
 
 macx:INCLUDEPATH += /usr/local/include /opt/local/include
 macx:LIBS += -L/usr/local/lib -L/opt/local/lib
@@ -79,20 +89,25 @@ CONFIG(debug, release|debug) {
   linux: QCPLIB = qcustomplot
 }
 
-linux:LIBS += -L./ -l$$QCPLIB
+#linux:LIBS += -L./ -l$$QCPLIB -lpulse -lpulse-simple -lpthread
+linux:LIBS += -L./ -l$$QCPLIB -lasound -lpthread
+macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread
 
 !linux:SOURCES += ../qcustomplot/qcustomplot.cpp
 !linux:HEADERS += ../qcustomplot/qcustomplot.h
 !linux:INCLUDEPATH += ../qcustomplot
 
+INCLUDEPATH += opus-tools/src
+INCLUDEPATH += rtaudio
+
 SOURCES += main.cpp\
-        wfmain.cpp \
+    wfmain.cpp \
     commhandler.cpp \
     rigcommander.cpp \
     freqmemory.cpp \
     rigidentities.cpp \
-	udphandler.cpp \
-	logcategories.cpp \
+    udphandler.cpp \
+    logcategories.cpp \
     audiohandler.cpp \
     calibrationwindow.cpp \
     satellitesetup.cpp \
@@ -100,33 +115,38 @@ SOURCES += main.cpp\
     udpserver.cpp \
     meter.cpp \
     qledlabel.cpp \
-	pttyhandler.cpp \
-	resampler/resample.c \
+    pttyhandler.cpp \
+    opus-tools/src/resample.c \
     repeatersetup.cpp \
-	rigctld.cpp
+    rigctld.cpp \
+    rtaudio/RtAudio.cpp \
+    ring/ring.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
     rigcommander.h \
     freqmemory.h \
     rigidentities.h \
-	udphandler.h \
-	logcategories.h \
+    udphandler.h \
+    logcategories.h \
     audiohandler.h \
     calibrationwindow.h \
     satellitesetup.h \
     udpserversetup.h \
-	udpserver.h \
-	packettypes.h \
+    udpserver.h \
+    packettypes.h \
     meter.h \
-	qledlabel.h \
-	pttyhandler.h \
-	resampler/speex_resampler.h \
-	resampler/arch.h \
-	resampler/resample_sse.h \
+    qledlabel.h \
+    pttyhandler.h \
+    opus-tools/src/speex_resampler.h \
+    opus-tools/src/arch.h \
+    opus-tools/src/resample_sse.h \
     repeatersetup.h \
     repeaterattributes.h \
-	rigctld.h
+    rigctld.h \
+    rtaudio/RtAudio.h \
+    ulaw.h \
+    ring/ring.h
 
 
 FORMS    += wfmain.ui \

@@ -840,6 +840,9 @@ quint16 rigCommander::decodeTone(QByteArray eTone, bool &tinv, bool &rinv)
     // CTCSS:  1B 01  00 12 73 = PL 127.3, decode as 1273
     // D(T)CS: 1B 01  TR 01 23 = T/R Invert bits + DCS code 123
 
+    if (eTone.length() < 5) {
+        return 0;
+    }
     tinv = false; rinv = false;
     quint16 result = 0;
 

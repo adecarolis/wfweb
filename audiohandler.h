@@ -3,20 +3,25 @@
 
 #include <QObject>
 
-#include <QtMultimedia/QAudioOutput>
-#include <QMutexLocker>
 #include <QByteArray>
+#include <QMutex>
 #include <QtEndian>
-#include <QAudioFormat>
-#include <QAudioDeviceInfo>
-#include <QAudioOutput>
-#include <QAudioInput>
-#include <QIODevice>
+#include <QtMath>
+#include "rtaudio/RtAudio.h"
+
+typedef signed short  MY_TYPE;
+#define FORMAT RTAUDIO_SINT16
+#define SCALE  32767.0
+
+#define LOG100 4.60517018599
+
 #include <QThread>
 #include <QTimer>
 #include <QTime>
 #include <QMap>
 #include "resampler/speex_resampler.h"
+#include "ring/ring.h"
+
 
 #include <QDebug>
 
@@ -24,47 +29,33 @@
 
 #define INTERNAL_SAMPLE_RATE 48000
 
+#define MULAW_BIAS 33
+#define MULAW_MAX 0x1fff
+
 struct audioPacket {
     quint32 seq;
     QTime time;
     quint16 sent;
-    QByteArray datain;
-    QByteArray dataout;
+    QByteArray data;
 };
 
-
-class audioHandler : public QIODevice
+class audioHandler : public QObject
 {
     Q_OBJECT
-
 
 public:
     audioHandler(QObject* parent = 0);
     ~audioHandler();
 
-    void getLatency();
+    int getLatency();
 
-    bool setDevice(QAudioDeviceInfo deviceInfo);
-
-    void start();
-    void flush();
-    void stop();
-
-    qint64 readData(char* data, qint64 maxlen);
-    qint64 writeData(const char* data, qint64 len);
-    qint64 bytesAvailable() const;
-    bool isSequential() const;
     void getNextAudioChunk(QByteArray &data);
-    bool isChunkAvailable();
-public slots:
-    bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isulaw, const bool isinput, QAudioDeviceInfo port, quint8 resampleQuality);
-    void incomingAudio(const audioPacket data);
-    void changeLatency(const quint16 newSize);
 
 private slots:
-    void notified();
-    void stateChanged(QAudio::State state);
+    bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isulaw, const bool isinput, int port, quint8 resampleQuality);
+    void changeLatency(const quint16 newSize);
     void setVolume(unsigned char volume);
+    void incomingAudio(const audioPacket data);
 
 signals:
     void audioMessage(QString message);
@@ -73,32 +64,53 @@ signals:
 
 
 private:
+    int readData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status);
+
+    static int staticRead(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status, void* userData) {
+        return static_cast<audioHandler*>(userData)->readData(outputBuffer, inputBuffer, nFrames, streamTime, status);
+    }
+
+    int writeData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status);
+
+    static int staticWrite(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status, void* userData) {
+        return static_cast<audioHandler*>(userData)->writeData(outputBuffer, inputBuffer, nFrames, streamTime, status);
+    }
+
     void reinit();
 
-    QMutex          mutex;
-
     bool            isInitialized;
-    QAudioOutput*   audioOutput;
-    QAudioInput*    audioInput;
+    RtAudio audio;
+    int audioDevice = 0;
+    RtAudio::StreamParameters aParams;
+    RtAudio::StreamOptions options;
+    RtAudio::DeviceInfo info;
+
+    SpeexResamplerState* resampler = Q_NULLPTR;
+
     bool            isUlaw;
-    quint16         latency;
+    quint16         audioLatency;
     bool            isInput;   // Used to determine whether input or output audio
-    int             chunkSize;
+    unsigned int             chunkSize;
     bool            chunkAvailable;
 
     quint32        lastSeq;
 
-    QAudioFormat     format;
-    QAudioDeviceInfo deviceInfo;
     quint16          radioSampleRate;
+    quint16          nativeSampleRate=0;
     quint8           radioSampleBits;
     quint8          radioChannels;
-    QVector <audioPacket> audioBuffer;
-    QMap<quint32, audioPacket>inputBuffer;
 
-    SpeexResamplerState* resampler=NULL;
+    QMap<quint32, audioPacket>audioBuffer;
+
     unsigned int ratioNum;
     unsigned int ratioDen;
+
+    wilt::Ring<audioPacket> *ringBuf=Q_NULLPTR;
+    volatile bool ready = false;
+    audioPacket tempBuf;
+    quint16 currentLatency;
+    qreal volume=1.0;
+    int devChannels;
 };
 
 #endif // AUDIOHANDLER_H

@@ -348,9 +348,9 @@ private slots:
 
     void on_passwordTxt_textChanged(QString text);
 
-    void on_audioOutputCombo_currentIndexChanged(QString text);
+    void on_audioOutputCombo_currentIndexChanged(int value);
 
-    void on_audioInputCombo_currentIndexChanged(QString text);
+    void on_audioInputCombo_currentIndexChanged(int value);
 
     void on_toFixedBtn_clicked();
 
@@ -724,7 +724,7 @@ private:
 
 
     SERVERCONFIG serverConfig;
-
+    RtAudio audio;
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)

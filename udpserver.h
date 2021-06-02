@@ -12,6 +12,7 @@
 #include <QByteArray>
 #include <QList>
 #include <QVector>
+#include <QMap>
 
 // Allow easy endian-ness conversions
 #include <QtEndian>
@@ -50,8 +51,10 @@ public slots:
 signals:
 	void haveDataFromServer(QByteArray);
 	void haveAudioData(audioPacket data);
-	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QAudioDeviceInfo port, quint8 resampleQuality);
-	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QAudioDeviceInfo port, quint8 resampleQuality);
+
+	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, int device, quint8 resampleQuality);
+	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, int device, quint8 resampleQuality);
+
 
 
 private:
@@ -100,9 +103,11 @@ private:
 		quint16 txSampleRate;
 		SERVERUSER user;
 
-		QVector <SEQBUFENTRY> txSeqBuf;
-		QVector <quint16> rxSeqBuf;
-		QVector <SEQBUFENTRY> rxMissing;
+
+		QMap<quint16, QTime> rxSeqBuf;
+		QMap<quint16, SEQBUFENTRY> txSeqBuf;
+		QMap<quint16, int> rxMissing;
+
 		QMutex txMutex;
 		QMutex rxMutex;
 		QMutex missMutex;
