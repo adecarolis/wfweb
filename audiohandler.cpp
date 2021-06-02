@@ -72,10 +72,8 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 
 	if (info.probed)
 	{
-		// Per channel chunk size.
-			aParams.nChannels = 2; // Internally this is always 2 channels for TX and RX.
-
-		if (info.preferredSampleRate == 44100) {
+		// if "preferred" sample rate is 44100, try 48K instead
+		if (info.preferredSampleRate == (unsigned int)44100) {
 			qDebug(logAudio()) << "Preferred sample rate 44100, trying 48000";
 			this->nativeSampleRate = 48000;
 		}
@@ -83,6 +81,7 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 			this->nativeSampleRate = info.preferredSampleRate;
 		}
 
+		// Per channel chunk size.
 		this->chunkSize = (this->nativeSampleRate / 50);
 
 		qInfo(logAudio()) << (isInput ? "Input" : "Output") << QString::fromStdString(info.name) << "(" << aParams.deviceId << ") successfully probed";
