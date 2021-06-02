@@ -59,13 +59,7 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 
 	ringBuf = new wilt::Ring<audioPacket>(100); // Should be customizable.
 
-#if defined(Q_OS_LINUX)
-	audio = new RtAudio(RtAudio::Api::LINUX_ALSA);
-#elif defined(Q_OS_WIN)
-	audio = new RtAudio(RtAudio::Api::WINDOWS_WASAPI);
-#elif defined(Q_OS_MACX)
-    audio = new RtAudio(RtAudio::Api::MACOSX_CORE);
-#endif
+
 
 	tempBuf.sent = 0;
 

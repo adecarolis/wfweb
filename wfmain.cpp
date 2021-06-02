@@ -808,6 +808,16 @@ void wfmain::setUIToPrefs()
 
 void wfmain::setAudioDevicesUI()
 {
+
+#if defined(Q_OS_LINUX)
+    RtAudio* audio = new RtAudio(RtAudio::Api::LINUX_ALSA);
+#elif defined(Q_OS_WIN)
+    RtAudio* audio = new RtAudio(RtAudio::Api::WINDOWS_WASAPI);
+#elif defined(Q_OS_MACX)
+    RtAudio* audio = new RtAudio(RtAudio::Api::MACOSX_CORE);
+#endif
+
+
     // Enumerate audio devices, need to do before settings are loaded.
     std::map<int, std::string> apiMap;
     apiMap[RtAudio::MACOSX_CORE] = "OS-X Core Audio";
@@ -831,13 +841,14 @@ void wfmain::setAudioDevicesUI()
     }
 
     RtAudio::DeviceInfo info;
-    qInfo(logAudio()) << "Current API: " << QString::fromStdString(apiMap[audio.getCurrentApi()]);
 
-    unsigned int devices = audio.getDeviceCount();
+    qInfo(logAudio()) << "Current API: " << QString::fromStdString(apiMap[audio->getCurrentApi()]);
+
+    unsigned int devices = audio->getDeviceCount();
     qInfo(logAudio()) << "Found " << devices << " audio device(s) *=default";
 
     for (unsigned int i = 1; i < devices; i++) {
-        info = audio.getDeviceInfo(i);
+        info = audio->getDeviceInfo(i);
         if (info.outputChannels > 0) {
             qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name);
             ui->audioOutputCombo->addItem(QString::fromStdString(info.name), i);
@@ -847,6 +858,8 @@ void wfmain::setAudioDevicesUI()
             ui->audioInputCombo->addItem(QString::fromStdString(info.name), i);
         }
     }
+
+    delete audio;
 }
 
 void wfmain::setSerialDevicesUI()
