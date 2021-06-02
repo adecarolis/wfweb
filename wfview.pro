@@ -19,7 +19,7 @@ CONFIG(debug, release|debug) {
 linux:QMAKE_CXXFLAGS += -s
 QMAKE_CXXFLAGS += -fvisibility=hidden
 QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
-linux:QMAKE_LFLAGS += -O2 -s
+linux:QMAKE_LFLAGS += -O2 -s -faligned-new
 }
 
 # The following define makes your compiler emit warnings if you use
