@@ -114,11 +114,18 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 	}
 
 	int resample_error = 0;
+	if (info.preferredSampleRate == 44100) {
+		qDebug(logAudio()) << "Preferred sample rate 44100, trying 48000";
+		this->nativeSampleRate = 48000;
+	}
+	else {
+		this->nativeSampleRate = info.preferredSampleRate;
+	}
 
 	if (isInput) {
-		resampler = wf_resampler_init(devChannels, info.preferredSampleRate, samplerate, resampleQuality, &resample_error);
+		resampler = wf_resampler_init(devChannels, this->nativeSampleRate, samplerate, resampleQuality, &resample_error);
 		try {
-			audio.openStream(NULL, &aParams, RTAUDIO_SINT16, info.preferredSampleRate, &this->chunkSize, &staticWrite, this);
+			audio.openStream(NULL, &aParams, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticWrite, this);
 			audio.startStream();
 		}
 		catch (RtAudioError& e) {
@@ -128,9 +135,9 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 	}
 	else
 	{
-		resampler = wf_resampler_init(devChannels, samplerate, info.preferredSampleRate, resampleQuality, &resample_error);
+		resampler = wf_resampler_init(devChannels, samplerate, this->nativeSampleRate, resampleQuality, &resample_error);
 		try {
-			audio.openStream(&aParams, NULL, RTAUDIO_SINT16, info.preferredSampleRate, &this->chunkSize, &staticRead, this);
+			audio.openStream(&aParams, NULL, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticRead, this);
 			audio.startStream();
 		}
 		catch (RtAudioError& e) {

@@ -95,6 +95,7 @@ private:
     quint32        lastSeq;
 
     quint16          radioSampleRate;
+    quint16          nativeSampleRate=0;
     quint8           radioSampleBits;
     quint8          radioChannels;
 
