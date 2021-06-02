@@ -123,7 +123,7 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 
 	int resample_error = 0;
 
-	options.flags = !RTAUDIO_HOG_DEVICE | RTAUDIO_MINIMIZE_LATENCY;
+	options.flags = ((!RTAUDIO_HOG_DEVICE) | (RTAUDIO_MINIMIZE_LATENCY));
 
 	if (isInput) {
 		resampler = wf_resampler_init(devChannels, this->nativeSampleRate, samplerate, resampleQuality, &resample_error);
