@@ -27,7 +27,13 @@ audioHandler::~audioHandler()
 
 
 	if (audio != Q_NULLPTR) {
-        audio->abortStream();
+		try {
+			audio->abortStream();
+			audio->closeStream();
+		}
+		catch (RtAudioError& e) {
+			qInfo(logAudio()) << "Error closing stream:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
+		}
 		delete audio;
 	}
 
