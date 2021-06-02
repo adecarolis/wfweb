@@ -24,11 +24,12 @@ audioHandler::~audioHandler()
 	if (resampler != Q_NULLPTR) {
 		speex_resampler_destroy(resampler);
 	}
-	if (audio.isStreamRunning())
+	if (audio->isStreamRunning())
 	{
-		audio.stopStream();
-		audio.closeStream();
+		audio->stopStream();
+		audio->closeStream();
 	}
+	delete audio;
 	if (ringBuf != Q_NULLPTR)
 		delete ringBuf;
 }
@@ -49,21 +50,30 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 	// chunk size is always relative to Internal Sample Rate.
 
 	ringBuf = new wilt::Ring<audioPacket>(100); // Should be customizable.
+
+#if defined(Q_OS_LINUX)
+	audio = new RtAudio(RtAudio::Api::LINUX_ALSA);
+#elif defined(Q_OS_WIN)
+	audio = new RtAudio(RtAudio::Api::WINDOWS_WASAPI);
+#elif defined(Q_OS_MACX)
+	audio = new RtAudio(RtAudio::Api::MACOSX_CORE);
+#endif
+
 	tempBuf.sent = 0;
 
 	if (port > 0) {
 		aParams.deviceId = port;
 	}
 	else if (isInput) {
-		aParams.deviceId = audio.getDefaultInputDevice();
+		aParams.deviceId = audio->getDefaultInputDevice();
 	}
 	else {
-		aParams.deviceId = audio.getDefaultOutputDevice();
+		aParams.deviceId = audio->getDefaultOutputDevice();
 	}
 	aParams.firstChannel = 0;
 
 	try {
-		info = audio.getDeviceInfo(aParams.deviceId);
+		info = audio->getDeviceInfo(aParams.deviceId);
 	}
 	catch (RtAudioError& e) {
 		qInfo(logAudio()) << "Device error:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
@@ -128,8 +138,8 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 	if (isInput) {
 		resampler = wf_resampler_init(devChannels, this->nativeSampleRate, samplerate, resampleQuality, &resample_error);
 		try {
-			audio.openStream(NULL, &aParams, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticWrite, this, &options);
-			audio.startStream();
+			audio->openStream(NULL, &aParams, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticWrite, this, &options);
+			audio->startStream();
 		}
 		catch (RtAudioError& e) {
 			qInfo(logAudio()) << "Error opening:" << QString::fromStdString(e.getMessage());
@@ -140,8 +150,8 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 	{
 		resampler = wf_resampler_init(devChannels, samplerate, this->nativeSampleRate, resampleQuality, &resample_error);
 		try {
-			audio.openStream(&aParams, NULL, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticRead, this, &options);
-			audio.startStream();
+			audio->openStream(&aParams, NULL, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticRead, this, &options);
+			audio->startStream();
 		}
 		catch (RtAudioError& e) {
 			qInfo(logAudio()) << "Error opening:" << QString::fromStdString(e.getMessage());
@@ -150,7 +160,7 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 	}
 	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "device successfully opened";
 
-	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "detected latency:" <<audio.getStreamLatency();
+	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "detected latency:" <<audio->getStreamLatency();
 
 	wf_resampler_get_ratio(resampler, &ratioNum, &ratioDen);
 	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "wf_resampler_init() returned: " << resample_error << " ratioNum" << ratioNum << " ratioDen" << ratioDen;
@@ -300,7 +310,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	// Regardless of the radio stream format, the buffered audio will ALWAYS be
 	// 16bit sample interleaved stereo 48K (or whatever the native sample rate is)
 
-	if (!audio.isStreamRunning())
+	if (!audio->isStreamRunning())
 	{
 		qDebug(logAudio()) << "Packet received before stream was started";
 		return;

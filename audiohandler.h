@@ -79,7 +79,7 @@ private:
     void reinit();
 
     bool            isInitialized;
-    RtAudio audio;
+    RtAudio* audio = Q_NULLPTR;
     int audioDevice = 0;
     RtAudio::StreamParameters aParams;
     RtAudio::StreamOptions options;
