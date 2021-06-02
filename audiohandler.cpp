@@ -58,7 +58,7 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 #elif defined(Q_OS_WIN)
 	audio = new RtAudio(RtAudio::Api::WINDOWS_WASAPI);
 #elif defined(Q_OS_MACX)
-	audio = new RtAudio(RtAudio::Api::MACOSX_CORE);
+    audio = new RtAudio(RtAudio::Api::MACOSX_CORE);
 #endif
 
 	tempBuf.sent = 0;
@@ -135,12 +135,14 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 
 	int resample_error = 0;
 
-	options.flags = ((!RTAUDIO_HOG_DEVICE) | (RTAUDIO_MINIMIZE_LATENCY));
+#if !defined(Q_OS_MACX)
+    options.flags = ((!RTAUDIO_HOG_DEVICE) | (RTAUDIO_MINIMIZE_LATENCY));
+#endif
 
 	if (isInput) {
-		resampler = wf_resampler_init(devChannels, this->nativeSampleRate, samplerate, resampleQuality, &resample_error);
+        resampler = wf_resampler_init(devChannels, nativeSampleRate, samplerate, resampleQuality, &resample_error);
 		try {
-			audio->openStream(NULL, &aParams, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticWrite, this, &options);
+            audio->openStream(NULL, &aParams, RTAUDIO_SINT16, nativeSampleRate, &this->chunkSize, &staticWrite, this, &options);
 			audio->startStream();
 		}
 		catch (RtAudioError& e) {
