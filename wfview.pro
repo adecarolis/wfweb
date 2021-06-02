@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui serialport network multimedia
+QT       += core gui serialport network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
@@ -13,13 +13,15 @@ TEMPLATE = app
 
 CONFIG(debug, release|debug) {
 # For Debug builds only:
+QMAKE_CXXFLAGS += -faligned-new
 
 } else {
 # For Release builds only:
 linux:QMAKE_CXXFLAGS += -s
 QMAKE_CXXFLAGS += -fvisibility=hidden
 QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
-linux:QMAKE_LFLAGS += -O2 -s -faligned-new
+QMAKE_CXXFLAGS += -faligned-new
+linux:QMAKE_LFLAGS += -O2 -s
 }
 
 # The following define makes your compiler emit warnings if you use
@@ -36,19 +38,10 @@ DEFINES += RANDOM_PREFIX=wf
 # RTAudio defines
 win32:DEFINES += __WINDOWS_WASAPI__
 #win32:DEFINES += __WINDOWS_DS__ # Requires DirectSound libraries
-linux:DEFINES += __LINUX_ALSA__
+#linux:DEFINES += __LINUX_ALSA__
 #linux:DEFINES += __LINUX_OSS__
-#linux:DEFINES += __LINUX_PULSE__
+linux:DEFINES += __LINUX_PULSE__
 macx:DEFINES += __MACOSX_CORE__
-
-#option(RTAUDIO_API_DS "Build DirectSound API" OFF)
-#option(RTAUDIO_API_ASIO "Build ASIO API" OFF)
-#option(RTAUDIO_API_WASAPI "Build WASAPI API" ${WIN32})
-#option(RTAUDIO_API_OSS "Build OSS4 API" ${xBSD})
-#option(RTAUDIO_API_ALSA "Build ALSA API" ${LINUX})
-#option(RTAUDIO_API_PULSE "Build PulseAudio API" ${pulse_FOUND})
-#option(RTAUDIO_API_JACK "Build JACK audio server API" ${HAVE_JACK})
-#option(RTAUDIO_API_CORE "Build CoreAudio API" ${APPLE})
 
 macx:INCLUDEPATH += /usr/local/include /opt/local/include
 macx:LIBS += -L/usr/local/lib -L/opt/local/lib
@@ -96,7 +89,7 @@ CONFIG(debug, release|debug) {
   linux: QCPLIB = qcustomplot
 }
 
-linux:LIBS += -L./ -l$$QCPLIB -lasound
+linux:LIBS += -L./ -l$$QCPLIB -lpulse -lpulse-simple
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread
 
 !linux:SOURCES += ../qcustomplot/qcustomplot.cpp

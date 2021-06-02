@@ -16,7 +16,6 @@
 #include <QtEndian>
 
 // Needed for audio
-#include <QtMultimedia/QAudioOutput>
 #include <QBuffer>
 #include <QThread>
 
@@ -199,7 +198,6 @@ private:
 	void dataReceived();
 	void watchdog();
 
-	QAudioFormat format;
 	quint16 rxLatency;
 	quint16 txLatency;
 	quint16 rxSampleRate;
