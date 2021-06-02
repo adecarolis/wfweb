@@ -24,12 +24,17 @@ audioHandler::~audioHandler()
 	if (resampler != Q_NULLPTR) {
 		speex_resampler_destroy(resampler);
 	}
+
 	if (audio->isStreamRunning())
 	{
 		audio->stopStream();
 		audio->closeStream();
 	}
-	delete audio;
+
+	if (audio != Q_NULLPTR) {
+		delete audio;
+	}
+
 	if (ringBuf != Q_NULLPTR)
 		delete ringBuf;
 }
