@@ -426,7 +426,7 @@ void udpServer::controlReceived()
                     rxAudioThread->start();
 
                     connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, int, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, int, quint8)));
-                    connect(rxAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
+                    connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
                     emit setupRxAudio(samples, channels, current->rxSampleRate, 250, uLaw, true, config.audioInput, config.resampleQuality);
 
@@ -1528,8 +1528,6 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
     qInfo(logUdpServer()) << "Current Number of clients connected: " << l->length();
     connMutex.unlock();
 
-    // Deleting the audio seems to screw everything up!
-    /*
     if (l->length() == 0) {
 
         if (rxAudioTimer != Q_NULLPTR) {
@@ -1553,5 +1551,4 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         }
 
     }
-    */
 }
