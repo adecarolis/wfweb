@@ -25,18 +25,15 @@ audioHandler::~audioHandler()
 		speex_resampler_destroy(resampler);
 	}
 
-	if (audio->isStreamRunning())
-	{
-		audio->stopStream();
-		audio->closeStream();
-	}
 
 	if (audio != Q_NULLPTR) {
+        audio->abortStream();
 		delete audio;
 	}
 
-	if (ringBuf != Q_NULLPTR)
+    if (ringBuf != Q_NULLPTR) {
 		delete ringBuf;
+    }
 }
 
 bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16 samplerate, const quint16 latency, const bool ulaw, const bool isinput, int port, quint8 resampleQuality)
