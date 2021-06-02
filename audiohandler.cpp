@@ -74,7 +74,16 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 	{
 		// Per channel chunk size.
 			aParams.nChannels = 2; // Internally this is always 2 channels for TX and RX.
-		this->chunkSize = (info.preferredSampleRate / 50);
+
+		if (info.preferredSampleRate == 44100) {
+			qDebug(logAudio()) << "Preferred sample rate 44100, trying 48000";
+			this->nativeSampleRate = 48000;
+		}
+		else {
+			this->nativeSampleRate = info.preferredSampleRate;
+		}
+
+		this->chunkSize = (this->nativeSampleRate / 50);
 
 		qInfo(logAudio()) << (isInput ? "Input" : "Output") << QString::fromStdString(info.name) << "(" << aParams.deviceId << ") successfully probed";
 		if (info.nativeFormats == 0)
@@ -114,13 +123,6 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 	}
 
 	int resample_error = 0;
-	if (info.preferredSampleRate == 44100) {
-		qDebug(logAudio()) << "Preferred sample rate 44100, trying 48000";
-		this->nativeSampleRate = 48000;
-	}
-	else {
-		this->nativeSampleRate = info.preferredSampleRate;
-	}
 
 	if (isInput) {
 		resampler = wf_resampler_init(devChannels, this->nativeSampleRate, samplerate, resampleQuality, &resample_error);
