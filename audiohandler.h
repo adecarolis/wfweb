@@ -82,6 +82,7 @@ private:
     RtAudio audio;
     int audioDevice = 0;
     RtAudio::StreamParameters aParams;
+    RtAudio::StreamOptions options;
     RtAudio::DeviceInfo info;
 
     SpeexResamplerState* resampler = Q_NULLPTR;

@@ -123,10 +123,12 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 
 	int resample_error = 0;
 
+	options.flags = !RTAUDIO_HOG_DEVICE | RTAUDIO_MINIMIZE_LATENCY;
+
 	if (isInput) {
 		resampler = wf_resampler_init(devChannels, this->nativeSampleRate, samplerate, resampleQuality, &resample_error);
 		try {
-			audio.openStream(NULL, &aParams, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticWrite, this);
+			audio.openStream(NULL, &aParams, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticWrite, this, &options);
 			audio.startStream();
 		}
 		catch (RtAudioError& e) {
@@ -138,7 +140,7 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 	{
 		resampler = wf_resampler_init(devChannels, samplerate, this->nativeSampleRate, resampleQuality, &resample_error);
 		try {
-			audio.openStream(&aParams, NULL, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticRead, this);
+			audio.openStream(&aParams, NULL, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticRead, this, &options);
 			audio.startStream();
 		}
 		catch (RtAudioError& e) {
