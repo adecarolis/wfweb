@@ -38,9 +38,9 @@ DEFINES += RANDOM_PREFIX=wf
 # RTAudio defines
 win32:DEFINES += __WINDOWS_WASAPI__
 #win32:DEFINES += __WINDOWS_DS__ # Requires DirectSound libraries
-#linux:DEFINES += __LINUX_ALSA__
+linux:DEFINES += __LINUX_ALSA__
 #linux:DEFINES += __LINUX_OSS__
-linux:DEFINES += __LINUX_PULSE__
+#linux:DEFINES += __LINUX_PULSE__
 macx:DEFINES += __MACOSX_CORE__
 
 macx:INCLUDEPATH += /usr/local/include /opt/local/include
@@ -89,7 +89,8 @@ CONFIG(debug, release|debug) {
   linux: QCPLIB = qcustomplot
 }
 
-linux:LIBS += -L./ -l$$QCPLIB -lpulse -lpulse-simple
+#linux:LIBS += -L./ -l$$QCPLIB -lpulse -lpulse-simple -lpthread
+linux:LIBS += -L./ -l$$QCPLIB -lasound -lpthread
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread
 
 !linux:SOURCES += ../qcustomplot/qcustomplot.cpp
