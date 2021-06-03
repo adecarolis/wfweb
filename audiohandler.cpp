@@ -25,8 +25,8 @@ audioHandler::~audioHandler()
 		speex_resampler_destroy(resampler);
 	}
 
+	if (isInitialized) {
 
-	if (audio != Q_NULLPTR) {
 		try {
 			audio->abortStream();
 			audio->closeStream();
@@ -34,12 +34,15 @@ audioHandler::~audioHandler()
 		catch (RtAudioError& e) {
 			qInfo(logAudio()) << "Error closing stream:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
 		}
+	}
+
+	if (audio != Q_NULLPTR) {
 		delete audio;
 	}
 
-    if (ringBuf != Q_NULLPTR) {
+	if (ringBuf != Q_NULLPTR) {
 		delete ringBuf;
-    }
+	}
 }
 
 bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16 samplerate, const quint16 latency, const bool ulaw, const bool isinput, int port, quint8 resampleQuality)
@@ -85,7 +88,7 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 	}
 	catch (RtAudioError& e) {
 		qInfo(logAudio()) << "Device error:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
-		return false;
+		return isInitialized;
 	}
 
 	if (info.probed)
@@ -150,6 +153,7 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 		try {
             audio->openStream(NULL, &aParams, RTAUDIO_SINT16, nativeSampleRate, &this->chunkSize, &staticWrite, this, &options);
 			audio->startStream();
+			isInitialized = true;
 		}
 		catch (RtAudioError& e) {
 			qInfo(logAudio()) << "Error opening:" << QString::fromStdString(e.getMessage());
@@ -162,6 +166,7 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 		try {
 			audio->openStream(&aParams, NULL, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticRead, this, &options);
 			audio->startStream();
+			isInitialized = true;
 		}
 		catch (RtAudioError& e) {
 			qInfo(logAudio()) << "Error opening:" << QString::fromStdString(e.getMessage());
@@ -320,7 +325,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	// Regardless of the radio stream format, the buffered audio will ALWAYS be
 	// 16bit sample interleaved stereo 48K (or whatever the native sample rate is)
 
-	if (!audio->isStreamRunning())
+	if (!isInitialized || !audio->isStreamRunning())
 	{
 		qDebug(logAudio()) << "Packet received before stream was started";
 		return;
@@ -424,7 +429,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 	audioPacket packet;
 	packet.sent = 0;
 
-	if (ringBuf != Q_NULLPTR && ringBuf->try_read(packet))
+	if (isInitialized && ringBuf != Q_NULLPTR && ringBuf->try_read(packet))
 	{
 
 		//qDebug(logAudio) << "Chunksize" << this->chunkSize << "Packet size" << packet.data.length();
