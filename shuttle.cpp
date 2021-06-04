@@ -1,93 +1,88 @@
 #include "shuttle.h"
 #include <QDebug>
 
-shuttle::shuttle(int vid, int pid):
-    vid(vid),
-    pid(pid)
+shuttle::shuttle()
 {
 
 }
 
 shuttle::~shuttle()
 {
-    this->closeDevice();
-    m_hid_dev->deleteLater();
+    qDebug() << "************ Ending HID";
+    hid_close(handle);
+    hid_exit();
 }
-
 
 void shuttle::init()
 {
-    m_hid_dev = new QHidDevice();
 
-    qDebug("Opening shuttle");
-
-    m_hid_dev->open(vid, pid);
-
-    qDebug() << "Manufacturer:" << m_hid_dev->manufacturer();
-    qDebug() << "Product:" << m_hid_dev->product();
-
-    return;
 }
 
-void shuttle::closeDevice()
-{
-    qDebug("Closing");
 
-    if (m_hid_dev->isOpen()) {
-        m_hid_dev->close();
+int shuttle::hidApiWrite(unsigned char* data, unsigned char length)
+{
+/*    int res;
+    unsigned char realData[length + 1];
+
+    realData[0] = length;
+    int i;
+    for (i = 0; i < length; i++)
+    {
+        realData[i + 1] = data[i];
     }
-}
 
-void shuttle::read(QByteArray* buf)
-{
-    QByteArray b(128, '0');
-    m_hid_dev->read(&b, b.size());
-
-    qDebug() << "Reading" << b << b.size();
-    buf->append(b);
-}
-
-void shuttle::write(QByteArray* buf)
-{
-    qDebug() << "Writing" << *buf << buf->size();
-    if (m_hid_dev->write(buf, buf->size()) < 0) {
-        qWarning("write failed");
+    res = hid_write(handle, realData, length + 1);
+    if (res < 0) {
+        printf("Unable to write()\n");
+        printf("Error: %ls\n", hid_error(handle));
+        return -1;
     }
+
+    printf("write success\n");
+    */
+    return 0;
 }
 
-void shuttle::process()
+
+void shuttle::run()
 {
-    quint8 jogpos=0;
-    qDebug() << "Starting shuttle process";
-    while (true) {
-        QByteArray b(128, '0');
-        if (m_hid_dev != Q_NULLPTR) {
-            m_hid_dev->read(&b, b.size(), 100);
-
-            //qDebug() << "Reading" << b << b.size();
-            if (b.size() == 5)
-            {
-                qDebug() << "Shuttle Data received: " << hex << (quint8)b[0] << ":"
-                    << hex << (quint8)b[1] << ":"
-                    << hex << (quint8)b[2] << ":"
-                    << hex << (quint8)b[3] << ":"
-                    << hex << (quint8)b[4];
-                if ((quint8)b[1] != jogpos) {
-                    if ((quint8)b[1] > jogpos && ((quint8)b[1] != 0x00 && jogpos != 0xff))
-                    {
-                        qDebug() << "Jog UP";
-                    }
-                    else {
-                        qDebug() << "Jog Down";
-                    }
-                    jogpos = (quint8)b[1];
-                }
-            }
-        }
-        else {
-            QThread::yieldCurrentThread();
-            QThread::msleep(100);
-        }
-
+    handle = hid_open(0x0b33, 0x0020, NULL);
+    if (!handle) {
+        qDebug() << "unable to open device";
+        return;
     }
+
+    qDebug() << "*************** open device success";
+
+    hid_set_nonblocking(handle, 1);
+    qDebug() << "************  Starting HID";
+    QTimer::singleShot(0, this, SLOT(runTimer()));
 }
+
+void shuttle::runTimer()
+{
+    int res;
+    QByteArray data(HIDDATALENGTH,0x0);
+    res = hid_read(handle, (unsigned char *)data.data(), HIDDATALENGTH);
+    if (res == 0)
+        ;//printf("waiting...\n");
+    else if (res < 0)
+    {
+        qDebug() << "Unable to read()";
+        return;
+    }
+    else if (res == 5)
+    {
+        data.resize(res);
+        qDebug() << "Shuttle Data received: " << hex << (quint8)data[0] << ":"
+            << hex << (quint8)data[1] << ":"
+            << hex << (quint8)data[2] << ":"
+            << hex << (quint8)data[3] << ":"
+            << hex << (quint8)data[4];
+
+        emit hidDataArrived(data);
+    }
+    // Run every 50ms
+    QTimer::singleShot(50, this, SLOT(runTimer()));
+}
+

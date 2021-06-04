@@ -101,6 +101,9 @@ CONFIG(debug, release|debug) {
 linux:LIBS += -L./ -l$$QCPLIB -lasound
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread
 
+win32:LIBS += -L../hidapi/windows/release -lhidapi
+win32:INCLUDEPATH += ../hidapi/hidapi
+
 !linux:SOURCES += ../qcustomplot/qcustomplot.cpp
 !linux:HEADERS += ../qcustomplot/qcustomplot.h
 !linux:INCLUDEPATH += ../qcustomplot

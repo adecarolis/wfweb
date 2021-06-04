@@ -1028,37 +1028,18 @@ void wfmain::setupKeyShortcuts()
 
 void wfmain::setupShuttleDevice()
 {
-    return;
-    auto list = QUsb::devices();
-    int vid = 0;
-    int pid = 0;
-    for (auto l : list)
-    {
-        if (l.vid == 0x0B33 && l.pid == 0x0020) {
-            qDebug(logSystem()) << "Found ShuttleXpress" << QString(l);
-        }
-        else if (l.vid == 0x0B33 && l.pid == 0x0030) {
-            qDebug(logSystem()) << "Found ShuttlePro" << QString(l);
-        }
-        else {
-            continue;
-        }
-        vid = l.vid;
-        pid = l.pid;
-    }
+    shuttleDev = new shuttle();
+    shuttleThread = new QThread(this);
+    shuttleDev->moveToThread(shuttleThread);
+    connect(shuttleThread, SIGNAL(started()), shuttleDev, SLOT(run()));
+    connect(shuttleThread, SIGNAL(finished()), shuttleDev, SLOT(deleteLater()));
+    connect(shuttleDev, SIGNAL(hidDataArrived(QByteArray)), this, SLOT(hidDataArrived(QByteArray)));
+    shuttleThread->start();
+}
 
-    if (vid != 0 && pid != 0) {
-        shuttleThread = new QThread;
-        shuttleDev = new shuttle(vid, pid);
-        shuttleDev->moveToThread(shuttleThread);
-        connect(this, SIGNAL(openShuttle()), shuttleDev, SLOT(init()));
-        connect(shuttleThread, SIGNAL(started()), shuttleDev, SLOT(process()));
-        connect(shuttleDev, SIGNAL(finished()), shuttleThread, SLOT(quit()));
-        connect(shuttleDev, SIGNAL(finished()), shuttleDev, SLOT(deleteLater()));
-        connect(shuttleThread, SIGNAL(finished()), shuttleThread, SLOT(deleteLater()));
-        shuttleThread->start();
-        emit openShuttle();
-    }
+void wfmain::hidDataArrived(QByteArray data)
+{
+
 }
 
 void wfmain::setDefPrefs()

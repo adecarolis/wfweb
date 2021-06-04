@@ -241,6 +241,7 @@ private slots:
     void showStatusBarText(QString text);
     void serverConfigRequested(SERVERCONFIG conf, bool store);
     void receiveBaudRate(quint32 baudrate);
+    void hidDataArrived(QByteArray data);
 
     // void on_getFreqBtn_clicked();
 
