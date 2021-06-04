@@ -367,6 +367,10 @@ void udpServer::controlReceived()
             if (!config.lan) {
                 // Radio is connected by USB/Serial and we assume that audio is connected as well.
                 // Create audio TX/RX threads if they don't already exist (first client chooses samplerate/codec)
+
+                audioSetup setup;
+                setup.resampleQuality = config.resampleQuality;
+
                 if (txaudio == Q_NULLPTR)
                 {
                     bool uLaw = false;
@@ -385,6 +389,13 @@ void udpServer::controlReceived()
                         samples = 16;
                     }
 
+                    //setup.port = config.audioOutput;
+                    setup.bits = samples;
+                    setup.radioChan = channels;
+                    setup.ulaw = uLaw;
+                    setup.samplerate = current->txSampleRate;
+                    setup.latency = current->txBufferLen;
+                    setup.isinput = false;
 
                     txaudio = new audioHandler();
                     txAudioThread = new QThread(this);
@@ -392,10 +403,11 @@ void udpServer::controlReceived()
 
                     txAudioThread->start();
 
-                    connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool, int, quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, int, quint8)));
+                    connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
                     connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
-                    emit setupTxAudio(samples, channels, current->txSampleRate, current->txBufferLen, uLaw, false, config.audioOutput, config.resampleQuality);
+
+                    emit setupTxAudio(setup);
                     hasTxAudio = datagram.senderAddress();
 
                     connect(this, SIGNAL(haveAudioData(audioPacket)), txaudio, SLOT(incomingAudio(audioPacket)));
@@ -419,16 +431,24 @@ void udpServer::controlReceived()
                         samples = 16;
                     }
 
-
                     rxaudio = new audioHandler();
                     rxAudioThread = new QThread(this);
                     rxaudio->moveToThread(rxAudioThread);
                     rxAudioThread->start();
 
-                    connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, int, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool, int, quint8)));
+                    connect(this, SIGNAL(setupRxAudio(audioSetup)), rxaudio, SLOT(init(audioSetup)));
                     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
-                    emit setupRxAudio(samples, channels, current->rxSampleRate, 250, uLaw, true, config.audioInput, config.resampleQuality);
+                    setup.bits = samples;
+                    setup.radioChan = channels;
+                    setup.ulaw = uLaw;
+                    setup.samplerate = current->rxSampleRate;
+                    setup.latency = 150;
+                    setup.isinput = true;
+                    //setup.port = config.audioInput;
+                    setup.resampleQuality = config.resampleQuality;
+
+                    emit setupRxAudio(setup);
 
                     rxAudioTimer = new QTimer();
                     rxAudioTimer->setTimerType(Qt::PreciseTimer);

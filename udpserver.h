@@ -52,8 +52,8 @@ signals:
 	void haveDataFromServer(QByteArray);
 	void haveAudioData(audioPacket data);
 
-	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, int device, quint8 resampleQuality);
-	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, int device, quint8 resampleQuality);
+	void setupTxAudio(audioSetup);
+	void setupRxAudio(audioSetup);
 
 
 

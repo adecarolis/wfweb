@@ -174,7 +174,7 @@ class udpAudio : public udpBase
 	Q_OBJECT
 
 public:
-	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, int outputPort, int inputPort, quint8 resampleQuality);
+	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, audioSetup rxSetup, audioSetup txSetup);
 	~udpAudio();
 
 	int audioLatency = 0;
@@ -182,8 +182,8 @@ public:
 signals:
 	void haveAudioData(audioPacket data);
 
-	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, int port, quint8 resampleQuality);
-	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, int port, quint8 resampleQuality);
+	void setupTxAudio(audioSetup setup);
+	void setupRxAudio(audioSetup setup);
 
 	void haveChangeLatency(quint16 value);
 	void haveSetVolume(unsigned char value);
@@ -233,7 +233,7 @@ class udpHandler: public udpBase
 	Q_OBJECT
 
 public:
-	udpHandler(udpPreferences prefs);
+	udpHandler(udpPreferences prefs, audioSetup rxAudio, audioSetup txAudio);
 	~udpHandler();
 
 	bool streamOpened = false;
@@ -282,17 +282,8 @@ private:
 	quint16 civPort;
 	quint16 audioPort;
 
-	quint16 rxSampleRate;
-	quint16 txSampleRate;
-	quint16 rxLatency;
-	quint16 txLatency;
-	quint8 rxCodec;
-	quint8 txCodec;
-
-	int audioInputPort;
-	int audioOutputPort;
-	
-	quint8 resampleQuality;
+	audioSetup rxSetup;
+	audioSetup txSetup;
 
 	quint16 reauthInterval = 60000;
 	QString devName;
