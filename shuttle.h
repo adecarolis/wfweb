@@ -36,6 +36,9 @@ signals:
 private:
     hid_device* handle;
     bool isOpen=false;
+    unsigned char buttons;
+    unsigned char jogpos;
+    unsigned char shutpos;
 
 protected:
 };

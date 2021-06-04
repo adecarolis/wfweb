@@ -74,11 +74,36 @@ void shuttle::runTimer()
     else if (res == 5)
     {
         data.resize(res);
-        qDebug() << "Shuttle Data received: " << hex << (quint8)data[0] << ":"
-            << hex << (quint8)data[1] << ":"
-            << hex << (quint8)data[2] << ":"
-            << hex << (quint8)data[3] << ":"
-            << hex << (quint8)data[4];
+        qDebug() << "Shuttle Data received: " << hex << (unsigned char)data[0] << ":"
+            << hex << (unsigned char)data[1] << ":"
+            << hex << (unsigned char)data[2] << ":"
+            << hex << (unsigned char)data[3] << ":"
+            << hex << (unsigned char)data[4];
+
+        unsigned char tempButtons = ((unsigned char)data[3] | (unsigned char)data[4]);
+        unsigned char tempJogpos = (unsigned char)data[1];
+        unsigned char tempShutpos = (unsigned char)data[0];
+
+
+        if (tempJogpos == jogpos + 1 || tempJogpos == jogpos - 1 || tempJogpos == 0xff || tempJogpos == 0x00) {
+            if (tempJogpos > jogpos || (tempJogpos == 0x00 && jogpos == 0xff))
+            {
+                qDebug() << "JOG UP";
+            }
+            else {
+                qDebug() << "JOG DOWN";
+            }
+        }
+        if (tempShutpos == shutpos + 1) 
+        {
+            qDebug() << "SHUTTLE UP";
+        }
+        else if (tempShutpos == shutpos-1) {
+            qDebug() << "SHUTTLE DOWN";
+        }
+        buttons = ((unsigned char)data[3] | (unsigned char)data[4]);
+        jogpos = (unsigned char)data[1];
+        shutpos = (unsigned char)data[0];
 
         emit hidDataArrived(data);
     }
