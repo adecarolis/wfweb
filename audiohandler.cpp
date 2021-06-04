@@ -243,6 +243,7 @@ bool audioHandler::init(audioSetup setupIn)
 
     qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "thread id" << QThread::currentThreadId();
 
+
 	if (isInitialized) {
 		this->start();
 	}
@@ -393,10 +394,11 @@ qint64 audioHandler::writeData(const char* data, qint64 nBytes)
 #endif
 	int sentlen = 0;
 	//qDebug(logAudio()) << "nFrames" << nFrames << "nBytes" << nBytes;
+	int chunkBytes = chunkSize * devChannels * 2;
 	while (sentlen < nBytes) {
-		if (tempBuf.sent != nBytes)
+		if (tempBuf.sent != chunkBytes)
 		{
-			int send = qMin((int)(nBytes - sentlen), (int)nBytes - tempBuf.sent);
+			int send = qMin((int)(nBytes - sentlen), chunkBytes - tempBuf.sent);
 			tempBuf.data.append(QByteArray::fromRawData(data + sentlen, send));
 			sentlen = sentlen + send;
 			tempBuf.seq = 0; // Not used in TX
