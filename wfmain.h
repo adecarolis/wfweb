@@ -170,6 +170,8 @@ private slots:
     void shortcutSlash();
     void shortcutMinus();
     void shortcutPlus();
+    void shortcutStepMinus();
+    void shortcutStepPlus();
     void shortcutShiftMinus();
     void shortcutShiftPlus();
     void shortcutControlMinus();
@@ -241,7 +243,9 @@ private slots:
     void showStatusBarText(QString text);
     void serverConfigRequested(SERVERCONFIG conf, bool store);
     void receiveBaudRate(quint32 baudrate);
-    void hidDataArrived(QByteArray data);
+    void pttToggle(bool);
+    void stepUp();
+    void stepDown();
 
     // void on_getFreqBtn_clicked();
 

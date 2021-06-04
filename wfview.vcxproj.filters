@@ -57,9 +57,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="rtaudio\RTAudio.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="audiohandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -111,6 +108,9 @@
     <ClCompile Include="satellitesetup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="shuttle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="udphandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -125,9 +125,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="rtaudio\RTAUdio.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="opus-tools\src\arch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -185,6 +182,9 @@
     <QtMoc Include="satellitesetup.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="shuttle.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <ClInclude Include="opus-tools\src\speex_resampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -219,6 +219,8 @@
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
+    
+    
     
     
     

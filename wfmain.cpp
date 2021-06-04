@@ -1058,13 +1058,42 @@ void wfmain::setupShuttleDevice()
     shuttleDev->moveToThread(shuttleThread);
     connect(shuttleThread, SIGNAL(started()), shuttleDev, SLOT(run()));
     connect(shuttleThread, SIGNAL(finished()), shuttleDev, SLOT(deleteLater()));
-    connect(shuttleDev, SIGNAL(hidDataArrived(QByteArray)), this, SLOT(hidDataArrived(QByteArray)));
+    connect(shuttleDev, SIGNAL(jogPlus()), this, SLOT(shortcutStepPlus()));
+    connect(shuttleDev, SIGNAL(jogMinus()), this, SLOT(shortcutStepMinus()));
+    connect(shuttleDev, SIGNAL(button5(bool)), this, SLOT(stepDown()));
+    connect(shuttleDev, SIGNAL(button6(bool)), this, SLOT(pttToggle(bool)));
+    connect(shuttleDev, SIGNAL(button7(bool)), this, SLOT(stepUp()));
     shuttleThread->start();
 }
 
-void wfmain::hidDataArrived(QByteArray data)
+void wfmain::pttToggle(bool status)
 {
+    // is it enabled?
 
+    if (!ui->pttEnableChk->isChecked())
+    {
+        showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
+        return;
+    }
+
+    emit setPTT(status);
+    // Start 3 minute timer
+    if (status)
+        pttTimer->start();
+
+    issueDelayedCommand(cmdGetPTT);
+}
+
+void wfmain::stepUp()
+{
+    if (ui->tuningStepCombo->currentIndex() < ui->tuningStepCombo->count() - 1)
+        ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->currentIndex() + 1);
+}
+
+void wfmain::stepDown()
+{
+    if (ui->tuningStepCombo->currentIndex() > 0)
+        ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->currentIndex() - 1);
 }
 
 void wfmain::setDefPrefs()
@@ -1778,7 +1807,7 @@ quint64 wfmain::roundFrequencyWithStep(quint64 frequency, int steps, unsigned in
 
 void wfmain::shortcutMinus()
 {
-    if(freqLock) return;
+    if (freqLock) return;
 
     freqt f;
     f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsPlusHz);
@@ -1791,10 +1820,36 @@ void wfmain::shortcutMinus()
 
 void wfmain::shortcutPlus()
 {
-    if(freqLock) return;
+    if (freqLock) return;
 
     freqt f;
     f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsPlusHz);
+
+    f.MHzDouble = f.Hz / (double)1E6;
+    setUIFreq();
+    emit setFrequency(f);
+    issueDelayedCommandUnique(cmdGetFreq);
+}
+
+void wfmain::shortcutStepMinus()
+{
+    if (freqLock) return;
+
+    freqt f;
+    f.Hz = roundFrequencyWithStep(freq.Hz, -1, ui->tuningStepCombo->currentData().toInt());
+
+    f.MHzDouble = f.Hz / (double)1E6;
+    setUIFreq();
+    emit setFrequency(f);
+    issueDelayedCommandUnique(cmdGetFreq);
+}
+
+void wfmain::shortcutStepPlus()
+{
+    if (freqLock) return;
+
+    freqt f;
+    f.Hz = roundFrequencyWithStep(freq.Hz, 1, ui->tuningStepCombo->currentData().toInt());
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
@@ -3230,7 +3285,7 @@ void wfmain::on_freqDial_valueChanged(int value)
 
     f.Hz = roundFrequencyWithStep(freq.Hz, delta, tsKnobHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    if(f.Hz > 0)
+    if (f.Hz > 0)
     {
         freq = f;
 
@@ -3239,7 +3294,8 @@ void wfmain::on_freqDial_valueChanged(int value)
         ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 
         emit setFrequency(f);
-    } else {
+    }
+    else {
         ui->freqDial->blockSignals(true);
         ui->freqDial->setValue(oldFreqDialVal);
         ui->freqDial->blockSignals(false);

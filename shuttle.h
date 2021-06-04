@@ -14,7 +14,9 @@
 
 using namespace std;
 
-#define HIDDATALENGTH 5
+
+#define HIDDATALENGTH 64
+#define MAX_STR 255
 
 class shuttle : public QObject
 {
@@ -31,14 +33,33 @@ public slots:
     void runTimer();
 
 signals:
-    void hidDataArrived(QByteArray data);
+    void jogPlus();
+    void jogMinus();
+
+    void button0(bool);
+    void button1(bool);
+    void button2(bool);
+    void button3(bool);
+    void button4(bool);
+    void button5(bool);
+    void button6(bool);
+    void button7(bool);
+    void button8(bool);
+    void button9(bool);
+    void button10(bool);
+    void button11(bool);
+    void button12(bool);
+    void button13(bool);
+    void button14(bool);
+    void button15(bool);
 
 private:
     hid_device* handle;
     bool isOpen=false;
-    unsigned char buttons;
-    unsigned char jogpos;
-    unsigned char shutpos;
+    unsigned int buttons=0;
+    unsigned char jogpos=0;
+    unsigned char shutpos=0;
+    enum { NONE, shuttleXpress, shuttlePro2, RC28 }usbDevice;
 
 protected:
 };
