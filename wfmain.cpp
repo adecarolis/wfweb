@@ -1283,7 +1283,7 @@ void wfmain::loadSettings()
     if (audioOutputIndex != -1) {
         ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
 #if defined(RTAUDIO)
-        udpPrefs.audioOutput = ui->audioOutputCombo->itemData(audioOutputIndex).toInt();
+        rxSetup.port = ui->audioOutputCombo->itemData(audioOutputIndex).toInt();
 #elif defined(PORTAUDIO)
 #else
         QVariant v = ui->audioOutputCombo->currentData();
@@ -1299,7 +1299,7 @@ void wfmain::loadSettings()
     if (audioInputIndex != -1) {
         ui->audioInputCombo->setCurrentIndex(audioInputIndex);
 #if defined(RTAUDIO)
-        udpPrefs.audioInput = ui->audioInputCombo->itemData(audioInputIndex).toInt();
+        txSetup.port = ui->audioInputCombo->itemData(audioInputIndex).toInt();
 #elif defined(PORTAUDIO)
 #else
         QVariant v = ui->audioInputCombo->currentData();
@@ -1421,8 +1421,8 @@ void wfmain::saveSettings()
     settings->setValue("AudioRXCodec", rxSetup.codec);
     settings->setValue("AudioTXSampleRate", txSetup.samplerate);
     settings->setValue("AudioTXCodec", txSetup.codec);
-    settings->setValue("AudioOutput", udpPrefs.audioOutputName);
-    settings->setValue("AudioInput", udpPrefs.audioInputName);
+    settings->setValue("AudioOutput", rxSetup.name);
+    settings->setValue("AudioInput", txSetup.name);
     settings->setValue("ResampleQuality", rxSetup.resampleQuality);
     settings->setValue("ClientName", udpPrefs.clientName);
     settings->endGroup();
@@ -3728,14 +3728,26 @@ void wfmain::on_passwordTxt_textChanged(QString text)
 
 void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
 {
-    udpPrefs.audioOutput = ui->audioOutputCombo->itemData(value).toInt();
-    udpPrefs.audioOutputName = ui->audioOutputCombo->itemText(value);
+#if defined(RTAUDIO)
+    rxSetup.port = ui->audioOutputCombo->itemData(value).toInt();
+#elif defined(PORTAUDIO)
+#else
+    QVariant v = ui->audioOutputCombo->itemData(value);
+    rxSetup.port = v.value<QAudioDeviceInfo>();
+#endif
+    rxSetup.name = ui->audioOutputCombo->itemText(value);
 }
 
 void wfmain::on_audioInputCombo_currentIndexChanged(int value)
 {
-    udpPrefs.audioInput = ui->audioInputCombo->itemData(value).toInt();
-    udpPrefs.audioInputName = ui->audioInputCombo->itemText(value);
+#if defined(RTAUDIO)
+    txSetup.port = ui->audioInputCombo->itemData(value).toInt();
+#elif defined(PORTAUDIO)
+#else
+    QVariant v = ui->audioInputCombo->itemData(value);
+    txSetup.port = v.value<QAudioDeviceInfo>();
+#endif
+    txSetup.name = ui->audioInputCombo->itemText(value);
 }
 
 void wfmain::on_audioSampleRateCombo_currentIndexChanged(QString text)
