@@ -3,12 +3,22 @@
 
 #include <QObject>
 
-#include <QtMultimedia/QAudioOutput>
 #include <QByteArray>
 #include <QMutex>
 #include <QtEndian>
 #include <QtMath>
-#include "rtaudio/RtAudio.h"
+
+#if defined(RTAUDIO)
+#include "RtAudio.h"
+#elif defined (PORTAUDIO)
+#include "portaudio.h"
+#else
+#include <QAudioOutput>
+#include <QAudioFormat>
+#include <QAudioDeviceInfo>
+#include <QAudioInput>
+#include <QIODevice>
+#endif
 
 typedef signed short  MY_TYPE;
 #define FORMAT RTAUDIO_SINT16
@@ -40,7 +50,30 @@ struct audioPacket {
     QByteArray data;
 };
 
+struct audioSetup {
+    QString name;
+    quint8 bits;
+    quint8 radioChan;
+    quint16 samplerate;
+    quint16 latency;
+    quint8 codec;
+    bool ulaw;
+    bool isinput;
+#if defined(RTAUDIO)
+    int port;
+#elif defined(PORTAUDIO)
+#else
+    QAudioDeviceInfo port;
+#endif
+    quint8 resampleQuality;
+};
+
+// For QtMultimedia, use a native QIODevice
+#if !defined(PORTAUDIO) && !defined(RTAUDIO)
+class audioHandler : public QIODevice
+#else
 class audioHandler : public QObject
+#endif
 {
     Q_OBJECT
 
@@ -50,13 +83,25 @@ public:
 
     int getLatency();
 
+    bool setDevice(QAudioDeviceInfo deviceInfo);
+
+    void start();
+    void flush();
+    void stop();
+    qint64 bytesAvailable() const;
+    bool isSequential() const;
+
     void getNextAudioChunk(QByteArray &data);
 
-private slots:
-    bool init(const quint8 bits, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isulaw, const bool isinput, int port, quint8 resampleQuality);
+public slots:
+    bool init(audioSetup setup);
     void changeLatency(const quint16 newSize);
     void setVolume(unsigned char volume);
     void incomingAudio(const audioPacket data);
+
+private slots:
+    void notified();
+    void stateChanged(QAudio::State state);
 
 signals:
     void audioMessage(QString message);
@@ -65,6 +110,8 @@ signals:
 
 
 private:
+
+#if defined(RTAUDIO)
     int readData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status);
 
     static int staticRead(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status, void* userData) {
@@ -76,15 +123,29 @@ private:
     static int staticWrite(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status, void* userData) {
         return static_cast<audioHandler*>(userData)->writeData(outputBuffer, inputBuffer, nFrames, streamTime, status);
     }
+#elif defined(PORTAUDIO)
+
+#else
+    qint64 readData(char* data, qint64 nBytes);
+    qint64 writeData(const char* data, qint64 nBytes);
+#endif
 
     void reinit();
+    bool            isInitialized=false;
 
-    bool            isInitialized;
-    RtAudio audio;
+#if defined(RTAUDIO)
+    RtAudio* audio = Q_NULLPTR;
     int audioDevice = 0;
     RtAudio::StreamParameters aParams;
+    RtAudio::StreamOptions options;
     RtAudio::DeviceInfo info;
-
+#elif defined(PORTAUDIO)
+#else
+    QAudioOutput* audioOutput=Q_NULLPTR;
+    QAudioInput* audioInput=Q_NULLPTR;
+    QAudioFormat     format;
+    QAudioDeviceInfo deviceInfo;
+#endif
     SpeexResamplerState* resampler = Q_NULLPTR;
 
     bool            isUlaw;
@@ -93,10 +154,11 @@ private:
     unsigned int             chunkSize;
     bool            chunkAvailable;
 
-    quint32        lastSeq;
+    quint32         lastSeq;
 
-    quint16          radioSampleRate;
-    quint8           radioSampleBits;
+    quint16         radioSampleRate;
+    quint16         nativeSampleRate=0;
+    quint8          radioSampleBits;
     quint8          radioChannels;
 
     QMap<quint32, audioPacket>audioBuffer;
@@ -105,11 +167,13 @@ private:
     unsigned int ratioDen;
 
     wilt::Ring<audioPacket> *ringBuf=Q_NULLPTR;
+
     volatile bool ready = false;
     audioPacket tempBuf;
     quint16 currentLatency;
     qreal volume=1.0;
     int devChannels;
+    audioSetup setup;
 };
 
 #endif // AUDIOHANDLER_H

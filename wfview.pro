@@ -15,12 +15,14 @@ TEMPLATE = app
 
 CONFIG(debug, release|debug) {
 # For Debug builds only:
+QMAKE_CXXFLAGS += -faligned-new
 
 } else {
 # For Release builds only:
 linux:QMAKE_CXXFLAGS += -s
 QMAKE_CXXFLAGS += -fvisibility=hidden
 QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
+QMAKE_CXXFLAGS += -faligned-new
 linux:QMAKE_LFLAGS += -O2 -s
 }
 
@@ -42,15 +44,6 @@ linux:DEFINES += __LINUX_ALSA__
 #linux:DEFINES += __LINUX_OSS__
 #linux:DEFINES += __LINUX_PULSE__
 macx:DEFINES += __MACOSX_CORE__
-
-#option(RTAUDIO_API_DS "Build DirectSound API" OFF)
-#option(RTAUDIO_API_ASIO "Build ASIO API" OFF)
-#option(RTAUDIO_API_WASAPI "Build WASAPI API" ${WIN32})
-#option(RTAUDIO_API_OSS "Build OSS4 API" ${xBSD})
-#option(RTAUDIO_API_ALSA "Build ALSA API" ${LINUX})
-#option(RTAUDIO_API_PULSE "Build PulseAudio API" ${pulse_FOUND})
-#option(RTAUDIO_API_JACK "Build JACK audio server API" ${HAVE_JACK})
-#option(RTAUDIO_API_CORE "Build CoreAudio API" ${APPLE})
 
 macx:INCLUDEPATH += /usr/local/include /opt/local/include
 macx:LIBS += -L/usr/local/lib -L/opt/local/lib
@@ -98,18 +91,23 @@ CONFIG(debug, release|debug) {
   linux: QCPLIB = qcustomplot
 }
 
-linux:LIBS += -L./ -l$$QCPLIB -lasound
+#linux:LIBS += -L./ -l$$QCPLIB -lpulse -lpulse-simple -lpthread
+linux:LIBS += -L./ -l$$QCPLIB
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread
 
 win32:LIBS += -L../hidapi/windows/release -lhidapi
 win32:INCLUDEPATH += ../hidapi/hidapi
 
+#!linux:SOURCES += ../qcustomplot/qcustomplot.cpp rtaudio/RTAudio.cpp
+#!linux:HEADERS += ../qcustomplot/qcustomplot.h rtaudio/RTAUdio.h
+
 !linux:SOURCES += ../qcustomplot/qcustomplot.cpp
 !linux:HEADERS += ../qcustomplot/qcustomplot.h
+
 !linux:INCLUDEPATH += ../qcustomplot
 
 INCLUDEPATH += opus-tools/src
-INCLUDEPATH += rtaudio
+!linux:INCLUDEPATH += rtaudio
 
 SOURCES += main.cpp\
     wfmain.cpp \
@@ -130,7 +128,6 @@ SOURCES += main.cpp\
     opus-tools/src/resample.c \
     repeatersetup.cpp \
     rigctld.cpp \
-    rtaudio/RtAudio.cpp \
     ring/ring.cpp \
 	shuttle.cpp 
 
@@ -156,7 +153,6 @@ HEADERS  += wfmain.h \
     repeatersetup.h \
     repeaterattributes.h \
     rigctld.h \
-    rtaudio/RtAudio.h \
     ulaw.h \
     ring/ring.h \
 	shuttle.h

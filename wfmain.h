@@ -138,7 +138,7 @@ signals:
     void sayMode();
     void sayAll();
     void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp);
-    void sendCommSetup(unsigned char rigCivAddr, udpPreferences prefs, QString vsp);
+    void sendCommSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp);
     void sendCloseComm();
     void sendChangeLatency(quint16 latency);
     void initServer();
@@ -642,6 +642,10 @@ private:
     udpPreferences udpPrefs;
     udpPreferences udpDefPrefs;
 
+    // Configuration for audio output and input.
+    audioSetup rxSetup;
+    audioSetup txSetup;
+
     colors defaultColors;
 
     void setDefaultColors(); // populate with default values
@@ -731,7 +735,10 @@ private:
     SERVERCONFIG serverConfig;
     shuttle *shuttleDev = Q_NULLPTR;
     QThread *shuttleThread = Q_NULLPTR;
+#ifdef RTAUDIO
     RtAudio audio;
+#endif
+
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
@@ -739,6 +746,7 @@ Q_DECLARE_METATYPE(struct freqt)
 Q_DECLARE_METATYPE(struct udpPreferences)
 Q_DECLARE_METATYPE(struct rigStateStruct)
 Q_DECLARE_METATYPE(struct audioPacket)
+Q_DECLARE_METATYPE(struct audioSetup)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)

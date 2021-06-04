@@ -4,7 +4,6 @@
 #include <QDialog>
 #include <QComboBox>
 #include <QList>
-#include <QAudioDeviceInfo>
 
 #include <QDebug>
 
