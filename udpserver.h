@@ -163,8 +163,8 @@ private:
 	audioHandler* txaudio = Q_NULLPTR;
 	QThread* txAudioThread = Q_NULLPTR;
 
-	audioSetup inAudio;
 	audioSetup outAudio;
+	audioSetup inAudio;
 
 	QTimer* rxAudioTimer=Q_NULLPTR;
 	quint16 rxSampleRate = 0;
