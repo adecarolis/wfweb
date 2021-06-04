@@ -764,17 +764,8 @@ void wfmain::setServerToPrefs()
     // Start server if enabled in config
     if (serverConfig.enabled) {
         serverConfig.lan = prefs.enableLAN;
-        if (!serverConfig.lan) {
-            // How do we setup the audio for server????
-            serverConfig.resampleQuality = udpPrefs.resampleQuality;
-            serverConfig.audioInput = udpPrefs.audioInput;
-            serverConfig.audioOutput = udpPrefs.audioOutput;
-            serverConfig.baudRate = prefs.serialPortBaud;
-            serverConfig.audioInput = udpPrefs.audioInput;
-            serverConfig.audioOutput = udpPrefs.audioOutput;
-        }
 
-        udp = new udpServer(serverConfig);
+        udp = new udpServer(serverConfig,rxSetup,txSetup);
 
         serverThread = new QThread(this);
 
@@ -1306,7 +1297,7 @@ void wfmain::loadSettings()
         txSetup.port = v.value<QAudioDeviceInfo>();
 #endif
     }
-    ui->audioOutputCombo->blockSignals(false);
+    ui->audioInputCombo->blockSignals(false);
 
     rxSetup.resampleQuality = settings->value("ResampleQuality", udpDefPrefs.resampleQuality).toInt();
     txSetup.resampleQuality = rxSetup.resampleQuality;
@@ -3736,6 +3727,7 @@ void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
     rxSetup.port = v.value<QAudioDeviceInfo>();
 #endif
     rxSetup.name = ui->audioOutputCombo->itemText(value);
+    qDebug(logGui()) << "Changed default audio output to:" << rxSetup.name;
 }
 
 void wfmain::on_audioInputCombo_currentIndexChanged(int value)
@@ -3748,6 +3740,7 @@ void wfmain::on_audioInputCombo_currentIndexChanged(int value)
     txSetup.port = v.value<QAudioDeviceInfo>();
 #endif
     txSetup.name = ui->audioInputCombo->itemText(value);
+    qDebug(logGui()) << "Changed default audio input to:" << txSetup.name;
 }
 
 void wfmain::on_audioSampleRateCombo_currentIndexChanged(QString text)

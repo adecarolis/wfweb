@@ -39,7 +39,7 @@ class udpServer : public QObject
 	Q_OBJECT
 
 public:
-	udpServer(SERVERCONFIG config);
+	udpServer(SERVERCONFIG config,audioSetup outAudio, audioSetup inAudio);
 	~udpServer();
 
 public slots:
@@ -162,6 +162,9 @@ private:
 
 	audioHandler* txaudio = Q_NULLPTR;
 	QThread* txAudioThread = Q_NULLPTR;
+
+	audioSetup inAudio;
+	audioSetup outAudio;
 
 	QTimer* rxAudioTimer=Q_NULLPTR;
 	quint16 rxSampleRate = 0;
