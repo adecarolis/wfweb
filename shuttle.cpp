@@ -54,6 +54,7 @@ void shuttle::run()
         if (!handle) {
             handle = hid_open(0x0C26, 0x001E, NULL);
             if (!handle) {
+                // No devices found, schedule another check in 1000ms
                 QTimer::singleShot(1000, this, SLOT(run()));
             }
             else {

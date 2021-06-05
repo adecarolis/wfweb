@@ -5,7 +5,11 @@
 #include <QThread>
 #include <QCoreApplication>
 #include <QTimer>
+#ifdef Q_OS_LINUX
 #include "hidapi/hidapi.h"
+#else
+#include "hidapi.h"
+#endif
 
 #ifndef Q_OS_WIN
 //Headers needed for sleeping.
