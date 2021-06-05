@@ -2,10 +2,10 @@
 #define SHUTTLE_H
 
 #include <iostream>
-#include <qthread >
+#include <QThread>
 #include <QCoreApplication>
 #include <QTimer>
-#include "hidapi.h"
+#include "hidapi/hidapi.h"
 
 #ifndef Q_OS_WIN
 //Headers needed for sleeping.

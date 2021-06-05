@@ -3,7 +3,7 @@
 
 shuttle::shuttle()
 {
-
+	qInfo() << "Starting USB device detection";
 }
 
 shuttle::~shuttle()
@@ -75,7 +75,7 @@ void shuttle::run()
         wchar_t product[MAX_STR];
         res = hid_get_manufacturer_string(handle, manufacturer, MAX_STR);
         res = hid_get_product_string(handle, product, MAX_STR);
-        qDebug() << QString("Found Device: %0 from %1").arg(QString::fromWCharArray(product)).arg(QString::fromWCharArray(manufacturer));
+        qInfo() << QString("Found Device: %0 from %1").arg(QString::fromWCharArray(product)).arg(QString::fromWCharArray(manufacturer));
         hid_set_nonblocking(handle, 1);
         QTimer::singleShot(0, this, SLOT(runTimer()));
     }
@@ -90,7 +90,7 @@ void shuttle::runTimer()
         ;//printf("waiting...\n");
     else if (res < 0)
     {
-        qDebug() << "USB Device disconnected?";
+        qInfo() << "USB Device disconnected?";
         hid_close(handle);
         QTimer::singleShot(1000, this, SLOT(run()));
         return;
@@ -104,7 +104,7 @@ void shuttle::runTimer()
             << hex << (unsigned char)data[3] << ":"
             << hex << (unsigned char)data[4];
 
-        unsigned int tempButtons = unsigned int((unsigned char)data[3] | (unsigned char)data[4] << 8);
+        unsigned int tempButtons = (unsigned int)((unsigned char)data[3] | (unsigned char)data[4] << 8);
         unsigned char tempJogpos = (unsigned char)data[1];
         unsigned char tempShutpos = (unsigned char)data[0];
 
@@ -161,7 +161,7 @@ void shuttle::runTimer()
                 emit button7(true);
         }
 
-        buttons = unsigned int((unsigned char)data[3] | (unsigned char)data[4] << 8);
+        buttons = (unsigned int)((unsigned char)data[3] | (unsigned char)data[4] << 8);
         jogpos = (unsigned char)data[1];
         shutpos = (unsigned char)data[0];
 

@@ -6,8 +6,6 @@
 
 QT       += core gui serialport network multimedia
 
-QT += usb
-
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
 TARGET = wfview
@@ -92,7 +90,7 @@ CONFIG(debug, release|debug) {
 }
 
 #linux:LIBS += -L./ -l$$QCPLIB -lpulse -lpulse-simple -lpthread
-linux:LIBS += -L./ -l$$QCPLIB -lhidapi
+linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread
 
 win32:LIBS += -L../hidapi/windows/release -lhidapi
@@ -129,7 +127,7 @@ SOURCES += main.cpp\
     repeatersetup.cpp \
     rigctld.cpp \
     ring/ring.cpp \
-	shuttle.cpp 
+    shuttle.cpp 
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -155,7 +153,7 @@ HEADERS  += wfmain.h \
     rigctld.h \
     ulaw.h \
     ring/ring.h \
-	shuttle.h
+    shuttle.h
 
 
 FORMS    += wfmain.ui \
