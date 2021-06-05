@@ -540,7 +540,17 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 
 	if (isInitialized && ringBuf != Q_NULLPTR && ringBuf->try_read(packet))
 	{
+		currentLatency = packet.time.msecsTo(QTime::currentTime());
 
+		while (currentLatency > setup.latency) {
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
+				" arrived too late (increase output latency!) " <<
+				dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
+			if (!ringBuf->try_read(packet))
+				break;
+			currentLatency = packet.time.msecsTo(QTime::currentTime());
+		}
+		
 		//qDebug(logAudio) << "Chunksize" << this->chunkSize << "Packet size" << packet.data.length();
 		// Packet will arrive as stereo interleaved 16bit 48K
 		if (ratioNum != 1)
