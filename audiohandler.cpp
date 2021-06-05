@@ -334,7 +334,7 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 				//qDebug(logAudio()) << "Adding partial:" << send;
 			}
 
-			if (currentLatency > (int)audioLatency) {
+			while (currentLatency > setup.latency) {
 				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
 					" arrived too late (increase output latency!) " <<
 					dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
@@ -524,8 +524,8 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 
 void audioHandler::changeLatency(const quint16 newSize)
 {
-	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Changing latency to: " << newSize << " from " << audioLatency;
-	audioLatency = newSize;
+	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Changing latency to: " << newSize << " from " << setup.latency;
+	setup.latency = newSize;
 }
 
 int audioHandler::getLatency()
