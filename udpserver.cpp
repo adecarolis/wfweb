@@ -374,21 +374,7 @@ void udpServer::controlReceived()
 
                 if (txaudio == Q_NULLPTR)
                 {
-                    outAudio.ulaw = false;
-                    outAudio.radioChan = 1;
-                    outAudio.bits = 8;
                     outAudio.codec = current->txCodec;
-
-                    if (current->txCodec == 0x01 || current->txCodec == 0x20) {
-                        outAudio.ulaw = true;
-                    }
-                    if (current->txCodec == 0x08 || current->txCodec == 0x10 || current->txCodec == 0x20) {
-                        outAudio.radioChan = 2;
-                    }
-                    if (current->txCodec == 0x04 || current->txCodec == 0x10) {
-                        outAudio.bits = 16;
-                    }
-
                     outAudio.samplerate = current->txSampleRate;
                     outAudio.latency = current->txBufferLen;
 
@@ -401,7 +387,6 @@ void udpServer::controlReceived()
                     connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
                     connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
-
                     emit setupTxAudio(outAudio);
                     hasTxAudio = datagram.senderAddress();
 
@@ -410,24 +395,7 @@ void udpServer::controlReceived()
                 }
                 if (rxaudio == Q_NULLPTR)
                 {
-                    inAudio.ulaw = false;
-                    inAudio.radioChan = 1;
-                    inAudio.bits = 8;
-                    inAudio.codec = current->txCodec;
-
-                    rxSampleRate = current->rxSampleRate;
-                    rxCodec = current->rxCodec;
-
-                    if (current->rxCodec == 0x01 || current->rxCodec == 0x20) {
-                        inAudio.ulaw = true;
-                    }
-                    if (current->rxCodec == 0x08 || current->rxCodec == 0x10 || current->rxCodec == 0x20) {
-                        inAudio.radioChan = 2;
-                    }
-                    if (current->rxCodec == 0x04 || current->rxCodec == 0x10) {
-                        inAudio.bits = 16;
-                    }
-
+                    inAudio.codec = current->rxCodec;
                     inAudio.samplerate = current->rxSampleRate;
 
                     rxaudio = new audioHandler();
