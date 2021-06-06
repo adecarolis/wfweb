@@ -88,7 +88,7 @@ public:
 public slots:
     void process();
     void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp);
-    void commSetup(unsigned char rigCivAddr, udpPreferences prefs, QString vsp);
+    void commSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp);
     void closeComm();
 
     // Power:

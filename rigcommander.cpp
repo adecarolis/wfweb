@@ -74,7 +74,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
 
 }
 
-void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, QString vsp)
+void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -90,7 +90,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, QSt
 
     if (udp == Q_NULLPTR) {
 
-        udp = new udpHandler(prefs);
+        udp = new udpHandler(prefs,rxSetup,txSetup);
 
         udpHandlerThread = new QThread(this);
 

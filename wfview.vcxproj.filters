@@ -57,7 +57,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="rtaudio\RtAudio.cpp">
+    <ClCompile Include="rtaudio\RTAudio.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="audiohandler.cpp">
@@ -105,6 +105,9 @@
     <ClCompile Include="rigidentities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ring\ring.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="satellitesetup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -120,12 +123,9 @@
     <ClCompile Include="wfmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ring\ring.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="rtaudio\RtAudio.h">
+    <ClInclude Include="rtaudio\RTAUdio.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="opus-tools\src\arch.h">
@@ -179,6 +179,9 @@
     <ClInclude Include="rigidentities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ring\ring.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <QtMoc Include="satellitesetup.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -194,23 +197,59 @@
     <QtMoc Include="udpserversetup.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="wfmain.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <ClInclude Include="ulaw.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ring\ring.h">
+    <QtMoc Include="wfmain.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
+    
+    
+    
+    
+    
+    
+    
+    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="calibrationwindow.ui">
@@ -359,8 +398,6 @@
     <None Include="resources\wfview.png">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\install.sh">
@@ -374,6 +411,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include=".\wfview_resource.rc" />
+    <ResourceCompile Include="C:\Users\Phil\source\repos\wfview\wfview_resource.rc" />
   </ItemGroup>
 </Project>

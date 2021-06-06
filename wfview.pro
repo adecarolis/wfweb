@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui serialport network
+QT       += core gui serialport network multimedia
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
@@ -90,14 +90,15 @@ CONFIG(debug, release|debug) {
 }
 
 #linux:LIBS += -L./ -l$$QCPLIB -lpulse -lpulse-simple -lpthread
-linux:LIBS += -L./ -l$$QCPLIB -lasound -lpthread -lrtaudio
+linux:LIBS += -L./ -l$$QCPLIB
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread
 
-!linux:SOURCES += ../qcustomplot/qcustomplot.cpp
-!linux:HEADERS += ../qcustomplot/qcustomplot.h
+!linux:SOURCES += ../qcustomplot/qcustomplot.cpp rtaudio/RTAudio.cpp
+!linux:HEADERS += ../qcustomplot/qcustomplot.h rtaudio/RTAUdio.h
 !linux:INCLUDEPATH += ../qcustomplot
 
 INCLUDEPATH += opus-tools/src
+!linux:INCLUDEPATH += rtaudio
 
 SOURCES += main.cpp\
     wfmain.cpp \

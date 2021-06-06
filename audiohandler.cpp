@@ -7,67 +7,117 @@
 #include "logcategories.h"
 #include "ulaw.h"
 
-audioHandler::audioHandler(QObject* parent) :
-	isInitialized(false),
-	isUlaw(false),
-	audioLatency(0),
-	isInput(0),
-	chunkAvailable(false)
+audioHandler::audioHandler(QObject* parent) 
 {
 	Q_UNUSED(parent)
 }
 
 audioHandler::~audioHandler()
 {
-	//stop();
+
+	if (isInitialized) {
+#if defined(RTAUDIO)
+
+		try {
+			audio->abortStream();
+			audio->closeStream();
+		}
+		catch (RtAudioError& e) {
+			qInfo(logAudio()) << "Error closing stream:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
+		}
+		delete audio;
+#elif defined(PORTAUDIO)
+#else
+		stop();
+		if (audioOutput != Q_NULLPTR) {
+			//audioOutput->stop();
+			delete audioOutput;
+			qDebug(logAudio()) << "Audio output stopped";
+		}
+		if (audioInput != Q_NULLPTR) {
+			//audioInput->stop();
+			delete audioInput;
+			qDebug(logAudio()) << "Audio input stopped";
+		}
+#endif
+	}
+
+	if (ringBuf != Q_NULLPTR) {
+		delete ringBuf;
+	}
 
 	if (resampler != Q_NULLPTR) {
 		speex_resampler_destroy(resampler);
+		qDebug(logAudio()) << "Resampler closed";
 	}
-	if (audio.isStreamRunning())
-	{
-		audio.stopStream();
-		audio.closeStream();
-	}
-	if (ringBuf != Q_NULLPTR)
-		delete ringBuf;
+
 }
 
-bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16 samplerate, const quint16 latency, const bool ulaw, const bool isinput, int port, quint8 resampleQuality)
+bool audioHandler::init(audioSetup setupIn) 
 {
 	if (isInitialized) {
 		return false;
 	}
 
-	this->audioLatency = latency;
-	this->isUlaw = ulaw;
-	this->isInput = isinput;
-	this->radioSampleBits = bits;
-	this->radioSampleRate = samplerate;
-	this->radioChannels = radioChan;
+	/*
+	0x01 uLaw 1ch 8bit
+	0x02 PCM 1ch 8bit
+	0x04 PCM 1ch 16bit
+	0x08 PCM 2ch 8bit
+	0x10 PCM 2ch 16bit
+	0x20 uLaw 2ch 8bit
+	*/
 
-	// chunk size is always relative to Internal Sample Rate.
+	setup = setupIn;
+	setup.radioChan = 1;
+	setup.bits = 8;
+
+	if (setup.codec == 0x01 || setup.codec == 0x20) {
+		setup.ulaw = true;
+	}
+	if (setup.codec == 0x08 || setup.codec == 0x10 || setup.codec == 0x20) {
+		setup.radioChan = 2;
+	}
+	if (setup.codec == 0x04 || setup.codec == 0x10) {
+		setup.bits = 16;
+	}
 
 	ringBuf = new wilt::Ring<audioPacket>(100); // Should be customizable.
+
 	tempBuf.sent = 0;
+
+
+
+#if defined(RTAUDIO)	
+#if !defined(Q_OS_MACX)
+	options.flags = ((!RTAUDIO_HOG_DEVICE) | (RTAUDIO_MINIMIZE_LATENCY));
+#endif
+
+#if defined(Q_OS_LINUX)
+	audio = new RtAudio(RtAudio::Api::LINUX_ALSA);
+#elif defined(Q_OS_WIN)
+	audio = new RtAudio(RtAudio::Api::WINDOWS_WASAPI);
+#elif defined(Q_OS_MACX)
+	audio = new RtAudio(RtAudio::Api::MACOSX_CORE);
+#endif
 
 	if (port > 0) {
 		aParams.deviceId = port;
 	}
-	else if (isInput) {
-		aParams.deviceId = audio.getDefaultInputDevice();
+	else if (setup.isinput) {
+		aParams.deviceId = audio->getDefaultInputDevice();
 	}
 	else {
-		aParams.deviceId = audio.getDefaultOutputDevice();
+		aParams.deviceId = audio->getDefaultOutputDevice();
 	}
 	aParams.firstChannel = 0;
 
 	try {
-		info = audio.getDeviceInfo(aParams.deviceId);
+		info = audio->getDeviceInfo(aParams.deviceId);
 	}
 	catch (RtAudioError& e) {
 		qInfo(logAudio()) << "Device error:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
-		return false;
+		return isInitialized;
 	}
 
 	if (info.probed)
@@ -84,7 +134,7 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 		// Per channel chunk size.
 		this->chunkSize = (this->nativeSampleRate / 50);
 
-		qInfo(logAudio()) << (isInput ? "Input" : "Output") << QString::fromStdString(info.name) << "(" << aParams.deviceId << ") successfully probed";
+		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << QString::fromStdString(info.name) << "(" << aParams.deviceId << ") successfully probed";
 		if (info.nativeFormats == 0)
 		{
 			qInfo(logAudio()) << "		No natively supported data formats!";
@@ -100,9 +150,9 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 				(info.nativeFormats & RTAUDIO_FLOAT64 ? "64-bit float," : "");
 
 			qInfo(logAudio()) << "		Preferred sample rate:" << info.preferredSampleRate;
-			if (isInput) {
+			if (setup.isinput) {
 				devChannels = info.inputChannels;
-			} 
+			}
 			else {
 				devChannels = info.outputChannels;
 			}
@@ -113,56 +163,120 @@ bool audioHandler::init(const quint8 bits, const quint8 radioChan, const quint16
 			aParams.nChannels = devChannels;
 		}
 
-		qInfo(logAudio())  << "		chunkSize: " << chunkSize;
+		qInfo(logAudio()) << "		chunkSize: " << chunkSize;
+		try {
+			if (setup.isinput) {
+				audio->openStream(NULL, &aParams, RTAUDIO_SINT16, nativeSampleRate, &this->chunkSize, &staticWrite, this, &options);
+			}
+			else {
+				audio->openStream(&aParams, NULL, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticRead, this, &options);
+			}
+			audio->startStream();
+			isInitialized = true;
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "device successfully opened";
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "detected latency:" << audio->getStreamLatency();
+		}
+		catch (RtAudioError& e) {
+			qInfo(logAudio()) << "Error opening:" << QString::fromStdString(e.getMessage());
+		}
 	}
 	else
 	{
-		qCritical(logAudio()) << (isInput ? "Input" : "Output") << QString::fromStdString(info.name) << "(" << aParams.deviceId << ") could not be probed, check audio configuration!";
+		qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << QString::fromStdString(info.name) << "(" << aParams.deviceId << ") could not be probed, check audio configuration!";
+	}
+
+
+#elif defined(PORTAUDIO)
+#else
+
+	format.setSampleSize(16);
+	format.setChannelCount(2);
+	format.setSampleRate(INTERNAL_SAMPLE_RATE);
+	format.setCodec("audio/pcm");
+	format.setByteOrder(QAudioFormat::LittleEndian);
+	format.setSampleType(QAudioFormat::SignedInt);
+	if (setup.port.isNull())
+	{
+		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "No audio device was found. You probably need to install libqt5multimedia-plugins.";
 		return false;
 	}
-
-	int resample_error = 0;
-
-	options.flags = !RTAUDIO_HOG_DEVICE | RTAUDIO_MINIMIZE_LATENCY;
-
-	if (isInput) {
-		resampler = wf_resampler_init(devChannels, this->nativeSampleRate, samplerate, resampleQuality, &resample_error);
-		try {
-			audio.openStream(NULL, &aParams, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticWrite, this, &options);
-			audio.startStream();
-		}
-		catch (RtAudioError& e) {
-			qInfo(logAudio()) << "Error opening:" << QString::fromStdString(e.getMessage());
-			return false;
-		}
-	}
-	else
+	else if (!setup.port.isFormatSupported(format))
 	{
-		resampler = wf_resampler_init(devChannels, samplerate, this->nativeSampleRate, resampleQuality, &resample_error);
-		try {
-			audio.openStream(&aParams, NULL, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticRead, this, &options);
-			audio.startStream();
-		}
-		catch (RtAudioError& e) {
-			qInfo(logAudio()) << "Error opening:" << QString::fromStdString(e.getMessage());
-			return false;
-		}
+		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Format not supported, choosing nearest supported format - which may not work!";
+		format=setup.port.nearestFormat(format);
 	}
-	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "device successfully opened";
+	if (format.channelCount() > 2) {
+		format.setChannelCount(2);
+	}
+	devChannels = format.channelCount();
+	nativeSampleRate = format.sampleRate();
+	// chunk size is always relative to Internal Sample Rate.
+	this->chunkSize = (nativeSampleRate / 50);
 
-	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "detected latency:" <<audio.getStreamLatency();
+	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Internal: sample rate" << format.sampleRate() << "channel count" << format.channelCount();
 
+	// We "hopefully" now have a valid format that is supported so try connecting
+	if (setup.isinput) {
+		audioInput = new QAudioInput(setup.port, format, this);
+		connect(audioInput, SIGNAL(notify()), SLOT(notified()));
+		connect(audioInput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
+		isInitialized = true;
+	}
+	else {
+		audioOutput = new QAudioOutput(setup.port, format, this);
+		connect(audioOutput, SIGNAL(notify()), SLOT(notified()));
+		connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
+		isInitialized = true;
+	}
+
+#endif
+	// Setup resampler if it is needed.
+	int resample_error = 0;
+	if (setup.isinput) {
+		resampler = wf_resampler_init(devChannels, nativeSampleRate, setup.samplerate, setup.resampleQuality, &resample_error);
+	}
+	else {
+		resampler = wf_resampler_init(devChannels, setup.samplerate, this->nativeSampleRate, setup.resampleQuality, &resample_error);
+	}
 	wf_resampler_get_ratio(resampler, &ratioNum, &ratioDen);
-	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "wf_resampler_init() returned: " << resample_error << " ratioNum" << ratioNum << " ratioDen" << ratioDen;
+	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "wf_resampler_init() returned: " << resample_error << " ratioNum" << ratioNum << " ratioDen" << ratioDen;
 
-    qInfo(logAudio()) << (isInput ? "Input" : "Output") << "thread id" << QThread::currentThreadId();
+    qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "thread id" << QThread::currentThreadId();
+
+
+	if (isInitialized) {
+		this->start();
+	}
+
 	return isInitialized;
 }
+
+void audioHandler::start()
+{
+	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "start() running";
+
+	if ((audioOutput == Q_NULLPTR || audioOutput->state() != QAudio::StoppedState) &&
+		(audioInput == Q_NULLPTR || audioInput->state() != QAudio::StoppedState)) {
+		return;
+	}
+
+	if (setup.isinput) {
+		this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
+		//this->open(QIODevice::WriteOnly);
+		audioInput->start(this);
+	}
+	else {
+		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
+		//this->open(QIODevice::ReadOnly);
+		audioOutput->start(this);
+	}
+}
+
 
 void audioHandler::setVolume(unsigned char volume)
 {
 	this->volume = (qreal)volume/255.0;
-	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
+	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
 }
 
 
@@ -173,17 +287,22 @@ void audioHandler::setVolume(unsigned char volume)
 /// <param name="data"></param>
 /// <param name="maxlen"></param>
 /// <returns></returns>
+#if defined(RTAUDIO)
 int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status)
 {
 	Q_UNUSED(inputBuffer);
 	Q_UNUSED(streamTime);
-	// Calculate output length, always full samples
-	int sentlen = 0;
-	quint8* buffer = (quint8*)outputBuffer; 
 	if (status == RTAUDIO_OUTPUT_UNDERFLOW)
 		qDebug(logAudio()) << "Underflow detected";
-
 	int nBytes = nFrames * devChannels * 2; // This is ALWAYS 2 bytes per sample and 2 channels
+	quint8* buffer = (quint8*)outputBuffer;
+#elif defined(PORTAUDIO)
+#else
+qint64 audioHandler::readData(char* buffer, qint64 nBytes)
+{
+#endif
+	// Calculate output length, always full samples
+	int sentlen = 0;
 
 	if (ringBuf->size()>0)
 	{
@@ -215,8 +334,8 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 				//qDebug(logAudio()) << "Adding partial:" << send;
 			}
 
-			if (currentLatency > (int)audioLatency) {
-				qInfo(logAudio()) << (isInput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
+			while (currentLatency > setup.latency) {
+				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
 					" arrived too late (increase output latency!) " <<
 					dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
 				lastSeq = packet.seq;
@@ -238,10 +357,10 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 			}
 
 			if (packet.seq <= lastSeq) {
-				qDebug(logAudio()) << (isInput ? "Input" : "Output") << "Duplicate/early audio packet: " << hex << lastSeq << " got " << hex << packet.seq;
+				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Duplicate/early audio packet: " << hex << lastSeq << " got " << hex << packet.seq;
 			}
 			else if (packet.seq != lastSeq + 1) {
-				qDebug(logAudio()) << (isInput ? "Input" : "Output") << "Missing audio packet(s) from: " << hex << lastSeq + 1 << " to " << hex << packet.seq - 1;
+				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Missing audio packet(s) from: " << hex << lastSeq + 1 << " to " << hex << packet.seq - 1;
 			}
 			lastSeq = packet.seq;
 		}
@@ -252,23 +371,34 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
     if (nBytes > sentlen) {
         memset(buffer+sentlen,0,nBytes-sentlen);
     }
+#if defined(RTAUDIO)
 	return 0;
+#elif defined(PORTAUDIO)
+#else
+	return nBytes;
+#endif
 }
 
-
+#if defined(RTAUDIO)
 int audioHandler::writeData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status)
 {
 	Q_UNUSED(outputBuffer);
 	Q_UNUSED(streamTime);
 	Q_UNUSED(status);
-	int sentlen = 0;
-	int nBytes = nFrames * devChannels * 2; // This is ALWAYS 2 bytes per sample
+	int nBytes = nFrames * devChannels * 2; // This is ALWAYS 2 bytes per sample and 2 channels
 	const char* data = (const char*)inputBuffer;
+#elif defined(PORTAUDIO)
+#else
+qint64 audioHandler::writeData(const char* data, qint64 nBytes)
+{
+#endif
+	int sentlen = 0;
 	//qDebug(logAudio()) << "nFrames" << nFrames << "nBytes" << nBytes;
+	int chunkBytes = chunkSize * devChannels * 2;
 	while (sentlen < nBytes) {
-		if (tempBuf.sent != nBytes)
+		if (tempBuf.sent != chunkBytes)
 		{
-			int send = qMin((int)(nBytes - sentlen), (int)nBytes - tempBuf.sent);
+			int send = qMin((int)(nBytes - sentlen), chunkBytes - tempBuf.sent);
 			tempBuf.data.append(QByteArray::fromRawData(data + sentlen, send));
 			sentlen = sentlen + send;
 			tempBuf.seq = 0; // Not used in TX
@@ -289,8 +419,12 @@ int audioHandler::writeData(void* outputBuffer, void* inputBuffer, unsigned int 
 	}
 
 	//qDebug(logAudio()) << "sentlen" << sentlen;
-
-	return 0; 
+#if defined(RTAUDIO)
+	return 0;
+#elif defined(PORTAUDIO)
+#else
+	return nBytes;
+#endif
 }
 
 
@@ -300,21 +434,21 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	// Regardless of the radio stream format, the buffered audio will ALWAYS be
 	// 16bit sample interleaved stereo 48K (or whatever the native sample rate is)
 
-	if (!audio.isStreamRunning())
+	if (!isInitialized)
 	{
 		qDebug(logAudio()) << "Packet received before stream was started";
 		return;
 	}
     //qDebug(logAudio()) << "Got" << radioSampleBits << "bits, length" << inPacket.data.length();
 	// Incoming data is 8bits?
-	if (radioSampleBits == 8)
+	if (setup.bits == 8)
 	{
 		// Current packet is 8bit so need to create a new buffer that is 16bit 
-		QByteArray outPacket((int)inPacket.data.length() * 2 *(devChannels/radioChannels), (char)0xff);
+		QByteArray outPacket((int)inPacket.data.length() * 2 *(devChannels/setup.radioChan), (char)0xff);
 		qint16* out = (qint16*)outPacket.data();
 		for (int f = 0; f < inPacket.data.length(); f++)
 		{
-			for (int g = radioChannels; g <= devChannels; g++)
+			for (int g = setup.radioChan; g <= devChannels; g++)
 			{
 				if (isUlaw)
 					*out++ = ulaw_decode[(quint8)inPacket.data[f]] * this->volume;
@@ -328,7 +462,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	else 
 	{
 		// This is already a 16bit stream, do we need to convert to stereo?
-		if (radioChannels == 1 && devChannels > 1) {
+		if (setup.radioChan == 1 && devChannels > 1) {
 			// Yes
 			QByteArray outPacket(inPacket.data.length() * 2, (char)0xff); // Preset the output buffer size.
 			qint16* in = (qint16*)inPacket.data.data();
@@ -373,7 +507,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		int err = 0;
 		err = wf_resampler_process_interleaved_int(resampler, in, &inFrames, out, &outFrames);
 		if (err) {
-			qInfo(logAudio()) << (isInput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
 		}
 		inPacket.data.clear();
 		inPacket.data = outPacket; // Replace incoming data with converted.
@@ -390,8 +524,8 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 
 void audioHandler::changeLatency(const quint16 newSize)
 {
-	qInfo(logAudio()) << (isInput ? "Input" : "Output") << "Changing latency to: " << newSize << " from " << audioLatency;
-	audioLatency = newSize;
+	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Changing latency to: " << newSize << " from " << setup.latency;
+	setup.latency = newSize;
 }
 
 int audioHandler::getLatency()
@@ -404,9 +538,19 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 	audioPacket packet;
 	packet.sent = 0;
 
-	if (ringBuf != Q_NULLPTR && ringBuf->try_read(packet))
+	if (isInitialized && ringBuf != Q_NULLPTR && ringBuf->try_read(packet))
 	{
+		currentLatency = packet.time.msecsTo(QTime::currentTime());
 
+		while (currentLatency > setup.latency) {
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
+				" arrived too late (increase output latency!) " <<
+				dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
+			if (!ringBuf->try_read(packet))
+				break;
+			currentLatency = packet.time.msecsTo(QTime::currentTime());
+		}
+		
 		//qDebug(logAudio) << "Chunksize" << this->chunkSize << "Packet size" << packet.data.length();
 		// Packet will arrive as stereo interleaved 16bit 48K
 		if (ratioNum != 1)
@@ -421,7 +565,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			int err = 0;
 			err = wf_resampler_process_interleaved_int(resampler, in, &inFrames, out, &outFrames);
 			if (err) {
-				qInfo(logAudio()) << (isInput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
+				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
 			}
 			//qInfo(logAudio()) << "Resampler run " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
 			//qInfo(logAudio()) << "Resampler run inLen:" << packet->datain.length() << " outLen:" << packet->dataout.length();
@@ -432,7 +576,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		//qDebug(logAudio()) << "Now resampled, length" << packet.data.length();
 
 		// Do we need to convert mono to stereo?
-		if (radioChannels == 1 && devChannels > 1)
+		if (setup.radioChan == 1 && devChannels > 1)
 		{
 			// Strip out right channel?
 			QByteArray outPacket(packet.data.length()/2, (char)0xff);
@@ -450,7 +594,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		//qDebug(logAudio()) << "Now mono, length" << packet.data.length();
 
 		// Do we need to convert 16-bit to 8-bit?
-		if (radioSampleBits == 8) {
+		if (setup.bits == 8) {
 			QByteArray outPacket((int)packet.data.length() / 2, (char)0xff);
 			qint16* in = (qint16*)packet.data.data();
 			for (int f = 0; f < outPacket.length(); f++)
@@ -479,6 +623,76 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 	return;
 
 }
+
+
+qint64 audioHandler::bytesAvailable() const
+{
+	return 0;
+}
+
+bool audioHandler::isSequential() const
+{
+	return true;
+}
+
+void audioHandler::notified()
+{
+}
+
+
+void audioHandler::stateChanged(QAudio::State state)
+{
+	// Process the state
+	switch (state)
+	{
+		case QAudio::IdleState:
+		{
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio now in idle state: " << audioBuffer.size() << " packets in buffer";
+			if (audioOutput != Q_NULLPTR && audioOutput->error() == QAudio::UnderrunError)
+			{
+				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "buffer underrun";
+				//audioOutput->suspend();
+			}
+			break;
+		}
+		case QAudio::ActiveState:
+		{
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio now in active state: " << audioBuffer.size() << " packets in buffer";
+			break;
+		}
+		case QAudio::SuspendedState:
+		{
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio now in suspended state: " << audioBuffer.size() << " packets in buffer";
+			break;
+		}
+		case QAudio::StoppedState:
+		{
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio now in stopped state: " << audioBuffer.size() << " packets in buffer";
+			break;
+		}
+		default: {
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unhandled audio state: " << audioBuffer.size() << " packets in buffer";
+		}
+	}
+}
+
+void audioHandler::stop()
+{
+	if (audioOutput != Q_NULLPTR && audioOutput->state() != QAudio::StoppedState) {
+		// Stop audio output
+		audioOutput->stop();
+		this->stop();
+		this->close();
+	}
+
+	if (audioInput != Q_NULLPTR && audioInput->state() != QAudio::StoppedState) {
+		// Stop audio output
+		audioInput->stop();
+		this->stop();
+		this->close();
+	}
+}
+
 
 
 
