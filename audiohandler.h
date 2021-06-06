@@ -9,9 +9,10 @@
 #include <QtMath>
 
 #if defined(RTAUDIO)
-#include "RtAudio.h"
+#include "rtaudio/RtAudio.h"
 #elif defined (PORTAUDIO)
 #include "portaudio.h"
+#error "PORTAUDIO is not currently supported"
 #else
 #include <QAudioOutput>
 #include <QAudioFormat>
@@ -83,6 +84,7 @@ public:
 
     int getLatency();
 
+#if !defined (RTAUDIO) && !defined(PORTAUDIO)
     bool setDevice(QAudioDeviceInfo deviceInfo);
 
     void start();
@@ -90,6 +92,7 @@ public:
     void stop();
     qint64 bytesAvailable() const;
     bool isSequential() const;
+#endif
 
     void getNextAudioChunk(QByteArray &data);
 
@@ -100,8 +103,10 @@ public slots:
     void incomingAudio(const audioPacket data);
 
 private slots:
+#if !defined (RTAUDIO) && !defined(PORTAUDIO)
     void notified();
     void stateChanged(QAudio::State state);
+#endif
 
 signals:
     void audioMessage(QString message);
