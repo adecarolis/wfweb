@@ -36,7 +36,7 @@ DEFINES += OUTSIDE_SPEEX
 DEFINES += RANDOM_PREFIX=wf
 
 # Choose audio system, uses QTMultimedia if both are commented out.
-DEFINES += RTAUDIO
+# DEFINES += RTAUDIO
 # DEFINES += PORTAUDIO
 
 # RTAudio defines
