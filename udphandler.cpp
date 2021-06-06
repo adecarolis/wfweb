@@ -701,7 +701,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, audio
     this->port = audioPort;
     this->radioIP = ip;
 
-    if (txSampleRate == 0) {
+    if (txSetup.samplerate == 0) {
         enableTx = false;
     }
 
@@ -836,6 +836,7 @@ void udpAudio::sendTxAudio()
     }
     QByteArray audio;
     txaudio->getNextAudioChunk(audio);
+
     if (audio.length() > 0) {
         int counter = 1;
         int len = 0;
