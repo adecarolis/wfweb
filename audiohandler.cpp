@@ -101,8 +101,8 @@ bool audioHandler::init(audioSetup setupIn)
 	audio = new RtAudio(RtAudio::Api::MACOSX_CORE);
 #endif
 
-	if (port > 0) {
-		aParams.deviceId = port;
+	if (setup.port > 0) {
+		aParams.deviceId = setup.port;
 	}
 	else if (setup.isinput) {
 		aParams.deviceId = audio->getDefaultInputDevice();
@@ -166,7 +166,7 @@ bool audioHandler::init(audioSetup setupIn)
 		qInfo(logAudio()) << "		chunkSize: " << chunkSize;
 		try {
 			if (setup.isinput) {
-				audio->openStream(NULL, &aParams, RTAUDIO_SINT16, nativeSampleRate, &this->chunkSize, &staticWrite, this, &options);
+				audio->openStream(NULL, &aParams, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticWrite, this, &options);
 			}
 			else {
 				audio->openStream(&aParams, NULL, RTAUDIO_SINT16, this->nativeSampleRate, &this->chunkSize, &staticRead, this, &options);
@@ -243,14 +243,16 @@ bool audioHandler::init(audioSetup setupIn)
 
     qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "thread id" << QThread::currentThreadId();
 
-
+#if !defined (RTAUDIO) && !defined(PORTAUDIO)
 	if (isInitialized) {
 		this->start();
 	}
+#endif
 
 	return isInitialized;
 }
 
+#if !defined (RTAUDIO) && !defined(PORTAUDIO)
 void audioHandler::start()
 {
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "start() running";
@@ -271,7 +273,7 @@ void audioHandler::start()
 		audioOutput->start(this);
 	}
 }
-
+#endif
 
 void audioHandler::setVolume(unsigned char volume)
 {
@@ -625,6 +627,8 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 }
 
 
+#if !defined (RTAUDIO) && !defined(PORTAUDIO)
+
 qint64 audioHandler::bytesAvailable() const
 {
 	return 0;
@@ -693,6 +697,6 @@ void audioHandler::stop()
 	}
 }
 
-
+#endif
 
 
