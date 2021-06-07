@@ -5,7 +5,8 @@
 #include <QThread>
 #include <QCoreApplication>
 #include <QTimer>
-#ifdef Q_OS_LINUX
+
+#ifndef Q_OS_WIN
 #include "hidapi/hidapi.h"
 #else
 #include "hidapi.h"

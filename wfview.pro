@@ -95,7 +95,7 @@ CONFIG(debug, release|debug) {
 
 #linux:LIBS += -L./ -l$$QCPLIB -lpulse -lpulse-simple -lpthread
 linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb
-macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread
+macx:LIBS += -framework CoreAudio -framework CoreFoundation -lhidapi -lpthread
 
 win32:LIBS += -L../hidapi/windows/release -lhidapi
 win32:INCLUDEPATH += ../hidapi/hidapi
