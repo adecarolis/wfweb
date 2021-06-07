@@ -35,6 +35,10 @@ DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 DEFINES += OUTSIDE_SPEEX
 DEFINES += RANDOM_PREFIX=wf
 
+# Choose audio system, uses QTMultimedia if both are commented out.
+# DEFINES += RTAUDIO
+# DEFINES += PORTAUDIO
+
 # RTAudio defines
 win32:DEFINES += __WINDOWS_WASAPI__
 #win32:DEFINES += __WINDOWS_DS__ # Requires DirectSound libraries
