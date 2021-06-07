@@ -216,6 +216,7 @@ bool audioHandler::init(audioSetup setupIn)
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Internal: sample rate" << format.sampleRate() << "channel count" << format.channelCount();
 
 	// We "hopefully" now have a valid format that is supported so try connecting
+
 	if (setup.isinput) {
 		audioInput = new QAudioInput(setup.port, format, this);
 		connect(audioInput, SIGNAL(notify()), SLOT(notified()));
@@ -224,6 +225,11 @@ bool audioHandler::init(audioSetup setupIn)
 	}
 	else {
 		audioOutput = new QAudioOutput(setup.port, format, this);
+
+#ifdef Q_OS_MAC
+        audioOutput->setBufferSize(chunkSize*4);
+#endif
+
 		connect(audioOutput, SIGNAL(notify()), SLOT(notified()));
 		connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
 		isInitialized = true;
@@ -263,13 +269,13 @@ void audioHandler::start()
 	}
 
 	if (setup.isinput) {
-		this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
-		//this->open(QIODevice::WriteOnly);
+        //this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
+        this->open(QIODevice::WriteOnly);
 		audioInput->start(this);
 	}
 	else {
-		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
-		//this->open(QIODevice::ReadOnly);
+        //this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
+        this->open(QIODevice::ReadOnly);
 		audioOutput->start(this);
 	}
 }
