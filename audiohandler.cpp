@@ -29,16 +29,6 @@ audioHandler::~audioHandler()
 #elif defined(PORTAUDIO)
 #else
 		stop();
-		if (audioOutput != Q_NULLPTR) {
-			//audioOutput->stop();
-			delete audioOutput;
-			qDebug(logAudio()) << "Audio output stopped";
-		}
-		if (audioInput != Q_NULLPTR) {
-			//audioInput->stop();
-			delete audioInput;
-			qDebug(logAudio()) << "Audio input stopped";
-		}
 #endif
 	}
 
@@ -450,7 +440,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 
 	if (!isInitialized)
 	{
-		qDebug(logAudio()) << "Packet received before stream was started";
+		qDebug(logAudio()) << "Packet received when stream was not ready";
 		return;
 	}
     //qDebug(logAudio()) << "Got" << radioSampleBits << "bits, length" << inPacket.data.length();
@@ -699,6 +689,8 @@ void audioHandler::stop()
 		audioOutput->stop();
 		this->stop();
 		this->close();
+		delete audioOutput;
+		audioOutput = Q_NULLPTR;
 	}
 
 	if (audioInput != Q_NULLPTR && audioInput->state() != QAudio::StoppedState) {
@@ -706,7 +698,10 @@ void audioHandler::stop()
 		audioInput->stop();
 		this->stop();
 		this->close();
+		delete audioInput;
+		audioInput = Q_NULLPTR;
 	}
+	isInitialized = false;
 }
 
 #endif
