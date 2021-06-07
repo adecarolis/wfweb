@@ -198,11 +198,6 @@ bool audioHandler::init(audioSetup setupIn)
 	if (format.channelCount() > 2) {
 		format.setChannelCount(2);
 	}
-	else if (format.channelCount() < 1)
-	{
-		qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "No channels found, aborting setup.";
-		return false;
-	}
 	devChannels = format.channelCount();
 	nativeSampleRate = format.sampleRate();
 	// chunk size is always relative to Internal Sample Rate.

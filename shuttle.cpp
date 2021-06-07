@@ -96,7 +96,7 @@ void shuttle::runTimer()
         QTimer::singleShot(1000, this, SLOT(run()));
         return;
     }
-    else if (res == 5 && (usbDevice == shuttleXpress || usbDevice == shuttlePro2))
+    else if (res == 5)
     {
         data.resize(res);
         qDebug() << "Shuttle Data received: " << hex << (unsigned char)data[0] << ":"
@@ -166,24 +166,6 @@ void shuttle::runTimer()
         jogpos = (unsigned char)data[1];
         shutpos = (unsigned char)data[0];
 
-    }
-    else if (res == 64 && usbDevice == RC28)
-    {
-        // This is a response from the Icom RC28
-        data.resize(8); // Might as well get rid of the unused data.
-        qDebug() << "RC28 Data received: " 
-            << hex << (unsigned char)data[0] << ":"
-            << hex << (unsigned char)data[1] << ":"
-            << hex << (unsigned char)data[2] << ":"
-            << hex << (unsigned char)data[3] << ":"
-            << hex << (unsigned char)data[4] << ":"
-            << hex << (unsigned char)data[5] << ":"
-            << hex << (unsigned char)data[6] << ":"
-            << hex << (unsigned char)data[7];
-        if ((unsigned char)data[0] == 0x01) {
-            
-
-        }
     }
     // Run every 25ms
     QTimer::singleShot(25, this, SLOT(runTimer()));
