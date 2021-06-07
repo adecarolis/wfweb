@@ -269,13 +269,19 @@ void audioHandler::start()
 	}
 
 	if (setup.isinput) {
-        //this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
-        this->open(QIODevice::WriteOnly);
+#ifdef Q_OS_MACX
+		this->open(QIODevice::WriteOnly);
+#else
+		this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
+#endif
 		audioInput->start(this);
 	}
 	else {
-        //this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
-        this->open(QIODevice::ReadOnly);
+#ifdef Q_OS_MACX
+		this->open(QIODevice::ReadOnly);
+#else
+		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
+#endif
 		audioOutput->start(this);
 	}
 }
