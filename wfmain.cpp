@@ -1494,6 +1494,8 @@ void wfmain::prepareWf(unsigned int wfLength)
         spectrumDrawLock = true;
 
         spectWidth = rigCaps.spectLenMax;
+        wfLengthMax = 1024;
+
         this->wfLength = wfLength; // fixed for now, time-length of waterfall
 
         // Initialize before use!
@@ -1501,17 +1503,21 @@ void wfmain::prepareWf(unsigned int wfLength)
         QByteArray empty((int)spectWidth, '\x01');
         spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
 
-        if((unsigned int)wfimage.size() < wfLength)
+        //wfimage.resize(wfLengthMax);
+
+        if((unsigned int)wfimage.size() < wfLengthMax)
         {
             unsigned int i=0;
             unsigned int oldSize = wfimage.size();
-            for(i=oldSize; i<(wfLength); i++)
+            for(i=oldSize; i<(wfLengthMax); i++)
             {
                 wfimage.append(empty);
             }
         } else {
-            wfimage.remove(wfLength, wfimage.size()-wfLength);
+            // Keep wfimage, do not trim, no performance impact.
+            //wfimage.remove(wfLength, wfimage.size()-wfLength);
         }
+
         wfimage.squeeze();
         //colorMap->clearData();
         colorMap->data()->clear();
@@ -2675,10 +2681,8 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         if(specLen == spectWidth)
         {
             wfimage.prepend(spectrum);
-            if(wfimage.length() >  wfLength)
-            {
-                wfimage.remove(wfLength);
-            }
+            wfimage.resize(wfLengthMax);
+            wfimage.squeeze();
 
             // Waterfall:
             for(int row = 0; row < wfLength; row++)

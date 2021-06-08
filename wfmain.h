@@ -557,6 +557,7 @@ private:
     int smeterPos=0;
 
     QVector <QByteArray> wfimage;
+    unsigned int wfLengthMax;
 
     bool onFullscreen;
     bool drawPeaks;
