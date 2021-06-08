@@ -41,6 +41,8 @@ signals:
     void jogPlus();
     void jogMinus();
 
+    void doShuttle(bool plus, quint8 level);
+
     void button0(bool);
     void button1(bool);
     void button2(bool);
@@ -64,6 +66,7 @@ private:
     unsigned int buttons=0;
     unsigned char jogpos=0;
     unsigned char shutpos=0;
+    unsigned char shutMult = 0;
     enum { NONE, shuttleXpress, shuttlePro2, RC28 }usbDevice;
 
 protected:

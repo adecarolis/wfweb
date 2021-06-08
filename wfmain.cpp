@@ -1066,7 +1066,6 @@ void wfmain::setupShuttleDevice()
     connect(shuttleDev, SIGNAL(jogPlus()), this, SLOT(shortcutStepPlus()));
     connect(shuttleDev, SIGNAL(jogMinus()), this, SLOT(shortcutStepMinus()));
     connect(shuttleDev, SIGNAL(doShuttle(bool,quint8)), this, SLOT(doShuttle(bool,quint8)));
-    connect(shuttleDev, SIGNAL(shuttleMinus()), this, SLOT(shortcutShiftMinus()));
     connect(shuttleDev, SIGNAL(button5(bool)), this, SLOT(stepDown()));
     connect(shuttleDev, SIGNAL(button6(bool)), this, SLOT(pttToggle(bool)));
     connect(shuttleDev, SIGNAL(button7(bool)), this, SLOT(stepUp()));

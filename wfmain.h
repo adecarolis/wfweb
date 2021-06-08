@@ -185,6 +185,8 @@ private slots:
 
     void handlePttLimit(); // hit at 3 min transmit length
 
+    void doShuttle(bool up, quint8 level);
+
     void receiveCommReady();
     void receiveFreq(freqt);
     void receiveMode(unsigned char mode, unsigned char filter);

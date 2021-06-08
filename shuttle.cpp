@@ -3,7 +3,7 @@
 
 shuttle::shuttle()
 {
-	qInfo() << "Starting USB device detection";
+	qInfo() << "Starting HID USB device detection";
 }
 
 shuttle::~shuttle()
@@ -119,14 +119,6 @@ void shuttle::runTimer()
             emit jogMinus();
         }
 
-
-        if (tempShutpos == shutpos + 1) 
-        {
-            qDebug() << "SHUTTLE PLUS";
-        }
-        else if (tempShutpos == shutpos-1) {
-            qDebug() << "SHUTTLE MINUS";
-        }
         /* Button matrix:
             1000000000000000 = button15
             0100000000000000 = button14
@@ -135,11 +127,11 @@ void shuttle::runTimer()
             0000100000000000 = button11
             0000010000000000 = button10
             0000001000000000 = button9
-            0000000100000000 = button8 - xpress1
-            0000000010000000 = button7 - xpress2
-            0000000001000000 = button6 - xpress3
-            0000000000100000 = button5 - xpress4
-            0000000000010000 = button4 - xpress5
+            0000000100000000 = button8 - xpress0
+            0000000010000000 = button7 - xpress1
+            0000000001000000 = button6 - xpress2
+            0000000000100000 = button5 - xpress3
+            0000000000010000 = button4 - xpress4
             0000000000001000 = button3
             0000000000000100 = button2
             0000000000000010 = button1
@@ -162,9 +154,9 @@ void shuttle::runTimer()
                 emit button7(true);
         }
 
-        buttons = (unsigned int)((unsigned char)data[3] | (unsigned char)data[4] << 8);
-        jogpos = (unsigned char)data[1];
-        shutpos = (unsigned char)data[0];
+        buttons = tempButtons;
+        jogpos = tempJogpos;
+        shutpos = tempShutpos;
 
     }
     else if (res == 64 && usbDevice == RC28)
@@ -185,6 +177,21 @@ void shuttle::runTimer()
 
         }
     }
+
+
+    if (shutpos > 0 && shutpos < 8)
+    {
+        shutMult = shutpos;
+        emit doShuttle(true,shutMult);
+        qDebug() << "SHUTTLE PLUS" << shutMult;
+
+    }
+    else if (shutpos <= 0xff && shutpos >= 0xf0) {
+        shutMult = abs(shutpos - 0xff)+1;
+        emit doShuttle(false,shutMult);
+        qDebug() << "SHUTTLE MINUS" << shutMult;
+    }
+
     // Run every 25ms
     QTimer::singleShot(25, this, SLOT(runTimer()));
 }
