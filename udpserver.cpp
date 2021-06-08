@@ -543,8 +543,10 @@ void udpServer::civReceived()
                         else if (current->civId != 0 && r.length() > lastFE + 2 && (quint8)r[lastFE + 2] != current->civId)
                         {
                             current->civId = (quint8)r[lastFE + 2];
-                            qInfo(logUdpServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << hex << current->civId;
-                        }
+                            qDebug(logUdpServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << hex << current->civId;                            qInfo(logUdpServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << hex << current->civId;
+                        } else if (r.length() > lastFE+2) {
+                            qDebug(logUdpServer()) << current->ipAddress.toString() << ": Detected invalid remote CI-V:" << hex << (quint8)r[lastFE+2];
+			}
 
                         emit haveDataFromServer(r.mid(0x15));
                     }
@@ -1251,7 +1253,9 @@ void udpServer::dataForServer(QByteArray d)
     foreach(CLIENT * client, civClients)
     {
         int lastFE = d.lastIndexOf((quint8)0xfe);
-        if (client != Q_NULLPTR && client->connected && d.length() > lastFE + 2 && ((quint8)d[lastFE + 1] == client->civId || (quint8)d[lastFE + 2] == client->civId)) {
+        if (client != Q_NULLPTR && client->connected && d.length() > lastFE + 2 &&
+		((quint8)d[lastFE + 1] == client->civId || (quint8)d[lastFE + 2] == client->civId ||
+		(quint8)d[lastFE + 1] == 0x00 || (quint8)d[lastFE + 2]==0x00)) {
             data_packet p;
             memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
             p.len = (quint16)d.length() + sizeof(p);
@@ -1283,7 +1287,9 @@ void udpServer::dataForServer(QByteArray d)
             udpMutex.lock();
             client->socket->writeDatagram(t, client->ipAddress, client->port);
             udpMutex.unlock();
-        }
+        } else {
+		qInfo(logUdpServer()) << "Got data for different ID" << hex << (quint8)d[lastFE+1] << ":" << hex << (quint8)d[lastFE+2];
+	}
     }
 
     return;

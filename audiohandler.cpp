@@ -29,16 +29,6 @@ audioHandler::~audioHandler()
 #elif defined(PORTAUDIO)
 #else
 		stop();
-		if (audioOutput != Q_NULLPTR) {
-			//audioOutput->stop();
-			delete audioOutput;
-			qDebug(logAudio()) << "Audio output stopped";
-		}
-		if (audioInput != Q_NULLPTR) {
-			//audioInput->stop();
-			delete audioInput;
-			qDebug(logAudio()) << "Audio input stopped";
-		}
 #endif
 	}
 
@@ -208,6 +198,12 @@ bool audioHandler::init(audioSetup setupIn)
 	if (format.channelCount() > 2) {
 		format.setChannelCount(2);
 	}
+	else if (format.channelCount() < 1)
+	{
+		qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "No channels found, aborting setup.";
+		return false;
+	}
+
 	devChannels = format.channelCount();
 	nativeSampleRate = format.sampleRate();
 	// chunk size is always relative to Internal Sample Rate.
@@ -216,6 +212,7 @@ bool audioHandler::init(audioSetup setupIn)
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Internal: sample rate" << format.sampleRate() << "channel count" << format.channelCount();
 
 	// We "hopefully" now have a valid format that is supported so try connecting
+
 	if (setup.isinput) {
 		audioInput = new QAudioInput(setup.port, format, this);
 		connect(audioInput, SIGNAL(notify()), SLOT(notified()));
@@ -224,6 +221,11 @@ bool audioHandler::init(audioSetup setupIn)
 	}
 	else {
 		audioOutput = new QAudioOutput(setup.port, format, this);
+
+#ifdef Q_OS_MAC
+        audioOutput->setBufferSize(chunkSize*4);
+#endif
+
 		connect(audioOutput, SIGNAL(notify()), SLOT(notified()));
 		connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
 		isInitialized = true;
@@ -263,13 +265,19 @@ void audioHandler::start()
 	}
 
 	if (setup.isinput) {
+#ifdef Q_OS_MACX
+		this->open(QIODevice::WriteOnly);
+#else
 		this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
-		//this->open(QIODevice::WriteOnly);
+#endif
 		audioInput->start(this);
 	}
 	else {
+#ifdef Q_OS_MACX
+		this->open(QIODevice::ReadOnly);
+#else
 		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
-		//this->open(QIODevice::ReadOnly);
+#endif
 		audioOutput->start(this);
 	}
 }
@@ -438,7 +446,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 
 	if (!isInitialized)
 	{
-		qDebug(logAudio()) << "Packet received before stream was started";
+		qDebug(logAudio()) << "Packet received when stream was not ready";
 		return;
 	}
     //qDebug(logAudio()) << "Got" << radioSampleBits << "bits, length" << inPacket.data.length();
@@ -687,6 +695,8 @@ void audioHandler::stop()
 		audioOutput->stop();
 		this->stop();
 		this->close();
+		delete audioOutput;
+		audioOutput = Q_NULLPTR;
 	}
 
 	if (audioInput != Q_NULLPTR && audioInput->state() != QAudio::StoppedState) {
@@ -694,7 +704,10 @@ void audioHandler::stop()
 		audioInput->stop();
 		this->stop();
 		this->close();
+		delete audioInput;
+		audioInput = Q_NULLPTR;
 	}
+	isInitialized = false;
 }
 
 #endif
