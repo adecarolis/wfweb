@@ -530,6 +530,7 @@ void wfmain::setupPlots()
 // Line 290--
     spectrumDrawLock = true;
     plot = ui->plot; // rename it waterfall.
+
     wf = ui->waterfall;
 
     freqIndicatorLine = new QCPItemLine(plot);
@@ -867,10 +868,14 @@ void wfmain::setAudioDevicesUI()
     for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
         ui->audioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
     }
+
     const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
     for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
         ui->audioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
     }
+    // Set these to default audio devices initially.
+    rxSetup.port = QAudioDeviceInfo::defaultOutputDevice();
+    txSetup.port = QAudioDeviceInfo::defaultInputDevice();
 #endif
 }
 
@@ -1046,6 +1051,26 @@ void wfmain::setupKeyShortcuts()
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
 }
 
+
+void wfmain::pttToggle(bool status)
+{
+    // is it enabled?
+
+    if (!ui->pttEnableChk->isChecked())
+    {
+        showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
+        return;
+    }
+
+    emit setPTT(status);
+    // Start 3 minute timer
+    if (status)
+        pttTimer->start();
+
+    issueDelayedCommand(cmdGetPTT);
+}
+
+
 void wfmain::setDefPrefs()
 {
     defPrefs.useFullScreen = false;
@@ -1068,15 +1093,6 @@ void wfmain::setDefPrefs()
     udpDefPrefs.audioLANPort = 50003;
     udpDefPrefs.username = QString("");
     udpDefPrefs.password = QString("");
-    udpDefPrefs.audioOutput = 0;
-    udpDefPrefs.audioInput = 0;
-    udpDefPrefs.audioRXLatency = 150;
-    udpDefPrefs.audioTXLatency = 150;
-    udpDefPrefs.audioRXSampleRate = 48000;
-    udpDefPrefs.audioRXCodec = 4;
-    udpDefPrefs.audioTXSampleRate = 48000;
-    udpDefPrefs.audioTXCodec = 4;
-    udpDefPrefs.resampleQuality = 4;
     udpDefPrefs.clientName = QHostInfo::localHostName();
 }
 
@@ -1268,7 +1284,7 @@ void wfmain::loadSettings()
     ui->audioRXCodecCombo->blockSignals(false);
 
     ui->audioOutputCombo->blockSignals(true);
-    rxSetup.name = settings->value("AudioOutput", udpDefPrefs.audioOutputName).toString();
+    rxSetup.name = settings->value("AudioOutput", "").toString();
     qInfo(logGui()) << "Got Audio Output: " << rxSetup.name;
     int audioOutputIndex = ui->audioOutputCombo->findText(rxSetup.name);
     if (audioOutputIndex != -1) {
@@ -1284,7 +1300,7 @@ void wfmain::loadSettings()
     ui->audioOutputCombo->blockSignals(false);
 
     ui->audioInputCombo->blockSignals(true);
-    txSetup.name = settings->value("AudioInput", udpDefPrefs.audioInputName).toString();
+    txSetup.name = settings->value("AudioInput", "").toString();
     qInfo(logGui()) << "Got Audio Input: " << txSetup.name;
     int audioInputIndex = ui->audioInputCombo->findText(txSetup.name);
     if (audioInputIndex != -1) {
@@ -1299,7 +1315,7 @@ void wfmain::loadSettings()
     }
     ui->audioInputCombo->blockSignals(false);
 
-    rxSetup.resampleQuality = settings->value("ResampleQuality", udpDefPrefs.resampleQuality).toInt();
+    rxSetup.resampleQuality = settings->value("ResampleQuality", "4").toInt();
     txSetup.resampleQuality = rxSetup.resampleQuality;
 
     udpPrefs.clientName = settings->value("ClientName", udpDefPrefs.clientName).toString();
@@ -3745,8 +3761,8 @@ void wfmain::on_audioInputCombo_currentIndexChanged(int value)
 
 void wfmain::on_audioSampleRateCombo_currentIndexChanged(QString text)
 {
-    udpPrefs.audioRXSampleRate = text.toInt();
-    udpPrefs.audioTXSampleRate = text.toInt();
+    //udpPrefs.audioRXSampleRate = text.toInt();
+    //udpPrefs.audioTXSampleRate = text.toInt();
     rxSetup.samplerate = text.toInt();
     txSetup.samplerate = text.toInt();
 }
