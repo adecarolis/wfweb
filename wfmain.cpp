@@ -476,27 +476,6 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     //now we know what the rig ID is:
     //qInfo(logSystem()) << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
 
-    // baud on the serial port reflects the actual rig connection,
-    // even if a client-server connection is being used.
-    // Computed time for a 10 byte message, with a safety factor of 2.
-    unsigned int usPerByte = 9600*1000 / prefs.serialPortBaud;
-    unsigned int msMinTiming=usPerByte * 10*2/1000;
-    if(msMinTiming < 35)
-        msMinTiming = 35;
-
-    delayedCommand->setInterval( msMinTiming * 2); // 20 byte message
-    periodicPollingTimer->setInterval( msMinTiming ); // slower for s-meter poll
-
-    qInfo(logSystem()) << "Delay command interval timing: " << msMinTiming * 2 << "ms";
-    qInfo(logSystem()) << "Periodic polling timer: " << msMinTiming << "ms";
-
-    // Normal:
-    delayedCmdIntervalLAN_ms =  msMinTiming * 2;
-    delayedCmdIntervalSerial_ms =  msMinTiming * 2;
-
-    // startup initial state:
-    delayedCmdStartupInterval_ms =  msMinTiming * 2;
-
     if(rig->usingLAN())
     {
         usingLAN = true;
@@ -4337,10 +4316,46 @@ void wfmain::receiveSpectrumSpan(freqt freqspan, bool isSub)
     }
 }
 
+void wfmain::calculateTimingParameters()
+{
+    // Function for calculating polling parameters.
+    // Requires that we know the "baud rate" of the actual
+    // radio connection.
+
+    // baud on the serial port reflects the actual rig connection,
+    // even if a client-server connection is being used.
+    // Computed time for a 10 byte message, with a safety factor of 2.
+
+    if (prefs.serialPortBaud == 0)
+    {
+        prefs.serialPortBaud = 9600;
+        qInfo(logSystem()) << "WARNING: baud rate received was zero. Assuming 9600 baud, performance may suffer.";
+    }
+
+    unsigned int usPerByte = 9600*1000 / prefs.serialPortBaud;
+    unsigned int msMinTiming=usPerByte * 10*2/1000;
+    if(msMinTiming < 35)
+        msMinTiming = 35;
+
+    delayedCommand->setInterval( msMinTiming * 2); // 20 byte message
+    periodicPollingTimer->setInterval( msMinTiming ); // slower for s-meter poll
+
+    qInfo(logSystem()) << "Delay command interval timing: " << msMinTiming * 2 << "ms";
+    qInfo(logSystem()) << "Periodic polling timer: " << msMinTiming << "ms";
+
+    // Normal:
+    delayedCmdIntervalLAN_ms =  msMinTiming * 2;
+    delayedCmdIntervalSerial_ms =  msMinTiming * 2;
+
+    // startup initial state:
+    delayedCmdStartupInterval_ms =  msMinTiming * 2;
+}
+
 void wfmain::receiveBaudRate(quint32 baud)
 {
     qInfo() << "Received serial port baud rate from remote server:" << baud;
     prefs.serialPortBaud = baud;
+    calculateTimingParameters();
 }
 
 void wfmain::on_rigPowerOnBtn_clicked()
