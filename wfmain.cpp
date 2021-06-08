@@ -535,6 +535,7 @@ void wfmain::setupPlots()
 // Line 290--
     spectrumDrawLock = true;
     plot = ui->plot; // rename it waterfall.
+
     wf = ui->waterfall;
 
     freqIndicatorLine = new QCPItemLine(plot);
@@ -872,10 +873,14 @@ void wfmain::setAudioDevicesUI()
     for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
         ui->audioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
     }
+
     const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
     for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
         ui->audioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
     }
+    // Set these to default audio devices initially.
+    rxSetup.port = QAudioDeviceInfo::defaultOutputDevice();
+    txSetup.port = QAudioDeviceInfo::defaultInputDevice();
 #endif
 }
 
@@ -1060,6 +1065,8 @@ void wfmain::setupShuttleDevice()
     connect(shuttleThread, SIGNAL(finished()), shuttleDev, SLOT(deleteLater()));
     connect(shuttleDev, SIGNAL(jogPlus()), this, SLOT(shortcutStepPlus()));
     connect(shuttleDev, SIGNAL(jogMinus()), this, SLOT(shortcutStepMinus()));
+    connect(shuttleDev, SIGNAL(doShuttle(bool,quint8)), this, SLOT(doShuttle(bool,quint8)));
+    connect(shuttleDev, SIGNAL(shuttleMinus()), this, SLOT(shortcutShiftMinus()));
     connect(shuttleDev, SIGNAL(button5(bool)), this, SLOT(stepDown()));
     connect(shuttleDev, SIGNAL(button6(bool)), this, SLOT(pttToggle(bool)));
     connect(shuttleDev, SIGNAL(button7(bool)), this, SLOT(stepUp()));
@@ -1082,6 +1089,26 @@ void wfmain::pttToggle(bool status)
         pttTimer->start();
 
     issueDelayedCommand(cmdGetPTT);
+}
+
+void wfmain::doShuttle(bool up, quint8 level)
+{
+    if (level == 1 && up)
+            shortcutShiftPlus();
+    else if (level == 1 && !up)
+            shortcutShiftMinus();
+    else if (level > 1 && level < 5 && up)
+        for (int i = 1; i < level; i++)
+            shortcutPlus();
+    else if (level > 1 && level < 5 && !up)
+        for (int i = 1; i < level; i++)
+            shortcutMinus();
+    else if (level > 4 && up)
+        for (int i = 4; i < level; i++)
+            shortcutControlPlus();
+    else if (level > 4 && !up)
+        for (int i = 4; i < level; i++)
+            shortcutControlMinus();
 }
 
 void wfmain::stepUp()
@@ -1118,15 +1145,15 @@ void wfmain::setDefPrefs()
     udpDefPrefs.audioLANPort = 50003;
     udpDefPrefs.username = QString("");
     udpDefPrefs.password = QString("");
-    udpDefPrefs.audioOutput = 0;
-    udpDefPrefs.audioInput = 0;
-    udpDefPrefs.audioRXLatency = 150;
-    udpDefPrefs.audioTXLatency = 150;
-    udpDefPrefs.audioRXSampleRate = 48000;
-    udpDefPrefs.audioRXCodec = 4;
-    udpDefPrefs.audioTXSampleRate = 48000;
-    udpDefPrefs.audioTXCodec = 4;
-    udpDefPrefs.resampleQuality = 4;
+    //udpDefPrefs.audioOutput = 0;
+    //udpDefPrefs.audioInput = 0;
+    //udpDefPrefs.audioRXLatency = 150;
+    //udpDefPrefs.audioTXLatency = 150;
+    //udpDefPrefs.audioRXSampleRate = 48000;
+    //udpDefPrefs.audioRXCodec = 4;
+    //udpDefPrefs.audioTXSampleRate = 48000;
+    //udpDefPrefs.audioTXCodec = 4;
+    //udpDefPrefs.resampleQuality = 4;
     udpDefPrefs.clientName = QHostInfo::localHostName();
 }
 
@@ -1318,7 +1345,7 @@ void wfmain::loadSettings()
     ui->audioRXCodecCombo->blockSignals(false);
 
     ui->audioOutputCombo->blockSignals(true);
-    rxSetup.name = settings->value("AudioOutput", udpDefPrefs.audioOutputName).toString();
+    rxSetup.name = settings->value("AudioOutput", "").toString();
     qInfo(logGui()) << "Got Audio Output: " << rxSetup.name;
     int audioOutputIndex = ui->audioOutputCombo->findText(rxSetup.name);
     if (audioOutputIndex != -1) {
@@ -1334,7 +1361,7 @@ void wfmain::loadSettings()
     ui->audioOutputCombo->blockSignals(false);
 
     ui->audioInputCombo->blockSignals(true);
-    txSetup.name = settings->value("AudioInput", udpDefPrefs.audioInputName).toString();
+    txSetup.name = settings->value("AudioInput", "").toString();
     qInfo(logGui()) << "Got Audio Input: " << txSetup.name;
     int audioInputIndex = ui->audioInputCombo->findText(txSetup.name);
     if (audioInputIndex != -1) {
@@ -1349,7 +1376,7 @@ void wfmain::loadSettings()
     }
     ui->audioInputCombo->blockSignals(false);
 
-    rxSetup.resampleQuality = settings->value("ResampleQuality", udpDefPrefs.resampleQuality).toInt();
+    rxSetup.resampleQuality = settings->value("ResampleQuality", "4").toInt();
     txSetup.resampleQuality = rxSetup.resampleQuality;
 
     udpPrefs.clientName = settings->value("ClientName", udpDefPrefs.clientName).toString();
@@ -3822,8 +3849,8 @@ void wfmain::on_audioInputCombo_currentIndexChanged(int value)
 
 void wfmain::on_audioSampleRateCombo_currentIndexChanged(QString text)
 {
-    udpPrefs.audioRXSampleRate = text.toInt();
-    udpPrefs.audioTXSampleRate = text.toInt();
+    //udpPrefs.audioRXSampleRate = text.toInt();
+    //udpPrefs.audioTXSampleRate = text.toInt();
     rxSetup.samplerate = text.toInt();
     txSetup.samplerate = text.toInt();
 }

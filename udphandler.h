@@ -40,18 +40,6 @@ struct udpPreferences {
 	quint16 audioLANPort;
 	QString username;
 	QString password;
-	int audioOutput;
-	int audioInput;
-	QString audioOutputName;
-	QString audioInputName;
-
-	quint16 audioRXLatency;
-	quint16 audioTXLatency;
-	quint16 audioRXSampleRate;
-	quint8 audioRXCodec;
-	quint16 audioTXSampleRate;
-	quint8 audioTXCodec;
-	quint8 resampleQuality;
 	QString clientName;
 };
 
@@ -198,20 +186,6 @@ private:
 	void dataReceived();
 	void watchdog();
 
-	quint16 rxLatency;
-	quint16 txLatency;
-	quint16 rxSampleRate;
-	quint16 txSampleRate;
-	quint8 rxCodec;
-	quint8 txCodec;
-	quint8 rxChannelCount = 1;
-	bool rxIsUlawCodec = false;
-	quint8 rxNumSamples = 8;
-	quint8 txChannelCount = 1;
-	bool txIsUlawCodec = false;
-	quint8 txNumSamples = 8;
-
-	bool sentPacketConnect2 = false;
 	uint16_t sendAudioSeq = 0;
 
 	audioHandler* rxaudio = Q_NULLPTR;

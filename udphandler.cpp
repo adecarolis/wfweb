@@ -701,7 +701,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, audio
     this->port = audioPort;
     this->radioIP = ip;
 
-    if (txSampleRate == 0) {
+    if (txSetup.samplerate == 0) {
         enableTx = false;
     }
 
