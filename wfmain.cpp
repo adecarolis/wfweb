@@ -847,16 +847,22 @@ void wfmain::receiveCommReady()
     }
 }
 
-
-void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
+void wfmain::calculateTimingParameters()
 {
-    // Entry point for unknown rig being identified at the start of the program.
-    //now we know what the rig ID is:
-    //qInfo(logSystem()) << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
+    // Function for calculating polling parameters.
+    // Requires that we know the "baud rate" of the actual
+    // radio connection.
 
     // baud on the serial port reflects the actual rig connection,
     // even if a client-server connection is being used.
     // Computed time for a 10 byte message, with a safety factor of 2.
+
+    if (prefs.serialPortBaud == 0)
+    {
+        prefs.serialPortBaud = 9600;
+        qInfo(logSystem()) << "WARNING: baud rate received was zero. Assuming 9600 baud, performance may suffer.";
+    }
+
     unsigned int usPerByte = 9600*1000 / prefs.serialPortBaud;
     unsigned int msMinTiming=usPerByte * 10*2/1000;
     if(msMinTiming < 35)
@@ -874,6 +880,14 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
 
     // startup initial state:
     delayedCmdStartupInterval_ms =  msMinTiming * 2;
+}
+
+
+void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
+{
+    // Entry point for unknown rig being identified at the start of the program.
+    //now we know what the rig ID is:
+    //qInfo(logSystem()) << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
 
     if(rig->usingLAN())
     {
@@ -4135,6 +4149,7 @@ void wfmain::receiveBaudRate(quint32 baud)
 {
     qInfo() << "Received serial port baud rate from remote server:" << baud;
     prefs.serialPortBaud = baud;
+    calculateTimingParameters();
 }
 
 void wfmain::on_rigPowerOnBtn_clicked()
