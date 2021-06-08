@@ -1051,26 +1051,6 @@ void wfmain::setupKeyShortcuts()
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
 }
 
-
-void wfmain::pttToggle(bool status)
-{
-    // is it enabled?
-
-    if (!ui->pttEnableChk->isChecked())
-    {
-        showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
-        return;
-    }
-
-    emit setPTT(status);
-    // Start 3 minute timer
-    if (status)
-        pttTimer->start();
-
-    issueDelayedCommand(cmdGetPTT);
-}
-
-
 void wfmain::setDefPrefs()
 {
     defPrefs.useFullScreen = false;
