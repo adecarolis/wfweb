@@ -97,8 +97,10 @@ CONFIG(debug, release|debug) {
 linux:LIBS += -L./ -l$$QCPLIB
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread
 
-!linux:SOURCES += ../qcustomplot/qcustomplot.cpp rtaudio/RTAudio.cpp
-!linux:HEADERS += ../qcustomplot/qcustomplot.h rtaudio/RTAUdio.h
+#win32:SOURCES += rtaudio/RTAudio.cpp
+#win32:HEADERS += rtaudio/RTAUdio.h
+!linux:SOURCES += ../qcustomplot/qcustomplot.cpp 
+!linux:HEADERS += ../qcustomplot/qcustomplot.h
 !linux:INCLUDEPATH += ../qcustomplot
 
 INCLUDEPATH += opus-tools/src
