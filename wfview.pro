@@ -100,10 +100,9 @@ macx:LIBS += -framework CoreAudio -framework CoreFoundation -lhidapi -lpthread
 win32:LIBS += -L../hidapi/windows/release -lhidapi
 win32:INCLUDEPATH += ../hidapi/hidapi
 
-#!linux:SOURCES += ../qcustomplot/qcustomplot.cpp rtaudio/RTAudio.cpp
-#!linux:HEADERS += ../qcustomplot/qcustomplot.h rtaudio/RTAUdio.h
-
-!linux:SOURCES += ../qcustomplot/qcustomplot.cpp
+#win32:SOURCES += rtaudio/RTAudio.cpp
+#win32:HEADERS += rtaudio/RTAUdio.h
+!linux:SOURCES += ../qcustomplot/qcustomplot.cpp 
 !linux:HEADERS += ../qcustomplot/qcustomplot.h
 
 !linux:INCLUDEPATH += ../qcustomplot

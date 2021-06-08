@@ -683,7 +683,7 @@ private:
 
     void initPeriodicCommands();
     void insertPeriodicCommand(cmds cmd, unsigned char priority);
-
+    void calculateTimingParameters();
 
     void changeMode(mode_kind mode);
     void changeMode(mode_kind mode, bool dataOn);

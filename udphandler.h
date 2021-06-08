@@ -195,7 +195,7 @@ private:
 	QThread* txAudioThread = Q_NULLPTR;
 
 	QTimer* txAudioTimer=Q_NULLPTR;
-	bool enableTx = 1;
+	bool enableTx = true;
 
 };
 
