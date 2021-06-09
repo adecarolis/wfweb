@@ -535,16 +535,16 @@ void udpServer::civReceived()
                         // Strip all '0xFE' command preambles first:
                         int lastFE = r.lastIndexOf((char)0xfe);
                         //qInfo(logUdpServer()) << "Got:" << r.mid(lastFE);
-                        if (current->civId == 0 && r.length() > lastFE + 2 && (quint8)r[lastFE + 2] > (quint8)0xdf && (quint8)r[lastFE + 2] < (quint8)0xef) {
+                        if (current->civId == 0 && r.length() > lastFE + 2 && (quint8)r[lastFE+2] != 0xE1 && (quint8)r[lastFE + 2] > (quint8)0xdf && (quint8)r[lastFE + 2] < (quint8)0xef) {
                             // This is (should be) the remotes CIV id.
                             current->civId = (quint8)r[lastFE + 2];
                             qInfo(logUdpServer()) << current->ipAddress.toString() << ": Detected remote CI-V:" << hex << current->civId;
                         }
-                        else if (current->civId != 0 && r.length() > lastFE + 2 && (quint8)r[lastFE + 2] != current->civId)
+                        else if (current->civId != 0 && r.length() > lastFE + 2 && (quint8)r[lastFE+2] != 0xE1 && (quint8)r[lastFE + 2] != current->civId)
                         {
                             current->civId = (quint8)r[lastFE + 2];
                             qDebug(logUdpServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << hex << current->civId;                            qInfo(logUdpServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << hex << current->civId;
-                        } else if (r.length() > lastFE+2) {
+                        } else if (r.length() > lastFE+2 && (quint8)r[lastFE+2] != 0xE1) {
                             qDebug(logUdpServer()) << current->ipAddress.toString() << ": Detected invalid remote CI-V:" << hex << (quint8)r[lastFE+2];
 			}
 
@@ -1255,7 +1255,7 @@ void udpServer::dataForServer(QByteArray d)
         int lastFE = d.lastIndexOf((quint8)0xfe);
         if (client != Q_NULLPTR && client->connected && d.length() > lastFE + 2 &&
 		((quint8)d[lastFE + 1] == client->civId || (quint8)d[lastFE + 2] == client->civId ||
-		(quint8)d[lastFE + 1] == 0x00 || (quint8)d[lastFE + 2]==0x00)) {
+        (quint8)d[lastFE + 1] == 0x00 || (quint8)d[lastFE + 2]==0x00 || (quint8)d[lastFE+2]==0xE1)) {
             data_packet p;
             memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
             p.len = (quint16)d.length() + sizeof(p);
