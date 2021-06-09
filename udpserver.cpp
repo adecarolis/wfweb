@@ -1255,7 +1255,7 @@ void udpServer::dataForServer(QByteArray d)
         int lastFE = d.lastIndexOf((quint8)0xfe);
         if (client != Q_NULLPTR && client->connected && d.length() > lastFE + 2 &&
 		((quint8)d[lastFE + 1] == client->civId || (quint8)d[lastFE + 2] == client->civId ||
-        (quint8)d[lastFE + 1] == 0x00 || (quint8)d[lastFE + 2]==0x00 || (quint8)d[lastFE+2]==0xE1)) {
+        (quint8)d[lastFE + 1] == 0x00 || (quint8)d[lastFE + 2]==0x00 || (quint8)d[lastFE + 1] == 0xE1 || (quint8)d[lastFE + 2] == 0xE1)) {
             data_packet p;
             memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
             p.len = (quint16)d.length() + sizeof(p);
