@@ -91,7 +91,7 @@ void udpServerSetup::on_usersTable_cellClicked(int row, int col)
 {
     qInfo() << "Clicked on " << row << "," << col;
     if (row == ui->usersTable->model()->rowCount() - 1 && ui->usersTable->item(row, 0) != NULL) {
-        addUserLine(" ", " ", 0);
+        addUserLine("", "", 0);
     }
 }
 
