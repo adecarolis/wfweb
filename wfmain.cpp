@@ -754,7 +754,7 @@ void wfmain::setServerToPrefs()
         connect(this, SIGNAL(initServer()), udp, SLOT(init()));
         connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
         if (!prefs.enableLAN) {
-            connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(handleStatusUpdate(QString)));
+            connect(udp, SIGNAL(haveNetworkStatus(QString)), rig, SLOT(handleStatusUpdate(QString)));
         }
 
         serverThread->start();
