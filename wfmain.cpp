@@ -358,10 +358,6 @@ void wfmain::makeRig()
         connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
         connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
 
-        if (!prefs.enableLAN && udp != Q_NULLPTR) {
-            connect(udp, SIGNAL(haveNetworkStatus(QString)), rig, SLOT(handleStatusUpdate(QString)));
-        }
-
         // Rig comm setup:
         connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)), rig, SLOT(commSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)));
         connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32,QString)), rig, SLOT(commSetup(unsigned char, QString, quint32,QString)));
@@ -762,6 +758,10 @@ void wfmain::setServerToPrefs()
 
         connect(this, SIGNAL(initServer()), udp, SLOT(init()));
         connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
+
+        if (!prefs.enableLAN && udp != Q_NULLPTR) {
+            connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(receiveStatusUpdate(QString)));
+        }
 
         serverThread->start();
 
