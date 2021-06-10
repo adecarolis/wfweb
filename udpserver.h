@@ -116,6 +116,7 @@ private:
 		quint16 seqPrefix;
 
 		quint8 civId;
+		bool isAuthenticated;
 	};
 
 	void controlReceived();

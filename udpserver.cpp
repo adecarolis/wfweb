@@ -193,6 +193,7 @@ void udpServer::controlReceived()
             current = new CLIENT();
             current->type = "Control";
             current->connected = true;
+            current->isAuthenticated = false;
             current->isStreaming = false;
             current->timeConnected = QDateTime::currentDateTime();
             current->ipAddress = datagram.senderAddress();
@@ -308,7 +309,6 @@ void udpServer::controlReceived()
         {
             login_packet_t in = (login_packet_t)r.constData();
             qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received 'login'";
-            bool userOk = false;
             foreach(SERVERUSER user, config.users)
             {
                 QByteArray usercomp;
@@ -317,7 +317,7 @@ void udpServer::controlReceived()
                 passcode(user.password, passcomp);
                 if (!strcmp(in->username, usercomp.constData()) && !strcmp(in->password, passcomp.constData()))
                 {
-                    userOk = true;
+                    current->isAuthenticated = true;
                     current->user = user;
                     break;
                 }
@@ -331,7 +331,7 @@ void udpServer::controlReceived()
             current->tokenRx = in->tokrequest;
             current->tokenTx = (quint8)rand() | (quint8)rand() << 8 | (quint8)rand() << 16 | (quint8)rand() << 24;
 
-            if (userOk) {
+            if (current->isAuthenticated) {
                 qInfo(logUdpServer()) << current->ipAddress.toString() << ": User " << current->user.username << " login OK";
                 sendLoginResponse(current, true);
             }
@@ -445,6 +445,22 @@ void udpServer::civReceived()
 
         QDateTime now = QDateTime::currentDateTime();
 
+        bool userOK = false;
+        foreach(CLIENT * client, controlClients)
+        {
+            if (client != Q_NULLPTR)
+            {
+                if (client->ipAddress == datagram.senderAddress() && client->isAuthenticated)
+                {
+                    userOK = true;
+                }
+            }
+        }
+        if (!userOK)
+        {
+            qDebug(logUdpServer()) << "user is NOT authenticated but attempted CI-V connection!";
+        }
+
         foreach(CLIENT * client, civClients)
         {
             if (client != Q_NULLPTR)
@@ -456,6 +472,7 @@ void udpServer::civReceived()
 
             }
         }
+
         if (current == Q_NULLPTR)
         {
             current = new CLIENT();
@@ -580,6 +597,22 @@ void udpServer::audioReceived()
             return;
 
         QDateTime now = QDateTime::currentDateTime();
+
+        bool userOK = false;
+        foreach(CLIENT * client, controlClients)
+        {
+            if (client != Q_NULLPTR)
+            {
+                if (client->ipAddress == datagram.senderAddress() && client->isAuthenticated)
+                {
+                    userOK = true;
+                }
+            }
+        }
+        if (!userOK)
+        {
+            qDebug(logUdpServer()) << "user is NOT authenticated but attempted CI-V connection!";
+        }
 
         foreach(CLIENT * client, audioClients)
         {
