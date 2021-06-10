@@ -313,9 +313,9 @@ void udpServer::controlReceived()
             {
                 QByteArray usercomp;
                 passcode(user.username, usercomp);
-                QByteArray passcomp;
-                passcode(user.password, passcomp);
-                if (!strcmp(in->username, usercomp.constData()) && !strcmp(in->password, passcomp.constData()))
+                //QByteArray passcomp;
+                //passcode(user.password, passcomp);
+                if (!strcmp(in->username, usercomp.constData()) && !strcmp(in->password, (const char *)user.password.constData()))
                 {
                     current->isAuthenticated = true;
                     current->user = user;
