@@ -51,6 +51,7 @@ public slots:
 signals:
 	void haveDataFromServer(QByteArray);
 	void haveAudioData(audioPacket data);
+	void haveNetworkStatus(QString);
 
 	void setupTxAudio(audioSetup);
 	void setupRxAudio(audioSetup);
