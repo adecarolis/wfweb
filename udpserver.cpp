@@ -424,7 +424,7 @@ void udpServer::controlReceived()
         }
         }
         // Report current connections:
-        emit haveNetworkStatus(QString("<pre>%1 current server connections</pre>").arg(controlClients.size()));
+        emit haveNetworkStatus(QString("<pre>%1 current server connection(s)</pre>").arg(controlClients.size()));
 
         commonReceived(&controlClients, current, r);
 
