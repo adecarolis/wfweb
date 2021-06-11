@@ -94,7 +94,6 @@ private:
 
 		QTimer* pingTimer;
 		QTimer* idleTimer;
-		QTimer* wdTimer;
 		QTimer* retransmitTimer;
 
 		// Only used for audio.
@@ -135,7 +134,7 @@ private:
 	void sendTokenResponse(CLIENT* c,quint8 type);
 	void sendStatus(CLIENT* c);
 	void sendRetransmitRequest(CLIENT* c);
-	void watchdog(QList<CLIENT*>* l, CLIENT* c);
+	void watchdog();
 	void sendRxAudio();
 	void deleteConnection(QList<CLIENT*> *l, CLIENT* c);
 
@@ -178,6 +177,7 @@ private:
 	quint8 txCodec = 0;
 
 	QHostAddress hasTxAudio;
+	QTimer* wdTimer;
 };
 
 
