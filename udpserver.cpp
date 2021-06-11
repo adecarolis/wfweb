@@ -1239,6 +1239,8 @@ void udpServer::watchdog(QList<CLIENT*>* l, CLIENT* c)
 {
     QDateTime now = QDateTime::currentDateTime();
 
+    emit haveNetworkStatus(QString("<pre>Server connections: Control:%1 CI-V:%2 Audio:%3</pre>").arg(controlClients.size()).arg(civClients.size()).arg(audioClients.size()));
+
     if (c->lastHeard.secsTo(now) > STALE_CONNECTION)
     {
         qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Deleting stale connection ";
