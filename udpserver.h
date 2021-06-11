@@ -135,7 +135,7 @@ private:
 	void sendTokenResponse(CLIENT* c,quint8 type);
 	void sendStatus(CLIENT* c);
 	void sendRetransmitRequest(CLIENT* c);
-	void watchdog(CLIENT* c);
+	void watchdog(QList<CLIENT*>* l, CLIENT* c);
 	void sendRxAudio();
 	void deleteConnection(QList<CLIENT*> *l, CLIENT* c);
 

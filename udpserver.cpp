@@ -217,8 +217,8 @@ void udpServer::controlReceived()
             current->idleTimer->start(100);
 
             current->wdTimer = new QTimer();
-            connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::watchdog, this, current));
-            //current->wdTimer->start(1000);
+            connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::watchdog, this, &controlClients, current));
+            current->wdTimer->start(1000);
 
             current->retransmitTimer = new QTimer();
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
@@ -503,8 +503,8 @@ void udpServer::civReceived()
             //current->idleTimer->start(100); // Start idleTimer after receiving iamready.
 
             current->wdTimer = new QTimer();
-            connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::watchdog, this, current));
-            //current->wdTimer->start(1000);
+            connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::watchdog, this, &civClients, current));
+            current->wdTimer->start(1000);
 
             current->retransmitTimer = new QTimer();
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
@@ -649,8 +649,8 @@ void udpServer::audioReceived()
             current->pingTimer->start(100);
 
             current->wdTimer = new QTimer();
-            connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::watchdog, this, current));
-            //current->wdTimer->start(1000);
+            connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::watchdog, this, &audioClients, current));
+            current->wdTimer->start(1000);
 
             current->retransmitTimer = new QTimer();
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
@@ -920,7 +920,7 @@ void udpServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
 
 void udpServer::sendPing(QList<CLIENT*>* l, CLIENT* c, quint16 seq, bool reply)
 {
-    // Also use to detect "stale" connections
+    /*
     QDateTime now = QDateTime::currentDateTime();
 
     if (c->lastHeard.secsTo(now) > STALE_CONNECTION)
@@ -930,6 +930,7 @@ void udpServer::sendPing(QList<CLIENT*>* l, CLIENT* c, quint16 seq, bool reply)
         return;
     }
 
+    */
 
     //qInfo(logUdpServer()) << c->ipAddress.toString() << ": Sending Ping";
 
@@ -1233,10 +1234,16 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
 
 #define PURGE_SECONDS 60
 
-void udpServer::watchdog(CLIENT* c)
+void udpServer::watchdog(QList<CLIENT*>* l, CLIENT* c)
 {
-    Q_UNUSED(c);
-    // Do something!
+    QDateTime now = QDateTime::currentDateTime();
+
+    if (c->lastHeard.secsTo(now) > STALE_CONNECTION)
+    {
+        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Deleting stale connection ";
+        deleteConnection(l, c);
+        return;
+    }
 
 }
 
