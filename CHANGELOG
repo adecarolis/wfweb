@@ -1,5 +1,292 @@
 # CHANGELOG
 
+
+- 20210611
+
+    		Update udpserver.cpp
+
+    		Use global watchdog rather than per-connection
+
+    		Report when users are disconnected by the watchdog
+
+    		Use watchdog to cleanup lost server connections
+
+    		Fix crash on disconnect
+
+    		Make status update after disconnection
+
+    		More server disconnection cleanup
+
+    		Improve server disconnection/cleanup
+
+- 20210610
+
+    		remove spaces when adding extra server users
+
+    		Update udpserver.cpp
+
+    		Allow both encoded and plain text passwords
+
+    		Lots of fixes to server setup table
+
+    		Hopefully fix the occasional 0xe1 packet from hitting the pty
+
+    		Add more info for server connections
+
+    		Make sure that user is authenticated before allowing CIV/Audio
+
+    		Use correct location for statusupdate!
+
+    		Indicate when TX is not available
+
+    		Show server connection status in taskbar (only for USB connected rigs)
+
+- 20210609
+
+    		Allow sender or receiver to be 0xe1 in server
+
+    		Always forward wfview traffic to wfview clients
+
+- 20210608
+
+    		Truncate wfview.log on open
+
+    		Detect radio baudrate in server mode
+
+    		Comment out rtaudio if not being used
+
+    		Baud rate calculations are now only happening when baud rate is received
+    		and reasonable.
+
+- 20210607
+
+    		Check that we have at least 1 audio channel available.
+
+    		Improve audio cleanup
+
+    		Add extra debugging for UDP server CIV
+
+    		Make only MacOS use buffered audio
+
+    		Improve mac audio
+
+- 20210606
+
+    		Fix TX Audio on Linux
+
+    		Various fixes to udpserver
+
+    		Make QTMultimedia default
+
+    		Fix to allow rtaudio to compile again
+
+- 20210605
+
+    		Add latency check to TX audio
+
+    		Fix incorrect use of latency setting
+
+- 20210604
+
+    		Stop silly compile warning
+
+    		Change udpserver to use new audiosetup struct properly.
+
+    		Fix audio device selection
+
+    		Fix for txaudio
+
+    		Add QtMultimedia as default audio
+
+- 20210603
+
+    		Hopefully fix hang on exit when trying to close audio thread.
+
+- 20210602
+
+    		Use heap based rtaudio for enumeration
+
+    		Catch possible exception when closing non-existent stream
+
+   		Fix mac audio
+
+    		Fix mac crash on closing audio
+
+    		Make sure audio is deleted in destructor
+
+    		Force specific rtaudio API depending on platform.
+
+    		Linux now uses librtuadio-dev where available
+
+    		Removing local rtaudio code and using library instead.
+
+    		revert to ALSA for now
+
+    		Tell rtaudio not to hog device
+
+    		Update audiohandler.cpp
+
+    		Select chunksize based on native sample rate
+
+    		Force 48K sample rate when 44100 is detected.
+
+    		change linux compiler directive to allow new-aligned
+
+    		Tidy up server mutexes
+
+    		Fix server high CPU on disconnect
+
+- 20210601
+
+    		Stop deleting audio after last client disconects
+
+    		Change udpserver packet handling to be similar to udphandler
+
+    		Update udpserver.cpp
+
+    		Let buffer keep filling.
+
+    		Change to 10ms poll time for server rx audio
+
+    		Mutex work in udpserver
+
+    		Fix for crash when remote requests tone.
+
+- 20210531
+
+    		IC-7700 support
+
+    		Open pty non-blocking
+
+    		Fix for crashing pty on mac
+
+    		Fix compile issue after merge
+
+- 20210530
+
+    		Keep the theme during resize. TODO: preference for wf theme
+
+    		Removing my own uninformed sidenote.
+
+    		Waterfal length may now be adjusted. Let's see what range of length
+    		seems good and limit the control accordingly. Also there may be a memory
+    		leak in the prepareWf() function where the colormap is created when the
+    		image is resized.
+
+    		CIV may now be changed as-needed while running.
+
+    		Remove various compiler warnings and tidy up.
+
+    		add silence if audio has stopped
+
+- 20210529
+
+    		fix for mac/linux compiler
+
+    		Detect number of device channels and convert accordingly
+
+    		Lots more changes for rtaudio compatibility
+
+    		Small change to show default audio devices
+
+- 20210528
+
+    		More chair movements.
+
+    		More arranging of the chairs. Also fixed a minor bug that prevented the
+    		"Manual" serial device entry on my system.
+
+    		Cleaning up the main constructor for wfmain.
+
+    		Add some startup logging
+
+    		Update audiohandler.cpp
+
+    		Update udphandler.cpp
+
+    		Change toolbar display formatting
+
+    		Use preferred sample rate rather than force 48000
+
+- 20210527
+
+    		Allow higher latency
+
+    		udpserver fixes
+
+    		Update udpserver.cpp
+
+    		Fix for tx audio channels
+
+    		Add tx audio
+
+    		add asound lib to linux build
+
+    		fix qmake file
+
+    		Use ring buffer with rtaudio to eliminate mutexes
+
+- 20210525
+
+    		Update INSTALL_PREBUILT_BINARY.md
+
+    		move ulaw to dedicated header
+
+    		add rtaudio as submodule
+
+    		add opus-tools as submodule
+
+    		Add mutex for audio buffer
+
+- 20210523
+
+    		Fixes for linux build
+
+    		First working rtaudio (output only)
+
+    		Link can now be clicked.
+
+    		Added helpful text to settings tab.
+
+    		Allow entry to Server Setup for either radio connection type.
+
+    		Minor change to clarify roll of Server Setup
+
+- 20210522
+
+    		Add debugging and fix silly error in audiooutput combobox
+
+    		reenable audio buffers
+
+    		Attempt to fix crash
+
+    		Make only first client have TX audio
+
+    		Stop audiohandler re-enumerating devices on connect.
+
+    		Stop preamps/attenuators lists growing every time we reconnect.
+
+    		Try increasing audio device buffer size
+
+- 20210521
+
+    		Changed method for adding modes to rigs and populating the rig menu.
+    		This should be easier to maintain and better in the long run.
+
+    		"Hopefully" fix annoying UDP server crash on client disconnect!
+
+    		Fix for TX audio in udp server
+
+    		Fix for stuttering audio on mac
+
+    		Fixed missing break in switchs.
+
+    		Typo in message about CI-V
+
+    		Dynamic timing update for all baud rates and connection types.
+
+    		Fixed support for 9600 baud and lower speeds.
+
 - 20210521
 
     		Add baud rate detection for remote rigs
