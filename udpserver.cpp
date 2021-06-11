@@ -920,6 +920,7 @@ void udpServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
 
 void udpServer::sendPing(QList<CLIENT*>* l, CLIENT* c, quint16 seq, bool reply)
 {
+    Q_UNUSED(l);
     /*
     QDateTime now = QDateTime::currentDateTime();
 
