@@ -250,7 +250,6 @@ void udpServer::controlReceived()
                     deleteConnection(&civClients, current->civClient);
                 }
                 deleteConnection(&controlClients, current);
-                return; // We mustn't do anything else as the connection has now gone.
             }
             break;
         }
@@ -431,8 +430,10 @@ void udpServer::controlReceived()
         // Report current connections:
         emit haveNetworkStatus(QString("<pre>Server connections: Control:%1 CI-V:%2 Audio:%3</pre>").arg(controlClients.size()).arg(civClients.size()).arg(audioClients.size()));
 
-        commonReceived(&controlClients, current, r);
-
+        // Connection "may" have been deleted so check before calling common function.
+        if (current != Q_NULLPTR) {
+            commonReceived(&controlClients, current, r);
+        }
     }
 }
 
