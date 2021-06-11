@@ -57,6 +57,9 @@ void udpServer::init()
     udpAudio = new QUdpSocket(this);
     udpAudio->bind(config.audioPort);
     QUdpSocket::connect(udpAudio, &QUdpSocket::readyRead, this, &udpServer::audioReceived);
+
+    emit haveNetworkStatus(QString("<pre>Server connections: Control:%1 CI-V:%2 Audio:%3</pre>").arg(controlClients.size()).arg(civClients.size()).arg(audioClients.size()));
+
 }
 
 udpServer::~udpServer()
@@ -250,6 +253,8 @@ void udpServer::controlReceived()
                     deleteConnection(&civClients, current->civClient);
                 }
                 deleteConnection(&controlClients, current);
+                emit haveNetworkStatus(QString("<pre>Server connections: Control:%1 CI-V:%2 Audio:%3</pre>").arg(controlClients.size()).arg(civClients.size()).arg(audioClients.size()));
+                return;
             }
             break;
         }
