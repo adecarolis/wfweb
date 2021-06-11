@@ -117,6 +117,9 @@ private:
 
 		quint8 civId;
 		bool isAuthenticated;
+		CLIENT* controlClient = Q_NULLPTR;
+		CLIENT* civClient=Q_NULLPTR;
+		CLIENT* audioClient=Q_NULLPTR;
 	};
 
 	void controlReceived();

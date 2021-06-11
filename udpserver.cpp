@@ -242,7 +242,13 @@ void udpServer::controlReceived()
             {
                 qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received 'disconnect' request";
                 sendControl(current, 0x00, in->seq);
-                //current->wdTimer->stop(); // Keep watchdog running to delete stale connection.
+
+                if (current->audioClient != Q_NULLPTR) {
+                    deleteConnection(&audioClients, current->audioClient);
+                }
+                if (current->civClient != Q_NULLPTR) {
+                    deleteConnection(&civClients, current->civClient);
+                }
                 deleteConnection(&controlClients, current);
             }
             break;
@@ -443,22 +449,6 @@ void udpServer::civReceived()
 
         QDateTime now = QDateTime::currentDateTime();
 
-        bool userOK = false;
-        foreach(CLIENT * client, controlClients)
-        {
-            if (client != Q_NULLPTR)
-            {
-                if (client->ipAddress == datagram.senderAddress() && client->isAuthenticated)
-                {
-                    userOK = true;
-                }
-            }
-        }
-        if (!userOK)
-        {
-            qDebug(logUdpServer()) << "user is NOT authenticated but attempted CI-V connection!";
-        }
-
         foreach(CLIENT * client, civClients)
         {
             if (client != Q_NULLPTR)
@@ -467,13 +457,25 @@ void udpServer::civReceived()
                 {
                     current = client;
                 }
-
             }
         }
 
         if (current == Q_NULLPTR)
         {
             current = new CLIENT();
+
+            foreach(CLIENT* client, controlClients)
+            {
+                if (client != Q_NULLPTR)
+                {
+                    if (client->ipAddress == datagram.senderAddress() && client->isAuthenticated && client->civClient == Q_NULLPTR)
+                    {
+                        current->controlClient = client;
+                        client->civClient = current;
+                    }
+                }
+            }
+
             current->type = "CIV";
             current->civId = 0;
             current->connected = true;
@@ -506,6 +508,11 @@ void udpServer::civReceived()
             civClients.append(current);
             connMutex.unlock();
 
+        }
+
+        if (current->controlClient == Q_NULLPTR || !current->controlClient->isAuthenticated)
+        {
+            return;
         }
 
         switch (r.length())
@@ -596,22 +603,6 @@ void udpServer::audioReceived()
 
         QDateTime now = QDateTime::currentDateTime();
 
-        bool userOK = false;
-        foreach(CLIENT * client, controlClients)
-        {
-            if (client != Q_NULLPTR)
-            {
-                if (client->ipAddress == datagram.senderAddress() && client->isAuthenticated)
-                {
-                    userOK = true;
-                }
-            }
-        }
-        if (!userOK)
-        {
-            qDebug(logUdpServer()) << "user is NOT authenticated but attempted CI-V connection!";
-        }
-
         foreach(CLIENT * client, audioClients)
         {
             if (client != Q_NULLPTR)
@@ -625,6 +616,17 @@ void udpServer::audioReceived()
         if (current == Q_NULLPTR)
         {
             current = new CLIENT();
+            foreach(CLIENT* client, controlClients)
+            {
+                if (client != Q_NULLPTR)
+                {
+                    if (client->ipAddress == datagram.senderAddress() && client->isAuthenticated && client->audioClient == Q_NULLPTR)
+                    {
+                        current->controlClient = client;
+                        client->audioClient = current;
+                    }
+                }
+            }
             current->type = "Audio";
             current->connected = true;
             current->timeConnected = QDateTime::currentDateTime();
