@@ -250,6 +250,7 @@ void udpServer::controlReceived()
                     deleteConnection(&civClients, current->civClient);
                 }
                 deleteConnection(&controlClients, current);
+                return; // We mustn't do anything else as the connection has now gone.
             }
             break;
         }
@@ -1512,7 +1513,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
 void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
 {
 
-    qInfo(logUdpServer()) << "Deleting connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
+    qInfo(logUdpServer()) << "Deleting" << c->type << "connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
     if (c->idleTimer != Q_NULLPTR) {
         c->idleTimer->stop();
         delete c->idleTimer;
