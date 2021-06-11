@@ -1227,7 +1227,6 @@ void udpServer::watchdog()
             {
                 qInfo(logUdpServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
                 deleteConnection(&audioClients, client);
-                return;
             }
         }
         else {
@@ -1243,7 +1242,6 @@ void udpServer::watchdog()
             {
                 qInfo(logUdpServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
                 deleteConnection(&civClients, client);
-                return;
             }
         }
         else {
@@ -1259,7 +1257,6 @@ void udpServer::watchdog()
             {
                 qInfo(logUdpServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
                 deleteConnection(&controlClients, client);
-                return;
             }
         }
         else {
