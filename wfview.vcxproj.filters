@@ -57,9 +57,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="rtaudio\RTAudio.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="audiohandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -125,9 +122,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="rtaudio\RTAUdio.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="opus-tools\src\arch.h">
       <Filter>Header Files</Filter>
     </ClInclude>

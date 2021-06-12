@@ -57,6 +57,10 @@ void udpServer::init()
     udpAudio = new QUdpSocket(this);
     udpAudio->bind(config.audioPort);
     QUdpSocket::connect(udpAudio, &QUdpSocket::readyRead, this, &udpServer::audioReceived);
+
+    wdTimer = new QTimer();
+    connect(wdTimer, &QTimer::timeout, this, &udpServer::watchdog);
+    wdTimer->start(500);
 }
 
 udpServer::~udpServer()
@@ -75,10 +79,6 @@ udpServer::~udpServer()
         if (client->pingTimer != Q_NULLPTR) {
             client->pingTimer->stop();
             delete client->pingTimer;
-        }
-        if (client->wdTimer != Q_NULLPTR) {
-            client->wdTimer->stop();
-            delete client->wdTimer;
         }
 
         if (client->retransmitTimer != Q_NULLPTR) {
@@ -213,10 +213,6 @@ void udpServer::controlReceived()
             connect(current->idleTimer, &QTimer::timeout, this, std::bind(&udpServer::sendControl, this, current, (quint8)0x00, (quint16)0x00));
             current->idleTimer->start(100);
 
-            current->wdTimer = new QTimer();
-            connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::watchdog, this, current));
-            //current->wdTimer->start(1000);
-
             current->retransmitTimer = new QTimer();
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
             current->retransmitTimer->start(RETRANSMIT_PERIOD);
@@ -242,8 +238,15 @@ void udpServer::controlReceived()
             {
                 qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received 'disconnect' request";
                 sendControl(current, 0x00, in->seq);
-                //current->wdTimer->stop(); // Keep watchdog running to delete stale connection.
+
+                if (current->audioClient != Q_NULLPTR) {
+                    deleteConnection(&audioClients, current->audioClient);
+                }
+                if (current->civClient != Q_NULLPTR) {
+                    deleteConnection(&civClients, current->civClient);
+                }
                 deleteConnection(&controlClients, current);
+                return;
             }
             break;
         }
@@ -421,11 +424,11 @@ void udpServer::controlReceived()
             break;
         }
         }
-        // Report current connections:
-        emit haveNetworkStatus(QString("<pre>Server connections: Control:%1 CI-V:%2 Audio:%3</pre>").arg(controlClients.size()).arg(civClients.size()).arg(audioClients.size()));
 
-        commonReceived(&controlClients, current, r);
-
+        // Connection "may" have been deleted so check before calling common function.
+        if (current != Q_NULLPTR) {
+            commonReceived(&controlClients, current, r);
+        }
     }
 }
 
@@ -443,22 +446,6 @@ void udpServer::civReceived()
 
         QDateTime now = QDateTime::currentDateTime();
 
-        bool userOK = false;
-        foreach(CLIENT * client, controlClients)
-        {
-            if (client != Q_NULLPTR)
-            {
-                if (client->ipAddress == datagram.senderAddress() && client->isAuthenticated)
-                {
-                    userOK = true;
-                }
-            }
-        }
-        if (!userOK)
-        {
-            qDebug(logUdpServer()) << "user is NOT authenticated but attempted CI-V connection!";
-        }
-
         foreach(CLIENT * client, civClients)
         {
             if (client != Q_NULLPTR)
@@ -467,13 +454,25 @@ void udpServer::civReceived()
                 {
                     current = client;
                 }
-
             }
         }
 
         if (current == Q_NULLPTR)
         {
             current = new CLIENT();
+
+            foreach(CLIENT* client, controlClients)
+            {
+                if (client != Q_NULLPTR)
+                {
+                    if (client->ipAddress == datagram.senderAddress() && client->isAuthenticated && client->civClient == Q_NULLPTR)
+                    {
+                        current->controlClient = client;
+                        client->civClient = current;
+                    }
+                }
+            }
+
             current->type = "CIV";
             current->civId = 0;
             current->connected = true;
@@ -493,10 +492,6 @@ void udpServer::civReceived()
             connect(current->idleTimer, &QTimer::timeout, this, std::bind(&udpServer::sendControl, this, current, 0x00, (quint16)0x00));
             //current->idleTimer->start(100); // Start idleTimer after receiving iamready.
 
-            current->wdTimer = new QTimer();
-            connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::watchdog, this, current));
-            //current->wdTimer->start(1000);
-
             current->retransmitTimer = new QTimer();
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
             current->retransmitTimer->start(RETRANSMIT_PERIOD);
@@ -506,6 +501,11 @@ void udpServer::civReceived()
             civClients.append(current);
             connMutex.unlock();
 
+        }
+
+        if (current->controlClient == Q_NULLPTR || !current->controlClient->isAuthenticated)
+        {
+            return;
         }
 
         switch (r.length())
@@ -596,22 +596,6 @@ void udpServer::audioReceived()
 
         QDateTime now = QDateTime::currentDateTime();
 
-        bool userOK = false;
-        foreach(CLIENT * client, controlClients)
-        {
-            if (client != Q_NULLPTR)
-            {
-                if (client->ipAddress == datagram.senderAddress() && client->isAuthenticated)
-                {
-                    userOK = true;
-                }
-            }
-        }
-        if (!userOK)
-        {
-            qDebug(logUdpServer()) << "user is NOT authenticated but attempted CI-V connection!";
-        }
-
         foreach(CLIENT * client, audioClients)
         {
             if (client != Q_NULLPTR)
@@ -625,6 +609,17 @@ void udpServer::audioReceived()
         if (current == Q_NULLPTR)
         {
             current = new CLIENT();
+            foreach(CLIENT* client, controlClients)
+            {
+                if (client != Q_NULLPTR)
+                {
+                    if (client->ipAddress == datagram.senderAddress() && client->isAuthenticated && client->audioClient == Q_NULLPTR)
+                    {
+                        current->controlClient = client;
+                        client->audioClient = current;
+                    }
+                }
+            }
             current->type = "Audio";
             current->connected = true;
             current->timeConnected = QDateTime::currentDateTime();
@@ -638,10 +633,6 @@ void udpServer::audioReceived()
             current->pingTimer = new QTimer();
             connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, &audioClients, current, (quint16)0x00, false));
             current->pingTimer->start(100);
-
-            current->wdTimer = new QTimer();
-            connect(current->wdTimer, &QTimer::timeout, this, std::bind(&udpServer::watchdog, this, current));
-            //current->wdTimer->start(1000);
 
             current->retransmitTimer = new QTimer();
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
@@ -911,7 +902,8 @@ void udpServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
 
 void udpServer::sendPing(QList<CLIENT*>* l, CLIENT* c, quint16 seq, bool reply)
 {
-    // Also use to detect "stale" connections
+    Q_UNUSED(l);
+    /*
     QDateTime now = QDateTime::currentDateTime();
 
     if (c->lastHeard.secsTo(now) > STALE_CONNECTION)
@@ -921,6 +913,7 @@ void udpServer::sendPing(QList<CLIENT*>* l, CLIENT* c, quint16 seq, bool reply)
         return;
     }
 
+    */
 
     //qInfo(logUdpServer()) << c->ipAddress.toString() << ": Sending Ping";
 
@@ -979,8 +972,6 @@ void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
             c->pingTimer->stop();
         if (c->retransmitTimer != Q_NULLPTR)
             c->retransmitTimer->stop();
-        if (c->wdTimer != Q_NULLPTR)
-            c->wdTimer->stop();
     }
     else {
         strcpy(p.connection, "WFVIEW");
@@ -1224,11 +1215,56 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
 
 #define PURGE_SECONDS 60
 
-void udpServer::watchdog(CLIENT* c)
+void udpServer::watchdog()
 {
-    Q_UNUSED(c);
-    // Do something!
+    QDateTime now = QDateTime::currentDateTime();
 
+    foreach(CLIENT * client, audioClients)
+    {
+        if (client != Q_NULLPTR)
+        {
+            if (client->lastHeard.secsTo(now) > STALE_CONNECTION)
+            {
+                qInfo(logUdpServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
+                deleteConnection(&audioClients, client);
+            }
+        }
+        else {
+            qInfo(logUdpServer()) << "Current client is NULL!";
+        }
+    }
+
+    foreach(CLIENT* client, civClients)
+    {
+        if (client != Q_NULLPTR)
+        {
+            if (client->lastHeard.secsTo(now) > STALE_CONNECTION)
+            {
+                qInfo(logUdpServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
+                deleteConnection(&civClients, client);
+            }
+        }
+        else {
+            qInfo(logUdpServer()) << "Current client is NULL!";
+        }
+    }
+
+    foreach(CLIENT* client, controlClients)
+    {
+        if (client != Q_NULLPTR)
+        {
+            if (client->lastHeard.secsTo(now) > STALE_CONNECTION)
+            {
+                qInfo(logUdpServer()) << client->ipAddress.toString() << "(" << client->type << "): Deleting stale connection ";
+                deleteConnection(&controlClients, client);
+            }
+        }
+        else {
+            qInfo(logUdpServer()) << "Current client is NULL!";
+        }
+    }
+
+    emit haveNetworkStatus(QString("<pre>Server connections: Control:%1 CI-V:%2 Audio:%3</pre>").arg(controlClients.size()).arg(civClients.size()).arg(audioClients.size()));
 }
 
 void udpServer::sendStatus(CLIENT* c)
@@ -1510,7 +1546,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
 void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
 {
 
-    qInfo(logUdpServer()) << "Deleting connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
+    qInfo(logUdpServer()) << "Deleting" << c->type << "connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
     if (c->idleTimer != Q_NULLPTR) {
         c->idleTimer->stop();
         delete c->idleTimer;
@@ -1518,10 +1554,6 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
     if (c->pingTimer != Q_NULLPTR) {
         c->pingTimer->stop();
         delete c->pingTimer;
-    }
-    if (c->wdTimer != Q_NULLPTR) {
-        c->wdTimer->stop();
-        delete c->wdTimer;
     }
 
     if (c->retransmitTimer != Q_NULLPTR) {
