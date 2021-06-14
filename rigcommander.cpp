@@ -74,7 +74,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
 
 }
 
-void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, QString vsp)
+void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -90,7 +90,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, QSt
 
     if (udp == Q_NULLPTR) {
 
-        udp = new udpHandler(prefs);
+        udp = new udpHandler(prefs,rxSetup,txSetup);
 
         udpHandlerThread = new QThread(this);
 
@@ -2946,6 +2946,25 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), createMode(modeWFM, 0x06, "WFM"));
+            break;
+        case model718:
+            rigCaps.modelName = QString("IC-718");
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.clear();
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasATU = false;
+            rigCaps.attenuators.push_back('\x20');
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.bands =   {band10m, band10m, band12m,
+                               band15m, band17m, band20m, band30m,
+                               band40m, band60m, band80m, band160m, bandGen};
+            rigCaps.modes = { createMode(modeLSB, 0x00, "LSB"), createMode(modeUSB, 0x01, "USB"),
+                              createMode(modeAM, 0x02, "AM"),
+                              createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
+                              createMode(modeRTTY, 0x04, "RTTY"), createMode(modeRTTY_R, 0x08, "RTTY-R")
+                            };
             break;
         case model756pro:
             rigCaps.modelName = QString("IC-756 Pro");
