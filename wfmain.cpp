@@ -79,6 +79,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     }
 
     amTransmitting = false;
+
+    connect(ui->txPowerSlider, &QSlider::sliderMoved,
+        [&](int value) {
+          QToolTip::showText(QCursor::pos(), QString("%1").arg(value*100/255), nullptr);
+        });
 }
 
 wfmain::~wfmain()
