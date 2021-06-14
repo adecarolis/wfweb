@@ -103,7 +103,7 @@ macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread
 !linux:HEADERS += ../qcustomplot/qcustomplot.h
 !linux:INCLUDEPATH += ../qcustomplot
 
-INCLUDEPATH += opus-tools/src
+INCLUDEPATH += resampler
 !linux:INCLUDEPATH += rtaudio
 
 SOURCES += main.cpp\
@@ -122,7 +122,7 @@ SOURCES += main.cpp\
     meter.cpp \
     qledlabel.cpp \
     pttyhandler.cpp \
-    opus-tools/src/resample.c \
+    resampler/resample.c \
     repeatersetup.cpp \
     rigctld.cpp \
     ring/ring.cpp
@@ -143,9 +143,9 @@ HEADERS  += wfmain.h \
     meter.h \
     qledlabel.h \
     pttyhandler.h \
-    opus-tools/src/speex_resampler.h \
-    opus-tools/src/arch.h \
-    opus-tools/src/resample_sse.h \
+    resampler/speex_resampler.h \
+    resampler/arch.h \
+    resampler/resample_sse.h \
     repeatersetup.h \
     repeaterattributes.h \
     rigctld.h \
