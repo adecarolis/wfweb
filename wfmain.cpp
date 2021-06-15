@@ -79,6 +79,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     }
 
     amTransmitting = false;
+
+    connect(ui->txPowerSlider, &QSlider::sliderMoved,
+        [&](int value) {
+          QToolTip::showText(QCursor::pos(), QString("%1").arg(value*100/255), nullptr);
+        });
 }
 
 wfmain::~wfmain()
@@ -754,6 +759,9 @@ void wfmain::setServerToPrefs()
         connect(this, SIGNAL(initServer()), udp, SLOT(init()));
         connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
 
+        if (!prefs.enableLAN && udp != Q_NULLPTR) {
+            connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(receiveStatusUpdate(QString)));
+        }
 
         serverThread->start();
 
@@ -1053,6 +1061,7 @@ void wfmain::setDefPrefs()
     udpDefPrefs.username = QString("");
     udpDefPrefs.password = QString("");
     udpDefPrefs.clientName = QHostInfo::localHostName();
+
 }
 
 void wfmain::loadSettings()
@@ -1129,10 +1138,14 @@ void wfmain::loadSettings()
     }
 
     prefs.serialPortBaud = (quint32) settings->value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
-
     ui->baudRateCombo->blockSignals(true);
     ui->baudRateCombo->setCurrentIndex( ui->baudRateCombo->findData(prefs.serialPortBaud) );
     ui->baudRateCombo->blockSignals(false);
+
+    if (prefs.serialPortBaud > 0)
+    {
+        serverConfig.baudRate = prefs.serialPortBaud;
+    }
 
     prefs.virtualSerialPort = settings->value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
     int vspIndex = ui->vspCombo->findText(prefs.virtualSerialPort);
@@ -1282,7 +1295,6 @@ void wfmain::loadSettings()
     settings->endGroup();
 
     settings->beginGroup("Server");
-
     serverConfig.enabled = settings->value("ServerEnabled", false).toBool();
     serverConfig.controlPort = settings->value("ServerControlPort", 50001).toInt();
     serverConfig.civPort = settings->value("ServerCivPort", 50002).toInt();
@@ -4582,6 +4594,7 @@ void wfmain::on_baudRateCombo_activated(int index)
     if(ok)
     {
         prefs.serialPortBaud = baud;
+        serverConfig.baudRate = baud;
         showStatusBarText(QString("Changed baud rate to %1 bps. Press Save Settings to retain.").arg(baud));
     }
     (void)index;
