@@ -117,15 +117,17 @@ void commHandler::receiveDataIn()
             return;
         }
     }
-    if(inPortData.contains("\xFC"))
-    {
-        //qInfo(logSerial()) << "Transaction contains collision data. Dumping.";
-        port->commitTransaction();
-        return;
-    }
+
 
     if(inPortData.startsWith("\xFE\xFE"))
     {
+        if(inPortData.contains("\xFC"))
+        {
+            //qInfo(logSerial()) << "Transaction contains collision data. Dumping.";
+            //printHex(inPortData, false, true);
+            port->commitTransaction();
+            return;
+        }
         if(inPortData.endsWith("\xFD"))
         {
             // good!
