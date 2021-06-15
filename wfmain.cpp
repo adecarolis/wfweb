@@ -1494,6 +1494,40 @@ void wfmain::saveSettings()
 }
 
 
+void wfmain::showHideSpectrum(bool show)
+{
+
+    if(show)
+    {
+        wf->show();
+        plot->show();
+    } else {
+        wf->hide();
+        plot->hide();
+    }
+
+    // Controls:
+    ui->spectrumGroupBox->setVisible(show);
+    ui->spectrumModeCombo->setVisible(show);
+    ui->scopeBWCombo->setVisible(show);
+    ui->scopeEdgeCombo->setVisible(show);
+    ui->scopeEnableWFBtn->setVisible(show);
+    ui->scopeRefLevelSlider->setEnabled(show);
+    ui->wfLengthSlider->setEnabled(show);
+    ui->wfthemeCombo->setVisible(show);
+    ui->toFixedBtn->setVisible(show);
+    ui->clearPeakBtn->setVisible(show);
+
+    // And the labels:
+    ui->specEdgeLabel->setVisible(show);
+    ui->specModeLabel->setVisible(show);
+    ui->specSpanLabel->setVisible(show);
+    ui->specThemeLabel->setVisible(show);
+
+    ui->specControlsHorizLayout->setEnabled(show);
+
+}
+
 void wfmain::prepareWf()
 {
     prepareWf(160);
@@ -1505,6 +1539,11 @@ void wfmain::prepareWf(unsigned int wfLength)
 
     if(haveRigCaps)
     {
+        showHideSpectrum(rigCaps.hasSpectrum);
+        if(!rigCaps.hasSpectrum)
+        {
+            return;
+        }
         // TODO: Lock the function that draws on the spectrum while we are updating.
         spectrumDrawLock = true;
 
@@ -4357,7 +4396,7 @@ void wfmain::calculateTimingParameters()
         msMinTiming = 35;
 
     delayedCommand->setInterval( msMinTiming * 2); // 20 byte message
-    periodicPollingTimer->setInterval( msMinTiming ); // slower for s-meter poll
+    periodicPollingTimer->setInterval( msMinTiming *5); // slower for s-meter poll
 
     qInfo(logSystem()) << "Delay command interval timing: " << msMinTiming * 2 << "ms";
     qInfo(logSystem()) << "Periodic polling timer: " << msMinTiming << "ms";
@@ -4612,6 +4651,6 @@ void wfmain::on_wfLengthSlider_valueChanged(int value)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    emit getTxPower();
+    emit getFrequency();
 
 }

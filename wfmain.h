@@ -462,6 +462,7 @@ private:
     void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
+    void showHideSpectrum(bool show);
     void getInitialRigState();
     void setBandButtons();
     void showButton(QPushButton *btn);
