@@ -125,7 +125,7 @@ void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
         printHex(data,false,true);
     }
 
-    if (isConnected && (unsigned char)data.mid(fePos)[2] != (unsigned char)0xE1 && (unsigned char)data.mid(fePos)[3] != (unsigned char)0xE1)
+    if (isConnected && (unsigned char)data[fePos+2] != 0xE1 && (unsigned char)data[fePos+3] != 0xE1)
     {
         // send to the pseudo port as well
         // index 2 is dest, 0xE1 is wfview, 0xE0 is assumed to be the other device.

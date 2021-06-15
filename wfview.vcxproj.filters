@@ -57,9 +57,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="rtaudio\RTAudio.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="audiohandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -93,7 +90,7 @@
     <ClCompile Include="repeatersetup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="opus-tools\src\resample.c">
+    <ClCompile Include="resampler\resample.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="rigcommander.cpp">
@@ -125,10 +122,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="rtaudio\RTAUdio.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="opus-tools\src\arch.h">
+    <ClInclude Include="resampler\arch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <QtMoc Include="audiohandler.h">
@@ -167,7 +161,7 @@
     <QtMoc Include="repeatersetup.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <ClInclude Include="opus-tools\src\resample_sse.h">
+    <ClInclude Include="resampler\resample_sse.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <QtMoc Include="rigcommander.h">
@@ -185,7 +179,7 @@
     <QtMoc Include="satellitesetup.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <ClInclude Include="opus-tools\src\speex_resampler.h">
+    <ClInclude Include="resampler\speex_resampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <QtMoc Include="udphandler.h">

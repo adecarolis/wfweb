@@ -42,6 +42,7 @@ public:
 
 private slots:
     void on_usersTable_cellClicked(int row, int col);
+    void onPasswordChanged();
 
 public slots:    
     void receiveServerConfig(SERVERCONFIG conf);
@@ -53,6 +54,7 @@ private:
     Ui::udpServerSetup* ui;
     void accept();
     QList<QComboBox*> userTypes;
+    void addUserLine(const QString &user, const QString &pass, const int &type);
 };
 
 #endif // UDPSERVER_H

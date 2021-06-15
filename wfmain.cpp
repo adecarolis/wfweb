@@ -79,6 +79,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     }
 
     amTransmitting = false;
+
+    connect(ui->txPowerSlider, &QSlider::sliderMoved,
+        [&](int value) {
+          QToolTip::showText(QCursor::pos(), QString("%1").arg(value*100/255), nullptr);
+        });
 }
 
 wfmain::~wfmain()
@@ -155,6 +160,7 @@ void wfmain::openRig()
     if (prefs.enableLAN)
     {
         ui->lanEnableBtn->setChecked(true);
+        usingLAN = true;
         // We need to setup the tx/rx audio:
         emit sendCommSetup(prefs.radioCIVAddr, udpPrefs, rxSetup, txSetup, prefs.virtualSerialPort);
     } else {
@@ -171,10 +177,7 @@ void wfmain::openRig()
                 serialPortRig = serialPortCL;
             }
         }
-
-        // Here, the radioCIVAddr is being set from a default preference, which is for the 7300.
-        // However, we will not use it initially. OTOH, if it is set explicitedly to a value in the prefs,
-        // then we skip auto detection.
+        usingLAN = false;
         emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort);
     }
 
@@ -450,7 +453,13 @@ void wfmain::findSerialPort()
 void wfmain::receiveCommReady()
 {
     qInfo(logSystem()) << "Received CommReady!! ";
-    // taken from above:
+    if(!usingLAN)
+    {
+        // usingLAN gets set when we emit the sendCommSetup signal.
+        // If we're not using the LAN, then we're on serial, and
+        // we already know the baud rate and can calculate the timing parameters.
+        calculateTimingParameters();
+    }
     if(prefs.radioCIVAddr == 0)
     {
         // tell rigCommander to broadcast a request for all rig IDs.
@@ -479,7 +488,6 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     if(rig->usingLAN())
     {
         usingLAN = true;
-        //delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
     } else {
         usingLAN = false;
     }
@@ -719,7 +727,7 @@ void wfmain::getSettingsFilePath(QString settingsFile)
 
 void wfmain::setInitialTiming()
 {
-    delayedCmdIntervalLAN_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
+    delayedCmdIntervalLAN_ms = 70; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdIntervalSerial_ms = 100; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdStartupInterval_ms = 250; // interval for rigID polling
     delayedCommand = new QTimer(this);
@@ -754,6 +762,9 @@ void wfmain::setServerToPrefs()
         connect(this, SIGNAL(initServer()), udp, SLOT(init()));
         connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
 
+        if (!prefs.enableLAN && udp != Q_NULLPTR) {
+            connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(receiveStatusUpdate(QString)));
+        }
 
         serverThread->start();
 
@@ -1053,6 +1064,7 @@ void wfmain::setDefPrefs()
     udpDefPrefs.username = QString("");
     udpDefPrefs.password = QString("");
     udpDefPrefs.clientName = QHostInfo::localHostName();
+
 }
 
 void wfmain::loadSettings()
@@ -1129,10 +1141,14 @@ void wfmain::loadSettings()
     }
 
     prefs.serialPortBaud = (quint32) settings->value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
-
     ui->baudRateCombo->blockSignals(true);
     ui->baudRateCombo->setCurrentIndex( ui->baudRateCombo->findData(prefs.serialPortBaud) );
     ui->baudRateCombo->blockSignals(false);
+
+    if (prefs.serialPortBaud > 0)
+    {
+        serverConfig.baudRate = prefs.serialPortBaud;
+    }
 
     prefs.virtualSerialPort = settings->value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
     int vspIndex = ui->vspCombo->findText(prefs.virtualSerialPort);
@@ -1282,7 +1298,6 @@ void wfmain::loadSettings()
     settings->endGroup();
 
     settings->beginGroup("Server");
-
     serverConfig.enabled = settings->value("ServerEnabled", false).toBool();
     serverConfig.controlPort = settings->value("ServerControlPort", 50001).toInt();
     serverConfig.civPort = settings->value("ServerCivPort", 50002).toInt();
@@ -4582,6 +4597,7 @@ void wfmain::on_baudRateCombo_activated(int index)
     if(ok)
     {
         prefs.serialPortBaud = baud;
+        serverConfig.baudRate = baud;
         showStatusBarText(QString("Changed baud rate to %1 bps. Press Save Settings to retain.").arg(baud));
     }
     (void)index;
@@ -4596,6 +4612,6 @@ void wfmain::on_wfLengthSlider_valueChanged(int value)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    prepareWf(160);
+    emit getTxPower();
 
 }

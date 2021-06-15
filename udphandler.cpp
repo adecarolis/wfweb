@@ -191,7 +191,11 @@ void udpHandler::dataReceived()
                     else {
                         tempLatency = QString("<span style = \"color:red\">%1 ms</span>").arg(audio->audioLatency,3);
                     }
-                    emit haveNetworkStatus(QString("<pre>rx latency: %1 ms / rtt: %2 ms / loss: %3/%4</pre>").arg(tempLatency).arg(latency, 3).arg(totallost,3).arg(totalsent,3));
+                    QString txString="";
+                    if (txSetup.codec == 0) {
+                        txString = "(no tx)";
+                    }
+                    emit haveNetworkStatus(QString("<pre>%1 rx latency: %2 ms / rtt: %3 ms / loss: %4/%5</pre>").arg(txString).arg(tempLatency).arg(latency, 3).arg(totallost, 3).arg(totalsent, 3));
                 }
                 break;
             }

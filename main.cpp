@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
     // Set the logging file before doing anything else.
     m_logFile.reset(new QFile(logFilename));
     // Open the file logging
-    m_logFile.data()->open(QFile::Append | QFile::Text);
+    m_logFile.data()->open(QFile::WriteOnly | QFile::Truncate | QFile::Text);
     // Set handler
     qInstallMessageHandler(messageHandler);
 
