@@ -1524,8 +1524,12 @@ void wfmain::showHideSpectrum(bool show)
     ui->specSpanLabel->setVisible(show);
     ui->specThemeLabel->setVisible(show);
 
+    // And the layout for space:
     ui->specControlsHorizLayout->setEnabled(show);
-
+    ui->splitter->setVisible(show);
+    ui->plot->setVisible(show);
+    ui->waterfall->setVisible(show);
+    ui->spectrumGroupBox->setEnabled(show);
 }
 
 void wfmain::prepareWf()
@@ -1592,7 +1596,6 @@ void wfmain::prepareWf(unsigned int wfLength)
 
         wf->yAxis->setRangeReversed(true);
         wf->xAxis->setVisible(false);
-        rigName->setText(rigCaps.modelName);
 
         spectrumDrawLock = false;
     } else {
@@ -2477,6 +2480,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         qDebug(logSystem()) << "Rig ID received into wfmain: hasSpectrum: " << rigCaps.hasSpectrum;
 
         this->rigCaps = rigCaps;
+        rigName->setText(rigCaps.modelName);
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
         haveRigCaps = true;
         // Added so that server receives rig capabilities.
