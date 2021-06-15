@@ -1090,6 +1090,12 @@ void rigCommander::parseData(QByteArray dataInput)
                 // payload = getpayload(data); // or something
                 // parse (payload); // recursive ok?
                 payloadIn = data.right(data.length() - 4);
+                if(payloadIn.contains("\xFE"))
+                {
+                    //qDebug(logRig()) << "Corrupted data contains FE within message body: ";
+                    //printHex(payloadIn);
+                    break;
+                }
                 parseCommand();
                 break;
             case '\x00':
@@ -1100,9 +1106,15 @@ void rigCommander::parseData(QByteArray dataInput)
                     // This is an echo of our own broadcast request.
                     // The data are "to 00" and "from E1"
                     // Don't use it!
-                    qDebug(logRig()) << "Caught it! Found the echo'd broadcast request from us!";
+                    qDebug(logRig()) << "Caught it! Found the echo'd broadcast request from us! Rig has not responded to broadcast query yet.";
                 } else {
-                    payloadIn = data.right(data.length() - 4);
+                    payloadIn = data.right(data.length() - 4); // Removes FE FE E0 94 part
+                    if(payloadIn.contains("\xFE"))
+                    {
+                        //qDebug(logRig()) << "Corrupted data contains FE within message body: ";
+                        //printHex(payloadIn);
+                        break;
+                    }
                     parseCommand();
                 }
                 break;
@@ -1320,9 +1332,9 @@ void rigCommander::parseLevels()
                 break;
 
             default:
-                qInfo(logRig()) << "Unknown control level (0x14) received at register " << payloadIn[1] << " with level " << level;
+                qInfo(logRig()) << "Unknown control level (0x14) received at register " << QString("0x%1").arg((int)payloadIn[1],2,16) << " with level " << QString("0x%1").arg((int)level,2,16) << ", int=" << (int)level;
+                printHex(payloadIn);
                 break;
-
         }
         return;
     }
