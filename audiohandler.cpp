@@ -2,10 +2,12 @@
 	This class handles both RX and TX audio, each is created as a seperate instance of the class
 	but as the setup/handling if output (RX) and input (TX) devices is so similar I have combined them.
 */
+
 #include "audiohandler.h"
 
 #include "logcategories.h"
 #include "ulaw.h"
+
 
 audioHandler::audioHandler(QObject* parent) 
 {
@@ -288,7 +290,10 @@ void audioHandler::start()
 		audioInput->start(this);
 		if (setup.codec == 0x40 || setup.codec == 0x80) {
 			// Opus codec
+
 			encoder = opus_encoder_create(setup.samplerate, setup.radioChan, OPUS_APPLICATION_AUDIO, &err);
+			opus_encoder_ctl(encoder, OPUS_SET_INBAND_FEC(1));
+			opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(5));
 		}
 	}
 	else {
@@ -488,22 +493,26 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		QByteArray outPacket(chunkSize * setup.radioChan * 2, (char)0xff); // Preset the output buffer size.
 		qint16* out = (qint16*)outPacket.data();
 
-		int nbBytes = opus_decode(decoder, in, inPacket.data.length(), out, outPacket.length()/2, 0);
+		int nbBytes = opus_decode(decoder, in, inPacket.data.size(), out, outPacket.size()/2, 1);
 		if (nbBytes < 0)
 		{
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decode failed:" << opus_strerror(nbBytes) << "packet size" << inPacket.data.length();
 			return;
 		}
 		else {
-			outPacket.resize(nbBytes);
-			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << inPacket.data.length() << "bytes, into" << outPacket.length() << "bytes";
+			if (nbBytes * 2 != outPacket.size())
+			{
+				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoder mismatch: nbBytes:" << nbBytes*2 << "outPacket:" << outPacket.size() ;
+				outPacket.resize(nbBytes * 2);
+			}
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << inPacket.data.size() << "bytes, into" << outPacket.length() << "bytes";
 			inPacket.data.clear();
 			inPacket.data = outPacket; // Replace incoming data with converted.
 		}
 	}
 
 
-    //qDebug(logAudio()) << "Got" << radioSampleBits << "bits, length" << inPacket.data.length();
+    //qDebug(logAudio()) << "Got" << setup.bits << "bits, length" << inPacket.data.length();
 	// Incoming data is 8bits?
 	if (setup.bits == 8)
 	{
@@ -555,7 +564,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	/*	We now have an array of 16bit samples in the NATIVE samplerate of the radio
 		If the radio sample rate is below 48000, we need to resample.
 		*/
-    //qDebug(logAudio()) << "Now 16 bit stereo, length" << inPacket.data.length();
+    qDebug(logAudio()) << "Now 16 bit stereo, length" << inPacket.data.length();
 
 	if (ratioDen != 1) {
 

@@ -912,7 +912,7 @@ void udpAudio::dataReceived()
                 control_packet_t in = (control_packet_t)r.constData();
 
                 
-                if (in->type != 0x01 && in->len >= 0xAC) {
+                if (in->type != 0x01 && in->len >= 0x20) {
                     if (in->seq == 0)
                     {
                         // Seq number has rolled over.
