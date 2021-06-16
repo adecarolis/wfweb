@@ -478,9 +478,14 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	}
 
 	if (setup.codec == 0x40 || setup.codec == 0x80) {
+
+		qint16* in = (qint16*)inPacket.data.data();
+		for (int i = 0; i < inPacket.data.length() / 2; i++)
+		{
+			in[i] = qToLittleEndian(in[i]);
+		}
 		/* Encode the frame. */
 		QByteArray outPacket(chunkSize * setup.radioChan * 2, (char)0xff); // Preset the output buffer size.
-		qint16* in = (qint16*)inPacket.data.data();
 		unsigned char* out = (unsigned char*)outPacket.data();
 
 		int nbBytes = opus_decode(decoder, out, outPacket.length(), in, inPacket.data.length()/2,0);
@@ -675,9 +680,14 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		}
 
 		if (setup.codec == 0x40 || setup.codec == 0x80) {
+
+			qint16* in = (qint16*)packet.data.data();
+			// Convert from little endian
+			for (int i = 0; i < packet.data.length()/2; i++)
+				in[i] = qToBigEndian(in[i]);
+
 			/* Encode the frame. */
 			QByteArray outPacket(638*setup.radioChan, (char)0xff); // Preset the output buffer size.
-			qint16* in = (qint16*)packet.data.data();
 			unsigned char* out = (unsigned char*)outPacket.data();
 
 			int nbBytes = opus_encode(encoder, in, packet.data.length() / 2, out, outPacket.length());
