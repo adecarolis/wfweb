@@ -483,10 +483,10 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		qint16* in = (qint16*)inPacket.data.data();
 		unsigned char* out = (unsigned char*)outPacket.data();
 
-		int nbBytes = opus_decode(decoder, out, outPacket.length() / 2, in, inPacket.data.length(),0);
+		int nbBytes = opus_decode(decoder, out, outPacket.length(), in, inPacket.data.length()/2,0);
 		if (nbBytes < 0)
 		{
-			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encode failed:" << opus_strerror(nbBytes);
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decode failed:" << opus_strerror(nbBytes);
 			return;
 		}
 		outPacket.resize(nbBytes);
@@ -564,8 +564,11 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		if (err) {
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
 		}
-		inPacket.data.clear();
-		inPacket.data = outPacket; // Replace incoming data with converted.
+		else {
+			inPacket.data.clear();
+			inPacket.data = outPacket; // Replace incoming data with converted.
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << inPacket.data.length() << "bytes, into" << outPacket.length() << "bytes";
+		}
 	}
 
     //qDebug(logAudio()) << "Adding packet to buffer:" << inPacket.seq << ": " << inPacket.data.length();
@@ -673,7 +676,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 
 		if (setup.codec == 0x40 || setup.codec == 0x80) {
 			/* Encode the frame. */
-			QByteArray outPacket(packet.data.length() * 2, (char)0xff); // Preset the output buffer size.
+			QByteArray outPacket(638*setup.radioChan, (char)0xff); // Preset the output buffer size.
 			qint16* in = (qint16*)packet.data.data();
 			unsigned char* out = (unsigned char*)outPacket.data();
 
@@ -683,9 +686,12 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encode failed:" << opus_strerror(nbBytes);
 				return;
 			}
-			outPacket.resize(nbBytes);
-			packet.data.clear();
-			packet.data = outPacket; // Replace incoming data with converted.
+			else {
+				outPacket.resize(nbBytes);
+				packet.data.clear();
+				packet.data = outPacket; // Replace incoming data with converted.
+				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encoded" << packet.data.length() << "bytes, into" << outPacket.length() << "bytes";
+			}
 		}
 
 		ret = packet.data;
