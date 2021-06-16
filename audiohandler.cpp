@@ -486,12 +486,15 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		int nbBytes = opus_decode(decoder, out, outPacket.length(), in, inPacket.data.length()/2,0);
 		if (nbBytes < 0)
 		{
-			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decode failed:" << opus_strerror(nbBytes);
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decode failed:" << opus_strerror(nbBytes) << "packet size" << inPacket.data.length();
 			return;
 		}
-		outPacket.resize(nbBytes);
-		inPacket.data.clear();
-		inPacket.data = outPacket; // Replace incoming data with converted.
+		else {
+			outPacket.resize(nbBytes);
+			inPacket.data.clear();
+			inPacket.data = outPacket; // Replace incoming data with converted.
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << inPacket.data.length() << "bytes, into" << outPacket.length() << "bytes";
+		}
 	}
 
     //qDebug(logAudio()) << "Got" << radioSampleBits << "bits, length" << inPacket.data.length();
@@ -564,11 +567,8 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		if (err) {
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
 		}
-		else {
-			inPacket.data.clear();
-			inPacket.data = outPacket; // Replace incoming data with converted.
-			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << inPacket.data.length() << "bytes, into" << outPacket.length() << "bytes";
-		}
+		inPacket.data.clear();
+		inPacket.data = outPacket; // Replace incoming data with converted.
 	}
 
     //qDebug(logAudio()) << "Adding packet to buffer:" << inPacket.seq << ": " << inPacket.data.length();
