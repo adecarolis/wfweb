@@ -491,9 +491,9 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		}
 		else {
 			outPacket.resize(nbBytes);
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << inPacket.data.length() << "bytes, into" << outPacket.length() << "bytes";
 			inPacket.data.clear();
 			inPacket.data = outPacket; // Replace incoming data with converted.
-			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << inPacket.data.length() << "bytes, into" << outPacket.length() << "bytes";
 		}
 	}
 
@@ -688,9 +688,9 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			}
 			else {
 				outPacket.resize(nbBytes);
+				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encoded" << packet.data.length() << "bytes, into" << outPacket.length() << "bytes";
 				packet.data.clear();
 				packet.data = outPacket; // Replace incoming data with converted.
-				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encoded" << packet.data.length() << "bytes, into" << outPacket.length() << "bytes";
 			}
 		}
 
