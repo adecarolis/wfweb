@@ -33,6 +33,7 @@ typedef signed short  MY_TYPE;
 #include <QMap>
 #include "resampler/speex_resampler.h"
 #include "ring/ring.h"
+#include "opus.h"
 
 
 #include <QDebug>
@@ -179,6 +180,8 @@ private:
     qreal volume=1.0;
     int devChannels;
     audioSetup setup;
+    OpusEncoder* encoder=Q_NULLPTR;
+    OpusDecoder* decoder=Q_NULLPTR;
 };
 
 #endif // AUDIOHANDLER_H

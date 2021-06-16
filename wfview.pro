@@ -92,19 +92,23 @@ linux:QMAKE_POST_LINK += echo; echo; echo "Run install.sh as root from the build
 
 CONFIG(debug, release|debug) {
   linux: QCPLIB = qcustomplotd
+  win32:LIBS += -L../opus/win32/VS2015/Win32/Debug/ -lopus
 } else {
   linux: QCPLIB = qcustomplot
+  win32:LIBS += -L../opus/win32/VS2015/Win32/Release/ -lopus
 }
 
 #linux:LIBS += -L./ -l$$QCPLIB -lpulse -lpulse-simple -lpthread
-linux:LIBS += -L./ -l$$QCPLIB
-macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread
+linux:LIBS += -L./ -l$$QCPLIB -lopus
+macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 
 #win32:SOURCES += rtaudio/RTAudio.cpp
 #win32:HEADERS += rtaudio/RTAUdio.h
 !linux:SOURCES += ../qcustomplot/qcustomplot.cpp 
 !linux:HEADERS += ../qcustomplot/qcustomplot.h
 !linux:INCLUDEPATH += ../qcustomplot
+
+!linux:INCLUDEPATH += ../opus/include
 
 INCLUDEPATH += resampler
 !linux:INCLUDEPATH += rtaudio

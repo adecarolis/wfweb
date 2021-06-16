@@ -40,7 +40,12 @@ audioHandler::~audioHandler()
 		speex_resampler_destroy(resampler);
 		qDebug(logAudio()) << "Resampler closed";
 	}
-
+	if (encoder != Q_NULLPTR) {
+		opus_encoder_destroy(encoder);
+	}
+	if (decoder != Q_NULLPTR) {
+		opus_decoder_destroy(decoder);
+	}
 }
 
 bool audioHandler::init(audioSetup setupIn) 
@@ -70,6 +75,14 @@ bool audioHandler::init(audioSetup setupIn)
 	}
 	if (setup.codec == 0x04 || setup.codec == 0x10) {
 		setup.bits = 16;
+	}
+	if (setup.codec == 0x40 || setup.codec == 0x80)
+	{
+		setup.bits = 16;
+	}
+	if (setup.codec == 0x80)
+	{
+		setup.radioChan = 2;
 	}
 
 	ringBuf = new wilt::Ring<audioPacket>(100); // Should be customizable.
@@ -264,6 +277,8 @@ void audioHandler::start()
 		return;
 	}
 
+	int err = 0;
+
 	if (setup.isinput) {
 #ifdef Q_OS_MACX
 		this->open(QIODevice::WriteOnly);
@@ -271,6 +286,10 @@ void audioHandler::start()
 		this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
 #endif
 		audioInput->start(this);
+		if (setup.codec == 0x40 || setup.codec == 0x80) {
+			// Opus codec
+			encoder = opus_encoder_create(setup.samplerate, setup.radioChan, OPUS_APPLICATION_AUDIO, &err);
+		}
 	}
 	else {
 #ifdef Q_OS_MACX
@@ -279,6 +298,14 @@ void audioHandler::start()
 		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
 #endif
 		audioOutput->start(this);
+		if (setup.codec == 0x40 || setup.codec == 0x80) {
+			// Opus codec
+			decoder = opus_decoder_create(setup.samplerate, setup.radioChan, &err);
+		}
+	}
+	if (err < 0)
+	{
+		fprintf(stderr, "failed to create opus encoder or decoder: %s\n", opus_strerror(err));
 	}
 }
 #endif
@@ -449,12 +476,30 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		qDebug(logAudio()) << "Packet received when stream was not ready";
 		return;
 	}
+
+	if (setup.codec == 0x40 || setup.codec == 0x80) {
+		/* Encode the frame. */
+		QByteArray outPacket(chunkSize * setup.radioChan * 2, (char)0xff); // Preset the output buffer size.
+		qint16* in = (qint16*)inPacket.data.data();
+		unsigned char* out = (unsigned char*)outPacket.data();
+
+		int nbBytes = opus_decode(decoder, out, outPacket.length() / 2, in, inPacket.data.length(),0);
+		if (nbBytes < 0)
+		{
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encode failed:" << opus_strerror(nbBytes);
+			return;
+		}
+		outPacket.resize(nbBytes);
+		inPacket.data.clear();
+		inPacket.data = outPacket; // Replace incoming data with converted.
+	}
+
     //qDebug(logAudio()) << "Got" << radioSampleBits << "bits, length" << inPacket.data.length();
 	// Incoming data is 8bits?
 	if (setup.bits == 8)
 	{
 		// Current packet is 8bit so need to create a new buffer that is 16bit 
-		QByteArray outPacket((int)inPacket.data.length() * 2 *(devChannels/setup.radioChan), (char)0xff);
+		QByteArray outPacket((int)inPacket.data.length() * 2 * (devChannels / setup.radioChan), (char)0xff);
 		qint16* out = (qint16*)outPacket.data();
 		for (int f = 0; f < inPacket.data.length(); f++)
 		{
@@ -625,6 +670,24 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			packet.data.clear();
 			packet.data = outPacket; // Copy output packet back to input buffer.
 		}
+
+		if (setup.codec == 0x40 || setup.codec == 0x80) {
+			/* Encode the frame. */
+			QByteArray outPacket(packet.data.length() * 2, (char)0xff); // Preset the output buffer size.
+			qint16* in = (qint16*)packet.data.data();
+			unsigned char* out = (unsigned char*)outPacket.data();
+
+			int nbBytes = opus_encode(encoder, in, packet.data.length() / 2, out, outPacket.length());
+			if (nbBytes < 0)
+			{
+				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encode failed:" << opus_strerror(nbBytes);
+				return;
+			}
+			outPacket.resize(nbBytes);
+			packet.data.clear();
+			packet.data = outPacket; // Replace incoming data with converted.
+		}
+
 		ret = packet.data;
 		//qDebug(logAudio()) << "Now radio format, length" << packet.data.length();
 	}

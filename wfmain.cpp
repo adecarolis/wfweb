@@ -1234,6 +1234,8 @@ void wfmain::loadSettings()
     ui->audioRXCodecCombo->addItem("LPCM 2ch 16bit", 16);
     ui->audioRXCodecCombo->addItem("uLaw 2ch 8bit", 32);
     ui->audioRXCodecCombo->addItem("PCM 2ch 8bit", 8);
+    ui->audioRXCodecCombo->addItem("Opus 1ch", 64);
+    ui->audioRXCodecCombo->addItem("Opus 2ch", 128);
 
     ui->audioRXCodecCombo->blockSignals(true);
     rxSetup.codec = settings->value("AudioRXCodec", "4").toInt();
@@ -1246,6 +1248,7 @@ void wfmain::loadSettings()
     ui->audioTXCodecCombo->addItem("LPCM 1ch 16bit", 4);
     ui->audioTXCodecCombo->addItem("LPCM 1ch 8bit", 2);
     ui->audioTXCodecCombo->addItem("uLaw 1ch 8bit", 1);
+    ui->audioTXCodecCombo->addItem("Opus 1ch", 64);
 
     ui->audioRXCodecCombo->blockSignals(true);
     txSetup.codec = settings->value("AudioTXCodec", "4").toInt();
