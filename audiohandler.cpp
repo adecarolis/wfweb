@@ -292,8 +292,8 @@ void audioHandler::start()
 			// Opus codec
 
 			encoder = opus_encoder_create(setup.samplerate, setup.radioChan, OPUS_APPLICATION_AUDIO, &err);
-			opus_encoder_ctl(encoder, OPUS_SET_INBAND_FEC(1));
-			opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(5));
+			//opus_encoder_ctl(encoder, OPUS_SET_INBAND_FEC(1));
+			//opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(5));
 		}
 	}
 	else {
@@ -306,6 +306,8 @@ void audioHandler::start()
 		if (setup.codec == 0x40 || setup.codec == 0x80) {
 			// Opus codec
 			decoder = opus_decoder_create(setup.samplerate, setup.radioChan, &err);
+			//opus_decoder_ctl(decoder, OPUS_SET_INBAND_FEC(1));
+			//opus_decoder_ctl(decoder, OPUS_SET_PACKET_LOSS_PERC(5));
 		}
 	}
 	if (err < 0)
@@ -483,17 +485,17 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	}
 
 	if (setup.codec == 0x40 || setup.codec == 0x80) {
-
 		unsigned char* in = (unsigned char*)inPacket.data.data();
-		//for (int i = 0; i < inPacket.data.length() / 2; i++)
-		//{
-		//	in[i] = qToLittleEndian(in[i]);
-		//}
 		/* Encode the frame. */
 		QByteArray outPacket(chunkSize * setup.radioChan * 2, (char)0xff); // Preset the output buffer size.
 		qint16* out = (qint16*)outPacket.data();
+		int nbBytes = 0;
+		//while (lastSentSeq>0 && lastSentSeq++ < inPacket.seq)
+		//{
+		//	nbBytes = opus_decode(decoder, Q_NULLPTR, inPacket.data.size(), out, outPacket.size(), 1);
+		//}
+		nbBytes = opus_decode(decoder, in, inPacket.data.size(), out, outPacket.size()/2, 0);
 
-		int nbBytes = opus_decode(decoder, in, inPacket.data.size(), out, outPacket.size()/2, 1);
 		if (nbBytes < 0)
 		{
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decode failed:" << opus_strerror(nbBytes) << "packet size" << inPacket.data.length();
@@ -587,6 +589,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	}
 
     //qDebug(logAudio()) << "Adding packet to buffer:" << inPacket.seq << ": " << inPacket.data.length();
+	lastSentSeq = inPacket.seq;
 
 	if (!ringBuf->try_write(inPacket))
 	{
