@@ -696,6 +696,54 @@ void wfmain::setupMainUI()
 
     ui->tuneLockChk->setChecked(false);
     freqLock = false;
+
+    connect(ui->tabWidget, SIGNAL(currentChanged(int)), this, SLOT(updateSizes(int)));
+}
+
+void wfmain::updateSizes(int tabIndex)
+{
+    // This function does nothing unless you are using a rig without spectrum.
+    // This is a hack. It is not great, but it seems to work ok.
+    if(!rigCaps.hasSpectrum)
+    {
+        // Set "ignore" size policy for non-selected tabs:
+        for(int i=0;i<ui->tabWidget->count();i++)
+            if((i!=tabIndex) && tabIndex != 0)
+                ui->tabWidget->widget(i)->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored); // allows size to be any size that fits the tab bar
+
+        if(tabIndex==0 && !rigCaps.hasSpectrum)
+        {
+
+            ui->tabWidget->widget(0)->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+            ui->tabWidget->widget(0)->setMaximumSize(ui->tabWidget->widget(0)->minimumSizeHint());
+            ui->tabWidget->widget(0)->adjustSize(); // tab
+            this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+            this->setMaximumSize(QSize(929, 270));
+            this->setMinimumSize(QSize(929, 270));
+
+            resize(minimumSize());
+            adjustSize(); // main window
+            adjustSize();
+
+        } else if(tabIndex==0 && rigCaps.hasSpectrum) {
+            // At main tab (0) and we have spectrum:
+            ui->tabWidget->widget(0)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+
+            resize(minimumSizeHint());
+            adjustSize(); // Without this call, the window retains the size of the previous tab.
+        } else {
+            // At some other tab, with or without spectrum:
+            ui->tabWidget->widget(tabIndex)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+            this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+            this->setMinimumSize(QSize(994, 455)); // not large enough for settings tab
+            this->setMaximumSize(QSize(65535,65535));
+        }
+    } else {
+        ui->tabWidget->widget(tabIndex)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+        ui->tabWidget->widget(tabIndex)->setMaximumSize(65535,65535);
+        //ui->tabWidget->widget(0)->setMinimumSize();
+    }
+
 }
 
 void wfmain::getSettingsFilePath(QString settingsFile)
@@ -1039,6 +1087,10 @@ void wfmain::setupKeyShortcuts()
     keyM = new QShortcut(this);
     keyM->setKey(Qt::Key_M);
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
+
+    keyDebug = new QShortcut(this);
+    keyDebug->setKey(Qt::CTRL + Qt::SHIFT + Qt::Key_D);
+    connect(keyDebug, SIGNAL(activated()), this, SLOT(on_debugBtn_clicked()));
 }
 
 void wfmain::setDefPrefs()
@@ -1530,6 +1582,10 @@ void wfmain::showHideSpectrum(bool show)
     ui->plot->setVisible(show);
     ui->waterfall->setVisible(show);
     ui->spectrumGroupBox->setEnabled(show);
+
+    // Window resize:
+    updateSizes(ui->tabWidget->currentIndex());
+
 }
 
 void wfmain::prepareWf()
@@ -3833,6 +3889,7 @@ void wfmain::on_connectBtn_clicked()
         emit sendCloseComm();
         ui->connectBtn->setText("Connect");
         haveRigCaps = false;
+        rigName->setText("NONE");
     }
     else
     {

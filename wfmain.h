@@ -144,6 +144,7 @@ signals:
     void sendRigCaps(rigCapabilities caps);
 
 private slots:
+    void updateSizes(int tabIndex);
     void shortcutF1();
     void shortcutF2();
     void shortcutF3();
@@ -509,6 +510,8 @@ private:
 
     QShortcut *keyF;
     QShortcut *keyM;
+
+    QShortcut *keyDebug;
 
 
     rigCommander * rig=Q_NULLPTR;
