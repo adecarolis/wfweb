@@ -144,6 +144,7 @@ signals:
     void sendRigCaps(rigCapabilities caps);
 
 private slots:
+    void updateSizes(int tabIndex);
     void shortcutF1();
     void shortcutF2();
     void shortcutF3();
@@ -462,6 +463,7 @@ private:
     void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
+    void showHideSpectrum(bool show);
     void getInitialRigState();
     void setBandButtons();
     void showButton(QPushButton *btn);
@@ -508,6 +510,8 @@ private:
 
     QShortcut *keyF;
     QShortcut *keyM;
+
+    QShortcut *keyDebug;
 
 
     rigCommander * rig=Q_NULLPTR;
@@ -557,6 +561,7 @@ private:
     int smeterPos=0;
 
     QVector <QByteArray> wfimage;
+    unsigned int wfLengthMax;
 
     bool onFullscreen;
     bool drawPeaks;

@@ -26,7 +26,7 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
-         <widget class="QGroupBox" name="groupBox">
+         <widget class="QGroupBox" name="spectrumGroupBox">
           <property name="title">
            <string>Spectrum</string>
           </property>
@@ -44,12 +44,12 @@
          </widget>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_13">
+         <layout class="QHBoxLayout" name="specControlsHorizLayout">
           <property name="topMargin">
            <number>0</number>
           </property>
           <item>
-           <widget class="QLabel" name="label_26">
+           <widget class="QLabel" name="specModeLabel">
             <property name="text">
              <string>Spectrum Mode: </string>
             </property>
@@ -66,7 +66,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="label_6">
+           <widget class="QLabel" name="specSpanLabel">
             <property name="text">
              <string>Span:</string>
             </property>
@@ -86,7 +86,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="label_7">
+           <widget class="QLabel" name="specEdgeLabel">
             <property name="text">
              <string>Edge</string>
             </property>
@@ -133,7 +133,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="label_31">
+           <widget class="QLabel" name="specThemeLabel">
             <property name="text">
              <string>Theme:</string>
             </property>
@@ -150,7 +150,7 @@
            </widget>
           </item>
           <item>
-           <spacer name="horizontalSpacer_2">
+           <spacer name="specHorizSpacer">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>

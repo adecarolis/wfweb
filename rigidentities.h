@@ -28,6 +28,7 @@ enum model_kind {
     model9700 = 0xA2,
     model705 = 0xA4,
     model706 = 0x58,
+    model718 = 0x5E,
     model756pro = 0x5C,
     model756proii = 0x64,
     model756proiii = 0x6E,
@@ -80,6 +81,7 @@ struct rigCapabilities {
     bool hasLan; // OEM ethernet or wifi connection
     bool hasEthernet;
     bool hasWiFi;
+    bool hasFDcomms;
 
     QVector<rigInput> inputs;
 

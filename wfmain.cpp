@@ -160,6 +160,7 @@ void wfmain::openRig()
     if (prefs.enableLAN)
     {
         ui->lanEnableBtn->setChecked(true);
+        usingLAN = true;
         // We need to setup the tx/rx audio:
         emit sendCommSetup(prefs.radioCIVAddr, udpPrefs, rxSetup, txSetup, prefs.virtualSerialPort);
     } else {
@@ -176,10 +177,7 @@ void wfmain::openRig()
                 serialPortRig = serialPortCL;
             }
         }
-
-        // Here, the radioCIVAddr is being set from a default preference, which is for the 7300.
-        // However, we will not use it initially. OTOH, if it is set explicitedly to a value in the prefs,
-        // then we skip auto detection.
+        usingLAN = false;
         emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort);
     }
 
@@ -455,7 +453,13 @@ void wfmain::findSerialPort()
 void wfmain::receiveCommReady()
 {
     qInfo(logSystem()) << "Received CommReady!! ";
-    // taken from above:
+    if(!usingLAN)
+    {
+        // usingLAN gets set when we emit the sendCommSetup signal.
+        // If we're not using the LAN, then we're on serial, and
+        // we already know the baud rate and can calculate the timing parameters.
+        calculateTimingParameters();
+    }
     if(prefs.radioCIVAddr == 0)
     {
         // tell rigCommander to broadcast a request for all rig IDs.
@@ -484,7 +488,6 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     if(rig->usingLAN())
     {
         usingLAN = true;
-        //delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
     } else {
         usingLAN = false;
     }
@@ -693,6 +696,54 @@ void wfmain::setupMainUI()
 
     ui->tuneLockChk->setChecked(false);
     freqLock = false;
+
+    connect(ui->tabWidget, SIGNAL(currentChanged(int)), this, SLOT(updateSizes(int)));
+}
+
+void wfmain::updateSizes(int tabIndex)
+{
+    // This function does nothing unless you are using a rig without spectrum.
+    // This is a hack. It is not great, but it seems to work ok.
+    if(!rigCaps.hasSpectrum)
+    {
+        // Set "ignore" size policy for non-selected tabs:
+        for(int i=0;i<ui->tabWidget->count();i++)
+            if((i!=tabIndex) && tabIndex != 0)
+                ui->tabWidget->widget(i)->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored); // allows size to be any size that fits the tab bar
+
+        if(tabIndex==0 && !rigCaps.hasSpectrum)
+        {
+
+            ui->tabWidget->widget(0)->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+            ui->tabWidget->widget(0)->setMaximumSize(ui->tabWidget->widget(0)->minimumSizeHint());
+            ui->tabWidget->widget(0)->adjustSize(); // tab
+            this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+            this->setMaximumSize(QSize(929, 270));
+            this->setMinimumSize(QSize(929, 270));
+
+            resize(minimumSize());
+            adjustSize(); // main window
+            adjustSize();
+
+        } else if(tabIndex==0 && rigCaps.hasSpectrum) {
+            // At main tab (0) and we have spectrum:
+            ui->tabWidget->widget(0)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+
+            resize(minimumSizeHint());
+            adjustSize(); // Without this call, the window retains the size of the previous tab.
+        } else {
+            // At some other tab, with or without spectrum:
+            ui->tabWidget->widget(tabIndex)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+            this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+            this->setMinimumSize(QSize(994, 455)); // not large enough for settings tab
+            this->setMaximumSize(QSize(65535,65535));
+        }
+    } else {
+        ui->tabWidget->widget(tabIndex)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+        ui->tabWidget->widget(tabIndex)->setMaximumSize(65535,65535);
+        //ui->tabWidget->widget(0)->setMinimumSize();
+    }
+
 }
 
 void wfmain::getSettingsFilePath(QString settingsFile)
@@ -724,7 +775,7 @@ void wfmain::getSettingsFilePath(QString settingsFile)
 
 void wfmain::setInitialTiming()
 {
-    delayedCmdIntervalLAN_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
+    delayedCmdIntervalLAN_ms = 70; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdIntervalSerial_ms = 100; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdStartupInterval_ms = 250; // interval for rigID polling
     delayedCommand = new QTimer(this);
@@ -1036,6 +1087,10 @@ void wfmain::setupKeyShortcuts()
     keyM = new QShortcut(this);
     keyM->setKey(Qt::Key_M);
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
+
+    keyDebug = new QShortcut(this);
+    keyDebug->setKey(Qt::CTRL + Qt::SHIFT + Qt::Key_D);
+    connect(keyDebug, SIGNAL(activated()), this, SLOT(on_debugBtn_clicked()));
 }
 
 void wfmain::setDefPrefs()
@@ -1494,6 +1549,48 @@ void wfmain::saveSettings()
 }
 
 
+void wfmain::showHideSpectrum(bool show)
+{
+
+    if(show)
+    {
+        wf->show();
+        plot->show();
+    } else {
+        wf->hide();
+        plot->hide();
+    }
+
+    // Controls:
+    ui->spectrumGroupBox->setVisible(show);
+    ui->spectrumModeCombo->setVisible(show);
+    ui->scopeBWCombo->setVisible(show);
+    ui->scopeEdgeCombo->setVisible(show);
+    ui->scopeEnableWFBtn->setVisible(show);
+    ui->scopeRefLevelSlider->setEnabled(show);
+    ui->wfLengthSlider->setEnabled(show);
+    ui->wfthemeCombo->setVisible(show);
+    ui->toFixedBtn->setVisible(show);
+    ui->clearPeakBtn->setVisible(show);
+
+    // And the labels:
+    ui->specEdgeLabel->setVisible(show);
+    ui->specModeLabel->setVisible(show);
+    ui->specSpanLabel->setVisible(show);
+    ui->specThemeLabel->setVisible(show);
+
+    // And the layout for space:
+    ui->specControlsHorizLayout->setEnabled(show);
+    ui->splitter->setVisible(show);
+    ui->plot->setVisible(show);
+    ui->waterfall->setVisible(show);
+    ui->spectrumGroupBox->setEnabled(show);
+
+    // Window resize:
+    updateSizes(ui->tabWidget->currentIndex());
+
+}
+
 void wfmain::prepareWf()
 {
     prepareWf(160);
@@ -1505,10 +1602,17 @@ void wfmain::prepareWf(unsigned int wfLength)
 
     if(haveRigCaps)
     {
+        showHideSpectrum(rigCaps.hasSpectrum);
+        if(!rigCaps.hasSpectrum)
+        {
+            return;
+        }
         // TODO: Lock the function that draws on the spectrum while we are updating.
         spectrumDrawLock = true;
 
         spectWidth = rigCaps.spectLenMax;
+        wfLengthMax = 1024;
+
         this->wfLength = wfLength; // fixed for now, time-length of waterfall
 
         // Initialize before use!
@@ -1516,17 +1620,21 @@ void wfmain::prepareWf(unsigned int wfLength)
         QByteArray empty((int)spectWidth, '\x01');
         spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
 
-        if((unsigned int)wfimage.size() < wfLength)
+        //wfimage.resize(wfLengthMax);
+
+        if((unsigned int)wfimage.size() < wfLengthMax)
         {
             unsigned int i=0;
             unsigned int oldSize = wfimage.size();
-            for(i=oldSize; i<(wfLength); i++)
+            for(i=oldSize; i<(wfLengthMax); i++)
             {
                 wfimage.append(empty);
             }
         } else {
-            wfimage.remove(wfLength, wfimage.size()-wfLength);
+            // Keep wfimage, do not trim, no performance impact.
+            //wfimage.remove(wfLength, wfimage.size()-wfLength);
         }
+
         wfimage.squeeze();
         //colorMap->clearData();
         colorMap->data()->clear();
@@ -1547,7 +1655,6 @@ void wfmain::prepareWf(unsigned int wfLength)
 
         wf->yAxis->setRangeReversed(true);
         wf->xAxis->setVisible(false);
-        rigName->setText(rigCaps.modelName);
 
         spectrumDrawLock = false;
     } else {
@@ -2432,6 +2539,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         qDebug(logSystem()) << "Rig ID received into wfmain: hasSpectrum: " << rigCaps.hasSpectrum;
 
         this->rigCaps = rigCaps;
+        rigName->setText(rigCaps.modelName);
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
         haveRigCaps = true;
         // Added so that server receives rig capabilities.
@@ -2551,6 +2659,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // do all the initial grabs. For now, this hack of adding them here and there:
         cmdOutQue.append(cmdGetFreq);
         cmdOutQue.append(cmdGetMode);
+        // recalculate command timing now that we know the rig better:
+        calculateTimingParameters();
         initPeriodicCommands();
     }
 }
@@ -2690,10 +2800,8 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         if(specLen == spectWidth)
         {
             wfimage.prepend(spectrum);
-            if(wfimage.length() >  wfLength)
-            {
-                wfimage.remove(wfLength);
-            }
+            wfimage.resize(wfLengthMax);
+            wfimage.squeeze();
 
             // Waterfall:
             for(int row = 0; row < wfLength; row++)
@@ -3786,6 +3894,7 @@ void wfmain::on_connectBtn_clicked()
         emit sendCloseComm();
         ui->connectBtn->setText("Connect");
         haveRigCaps = false;
+        rigName->setText("NONE");
     }
     else
     {
@@ -4349,14 +4458,21 @@ void wfmain::calculateTimingParameters()
 
     unsigned int usPerByte = 9600*1000 / prefs.serialPortBaud;
     unsigned int msMinTiming=usPerByte * 10*2/1000;
-    if(msMinTiming < 35)
-        msMinTiming = 35;
+    if(msMinTiming < 25)
+        msMinTiming = 25;
 
     delayedCommand->setInterval( msMinTiming * 2); // 20 byte message
-    periodicPollingTimer->setInterval( msMinTiming ); // slower for s-meter poll
 
-    qInfo(logSystem()) << "Delay command interval timing: " << msMinTiming * 2 << "ms";
-    qInfo(logSystem()) << "Periodic polling timer: " << msMinTiming << "ms";
+    if(haveRigCaps && rigCaps.hasFDcomms)
+    {
+        periodicPollingTimer->setInterval( msMinTiming ); // quicker for s-meter poll
+    } else {
+        periodicPollingTimer->setInterval( msMinTiming * 5); // slower for s-meter poll
+    }
+
+
+    qInfo(logSystem()) << "Delay command interval timing: " << delayedCommand->interval() << "ms";
+    qInfo(logSystem()) << "Periodic polling timer: " << periodicPollingTimer->interval() << "ms";
 
     // Normal:
     delayedCmdIntervalLAN_ms =  msMinTiming * 2;
@@ -4608,6 +4724,6 @@ void wfmain::on_wfLengthSlider_valueChanged(int value)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    prepareWf(160);
+    emit getFrequency();
 
 }
