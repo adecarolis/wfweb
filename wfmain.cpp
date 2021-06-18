@@ -2656,6 +2656,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // do all the initial grabs. For now, this hack of adding them here and there:
         cmdOutQue.append(cmdGetFreq);
         cmdOutQue.append(cmdGetMode);
+        // recalculate command timing now that we know the rig better:
+        calculateTimingParameters();
         initPeriodicCommands();
     }
 }
@@ -4453,14 +4455,21 @@ void wfmain::calculateTimingParameters()
 
     unsigned int usPerByte = 9600*1000 / prefs.serialPortBaud;
     unsigned int msMinTiming=usPerByte * 10*2/1000;
-    if(msMinTiming < 35)
-        msMinTiming = 35;
+    if(msMinTiming < 25)
+        msMinTiming = 25;
 
     delayedCommand->setInterval( msMinTiming * 2); // 20 byte message
-    periodicPollingTimer->setInterval( msMinTiming ); // quicker for s-meter poll
 
-    qInfo(logSystem()) << "Delay command interval timing: " << msMinTiming * 2 << "ms";
-    qInfo(logSystem()) << "Periodic polling timer: " << msMinTiming << "ms";
+    if(haveRigCaps && rigCaps.hasFDcomms)
+    {
+        periodicPollingTimer->setInterval( msMinTiming ); // quicker for s-meter poll
+    } else {
+        periodicPollingTimer->setInterval( msMinTiming * 5); // slower for s-meter poll
+    }
+
+
+    qInfo(logSystem()) << "Delay command interval timing: " << delayedCommand->interval() << "ms";
+    qInfo(logSystem()) << "Periodic polling timer: " << periodicPollingTimer->interval() << "ms";
 
     // Normal:
     delayedCmdIntervalLAN_ms =  msMinTiming * 2;

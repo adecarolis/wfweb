@@ -2598,6 +2598,7 @@ void rigCommander::determineRigCaps()
     rigCaps.spectAmpMax = 0;
     rigCaps.spectLenMax = 0;
     
+    rigCaps.hasFDcomms = true; // false for older radios
 
     // Clear inputs/preamps/attenuators lists in case we have re-connected.
     rigCaps.preamps.clear();
@@ -2729,6 +2730,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasDD = false;
             rigCaps.hasDV = false;
             rigCaps.hasCTCSS = true;
@@ -2844,6 +2846,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
@@ -2864,6 +2867,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = true;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
@@ -2884,6 +2888,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
@@ -2909,6 +2914,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
@@ -2951,6 +2957,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.bands = standardHF;
@@ -2966,6 +2973,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasATU = false;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
@@ -2985,6 +2993,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -3002,6 +3011,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -3019,6 +3029,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -3039,6 +3050,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasPreamp = false;
             rigCaps.hasAntennaSel = false;
             rigCaps.attenuators.push_back('\x10');
