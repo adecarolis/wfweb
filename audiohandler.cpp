@@ -490,11 +490,15 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		QByteArray outPacket((chunkSize * setup.radioChan * 2), (char)0xff); // Preset the output buffer size.
 		qint16* out = (qint16*)outPacket.data();
 		int nbBytes = 0;
-		//while (lastSentSeq>0 && lastSentSeq++ < inPacket.seq)
-		//{
-		//	nbBytes = opus_decode(decoder, Q_NULLPTR, inPacket.data.size(), out, outPacket.size(), 1);
-		//}
-		nbBytes = opus_decode(decoder, in, inPacket.data.size(), out, outPacket.size()/2 , 0);
+		/*
+		if (lastSentSeq > 0) {
+			while (lastSentSeq > 0 && lastSentSeq++ < inPacket.seq)
+			{
+				nbBytes = opus_decode(decoder, 0, 0, out, outPacket.size(), 1);
+			}
+		}
+		*/
+		nbBytes = opus_decode(decoder, in, inPacket.data.size(), out, outPacket.size()/2, 0);
 
 		if (nbBytes < 0)
 		{
@@ -508,13 +512,12 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 				outPacket.resize(nbBytes * 2);
 			}
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << inPacket.data.size() << "bytes, into" << outPacket.length() << "bytes";
-			//inPacket.data.clear();
-			inPacket.data = outPacket.data(); // Replace incoming data with converted.
+			inPacket.data.clear();
+			inPacket.data = outPacket; // Replace incoming data with converted.
 		}
 	}
-	//return;
 
-    //qDebug(logAudio()) << "Got" << setup.bits << "bits, length" << inPacket.data.length();
+    qDebug(logAudio()) << "Got" << setup.bits << "bits, length" << inPacket.data.length();
 	// Incoming data is 8bits?
 	if (setup.bits == 8)
 	{
