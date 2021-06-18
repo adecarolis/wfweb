@@ -1090,6 +1090,12 @@ void rigCommander::parseData(QByteArray dataInput)
                 // payload = getpayload(data); // or something
                 // parse (payload); // recursive ok?
                 payloadIn = data.right(data.length() - 4);
+                if(payloadIn.contains("\xFE"))
+                {
+                    //qDebug(logRig()) << "Corrupted data contains FE within message body: ";
+                    //printHex(payloadIn);
+                    break;
+                }
                 parseCommand();
                 break;
             case '\x00':
@@ -1100,9 +1106,15 @@ void rigCommander::parseData(QByteArray dataInput)
                     // This is an echo of our own broadcast request.
                     // The data are "to 00" and "from E1"
                     // Don't use it!
-                    qDebug(logRig()) << "Caught it! Found the echo'd broadcast request from us!";
+                    qDebug(logRig()) << "Caught it! Found the echo'd broadcast request from us! Rig has not responded to broadcast query yet.";
                 } else {
-                    payloadIn = data.right(data.length() - 4);
+                    payloadIn = data.right(data.length() - 4); // Removes FE FE E0 94 part
+                    if(payloadIn.contains("\xFE"))
+                    {
+                        //qDebug(logRig()) << "Corrupted data contains FE within message body: ";
+                        //printHex(payloadIn);
+                        break;
+                    }
                     parseCommand();
                 }
                 break;
@@ -1320,9 +1332,9 @@ void rigCommander::parseLevels()
                 break;
 
             default:
-                qInfo(logRig()) << "Unknown control level (0x14) received at register " << payloadIn[1] << " with level " << level;
+                qInfo(logRig()) << "Unknown control level (0x14) received at register " << QString("0x%1").arg((int)payloadIn[1],2,16) << " with level " << QString("0x%1").arg((int)level,2,16) << ", int=" << (int)level;
+                printHex(payloadIn);
                 break;
-
         }
         return;
     }
@@ -2946,6 +2958,25 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), createMode(modeWFM, 0x06, "WFM"));
+            break;
+        case model718:
+            rigCaps.modelName = QString("IC-718");
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.clear();
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasATU = false;
+            rigCaps.attenuators.push_back('\x20');
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.bands =   {band10m, band10m, band12m,
+                               band15m, band17m, band20m, band30m,
+                               band40m, band60m, band80m, band160m, bandGen};
+            rigCaps.modes = { createMode(modeLSB, 0x00, "LSB"), createMode(modeUSB, 0x01, "USB"),
+                              createMode(modeAM, 0x02, "AM"),
+                              createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
+                              createMode(modeRTTY, 0x04, "RTTY"), createMode(modeRTTY_R, 0x08, "RTTY-R")
+                            };
             break;
         case model756pro:
             rigCaps.modelName = QString("IC-756 Pro");
