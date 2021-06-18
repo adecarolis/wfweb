@@ -702,6 +702,8 @@ void wfmain::setupMainUI()
 
 void wfmain::updateSizes(int tabIndex)
 {
+    if(!haveRigCaps)
+        return;
     // This function does nothing unless you are using a rig without spectrum.
     // This is a hack. It is not great, but it seems to work ok.
     if(!rigCaps.hasSpectrum)
