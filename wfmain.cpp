@@ -4457,7 +4457,7 @@ void wfmain::calculateTimingParameters()
         msMinTiming = 35;
 
     delayedCommand->setInterval( msMinTiming * 2); // 20 byte message
-    periodicPollingTimer->setInterval( msMinTiming *5); // slower for s-meter poll
+    periodicPollingTimer->setInterval( msMinTiming ); // quicker for s-meter poll
 
     qInfo(logSystem()) << "Delay command interval timing: " << msMinTiming * 2 << "ms";
     qInfo(logSystem()) << "Periodic polling timer: " << msMinTiming << "ms";
