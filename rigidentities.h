@@ -81,6 +81,7 @@ struct rigCapabilities {
     bool hasLan; // OEM ethernet or wifi connection
     bool hasEthernet;
     bool hasWiFi;
+    bool hasFDcomms;
 
     QVector<rigInput> inputs;
 
