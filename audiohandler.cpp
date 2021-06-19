@@ -292,8 +292,13 @@ void audioHandler::start()
 			// Opus codec
 
 			encoder = opus_encoder_create(setup.samplerate, setup.radioChan, OPUS_APPLICATION_AUDIO, &err);
-			//opus_encoder_ctl(encoder, OPUS_SET_INBAND_FEC(1));
-			//opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(5));
+			opus_encoder_ctl(encoder, OPUS_SET_MAX_BANDWIDTH(setup.samplerate));
+			opus_encoder_ctl(encoder, OPUS_SET_BITRATE(OPUS_AUTO));
+			opus_encoder_ctl(encoder, OPUS_SET_FORCE_CHANNELS(setup.radioChan));
+			opus_encoder_ctl(encoder, OPUS_SET_VBR(1));
+			opus_encoder_ctl(encoder, OPUS_SET_INBAND_FEC(1));
+			opus_encoder_ctl(encoder, OPUS_SET_DTX(1));
+			opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(5));
 		}
 	}
 	else {
@@ -306,8 +311,6 @@ void audioHandler::start()
 		if (setup.codec == 0x40 || setup.codec == 0x80) {
 			// Opus codec
 			decoder = opus_decoder_create(setup.samplerate, setup.radioChan, &err);
-			//opus_decoder_ctl(decoder, OPUS_SET_INBAND_FEC(1));
-			//opus_decoder_ctl(decoder, OPUS_SET_PACKET_LOSS_PERC(5));
 		}
 	}
 	if (err < 0)
@@ -487,19 +490,17 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	if (setup.codec == 0x40 || setup.codec == 0x80) {
 		unsigned char* in = (unsigned char*)inPacket.data.data();
 		/* Encode the frame. */
-		QByteArray outPacket((chunkSize * setup.radioChan * 2), (char)0xff); // Preset the output buffer size.
+		QByteArray outPacket(((setup.samplerate / 50) * setup.radioChan * 2), (char)0xff); // Preset the output buffer size.
 		qint16* out = (qint16*)outPacket.data();
 		int nbBytes = 0;
-		/*
-		if (lastSentSeq > 0) {
-			while (lastSentSeq > 0 && lastSentSeq++ < inPacket.seq)
-			{
-				nbBytes = opus_decode(decoder, 0, 0, out, outPacket.size(), 1);
-			}
+		
+		if (lastSentSeq > 0 && lastSentSeq+1 < inPacket.seq)
+		{
+			nbBytes = opus_decode(decoder, NULL, 0, out, outPacket.size()/2, 1);
 		}
-		*/
-		nbBytes = opus_decode(decoder, in, inPacket.data.size(), out, outPacket.size()/2, 0);
-
+		else {
+			nbBytes = opus_decode(decoder, in, inPacket.data.size(), out, outPacket.size() / 2, 0);
+		}
 		if (nbBytes < 0)
 		{
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decode failed:" << opus_strerror(nbBytes) << "packet size" << inPacket.data.length();
@@ -508,7 +509,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		else {
 			if (nbBytes * 2 != outPacket.size())
 			{
-				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoder mismatch: nbBytes:" << nbBytes*2 << "outPacket:" << outPacket.size() ;
+				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoder mismatch: nbBytes:" << nbBytes * 2 << "outPacket:" << outPacket.size();
 				outPacket.resize(nbBytes * 2);
 			}
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << inPacket.data.size() << "bytes, into" << outPacket.length() << "bytes";
@@ -703,7 +704,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			//	in[i] = qToBigEndian(in[i]);
 
 			/* Encode the frame. */
-			QByteArray outPacket(638*setup.radioChan, (char)0xff); // Preset the output buffer size.
+			QByteArray outPacket(1275, (char)0xff); // Preset the output buffer size to MAXIMUM possible Opus frame size
 			unsigned char* out = (unsigned char*)outPacket.data();
 
 			int nbBytes = opus_encode(encoder, in, packet.data.length() / 2, out, outPacket.length());
