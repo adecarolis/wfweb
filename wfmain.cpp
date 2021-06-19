@@ -695,6 +695,37 @@ void wfmain::setupMainUI()
     freqLock = false;
 
     connect(ui->tabWidget, SIGNAL(currentChanged(int)), this, SLOT(updateSizes(int)));
+    //connect(ui->txPowerSlider, SIGNAL(actionTriggered(int)), this, [=](func int) { statusFromSliderRaw(QString("hi"), int);})
+    connect(
+                ui->txPowerSlider, &QSlider::valueChanged,
+                [=](const int &newValue) { statusFromSliderPercent("Tx Power", newValue);}
+    );
+
+    connect(
+                ui->rfGainSlider, &QSlider::valueChanged,
+                [=](const int &newValue) { statusFromSliderPercent("RF Gain", newValue);}
+    );
+
+    connect(
+                ui->afGainSlider, &QSlider::valueChanged,
+                [=](const int &newValue) { statusFromSliderPercent("AF Gain", newValue);}
+    );
+
+    connect(
+                ui->micGainSlider, &QSlider::valueChanged,
+                [=](const int &newValue) { statusFromSliderPercent("TX Audio Gain", newValue);}
+    );
+
+    connect(
+                ui->sqlSlider, &QSlider::valueChanged,
+                [=](const int &newValue) { statusFromSliderPercent("Squelch", newValue);}
+    );
+
+    // -200 0 +200.. take log?
+    connect(
+                ui->scopeRefLevelSlider, &QSlider::valueChanged,
+                [=](const int &newValue) { statusFromSliderRaw("Scope Ref Level", newValue);}
+    );
 }
 
 void wfmain::updateSizes(int tabIndex)
@@ -4003,6 +4034,16 @@ void wfmain::changeSliderQuietly(QSlider *slider, int value)
     slider->blockSignals(true);
     slider->setValue(value);
     slider->blockSignals(false);
+}
+
+void wfmain::statusFromSliderRaw(QString name, int rawValue)
+{
+    showStatusBarText(name + QString(": %1").arg(rawValue));
+}
+
+void wfmain::statusFromSliderPercent(QString name, int rawValue)
+{
+    showStatusBarText(name + QString(": %1\%").arg((int)(100*rawValue/255.0)));
 }
 
 void wfmain::receiveTxPower(unsigned char power)
