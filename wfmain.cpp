@@ -695,7 +695,7 @@ void wfmain::setupMainUI()
     freqLock = false;
 
     connect(ui->tabWidget, SIGNAL(currentChanged(int)), this, SLOT(updateSizes(int)));
-    //connect(ui->txPowerSlider, SIGNAL(actionTriggered(int)), this, [=](func int) { statusFromSliderRaw(QString("hi"), int);})
+
     connect(
                 ui->txPowerSlider, &QSlider::valueChanged,
                 [=](const int &newValue) { statusFromSliderPercent("Tx Power", newValue);}
@@ -726,6 +726,12 @@ void wfmain::setupMainUI()
                 ui->scopeRefLevelSlider, &QSlider::valueChanged,
                 [=](const int &newValue) { statusFromSliderRaw("Scope Ref Level", newValue);}
     );
+
+    connect(
+                ui->wfLengthSlider, &QSlider::valueChanged,
+                [=](const int &newValue) { statusFromSliderRaw("Waterfall Length", newValue);}
+    );
+
 }
 
 void wfmain::updateSizes(int tabIndex)
