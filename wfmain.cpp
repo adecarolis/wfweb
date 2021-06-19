@@ -407,9 +407,6 @@ void wfmain::findSerialPort()
     QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
     QDirIterator it7610("/dev/serial", QStringList() << "*IC-7610*A", QDir::Files, QDirIterator::Subdirectories);
     QDirIterator itR8600("/dev/serial", QStringList() << "*IC-R8600*A", QDir::Files, QDirIterator::Subdirectories);
-    QDirIterator itTest("/tmp/test", QStringList() << "*radio*", QDir::NoFilter, QDirIterator::Subdirectories);
-
-    qDebug() << "test iterator isEmpty: " << itTest.filePath().isEmpty();
 
     if(!it73.filePath().isEmpty())
     {
