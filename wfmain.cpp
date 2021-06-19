@@ -2643,6 +2643,21 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->antennaSelCombo->setDisabled(true);
         }
 
+        ui->scopeBWCombo->blockSignals(true);
+        ui->scopeBWCombo->clear();
+        if(rigCaps.hasSpectrum)
+        {
+            ui->scopeBWCombo->setHidden(false);
+            for(unsigned int i=0; i < rigCaps.scopeCenterSpans.size(); i++)
+            {
+                ui->scopeBWCombo->addItem(rigCaps.scopeCenterSpans.at(i).name, (int)rigCaps.scopeCenterSpans.at(i).cstype);
+            }
+        } else {
+            ui->scopeBWCombo->setHidden(true);
+        }
+        ui->scopeBWCombo->blockSignals(false);
+
+
         setBandButtons();
 
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
