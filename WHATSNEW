@@ -7,4 +7,6 @@ The following highlights are in this dot-release:
      fixes and lots of improvements at the usb-server end
      waterfall length can be adjusted now
      no need to restart to change CIV address
-
+     seamless changing rigs without restart
+     started support for older rigs like the 718
+     wf display disappears when there is no wf capable rig
