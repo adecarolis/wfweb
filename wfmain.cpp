@@ -1836,7 +1836,7 @@ quint64 wfmain::roundFrequencyWithStep(quint64 frequency, int steps, unsigned in
     {
         frequency = frequency + (quint64)(steps*tsHz);
     } else {
-        frequency = frequency - (quint64)(abs(steps)*tsHz);
+        frequency = frequency - std::min((quint64)(abs(steps)*tsHz), frequency);
     }
 
     if(ui->tuningFloorZerosChk->isChecked())
