@@ -362,6 +362,10 @@ void rigCommander::setSpectrumBounds(double startFreq, double endFreq, unsigned 
             if(startFreq > 400.0)
                 freqRange++;
             break;
+        case modelR8600:
+            freqRange = 1;
+            edgeNumber = 1;
+            break;
         default:
             return;
             break;
@@ -429,7 +433,7 @@ void rigCommander::setScopeSpan(char span)
     // See ICD, page 165, "19-12".
     // 2.5k = 0
     // 5k = 2, etc.
-    if((span <0 ) || (span >7))
+    if((span <0 ) || (span >9))
             return;
 
     QByteArray payload;
@@ -463,6 +467,12 @@ void rigCommander::setScopeSpan(char span)
             break;
         case 7:
             freq = 500.0E-3;
+            break;
+        case 8:
+            freq = 1000.0E-3;
+            break;
+        case 9:
+            freq = 2500.0E-3;
             break;
         default:
             return;
@@ -2561,6 +2571,14 @@ mode_info rigCommander::createMode(mode_kind m, unsigned char reg, QString name)
     return mode;
 }
 
+centerSpanData rigCommander::createScopeCenter(centerSpansType s, QString name)
+{
+    centerSpanData csd;
+    csd.cstype = s;
+    csd.name = name;
+    return csd;
+}
+
 void rigCommander::determineRigCaps()
 {
     //TODO: Determine available bands (low priority, rig will reject out of band requests anyway)
@@ -2597,6 +2615,12 @@ void rigCommander::determineRigCaps()
     rigCaps.spectSeqMax = 0;
     rigCaps.spectAmpMax = 0;
     rigCaps.spectLenMax = 0;
+    rigCaps.scopeCenterSpans = { createScopeCenter(cs2p5k, "±2.5k"), createScopeCenter(cs5k, "±5k"),
+                                 createScopeCenter(cs10k, "±10k"), createScopeCenter(cs25k, "±25k"),
+                                 createScopeCenter(cs50k, "±50k"), createScopeCenter(cs100k, "±100k"),
+                                 createScopeCenter(cs250k, "±250k"), createScopeCenter(cs500k, "±500k")
+                               };
+
     
     rigCaps.hasFDcomms = true; // false for older radios
 
@@ -2696,6 +2720,7 @@ void rigCommander::determineRigCaps()
                                      createMode(modeP25, 0x16, "P25"), createMode(modedPMR, 0x18, "dPMR"),
                                      createMode(modeNXDN_VN, 0x19, "NXDN-VN"), createMode(modeNXDN_N, 0x20, "NXDN-N"),
                                      createMode(modeDCR, 0x21, "DCR")});
+            rigCaps.scopeCenterSpans.insert(rigCaps.scopeCenterSpans.end(), {createScopeCenter(cs1M, "±1M"), createScopeCenter(cs2p5M, "±2.5M")});
             break;
         case model9700:
             rigCaps.modelName = QString("IC-9700");
