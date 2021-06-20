@@ -665,6 +665,8 @@ private:
     void issueDelayedCommandPriority(cmds cmd);
     void issueDelayedCommandUnique(cmds cmd);
     void changeSliderQuietly(QSlider *slider, int value);
+    void statusFromSliderPercent(QString name, int percentValue);
+    void statusFromSliderRaw(QString name, int rawValue);
 
     void processModLevel(rigInput source, unsigned char level);
 
