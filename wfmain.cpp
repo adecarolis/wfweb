@@ -463,7 +463,7 @@ void wfmain::receiveCommReady()
         // qInfo(logSystem()) << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
         ui->statusBar->showMessage(QString("Searching CI-V bus for connected radios."), 1000);
         emit getRigCIV();
-        cmdOutQue.append(cmdGetRigCIV);
+        issueDelayedCommand(cmdGetRigCIV);
         delayedCommand->start();
     } else {
         // don't bother, they told us the CIV they want, stick with it.
@@ -811,18 +811,20 @@ void wfmain::getSettingsFilePath(QString settingsFile)
 
 void wfmain::setInitialTiming()
 {
+    loopTickCounter = 0;
     delayedCmdIntervalLAN_ms = 70; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdIntervalSerial_ms = 100; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdStartupInterval_ms = 250; // interval for rigID polling
     delayedCommand = new QTimer(this);
     delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
-    delayedCommand->setSingleShot(true);
-    connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
+    delayedCommand->setSingleShot(false);
+    connect(delayedCommand, SIGNAL(timeout()), this, SLOT(sendRadioCommandLoop()));
 
-    periodicPollingTimer = new QTimer(this);
-    periodicPollingTimer->setInterval(10);
-    periodicPollingTimer->setSingleShot(false);
-    connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(runPeriodicCommands()));
+    // TODO: Remove this:
+//    periodicPollingTimer = new QTimer(this);
+//    periodicPollingTimer->setInterval(10);
+//    periodicPollingTimer->setSingleShot(false);
+    //connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(sendRadioCommandLoop()));
 
     pttTimer = new QTimer(this);
     pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
@@ -2021,75 +2023,75 @@ void wfmain:: getInitialRigState()
     // the polling interval is set at 200ms. Faster is possible but slower
     // computers will glitch occassionally.
 
-    cmdOutQue.append(cmdGetFreq);
-    cmdOutQue.append(cmdGetMode);
+    issueDelayedCommand(cmdGetFreq);
+    issueDelayedCommand(cmdGetMode);
 
-    cmdOutQue.append(cmdNone);
+    issueDelayedCommand(cmdNone);
 
-    cmdOutQue.append(cmdGetFreq);
-    cmdOutQue.append(cmdGetMode);
+    issueDelayedCommand(cmdGetFreq);
+    issueDelayedCommand(cmdGetMode);
 
     // From left to right in the UI:
-    cmdOutQue.append(cmdGetDataMode);
-    cmdOutQue.append(cmdGetModInput);
-    cmdOutQue.append(cmdGetModDataInput);
-    cmdOutQue.append(cmdGetRxGain);
-    cmdOutQue.append(cmdGetAfGain);
-    cmdOutQue.append(cmdGetSql);
-    cmdOutQue.append(cmdGetTxPower);
-    cmdOutQue.append(cmdGetCurrentModLevel); // level for currently selected mod sources
-    cmdOutQue.append(cmdGetSpectrumRefLevel);
-    cmdOutQue.append(cmdGetDuplexMode);
+    issueDelayedCommand(cmdGetDataMode);
+    issueDelayedCommand(cmdGetModInput);
+    issueDelayedCommand(cmdGetModDataInput);
+    issueDelayedCommand(cmdGetRxGain);
+    issueDelayedCommand(cmdGetAfGain);
+    issueDelayedCommand(cmdGetSql);
+    issueDelayedCommand(cmdGetTxPower);
+    issueDelayedCommand(cmdGetCurrentModLevel); // level for currently selected mod sources
+    issueDelayedCommand(cmdGetSpectrumRefLevel);
+    issueDelayedCommand(cmdGetDuplexMode);
 
     if(rigCaps.hasSpectrum)
     {
-        cmdOutQue.append(cmdDispEnable);
-        cmdOutQue.append(cmdSpecOn);
+        issueDelayedCommand(cmdDispEnable);
+        issueDelayedCommand(cmdSpecOn);
     }
-    cmdOutQue.append(cmdGetModInput);
-    cmdOutQue.append(cmdGetModDataInput);
+    issueDelayedCommand(cmdGetModInput);
+    issueDelayedCommand(cmdGetModDataInput);
 
     if(rigCaps.hasCTCSS)
     {
-        cmdOutQue.append(cmdGetTone);
-        cmdOutQue.append(cmdGetTSQL);
+        issueDelayedCommand(cmdGetTone);
+        issueDelayedCommand(cmdGetTSQL);
     }
     if(rigCaps.hasDTCS)
     {
-        cmdOutQue.append(cmdGetDTCS);
+        issueDelayedCommand(cmdGetDTCS);
     }
-    cmdOutQue.append(cmdGetRptAccessMode);
+    issueDelayedCommand(cmdGetRptAccessMode);
 
     if(rigCaps.hasAntennaSel)
     {
-        cmdOutQue.append(cmdGetAntenna);
+        issueDelayedCommand(cmdGetAntenna);
     }
     if(rigCaps.hasAttenuator)
     {
-        cmdOutQue.append(cmdGetAttenuator);
+        issueDelayedCommand(cmdGetAttenuator);
     }
     if(rigCaps.hasPreamp)
     {
-        cmdOutQue.append(cmdGetPreamp);
+        issueDelayedCommand(cmdGetPreamp);
     }
 
-    cmdOutQue.append(cmdGetRitEnabled);
-    cmdOutQue.append(cmdGetRitValue);
+    issueDelayedCommand(cmdGetRitEnabled);
+    issueDelayedCommand(cmdGetRitValue);
 
     if(rigCaps.hasSpectrum)
     {
-        cmdOutQue.append(cmdGetSpectrumMode);
-        cmdOutQue.append(cmdGetSpectrumSpan);
+        issueDelayedCommand(cmdGetSpectrumMode);
+        issueDelayedCommand(cmdGetSpectrumSpan);
     }
 
-    cmdOutQue.append(cmdNone);
-    cmdOutQue.append(cmdStartRegularPolling);
+    issueDelayedCommand(cmdNone);
+    issueDelayedCommand(cmdStartRegularPolling);
 
     if(rigCaps.hasATU)
     {
-        cmdOutQue.append(cmdGetATUStatus);
+        issueDelayedCommand(cmdGetATUStatus);
     }
-    cmdOut = cmdNone;
+
     delayedCommand->start();
 }
 
@@ -2212,325 +2214,222 @@ void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
     }
 }
 
-void wfmain::runPeriodicCommands()
+void wfmain::doCmd(cmds cmd)
 {
-    // These commands are run at a regular interval. They are to be used sparingly.
-    // For general radio state queries, use the runDelayedCommand() queue,
-    // accessed by the insertPeriodicCommands() function.
-
-    // To insert commands to this queue, uset the insertPeriodicCommands() function.
-
-    // TODO: Queue should not remove items, just hit a different item each time.
-    int nCmds = periodicCmdQueue.length();
-
-    cmds pcmd;
-
-    if(!periodicCmdQueue.isEmpty())
+    // Use this function to take action upon a command.
+    switch(cmd)
     {
-        pcmd = periodicCmdQueue.at( (pCmdNum++)%nCmds );
-        switch(pcmd)
-        {
-            case cmdNone:
-                break;
-
-            // Metering commands:
-            case cmdGetSMeter:
-                if(!amTransmitting)
-                    emit getMeters(meterS);
-                break;
-            case cmdGetPowerMeter:
-                if(amTransmitting)
-                    emit getMeters(meterPower);
-                break;
-            case cmdGetIdMeter:
-                emit getMeters(meterCurrent);
-                break;
-            case cmdGetVdMeter:
-                emit getMeters(meterVoltage);
-                break;
-            case cmdGetALCMeter:
-                if(amTransmitting)
-                    emit getMeters(meterALC);
-                break;
-            case cmdGetCompMeter:
-                if(amTransmitting)
-                    emit getMeters(meterComp);
-                break;
-
-
-            // Standard commands we are already checking:
-
-            case cmdGetRigID:
-                emit getRigID();
-                break;
-            case cmdGetRigCIV:
-                // if(!know rig civ already)
-                if(!haveRigCaps)
-                {
-                    emit getRigCIV();
-                    cmdOutQue.append(cmdGetRigCIV); // This way, we stay here until we get an answer.
-                }
-                break;
-            case cmdGetFreq:
-                emit getFrequency();
-                break;
-            case cmdGetMode:
-                emit getMode();
-                break;
-            case cmdGetDataMode:
-                // qInfo(logSystem()) << "Sending query for data mode";
-                emit getDataMode();
-                break;
-            case cmdSetDataModeOff:
-                emit setDataMode(false, (unsigned char) ui->modeFilterCombo->currentData().toInt());
-                break;
-            case cmdSetDataModeOn:
-                emit setDataMode(true, (unsigned char) ui->modeFilterCombo->currentData().toInt());
-                break;
-            case cmdGetModInput:
-                emit getModInput(false);
-                break;
-            case cmdGetModDataInput:
-                emit getModInput(true);
-                break;
-            case cmdGetCurrentModLevel:
-                emit getModInputLevel(currentModSrc);
-                emit getModInputLevel(currentModDataSrc);
-                break;
-            case cmdGetDuplexMode:
-                emit getDuplexMode();
-                break;
-            case cmdDispEnable:
-                emit scopeDisplayEnable();
-                break;
-            case cmdDispDisable:
-                emit scopeDisplayDisable();
-                break;
-            case cmdSpecOn:
-                emit spectOutputEnable();
-                break;
-            case cmdSpecOff:
-                emit spectOutputDisable();
-                break;
-            case cmdGetRxGain:
-                emit getRfGain();
-                break;
-            case cmdGetAfGain:
-                emit getAfGain();
-                break;
-            case cmdGetSql:
-                emit getSql();
-                break;
-            case cmdGetTxPower:
-                emit getTxPower();
-                break;
-            case cmdGetMicGain:
-                emit getMicGain();
-                break;
-            case cmdGetSpectrumRefLevel:
-                emit getSpectrumRefLevel();
-                break;
-            case cmdGetATUStatus:
-                emit getATUStatus();
-                break;
-            case cmdScopeCenterMode:
-                emit setScopeMode(spectModeCenter);
-                break;
-            case cmdScopeFixedMode:
-                emit setScopeMode(spectModeFixed);
-                break;
-            case cmdGetPTT:
-                emit getPTT();
-                break;
-            case cmdStartRegularPolling:
-                periodicPollingTimer->start();
-                break;
-            case cmdStopRegularPolling:
-                periodicPollingTimer->stop();
-                break;
-            default:
-                break;
-        }
-    }
-}
-
-void wfmain::runDelayedCommand()
-{
-    cmds qdCmd;
-    // Note: This cmdOut queue will be removed entirely soon and only the cmdOutQue will be available.
-    switch (cmdOut)
-    {
+        case cmdNone:
+            //qInfo(logSystem()) << "NOOP";
+            break;
+        case cmdGetRigID:
+            emit getRigID();
+            break;
+        case cmdGetRigCIV:
+            // if(!know rig civ already)
+            if(!haveRigCaps)
+            {
+                emit getRigCIV();
+                issueDelayedCommand(cmdGetRigCIV); // This way, we stay here until we get an answer.
+            }
+            break;
         case cmdGetFreq:
             emit getFrequency();
             break;
         case cmdGetMode:
             emit getMode();
             break;
+        case cmdGetDataMode:
+            if(rigCaps.hasDataModes)
+                emit getDataMode();
+            break;
+        case cmdSetModeFilter:
+            emit setMode(setModeVal, setFilterVal);
+            break;
+        case cmdSetDataModeOff:
+            emit setDataMode(false, (unsigned char)ui->modeFilterCombo->currentData().toInt());
+            break;
+        case cmdSetDataModeOn:
+            emit setDataMode(true, (unsigned char)ui->modeFilterCombo->currentData().toInt());
+            break;
+        case cmdGetRitEnabled:
+            emit getRitEnabled();
+            break;
+        case cmdGetRitValue:
+            emit getRitValue();
+            break;
+        case cmdGetModInput:
+            emit getModInput(false);
+            break;
+        case cmdGetModDataInput:
+            emit getModInput(true);
+            break;
+        case cmdGetCurrentModLevel:
+            // TODO: Add delay between these queries
+            emit getModInputLevel(currentModSrc);
+            emit getModInputLevel(currentModDataSrc);
+            break;
+        case cmdGetDuplexMode:
+            emit getDuplexMode();
+            break;
+        case cmdGetTone:
+            emit getTone();
+            break;
+        case cmdGetTSQL:
+            emit getTSQL();
+            break;
+        case cmdGetDTCS:
+            emit getDTCS();
+            break;
+        case cmdGetRptAccessMode:
+            emit getRptAccessMode();
+            break;
+        case cmdDispEnable:
+            emit scopeDisplayEnable();
+            break;
+        case cmdDispDisable:
+            emit scopeDisplayDisable();
+            break;
+        case cmdGetSpectrumMode:
+            emit getScopeMode();
+            break;
+        case cmdGetSpectrumSpan:
+            emit getScopeSpan();
+            break;
+        case cmdSpecOn:
+            emit spectOutputEnable();
+            break;
+        case cmdSpecOff:
+            emit spectOutputDisable();
+            break;
+        case cmdGetRxGain:
+            emit getRfGain();
+            break;
+        case cmdGetAfGain:
+            emit getAfGain();
+            break;
+        case cmdGetSql:
+            emit getSql();
+            break;
+        case cmdGetTxPower:
+            emit getTxPower();
+            break;
+        case cmdGetMicGain:
+            emit getMicGain();
+            break;
+        case cmdGetSpectrumRefLevel:
+            emit getSpectrumRefLevel();
+            break;
+        case cmdGetATUStatus:
+            emit getATUStatus();
+            break;
+        case cmdGetAttenuator:
+            emit getAttenuator();
+            break;
+        case cmdGetPreamp:
+            emit getPreamp();
+            break;
+        case cmdGetAntenna:
+            emit getAntenna();
+            break;
+        case cmdScopeCenterMode:
+            emit setScopeMode(spectModeCenter);
+            break;
+        case cmdScopeFixedMode:
+            emit setScopeMode(spectModeFixed);
+            break;
+        case cmdGetPTT:
+            if(rigCaps.hasPTTCommand)
+            {
+                emit getPTT();
+            }
+            break;
+        case cmdGetTxRxMeter:
+            if(amTransmitting)
+                emit getMeters(meterPower);
+            else
+                emit getMeters(meterS);
+            break;
+        case cmdGetSMeter:
+            if(!amTransmitting)
+                emit getMeters(meterS);
+            break;
+        case cmdGetPowerMeter:
+            if(amTransmitting)
+                emit getMeters(meterPower);
+            break;
+        case cmdGetIdMeter:
+            emit getMeters(meterCurrent);
+            break;
+        case cmdGetVdMeter:
+            emit getMeters(meterVoltage);
+            break;
+        case cmdGetALCMeter:
+            if(amTransmitting)
+                emit getMeters(meterALC);
+            break;
+        case cmdGetCompMeter:
+            if(amTransmitting)
+                emit getMeters(meterComp);
+            break;
+        case cmdStartRegularPolling:
+            runPeriodicCommands = true;
+            break;
+        case cmdStopRegularPolling:
+            runPeriodicCommands = false;
+            break;
+        case cmdQueNormalSpeed:
+            if(usingLAN)
+            {
+                delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
+            } else {
+                delayedCommand->setInterval(delayedCmdIntervalSerial_ms);
+            }
+            break;
         default:
             break;
     }
-    cmdOut = cmdNone; // yep. Hope this wasn't called twice in a row rapidly.
+}
 
-    // Note: All command should use this queue. There is no need to use the above system.
 
-    if(!cmdOutQue.isEmpty())
+void wfmain::sendRadioCommandLoop()
+{
+    // Called by the periodicPollingTimer, see setInitialTiming()
+
+    if(!(loopTickCounter % 2))
     {
-        qdCmd = cmdOutQue.takeFirst();
-        switch(qdCmd)
+        // if ther's a command waiting, run it.
+        if(!cmdOutQue.isEmpty())
         {
-            case cmdNone:
-                //qInfo(logSystem()) << "NOOP";
-                break;
-            case cmdGetRigID:
-                emit getRigID();
-                break;
-            case cmdGetRigCIV:
-                // if(!know rig civ already)
-                if(!haveRigCaps)
-                {
-                    emit getRigCIV();
-                    cmdOutQue.append(cmdGetRigCIV); // This way, we stay here until we get an answer.
-                }
-                break;
-            case cmdGetFreq:
-                emit getFrequency();
-                break;
-            case cmdGetMode:
-                emit getMode();
-                break;
-            case cmdGetDataMode:
-                emit getDataMode();
-                break;
-            case cmdSetModeFilter:
-                emit setMode(setModeVal, setFilterVal);
-                break;
-            case cmdSetDataModeOff:
-                emit setDataMode(false, (unsigned char)ui->modeFilterCombo->currentData().toInt());
-                break;
-            case cmdSetDataModeOn:
-                emit setDataMode(true, (unsigned char)ui->modeFilterCombo->currentData().toInt());
-                break;
-            case cmdGetRitEnabled:
-                emit getRitEnabled();
-                break;
-            case cmdGetRitValue:
-                emit getRitValue();
-                break;
-            case cmdGetModInput:
-                emit getModInput(false);
-                break;
-            case cmdGetModDataInput:
-                emit getModInput(true);
-                break;
-            case cmdGetCurrentModLevel:
-                emit getModInputLevel(currentModSrc);
-                emit getModInputLevel(currentModDataSrc);
-                break;
-            case cmdGetDuplexMode:
-                emit getDuplexMode();
-                break;
-            case cmdGetTone:
-                emit getTone();
-                break;
-            case cmdGetTSQL:
-                emit getTSQL();
-                break;
-            case cmdGetDTCS:
-                emit getDTCS();
-                break;
-            case cmdGetRptAccessMode:
-                emit getRptAccessMode();
-                break;
-            case cmdDispEnable:
-                emit scopeDisplayEnable();
-                break;
-            case cmdDispDisable:
-                emit scopeDisplayDisable();
-                break;
-            case cmdGetSpectrumMode:
-                emit getScopeMode();
-                break;
-            case cmdGetSpectrumSpan:
-                emit getScopeSpan();
-                break;
-            case cmdSpecOn:
-                emit spectOutputEnable();
-                break;
-            case cmdSpecOff:
-                emit spectOutputDisable();
-                break;
-            case cmdGetRxGain:
-                emit getRfGain();
-                break;
-            case cmdGetAfGain:
-                emit getAfGain();
-                break;
-            case cmdGetSql:
-                emit getSql();
-                break;
-            case cmdGetTxPower:
-                emit getTxPower();
-                break;
-            case cmdGetMicGain:
-                emit getMicGain();
-                break;
-            case cmdGetSpectrumRefLevel:
-                emit getSpectrumRefLevel();
-                break;
-            case cmdGetATUStatus:
-                emit getATUStatus();
-                break;
-            case cmdGetAttenuator:
-                emit getAttenuator();
-                break;
-            case cmdGetPreamp:
-                emit getPreamp();
-                break;
-            case cmdGetAntenna:
-                emit getAntenna();
-                break;
-            case cmdScopeCenterMode:
-                emit setScopeMode(spectModeCenter);
-                break;
-            case cmdScopeFixedMode:
-                emit setScopeMode(spectModeFixed);
-                break;
-            case cmdGetPTT:
-                emit getPTT();
-                break;
-            case cmdStartRegularPolling:
-                periodicPollingTimer->start();
-                break;
-            case cmdStopRegularPolling:
-                periodicPollingTimer->stop();
-                break;
-            case cmdQueNormalSpeed:
-                if(usingLAN)
-                {
-                    delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
-                } else {
-                    delayedCommand->setInterval(delayedCmdIntervalSerial_ms);
-                }
-                break;
-            default:
-                break;
+            cmds cmd = cmdOutQue.takeFirst();
+            doCmd(cmd);
+        } else if(!(loopTickCounter % 10))
+        {
+            // pick from useful queries to make now and then
+            if(haveRigCaps)
+            {
+                int nCmds = slowPollCmdQueue.length();
+                cmds sCmd = slowPollCmdQueue.at( (slowCmdNum++)%nCmds);
+                doCmd(sCmd);
+            }
+        }
+    } else {
+        // odd-number ticks:
+        // s-meter or other metering
+        if(haveRigCaps)
+        {
+            int nCmds = periodicCmdQueue.length();
+            cmds pcmd = periodicCmdQueue.at( (pCmdNum++)%nCmds );
+            doCmd(pcmd);
         }
     }
-    if(cmdOutQue.isEmpty())
-    {
-        // done
-    } else {
-        // next
-        // TODO: If we always do ->start, then it will not be necessary for
-        // every command insertion to include a ->start.... probably worth doing.
-        delayedCommand->start();
-    }
+    loopTickCounter++;
 }
 
 void wfmain::issueDelayedCommand(cmds cmd)
 {
+    // Append to end of command queue
     cmdOutQue.append(cmd);
-    delayedCommand->start();
 }
 
 void wfmain::issueDelayedCommandPriority(cmds cmd)
@@ -2538,7 +2437,6 @@ void wfmain::issueDelayedCommandPriority(cmds cmd)
     // Places the new command at the top of the queue
     // Use only when needed.
     cmdOutQue.prepend(cmd);
-    delayedCommand->start();
 }
 
 void wfmain::issueDelayedCommandUnique(cmds cmd)
@@ -2548,10 +2446,8 @@ void wfmain::issueDelayedCommandUnique(cmds cmd)
     if(!cmdOutQue.contains(cmd))
     {
         cmdOutQue.prepend(cmd);
-        delayedCommand->start();
     }
 }
-
 
 void wfmain::receiveRigID(rigCapabilities rigCaps)
 {
@@ -2705,8 +2601,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // Adding these here because clearly at this point we have valid
         // rig comms. In the future, we should establish comms and then
         // do all the initial grabs. For now, this hack of adding them here and there:
-        cmdOutQue.append(cmdGetFreq);
-        cmdOutQue.append(cmdGetMode);
+        issueDelayedCommand(cmdGetFreq);
+        issueDelayedCommand(cmdGetMode);
         // recalculate command timing now that we know the rig better:
         calculateTimingParameters();
         initPeriodicCommands();
@@ -2719,18 +2615,41 @@ void wfmain::initPeriodicCommands()
     // The commands are run using a timer,
     // and the timer is started by the delayed command cmdStartPeriodicTimer.
 
-    insertPeriodicCommand(cmdGetSMeter, 128);
-    insertPeriodicCommand(cmdGetPowerMeter, 128);
+    insertPeriodicCommand(cmdGetTxRxMeter, 128);
+
+    insertSlowPeriodicCommand(cmdGetFreq, 128);
+    insertSlowPeriodicCommand(cmdGetMode, 128);
+    insertSlowPeriodicCommand(cmdGetPTT, 128);
+    insertSlowPeriodicCommand(cmdGetTxPower, 128);
+    insertSlowPeriodicCommand(cmdGetRxGain, 128);
+    insertSlowPeriodicCommand(cmdGetAttenuator, 128);
+    insertSlowPeriodicCommand(cmdGetPTT, 128);
+    insertSlowPeriodicCommand(cmdGetPreamp, 128);
 }
 
 void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
 {
     // TODO: meaningful priority
+    // These commands get run at the fastest pace possible
+    // Typically just metering.
     if(priority < 10)
     {
         periodicCmdQueue.prepend(cmd);
     } else {
         periodicCmdQueue.append(cmd);
+    }
+}
+
+void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority)
+{
+    // TODO: meaningful priority
+    // These commands are run every 20 "ticks" of the primary radio command loop
+    // Basically 20 times less often than the standard peridic command
+    if(priority < 10)
+    {
+        slowPollCmdQueue.prepend(cmd);
+    } else {
+        slowPollCmdQueue.append(cmd);
     }
 }
 
@@ -3031,8 +2950,8 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
 
     // Note: we need to know if the DATA mode is active to reach mode-D
     // some kind of queued query:
-    cmdOutQue.append(cmdGetDataMode);
-    delayedCommand->start(); // why was that commented out?
+    if(rigCaps.hasDataModes)
+        issueDelayedCommand(cmdGetDataMode);
 }
 
 void wfmain::receiveDataModeStatus(bool dataEnabled)
@@ -3701,8 +3620,7 @@ void wfmain::on_tuneNowBtn_clicked()
 {
     emit startATU();
     showStatusBarText("Starting ATU tuning cycle...");
-    cmdOutQue.append(cmdGetATUStatus);
-    delayedCommand->start();
+    issueDelayedCommand(cmdGetATUStatus);
 }
 
 void wfmain::on_tuneEnableChk_clicked(bool checked)
@@ -3789,9 +3707,8 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
             // Add command queue to check again and update status bar
             // qInfo(logSystem()) << "Received ATU status update that *tuning* is taking place";
             showStatusBarText("ATU is Tuning...");
-            cmdOutQue.append(cmdGetATUStatus); // Sometimes the first hit seems to be missed.
-            cmdOutQue.append(cmdGetATUStatus);
-            delayedCommand->start();
+            issueDelayedCommand(cmdGetATUStatus); // Sometimes the first hit seems to be missed.
+            issueDelayedCommand(cmdGetATUStatus);
             break;
         default:
             qInfo(logSystem()) << "Did not understand ATU status: " << (unsigned int) atustatus;
@@ -4014,14 +3931,14 @@ void wfmain::on_transmitBtn_clicked()
         // send PTT
         // Start 3 minute timer
         pttTimer->start();
-        issueDelayedCommand(cmdGetPTT);
+        issueDelayedCommandPriority(cmdGetPTT);
         //changeTxBtn();
 
     } else {
         // Currently transmitting
         emit setPTT(false);
         pttTimer->stop();
-        issueDelayedCommand(cmdGetPTT);
+        issueDelayedCommandPriority(cmdGetPTT);
     }
 }
 
@@ -4519,25 +4436,22 @@ void wfmain::calculateTimingParameters()
     if(msMinTiming < 25)
         msMinTiming = 25;
 
-    delayedCommand->setInterval( msMinTiming * 2); // 20 byte message
-
     if(haveRigCaps && rigCaps.hasFDcomms)
     {
-        periodicPollingTimer->setInterval( msMinTiming ); // quicker for s-meter poll
+        delayedCommand->setInterval( msMinTiming); // 20 byte message
     } else {
-        periodicPollingTimer->setInterval( msMinTiming * 5); // slower for s-meter poll
+        delayedCommand->setInterval( msMinTiming * 3); // 20 byte message
     }
 
 
     qInfo(logSystem()) << "Delay command interval timing: " << delayedCommand->interval() << "ms";
-    qInfo(logSystem()) << "Periodic polling timer: " << periodicPollingTimer->interval() << "ms";
 
     // Normal:
-    delayedCmdIntervalLAN_ms =  msMinTiming * 2;
-    delayedCmdIntervalSerial_ms =  msMinTiming * 2;
+    delayedCmdIntervalLAN_ms =  delayedCommand->interval();
+    delayedCmdIntervalSerial_ms = delayedCommand->interval();
 
     // startup initial state:
-    delayedCmdStartupInterval_ms =  msMinTiming * 2;
+    delayedCmdStartupInterval_ms =  delayedCommand->interval() * 3;
 }
 
 void wfmain::receiveBaudRate(quint32 baud)
@@ -4569,19 +4483,19 @@ void wfmain::powerRigOn()
     delayedCommand->setInterval(3000); // 3 seconds
     if(ui->scopeEnableWFBtn->isChecked())
     {
-    issueDelayedCommand(cmdDispEnable);
-    issueDelayedCommand(cmdQueNormalSpeed);
-    issueDelayedCommand(cmdSpecOn);
-    issueDelayedCommand(cmdStartRegularPolling); // s-meter, etc
+        issueDelayedCommand(cmdDispEnable);
+        issueDelayedCommand(cmdQueNormalSpeed);
+        issueDelayedCommand(cmdSpecOn);
+        issueDelayedCommand(cmdStartRegularPolling); // s-meter, etc
     } else {
         issueDelayedCommand(cmdQueNormalSpeed);
+        issueDelayedCommand(cmdStartRegularPolling); // s-meter, etc
     }
     delayedCommand->start();
 }
 
 void wfmain::powerRigOff()
 {
-    periodicPollingTimer->stop();
     delayedCommand->stop();
     cmdOutQue.clear();
 
