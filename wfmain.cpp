@@ -407,9 +407,6 @@ void wfmain::findSerialPort()
     QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
     QDirIterator it7610("/dev/serial", QStringList() << "*IC-7610*A", QDir::Files, QDirIterator::Subdirectories);
     QDirIterator itR8600("/dev/serial", QStringList() << "*IC-R8600*A", QDir::Files, QDirIterator::Subdirectories);
-    QDirIterator itTest("/tmp/test", QStringList() << "*radio*", QDir::NoFilter, QDirIterator::Subdirectories);
-
-    qDebug() << "test iterator isEmpty: " << itTest.filePath().isEmpty();
 
     if(!it73.filePath().isEmpty())
     {
@@ -2648,6 +2645,21 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         } else {
             ui->antennaSelCombo->setDisabled(true);
         }
+
+        ui->scopeBWCombo->blockSignals(true);
+        ui->scopeBWCombo->clear();
+        if(rigCaps.hasSpectrum)
+        {
+            ui->scopeBWCombo->setHidden(false);
+            for(unsigned int i=0; i < rigCaps.scopeCenterSpans.size(); i++)
+            {
+                ui->scopeBWCombo->addItem(rigCaps.scopeCenterSpans.at(i).name, (int)rigCaps.scopeCenterSpans.at(i).cstype);
+            }
+        } else {
+            ui->scopeBWCombo->setHidden(true);
+        }
+        ui->scopeBWCombo->blockSignals(false);
+
 
         setBandButtons();
 
