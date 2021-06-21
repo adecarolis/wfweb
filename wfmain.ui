@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -2609,6 +2609,22 @@
             </property>
             <property name="shortcut">
              <string>Ctrl+Alt+D</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pollingBtn">
+            <property name="toolTip">
+             <string>Set up radio polling. The radio's meter is polled every-other interval.</string>
+            </property>
+            <property name="accessibleName">
+             <string>Polling</string>
+            </property>
+            <property name="accessibleDescription">
+             <string/>
+            </property>
+            <property name="text">
+             <string>Polling</string>
             </property>
            </widget>
           </item>
