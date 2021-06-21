@@ -116,9 +116,11 @@ struct rigCapabilities {
     bool hasDTCS;
 
     bool hasTransmit;
+    bool hasPTTCommand;
     bool hasAttenuator;
     bool hasPreamp;
     bool hasAntennaSel;
+    bool hasDataModes;
 
     std::vector <unsigned char> attenuators;
     std::vector <unsigned char> preamps;

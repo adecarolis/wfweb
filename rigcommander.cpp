@@ -2496,7 +2496,6 @@ void rigCommander::parseDetailedRegisters1A05()
         default:
             break;
     }
-
 }
 
 void rigCommander::parseWFData()
@@ -2607,6 +2606,7 @@ void rigCommander::determineRigCaps()
 
     rigCaps.hasDD = false;
     rigCaps.hasDV = false;
+    rigCaps.hasDataModes = true; // USB-D, LSB-D, etc
     rigCaps.hasATU = false;
 
     rigCaps.hasCTCSS = false;
@@ -2638,6 +2638,7 @@ void rigCommander::determineRigCaps()
     rigCaps.hasAntennaSel = false;
 
     rigCaps.hasTransmit = true;
+    rigCaps.hasPTTCommand = true;
 
     // Common, reasonable defaults for most supported HF rigs:
     rigCaps.bsr[band160m] = 0x01;
@@ -2700,6 +2701,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
             rigCaps.hasTransmit = false;
+            rigCaps.hasPTTCommand = false;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
             rigCaps.hasDV = true;
@@ -2984,6 +2986,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
+            rigCaps.hasPTTCommand = false;
+            rigCaps.hasDataModes = false;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
@@ -3000,6 +3004,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = false;
+            rigCaps.hasPTTCommand = false;
+            rigCaps.hasDataModes = false;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands =   {band10m, band10m, band12m,

@@ -29,6 +29,8 @@
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
 
+#include <deque>
+
 namespace Ui {
 class wfmain;
 }
@@ -234,8 +236,7 @@ private slots:
     void handleWFDoubleClick(QMouseEvent *);
     void handleWFScroll(QWheelEvent *);
     void handlePlotScroll(QWheelEvent *);
-    void runDelayedCommand();
-    void runPeriodicCommands();
+    void sendRadioCommandLoop();
     void showStatusBarText(QString text);
     void serverConfigRequested(SERVERCONFIG conf, bool store);
     void receiveBaudRate(quint32 baudrate);
@@ -520,8 +521,9 @@ private:
     QCPColorMapData * colorMapData;
     QCPColorScale * colorScale;
     QTimer * delayedCommand;
-    QTimer * periodicPollingTimer;
     QTimer * pttTimer;
+    uint16_t loopTickCounter;
+    uint16_t slowCmdNum;
 
     void setupPlots();
     void makeRig();
@@ -582,16 +584,18 @@ private:
               cmdGetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
               cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
-              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter,
+              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
               cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna};
 
-    cmds cmdOut;
-    QVector <cmds> cmdOutQue;
-    QVector <cmds> periodicCmdQueue;
+    std::deque <cmds> delayedCmdQue;
+    std::deque <cmds> periodicCmdQueue;
+    std::deque <cmds> slowPollCmdQueue;
+    void doCmd(cmds cmd);
     int pCmdNum = 0;
     int delayedCmdIntervalLAN_ms = 100;
     int delayedCmdIntervalSerial_ms = 100;
     int delayedCmdStartupInterval_ms = 100;
+    bool runPeriodicCommands;
     bool usingLAN = false;
 
     freqMemory mem;
@@ -679,6 +683,7 @@ private:
 
     void initPeriodicCommands();
     void insertPeriodicCommand(cmds cmd, unsigned char priority);
+    void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
     void calculateTimingParameters();
 
     void changeMode(mode_kind mode);
