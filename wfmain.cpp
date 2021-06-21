@@ -4407,6 +4407,12 @@ void wfmain::receiveSpectrumSpan(freqt freqspan, bool isSub)
            case(500000):
                ui->scopeBWCombo->setCurrentIndex(7);
                break;
+           case(1000000):
+               ui->scopeBWCombo->setCurrentIndex(8);
+               break;
+           case(2500000):
+               ui->scopeBWCombo->setCurrentIndex(9);
+               break;
            default:
                qInfo(logSystem()) << __func__ << "Could not match: " << freqspan.MHzDouble << " to anything like: " << (int)(freqspan.MHzDouble*1E6);
                break;
