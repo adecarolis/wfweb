@@ -4702,18 +4702,24 @@ void wfmain::on_wfLengthSlider_valueChanged(int value)
     prepareWf(value);
 }
 
+void wfmain::on_pollingBtn_clicked()
+{
+    bool ok;
+    int timing = 0;
+    timing = QInputDialog::getInt(this, "wfview Radio Polling Setup", "Poll Timing Interval (ms)", delayedCommand->interval(), 1, 200, 1, &ok );
+
+    if(ok && timing)
+    {
+        delayedCommand->setInterval( timing );
+        qInfo(logSystem()) << "User changed radio polling interval to " << timing << "ms.";
+        showStatusBarText("User changed radio polling interval to " + QString("%1").arg(timing) + "ms.");
+    }
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
     emit getFrequency();
-    bool ok;
-    int timing = 0;
-    timing = QInputDialog::getInt(this, "Title", "Poll Timing Interval (ms)", delayedCommand->interval(), 5, 100, 1, &ok );
-
-    if(ok && timing)
-    {
-        delayedCommand->setInterval( timing );
-        qInfo(logSystem()) << "Setting delayed command timing to: " << timing << "ms.";
-    }
 }
+
