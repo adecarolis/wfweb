@@ -29,6 +29,8 @@
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
 
+#include <deque>
+
 namespace Ui {
 class wfmain;
 }
@@ -586,9 +588,9 @@ private:
               cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna};
 
     cmds cmdOut;
-    QVector <cmds> cmdOutQue;
-    QVector <cmds> periodicCmdQueue;
-    QVector <cmds> slowPollCmdQueue;
+    std::deque <cmds> delayedCmdQue;
+    std::deque <cmds> periodicCmdQueue;
+    std::deque <cmds> slowPollCmdQueue;
     void doCmd(cmds cmd);
     int pCmdNum = 0;
     int delayedCmdIntervalLAN_ms = 100;

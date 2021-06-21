@@ -2399,27 +2399,31 @@ void wfmain::sendRadioCommandLoop()
     if(!(loopTickCounter % 2))
     {
         // if ther's a command waiting, run it.
-        if(!cmdOutQue.isEmpty())
+        //if(!cmdOutQue.isEmpty())
+        if(!delayedCmdQue.empty())
         {
-            cmds cmd = cmdOutQue.takeFirst();
+            //cmds cmd = cmdOutQue.takeFirst();
+            cmds cmd = delayedCmdQue.front();
+            delayedCmdQue.pop_front();
             doCmd(cmd);
         } else if(!(loopTickCounter % 10))
         {
             // pick from useful queries to make now and then
-            if(haveRigCaps)
+            if(haveRigCaps && !slowPollCmdQueue.empty())
             {
-                int nCmds = slowPollCmdQueue.length();
-                cmds sCmd = slowPollCmdQueue.at( (slowCmdNum++)%nCmds);
+
+                int nCmds = slowPollCmdQueue.size();
+                cmds sCmd = slowPollCmdQueue[(slowCmdNum++)%nCmds];
                 doCmd(sCmd);
             }
         }
     } else {
         // odd-number ticks:
         // s-meter or other metering
-        if(haveRigCaps)
+        if(haveRigCaps && !periodicCmdQueue.empty())
         {
-            int nCmds = periodicCmdQueue.length();
-            cmds pcmd = periodicCmdQueue.at( (pCmdNum++)%nCmds );
+            int nCmds = periodicCmdQueue.size();
+            cmds pcmd = periodicCmdQueue[ (pCmdNum++)%nCmds ];
             doCmd(pcmd);
         }
     }
@@ -2429,24 +2433,30 @@ void wfmain::sendRadioCommandLoop()
 void wfmain::issueDelayedCommand(cmds cmd)
 {
     // Append to end of command queue
-    cmdOutQue.append(cmd);
+    //cmdOutQue.append(cmd);
+    delayedCmdQue.push_back(cmd);
 }
 
 void wfmain::issueDelayedCommandPriority(cmds cmd)
 {
     // Places the new command at the top of the queue
     // Use only when needed.
-    cmdOutQue.prepend(cmd);
+    //cmdOutQue.prepend(cmd);
+    delayedCmdQue.push_front(cmd);
 }
 
 void wfmain::issueDelayedCommandUnique(cmds cmd)
 {
     // Use this function to insert commands where
     // multiple (redundant) commands don't make sense.
-    if(!cmdOutQue.contains(cmd))
-    {
-        cmdOutQue.prepend(cmd);
-    }
+//    if(!cmdOutQue.contains(cmd))
+//    {
+//        cmdOutQue.prepend(cmd);
+        if( std::find(delayedCmdQue.begin(), delayedCmdQue.end(), cmd ) == delayedCmdQue.end())
+        {
+            delayedCmdQue.push_front(cmd);
+        }
+    //}
 }
 
 void wfmain::receiveRigID(rigCapabilities rigCaps)
@@ -2634,9 +2644,9 @@ void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
     // Typically just metering.
     if(priority < 10)
     {
-        periodicCmdQueue.prepend(cmd);
+        periodicCmdQueue.push_front(cmd);
     } else {
-        periodicCmdQueue.append(cmd);
+        periodicCmdQueue.push_back(cmd);
     }
 }
 
@@ -2647,9 +2657,9 @@ void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority)
     // Basically 20 times less often than the standard peridic command
     if(priority < 10)
     {
-        slowPollCmdQueue.prepend(cmd);
+        slowPollCmdQueue.push_front(cmd);
     } else {
-        slowPollCmdQueue.append(cmd);
+        slowPollCmdQueue.push_back(cmd);
     }
 }
 
@@ -4503,7 +4513,7 @@ void wfmain::powerRigOn()
 void wfmain::powerRigOff()
 {
     delayedCommand->stop();
-    cmdOutQue.clear();
+    delayedCmdQue.clear();
 
     emit sendPowerOff();
 }
