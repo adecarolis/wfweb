@@ -2399,10 +2399,8 @@ void wfmain::sendRadioCommandLoop()
     if(!(loopTickCounter % 2))
     {
         // if ther's a command waiting, run it.
-        //if(!cmdOutQue.isEmpty())
         if(!delayedCmdQue.empty())
         {
-            //cmds cmd = cmdOutQue.takeFirst();
             cmds cmd = delayedCmdQue.front();
             delayedCmdQue.pop_front();
             doCmd(cmd);
@@ -2433,7 +2431,6 @@ void wfmain::sendRadioCommandLoop()
 void wfmain::issueDelayedCommand(cmds cmd)
 {
     // Append to end of command queue
-    //cmdOutQue.append(cmd);
     delayedCmdQue.push_back(cmd);
 }
 
@@ -2441,7 +2438,6 @@ void wfmain::issueDelayedCommandPriority(cmds cmd)
 {
     // Places the new command at the top of the queue
     // Use only when needed.
-    //cmdOutQue.prepend(cmd);
     delayedCmdQue.push_front(cmd);
 }
 
@@ -2449,14 +2445,12 @@ void wfmain::issueDelayedCommandUnique(cmds cmd)
 {
     // Use this function to insert commands where
     // multiple (redundant) commands don't make sense.
-//    if(!cmdOutQue.contains(cmd))
-//    {
-//        cmdOutQue.prepend(cmd);
-        if( std::find(delayedCmdQue.begin(), delayedCmdQue.end(), cmd ) == delayedCmdQue.end())
-        {
-            delayedCmdQue.push_front(cmd);
-        }
-    //}
+
+    if( std::find(delayedCmdQue.begin(), delayedCmdQue.end(), cmd ) == delayedCmdQue.end())
+    {
+        delayedCmdQue.push_front(cmd);
+    }
+
 }
 
 void wfmain::receiveRigID(rigCapabilities rigCaps)

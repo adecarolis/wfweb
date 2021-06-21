@@ -587,7 +587,6 @@ private:
               cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
               cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna};
 
-    cmds cmdOut;
     std::deque <cmds> delayedCmdQue;
     std::deque <cmds> periodicCmdQueue;
     std::deque <cmds> slowPollCmdQueue;
