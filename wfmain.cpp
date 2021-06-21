@@ -4697,5 +4697,13 @@ void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
     emit getFrequency();
+    bool ok;
+    int timing = 0;
+    timing = QInputDialog::getInt(this, "Title", "Poll Timing Interval (ms)", delayedCommand->interval(), 5, 100, 1, &ok );
 
+    if(ok && timing)
+    {
+        delayedCommand->setInterval( timing );
+        qInfo(logSystem()) << "Setting delayed command timing to: " << timing << "ms.";
+    }
 }
