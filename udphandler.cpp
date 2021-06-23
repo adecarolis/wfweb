@@ -299,6 +299,15 @@ void udpHandler::dataReceived()
                     {
                         highBandwidthConnection = true;
                     }
+                    if (!strcmp(in->connection, "WFVIEW"))
+                    {
+                    }
+                    else {
+                        if (rxSetup.codec >= 0x40 || txSetup.codec >= 0x40)
+                        {
+                            emit haveNetworkError(QString("UDP"),QString("Opus codec not supported"));
+                        }
+                    }
 
                     qInfo(logUdp()) << this->metaObject()->className() << ": Detected connection speed " << in->connection;
                 }

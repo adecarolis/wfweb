@@ -518,7 +518,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		}
 	}
 
-    qDebug(logAudio()) << "Got" << setup.bits << "bits, length" << inPacket.data.length();
+    //qDebug(logAudio()) << "Got" << setup.bits << "bits, length" << inPacket.data.length();
 	// Incoming data is 8bits?
 	if (setup.bits == 8)
 	{
@@ -570,7 +570,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	/*	We now have an array of 16bit samples in the NATIVE samplerate of the radio
 		If the radio sample rate is below 48000, we need to resample.
 		*/
-    qDebug(logAudio()) << "Now 16 bit stereo, length" << inPacket.data.length();
+    //qDebug(logAudio()) << "Now 16 bit stereo, length" << inPacket.data.length();
 
 	if (ratioDen != 1) {
 
