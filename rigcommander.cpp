@@ -683,7 +683,12 @@ void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
         {
             payload.append("\x01"); // "normal" on IC-706
         } else {
-            payload.append(modeFilter);
+            if(mode == 0x06)
+            {
+                payload.append(0x01);
+            } else {
+                payload.append(modeFilter);
+            }
         }
 
         prepDataAndSend(payload);
