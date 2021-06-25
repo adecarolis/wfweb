@@ -2233,6 +2233,12 @@ void wfmain::doCmd(commandtype cmddata)
             emit setMode(m);
             break;
         }
+        case cmdSetTxPower:
+        {
+            unsigned char txpower = (*std::static_pointer_cast<unsigned char>(data));
+            emit setTxPower(txpower);
+            break;
+        }
         default:
             doCmd(cmd);
             break;
@@ -2507,17 +2513,47 @@ void wfmain::issueDelayedCommandUnique(cmds cmd)
 
 }
 
-void wfmain::cmdGoToFreq(freqt f)
+void wfmain::issueCmd(cmds cmd, mode_info m)
 {
     commandtype cmddata;
-    cmddata.cmd = cmdSetFreq;
-    cmddata.data = std::shared_ptr<freqt>(new freqt());
-    *static_cast<freqt*>(cmddata.data.get()) = f;
-    //static_cast<freqt*>(cmddata.data.get())->Hz = f.Hz;
-    //static_cast<freqt*>(cmddata.data.get())->MHzDouble = f.MHzDouble;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<mode_info>(new mode_info(m));
+    //*static_cast<mode_info*>(cmddata.data.get()) = mode;
     delayedCmdQue.push_back(cmddata);
 }
 
+void wfmain::issueCmd(cmds cmd, char c)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<char>(new char(c));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, bool b)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<bool>(new bool(b));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, unsigned char c)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<unsigned char>(new unsigned char(c));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, freqt f)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<freqt>(new freqt(f));
+    //*static_cast<freqt*>(cmddata.data.get()) = f;
+    delayedCmdQue.push_back(cmddata);
+}
 
 void wfmain::receiveRigID(rigCapabilities rigCaps)
 {
@@ -3090,7 +3126,8 @@ void wfmain::on_goFreqBtn_clicked()
         {
             f.Hz = freq*1E6;
             //emit setFrequency(f);
-            cmdGoToFreq(f);
+            issueCmd(cmdSetFreq, f);
+            //issueCmdSetFreq(f);
             issueDelayedCommand(cmdGetFreq);
         }
     } else {
@@ -3098,8 +3135,9 @@ void wfmain::on_goFreqBtn_clicked()
         if(ok)
         {
             f.Hz = KHz*1E3;
-            cmdGoToFreq(f);
+            //issueCmdSetFreq(f);
             //emit setFrequency(f);
+            issueCmd(cmdSetFreq, f);
             issueDelayedCommand(cmdGetFreq);
         }
     }
@@ -3355,7 +3393,7 @@ void wfmain::on_freqDial_valueChanged(int value)
         ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 
         //emit setFrequency(f);
-        cmdGoToFreq(f);
+        issueCmd(cmdSetFreq, f);
     } else {
         ui->freqDial->blockSignals(true);
         ui->freqDial->setValue(oldFreqDialVal);
@@ -4791,6 +4829,6 @@ void wfmain::on_debugBtn_clicked()
     qInfo(logSystem()) << "Debug button pressed.";
     freqt f;
     f.Hz = 14290000;
-    cmdGoToFreq(f);
+    issueCmd(cmdSetFreq, f);
 }
 

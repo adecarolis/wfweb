@@ -586,7 +586,7 @@ private:
               cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
               cmdGetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
-              cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
+              cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
               cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
               cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna};
@@ -601,7 +601,12 @@ private:
     std::deque <cmds> slowPollCmdQueue; // slow, regular checking for UI sync
     void doCmd(cmds cmd);
     void doCmd(commandtype cmddata);
-    void cmdGoToFreq(freqt f);
+
+    void issueCmd(cmds cmd, freqt f);
+    void issueCmd(cmds cmd, mode_info m);
+    void issueCmd(cmds cmd, unsigned char c);
+    void issueCmd(cmds cmd, char c);
+    void issueCmd(cmds cmd, bool b);
 
     int pCmdNum = 0;
     int delayedCmdIntervalLAN_ms = 100;
