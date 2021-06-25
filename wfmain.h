@@ -585,8 +585,8 @@ private:
     enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode, cmdGetDataMode, cmdSetModeFilter,
               cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
-              cmdGetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
-              cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
+              cmdGetSql, cmdSetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,
+              cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
               cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
               cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna};
@@ -604,9 +604,17 @@ private:
 
     void issueCmd(cmds cmd, freqt f);
     void issueCmd(cmds cmd, mode_info m);
+    void issueCmd(cmds cmd, int i);
     void issueCmd(cmds cmd, unsigned char c);
     void issueCmd(cmds cmd, char c);
     void issueCmd(cmds cmd, bool b);
+
+    // These commands pop_front and remove similar commands:
+    void issueCmdUniquePriority(cmds cmd, unsigned char c);
+    void issueCmdUniquePriority(cmds cmd, char c);
+    void issueCmdUniquePriority(cmds cmd, freqt f);
+
+    void removeSimilarCommand(cmds cmd);
 
     int pCmdNum = 0;
     int delayedCmdIntervalLAN_ms = 100;

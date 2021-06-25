@@ -1896,7 +1896,8 @@ void wfmain::shortcutMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -1909,7 +1910,8 @@ void wfmain::shortcutPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -1922,7 +1924,8 @@ void wfmain::shortcutShiftMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -1935,7 +1938,8 @@ void wfmain::shortcutShiftPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -1948,7 +1952,8 @@ void wfmain::shortcutControlMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -1961,7 +1966,8 @@ void wfmain::shortcutControlPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -1974,7 +1980,8 @@ void wfmain::shortcutPageUp()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -1987,7 +1994,8 @@ void wfmain::shortcutPageDown()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -2219,6 +2227,8 @@ void wfmain::doCmd(commandtype cmddata)
     cmds cmd = cmddata.cmd;
     std::shared_ptr<void> data = cmddata.data;
 
+    // This switch is for commands with parameters.
+    // the "default" for non-parameter commands is to call doCmd(cmd).
     switch (cmd)
     {
         case cmdSetFreq:
@@ -2233,10 +2243,47 @@ void wfmain::doCmd(commandtype cmddata)
             emit setMode(m);
             break;
         }
+        case cmdSetModeFilter:
+        {
+            mode_info m = (*std::static_pointer_cast<mode_info>(data));
+            emit setMode(m);
+            break;
+        }
         case cmdSetTxPower:
         {
             unsigned char txpower = (*std::static_pointer_cast<unsigned char>(data));
             emit setTxPower(txpower);
+            break;
+        }
+        case cmdSetMicGain:
+        {
+            unsigned char micgain = (*std::static_pointer_cast<unsigned char>(data));
+            emit setTxPower(micgain);
+            break;
+        }
+        case cmdSetModLevel:
+        {
+            unsigned char modlevel = (*std::static_pointer_cast<unsigned char>(data));
+            rigInput currentIn;
+            if(usingDataMode)
+            {
+                currentIn = currentModDataSrc;
+            } else {
+                currentIn = currentModSrc;
+            }
+            emit setModLevel(currentIn, modlevel);
+            break;
+        }
+        case cmdSetSql:
+        {
+            unsigned char sqlLevel = (*std::static_pointer_cast<unsigned char>(data));
+            emit setSql(sqlLevel);
+            break;
+        }
+        case cmdSetPTT:
+        {
+            bool pttrequest = (*std::static_pointer_cast<bool>(data));
+            emit setPTT(pttrequest);
             break;
         }
         default:
@@ -2420,6 +2467,7 @@ void wfmain::doCmd(cmds cmd)
             }
             break;
         default:
+            qInfo(logSystem()) << __PRETTY_FUNCTION__ << "WARNING: Command fell through of type: " << (unsigned int)cmd;
             break;
     }
 }
@@ -2522,6 +2570,23 @@ void wfmain::issueCmd(cmds cmd, mode_info m)
     delayedCmdQue.push_back(cmddata);
 }
 
+void wfmain::issueCmd(cmds cmd, freqt f)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<freqt>(new freqt(f));
+    //*static_cast<freqt*>(cmddata.data.get()) = f;
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, int i)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<int>(new int(i));
+    delayedCmdQue.push_back(cmddata);
+}
+
 void wfmain::issueCmd(cmds cmd, char c)
 {
     commandtype cmddata;
@@ -2546,13 +2611,47 @@ void wfmain::issueCmd(cmds cmd, unsigned char c)
     delayedCmdQue.push_back(cmddata);
 }
 
-void wfmain::issueCmd(cmds cmd, freqt f)
+void wfmain::issueCmdUniquePriority(cmds cmd, unsigned char c)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<unsigned char>(new unsigned char(c));
+    delayedCmdQue.push_front(cmddata);
+    removeSimilarCommand(cmd);
+}
+
+void wfmain::issueCmdUniquePriority(cmds cmd, char c)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<char>(new char(c));
+    delayedCmdQue.push_front(cmddata);
+    removeSimilarCommand(cmd);
+}
+
+void wfmain::issueCmdUniquePriority(cmds cmd, freqt f)
 {
     commandtype cmddata;
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<freqt>(new freqt(f));
-    //*static_cast<freqt*>(cmddata.data.get()) = f;
-    delayedCmdQue.push_back(cmddata);
+    delayedCmdQue.push_front(cmddata);
+    removeSimilarCommand(cmd);
+}
+
+void wfmain::removeSimilarCommand(cmds cmd)
+{
+    // pop anything out that is of the same kind of command:
+    // pop anything out that is of the same kind of command:
+    // Start at 1 since we put one in at zero that we want to keep.
+    for(unsigned int i=1; i < delayedCmdQue.size(); i++)
+    {
+        if(delayedCmdQue.at(i).cmd == cmd)
+        {
+            //delayedCmdQue[i].cmd = cmdNone;
+            delayedCmdQue.erase(delayedCmdQue.begin()+i);
+            // i -= 1;
+        }
+    }
 }
 
 void wfmain::receiveRigID(rigCapabilities rigCaps)
@@ -2920,7 +3019,8 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 
         freq.Hz = roundFrequency(freq.Hz, tsWfScrollHz);
 
-        emit setFrequency(freq);
+        //emit setFrequency(freq);
+        issueCmd(cmdSetFreq, freq);
         issueDelayedCommand(cmdGetFreq);
         showStatusBarText(QString("Going to %1 MHz").arg(x));
     }
@@ -2941,7 +3041,8 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
 
         freq.Hz = roundFrequency(freq.Hz, tsWfScrollHz);
 
-        emit setFrequency(freq);
+        //emit setFrequency(freq);
+        issueCmd(cmdSetFreq, freq);
         issueDelayedCommand(cmdGetFreq);
         showStatusBarText(QString("Going to %1 MHz").arg(x));
     }
@@ -2994,7 +3095,8 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     f.MHzDouble = f.Hz / (double)1E6;
     freq = f;
 
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmdUniquePriority(cmdSetFreq, f);
     ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -3393,7 +3495,7 @@ void wfmain::on_freqDial_valueChanged(int value)
         ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 
         //emit setFrequency(f);
-        issueCmd(cmdSetFreq, f);
+        issueCmdUniquePriority(cmdSetFreq, f);
     } else {
         ui->freqDial->blockSignals(true);
         ui->freqDial->setValue(oldFreqDialVal);
@@ -3407,7 +3509,8 @@ void wfmain::receiveBandStackReg(freqt freq, char mode, char filter, bool dataOn
     // read the band stack and apply by sending out commands
 
     qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freq.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
-    emit setFrequency(freq);
+    //emit setFrequency(freq);
+    issueCmd(cmdSetFreq, freq);
     setModeVal = (unsigned char) mode;
     setFilterVal = (unsigned char) filter;
 
@@ -3473,9 +3576,10 @@ void wfmain::on_band4mbtn_clicked()
     } else {
         f.Hz = (70.200) * 1E6;
     }
-    emit setFrequency(f);
-        issueDelayedCommandUnique(cmdGetFreq);
-        ui->tabWidget->setCurrentIndex(0);
+    issueCmd(cmdSetFreq, f);
+    //emit setFrequency(f);
+    issueDelayedCommandUnique(cmdGetFreq);
+    ui->tabWidget->setCurrentIndex(0);
 }
 
 void wfmain::on_band6mbtn_clicked()
@@ -3539,7 +3643,8 @@ void wfmain::on_band60mbtn_clicked()
     // clutter the UI with 60M channel buttons...
     freqt f;
     f.Hz = (5.3305) * 1E6;
-    emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
+    //emit setFrequency(f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
 }
@@ -3560,7 +3665,8 @@ void wfmain::on_band630mbtn_clicked()
 {
     freqt f;
     f.Hz = 475 * 1E3;
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
 }
@@ -3569,7 +3675,8 @@ void wfmain::on_band2200mbtn_clicked()
 {
     freqt f;
     f.Hz = 136 * 1E3;
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
 }
@@ -3985,7 +4092,8 @@ void wfmain::on_udpServerSetupBtn_clicked()
 }
 void wfmain::on_sqlSlider_valueChanged(int value)
 {
-    emit setSql((unsigned char)value);
+    issueCmd(cmdSetSql, (unsigned char)value);
+    //emit setSql((unsigned char)value);
 }
 
 void wfmain::on_modeFilterCombo_activated(int index)
@@ -4276,7 +4384,8 @@ void wfmain::receiveAntiVoxGain(unsigned char antiVoxGain)
 
 void wfmain::on_txPowerSlider_valueChanged(int value)
 {
-    emit setTxPower(value);
+    issueCmdUniquePriority(cmdSetTxPower, (unsigned char)value);
+    //emit setTxPower(value);
 }
 
 void wfmain::on_micGainSlider_valueChanged(int value)
@@ -4393,16 +4502,7 @@ void wfmain::changeModLabel(rigInput input, bool updateLevel)
 void wfmain::processChangingCurrentModLevel(unsigned char level)
 {
     // slider moved, so find the current mod and issue the level set command.
-    rigInput currentIn;
-    if(usingDataMode)
-    {
-        currentIn = currentModDataSrc;
-    } else {
-        currentIn = currentModSrc;
-    }
-    //qInfo(logSystem()) << __func__ << ": setting current level: " << level;
-
-    emit setModLevel(currentIn, level);
+    issueCmd(cmdSetModLevel, level);
 }
 
 void wfmain::on_tuneLockChk_clicked(bool checked)
