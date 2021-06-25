@@ -30,6 +30,7 @@
 #include <qserialportinfo.h>
 
 #include <deque>
+#include <memory>
 
 namespace Ui {
 class wfmain;
@@ -58,6 +59,7 @@ signals:
     void setFrequency(freqt freq);
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
+    void setMode(mode_info);
     void setDataMode(bool dataOn, unsigned char filter);
     void getDataMode();
     void getModInput(bool dataOn);
@@ -580,7 +582,7 @@ private:
     unsigned char setModeVal=0;
     unsigned char setFilterVal=0;
 
-    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetModeFilter,
+    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode, cmdGetDataMode, cmdSetModeFilter,
               cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
               cmdGetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
@@ -589,10 +591,18 @@ private:
               cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
               cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna};
 
-    std::deque <cmds> delayedCmdQue;
-    std::deque <cmds> periodicCmdQueue;
-    std::deque <cmds> slowPollCmdQueue;
+    struct commandtype {
+        cmds cmd;
+        std::shared_ptr<void> data;
+    };
+
+    std::deque <commandtype> delayedCmdQue;    // rapid que for commands to the radio
+    std::deque <cmds> periodicCmdQueue; // rapid que for metering
+    std::deque <cmds> slowPollCmdQueue; // slow, regular checking for UI sync
     void doCmd(cmds cmd);
+    void doCmd(commandtype cmddata);
+    void cmdGoToFreq(freqt f);
+
     int pCmdNum = 0;
     int delayedCmdIntervalLAN_ms = 100;
     int delayedCmdIntervalSerial_ms = 100;

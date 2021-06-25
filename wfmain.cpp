@@ -2214,6 +2214,33 @@ void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
     }
 }
 
+void wfmain::doCmd(commandtype cmddata)
+{
+    cmds cmd = cmddata.cmd;
+    std::shared_ptr<void> data = cmddata.data;
+
+    switch (cmd)
+    {
+        case cmdSetFreq:
+        {
+            freqt f = (*std::static_pointer_cast<freqt>(data));
+            emit setFrequency(f);
+            break;
+        }
+        case cmdSetMode:
+        {
+            mode_info m = (*std::static_pointer_cast<mode_info>(data));
+            emit setMode(m);
+            break;
+        }
+        default:
+            doCmd(cmd);
+            break;
+    }
+
+}
+
+
 void wfmain::doCmd(cmds cmd)
 {
     // Use this function to take action upon a command.
@@ -2401,9 +2428,9 @@ void wfmain::sendRadioCommandLoop()
         // if ther's a command waiting, run it.
         if(!delayedCmdQue.empty())
         {
-            cmds cmd = delayedCmdQue.front();
+            commandtype cmddata = delayedCmdQue.front();
             delayedCmdQue.pop_front();
-            doCmd(cmd);
+            doCmd(cmddata);
         } else if(!(loopTickCounter % 10))
         {
             // pick from useful queries to make now and then
@@ -2431,14 +2458,20 @@ void wfmain::sendRadioCommandLoop()
 void wfmain::issueDelayedCommand(cmds cmd)
 {
     // Append to end of command queue
-    delayedCmdQue.push_back(cmd);
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = NULL;
+    delayedCmdQue.push_back(cmddata);
 }
 
 void wfmain::issueDelayedCommandPriority(cmds cmd)
 {
     // Places the new command at the top of the queue
     // Use only when needed.
-    delayedCmdQue.push_front(cmd);
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = NULL;
+    delayedCmdQue.push_front(cmddata);
 }
 
 void wfmain::issueDelayedCommandUnique(cmds cmd)
@@ -2446,12 +2479,45 @@ void wfmain::issueDelayedCommandUnique(cmds cmd)
     // Use this function to insert commands where
     // multiple (redundant) commands don't make sense.
 
-    if( std::find(delayedCmdQue.begin(), delayedCmdQue.end(), cmd ) == delayedCmdQue.end())
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = NULL;
+
+    // The following is both expensive and not that great,
+    // since it does not check if the arguments are the same.
+    bool found = false;
+    for(unsigned int i=0; i < delayedCmdQue.size(); i++)
     {
-        delayedCmdQue.push_front(cmd);
+        if(delayedCmdQue.at(i).cmd == cmd)
+        {
+            found = true;
+            break;
+        }
     }
 
+    if(!found)
+    {
+        delayedCmdQue.push_front(cmddata);
+    }
+
+//    if( std::find(delayedCmdQue.begin(), delayedCmdQue.end(), cmddata ) == delayedCmdQue.end())
+//    {
+//        delayedCmdQue.push_front(cmddata);
+//    }
+
 }
+
+void wfmain::cmdGoToFreq(freqt f)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmdSetFreq;
+    cmddata.data = std::shared_ptr<freqt>(new freqt());
+    *static_cast<freqt*>(cmddata.data.get()) = f;
+    //static_cast<freqt*>(cmddata.data.get())->Hz = f.Hz;
+    //static_cast<freqt*>(cmddata.data.get())->MHzDouble = f.MHzDouble;
+    delayedCmdQue.push_back(cmddata);
+}
+
 
 void wfmain::receiveRigID(rigCapabilities rigCaps)
 {
@@ -3023,7 +3089,8 @@ void wfmain::on_goFreqBtn_clicked()
         if(ok)
         {
             f.Hz = freq*1E6;
-            emit setFrequency(f);
+            //emit setFrequency(f);
+            cmdGoToFreq(f);
             issueDelayedCommand(cmdGetFreq);
         }
     } else {
@@ -3031,7 +3098,8 @@ void wfmain::on_goFreqBtn_clicked()
         if(ok)
         {
             f.Hz = KHz*1E3;
-            emit setFrequency(f);
+            cmdGoToFreq(f);
+            //emit setFrequency(f);
             issueDelayedCommand(cmdGetFreq);
         }
     }
@@ -3286,7 +3354,8 @@ void wfmain::on_freqDial_valueChanged(int value)
 
         ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 
-        emit setFrequency(f);
+        //emit setFrequency(f);
+        cmdGoToFreq(f);
     } else {
         ui->freqDial->blockSignals(true);
         ui->freqDial->setValue(oldFreqDialVal);
@@ -4720,6 +4789,8 @@ void wfmain::on_pollingBtn_clicked()
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    emit getFrequency();
+    freqt f;
+    f.Hz = 14290000;
+    cmdGoToFreq(f);
 }
 
