@@ -3870,7 +3870,7 @@ void wfmain::on_pttOnBtn_clicked()
 
     // Are we already PTT? Not a big deal, just send again anyway.
     showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
-    emit setPTT(true);
+    issueCmd(cmdSetPTT, true);
     // send PTT
     // Start 3 minute timer
     pttTimer->start();
@@ -3881,7 +3881,7 @@ void wfmain::on_pttOffBtn_clicked()
 {
     // Send the PTT OFF command (more than once?)
     showStatusBarText("Sending PTT OFF command");
-    emit setPTT(false);
+    issueCmd(cmdSetPTT, false);
 
     // Stop the 3 min timer
     pttTimer->stop();
@@ -3892,7 +3892,7 @@ void wfmain::handlePttLimit()
 {
     // transmission time exceeded!
     showStatusBarText("Transmit timeout at 3 minutes. Sending PTT OFF command now.");
-    emit setPTT(false);
+    issueCmd(cmdSetPTT, false);
     issueDelayedCommand(cmdGetPTT);
 }
 
@@ -4146,7 +4146,7 @@ void wfmain::on_transmitBtn_clicked()
 
         // Are we already PTT? Not a big deal, just send again anyway.
         showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
-        emit setPTT(true);
+        issueCmd(cmdSetPTT, true);
         // send PTT
         // Start 3 minute timer
         pttTimer->start();
@@ -4155,7 +4155,7 @@ void wfmain::on_transmitBtn_clicked()
 
     } else {
         // Currently transmitting
-        emit setPTT(false);
+        issueCmd(cmdSetPTT, false);
         pttTimer->stop();
         issueDelayedCommandPriority(cmdGetPTT);
     }
