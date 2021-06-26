@@ -21,11 +21,11 @@ redhat7 		-- no qt support
 Debian 11  (Debian 10 is outdated)
 Fedora 33
 Fedora 34
-mint 20.1 
+mint 20.1 (and up?)
 openSUSE 15.x
 openSUSE Tumbleweed
 SLES 15.x
-Ubuntu 20.04.2
+Ubuntu 20.04.2 and up (?)
 ~~~
 
 
@@ -63,6 +63,10 @@ wfview
 sudo apt install libqcustomplot2.0 libqt5multimedia5 libqt5serialport5
 sudo ln  -s  /usr/lib64/libqcustomplot-qt5.so.2 /usr/lib64/libqcustomplot.so.2
 wfview
+
+note: if the above symlink fails, use the following line to fix the library link:
+
+sudo ln -s /lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /lib/x86_64-linux-gnu/libqcustomplot.so.2
 ~~~
 
 ### openSUSE/Tumbleweed/SLES:
@@ -76,6 +80,11 @@ wfview
 sudo apt install libqcustomplot2.0 libqt5multimedia5 libqt5serialport5
 sudo ln -s /usr/lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /usr/lib/x86_64-linux-gnu/libqcustomplot.so.2
 wfview
+
+
+note: if the above symlink fails, use the following line to fix the library link:
+
+sudo ln -s /lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /lib/x86_64-linux-gnu/libqcustomplot.so.2
 ~~~
 
 

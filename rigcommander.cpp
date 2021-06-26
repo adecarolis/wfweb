@@ -665,6 +665,28 @@ void rigCommander::setRitValue(int ritValue)
     prepDataAndSend(payload);
 }
 
+void rigCommander::setMode(mode_info m)
+{
+    QByteArray payload;
+
+    if(rigCaps.model==model706)
+    {
+        m.filter = '\x01';
+    }
+    if(m.mk == modeWFM)
+    {
+        m.filter = '\x01';
+    }
+
+    payload.setRawData("\x06", 1);
+    payload.append(m.reg);
+    payload.append(m.filter);
+
+    prepDataAndSend(payload);
+    rigState.mode = m.reg;
+    rigState.filter = m.filter;
+}
+
 void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
 {
     QByteArray payload;
@@ -683,7 +705,12 @@ void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
         {
             payload.append("\x01"); // "normal" on IC-706
         } else {
-            payload.append(modeFilter);
+            if(mode == 0x06)
+            {
+                payload.append(0x01);
+            } else {
+                payload.append(modeFilter);
+            }
         }
 
         prepDataAndSend(payload);
