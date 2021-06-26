@@ -4236,7 +4236,7 @@ void wfmain::statusFromSliderRaw(QString name, int rawValue)
 
 void wfmain::statusFromSliderPercent(QString name, int rawValue)
 {
-    showStatusBarText(name + QString(": %1\%").arg((int)(100*rawValue/255.0)));
+    showStatusBarText(name + QString(": %1%").arg((int)(100*rawValue/255.0)));
 }
 
 void wfmain::receiveTxPower(unsigned char power)
