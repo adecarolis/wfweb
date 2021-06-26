@@ -450,6 +450,8 @@ private slots:
 
     void on_wfLengthSlider_valueChanged(int value);
 
+    void on_pollingBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
