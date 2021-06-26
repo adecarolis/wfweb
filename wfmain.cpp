@@ -2233,6 +2233,11 @@ void wfmain::doCmd(commandtype cmddata)
     std::shared_ptr<void> data = cmddata.data;
     // This switch is for commands with parameters.
     // the "default" for non-parameter commands is to call doCmd(cmd).
+    if (data == nullptr)
+    {
+        qInfo(logSystem()) << __PRETTY_FUNCTION__ << "WARNING: data is null";
+        return;
+    }
 
     switch (cmd)
     {
@@ -2250,14 +2255,8 @@ void wfmain::doCmd(commandtype cmddata)
         }
         case cmdSetModeFilter:
         {
-            if (data == nullptr)
-            {
-                qInfo(logSystem()) << __PRETTY_FUNCTION__ << "WARNING: data is null";
-            }
-            else {
-                mode_info m = (*std::static_pointer_cast<mode_info>(data));
-                emit setMode(m);
-            }
+            mode_info m = (*std::static_pointer_cast<mode_info>(data));
+            emit setMode(m);
             break;
         }
         case cmdSetTxPower:
