@@ -2261,6 +2261,12 @@ void wfmain::doCmd(commandtype cmddata)
             emit setTxPower(micgain);
             break;
         }
+        case cmdSetRxRfGain:
+        {
+            unsigned char rfgain = (*std::static_pointer_cast<unsigned char>(data));
+            emit setRfGain(rfgain);
+            break;
+        }
         case cmdSetModLevel:
         {
             unsigned char modlevel = (*std::static_pointer_cast<unsigned char>(data));
@@ -2274,6 +2280,12 @@ void wfmain::doCmd(commandtype cmddata)
             emit setModLevel(currentIn, modlevel);
             break;
         }
+        case cmdSetAfGain:
+        {
+            unsigned char afgain = (*std::static_pointer_cast<unsigned char>(data));
+            emit setAfGain(afgain);
+            break;
+        }
         case cmdSetSql:
         {
             unsigned char sqlLevel = (*std::static_pointer_cast<unsigned char>(data));
@@ -2284,6 +2296,12 @@ void wfmain::doCmd(commandtype cmddata)
         {
             bool pttrequest = (*std::static_pointer_cast<bool>(data));
             emit setPTT(pttrequest);
+            break;
+        }
+        case cmdSetATU:
+        {
+            bool atuOn = (*std::static_pointer_cast<bool>(data));
+            emit setATU(atuOn);
             break;
         }
         default:
@@ -2402,6 +2420,9 @@ void wfmain::doCmd(cmds cmd)
             break;
         case cmdGetATUStatus:
             emit getATUStatus();
+            break;
+        case cmdStartATU:
+            emit startATU();
             break;
         case cmdGetAttenuator:
             emit getAttenuator();
@@ -2609,6 +2630,15 @@ void wfmain::issueCmd(cmds cmd, unsigned char c)
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<unsigned char>(new unsigned char(c));
     delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmdUniquePriority(cmds cmd, bool b)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<bool>(new bool(b));
+    delayedCmdQue.push_front(cmddata);
+    removeSimilarCommand(cmd);
 }
 
 void wfmain::issueCmdUniquePriority(cmds cmd, unsigned char c)
@@ -3804,13 +3834,12 @@ void wfmain::on_fRclBtn_clicked()
 
 void wfmain::on_rfGainSlider_valueChanged(int value)
 {
-    emit setRfGain((unsigned char) value);
+    issueCmdUniquePriority(cmdSetRxRfGain, (unsigned char) value);
 }
 
 void wfmain::on_afGainSlider_valueChanged(int value)
 {
-    // qInfo(logSystem()) << "Setting AF gain to " << value;
-    emit setAfGain((unsigned char)value);
+    issueCmdUniquePriority(cmdSetAfGain, (unsigned char)value);
 }
 
 void wfmain::receiveRfGain(unsigned char level)
@@ -3836,14 +3865,14 @@ void wfmain::receiveSql(unsigned char level)
 
 void wfmain::on_tuneNowBtn_clicked()
 {
-    emit startATU();
+    issueDelayedCommand(cmdStartATU);
     showStatusBarText("Starting ATU tuning cycle...");
     issueDelayedCommand(cmdGetATUStatus);
 }
 
 void wfmain::on_tuneEnableChk_clicked(bool checked)
 {
-    emit setATU(checked);
+    issueCmd(cmdSetATU, checked);
     if(checked)
     {
         showStatusBarText("Turning on ATU");
@@ -3870,7 +3899,7 @@ void wfmain::on_pttOnBtn_clicked()
 
     // Are we already PTT? Not a big deal, just send again anyway.
     showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
-    issueCmd(cmdSetPTT, true);
+    issueCmdUniquePriority(cmdSetPTT, true);
     // send PTT
     // Start 3 minute timer
     pttTimer->start();
@@ -3881,7 +3910,7 @@ void wfmain::on_pttOffBtn_clicked()
 {
     // Send the PTT OFF command (more than once?)
     showStatusBarText("Sending PTT OFF command");
-    issueCmd(cmdSetPTT, false);
+    issueCmdUniquePriority(cmdSetPTT, false);
 
     // Stop the 3 min timer
     pttTimer->stop();
@@ -3892,7 +3921,7 @@ void wfmain::handlePttLimit()
 {
     // transmission time exceeded!
     showStatusBarText("Transmit timeout at 3 minutes. Sending PTT OFF command now.");
-    issueCmd(cmdSetPTT, false);
+    issueCmdUniquePriority(cmdSetPTT, false);
     issueDelayedCommand(cmdGetPTT);
 }
 
@@ -4146,18 +4175,18 @@ void wfmain::on_transmitBtn_clicked()
 
         // Are we already PTT? Not a big deal, just send again anyway.
         showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
-        issueCmd(cmdSetPTT, true);
+        issueCmdUniquePriority(cmdSetPTT, true);
         // send PTT
         // Start 3 minute timer
         pttTimer->start();
-        issueDelayedCommandPriority(cmdGetPTT);
+        issueDelayedCommand(cmdGetPTT);
         //changeTxBtn();
 
     } else {
         // Currently transmitting
-        issueCmd(cmdSetPTT, false);
+        issueCmdUniquePriority(cmdSetPTT, false);
         pttTimer->stop();
-        issueDelayedCommandPriority(cmdGetPTT);
+        issueDelayedCommand(cmdGetPTT);
     }
 }
 
