@@ -2248,12 +2248,6 @@ void wfmain::doCmd(commandtype cmddata)
             emit setMode(m);
             break;
         }
-        case cmdSetModeFilter:
-        {
-            mode_info m = (*std::static_pointer_cast<mode_info>(data));
-            emit setMode(m);
-            break;
-        }
         case cmdSetTxPower:
         {
             unsigned char txpower = (*std::static_pointer_cast<unsigned char>(data));
