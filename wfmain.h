@@ -721,6 +721,7 @@ private:
     rigInput currentModSrc = inputUnknown;
     rigInput currentModDataSrc = inputUnknown;
     mode_kind currentMode = modeUSB;
+    mode_info currentModeInfo;
 
     bool haveRigCaps;
     bool amTransmitting;
@@ -770,6 +771,7 @@ private:
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
 Q_DECLARE_METATYPE(struct freqt)
+Q_DECLARE_METATYPE(struct mode_info)
 Q_DECLARE_METATYPE(struct udpPreferences)
 Q_DECLARE_METATYPE(struct rigStateStruct)
 Q_DECLARE_METATYPE(struct audioPacket)

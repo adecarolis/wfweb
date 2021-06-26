@@ -39,6 +39,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType<meterKind>();
     qRegisterMetaType<spectrumMode>();
     qRegisterMetaType<freqt>();
+    qRegisterMetaType<mode_info>();
     qRegisterMetaType<audioPacket>();
     qRegisterMetaType <audioSetup>();
 
@@ -262,6 +263,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setScopeFixedEdge(double,double,unsigned char)), rig, SLOT(setSpectrumBounds(double,double,unsigned char)));
 
     connect(this, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
+    connect(this, SIGNAL(setMode(mode_info)), rig, SLOT(setMode(mode_info)));
 
     // Levels (read and write)
     // Levels: Query:
@@ -2587,7 +2589,6 @@ void wfmain::issueCmd(cmds cmd, mode_info m)
     commandtype cmddata;
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<mode_info>(new mode_info(m));
-    //*static_cast<mode_info*>(cmddata.data.get()) = mode;
     delayedCmdQue.push_back(cmddata);
 }
 
@@ -3429,17 +3430,35 @@ void wfmain::on_modeSelectCombo_activated(int index)
     // The "acticvated" signal means the user initiated a mode change.
     // This function is not called if code initated the change.
 
+    mode_info mode;
     unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->itemData(index).toUInt());
     currentModeIndex = newMode;
+    mode.reg = newMode;
+
 
     int filterSelection = ui->modeFilterCombo->currentData().toInt();
     if(filterSelection == 99)
     {
         // oops, we forgot to reset the combo box
+        return;
     } else {
         //qInfo(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
         currentMode = (mode_kind)newMode;
-        emit setMode(newMode, filterSelection);
+        mode.filter = filterSelection;
+        mode.name = ui->modeSelectCombo->currentText(); // for debug
+
+        for(unsigned int i=0; i < rigCaps.modes.size(); i++)
+        {
+            if(rigCaps.modes.at(i).reg == newMode)
+            {
+                mode.mk = rigCaps.modes.at(i).mk;
+                break;
+            }
+        }
+
+        issueCmd(cmdSetMode, mode);
+        currentModeInfo = mode;
+        //emit setMode(newMode, filterSelection);
     }
 }
 
@@ -4473,7 +4492,6 @@ void wfmain::on_modInputDataCombo_activated(int index)
     (void)index;
 }
 
-
 void wfmain::changeModLabelAndSlider(rigInput source)
 {
     changeModLabel(source, true);
@@ -4483,7 +4501,6 @@ void wfmain::changeModLabel(rigInput input)
 {
     changeModLabel(input, false);
 }
-
 
 void wfmain::changeModLabel(rigInput input, bool updateLevel)
 {

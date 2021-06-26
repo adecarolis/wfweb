@@ -665,6 +665,28 @@ void rigCommander::setRitValue(int ritValue)
     prepDataAndSend(payload);
 }
 
+void rigCommander::setMode(mode_info m)
+{
+    QByteArray payload;
+
+    if(rigCaps.model==model706)
+    {
+        m.filter = '\x01';
+    }
+    if(m.mk == modeWFM)
+    {
+        m.filter = '\x01';
+    }
+
+    payload.setRawData("\x06", 1);
+    payload.append(m.reg);
+    payload.append(m.filter);
+
+    prepDataAndSend(payload);
+    rigState.mode = m.reg;
+    rigState.filter = m.filter;
+}
+
 void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
 {
     QByteArray payload;

@@ -119,6 +119,7 @@ public slots:
     void setFrequency(freqt freq);
     void getFrequency();
     void setMode(unsigned char mode, unsigned char modeFilter);
+    void setMode(mode_info);
     void getMode();
     void setDataMode(bool dataOn, unsigned char filter);
     void getDataMode();
