@@ -2231,14 +2231,9 @@ void wfmain::doCmd(commandtype cmddata)
 {
     cmds cmd = cmddata.cmd;
     std::shared_ptr<void> data = cmddata.data;
+
     // This switch is for commands with parameters.
     // the "default" for non-parameter commands is to call doCmd(cmd).
-    if (data == nullptr)
-    {
-        qInfo(logSystem()) << __PRETTY_FUNCTION__ << "WARNING: data is null";
-        return;
-    }
-
     switch (cmd)
     {
         case cmdSetFreq:
