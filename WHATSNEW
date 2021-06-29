@@ -1,7 +1,7 @@
 
 The following highlights are in this dot-release:
 
-     added IC7700
+     added IC7700, 718, 7100. (more testing needed)
      fixes and improvements to audio
      ability to choose between rtaudio and qtmultimedia (default) as compile time option
      fixes and lots of improvements at the usb-server end
