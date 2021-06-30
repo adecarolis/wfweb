@@ -31,6 +31,8 @@
 #include <qserialportinfo.h>
 #include "shuttle.h"
 
+#include <deque>
+
 namespace Ui {
 class wfmain;
 }
@@ -147,6 +149,7 @@ signals:
     void openShuttle();
 
 private slots:
+    void updateSizes(int tabIndex);
     void shortcutF1();
     void shortcutF2();
     void shortcutF3();
@@ -240,8 +243,7 @@ private slots:
     void handleWFDoubleClick(QMouseEvent *);
     void handleWFScroll(QWheelEvent *);
     void handlePlotScroll(QWheelEvent *);
-    void runDelayedCommand();
-    void runPeriodicCommands();
+    void sendRadioCommandLoop();
     void showStatusBarText(QString text);
     void serverConfigRequested(SERVERCONFIG conf, bool store);
     void receiveBaudRate(quint32 baudrate);
@@ -458,6 +460,8 @@ private slots:
 
     void on_wfLengthSlider_valueChanged(int value);
 
+    void on_pollingBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -472,6 +476,7 @@ private:
     void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
+    void showHideSpectrum(bool show);
     void getInitialRigState();
     void setBandButtons();
     void showButton(QPushButton *btn);
@@ -519,6 +524,8 @@ private:
     QShortcut *keyF;
     QShortcut *keyM;
 
+    QShortcut *keyDebug;
+
 
     rigCommander * rig=Q_NULLPTR;
     QThread* rigThread = Q_NULLPTR;
@@ -526,8 +533,9 @@ private:
     QCPColorMapData * colorMapData;
     QCPColorScale * colorScale;
     QTimer * delayedCommand;
-    QTimer * periodicPollingTimer;
     QTimer * pttTimer;
+    uint16_t loopTickCounter;
+    uint16_t slowCmdNum;
 
     void setupPlots();
     void makeRig();
@@ -568,6 +576,7 @@ private:
     int smeterPos=0;
 
     QVector <QByteArray> wfimage;
+    unsigned int wfLengthMax;
 
     bool onFullscreen;
     bool drawPeaks;
@@ -588,16 +597,18 @@ private:
               cmdGetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
               cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
-              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter,
+              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
               cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna};
 
-    cmds cmdOut;
-    QVector <cmds> cmdOutQue;
-    QVector <cmds> periodicCmdQueue;
+    std::deque <cmds> delayedCmdQue;
+    std::deque <cmds> periodicCmdQueue;
+    std::deque <cmds> slowPollCmdQueue;
+    void doCmd(cmds cmd);
     int pCmdNum = 0;
     int delayedCmdIntervalLAN_ms = 100;
     int delayedCmdIntervalSerial_ms = 100;
     int delayedCmdStartupInterval_ms = 100;
+    bool runPeriodicCommands;
     bool usingLAN = false;
 
     freqMemory mem;
@@ -671,6 +682,8 @@ private:
     void issueDelayedCommandPriority(cmds cmd);
     void issueDelayedCommandUnique(cmds cmd);
     void changeSliderQuietly(QSlider *slider, int value);
+    void statusFromSliderPercent(QString name, int percentValue);
+    void statusFromSliderRaw(QString name, int rawValue);
 
     void processModLevel(rigInput source, unsigned char level);
 
@@ -683,6 +696,7 @@ private:
 
     void initPeriodicCommands();
     void insertPeriodicCommand(cmds cmd, unsigned char priority);
+    void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
     void calculateTimingParameters();
 
     void changeMode(mode_kind mode);

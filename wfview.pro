@@ -31,7 +31,10 @@ linux:QMAKE_LFLAGS += -O2 -s
 DEFINES += QT_DEPRECATED_WARNINGS
 DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 
+
 # These defines are used for the resampler
+equals(QT_ARCH, i386): DEFINES += USE_SSE
+equals(QT_ARCH, arm): DEFINES += USE_NEON
 DEFINES += OUTSIDE_SPEEX
 DEFINES += RANDOM_PREFIX=wf
 
@@ -107,7 +110,7 @@ win32:INCLUDEPATH += ../hidapi/hidapi
 
 !linux:INCLUDEPATH += ../qcustomplot
 
-INCLUDEPATH += opus-tools/src
+INCLUDEPATH += resampler
 !linux:INCLUDEPATH += rtaudio
 
 SOURCES += main.cpp\
@@ -126,7 +129,7 @@ SOURCES += main.cpp\
     meter.cpp \
     qledlabel.cpp \
     pttyhandler.cpp \
-    opus-tools/src/resample.c \
+    resampler/resample.c \
     repeatersetup.cpp \
     rigctld.cpp \
     ring/ring.cpp \
@@ -148,9 +151,9 @@ HEADERS  += wfmain.h \
     meter.h \
     qledlabel.h \
     pttyhandler.h \
-    opus-tools/src/speex_resampler.h \
-    opus-tools/src/arch.h \
-    opus-tools/src/resample_sse.h \
+    resampler/speex_resampler.h \
+    resampler/arch.h \
+    resampler/resample_sse.h \
     repeatersetup.h \
     repeaterattributes.h \
     rigctld.h \

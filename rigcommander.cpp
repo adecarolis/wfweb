@@ -362,6 +362,10 @@ void rigCommander::setSpectrumBounds(double startFreq, double endFreq, unsigned 
             if(startFreq > 400.0)
                 freqRange++;
             break;
+        case modelR8600:
+            freqRange = 1;
+            edgeNumber = 1;
+            break;
         default:
             return;
             break;
@@ -429,7 +433,7 @@ void rigCommander::setScopeSpan(char span)
     // See ICD, page 165, "19-12".
     // 2.5k = 0
     // 5k = 2, etc.
-    if((span <0 ) || (span >7))
+    if((span <0 ) || (span >9))
             return;
 
     QByteArray payload;
@@ -463,6 +467,12 @@ void rigCommander::setScopeSpan(char span)
             break;
         case 7:
             freq = 500.0E-3;
+            break;
+        case 8:
+            freq = 1000.0E-3;
+            break;
+        case 9:
+            freq = 2500.0E-3;
             break;
         default:
             return;
@@ -1090,6 +1100,12 @@ void rigCommander::parseData(QByteArray dataInput)
                 // payload = getpayload(data); // or something
                 // parse (payload); // recursive ok?
                 payloadIn = data.right(data.length() - 4);
+                if(payloadIn.contains("\xFE"))
+                {
+                    //qDebug(logRig()) << "Corrupted data contains FE within message body: ";
+                    //printHex(payloadIn);
+                    break;
+                }
                 parseCommand();
                 break;
             case '\x00':
@@ -1100,9 +1116,15 @@ void rigCommander::parseData(QByteArray dataInput)
                     // This is an echo of our own broadcast request.
                     // The data are "to 00" and "from E1"
                     // Don't use it!
-                    qDebug(logRig()) << "Caught it! Found the echo'd broadcast request from us!";
+                    qDebug(logRig()) << "Caught it! Found the echo'd broadcast request from us! Rig has not responded to broadcast query yet.";
                 } else {
-                    payloadIn = data.right(data.length() - 4);
+                    payloadIn = data.right(data.length() - 4); // Removes FE FE E0 94 part
+                    if(payloadIn.contains("\xFE"))
+                    {
+                        //qDebug(logRig()) << "Corrupted data contains FE within message body: ";
+                        //printHex(payloadIn);
+                        break;
+                    }
                     parseCommand();
                 }
                 break;
@@ -1320,9 +1342,9 @@ void rigCommander::parseLevels()
                 break;
 
             default:
-                qInfo(logRig()) << "Unknown control level (0x14) received at register " << payloadIn[1] << " with level " << level;
+                qInfo(logRig()) << "Unknown control level (0x14) received at register " << QString("0x%1").arg((int)payloadIn[1],2,16) << " with level " << QString("0x%1").arg((int)level,2,16) << ", int=" << (int)level;
+                printHex(payloadIn);
                 break;
-
         }
         return;
     }
@@ -2474,7 +2496,6 @@ void rigCommander::parseDetailedRegisters1A05()
         default:
             break;
     }
-
 }
 
 void rigCommander::parseWFData()
@@ -2549,6 +2570,14 @@ mode_info rigCommander::createMode(mode_kind m, unsigned char reg, QString name)
     return mode;
 }
 
+centerSpanData rigCommander::createScopeCenter(centerSpansType s, QString name)
+{
+    centerSpanData csd;
+    csd.cstype = s;
+    csd.name = name;
+    return csd;
+}
+
 void rigCommander::determineRigCaps()
 {
     //TODO: Determine available bands (low priority, rig will reject out of band requests anyway)
@@ -2577,6 +2606,7 @@ void rigCommander::determineRigCaps()
 
     rigCaps.hasDD = false;
     rigCaps.hasDV = false;
+    rigCaps.hasDataModes = true; // USB-D, LSB-D, etc
     rigCaps.hasATU = false;
 
     rigCaps.hasCTCSS = false;
@@ -2585,7 +2615,14 @@ void rigCommander::determineRigCaps()
     rigCaps.spectSeqMax = 0;
     rigCaps.spectAmpMax = 0;
     rigCaps.spectLenMax = 0;
+    rigCaps.scopeCenterSpans = { createScopeCenter(cs2p5k, "±2.5k"), createScopeCenter(cs5k, "±5k"),
+                                 createScopeCenter(cs10k, "±10k"), createScopeCenter(cs25k, "±25k"),
+                                 createScopeCenter(cs50k, "±50k"), createScopeCenter(cs100k, "±100k"),
+                                 createScopeCenter(cs250k, "±250k"), createScopeCenter(cs500k, "±500k")
+                               };
+
     
+    rigCaps.hasFDcomms = true; // false for older radios
 
     // Clear inputs/preamps/attenuators lists in case we have re-connected.
     rigCaps.preamps.clear();
@@ -2601,6 +2638,7 @@ void rigCommander::determineRigCaps()
     rigCaps.hasAntennaSel = false;
 
     rigCaps.hasTransmit = true;
+    rigCaps.hasPTTCommand = true;
 
     // Common, reasonable defaults for most supported HF rigs:
     rigCaps.bsr[band160m] = 0x01;
@@ -2663,6 +2701,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
             rigCaps.hasTransmit = false;
+            rigCaps.hasPTTCommand = false;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
             rigCaps.hasDV = true;
@@ -2683,6 +2722,7 @@ void rigCommander::determineRigCaps()
                                      createMode(modeP25, 0x16, "P25"), createMode(modedPMR, 0x18, "dPMR"),
                                      createMode(modeNXDN_VN, 0x19, "NXDN-VN"), createMode(modeNXDN_N, 0x20, "NXDN-N"),
                                      createMode(modeDCR, 0x21, "DCR")});
+            rigCaps.scopeCenterSpans.insert(rigCaps.scopeCenterSpans.end(), {createScopeCenter(cs1M, "±1M"), createScopeCenter(cs2p5M, "±2.5M")});
             break;
         case model9700:
             rigCaps.modelName = QString("IC-9700");
@@ -2717,6 +2757,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasDD = false;
             rigCaps.hasDV = false;
             rigCaps.hasCTCSS = true;
@@ -2832,6 +2873,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
@@ -2852,6 +2894,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = true;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
@@ -2872,6 +2915,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
@@ -2897,6 +2941,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
@@ -2939,13 +2984,38 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
+            rigCaps.hasPTTCommand = false;
+            rigCaps.hasDataModes = false;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
             rigCaps.bands.push_back(bandGen);
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), createMode(modeWFM, 0x06, "WFM"));
+            break;
+        case model718:
+            rigCaps.modelName = QString("IC-718");
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.clear();
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
+            rigCaps.hasATU = false;
+            rigCaps.hasPTTCommand = false;
+            rigCaps.hasDataModes = false;
+            rigCaps.attenuators.push_back('\x20');
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.bands =   {band10m, band10m, band12m,
+                               band15m, band17m, band20m, band30m,
+                               band40m, band60m, band80m, band160m, bandGen};
+            rigCaps.modes = { createMode(modeLSB, 0x00, "LSB"), createMode(modeUSB, 0x01, "USB"),
+                              createMode(modeAM, 0x02, "AM"),
+                              createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
+                              createMode(modeRTTY, 0x04, "RTTY"), createMode(modeRTTY_R, 0x08, "RTTY-R")
+                            };
             break;
         case model756pro:
             rigCaps.modelName = QString("IC-756 Pro");
@@ -2954,6 +3024,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -2971,6 +3042,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -2988,6 +3060,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -3008,6 +3081,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
             rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
             rigCaps.hasPreamp = false;
             rigCaps.hasAntennaSel = false;
             rigCaps.attenuators.push_back('\x10');
