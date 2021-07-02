@@ -1309,7 +1309,7 @@ void wfmain::loadSettings()
 
     txSetup.latency = settings->value("AudioTXLatency", "150").toInt();
     ui->txLatencySlider->setEnabled(ui->lanEnableBtn->isChecked());
-    ui->txLatencySlider->setValue(rxSetup.latency);
+    ui->txLatencySlider->setValue(txSetup.latency);
     ui->txLatencySlider->setTracking(false); // Stop it sending value on every change.
 
     ui->audioSampleRateCombo->blockSignals(true);
