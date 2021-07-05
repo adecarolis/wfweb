@@ -67,6 +67,7 @@ struct audioSetup {
     QAudioDeviceInfo port;
 #endif
     quint8 resampleQuality;
+    unsigned char localAFgain;
 };
 
 // For QtMultimedia, use a native QIODevice

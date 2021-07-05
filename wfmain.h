@@ -666,6 +666,9 @@ private:
         quint16 rigCtlPort;
         colors colorScheme;
         QString virtualSerialPort;
+        unsigned char localAFgain;
+        unsigned int wflength;
+        // plot scheme
     } prefs;
 
     preferences defPrefs;

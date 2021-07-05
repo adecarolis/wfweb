@@ -133,7 +133,8 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
 
         connect(ptty, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
         connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
-        emit haveAfGain(255);
+
+        emit haveAfGain(rxSetup.localAFgain);
     }
 
     // data from the comm port to the program:
