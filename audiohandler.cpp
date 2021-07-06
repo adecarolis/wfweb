@@ -76,7 +76,10 @@ bool audioHandler::init(audioSetup setupIn)
 
 	tempBuf.sent = 0;
 
-
+    if(!setup.isinput)
+    {
+        this->setVolume(setup.localAFgain);
+    }
 
 #if defined(RTAUDIO)	
 #if !defined(Q_OS_MACX)
