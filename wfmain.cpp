@@ -26,6 +26,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     cal = new calibrationWindow();
     rpt = new repeaterSetup();
     sat = new satelliteSetup();
+    trxadj = new transceiverAdjustments();
     srv = new udpServerSetup();
 
     connect(this, SIGNAL(sendServerConfig(SERVERCONFIG)), srv, SLOT(receiveServerConfig(SERVERCONFIG)));
@@ -4993,8 +4994,6 @@ void wfmain::on_pollingBtn_clicked()
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    freqt f;
-    f.Hz = 14290000;
-    issueCmd(cmdSetFreq, f);
+    trxadj->show();
 }
 
