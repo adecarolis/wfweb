@@ -137,6 +137,7 @@ private:
 
     void reinit();
     bool            isInitialized=false;
+    bool            isReady = false;
 
 #if defined(RTAUDIO)
     RtAudio* audio = Q_NULLPTR;

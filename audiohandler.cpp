@@ -313,7 +313,9 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 #endif
 	// Calculate output length, always full samples
 	int sentlen = 0;
-
+	if (!isReady) {
+		isReady = true;
+	}
 	if (ringBuf->size()>0)
 	{
 		// Output buffer is ALWAYS 16 bit.
@@ -402,6 +404,9 @@ int audioHandler::writeData(void* outputBuffer, void* inputBuffer, unsigned int 
 qint64 audioHandler::writeData(const char* data, qint64 nBytes)
 {
 #endif
+	if (!isReady) {
+		isReady = true;
+	}
 	int sentlen = 0;
 	//qDebug(logAudio()) << "nFrames" << nFrames << "nBytes" << nBytes;
 	int chunkBytes = chunkSize * devChannels * 2;
@@ -444,7 +449,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	// Regardless of the radio stream format, the buffered audio will ALWAYS be
 	// 16bit sample interleaved stereo 48K (or whatever the native sample rate is)
 
-	if (!isInitialized)
+	if (!isInitialized && !isReady)
 	{
 		qDebug(logAudio()) << "Packet received when stream was not ready";
 		return;
@@ -454,7 +459,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	if (setup.bits == 8)
 	{
 		// Current packet is 8bit so need to create a new buffer that is 16bit 
-		QByteArray outPacket((int)inPacket.data.length() * 2 *(devChannels/setup.radioChan), (char)0xff);
+		QByteArray outPacket((int)inPacket.data.length() * 2 * (devChannels / setup.radioChan), (char)0xff);
 		qint16* out = (qint16*)outPacket.data();
 		for (int f = 0; f < inPacket.data.length(); f++)
 		{
