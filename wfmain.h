@@ -29,6 +29,9 @@
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
 
+#include <deque>
+#include <memory>
+
 namespace Ui {
 class wfmain;
 }
@@ -56,6 +59,7 @@ signals:
     void setFrequency(freqt freq);
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
+    void setMode(mode_info);
     void setDataMode(bool dataOn, unsigned char filter);
     void getDataMode();
     void getModInput(bool dataOn);
@@ -144,6 +148,7 @@ signals:
     void sendRigCaps(rigCapabilities caps);
 
 private slots:
+    void updateSizes(int tabIndex);
     void shortcutF1();
     void shortcutF2();
     void shortcutF3();
@@ -233,8 +238,7 @@ private slots:
     void handleWFDoubleClick(QMouseEvent *);
     void handleWFScroll(QWheelEvent *);
     void handlePlotScroll(QWheelEvent *);
-    void runDelayedCommand();
-    void runPeriodicCommands();
+    void sendRadioCommandLoop();
     void showStatusBarText(QString text);
     void serverConfigRequested(SERVERCONFIG conf, bool store);
     void receiveBaudRate(quint32 baudrate);
@@ -448,6 +452,8 @@ private slots:
 
     void on_wfLengthSlider_valueChanged(int value);
 
+    void on_pollingBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -462,6 +468,7 @@ private:
     void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
+    void showHideSpectrum(bool show);
     void getInitialRigState();
     void setBandButtons();
     void showButton(QPushButton *btn);
@@ -509,6 +516,8 @@ private:
     QShortcut *keyF;
     QShortcut *keyM;
 
+    QShortcut *keyDebug;
+
 
     rigCommander * rig=Q_NULLPTR;
     QThread* rigThread = Q_NULLPTR;
@@ -516,8 +525,9 @@ private:
     QCPColorMapData * colorMapData;
     QCPColorScale * colorScale;
     QTimer * delayedCommand;
-    QTimer * periodicPollingTimer;
     QTimer * pttTimer;
+    uint16_t loopTickCounter;
+    uint16_t slowCmdNum;
 
     void setupPlots();
     void makeRig();
@@ -557,6 +567,7 @@ private:
     int smeterPos=0;
 
     QVector <QByteArray> wfimage;
+    unsigned int wfLengthMax;
 
     bool onFullscreen;
     bool drawPeaks;
@@ -571,22 +582,46 @@ private:
     unsigned char setModeVal=0;
     unsigned char setFilterVal=0;
 
-    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetModeFilter,
+    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode, cmdGetDataMode, cmdSetModeFilter,
               cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
-              cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
-              cmdGetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
-              cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
+              cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
+              cmdGetSql, cmdSetSql, cmdGetATUStatus, cmdSetATU, cmdStartATU, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,
+              cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
-              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter,
+              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
               cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna};
 
-    cmds cmdOut;
-    QVector <cmds> cmdOutQue;
-    QVector <cmds> periodicCmdQueue;
+    struct commandtype {
+        cmds cmd;
+        std::shared_ptr<void> data;
+    };
+
+    std::deque <commandtype> delayedCmdQue;    // rapid que for commands to the radio
+    std::deque <cmds> periodicCmdQueue; // rapid que for metering
+    std::deque <cmds> slowPollCmdQueue; // slow, regular checking for UI sync
+    void doCmd(cmds cmd);
+    void doCmd(commandtype cmddata);
+
+    void issueCmd(cmds cmd, freqt f);
+    void issueCmd(cmds cmd, mode_info m);
+    void issueCmd(cmds cmd, int i);
+    void issueCmd(cmds cmd, unsigned char c);
+    void issueCmd(cmds cmd, char c);
+    void issueCmd(cmds cmd, bool b);
+
+    // These commands pop_front and remove similar commands:
+    void issueCmdUniquePriority(cmds cmd, bool b);
+    void issueCmdUniquePriority(cmds cmd, unsigned char c);
+    void issueCmdUniquePriority(cmds cmd, char c);
+    void issueCmdUniquePriority(cmds cmd, freqt f);
+
+    void removeSimilarCommand(cmds cmd);
+
     int pCmdNum = 0;
     int delayedCmdIntervalLAN_ms = 100;
     int delayedCmdIntervalSerial_ms = 100;
     int delayedCmdStartupInterval_ms = 100;
+    bool runPeriodicCommands;
     bool usingLAN = false;
 
     freqMemory mem;
@@ -660,6 +695,8 @@ private:
     void issueDelayedCommandPriority(cmds cmd);
     void issueDelayedCommandUnique(cmds cmd);
     void changeSliderQuietly(QSlider *slider, int value);
+    void statusFromSliderPercent(QString name, int percentValue);
+    void statusFromSliderRaw(QString name, int rawValue);
 
     void processModLevel(rigInput source, unsigned char level);
 
@@ -672,6 +709,7 @@ private:
 
     void initPeriodicCommands();
     void insertPeriodicCommand(cmds cmd, unsigned char priority);
+    void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
     void calculateTimingParameters();
 
     void changeMode(mode_kind mode);
@@ -683,6 +721,7 @@ private:
     rigInput currentModSrc = inputUnknown;
     rigInput currentModDataSrc = inputUnknown;
     mode_kind currentMode = modeUSB;
+    mode_info currentModeInfo;
 
     bool haveRigCaps;
     bool amTransmitting;
@@ -732,6 +771,7 @@ private:
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
 Q_DECLARE_METATYPE(struct freqt)
+Q_DECLARE_METATYPE(struct mode_info)
 Q_DECLARE_METATYPE(struct udpPreferences)
 Q_DECLARE_METATYPE(struct rigStateStruct)
 Q_DECLARE_METATYPE(struct audioPacket)

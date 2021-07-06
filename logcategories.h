@@ -12,7 +12,8 @@ Q_DECLARE_LOGGING_CATEGORY(logUdp)
 Q_DECLARE_LOGGING_CATEGORY(logUdpServer)
 Q_DECLARE_LOGGING_CATEGORY(logRigCtlD)
 
-#if !defined(__PRETTY_FUNCTION__)
+
+#if defined(Q_OS_WIN) && !defined(__PRETTY_FUNCTION__)
 #define __PRETTY_FUNCTION__ __FUNCSIG__
 #endif
 

@@ -28,6 +28,7 @@ enum model_kind {
     model9700 = 0xA2,
     model705 = 0xA4,
     model706 = 0x58,
+    model718 = 0x5E,
     model756pro = 0x5C,
     model756proii = 0x64,
     model756proiii = 0x6E,
@@ -67,6 +68,24 @@ enum bandType { band23cm=0,
                 bandGen
 };
 
+enum centerSpansType {
+    cs2p5k = 0,
+    cs5k = 1,
+    cs10k = 2,
+    cs25k = 3,
+    cs50k = 4,
+    cs100k = 5,
+    cs250k = 6,
+    cs500k = 7,
+    cs1M = 8,
+    cs2p5M = 9
+};
+
+struct centerSpanData {
+    centerSpansType cstype;
+    QString name;
+};
+
 model_kind determineRadioModel(unsigned char rigID);
 
 struct rigCapabilities {
@@ -80,6 +99,7 @@ struct rigCapabilities {
     bool hasLan; // OEM ethernet or wifi connection
     bool hasEthernet;
     bool hasWiFi;
+    bool hasFDcomms;
 
     QVector<rigInput> inputs;
 
@@ -96,13 +116,16 @@ struct rigCapabilities {
     bool hasDTCS;
 
     bool hasTransmit;
+    bool hasPTTCommand;
     bool hasAttenuator;
     bool hasPreamp;
     bool hasAntennaSel;
+    bool hasDataModes;
 
     std::vector <unsigned char> attenuators;
     std::vector <unsigned char> preamps;
     std::vector <unsigned char> antennas;
+    std::vector <centerSpanData> scopeCenterSpans;
     std::vector <bandType> bands;
     unsigned char bsr[20] = {0};
 

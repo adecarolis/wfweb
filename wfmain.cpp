@@ -39,6 +39,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType<meterKind>();
     qRegisterMetaType<spectrumMode>();
     qRegisterMetaType<freqt>();
+    qRegisterMetaType<mode_info>();
     qRegisterMetaType<audioPacket>();
     qRegisterMetaType <audioSetup>();
 
@@ -160,6 +161,7 @@ void wfmain::openRig()
     if (prefs.enableLAN)
     {
         ui->lanEnableBtn->setChecked(true);
+        usingLAN = true;
         // We need to setup the tx/rx audio:
         emit sendCommSetup(prefs.radioCIVAddr, udpPrefs, rxSetup, txSetup, prefs.virtualSerialPort);
     } else {
@@ -176,10 +178,7 @@ void wfmain::openRig()
                 serialPortRig = serialPortCL;
             }
         }
-
-        // Here, the radioCIVAddr is being set from a default preference, which is for the 7300.
-        // However, we will not use it initially. OTOH, if it is set explicitedly to a value in the prefs,
-        // then we skip auto detection.
+        usingLAN = false;
         emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort);
     }
 
@@ -264,6 +263,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setScopeFixedEdge(double,double,unsigned char)), rig, SLOT(setSpectrumBounds(double,double,unsigned char)));
 
     connect(this, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
+    connect(this, SIGNAL(setMode(mode_info)), rig, SLOT(setMode(mode_info)));
 
     // Levels (read and write)
     // Levels: Query:
@@ -409,9 +409,6 @@ void wfmain::findSerialPort()
     QDirIterator it705("/dev/serial", QStringList() << "*IC-705*A", QDir::Files, QDirIterator::Subdirectories);
     QDirIterator it7610("/dev/serial", QStringList() << "*IC-7610*A", QDir::Files, QDirIterator::Subdirectories);
     QDirIterator itR8600("/dev/serial", QStringList() << "*IC-R8600*A", QDir::Files, QDirIterator::Subdirectories);
-    QDirIterator itTest("/tmp/test", QStringList() << "*radio*", QDir::NoFilter, QDirIterator::Subdirectories);
-
-    qDebug() << "test iterator isEmpty: " << itTest.filePath().isEmpty();
 
     if(!it73.filePath().isEmpty())
     {
@@ -455,14 +452,20 @@ void wfmain::findSerialPort()
 void wfmain::receiveCommReady()
 {
     qInfo(logSystem()) << "Received CommReady!! ";
-    // taken from above:
+    if(!usingLAN)
+    {
+        // usingLAN gets set when we emit the sendCommSetup signal.
+        // If we're not using the LAN, then we're on serial, and
+        // we already know the baud rate and can calculate the timing parameters.
+        calculateTimingParameters();
+    }
     if(prefs.radioCIVAddr == 0)
     {
         // tell rigCommander to broadcast a request for all rig IDs.
         // qInfo(logSystem()) << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
         ui->statusBar->showMessage(QString("Searching CI-V bus for connected radios."), 1000);
         emit getRigCIV();
-        cmdOutQue.append(cmdGetRigCIV);
+        issueDelayedCommand(cmdGetRigCIV);
         delayedCommand->start();
     } else {
         // don't bother, they told us the CIV they want, stick with it.
@@ -484,7 +487,6 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     if(rig->usingLAN())
     {
         usingLAN = true;
-        //delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
     } else {
         usingLAN = false;
     }
@@ -693,6 +695,93 @@ void wfmain::setupMainUI()
 
     ui->tuneLockChk->setChecked(false);
     freqLock = false;
+
+    connect(ui->tabWidget, SIGNAL(currentChanged(int)), this, SLOT(updateSizes(int)));
+
+    connect(
+                ui->txPowerSlider, &QSlider::valueChanged,
+                [=](const int &newValue) { statusFromSliderPercent("Tx Power", newValue);}
+    );
+
+    connect(
+                ui->rfGainSlider, &QSlider::valueChanged,
+                [=](const int &newValue) { statusFromSliderPercent("RF Gain", newValue);}
+    );
+
+    connect(
+                ui->afGainSlider, &QSlider::valueChanged,
+                [=](const int &newValue) { statusFromSliderPercent("AF Gain", newValue);}
+    );
+
+    connect(
+                ui->micGainSlider, &QSlider::valueChanged,
+                [=](const int &newValue) { statusFromSliderPercent("TX Audio Gain", newValue);}
+    );
+
+    connect(
+                ui->sqlSlider, &QSlider::valueChanged,
+                [=](const int &newValue) { statusFromSliderPercent("Squelch", newValue);}
+    );
+
+    // -200 0 +200.. take log?
+    connect(
+                ui->scopeRefLevelSlider, &QSlider::valueChanged,
+                [=](const int &newValue) { statusFromSliderRaw("Scope Ref Level", newValue);}
+    );
+
+    connect(
+                ui->wfLengthSlider, &QSlider::valueChanged,
+                [=](const int &newValue) { statusFromSliderRaw("Waterfall Length", newValue);}
+    );
+
+}
+
+void wfmain::updateSizes(int tabIndex)
+{
+    if(!haveRigCaps)
+        return;
+    // This function does nothing unless you are using a rig without spectrum.
+    // This is a hack. It is not great, but it seems to work ok.
+    if(!rigCaps.hasSpectrum)
+    {
+        // Set "ignore" size policy for non-selected tabs:
+        for(int i=0;i<ui->tabWidget->count();i++)
+            if((i!=tabIndex) && tabIndex != 0)
+                ui->tabWidget->widget(i)->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored); // allows size to be any size that fits the tab bar
+
+        if(tabIndex==0 && !rigCaps.hasSpectrum)
+        {
+
+            ui->tabWidget->widget(0)->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+            ui->tabWidget->widget(0)->setMaximumSize(ui->tabWidget->widget(0)->minimumSizeHint());
+            ui->tabWidget->widget(0)->adjustSize(); // tab
+            this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+            this->setMaximumSize(QSize(929, 270));
+            this->setMinimumSize(QSize(929, 270));
+
+            resize(minimumSize());
+            adjustSize(); // main window
+            adjustSize();
+
+        } else if(tabIndex==0 && rigCaps.hasSpectrum) {
+            // At main tab (0) and we have spectrum:
+            ui->tabWidget->widget(0)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+
+            resize(minimumSizeHint());
+            adjustSize(); // Without this call, the window retains the size of the previous tab.
+        } else {
+            // At some other tab, with or without spectrum:
+            ui->tabWidget->widget(tabIndex)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+            this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+            this->setMinimumSize(QSize(994, 455)); // not large enough for settings tab
+            this->setMaximumSize(QSize(65535,65535));
+        }
+    } else {
+        ui->tabWidget->widget(tabIndex)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
+        ui->tabWidget->widget(tabIndex)->setMaximumSize(65535,65535);
+        //ui->tabWidget->widget(0)->setMinimumSize();
+    }
+
 }
 
 void wfmain::getSettingsFilePath(QString settingsFile)
@@ -724,18 +813,20 @@ void wfmain::getSettingsFilePath(QString settingsFile)
 
 void wfmain::setInitialTiming()
 {
-    delayedCmdIntervalLAN_ms = 10; // interval for regular delayed commands, including initial rig/UI state queries
+    loopTickCounter = 0;
+    delayedCmdIntervalLAN_ms = 70; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdIntervalSerial_ms = 100; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdStartupInterval_ms = 250; // interval for rigID polling
     delayedCommand = new QTimer(this);
     delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
-    delayedCommand->setSingleShot(true);
-    connect(delayedCommand, SIGNAL(timeout()), this, SLOT(runDelayedCommand()));
+    delayedCommand->setSingleShot(false);
+    connect(delayedCommand, SIGNAL(timeout()), this, SLOT(sendRadioCommandLoop()));
 
-    periodicPollingTimer = new QTimer(this);
-    periodicPollingTimer->setInterval(10);
-    periodicPollingTimer->setSingleShot(false);
-    connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(runPeriodicCommands()));
+    // TODO: Remove this:
+//    periodicPollingTimer = new QTimer(this);
+//    periodicPollingTimer->setInterval(10);
+//    periodicPollingTimer->setSingleShot(false);
+    //connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(sendRadioCommandLoop()));
 
     pttTimer = new QTimer(this);
     pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
@@ -1036,6 +1127,10 @@ void wfmain::setupKeyShortcuts()
     keyM = new QShortcut(this);
     keyM->setKey(Qt::Key_M);
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
+
+    keyDebug = new QShortcut(this);
+    keyDebug->setKey(Qt::CTRL + Qt::SHIFT + Qt::Key_D);
+    connect(keyDebug, SIGNAL(activated()), this, SLOT(on_debugBtn_clicked()));
 }
 
 void wfmain::setDefPrefs()
@@ -1214,7 +1309,7 @@ void wfmain::loadSettings()
 
     txSetup.latency = settings->value("AudioTXLatency", "150").toInt();
     ui->txLatencySlider->setEnabled(ui->lanEnableBtn->isChecked());
-    ui->txLatencySlider->setValue(rxSetup.latency);
+    ui->txLatencySlider->setValue(txSetup.latency);
     ui->txLatencySlider->setTracking(false); // Stop it sending value on every change.
 
     ui->audioSampleRateCombo->blockSignals(true);
@@ -1491,6 +1586,48 @@ void wfmain::saveSettings()
 }
 
 
+void wfmain::showHideSpectrum(bool show)
+{
+
+    if(show)
+    {
+        wf->show();
+        plot->show();
+    } else {
+        wf->hide();
+        plot->hide();
+    }
+
+    // Controls:
+    ui->spectrumGroupBox->setVisible(show);
+    ui->spectrumModeCombo->setVisible(show);
+    ui->scopeBWCombo->setVisible(show);
+    ui->scopeEdgeCombo->setVisible(show);
+    ui->scopeEnableWFBtn->setVisible(show);
+    ui->scopeRefLevelSlider->setEnabled(show);
+    ui->wfLengthSlider->setEnabled(show);
+    ui->wfthemeCombo->setVisible(show);
+    ui->toFixedBtn->setVisible(show);
+    ui->clearPeakBtn->setVisible(show);
+
+    // And the labels:
+    ui->specEdgeLabel->setVisible(show);
+    ui->specModeLabel->setVisible(show);
+    ui->specSpanLabel->setVisible(show);
+    ui->specThemeLabel->setVisible(show);
+
+    // And the layout for space:
+    ui->specControlsHorizLayout->setEnabled(show);
+    ui->splitter->setVisible(show);
+    ui->plot->setVisible(show);
+    ui->waterfall->setVisible(show);
+    ui->spectrumGroupBox->setEnabled(show);
+
+    // Window resize:
+    updateSizes(ui->tabWidget->currentIndex());
+
+}
+
 void wfmain::prepareWf()
 {
     prepareWf(160);
@@ -1502,10 +1639,17 @@ void wfmain::prepareWf(unsigned int wfLength)
 
     if(haveRigCaps)
     {
+        showHideSpectrum(rigCaps.hasSpectrum);
+        if(!rigCaps.hasSpectrum)
+        {
+            return;
+        }
         // TODO: Lock the function that draws on the spectrum while we are updating.
         spectrumDrawLock = true;
 
         spectWidth = rigCaps.spectLenMax;
+        wfLengthMax = 1024;
+
         this->wfLength = wfLength; // fixed for now, time-length of waterfall
 
         // Initialize before use!
@@ -1513,17 +1657,21 @@ void wfmain::prepareWf(unsigned int wfLength)
         QByteArray empty((int)spectWidth, '\x01');
         spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
 
-        if((unsigned int)wfimage.size() < wfLength)
+        //wfimage.resize(wfLengthMax);
+
+        if((unsigned int)wfimage.size() < wfLengthMax)
         {
             unsigned int i=0;
             unsigned int oldSize = wfimage.size();
-            for(i=oldSize; i<(wfLength); i++)
+            for(i=oldSize; i<(wfLengthMax); i++)
             {
                 wfimage.append(empty);
             }
         } else {
-            wfimage.remove(wfLength, wfimage.size()-wfLength);
+            // Keep wfimage, do not trim, no performance impact.
+            //wfimage.remove(wfLength, wfimage.size()-wfLength);
         }
+
         wfimage.squeeze();
         //colorMap->clearData();
         colorMap->data()->clear();
@@ -1544,7 +1692,6 @@ void wfmain::prepareWf(unsigned int wfLength)
 
         wf->yAxis->setRangeReversed(true);
         wf->xAxis->setVisible(false);
-        rigName->setText(rigCaps.modelName);
 
         spectrumDrawLock = false;
     } else {
@@ -1730,7 +1877,7 @@ quint64 wfmain::roundFrequencyWithStep(quint64 frequency, int steps, unsigned in
     {
         frequency = frequency + (quint64)(steps*tsHz);
     } else {
-        frequency = frequency - (quint64)(abs(steps)*tsHz);
+        frequency = frequency - std::min((quint64)(abs(steps)*tsHz), frequency);
     }
 
     if(ui->tuningFloorZerosChk->isChecked())
@@ -1751,7 +1898,8 @@ void wfmain::shortcutMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -1764,7 +1912,8 @@ void wfmain::shortcutPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -1777,7 +1926,8 @@ void wfmain::shortcutShiftMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -1790,7 +1940,8 @@ void wfmain::shortcutShiftPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -1803,7 +1954,8 @@ void wfmain::shortcutControlMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -1816,7 +1968,8 @@ void wfmain::shortcutControlPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -1829,7 +1982,8 @@ void wfmain::shortcutPageUp()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -1842,7 +1996,8 @@ void wfmain::shortcutPageDown()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -1878,75 +2033,75 @@ void wfmain:: getInitialRigState()
     // the polling interval is set at 200ms. Faster is possible but slower
     // computers will glitch occassionally.
 
-    cmdOutQue.append(cmdGetFreq);
-    cmdOutQue.append(cmdGetMode);
+    issueDelayedCommand(cmdGetFreq);
+    issueDelayedCommand(cmdGetMode);
 
-    cmdOutQue.append(cmdNone);
+    issueDelayedCommand(cmdNone);
 
-    cmdOutQue.append(cmdGetFreq);
-    cmdOutQue.append(cmdGetMode);
+    issueDelayedCommand(cmdGetFreq);
+    issueDelayedCommand(cmdGetMode);
 
     // From left to right in the UI:
-    cmdOutQue.append(cmdGetDataMode);
-    cmdOutQue.append(cmdGetModInput);
-    cmdOutQue.append(cmdGetModDataInput);
-    cmdOutQue.append(cmdGetRxGain);
-    cmdOutQue.append(cmdGetAfGain);
-    cmdOutQue.append(cmdGetSql);
-    cmdOutQue.append(cmdGetTxPower);
-    cmdOutQue.append(cmdGetCurrentModLevel); // level for currently selected mod sources
-    cmdOutQue.append(cmdGetSpectrumRefLevel);
-    cmdOutQue.append(cmdGetDuplexMode);
+    issueDelayedCommand(cmdGetDataMode);
+    issueDelayedCommand(cmdGetModInput);
+    issueDelayedCommand(cmdGetModDataInput);
+    issueDelayedCommand(cmdGetRxGain);
+    issueDelayedCommand(cmdGetAfGain);
+    issueDelayedCommand(cmdGetSql);
+    issueDelayedCommand(cmdGetTxPower);
+    issueDelayedCommand(cmdGetCurrentModLevel); // level for currently selected mod sources
+    issueDelayedCommand(cmdGetSpectrumRefLevel);
+    issueDelayedCommand(cmdGetDuplexMode);
 
     if(rigCaps.hasSpectrum)
     {
-        cmdOutQue.append(cmdDispEnable);
-        cmdOutQue.append(cmdSpecOn);
+        issueDelayedCommand(cmdDispEnable);
+        issueDelayedCommand(cmdSpecOn);
     }
-    cmdOutQue.append(cmdGetModInput);
-    cmdOutQue.append(cmdGetModDataInput);
+    issueDelayedCommand(cmdGetModInput);
+    issueDelayedCommand(cmdGetModDataInput);
 
     if(rigCaps.hasCTCSS)
     {
-        cmdOutQue.append(cmdGetTone);
-        cmdOutQue.append(cmdGetTSQL);
+        issueDelayedCommand(cmdGetTone);
+        issueDelayedCommand(cmdGetTSQL);
     }
     if(rigCaps.hasDTCS)
     {
-        cmdOutQue.append(cmdGetDTCS);
+        issueDelayedCommand(cmdGetDTCS);
     }
-    cmdOutQue.append(cmdGetRptAccessMode);
+    issueDelayedCommand(cmdGetRptAccessMode);
 
     if(rigCaps.hasAntennaSel)
     {
-        cmdOutQue.append(cmdGetAntenna);
+        issueDelayedCommand(cmdGetAntenna);
     }
     if(rigCaps.hasAttenuator)
     {
-        cmdOutQue.append(cmdGetAttenuator);
+        issueDelayedCommand(cmdGetAttenuator);
     }
     if(rigCaps.hasPreamp)
     {
-        cmdOutQue.append(cmdGetPreamp);
+        issueDelayedCommand(cmdGetPreamp);
     }
 
-    cmdOutQue.append(cmdGetRitEnabled);
-    cmdOutQue.append(cmdGetRitValue);
+    issueDelayedCommand(cmdGetRitEnabled);
+    issueDelayedCommand(cmdGetRitValue);
 
     if(rigCaps.hasSpectrum)
     {
-        cmdOutQue.append(cmdGetSpectrumMode);
-        cmdOutQue.append(cmdGetSpectrumSpan);
+        issueDelayedCommand(cmdGetSpectrumMode);
+        issueDelayedCommand(cmdGetSpectrumSpan);
     }
 
-    cmdOutQue.append(cmdNone);
-    cmdOutQue.append(cmdStartRegularPolling);
+    issueDelayedCommand(cmdNone);
+    issueDelayedCommand(cmdStartRegularPolling);
 
     if(rigCaps.hasATU)
     {
-        cmdOutQue.append(cmdGetATUStatus);
+        issueDelayedCommand(cmdGetATUStatus);
     }
-    cmdOut = cmdNone;
+
     delayedCommand->start();
 }
 
@@ -2069,346 +2224,460 @@ void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
     }
 }
 
-void wfmain::runPeriodicCommands()
+void wfmain::doCmd(commandtype cmddata)
 {
-    // These commands are run at a regular interval. They are to be used sparingly.
-    // For general radio state queries, use the runDelayedCommand() queue,
-    // accessed by the insertPeriodicCommands() function.
+    cmds cmd = cmddata.cmd;
+    std::shared_ptr<void> data = cmddata.data;
 
-    // To insert commands to this queue, uset the insertPeriodicCommands() function.
-
-    // TODO: Queue should not remove items, just hit a different item each time.
-    int nCmds = periodicCmdQueue.length();
-
-    cmds pcmd;
-
-    if(!periodicCmdQueue.isEmpty())
+    // This switch is for commands with parameters.
+    // the "default" for non-parameter commands is to call doCmd(cmd).
+    switch (cmd)
     {
-        pcmd = periodicCmdQueue.at( (pCmdNum++)%nCmds );
-        switch(pcmd)
+        case cmdSetFreq:
         {
-            case cmdNone:
-                break;
-
-            // Metering commands:
-            case cmdGetSMeter:
-                if(!amTransmitting)
-                    emit getMeters(meterS);
-                break;
-            case cmdGetPowerMeter:
-                if(amTransmitting)
-                    emit getMeters(meterPower);
-                break;
-            case cmdGetIdMeter:
-                emit getMeters(meterCurrent);
-                break;
-            case cmdGetVdMeter:
-                emit getMeters(meterVoltage);
-                break;
-            case cmdGetALCMeter:
-                if(amTransmitting)
-                    emit getMeters(meterALC);
-                break;
-            case cmdGetCompMeter:
-                if(amTransmitting)
-                    emit getMeters(meterComp);
-                break;
-
-
-            // Standard commands we are already checking:
-
-            case cmdGetRigID:
-                emit getRigID();
-                break;
-            case cmdGetRigCIV:
-                // if(!know rig civ already)
-                if(!haveRigCaps)
-                {
-                    emit getRigCIV();
-                    cmdOutQue.append(cmdGetRigCIV); // This way, we stay here until we get an answer.
-                }
-                break;
-            case cmdGetFreq:
-                emit getFrequency();
-                break;
-            case cmdGetMode:
-                emit getMode();
-                break;
-            case cmdGetDataMode:
-                // qInfo(logSystem()) << "Sending query for data mode";
-                emit getDataMode();
-                break;
-            case cmdSetDataModeOff:
-                emit setDataMode(false, (unsigned char) ui->modeFilterCombo->currentData().toInt());
-                break;
-            case cmdSetDataModeOn:
-                emit setDataMode(true, (unsigned char) ui->modeFilterCombo->currentData().toInt());
-                break;
-            case cmdGetModInput:
-                emit getModInput(false);
-                break;
-            case cmdGetModDataInput:
-                emit getModInput(true);
-                break;
-            case cmdGetCurrentModLevel:
-                emit getModInputLevel(currentModSrc);
-                emit getModInputLevel(currentModDataSrc);
-                break;
-            case cmdGetDuplexMode:
-                emit getDuplexMode();
-                break;
-            case cmdDispEnable:
-                emit scopeDisplayEnable();
-                break;
-            case cmdDispDisable:
-                emit scopeDisplayDisable();
-                break;
-            case cmdSpecOn:
-                emit spectOutputEnable();
-                break;
-            case cmdSpecOff:
-                emit spectOutputDisable();
-                break;
-            case cmdGetRxGain:
-                emit getRfGain();
-                break;
-            case cmdGetAfGain:
-                emit getAfGain();
-                break;
-            case cmdGetSql:
-                emit getSql();
-                break;
-            case cmdGetTxPower:
-                emit getTxPower();
-                break;
-            case cmdGetMicGain:
-                emit getMicGain();
-                break;
-            case cmdGetSpectrumRefLevel:
-                emit getSpectrumRefLevel();
-                break;
-            case cmdGetATUStatus:
-                emit getATUStatus();
-                break;
-            case cmdScopeCenterMode:
-                emit setScopeMode(spectModeCenter);
-                break;
-            case cmdScopeFixedMode:
-                emit setScopeMode(spectModeFixed);
-                break;
-            case cmdGetPTT:
-                emit getPTT();
-                break;
-            case cmdStartRegularPolling:
-                periodicPollingTimer->start();
-                break;
-            case cmdStopRegularPolling:
-                periodicPollingTimer->stop();
-                break;
-            default:
-                break;
+            freqt f = (*std::static_pointer_cast<freqt>(data));
+            emit setFrequency(f);
+            break;
         }
+        case cmdSetMode:
+        {
+            mode_info m = (*std::static_pointer_cast<mode_info>(data));
+            emit setMode(m);
+            break;
+        }
+        case cmdSetTxPower:
+        {
+            unsigned char txpower = (*std::static_pointer_cast<unsigned char>(data));
+            emit setTxPower(txpower);
+            break;
+        }
+        case cmdSetMicGain:
+        {
+            unsigned char micgain = (*std::static_pointer_cast<unsigned char>(data));
+            emit setTxPower(micgain);
+            break;
+        }
+        case cmdSetRxRfGain:
+        {
+            unsigned char rfgain = (*std::static_pointer_cast<unsigned char>(data));
+            emit setRfGain(rfgain);
+            break;
+        }
+        case cmdSetModLevel:
+        {
+            unsigned char modlevel = (*std::static_pointer_cast<unsigned char>(data));
+            rigInput currentIn;
+            if(usingDataMode)
+            {
+                currentIn = currentModDataSrc;
+            } else {
+                currentIn = currentModSrc;
+            }
+            emit setModLevel(currentIn, modlevel);
+            break;
+        }
+        case cmdSetAfGain:
+        {
+            unsigned char afgain = (*std::static_pointer_cast<unsigned char>(data));
+            emit setAfGain(afgain);
+            break;
+        }
+        case cmdSetSql:
+        {
+            unsigned char sqlLevel = (*std::static_pointer_cast<unsigned char>(data));
+            emit setSql(sqlLevel);
+            break;
+        }
+        case cmdSetPTT:
+        {
+            bool pttrequest = (*std::static_pointer_cast<bool>(data));
+            emit setPTT(pttrequest);
+            break;
+        }
+        case cmdSetATU:
+        {
+            bool atuOn = (*std::static_pointer_cast<bool>(data));
+            emit setATU(atuOn);
+            break;
+        }
+        default:
+            doCmd(cmd);
+            break;
     }
+
 }
 
-void wfmain::runDelayedCommand()
+
+void wfmain::doCmd(cmds cmd)
 {
-    cmds qdCmd;
-    // Note: This cmdOut queue will be removed entirely soon and only the cmdOutQue will be available.
-    switch (cmdOut)
+    // Use this function to take action upon a command.
+    switch(cmd)
     {
+        case cmdNone:
+            //qInfo(logSystem()) << "NOOP";
+            break;
+        case cmdGetRigID:
+            emit getRigID();
+            break;
+        case cmdGetRigCIV:
+            // if(!know rig civ already)
+            if(!haveRigCaps)
+            {
+                emit getRigCIV();
+                issueDelayedCommand(cmdGetRigCIV); // This way, we stay here until we get an answer.
+            }
+            break;
         case cmdGetFreq:
             emit getFrequency();
             break;
         case cmdGetMode:
             emit getMode();
             break;
+        case cmdGetDataMode:
+            if(rigCaps.hasDataModes)
+                emit getDataMode();
+            break;
+        case cmdSetModeFilter:
+            emit setMode(setModeVal, setFilterVal);
+            break;
+        case cmdSetDataModeOff:
+            emit setDataMode(false, (unsigned char)ui->modeFilterCombo->currentData().toInt());
+            break;
+        case cmdSetDataModeOn:
+            emit setDataMode(true, (unsigned char)ui->modeFilterCombo->currentData().toInt());
+            break;
+        case cmdGetRitEnabled:
+            emit getRitEnabled();
+            break;
+        case cmdGetRitValue:
+            emit getRitValue();
+            break;
+        case cmdGetModInput:
+            emit getModInput(false);
+            break;
+        case cmdGetModDataInput:
+            emit getModInput(true);
+            break;
+        case cmdGetCurrentModLevel:
+            // TODO: Add delay between these queries
+            emit getModInputLevel(currentModSrc);
+            emit getModInputLevel(currentModDataSrc);
+            break;
+        case cmdGetDuplexMode:
+            emit getDuplexMode();
+            break;
+        case cmdGetTone:
+            emit getTone();
+            break;
+        case cmdGetTSQL:
+            emit getTSQL();
+            break;
+        case cmdGetDTCS:
+            emit getDTCS();
+            break;
+        case cmdGetRptAccessMode:
+            emit getRptAccessMode();
+            break;
+        case cmdDispEnable:
+            emit scopeDisplayEnable();
+            break;
+        case cmdDispDisable:
+            emit scopeDisplayDisable();
+            break;
+        case cmdGetSpectrumMode:
+            emit getScopeMode();
+            break;
+        case cmdGetSpectrumSpan:
+            emit getScopeSpan();
+            break;
+        case cmdSpecOn:
+            emit spectOutputEnable();
+            break;
+        case cmdSpecOff:
+            emit spectOutputDisable();
+            break;
+        case cmdGetRxGain:
+            emit getRfGain();
+            break;
+        case cmdGetAfGain:
+            emit getAfGain();
+            break;
+        case cmdGetSql:
+            emit getSql();
+            break;
+        case cmdGetTxPower:
+            emit getTxPower();
+            break;
+        case cmdGetMicGain:
+            emit getMicGain();
+            break;
+        case cmdGetSpectrumRefLevel:
+            emit getSpectrumRefLevel();
+            break;
+        case cmdGetATUStatus:
+            emit getATUStatus();
+            break;
+        case cmdStartATU:
+            emit startATU();
+            break;
+        case cmdGetAttenuator:
+            emit getAttenuator();
+            break;
+        case cmdGetPreamp:
+            emit getPreamp();
+            break;
+        case cmdGetAntenna:
+            emit getAntenna();
+            break;
+        case cmdScopeCenterMode:
+            emit setScopeMode(spectModeCenter);
+            break;
+        case cmdScopeFixedMode:
+            emit setScopeMode(spectModeFixed);
+            break;
+        case cmdGetPTT:
+            if(rigCaps.hasPTTCommand)
+            {
+                emit getPTT();
+            }
+            break;
+        case cmdGetTxRxMeter:
+            if(amTransmitting)
+                emit getMeters(meterPower);
+            else
+                emit getMeters(meterS);
+            break;
+        case cmdGetSMeter:
+            if(!amTransmitting)
+                emit getMeters(meterS);
+            break;
+        case cmdGetPowerMeter:
+            if(amTransmitting)
+                emit getMeters(meterPower);
+            break;
+        case cmdGetIdMeter:
+            emit getMeters(meterCurrent);
+            break;
+        case cmdGetVdMeter:
+            emit getMeters(meterVoltage);
+            break;
+        case cmdGetALCMeter:
+            if(amTransmitting)
+                emit getMeters(meterALC);
+            break;
+        case cmdGetCompMeter:
+            if(amTransmitting)
+                emit getMeters(meterComp);
+            break;
+        case cmdStartRegularPolling:
+            runPeriodicCommands = true;
+            break;
+        case cmdStopRegularPolling:
+            runPeriodicCommands = false;
+            break;
+        case cmdQueNormalSpeed:
+            if(usingLAN)
+            {
+                delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
+            } else {
+                delayedCommand->setInterval(delayedCmdIntervalSerial_ms);
+            }
+            break;
         default:
+            qInfo(logSystem()) << __PRETTY_FUNCTION__ << "WARNING: Command fell through of type: " << (unsigned int)cmd;
             break;
     }
-    cmdOut = cmdNone; // yep. Hope this wasn't called twice in a row rapidly.
+}
 
-    // Note: All command should use this queue. There is no need to use the above system.
 
-    if(!cmdOutQue.isEmpty())
+void wfmain::sendRadioCommandLoop()
+{
+    // Called by the periodicPollingTimer, see setInitialTiming()
+
+    if(!(loopTickCounter % 2))
     {
-        qdCmd = cmdOutQue.takeFirst();
-        switch(qdCmd)
+        // if ther's a command waiting, run it.
+        if(!delayedCmdQue.empty())
         {
-            case cmdNone:
-                //qInfo(logSystem()) << "NOOP";
-                break;
-            case cmdGetRigID:
-                emit getRigID();
-                break;
-            case cmdGetRigCIV:
-                // if(!know rig civ already)
-                if(!haveRigCaps)
-                {
-                    emit getRigCIV();
-                    cmdOutQue.append(cmdGetRigCIV); // This way, we stay here until we get an answer.
-                }
-                break;
-            case cmdGetFreq:
-                emit getFrequency();
-                break;
-            case cmdGetMode:
-                emit getMode();
-                break;
-            case cmdGetDataMode:
-                emit getDataMode();
-                break;
-            case cmdSetModeFilter:
-                emit setMode(setModeVal, setFilterVal);
-                break;
-            case cmdSetDataModeOff:
-                emit setDataMode(false, (unsigned char)ui->modeFilterCombo->currentData().toInt());
-                break;
-            case cmdSetDataModeOn:
-                emit setDataMode(true, (unsigned char)ui->modeFilterCombo->currentData().toInt());
-                break;
-            case cmdGetRitEnabled:
-                emit getRitEnabled();
-                break;
-            case cmdGetRitValue:
-                emit getRitValue();
-                break;
-            case cmdGetModInput:
-                emit getModInput(false);
-                break;
-            case cmdGetModDataInput:
-                emit getModInput(true);
-                break;
-            case cmdGetCurrentModLevel:
-                emit getModInputLevel(currentModSrc);
-                emit getModInputLevel(currentModDataSrc);
-                break;
-            case cmdGetDuplexMode:
-                emit getDuplexMode();
-                break;
-            case cmdGetTone:
-                emit getTone();
-                break;
-            case cmdGetTSQL:
-                emit getTSQL();
-                break;
-            case cmdGetDTCS:
-                emit getDTCS();
-                break;
-            case cmdGetRptAccessMode:
-                emit getRptAccessMode();
-                break;
-            case cmdDispEnable:
-                emit scopeDisplayEnable();
-                break;
-            case cmdDispDisable:
-                emit scopeDisplayDisable();
-                break;
-            case cmdGetSpectrumMode:
-                emit getScopeMode();
-                break;
-            case cmdGetSpectrumSpan:
-                emit getScopeSpan();
-                break;
-            case cmdSpecOn:
-                emit spectOutputEnable();
-                break;
-            case cmdSpecOff:
-                emit spectOutputDisable();
-                break;
-            case cmdGetRxGain:
-                emit getRfGain();
-                break;
-            case cmdGetAfGain:
-                emit getAfGain();
-                break;
-            case cmdGetSql:
-                emit getSql();
-                break;
-            case cmdGetTxPower:
-                emit getTxPower();
-                break;
-            case cmdGetMicGain:
-                emit getMicGain();
-                break;
-            case cmdGetSpectrumRefLevel:
-                emit getSpectrumRefLevel();
-                break;
-            case cmdGetATUStatus:
-                emit getATUStatus();
-                break;
-            case cmdGetAttenuator:
-                emit getAttenuator();
-                break;
-            case cmdGetPreamp:
-                emit getPreamp();
-                break;
-            case cmdGetAntenna:
-                emit getAntenna();
-                break;
-            case cmdScopeCenterMode:
-                emit setScopeMode(spectModeCenter);
-                break;
-            case cmdScopeFixedMode:
-                emit setScopeMode(spectModeFixed);
-                break;
-            case cmdGetPTT:
-                emit getPTT();
-                break;
-            case cmdStartRegularPolling:
-                periodicPollingTimer->start();
-                break;
-            case cmdStopRegularPolling:
-                periodicPollingTimer->stop();
-                break;
-            case cmdQueNormalSpeed:
-                if(usingLAN)
-                {
-                    delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
-                } else {
-                    delayedCommand->setInterval(delayedCmdIntervalSerial_ms);
-                }
-                break;
-            default:
-                break;
+            commandtype cmddata = delayedCmdQue.front();
+            delayedCmdQue.pop_front();
+            doCmd(cmddata);
+        } else if(!(loopTickCounter % 10))
+        {
+            // pick from useful queries to make now and then
+            if(haveRigCaps && !slowPollCmdQueue.empty())
+            {
+
+                int nCmds = slowPollCmdQueue.size();
+                cmds sCmd = slowPollCmdQueue[(slowCmdNum++)%nCmds];
+                doCmd(sCmd);
+            }
+        }
+    } else {
+        // odd-number ticks:
+        // s-meter or other metering
+        if(haveRigCaps && !periodicCmdQueue.empty())
+        {
+            int nCmds = periodicCmdQueue.size();
+            cmds pcmd = periodicCmdQueue[ (pCmdNum++)%nCmds ];
+            doCmd(pcmd);
         }
     }
-    if(cmdOutQue.isEmpty())
-    {
-        // done
-    } else {
-        // next
-        // TODO: If we always do ->start, then it will not be necessary for
-        // every command insertion to include a ->start.... probably worth doing.
-        delayedCommand->start();
-    }
+    loopTickCounter++;
 }
 
 void wfmain::issueDelayedCommand(cmds cmd)
 {
-    cmdOutQue.append(cmd);
-    delayedCommand->start();
+    // Append to end of command queue
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = NULL;
+    delayedCmdQue.push_back(cmddata);
 }
 
 void wfmain::issueDelayedCommandPriority(cmds cmd)
 {
     // Places the new command at the top of the queue
     // Use only when needed.
-    cmdOutQue.prepend(cmd);
-    delayedCommand->start();
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = NULL;
+    delayedCmdQue.push_front(cmddata);
 }
 
 void wfmain::issueDelayedCommandUnique(cmds cmd)
 {
     // Use this function to insert commands where
     // multiple (redundant) commands don't make sense.
-    if(!cmdOutQue.contains(cmd))
+
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = NULL;
+
+    // The following is both expensive and not that great,
+    // since it does not check if the arguments are the same.
+    bool found = false;
+    for(unsigned int i=0; i < delayedCmdQue.size(); i++)
     {
-        cmdOutQue.prepend(cmd);
-        delayedCommand->start();
+        if(delayedCmdQue.at(i).cmd == cmd)
+        {
+            found = true;
+            break;
+        }
     }
+
+    if(!found)
+    {
+        delayedCmdQue.push_front(cmddata);
+    }
+
+//    if( std::find(delayedCmdQue.begin(), delayedCmdQue.end(), cmddata ) == delayedCmdQue.end())
+//    {
+//        delayedCmdQue.push_front(cmddata);
+//    }
+
 }
 
+void wfmain::issueCmd(cmds cmd, mode_info m)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<mode_info>(new mode_info(m));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, freqt f)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<freqt>(new freqt(f));
+    //*static_cast<freqt*>(cmddata.data.get()) = f;
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, int i)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<int>(new int(i));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, char c)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<char>(new char(c));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, bool b)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<bool>(new bool(b));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, unsigned char c)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<unsigned char>(new unsigned char(c));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmdUniquePriority(cmds cmd, bool b)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<bool>(new bool(b));
+    delayedCmdQue.push_front(cmddata);
+    removeSimilarCommand(cmd);
+}
+
+void wfmain::issueCmdUniquePriority(cmds cmd, unsigned char c)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<unsigned char>(new unsigned char(c));
+    delayedCmdQue.push_front(cmddata);
+    removeSimilarCommand(cmd);
+}
+
+void wfmain::issueCmdUniquePriority(cmds cmd, char c)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<char>(new char(c));
+    delayedCmdQue.push_front(cmddata);
+    removeSimilarCommand(cmd);
+}
+
+void wfmain::issueCmdUniquePriority(cmds cmd, freqt f)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<freqt>(new freqt(f));
+    delayedCmdQue.push_front(cmddata);
+    removeSimilarCommand(cmd);
+}
+
+void wfmain::removeSimilarCommand(cmds cmd)
+{
+    // pop anything out that is of the same kind of command:
+    // pop anything out that is of the same kind of command:
+    // Start at 1 since we put one in at zero that we want to keep.
+    for(unsigned int i=1; i < delayedCmdQue.size(); i++)
+    {
+        if(delayedCmdQue.at(i).cmd == cmd)
+        {
+            //delayedCmdQue[i].cmd = cmdNone;
+            delayedCmdQue.erase(delayedCmdQue.begin()+i);
+            // i -= 1;
+        }
+    }
+}
 
 void wfmain::receiveRigID(rigCapabilities rigCaps)
 {
@@ -2429,6 +2698,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         qDebug(logSystem()) << "Rig ID received into wfmain: hasSpectrum: " << rigCaps.hasSpectrum;
 
         this->rigCaps = rigCaps;
+        rigName->setText(rigCaps.modelName);
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
         haveRigCaps = true;
         // Added so that server receives rig capabilities.
@@ -2536,6 +2806,21 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->antennaSelCombo->setDisabled(true);
         }
 
+        ui->scopeBWCombo->blockSignals(true);
+        ui->scopeBWCombo->clear();
+        if(rigCaps.hasSpectrum)
+        {
+            ui->scopeBWCombo->setHidden(false);
+            for(unsigned int i=0; i < rigCaps.scopeCenterSpans.size(); i++)
+            {
+                ui->scopeBWCombo->addItem(rigCaps.scopeCenterSpans.at(i).name, (int)rigCaps.scopeCenterSpans.at(i).cstype);
+            }
+        } else {
+            ui->scopeBWCombo->setHidden(true);
+        }
+        ui->scopeBWCombo->blockSignals(false);
+
+
         setBandButtons();
 
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
@@ -2546,8 +2831,10 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // Adding these here because clearly at this point we have valid
         // rig comms. In the future, we should establish comms and then
         // do all the initial grabs. For now, this hack of adding them here and there:
-        cmdOutQue.append(cmdGetFreq);
-        cmdOutQue.append(cmdGetMode);
+        issueDelayedCommand(cmdGetFreq);
+        issueDelayedCommand(cmdGetMode);
+        // recalculate command timing now that we know the rig better:
+        calculateTimingParameters();
         initPeriodicCommands();
     }
 }
@@ -2558,18 +2845,41 @@ void wfmain::initPeriodicCommands()
     // The commands are run using a timer,
     // and the timer is started by the delayed command cmdStartPeriodicTimer.
 
-    insertPeriodicCommand(cmdGetSMeter, 128);
-    insertPeriodicCommand(cmdGetPowerMeter, 128);
+    insertPeriodicCommand(cmdGetTxRxMeter, 128);
+
+    insertSlowPeriodicCommand(cmdGetFreq, 128);
+    insertSlowPeriodicCommand(cmdGetMode, 128);
+    insertSlowPeriodicCommand(cmdGetPTT, 128);
+    insertSlowPeriodicCommand(cmdGetTxPower, 128);
+    insertSlowPeriodicCommand(cmdGetRxGain, 128);
+    insertSlowPeriodicCommand(cmdGetAttenuator, 128);
+    insertSlowPeriodicCommand(cmdGetPTT, 128);
+    insertSlowPeriodicCommand(cmdGetPreamp, 128);
 }
 
 void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
 {
     // TODO: meaningful priority
+    // These commands get run at the fastest pace possible
+    // Typically just metering.
     if(priority < 10)
     {
-        periodicCmdQueue.prepend(cmd);
+        periodicCmdQueue.push_front(cmd);
     } else {
-        periodicCmdQueue.append(cmd);
+        periodicCmdQueue.push_back(cmd);
+    }
+}
+
+void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority)
+{
+    // TODO: meaningful priority
+    // These commands are run every 20 "ticks" of the primary radio command loop
+    // Basically 20 times less often than the standard peridic command
+    if(priority < 10)
+    {
+        slowPollCmdQueue.push_front(cmd);
+    } else {
+        slowPollCmdQueue.push_back(cmd);
     }
 }
 
@@ -2687,10 +2997,8 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         if(specLen == spectWidth)
         {
             wfimage.prepend(spectrum);
-            if(wfimage.length() >  wfLength)
-            {
-                wfimage.remove(wfLength);
-            }
+            wfimage.resize(wfLengthMax);
+            wfimage.squeeze();
 
             // Waterfall:
             for(int row = 0; row < wfLength; row++)
@@ -2736,7 +3044,8 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 
         freq.Hz = roundFrequency(freq.Hz, tsWfScrollHz);
 
-        emit setFrequency(freq);
+        //emit setFrequency(freq);
+        issueCmd(cmdSetFreq, freq);
         issueDelayedCommand(cmdGetFreq);
         showStatusBarText(QString("Going to %1 MHz").arg(x));
     }
@@ -2757,7 +3066,8 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
 
         freq.Hz = roundFrequency(freq.Hz, tsWfScrollHz);
 
-        emit setFrequency(freq);
+        //emit setFrequency(freq);
+        issueCmd(cmdSetFreq, freq);
         issueDelayedCommand(cmdGetFreq);
         showStatusBarText(QString("Going to %1 MHz").arg(x));
     }
@@ -2810,7 +3120,8 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     f.MHzDouble = f.Hz / (double)1E6;
     freq = f;
 
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmdUniquePriority(cmdSetFreq, f);
     ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2872,8 +3183,8 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
 
     // Note: we need to know if the DATA mode is active to reach mode-D
     // some kind of queued query:
-    cmdOutQue.append(cmdGetDataMode);
-    delayedCommand->start(); // why was that commented out?
+    if(rigCaps.hasDataModes)
+        issueDelayedCommand(cmdGetDataMode);
 }
 
 void wfmain::receiveDataModeStatus(bool dataEnabled)
@@ -2941,7 +3252,9 @@ void wfmain::on_goFreqBtn_clicked()
         if(ok)
         {
             f.Hz = freq*1E6;
-            emit setFrequency(f);
+            //emit setFrequency(f);
+            issueCmd(cmdSetFreq, f);
+            //issueCmdSetFreq(f);
             issueDelayedCommand(cmdGetFreq);
         }
     } else {
@@ -2949,7 +3262,9 @@ void wfmain::on_goFreqBtn_clicked()
         if(ok)
         {
             f.Hz = KHz*1E3;
-            emit setFrequency(f);
+            //issueCmdSetFreq(f);
+            //emit setFrequency(f);
+            issueCmd(cmdSetFreq, f);
             issueDelayedCommand(cmdGetFreq);
         }
     }
@@ -3109,17 +3424,35 @@ void wfmain::on_modeSelectCombo_activated(int index)
     // The "acticvated" signal means the user initiated a mode change.
     // This function is not called if code initated the change.
 
+    mode_info mode;
     unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->itemData(index).toUInt());
     currentModeIndex = newMode;
+    mode.reg = newMode;
+
 
     int filterSelection = ui->modeFilterCombo->currentData().toInt();
     if(filterSelection == 99)
     {
         // oops, we forgot to reset the combo box
+        return;
     } else {
         //qInfo(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
         currentMode = (mode_kind)newMode;
-        emit setMode(newMode, filterSelection);
+        mode.filter = filterSelection;
+        mode.name = ui->modeSelectCombo->currentText(); // for debug
+
+        for(unsigned int i=0; i < rigCaps.modes.size(); i++)
+        {
+            if(rigCaps.modes.at(i).reg == newMode)
+            {
+                mode.mk = rigCaps.modes.at(i).mk;
+                break;
+            }
+        }
+
+        issueCmd(cmdSetMode, mode);
+        currentModeInfo = mode;
+        //emit setMode(newMode, filterSelection);
     }
 }
 
@@ -3204,7 +3537,8 @@ void wfmain::on_freqDial_valueChanged(int value)
 
         ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 
-        emit setFrequency(f);
+        //emit setFrequency(f);
+        issueCmdUniquePriority(cmdSetFreq, f);
     } else {
         ui->freqDial->blockSignals(true);
         ui->freqDial->setValue(oldFreqDialVal);
@@ -3218,7 +3552,8 @@ void wfmain::receiveBandStackReg(freqt freq, char mode, char filter, bool dataOn
     // read the band stack and apply by sending out commands
 
     qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freq.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
-    emit setFrequency(freq);
+    //emit setFrequency(freq);
+    issueCmd(cmdSetFreq, freq);
     setModeVal = (unsigned char) mode;
     setFilterVal = (unsigned char) filter;
 
@@ -3284,9 +3619,10 @@ void wfmain::on_band4mbtn_clicked()
     } else {
         f.Hz = (70.200) * 1E6;
     }
-    emit setFrequency(f);
-        issueDelayedCommandUnique(cmdGetFreq);
-        ui->tabWidget->setCurrentIndex(0);
+    issueCmd(cmdSetFreq, f);
+    //emit setFrequency(f);
+    issueDelayedCommandUnique(cmdGetFreq);
+    ui->tabWidget->setCurrentIndex(0);
 }
 
 void wfmain::on_band6mbtn_clicked()
@@ -3350,7 +3686,8 @@ void wfmain::on_band60mbtn_clicked()
     // clutter the UI with 60M channel buttons...
     freqt f;
     f.Hz = (5.3305) * 1E6;
-    emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
+    //emit setFrequency(f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
 }
@@ -3371,7 +3708,8 @@ void wfmain::on_band630mbtn_clicked()
 {
     freqt f;
     f.Hz = 475 * 1E3;
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
 }
@@ -3380,7 +3718,8 @@ void wfmain::on_band2200mbtn_clicked()
 {
     freqt f;
     f.Hz = 136 * 1E3;
-    emit setFrequency(f);
+    //emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
 }
@@ -3508,13 +3847,12 @@ void wfmain::on_fRclBtn_clicked()
 
 void wfmain::on_rfGainSlider_valueChanged(int value)
 {
-    emit setRfGain((unsigned char) value);
+    issueCmdUniquePriority(cmdSetRxRfGain, (unsigned char) value);
 }
 
 void wfmain::on_afGainSlider_valueChanged(int value)
 {
-    // qInfo(logSystem()) << "Setting AF gain to " << value;
-    emit setAfGain((unsigned char)value);
+    issueCmdUniquePriority(cmdSetAfGain, (unsigned char)value);
 }
 
 void wfmain::receiveRfGain(unsigned char level)
@@ -3540,15 +3878,14 @@ void wfmain::receiveSql(unsigned char level)
 
 void wfmain::on_tuneNowBtn_clicked()
 {
-    emit startATU();
+    issueDelayedCommand(cmdStartATU);
     showStatusBarText("Starting ATU tuning cycle...");
-    cmdOutQue.append(cmdGetATUStatus);
-    delayedCommand->start();
+    issueDelayedCommand(cmdGetATUStatus);
 }
 
 void wfmain::on_tuneEnableChk_clicked(bool checked)
 {
-    emit setATU(checked);
+    issueCmd(cmdSetATU, checked);
     if(checked)
     {
         showStatusBarText("Turning on ATU");
@@ -3575,7 +3912,7 @@ void wfmain::on_pttOnBtn_clicked()
 
     // Are we already PTT? Not a big deal, just send again anyway.
     showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
-    emit setPTT(true);
+    issueCmdUniquePriority(cmdSetPTT, true);
     // send PTT
     // Start 3 minute timer
     pttTimer->start();
@@ -3586,7 +3923,7 @@ void wfmain::on_pttOffBtn_clicked()
 {
     // Send the PTT OFF command (more than once?)
     showStatusBarText("Sending PTT OFF command");
-    emit setPTT(false);
+    issueCmdUniquePriority(cmdSetPTT, false);
 
     // Stop the 3 min timer
     pttTimer->stop();
@@ -3597,7 +3934,7 @@ void wfmain::handlePttLimit()
 {
     // transmission time exceeded!
     showStatusBarText("Transmit timeout at 3 minutes. Sending PTT OFF command now.");
-    emit setPTT(false);
+    issueCmdUniquePriority(cmdSetPTT, false);
     issueDelayedCommand(cmdGetPTT);
 }
 
@@ -3630,9 +3967,8 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
             // Add command queue to check again and update status bar
             // qInfo(logSystem()) << "Received ATU status update that *tuning* is taking place";
             showStatusBarText("ATU is Tuning...");
-            cmdOutQue.append(cmdGetATUStatus); // Sometimes the first hit seems to be missed.
-            cmdOutQue.append(cmdGetATUStatus);
-            delayedCommand->start();
+            issueDelayedCommand(cmdGetATUStatus); // Sometimes the first hit seems to be missed.
+            issueDelayedCommand(cmdGetATUStatus);
             break;
         default:
             qInfo(logSystem()) << "Did not understand ATU status: " << (unsigned int) atustatus;
@@ -3783,6 +4119,7 @@ void wfmain::on_connectBtn_clicked()
         emit sendCloseComm();
         ui->connectBtn->setText("Connect");
         haveRigCaps = false;
+        rigName->setText("NONE");
     }
     else
     {
@@ -3797,7 +4134,8 @@ void wfmain::on_udpServerSetupBtn_clicked()
 }
 void wfmain::on_sqlSlider_valueChanged(int value)
 {
-    emit setSql((unsigned char)value);
+    issueCmd(cmdSetSql, (unsigned char)value);
+    //emit setSql((unsigned char)value);
 }
 
 void wfmain::on_modeFilterCombo_activated(int index)
@@ -3850,7 +4188,7 @@ void wfmain::on_transmitBtn_clicked()
 
         // Are we already PTT? Not a big deal, just send again anyway.
         showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
-        emit setPTT(true);
+        issueCmdUniquePriority(cmdSetPTT, true);
         // send PTT
         // Start 3 minute timer
         pttTimer->start();
@@ -3859,7 +4197,7 @@ void wfmain::on_transmitBtn_clicked()
 
     } else {
         // Currently transmitting
-        emit setPTT(false);
+        issueCmdUniquePriority(cmdSetPTT, false);
         pttTimer->stop();
         issueDelayedCommand(cmdGetPTT);
     }
@@ -3880,6 +4218,16 @@ void wfmain::changeSliderQuietly(QSlider *slider, int value)
     slider->blockSignals(true);
     slider->setValue(value);
     slider->blockSignals(false);
+}
+
+void wfmain::statusFromSliderRaw(QString name, int rawValue)
+{
+    showStatusBarText(name + QString(": %1").arg(rawValue));
+}
+
+void wfmain::statusFromSliderPercent(QString name, int rawValue)
+{
+    showStatusBarText(name + QString(": %1%").arg((int)(100*rawValue/255.0)));
 }
 
 void wfmain::receiveTxPower(unsigned char power)
@@ -4078,7 +4426,8 @@ void wfmain::receiveAntiVoxGain(unsigned char antiVoxGain)
 
 void wfmain::on_txPowerSlider_valueChanged(int value)
 {
-    emit setTxPower(value);
+    issueCmdUniquePriority(cmdSetTxPower, (unsigned char)value);
+    //emit setTxPower(value);
 }
 
 void wfmain::on_micGainSlider_valueChanged(int value)
@@ -4137,7 +4486,6 @@ void wfmain::on_modInputDataCombo_activated(int index)
     (void)index;
 }
 
-
 void wfmain::changeModLabelAndSlider(rigInput source)
 {
     changeModLabel(source, true);
@@ -4147,7 +4495,6 @@ void wfmain::changeModLabel(rigInput input)
 {
     changeModLabel(input, false);
 }
-
 
 void wfmain::changeModLabel(rigInput input, bool updateLevel)
 {
@@ -4195,16 +4542,7 @@ void wfmain::changeModLabel(rigInput input, bool updateLevel)
 void wfmain::processChangingCurrentModLevel(unsigned char level)
 {
     // slider moved, so find the current mod and issue the level set command.
-    rigInput currentIn;
-    if(usingDataMode)
-    {
-        currentIn = currentModDataSrc;
-    } else {
-        currentIn = currentModSrc;
-    }
-    //qInfo(logSystem()) << __func__ << ": setting current level: " << level;
-
-    emit setModLevel(currentIn, level);
+    issueCmd(cmdSetModLevel, level);
 }
 
 void wfmain::on_tuneLockChk_clicked(bool checked)
@@ -4320,6 +4658,12 @@ void wfmain::receiveSpectrumSpan(freqt freqspan, bool isSub)
            case(500000):
                ui->scopeBWCombo->setCurrentIndex(7);
                break;
+           case(1000000):
+               ui->scopeBWCombo->setCurrentIndex(8);
+               break;
+           case(2500000):
+               ui->scopeBWCombo->setCurrentIndex(9);
+               break;
            default:
                qInfo(logSystem()) << __func__ << "Could not match: " << freqspan.MHzDouble << " to anything like: " << (int)(freqspan.MHzDouble*1E6);
                break;
@@ -4346,21 +4690,25 @@ void wfmain::calculateTimingParameters()
 
     unsigned int usPerByte = 9600*1000 / prefs.serialPortBaud;
     unsigned int msMinTiming=usPerByte * 10*2/1000;
-    if(msMinTiming < 35)
-        msMinTiming = 35;
+    if(msMinTiming < 25)
+        msMinTiming = 25;
 
-    delayedCommand->setInterval( msMinTiming * 2); // 20 byte message
-    periodicPollingTimer->setInterval( msMinTiming ); // slower for s-meter poll
+    if(haveRigCaps && rigCaps.hasFDcomms)
+    {
+        delayedCommand->setInterval( msMinTiming); // 20 byte message
+    } else {
+        delayedCommand->setInterval( msMinTiming * 3); // 20 byte message
+    }
 
-    qInfo(logSystem()) << "Delay command interval timing: " << msMinTiming * 2 << "ms";
-    qInfo(logSystem()) << "Periodic polling timer: " << msMinTiming << "ms";
+
+    qInfo(logSystem()) << "Delay command interval timing: " << delayedCommand->interval() << "ms";
 
     // Normal:
-    delayedCmdIntervalLAN_ms =  msMinTiming * 2;
-    delayedCmdIntervalSerial_ms =  msMinTiming * 2;
+    delayedCmdIntervalLAN_ms =  delayedCommand->interval();
+    delayedCmdIntervalSerial_ms = delayedCommand->interval();
 
     // startup initial state:
-    delayedCmdStartupInterval_ms =  msMinTiming * 2;
+    delayedCmdStartupInterval_ms =  delayedCommand->interval() * 3;
 }
 
 void wfmain::receiveBaudRate(quint32 baud)
@@ -4392,21 +4740,21 @@ void wfmain::powerRigOn()
     delayedCommand->setInterval(3000); // 3 seconds
     if(ui->scopeEnableWFBtn->isChecked())
     {
-    issueDelayedCommand(cmdDispEnable);
-    issueDelayedCommand(cmdQueNormalSpeed);
-    issueDelayedCommand(cmdSpecOn);
-    issueDelayedCommand(cmdStartRegularPolling); // s-meter, etc
+        issueDelayedCommand(cmdDispEnable);
+        issueDelayedCommand(cmdQueNormalSpeed);
+        issueDelayedCommand(cmdSpecOn);
+        issueDelayedCommand(cmdStartRegularPolling); // s-meter, etc
     } else {
         issueDelayedCommand(cmdQueNormalSpeed);
+        issueDelayedCommand(cmdStartRegularPolling); // s-meter, etc
     }
     delayedCommand->start();
 }
 
 void wfmain::powerRigOff()
 {
-    periodicPollingTimer->stop();
     delayedCommand->stop();
-    cmdOutQue.clear();
+    delayedCmdQue.clear();
 
     emit sendPowerOff();
 }
@@ -4601,10 +4949,26 @@ void wfmain::on_wfLengthSlider_valueChanged(int value)
     prepareWf(value);
 }
 
+void wfmain::on_pollingBtn_clicked()
+{
+    bool ok;
+    int timing = 0;
+    timing = QInputDialog::getInt(this, "wfview Radio Polling Setup", "Poll Timing Interval (ms)", delayedCommand->interval(), 1, 200, 1, &ok );
+
+    if(ok && timing)
+    {
+        delayedCommand->setInterval( timing );
+        qInfo(logSystem()) << "User changed radio polling interval to " << timing << "ms.";
+        showStatusBarText("User changed radio polling interval to " + QString("%1").arg(timing) + "ms.");
+    }
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    prepareWf(160);
-
+    freqt f;
+    f.Hz = 14290000;
+    issueCmd(cmdSetFreq, f);
 }
+
