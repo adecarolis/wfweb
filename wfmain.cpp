@@ -880,6 +880,9 @@ void wfmain::setUIToPrefs()
 
     ui->wfLengthSlider->setValue(prefs.wflength);
     prepareWf(prefs.wflength);
+
+    ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
+    colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
 }
 
 void wfmain::setAudioDevicesUI()
@@ -1153,6 +1156,7 @@ void wfmain::setDefPrefs()
     defPrefs.virtualSerialPort = QString("none");
     defPrefs.localAFgain = 255;
     defPrefs.wflength = 160;
+    defPrefs.wftheme = static_cast<int>(QCPColorGradient::gpJet);
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -1174,6 +1178,7 @@ void wfmain::loadSettings()
     prefs.useFullScreen = settings->value("UseFullScreen", defPrefs.useFullScreen).toBool();
     prefs.useDarkMode = settings->value("UseDarkMode", defPrefs.useDarkMode).toBool();
     prefs.useSystemTheme = settings->value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
+    prefs.wftheme = settings->value("WFTheme", defPrefs.wftheme).toInt();
     prefs.drawPeaks = settings->value("DrawPeaks", defPrefs.drawPeaks).toBool();
     prefs.wflength = (unsigned int) settings->value("WFLength", defPrefs.wflength).toInt();
     prefs.stylesheetPath = settings->value("StylesheetPath", defPrefs.stylesheetPath).toString();
@@ -1465,6 +1470,7 @@ void wfmain::saveSettings()
     settings->setValue("UseSystemTheme", prefs.useSystemTheme);
     settings->setValue("UseDarkMode", prefs.useDarkMode);
     settings->setValue("DrawPeaks", prefs.drawPeaks);
+    settings->setValue("WFTheme", prefs.wftheme);
     settings->setValue("StylesheetPath", prefs.stylesheetPath);
     settings->setValue("splitter", ui->splitter->saveState());
     settings->setValue("windowGeometry", saveGeometry());
@@ -4631,6 +4637,7 @@ void wfmain::on_antennaSelCombo_activated(int index)
 void wfmain::on_wfthemeCombo_activated(int index)
 {
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(ui->wfthemeCombo->itemData(index).toInt()));
+    prefs.wftheme = ui->wfthemeCombo->itemData(index).toInt();
 }
 
 void wfmain::receivePreamp(unsigned char pre)

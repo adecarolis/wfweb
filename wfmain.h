@@ -668,6 +668,7 @@ private:
         QString virtualSerialPort;
         unsigned char localAFgain;
         unsigned int wflength;
+        int wftheme;
         // plot scheme
     } prefs;
 
