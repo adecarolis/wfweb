@@ -155,7 +155,8 @@ HEADERS  += wfmain.h \
     rigctld.h \
     ulaw.h \
     ring/ring.h \
-    transceiveradjustments.h
+    transceiveradjustments.h \
+    audiotaper.h
 
 
 FORMS    += wfmain.ui \

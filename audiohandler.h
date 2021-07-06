@@ -33,7 +33,7 @@ typedef signed short  MY_TYPE;
 #include <QMap>
 #include "resampler/speex_resampler.h"
 #include "ring/ring.h"
-
+#include "audiotaper.h"
 
 #include <QDebug>
 

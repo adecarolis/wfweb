@@ -6,6 +6,8 @@ transceiverAdjustments::transceiverAdjustments(QWidget *parent) :
     ui(new Ui::transceiverAdjustments)
 {
     ui->setupUi(this);
+    // request level updates
+
 }
 
 transceiverAdjustments::~transceiverAdjustments()
