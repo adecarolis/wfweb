@@ -21,6 +21,7 @@
 #include "calibrationwindow.h"
 #include "repeatersetup.h"
 #include "satellitesetup.h"
+#include "transceiveradjustments.h"
 #include "udpserversetup.h"
 #include "udpserver.h"
 #include "qledlabel.h"
@@ -666,6 +667,10 @@ private:
         quint16 rigCtlPort;
         colors colorScheme;
         QString virtualSerialPort;
+        unsigned char localAFgain;
+        unsigned int wflength;
+        int wftheme;
+        // plot scheme
     } prefs;
 
     preferences defPrefs;
@@ -737,7 +742,9 @@ private:
     calibrationWindow *cal;
     repeaterSetup *rpt;
     satelliteSetup *sat;
+    transceiverAdjustments *trxadj;
     udpServerSetup *srv;
+
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;

@@ -26,6 +26,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     cal = new calibrationWindow();
     rpt = new repeaterSetup();
     sat = new satelliteSetup();
+    trxadj = new transceiverAdjustments();
     srv = new udpServerSetup();
 
     connect(this, SIGNAL(sendServerConfig(SERVERCONFIG)), srv, SLOT(receiveServerConfig(SERVERCONFIG)));
@@ -877,6 +878,12 @@ void wfmain::setUIToPrefs()
     ui->drawPeakChk->setChecked(prefs.drawPeaks);
     on_drawPeakChk_clicked(prefs.drawPeaks);
     drawPeaks = prefs.drawPeaks;
+
+    ui->wfLengthSlider->setValue(prefs.wflength);
+    prepareWf(prefs.wflength);
+
+    ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
+    colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
 }
 
 void wfmain::setAudioDevicesUI()
@@ -1148,6 +1155,9 @@ void wfmain::setDefPrefs()
     defPrefs.enableRigCtlD = false;
     defPrefs.rigCtlPort = 4533;
     defPrefs.virtualSerialPort = QString("none");
+    defPrefs.localAFgain = 255;
+    defPrefs.wflength = 160;
+    defPrefs.wftheme = static_cast<int>(QCPColorGradient::gpJet);
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -1169,7 +1179,9 @@ void wfmain::loadSettings()
     prefs.useFullScreen = settings->value("UseFullScreen", defPrefs.useFullScreen).toBool();
     prefs.useDarkMode = settings->value("UseDarkMode", defPrefs.useDarkMode).toBool();
     prefs.useSystemTheme = settings->value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
+    prefs.wftheme = settings->value("WFTheme", defPrefs.wftheme).toInt();
     prefs.drawPeaks = settings->value("DrawPeaks", defPrefs.drawPeaks).toBool();
+    prefs.wflength = (unsigned int) settings->value("WFLength", defPrefs.wflength).toInt();
     prefs.stylesheetPath = settings->value("StylesheetPath", defPrefs.stylesheetPath).toString();
     ui->splitter->restoreState(settings->value("splitter").toByteArray());
 
@@ -1253,7 +1265,8 @@ void wfmain::loadSettings()
         ui->vspCombo->setCurrentIndex(ui->vspCombo->count()-1);
     }
 
-
+    prefs.localAFgain = (unsigned char) settings->value("localAFgain", defPrefs.localAFgain).toUInt();
+    rxSetup.localAFgain = prefs.localAFgain;
     settings->endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
@@ -1458,10 +1471,12 @@ void wfmain::saveSettings()
     settings->setValue("UseSystemTheme", prefs.useSystemTheme);
     settings->setValue("UseDarkMode", prefs.useDarkMode);
     settings->setValue("DrawPeaks", prefs.drawPeaks);
+    settings->setValue("WFTheme", prefs.wftheme);
     settings->setValue("StylesheetPath", prefs.stylesheetPath);
     settings->setValue("splitter", ui->splitter->saveState());
     settings->setValue("windowGeometry", saveGeometry());
     settings->setValue("windowState", saveState());
+    settings->setValue("WFLength", prefs.wflength);
     settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -1470,6 +1485,7 @@ void wfmain::saveSettings()
     settings->setValue("SerialPortRadio", prefs.serialPortRadio);
     settings->setValue("SerialPortBaud", prefs.serialPortBaud);
     settings->setValue("VirtualSerialPort", prefs.virtualSerialPort);
+    settings->setValue("localAFgain", prefs.localAFgain);
     settings->endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
@@ -2699,6 +2715,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         this->rigCaps = rigCaps;
         rigName->setText(rigCaps.modelName);
+        setWindowTitle(rigCaps.modelName);
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
         haveRigCaps = true;
         // Added so that server receives rig capabilities.
@@ -2820,14 +2837,17 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         }
         ui->scopeBWCombo->blockSignals(false);
 
-
         setBandButtons();
 
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
 
         ui->connectBtn->setText("Disconnect"); // We must be connected now.
-        prepareWf();
+        prepareWf(ui->wfLengthSlider->value());
+        if(usingLAN)
+        {
+            ui->afGainSlider->setValue(prefs.localAFgain);
+        }
         // Adding these here because clearly at this point we have valid
         // rig comms. In the future, we should establish comms and then
         // do all the initial grabs. For now, this hack of adding them here and there:
@@ -3853,6 +3873,11 @@ void wfmain::on_rfGainSlider_valueChanged(int value)
 void wfmain::on_afGainSlider_valueChanged(int value)
 {
     issueCmdUniquePriority(cmdSetAfGain, (unsigned char)value);
+    if(usingLAN)
+    {
+        rxSetup.localAFgain = (unsigned char)(value);
+        prefs.localAFgain = (unsigned char)(value);
+    }
 }
 
 void wfmain::receiveRfGain(unsigned char level)
@@ -4614,6 +4639,7 @@ void wfmain::on_antennaSelCombo_activated(int index)
 void wfmain::on_wfthemeCombo_activated(int index)
 {
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(ui->wfthemeCombo->itemData(index).toInt()));
+    prefs.wftheme = ui->wfthemeCombo->itemData(index).toInt();
 }
 
 void wfmain::receivePreamp(unsigned char pre)
@@ -4946,6 +4972,7 @@ void wfmain::on_baudRateCombo_activated(int index)
 
 void wfmain::on_wfLengthSlider_valueChanged(int value)
 {
+    prefs.wflength = (unsigned int)(value);
     prepareWf(value);
 }
 
@@ -4967,8 +4994,6 @@ void wfmain::on_pollingBtn_clicked()
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    freqt f;
-    f.Hz = 14290000;
-    issueCmd(cmdSetFreq, f);
+    trxadj->show();
 }
 
