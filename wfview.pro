@@ -128,7 +128,8 @@ SOURCES += main.cpp\
     resampler/resample.c \
     repeatersetup.cpp \
     rigctld.cpp \
-    ring/ring.cpp
+    ring/ring.cpp \
+    transceiveradjustments.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -153,14 +154,16 @@ HEADERS  += wfmain.h \
     repeaterattributes.h \
     rigctld.h \
     ulaw.h \
-    ring/ring.h
+    ring/ring.h \
+    transceiveradjustments.h
 
 
 FORMS    += wfmain.ui \
     calibrationwindow.ui \
     satellitesetup.ui \
     udpserversetup.ui \
-    repeatersetup.ui
+    repeatersetup.ui \
+    transceiveradjustments.ui
 
 
 

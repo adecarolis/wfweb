@@ -2714,6 +2714,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         this->rigCaps = rigCaps;
         rigName->setText(rigCaps.modelName);
+        setWindowTitle(rigCaps.modelName);
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
         haveRigCaps = true;
         // Added so that server receives rig capabilities.
