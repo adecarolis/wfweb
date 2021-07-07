@@ -1,6 +1,27 @@
 # CHANGELOG
 
 
+- 20210706
+
+    		Local af gain now has anti-log audio pot taper.
+
+    		Only start audio when stream is ready
+
+- 20210705
+
+    		Added transceiver adjustment window show code, for the debug button only
+    		currently.
+
+    		Added window title text change to show radio model. Needs to be checked
+    		cross-platform. On Linux Mint, displays: "IC-7300 -- wfview"
+
+    		Applying setup.volume within audio handler if the audio handled is an
+    		output. Added this to the init function.
+
+    		waterfall theme is now saved.
+
+    		Added local af gain and wf length to the preferences.
+
 - 20210702
 		fixed small error where the tx latency was not copied in the UI
 		
