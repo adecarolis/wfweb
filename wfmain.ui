@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -2678,7 +2678,7 @@
           <item>
            <widget class="QLabel" name="label_33">
             <property name="text">
-             <string>Please note: Changing CI-V Address, Serial Device, and Baud rate requires pressing &quot;Save Settings&quot;, closing wfview, and re-opening. </string>
+             <string>Please note: Changing  the built-in network server requires pressing &quot;Save Settings&quot;, closing wfview, and re-opening. </string>
             </property>
            </widget>
           </item>
