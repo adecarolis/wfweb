@@ -288,7 +288,9 @@ void audioHandler::start()
 
 void audioHandler::setVolume(unsigned char volume)
 {
-	this->volume = (qreal)volume/255.0;
+    //this->volume = (qreal)volume/255.0;
+    this->volume = audiopot[volume];
+
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
 }
 
