@@ -134,6 +134,8 @@ SOURCES += main.cpp\
     rigctld.cpp \
     ring/ring.cpp \
     shuttle.cpp 
+    transceiveradjustments.cpp \
+    aboutbox.cpp
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -160,13 +162,17 @@ HEADERS  += wfmain.h \
     ulaw.h \
     ring/ring.h \
     shuttle.h
-
+    transceiveradjustments.h \
+    audiotaper.h \
+    aboutbox.h
 
 FORMS    += wfmain.ui \
     calibrationwindow.ui \
     satellitesetup.ui \
     udpserversetup.ui \
-    repeatersetup.ui
+    repeatersetup.ui \
+    transceiveradjustments.ui \
+    aboutbox.ui
 
 
 

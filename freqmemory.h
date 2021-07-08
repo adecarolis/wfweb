@@ -37,6 +37,7 @@ enum mode_kind {
 struct mode_info {
     mode_kind mk;
     unsigned char reg;
+    unsigned char filter;
     QString name;
 };
 

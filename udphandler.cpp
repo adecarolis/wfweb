@@ -195,7 +195,7 @@ void udpHandler::dataReceived()
                     if (txSetup.codec == 0) {
                         txString = "(no tx)";
                     }
-                    emit haveNetworkStatus(QString("<pre>%1 rx latency: %2 ms / rtt: %3 ms / loss: %4/%5</pre>").arg(txString).arg(tempLatency).arg(latency, 3).arg(totallost, 3).arg(totalsent, 3));
+                    emit haveNetworkStatus(QString("<pre>%1 rx latency: %2 / rtt: %3 ms / loss: %4/%5</pre>").arg(txString).arg(tempLatency).arg(latency, 3).arg(totallost, 3).arg(totalsent, 3));
                 }
                 break;
             }
@@ -1133,6 +1133,10 @@ void udpBase::dataReceived(QByteArray r)
     {
         rxBufferMutex.lock();
         if (rxSeqBuf.isEmpty()) {
+            if (rxSeqBuf.size() > 400)
+            {
+                rxSeqBuf.erase(rxSeqBuf.begin());
+            }
             rxSeqBuf.insert(in->seq, QTime::currentTime());
         } 
         else
@@ -1153,6 +1157,10 @@ void udpBase::dataReceived(QByteArray r)
             {
                 // Add incoming packet to the received buffer and if it is in the missing buffer, remove it.
                 rxSeqBuf.insert(in->seq, QTime::currentTime());
+                if (rxSeqBuf.size() > 400)
+                {
+                    rxSeqBuf.erase(rxSeqBuf.begin());
+                }
             }
             else {
                 // This is probably one of our missing packets!
@@ -1208,7 +1216,15 @@ void udpBase::sendRetransmitRequest()
                     {
                         // We haven't seen this missing packet before
                         qDebug(logUdp()) << this->metaObject()->className() << ": Adding to missing buffer (len=" << rxMissing.size() << "): " << j;
+                        if (rxMissing.size() > 25)
+                        {
+                            rxMissing.erase(rxMissing.begin());
+                        }
                         rxMissing.insert(j, 0);
+                        if (rxSeqBuf.size() > 400)
+                        {
+                            rxSeqBuf.erase(rxSeqBuf.begin());
+                        }
                         rxSeqBuf.insert(j, QTime::currentTime()); // Add this missing packet to the rxbuffer as we now long about it.
                         packetsLost++;
                     }
@@ -1351,11 +1367,17 @@ void udpBase::sendTrackedPacket(QByteArray d)
             congestion = 0;
         }
         txSeqBuf.insert(sendSeq,s);
+        if (txSeqBuf.size() > 400)
+        {
+            txSeqBuf.erase(txSeqBuf.begin());
+        }
         txBufferMutex.unlock();
     } else {
         qInfo(logUdp()) << this->metaObject()->className() << ": txBuffer mutex is locked";
     }
-    purgeOldEntries(); // Delete entries older than PURGE_SECONDS seconds (currently 5)
+    // Stop using purgeOldEntries() as it is likely slower than just removing the earliest packet.
+    //qInfo(logUdp()) << this->metaObject()->className() << "RX:" << rxSeqBuf.size() << "TX:" <<txSeqBuf.size() << "MISS:" << rxMissing.size();
+    //purgeOldEntries(); // Delete entries older than PURGE_SECONDS seconds (currently 5)
     sendSeq++;
 
     udpMutex.lock();

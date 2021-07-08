@@ -1,7 +1,142 @@
 # CHANGELOG
 
 
+- 20210706
+
+    		Local af gain now has anti-log audio pot taper.
+
+    		Only start audio when stream is ready
+
+- 20210705
+
+    		Added transceiver adjustment window show code, for the debug button only
+    		currently.
+
+    		Added window title text change to show radio model. Needs to be checked
+    		cross-platform. On Linux Mint, displays: "IC-7300 -- wfview"
+
+    		Applying setup.volume within audio handler if the audio handled is an
+    		output. Added this to the init function.
+
+    		waterfall theme is now saved.
+
+    		Added local af gain and wf length to the preferences.
+
+- 20210702
+		fixed small error where the tx latency was not copied in the UI
+		
+- 20210626
+    		Merge branch 'sequence' of gitlab.com:eliggett/wfview into sequence
+
+    		Duplicate of existing command.
+
+    		Remove unnecessary escape sequence
+
+    		Fix for fix of missing __PRETTY_FUNCTION__
+
+    		Add __PRETTY_FUNCTION__ for compilers that don't have it.
+
+- 20210625
+    		Mode changes from the combo box now use the que. There are still other
+    		methods to change mode which will transition shortly.
+
+    		Faster PTT
+
+    		Added PTT to the queue.
+
+    		Added unique priority insertion methods.
+
+    		Changed how commands with parameter data are added.
+
+    		Initial queued "set" command commit. Only the frequency set command is
+    		used so far, and only for the "Frequency" tab and the tuning knob.
+
+- 20210624
+    		Quick hack for WFM forcing FIL1 always
+
+- 20210621
+    		Added polling button
+
+    		Moving to std::deque (double-ended que).
+
+- 20210620
+
+    		IC-R8600 span is now received into the UI correctly.
+
+    		New unified outgoing command queue. Tested on IC-9700 and IC-718 (to
+    		remote wfview server). CPU usage seems higher but please check your
+    		system.
+    
+    		Timing seems to be acceptable but could probably use some tweaks. 
+		S-meter polling is 25ms for fast radios, and slower rates for slower
+    		radios. Half-duplex serial radios receive 3x slower polling to make room
+    		for replies.
+    
+    		For Freq, Mode, etc "regular" constant polling (new feature):
+    
+    		IC-9700 polling is 5 per second, IC-718 is 1-2 per second.
+    
+    		Just helps keep the UI in sync with changes taking place at the rig. The
+    		polling is slow enough that it doesn't impact anything. But quick enough
+    		that it catches discrepencies pretty quickly.
+
+- 20210619
+
+    		Added a few more slider things
+
+    		whatsnew: improved IC-R8600
+
+- 20210618
+
+    		Additional support for the IC-R8600, including wider scope spans.
+
+    		Minor change to remove some old debug code that snuck in.
+
+    		If no rig caps, then don't mess with the window!
+
+    		Added full duplex comms parameter to rigCaps. We assume half-duplex
+    		until we receive a reply to rigID.
+
+    		Fixed accidental s-meter timing parameter change.
+
+- 20210617
+
+    		Radios without spectrum do not show spectrum, and, the window properly
+    		resizes for those controls. Also, a new key command, control-shift-d has
+    		been added to run debug functions from any tab in the program.
+
+- 20210615
+
+    		Additional code to hide/show spectrum and correcting an issue with the
+    		rig name not populating for non-spectrum radios.
+
+    		Dynamic show/hide spectrum for rigs without this feature.
+
+    		Additional data corruption checking.
+
+- 20210614
+
+    		Changed collision detection code so that we can more easily see what
+    		message was missed.
+
+    		Added collision detection for serial commands. Collisions are aparently
+    		frequent for true 1-wire CI-V radios.
+
+    		We now calculate polling rates immediately upon receiveCommReady for
+    		serial connections. For network connections, we assume sane values and
+    		modify once we receive the baud rate from the server.
+
+    		Add Neon (ARM) support to resampler
+
+    		Revert to using resampler directory rather than opus-tools submodule
+
+- 20210612
+
+    		Add tooltip showing percentage of TX power when slider is moved
+
 - 20210611
+
+                adding a second path/way for the qcustomplot link if the first fails
 
     		Update udpserver.cpp
 

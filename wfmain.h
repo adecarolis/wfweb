@@ -22,16 +22,19 @@
 #include "calibrationwindow.h"
 #include "repeatersetup.h"
 #include "satellitesetup.h"
+#include "transceiveradjustments.h"
 #include "udpserversetup.h"
 #include "udpserver.h"
 #include "qledlabel.h"
 #include "rigctld.h"
+#include "aboutbox.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
 #include "shuttle.h"
 
 #include <deque>
+#include <memory>
 
 namespace Ui {
 class wfmain;
@@ -60,6 +63,7 @@ signals:
     void setFrequency(freqt freq);
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
+    void setMode(mode_info);
     void setDataMode(bool dataOn, unsigned char filter);
     void getDataMode();
     void getModInput(bool dataOn);
@@ -591,19 +595,41 @@ private:
     unsigned char setModeVal=0;
     unsigned char setFilterVal=0;
 
-    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetModeFilter,
+    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode, cmdGetDataMode, cmdSetModeFilter,
               cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
-              cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
-              cmdGetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
-              cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
+              cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
+              cmdGetSql, cmdSetSql, cmdGetATUStatus, cmdSetATU, cmdStartATU, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,
+              cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
               cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
               cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna};
 
-    std::deque <cmds> delayedCmdQue;
-    std::deque <cmds> periodicCmdQueue;
-    std::deque <cmds> slowPollCmdQueue;
+    struct commandtype {
+        cmds cmd;
+        std::shared_ptr<void> data;
+    };
+
+    std::deque <commandtype> delayedCmdQue;    // rapid que for commands to the radio
+    std::deque <cmds> periodicCmdQueue; // rapid que for metering
+    std::deque <cmds> slowPollCmdQueue; // slow, regular checking for UI sync
     void doCmd(cmds cmd);
+    void doCmd(commandtype cmddata);
+
+    void issueCmd(cmds cmd, freqt f);
+    void issueCmd(cmds cmd, mode_info m);
+    void issueCmd(cmds cmd, int i);
+    void issueCmd(cmds cmd, unsigned char c);
+    void issueCmd(cmds cmd, char c);
+    void issueCmd(cmds cmd, bool b);
+
+    // These commands pop_front and remove similar commands:
+    void issueCmdUniquePriority(cmds cmd, bool b);
+    void issueCmdUniquePriority(cmds cmd, unsigned char c);
+    void issueCmdUniquePriority(cmds cmd, char c);
+    void issueCmdUniquePriority(cmds cmd, freqt f);
+
+    void removeSimilarCommand(cmds cmd);
+
     int pCmdNum = 0;
     int delayedCmdIntervalLAN_ms = 100;
     int delayedCmdIntervalSerial_ms = 100;
@@ -653,6 +679,10 @@ private:
         quint16 rigCtlPort;
         colors colorScheme;
         QString virtualSerialPort;
+        unsigned char localAFgain;
+        unsigned int wflength;
+        int wftheme;
+        // plot scheme
     } prefs;
 
     preferences defPrefs;
@@ -708,6 +738,7 @@ private:
     rigInput currentModSrc = inputUnknown;
     rigInput currentModDataSrc = inputUnknown;
     mode_kind currentMode = modeUSB;
+    mode_info currentModeInfo;
 
     bool haveRigCaps;
     bool amTransmitting;
@@ -723,7 +754,10 @@ private:
     calibrationWindow *cal;
     repeaterSetup *rpt;
     satelliteSetup *sat;
+    transceiverAdjustments *trxadj;
     udpServerSetup *srv;
+    aboutbox *abtBox;
+
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
@@ -763,6 +797,7 @@ private:
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
 Q_DECLARE_METATYPE(struct freqt)
+Q_DECLARE_METATYPE(struct mode_info)
 Q_DECLARE_METATYPE(struct udpPreferences)
 Q_DECLARE_METATYPE(struct rigStateStruct)
 Q_DECLARE_METATYPE(struct audioPacket)
