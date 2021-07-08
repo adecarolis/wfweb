@@ -15,8 +15,8 @@ aboutbox::aboutbox(QWidget *parent) :
     ui->topText->setText("wfview version 1.1a");
 
     QString head = QString("<html><head></head><body>");
-    QString copyright = QString("Copyright 2017-2021 Elliott H. Liggett, W6EL. All rights reserved.");
-    QString nacode = QString("<br/><br/>Networking and audio code written by Phil Taylor, M0VSE");
+    QString copyright = QString("Copyright 2017-2021 Elliott H. Liggett, W6EL. All rights reserved. wfview source code is <a href=\"https://gitlab.com/eliggett/wfview/-/blob/master/LICENSE\">licensed</a> under the GNU GPLv3.");
+    QString nacode = QString("<br/><br/>Networking, audio, rigctl server, and much more written by Phil Taylor, M0VSE");
     QString doctest = QString("<br/><br/>Testing, documentation, bug fixes, and development mentorship from<br/>Roeland Jansen, PA3MET, and Jim Nijkamp, PA8E.");
 
 
