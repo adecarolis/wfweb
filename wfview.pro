@@ -133,7 +133,7 @@ SOURCES += main.cpp\
     repeatersetup.cpp \
     rigctld.cpp \
     ring/ring.cpp \
-    shuttle.cpp 
+    shuttle.cpp \
     transceiveradjustments.cpp \
     aboutbox.cpp
 
@@ -161,7 +161,7 @@ HEADERS  += wfmain.h \
     rigctld.h \
     ulaw.h \
     ring/ring.h \
-    shuttle.h
+    shuttle.h \
     transceiveradjustments.h \
     audiotaper.h \
     aboutbox.h
