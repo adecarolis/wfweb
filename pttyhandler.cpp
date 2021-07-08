@@ -117,7 +117,7 @@ void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
 {
 
     int fePos=data.lastIndexOf((char)0xfe);
-    if (fePos>0)
+    if (fePos > 0 && data.length() > fePos+2)
         fePos=fePos-1;
     else
     {
@@ -125,7 +125,14 @@ void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
         printHex(data,false,true);
     }
 
-    if (isConnected && (unsigned char)data[fePos+2] != 0xE1 && (unsigned char)data[fePos+3] != 0xE1)
+    if (disableTransceive && ((unsigned char)data[fePos + 2] == 0x00 || (unsigned char)data[fePos + 3] == 0x00))
+    {
+        // Ignore data that is sent to/from transceive address as client has requested transceive disabled.
+        qDebug(logSerial()) << "Transceive command filtered";
+        return;
+    }
+
+    if (isConnected && (unsigned char)data[fePos + 2] != 0xE1 && (unsigned char)data[fePos + 3] != 0xE1)
     {
         // send to the pseudo port as well
         // index 2 is dest, 0xE1 is wfview, 0xE0 is assumed to be the other device.
@@ -133,7 +140,7 @@ void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
         // 0xE1 = wfview
         // 0xE0 = pseudo-term host
         // 0x00 = broadcast to all
-        //qInfo(logSerial()) << "Sending data from radio to pseudo-terminal";
+        //qInfo(logSerial()) << "Sending data from radio to pseudo-terminal";        
         sendDataOut(data);
     }
 }
@@ -221,12 +228,16 @@ void pttyHandler::receiveDataIn(int fd) {
                 reply[3] = inPortData[2];
                 sendDataOut(inPortData); // Echo command back
                 sendDataOut(reply);
+                if (!disableTransceive) {
+                    qInfo(logSerial()) << "pty requested CI-V Transceive disable";
+                    disableTransceive = true;
+                }
             }
             else if (inPortData.length() > lastFE + 2 && ((quint8)inPortData[lastFE + 1] == civId || (quint8)inPortData[lastFE + 2] == civId))
             {
                 emit haveDataFromPort(inPortData);
-                //qInfo(logSerial()) << "Data from pseudo term:";
-                //printHex(inPortData, false, true);
+                qDebug(logSerial()) << "Data from pseudo term:";
+                printHex(inPortData, false, true);
             }
 
             if (rolledBack)
