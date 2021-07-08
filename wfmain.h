@@ -26,6 +26,7 @@
 #include "udpserver.h"
 #include "qledlabel.h"
 #include "rigctld.h"
+#include "aboutbox.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -744,6 +745,7 @@ private:
     satelliteSetup *sat;
     transceiverAdjustments *trxadj;
     udpServerSetup *srv;
+    aboutbox *abtBox;
 
 
     udpServer* udp = Q_NULLPTR;
