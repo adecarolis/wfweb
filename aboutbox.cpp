@@ -51,27 +51,27 @@ aboutbox::aboutbox(QWidget *parent) :
 
     QString sxcreditcopyright = QString("Speex copyright notice:\
 Copyright (C) 2003 Jean-Marc Valin\n\
-Redistribution and use in source and binary forms, with or without\
-modification, are permitted provided that the following conditions\
+Redistribution and use in source and binary forms, with or without\n\
+modification, are permitted provided that the following conditions\n\
 are met:\n\
-- Redistributions of source code must retain the above copyright\
+- Redistributions of source code must retain the above copyright\n\
 notice, this list of conditions and the following disclaimer.\n\
-- Redistributions in binary form must reproduce the above copyright\
-notice, this list of conditions and the following disclaimer in the\
+- Redistributions in binary form must reproduce the above copyright\n\
+notice, this list of conditions and the following disclaimer in the\n\
 documentation and/or other materials provided with the distribution.\n\
-- Neither the name of the Xiph.org Foundation nor the names of its\
-contributors may be used to endorse or promote products derived from\
+- Neither the name of the Xiph.org Foundation nor the names of its\n\
+contributors may be used to endorse or promote products derived from\n\
 this software without specific prior written permission.\n\
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\
-``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\
-A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR\
-CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,\
-EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\
-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF\
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING\
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS\n\
+``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT\n\
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR\n\
+A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR\n\
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,\n\
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,\n\
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR\n\
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF\n\
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING\n\
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\n\
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
 
 
