@@ -125,6 +125,11 @@ signals:
     void setATU(bool atuEnabled);
     void getATUStatus();
 
+    // Time and date:
+    void setTime(timekind t);
+    void setDate(datekind d);
+    void setUTCOffset(timekind t);
+
     void getRigID(); // this is the model of the rig
     void getRigCIV(); // get the rig's CIV addr
     void spectOutputEnable();
@@ -244,6 +249,9 @@ private slots:
     void showStatusBarText(QString text);
     void serverConfigRequested(SERVERCONFIG conf, bool store);
     void receiveBaudRate(quint32 baudrate);
+
+    void setRadioTimeDateSend();
+
 
     // void on_getFreqBtn_clicked();
 
@@ -591,7 +599,8 @@ private:
               cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
               cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
-              cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna};
+              cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
+              cmdSetTime, cmdSetDate, cmdSetUTCOffset};
 
     struct commandtype {
         cmds cmd;
@@ -606,6 +615,8 @@ private:
 
     void issueCmd(cmds cmd, freqt f);
     void issueCmd(cmds cmd, mode_info m);
+    void issueCmd(cmds cmd, timekind t);
+    void issueCmd(cmds cmd, datekind d);
     void issueCmd(cmds cmd, int i);
     void issueCmd(cmds cmd, unsigned char c);
     void issueCmd(cmds cmd, char c);
@@ -625,6 +636,13 @@ private:
     int delayedCmdStartupInterval_ms = 100;
     bool runPeriodicCommands;
     bool usingLAN = false;
+
+    QTimer *timeSync;
+    bool waitingToSetTimeDate;
+    void setRadioTimeDatePrep();
+    timekind timesetpoint;
+    timekind utcsetting;
+    datekind datesetpoint;
 
     freqMemory mem;
     struct colors {
@@ -785,6 +803,8 @@ Q_DECLARE_METATYPE(struct udpPreferences)
 Q_DECLARE_METATYPE(struct rigStateStruct)
 Q_DECLARE_METATYPE(struct audioPacket)
 Q_DECLARE_METATYPE(struct audioSetup)
+Q_DECLARE_METATYPE(struct timekind)
+Q_DECLARE_METATYPE(struct datekind)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)

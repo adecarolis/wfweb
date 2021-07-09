@@ -44,6 +44,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType<mode_info>();
     qRegisterMetaType<audioPacket>();
     qRegisterMetaType <audioSetup>();
+    qRegisterMetaType <timekind>();
+    qRegisterMetaType <datekind>();
+
 
     haveRigCaps = false;
 
@@ -335,6 +338,11 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveRefAdjustFine(unsigned char)), cal, SLOT(handleRefAdjustFine(unsigned char)));
     connect(cal, SIGNAL(setRefAdjustCourse(unsigned char)), rig, SLOT(setRefAdjustCourse(unsigned char)));
     connect(cal, SIGNAL(setRefAdjustFine(unsigned char)), rig, SLOT(setRefAdjustFine(unsigned char)));
+
+    // Date and Time:
+    connect(this, SIGNAL(setTime(timekind)), rig, SLOT(setTime(timekind)));
+    connect(this, SIGNAL(setDate(datekind)), rig, SLOT(setDate(datekind)));
+    connect(this, SIGNAL(setUTCOffset(timekind)), rig, SLOT(setUTCOffset(timekind)));
 
 }
 
@@ -834,6 +842,10 @@ void wfmain::setInitialTiming()
     pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
     pttTimer->setSingleShot(true);
     connect(pttTimer, SIGNAL(timeout()), this, SLOT(handlePttLimit()));
+
+    timeSync = new QTimer(this);
+    connect(timeSync, SIGNAL(timeout()), this, SLOT(setRadioTimeDateSend()));
+    waitingToSetTimeDate = false;
 }
 
 void wfmain::setServerToPrefs()
@@ -2317,6 +2329,24 @@ void wfmain::doCmd(commandtype cmddata)
             emit setATU(atuOn);
             break;
         }
+        case cmdSetUTCOffset:
+        {
+            timekind u = (*std::static_pointer_cast<timekind>(data));
+            emit setUTCOffset(u);
+            break;
+        }
+        case cmdSetTime:
+        {
+            timekind t = (*std::static_pointer_cast<timekind>(data));
+            emit setTime(t);
+            break;
+        }
+        case cmdSetDate:
+        {
+            datekind d = (*std::static_pointer_cast<datekind>(data));
+            emit setDate(d);
+            break;
+        }
         default:
             doCmd(cmd);
             break;
@@ -2608,8 +2638,25 @@ void wfmain::issueCmd(cmds cmd, freqt f)
     commandtype cmddata;
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<freqt>(new freqt(f));
-    //*static_cast<freqt*>(cmddata.data.get()) = f;
     delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, timekind t)
+{
+    qDebug(logSystem()) << "Issuing timekind command with data: " << t.hours << " hours, " << t.minutes << " minutes, " << t.isMinus << " isMinus";
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<timekind>(new timekind(t));
+    delayedCmdQue.push_front(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, datekind d)
+{
+    qDebug(logSystem()) << "Issuing datekind command with data: " << d.day << " day, " << d.month << " month, " << d.year << " year.";
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<datekind>(new datekind(d));
+    delayedCmdQue.push_front(cmddata);
 }
 
 void wfmain::issueCmd(cmds cmd, int i)
@@ -4190,6 +4237,57 @@ void wfmain::on_satOpsBtn_clicked()
     sat->show();
 }
 
+void wfmain::setRadioTimeDatePrep()
+{
+    if(!waitingToSetTimeDate)
+    {
+        // 1: Find the current time and date
+        QDateTime now = QDateTime::currentDateTime();
+        now.setTime(QTime::currentTime());
+
+        int second = now.time().second();
+
+        // 2: Find how many mseconds until next minute
+        int msecdelay = QTime::currentTime().msecsTo( QTime::currentTime().addSecs(60-second) );
+
+        // 3: Compute time and date at one minute later
+        QDateTime setpoint = now.addMSecs(msecdelay); // at HMS or posibly HMS + some ms. Never under though.
+
+        // 4: Prepare data structs for the time at one minute later
+        timesetpoint.hours = (unsigned char)setpoint.time().hour();
+        timesetpoint.minutes = (unsigned char)setpoint.time().minute();
+        datesetpoint.day = (unsigned char)setpoint.date().day();
+        datesetpoint.month = (unsigned char)setpoint.date().month();
+        datesetpoint.year = (uint16_t)setpoint.date().year();
+        unsigned int utcOffsetSeconds = (unsigned int)abs(setpoint.offsetFromUtc());
+        bool isMinus = setpoint.offsetFromUtc() < 0;
+        utcsetting.hours = utcOffsetSeconds / 60 / 60;
+        utcsetting.minutes = (utcOffsetSeconds - (utcsetting.hours*60*60) ) / 60;
+        utcsetting.isMinus = isMinus;
+
+        timeSync->setInterval(msecdelay);
+        timeSync->setSingleShot(true);
+
+        // 5: start one-shot timer for the delta computed in #2.
+        timeSync->start();
+        waitingToSetTimeDate = true;
+        showStatusBarText(QString("Setting time, date, and UTC offset for radio in %1 seconds.").arg(msecdelay/1000));
+    }
+}
+
+void wfmain::setRadioTimeDateSend()
+{
+    // Issue priority commands for UTC offset, date, and time
+    // UTC offset must come first, otherwise the radio may "help" and correct for any changes.
+
+    showStatusBarText(QString("Setting time, date, and UTC offset for radio now."));
+
+    issueCmd(cmdSetTime, timesetpoint);
+    issueCmd(cmdSetDate, datesetpoint);
+    issueCmd(cmdSetUTCOffset, utcsetting);
+    waitingToSetTimeDate = false;
+}
+
 void wfmain::changeSliderQuietly(QSlider *slider, int value)
 {
     slider->blockSignals(true);
@@ -4946,6 +5044,7 @@ void wfmain::on_pollingBtn_clicked()
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    trxadj->show();
+    //trxadj->show();
+    setRadioTimeDatePrep();
 }
 
