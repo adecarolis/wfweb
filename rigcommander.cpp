@@ -2937,6 +2937,29 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[band2m] = 0x01;
             rigCaps.modes = commonModes;
             break;
+        case model7600:
+            rigCaps.modelName = QString("IC-7600");
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.append(inputACC);
+            rigCaps.inputs.append(inputUSB);
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
+            rigCaps.hasATU = true;
+            rigCaps.hasCTCSS = false;
+            rigCaps.hasDTCS = false;
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(), {0x00, 0x06, 0x12, 0x18});
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
+            rigCaps.antennas = {0x00, 0x01};
+            rigCaps.bands = standardHF;
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.bsr[bandGen] = 0x11;
+            rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
+                                                       createMode(modePSK_R, 0x13, "PSK-R")});
+            break;
         case model7610:
             rigCaps.modelName = QString("IC-7610");
             rigCaps.hasSpectrum = true;
