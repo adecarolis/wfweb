@@ -1808,7 +1808,7 @@ void wfmain::shortcutF10()
 
 void wfmain::shortcutF12()
 {
-    // Speak current frequency and mode via IC-7300
+    // Speak current frequency and mode from the radio
     showStatusBarText("Sending speech command to radio.");
     emit sayAll();
 }
@@ -1824,8 +1824,8 @@ void wfmain::shortcutControlT()
 void wfmain::shortcutControlR()
 {
     // Receive
-    emit setPTT(false);
-    issueDelayedCommand(cmdGetPTT);
+    issueCmdUniquePriority(cmdSetPTT, false);
+    pttTimer->stop();
 }
 
 void wfmain::shortcutControlI()
