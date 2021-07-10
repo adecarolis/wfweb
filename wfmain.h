@@ -630,6 +630,8 @@ private:
 
     void removeSimilarCommand(cmds cmd);
 
+    qint64 lastFreqCmdTime_ms;
+
     int pCmdNum = 0;
     int delayedCmdIntervalLAN_ms = 100;
     int delayedCmdIntervalSerial_ms = 100;
@@ -637,6 +639,7 @@ private:
     bool runPeriodicCommands;
     bool usingLAN = false;
 
+    // Radio time sync:
     QTimer *timeSync;
     bool waitingToSetTimeDate;
     void setRadioTimeDatePrep();

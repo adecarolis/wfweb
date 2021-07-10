@@ -846,6 +846,7 @@ void wfmain::setInitialTiming()
     timeSync = new QTimer(this);
     connect(timeSync, SIGNAL(timeout()), this, SLOT(setRadioTimeDateSend()));
     waitingToSetTimeDate = false;
+    lastFreqCmdTime_ms = QDateTime::currentMSecsSinceEpoch() - 5000; // 5 seconds ago
 }
 
 void wfmain::setServerToPrefs()
@@ -2264,6 +2265,7 @@ void wfmain::doCmd(commandtype cmddata)
     {
         case cmdSetFreq:
         {
+            lastFreqCmdTime_ms = QDateTime::currentMSecsSinceEpoch();
             freqt f = (*std::static_pointer_cast<freqt>(data));
             emit setFrequency(f);
             break;
@@ -2954,10 +2956,15 @@ void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority)
 void wfmain::receiveFreq(freqt freqStruct)
 {
 
-    //qInfo(logSystem()) << "HEY WE GOT A Frequency: " << freqMhz;
-    ui->freqLabel->setText(QString("%1").arg(freqStruct.MHzDouble, 0, 'f'));
-    freq = freqStruct;
-    //showStatusBarText(QString("Frequency: %1").arg(freqMhz));
+    qint64 tnow_ms = QDateTime::currentMSecsSinceEpoch();
+    if(tnow_ms - lastFreqCmdTime_ms > delayedCommand->interval() * 2)
+    {
+        ui->freqLabel->setText(QString("%1").arg(freqStruct.MHzDouble, 0, 'f'));
+        freq = freqStruct;
+    } else {
+        qDebug(logSystem()) << "Rejecting stale frequency: " << freqStruct.Hz << " Hz, delta time ms = " << tnow_ms - lastFreqCmdTime_ms\
+                            << ", tnow_ms " << tnow_ms << ", last: " << lastFreqCmdTime_ms;
+    }
 }
 
 void wfmain::receivePTTstatus(bool pttOn)
@@ -3101,20 +3108,23 @@ void wfmain::receiveSpectrumMode(spectrumMode spectMode)
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 {
     double x;
-    freqt freq;
+    freqt freqGo;
     //double y;
     //double px;
     if(!freqLock)
     {
         //y = plot->yAxis->pixelToCoord(me->pos().y());
         x = plot->xAxis->pixelToCoord(me->pos().x());
-        freq.Hz = x*1E6;
+        freqGo.Hz = x*1E6;
 
-        freq.Hz = roundFrequency(freq.Hz, tsWfScrollHz);
+        freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
+        freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
 
         //emit setFrequency(freq);
-        issueCmd(cmdSetFreq, freq);
-        issueDelayedCommand(cmdGetFreq);
+        issueCmd(cmdSetFreq, freqGo);
+        freq = freqGo;
+        setUIFreq();
+        //issueDelayedCommand(cmdGetFreq);
         showStatusBarText(QString("Going to %1 MHz").arg(x));
     }
 }
@@ -3122,7 +3132,7 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 void wfmain::handleWFDoubleClick(QMouseEvent *me)
 {
     double x;
-    freqt freq;
+    freqt freqGo;
     //double y;
     //x = wf->xAxis->pixelToCoord(me->pos().x());
     //y = wf->yAxis->pixelToCoord(me->pos().y());
@@ -3130,13 +3140,15 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
     if(!freqLock)
     {
         x = plot->xAxis->pixelToCoord(me->pos().x());
-        freq.Hz = x*1E6;
+        freqGo.Hz = x*1E6;
 
-        freq.Hz = roundFrequency(freq.Hz, tsWfScrollHz);
+        freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
+        freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
 
         //emit setFrequency(freq);
-        issueCmd(cmdSetFreq, freq);
-        issueDelayedCommand(cmdGetFreq);
+        issueCmd(cmdSetFreq, freqGo);
+        freq = freqGo;
+        setUIFreq();
         showStatusBarText(QString("Going to %1 MHz").arg(x));
     }
 }
@@ -3191,7 +3203,7 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     //emit setFrequency(f);
     issueCmdUniquePriority(cmdSetFreq, f);
     ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::handlePlotScroll(QWheelEvent *we)
@@ -3310,31 +3322,31 @@ void wfmain::on_goFreqBtn_clicked()
 {
     freqt f;
     bool ok = false;
-    double freq = 0;
+    double freqDbl = 0;
     int KHz = 0;
 
     if(ui->freqMhzLineEdit->text().contains("."))
     {
 
-        freq = ui->freqMhzLineEdit->text().toDouble(&ok);
+        freqDbl = ui->freqMhzLineEdit->text().toDouble(&ok);
         if(ok)
         {
-            f.Hz = freq*1E6;
-            //emit setFrequency(f);
-            issueCmd(cmdSetFreq, f);
-            //issueCmdSetFreq(f);
-            issueDelayedCommand(cmdGetFreq);
+            f.Hz = freqDbl*1E6;
+            issueCmd(cmdSetFreq, f);            
         }
     } else {
         KHz = ui->freqMhzLineEdit->text().toInt(&ok);
         if(ok)
         {
             f.Hz = KHz*1E3;
-            //issueCmdSetFreq(f);
-            //emit setFrequency(f);
             issueCmd(cmdSetFreq, f);
-            issueDelayedCommand(cmdGetFreq);
         }
+    }
+    if(ok)
+    {
+        f.MHzDouble = (float)f.Hz / 1E6;
+        freq = f;
+        setUIFreq();
     }
 
     ui->freqMhzLineEdit->selectAll();
@@ -3615,17 +3627,19 @@ void wfmain::on_freqDial_valueChanged(int value)
     }
 }
 
-void wfmain::receiveBandStackReg(freqt freq, char mode, char filter, bool dataOn)
+void wfmain::receiveBandStackReg(freqt freqGo, char mode, char filter, bool dataOn)
 {
     // read the band stack and apply by sending out commands
 
-    qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freq.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
+    qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freqGo.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
     //emit setFrequency(freq);
-    issueCmd(cmdSetFreq, freq);
+    issueCmd(cmdSetFreq, freqGo);
     setModeVal = (unsigned char) mode;
     setFilterVal = (unsigned char) filter;
 
     issueDelayedCommand(cmdSetModeFilter);
+    freq = freqGo;
+    setUIFreq();
 
     if(dataOn)
     {
@@ -3633,8 +3647,8 @@ void wfmain::receiveBandStackReg(freqt freq, char mode, char filter, bool dataOn
     } else {
         issueDelayedCommand(cmdSetDataModeOff);
     }
-    issueDelayedCommand(cmdGetFreq);
-    issueDelayedCommand(cmdGetMode);
+    //issueDelayedCommand(cmdGetFreq);
+    //issueDelayedCommand(cmdGetMode);
     ui->tabWidget->setCurrentIndex(0);
 
     receiveMode((unsigned char) mode, (unsigned char) filter); // update UI
@@ -3856,7 +3870,6 @@ void wfmain::on_fRclBtn_clicked()
         setModeVal = temp.mode;
         setFilterVal = ui->modeFilterCombo->currentIndex()+1; // TODO, add to memory
         issueDelayedCommand(cmdSetModeFilter);
-        issueDelayedCommand(cmdGetFreq);
         issueDelayedCommand(cmdGetMode);
     } else {
         qInfo(logSystem()) << "Could not recall preset. Valid presets are 0 through 99.";
