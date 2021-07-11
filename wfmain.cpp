@@ -108,11 +108,33 @@ wfmain::~wfmain()
 void wfmain::closeEvent(QCloseEvent *event)
 {
     // Are you sure?
-    QMessageBox::StandardButton resBtn = QMessageBox::question( this, QString("Confirm close"),
-                                                                tr("Are you sure you wish to exit?\n"),
-                                                                QMessageBox::No | QMessageBox::Yes,
-                                                                QMessageBox::Yes);
-    if (resBtn == QMessageBox::Yes) {
+    if (!prefs.confirmExit) {
+        QApplication::exit();
+    }
+    QCheckBox *cb = new QCheckBox("Don't ask me again");
+    QMessageBox msgbox;
+    msgbox.setText("Are you sure you wish to exit?\n");
+    msgbox.setIcon(QMessageBox::Icon::Question);
+    QAbstractButton *yesButton = msgbox.addButton(QMessageBox::Yes);
+    msgbox.addButton(QMessageBox::No);
+    msgbox.setDefaultButton(QMessageBox::Yes);
+    msgbox.setCheckBox(cb);
+
+    QObject::connect(cb, &QCheckBox::stateChanged, [this](int state){
+            if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked) {
+                prefs.confirmExit=false;
+            } else {
+                prefs.confirmExit=true;
+            }
+            settings->beginGroup("Interface");
+            settings->setValue("ConfirmExit", this->prefs.confirmExit);
+            settings->endGroup();
+            settings->sync();
+        });
+
+    msgbox.exec();
+
+    if (msgbox.clickedButton() == yesButton) {
         QApplication::exit();
     } else {
         event->ignore();
@@ -1159,6 +1181,7 @@ void wfmain::setDefPrefs()
     defPrefs.localAFgain = 255;
     defPrefs.wflength = 160;
     defPrefs.wftheme = static_cast<int>(QCPColorGradient::gpJet);
+    defPrefs.confirmExit = true;
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -1189,6 +1212,8 @@ void wfmain::loadSettings()
     restoreGeometry(settings->value("windowGeometry").toByteArray());
     restoreState(settings->value("windowState").toByteArray());
     setWindowState(Qt::WindowActive); // Works around QT bug to returns window+keyboard focus.
+    prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
+
     settings->endGroup();
 
     // Load color schemes:
@@ -1478,6 +1503,7 @@ void wfmain::saveSettings()
     settings->setValue("windowGeometry", saveGeometry());
     settings->setValue("windowState", saveState());
     settings->setValue("WFLength", prefs.wflength);
+    settings->setValue("ConfirmExit", prefs.confirmExit);
     settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
