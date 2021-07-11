@@ -671,6 +671,7 @@ private:
         unsigned char localAFgain;
         unsigned int wflength;
         int wftheme;
+        bool confirmExit;
         // plot scheme
     } prefs;
 
