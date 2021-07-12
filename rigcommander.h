@@ -41,6 +41,18 @@ struct freqt {
     double MHzDouble;
 };
 
+struct datekind {
+    uint16_t year;
+    unsigned char month;
+    unsigned char day;
+};
+
+struct timekind {
+    unsigned char hours;
+    unsigned char minutes;
+    bool isMinus;
+};
+
 struct rigStateStruct {
     freqt vfoAFreq;
     freqt vfoBFreq;
@@ -226,6 +238,12 @@ public slots:
     void setRefAdjustCourse(unsigned char level);
     void setRefAdjustFine(unsigned char level);
 
+    // Time and Date:
+    void setTime(timekind t);
+    void setDate(datekind d);
+    void setUTCOffset(timekind t);
+
+
     // Satellite:
     void setSatelliteMode(bool enabled);
     void getSatelliteMode();
@@ -350,6 +368,7 @@ private:
     QByteArray makeFreqPayload(freqt freq);
     QByteArray encodeTone(quint16 tone, bool tinv, bool rinv);
     QByteArray encodeTone(quint16 tone);
+    unsigned char convertNumberToHex(unsigned char num);
     quint16 decodeTone(QByteArray eTone);
     quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
 

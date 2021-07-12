@@ -44,6 +44,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType<mode_info>();
     qRegisterMetaType<audioPacket>();
     qRegisterMetaType <audioSetup>();
+    qRegisterMetaType <timekind>();
+    qRegisterMetaType <datekind>();
+
 
     haveRigCaps = false;
 
@@ -357,6 +360,11 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveRefAdjustFine(unsigned char)), cal, SLOT(handleRefAdjustFine(unsigned char)));
     connect(cal, SIGNAL(setRefAdjustCourse(unsigned char)), rig, SLOT(setRefAdjustCourse(unsigned char)));
     connect(cal, SIGNAL(setRefAdjustFine(unsigned char)), rig, SLOT(setRefAdjustFine(unsigned char)));
+
+    // Date and Time:
+    connect(this, SIGNAL(setTime(timekind)), rig, SLOT(setTime(timekind)));
+    connect(this, SIGNAL(setDate(datekind)), rig, SLOT(setDate(datekind)));
+    connect(this, SIGNAL(setUTCOffset(timekind)), rig, SLOT(setUTCOffset(timekind)));
 
 }
 
@@ -856,6 +864,11 @@ void wfmain::setInitialTiming()
     pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
     pttTimer->setSingleShot(true);
     connect(pttTimer, SIGNAL(timeout()), this, SLOT(handlePttLimit()));
+
+    timeSync = new QTimer(this);
+    connect(timeSync, SIGNAL(timeout()), this, SLOT(setRadioTimeDateSend()));
+    waitingToSetTimeDate = false;
+    lastFreqCmdTime_ms = QDateTime::currentMSecsSinceEpoch() - 5000; // 5 seconds ago
 }
 
 void wfmain::setServerToPrefs()
@@ -1821,7 +1834,7 @@ void wfmain::shortcutF10()
 
 void wfmain::shortcutF12()
 {
-    // Speak current frequency and mode via IC-7300
+    // Speak current frequency and mode from the radio
     showStatusBarText("Sending speech command to radio.");
     emit sayAll();
 }
@@ -1837,8 +1850,8 @@ void wfmain::shortcutControlT()
 void wfmain::shortcutControlR()
 {
     // Receive
-    emit setPTT(false);
-    issueDelayedCommand(cmdGetPTT);
+    issueCmdUniquePriority(cmdSetPTT, false);
+    pttTimer->stop();
 }
 
 void wfmain::shortcutControlI()
@@ -2278,6 +2291,7 @@ void wfmain::doCmd(commandtype cmddata)
     {
         case cmdSetFreq:
         {
+            lastFreqCmdTime_ms = QDateTime::currentMSecsSinceEpoch();
             freqt f = (*std::static_pointer_cast<freqt>(data));
             emit setFrequency(f);
             break;
@@ -2341,6 +2355,24 @@ void wfmain::doCmd(commandtype cmddata)
         {
             bool atuOn = (*std::static_pointer_cast<bool>(data));
             emit setATU(atuOn);
+            break;
+        }
+        case cmdSetUTCOffset:
+        {
+            timekind u = (*std::static_pointer_cast<timekind>(data));
+            emit setUTCOffset(u);
+            break;
+        }
+        case cmdSetTime:
+        {
+            timekind t = (*std::static_pointer_cast<timekind>(data));
+            emit setTime(t);
+            break;
+        }
+        case cmdSetDate:
+        {
+            datekind d = (*std::static_pointer_cast<datekind>(data));
+            emit setDate(d);
             break;
         }
         default:
@@ -2634,8 +2666,25 @@ void wfmain::issueCmd(cmds cmd, freqt f)
     commandtype cmddata;
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<freqt>(new freqt(f));
-    //*static_cast<freqt*>(cmddata.data.get()) = f;
     delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, timekind t)
+{
+    qDebug(logSystem()) << "Issuing timekind command with data: " << t.hours << " hours, " << t.minutes << " minutes, " << t.isMinus << " isMinus";
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<timekind>(new timekind(t));
+    delayedCmdQue.push_front(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, datekind d)
+{
+    qDebug(logSystem()) << "Issuing datekind command with data: " << d.day << " day, " << d.month << " month, " << d.year << " year.";
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<datekind>(new datekind(d));
+    delayedCmdQue.push_front(cmddata);
 }
 
 void wfmain::issueCmd(cmds cmd, int i)
@@ -2933,10 +2982,15 @@ void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority)
 void wfmain::receiveFreq(freqt freqStruct)
 {
 
-    //qInfo(logSystem()) << "HEY WE GOT A Frequency: " << freqMhz;
-    ui->freqLabel->setText(QString("%1").arg(freqStruct.MHzDouble, 0, 'f'));
-    freq = freqStruct;
-    //showStatusBarText(QString("Frequency: %1").arg(freqMhz));
+    qint64 tnow_ms = QDateTime::currentMSecsSinceEpoch();
+    if(tnow_ms - lastFreqCmdTime_ms > delayedCommand->interval() * 2)
+    {
+        ui->freqLabel->setText(QString("%1").arg(freqStruct.MHzDouble, 0, 'f'));
+        freq = freqStruct;
+    } else {
+        qDebug(logSystem()) << "Rejecting stale frequency: " << freqStruct.Hz << " Hz, delta time ms = " << tnow_ms - lastFreqCmdTime_ms\
+                            << ", tnow_ms " << tnow_ms << ", last: " << lastFreqCmdTime_ms;
+    }
 }
 
 void wfmain::receivePTTstatus(bool pttOn)
@@ -3080,20 +3134,23 @@ void wfmain::receiveSpectrumMode(spectrumMode spectMode)
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 {
     double x;
-    freqt freq;
+    freqt freqGo;
     //double y;
     //double px;
     if(!freqLock)
     {
         //y = plot->yAxis->pixelToCoord(me->pos().y());
         x = plot->xAxis->pixelToCoord(me->pos().x());
-        freq.Hz = x*1E6;
+        freqGo.Hz = x*1E6;
 
-        freq.Hz = roundFrequency(freq.Hz, tsWfScrollHz);
+        freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
+        freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
 
         //emit setFrequency(freq);
-        issueCmd(cmdSetFreq, freq);
-        issueDelayedCommand(cmdGetFreq);
+        issueCmd(cmdSetFreq, freqGo);
+        freq = freqGo;
+        setUIFreq();
+        //issueDelayedCommand(cmdGetFreq);
         showStatusBarText(QString("Going to %1 MHz").arg(x));
     }
 }
@@ -3101,7 +3158,7 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 void wfmain::handleWFDoubleClick(QMouseEvent *me)
 {
     double x;
-    freqt freq;
+    freqt freqGo;
     //double y;
     //x = wf->xAxis->pixelToCoord(me->pos().x());
     //y = wf->yAxis->pixelToCoord(me->pos().y());
@@ -3109,13 +3166,15 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
     if(!freqLock)
     {
         x = plot->xAxis->pixelToCoord(me->pos().x());
-        freq.Hz = x*1E6;
+        freqGo.Hz = x*1E6;
 
-        freq.Hz = roundFrequency(freq.Hz, tsWfScrollHz);
+        freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
+        freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
 
         //emit setFrequency(freq);
-        issueCmd(cmdSetFreq, freq);
-        issueDelayedCommand(cmdGetFreq);
+        issueCmd(cmdSetFreq, freqGo);
+        freq = freqGo;
+        setUIFreq();
         showStatusBarText(QString("Going to %1 MHz").arg(x));
     }
 }
@@ -3170,7 +3229,7 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     //emit setFrequency(f);
     issueCmdUniquePriority(cmdSetFreq, f);
     ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::handlePlotScroll(QWheelEvent *we)
@@ -3289,31 +3348,31 @@ void wfmain::on_goFreqBtn_clicked()
 {
     freqt f;
     bool ok = false;
-    double freq = 0;
+    double freqDbl = 0;
     int KHz = 0;
 
     if(ui->freqMhzLineEdit->text().contains("."))
     {
 
-        freq = ui->freqMhzLineEdit->text().toDouble(&ok);
+        freqDbl = ui->freqMhzLineEdit->text().toDouble(&ok);
         if(ok)
         {
-            f.Hz = freq*1E6;
-            //emit setFrequency(f);
-            issueCmd(cmdSetFreq, f);
-            //issueCmdSetFreq(f);
-            issueDelayedCommand(cmdGetFreq);
+            f.Hz = freqDbl*1E6;
+            issueCmd(cmdSetFreq, f);            
         }
     } else {
         KHz = ui->freqMhzLineEdit->text().toInt(&ok);
         if(ok)
         {
             f.Hz = KHz*1E3;
-            //issueCmdSetFreq(f);
-            //emit setFrequency(f);
             issueCmd(cmdSetFreq, f);
-            issueDelayedCommand(cmdGetFreq);
         }
+    }
+    if(ok)
+    {
+        f.MHzDouble = (float)f.Hz / 1E6;
+        freq = f;
+        setUIFreq();
     }
 
     ui->freqMhzLineEdit->selectAll();
@@ -3594,17 +3653,19 @@ void wfmain::on_freqDial_valueChanged(int value)
     }
 }
 
-void wfmain::receiveBandStackReg(freqt freq, char mode, char filter, bool dataOn)
+void wfmain::receiveBandStackReg(freqt freqGo, char mode, char filter, bool dataOn)
 {
     // read the band stack and apply by sending out commands
 
-    qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freq.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
+    qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freqGo.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
     //emit setFrequency(freq);
-    issueCmd(cmdSetFreq, freq);
+    issueCmd(cmdSetFreq, freqGo);
     setModeVal = (unsigned char) mode;
     setFilterVal = (unsigned char) filter;
 
     issueDelayedCommand(cmdSetModeFilter);
+    freq = freqGo;
+    setUIFreq();
 
     if(dataOn)
     {
@@ -3612,8 +3673,8 @@ void wfmain::receiveBandStackReg(freqt freq, char mode, char filter, bool dataOn
     } else {
         issueDelayedCommand(cmdSetDataModeOff);
     }
-    issueDelayedCommand(cmdGetFreq);
-    issueDelayedCommand(cmdGetMode);
+    //issueDelayedCommand(cmdGetFreq);
+    //issueDelayedCommand(cmdGetMode);
     ui->tabWidget->setCurrentIndex(0);
 
     receiveMode((unsigned char) mode, (unsigned char) filter); // update UI
@@ -3835,7 +3896,6 @@ void wfmain::on_fRclBtn_clicked()
         setModeVal = temp.mode;
         setFilterVal = ui->modeFilterCombo->currentIndex()+1; // TODO, add to memory
         issueDelayedCommand(cmdSetModeFilter);
-        issueDelayedCommand(cmdGetFreq);
         issueDelayedCommand(cmdGetMode);
     } else {
         qInfo(logSystem()) << "Could not recall preset. Valid presets are 0 through 99.";
@@ -4214,6 +4274,57 @@ void wfmain::on_adjRefBtn_clicked()
 void wfmain::on_satOpsBtn_clicked()
 {
     sat->show();
+}
+
+void wfmain::setRadioTimeDatePrep()
+{
+    if(!waitingToSetTimeDate)
+    {
+        // 1: Find the current time and date
+        QDateTime now = QDateTime::currentDateTime();
+        now.setTime(QTime::currentTime());
+
+        int second = now.time().second();
+
+        // 2: Find how many mseconds until next minute
+        int msecdelay = QTime::currentTime().msecsTo( QTime::currentTime().addSecs(60-second) );
+
+        // 3: Compute time and date at one minute later
+        QDateTime setpoint = now.addMSecs(msecdelay); // at HMS or posibly HMS + some ms. Never under though.
+
+        // 4: Prepare data structs for the time at one minute later
+        timesetpoint.hours = (unsigned char)setpoint.time().hour();
+        timesetpoint.minutes = (unsigned char)setpoint.time().minute();
+        datesetpoint.day = (unsigned char)setpoint.date().day();
+        datesetpoint.month = (unsigned char)setpoint.date().month();
+        datesetpoint.year = (uint16_t)setpoint.date().year();
+        unsigned int utcOffsetSeconds = (unsigned int)abs(setpoint.offsetFromUtc());
+        bool isMinus = setpoint.offsetFromUtc() < 0;
+        utcsetting.hours = utcOffsetSeconds / 60 / 60;
+        utcsetting.minutes = (utcOffsetSeconds - (utcsetting.hours*60*60) ) / 60;
+        utcsetting.isMinus = isMinus;
+
+        timeSync->setInterval(msecdelay);
+        timeSync->setSingleShot(true);
+
+        // 5: start one-shot timer for the delta computed in #2.
+        timeSync->start();
+        waitingToSetTimeDate = true;
+        showStatusBarText(QString("Setting time, date, and UTC offset for radio in %1 seconds.").arg(msecdelay/1000));
+    }
+}
+
+void wfmain::setRadioTimeDateSend()
+{
+    // Issue priority commands for UTC offset, date, and time
+    // UTC offset must come first, otherwise the radio may "help" and correct for any changes.
+
+    showStatusBarText(QString("Setting time, date, and UTC offset for radio now."));
+
+    issueCmd(cmdSetTime, timesetpoint);
+    issueCmd(cmdSetDate, datesetpoint);
+    issueCmd(cmdSetUTCOffset, utcsetting);
+    waitingToSetTimeDate = false;
 }
 
 void wfmain::changeSliderQuietly(QSlider *slider, int value)
@@ -4972,6 +5083,7 @@ void wfmain::on_pollingBtn_clicked()
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    trxadj->show();
+    //trxadj->show();
+    setRadioTimeDatePrep();
 }
 
