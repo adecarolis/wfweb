@@ -2020,6 +2020,143 @@ void rigCommander::setRefAdjustFine(unsigned char level)
     prepDataAndSend(payload);
 }
 
+void rigCommander::setTime(timekind t)
+{
+    QByteArray payload;
+
+    switch(rigCaps.model)
+    {
+        case model705:
+            payload.setRawData("\x1A\x05\x01\x66", 4);
+            break;
+        case model7300:
+            payload.setRawData("\x1A\x05\x00\x95", 4);
+            break;
+        case model7610:
+            payload.setRawData("\x1A\x05\x01\x59", 4);
+            break;
+        case model7700:
+            payload.setRawData("\x1A\x05\x00\x59", 4);
+            break;
+        case model7850:
+            payload.setRawData("\x1A\x05\x00\x96", 4);
+            break;
+        case model9700:
+            payload.setRawData("\x1A\x05\x01\x80", 4);
+            break;
+        case modelR8600:
+            payload.setRawData("\x1A\x05\x01\x32", 4);
+            break;
+        default:
+            return;
+            break;
+
+    }
+    payload.append(convertNumberToHex(t.hours));
+    payload.append(convertNumberToHex(t.minutes));
+    //qDebug(logRig()) << "Setting time to this: ";
+    //printHex(payload);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setDate(datekind d)
+{
+    QByteArray payload;
+
+    switch(rigCaps.model)
+    {
+        case model705:
+            payload.setRawData("\x1A\x05\x01\x65", 4);
+            break;
+        case model7300:
+            payload.setRawData("\x1A\x05\x00\x94", 4);
+            break;
+        case model7610:
+            payload.setRawData("\x1A\x05\x01\x58", 4);
+            break;
+        case model7700:
+            payload.setRawData("\x1A\x05\x00\x58", 4);
+            break;
+        case model7850:
+            payload.setRawData("\x1A\x05\x00\x95", 4);
+            break;
+        case model9700:
+            payload.setRawData("\x1A\x05\x01\x79", 4);
+            break;
+        case modelR8600:
+            payload.setRawData("\x1A\x05\x01\x31", 4);
+            break;
+        default:
+            return;
+            break;
+
+    }
+    // YYYYMMDD
+    payload.append(convertNumberToHex(d.year/100)); // 20
+    payload.append(convertNumberToHex(d.year - 100*(d.year/100))); // 21
+    payload.append(convertNumberToHex(d.month));
+    payload.append(convertNumberToHex(d.day));
+    //qDebug(logRig()) << "Setting date to this: ";
+    //printHex(payload);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setUTCOffset(timekind t)
+{
+    QByteArray payload;
+
+    switch(rigCaps.model)
+    {
+        case model705:
+            payload.setRawData("\x1A\x05\x01\x70", 4);
+            break;
+        case model7300:
+            payload.setRawData("\x1A\x05\x00\x96", 4);
+            break;
+        case model7610:
+            payload.setRawData("\x1A\x05\x01\x62", 4);
+            break;
+        case model7700:
+            payload.setRawData("\x1A\x05\x00\x61", 4);
+            break;
+        case model7850:
+            // Clock 1:
+            payload.setRawData("\x1A\x05\x00\x99", 4);
+            break;
+        case model9700:
+            payload.setRawData("\x1A\x05\x01\x84", 4);
+            break;
+        case modelR8600:
+            payload.setRawData("\x1A\x05\x01\x35", 4);
+            break;
+        default:
+            return;
+            break;
+
+    }
+    payload.append(convertNumberToHex(t.hours));
+    payload.append(convertNumberToHex(t.minutes));
+    payload.append((unsigned char)t.isMinus);
+    //qDebug(logRig()) << "Setting UTC Offset to this: ";
+    //printHex(payload);
+    prepDataAndSend(payload);
+}
+
+unsigned char rigCommander::convertNumberToHex(unsigned char num)
+{
+    // Two digit only
+    if(num > 99)
+    {
+        qInfo(logRig()) << "Invalid numeric conversion from num " << num << " to hex.";
+        return 0xFA;
+    }
+    unsigned char result = 0;
+    result =  (num/10) << 4;
+    result |= (num - 10*(num/10));
+    qDebug(logRig()) << "Converting number: " << num << " to hex: " + QString("0x%1").arg(result, 2, 16, QChar('0'));
+    return result;
+}
+
 void rigCommander::sendLevelCmd(unsigned char levAddr, unsigned char level)
 {
     QByteArray payload("\x14");
@@ -2799,6 +2936,29 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[band70cm] = 0x02;
             rigCaps.bsr[band2m] = 0x01;
             rigCaps.modes = commonModes;
+            break;
+        case model7600:
+            rigCaps.modelName = QString("IC-7600");
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.append(inputACC);
+            rigCaps.inputs.append(inputUSB);
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
+            rigCaps.hasATU = true;
+            rigCaps.hasCTCSS = false;
+            rigCaps.hasDTCS = false;
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(), {0x00, 0x06, 0x12, 0x18});
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
+            rigCaps.antennas = {0x00, 0x01};
+            rigCaps.bands = standardHF;
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.bsr[bandGen] = 0x11;
+            rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
+                                                       createMode(modePSK_R, 0x13, "PSK-R")});
             break;
         case model7610:
             rigCaps.modelName = QString("IC-7610");
