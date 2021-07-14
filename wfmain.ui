@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -2048,6 +2048,20 @@
            <widget class="QCheckBox" name="useDarkThemeChk">
             <property name="text">
              <string>Waterfall Dark Theme</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="wfAntiAliasChk">
+            <property name="text">
+             <string>Anti-Alias Waterfall</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="wfInterpolateChk">
+            <property name="text">
+             <string>Interpolate Waterfall</string>
             </property>
            </widget>
           </item>

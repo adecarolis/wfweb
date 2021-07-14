@@ -464,6 +464,10 @@ private slots:
 
     void on_pollingBtn_clicked();
 
+    void on_wfAntiAliasChk_clicked(bool checked);
+
+    void on_wfInterpolateChk_clicked(bool checked);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
