@@ -5079,11 +5079,24 @@ void wfmain::on_pollingBtn_clicked()
     }
 }
 
+void wfmain::on_wfAntiAliasChk_clicked(bool checked)
+{
+    colorMap->setAntialiased(checked);
+
+}
+
+void wfmain::on_wfInterpolateChk_clicked(bool checked)
+{
+    colorMap->setInterpolate(checked);
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
     //trxadj->show();
-    setRadioTimeDatePrep();
-}
+    //setRadioTimeDatePrep();
+    wf->setInteraction(QCP::iRangeZoom, true);
+    wf->setInteraction(QCP::iRangeDrag, true);
 
+}
