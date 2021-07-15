@@ -893,6 +893,12 @@ void wfmain::setUIToPrefs()
     on_drawPeakChk_clicked(prefs.drawPeaks);
     drawPeaks = prefs.drawPeaks;
 
+    ui->wfAntiAliasChk->setChecked(prefs.wfAntiAlias);
+    on_wfAntiAliasChk_clicked(prefs.wfAntiAlias);
+
+    ui->wfInterpolateChk->setChecked(prefs.wfInterpolate);
+    on_wfInterpolateChk_clicked(prefs.wfInterpolate);
+
     ui->wfLengthSlider->setValue(prefs.wflength);
     prepareWf(prefs.wflength);
 
@@ -1160,6 +1166,8 @@ void wfmain::setDefPrefs()
     defPrefs.useDarkMode = true;
     defPrefs.useSystemTheme = false;
     defPrefs.drawPeaks = true;
+    defPrefs.wfAntiAlias = false;
+    defPrefs.wfInterpolate = true;
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
     defPrefs.radioCIVAddr = 0x00; // previously was 0x94 for 7300.
     defPrefs.serialPortRadio = QString("auto");
@@ -1180,7 +1188,6 @@ void wfmain::setDefPrefs()
     udpDefPrefs.username = QString("");
     udpDefPrefs.password = QString("");
     udpDefPrefs.clientName = QHostInfo::localHostName();
-
 }
 
 void wfmain::loadSettings()
@@ -1195,6 +1202,8 @@ void wfmain::loadSettings()
     prefs.useSystemTheme = settings->value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
     prefs.wftheme = settings->value("WFTheme", defPrefs.wftheme).toInt();
     prefs.drawPeaks = settings->value("DrawPeaks", defPrefs.drawPeaks).toBool();
+    prefs.wfAntiAlias = settings->value("WFAntiAlias", defPrefs.wfAntiAlias).toBool();
+    prefs.wfInterpolate = settings->value("WFInterpolate", defPrefs.wfInterpolate).toBool();
     prefs.wflength = (unsigned int) settings->value("WFLength", defPrefs.wflength).toInt();
     prefs.stylesheetPath = settings->value("StylesheetPath", defPrefs.stylesheetPath).toString();
     ui->splitter->restoreState(settings->value("splitter").toByteArray());
@@ -1485,6 +1494,8 @@ void wfmain::saveSettings()
     settings->setValue("UseSystemTheme", prefs.useSystemTheme);
     settings->setValue("UseDarkMode", prefs.useDarkMode);
     settings->setValue("DrawPeaks", prefs.drawPeaks);
+    settings->setValue("WFAntiAlias", prefs.wfAntiAlias);
+    settings->setValue("WFInterpolate", prefs.wfInterpolate);
     settings->setValue("WFTheme", prefs.wftheme);
     settings->setValue("StylesheetPath", prefs.stylesheetPath);
     settings->setValue("splitter", ui->splitter->saveState());
@@ -5056,12 +5067,13 @@ void wfmain::on_pollingBtn_clicked()
 void wfmain::on_wfAntiAliasChk_clicked(bool checked)
 {
     colorMap->setAntialiased(checked);
-
+    prefs.wfAntiAlias = checked;
 }
 
 void wfmain::on_wfInterpolateChk_clicked(bool checked)
 {
     colorMap->setInterpolate(checked);
+    prefs.wfInterpolate = checked;
 }
 
 // --- DEBUG FUNCTION ---
