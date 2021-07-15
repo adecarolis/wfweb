@@ -682,6 +682,8 @@ private:
         bool useDarkMode;
         bool useSystemTheme;
         bool drawPeaks;
+        bool wfAntiAlias;
+        bool wfInterpolate;
         QString stylesheetPath;
         unsigned char radioCIVAddr;
         QString serialPortRadio;
