@@ -339,7 +339,7 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveRigID(rigCapabilities)), this, SLOT(receiveRigID(rigCapabilities)));
     connect(this, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
     connect(this, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
-    connect(this, SIGNAL(setAntenna(unsigned char)), rig, SLOT(setAntenna(unsigned char)));
+    connect(this, SIGNAL(setAntenna(unsigned char, bool)), rig, SLOT(setAntenna(unsigned char, bool)));
     connect(this, SIGNAL(getPreamp()), rig, SLOT(getPreamp()));
     connect(rig, SIGNAL(havePreamp(unsigned char)), this, SLOT(receivePreamp(unsigned char)));
     connect(this, SIGNAL(getAttenuator()), rig, SLOT(getAttenuator()));
@@ -2899,6 +2899,9 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->antennaSelCombo->setDisabled(true);
         }
 
+        ui->rxAntennaCheck->setEnabled(rigCaps.hasRXAntenna);
+        ui->rxAntennaCheck->setChecked(false);
+
         ui->scopeBWCombo->blockSignals(true);
         ui->scopeBWCombo->clear();
         if(rigCaps.hasSpectrum)
@@ -4722,9 +4725,14 @@ void wfmain::on_preampSelCombo_activated(int index)
 void wfmain::on_antennaSelCombo_activated(int index)
 {
     unsigned char ant = (unsigned char)ui->antennaSelCombo->itemData(index).toInt();
-    emit setAntenna(ant);
+    emit setAntenna(ant,ui->rxAntennaCheck->isChecked());
 }
 
+void wfmain::on_rxAntennaCheck_clicked(bool value)
+{
+    unsigned char ant = (unsigned char)ui->antennaSelCombo->itemData(ui->antennaSelCombo->currentIndex()).toInt();
+    emit setAntenna(ant, value);
+}
 void wfmain::on_wfthemeCombo_activated(int index)
 {
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(ui->wfthemeCombo->itemData(index).toInt()));

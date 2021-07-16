@@ -2801,6 +2801,7 @@ void rigCommander::determineRigCaps()
     rigCaps.preamps.push_back('\x00');
 
     rigCaps.hasAntennaSel = false;
+    rigCaps.hasRXAntenna = false;
 
     rigCaps.hasTransmit = true;
     rigCaps.hasPTTCommand = true;
@@ -2988,6 +2989,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(band630m);
             rigCaps.bands.push_back(band2200m);
             rigCaps.modes = commonModes;
+            rigCaps.hasRXAntenna = true;
             break;
         case model7850:
             rigCaps.modelName = QString("IC-785x");
@@ -3018,6 +3020,7 @@ void rigCommander::determineRigCaps()
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
                                                        createMode(modePSK_R, 0x13, "PSK-R")});
+            rigCaps.hasRXAntenna = true;
             break;
         case model705:
             rigCaps.modelName = QString("IC-705");
@@ -3283,6 +3286,7 @@ void rigCommander::determineRigCaps()
             break;
     }
     haveRigCaps = true;
+
     if(lookingForRig)
     {
         lookingForRig = false;
@@ -3709,11 +3713,11 @@ void rigCommander::setPreamp(unsigned char pre)
     prepDataAndSend(payload);
 }
 
-void rigCommander::setAntenna(unsigned char ant)
+void rigCommander::setAntenna(unsigned char ant, bool rx)
 {
     QByteArray payload("\x12");
     payload.append(ant);
-    payload.append("\x00"); // 0x00 = use for TX and RX
+    payload.append((unsigned char)rx); // 0x00 = use for TX and RX
     prepDataAndSend(payload);
 }
 

@@ -120,7 +120,7 @@ signals:
     void getAntenna();
     void setAttenuator(unsigned char att);
     void setPreamp(unsigned char pre);
-    void setAntenna(unsigned char ant);
+    void setAntenna(unsigned char ant, bool rx);
     void startATU();
     void setATU(bool atuEnabled);
     void getATUStatus();
@@ -427,6 +427,8 @@ private slots:
     void on_preampSelCombo_activated(int index);
 
     void on_antennaSelCombo_activated(int index);
+
+    void on_rxAntennaCheck_clicked(bool value);
 
     void on_wfthemeCombo_activated(int index);
 

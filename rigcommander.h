@@ -152,7 +152,7 @@ public slots:
     void getAntenna();
     void setAttenuator(unsigned char att);
     void setPreamp(unsigned char pre);
-    void setAntenna(unsigned char ant);
+    void setAntenna(unsigned char ant, bool rx);
 
     // Repeater:
     void setDuplexMode(duplexMode dm);
