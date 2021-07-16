@@ -345,7 +345,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getAttenuator()), rig, SLOT(getAttenuator()));
     connect(rig, SIGNAL(haveAttenuator(unsigned char)), this, SLOT(receiveAttenuator(unsigned char)));
     connect(this, SIGNAL(getAntenna()), rig, SLOT(getAntenna()));
-    //connect(rig, SIGNAL(haveAntenna(unsigned char)), this, SLOT(receiveAntennaSel(unsigned char)));
+    connect(rig, SIGNAL(haveAntenna(unsigned char,bool)), this, SLOT(receiveAntennaSel(unsigned char,bool)));
 
 
     // Speech (emitted from rig speaker)
@@ -2954,6 +2954,9 @@ void wfmain::initPeriodicCommands()
     insertSlowPeriodicCommand(cmdGetAttenuator, 128);
     insertSlowPeriodicCommand(cmdGetPTT, 128);
     insertSlowPeriodicCommand(cmdGetPreamp, 128);
+    if (rigCaps.hasRXAntenna) {
+        insertSlowPeriodicCommand(cmdGetAntenna, 128);
+    }
 }
 
 void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
@@ -4749,6 +4752,12 @@ void wfmain::receiveAttenuator(unsigned char att)
 {
     int attindex = ui->attSelCombo->findData(att);
     ui->attSelCombo->setCurrentIndex(attindex);
+}
+
+void wfmain::receiveAntennaSel(unsigned char ant, bool rx)
+{
+    ui->antennaSelCombo->setCurrentIndex(ant);
+    ui->rxAntennaCheck->setChecked(rx);
 }
 
 void wfmain::receiveSpectrumSpan(freqt freqspan, bool isSub)

@@ -234,7 +234,7 @@ private slots:
     void receiveATUStatus(unsigned char atustatus);
     void receivePreamp(unsigned char pre);
     void receiveAttenuator(unsigned char att);
-    //void receiveAntennaSel(unsigned char ant);
+    void receiveAntennaSel(unsigned char ant, bool rx);
     void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
     void receiveSerialPortError(QString port, QString errorText);

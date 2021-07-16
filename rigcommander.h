@@ -344,7 +344,7 @@ signals:
     void haveATUStatus(unsigned char status);
     void haveAttenuator(unsigned char att);
     void havePreamp(unsigned char pre);
-    void haveAntenna(unsigned char ant);
+    void haveAntenna(unsigned char ant,bool rx);
 
     // Rig State
     void stateInfo(rigStateStruct* state);
