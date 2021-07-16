@@ -1223,8 +1223,8 @@ void rigCommander::parseCommand()
             emit haveAttenuator((unsigned char)payloadIn.at(1));
             break;
         case '\x12':
-            //qInfo(logRig()) << QString("Have Antenna: %1 %2").arg(payloadIn.at(1)).arg(payloadIn.at(2));
             emit haveAntenna((unsigned char)payloadIn.at(1), (bool)payloadIn.at(2));
+            break;
         case '\x14':
             // read levels
             parseLevels();
