@@ -2360,6 +2360,12 @@ void wfmain::doCmd(commandtype cmddata)
         {
             bool pttrequest = (*std::static_pointer_cast<bool>(data));
             emit setPTT(pttrequest);
+            if(pttrequest)
+            {
+                ui->meterSPoWidget->setMeterType(meterPower);
+            } else {
+                ui->meterSPoWidget->setMeterType(meterS);
+            }
             break;
         }
         case cmdSetATU:
@@ -4498,9 +4504,9 @@ void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
                 sum += (unsigned char)SMeterReadings.at(i);
             }
             average = sum / SMeterReadings.length();
-            ui->meterWidget->setLevels(level, peak, average);
-            ui->meterWidget->repaint();
-            //ui->levelIndicator->setValue((int)level);
+            ui->meterSPoWidget->setMeterType(meterS);
+            ui->meterSPoWidget->setLevels(level, peak, average);
+            ui->meterSPoWidget->repaint();
             break;
         case meterSWR:
             //ui->levelIndicator->setValue((int)level);
@@ -4514,9 +4520,9 @@ void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
                 sum += (unsigned char)powerMeterReadings.at(i);
             }
             average = sum / powerMeterReadings.length();
-            ui->meterWidget->setLevels(level, peak, average);
-            ui->meterWidget->update();
-            //ui->levelIndicator->setValue((int)level);
+            ui->meterSPoWidget->setMeterType(meterPower);
+            ui->meterSPoWidget->setLevels(level, peak, average);
+            ui->meterSPoWidget->update();
             break;
         case meterALC:
             //ui->levelIndicator->setValue((int)level);
@@ -5125,7 +5131,19 @@ void wfmain::on_debugBtn_clicked()
     qInfo(logSystem()) << "Debug button pressed.";
     //trxadj->show();
     //setRadioTimeDatePrep();
-    wf->setInteraction(QCP::iRangeZoom, true);
-    wf->setInteraction(QCP::iRangeDrag, true);
+    //wf->setInteraction(QCP::iRangeZoom, true);
+    //wf->setInteraction(QCP::iRangeDrag, true);
+    bool ok = false;
+    unsigned char level = (unsigned char) QInputDialog::getInt(this, "wfview simulated radio level", "Raw level (0-255)", 128, 1, 255, 1, &ok );
+    if(ok)
+    {
+        int peak = level*1.5;
+        if(peak > 255)
+            peak = 255;
+        int average = peak / 2;
 
+        ui->meterSPoWidget->setMeterType(meterALC);
+        ui->meterSPoWidget->setLevels(level, peak, average);
+        ui->meterSPoWidget->update();
+    }
 }

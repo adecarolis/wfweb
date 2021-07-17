@@ -25,7 +25,10 @@ enum meterKind {
     meterALC,
     meterComp,
     meterVoltage,
-    meterCurrent
+    meterCurrent,
+    meterRxdB,
+    meterTxMod,
+    meterRxAudio
 };
 
 enum spectrumMode {
