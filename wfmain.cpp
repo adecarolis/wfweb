@@ -5125,7 +5125,7 @@ void wfmain::on_debugBtn_clicked()
             peak = 255;
         int average = peak / 2;
 
-        ui->meterSPoWidget->setMeterType(meterPower);
+        ui->meterSPoWidget->setMeterType(meterALC);
         ui->meterSPoWidget->setLevels(level, peak, average);
         ui->meterSPoWidget->update();
     }

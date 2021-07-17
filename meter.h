@@ -35,13 +35,15 @@ private:
     int mYstart = 14; // height, down from top, where the drawing starts
     int barHeight = 10; // Height of meter "bar" indicators
     int scaleLineYstart = 12;
+    int scaleTextYstart = 10;
 
-    int widgetWindowHeight = mYstart + barHeight; // height of drawing canvis.
+    int widgetWindowHeight = mYstart + barHeight + 10; // height of drawing canvis.
 
     void drawScaleS(QPainter *qp);
     void drawScalePo(QPainter *qp);
     void drawScaleRxdB(QPainter *qp);
     void drawScaleALC(QPainter *qp);
+    void drawScaleSWR(QPainter *qp);
     void drawScaleVd(QPainter *qp);
     void drawScaleId(QPainter *qp);
 

@@ -62,6 +62,12 @@ void meter::paintEvent(QPaintEvent *)
         case meterPower:
             drawScalePo(&painter);
             break;
+        case meterALC:
+            drawScaleALC(&painter);
+            break;
+        case meterSWR:
+            drawScaleSWR(&painter);
+            break;
         default:
             break;
     }
@@ -110,7 +116,7 @@ void meter::updateDrawing(int num)
 
 void meter::drawScalePo(QPainter *qp)
 {
-    // 0000=0% to 0143=50% to 0213=100%
+    //From the manual: "0000=0% to 0143=50% to 0213=100%"
     float dnPerWatt = 143.0 / 50.0;
 
     qp->setPen(lowTextColor);
@@ -122,12 +128,8 @@ void meter::drawScalePo(QPainter *qp)
     {
         // Stop just before the next 10w spot
         if(i<mXstart+140)
-            qp->drawText(i,mXstart, QString("%1").arg(10*(p++)) );
+            qp->drawText(i,scaleTextYstart, QString("%1").arg(10*(p++)) );
     }
-
-    // 2 DN per 1 dB now:
-    // 20 DN per 10 dB
-    // 40 DN per 20 dB
 
     // Modify current scale position:
 
@@ -140,7 +142,7 @@ void meter::drawScalePo(QPainter *qp)
     qp->setPen(Qt::yellow);
     for(i=mXstart+143; i<mXstart+213; i+=(10*dnPerWatt))
     {
-        qp->drawText(i,mXstart, QString("%1").arg(10*(p++)) );
+        qp->drawText(i,scaleTextYstart, QString("%1").arg(10*(p++)) );
     }
 
     // Now we're out past 100:
@@ -148,7 +150,7 @@ void meter::drawScalePo(QPainter *qp)
 
     for(i=mXstart+213; i<mXstart+255; i+=(10*dnPerWatt))
     {
-        qp->drawText(i,mXstart, QString("%1").arg(10*(p++)) );
+        qp->drawText(i,scaleTextYstart, QString("%1").arg(10*(p++)) );
     }
 
     // Now the lines:
@@ -169,6 +171,54 @@ void meter::drawScaleRxdB(QPainter *qp)
 
 void meter::drawScaleALC(QPainter *qp)
 {
+    // From the manual: 0000=Minimum to 0120=Maximum
+
+    qp->setPen(lowTextColor);
+    qp->setFont(QFont("Arial", fontSize));
+    int i=mXstart;
+    int alc=0;
+    for(; i<mXstart+100; i += (20))
+    {
+        qp->drawText(i,scaleTextYstart, QString("%1").arg(alc) );
+        alc +=20;
+    }
+
+    qp->setPen(Qt::red);
+
+    for(; i<mXstart+120; i+=(int)(10*i))
+    {
+        qp->drawText(i,scaleTextYstart, QString("+%1").arg(alc) );
+        alc +=10;
+    }
+
+    qp->setPen(lowLineColor);
+    qp->drawLine(mXstart,scaleLineYstart,100+mXstart,scaleLineYstart);
+    qp->setPen(Qt::red);
+    qp->drawLine(100+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
+
+    (void)qp;
+}
+
+void meter::drawScaleSWR(QPainter *qp)
+{
+    // From the manual:
+    // 0000=SWR1.0,
+    // 0048=SWR1.5,
+    // 0080=SWR2.0,
+    // 0120=SWR3.0
+
+    qp->drawText(mXstart,scaleTextYstart, QString("1.0"));
+    qp->drawText(24+mXstart,scaleTextYstart, QString("1.3"));
+    qp->drawText(48+mXstart,scaleTextYstart, QString("1.5"));
+    qp->drawText(80+mXstart,scaleTextYstart, QString("2.0"));
+    qp->drawText(100+mXstart,scaleTextYstart, QString("2.5"));
+    qp->drawText(120+mXstart,scaleTextYstart, QString("3.0"));
+
+    qp->setPen(lowLineColor);
+    qp->drawLine(mXstart,scaleLineYstart,100+mXstart,scaleLineYstart);
+    qp->setPen(Qt::red);
+    qp->drawLine(100+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
+
     (void)qp;
 }
 
