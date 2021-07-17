@@ -743,6 +743,7 @@ private:
 
     void initPeriodicCommands();
     void insertPeriodicCommand(cmds cmd, unsigned char priority);
+    void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
 
     void calculateTimingParameters();
 
