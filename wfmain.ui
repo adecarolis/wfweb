@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -26,7 +26,7 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
-         <widget class="QGroupBox" name="groupBox">
+         <widget class="QGroupBox" name="spectrumGroupBox">
           <property name="title">
            <string>Spectrum</string>
           </property>
@@ -44,12 +44,12 @@
          </widget>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_13">
+         <layout class="QHBoxLayout" name="specControlsHorizLayout">
           <property name="topMargin">
            <number>0</number>
           </property>
           <item>
-           <widget class="QLabel" name="label_26">
+           <widget class="QLabel" name="specModeLabel">
             <property name="text">
              <string>Spectrum Mode: </string>
             </property>
@@ -66,7 +66,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="label_6">
+           <widget class="QLabel" name="specSpanLabel">
             <property name="text">
              <string>Span:</string>
             </property>
@@ -86,7 +86,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="label_7">
+           <widget class="QLabel" name="specEdgeLabel">
             <property name="text">
              <string>Edge</string>
             </property>
@@ -133,7 +133,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="label_31">
+           <widget class="QLabel" name="specThemeLabel">
             <property name="text">
              <string>Theme:</string>
             </property>
@@ -150,7 +150,7 @@
            </widget>
           </item>
           <item>
-           <spacer name="horizontalSpacer_2">
+           <spacer name="specHorizSpacer">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
@@ -238,9 +238,18 @@
              </layout>
             </item>
             <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_21">
+             <layout class="QVBoxLayout" name="meterLayout">
+              <property name="spacing">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>10</number>
+              </property>
+              <property name="bottomMargin">
+               <number>10</number>
+              </property>
               <item>
-               <widget class="meter" name="meterWidget" native="true">
+               <widget class="meter" name="meterSPoWidget" native="true">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -762,6 +771,60 @@
               </property>
               <property name="text">
                <string>Ref</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_20">
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QSlider" name="wfLengthSlider">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>70</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>80</height>
+               </size>
+              </property>
+              <property name="toolTip">
+               <string>Waterfall Length</string>
+              </property>
+              <property name="accessibleName">
+               <string>Waterfall Length</string>
+              </property>
+              <property name="minimum">
+               <number>100</number>
+              </property>
+              <property name="maximum">
+               <number>1024</number>
+              </property>
+              <property name="value">
+               <number>160</number>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_35">
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>15</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Len</string>
               </property>
              </widget>
             </item>
@@ -1998,6 +2061,23 @@
            </widget>
           </item>
           <item>
+           <widget class="QCheckBox" name="wfAntiAliasChk">
+            <property name="text">
+             <string>Anti-Alias Waterfall</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="wfInterpolateChk">
+            <property name="text">
+             <string>Interpolate Waterfall</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QCheckBox" name="fullScreenChk">
             <property name="text">
              <string>Show full screen</string>
@@ -2559,6 +2639,22 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="pollingBtn">
+            <property name="toolTip">
+             <string>Set up radio polling. The radio's meter is polled every-other interval.</string>
+            </property>
+            <property name="accessibleName">
+             <string>Polling</string>
+            </property>
+            <property name="accessibleDescription">
+             <string/>
+            </property>
+            <property name="text">
+             <string>Polling</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="horizontalSpacer_6">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -2608,7 +2704,7 @@
           <item>
            <widget class="QLabel" name="label_33">
             <property name="text">
-             <string>Please note: Changing CI-V Address, Serial Device, and Baud rate requires pressing &quot;Save Settings&quot;, closing wfview, and re-opening. </string>
+             <string>Please note: Changing  the built-in network server requires pressing &quot;Save Settings&quot;, closing wfview, and re-opening. </string>
             </property>
            </widget>
           </item>

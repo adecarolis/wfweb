@@ -4,28 +4,22 @@
 #include "udphandler.h"
 #include "logcategories.h"
 
-udpHandler::udpHandler(udpPreferences prefs) :
+udpHandler::udpHandler(udpPreferences prefs,audioSetup rx, audioSetup tx) :
     controlPort(prefs.controlLANPort),
     civPort(0),
     audioPort(0),
-    rxSampleRate(prefs.audioRXSampleRate),
-    txSampleRate(prefs.audioRXSampleRate),
-    rxLatency(prefs.audioRXLatency),
-    txLatency(prefs.audioTXLatency),
-    rxCodec(prefs.audioRXCodec),
-    txCodec(prefs.audioTXCodec),
-    audioInputPort(prefs.inputDevice),
-    audioOutputPort(prefs.outputDevice),
-    resampleQuality(prefs.resampleQuality)
+    rxSetup(rx),
+    txSetup(tx)
 {
+
 
     this->port = this->controlPort;
     this->username = prefs.username;
     this->password = prefs.password;
     this->compName = prefs.clientName.mid(0,8) + "-wfview";
 
-    qInfo(logUdp()) << "Starting udpHandler user:" << username << " rx latency:" << rxLatency  << " tx latency:" << txLatency << " rx sample rate: " << rxSampleRate <<
-        " rx codec: " << rxCodec << " tx sample rate: " << txSampleRate << " tx codec: " << txCodec;
+    qInfo(logUdp()) << "Starting udpHandler user:" << username << " rx latency:" << rxSetup.latency  << " tx latency:" << txSetup.latency << " rx sample rate: " << rxSetup.samplerate <<
+        " rx codec: " << rxSetup.codec << " tx sample rate: " << txSetup.samplerate << " tx codec: " << txSetup.codec;
 
     // Try to set the IP address, if it is a hostname then perform a DNS lookup.
     if (!radioIP.setAddress(prefs.ipAddress))
@@ -189,7 +183,19 @@ void udpHandler::dataReceived()
                         totallost = totallost + civ->packetsLost;
                     }
 
-                    emit haveNetworkStatus(" rtt: " + QString::number(latency) + " ms, loss: (" + QString::number(totallost) + "/" + QString::number(totalsent) + ")");
+                    QString tempLatency;
+                    if (rxSetup.latency > audio->audioLatency)
+                    {
+                        tempLatency = QString("%1 ms").arg(audio->audioLatency,3);
+                    }
+                    else {
+                        tempLatency = QString("<span style = \"color:red\">%1 ms</span>").arg(audio->audioLatency,3);
+                    }
+                    QString txString="";
+                    if (txSetup.codec == 0) {
+                        txString = "(no tx)";
+                    }
+                    emit haveNetworkStatus(QString("<pre>%1 rx latency: %2 / rtt: %3 ms / loss: %4/%5</pre>").arg(txString).arg(tempLatency).arg(latency, 3).arg(totallost, 3).arg(totalsent, 3));
                 }
                 break;
             }
@@ -316,10 +322,11 @@ void udpHandler::dataReceived()
     
                             // TX is not supported
                             if (txSampleRates <2 ) { 
-                                txSampleRate = 0;
-                                txCodec = 0;
+                                txSetup.samplerate = 0;
+                                txSetup.codec = 0;
                             }
-                            audio = new udpAudio(localIP, radioIP, audioPort, rxLatency, txLatency, rxSampleRate, rxCodec, txSampleRate, txCodec, audioOutputPort, audioInputPort,resampleQuality);
+
+                            audio = new udpAudio(localIP, radioIP, audioPort, rxSetup, txSetup);
 
                             QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
                             QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
@@ -417,15 +424,15 @@ void udpHandler::sendRequestStream()
     p.rxenable = 1;
     if (this->txSampleRates > 1) {
         p.txenable = 1;
-        p.txcodec = txCodec;
+        p.txcodec = txSetup.codec;
     }
-    p.rxcodec = rxCodec;
+    p.rxcodec = rxSetup.codec;
     memcpy(&p.username, usernameEncoded.constData(), usernameEncoded.length());
-    p.rxsample = qToBigEndian((quint32)rxSampleRate);
-    p.txsample = qToBigEndian((quint32)txSampleRate);
+    p.rxsample = qToBigEndian((quint32)rxSetup.samplerate);
+    p.txsample = qToBigEndian((quint32)txSetup.samplerate);
     p.civport = qToBigEndian((quint32)civPort);
     p.audioport = qToBigEndian((quint32)audioPort);
-    p.txbuffer = qToBigEndian((quint32)txLatency);
+    p.txbuffer = qToBigEndian((quint32)txSetup.latency);
     p.convert = 1;
     sendTrackedPacket(QByteArray::fromRawData((const char*)p.packet, sizeof(p)));
     return;
@@ -582,7 +589,7 @@ void udpCivData::watchdog()
 
 void udpCivData::send(QByteArray d)
 {
-    // qInfo(logUdp()) << "Sending: (" << d.length() << ") " << d;
+    //qInfo(logUdp()) << "Sending: (" << d.length() << ") " << d;
     data_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
     p.len = sizeof(p)+d.length();
@@ -634,6 +641,7 @@ void udpCivData::dataReceived()
         //qInfo(logUdp()) << "Received: " << datagram.data();
         QByteArray r = datagram.data();
 
+
         switch (r.length())
         {
             case (CONTROL_SIZE): // Control packet
@@ -670,7 +678,9 @@ void udpCivData::dataReceived()
                         lastReceived = QTime::currentTime();
                         if (quint16(in->datalen + 0x15) == (quint16)in->len)
                         {
-                            emit receive(r.mid(0x15));
+                            //if (r.mid(0x15).length() != 157)
+                               emit receive(r.mid(0x15));
+                            //qDebug(logUdp()) << "Got incoming CIV datagram" << r.mid(0x15).length();
                         }
 
                     }
@@ -679,6 +689,7 @@ void udpCivData::dataReceived()
             }
         }
         udpBase::dataReceived(r); // Call parent function to process the rest.
+
         r.clear();
         datagram.clear();
 
@@ -687,47 +698,20 @@ void udpCivData::dataReceived()
 
 
 // Audio stream
-udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 rxlatency, quint16 txlatency, quint16 rxsample, quint8 rxcodec, quint16 txsample, quint8 txcodec, QAudioDeviceInfo outputPort, QAudioDeviceInfo inputPort,quint8 resampleQuality)
+udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, audioSetup rxSetup, audioSetup txSetup)
 {
     qInfo(logUdp()) << "Starting udpAudio";
     this->localIP = local;
     this->port = audioPort;
     this->radioIP = ip;
-    this->rxLatency = rxlatency;
-    this->txLatency = txlatency;
-    this->rxSampleRate = rxsample;
-    this->txSampleRate = txsample;
-    this->rxCodec = rxcodec;
-    this->txCodec = txcodec;
 
-    if (txSampleRate == 0) {
+    if (txSetup.samplerate == 0) {
         enableTx = false;
     }
 
     init(); // Perform connection
 
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::dataReceived);
-
-    /*
-    0x72 is RX audio codec
-    0x73 is TX audio codec (only single channel options)
-    0x01 uLaw 1ch 8bit
-    0x02 PCM 1ch 8bit
-    0x04 PCM 1ch 16bit
-    0x08 PCM 2ch 8bit
-    0x10 PCM 2ch 16bit
-    0x20 uLaw 2ch 8bit
-    */
-
-    if (rxCodec == 0x01 || rxCodec == 0x20) {
-        rxIsUlawCodec = true;
-    }
-    if (rxCodec == 0x08 || rxCodec == 0x10 || rxCodec == 0x20) {
-        rxChannelCount = 2;
-    }
-    if (rxCodec == 0x04 || rxCodec == 0x10) {
-        rxNumSamples = 16;
-    }
 
     rxaudio = new audioHandler();
     rxAudioThread = new QThread(this);
@@ -736,20 +720,15 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     rxAudioThread->start();
 
-    connect(this, SIGNAL(setupRxAudio(quint8, quint8, quint16, quint16, bool, bool, QAudioDeviceInfo, quint8)), rxaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QAudioDeviceInfo, quint8)));
+    connect(this, SIGNAL(setupRxAudio(audioSetup)), rxaudio, SLOT(init(audioSetup)));
 
+    // signal/slot not currently used.
     connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
     connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
     connect(this, SIGNAL(haveSetVolume(unsigned char)), rxaudio, SLOT(setVolume(unsigned char)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
     
-
-    if (txCodec == 0x01)
-        txIsUlawCodec = true;
-    else if (txCodec == 0x04)
-        txNumSamples = 16;
-
-    txChannelCount = 1; // Only 1 channel is supported.
+    txSetup.radioChan = 1;
 
     txaudio = new audioHandler();
     txAudioThread = new QThread(this);
@@ -758,7 +737,8 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     
     txAudioThread->start();
     
-    connect(this, SIGNAL(setupTxAudio(quint8, quint8, quint16, quint16, bool, bool,QAudioDeviceInfo,quint8)), txaudio, SLOT(init(quint8, quint8, quint16, quint16, bool, bool,QAudioDeviceInfo,quint8)));
+    connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
+
     connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
     sendControl(false, 0x03, 0x00); // First connect packet
@@ -768,10 +748,10 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     pingTimer->start(PING_PERIOD); // send ping packets every 100ms
 
     if (enableTx) {
-        emit setupTxAudio(txNumSamples, txChannelCount, txSampleRate, txLatency, txIsUlawCodec, true, inputPort, resampleQuality);
+        emit setupTxAudio(txSetup);
     }
 
-    emit setupRxAudio(rxNumSamples, rxChannelCount, rxSampleRate, txLatency, rxIsUlawCodec, false, outputPort,resampleQuality);
+    emit setupRxAudio(rxSetup);
 
     watchdogTimer = new QTimer();
     connect(watchdogTimer, &QTimer::timeout, this, &udpAudio::watchdog);
@@ -842,7 +822,7 @@ void udpAudio::watchdog()
             /* Just log it at the moment, maybe try signalling the control channel that it needs to 
                 try requesting civ/audio again? */
 
-            qInfo(logUdp()) << " Audio Watchdog: no audio data received for 2s, restart required";
+            qInfo(logUdp()) << " Audio Watchdog: no audio data received for 2s, restart required?";
             alerted = true;
         }
     }
@@ -855,10 +835,13 @@ void udpAudio::watchdog()
 
 void udpAudio::sendTxAudio()
 {
+    if (txaudio == Q_NULLPTR) {
+        return;
+    }
+    QByteArray audio;
+    txaudio->getNextAudioChunk(audio);
 
-    if (txaudio && txaudio->isChunkAvailable()) {
-        QByteArray audio;
-        txaudio->getNextAudioChunk(audio);
+    if (audio.length() > 0) {
         int counter = 1;
         int len = 0;
 
@@ -942,11 +925,12 @@ void udpAudio::dataReceived()
                     tempAudio.seq = (quint32)seqPrefix << 16 | in->seq;
                     tempAudio.time = lastReceived;
                     tempAudio.sent = 0;
-                    tempAudio.datain = r.mid(0x18);
+                    tempAudio.data = r.mid(0x18);
                     // Prefer signal/slot to forward audio as it is thread/safe
                     // Need to do more testing but latency appears fine.
+                    //audioLatency = rxaudio->incomingAudio(tempAudio);
                     emit haveAudioData(tempAudio);
-                    //rxaudio->incomingAudio(tempAudio);
+                    audioLatency = rxaudio->getLatency();
                 }
                 break;
             }
@@ -1149,6 +1133,10 @@ void udpBase::dataReceived(QByteArray r)
     {
         rxBufferMutex.lock();
         if (rxSeqBuf.isEmpty()) {
+            if (rxSeqBuf.size() > 400)
+            {
+                rxSeqBuf.erase(rxSeqBuf.begin());
+            }
             rxSeqBuf.insert(in->seq, QTime::currentTime());
         } 
         else
@@ -1169,6 +1157,10 @@ void udpBase::dataReceived(QByteArray r)
             {
                 // Add incoming packet to the received buffer and if it is in the missing buffer, remove it.
                 rxSeqBuf.insert(in->seq, QTime::currentTime());
+                if (rxSeqBuf.size() > 400)
+                {
+                    rxSeqBuf.erase(rxSeqBuf.begin());
+                }
             }
             else {
                 // This is probably one of our missing packets!
@@ -1224,7 +1216,15 @@ void udpBase::sendRetransmitRequest()
                     {
                         // We haven't seen this missing packet before
                         qDebug(logUdp()) << this->metaObject()->className() << ": Adding to missing buffer (len=" << rxMissing.size() << "): " << j;
+                        if (rxMissing.size() > 25)
+                        {
+                            rxMissing.erase(rxMissing.begin());
+                        }
                         rxMissing.insert(j, 0);
+                        if (rxSeqBuf.size() > 400)
+                        {
+                            rxSeqBuf.erase(rxSeqBuf.begin());
+                        }
                         rxSeqBuf.insert(j, QTime::currentTime()); // Add this missing packet to the rxbuffer as we now long about it.
                         packetsLost++;
                     }
@@ -1367,11 +1367,17 @@ void udpBase::sendTrackedPacket(QByteArray d)
             congestion = 0;
         }
         txSeqBuf.insert(sendSeq,s);
+        if (txSeqBuf.size() > 400)
+        {
+            txSeqBuf.erase(txSeqBuf.begin());
+        }
         txBufferMutex.unlock();
     } else {
         qInfo(logUdp()) << this->metaObject()->className() << ": txBuffer mutex is locked";
     }
-    purgeOldEntries(); // Delete entries older than PURGE_SECONDS seconds (currently 5)
+    // Stop using purgeOldEntries() as it is likely slower than just removing the earliest packet.
+    //qInfo(logUdp()) << this->metaObject()->className() << "RX:" << rxSeqBuf.size() << "TX:" <<txSeqBuf.size() << "MISS:" << rxMissing.size();
+    //purgeOldEntries(); // Delete entries older than PURGE_SECONDS seconds (currently 5)
     sendSeq++;
 
     udpMutex.lock();

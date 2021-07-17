@@ -15,7 +15,7 @@
 pttyHandler::pttyHandler(QString pty)
 {
     //constructor
-    if (pty == "" || pty == "None")
+    if (pty == "" || pty.toLower() == "none")
     {
         // Just return if pty is not configured.
         return;
@@ -53,7 +53,7 @@ void pttyHandler::openPort()
     }
 #else
     // Generic method in Linux/MacOS to find a pty
-    ptfd = ::posix_openpt(O_RDWR | O_NOCTTY);
+    ptfd = ::posix_openpt(O_RDWR | O_NONBLOCK);
 
     if (ptfd >=0)
     {
@@ -94,7 +94,7 @@ void pttyHandler::openPort()
 #ifndef Q_OS_WIN
     ptDevSlave = QString::fromLocal8Bit(ptsname(ptfd));
 
-    if (portName != "" && portName != "None")
+    if (portName != "" && portName.toLower() != "none")
     {
         if (!QFile::link(ptDevSlave, portName))
         {
@@ -115,7 +115,24 @@ pttyHandler::~pttyHandler()
 
 void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
 {
-    if (isConnected && (unsigned char)data[2] != (unsigned char)0xE1 && (unsigned char)data[3] != (unsigned char)0xE1)
+
+    int fePos=data.lastIndexOf((char)0xfe);
+    if (fePos > 0 && data.length() > fePos+2)
+        fePos=fePos-1;
+    else
+    {
+        qDebug(logSerial()) << "Invalid command";
+        printHex(data,false,true);
+    }
+
+    if (disableTransceive && ((unsigned char)data[fePos + 2] == 0x00 || (unsigned char)data[fePos + 3] == 0x00))
+    {
+        // Ignore data that is sent to/from transceive address as client has requested transceive disabled.
+        qDebug(logSerial()) << "Transceive command filtered";
+        return;
+    }
+
+    if (isConnected && (unsigned char)data[fePos + 2] != 0xE1 && (unsigned char)data[fePos + 3] != 0xE1)
     {
         // send to the pseudo port as well
         // index 2 is dest, 0xE1 is wfview, 0xE0 is assumed to be the other device.
@@ -123,7 +140,7 @@ void pttyHandler::receiveDataFromRigToPtty(const QByteArray& data)
         // 0xE1 = wfview
         // 0xE0 = pseudo-term host
         // 0x00 = broadcast to all
-        //qInfo(logSerial()) << "Sending data from radio to pseudo-terminal";
+        //qInfo(logSerial()) << "Sending data from radio to pseudo-terminal";        
         sendDataOut(data);
     }
 }
@@ -211,12 +228,16 @@ void pttyHandler::receiveDataIn(int fd) {
                 reply[3] = inPortData[2];
                 sendDataOut(inPortData); // Echo command back
                 sendDataOut(reply);
+                if (!disableTransceive) {
+                    qInfo(logSerial()) << "pty requested CI-V Transceive disable";
+                    disableTransceive = true;
+                }
             }
             else if (inPortData.length() > lastFE + 2 && ((quint8)inPortData[lastFE + 1] == civId || (quint8)inPortData[lastFE + 2] == civId))
             {
                 emit haveDataFromPort(inPortData);
-                //qInfo(logSerial()) << "Data from pseudo term:";
-                //printHex(inPortData, false, true);
+                qDebug(logSerial()) << "Data from pseudo term:";
+                printHex(inPortData, false, true);
             }
 
             if (rolledBack)
@@ -258,7 +279,7 @@ void pttyHandler::closePort()
         delete port;
     }
 #else
-    if (isConnected && portName != "" && portName != "None")
+    if (isConnected && portName != "" && portName.toLower() != "none")
     {
         QFile::remove(portName);
     }

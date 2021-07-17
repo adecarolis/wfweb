@@ -25,7 +25,10 @@ enum meterKind {
     meterALC,
     meterComp,
     meterVoltage,
-    meterCurrent
+    meterCurrent,
+    meterRxdB,
+    meterTxMod,
+    meterRxAudio
 };
 
 enum spectrumMode {
@@ -39,6 +42,18 @@ enum spectrumMode {
 struct freqt {
     quint64 Hz;
     double MHzDouble;
+};
+
+struct datekind {
+    uint16_t year;
+    unsigned char month;
+    unsigned char day;
+};
+
+struct timekind {
+    unsigned char hours;
+    unsigned char minutes;
+    bool isMinus;
 };
 
 struct rigStateStruct {
@@ -88,7 +103,7 @@ public:
 public slots:
     void process();
     void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp);
-    void commSetup(unsigned char rigCivAddr, udpPreferences prefs, QString vsp);
+    void commSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp);
     void closeComm();
 
     // Power:
@@ -119,6 +134,7 @@ public slots:
     void setFrequency(freqt freq);
     void getFrequency();
     void setMode(unsigned char mode, unsigned char modeFilter);
+    void setMode(mode_info);
     void getMode();
     void setDataMode(bool dataOn, unsigned char filter);
     void getDataMode();
@@ -224,6 +240,12 @@ public slots:
     void getRefAdjustFine();
     void setRefAdjustCourse(unsigned char level);
     void setRefAdjustFine(unsigned char level);
+
+    // Time and Date:
+    void setTime(timekind t);
+    void setDate(datekind d);
+    void setUTCOffset(timekind t);
+
 
     // Satellite:
     void setSatelliteMode(bool enabled);
@@ -349,6 +371,7 @@ private:
     QByteArray makeFreqPayload(freqt freq);
     QByteArray encodeTone(quint16 tone, bool tinv, bool rinv);
     QByteArray encodeTone(quint16 tone);
+    unsigned char convertNumberToHex(unsigned char num);
     quint16 decodeTone(QByteArray eTone);
     quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
 
@@ -377,6 +400,7 @@ private:
     void printHex(const QByteArray &pdata);
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
     mode_info createMode(mode_kind m, unsigned char reg, QString name);
+    centerSpanData createScopeCenter(centerSpansType s, QString name);
 
     commHandler* comm = Q_NULLPTR;
     pttyHandler* ptty = Q_NULLPTR;

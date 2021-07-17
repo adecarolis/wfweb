@@ -102,6 +102,9 @@
     <ClCompile Include="rigidentities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ring\ring.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="satellitesetup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -170,6 +173,9 @@
     <ClInclude Include="rigidentities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ring\ring.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <QtMoc Include="satellitesetup.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -185,6 +191,9 @@
     <QtMoc Include="udpserversetup.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <ClInclude Include="ulaw.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <QtMoc Include="wfmain.h">
       <Filter>Header Files</Filter>
     </QtMoc>

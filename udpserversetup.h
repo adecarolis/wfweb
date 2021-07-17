@@ -4,7 +4,6 @@
 #include <QDialog>
 #include <QComboBox>
 #include <QList>
-#include <QAudioDeviceInfo>
 
 #include <QDebug>
 
@@ -21,10 +20,8 @@ struct SERVERCONFIG {
     quint16 controlPort;
     quint16 civPort;
     quint16 audioPort;
-    QString audioOutput;
-    QString audioInput;
-    QAudioDeviceInfo inputDevice;
-    QAudioDeviceInfo outputDevice;
+    int audioOutput;
+    int audioInput;
     quint8 resampleQuality;
     quint32 baudRate;
 
@@ -45,6 +42,7 @@ public:
 
 private slots:
     void on_usersTable_cellClicked(int row, int col);
+    void onPasswordChanged();
 
 public slots:    
     void receiveServerConfig(SERVERCONFIG conf);
@@ -56,6 +54,7 @@ private:
     Ui::udpServerSetup* ui;
     void accept();
     QList<QComboBox*> userTypes;
+    void addUserLine(const QString &user, const QString &pass, const int &type);
 };
 
 #endif // UDPSERVER_H

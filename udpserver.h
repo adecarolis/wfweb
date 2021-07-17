@@ -12,6 +12,7 @@
 #include <QByteArray>
 #include <QList>
 #include <QVector>
+#include <QMap>
 
 // Allow easy endian-ness conversions
 #include <QtEndian>
@@ -38,7 +39,7 @@ class udpServer : public QObject
 	Q_OBJECT
 
 public:
-	udpServer(SERVERCONFIG config);
+	udpServer(SERVERCONFIG config,audioSetup outAudio, audioSetup inAudio);
 	~udpServer();
 
 public slots:
@@ -50,8 +51,11 @@ public slots:
 signals:
 	void haveDataFromServer(QByteArray);
 	void haveAudioData(audioPacket data);
-	void setupTxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QAudioDeviceInfo port, quint8 resampleQuality);
-	void setupRxAudio(const quint8 samples, const quint8 channels, const quint16 samplerate, const quint16 latency, const bool isUlaw, const bool isInput, QAudioDeviceInfo port, quint8 resampleQuality);
+	void haveNetworkStatus(QString);
+
+	void setupTxAudio(audioSetup);
+	void setupRxAudio(audioSetup);
+
 
 
 private:
@@ -90,7 +94,6 @@ private:
 
 		QTimer* pingTimer;
 		QTimer* idleTimer;
-		QTimer* wdTimer;
 		QTimer* retransmitTimer;
 
 		// Only used for audio.
@@ -100,9 +103,11 @@ private:
 		quint16 txSampleRate;
 		SERVERUSER user;
 
-		QVector <SEQBUFENTRY> txSeqBuf;
-		QVector <quint16> rxSeqBuf;
-		QVector <SEQBUFENTRY> rxMissing;
+
+		QMap<quint16, QTime> rxSeqBuf;
+		QMap<quint16, SEQBUFENTRY> txSeqBuf;
+		QMap<quint16, int> rxMissing;
+
 		QMutex txMutex;
 		QMutex rxMutex;
 		QMutex missMutex;
@@ -110,6 +115,10 @@ private:
 		quint16 seqPrefix;
 
 		quint8 civId;
+		bool isAuthenticated;
+		CLIENT* controlClient = Q_NULLPTR;
+		CLIENT* civClient = Q_NULLPTR;
+		CLIENT* audioClient = Q_NULLPTR;
 	};
 
 	void controlReceived();
@@ -125,7 +134,7 @@ private:
 	void sendTokenResponse(CLIENT* c,quint8 type);
 	void sendStatus(CLIENT* c);
 	void sendRetransmitRequest(CLIENT* c);
-	void watchdog(CLIENT* c);
+	void watchdog();
 	void sendRxAudio();
 	void deleteConnection(QList<CLIENT*> *l, CLIENT* c);
 
@@ -158,6 +167,9 @@ private:
 	audioHandler* txaudio = Q_NULLPTR;
 	QThread* txAudioThread = Q_NULLPTR;
 
+	audioSetup outAudio;
+	audioSetup inAudio;
+
 	QTimer* rxAudioTimer=Q_NULLPTR;
 	quint16 rxSampleRate = 0;
 	quint16 txSampleRate = 0;
@@ -165,6 +177,7 @@ private:
 	quint8 txCodec = 0;
 
 	QHostAddress hasTxAudio;
+	QTimer* wdTimer;
 };
 
 

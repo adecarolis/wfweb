@@ -21,13 +21,18 @@
 #include "calibrationwindow.h"
 #include "repeatersetup.h"
 #include "satellitesetup.h"
+#include "transceiveradjustments.h"
 #include "udpserversetup.h"
 #include "udpserver.h"
 #include "qledlabel.h"
 #include "rigctld.h"
+#include "aboutbox.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
+
+#include <deque>
+#include <memory>
 
 namespace Ui {
 class wfmain;
@@ -44,6 +49,9 @@ public:
     ~wfmain();
 
 signals:
+    // Basic to rig:
+    void setCIVAddr(unsigned char newRigCIVAddr);
+
     // Power
     void sendPowerOn();
     void sendPowerOff();
@@ -53,6 +61,7 @@ signals:
     void setFrequency(freqt freq);
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
+    void setMode(mode_info);
     void setDataMode(bool dataOn, unsigned char filter);
     void getDataMode();
     void getModInput(bool dataOn);
@@ -116,6 +125,11 @@ signals:
     void setATU(bool atuEnabled);
     void getATUStatus();
 
+    // Time and date:
+    void setTime(timekind t);
+    void setDate(datekind d);
+    void setUTCOffset(timekind t);
+
     void getRigID(); // this is the model of the rig
     void getRigCIV(); // get the rig's CIV addr
     void spectOutputEnable();
@@ -133,7 +147,7 @@ signals:
     void sayMode();
     void sayAll();
     void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp);
-    void sendCommSetup(unsigned char rigCivAddr, udpPreferences prefs, QString vsp);
+    void sendCommSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp);
     void sendCloseComm();
     void sendChangeLatency(quint16 latency);
     void initServer();
@@ -141,6 +155,7 @@ signals:
     void sendRigCaps(rigCapabilities caps);
 
 private slots:
+    void updateSizes(int tabIndex);
     void shortcutF1();
     void shortcutF2();
     void shortcutF3();
@@ -230,11 +245,13 @@ private slots:
     void handleWFDoubleClick(QMouseEvent *);
     void handleWFScroll(QWheelEvent *);
     void handlePlotScroll(QWheelEvent *);
-    void runDelayedCommand();
-    void runPeriodicCommands();
+    void sendRadioCommandLoop();
     void showStatusBarText(QString text);
     void serverConfigRequested(SERVERCONFIG conf, bool store);
     void receiveBaudRate(quint32 baudrate);
+
+    void setRadioTimeDateSend();
+
 
     // void on_getFreqBtn_clicked();
 
@@ -345,9 +362,9 @@ private slots:
 
     void on_passwordTxt_textChanged(QString text);
 
-    void on_audioOutputCombo_currentIndexChanged(QString text);
+    void on_audioOutputCombo_currentIndexChanged(int value);
 
-    void on_audioInputCombo_currentIndexChanged(QString text);
+    void on_audioInputCombo_currentIndexChanged(int value);
 
     void on_toFixedBtn_clicked();
 
@@ -443,6 +460,14 @@ private slots:
 
     void on_baudRateCombo_activated(int);
 
+    void on_wfLengthSlider_valueChanged(int value);
+
+    void on_pollingBtn_clicked();
+
+    void on_wfAntiAliasChk_clicked(bool checked);
+
+    void on_wfInterpolateChk_clicked(bool checked);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -456,6 +481,8 @@ private:
     void setAppTheme(bool isCustom);
     void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
+    void prepareWf(unsigned int wfLength);
+    void showHideSpectrum(bool show);
     void getInitialRigState();
     void setBandButtons();
     void showButton(QPushButton *btn);
@@ -503,6 +530,8 @@ private:
     QShortcut *keyF;
     QShortcut *keyM;
 
+    QShortcut *keyDebug;
+
 
     rigCommander * rig=Q_NULLPTR;
     QThread* rigThread = Q_NULLPTR;
@@ -510,9 +539,24 @@ private:
     QCPColorMapData * colorMapData;
     QCPColorScale * colorScale;
     QTimer * delayedCommand;
-    QTimer * periodicPollingTimer;
     QTimer * pttTimer;
+    uint16_t loopTickCounter;
+    uint16_t slowCmdNum;
 
+    void setupPlots();
+    void makeRig();
+    void rigConnections();
+    void removeRig();
+    void findSerialPort();
+
+    void setupKeyShortcuts();
+    void setupMainUI();
+    void setUIToPrefs();
+    void setSerialDevicesUI();
+    void setAudioDevicesUI();
+    void setServerToPrefs();
+    void setInitialTiming();
+    void getSettingsFilePath(QString settingsFile);
 
     QStringList modes;
     int currentModeIndex;
@@ -526,8 +570,7 @@ private:
 
     quint16 spectWidth;
     quint16 wfLength;
-
-    quint16 spectRowCurrent;
+    bool spectrumDrawLock;
 
     QByteArray spectrumPeaks;
 
@@ -538,6 +581,7 @@ private:
     int smeterPos=0;
 
     QVector <QByteArray> wfimage;
+    unsigned int wfLengthMax;
 
     bool onFullscreen;
     bool drawPeaks;
@@ -552,23 +596,60 @@ private:
     unsigned char setModeVal=0;
     unsigned char setFilterVal=0;
 
-    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetMode, cmdGetDataMode, cmdSetModeFilter,
+    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode, cmdGetDataMode, cmdSetModeFilter,
               cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
-              cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdGetAfGain,
-              cmdGetSql, cmdGetATUStatus, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT,
-              cmdGetTxPower, cmdGetMicGain, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
+              cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
+              cmdGetSql, cmdSetSql, cmdGetATUStatus, cmdSetATU, cmdStartATU, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,
+              cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
-              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter,
-              cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna};
+              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
+              cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
+              cmdSetTime, cmdSetDate, cmdSetUTCOffset};
 
-    cmds cmdOut;
-    QVector <cmds> cmdOutQue;
-    QVector <cmds> periodicCmdQueue;
+    struct commandtype {
+        cmds cmd;
+        std::shared_ptr<void> data;
+    };
+
+    std::deque <commandtype> delayedCmdQue;    // rapid que for commands to the radio
+    std::deque <cmds> periodicCmdQueue; // rapid que for metering
+    std::deque <cmds> slowPollCmdQueue; // slow, regular checking for UI sync
+    void doCmd(cmds cmd);
+    void doCmd(commandtype cmddata);
+
+    void issueCmd(cmds cmd, freqt f);
+    void issueCmd(cmds cmd, mode_info m);
+    void issueCmd(cmds cmd, timekind t);
+    void issueCmd(cmds cmd, datekind d);
+    void issueCmd(cmds cmd, int i);
+    void issueCmd(cmds cmd, unsigned char c);
+    void issueCmd(cmds cmd, char c);
+    void issueCmd(cmds cmd, bool b);
+
+    // These commands pop_front and remove similar commands:
+    void issueCmdUniquePriority(cmds cmd, bool b);
+    void issueCmdUniquePriority(cmds cmd, unsigned char c);
+    void issueCmdUniquePriority(cmds cmd, char c);
+    void issueCmdUniquePriority(cmds cmd, freqt f);
+
+    void removeSimilarCommand(cmds cmd);
+
+    qint64 lastFreqCmdTime_ms;
+
     int pCmdNum = 0;
     int delayedCmdIntervalLAN_ms = 100;
     int delayedCmdIntervalSerial_ms = 100;
     int delayedCmdStartupInterval_ms = 100;
+    bool runPeriodicCommands;
     bool usingLAN = false;
+
+    // Radio time sync:
+    QTimer *timeSync;
+    bool waitingToSetTimeDate;
+    void setRadioTimeDatePrep();
+    timekind timesetpoint;
+    timekind utcsetting;
+    datekind datesetpoint;
 
     freqMemory mem;
     struct colors {
@@ -601,6 +682,8 @@ private:
         bool useDarkMode;
         bool useSystemTheme;
         bool drawPeaks;
+        bool wfAntiAlias;
+        bool wfInterpolate;
         QString stylesheetPath;
         unsigned char radioCIVAddr;
         QString serialPortRadio;
@@ -612,11 +695,20 @@ private:
         quint16 rigCtlPort;
         colors colorScheme;
         QString virtualSerialPort;
+        unsigned char localAFgain;
+        unsigned int wflength;
+        int wftheme;
+        bool confirmExit;
+        // plot scheme
     } prefs;
 
     preferences defPrefs;
     udpPreferences udpPrefs;
     udpPreferences udpDefPrefs;
+
+    // Configuration for audio output and input.
+    audioSetup rxSetup;
+    audioSetup txSetup;
 
     colors defaultColors;
 
@@ -637,6 +729,8 @@ private:
     void issueDelayedCommandPriority(cmds cmd);
     void issueDelayedCommandUnique(cmds cmd);
     void changeSliderQuietly(QSlider *slider, int value);
+    void statusFromSliderPercent(QString name, int percentValue);
+    void statusFromSliderRaw(QString name, int rawValue);
 
     void processModLevel(rigInput source, unsigned char level);
 
@@ -649,6 +743,7 @@ private:
 
     void initPeriodicCommands();
     void insertPeriodicCommand(cmds cmd, unsigned char priority);
+
     void calculateTimingParameters();
 
     void changeMode(mode_kind mode);
@@ -660,6 +755,7 @@ private:
     rigInput currentModSrc = inputUnknown;
     rigInput currentModDataSrc = inputUnknown;
     mode_kind currentMode = modeUSB;
+    mode_info currentModeInfo;
 
     bool haveRigCaps;
     bool amTransmitting;
@@ -675,7 +771,10 @@ private:
     calibrationWindow *cal;
     repeaterSetup *rpt;
     satelliteSetup *sat;
+    transceiverAdjustments *trxadj;
     udpServerSetup *srv;
+    aboutbox *abtBox;
+
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
@@ -705,14 +804,17 @@ private:
 
 
     SERVERCONFIG serverConfig;
-
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
 Q_DECLARE_METATYPE(struct freqt)
+Q_DECLARE_METATYPE(struct mode_info)
 Q_DECLARE_METATYPE(struct udpPreferences)
 Q_DECLARE_METATYPE(struct rigStateStruct)
 Q_DECLARE_METATYPE(struct audioPacket)
+Q_DECLARE_METATYPE(struct audioSetup)
+Q_DECLARE_METATYPE(struct timekind)
+Q_DECLARE_METATYPE(struct datekind)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)

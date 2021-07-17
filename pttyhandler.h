@@ -65,7 +65,7 @@ private:
     bool isConnected=false; // port opened
     mutable QMutex mutex;
     void printHex(const QByteArray& pdata, bool printVert, bool printHoriz);
-
+    bool disableTransceive = false;
     QSocketNotifier *ptReader = nullptr;
     quint8 civId=0;
 };
