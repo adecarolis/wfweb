@@ -154,9 +154,10 @@ void meter::drawScalePo(QPainter *qp)
     // Now the lines:
     qp->setPen(lowLineColor);
 
-    qp->drawLine(mXstart,scaleLineYstart,213,scaleLineYstart);
+    // Line: X1, Y1 -->to--> X2, Y2
+    qp->drawLine(mXstart,scaleLineYstart,213+mXstart,scaleLineYstart);
     qp->setPen(Qt::red);
-    qp->drawLine(213,scaleLineYstart,255,scaleLineYstart);
+    qp->drawLine(213+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
 
     (void)qp;
 }
