@@ -40,10 +40,19 @@ meter::meter(QWidget *parent) : QWidget(parent)
 
 void meter::setMeterType(meterKind type)
 {
+    if(type == meterType)
+        return;
+
     meterType = type;
+    // clear average and peak vectors:
+
     // re-draw scale:
 }
 
+meterKind meter::getMeterType()
+{
+    return meterType;
+}
 
 void meter::paintEvent(QPaintEvent *)
 {
@@ -57,15 +66,19 @@ void meter::paintEvent(QPaintEvent *)
     switch(meterType)
     {
         case meterS:
+            peakRedLevel = 120; // S9+
             drawScaleS(&painter);
             break;
         case meterPower:
+            peakRedLevel = 210; // 100%
             drawScalePo(&painter);
             break;
         case meterALC:
+            peakRedLevel = 100;
             drawScaleALC(&painter);
             break;
         case meterSWR:
+            peakRedLevel = 100; // SWR 2.5
             drawScaleSWR(&painter);
             break;
         default:
@@ -87,9 +100,8 @@ void meter::paintEvent(QPaintEvent *)
     // Peak:
     painter.setPen(peakColor);
     painter.setBrush(peakColor);
-    if(peak > 120)
+    if(peak > peakRedLevel)
     {
-        // 120 = +S9
         painter.setBrush(Qt::red);
         painter.setPen(Qt::red);
     }

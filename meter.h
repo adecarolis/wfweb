@@ -20,6 +20,7 @@ public slots:
     void updateDrawing(int num);
     void setLevels(int current, int peak, int average);
     void setMeterType(meterKind type);
+    meterKind getMeterType();
 
 
 private:
@@ -30,6 +31,8 @@ private:
     int current=0;
     int peak = 0;
     int average = 0;
+
+    int peakRedLevel=0;
 
     int mXstart = 10; // Starting point for S=0.
     int mYstart = 14; // height, down from top, where the drawing starts
