@@ -5214,17 +5214,25 @@ void wfmain::on_debugBtn_clicked()
     //setRadioTimeDatePrep();
     //wf->setInteraction(QCP::iRangeZoom, true);
     //wf->setInteraction(QCP::iRangeDrag, true);
-    bool ok = false;
-    unsigned char level = (unsigned char) QInputDialog::getInt(this, "wfview simulated radio level", "Raw level (0-255)", 128, 1, 255, 1, &ok );
-    if(ok)
-    {
-        int peak = level*1.5;
-        if(peak > 255)
-            peak = 255;
-        int average = peak / 2;
 
-        ui->meterSPoWidget->setMeterType(meterALC);
-        ui->meterSPoWidget->setLevels(level, peak, average);
-        ui->meterSPoWidget->update();
+    // debug the fast queue:
+    qDebug(logSystem()) << "Size of fast command queue: " << periodicCmdQueue.size();
+
+    for (auto it = periodicCmdQueue.cbegin(); it != periodicCmdQueue.cend(); ++it) {
+            qDebug(logSystem()) << *it ;
     }
+
+//    bool ok = false;
+//    unsigned char level = (unsigned char) QInputDialog::getInt(this, "wfview simulated radio level", "Raw level (0-255)", 128, 1, 255, 1, &ok );
+//    if(ok)
+//    {
+//        int peak = level*1.5;
+//        if(peak > 255)
+//            peak = 255;
+//        int average = peak / 2;
+
+//        ui->meterSPoWidget->setMeterType(meterALC);
+//        ui->meterSPoWidget->setLevels(level, peak, average);
+//        ui->meterSPoWidget->update();
+//    }
 }
