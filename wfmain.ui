@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -141,8 +141,11 @@
           </item>
           <item>
            <widget class="QComboBox" name="wfthemeCombo">
+            <property name="toolTip">
+             <string>Waterfall color theme</string>
+            </property>
             <property name="accessibleName">
-             <string>Spectrum color theme</string>
+             <string>Waterfall display color theme</string>
             </property>
             <property name="accessibleDescription">
              <string>Selects the theme for the color waterfall dispaly</string>
@@ -263,6 +266,9 @@
                  </size>
                 </property>
                </widget>
+              </item>
+              <item>
+               <widget class="meter" name="meter2Widget" native="true"/>
               </item>
              </layout>
             </item>
@@ -2214,6 +2220,16 @@
              <string>Enable PTT Controls</string>
             </property>
            </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="secondaryMeterSelectionLabel">
+            <property name="text">
+             <string>Secondary Meter Selection:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="meter2selectionCombo"/>
           </item>
           <item>
            <spacer name="horizontalSpacer_5">

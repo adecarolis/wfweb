@@ -661,6 +661,22 @@ void wfmain::setupMainUI()
     ui->wfthemeCombo->addItem("Spectrum", QCPColorGradient::gpSpectrum);
     ui->wfthemeCombo->addItem("Candy", QCPColorGradient::gpCandy);
 
+    ui->meter2selectionCombo->addItem("None", meterNone);
+    ui->meter2selectionCombo->addItem("SWR", meterSWR);
+    ui->meter2selectionCombo->addItem("ALC", meterALC);
+    ui->meter2selectionCombo->addItem("Compression", meterComp);
+    ui->meter2selectionCombo->addItem("Voltage", meterVoltage);
+    ui->meter2selectionCombo->addItem("Current", meterCurrent);
+    ui->meter2Widget->hide();
+
+    // Future ideas:
+    //ui->meter2selectionCombo->addItem("Transmit Audio", meterTxMod);
+    //ui->meter2selectionCombo->addItem("Receive Audio", meterRxAudio);
+    //ui->meter2selectionCombo->addItem("Latency", meterLatency);
+
+
+
+
     spans << "2.5k" << "5.0k" << "10k" << "25k";
     spans << "50k" << "100k" << "250k" << "500k";
     ui->scopeBWCombo->insertItems(0, spans);
@@ -2547,6 +2563,10 @@ void wfmain::doCmd(cmds cmd)
             if(amTransmitting)
                 emit getMeters(meterPower);
             break;
+        case cmdGetSWRMeter:
+            if(amTransmitting)
+                emit getMeters(meterSWR);
+            break;
         case cmdGetIdMeter:
             emit getMeters(meterCurrent);
             break;
@@ -2988,6 +3008,31 @@ void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
         periodicCmdQueue.push_back(cmd);
     }
 }
+
+void wfmain::insertPeriodicCommandUnique(cmds cmd)
+{
+    // Use this function to insert a non-duplicate command
+    // into the fast periodic polling queue, typically
+    // meter commands where high refresh rates are desirable.
+
+    removePeriodicCommand(cmd);
+    periodicCmdQueue.push_front(cmd);
+}
+
+void wfmain::removePeriodicCommand(cmds cmd)
+{
+    while(true)
+    {
+        auto it = std::find(this->periodicCmdQueue.begin(), this->periodicCmdQueue.end(), cmd);
+        if(it != periodicCmdQueue.end())
+        {
+            periodicCmdQueue.erase(it);
+        } else {
+            break;
+        }
+    }
+}
+
 
 void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority)
 {
@@ -4508,9 +4553,6 @@ void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
             ui->meterSPoWidget->setLevels(level, peak, average);
             ui->meterSPoWidget->repaint();
             break;
-        case meterSWR:
-            //ui->levelIndicator->setValue((int)level);
-            break;
         case meterPower:
             powerMeterReadings[(powerMeterPos++)%powerMeterReadings.length()] = level;
             for(int i=0; i < powerMeterReadings.length(); i++)
@@ -4524,19 +4566,11 @@ void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
             ui->meterSPoWidget->setLevels(level, peak, average);
             ui->meterSPoWidget->update();
             break;
-        case meterALC:
-            //ui->levelIndicator->setValue((int)level);
-            break;
-        case meterComp:
-            //ui->levelIndicator->setValue((int)level);
-            break;
-        case meterCurrent:
-            //ui->levelIndicator->setValue((int)level);
-            break;
-        case meterVoltage:
-            //ui->levelIndicator->setValue((int)level);
-            break;
         default:
+            if(ui->meter2Widget->getMeterType() == inMeter)
+            {
+                ui->meter2Widget->setLevels(level, level, level);
+            }
             break;
     }
 }
@@ -5123,6 +5157,70 @@ void wfmain::on_wfInterpolateChk_clicked(bool checked)
 {
     colorMap->setInterpolate(checked);
     prefs.wfInterpolate = checked;
+}
+
+wfmain::cmds wfmain::meterKindToMeterCommand(meterKind m)
+{
+    cmds c;
+    switch(m)
+    {
+        case meterNone:
+            c = cmdNone;
+            break;
+        case meterS:
+            c = cmdGetSMeter;
+            break;
+        case meterPower:
+            c = cmdGetPowerMeter;
+            break;
+        case meterSWR:
+            c = cmdGetSWRMeter;
+            break;
+        case meterALC:
+            c = cmdGetALCMeter;
+            break;
+        case meterComp:
+            c = cmdGetCompMeter;
+            break;
+        case meterCurrent:
+            c = cmdGetIdMeter;
+            break;
+        case meterVoltage:
+            c = cmdGetVdMeter;
+            break;
+        default:
+            c = cmdNone;
+            break;
+    }
+
+    return c;
+}
+
+
+void wfmain::on_meter2selectionCombo_activated(int index)
+{
+    meterKind newMeterType;
+    meterKind oldMeterType;
+    newMeterType = static_cast<meterKind>(ui->meter2selectionCombo->currentData().toInt());
+    oldMeterType = ui->meter2Widget->getMeterType();
+
+    if(newMeterType == oldMeterType)
+        return;
+
+    cmds newCmd = meterKindToMeterCommand(newMeterType);
+    cmds oldCmd = meterKindToMeterCommand(oldMeterType);
+
+    removePeriodicCommand(oldCmd);
+
+    if(newMeterType==meterNone)
+    {
+        ui->meter2Widget->hide();
+    } else {
+        ui->meter2Widget->show();
+        ui->meter2Widget->setMeterType(newMeterType);
+        insertPeriodicCommandUnique(newCmd);
+    }
+    (void)index;
 }
 
 // --- DEBUG FUNCTION ---
