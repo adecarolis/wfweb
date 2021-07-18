@@ -750,7 +750,6 @@ private:
     void removePeriodicCommand(cmds cmd);
 
     void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
-
     void calculateTimingParameters();
 
     void changeMode(mode_kind mode);
