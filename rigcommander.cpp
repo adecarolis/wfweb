@@ -1386,6 +1386,11 @@ void rigCommander::parseLevels()
                 emit haveMeter(meterS, level);
                 rigState.sMeter = level;
                 break;
+            case '\x04':
+                // Center (IC-R8600)
+                emit haveMeter(meterCenter, level);
+                rigState.sMeter = level;
+                break;
             case '\x11':
                 // RF-Power meter
                 emit haveMeter(meterPower, level);
@@ -1914,6 +1919,9 @@ void rigCommander::getMeters(meterKind meter)
         case meterS:
             getSMeter();
             break;
+        case meterCenter:
+            getCenterMeter();
+            break;
         case meterSWR:
             getSWRMeter();
             break;
@@ -1940,6 +1948,12 @@ void rigCommander::getMeters(meterKind meter)
 void rigCommander::getSMeter()
 {
     QByteArray payload("\x15\x02");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getCenterMeter()
+{
+    QByteArray payload("\x15\x04");
     prepDataAndSend(payload);
 }
 

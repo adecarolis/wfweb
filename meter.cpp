@@ -36,6 +36,9 @@ meter::meter(QWidget *parent) : QWidget(parent)
     lowTextColor.setNamedColor("#eff0f1");
     lowLineColor = lowTextColor;
 
+    avgLevels.resize(averageBalisticLength, 0);
+    peakLevels.resize(peakBalisticLength, 0);
+
 }
 
 void meter::setMeterType(meterKind type)
@@ -45,7 +48,13 @@ void meter::setMeterType(meterKind type)
 
     meterType = type;
     // clear average and peak vectors:
+    avgLevels.clear();
+    peakLevels.clear();
+    avgLevels.resize(averageBalisticLength, 0);
+    peakLevels.resize(peakBalisticLength, 0);
 
+    peakPosition = 0;
+    avgPosition = 0;
     // re-draw scale:
 }
 
@@ -81,7 +90,13 @@ void meter::paintEvent(QPaintEvent *)
             peakRedLevel = 100; // SWR 2.5
             drawScaleSWR(&painter);
             break;
+        case meterCenter:
+            peakRedLevel = 256; // No need for red here
+            drawScaleCenter(&painter);
+            break;
         default:
+            peakRedLevel = 200;
+            drawScaleRaw(&painter);
             break;
     }
 
@@ -89,24 +104,48 @@ void meter::paintEvent(QPaintEvent *)
     // Draws a bar from start to value.
     painter.setPen(currentColor);
     painter.setBrush(currentColor);
-    // X, Y, Width, Height
-    painter.drawRect(mXstart,mYstart,current,barHeight);
 
-    // Average:
-    painter.setPen(averageColor);
-    painter.setBrush(averageColor);
-    painter.drawRect(mXstart+average-1,mYstart,1,barHeight); // bar is 1 pixel wide, height = meter start?
-
-    // Peak:
-    painter.setPen(peakColor);
-    painter.setBrush(peakColor);
-    if(peak > peakRedLevel)
+    if(meterType == meterCenter)
     {
-        painter.setBrush(Qt::red);
-        painter.setPen(Qt::red);
-    }
+        painter.drawRect(mXstart+128,mYstart,current-128,barHeight);
 
-    painter.drawRect(mXstart+peak-1,mYstart,2,barHeight);
+        // Average:
+        painter.setPen(averageColor);
+        painter.setBrush(averageColor);
+        painter.drawRect(mXstart+average-1,mYstart,1,barHeight); // bar is 1 pixel wide, height = meter start?
+
+        // Peak:
+        painter.setPen(peakColor);
+        painter.setBrush(peakColor);
+        if((peak > 191) || (peak < 63))
+        {
+            painter.setBrush(Qt::red);
+            painter.setPen(Qt::red);
+        }
+
+        painter.drawRect(mXstart+peak-1,mYstart,1,barHeight);
+
+    } else {
+
+        // X, Y, Width, Height
+        painter.drawRect(mXstart,mYstart,current,barHeight);
+
+        // Average:
+        painter.setPen(averageColor);
+        painter.setBrush(averageColor);
+        painter.drawRect(mXstart+average-1,mYstart,1,barHeight); // bar is 1 pixel wide, height = meter start?
+
+        // Peak:
+        painter.setPen(peakColor);
+        painter.setBrush(peakColor);
+        if(peak > peakRedLevel)
+        {
+            painter.setBrush(Qt::red);
+            painter.setPen(Qt::red);
+        }
+
+        painter.drawRect(mXstart+peak-1,mYstart,2,barHeight);
+    }
 
 }
 
@@ -115,6 +154,33 @@ void meter::setLevels(int current, int peak, int average)
     this->current = current;
     this->peak = peak;
     this->average = average;
+
+    avgLevels[(avgPosition++)%averageBalisticLength] = current;
+    peakLevels[(peakPosition++)%peakBalisticLength] = current;
+
+    // TODO: only average up to clamp(position, size) that way we don't average in
+    // zeros for the first couple of seconds. We might have to not use the accumulate function
+    // if we want to specify positions.
+
+    int sum=0;
+
+    for(unsigned int i=0; i < (unsigned int)std::min(avgPosition, (int)avgLevels.size()); i++)
+    {
+        sum += avgLevels.at(i);
+    }
+    this->average = sum / std::min(avgPosition, (int)avgLevels.size());
+
+    // this->average = std::accumulate(avgLevels.begin(), std::min(avgLevels.begin() + avgPosition, avgLevels.begin()+avgLevels.size())) / averageBalisticLength;
+    // this->peak = std::max_element(peakLevels.begin(), peakLevels.end());
+
+    this->peak = 0;
+
+    for(unsigned int i=0; i < peakLevels.size(); i++)
+    {
+        if( peakLevels.at(i) >  this->peak)
+            this->peak = peakLevels.at(i);
+    }
+
     this->update();
 }
 
@@ -125,6 +191,51 @@ void meter::updateDrawing(int num)
 }
 
 // The drawScale functions draw the numbers and number unerline for each type of meter
+
+void meter::drawScaleRaw(QPainter *qp)
+{
+    qp->setPen(lowTextColor);
+    qp->setFont(QFont("Arial", fontSize));
+    int i=mXstart;
+    for(; i<mXstart+256; i+=20)
+    {
+        qp->drawText(i,scaleTextYstart, QString("%1").arg(i) );
+    }
+
+    // Now the lines:
+    qp->setPen(lowLineColor);
+
+    // Line: X1, Y1 -->to--> X2, Y2
+    qp->drawLine(mXstart,scaleLineYstart,peakRedLevel+mXstart,scaleLineYstart);
+    qp->setPen(Qt::red);
+    qp->drawLine(peakRedLevel+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
+
+}
+
+void meter::drawScaleCenter(QPainter *qp)
+{
+    // No known units
+    qp->setPen(lowLineColor);
+    qp->drawText(60+mXstart,scaleTextYstart, QString("-"));
+
+    qp->setPen(Qt::green);
+    // Attempt to draw the zero at the actual center
+    qp->drawText(128-2+mXstart,scaleTextYstart, QString("0"));
+
+    qp->setPen(lowLineColor);
+    qp->drawText(195+mXstart,scaleTextYstart, QString("+"));
+
+
+    qp->setPen(lowLineColor);
+    qp->drawLine(mXstart,scaleLineYstart,128-32+mXstart,scaleLineYstart);
+
+    qp->setPen(Qt::green);
+    qp->drawLine(128-32+mXstart,scaleLineYstart,128+32+mXstart,scaleLineYstart);
+
+    qp->setPen(lowLineColor);
+    qp->drawLine(128+32+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
+}
+
 
 void meter::drawScalePo(QPainter *qp)
 {

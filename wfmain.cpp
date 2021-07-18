@@ -667,6 +667,7 @@ void wfmain::setupMainUI()
     ui->meter2selectionCombo->addItem("Compression", meterComp);
     ui->meter2selectionCombo->addItem("Voltage", meterVoltage);
     ui->meter2selectionCombo->addItem("Current", meterCurrent);
+    ui->meter2selectionCombo->addItem("Center", meterCenter);
     ui->meter2Widget->hide();
 
     // Future ideas:
@@ -2558,6 +2559,10 @@ void wfmain::doCmd(cmds cmd)
         case cmdGetSMeter:
             if(!amTransmitting)
                 emit getMeters(meterS);
+            break;
+        case cmdGetCenterMeter:
+            if(!amTransmitting)
+                emit getMeters(meterCenter);
             break;
         case cmdGetPowerMeter:
             if(amTransmitting)
@@ -5152,6 +5157,9 @@ wfmain::cmds wfmain::meterKindToMeterCommand(meterKind m)
             break;
         case meterS:
             c = cmdGetSMeter;
+            break;
+        case meterCenter:
+            c = cmdGetCenterMeter;
             break;
         case meterPower:
             c = cmdGetPowerMeter;
