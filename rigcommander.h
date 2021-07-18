@@ -19,6 +19,7 @@
 #define compCivAddr 0xE1
 
 enum meterKind {
+    meterNone=0,
     meterS,
     meterSWR,
     meterPower,
@@ -28,7 +29,8 @@ enum meterKind {
     meterCurrent,
     meterRxdB,
     meterTxMod,
-    meterRxAudio
+    meterRxAudio,
+    meterLatency
 };
 
 enum spectrumMode {

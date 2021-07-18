@@ -468,6 +468,8 @@ private slots:
 
     void on_wfInterpolateChk_clicked(bool checked);
 
+    void on_meter2selectionCombo_activated(int index);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -602,7 +604,7 @@ private:
               cmdGetSql, cmdSetSql, cmdGetATUStatus, cmdSetATU, cmdStartATU, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,
               cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
-              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
+              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
               cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
               cmdSetTime, cmdSetDate, cmdSetUTCOffset};
 
@@ -741,13 +743,19 @@ private:
 
     void changeModLabelAndSlider(rigInput source);
 
+    // Fast command queue:
     void initPeriodicCommands();
     void insertPeriodicCommand(cmds cmd, unsigned char priority);
+    void insertPeriodicCommandUnique(cmds cmd);
+    void removePeriodicCommand(cmds cmd);
+
     void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
     void calculateTimingParameters();
 
     void changeMode(mode_kind mode);
     void changeMode(mode_kind mode, bool dataOn);
+
+    cmds meterKindToMeterCommand(meterKind m);
 
     int oldFreqDialVal;
 
