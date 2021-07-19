@@ -22,6 +22,7 @@ public slots:
 
     void updateDrawing(int num);
     void setLevels(int current, int peak, int average);
+    void setLevel(int current);
     void setMeterType(meterKind type);
     meterKind getMeterType();
 

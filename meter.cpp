@@ -149,11 +149,9 @@ void meter::paintEvent(QPaintEvent *)
 
 }
 
-void meter::setLevels(int current, int peak, int average)
+void meter::setLevel(int current)
 {
     this->current = current;
-    this->peak = peak;
-    this->average = average;
 
     avgLevels[(avgPosition++)%averageBalisticLength] = current;
     peakLevels[(peakPosition++)%peakBalisticLength] = current;
@@ -180,6 +178,15 @@ void meter::setLevels(int current, int peak, int average)
         if( peakLevels.at(i) >  this->peak)
             this->peak = peakLevels.at(i);
     }
+
+    this->update();
+}
+
+void meter::setLevels(int current, int peak, int average)
+{
+    this->current = current;
+    this->peak = peak;
+    this->average = average;
 
     this->update();
 }
