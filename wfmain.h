@@ -576,12 +576,6 @@ private:
 
     QByteArray spectrumPeaks;
 
-    QByteArray powerMeterReadings;
-    int powerMeterPos = 0;
-
-    QByteArray SMeterReadings;
-    int smeterPos=0;
-
     QVector <QByteArray> wfimage;
     unsigned int wfLengthMax;
 
