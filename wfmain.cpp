@@ -667,6 +667,7 @@ void wfmain::setupMainUI()
     ui->meter2selectionCombo->addItem("Compression", meterComp);
     ui->meter2selectionCombo->addItem("Voltage", meterVoltage);
     ui->meter2selectionCombo->addItem("Current", meterCurrent);
+    ui->meter2selectionCombo->addItem("Center", meterCenter);
     ui->meter2Widget->hide();
 
     // Future ideas:
@@ -2558,6 +2559,10 @@ void wfmain::doCmd(cmds cmd)
         case cmdGetSMeter:
             if(!amTransmitting)
                 emit getMeters(meterS);
+            break;
+        case cmdGetCenterMeter:
+            if(!amTransmitting)
+                emit getMeters(meterCenter);
             break;
         case cmdGetPowerMeter:
             if(amTransmitting)
@@ -4534,42 +4539,22 @@ void wfmain::receiveLANGain(unsigned char level)
 void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
 {
 
-    unsigned int peak = 0;
-    unsigned int sum=0;
-    unsigned int average=0;
-
     switch(inMeter)
     {
         case meterS:
-            SMeterReadings[(smeterPos++)%SMeterReadings.length()] = level;
-            for(int i=0; i < SMeterReadings.length(); i++)
-            {
-                if((unsigned char)SMeterReadings.at(i) > peak)
-                    peak = (unsigned char)SMeterReadings.at(i);
-                sum += (unsigned char)SMeterReadings.at(i);
-            }
-            average = sum / SMeterReadings.length();
             ui->meterSPoWidget->setMeterType(meterS);
-            ui->meterSPoWidget->setLevels(level, peak, average);
+            ui->meterSPoWidget->setLevel(level);
             ui->meterSPoWidget->repaint();
             break;
         case meterPower:
-            powerMeterReadings[(powerMeterPos++)%powerMeterReadings.length()] = level;
-            for(int i=0; i < powerMeterReadings.length(); i++)
-            {
-                if((unsigned char)powerMeterReadings.at(i) > peak)
-                    peak = (unsigned char)powerMeterReadings.at(i);
-                sum += (unsigned char)powerMeterReadings.at(i);
-            }
-            average = sum / powerMeterReadings.length();
             ui->meterSPoWidget->setMeterType(meterPower);
-            ui->meterSPoWidget->setLevels(level, peak, average);
+            ui->meterSPoWidget->setLevel(level);
             ui->meterSPoWidget->update();
             break;
         default:
             if(ui->meter2Widget->getMeterType() == inMeter)
             {
-                ui->meter2Widget->setLevels(level, level, level);
+                ui->meter2Widget->setLevel(level);
             }
             break;
     }
@@ -5170,6 +5155,9 @@ wfmain::cmds wfmain::meterKindToMeterCommand(meterKind m)
         case meterS:
             c = cmdGetSMeter;
             break;
+        case meterCenter:
+            c = cmdGetCenterMeter;
+            break;
         case meterPower:
             c = cmdGetPowerMeter;
             break;
@@ -5231,17 +5219,25 @@ void wfmain::on_debugBtn_clicked()
     //setRadioTimeDatePrep();
     //wf->setInteraction(QCP::iRangeZoom, true);
     //wf->setInteraction(QCP::iRangeDrag, true);
-    bool ok = false;
-    unsigned char level = (unsigned char) QInputDialog::getInt(this, "wfview simulated radio level", "Raw level (0-255)", 128, 1, 255, 1, &ok );
-    if(ok)
-    {
-        int peak = level*1.5;
-        if(peak > 255)
-            peak = 255;
-        int average = peak / 2;
 
-        ui->meterSPoWidget->setMeterType(meterALC);
-        ui->meterSPoWidget->setLevels(level, peak, average);
-        ui->meterSPoWidget->update();
+    // debug the fast queue:
+    qDebug(logSystem()) << "Size of fast command queue: " << periodicCmdQueue.size();
+
+    for (auto it = periodicCmdQueue.cbegin(); it != periodicCmdQueue.cend(); ++it) {
+            qDebug(logSystem()) << *it ;
     }
+
+//    bool ok = false;
+//    unsigned char level = (unsigned char) QInputDialog::getInt(this, "wfview simulated radio level", "Raw level (0-255)", 128, 1, 255, 1, &ok );
+//    if(ok)
+//    {
+//        int peak = level*1.5;
+//        if(peak > 255)
+//            peak = 255;
+//        int average = peak / 2;
+
+//        ui->meterSPoWidget->setMeterType(meterALC);
+//        ui->meterSPoWidget->setLevels(level, peak, average);
+//        ui->meterSPoWidget->update();
+//    }
 }

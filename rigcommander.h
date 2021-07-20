@@ -21,6 +21,7 @@
 enum meterKind {
     meterNone=0,
     meterS,
+    meterCenter,
     meterSWR,
     meterPower,
     meterALC,
@@ -224,6 +225,7 @@ public slots:
 
     // Meters:
     void getSMeter();
+    void getCenterMeter();
     void getRFPowerMeter();
     void getSWRMeter();
     void getALCMeter();
