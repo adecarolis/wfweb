@@ -697,6 +697,7 @@ private:
         unsigned int wflength;
         int wftheme;
         bool confirmExit;
+        bool confirmPowerOff;
         // plot scheme
     } prefs;
 

@@ -1217,6 +1217,7 @@ void wfmain::setDefPrefs()
     defPrefs.wflength = 160;
     defPrefs.wftheme = static_cast<int>(QCPColorGradient::gpJet);
     defPrefs.confirmExit = true;
+    defPrefs.confirmPowerOff = true;
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -1249,6 +1250,7 @@ void wfmain::loadSettings()
     restoreState(settings->value("windowState").toByteArray());
     setWindowState(Qt::WindowActive); // Works around QT bug to returns window+keyboard focus.
     prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
+    prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
 
     settings->endGroup();
 
@@ -1542,6 +1544,7 @@ void wfmain::saveSettings()
     settings->setValue("windowState", saveState());
     settings->setValue("WFLength", prefs.wflength);
     settings->setValue("ConfirmExit", prefs.confirmExit);
+    settings->setValue("ConfirmPowerOff", prefs.confirmPowerOff);
     settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -4890,10 +4893,37 @@ void wfmain::on_rigPowerOnBtn_clicked()
 
 void wfmain::on_rigPowerOffBtn_clicked()
 {
-    QMessageBox::StandardButton reply;
-    reply = QMessageBox::question(this, "Power", "Power down the radio?",
-                                  QMessageBox::Yes|QMessageBox::No);
-    if (reply == QMessageBox::Yes) {
+    // Are you sure?
+    if (!prefs.confirmPowerOff) {
+        powerRigOff();
+        return;
+    }
+    QCheckBox* cb = new QCheckBox("Don't ask me again");
+    QMessageBox msgbox;
+    msgbox.setWindowTitle("Power");
+    msgbox.setText("Power down the radio?\n");
+    msgbox.setIcon(QMessageBox::Icon::Question);
+    QAbstractButton* yesButton = msgbox.addButton(QMessageBox::Yes);
+    msgbox.addButton(QMessageBox::No);
+    msgbox.setDefaultButton(QMessageBox::Yes);
+    msgbox.setCheckBox(cb);
+
+    QObject::connect(cb, &QCheckBox::stateChanged, [this](int state) {
+        if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked) {
+            prefs.confirmPowerOff = false;
+        }
+        else {
+            prefs.confirmPowerOff = true;
+        }
+        settings->beginGroup("Interface");
+        settings->setValue("ConfirmPowerOff", this->prefs.confirmPowerOff);
+        settings->endGroup();
+        settings->sync();
+    });
+
+    msgbox.exec();
+
+    if (msgbox.clickedButton() == yesButton) {
         powerRigOff();
     }
 }
