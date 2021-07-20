@@ -735,9 +735,6 @@ void wfmain::setupMainUI()
     rigName->setText("NONE");
     rigName->setFixedWidth(50);
 
-    SMeterReadings.fill(0,30);
-    powerMeterReadings.fill(0,30);
-
     freq.MHzDouble = 0.0;
     freq.Hz = 0;
     oldFreqDialVal = ui->freqDial->value();
@@ -5240,4 +5237,6 @@ void wfmain::on_debugBtn_clicked()
 //        ui->meterSPoWidget->setLevels(level, peak, average);
 //        ui->meterSPoWidget->update();
 //    }
+
+
 }
