@@ -48,6 +48,10 @@ void meter::setMeterType(meterKind type)
 
     meterType = type;
     // clear average and peak vectors:
+    current = 0;
+    average = 0;
+    peak = 0;
+
     avgLevels.clear();
     peakLevels.clear();
     avgLevels.resize(averageBalisticLength, 0);
@@ -56,6 +60,7 @@ void meter::setMeterType(meterKind type)
     peakPosition = 0;
     avgPosition = 0;
     // re-draw scale:
+    update();
 }
 
 meterKind meter::getMeterType()
