@@ -75,7 +75,7 @@ we need to add packages to be able to build the stuff.
 - sudo zypper in --type pattern devel_basis
 - sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel libqt5-qtmultimedia-devel 
 
-now get and install qt5:
+optional (mainly for development specifics): get and install qt5:
 
 - wget http://download.qt.io/official_releases/online_installers/qt-unified-linux-x64-online.run
 - chmod +x qt-unified-linux-x64-online.run
