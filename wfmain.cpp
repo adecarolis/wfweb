@@ -207,9 +207,9 @@ void wfmain::openRig()
         }
         usingLAN = false;
         emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort);
+        ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
     }
 
-    ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
 
 
 }
@@ -669,6 +669,15 @@ void wfmain::setupMainUI()
     ui->meter2selectionCombo->addItem("Current", meterCurrent);
     ui->meter2selectionCombo->addItem("Center", meterCenter);
     ui->meter2Widget->hide();
+
+#ifdef QT_DEBUG
+    // Experimental feature:
+    ui->meter2selectionCombo->show();
+    ui->secondaryMeterSelectionLabel->show();
+#else
+    ui->meter2selectionCombo->hide();
+    ui->secondaryMeterSelectionLabel->hide();
+#endif
 
     // Future ideas:
     //ui->meter2selectionCombo->addItem("Transmit Audio", meterTxMod);
@@ -4143,7 +4152,7 @@ void wfmain::on_lanEnableBtn_clicked(bool checked)
     //ui->udpServerSetupBtn->setEnabled(false);
     if(checked)
     {
-        showStatusBarText("After filling in values, press Save Settings and re-start wfview.");
+        showStatusBarText("After filling in values, press Save Settings.");
     }
 }
 
@@ -5199,27 +5208,5 @@ void wfmain::on_debugBtn_clicked()
     //setRadioTimeDatePrep();
     //wf->setInteraction(QCP::iRangeZoom, true);
     //wf->setInteraction(QCP::iRangeDrag, true);
-
-    // debug the fast queue:
-    qDebug(logSystem()) << "Size of fast command queue: " << periodicCmdQueue.size();
-
-    for (auto it = periodicCmdQueue.cbegin(); it != periodicCmdQueue.cend(); ++it) {
-            qDebug(logSystem()) << *it ;
-    }
-
-//    bool ok = false;
-//    unsigned char level = (unsigned char) QInputDialog::getInt(this, "wfview simulated radio level", "Raw level (0-255)", 128, 1, 255, 1, &ok );
-//    if(ok)
-//    {
-//        int peak = level*1.5;
-//        if(peak > 255)
-//            peak = 255;
-//        int average = peak / 2;
-
-//        ui->meterSPoWidget->setMeterType(meterALC);
-//        ui->meterSPoWidget->setLevels(level, peak, average);
-//        ui->meterSPoWidget->update();
-//    }
-
 
 }
