@@ -48,6 +48,10 @@ void meter::setMeterType(meterKind type)
 
     meterType = type;
     // clear average and peak vectors:
+    current = 0;
+    average = 0;
+    peak = 0;
+
     avgLevels.clear();
     peakLevels.clear();
     avgLevels.resize(averageBalisticLength, 0);
@@ -56,6 +60,7 @@ void meter::setMeterType(meterKind type)
     peakPosition = 0;
     avgPosition = 0;
     // re-draw scale:
+    update();
 }
 
 meterKind meter::getMeterType()
@@ -88,8 +93,12 @@ void meter::paintEvent(QPaintEvent *)
         // Clamp down on stretching fonts.
         // TODO: Make this more elegant
         painter.setFont(QFont(this->fontInfo().family(), widgetWindowHeight/3.5));
-    } else {
-        painter.setFont(QFont(this->fontInfo().family(), widgetWindowHeight/2.5));
+        widgetWindowHeight = this->height();
+        painter.setWindow(QRect(0, 0, 255+mXstart, widgetWindowHeight));
+        barHeight = widgetWindowHeight / 2;
+
+
+        //painter.setFont(QFont(this->fontInfo().family(), widgetWindowHeight/2.5));
     }
 
     switch(meterType)
@@ -322,13 +331,16 @@ void meter::drawScalePo(QPainter *qp)
     // Here, P is now 60 watts:
     // Higher scale:
     i = i - (int)(10*dnPerWatt); // back one tick first. Otherwise i starts at 178.
-    qDebug() << "meter i: " << i;
+    //qDebug() << "meter i: " << i;
     dnPerWatt = (213-143.0) / 50.0; // 1.4 dn per watt
-
+    // P=5 here.
     qp->setPen(Qt::yellow);
-    for(i=mXstart+143; i<mXstart+213; i+=(10*dnPerWatt))
+    int k=0;
+    for(i=mXstart+143; i<mXstart+213; i+=(5*dnPerWatt))
     {
-        qp->drawText(i,scaleTextYstart, QString("%1").arg(10*(p++)) );
+        k = 50+(( i-mXstart-143 ) / dnPerWatt);
+        if(k==40||k==50||k==65||k==80)
+            qp->drawText(i,scaleTextYstart, QString("%1").arg(k) );
     }
 
     // Now we're out past 100:
@@ -336,7 +348,9 @@ void meter::drawScalePo(QPainter *qp)
 
     for(i=mXstart+213; i<mXstart+255; i+=(10*dnPerWatt))
     {
-        qp->drawText(i,scaleTextYstart, QString("%1").arg(10*(p++)) );
+        k = 50+(( i-mXstart-143 ) / dnPerWatt);
+        if(k==100)
+            qp->drawText(i,scaleTextYstart, QString("%1").arg(k) );
     }
 
     // Now the lines:
