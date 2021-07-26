@@ -1,5 +1,9 @@
 # CHANGELOG
 
+- 20210726
+
+    		Fix for blank username/password in server
+
 - 20210724
 
     		small changes to INSTAll.md and addition of mint 20.2/openSUSE 15.3
