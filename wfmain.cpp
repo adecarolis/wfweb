@@ -2225,11 +2225,11 @@ void wfmain::setAppTheme(bool isCustom)
         QFile f(":"+prefs.stylesheetPath); // built-in resource
 #else
         QFile f("/usr/share/wfview/stylesheets/" + prefs.stylesheetPath);
+        QFile g("/usr/local/share/wfview/stylesheets/" + prefs.stylesheetPath);
 #endif
         if (!f.exists())
         {
-            printf("Unable to set stylesheet, file not found\n");
-            printf("Tried to load: [%s]\n", QString( QString("/usr/share/wfview/stylesheets/") + prefs.stylesheetPath).toStdString().c_str() );
+            printf("Unable to set stylesheet, file not found or permission issue [%s]\n", QString( QString("/usr/share/wfview/stylesheets/") + prefs.stylesheetPath).toStdString().c_str() );
         }
         else
         {
@@ -2237,6 +2237,18 @@ void wfmain::setAppTheme(bool isCustom)
             QTextStream ts(&f);
             qApp->setStyleSheet(ts.readAll());
         }
+
+        if (!g.exists())
+        {
+            printf("Unable to set stylesheet, file not found or permisson issue [%s]\n", QString( QString("/usr/local/share/wfview/stylesheets/") + prefs.stylesheetPath).toStdString().c_str() );
+        }
+        else
+        {
+            g.open(QFile::ReadOnly | QFile::Text);
+            QTextStream ts(&g);
+            qApp->setStyleSheet(ts.readAll());
+        }
+
     } else {
         qApp->setStyleSheet("");
     }
