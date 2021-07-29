@@ -33,11 +33,14 @@ typedef signed short  MY_TYPE;
 #include <QMap>
 #include "resampler/speex_resampler.h"
 #include "ring/ring.h"
+
 #ifdef Q_OS_WIN
 #include "opus.h"
 #else
 #include "opus/opus.h"
 #endif
+#include "audiotaper.h"
+
 
 #include <QDebug>
 
@@ -71,6 +74,7 @@ struct audioSetup {
     QAudioDeviceInfo port;
 #endif
     quint8 resampleQuality;
+    unsigned char localAFgain;
 };
 
 // For QtMultimedia, use a native QIODevice

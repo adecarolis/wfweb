@@ -1,7 +1,217 @@
 # CHANGELOG
 
+- 20210724
+
+    		small changes to INSTAll.md and addition of mint 20.2/openSUSE 15.3
+
+- 20210720
+
+    		Clear out meter values when type is switched.
+
+    		Allow user to turn off power-down confirmation msgbox
+
+- 20210719
+
+    		wfview now uses the meter's own balistics (average and peak code). This
+    		makes it very easy to meter any parameter 0-255. Meter Type "meterNone"
+    		or other will display data in "raw" format.
+
+- 20210718
+
+    		Added center tuning for IC-R8600, partially moved meter balistics
+    		(average and peak) to the meter class.
+
+    		Quick debug for the metering queue, just in case.
+
+ 20210717
+
+    		Preliminary secondary meter support. See Settings tab for selection.
+    		Some scales incomplete.
+
+    		Added SWR and ALC scales to the meter.
+
+    		Fix error in scale of power meter
+
+- 20210716
+
+    		Power meter for transmit. Much work remains on this meter alone.
+
+    		Get antenna status on start-up and slow poll for it.
+
+    		Add RX antenna selection for rigs that support it
+
+- 20210714
+
+    		Preferences added for Anti-Alias and Interpolate.
+
+- 20210713
+
+    		Added waterfall display options: anti-alias and interpolate. Not in
+    		preferences yet. Debug button enables wf pan and zoom.
+
+- 20210711
+
+    		Allow user to select whether to confirm exit or not
+
+- 20210709
+
+    		Reset PTT timer for control-R keystroke.
+
+    		Added a fix to keep the local frequency in-sync with any recent commands
+    		sent to the radio.
+
+    		Added more support for the IC-7600 in rigCaps.
+
+    		Added time, date, and UTC offset commands. Currently initiated by the
+    		debug button. There seems to be a bug in the 7300 where the UTC offset
+    		has one hour subtracted, ie, -7 HRS becomes -8 HRS. The hex command
+    		appears to be sent correctly.
+
+- 20210708
+
+    		Delete oldest entry from UDP buffer before adding new one.
+
+    		If pty connected s/w sends a disable transceive command, dont' send any transceive commands to it
+
+    		New about box!
+
+
+- 20210706
+
+    		Local af gain now has anti-log audio pot taper.
+
+    		Only start audio when stream is ready
+
+- 20210705
+
+    		Added transceiver adjustment window show code, for the debug button only
+    		currently.
+
+    		Added window title text change to show radio model. Needs to be checked
+    		cross-platform. On Linux Mint, displays: "IC-7300 -- wfview"
+
+    		Applying setup.volume within audio handler if the audio handled is an
+    		output. Added this to the init function.
+
+    		waterfall theme is now saved.
+
+    		Added local af gain and wf length to the preferences.
+
+- 20210702
+		fixed small error where the tx latency was not copied in the UI
+		
+- 20210626
+    		Merge branch 'sequence' of gitlab.com:eliggett/wfview into sequence
+
+    		Duplicate of existing command.
+
+    		Remove unnecessary escape sequence
+
+    		Fix for fix of missing __PRETTY_FUNCTION__
+
+    		Add __PRETTY_FUNCTION__ for compilers that don't have it.
+
+- 20210625
+    		Mode changes from the combo box now use the que. There are still other
+    		methods to change mode which will transition shortly.
+
+    		Faster PTT
+
+    		Added PTT to the queue.
+
+    		Added unique priority insertion methods.
+
+    		Changed how commands with parameter data are added.
+
+    		Initial queued "set" command commit. Only the frequency set command is
+    		used so far, and only for the "Frequency" tab and the tuning knob.
+
+- 20210624
+    		Quick hack for WFM forcing FIL1 always
+
+- 20210621
+    		Added polling button
+
+    		Moving to std::deque (double-ended que).
+
+- 20210620
+
+    		IC-R8600 span is now received into the UI correctly.
+
+    		New unified outgoing command queue. Tested on IC-9700 and IC-718 (to
+    		remote wfview server). CPU usage seems higher but please check your
+    		system.
+    
+    		Timing seems to be acceptable but could probably use some tweaks. 
+		S-meter polling is 25ms for fast radios, and slower rates for slower
+    		radios. Half-duplex serial radios receive 3x slower polling to make room
+    		for replies.
+    
+    		For Freq, Mode, etc "regular" constant polling (new feature):
+    
+    		IC-9700 polling is 5 per second, IC-718 is 1-2 per second.
+    
+    		Just helps keep the UI in sync with changes taking place at the rig. The
+    		polling is slow enough that it doesn't impact anything. But quick enough
+    		that it catches discrepencies pretty quickly.
+
+- 20210619
+
+    		Added a few more slider things
+
+    		whatsnew: improved IC-R8600
+
+- 20210618
+
+    		Additional support for the IC-R8600, including wider scope spans.
+
+    		Minor change to remove some old debug code that snuck in.
+
+    		If no rig caps, then don't mess with the window!
+
+    		Added full duplex comms parameter to rigCaps. We assume half-duplex
+    		until we receive a reply to rigID.
+
+    		Fixed accidental s-meter timing parameter change.
+
+- 20210617
+
+    		Radios without spectrum do not show spectrum, and, the window properly
+    		resizes for those controls. Also, a new key command, control-shift-d has
+    		been added to run debug functions from any tab in the program.
+
+- 20210615
+
+    		Additional code to hide/show spectrum and correcting an issue with the
+    		rig name not populating for non-spectrum radios.
+
+    		Dynamic show/hide spectrum for rigs without this feature.
+
+    		Additional data corruption checking.
+
+- 20210614
+
+    		Changed collision detection code so that we can more easily see what
+    		message was missed.
+
+    		Added collision detection for serial commands. Collisions are aparently
+    		frequent for true 1-wire CI-V radios.
+
+    		We now calculate polling rates immediately upon receiveCommReady for
+    		serial connections. For network connections, we assume sane values and
+    		modify once we receive the baud rate from the server.
+
+    		Add Neon (ARM) support to resampler
+
+    		Revert to using resampler directory rather than opus-tools submodule
+
+- 20210612
+
+    		Add tooltip showing percentage of TX power when slider is moved
 
 - 20210611
+
+                adding a second path/way for the qcustomplot link if the first fails
 
     		Update udpserver.cpp
 

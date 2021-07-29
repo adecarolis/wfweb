@@ -141,8 +141,11 @@
           </item>
           <item>
            <widget class="QComboBox" name="wfthemeCombo">
+            <property name="toolTip">
+             <string>Waterfall color theme</string>
+            </property>
             <property name="accessibleName">
-             <string>Spectrum color theme</string>
+             <string>Waterfall display color theme</string>
             </property>
             <property name="accessibleDescription">
              <string>Selects the theme for the color waterfall dispaly</string>
@@ -238,9 +241,18 @@
              </layout>
             </item>
             <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_21">
+             <layout class="QVBoxLayout" name="meterLayout">
+              <property name="spacing">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>10</number>
+              </property>
+              <property name="bottomMargin">
+               <number>10</number>
+              </property>
               <item>
-               <widget class="meter" name="meterWidget" native="true">
+               <widget class="meter" name="meterSPoWidget" native="true">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
                   <horstretch>0</horstretch>
@@ -254,6 +266,9 @@
                  </size>
                 </property>
                </widget>
+              </item>
+              <item>
+               <widget class="meter" name="meter2Widget" native="true"/>
               </item>
              </layout>
             </item>
@@ -987,6 +1002,16 @@
                   </property>
                   <property name="sizeAdjustPolicy">
                    <enum>QComboBox::AdjustToContents</enum>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="rxAntennaCheck">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="text">
+                   <string>RX</string>
                   </property>
                  </widget>
                 </item>
@@ -2052,6 +2077,23 @@
            </widget>
           </item>
           <item>
+           <widget class="QCheckBox" name="wfAntiAliasChk">
+            <property name="text">
+             <string>Anti-Alias Waterfall</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="wfInterpolateChk">
+            <property name="text">
+             <string>Interpolate Waterfall</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QCheckBox" name="fullScreenChk">
             <property name="text">
              <string>Show full screen</string>
@@ -2178,6 +2220,16 @@
              <string>Enable PTT Controls</string>
             </property>
            </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="secondaryMeterSelectionLabel">
+            <property name="text">
+             <string>Secondary Meter Selection:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="meter2selectionCombo"/>
           </item>
           <item>
            <spacer name="horizontalSpacer_5">
@@ -2678,7 +2730,7 @@
           <item>
            <widget class="QLabel" name="label_33">
             <property name="text">
-             <string>Please note: Changing CI-V Address, Serial Device, and Baud rate requires pressing &quot;Save Settings&quot;, closing wfview, and re-opening. </string>
+             <string>Please note: Changing  the built-in network server requires pressing &quot;Save Settings&quot;, closing wfview, and re-opening. </string>
             </property>
            </widget>
           </item>
@@ -2730,7 +2782,7 @@
      <x>0</x>
      <y>0</y>
      <width>934</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

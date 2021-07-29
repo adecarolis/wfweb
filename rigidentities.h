@@ -122,6 +122,8 @@ struct rigCapabilities {
     bool hasAntennaSel;
     bool hasDataModes;
 
+    bool hasRXAntenna;
+
     std::vector <unsigned char> attenuators;
     std::vector <unsigned char> preamps;
     std::vector <unsigned char> antennas;

@@ -19,13 +19,19 @@
 #define compCivAddr 0xE1
 
 enum meterKind {
+    meterNone=0,
     meterS,
+    meterCenter,
     meterSWR,
     meterPower,
     meterALC,
     meterComp,
     meterVoltage,
-    meterCurrent
+    meterCurrent,
+    meterRxdB,
+    meterTxMod,
+    meterRxAudio,
+    meterLatency
 };
 
 enum spectrumMode {
@@ -39,6 +45,18 @@ enum spectrumMode {
 struct freqt {
     quint64 Hz;
     double MHzDouble;
+};
+
+struct datekind {
+    uint16_t year;
+    unsigned char month;
+    unsigned char day;
+};
+
+struct timekind {
+    unsigned char hours;
+    unsigned char minutes;
+    bool isMinus;
 };
 
 struct rigStateStruct {
@@ -140,7 +158,7 @@ public slots:
     void getAntenna();
     void setAttenuator(unsigned char att);
     void setPreamp(unsigned char pre);
-    void setAntenna(unsigned char ant);
+    void setAntenna(unsigned char ant, bool rx);
 
     // Repeater:
     void setDuplexMode(duplexMode dm);
@@ -207,6 +225,7 @@ public slots:
 
     // Meters:
     void getSMeter();
+    void getCenterMeter();
     void getRFPowerMeter();
     void getSWRMeter();
     void getALCMeter();
@@ -225,6 +244,12 @@ public slots:
     void getRefAdjustFine();
     void setRefAdjustCourse(unsigned char level);
     void setRefAdjustFine(unsigned char level);
+
+    // Time and Date:
+    void setTime(timekind t);
+    void setDate(datekind d);
+    void setUTCOffset(timekind t);
+
 
     // Satellite:
     void setSatelliteMode(bool enabled);
@@ -326,7 +351,7 @@ signals:
     void haveATUStatus(unsigned char status);
     void haveAttenuator(unsigned char att);
     void havePreamp(unsigned char pre);
-    void haveAntenna(unsigned char ant);
+    void haveAntenna(unsigned char ant,bool rx);
 
     // Rig State
     void stateInfo(rigStateStruct* state);
@@ -350,6 +375,7 @@ private:
     QByteArray makeFreqPayload(freqt freq);
     QByteArray encodeTone(quint16 tone, bool tinv, bool rinv);
     QByteArray encodeTone(quint16 tone);
+    unsigned char convertNumberToHex(unsigned char num);
     quint16 decodeTone(QByteArray eTone);
     quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
 

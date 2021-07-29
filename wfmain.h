@@ -21,10 +21,12 @@
 #include "calibrationwindow.h"
 #include "repeatersetup.h"
 #include "satellitesetup.h"
+#include "transceiveradjustments.h"
 #include "udpserversetup.h"
 #include "udpserver.h"
 #include "qledlabel.h"
 #include "rigctld.h"
+#include "aboutbox.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -118,10 +120,15 @@ signals:
     void getAntenna();
     void setAttenuator(unsigned char att);
     void setPreamp(unsigned char pre);
-    void setAntenna(unsigned char ant);
+    void setAntenna(unsigned char ant, bool rx);
     void startATU();
     void setATU(bool atuEnabled);
     void getATUStatus();
+
+    // Time and date:
+    void setTime(timekind t);
+    void setDate(datekind d);
+    void setUTCOffset(timekind t);
 
     void getRigID(); // this is the model of the rig
     void getRigCIV(); // get the rig's CIV addr
@@ -227,7 +234,7 @@ private slots:
     void receiveATUStatus(unsigned char atustatus);
     void receivePreamp(unsigned char pre);
     void receiveAttenuator(unsigned char att);
-    //void receiveAntennaSel(unsigned char ant);
+    void receiveAntennaSel(unsigned char ant, bool rx);
     void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
     void receiveSerialPortError(QString port, QString errorText);
@@ -242,6 +249,9 @@ private slots:
     void showStatusBarText(QString text);
     void serverConfigRequested(SERVERCONFIG conf, bool store);
     void receiveBaudRate(quint32 baudrate);
+
+    void setRadioTimeDateSend();
+
 
     // void on_getFreqBtn_clicked();
 
@@ -418,6 +428,8 @@ private slots:
 
     void on_antennaSelCombo_activated(int index);
 
+    void on_rxAntennaCheck_clicked(bool value);
+
     void on_wfthemeCombo_activated(int index);
 
     void on_rigPowerOnBtn_clicked();
@@ -453,6 +465,12 @@ private slots:
     void on_wfLengthSlider_valueChanged(int value);
 
     void on_pollingBtn_clicked();
+
+    void on_wfAntiAliasChk_clicked(bool checked);
+
+    void on_wfInterpolateChk_clicked(bool checked);
+
+    void on_meter2selectionCombo_activated(int index);
 
 private:
     Ui::wfmain *ui;
@@ -560,12 +578,6 @@ private:
 
     QByteArray spectrumPeaks;
 
-    QByteArray powerMeterReadings;
-    int powerMeterPos = 0;
-
-    QByteArray SMeterReadings;
-    int smeterPos=0;
-
     QVector <QByteArray> wfimage;
     unsigned int wfLengthMax;
 
@@ -588,8 +600,9 @@ private:
               cmdGetSql, cmdSetSql, cmdGetATUStatus, cmdSetATU, cmdStartATU, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,
               cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
-              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetPowerMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
-              cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna};
+              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter, cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
+              cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
+              cmdSetTime, cmdSetDate, cmdSetUTCOffset};
 
     struct commandtype {
         cmds cmd;
@@ -604,6 +617,8 @@ private:
 
     void issueCmd(cmds cmd, freqt f);
     void issueCmd(cmds cmd, mode_info m);
+    void issueCmd(cmds cmd, timekind t);
+    void issueCmd(cmds cmd, datekind d);
     void issueCmd(cmds cmd, int i);
     void issueCmd(cmds cmd, unsigned char c);
     void issueCmd(cmds cmd, char c);
@@ -617,12 +632,22 @@ private:
 
     void removeSimilarCommand(cmds cmd);
 
+    qint64 lastFreqCmdTime_ms;
+
     int pCmdNum = 0;
     int delayedCmdIntervalLAN_ms = 100;
     int delayedCmdIntervalSerial_ms = 100;
     int delayedCmdStartupInterval_ms = 100;
     bool runPeriodicCommands;
     bool usingLAN = false;
+
+    // Radio time sync:
+    QTimer *timeSync;
+    bool waitingToSetTimeDate;
+    void setRadioTimeDatePrep();
+    timekind timesetpoint;
+    timekind utcsetting;
+    datekind datesetpoint;
 
     freqMemory mem;
     struct colors {
@@ -655,6 +680,8 @@ private:
         bool useDarkMode;
         bool useSystemTheme;
         bool drawPeaks;
+        bool wfAntiAlias;
+        bool wfInterpolate;
         QString stylesheetPath;
         unsigned char radioCIVAddr;
         QString serialPortRadio;
@@ -666,6 +693,12 @@ private:
         quint16 rigCtlPort;
         colors colorScheme;
         QString virtualSerialPort;
+        unsigned char localAFgain;
+        unsigned int wflength;
+        int wftheme;
+        bool confirmExit;
+        bool confirmPowerOff;
+        // plot scheme
     } prefs;
 
     preferences defPrefs;
@@ -707,13 +740,19 @@ private:
 
     void changeModLabelAndSlider(rigInput source);
 
+    // Fast command queue:
     void initPeriodicCommands();
     void insertPeriodicCommand(cmds cmd, unsigned char priority);
+    void insertPeriodicCommandUnique(cmds cmd);
+    void removePeriodicCommand(cmds cmd);
+
     void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
     void calculateTimingParameters();
 
     void changeMode(mode_kind mode);
     void changeMode(mode_kind mode, bool dataOn);
+
+    cmds meterKindToMeterCommand(meterKind m);
 
     int oldFreqDialVal;
 
@@ -737,7 +776,10 @@ private:
     calibrationWindow *cal;
     repeaterSetup *rpt;
     satelliteSetup *sat;
+    transceiverAdjustments *trxadj;
     udpServerSetup *srv;
+    aboutbox *abtBox;
+
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
@@ -776,6 +818,8 @@ Q_DECLARE_METATYPE(struct udpPreferences)
 Q_DECLARE_METATYPE(struct rigStateStruct)
 Q_DECLARE_METATYPE(struct audioPacket)
 Q_DECLARE_METATYPE(struct audioSetup)
+Q_DECLARE_METATYPE(struct timekind)
+Q_DECLARE_METATYPE(struct datekind)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)

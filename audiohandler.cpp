@@ -91,7 +91,10 @@ bool audioHandler::init(audioSetup setupIn)
 
 	tempBuf.sent = 0;
 
-
+    if(!setup.isinput)
+    {
+        this->setVolume(setup.localAFgain);
+    }
 
 #if defined(RTAUDIO)	
 #if !defined(Q_OS_MACX)
@@ -322,7 +325,9 @@ void audioHandler::start()
 
 void audioHandler::setVolume(unsigned char volume)
 {
-	this->volume = (qreal)volume/255.0;
+    //this->volume = (qreal)volume/255.0;
+    this->volume = audiopot[volume];
+
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
 }
 

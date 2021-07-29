@@ -1,7 +1,7 @@
 
 The following highlights are in this dot-release:
 
-     added IC7700
+     added IC7700, 718, 7100. (more testing needed)
      fixes and improvements to audio
      ability to choose between rtaudio and qtmultimedia (default) as compile time option
      fixes and lots of improvements at the usb-server end
@@ -12,3 +12,5 @@ The following highlights are in this dot-release:
      wf display disappears when there is no wf capable rig
      IC R8600 support improved
      for older rigs added a polling timing box to keep stuff keeping smooth 
+     Local af gain now has anti-log audio pot taper.
+
