@@ -2224,32 +2224,38 @@ void wfmain::setAppTheme(bool isCustom)
 #ifndef Q_OS_LINUX
         QFile f(":"+prefs.stylesheetPath); // built-in resource
 #else
-        QFile f("/usr/share/wfview/stylesheets/" + prefs.stylesheetPath);
-        QFile g("/usr/local/share/wfview/stylesheets/" + prefs.stylesheetPath);
+// two paths are possible - fu = /usr; fl = /usr/local
+        QFile fu("/usr/share/wfview/stylesheets/" + prefs.stylesheetPath);
+        QFile fl("/usr/local/share/wfview/stylesheets/" + prefs.stylesheetPath);
 #endif
-        if (!f.exists())
+
+// check if the filepath is in /usr and if so -- set the style and return
+        if (!fu.exists())
         {
             printf("Unable to set stylesheet, file not found or permission issue [%s]\n", QString( QString("/usr/share/wfview/stylesheets/") + prefs.stylesheetPath).toStdString().c_str() );
         }
         else
         {
-            f.open(QFile::ReadOnly | QFile::Text);
-            QTextStream ts(&f);
+            fu.open(QFile::ReadOnly | QFile::Text);
+            QTextStream ts(&fu);
             qApp->setStyleSheet(ts.readAll());
+        return;
         }
 
-        if (!g.exists())
+// if above fails, check if filepath is in /usr/local and if so -- set the style from there and return
+        if (!fl.exists())
         {
             printf("Unable to set stylesheet, file not found or permisson issue [%s]\n", QString( QString("/usr/local/share/wfview/stylesheets/") + prefs.stylesheetPath).toStdString().c_str() );
         }
         else
         {
-            g.open(QFile::ReadOnly | QFile::Text);
-            QTextStream ts(&g);
+            fl.open(QFile::ReadOnly | QFile::Text);
+            QTextStream ts(&fl);
             qApp->setStyleSheet(ts.readAll());
+        return;
         }
-
     } else {
+// if both fail, we revert to no style sheet set
         qApp->setStyleSheet("");
     }
 }
