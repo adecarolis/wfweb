@@ -2222,52 +2222,22 @@ void wfmain::setAppTheme(bool isCustom)
     if(isCustom)
     {
 #ifndef Q_OS_LINUX
-        QFile fresource(":"+prefs.stylesheetPath); // built-in resource
-        if (!fresource.exists())
+        QFile f(":"+prefs.stylesheetPath); // built-in resource
+#else
+        QFile f(PREFIX "/share/wfview/" + prefs.stylesheetPath);
+#endif
+        if (!f.exists())
         {
-            // This would be quite unusual...
-            qApp->setStyleSheet("");
-            return;
+            printf("Unable to set stylesheet, file not found\n");
+            printf("Tried to load: [%s]\n", f.fileName().toStdString().c_str() );
         }
         else
         {
-            fresource.open(QFile::ReadOnly | QFile::Text);
-            QTextStream ts(&fresource);
+            f.open(QFile::ReadOnly | QFile::Text);
+            QTextStream ts(&f);
             qApp->setStyleSheet(ts.readAll());
-        return;
         }
-
-#else
-// two paths are possible - fusr = /usr; flocal = /usr/local
-        QFile fusr("/usr/share/wfview/stylesheets/" + prefs.stylesheetPath);
-        QFile flocal("/usr/local/share/wfview/stylesheets/" + prefs.stylesheetPath);
-
-// check if the filepath is in /usr and if so -- set the style and return
-        if (fusr.exists())
-        {
-            fusr.open(QFile::ReadOnly | QFile::Text);
-            QTextStream ts(&fusr);
-            qApp->setStyleSheet(ts.readAll());
-            return;
-        }
-
-// if above fails, check if filepath is in /usr/local and if so -- set the style from there and return
-        if (flocal.exists())
-        {
-            flocal.open(QFile::ReadOnly | QFile::Text);
-            QTextStream ts(&flocal);
-            qApp->setStyleSheet(ts.readAll());
-            return;
-        }
-
-        // Still here? Then we could not find a file:
-        printf("Unable to set stylesheet, file not found or permisson issue. Tried loading [%s] and ", QString( QString("/usr/local/share/wfview/stylesheets/") + prefs.stylesheetPath).toStdString().c_str() );
-        printf(" [%s]\n", QString( QString("/usr/share/wfview/stylesheets/") + prefs.stylesheetPath).toStdString().c_str() );
-        printf("Unsetting stylesheet.");
-        qApp->setStyleSheet("");
-#endif
     } else {
-        // Not custom, proceed without:
         qApp->setStyleSheet("");
     }
 }
@@ -3955,9 +3925,6 @@ void wfmain::on_bandGenbtn_clicked()
 void wfmain::on_aboutBtn_clicked()
 {
     abtBox->show();
-
-
-
 }
 
 void wfmain::on_fStoBtn_clicked()
