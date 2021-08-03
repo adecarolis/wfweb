@@ -40,14 +40,15 @@ git clone https://gitlab.com/eliggett/wfview.git
 ~~~
 
 ### 3. Create a build directory, compile, and install:
+If you want to change the default install path from `/usr/local` to a different prefix (e.g. `/opt`), you must call `qmake ../wfview/wfview.pro PREFIX=/opt`
+
 ~~~
 mkdir build
 cd build
 qmake ../wfview/wfview.pro
 make -j
-sudo ./install.sh
+sudo make install
 ~~~
-
 
 ### 4. You can now launch wfview, either from the terminal or from your desktop environment. If you encounter issues using the serial port, run the following command: 
 ~~~
@@ -65,7 +66,7 @@ sudo usermod -aG dialout $USER
 
 ~~~
 
-### opensuse/sles/tumbleweed install ###
+### opensuse/sles/tumbleweed install
 ---
 
 install wfview on suse 15.x sles 15.x or tumbleweed; this was done on a clean install/updated OS. 

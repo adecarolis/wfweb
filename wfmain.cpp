@@ -2224,12 +2224,12 @@ void wfmain::setAppTheme(bool isCustom)
 #ifndef Q_OS_LINUX
         QFile f(":"+prefs.stylesheetPath); // built-in resource
 #else
-        QFile f("/usr/share/wfview/stylesheets/" + prefs.stylesheetPath);
+        QFile f(PREFIX "/share/wfview/" + prefs.stylesheetPath);
 #endif
         if (!f.exists())
         {
             printf("Unable to set stylesheet, file not found\n");
-            printf("Tried to load: [%s]\n", QString( QString("/usr/share/wfview/stylesheets/") + prefs.stylesheetPath).toStdString().c_str() );
+            printf("Tried to load: [%s]\n", f.fileName().toStdString().c_str() );
         }
         else
         {
@@ -3925,9 +3925,6 @@ void wfmain::on_bandGenbtn_clicked()
 void wfmain::on_aboutBtn_clicked()
 {
     abtBox->show();
-
-
-
 }
 
 void wfmain::on_fStoBtn_clicked()
