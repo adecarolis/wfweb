@@ -140,7 +140,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
     // data from the comm port to the program:
 
     emit commReady();
-    emit stateInfo(&rigState);
+    sendState(); // Send current rig state to rigctld
 
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
 
@@ -3783,6 +3783,11 @@ QByteArray rigCommander::stripData(const QByteArray &data, unsigned char cutPosi
 
     rtndata = data.right(cutPosition);
     return rtndata;
+}
+
+void rigCommander::sendState()
+{
+    emit stateInfo(&rigState);
 }
 
 void rigCommander::getDebug()

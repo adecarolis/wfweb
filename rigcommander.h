@@ -270,6 +270,7 @@ public slots:
 
     // Housekeeping:
     void handleStatusUpdate(const QString text);
+    void sendState();
     void getDebug();
 
 signals:

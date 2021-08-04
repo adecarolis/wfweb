@@ -9,6 +9,7 @@ rigCtlD::rigCtlD(QObject* parent) :
 
 rigCtlD::~rigCtlD()
 {
+    qInfo(logRigCtlD()) << "closing rigctld";
 }
 
 void rigCtlD::receiveFrequency(freqt freq)
@@ -124,7 +125,6 @@ void rigCtlClient::socketReadyRead()
         }
         QStringList command = commandBuffer.mid(num).split(" ");
 
-
         if (command[0] == 0xf0 || command[0]=="chk_vfo")
         {
             if (longReply) 
@@ -146,7 +146,12 @@ void rigCtlClient::socketReadyRead()
             if (command.length()>1)
             {
                 freqt freq;
-                freq.Hz = command[1].toInt();
+                bool ok;
+                double newFreq = command[1].toDouble(&ok);
+                if (ok) {
+                    freq.Hz = static_cast<int>(newFreq);
+                }
+                qInfo(logRigCtlD()) << QString("Set frequency: %1 (%2)").arg(freq.Hz).arg(command[1]);
                 emit parent->setFrequency(freq);
             }
             sendData(QString("RPRT 0\n"));
@@ -180,9 +185,23 @@ void rigCtlClient::socketReadyRead()
         else if (command[0] == "M" || command[0] == "set_mode")
         {
             // Set mode
-            if (command.length() > 1) {
-                qInfo(logRigCtlD()) << "setting mode: " << getMode(command[1]);
-                emit parent->setMode(getMode(command[1]), 0x06);
+            if (command.length() > 2) {
+
+                qInfo(logRigCtlD()) << "setting mode: " << getMode(command[1]) << command[1] << "width" << command[2];
+                int width = command[2].toInt();
+
+                if (width != -1 && width <= 1800)
+                    width = 2;
+                else 
+                    width = 1;
+
+                emit parent->setMode(getMode(command[1]), width);
+                if (command[1].mid(0, 3) == "PKT") {
+                    emit parent->setDataMode(true, width);
+                } 
+                else {
+                    emit parent->setDataMode(false, 0x01);
+                }
             }
             sendData(QString("RPRT 0\n"));
         }
@@ -295,36 +314,51 @@ QString rigCtlClient::getFilter(unsigned char mode, unsigned char filter) {
 }
 
 QString rigCtlClient::getMode(unsigned char mode, bool datamode) {
-    (void)datamode;
+
+    QString ret;
+    if (datamode) {
+        return ret="PKT";
+    }
+
     switch (mode) {
     case 0:
-        return QString("LSB");
+        ret.append("LSB");
+        break;
     case 1:
-        return QString("USB");
+        ret.append("USB");
+        break;
     case 2:
-        return QString("AM");
+        ret.append("AM");
+        break;
     case 3:
-        return QString("CW");
+        ret.append("CW");
+        break;
     case 4:
-        return QString("RTTY");
+        ret.append("RTTY");
+        break;
     case 5:
-        return QString("FM");
+        ret.append("FM");
+        break;
     case 6:
-        return QString("WFM");
+        ret.append("WFM");
+        break;
     case 7:
-        return QString("CWR");
+        ret.append("CWR");
+        break;
     case 8:
-        return QString("RTTYR");
+        ret.append("RTTYR");
+        break;
     case 12:
-        return QString("PKTUSB");
+        ret.append("USB");
+        break;
     case 17:
-        return QString("PKTLSB");
+        ret.append("LSB");
+        break;
     case 22:
-        return QString("PKTFM");
-    default:
-        return QString("");
+        ret.append("FM");
+        break;
     }
-    return QString("");
+    return ret;
 }
 
 unsigned char rigCtlClient::getMode(QString modeString) {

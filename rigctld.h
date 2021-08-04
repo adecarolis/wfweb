@@ -33,6 +33,7 @@ signals:
     void setFrequency(freqt freq);
     void setPTT(bool state);
     void setMode(unsigned char mode, unsigned char modeFilter);
+    void setDataMode(bool dataOn, unsigned char modeFilter);
 
 public slots:
     virtual void incomingConnection(qintptr socketDescriptor);

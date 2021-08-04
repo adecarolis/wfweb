@@ -175,13 +175,6 @@ void wfmain::openRig()
         qDebug(logSystem()) << "Remote host name specified by user: " << hostCL;
     }
 
-    // Start rigctld
-    if (prefs.enableRigCtlD && rigCtl == Q_NULLPTR) {
-        rigCtl = new rigCtlD(this);
-
-        rigCtl->startServer(prefs.rigCtlPort);
-        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), rigCtl, SLOT(receiveRigCaps(rigCapabilities)));
-    }
 
     makeRig();
 
@@ -405,8 +398,10 @@ void wfmain::makeRig()
 
         if (rigCtl != Q_NULLPTR) {
             connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
+            connect(this, SIGNAL(requestRigState()), rig, SLOT(sendState()));
             connect(rigCtl, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
             connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
+            connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
             connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
         }
     }
@@ -425,7 +420,7 @@ void wfmain::removeRig()
 
         delete rigThread;
         delete rig;
-
+        rig = Q_NULLPTR;
     }
 
 }
@@ -1367,7 +1362,11 @@ void wfmain::loadSettings()
     ui->connectBtn->setEnabled(true);
 
     prefs.enableRigCtlD = settings->value("EnableRigCtlD", defPrefs.enableRigCtlD).toBool();
+    ui->enableRigctldChk->setChecked(prefs.enableRigCtlD);
     prefs.rigCtlPort = settings->value("RigCtlPort", defPrefs.rigCtlPort).toInt();
+    ui->rigctldPortTxt->setText(QString("%1").arg(prefs.rigCtlPort));
+    // Call the function to start rigctld if enabled.
+    on_enableRigctldChk_clicked(prefs.enableRigCtlD);
 
     udpPrefs.ipAddress = settings->value("IPAddress", udpDefPrefs.ipAddress).toString();
     ui->ipAddressTxt->setEnabled(ui->lanEnableBtn->isChecked());
@@ -5246,6 +5245,35 @@ void wfmain::on_meter2selectionCombo_activated(int index)
     }
     (void)index;
 }
+
+void wfmain::on_enableRigctldChk_clicked(bool checked)
+{
+    if (rigCtl != Q_NULLPTR)
+    {
+        rigCtl->disconnect();
+        delete rigCtl;
+        rigCtl = Q_NULLPTR;
+    }
+
+    if (checked) {
+        // Start rigctld
+        rigCtl = new rigCtlD(this);
+        rigCtl->startServer(prefs.rigCtlPort);
+        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), rigCtl, SLOT(receiveRigCaps(rigCapabilities)));
+        if (rig != Q_NULLPTR) {
+            // We are already connected to a rig.
+            connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
+            connect(rigCtl, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
+            connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
+            connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
+            connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
+            emit sendRigCaps(rigCaps);
+            emit requestRigState();
+        }
+    }    
+    prefs.enableRigCtlD = checked;
+}
+
 
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
