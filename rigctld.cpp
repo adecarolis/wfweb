@@ -88,7 +88,7 @@ void rigCtlClient::socketReadyRead()
     bool setCommand = false;
     if (commandBuffer.endsWith('\n'))
     {
-        qInfo(logRigCtlD()) << sessionId << "command received" << commandBuffer;
+        qDebug(logRigCtlD()) << sessionId << "command received" << commandBuffer;
         commandBuffer.chop(1); // Remove \n character
         if (commandBuffer.endsWith('\r'))
         {
@@ -110,6 +110,7 @@ void rigCtlClient::socketReadyRead()
         }
         else if (commandBuffer[num] == "+")
         {
+            longReply = true;
             sep = "\n";
             num++;
         }
@@ -125,7 +126,6 @@ void rigCtlClient::socketReadyRead()
         if (commandBuffer[num] == "\\")
         {
             num++;
-            longReply = true;
         }
         QStringList command = commandBuffer.mid(num).split(" ");
 
@@ -187,7 +187,7 @@ void rigCtlClient::socketReadyRead()
                 double newFreq = command[1].toDouble(&ok);
                 if (ok) {
                     freq.Hz = static_cast<int>(newFreq);
-                    qInfo(logRigCtlD()) << QString("Set frequency: %1 (%2)").arg(freq.Hz).arg(command[1]);
+                    qDebug(logRigCtlD()) << QString("Set frequency: %1 (%2)").arg(freq.Hz).arg(command[1]);
                     emit parent->setFrequency(freq);
                 }
             }
@@ -251,10 +251,14 @@ void rigCtlClient::socketReadyRead()
         {
             setCommand = true;
             if (command.length() > 1 && command[1] == "?") {
+                response.append("set_vfo: ?");
                 response.append("VFOA");
                 response.append("VFOB");
+                response.append("Sub");
+                response.append("Main");
+                response.append("MEM");
             }
-            else if (command.length() > 1 && command[1] == "VFOB") {
+            else if (command.length() > 1 && (command[1] == "VFOB" || command[1] == "Sub")) {
                 emit parent->setVFO(1);
             }
             else {
@@ -286,14 +290,26 @@ void rigCtlClient::socketReadyRead()
         else if (command[0] == "\xf3" || command[0] == "get_vfo_info")
         {
             if (longReply) {
-                response.append(QString("Freq: %1").arg(rigState->vfoAFreq.Hz));
+                //response.append(QString("set_vfo: %1").arg(command[1]));
+
+                if (command[1] == "VFOB") {
+                    response.append(QString("Freq: %1").arg(rigState->vfoBFreq.Hz));
+                }
+                else {
+                    response.append(QString("Freq: %1").arg(rigState->vfoAFreq.Hz));
+                }
                 response.append(QString("Mode: %1").arg(getMode(rigState->mode, rigState->datamode)));
                 response.append(QString("Width: %1").arg(getFilter(rigState->mode, rigState->filter)));
                 response.append(QString("Split: %1").arg(rigState->splitEnabled));
                 response.append(QString("SatMode: %1").arg(0)); // Need to get satmode 
             }
             else {
-                response.append(QString("%1").arg(rigState->vfoAFreq.Hz));
+                if (command[1] == "VFOB") {
+                    response.append(QString("%1").arg(rigState->vfoBFreq.Hz));
+                }
+                else {
+                    response.append(QString("%1").arg(rigState->vfoAFreq.Hz));
+                }
                 response.append(QString("%1").arg(getMode(rigState->mode, rigState->datamode)));
                 response.append(QString("%1").arg(getFilter(rigState->mode, rigState->filter)));
             }
@@ -326,7 +342,7 @@ void rigCtlClient::socketReadyRead()
             setCommand = true;
             if (command.length() > 2) {
 
-                qInfo(logRigCtlD()) << "setting mode: " << getMode(command[1]) << command[1] << "width" << command[2];
+                qDebug(logRigCtlD()) << "setting mode: " << getMode(command[1]) << command[1] << "width" << command[2];
                 int width = command[2].toInt();
 
                 if (width != -1 && width <= 1800)
@@ -349,7 +365,16 @@ void rigCtlClient::socketReadyRead()
             response.append(QString("VFOA"));
         }
 
-        if (setCommand == true || responseCode != 0) {
+        if (longReply) {
+            if (command.length() == 2)
+                sendData(QString("%1: %2%3").arg(command[0]).arg(command[1]).arg(sep));
+            if (command.length() == 3)
+                sendData(QString("%1: %2 %3%4").arg(command[0]).arg(command[1]).arg(command[2]).arg(sep));
+            if (command.length() == 4)
+                sendData(QString("%1: %2 %3 %4%5").arg(command[0]).arg(command[1]).arg(command[2]).arg(command[3]).arg(sep));
+        }
+
+        if (setCommand || responseCode != 0 || longReply) {
             if (responseCode == 0) {
                 response.append(QString("RPRT 0"));
             }
@@ -387,7 +412,7 @@ void rigCtlClient::closeSocket()
 
 void rigCtlClient::sendData(QString data)
 {
-    qInfo(logRigCtlD()) << "Sending:" << data;
+    qDebug(logRigCtlD()) << "Sending:" << data;
     if (socket != Q_NULLPTR && socket->isValid() && socket->isOpen())
     {
         socket->write(data.toLatin1());
