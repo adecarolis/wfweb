@@ -80,7 +80,7 @@ void rigCtlClient::socketReadyRead()
 {
     QByteArray data = socket->readAll();
     commandBuffer.append(data);
-    static QString sep = " ";
+    QString sep = "\n";
     static int num = 0;
     bool longReply = false;
     char responseCode = 0;
@@ -129,19 +129,21 @@ void rigCtlClient::socketReadyRead()
         }
         QStringList command = commandBuffer.mid(num).split(" ");
 
-        if (command[0] == 0xf0 || command[0]=="chk_vfo")
+        if (command[0] == 0xf0 || command[0] == "chk_vfo")
         {
             response.append(QString("%1").arg(rigState->currentVfo));
         }
         else if (command[0] == "dump_state")
-        {   
+        {
             // Currently send "fake" state information until I can work out what is required!
             response.append("1");
             response.append("1");
             response.append("0");
             response.append("150000.000000 1500000000.000000 0x1ff -1 -1 0x16000003 0xf");
             response.append("0 0 0 0 0 0 0");
+            response.append("0 0 0 0 0 0 0");
             response.append("0x1ff 1");
+            response.append("0x1ff 0");
             response.append("0 0");
             response.append("0x1e 2400");
             response.append("0x2 500");
@@ -149,13 +151,15 @@ void rigCtlClient::socketReadyRead()
             response.append("0x1 2400");
             response.append("0x20 15000");
             response.append("0x20 8000");
-            response.append("0x20 230000");
+            response.append("0x40 230000");
             response.append("0 0");
             response.append("9900");
             response.append("9900");
             response.append("10000");
             response.append("0");
+            response.append("10");
             response.append("10 20 30");
+            response.append("0x3effffff");
             response.append("0x3effffff");
             response.append("0x7fffffff");
             response.append("0x7fffffff");
@@ -176,7 +180,7 @@ void rigCtlClient::socketReadyRead()
         else if (command[0] == "F" || command[0] == "set_freq")
         {
             setCommand = true;
-            if (command.length()>1)
+            if (command.length() > 1)
             {
                 freqt freq;
                 bool ok;
@@ -204,11 +208,11 @@ void rigCtlClient::socketReadyRead()
             }
             if (rigCaps.hasPTTCommand) {
                 response.append(QString("PTT type:\tRig capable"));
-            } 
+            }
             response.append(QString("DCD type:\tRig capable"));
             response.append(QString("Port type:\tNetwork link"));
         }
-        else if (command[0] == "t" || command[0] == "get_ptt") 
+        else if (command[0] == "t" || command[0] == "get_ptt")
         {
             if (rigCaps.hasPTTCommand) {
                 response.append(QString("%1").arg(rigState->ptt));
@@ -218,8 +222,9 @@ void rigCtlClient::socketReadyRead()
                 responseCode = -1;
             }
         }
-        else if (command[0] == "T" || command[0] == "set_ptt") 
+        else if (command[0] == "T" || command[0] == "set_ptt")
         {
+            setCommand = true;
             if (rigCaps.hasPTTCommand) {
                 if (command.length() > 1 && command[1] == "0") {
                     emit parent->setPTT(false);
@@ -278,7 +283,7 @@ void rigCtlClient::socketReadyRead()
                 emit parent->setSplit(0);
             }
         }
-        else if (command[0] == "\xf3" || command[0] == "get_vfo_info") 
+        else if (command[0] == "\xf3" || command[0] == "get_vfo_info")
         {
             if (longReply) {
                 response.append(QString("Freq: %1").arg(rigState->vfoAFreq.Hz));
@@ -326,33 +331,41 @@ void rigCtlClient::socketReadyRead()
 
                 if (width != -1 && width <= 1800)
                     width = 2;
-                else 
+                else
                     width = 1;
 
                 emit parent->setMode(getMode(command[1]), width);
                 if (command[1].mid(0, 3) == "PKT") {
                     emit parent->setDataMode(true, width);
-                } 
+                }
                 else {
                     emit parent->setDataMode(false, width);
                 }
             }
         }
-        else if (command[0] == "s" || command[0] == "get_split_vfo") 
+        else if (command[0] == "s" || command[0] == "get_split_vfo")
         {
             response.append(QString("0"));
             response.append(QString("VFOA"));
         }
 
         if (setCommand == true || responseCode != 0) {
-            response.append(QString("RPRT %1").arg(responseCode));
+            if (responseCode == 0) {
+                response.append(QString("RPRT 0"));
+            }
+            else {
+                response.append(QString("RPRT %1").arg(responseCode));
+            }
         }
 
         for (QString str : response)
         {
             sendData(QString("%1%2").arg(str).arg(sep));
         }
-        sendData(QString("\n"));
+
+        if (sep != "\n") {
+            sendData(QString("\n"));
+        }
 
         commandBuffer.clear();
         sep = " ";
