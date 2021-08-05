@@ -153,6 +153,7 @@ signals:
     void initServer();
     void sendServerConfig(SERVERCONFIG conf);
     void sendRigCaps(rigCapabilities caps);
+    void requestRigState();
 
 private slots:
     void updateSizes(int tabIndex);
@@ -471,6 +472,10 @@ private slots:
     void on_wfInterpolateChk_clicked(bool checked);
 
     void on_meter2selectionCombo_activated(int index);
+
+    void on_enableRigctldChk_clicked(bool checked);
+
+    void on_rigctldPortTxt_editingFinished();
 
 private:
     Ui::wfmain *ui;

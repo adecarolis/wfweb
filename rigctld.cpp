@@ -9,6 +9,7 @@ rigCtlD::rigCtlD(QObject* parent) :
 
 rigCtlD::~rigCtlD()
 {
+    qInfo(logRigCtlD()) << "closing rigctld";
 }
 
 void rigCtlD::receiveFrequency(freqt freq)
@@ -82,6 +83,7 @@ void rigCtlClient::socketReadyRead()
     static QString sep = " ";
     static int num = 0;
     bool longReply = false;
+    unsigned char responseCode = 0;
     if (commandBuffer.endsWith('\n'))
     {
         qDebug(logRigCtlD()) << sessionId << "command received" << commandBuffer;
@@ -107,30 +109,27 @@ void rigCtlClient::socketReadyRead()
         else if (commandBuffer[num] == "+")
         {
             sep = "\n";
-        }
-
-        else if (commandBuffer[num].toLower() == "q")
-        {
-            closeSocket();
+            num++;
         }
         else if (commandBuffer[num] == "#")
         {
             return;
         }
-        else if (commandBuffer[num] == "\\")
+        else if (commandBuffer[num].toLower() == "q")
+        {
+            closeSocket();
+        }
+
+        if (commandBuffer[num] == "\\")
         {
             num++;
             longReply = true;
         }
         QStringList command = commandBuffer.mid(num).split(" ");
 
-
         if (command[0] == 0xf0 || command[0]=="chk_vfo")
         {
-            if (longReply) 
-                sendData(QString("0\n"));
-            else
-                sendData(QString("0\n"));
+            sendData(QString("%1\n").arg(rigState->currentVfo));
         }
         else if (command[0] == "dump_state")
         {   
@@ -139,27 +138,37 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command[0] == "f" || command[0] == "get_freq")
         {
-            sendData(QString("%1\n").arg(rigState->vfoAFreq.Hz));
+            if (rigState->currentVfo == 0) {
+                sendData(QString("%1\n").arg(rigState->vfoAFreq.Hz));
+            }
+            else {
+                sendData(QString("%1\n").arg(rigState->vfoBFreq.Hz));
+            }
         }
         else if (command[0] == "F" || command[0] == "set_freq")
         {
             if (command.length()>1)
             {
                 freqt freq;
-                freq.Hz = command[1].toInt();
+                bool ok;
+                double newFreq = command[1].toDouble(&ok);
+                if (ok) {
+                    freq.Hz = static_cast<int>(newFreq);
+                }
+                qInfo(logRigCtlD()) << QString("Set frequency: %1 (%2)").arg(freq.Hz).arg(command[1]);
                 emit parent->setFrequency(freq);
             }
-            sendData(QString("RPRT 0\n"));
+            sendData(QString("RPRT %1\n").arg(responseCode));
         }
         else if (command[0] == "1" || command[0] == "dump_caps")
         {
             dumpCaps(sep);
         }
-        else if (command[0] == "t") 
+        else if (command[0] == "t" || command[0] == "get_ptt") 
         {
             sendData(QString("%1\n").arg(rigState->ptt));
         }
-        else if (command[0] == "T") 
+        else if (command[0] == "T" || command[0] == "set_ptt") 
         {
             if (command.length()>1 && command[1] == "0") {
                 emit parent->setPTT(false);
@@ -167,24 +176,95 @@ void rigCtlClient::socketReadyRead()
             else {
                 emit parent->setPTT(true);
             }
-            sendData(QString("RPRT 0\n"));
+            sendData(QString("RPRT %1\n").arg(responseCode));
         }
-        else if (command[0] == "v" || command[0] == "get_vfo") 
+        else if (command[0] == "v" || command[0] == "get_vfo")
         {
-            sendData(QString("VFOA\n"));
+            if (rigState->currentVfo == 0) {
+                sendData(QString("%1\n").arg("VFOA"));
+            }
+            else {
+                sendData(QString("%1\n").arg("VFOB"));
+            }
         }
-        else if (command[0] == "m" || command[0] == "get_mode") 
+        else if (command[0] == "V" || command[0] == "set_vfo")
         {
-            sendData(QString("%1\n%2\n").arg(getMode(rigState->mode,rigState->datamode)).arg(getFilter(rigState->mode,rigState->filter)));
+            qDebug(logRigCtlD()) << QString("Got VFO command: %1").arg(command[1]);
+            if (command.length() > 1 && command[1] == "VFOB") {
+                emit parent->setVFO(1);
+            }
+            else {
+                emit parent->setVFO(0);
+            }
+            sendData(QString("RPRT %1\n").arg(responseCode));
+        }
+        else if (command[0] == "s" || command[0] == "get_split_vfo")
+        {
+            sendData(QString("%1\n").arg(rigState->splitEnabled));
+            if (rigState->currentVfo == 0)
+            {
+                sendData(QString("%1\n").arg("VFOB"));
+            }
+            else {
+                sendData(QString("%1\n").arg("VFOA"));
+            }
+        }
+        else if (command[0] == "S" || command[0] == "set_split_vfo")
+        {
+            if (command.length() > 1 && command[1] == "1")
+            {
+                emit parent->setSplit(1);
+            }
+            else {
+                emit parent->setSplit(0);
+            }
+            sendData(QString("RPRT %1\n").arg(responseCode));
+        }
+        else if (command[0] == "i" || command[0] == "get_split_freq")
+        {
+            if (rigState->currentVfo == 0) {
+                sendData(QString("%1\n").arg(rigState->vfoBFreq.Hz));
+            }
+            else {
+                sendData(QString("%1\n").arg(rigState->vfoAFreq.Hz));
+            }
+        }
+        else if (command[0] == "I" || command[0] == "set_split_freq")
+        {
+        sendData(QString("RPRT %1\n").arg(responseCode));
+        }
+        else if (command[0] == "m" || command[0] == "get_mode")
+        {
+            if (longReply) {
+                sendData(QString("Mode: %1\nPassband: %2\n").arg(getMode(rigState->mode, rigState->datamode)).arg(getFilter(rigState->mode, rigState->filter)));
+            }
+            else {
+                sendData(QString("%1\n%2\n").arg(getMode(rigState->mode, rigState->datamode)).arg(getFilter(rigState->mode, rigState->filter)));
+            }
+            sendData(QString("RPRT %1\n").arg(responseCode));
         }
         else if (command[0] == "M" || command[0] == "set_mode")
         {
             // Set mode
-            if (command.length() > 1) {
-                qInfo(logRigCtlD()) << "setting mode: " << getMode(command[1]);
-                emit parent->setMode(getMode(command[1]), 0x06);
+            if (command.length() > 2) {
+
+                qInfo(logRigCtlD()) << "setting mode: " << getMode(command[1]) << command[1] << "width" << command[2];
+                int width = command[2].toInt();
+
+                if (width != -1 && width <= 1800)
+                    width = 2;
+                else 
+                    width = 1;
+
+                emit parent->setMode(getMode(command[1]), width);
+                if (command[1].mid(0, 3) == "PKT") {
+                    emit parent->setDataMode(true, width);
+                } 
+                else {
+                    emit parent->setDataMode(false, 0x01);
+                }
             }
-            sendData(QString("RPRT 0\n"));
+            sendData(QString("RPRT %1\n").arg(responseCode));
         }
         else if (command[0] == "s" || command[0] == "get_split_vfo") 
         {
@@ -220,7 +300,6 @@ void rigCtlClient::sendData(QString data)
         qInfo(logRigCtlD()) << "socket not open!";
     }
 }
-
 
 void rigCtlClient::dumpCaps(QString sep)
 {
@@ -295,36 +374,51 @@ QString rigCtlClient::getFilter(unsigned char mode, unsigned char filter) {
 }
 
 QString rigCtlClient::getMode(unsigned char mode, bool datamode) {
-    (void)datamode;
+
+    QString ret;
+    if (datamode) {
+        return ret="PKT";
+    }
+
     switch (mode) {
     case 0:
-        return QString("LSB");
+        ret.append("LSB");
+        break;
     case 1:
-        return QString("USB");
+        ret.append("USB");
+        break;
     case 2:
-        return QString("AM");
+        ret.append("AM");
+        break;
     case 3:
-        return QString("CW");
+        ret.append("CW");
+        break;
     case 4:
-        return QString("RTTY");
+        ret.append("RTTY");
+        break;
     case 5:
-        return QString("FM");
+        ret.append("FM");
+        break;
     case 6:
-        return QString("WFM");
+        ret.append("WFM");
+        break;
     case 7:
-        return QString("CWR");
+        ret.append("CWR");
+        break;
     case 8:
-        return QString("RTTYR");
+        ret.append("RTTYR");
+        break;
     case 12:
-        return QString("PKTUSB");
+        ret.append("USB");
+        break;
     case 17:
-        return QString("PKTLSB");
+        ret.append("LSB");
+        break;
     case 22:
-        return QString("PKTFM");
-    default:
-        return QString("");
+        ret.append("FM");
+        break;
     }
-    return QString("");
+    return ret;
 }
 
 unsigned char rigCtlClient::getMode(QString modeString) {
@@ -370,3 +464,4 @@ unsigned char rigCtlClient::getMode(QString modeString) {
     }
     return 0;
 }
+

@@ -62,9 +62,11 @@ struct timekind {
 struct rigStateStruct {
     freqt vfoAFreq;
     freqt vfoBFreq;
+    unsigned char currentVfo;
     unsigned char ptt;
     unsigned char mode;
     unsigned char filter;
+    unsigned char splitEnabled;
     bool datamode;
     // Tones
     quint16 ctcss;
@@ -270,6 +272,7 @@ public slots:
 
     // Housekeeping:
     void handleStatusUpdate(const QString text);
+    void sendState();
     void getDebug();
 
 signals:
