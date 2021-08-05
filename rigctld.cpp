@@ -180,16 +180,24 @@ void rigCtlClient::socketReadyRead()
         else if (command[0] == "F" || command[0] == "set_freq")
         {
             setCommand = true;
-            if (command.length() > 1)
+            freqt freq;
+            bool ok=false;
+            double newFreq;
+            QString vfo = "VFOA";
+            if (command.length() == 2)
             {
-                freqt freq;
-                bool ok;
-                double newFreq = command[1].toDouble(&ok);
-                if (ok) {
-                    freq.Hz = static_cast<int>(newFreq);
-                    qDebug(logRigCtlD()) << QString("Set frequency: %1 (%2)").arg(freq.Hz).arg(command[1]);
-                    emit parent->setFrequency(freq);
-                }
+                newFreq = command[1].toDouble(&ok);
+            }
+            else if (command.length() == 3) // Includes VFO 
+            {
+                newFreq = command[2].toDouble(&ok);
+                vfo = command[1];
+            }
+
+            if (ok) {
+                freq.Hz = static_cast<int>(newFreq);
+                qDebug(logRigCtlD()) << QString("Set frequency: %1 (%2)").arg(freq.Hz).arg(command[1]);
+                emit parent->setFrequency(freq);
             }
         }
         else if (command[0] == "1" || command[0] == "dump_caps")
@@ -340,23 +348,31 @@ void rigCtlClient::socketReadyRead()
         {
             // Set mode
             setCommand = true;
-            if (command.length() > 2) {
+            int width = -1;
+            QString vfo = "VFOA";
+            QString mode = "USB";
+            if (command.length() == 3) {
+                width = command[2].toInt();
+                mode = command[1];
+            }
+            else if (command.length() == 4) {
+                width = command[3].toInt();
+                mode = command[2];
+                vfo = command[1];
+            }
+            qDebug(logRigCtlD()) << "setting mode: VFO:" << vfo << getMode(mode) << mode << "width" << width;
 
-                qDebug(logRigCtlD()) << "setting mode: " << getMode(command[1]) << command[1] << "width" << command[2];
-                int width = command[2].toInt();
+            if (width != -1 && width <= 1800)
+                width = 2;
+            else
+                width = 1;
 
-                if (width != -1 && width <= 1800)
-                    width = 2;
-                else
-                    width = 1;
-
-                emit parent->setMode(getMode(command[1]), width);
-                if (command[1].mid(0, 3) == "PKT") {
-                    emit parent->setDataMode(true, width);
-                }
-                else {
-                    emit parent->setDataMode(false, width);
-                }
+            emit parent->setMode(getMode(mode), width);
+            if (mode.mid(0, 3) == "PKT") {
+                emit parent->setDataMode(true, width);
+            }
+            else {
+                emit parent->setDataMode(false, width);
             }
         }
         else if (command[0] == "s" || command[0] == "get_split_vfo")
