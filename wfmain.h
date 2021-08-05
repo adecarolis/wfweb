@@ -475,6 +475,8 @@ private slots:
 
     void on_enableRigctldChk_clicked(bool checked);
 
+    void on_rigctldPortTxt_editingFinished();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);

@@ -25,6 +25,8 @@ rigCommander::rigCommander()
     rigState.filter = 0;
     rigState.mode = 0;
     rigState.ptt = 0;
+    rigState.currentVfo = 0;
+    rigState.splitEnabled = 0;
 }
 
 rigCommander::~rigCommander()

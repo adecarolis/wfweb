@@ -34,6 +34,8 @@ signals:
     void setPTT(bool state);
     void setMode(unsigned char mode, unsigned char modeFilter);
     void setDataMode(bool dataOn, unsigned char modeFilter);
+    void setVFO(unsigned char vfo);
+    void setSplit(unsigned char split);
 
 public slots:
     virtual void incomingConnection(qintptr socketDescriptor);
@@ -75,7 +77,6 @@ private:
     QString getMode(unsigned char mode, bool datamode);
     unsigned char getMode(QString modeString);
     QString getFilter(unsigned char mode, unsigned char filter);
-
 };
 
 

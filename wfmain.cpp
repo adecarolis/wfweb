@@ -5274,6 +5274,16 @@ void wfmain::on_enableRigctldChk_clicked(bool checked)
     prefs.enableRigCtlD = checked;
 }
 
+void wfmain::on_rigctldPortTxt_editingFinished()
+{
+
+    bool okconvert = false;
+    unsigned int port = ui->rigctldPortTxt->text().toUInt(&okconvert);
+    if (okconvert)
+    {
+        prefs.rigCtlPort = port;
+    }
+}
 
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
