@@ -70,7 +70,6 @@ protected:
     QString commandBuffer;
 
 private:
-    void dumpCaps(QString sep);
     rigCapabilities rigCaps;
     rigStateStruct* rigState = Q_NULLPTR;
     rigCtlD* parent;
