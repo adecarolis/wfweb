@@ -121,17 +121,24 @@ void rigCtlClient::socketReadyRead()
         else if (commandBuffer[num].toLower() == "q")
         {
             closeSocket();
+            return;
         }
 
         if (commandBuffer[num] == "\\")
         {
             num++;
         }
+
         QStringList command = commandBuffer.mid(num).split(" ");
 
         if (command[0] == 0xf0 || command[0] == "chk_vfo")
         {
-            response.append(QString("%1").arg(rigState->currentVfo));
+            QString resp;
+            if (longReply) {
+                resp.append(QString("ChkVFO: "));
+            }
+            resp.append(QString("%1").arg(rigState->currentVfo));
+            response.append(resp);
         }
         else if (command[0] == "dump_state")
         {
@@ -139,8 +146,17 @@ void rigCtlClient::socketReadyRead()
             response.append("1");
             response.append("1");
             response.append("0");
-            response.append("150000.000000 1500000000.000000 0x1ff -1 -1 0x16000003 0xf");
+            for (bandType band : rigCaps.bands)
+            {
+                response.append(generateFreqRange(band));
+            }
             response.append("0 0 0 0 0 0 0");
+            if (rigCaps.hasTransmit) {
+                for (bandType band : rigCaps.bands)
+                {
+                    response.append(generateFreqRange(band));
+                }
+            }
             response.append("0 0 0 0 0 0 0");
             response.append("0x1ff 1");
             response.append("0x1ff 0");
@@ -168,21 +184,27 @@ void rigCtlClient::socketReadyRead()
             response.append("done");
 
         }
+
         else if (command[0] == "f" || command[0] == "get_freq")
         {
+            QString resp;
+            if (longReply) {
+                resp.append(QString("Frequency: "));
+            }
             if (rigState->currentVfo == 0) {
-                response.append(QString("%1").arg(rigState->vfoAFreq.Hz));
+                resp.append(QString("%1").arg(rigState->vfoAFreq.Hz));
             }
             else {
-                response.append(QString("%1").arg(rigState->vfoBFreq.Hz));
+                resp.append(QString("%1").arg(rigState->vfoBFreq.Hz));
             }
+            response.append(resp);
         }
         else if (command[0] == "F" || command[0] == "set_freq")
         {
             setCommand = true;
             freqt freq;
             bool ok=false;
-            double newFreq;
+            double newFreq=0.0f;
             QString vfo = "VFOA";
             if (command.length() == 2)
             {
@@ -223,7 +245,12 @@ void rigCtlClient::socketReadyRead()
         else if (command[0] == "t" || command[0] == "get_ptt")
         {
             if (rigCaps.hasPTTCommand) {
-                response.append(QString("%1").arg(rigState->ptt));
+                QString resp;
+                if (longReply) {
+                    resp.append(QString("PTT: "));
+                }
+                resp.append(QString("%1").arg(rigState->ptt));
+                response.append(resp);
             }
             else
             {
@@ -248,12 +275,18 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command[0] == "v" || command[0] == "get_vfo")
         {
+            QString resp;
+            if (longReply) {
+                resp.append("VFO: ");
+            }
+
             if (rigState->currentVfo == 0) {
-                response.append("VFOA");
+                resp.append("VFOA");
             }
             else {
-                response.append("VFOB");
+                resp.append("VFOB");
             }
+            response.append(resp);
         }
         else if (command[0] == "V" || command[0] == "set_vfo")
         {
@@ -275,14 +308,26 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command[0] == "s" || command[0] == "get_split_vfo")
         {
-            response.append(QString("%1").arg(rigState->splitEnabled));
-            if (rigState->currentVfo == 0)
-            {
-                response.append(QString("%1").arg("VFOB"));
+            if (longReply) {
+                response.append(QString("Split: %1").arg(rigState->splitEnabled));
             }
             else {
-                response.append(QString("%1").arg("VFOA"));
+                response.append(QString("%1").arg(rigState->splitEnabled));
             }
+
+            QString resp;
+            if (longReply) {
+                resp.append("TX VFO: ");
+            }
+
+            if (rigState->currentVfo == 0)
+            {
+                resp.append(QString("%1").arg("VFOB"));
+            }
+            else {
+                resp.append(QString("%1").arg("VFOA"));
+            }
+            response.append(resp);
         }
         else if (command[0] == "S" || command[0] == "set_split_vfo")
         {
@@ -325,10 +370,10 @@ void rigCtlClient::socketReadyRead()
         else if (command[0] == "i" || command[0] == "get_split_freq")
         {
             if (rigState->currentVfo == 0) {
-                sendData(QString("%1\n").arg(rigState->vfoBFreq.Hz));
+                response.append(QString("%1").arg(rigState->vfoBFreq.Hz));
             }
             else {
-                sendData(QString("%1\n").arg(rigState->vfoAFreq.Hz));
+                response.append(QString("%1").arg(rigState->vfoAFreq.Hz));
             }
         }
         else if (command[0] == "I" || command[0] == "set_split_freq")
@@ -338,10 +383,12 @@ void rigCtlClient::socketReadyRead()
         else if (command[0] == "m" || command[0] == "get_mode")
         {
             if (longReply) {
-                sendData(QString("Mode: %1\nPassband: %2\n").arg(getMode(rigState->mode, rigState->datamode)).arg(getFilter(rigState->mode, rigState->filter)));
+                response.append(QString("Mode: %1").arg(getMode(rigState->mode, rigState->datamode)));
+                response.append(QString("Passband: %1").arg(getFilter(rigState->mode, rigState->filter)));
             }
             else {
-                sendData(QString("%1\n%2\n").arg(getMode(rigState->mode, rigState->datamode)).arg(getFilter(rigState->mode, rigState->filter)));
+                response.append(QString("%1").arg(getMode(rigState->mode, rigState->datamode)));
+                response.append(QString("%1").arg(getFilter(rigState->mode, rigState->filter)));
             }
         }
         else if (command[0] == "M" || command[0] == "set_mode")
@@ -380,7 +427,80 @@ void rigCtlClient::socketReadyRead()
             response.append(QString("0"));
             response.append(QString("VFOA"));
         }
+        else if (command[0] == "j" || command[0] == "get_rit")
+        {
+        QString resp;
+        if (longReply) {
+            resp.append("RIT: ");
+        }
+        resp.append(QString("%1").arg(0));
+        response.append(resp);
+        }
+        else if (command[0] == "J" || command[0] == "set_rit")
+        {
+            setCommand = true;
+        }
+        else if (command[0] == "z" || command[0] == "get_zit")
+        {
+            QString resp;
+            if (longReply) {
+                resp.append("ZIT: ");
+            }
+            resp.append(QString("%1").arg(0));
+            response.append(resp);
+        }
+        else if (command[0] == "Z" || command[0] == "set_zit")
+        {
+            setCommand = true;
+        }
+        else if (command[0] == "l" || command[0] == "get_level")
+        {
+            QString resp;
+            int value = 0;
+            if (longReply && command.length() > 1) {
+                resp.append(QString("%1: ").arg(command[1]));
+            }
+            if (command[1] == "STRENGTH") {
+                value = rigState->sMeter;
+                if (value > 240)
+                    value = value - 176;
+                else if (value > 120)
+                    value = value - 120;
+                else if (value > 90)
+                    value = value - 102;
+                else if (value > 60)
+                    value = value - 84;
+                else if (value > 30)
+                    value = value - 66;
+                else if (value > 10)
+                    value = value - 58;
+                else if (value > 0)
+                    value = value - 54;
+            }
 
+            resp.append(QString("%1").arg(value));
+            response.append(resp);
+        }
+        else if (command[0] == "L" || command[0] == "set_level")
+        {
+            setCommand = true;
+        }
+        else if (command[0] == "u" || command[0] == "get_func")
+        {
+            QString resp;
+            if (longReply && command.length() > 1) {
+                resp.append(QString("%1: ").arg(command[1]));
+            }
+            resp.append(QString("%1").arg(0));
+            response.append(resp);
+            }
+        else if (command[0] == "R" || command[0] == "set_func")
+        {
+           setCommand = true;
+        }
+        else {
+            qInfo(logRigCtlD()) << "Unimplemented command" << commandBuffer;
+        }
         if (longReply) {
             if (command.length() == 2)
                 sendData(QString("%1: %2%3").arg(command[0]).arg(command[1]).arg(sep));
@@ -401,7 +521,8 @@ void rigCtlClient::socketReadyRead()
 
         for (QString str : response)
         {
-            sendData(QString("%1%2").arg(str).arg(sep));
+            if (str != "")
+                sendData(QString("%1%2").arg(str).arg(sep));
         }
 
         if (sep != "\n") {
@@ -590,3 +711,99 @@ unsigned char rigCtlClient::getMode(QString modeString) {
     return 0;
 }
 
+QString rigCtlClient::generateFreqRange(bandType band)
+{
+    unsigned int lowFreq = 0;
+    unsigned int highFreq = 0;
+    switch (band) {
+    case band2200m:
+        lowFreq = 135000;
+        highFreq = 138000;
+        break;
+    case band630m:
+        lowFreq = 493000;
+        highFreq = 595000;
+        break;
+    case band160m:
+        lowFreq = 1800000;
+        highFreq = 2000000;
+        break;
+    case band80m:
+        lowFreq = 3500000;
+        highFreq = 4000000;
+        break;
+    case band60m:
+        lowFreq = 5250000;
+        highFreq = 5450000;
+        break;
+    case band40m:
+        lowFreq = 7000000;
+        highFreq = 7300000;
+        break;
+    case band30m:
+        lowFreq = 10100000;
+        highFreq = 10150000;
+        break;
+    case band20m:
+        lowFreq = 14000000;
+        highFreq = 14350000;
+        break;
+    case band17m:
+        lowFreq = 18068000;
+        highFreq = 18168000;
+        break;
+    case band15m:
+        lowFreq = 21000000;
+        highFreq = 21450000;
+        break;
+    case band12m:
+        lowFreq = 24890000;
+        highFreq = 24990000;
+        break;
+    case band10m:
+        lowFreq = 28000000;
+        highFreq = 29700000;
+        break;
+    case band6m:
+        lowFreq = 50000000;
+        highFreq = 54000000;
+        break;
+    case band4m:
+        lowFreq = 70000000;
+        highFreq = 70500000;
+        break;
+    case band2m:
+        lowFreq = 144000000;
+        highFreq = 148000000;
+        break;
+    case band70cm:
+        lowFreq = 420000000;
+        highFreq = 450000000;
+        break;
+    case band23cm:
+        lowFreq = 1240000000;
+        highFreq = 1400000000;
+        break;
+    case bandAir:
+        lowFreq = 108000000;
+        highFreq = 137000000;
+        break;
+    }
+    quint64 modes=0;
+    for (mode_info mode : rigCaps.modes)
+    {
+        for (int i = 0; mode_str[i].str[0] != '\0'; i++)
+        {
+            if (!strcmp(mode.name.toLocal8Bit(), mode_str[i].str))
+            {
+                modes |= mode_str[i].mode;
+            }
+        }
+    }
+    QString ret = "";
+        
+    if (lowFreq > 0 && highFreq > 0) {
+        ret = QString("%1 %2 0x%3 %4 %5 0x%6 0x%7").arg(lowFreq).arg(highFreq).arg(modes,0,16).arg(-1).arg(-1).arg(0x16000003,0,16).arg(0xf,0,16);
+    }
+    return ret;
+}
