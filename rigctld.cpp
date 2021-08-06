@@ -572,7 +572,7 @@ void rigCtlClient::socketReadyRead()
             if (longReply && command.length() > 1) {
                 resp.append(QString("%1: ").arg(command[1]));
             }
-            resp.append(QString("%1").arg(0));
+            resp.append(QString("%1").arg(1)); // Always reply with ON
             response.append(resp);
         }
         else if (command.length() > 1 && command[0] == 0x87 || command[0] == "set_powerstat")
