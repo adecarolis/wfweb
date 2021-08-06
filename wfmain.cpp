@@ -296,6 +296,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getSpectrumRefLevel()), rig, SLOT(getSpectrumRefLevel()));
     connect(this, SIGNAL(getModInputLevel(rigInput)), rig, SLOT(getModInputLevel(rigInput)));
 
+
     // Levels: Set:
     connect(this, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
     connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
@@ -306,7 +307,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
     connect(this, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
     connect(this, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
-    connect(this, SIGNAL(setModLevel(rigInput,unsigned char)), rig, SLOT(setModInputLevel(rigInput,unsigned char)));
+    connect(this, SIGNAL(setModLevel(rigInput, unsigned char)), rig, SLOT(setModInputLevel(rigInput, unsigned char)));
 
     // Levels: handle return on query:
     connect(rig, SIGNAL(haveRfGain(unsigned char)), this, SLOT(receiveRfGain(unsigned char)));
@@ -403,6 +404,20 @@ void wfmain::makeRig()
             connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
             connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
             connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
+            connect(rigCtl, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
+            connect(rigCtl, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
+
+            // Levels: Set:
+            connect(rigCtl, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
+            connect(rigCtl, SIGNAL(setTxPower(unsigned char)), rig, SLOT(setTxPower(unsigned char)));
+            connect(rigCtl, SIGNAL(setMicGain(unsigned char)), rig, SLOT(setMicGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setMonitorLevel(unsigned char)), rig, SLOT(setMonitorLevel(unsigned char)));
+            connect(rigCtl, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
+
         }
     }
 }
@@ -5267,6 +5282,20 @@ void wfmain::on_enableRigctldChk_clicked(bool checked)
             connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
             connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
             connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
+            connect(rigCtl, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
+            connect(rigCtl, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
+
+            // Levels: Set:
+            connect(rigCtl, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
+            connect(rigCtl, SIGNAL(setTxPower(unsigned char)), rig, SLOT(setTxPower(unsigned char)));
+            connect(rigCtl, SIGNAL(setMicGain(unsigned char)), rig, SLOT(setMicGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setMonitorLevel(unsigned char)), rig, SLOT(setMonitorLevel(unsigned char)));
+            connect(rigCtl, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
+
             emit sendRigCaps(rigCaps);
             emit requestRigState();
         }

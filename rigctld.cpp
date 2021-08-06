@@ -456,12 +456,12 @@ void rigCtlClient::socketReadyRead()
         else if (command[0] == "l" || command[0] == "get_level")
         {
             QString resp;
-            int value = 0;
+            float value = 0;
             if (longReply && command.length() > 1) {
                 resp.append(QString("%1: ").arg(command[1]));
             }
             if (command[1] == "STRENGTH") {
-                value = rigState->sMeter;
+                value = (float)rigState->sMeter;
                 if (value > 240)
                     value = value - 176;
                 else if (value > 120)
@@ -477,15 +477,96 @@ void rigCtlClient::socketReadyRead()
                 else if (value > 0)
                     value = value - 54;
             }
+            else if (command[1] == "AF") {
+                value = (float)rigState->afGain / 255;
+            }
+            else if (command[1] == "RF") {
+                value = (float)rigState->rfGain / 255;
+            }
+            else if (command[1] == "SQL") {
+                value = (float)rigState->squelch / 255;
+            }
+            else if (command[1] == "COMP") {
+                value = (float)rigState->compLevel / 255;
+            }
+            else if (command[1] == "MICGAIN") {
+                value = (float)rigState->micGain / 255;
+                emit parent->setMicGain(value);
+            }
+            else if (command[1] == "MON") {
+                value = (float)rigState->monitorLevel / 255;
+            }
+            else if (command[1] == "VOXGAIN") {
+                value = (float)rigState->voxGain / 255;
+            }
+            else if (command[1] == "ANTIVOX") {
+                value = (float)rigState->antiVoxGain / 255;
+            }
+            else if (command[1] == "RFPOWER") {
+                value = (float)rigState->txPower / 255;
+            }
 
             resp.append(QString("%1").arg(value));
             response.append(resp);
         }
-        else if (command[0] == "L" || command[0] == "set_level")
+        else if (command[0] == "L" || command[0] == "set_level" && command.length() > 2)
         {
+            int value;
             setCommand = true;
+            if (command[1] == "AF") {
+                value = command[2].toFloat() * 255;
+                emit parent->setAfGain(value);
+            }
+            else if (command[1] == "RF") {
+                value = command[2].toFloat() * 255;
+                emit parent->setRfGain(value);
+            }
+            else if (command[1] == "SQL") {
+                value = command[2].toFloat() * 255;
+                emit parent->setSql(value);
+            }
+            else if (command[1] == "COMP") {
+                value = command[2].toFloat() * 255;
+                emit parent->setCompLevel(value);
+            }
+            else if (command[1] == "MICGAIN") {
+                value = command[2].toFloat() * 255;
+                emit parent->setMicGain(value);
+            }
+            else if (command[1] == "MON") {
+                value = command[2].toFloat() * 255;
+                emit parent->setMonitorLevel(value);
+            }
+            else if (command[1] == "VOXGAIN") {
+                value = command[2].toFloat() * 255;
+                emit parent->setVoxGain(value);
+            }
+            else if (command[1] == "ANTIVOX") {
+                value = command[2].toFloat() * 255;
+                emit parent->setAntiVoxGain(value);
+            }
+            else if (command[1] == "RFPOWER") {
+                value = command[2].toFloat() * 255;
+                emit parent->setTxPower(value);
+            }
+
+            qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2] << value;
+
         }
         else if (command[0] == "u" || command[0] == "get_func")
+        {
+        QString resp;
+        if (longReply && command.length() > 1) {
+            resp.append(QString("%1: ").arg(command[1]));
+        }
+        resp.append(QString("%1").arg(0));
+        response.append(resp);
+            }
+        else if (command[0] == "R" || command[0] == "set_func")
+        {
+        setCommand = true;
+        }
+        else if (command[0] == 0x88 || command[0] == "get_powerstat")
         {
             QString resp;
             if (longReply && command.length() > 1) {
@@ -493,10 +574,17 @@ void rigCtlClient::socketReadyRead()
             }
             resp.append(QString("%1").arg(0));
             response.append(resp);
-            }
-        else if (command[0] == "R" || command[0] == "set_func")
+        }
+        else if (command.length() > 1 && command[0] == 0x87 || command[0] == "set_powerstat")
         {
-           setCommand = true;
+            setCommand = true;
+            if (command[1] == "0")
+            {
+                emit parent->sendPowerOff();
+            }
+            else {
+                emit parent->sendPowerOn();
+            }
         }
         else {
             qInfo(logRigCtlD()) << "Unimplemented command" << commandBuffer;
@@ -802,9 +890,17 @@ QString rigCtlClient::generateFreqRange(bandType band)
     {
         for (int i = 0; mode_str[i].str[0] != '\0'; i++)
         {
-            if (!strcmp(mode.name.toLocal8Bit(), mode_str[i].str))
+            QString curMode = mode.name;
+            if (!strcmp(curMode.toLocal8Bit(), mode_str[i].str))
             {
                 modes |= mode_str[i].mode;
+            }
+            if (rigCaps.hasDataModes) {
+                curMode = "PKT" + mode.name;
+                if (!strcmp(curMode.toLocal8Bit(), mode_str[i].str))
+                {
+                    modes |= mode_str[i].mode;
+                }
             }
         }
     }
