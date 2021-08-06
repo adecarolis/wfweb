@@ -568,12 +568,14 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command[0] == 0x88 || command[0] == "get_powerstat")
         {
+            /*
             QString resp;
             if (longReply && command.length() > 1) {
-                resp.append(QString("%1: ").arg(command[1]));
+                resp.append(QString("Power Status: "));
             }
-            resp.append(QString("%1").arg(1)); // Always reply with ON
+            resp.append(QString("%1").arg(0)); // Always reply with ON
             response.append(resp);
+            */
         }
         else if (command.length() > 1 && command[0] == 0x87 || command[0] == "set_powerstat")
         {
