@@ -788,6 +788,14 @@ QString rigCtlClient::generateFreqRange(bandType band)
         lowFreq = 108000000;
         highFreq = 137000000;
         break;
+    case bandWFM:
+        lowFreq = 88000000;
+        highFreq = 108000000;
+        break;
+    case bandGen:
+        lowFreq = 10000;
+        highFreq = 30000000;
+        break;
     }
     quint64 modes=0;
     for (mode_info mode : rigCaps.modes)
