@@ -63,11 +63,13 @@ struct rigStateStruct {
     freqt vfoAFreq;
     freqt vfoBFreq;
     unsigned char currentVfo;
-    unsigned char ptt;
+    bool ptt;
     unsigned char mode;
     unsigned char filter;
-    unsigned char splitEnabled;
+    duplexMode duplex;
     bool datamode;
+    unsigned char antenna;
+    bool rxAntenna;
     // Tones
     quint16 ctcss;
     quint16 tsql;

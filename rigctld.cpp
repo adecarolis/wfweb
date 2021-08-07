@@ -205,6 +205,14 @@ void rigCtlClient::socketReadyRead()
             }
             response.append(attens);
             
+            response.append("0xffffffffffffffff");
+            response.append("0xffffffffffffffff");
+            response.append("0xfffffffff7ffffff");
+            response.append("0xfffffff083ffffff");
+            response.append("0xffffffffffffffff");
+            response.append("0xffffffffffffffbf");
+                
+    /*
             response.append("0x3effffff");
             response.append("0x3effffff");
             response.append("0x7fffffff");
@@ -212,7 +220,7 @@ void rigCtlClient::socketReadyRead()
             response.append("0x7fffffff");
             response.append("0x7fffffff");
             response.append("done");
-
+    */
         }
 
         else if (command[0] == "f" || command[0] == "get_freq")
@@ -339,10 +347,10 @@ void rigCtlClient::socketReadyRead()
         else if (command[0] == "s" || command[0] == "get_split_vfo")
         {
             if (longReply) {
-                response.append(QString("Split: %1").arg(rigState->splitEnabled));
+                response.append(QString("Split: %1").arg(rigState->duplex));
             }
             else {
-                response.append(QString("%1").arg(rigState->splitEnabled));
+                response.append(QString("%1").arg(rigState->duplex));
             }
 
             QString resp;
@@ -364,10 +372,12 @@ void rigCtlClient::socketReadyRead()
             setCommand = true;
             if (command[1] == "1")
             {
-                emit parent->setSplit(1);
+                emit parent->setDuplexMode(dmSplitOn);
+                rigState->duplex = dmSplitOn;
             }
             else {
-                emit parent->setSplit(0);
+                emit parent->setDuplexMode(dmSplitOff);
+                rigState->duplex = dmSplitOff;
             }
         }
         else if (command[0] == "\xf3" || command[0] == "get_vfo_info")
@@ -383,7 +393,7 @@ void rigCtlClient::socketReadyRead()
                 }
                 response.append(QString("Mode: %1").arg(getMode(rigState->mode, rigState->datamode)));
                 response.append(QString("Width: %1").arg(getFilter(rigState->mode, rigState->filter)));
-                response.append(QString("Split: %1").arg(rigState->splitEnabled));
+                response.append(QString("Split: %1").arg(rigState->duplex));
                 response.append(QString("SatMode: %1").arg(0)); // Need to get satmode 
             }
             else {
@@ -483,18 +493,42 @@ void rigCtlClient::socketReadyRead()
         {
             setCommand = true;
         }
+        else if (command[0] == "y" || command[0] == "get_ant")
+        {
+            qInfo(logRigCtlD()) << "get_ant:";
+
+            if (command.length() > 1) {
+                if (longReply) {
+                    response.append(QString("AntCurr: %1").arg(getAntName((unsigned char)command[1].toInt())));
+                    response.append(QString("Option: %1").arg(0));
+                    response.append(QString("AntTx: %1").arg(getAntName(rigState->antenna)));
+                    response.append(QString("AntRx: %1").arg(getAntName(rigState->antenna)));
+                }
+                else {
+                    response.append(QString("%1").arg(getAntName((unsigned char)command[1].toInt())));
+                    response.append(QString("%1").arg(0));
+                    response.append(QString("%1").arg(getAntName(rigState->antenna)));
+                    response.append(QString("%1").arg(getAntName(rigState->antenna)));
+                }
+            }
+        }
+        else if (command[0] == "Y" || command[0] == "set_ant")
+        {
+        qInfo(logRigCtlD()) << "set_ant:";
+        setCommand = true;
+        }
         else if (command[0] == "z" || command[0] == "get_xit")
         {
-            QString resp;
-            if (longReply) {
-                resp.append("XIT: ");
-            }
-            resp.append(QString("%1").arg(0));
-            response.append(resp);
+        QString resp;
+        if (longReply) {
+            resp.append("XIT: ");
+        }
+        resp.append(QString("%1").arg(0));
+        response.append(resp);
         }
         else if (command[0] == "Z" || command[0] == "set_xit")
         {
-            setCommand = true;
+        setCommand = true;
         }
         else if (command.length() > 1 && (command[0] == "l" || command[0] == "get_level"))
         {
@@ -956,11 +990,20 @@ QString rigCtlClient::generateFreqRange(bandType band)
     QString ret = "";
 
     if (lowFreq > 0 && highFreq > 0) {
-        ret = QString("%1 %2 0x%3 %4 %5 0x%6 0x%7").arg(lowFreq).arg(highFreq).arg(getRadioModes(),0,16).arg(-1).arg(-1).arg(0x16000003,0,16).arg(0xf,0,16);
+        ret = QString("%1 %2 0x%3 %4 %5 0x%6 0x%7").arg(lowFreq).arg(highFreq).arg(getRadioModes(),0,16).arg(-1).arg(-1).arg(0x16000003,0,16).arg(getAntennas(),0,16);
     }
     return ret;
 }
 
+unsigned char rigCtlClient::getAntennas()
+{
+    unsigned char ant=0;
+    for (unsigned char i : rigCaps.antennas)
+    {
+        ant |= 1<<i;
+    }
+    return ant;
+}
 
 quint64 rigCtlClient::getRadioModes() 
 {
@@ -984,4 +1027,21 @@ quint64 rigCtlClient::getRadioModes()
         }
     }
     return modes;
+}
+
+QString rigCtlClient::getAntName(unsigned char ant)
+{
+    QString ret;
+    switch (ant)
+    {
+        case 0: ret = "ANT1"; break;
+        case 1: ret = "ANT2"; break;
+        case 2: ret = "ANT3"; break;
+        case 3: ret = "ANT4"; break;
+        case 4: ret = "ANT5"; break;
+        case 30: ret = "ANT_UNKNOWN"; break;
+        case 31: ret = "ANT_CURR"; break;
+        default: ret = "ANT_UNK"; break;
+    }
+    return ret;
 }

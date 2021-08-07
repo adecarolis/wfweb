@@ -26,7 +26,7 @@ rigCommander::rigCommander()
     rigState.mode = 0;
     rigState.ptt = 0;
     rigState.currentVfo = 0;
-    rigState.splitEnabled = 0;
+    rigState.duplex = dmSplitOff;
 }
 
 rigCommander::~rigCommander()
@@ -1220,6 +1220,7 @@ void rigCommander::parseCommand()
             break;
         case '\x0F':
             emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
+            rigState.duplex = (duplexMode)(unsigned char)payloadIn[1];
             break;
         case '\x11':
             emit haveAttenuator((unsigned char)payloadIn.at(1));
@@ -1227,6 +1228,8 @@ void rigCommander::parseCommand()
             break;
         case '\x12':
             emit haveAntenna((unsigned char)payloadIn.at(1), (bool)payloadIn.at(2));
+            rigState.antenna = (unsigned char)payloadIn.at(1);
+            rigState.rxAntenna = (bool)payloadIn.at(2);
             break;
         case '\x14':
             // read levels
@@ -2291,7 +2294,7 @@ void rigCommander::parsePTT()
         // PTT on
         emit havePTTStatus(true);
     }
-    rigState.ptt = (unsigned char)payloadIn[2];
+    rigState.ptt = (bool)payloadIn[2];
 
 }
 

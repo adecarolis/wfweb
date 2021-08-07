@@ -409,6 +409,7 @@ void wfmain::makeRig()
 
             connect(rigCtl, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
             connect(rigCtl, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
+            connect(rigCtl, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
 
             // Levels: Set:
             connect(rigCtl, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
@@ -5290,6 +5291,7 @@ void wfmain::on_enableRigctldChk_clicked(bool checked)
 
             connect(rigCtl, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
             connect(rigCtl, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
+            connect(rigCtl, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
 
             // Levels: Set:
             connect(rigCtl, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
