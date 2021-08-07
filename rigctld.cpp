@@ -483,16 +483,16 @@ void rigCtlClient::socketReadyRead()
         {
             setCommand = true;
         }
-        else if (command[0] == "z" || command[0] == "get_zit")
+        else if (command[0] == "z" || command[0] == "get_xit")
         {
             QString resp;
             if (longReply) {
-                resp.append("ZIT: ");
+                resp.append("XIT: ");
             }
             resp.append(QString("%1").arg(0));
             response.append(resp);
         }
-        else if (command[0] == "Z" || command[0] == "set_zit")
+        else if (command[0] == "Z" || command[0] == "set_xit")
         {
             setCommand = true;
         }
