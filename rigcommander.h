@@ -75,6 +75,7 @@ struct rigStateStruct {
     quint16 csql;
     // Levels
     unsigned char preamp;
+    unsigned char attenuator;
     unsigned char modInput;
     unsigned char afGain;
     unsigned char rfGain;

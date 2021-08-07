@@ -126,6 +126,27 @@ signals:
     void setVFO(unsigned char vfo);
     void setSplit(unsigned char split);
 
+    // Power
+    void sendPowerOn();
+    void sendPowerOff();
+
+    // Att/preamp
+    void setAttenuator(unsigned char att);
+    void setPreamp(unsigned char pre);
+
+    //Level set
+    void setRfGain(unsigned char level);
+    void setAfGain(unsigned char level);
+    void setSql(unsigned char level);
+    void setMicGain(unsigned char);
+    void setCompLevel(unsigned char);
+    void setTxPower(unsigned char);
+    void setMonitorLevel(unsigned char);
+    void setVoxGain(unsigned char);
+    void setAntiVoxGain(unsigned char);
+    void setSpectrumRefLevel(int);
+
+
 public slots:
     virtual void incomingConnection(qintptr socketDescriptor);
     void receiveRigCaps(rigCapabilities caps);
@@ -166,6 +187,7 @@ private:
     unsigned char getMode(QString modeString);
     QString getFilter(unsigned char mode, unsigned char filter);
     QString generateFreqRange(bandType band);
+    quint64 getRadioModes();
 };
 
 
