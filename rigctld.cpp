@@ -287,7 +287,7 @@ void rigCtlClient::socketReadyRead()
                 responseCode = -1;
             }
         }
-        else if (command.length() > 1 & (command[0] == "T" || command[0] == "set_ptt"))
+        else if (command.length() > 1 && (command[0] == "T" || command[0] == "set_ptt"))
         {
             setCommand = true;
             if (rigCaps.hasPTTCommand) {
