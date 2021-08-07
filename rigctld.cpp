@@ -550,11 +550,9 @@ void rigCtlClient::socketReadyRead()
             }
             else if (command[1] == "PREAMP") {
                 value = (float)rigState->preamp * 10;
-                qInfo(logRigCtlD()) << "PREAMP:" << command[1] << rigState->preamp << value;
             }
             else if (command[1] == "ATT") {
                 value = (float)rigState->attenuator;
-                qInfo(logRigCtlD()) << "ATT:" << command[1] << rigState->attenuator << value;
             }
 
 
