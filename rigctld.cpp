@@ -204,23 +204,24 @@ void rigCtlClient::socketReadyRead()
                 attens = "0";
             }
             response.append(attens);
-            
+
+
             response.append("0xffffffffffffffff");
             response.append("0xffffffffffffffff");
             response.append("0xfffffffff7ffffff");
             response.append("0xfffffff083ffffff");
             response.append("0xffffffffffffffff");
             response.append("0xffffffffffffffbf");
-                
-    /*
+
+            /*
             response.append("0x3effffff");
             response.append("0x3effffff");
             response.append("0x7fffffff");
             response.append("0x7fffffff");
             response.append("0x7fffffff");
             response.append("0x7fffffff");
+            */
             response.append("done");
-    */
         }
 
         else if (command[0] == "f" || command[0] == "get_freq")
