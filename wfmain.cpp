@@ -407,6 +407,9 @@ void wfmain::makeRig()
             connect(rigCtl, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
             connect(rigCtl, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
 
+            connect(rigCtl, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
+            connect(rigCtl, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
+
             // Levels: Set:
             connect(rigCtl, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
             connect(rigCtl, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
@@ -5284,6 +5287,9 @@ void wfmain::on_enableRigctldChk_clicked(bool checked)
             connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
             connect(rigCtl, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
             connect(rigCtl, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
+
+            connect(rigCtl, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
+            connect(rigCtl, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
 
             // Levels: Set:
             connect(rigCtl, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));

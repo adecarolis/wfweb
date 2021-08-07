@@ -173,8 +173,38 @@ void rigCtlClient::socketReadyRead()
             response.append("9900");
             response.append("10000");
             response.append("0");
-            response.append("10");
-            response.append("10 20 30");
+            QString preamps="";
+            if (rigCaps.hasPreamp) {
+                for (unsigned char pre : rigCaps.preamps)
+                {
+                    if (pre == 0)
+                        continue;
+                    preamps.append(QString("%1 ").arg(pre*10));
+                }
+                if (preamps.endsWith(" "))
+                    preamps.chop(1);
+            }
+            else {
+                preamps = "0";
+            }
+            response.append(preamps);
+
+            QString attens = "";
+            if (rigCaps.hasAttenuator) {
+                for (unsigned char att : rigCaps.attenuators)
+                {
+                    if (att == 0)
+                        continue;
+                    attens.append(QString("%1 ").arg(att,0,16));
+                }
+                if (attens.endsWith(" "))
+                    attens.chop(1);
+            }
+            else {
+                attens = "0";
+            }
+            response.append(attens);
+            
             response.append("0x3effffff");
             response.append("0x3effffff");
             response.append("0x7fffffff");
@@ -369,12 +399,17 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command[0] == "i" || command[0] == "get_split_freq")
         {
+            QString resp;
+            if (longReply) {
+                resp.append("TX VFO: ");
+            }
             if (rigState->currentVfo == 0) {
-                response.append(QString("%1").arg(rigState->vfoBFreq.Hz));
+                resp.append(QString("%1").arg(rigState->vfoBFreq.Hz));
             }
             else {
-                response.append(QString("%1").arg(rigState->vfoAFreq.Hz));
+                resp.append(QString("%1").arg(rigState->vfoAFreq.Hz));
             }
+            response.append(resp);
         }
         else if (command[0] == "I" || command[0] == "set_split_freq")
         {
@@ -424,18 +459,26 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command[0] == "s" || command[0] == "get_split_vfo")
         {
-            response.append(QString("0"));
-            response.append(QString("VFOA"));
+            if (longReply) {
+                response.append(QString("Split: 0"));
+                response.append(QString("TX VFO: VFOA"));
+            } 
+            else
+            {
+                response.append("0");
+                response.append("VFOA");
+            }
+
         }
         else if (command[0] == "j" || command[0] == "get_rit")
         {
-        QString resp;
-        if (longReply) {
-            resp.append("RIT: ");
-        }
-        resp.append(QString("%1").arg(0));
-        response.append(resp);
-        }
+            QString resp;
+            if (longReply) {
+                resp.append("RIT: ");
+            }
+            resp.append(QString("%1").arg(0));
+            response.append(resp);
+            }
         else if (command[0] == "J" || command[0] == "set_rit")
         {
             setCommand = true;
@@ -458,7 +501,7 @@ void rigCtlClient::socketReadyRead()
             QString resp;
             float value = 0;
             if (longReply && command.length() > 1) {
-                resp.append(QString("%1: ").arg(command[1]));
+                resp.append("Level Value: ");
             }
             if (command[1] == "STRENGTH") {
                 value = (float)rigState->sMeter;
@@ -505,6 +548,15 @@ void rigCtlClient::socketReadyRead()
             else if (command[1] == "RFPOWER") {
                 value = (float)rigState->txPower / 255;
             }
+            else if (command[1] == "PREAMP") {
+                value = (float)rigState->preamp * 10;
+                qInfo(logRigCtlD()) << "PREAMP:" << command[1] << rigState->preamp << value;
+            }
+            else if (command[1] == "ATT") {
+                value = (float)rigState->attenuator;
+                qInfo(logRigCtlD()) << "ATT:" << command[1] << rigState->attenuator << value;
+            }
+
 
             resp.append(QString("%1").arg(value));
             response.append(resp);
@@ -516,66 +568,82 @@ void rigCtlClient::socketReadyRead()
             if (command[1] == "AF") {
                 value = command[2].toFloat() * 255;
                 emit parent->setAfGain(value);
+                rigState->afGain = (unsigned char)value;
             }
             else if (command[1] == "RF") {
                 value = command[2].toFloat() * 255;
                 emit parent->setRfGain(value);
+                rigState->rfGain = (unsigned char)value;
             }
             else if (command[1] == "SQL") {
                 value = command[2].toFloat() * 255;
                 emit parent->setSql(value);
+                rigState->squelch = (unsigned char)value;
             }
             else if (command[1] == "COMP") {
                 value = command[2].toFloat() * 255;
                 emit parent->setCompLevel(value);
+                rigState->compLevel = (unsigned char)value;
             }
             else if (command[1] == "MICGAIN") {
                 value = command[2].toFloat() * 255;
                 emit parent->setMicGain(value);
+                rigState->micGain = (unsigned char)value;
             }
             else if (command[1] == "MON") {
                 value = command[2].toFloat() * 255;
                 emit parent->setMonitorLevel(value);
+                rigState->monitorLevel = (unsigned char)value;
             }
             else if (command[1] == "VOXGAIN") {
                 value = command[2].toFloat() * 255;
                 emit parent->setVoxGain(value);
+                rigState->voxGain = (unsigned char)value;
             }
             else if (command[1] == "ANTIVOX") {
                 value = command[2].toFloat() * 255;
                 emit parent->setAntiVoxGain(value);
+                rigState->antiVoxGain = (unsigned char)value;
             }
-            else if (command[1] == "RFPOWER") {
-                value = command[2].toFloat() * 255;
-                emit parent->setTxPower(value);
+            else if (command[1] == "ATT") {
+                value = command[2].toFloat();
+                emit parent->setAttenuator((unsigned char)value);
+                rigState->attenuator = (unsigned char)value;
             }
-
+            else if (command[1] == "PREAMP") {
+                value = command[2].toFloat()/10;
+                emit parent->setPreamp((unsigned char)value);
+                rigState->preamp = (unsigned char)value;
+            }
+            
             qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2] << value;
 
         }
         else if (command[0] == "u" || command[0] == "get_func")
         {
-        QString resp;
-        if (longReply && command.length() > 1) {
-            resp.append(QString("%1: ").arg(command[1]));
-        }
-        resp.append(QString("%1").arg(0));
-        response.append(resp);
+            QString resp="";
+            if (longReply ) {
+                resp.append(QString("Func Status: "));
             }
+            resp.append("0");
+            response.append(resp);
+        }
         else if (command[0] == "R" || command[0] == "set_func")
         {
         setCommand = true;
+        if (command.length()>2)
+            qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2];
         }
         else if (command[0] == 0x88 || command[0] == "get_powerstat")
         {
-            /*
+            
             QString resp;
             if (longReply && command.length() > 1) {
                 resp.append(QString("Power Status: "));
             }
-            resp.append(QString("%1").arg(0)); // Always reply with ON
+            resp.append(QString("%1").arg(1)); // Always reply with ON
             response.append(resp);
-            */
+            
         }
         else if (command.length() > 1 && command[0] == 0x87 || command[0] == "set_powerstat")
         {
@@ -887,7 +955,18 @@ QString rigCtlClient::generateFreqRange(bandType band)
         highFreq = 30000000;
         break;
     }
-    quint64 modes=0;
+    QString ret = "";
+
+    if (lowFreq > 0 && highFreq > 0) {
+        ret = QString("%1 %2 0x%3 %4 %5 0x%6 0x%7").arg(lowFreq).arg(highFreq).arg(getRadioModes(),0,16).arg(-1).arg(-1).arg(0x16000003,0,16).arg(0xf,0,16);
+    }
+    return ret;
+}
+
+
+quint64 rigCtlClient::getRadioModes() 
+{
+    quint64 modes = 0;
     for (mode_info mode : rigCaps.modes)
     {
         for (int i = 0; mode_str[i].str[0] != '\0'; i++)
@@ -906,10 +985,5 @@ QString rigCtlClient::generateFreqRange(bandType band)
             }
         }
     }
-    QString ret = "";
-        
-    if (lowFreq > 0 && highFreq > 0) {
-        ret = QString("%1 %2 0x%3 %4 %5 0x%6 0x%7").arg(lowFreq).arg(highFreq).arg(modes,0,16).arg(-1).arg(-1).arg(0x16000003,0,16).arg(0xf,0,16);
-    }
-    return ret;
+    return modes;
 }

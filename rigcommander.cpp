@@ -1223,6 +1223,7 @@ void rigCommander::parseCommand()
             break;
         case '\x11':
             emit haveAttenuator((unsigned char)payloadIn.at(1));
+            rigState.attenuator = (unsigned char)payloadIn.at(1);
             break;
         case '\x12':
             emit haveAntenna((unsigned char)payloadIn.at(1), (bool)payloadIn.at(2));
