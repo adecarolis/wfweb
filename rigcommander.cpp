@@ -26,7 +26,7 @@ rigCommander::rigCommander()
     rigState.mode = 0;
     rigState.ptt = 0;
     rigState.currentVfo = 0;
-    rigState.splitEnabled = 0;
+    rigState.duplex = dmSplitOff;
 }
 
 rigCommander::~rigCommander()
@@ -1220,6 +1220,7 @@ void rigCommander::parseCommand()
             break;
         case '\x0F':
             emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
+            rigState.duplex = (duplexMode)(unsigned char)payloadIn[1];
             break;
         case '\x11':
             emit haveAttenuator((unsigned char)payloadIn.at(1));
@@ -1227,6 +1228,8 @@ void rigCommander::parseCommand()
             break;
         case '\x12':
             emit haveAntenna((unsigned char)payloadIn.at(1), (bool)payloadIn.at(2));
+            rigState.antenna = (unsigned char)payloadIn.at(1);
+            rigState.rxAntenna = (bool)payloadIn.at(2);
             break;
         case '\x14':
             // read levels
@@ -2291,7 +2294,7 @@ void rigCommander::parsePTT()
         // PTT on
         emit havePTTStatus(true);
     }
-    rigState.ptt = (unsigned char)payloadIn[2];
+    rigState.ptt = (bool)payloadIn[2];
 
 }
 
@@ -2855,6 +2858,7 @@ void rigCommander::determineRigCaps()
     switch(model){
         case model7300:
             rigCaps.modelName = QString("IC-7300");
+            rigCaps.rigctlModel = 3073;
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 11;
             rigCaps.spectAmpMax = 160;
@@ -2878,6 +2882,7 @@ void rigCommander::determineRigCaps()
             break;
         case modelR8600:
             rigCaps.modelName = QString("IC-R8600");
+            rigCaps.rigctlModel = 3079;
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 11;
             rigCaps.spectAmpMax = 160;
@@ -2912,6 +2917,7 @@ void rigCommander::determineRigCaps()
             break;
         case model9700:
             rigCaps.modelName = QString("IC-9700");
+            rigCaps.rigctlModel = 3081;
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 11;
             rigCaps.spectAmpMax = 160;
@@ -2939,6 +2945,7 @@ void rigCommander::determineRigCaps()
             break;
         case model910h:
             rigCaps.modelName = QString("IC-910H");
+            rigCaps.rigctlModel = 3044;
             rigCaps.hasSpectrum = false;
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
@@ -2960,6 +2967,7 @@ void rigCommander::determineRigCaps()
             break;
         case model7600:
             rigCaps.modelName = QString("IC-7600");
+            rigCaps.rigctlModel = 3063;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.append(inputACC);
             rigCaps.inputs.append(inputUSB);
@@ -2983,6 +2991,7 @@ void rigCommander::determineRigCaps()
             break;
         case model7610:
             rigCaps.modelName = QString("IC-7610");
+            rigCaps.rigctlModel = 3078;
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 15;
             rigCaps.spectAmpMax = 200;
@@ -3013,6 +3022,7 @@ void rigCommander::determineRigCaps()
             break;
         case model7850:
             rigCaps.modelName = QString("IC-785x");
+            rigCaps.rigctlModel = 3075;
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 15;
             rigCaps.spectAmpMax = 136;
@@ -3044,6 +3054,7 @@ void rigCommander::determineRigCaps()
             break;
         case model705:
             rigCaps.modelName = QString("IC-705");
+            rigCaps.rigctlModel = 3085;
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 11;
             rigCaps.spectAmpMax = 160;
@@ -3079,6 +3090,7 @@ void rigCommander::determineRigCaps()
             break;
         case model7000:
             rigCaps.modelName = QString("IC-7000");
+            rigCaps.rigctlModel = 3060;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.append(inputACC);
             rigCaps.hasLan = false;
@@ -3100,6 +3112,7 @@ void rigCommander::determineRigCaps()
             break;
         case model7410:
             rigCaps.modelName = QString("IC-7410");
+            rigCaps.rigctlModel = 3067;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.append(inputACC);
             rigCaps.hasLan = false;
@@ -3120,6 +3133,7 @@ void rigCommander::determineRigCaps()
             break;
         case model7100:
             rigCaps.modelName = QString("IC-7100");
+            rigCaps.rigctlModel = 3070;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.append(inputUSB);
             rigCaps.inputs.append(inputACC);
@@ -3146,6 +3160,7 @@ void rigCommander::determineRigCaps()
             break;
         case model7200:
             rigCaps.modelName = QString("IC-7200");
+            rigCaps.rigctlModel = 3061;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.append(inputUSB);
             rigCaps.inputs.append(inputACC);
@@ -3165,6 +3180,7 @@ void rigCommander::determineRigCaps()
             break;    
         case model7700:
             rigCaps.modelName = QString("IC-7700");
+            rigCaps.rigctlModel = 3062;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.append(inputLAN);
             //rigCaps.inputs.append(inputSPDIF);
@@ -3190,6 +3206,7 @@ void rigCommander::determineRigCaps()
             break;
         case model706:
             rigCaps.modelName = QString("IC-706");
+            rigCaps.rigctlModel = 3009;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.clear();
             rigCaps.hasLan = false;
@@ -3208,6 +3225,7 @@ void rigCommander::determineRigCaps()
             break;
         case model718:
             rigCaps.modelName = QString("IC-718");
+            rigCaps.rigctlModel = 3013;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.clear();
             rigCaps.hasLan = false;
@@ -3230,6 +3248,7 @@ void rigCommander::determineRigCaps()
             break;
         case model756pro:
             rigCaps.modelName = QString("IC-756 Pro");
+            rigCaps.rigctlModel = 3027;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.clear();
             rigCaps.hasLan = false;
@@ -3248,6 +3267,7 @@ void rigCommander::determineRigCaps()
             break;
         case model756proii:
             rigCaps.modelName = QString("IC-756 Pro II");
+            rigCaps.rigctlModel = 3027;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.clear();
             rigCaps.hasLan = false;
@@ -3266,6 +3286,7 @@ void rigCommander::determineRigCaps()
             break;
         case model756proiii:
             rigCaps.modelName = QString("IC-756 Pro III");
+            rigCaps.rigctlModel = 3027;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.clear();
             rigCaps.hasLan = false;

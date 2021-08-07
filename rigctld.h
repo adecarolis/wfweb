@@ -125,6 +125,7 @@ signals:
     void setDataMode(bool dataOn, unsigned char modeFilter);
     void setVFO(unsigned char vfo);
     void setSplit(unsigned char split);
+    void setDuplexMode(duplexMode dm);
 
     // Power
     void sendPowerOn();
@@ -187,7 +188,9 @@ private:
     unsigned char getMode(QString modeString);
     QString getFilter(unsigned char mode, unsigned char filter);
     QString generateFreqRange(bandType band);
+    unsigned char getAntennas();
     quint64 getRadioModes();
+    QString getAntName(unsigned char ant);
 };
 
 
