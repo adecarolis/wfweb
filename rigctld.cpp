@@ -287,11 +287,11 @@ void rigCtlClient::socketReadyRead()
                 responseCode = -1;
             }
         }
-        else if (command[0] == "T" || command[0] == "set_ptt")
+        else if (command.length() > 1 & (command[0] == "T" || command[0] == "set_ptt"))
         {
             setCommand = true;
             if (rigCaps.hasPTTCommand) {
-                if (command.length() > 1 && command[1] == "0") {
+                if (command[1] == "0") {
                     emit parent->setPTT(false);
                 }
                 else {
@@ -318,10 +318,10 @@ void rigCtlClient::socketReadyRead()
             }
             response.append(resp);
         }
-        else if (command[0] == "V" || command[0] == "set_vfo")
+        else if (command.length() > 1 && (command[0] == "V" || command[0] == "set_vfo"))
         {
             setCommand = true;
-            if (command.length() > 1 && command[1] == "?") {
+            if (command[1] == "?") {
                 response.append("set_vfo: ?");
                 response.append("VFOA");
                 response.append("VFOB");
@@ -329,7 +329,7 @@ void rigCtlClient::socketReadyRead()
                 response.append("Main");
                 response.append("MEM");
             }
-            else if (command.length() > 1 && (command[1] == "VFOB" || command[1] == "Sub")) {
+            else if (command[1] == "VFOB" || command[1] == "Sub") {
                 emit parent->setVFO(1);
             }
             else {
@@ -359,10 +359,10 @@ void rigCtlClient::socketReadyRead()
             }
             response.append(resp);
         }
-        else if (command[0] == "S" || command[0] == "set_split_vfo")
+        else if (command.length() > 1 && (command[0] == "S" || command[0] == "set_split_vfo"))
         {
             setCommand = true;
-            if (command.length() > 1 && command[1] == "1")
+            if (command[1] == "1")
             {
                 emit parent->setSplit(1);
             }
@@ -496,11 +496,11 @@ void rigCtlClient::socketReadyRead()
         {
             setCommand = true;
         }
-        else if (command[0] == "l" || command[0] == "get_level")
+        else if (command.length() > 1 && (command[0] == "l" || command[0] == "get_level"))
         {
             QString resp;
             float value = 0;
-            if (longReply && command.length() > 1) {
+            if (longReply) {
                 resp.append("Level Value: ");
             }
             if (command[1] == "STRENGTH") {
@@ -559,7 +559,7 @@ void rigCtlClient::socketReadyRead()
             resp.append(QString("%1").arg(value));
             response.append(resp);
         }
-        else if (command[0] == "L" || command[0] == "set_level" && command.length() > 2)
+        else if (command.length() > 2 && (command[0] == "L" || command[0] == "set_level"))
         {
             int value;
             setCommand = true;
@@ -632,7 +632,7 @@ void rigCtlClient::socketReadyRead()
         if (command.length()>2)
             qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2];
         }
-        else if (command[0] == 0x88 || command[0] == "get_powerstat")
+        else if (command.length() > 1 && (command[0] == 0x88 || command[0] == "get_powerstat"))
         {
             
             QString resp;
@@ -643,7 +643,7 @@ void rigCtlClient::socketReadyRead()
             response.append(resp);
             
         }
-        else if (command.length() > 1 && command[0] == 0x87 || command[0] == "set_powerstat")
+        else if (command.length() > 1 && (command[0] == 0x87 || command[0] == "set_powerstat"))
         {
             setCommand = true;
             if (command[1] == "0")
