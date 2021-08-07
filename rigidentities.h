@@ -90,10 +90,9 @@ model_kind determineRadioModel(unsigned char rigID);
 
 struct rigCapabilities {
     model_kind model;
-
     quint8 civ;
     quint8 modelID;
-
+    int rigctlModel;
     QString modelName;
 
     bool hasLan; // OEM ethernet or wifi connection

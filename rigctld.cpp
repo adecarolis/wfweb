@@ -144,7 +144,7 @@ void rigCtlClient::socketReadyRead()
         {
             // Currently send "fake" state information until I can work out what is required!
             response.append("1");
-            response.append("1");
+            response.append(QString("%1").arg(rigCaps.rigctlModel));
             response.append("0");
             for (bandType band : rigCaps.bands)
             {
