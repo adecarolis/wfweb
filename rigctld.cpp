@@ -546,7 +546,7 @@ void rigCtlClient::socketReadyRead()
                     value = getCalibratedValue(rigState->sMeter, IC7850_STR_CAL);
                 else
                     value = getCalibratedValue(rigState->sMeter, IC7300_STR_CAL);
-                qInfo(logRigCtlD()) << "Calibration IN:" << rigState->sMeter << "OUT" << value;
+                //qInfo(logRigCtlD()) << "Calibration IN:" << rigState->sMeter << "OUT" << value;
                 resp.append(QString("%1").arg(value));
             }
             else if (command[1] == "AF") {
