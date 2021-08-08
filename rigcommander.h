@@ -96,6 +96,38 @@ struct rigStateStruct {
     unsigned char compMeter;
     unsigned char voltageMeter;
     unsigned char currentMeter;
+    // Functions
+    bool fagcFunc=false;
+    bool nbFunc=false;
+    bool compFunc=false;
+    bool voxFunc = false;
+    bool toneFunc = false;
+    bool tsqlFunc = false;
+    bool sbkinFunc = false;
+    bool fbkinFunc = false;
+    bool anfFunc = false;
+    bool nrFunc = false;
+    bool aipFunc = false;
+    bool apfFunc = false;
+    bool monFunc = false;
+    bool mnFunc = false;
+    bool rfFunc = false;
+    bool aroFunc = false;
+    bool muteFunc = false;
+    bool vscFunc = false;
+    bool revFunc = false;
+    bool sqlFunc = false;
+    bool abmFunc = false;
+    bool bcFunc = false;
+    bool mbcFunc = false;
+    bool ritFunc = false;
+    bool afcFunc = false;
+    bool satmodeFunc = false;
+    bool scopeFunc = false;
+    bool resumeFunc = false;
+    bool tburstFunc = false;
+    bool tunerFunc = false;
+    bool lockFunc = false;
 };
 
 class rigCommander : public QObject

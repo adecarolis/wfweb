@@ -27,6 +27,7 @@ rigCommander::rigCommander()
     rigState.ptt = 0;
     rigState.currentVfo = 0;
     rigState.duplex = dmSplitOff;
+
 }
 
 rigCommander::~rigCommander()
