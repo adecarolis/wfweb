@@ -311,7 +311,7 @@ void meter::drawScaleCenter(QPainter *qp)
 void meter::drawScalePo(QPainter *qp)
 {
     //From the manual: "0000=0% to 0143=50% to 0213=100%"
-    float dnPerWatt = 143.0 / 50.0;
+    float dnPerWatt = 143.0f / 50.0f;
 
     qp->setPen(lowTextColor);
     //qp->setFont(QFont("Arial", fontSize));
@@ -332,7 +332,7 @@ void meter::drawScalePo(QPainter *qp)
     // Higher scale:
     i = i - (int)(10*dnPerWatt); // back one tick first. Otherwise i starts at 178.
     //qDebug() << "meter i: " << i;
-    dnPerWatt = (213-143.0) / 50.0; // 1.4 dn per watt
+    dnPerWatt = (213-143.0f) / 50.0f; // 1.4 dn per watt
     // P=5 here.
     qp->setPen(Qt::yellow);
     int k=0;
