@@ -534,119 +534,113 @@ void rigCtlClient::socketReadyRead()
         else if (command.length() > 1 && (command[0] == "l" || command[0] == "get_level"))
         {
             QString resp;
-            float value = 0;
+            int value = 0;
             if (longReply) {
                 resp.append("Level Value: ");
             }
+
             if (command[1] == "STRENGTH") {
-                value = (float)rigState->sMeter;
-                if (value > 240)
-                    value = value - 176;
-                else if (value > 120)
-                    value = value - 120;
-                else if (value > 90)
-                    value = value - 102;
-                else if (value > 60)
-                    value = value - 84;
-                else if (value > 30)
-                    value = value - 66;
-                else if (value > 10)
-                    value = value - 58;
-                else if (value > 0)
-                    value = value - 54;
+                if (rigCaps.model == model7610)
+                    value = getCalibratedValue(rigState->sMeter, IC7610_STR_CAL);
+                else if (rigCaps.model == model7850)
+                    value = getCalibratedValue(rigState->sMeter, IC7850_STR_CAL);
+                else
+                    value = getCalibratedValue(rigState->sMeter, IC7300_STR_CAL);
+                qInfo(logRigCtlD()) << "Calibration IN:" << rigState->sMeter << "OUT" << value;
+                resp.append(QString("%1").arg(value));
             }
             else if (command[1] == "AF") {
-                value = (float)rigState->afGain / 255;
+                resp.append(QString("%1").arg((float)rigState->afGain / 255.0));
             }
             else if (command[1] == "RF") {
-                value = (float)rigState->rfGain / 255;
+                resp.append(QString("%1").arg((float)rigState->rfGain / 255.0));
             }
             else if (command[1] == "SQL") {
-                value = (float)rigState->squelch / 255;
+                resp.append(QString("%1").arg((float)rigState->squelch / 255.0));
             }
             else if (command[1] == "COMP") {
-                value = (float)rigState->compLevel / 255;
+                resp.append(QString("%1").arg((float)rigState->compLevel / 255.0));
             }
             else if (command[1] == "MICGAIN") {
-                value = (float)rigState->micGain / 255;
-                emit parent->setMicGain(value);
+                resp.append(QString("%1").arg((float)rigState->micGain / 255.0));
             }
             else if (command[1] == "MON") {
-                value = (float)rigState->monitorLevel / 255;
+                resp.append(QString("%1").arg((float)rigState->monitorLevel / 255.0));
             }
             else if (command[1] == "VOXGAIN") {
-                value = (float)rigState->voxGain / 255;
+                resp.append(QString("%1").arg((float)rigState->voxGain / 255.0));
             }
             else if (command[1] == "ANTIVOX") {
-                value = (float)rigState->antiVoxGain / 255;
+                resp.append(QString("%1").arg((float)rigState->antiVoxGain / 255.0));
             }
             else if (command[1] == "RFPOWER") {
-                value = (float)rigState->txPower / 255;
+                resp.append(QString("%1").arg((float)rigState->txPower / 255.0));
             }
             else if (command[1] == "PREAMP") {
-                value = (float)rigState->preamp * 10;
+                resp.append(QString("%1").arg((float)rigState->preamp / 255.0));
             }
             else if (command[1] == "ATT") {
-                value = (float)rigState->attenuator;
+                resp.append(QString("%1").arg((float)rigState->attenuator / 255.0));
+            }
+            else {
+                resp.append(QString("%1").arg(value));
             }
 
-
-            resp.append(QString("%1").arg(value));
             response.append(resp);
         }
         else if (command.length() > 2 && (command[0] == "L" || command[0] == "set_level"))
         {
-            int value;
+            unsigned char value;
             setCommand = true;
             if (command[1] == "AF") {
                 value = command[2].toFloat() * 255;
                 emit parent->setAfGain(value);
-                rigState->afGain = (unsigned char)value;
+                rigState->afGain = value;
             }
             else if (command[1] == "RF") {
                 value = command[2].toFloat() * 255;
                 emit parent->setRfGain(value);
-                rigState->rfGain = (unsigned char)value;
+                rigState->rfGain = value;
             }
             else if (command[1] == "SQL") {
                 value = command[2].toFloat() * 255;
                 emit parent->setSql(value);
-                rigState->squelch = (unsigned char)value;
+                rigState->squelch = value;
             }
             else if (command[1] == "COMP") {
                 value = command[2].toFloat() * 255;
                 emit parent->setCompLevel(value);
-                rigState->compLevel = (unsigned char)value;
+                rigState->compLevel = value;
             }
             else if (command[1] == "MICGAIN") {
                 value = command[2].toFloat() * 255;
                 emit parent->setMicGain(value);
-                rigState->micGain = (unsigned char)value;
+                rigState->micGain = value;
             }
             else if (command[1] == "MON") {
                 value = command[2].toFloat() * 255;
                 emit parent->setMonitorLevel(value);
-                rigState->monitorLevel = (unsigned char)value;
+                rigState->monitorLevel = value;
             }
             else if (command[1] == "VOXGAIN") {
                 value = command[2].toFloat() * 255;
                 emit parent->setVoxGain(value);
-                rigState->voxGain = (unsigned char)value;
+                rigState->voxGain = value;
             }
             else if (command[1] == "ANTIVOX") {
                 value = command[2].toFloat() * 255;
                 emit parent->setAntiVoxGain(value);
-                rigState->antiVoxGain = (unsigned char)value;
+                rigState->antiVoxGain = value;
             }
             else if (command[1] == "ATT") {
                 value = command[2].toFloat();
-                emit parent->setAttenuator((unsigned char)value);
-                rigState->attenuator = (unsigned char)value;
+                emit parent->setAttenuator(value);
+                rigState->attenuator = value;
             }
             else if (command[1] == "PREAMP") {
                 value = command[2].toFloat()/10;
-                emit parent->setPreamp((unsigned char)value);
-                rigState->preamp = (unsigned char)value;
+                emit parent->setPreamp(value);
+                rigState->preamp = value;
             }
             
             qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2] << value;
@@ -1045,4 +1039,36 @@ QString rigCtlClient::getAntName(unsigned char ant)
         default: ret = "ANT_UNK"; break;
     }
     return ret;
+}
+
+int rigCtlClient::getCalibratedValue(unsigned char meter,cal_table_t cal) {
+    
+    int interp;
+
+    int i = 0;
+    for (i = 0; i < cal.size; i++) {
+        if (meter < cal.table[i].raw)
+        {
+            break;
+        }
+    }
+
+    if (i == 0)
+    {
+        return cal.table[0].val;
+    } 
+    else if (i >= cal.size)
+    {
+        return cal.table[i - 1].val;
+    } 
+    else if (cal.table[i].raw == cal.table[i - 1].raw)
+    {
+        return cal.table[i].val;
+    }
+
+    interp = ((cal.table[i].raw - meter)
+        * (cal.table[i].val - cal.table[i - 1].val))
+        / (cal.table[i].raw - cal.table[i - 1].raw);
+
+    return cal.table[i].val - interp;
 }

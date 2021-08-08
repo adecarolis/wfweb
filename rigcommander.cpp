@@ -1317,7 +1317,7 @@ void rigCommander::parseLevels()
     unsigned char tens = (payloadIn[3] & 0xf0) >> 4;
     unsigned char units = (payloadIn[3] & 0x0f);
 
-    unsigned char level = (100*hundreds) + (10*tens) + units;
+    unsigned char level = ((unsigned char)100*hundreds) + (10*tens) + units;
 
     //qInfo(logRig()) << "Level is: " << (int)level << " or " << 100.0*level/255.0 << "%";
 

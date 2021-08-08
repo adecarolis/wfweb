@@ -103,6 +103,54 @@ static struct
 };
 
 
+struct cal_table {
+    int size;                   /*!< number of plots in the table */
+    struct {
+        int raw;                /*!< raw (A/D) value, as returned by \a RIG_LEVEL_RAWSTR */
+        int val;                /*!< associated value, basically the measured dB value */
+    } table[32];    /*!< table of plots */
+};
+
+typedef struct cal_table cal_table_t;
+
+#define IC7610_STR_CAL { 16, \
+    { \
+        {   0, -54 }, /* S0 */ \
+        {  11, -48 }, \
+        {  21, -42 }, \
+        {  34, -36 }, \
+        {  50, -30 }, \
+        {  59, -24 }, \
+        {  75, -18 }, \
+        {  93, -12 }, \
+        { 103,  -6 }, \
+        { 124,   0 }, /* S9 */ \
+        { 145,  10 }, \
+        { 160,  20 }, \
+        { 183,  30 }, \
+        { 204,  40 }, \
+        { 222,  50 }, \
+        { 246,  60 } /* S9+60dB */  \
+    } }
+
+#define IC7850_STR_CAL { 3, \
+    { \
+        {   0, -54 }, /* S0 */ \
+        { 120,   0 }, /* S9 */ \
+        { 241,  60 }  /* S9+60 */ \
+    } }
+
+#define IC7300_STR_CAL { 7, \
+    { \
+        {   0, -54 }, \
+        {  10, -48 }, \
+        {  30, -36 }, \
+        {  60, -24 }, \
+        {  90, -12 }, \
+        { 120,  0 }, \
+        { 241,  64 } \
+    } }
+
 class rigCtlD : public QTcpServer
 {
     Q_OBJECT
@@ -191,6 +239,7 @@ private:
     unsigned char getAntennas();
     quint64 getRadioModes();
     QString getAntName(unsigned char ant);
+    int getCalibratedValue(unsigned char meter,cal_table_t cal);
 };
 
 
