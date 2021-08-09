@@ -534,137 +534,387 @@ void rigCtlClient::socketReadyRead()
         else if (command.length() > 1 && (command[0] == "l" || command[0] == "get_level"))
         {
             QString resp;
-            float value = 0;
+            int value = 0;
             if (longReply) {
                 resp.append("Level Value: ");
             }
+
             if (command[1] == "STRENGTH") {
-                value = (float)rigState->sMeter;
-                if (value > 240)
-                    value = value - 176;
-                else if (value > 120)
-                    value = value - 120;
-                else if (value > 90)
-                    value = value - 102;
-                else if (value > 60)
-                    value = value - 84;
-                else if (value > 30)
-                    value = value - 66;
-                else if (value > 10)
-                    value = value - 58;
-                else if (value > 0)
-                    value = value - 54;
+                if (rigCaps.model == model7610)
+                    value = getCalibratedValue(rigState->sMeter, IC7610_STR_CAL);
+                else if (rigCaps.model == model7850)
+                    value = getCalibratedValue(rigState->sMeter, IC7850_STR_CAL);
+                else
+                    value = getCalibratedValue(rigState->sMeter, IC7300_STR_CAL);
+                //qInfo(logRigCtlD()) << "Calibration IN:" << rigState->sMeter << "OUT" << value;
+                resp.append(QString("%1").arg(value));
             }
             else if (command[1] == "AF") {
-                value = (float)rigState->afGain / 255;
+                resp.append(QString("%1").arg((float)rigState->afGain / 255.0));
             }
             else if (command[1] == "RF") {
-                value = (float)rigState->rfGain / 255;
+                resp.append(QString("%1").arg((float)rigState->rfGain / 255.0));
             }
             else if (command[1] == "SQL") {
-                value = (float)rigState->squelch / 255;
+                resp.append(QString("%1").arg((float)rigState->squelch / 255.0));
             }
             else if (command[1] == "COMP") {
-                value = (float)rigState->compLevel / 255;
+                resp.append(QString("%1").arg((float)rigState->compLevel / 255.0));
             }
             else if (command[1] == "MICGAIN") {
-                value = (float)rigState->micGain / 255;
-                emit parent->setMicGain(value);
+                resp.append(QString("%1").arg((float)rigState->micGain / 255.0));
             }
             else if (command[1] == "MON") {
-                value = (float)rigState->monitorLevel / 255;
+                resp.append(QString("%1").arg((float)rigState->monitorLevel / 255.0));
             }
             else if (command[1] == "VOXGAIN") {
-                value = (float)rigState->voxGain / 255;
+                resp.append(QString("%1").arg((float)rigState->voxGain / 255.0));
             }
             else if (command[1] == "ANTIVOX") {
-                value = (float)rigState->antiVoxGain / 255;
+                resp.append(QString("%1").arg((float)rigState->antiVoxGain / 255.0));
             }
             else if (command[1] == "RFPOWER") {
-                value = (float)rigState->txPower / 255;
+                resp.append(QString("%1").arg((float)rigState->txPower / 255.0));
             }
             else if (command[1] == "PREAMP") {
-                value = (float)rigState->preamp * 10;
+                resp.append(QString("%1").arg((float)rigState->preamp / 255.0));
             }
             else if (command[1] == "ATT") {
-                value = (float)rigState->attenuator;
+                resp.append(QString("%1").arg((float)rigState->attenuator / 255.0));
+            }
+            else {
+                resp.append(QString("%1").arg(value));
             }
 
-
-            resp.append(QString("%1").arg(value));
             response.append(resp);
         }
         else if (command.length() > 2 && (command[0] == "L" || command[0] == "set_level"))
         {
-            int value;
+            unsigned char value;
             setCommand = true;
             if (command[1] == "AF") {
                 value = command[2].toFloat() * 255;
                 emit parent->setAfGain(value);
-                rigState->afGain = (unsigned char)value;
+                rigState->afGain = value;
             }
             else if (command[1] == "RF") {
                 value = command[2].toFloat() * 255;
                 emit parent->setRfGain(value);
-                rigState->rfGain = (unsigned char)value;
+                rigState->rfGain = value;
             }
             else if (command[1] == "SQL") {
                 value = command[2].toFloat() * 255;
                 emit parent->setSql(value);
-                rigState->squelch = (unsigned char)value;
+                rigState->squelch = value;
             }
             else if (command[1] == "COMP") {
                 value = command[2].toFloat() * 255;
                 emit parent->setCompLevel(value);
-                rigState->compLevel = (unsigned char)value;
+                rigState->compLevel = value;
             }
             else if (command[1] == "MICGAIN") {
                 value = command[2].toFloat() * 255;
                 emit parent->setMicGain(value);
-                rigState->micGain = (unsigned char)value;
+                rigState->micGain = value;
             }
             else if (command[1] == "MON") {
                 value = command[2].toFloat() * 255;
                 emit parent->setMonitorLevel(value);
-                rigState->monitorLevel = (unsigned char)value;
+                rigState->monitorLevel = value;
             }
             else if (command[1] == "VOXGAIN") {
                 value = command[2].toFloat() * 255;
                 emit parent->setVoxGain(value);
-                rigState->voxGain = (unsigned char)value;
+                rigState->voxGain = value;
             }
             else if (command[1] == "ANTIVOX") {
                 value = command[2].toFloat() * 255;
                 emit parent->setAntiVoxGain(value);
-                rigState->antiVoxGain = (unsigned char)value;
+                rigState->antiVoxGain = value;
             }
             else if (command[1] == "ATT") {
                 value = command[2].toFloat();
-                emit parent->setAttenuator((unsigned char)value);
-                rigState->attenuator = (unsigned char)value;
+                emit parent->setAttenuator(value);
+                rigState->attenuator = value;
             }
             else if (command[1] == "PREAMP") {
                 value = command[2].toFloat()/10;
-                emit parent->setPreamp((unsigned char)value);
-                rigState->preamp = (unsigned char)value;
+                emit parent->setPreamp(value);
+                rigState->preamp = value;
             }
             
             qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2] << value;
 
         }
-        else if (command[0] == "u" || command[0] == "get_func")
+        else if (command.length()>1 && (command[0] == "u" || command[0] == "get_func"))
         {
             QString resp="";
-            if (longReply ) {
+            bool result = 0;
+            if (longReply) {
                 resp.append(QString("Func Status: "));
             }
-            resp.append("0");
+            
+            if (command[1] == "FAGC")
+            {               
+                result=rigState->fagcFunc;
+            }
+            else if (command[1] == "NB")
+            {
+                result=rigState->nbFunc;
+            }
+            else if (command[1] == "COMP")
+            {
+                result=rigState->compFunc;
+            }
+            else if (command[1] == "VOX")
+            {
+                result = rigState->voxFunc;
+            }
+            else if (command[1] == "TONE")
+            {
+                result = rigState->toneFunc;
+            }
+            else if (command[1] == "TSQL")
+            {
+                result = rigState->tsqlFunc;
+            }
+            else if (command[1] == "SBKIN")
+            {
+                result = rigState->sbkinFunc;
+            }
+            else if (command[1] == "FBKIN")
+            {
+                result = rigState->fbkinFunc;
+            }
+            else if (command[1] == "ANF")
+            {
+                result = rigState->anfFunc;
+            }
+            else if (command[1] == "NR")
+            {
+                result = rigState->nrFunc;
+            }
+            else if (command[1] == "AIP")
+            {
+                result = rigState->aipFunc;
+            }
+            else if (command[1] == "APF")
+            {
+                result = rigState->apfFunc;
+            }
+            else if (command[1] == "MON")
+            {
+                result = rigState->monFunc;
+            }
+            else if (command[1] == "MN")
+            {
+                result = rigState->mnFunc;
+            }
+            else if (command[1] == "RF")
+            {
+                result = rigState->rfFunc;
+            }
+            else if (command[1] == "ARO")
+            {
+                result = rigState->aroFunc;
+            }
+            else if (command[1] == "MUTE")
+            {
+                result = rigState->muteFunc;
+            }
+            else if (command[1] == "VSC")
+            {
+                result = rigState->vscFunc;
+            }
+            else if (command[1] == "REV")
+            {
+                result = rigState->revFunc;
+            }
+            else if (command[1] == "SQL")
+            {
+                result = rigState->sqlFunc;
+            }
+            else if (command[1] == "ABM")
+            {
+                result = rigState->abmFunc;
+            }
+            else if (command[1] == "BC")
+            {
+                result = rigState->bcFunc;
+            }
+            else if (command[1] == "MBC")
+            {
+                result = rigState->mbcFunc;
+            }
+            else if (command[1] == "RIT")
+            {
+                result = rigState->ritFunc;
+            }
+            else if (command[1] == "AFC")
+            {
+                result = rigState->afcFunc;
+            }
+            else if (command[1] == "SATMODE")
+            {
+                result = rigState->satmodeFunc;
+            }
+            else if (command[1] == "SCOPE")
+            {
+                result = rigState->scopeFunc;
+            }
+            else if (command[1] == "RESUME")
+            {
+                result = rigState->resumeFunc;
+            }
+            else if (command[1] == "TBURST")
+            {
+                result = rigState->tburstFunc;
+            }
+            else if (command[1] == "TUNER")
+            {
+                result = rigState->tunerFunc;
+            }
+            else if (command[1] == "LOCK")
+            {
+                result = rigState->lockFunc;
+            }
+            else {
+                qInfo(logRigCtlD()) << "Unimplemented func:" << command[0] << command[1];
+            }
+
+            resp.append(QString("%1").arg(result));
             response.append(resp);
         }
-        else if (command[0] == "R" || command[0] == "set_func")
+        else if (command.length() >2 && (command[0] == "U" || command[0] == "set_func"))
         {
-        setCommand = true;
-        if (command.length()>2)
+            setCommand = true;
+            if (command[1] == "FAGC")
+            {
+                rigState->fagcFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "NB")
+            {
+                rigState->nbFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "COMP")
+            {
+                rigState->compFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "VOX")
+            {
+                rigState->voxFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "TONE")
+            {
+                rigState->toneFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "TSQL")
+            {
+                rigState->tsqlFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "SBKIN")
+            {
+                rigState->sbkinFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "FBKIN")
+            {
+                rigState->fbkinFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "ANF")
+            {
+                rigState->anfFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "NR")
+            {
+                rigState->nrFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "AIP")
+            {
+                rigState->aipFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "APF")
+            {
+                rigState->apfFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "MON")
+            {
+                rigState->monFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "MN")
+            {
+                rigState->mnFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "RF")
+            {
+                rigState->rfFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "ARO")
+            {
+                rigState->aroFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "MUTE")
+            {
+                rigState->muteFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "VSC")
+            {
+                rigState->vscFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "REV")
+            {
+                rigState->revFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "SQL")
+            {
+                rigState->sqlFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "ABM")
+            {
+                rigState->abmFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "BC")
+            {
+                rigState->bcFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "MBC")
+            {
+                rigState->mbcFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "RIT")
+            {
+                rigState->ritFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "AFC")
+            {
+                rigState->afcFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "SATMODE")
+            {
+                rigState->satmodeFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "SCOPE")
+            {
+                rigState->scopeFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "RESUME")
+            {
+                rigState->resumeFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "TBURST")
+            {
+                rigState->tburstFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "TUNER")
+            {
+                rigState->tunerFunc = (bool)command[2].toInt();
+            }
+            else if (command[1] == "LOCK")
+            {
+                rigState->lockFunc = (bool)command[2].toInt();
+            }
+            else {
+                qInfo(logRigCtlD()) << "Unimplemented func:" << command[0] << command[1] << command[2];
+            }
             qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2];
         }
         else if (command.length() > 1 && (command[0] == 0x88 || command[0] == "get_powerstat"))
@@ -1045,4 +1295,36 @@ QString rigCtlClient::getAntName(unsigned char ant)
         default: ret = "ANT_UNK"; break;
     }
     return ret;
+}
+
+int rigCtlClient::getCalibratedValue(unsigned char meter,cal_table_t cal) {
+    
+    int interp;
+
+    int i = 0;
+    for (i = 0; i < cal.size; i++) {
+        if (meter < cal.table[i].raw)
+        {
+            break;
+        }
+    }
+
+    if (i == 0)
+    {
+        return cal.table[0].val;
+    } 
+    else if (i >= cal.size)
+    {
+        return cal.table[i - 1].val;
+    } 
+    else if (cal.table[i].raw == cal.table[i - 1].raw)
+    {
+        return cal.table[i].val;
+    }
+
+    interp = ((cal.table[i].raw - meter)
+        * (cal.table[i].val - cal.table[i - 1].val))
+        / (cal.table[i].raw - cal.table[i - 1].raw);
+
+    return cal.table[i].val - interp;
 }
