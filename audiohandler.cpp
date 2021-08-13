@@ -500,7 +500,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	if (setup.codec == 0x40 || setup.codec == 0x80) {
 		unsigned char* in = (unsigned char*)inPacket.data.data();
 		/* Encode the frame. */
-		QByteArray outPacket(((setup.samplerate / 50) *  2 * setup.radioChan), (char)0xff); // Preset the output buffer size.
+		QByteArray outPacket(this->chunkSize *  2 * setup.radioChan, (char)0xff); // Preset the output buffer size.
 		qint16* out = (qint16*)outPacket.data();
 		int nbBytes = 0;
 		
@@ -509,7 +509,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		//	nbBytes = opus_decode(decoder, NULL, 0, out, outPacket.size()/ 2 /setup.radioChan, 1);
 		//}
 		//else {
-			nbBytes = opus_decode(decoder, in, inPacket.data.size(), out, outPacket.size() / 2 / setup.radioChan, 0);
+			nbBytes = opus_decode(decoder, in, inPacket.data.size(), out, this->chunkSize, 0);
 		//}
 		if (nbBytes < 0)
 		{
@@ -695,7 +695,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			QByteArray outPacket(1275, (char)0xff); // Preset the output buffer size to MAXIMUM possible Opus frame size
 			unsigned char* out = (unsigned char*)outPacket.data();
 
-			int nbBytes = opus_encode(encoder, in, packet.data.length() / 2 / setup.radioChan, out, outPacket.length());
+			int nbBytes = opus_encode(encoder, in, this->chunkSize, out, outPacket.length());
 			if (nbBytes < 0)
 			{
 				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encode failed:" << opus_strerror(nbBytes);
