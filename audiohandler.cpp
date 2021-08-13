@@ -504,13 +504,13 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		qint16* out = (qint16*)outPacket.data();
 		int nbBytes = 0;
 		
-		if (lastSentSeq > 0 && lastSentSeq+1 < inPacket.seq)
-		{
-			nbBytes = opus_decode(decoder, NULL, 0, out, outPacket.size()/2/setup.radioChan, 1);
-		}
-		else {
-			nbBytes = opus_decode(decoder, in, inPacket.data.size()/2/setup.radioChan, out, outPacket.size() / 2, 0);
-		}
+		//if (lastSentSeq > 0 && lastSentSeq+1 < inPacket.seq)
+		//{
+		//	nbBytes = opus_decode(decoder, NULL, 0, out, outPacket.size()/ 2 /setup.radioChan, 1);
+		//}
+		//else {
+			nbBytes = opus_decode(decoder, in, inPacket.data.size(), out, outPacket.size() / 2 / setup.radioChan, 0);
+		//}
 		if (nbBytes < 0)
 		{
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decode failed:" << opus_strerror(nbBytes) << "packet size" << inPacket.data.length();
@@ -683,7 +683,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		
 		//qDebug(logAudio()) << "Now mono, length" << packet.data.length();
 
-		else if (setup.codec == 0x40 || setup.codec == 0x80) 
+		if (setup.codec == 0x40 || setup.codec == 0x80) 
 		{
 			//Are we using the opus codec?	
 			qint16* in = (qint16*)packet.data.data();
