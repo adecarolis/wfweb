@@ -62,10 +62,14 @@ struct timekind {
 struct rigStateStruct {
     freqt vfoAFreq;
     freqt vfoBFreq;
-    unsigned char ptt;
+    unsigned char currentVfo;
+    bool ptt;
     unsigned char mode;
     unsigned char filter;
+    duplexMode duplex;
     bool datamode;
+    unsigned char antenna;
+    bool rxAntenna;
     // Tones
     quint16 ctcss;
     quint16 tsql;
@@ -73,6 +77,7 @@ struct rigStateStruct {
     quint16 csql;
     // Levels
     unsigned char preamp;
+    unsigned char attenuator;
     unsigned char modInput;
     unsigned char afGain;
     unsigned char rfGain;
@@ -91,6 +96,38 @@ struct rigStateStruct {
     unsigned char compMeter;
     unsigned char voltageMeter;
     unsigned char currentMeter;
+    // Functions
+    bool fagcFunc=false;
+    bool nbFunc=false;
+    bool compFunc=false;
+    bool voxFunc = false;
+    bool toneFunc = false;
+    bool tsqlFunc = false;
+    bool sbkinFunc = false;
+    bool fbkinFunc = false;
+    bool anfFunc = false;
+    bool nrFunc = false;
+    bool aipFunc = false;
+    bool apfFunc = false;
+    bool monFunc = false;
+    bool mnFunc = false;
+    bool rfFunc = false;
+    bool aroFunc = false;
+    bool muteFunc = false;
+    bool vscFunc = false;
+    bool revFunc = false;
+    bool sqlFunc = false;
+    bool abmFunc = false;
+    bool bcFunc = false;
+    bool mbcFunc = false;
+    bool ritFunc = false;
+    bool afcFunc = false;
+    bool satmodeFunc = false;
+    bool scopeFunc = false;
+    bool resumeFunc = false;
+    bool tburstFunc = false;
+    bool tunerFunc = false;
+    bool lockFunc = false;
 };
 
 class rigCommander : public QObject
@@ -270,6 +307,7 @@ public slots:
 
     // Housekeeping:
     void handleStatusUpdate(const QString text);
+    void sendState();
     void getDebug();
 
 signals:

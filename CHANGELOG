@@ -1,5 +1,99 @@
 # CHANGELOG
 
+- 20210809
+
+    		Add constants to make parsing (hopefully) easier
+
+- 20210808
+
+    		Fake known functions
+
+    		Fix float warning
+
+    		Remove calibration debugging
+
+    		Add proper s-meter calibration
+
+- 20210807
+
+    		Add ritctl model to rigCaps
+
+    		Fix to make wsjt-x work again!
+
+    		Add split/duplex support
+
+    		Update rigctld.cpp
+
+    		Correct lack of parentheses in conditionals
+
+    		Fix typo
+
+    		Remove some debug logging
+
+    		More rigctl features/fixes
+
+- 20210806
+
+    		Fix for get_powerstat
+
+    		Update rigctld.cpp
+
+    		Add some levels and other functions
+
+    		Fix compile warnings
+
+    		Add frequency ranges from rigcaps
+
+- 20210806
+
+    		Move rigctld settings in Ui
+
+    		Fixes for setting freq/mode
+
+    		Support for more rigctld commands
+
+    		More fixes to rigctld
+
+    		Change the way rigctl response is built
+
+    		More rigctld fixes
+
+- 20210804
+
+    		Add rigctld config to ui and fix some bugs
+
+- 20210802
+
+    		added derSuessman prefix code
+
+- 20210801
+
+    		Fix broken 8bit audio
+
+    		added derSuessmann additions to have a linux install prefix
+
+    		Fedora build/install notes, see merge request eliggett/wfview!4
+
+- 20210730
+
+    		Added a little extra logic, also some cross-platform help, to the custom
+    		stylesheet loader.
+
+- 20210729
+
+    		fix: set the style once
+
+
+    		added /usr/local to search path for the stylesheet
+
+- 20210726
+
+    		Fixed error in IC-7410 attenuator spec.
+
+- 20210726
+
+    		Fix for blank username/password in server
+
 - 20210724
 
     		small changes to INSTAll.md and addition of mint 20.2/openSUSE 15.3

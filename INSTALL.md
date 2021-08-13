@@ -40,14 +40,15 @@ git clone https://gitlab.com/eliggett/wfview.git
 ~~~
 
 ### 3. Create a build directory, compile, and install:
+If you want to change the default install path from `/usr/local` to a different prefix (e.g. `/opt`), you must call `qmake ../wfview/wfview.pro PREFIX=/opt`
+
 ~~~
 mkdir build
 cd build
 qmake ../wfview/wfview.pro
 make -j
-sudo ./install.sh
+sudo make install
 ~~~
-
 
 ### 4. You can now launch wfview, either from the terminal or from your desktop environment. If you encounter issues using the serial port, run the following command: 
 ~~~
@@ -65,7 +66,7 @@ sudo usermod -aG dialout $USER
 
 ~~~
 
-### opensuse/sles/tumbleweed install ###
+### opensuse/sles/tumbleweed install
 ---
 
 install wfview on suse 15.x sles 15.x or tumbleweed; this was done on a clean install/updated OS. 
@@ -88,6 +89,30 @@ install Qt 5.15.2 for GCC for desktop application development
 when done, create the place where to build:
 
 in this case, use your homedir:
+
+- mkdir -p ~/src/build && cd src
+- git clone https://gitlab.com/eliggett/wfview.git
+- cd build
+- qmake-qt5 ../wfview/wfview.pro
+- make -j
+- sudo ./install.sh
+
+wfview is now installed in /usr/local/bin
+
+---
+
+### Fedora install ###
+---
+
+Tested under Fedora 33/34.
+
+Install qt5 dependencies:
+- sudo dnf install qt5-qtbase-common qt5-qtbase qt5-qtbase-gui qt5-qtserialport qt5-qtmultimedia mingw64-qt5-qmake qt5-qtbase-devel qt5-qtserialport-devel qt5-qtmultimedia-devel 
+
+Install qcustomplot:
+- sudo dnf install qcustomplot qcustomplot-devel
+
+When done, create a build area, clone the repo, build and install:
 
 - mkdir -p ~/src/build && cd src
 - git clone https://gitlab.com/eliggett/wfview.git

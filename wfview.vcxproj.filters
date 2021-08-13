@@ -57,6 +57,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="aboutbox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="audiohandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -108,6 +111,9 @@
     <ClCompile Include="satellitesetup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="transceiveradjustments.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="udphandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -122,12 +128,18 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <QtMoc Include="aboutbox.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <ClInclude Include="resampler\arch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <QtMoc Include="audiohandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <ClInclude Include="audiotaper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <QtMoc Include="calibrationwindow.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -182,6 +194,9 @@
     <ClInclude Include="resampler\speex_resampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <QtMoc Include="transceiveradjustments.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="udphandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -199,6 +214,8 @@
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
+    
+    
     
     
     
@@ -244,8 +261,15 @@
     
     
     
+    
+    
+    
+    
   </ItemGroup>
   <ItemGroup>
+    <QtUic Include="aboutbox.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
     <QtUic Include="calibrationwindow.ui">
       <Filter>Form Files</Filter>
     </QtUic>
@@ -253,6 +277,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="satellitesetup.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="transceiveradjustments.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="udpserversetup.ui">

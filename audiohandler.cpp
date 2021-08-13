@@ -539,7 +539,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		{
 			for (int g = setup.radioChan; g <= devChannels; g++)
 			{
-				if (isUlaw)
+				if (setup.ulaw)
 					*out++ = ulaw_decode[(quint8)inPacket.data[f]] * this->volume;
 				else
 					*out++ = (qint16)(((quint8)inPacket.data[f] << 8) - 32640 * this->volume);
@@ -690,7 +690,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			for (int f = 0; f < outPacket.length(); f++)
 			{
 				quint8 outdata = 0;
-				if (isUlaw) {
+				if (setup.ulaw) {
 					qint16 enc = qFromLittleEndian<quint16>(in + f);
 					if (enc >= 0)
 						outdata = ulaw_encode[enc];

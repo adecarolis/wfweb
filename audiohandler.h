@@ -162,9 +162,7 @@ private:
 #endif
     SpeexResamplerState* resampler = Q_NULLPTR;
 
-    bool            isUlaw;
     quint16         audioLatency;
-    bool            isInput;   // Used to determine whether input or output audio
     unsigned int             chunkSize;
     bool            chunkAvailable;
 

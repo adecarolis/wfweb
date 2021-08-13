@@ -175,13 +175,6 @@ void wfmain::openRig()
         qDebug(logSystem()) << "Remote host name specified by user: " << hostCL;
     }
 
-    // Start rigctld
-    if (prefs.enableRigCtlD && rigCtl == Q_NULLPTR) {
-        rigCtl = new rigCtlD(this);
-
-        rigCtl->startServer(prefs.rigCtlPort);
-        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), rigCtl, SLOT(receiveRigCaps(rigCapabilities)));
-    }
 
     makeRig();
 
@@ -303,6 +296,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getSpectrumRefLevel()), rig, SLOT(getSpectrumRefLevel()));
     connect(this, SIGNAL(getModInputLevel(rigInput)), rig, SLOT(getModInputLevel(rigInput)));
 
+
     // Levels: Set:
     connect(this, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
     connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
@@ -313,7 +307,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
     connect(this, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
     connect(this, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
-    connect(this, SIGNAL(setModLevel(rigInput,unsigned char)), rig, SLOT(setModInputLevel(rigInput,unsigned char)));
+    connect(this, SIGNAL(setModLevel(rigInput, unsigned char)), rig, SLOT(setModInputLevel(rigInput, unsigned char)));
 
     // Levels: handle return on query:
     connect(rig, SIGNAL(haveRfGain(unsigned char)), this, SLOT(receiveRfGain(unsigned char)));
@@ -405,9 +399,29 @@ void wfmain::makeRig()
 
         if (rigCtl != Q_NULLPTR) {
             connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
+            connect(this, SIGNAL(requestRigState()), rig, SLOT(sendState()));
             connect(rigCtl, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
             connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
+            connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
             connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
+            connect(rigCtl, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
+            connect(rigCtl, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
+
+            connect(rigCtl, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
+            connect(rigCtl, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
+            connect(rigCtl, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
+
+            // Levels: Set:
+            connect(rigCtl, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
+            connect(rigCtl, SIGNAL(setTxPower(unsigned char)), rig, SLOT(setTxPower(unsigned char)));
+            connect(rigCtl, SIGNAL(setMicGain(unsigned char)), rig, SLOT(setMicGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setMonitorLevel(unsigned char)), rig, SLOT(setMonitorLevel(unsigned char)));
+            connect(rigCtl, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
+
         }
     }
 }
@@ -425,7 +439,7 @@ void wfmain::removeRig()
 
         delete rigThread;
         delete rig;
-
+        rig = Q_NULLPTR;
     }
 
 }
@@ -1367,7 +1381,11 @@ void wfmain::loadSettings()
     ui->connectBtn->setEnabled(true);
 
     prefs.enableRigCtlD = settings->value("EnableRigCtlD", defPrefs.enableRigCtlD).toBool();
+    ui->enableRigctldChk->setChecked(prefs.enableRigCtlD);
     prefs.rigCtlPort = settings->value("RigCtlPort", defPrefs.rigCtlPort).toInt();
+    ui->rigctldPortTxt->setText(QString("%1").arg(prefs.rigCtlPort));
+    // Call the function to start rigctld if enabled.
+    on_enableRigctldChk_clicked(prefs.enableRigCtlD);
 
     udpPrefs.ipAddress = settings->value("IPAddress", udpDefPrefs.ipAddress).toString();
     ui->ipAddressTxt->setEnabled(ui->lanEnableBtn->isChecked());
@@ -2227,12 +2245,12 @@ void wfmain::setAppTheme(bool isCustom)
 #ifndef Q_OS_LINUX
         QFile f(":"+prefs.stylesheetPath); // built-in resource
 #else
-        QFile f("/usr/share/wfview/stylesheets/" + prefs.stylesheetPath);
+        QFile f(PREFIX "/share/wfview/" + prefs.stylesheetPath);
 #endif
         if (!f.exists())
         {
             printf("Unable to set stylesheet, file not found\n");
-            printf("Tried to load: [%s]\n", QString( QString("/usr/share/wfview/stylesheets/") + prefs.stylesheetPath).toStdString().c_str() );
+            printf("Tried to load: [%s]\n", f.fileName().toStdString().c_str() );
         }
         else
         {
@@ -3928,9 +3946,6 @@ void wfmain::on_bandGenbtn_clicked()
 void wfmain::on_aboutBtn_clicked()
 {
     abtBox->show();
-
-
-
 }
 
 void wfmain::on_fStoBtn_clicked()
@@ -5248,6 +5263,63 @@ void wfmain::on_meter2selectionCombo_activated(int index)
         insertPeriodicCommandUnique(newCmd);
     }
     (void)index;
+}
+
+void wfmain::on_enableRigctldChk_clicked(bool checked)
+{
+    if (rigCtl != Q_NULLPTR)
+    {
+        rigCtl->disconnect();
+        delete rigCtl;
+        rigCtl = Q_NULLPTR;
+    }
+
+    if (checked) {
+        // Start rigctld
+        rigCtl = new rigCtlD(this);
+        rigCtl->startServer(prefs.rigCtlPort);
+        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), rigCtl, SLOT(receiveRigCaps(rigCapabilities)));
+        if (rig != Q_NULLPTR) {
+            // We are already connected to a rig.
+            connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
+            connect(rigCtl, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
+            connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
+            connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
+            connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
+            connect(rigCtl, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
+            connect(rigCtl, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
+
+            connect(rigCtl, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
+            connect(rigCtl, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
+            connect(rigCtl, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
+
+            // Levels: Set:
+            connect(rigCtl, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
+            connect(rigCtl, SIGNAL(setTxPower(unsigned char)), rig, SLOT(setTxPower(unsigned char)));
+            connect(rigCtl, SIGNAL(setMicGain(unsigned char)), rig, SLOT(setMicGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setMonitorLevel(unsigned char)), rig, SLOT(setMonitorLevel(unsigned char)));
+            connect(rigCtl, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
+
+            emit sendRigCaps(rigCaps);
+            emit requestRigState();
+        }
+    }    
+    prefs.enableRigCtlD = checked;
+}
+
+void wfmain::on_rigctldPortTxt_editingFinished()
+{
+
+    bool okconvert = false;
+    unsigned int port = ui->rigctldPortTxt->text().toUInt(&okconvert);
+    if (okconvert)
+    {
+        prefs.rigCtlPort = port;
+    }
 }
 
 // --- DEBUG FUNCTION ---
