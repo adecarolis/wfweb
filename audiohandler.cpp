@@ -516,7 +516,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			return;
 		}
 		else {
-			if (nSamples * sizeof(qint16) != outPacket.size())
+			if (int(nSamples * sizeof(qint16)) != outPacket.size())
 			{
 				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoder mismatch: nBytes:" << nSamples * sizeof(qint16) << "outPacket:" << outPacket.size();
 				outPacket.resize(nSamples * sizeof(qint16));
