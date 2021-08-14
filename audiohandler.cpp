@@ -488,23 +488,11 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	if (setup.codec == 0x40 || setup.codec == 0x80) {
 		unsigned char* in = (unsigned char*)inPacket.data.data();
 
-		qInfo(logAudio()) << "Opus Packet Received: << " << opus_packet_get_nb_channels(in)
-			<< "channels, " << opus_packet_get_nb_samples(in, inPacket.data.size(), setup.samplerate)
-			<< "samples" << opus_decoder_get_nb_samples(decoder, in, inPacket.data.size()) << "decoded samples";
-		qInfo(logAudio()) << "Radio: channels" << setup.radioChan << "samplerate" << setup.samplerate;
 		/* Decode the frame. */
-		//QByteArray outPacket(this->chunkSize *  sizeof(qint16) * setup.radioChan, (char)0xff); // Preset the output buffer size.
 		QByteArray outPacket((setup.samplerate / 50) *  sizeof(qint16) * setup.radioChan, (char)0xff); // Preset the output buffer size.
 		qint16* out = (qint16*)outPacket.data();
-		int nSamples = 0;
-		
-		if (lastSentSeq > 0 && lastSentSeq+1 < inPacket.seq)
-		{
-			nSamples = opus_decode(decoder, NULL, 0, out, (setup.samplerate / 50), 1);
-		}
-		else {
-			nSamples = opus_decode(decoder, in, inPacket.data.size(), out, (setup.samplerate / 50), 0);
-		}
+
+		int nSamples = opus_decode(decoder, in, inPacket.data.size(), out, (setup.samplerate / 50), 0);
 
 		if (nSamples < 0)
 		{
@@ -512,17 +500,14 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			return;
 		}
 		else {
-			if (int(nSamples * sizeof(qint16)) != outPacket.size())
+			if (int(nSamples * sizeof(qint16) * setup.radioChan) != outPacket.size())
 			{
-				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoder mismatch: nBytes:" << nSamples * sizeof(qint16) << "outPacket:" << outPacket.size();
-				outPacket.resize(nSamples * sizeof(qint16));
+				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoder mismatch: nBytes:" << nSamples * sizeof(qint16) * setup.radioChan << "outPacket:" << outPacket.size();
+				outPacket.resize(nSamples * sizeof(qint16) * setup.radioChan);
 			}
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << inPacket.data.size() << "bytes, into" << outPacket.length() << "bytes";
 			inPacket.data.clear();
 			inPacket.data = outPacket; // Replace incoming data with converted.
-			//qint16* in16 = (qint16*)inPacket.data.data();
-			//for (int i = 0; i < inPacket.data.length() / 2; i++)
-			//	in16[i] = qToLittleEndian(in16[i]);
 		}
 	}
 
@@ -685,9 +670,6 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		{
 			//Are we using the opus codec?	
 			qint16* in = (qint16*)packet.data.data();
-			// Convert from little endian
-			//for (int i = 0; i < packet.data.length() / 2; i++)
-			//	in[i] = qToBigEndian(in[i]);
 
 			/* Encode the frame. */
 			QByteArray outPacket(1275, (char)0xff); // Preset the output buffer size to MAXIMUM possible Opus frame size
@@ -701,13 +683,9 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			}
 			else {
 				outPacket.resize(nbBytes);
-				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encoded" << packet.data.length() << "bytes, into" << outPacket.length() << "bytes";
 				packet.data.clear();
 				packet.data = outPacket; // Replace incoming data with converted.
 			}
-			qInfo(logAudio()) << "Opus Packet To Send: << " << opus_packet_get_nb_channels(out)
-				<< "channels, " << opus_packet_get_nb_samples(out, outPacket.size(), setup.samplerate);
-			qInfo(logAudio()) << "Radio: channels" << setup.radioChan << "samplerate" << setup.samplerate;
 
 		}
 		else if (setup.bits == 8) 
@@ -719,14 +697,14 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			{
 				quint8 outdata = 0;
 				if (setup.ulaw) {
-					qint16 enc = qFromLittleEndian<quint16>(in + f);
-					if (enc >= 0)
-						outdata = ulaw_encode[enc];
+					//qint16 enc = qFromLittleEndian<quint16>(in + f);
+					if (*in+f >= 0)
+						outdata = ulaw_encode[*in+f];
 					else
-						outdata = 0x7f & ulaw_encode[-enc];
+						outdata = 0x7f & ulaw_encode[-(*in+f)];
 				}
 				else {
-					outdata = (quint8)(((qFromLittleEndian<qint16>(in + f) >> 8) ^ 0x80) & 0xff);
+					outdata = (quint8)((((*in + f) >> 8) ^ 0x80) & 0xff);
 				}
 				outPacket[f] = (char)outdata;
 			}
