@@ -489,9 +489,9 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	if (setup.codec == 0x40 || setup.codec == 0x80) {
 		unsigned char* in = (unsigned char*)inPacket.data.data();
 
-		qInfo(logAudio()) << "Opus Packet Received: << " << opus_packet_get_nb_channels(in) 
-			<< "channels, " << opus_packet_get_nb_samples(in, inPacket.data.size(),setup.samplerate) 
-			<< "samples" << opus_decoder_get_nb_samples(decoder,in,inPacket.data.size()) << "decoded samples";
+		qInfo(logAudio()) << "Opus Packet Received: << " << opus_packet_get_nb_channels(in)
+			<< "channels, " << opus_packet_get_nb_samples(in, inPacket.data.size(), setup.samplerate)
+			<< "samples" << opus_decoder_get_nb_samples(decoder, in, inPacket.data.size()) << "decoded samples";
 		qInfo(logAudio()) << "Radio: channels" << setup.radioChan << "samplerate" << setup.samplerate;
 		/* Decode the frame. */
 		//QByteArray outPacket(this->chunkSize *  sizeof(qint16) * setup.radioChan, (char)0xff); // Preset the output buffer size.
@@ -706,6 +706,10 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 				packet.data.clear();
 				packet.data = outPacket; // Replace incoming data with converted.
 			}
+			qInfo(logAudio()) << "Opus Packet To Send: << " << opus_packet_get_nb_channels(out)
+				<< "channels, " << opus_packet_get_nb_samples(out, outPacket.size(), setup.samplerate);
+			qInfo(logAudio()) << "Radio: channels" << setup.radioChan << "samplerate" << setup.samplerate;
+
 		}
 		else if (setup.bits == 8) 
 		{
