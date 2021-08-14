@@ -202,6 +202,7 @@ static struct
     { RIG_MODE_NONE, "" },
 };
 
+#if 0
 static struct
 {
     quint64 func;
@@ -310,6 +311,8 @@ static struct
     { RIG_LEVEL_TEMP_METER, "TEMP_METER" },
     { RIG_LEVEL_NONE, "" },
 };
+
+#endif
 
 struct cal_table {
     int size;                   /*!< number of plots in the table */
