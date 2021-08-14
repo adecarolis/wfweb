@@ -520,12 +520,13 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		qint16* out = (qint16*)outPacket.data();
 		for (int f = 0; f < inPacket.data.length(); f++)
 		{
+			qint16 samp = (quint8)inPacket.data[f];
 			for (int g = setup.radioChan; g <= devChannels; g++)
 			{
 				if (setup.ulaw)
-					*out++ = ulaw_decode[(quint8)inPacket.data[f]] * this->volume;
+					*out++ = ulaw_decode[samp] * this->volume;
 				else
-					*out++ = (qint16)(((quint8)inPacket.data[f] << 8) - 32640 * this->volume);
+					*out++ = ((samp - 128) << 8) * this->volume;
 			}
 		}
 		inPacket.data.clear();
@@ -690,21 +691,20 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		}
 		else if (setup.bits == 8) 
 		{
-
 			// Do we need to convert 16-bit to 8-bit?
 			QByteArray outPacket((int)packet.data.length() / 2, (char)0xff);
 			qint16* in = (qint16*)packet.data.data();
 			for (int f = 0; f < outPacket.length(); f++)
 			{
+				qint16 enc = (*in)+f;
 				if (setup.ulaw) {
-					//qint16 enc = qFromLittleEndian<quint16>(in + f);
-					if ((*in)+f >= 0)
-						outPacket[f] = (char)ulaw_encode[(*in)+f];
+					if (enc >= 0)
+						outPacket[f] = ulaw_encode[enc];
 					else
-						outPacket[f] = (char)0x7f & ulaw_encode[-((*in)+f)];
+						outPacket[f] =  ulaw_encode[-enc] & 0x7f;
 				}
 				else {
-					outPacket[f] = (char)(((((*in) + f) >> 8) ^ 0x80) & 0xff);
+					outPacket[f] = (quint8)((enc >> 8) ^ 0x80) & 0xff;
 				}
 			}
 			packet.data.clear();
