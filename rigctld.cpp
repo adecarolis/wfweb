@@ -633,7 +633,7 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command.length() > 2 && (command[0] == "L" || command[0] == "set_level"))
         {
-            unsigned char value;
+            unsigned char value=0;
             setCommand = true;
             if (command[1] == "AF") {
                 value = command[2].toFloat() * 255;
