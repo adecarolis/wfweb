@@ -690,23 +690,22 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		}
 		else if (setup.bits == 8) 
 		{
+
 			// Do we need to convert 16-bit to 8-bit?
 			QByteArray outPacket((int)packet.data.length() / 2, (char)0xff);
 			qint16* in = (qint16*)packet.data.data();
 			for (int f = 0; f < outPacket.length(); f++)
 			{
-				quint8 outdata = 0;
 				if (setup.ulaw) {
 					//qint16 enc = qFromLittleEndian<quint16>(in + f);
-					if (*in+f >= 0)
-						outdata = ulaw_encode[*in+f];
+					if ((*in)+f >= 0)
+						outPacket[f] = (char)ulaw_encode[(*in)+f];
 					else
-						outdata = 0x7f & ulaw_encode[-(*in+f)];
+						outPacket[f] = (char)0x7f & ulaw_encode[-((*in)+f)];
 				}
 				else {
-					outdata = (quint8)((((*in + f) >> 8) ^ 0x80) & 0xff);
+					outPacket[f] = (char)(((((*in) + f) >> 8) ^ 0x80) & 0xff);
 				}
-				outPacket[f] = (char)outdata;
 			}
 			packet.data.clear();
 			packet.data = outPacket; // Copy output packet back to input buffer.
