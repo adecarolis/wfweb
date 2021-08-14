@@ -505,7 +505,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoder mismatch: nBytes:" << nSamples * sizeof(qint16) * setup.radioChan << "outPacket:" << outPacket.size();
 				outPacket.resize(nSamples * sizeof(qint16) * setup.radioChan);
 			}
-			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << inPacket.data.size() << "bytes, into" << outPacket.length() << "bytes";
+			//qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << inPacket.data.size() << "bytes, into" << outPacket.length() << "bytes";
 			inPacket.data.clear();
 			inPacket.data = outPacket; // Replace incoming data with converted.
 		}
@@ -520,13 +520,13 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		qint16* out = (qint16*)outPacket.data();
 		for (int f = 0; f < inPacket.data.length(); f++)
 		{
-			qint16 samp = (quint8)inPacket.data[f];
+			int samp = (quint8)inPacket.data[f];
 			for (int g = setup.radioChan; g <= devChannels; g++)
 			{
 				if (setup.ulaw)
 					*out++ = ulaw_decode[samp] * this->volume;
 				else
-					*out++ = ((samp - 128) << 8) * this->volume;
+					*out++ = (qint16)((samp - 128) << 8) * this->volume;
 			}
 		}
 		inPacket.data.clear();
@@ -712,7 +712,8 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 					outPacket[f] = (unsigned char)compressedByte;
 				}
 				else {
-					outPacket[f] = (unsigned char)(((sample + 32768) >> 8) & 0xff);
+					int compressedByte = (((sample + 32768) >> 8) & 0xff);
+					outPacket[f] = (unsigned char)compressedByte;
 				}
 			}
 			packet.data.clear();
