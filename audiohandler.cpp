@@ -712,8 +712,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 					outPacket[f] = (unsigned char)compressedByte;
 				}
 				else {
-					int compressedByte = ((sample >> 8) ^ 0x80) & 0xff;
-					outPacket[f] = (unsigned char)compressedByte;
+					outPacket[f] = (unsigned char)(((sample + 32768) >> 8) & 0xff);
 				}
 			}
 			packet.data.clear();
