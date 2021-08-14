@@ -242,16 +242,34 @@ bool audioHandler::init(audioSetup setupIn)
 	}
 
 #endif
-	// Setup resampler if it is needed.
+	// Setup resampler and opus if they are needed.
 	int resample_error = 0;
+	int opus_err = 0;
 	if (setup.isinput) {
 		resampler = wf_resampler_init(devChannels, nativeSampleRate, setup.samplerate, setup.resampleQuality, &resample_error);
+		if (setup.codec == 0x40 || setup.codec == 0x80) {
+			// Opus codec
+			encoder = opus_encoder_create(setup.samplerate, setup.radioChan, OPUS_APPLICATION_AUDIO, &opus_err);
+			opus_encoder_ctl(encoder, OPUS_SET_LSB_DEPTH(16));
+			opus_encoder_ctl(encoder, OPUS_SET_INBAND_FEC(1));
+			opus_encoder_ctl(encoder, OPUS_SET_DTX(1));
+			opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(5));
+		}
 	}
 	else {
 		resampler = wf_resampler_init(devChannels, setup.samplerate, this->nativeSampleRate, setup.resampleQuality, &resample_error);
+		if (setup.codec == 0x40 || setup.codec == 0x80) {
+			// Opus codec
+			decoder = opus_decoder_create(setup.samplerate, setup.radioChan, &opus_err);
+		}
 	}
 	wf_resampler_get_ratio(resampler, &ratioNum, &ratioDen);
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "wf_resampler_init() returned: " << resample_error << " ratioNum" << ratioNum << " ratioDen" << ratioDen;
+
+	if (opus_err < 0)
+	{
+		qInfo(logAudio()) << "Faile to create opus" << (setup.isinput ? "Encoder" : "Decoder") << opus_strerror(opus_err);
+	}
 
     qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "thread id" << QThread::currentThreadId();
 
@@ -274,8 +292,6 @@ void audioHandler::start()
 		return;
 	}
 
-	int err = 0;
-
 	if (setup.isinput) {
 #ifdef Q_OS_MACX
 		this->open(QIODevice::WriteOnly);
@@ -283,15 +299,6 @@ void audioHandler::start()
 		this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
 #endif
 		audioInput->start(this);
-		if (setup.codec == 0x40 || setup.codec == 0x80) {
-			// Opus codec
-
-			encoder = opus_encoder_create(setup.samplerate, setup.radioChan, OPUS_APPLICATION_AUDIO, &err);
-			opus_encoder_ctl(encoder, OPUS_SET_LSB_DEPTH(16));
-			opus_encoder_ctl(encoder, OPUS_SET_INBAND_FEC(1));
-			opus_encoder_ctl(encoder, OPUS_SET_DTX(1));
-			opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(5));
-		}
 	}
 	else {
 #ifdef Q_OS_MACX
@@ -300,14 +307,6 @@ void audioHandler::start()
 		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
 #endif
 		audioOutput->start(this);
-		if (setup.codec == 0x40 || setup.codec == 0x80) {
-			// Opus codec
-			decoder = opus_decoder_create(setup.samplerate, setup.radioChan, &err);
-		}
-	}
-	if (err < 0)
-	{
-		fprintf(stderr, "failed to create opus encoder or decoder: %s\n", opus_strerror(err));
 	}
 }
 #endif
