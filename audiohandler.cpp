@@ -528,8 +528,8 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			inPacket.data.clear();
 			inPacket.data = outPacket; // Replace incoming data with converted.
 			qint16* in16 = (qint16*)inPacket.data.data();
-			for (int i = 0; i < inPacket.data.length() / 2; i++)
-				in16[i] = qToLittleEndian(in16[i]);
+			//for (int i = 0; i < inPacket.data.length() / 2; i++)
+			//	in16[i] = qToLittleEndian(in16[i]);
 		}
 	}
 
@@ -693,8 +693,8 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			//Are we using the opus codec?	
 			qint16* in = (qint16*)packet.data.data();
 			// Convert from little endian
-			for (int i = 0; i < packet.data.length() / 2; i++)
-				in[i] = qToBigEndian(in[i]);
+			//for (int i = 0; i < packet.data.length() / 2; i++)
+			//	in[i] = qToBigEndian(in[i]);
 
 			/* Encode the frame. */
 			QByteArray outPacket(1275, (char)0xff); // Preset the output buffer size to MAXIMUM possible Opus frame size
