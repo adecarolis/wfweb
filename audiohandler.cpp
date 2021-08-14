@@ -709,11 +709,11 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 					int exponent = (int)MuLawCompressTable[(sample >> 7) & 0xFF];
 					int mantissa = (sample >> (exponent + 3)) & 0x0F;
 					int compressedByte = ~(sign | (exponent << 4) | mantissa);
-					outPacket[f] = (unsigned char)compressedByte;
+					outPacket[f] = (quint8)compressedByte;
 				}
 				else {
 					int compressedByte = (((sample + 32768) >> 8) & 0xff);
-					outPacket[f] = (unsigned char)compressedByte;
+					outPacket[f] = (quint8)compressedByte;
 				}
 			}
 			packet.data.clear();
