@@ -159,6 +159,8 @@
 #define RIG_FUNC_SPECTRUM   CONSTANT_64BIT_FLAG (43)   /*!< \c SPECTRUM -- Spectrum scope data output ON/OFF */
 #define RIG_FUNC_SPECTRUM_HOLD CONSTANT_64BIT_FLAG (44)   /*!< \c SPECTRUM_HOLD -- Pause spectrum scope updates ON/OFF */
 
+#if 0
+
 static struct
 {
     quint64 mode;
@@ -202,7 +204,6 @@ static struct
     { RIG_MODE_NONE, "" },
 };
 
-#if 0
 static struct
 {
     quint64 func;
