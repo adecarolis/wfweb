@@ -696,15 +696,15 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			qint16* in = (qint16*)packet.data.data();
 			for (int f = 0; f < outPacket.length(); f++)
 			{
-				qint16 enc = (*in)+f;
+				qint16 enc = *in++;
 				if (setup.ulaw) {
 					if (enc >= 0)
-						outPacket[f] = ulaw_encode[enc];
+						outPacket[f] = (qint8)ulaw_encode[enc];
 					else
-						outPacket[f] =  ulaw_encode[-enc] & 0x7f;
+						outPacket[f] = (qint8)ulaw_encode[-enc] & 0x7f;
 				}
 				else {
-					outPacket[f] = (quint8)((enc >> 8) ^ 0x80) & 0xff;
+					outPacket[f] = (qint8)((enc >> 8) ^ 0x80) & 0xff;
 				}
 			}
 			packet.data.clear();
