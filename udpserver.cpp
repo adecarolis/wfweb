@@ -364,7 +364,7 @@ void udpServer::controlReceived()
             sendConnectionInfo(current);
             qInfo(logUdpServer()) << current->ipAddress.toString() << ": rxCodec:" << current->rxCodec << " txCodec:" << current->txCodec <<
                 " rxSampleRate" << current->rxSampleRate <<
-                " txSampleRate" << current->rxSampleRate <<
+                " txSampleRate" << current->txSampleRate <<
                 " txBufferLen" << current->txBufferLen;
 
             if (!config.lan) {
