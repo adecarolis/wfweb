@@ -607,6 +607,48 @@ int audioHandler::getLatency()
 	return currentLatency;
 }
 
+
+const int cBias = 0x84;
+
+const int cClip = 32635;
+
+static char MuLawCompressTable[256] =
+{
+
+	 0,0,1,1,2,2,2,2,3,3,3,3,3,3,3,3,
+
+	 4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,
+
+	 5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+
+	 5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
+
+	 6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+
+	 6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+
+	 6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+
+	 6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
+
+	 7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+
+	 7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+
+	 7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+
+	 7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+
+	 7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+
+	 7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+
+	 7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
+
+	 7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7
+
+};
+
 void audioHandler::getNextAudioChunk(QByteArray& ret)
 {
 	audioPacket packet;
@@ -696,15 +738,23 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			qint16* in = (qint16*)packet.data.data();
 			for (int f = 0; f < outPacket.length(); f++)
 			{
-				qint16 enc = qFromLittleEndian<qint16>(*in++);;
+				qint16 sample = qFromLittleEndian<qint16>(*in++);;
 				if (setup.ulaw) {
-					if (enc >= 0)
-						outPacket[f] = (ulaw_encode[enc]);
-					else
-						outPacket[f] = (ulaw_encode[-enc] & 0x7f);
+					int sign = (sample >> 8) & 0x80;
+					if (sign) 
+						sample = (short)-sample;
+					if (sample > cClip)
+						sample = cClip;
+					sample = (short)(sample + cBias);
+					int exponent = (int)MuLawCompressTable[(sample >> 7) & 0xFF];
+					int mantissa = (sample >> (exponent + 3)) & 0x0F;
+
+					int compressedByte = ~(sign | (exponent << 4) | mantissa);
+
+					outPacket[f] = (unsigned char)compressedByte;
 				}
 				else {
-					outPacket[f] = ((enc >> 8) ^ 0x80) & 0xff;
+					outPacket[f] = ((sample >> 8) ^ 0x80) & 0xff;
 				}
 			}
 			packet.data.clear();
