@@ -120,7 +120,7 @@ public:
 	quint32 packetsLost=0;
 
 	quint16 seqPrefix = 0;
-
+	QString connectionType="";
 	int congestion = 0;
 
 
