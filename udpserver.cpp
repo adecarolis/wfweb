@@ -461,7 +461,6 @@ void udpServer::civReceived()
         if (current == Q_NULLPTR)
         {
             current = new CLIENT();
-
             foreach(CLIENT* client, controlClients)
             {
                 if (client != Q_NULLPTR)
@@ -472,6 +471,13 @@ void udpServer::civReceived()
                         client->civClient = current;
                     }
                 }
+            }
+
+            if (current->controlClient == Q_NULLPTR || !current->controlClient->isAuthenticated)
+            {
+                // There is no current controlClient that matches this civClient 
+                delete current;
+                return;
             }
 
             current->type = "CIV";
@@ -504,10 +510,6 @@ void udpServer::civReceived()
 
         }
 
-        if (current->controlClient == Q_NULLPTR || !current->controlClient->isAuthenticated)
-        {
-            return;
-        }
 
         switch (r.length())
         {
@@ -621,6 +623,14 @@ void udpServer::audioReceived()
                     }
                 }
             }
+
+            if (current->controlClient == Q_NULLPTR || !current->controlClient->isAuthenticated)
+            {
+                // There is no current controlClient that matches this audioClient 
+                delete current;
+                return;
+            }
+
             current->type = "Audio";
             current->connected = true;
             current->timeConnected = QDateTime::currentDateTime();
@@ -1581,6 +1591,7 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
     while (it != l->end()) {
         CLIENT* client = *it;
         if (client != Q_NULLPTR && client == c) {
+            qInfo(logUdpServer()) << "Found" << client->type << "connection to: " << client->ipAddress.toString() << ":" << QString::number(client->port);
             it = l->erase(it);
         }
         else {
