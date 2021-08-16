@@ -13,6 +13,7 @@ sudo apt-get install libqt5multimedia5
 sudo apt-get install libqt5multimedia5-plugins
 sudo apt-get install qtmultimedia5-dev
 sudo apt-get install git 
+sudo apt-get install libopus-dev
 ~~~
 Now you need to install qcustomplot. There are two versions that are commonly found in linux distros: 1.3 and 2.0. Either will work fine. If you are not sure which version your linux install comes with, simply run both commands. One will work and the other will fail, and that's fine!
 
@@ -74,7 +75,7 @@ install wfview on suse 15.x sles 15.x or tumbleweed; this was done on a clean in
 we need to add packages to be able to build the stuff.
 
 - sudo zypper in --type pattern devel_basis
-- sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel libqt5-qtmultimedia-devel 
+- sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel libqt5-qtmultimedia-devel lv2-devel libopus-devel
 
 optional (mainly for development specifics): get and install qt5:
 
@@ -107,7 +108,7 @@ wfview is now installed in /usr/local/bin
 Tested under Fedora 33/34.
 
 Install qt5 dependencies:
-- sudo dnf install qt5-qtbase-common qt5-qtbase qt5-qtbase-gui qt5-qtserialport qt5-qtmultimedia mingw64-qt5-qmake qt5-qtbase-devel qt5-qtserialport-devel qt5-qtmultimedia-devel 
+- sudo dnf install qt5-qtbase-common qt5-qtbase qt5-qtbase-gui qt5-qtserialport qt5-qtmultimedia mingw64-qt5-qmake qt5-qtbase-devel qt5-qtserialport-devel qt5-qtmultimedia-devel libopus-dev 
 
 Install qcustomplot:
 - sudo dnf install qcustomplot qcustomplot-devel
