@@ -515,6 +515,7 @@ void meter::drawScaleId(QPainter *qp)
     for(; i<mXstart+midPointDn; i+=midPointDn/4)
     {
         qp->drawText(i,scaleTextYstart, QString("%1").arg( (int)((i-mXstart) * (float(midPointId) / float(midPointDn)) )) );
+        qp->drawLine(i,scaleTextYstart, i, scaleTextYstart+5);
     }
 
     for(; i<mXstart+255; i+= 4*(highPointDn-midPointDn) / (highPointId-midPointId))
