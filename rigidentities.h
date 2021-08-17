@@ -29,6 +29,7 @@ enum model_kind {
     model705 = 0xA4,
     model706 = 0x58,
     model718 = 0x5E,
+    model736 = 0x40,
     model756pro = 0x5C,
     model756proii = 0x64,
     model756proiii = 0x6E,
