@@ -23,6 +23,13 @@ meter::meter(QWidget *parent) : QWidget(parent)
     //
     // Text in qdarkstylesheet seems to be #EFF0F1
 
+    if(drawLabels)
+    {
+        mXstart = 32;
+    } else {
+        mXstart = 0;
+    }
+
     meterType = meterS;
 
     currentColor.setNamedColor("#148CD2");
@@ -85,52 +92,57 @@ void meter::paintEvent(QPaintEvent *)
     // space of the widget, and gives it corrdinates.
     // The end effect, is that the drawing functions will all
     // scale to the window size.
-
-    //painter.setWindow(QRect(0, 0, 255+mXstart, widgetWindowHeight));
-
-    //if(this->height() > widgetWindowHeight )
-    //{
-        // Clamp down on stretching fonts.
-        // TODO: Make this more elegant
-//    painter.setFont(QFont(this->fontInfo().family(), widgetWindowHeight/3.5));
-
-        painter.setFont(QFont(this->fontInfo().family(), fontSize));
-        widgetWindowHeight = this->height();
-        painter.setWindow(QRect(0, 0, 255+mXstart+15, widgetWindowHeight));
-        barHeight = widgetWindowHeight / 2;
-
-
-        //painter.setFont(QFont(this->fontInfo().family(), widgetWindowHeight/2.5));
-    //}
+    painter.setRenderHint(QPainter::SmoothPixmapTransform);
+    painter.setFont(QFont(this->fontInfo().family(), fontSize));
+    widgetWindowHeight = this->height();
+    painter.setWindow(QRect(0, 0, 255+mXstart+15, widgetWindowHeight));
+    barHeight = widgetWindowHeight / 2;
 
     switch(meterType)
     {
         case meterS:
+            label = "S";
             peakRedLevel = 120; // S9+
             drawScaleS(&painter);
             break;
         case meterPower:
+            label = "PWR";
             peakRedLevel = 210; // 100%
             drawScalePo(&painter);
             break;
         case meterALC:
+            label = "ALC";
             peakRedLevel = 100;
             drawScaleALC(&painter);
             break;
         case meterSWR:
+            label = "SWR";
             peakRedLevel = 100; // SWR 2.5
             drawScaleSWR(&painter);
             break;
         case meterCenter:
+            label = "CTR";
             peakRedLevel = 256; // No need for red here
             drawScaleCenter(&painter);
             break;
         case meterVoltage:
+            label = "Vd";
             peakRedLevel = 241;
             drawScaleVd(&painter);
             break;
+        case meterCurrent:
+            label = "Id";
+            peakRedLevel = 120;
+            drawScaleId(&painter);
+            break;
+        case meterComp:
+            label = "CMP";
+            peakRedLevel = 100;
+            drawScaleComp(&painter);
+            break;
         default:
-            peakRedLevel = 200;
+            label = "DN";
+            peakRedLevel = 241;
             drawScaleRaw(&painter);
             break;
     }
@@ -181,6 +193,16 @@ void meter::paintEvent(QPaintEvent *)
 
         painter.drawRect(mXstart+peak-1,mYstart,2,barHeight);
     }
+    if(drawLabels)
+    {
+        drawLabel(&painter);
+    }
+}
+
+void meter::drawLabel(QPainter *qp)
+{
+    qp->setPen(lowLineColor);
+    qp->drawText(0,scaleTextYstart, label );
 }
 
 void meter::setLevel(int current)
@@ -231,7 +253,7 @@ void meter::drawScaleRaw(QPainter *qp)
     qp->setPen(lowTextColor);
     //qp->setFont(QFont("Arial", fontSize));
     int i=mXstart;
-    for(; i<mXstart+256; i+=20)
+    for(; i<mXstart+256; i+=25)
     {
         qp->drawText(i,scaleTextYstart, QString("%1").arg(i) );
     }
@@ -264,7 +286,7 @@ void meter::drawScaleVd(QPainter *qp)
     float VdperDn = (float)(highPointVd-midPointVd) / float(highPointDn-midPointDn);
 
     int i=mXstart;
-    for(; i<mXstart+midPointDn; i+=midPointDn/2)
+    for(; i<mXstart+midPointDn; i+=midPointDn/1)
     {
         qp->drawText(i,scaleTextYstart, QString("%1").arg( (int)((i-mXstart) * (float(midPointVd) / float(midPointDn)) )) );
     }
@@ -382,6 +404,7 @@ void meter::drawScaleALC(QPainter *qp)
     for(; i<mXstart+100; i += (20))
     {
         qp->drawText(i,scaleTextYstart, QString("%1").arg(alc) );
+        qp->drawLine(i,scaleTextYstart, i, scaleTextYstart+5);
         alc +=20;
     }
 
@@ -390,6 +413,7 @@ void meter::drawScaleALC(QPainter *qp)
     for(; i<mXstart+120; i+=(int)(10*i))
     {
         qp->drawText(i,scaleTextYstart, QString("+%1").arg(alc) );
+        qp->drawLine(i,scaleTextYstart, i, scaleTextYstart+5);
         alc +=10;
     }
 
@@ -399,6 +423,44 @@ void meter::drawScaleALC(QPainter *qp)
     qp->drawLine(100+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
 
     (void)qp;
+}
+
+void meter::drawScaleComp(QPainter *qp)
+{
+    //
+    // 0000=0 dB, 0130=15 dB,0241=30 dB
+    //
+
+    qp->setPen(lowTextColor);
+
+    int midPointDn = 130;
+    int midPointdB = 15;
+
+    int highPointDn = 241;
+    int highPointdB = 30;
+    float dBperDn = (float)(highPointdB-midPointdB) / float(highPointDn-midPointDn);
+
+    int i=mXstart;
+    for(; i<mXstart+midPointDn; i+=midPointDn/4)
+    {
+        qp->drawText(i,scaleTextYstart, QString("%1").arg( (int)((i-mXstart) * (float(midPointdB) / float(midPointDn)) )) );
+        qp->drawLine(i,scaleTextYstart, i, scaleTextYstart+5);
+    }
+
+    i = midPointDn+60;
+    for(; i<mXstart+255; i+= 30)
+    {
+        qp->drawText(i,scaleTextYstart, QString("%1").arg( (int) std::round( ((i-mXstart-midPointDn) * (dBperDn) ) + (midPointdB) )));
+        qp->drawLine(i,scaleTextYstart, i, scaleTextYstart+5);
+    }
+
+    // Now the lines:
+    qp->setPen(lowLineColor);
+
+    // Line: X1, Y1 -->to--> X2, Y2
+    qp->drawLine(mXstart,scaleLineYstart,peakRedLevel+mXstart,scaleLineYstart);
+    qp->setPen(Qt::red);
+    qp->drawLine(peakRedLevel+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
 }
 
 void meter::drawScaleSWR(QPainter *qp)
@@ -411,26 +473,71 @@ void meter::drawScaleSWR(QPainter *qp)
 
     qp->drawText(mXstart,scaleTextYstart, QString("1.0"));
     qp->drawText(24+mXstart,scaleTextYstart, QString("1.3"));
-    qp->drawText(48+mXstart,scaleTextYstart, QString("1.5"));
+    qp->drawText(48+mXstart,scaleTextYstart, QString("1.5"));    
     qp->drawText(80+mXstart,scaleTextYstart, QString("2.0"));
     qp->drawText(100+mXstart,scaleTextYstart, QString("2.5"));
     qp->drawText(120+mXstart,scaleTextYstart, QString("3.0"));
+
+    qp->drawLine(  0+mXstart,scaleTextYstart,  0+mXstart, scaleTextYstart+5);
+    qp->drawLine( 24+mXstart,scaleTextYstart, 24+mXstart, scaleTextYstart+5);
+    qp->drawLine( 48+mXstart,scaleTextYstart, 48+mXstart, scaleTextYstart+5);
+    qp->drawLine( 80+mXstart,scaleTextYstart, 80+mXstart, scaleTextYstart+5);
+    qp->drawLine(100+mXstart,scaleTextYstart,100+mXstart, scaleTextYstart+5); // does not draw?
+    qp->drawLine(120+mXstart,scaleTextYstart,120+mXstart, scaleTextYstart+5);
+
 
     qp->setPen(lowLineColor);
     qp->drawLine(mXstart,scaleLineYstart,100+mXstart,scaleLineYstart);
     qp->setPen(Qt::red);
     qp->drawLine(100+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
 
-    (void)qp;
+
 }
 
 void meter::drawScaleId(QPainter *qp)
 {
-    (void)qp;
+    // IC-7300:
+    // 0000=0, 0097=10, 0146=15, 0241=25
+    //
+
+    qp->setPen(lowTextColor);
+    //qp->setFont(QFont("Arial", fontSize));
+
+    // 7300/9700 and others:
+    int midPointDn = 97;
+    int midPointId = 10;
+
+    int highPointDn = 146;
+    int highPointId = 15;
+    float IdperDn = (float)(highPointId-midPointId) / float(highPointDn-midPointDn);
+
+    int i=mXstart;
+    for(; i<mXstart+midPointDn; i+=midPointDn/4)
+    {
+        qp->drawText(i,scaleTextYstart, QString("%1").arg( (int)((i-mXstart) * (float(midPointId) / float(midPointDn)) )) );
+    }
+
+    for(; i<mXstart+255; i+= 4*(highPointDn-midPointDn) / (highPointId-midPointId))
+    {
+        qp->drawText(i,scaleTextYstart, QString("%1").arg( (int) std::round( ((i-mXstart-midPointDn) * (IdperDn) ) + (midPointId) )));
+        qp->drawLine(i,scaleTextYstart, i, scaleTextYstart+5);
+    }
+
+    // Now the lines:
+    qp->setPen(lowLineColor);
+
+    // Line: X1, Y1 -->to--> X2, Y2
+    qp->drawLine(mXstart,scaleLineYstart,peakRedLevel+mXstart,scaleLineYstart);
+    qp->setPen(Qt::red);
+    qp->drawLine(peakRedLevel+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
 }
 
 void meter::drawScaleS(QPainter *qp)
 {
+    //
+    // 0000=S0, 0120=S9, 0241=S9+60dB
+    //  120 / 9 = 13.333 steps per S-unit
+
     qp->setPen(lowTextColor);
     //qp->setFont(QFont("Arial", fontSize));
     int i=mXstart;
@@ -439,6 +546,7 @@ void meter::drawScaleS(QPainter *qp)
     for(; i<mXstart+120; i+=13)
     {
         qp->drawText(i,scaleTextYstart, QString("%1").arg(s++) );
+        qp->drawLine(i,scaleTextYstart, i, scaleTextYstart+5);
     }
 
     // 2 DN per 1 dB now:
@@ -454,13 +562,14 @@ void meter::drawScaleS(QPainter *qp)
     for(; i<mXstart+255; i+=40)
     {
         qp->drawText(i,scaleTextYstart, QString("+%1").arg(s) );
+        qp->drawLine(i,scaleTextYstart, i, scaleTextYstart+5);
         s = s + 20;
     }
 
     qp->setPen(lowLineColor);
 
-    qp->drawLine(mXstart,scaleLineYstart,130,scaleLineYstart);
+    qp->drawLine(mXstart,scaleLineYstart,peakRedLevel+mXstart,scaleLineYstart);
     qp->setPen(Qt::red);
-    qp->drawLine(130,scaleLineYstart,255,scaleLineYstart);
+    qp->drawLine(peakRedLevel+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
 
 }
