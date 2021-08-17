@@ -33,6 +33,7 @@ enum model_kind {
     model756proii = 0x64,
     model756proiii = 0x6E,
     model910h = 0x60,
+    model9100 = 0x7C,
     modelUnknown = 0xFF
 };
 

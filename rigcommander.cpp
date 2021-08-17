@@ -3304,6 +3304,33 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
             break;
+        case model9100:
+            rigCaps.modelName = QString("IC-9100");
+            rigCaps.rigctlModel = 3068;
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.append(inputUSB); // TODO, add commands for this radio's inputs
+            rigCaps.inputs.append(inputACC);
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
+            rigCaps.hasATU = true;
+            rigCaps.hasDV = true;
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x20' });
+            rigCaps.antennas = {0x00, 0x01};
+            rigCaps.bands = standardHF;
+            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+            rigCaps.bands.push_back(band23cm);
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.bsr[band2m] = 0x11;
+            rigCaps.bsr[band70cm] = 0x12;
+            rigCaps.bsr[band23cm] = 0x13;
+            rigCaps.bsr[bandGen] = 0x14;
+            rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeDV, 0x17, "DV")});
+            break;
         default:
             rigCaps.modelName = QString("IC-0x%1").arg(rigCaps.modelID, 2, 16);
             rigCaps.hasSpectrum = false;
