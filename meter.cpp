@@ -86,20 +86,22 @@ void meter::paintEvent(QPaintEvent *)
     // The end effect, is that the drawing functions will all
     // scale to the window size.
 
-    painter.setWindow(QRect(0, 0, 255+mXstart, widgetWindowHeight));
+    //painter.setWindow(QRect(0, 0, 255+mXstart, widgetWindowHeight));
 
-    if(this->height() > widgetWindowHeight )
-    {
+    //if(this->height() > widgetWindowHeight )
+    //{
         // Clamp down on stretching fonts.
         // TODO: Make this more elegant
-        painter.setFont(QFont(this->fontInfo().family(), widgetWindowHeight/3.5));
+//    painter.setFont(QFont(this->fontInfo().family(), widgetWindowHeight/3.5));
+
+        painter.setFont(QFont(this->fontInfo().family(), fontSize));
         widgetWindowHeight = this->height();
-        painter.setWindow(QRect(0, 0, 255+mXstart, widgetWindowHeight));
+        painter.setWindow(QRect(0, 0, 255+mXstart+15, widgetWindowHeight));
         barHeight = widgetWindowHeight / 2;
 
 
         //painter.setFont(QFont(this->fontInfo().family(), widgetWindowHeight/2.5));
-    }
+    //}
 
     switch(meterType)
     {
