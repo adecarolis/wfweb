@@ -4,7 +4,7 @@
 #include "udphandler.h"
 #include "logcategories.h"
 
-udpHandler::udpHandler(udpPreferences prefs,audioSetup rx, audioSetup tx) :
+udpHandler::udpHandler(udpPreferences prefs, audioSetup rx, audioSetup tx) :
     controlPort(prefs.controlLANPort),
     civPort(0),
     audioPort(0),
@@ -237,10 +237,10 @@ void udpHandler::dataReceived()
             {
                 status_packet_t in = (status_packet_t)r.constData();
                 if (in->type != 0x01) {
-                    if (in->error == 0x00ffffff && !streamOpened)
+                    if (in->error == 0xffffffff && !streamOpened)
                     {
-                        emit haveNetworkError(radioIP.toString(), "Auth failed, try rebooting the radio.");
-                        qInfo(logUdp()) << this->metaObject()->className() << ": Auth failed, try rebooting the radio.";
+                        emit haveNetworkError(radioIP.toString(), "Connection failed, wait a few minutes or reboot the radio.");
+                        qInfo(logUdp()) << this->metaObject()->className() << ": Connection failed, wait a few minutes or reboot the radio.";
                     }
                     else if (in->error == 0x00000000 && in->disc == 0x01)
                     {
@@ -272,6 +272,27 @@ void udpHandler::dataReceived()
             {
                 login_response_packet_t in = (login_response_packet_t)r.constData();
                 if (in->type != 0x01) {
+
+                    connectionType = in->connection;
+                    qInfo(logUdp()) << "Got connection type:" << connectionType;
+                    if (connectionType == "FTTH")
+                    {
+                        highBandwidthConnection = true;
+                    }
+
+                    if (connectionType != "WFVIEW") // NOT WFVIEW
+                    {
+                        if (rxSetup.codec >= 0x40 || txSetup.codec >= 0x40)
+                        {
+                            emit haveNetworkError(QString("UDP"), QString("Opus codec not supported, forcing LPCM16"));
+                            if (rxSetup.codec >= 0x40)
+                                rxSetup.codec = 0x04;
+                            if (txSetup.codec >= 0x40)
+                                txSetup.codec = 0x04;
+                        }
+                    }
+
+
                     if (in->error == 0xfeffffff)
                     {
                         emit haveNetworkStatus("Invalid Username/Password");
@@ -295,11 +316,6 @@ void udpHandler::dataReceived()
                         }
                     }
 
-                    if (!strcmp(in->connection, "FTTH"))
-                    {
-                        highBandwidthConnection = true;
-                    }
-
                     qInfo(logUdp()) << this->metaObject()->className() << ": Detected connection speed " << in->connection;
                 }
                 break;
@@ -308,6 +324,7 @@ void udpHandler::dataReceived()
             {
                 conninfo_packet_t in = (conninfo_packet_t)r.constData();
                 if (in->type != 0x01) {
+
                     devName = in->name;
                     QHostAddress ip = QHostAddress(qToBigEndian(in->ipaddress));
                     if (!streamOpened && in->busy)
@@ -912,7 +929,7 @@ void udpAudio::dataReceived()
                 control_packet_t in = (control_packet_t)r.constData();
 
                 
-                if (in->type != 0x01 && in->len >= 0xAC) {
+                if (in->type != 0x01 && in->len >= 0x20) {
                     if (in->seq == 0)
                     {
                         // Seq number has rolled over.

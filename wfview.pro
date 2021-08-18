@@ -38,6 +38,12 @@ equals(QT_ARCH, arm): DEFINES += USE_NEON
 DEFINES += OUTSIDE_SPEEX
 DEFINES += RANDOM_PREFIX=wf
 
+isEmpty(PREFIX) {
+  PREFIX = /usr/local
+}
+
+DEFINES += PREFIX=\\\"$$PREFIX\\\"
+
 # Choose audio system, uses QTMultimedia if both are commented out.
 # DEFINES += RTAUDIO
 # DEFINES += PORTAUDIO
@@ -74,44 +80,54 @@ win32:DEFINES += UNAME=\\\"build\\\"
 RESOURCES += qdarkstyle/style.qrc \
     resources/resources.qrc
 
+unix:target.path = $$PREFIX/bin
+INSTALLS += target
+
 # Why doesn't this seem to do anything?
 DISTFILES += resources/wfview.png \
     resources/install.sh
 DISTFILES += resources/wfview.desktop
 
-linux:QMAKE_POST_LINK += cp ../wfview/resources/wfview.png .;
-linux:QMAKE_POST_LINK += cp ../wfview/resources/wfview.desktop .;
-linux:QMAKE_POST_LINK += cp ../wfview/resources/install.sh .;
-linux:QMAKE_POST_LINK += cp -r ../wfview/qdarkstyle .;
-linux:QMAKE_POST_LINK += chmod 755 install.sh;
-linux:QMAKE_POST_LINK += echo; echo; echo "Run install.sh as root from the build directory to install."; echo; echo;
+unix:applications.files = resources/wfview.desktop
+unix:applications.path = $$PREFIX/share/applications
+INSTALLS += applications
 
+unix:pixmaps.files = resources/wfview.png
+unix:pixmaps.path = $$PREFIX/share/pixmaps
+INSTALLS += pixmaps
+
+unix:stylesheets.files = qdarkstyle
+unix:stylesheets.path = $$PREFIX/share/wfview
+INSTALLS += stylesheets
 
 # Do not do this, it will hang on start:
 # CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 
 CONFIG(debug, release|debug) {
   linux: QCPLIB = qcustomplotd
+  win32:LIBS += -L../opus/win32/VS2015/Win32/Debug/ -lopus
 } else {
   linux: QCPLIB = qcustomplot
+  win32:LIBS += -L../opus/win32/VS2015/Win32/Release/ -lopus
 }
 
 #linux:LIBS += -L./ -l$$QCPLIB -lpulse -lpulse-simple -lpthread
-linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb
-macx:LIBS += -framework CoreAudio -framework CoreFoundation -lhidapi -lpthread
+linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb -lopus
+macx:LIBS += -framework CoreAudio -framework CoreFoundation -lhidapi -lpthread -lopus
 
 win32:LIBS += -L../hidapi/windows/release -lhidapi
 win32:INCLUDEPATH += ../hidapi/hidapi
 
 #win32:SOURCES += rtaudio/RTAudio.cpp
 #win32:HEADERS += rtaudio/RTAUdio.h
+
 !linux:SOURCES += ../qcustomplot/qcustomplot.cpp 
 !linux:HEADERS += ../qcustomplot/qcustomplot.h
-
 !linux:INCLUDEPATH += ../qcustomplot
 
+!linux:INCLUDEPATH += ../opus/include
+
 INCLUDEPATH += resampler
-!linux:INCLUDEPATH += rtaudio
 
 SOURCES += main.cpp\
     wfmain.cpp \

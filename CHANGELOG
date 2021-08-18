@@ -1,5 +1,174 @@
 # CHANGELOG
 
+- 20210809
+
+    		Add constants to make parsing (hopefully) easier
+
+- 20210808
+
+    		Fake known functions
+
+    		Fix float warning
+
+    		Remove calibration debugging
+
+    		Add proper s-meter calibration
+
+- 20210807
+
+    		Add ritctl model to rigCaps
+
+    		Fix to make wsjt-x work again!
+
+    		Add split/duplex support
+
+    		Update rigctld.cpp
+
+    		Correct lack of parentheses in conditionals
+
+    		Fix typo
+
+    		Remove some debug logging
+
+    		More rigctl features/fixes
+
+- 20210806
+
+    		Fix for get_powerstat
+
+    		Update rigctld.cpp
+
+    		Add some levels and other functions
+
+    		Fix compile warnings
+
+    		Add frequency ranges from rigcaps
+
+- 20210806
+
+    		Move rigctld settings in Ui
+
+    		Fixes for setting freq/mode
+
+    		Support for more rigctld commands
+
+    		More fixes to rigctld
+
+    		Change the way rigctl response is built
+
+    		More rigctld fixes
+
+- 20210804
+
+    		Add rigctld config to ui and fix some bugs
+
+- 20210802
+
+    		added derSuessman prefix code
+
+- 20210801
+
+    		Fix broken 8bit audio
+
+    		added derSuessmann additions to have a linux install prefix
+
+    		Fedora build/install notes, see merge request eliggett/wfview!4
+
+- 20210730
+
+    		Added a little extra logic, also some cross-platform help, to the custom
+    		stylesheet loader.
+
+- 20210729
+
+    		fix: set the style once
+
+
+    		added /usr/local to search path for the stylesheet
+
+- 20210726
+
+    		Fixed error in IC-7410 attenuator spec.
+
+- 20210726
+
+    		Fix for blank username/password in server
+
+- 20210724
+
+    		small changes to INSTAll.md and addition of mint 20.2/openSUSE 15.3
+
+- 20210720
+
+    		Clear out meter values when type is switched.
+
+    		Allow user to turn off power-down confirmation msgbox
+
+- 20210719
+
+    		wfview now uses the meter's own balistics (average and peak code). This
+    		makes it very easy to meter any parameter 0-255. Meter Type "meterNone"
+    		or other will display data in "raw" format.
+
+- 20210718
+
+    		Added center tuning for IC-R8600, partially moved meter balistics
+    		(average and peak) to the meter class.
+
+    		Quick debug for the metering queue, just in case.
+
+ 20210717
+
+    		Preliminary secondary meter support. See Settings tab for selection.
+    		Some scales incomplete.
+
+    		Added SWR and ALC scales to the meter.
+
+    		Fix error in scale of power meter
+
+- 20210716
+
+    		Power meter for transmit. Much work remains on this meter alone.
+
+    		Get antenna status on start-up and slow poll for it.
+
+    		Add RX antenna selection for rigs that support it
+
+- 20210714
+
+    		Preferences added for Anti-Alias and Interpolate.
+
+- 20210713
+
+    		Added waterfall display options: anti-alias and interpolate. Not in
+    		preferences yet. Debug button enables wf pan and zoom.
+
+- 20210711
+
+    		Allow user to select whether to confirm exit or not
+
+- 20210709
+
+    		Reset PTT timer for control-R keystroke.
+
+    		Added a fix to keep the local frequency in-sync with any recent commands
+    		sent to the radio.
+
+    		Added more support for the IC-7600 in rigCaps.
+
+    		Added time, date, and UTC offset commands. Currently initiated by the
+    		debug button. There seems to be a bug in the 7300 where the UTC offset
+    		has one hour subtracted, ie, -7 HRS becomes -8 HRS. The hex command
+    		appears to be sent correctly.
+
+- 20210708
+
+    		Delete oldest entry from UDP buffer before adding new one.
+
+    		If pty connected s/w sends a disable transceive command, dont' send any transceive commands to it
+
+    		New about box!
+
 
 - 20210706
 

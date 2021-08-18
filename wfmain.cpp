@@ -43,6 +43,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType<mode_info>();
     qRegisterMetaType<audioPacket>();
     qRegisterMetaType <audioSetup>();
+    qRegisterMetaType <timekind>();
+    qRegisterMetaType <datekind>();
+
 
     haveRigCaps = false;
 
@@ -113,11 +116,33 @@ wfmain::~wfmain()
 void wfmain::closeEvent(QCloseEvent *event)
 {
     // Are you sure?
-    QMessageBox::StandardButton resBtn = QMessageBox::question( this, QString("Confirm close"),
-                                                                tr("Are you sure you wish to exit?\n"),
-                                                                QMessageBox::No | QMessageBox::Yes,
-                                                                QMessageBox::Yes);
-    if (resBtn == QMessageBox::Yes) {
+    if (!prefs.confirmExit) {
+        QApplication::exit();
+    }
+    QCheckBox *cb = new QCheckBox("Don't ask me again");
+    QMessageBox msgbox;
+    msgbox.setText("Are you sure you wish to exit?\n");
+    msgbox.setIcon(QMessageBox::Icon::Question);
+    QAbstractButton *yesButton = msgbox.addButton(QMessageBox::Yes);
+    msgbox.addButton(QMessageBox::No);
+    msgbox.setDefaultButton(QMessageBox::Yes);
+    msgbox.setCheckBox(cb);
+
+    QObject::connect(cb, &QCheckBox::stateChanged, [this](int state){
+            if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked) {
+                prefs.confirmExit=false;
+            } else {
+                prefs.confirmExit=true;
+            }
+            settings->beginGroup("Interface");
+            settings->setValue("ConfirmExit", this->prefs.confirmExit);
+            settings->endGroup();
+            settings->sync();
+        });
+
+    msgbox.exec();
+
+    if (msgbox.clickedButton() == yesButton) {
         QApplication::exit();
     } else {
         event->ignore();
@@ -155,13 +180,6 @@ void wfmain::openRig()
         qDebug(logSystem()) << "Remote host name specified by user: " << hostCL;
     }
 
-    // Start rigctld
-    if (prefs.enableRigCtlD && rigCtl == Q_NULLPTR) {
-        rigCtl = new rigCtlD(this);
-
-        rigCtl->startServer(prefs.rigCtlPort);
-        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), rigCtl, SLOT(receiveRigCaps(rigCapabilities)));
-    }
 
     makeRig();
 
@@ -187,9 +205,9 @@ void wfmain::openRig()
         }
         usingLAN = false;
         emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort);
+        ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
     }
 
-    ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
 
 
 }
@@ -283,6 +301,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getSpectrumRefLevel()), rig, SLOT(getSpectrumRefLevel()));
     connect(this, SIGNAL(getModInputLevel(rigInput)), rig, SLOT(getModInputLevel(rigInput)));
 
+
     // Levels: Set:
     connect(this, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
     connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
@@ -293,7 +312,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
     connect(this, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
     connect(this, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
-    connect(this, SIGNAL(setModLevel(rigInput,unsigned char)), rig, SLOT(setModInputLevel(rigInput,unsigned char)));
+    connect(this, SIGNAL(setModLevel(rigInput, unsigned char)), rig, SLOT(setModInputLevel(rigInput, unsigned char)));
 
     // Levels: handle return on query:
     connect(rig, SIGNAL(haveRfGain(unsigned char)), this, SLOT(receiveRfGain(unsigned char)));
@@ -319,13 +338,13 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveRigID(rigCapabilities)), this, SLOT(receiveRigID(rigCapabilities)));
     connect(this, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
     connect(this, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
-    connect(this, SIGNAL(setAntenna(unsigned char)), rig, SLOT(setAntenna(unsigned char)));
+    connect(this, SIGNAL(setAntenna(unsigned char, bool)), rig, SLOT(setAntenna(unsigned char, bool)));
     connect(this, SIGNAL(getPreamp()), rig, SLOT(getPreamp()));
     connect(rig, SIGNAL(havePreamp(unsigned char)), this, SLOT(receivePreamp(unsigned char)));
     connect(this, SIGNAL(getAttenuator()), rig, SLOT(getAttenuator()));
     connect(rig, SIGNAL(haveAttenuator(unsigned char)), this, SLOT(receiveAttenuator(unsigned char)));
     connect(this, SIGNAL(getAntenna()), rig, SLOT(getAntenna()));
-    //connect(rig, SIGNAL(haveAntenna(unsigned char)), this, SLOT(receiveAntennaSel(unsigned char)));
+    connect(rig, SIGNAL(haveAntenna(unsigned char,bool)), this, SLOT(receiveAntennaSel(unsigned char,bool)));
 
 
     // Speech (emitted from rig speaker)
@@ -340,6 +359,11 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveRefAdjustFine(unsigned char)), cal, SLOT(handleRefAdjustFine(unsigned char)));
     connect(cal, SIGNAL(setRefAdjustCourse(unsigned char)), rig, SLOT(setRefAdjustCourse(unsigned char)));
     connect(cal, SIGNAL(setRefAdjustFine(unsigned char)), rig, SLOT(setRefAdjustFine(unsigned char)));
+
+    // Date and Time:
+    connect(this, SIGNAL(setTime(timekind)), rig, SLOT(setTime(timekind)));
+    connect(this, SIGNAL(setDate(datekind)), rig, SLOT(setDate(datekind)));
+    connect(this, SIGNAL(setUTCOffset(timekind)), rig, SLOT(setUTCOffset(timekind)));
 
 }
 
@@ -380,9 +404,29 @@ void wfmain::makeRig()
 
         if (rigCtl != Q_NULLPTR) {
             connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
+            connect(this, SIGNAL(requestRigState()), rig, SLOT(sendState()));
             connect(rigCtl, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
             connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
+            connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
             connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
+            connect(rigCtl, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
+            connect(rigCtl, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
+
+            connect(rigCtl, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
+            connect(rigCtl, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
+            connect(rigCtl, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
+
+            // Levels: Set:
+            connect(rigCtl, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
+            connect(rigCtl, SIGNAL(setTxPower(unsigned char)), rig, SLOT(setTxPower(unsigned char)));
+            connect(rigCtl, SIGNAL(setMicGain(unsigned char)), rig, SLOT(setMicGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setMonitorLevel(unsigned char)), rig, SLOT(setMonitorLevel(unsigned char)));
+            connect(rigCtl, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
+
         }
     }
 }
@@ -400,7 +444,7 @@ void wfmain::removeRig()
 
         delete rigThread;
         delete rig;
-
+        rig = Q_NULLPTR;
     }
 
 }
@@ -636,6 +680,32 @@ void wfmain::setupMainUI()
     ui->wfthemeCombo->addItem("Spectrum", QCPColorGradient::gpSpectrum);
     ui->wfthemeCombo->addItem("Candy", QCPColorGradient::gpCandy);
 
+    ui->meter2selectionCombo->addItem("None", meterNone);
+    ui->meter2selectionCombo->addItem("SWR", meterSWR);
+    ui->meter2selectionCombo->addItem("ALC", meterALC);
+    ui->meter2selectionCombo->addItem("Compression", meterComp);
+    ui->meter2selectionCombo->addItem("Voltage", meterVoltage);
+    ui->meter2selectionCombo->addItem("Current", meterCurrent);
+    ui->meter2selectionCombo->addItem("Center", meterCenter);
+    ui->meter2Widget->hide();
+
+#ifdef QT_DEBUG
+    // Experimental feature:
+    ui->meter2selectionCombo->show();
+    ui->secondaryMeterSelectionLabel->show();
+#else
+    ui->meter2selectionCombo->hide();
+    ui->secondaryMeterSelectionLabel->hide();
+#endif
+
+    // Future ideas:
+    //ui->meter2selectionCombo->addItem("Transmit Audio", meterTxMod);
+    //ui->meter2selectionCombo->addItem("Receive Audio", meterRxAudio);
+    //ui->meter2selectionCombo->addItem("Latency", meterLatency);
+
+
+
+
     spans << "2.5k" << "5.0k" << "10k" << "25k";
     spans << "50k" << "100k" << "250k" << "500k";
     ui->scopeBWCombo->insertItems(0, spans);
@@ -692,9 +762,6 @@ void wfmain::setupMainUI()
     ui->statusBar->addPermanentWidget(rigName);
     rigName->setText("NONE");
     rigName->setFixedWidth(50);
-
-    SMeterReadings.fill(0,30);
-    powerMeterReadings.fill(0,30);
 
     freq.MHzDouble = 0.0;
     freq.Hz = 0;
@@ -839,6 +906,11 @@ void wfmain::setInitialTiming()
     pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
     pttTimer->setSingleShot(true);
     connect(pttTimer, SIGNAL(timeout()), this, SLOT(handlePttLimit()));
+
+    timeSync = new QTimer(this);
+    connect(timeSync, SIGNAL(timeout()), this, SLOT(setRadioTimeDateSend()));
+    waitingToSetTimeDate = false;
+    lastFreqCmdTime_ms = QDateTime::currentMSecsSinceEpoch() - 5000; // 5 seconds ago
 }
 
 void wfmain::setServerToPrefs()
@@ -884,6 +956,12 @@ void wfmain::setUIToPrefs()
     ui->drawPeakChk->setChecked(prefs.drawPeaks);
     on_drawPeakChk_clicked(prefs.drawPeaks);
     drawPeaks = prefs.drawPeaks;
+
+    ui->wfAntiAliasChk->setChecked(prefs.wfAntiAlias);
+    on_wfAntiAliasChk_clicked(prefs.wfAntiAlias);
+
+    ui->wfInterpolateChk->setChecked(prefs.wfInterpolate);
+    on_wfInterpolateChk_clicked(prefs.wfInterpolate);
 
     ui->wfLengthSlider->setValue(prefs.wflength);
     prepareWf(prefs.wflength);
@@ -1218,6 +1296,8 @@ void wfmain::setDefPrefs()
     defPrefs.useDarkMode = true;
     defPrefs.useSystemTheme = false;
     defPrefs.drawPeaks = true;
+    defPrefs.wfAntiAlias = false;
+    defPrefs.wfInterpolate = true;
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
     defPrefs.radioCIVAddr = 0x00; // previously was 0x94 for 7300.
     defPrefs.serialPortRadio = QString("auto");
@@ -1230,6 +1310,8 @@ void wfmain::setDefPrefs()
     defPrefs.localAFgain = 255;
     defPrefs.wflength = 160;
     defPrefs.wftheme = static_cast<int>(QCPColorGradient::gpJet);
+    defPrefs.confirmExit = true;
+    defPrefs.confirmPowerOff = true;
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -1238,7 +1320,6 @@ void wfmain::setDefPrefs()
     udpDefPrefs.username = QString("");
     udpDefPrefs.password = QString("");
     udpDefPrefs.clientName = QHostInfo::localHostName();
-
 }
 
 void wfmain::loadSettings()
@@ -1253,6 +1334,8 @@ void wfmain::loadSettings()
     prefs.useSystemTheme = settings->value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
     prefs.wftheme = settings->value("WFTheme", defPrefs.wftheme).toInt();
     prefs.drawPeaks = settings->value("DrawPeaks", defPrefs.drawPeaks).toBool();
+    prefs.wfAntiAlias = settings->value("WFAntiAlias", defPrefs.wfAntiAlias).toBool();
+    prefs.wfInterpolate = settings->value("WFInterpolate", defPrefs.wfInterpolate).toBool();
     prefs.wflength = (unsigned int) settings->value("WFLength", defPrefs.wflength).toInt();
     prefs.stylesheetPath = settings->value("StylesheetPath", defPrefs.stylesheetPath).toString();
     ui->splitter->restoreState(settings->value("splitter").toByteArray());
@@ -1260,6 +1343,9 @@ void wfmain::loadSettings()
     restoreGeometry(settings->value("windowGeometry").toByteArray());
     restoreState(settings->value("windowState").toByteArray());
     setWindowState(Qt::WindowActive); // Works around QT bug to returns window+keyboard focus.
+    prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
+    prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
+
     settings->endGroup();
 
     // Load color schemes:
@@ -1366,7 +1452,11 @@ void wfmain::loadSettings()
     ui->connectBtn->setEnabled(true);
 
     prefs.enableRigCtlD = settings->value("EnableRigCtlD", defPrefs.enableRigCtlD).toBool();
+    ui->enableRigctldChk->setChecked(prefs.enableRigCtlD);
     prefs.rigCtlPort = settings->value("RigCtlPort", defPrefs.rigCtlPort).toInt();
+    ui->rigctldPortTxt->setText(QString("%1").arg(prefs.rigCtlPort));
+    // Call the function to start rigctld if enabled.
+    on_enableRigctldChk_clicked(prefs.enableRigCtlD);
 
     udpPrefs.ipAddress = settings->value("IPAddress", udpDefPrefs.ipAddress).toString();
     ui->ipAddressTxt->setEnabled(ui->lanEnableBtn->isChecked());
@@ -1414,6 +1504,8 @@ void wfmain::loadSettings()
     ui->audioRXCodecCombo->addItem("LPCM 2ch 16bit", 16);
     ui->audioRXCodecCombo->addItem("uLaw 2ch 8bit", 32);
     ui->audioRXCodecCombo->addItem("PCM 2ch 8bit", 8);
+    ui->audioRXCodecCombo->addItem("Opus 1ch", 64);
+    ui->audioRXCodecCombo->addItem("Opus 2ch", 128);
 
     ui->audioRXCodecCombo->blockSignals(true);
     rxSetup.codec = settings->value("AudioRXCodec", "4").toInt();
@@ -1426,6 +1518,7 @@ void wfmain::loadSettings()
     ui->audioTXCodecCombo->addItem("LPCM 1ch 16bit", 4);
     ui->audioTXCodecCombo->addItem("LPCM 1ch 8bit", 2);
     ui->audioTXCodecCombo->addItem("uLaw 1ch 8bit", 1);
+    ui->audioTXCodecCombo->addItem("Opus 1ch", 64);
 
     ui->audioRXCodecCombo->blockSignals(true);
     txSetup.codec = settings->value("AudioTXCodec", "4").toInt();
@@ -1543,12 +1636,16 @@ void wfmain::saveSettings()
     settings->setValue("UseSystemTheme", prefs.useSystemTheme);
     settings->setValue("UseDarkMode", prefs.useDarkMode);
     settings->setValue("DrawPeaks", prefs.drawPeaks);
+    settings->setValue("WFAntiAlias", prefs.wfAntiAlias);
+    settings->setValue("WFInterpolate", prefs.wfInterpolate);
     settings->setValue("WFTheme", prefs.wftheme);
     settings->setValue("StylesheetPath", prefs.stylesheetPath);
     settings->setValue("splitter", ui->splitter->saveState());
     settings->setValue("windowGeometry", saveGeometry());
     settings->setValue("windowState", saveState());
     settings->setValue("WFLength", prefs.wflength);
+    settings->setValue("ConfirmExit", prefs.confirmExit);
+    settings->setValue("ConfirmPowerOff", prefs.confirmPowerOff);
     settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -1866,7 +1963,7 @@ void wfmain::shortcutF10()
 
 void wfmain::shortcutF12()
 {
-    // Speak current frequency and mode via IC-7300
+    // Speak current frequency and mode from the radio
     showStatusBarText("Sending speech command to radio.");
     emit sayAll();
 }
@@ -1882,8 +1979,8 @@ void wfmain::shortcutControlT()
 void wfmain::shortcutControlR()
 {
     // Receive
-    emit setPTT(false);
-    issueDelayedCommand(cmdGetPTT);
+    issueCmdUniquePriority(cmdSetPTT, false);
+    pttTimer->stop();
 }
 
 void wfmain::shortcutControlI()
@@ -2245,12 +2342,12 @@ void wfmain::setAppTheme(bool isCustom)
 #ifndef Q_OS_LINUX
         QFile f(":"+prefs.stylesheetPath); // built-in resource
 #else
-        QFile f("/usr/share/wfview/stylesheets/" + prefs.stylesheetPath);
+        QFile f(PREFIX "/share/wfview/" + prefs.stylesheetPath);
 #endif
         if (!f.exists())
         {
             printf("Unable to set stylesheet, file not found\n");
-            printf("Tried to load: [%s]\n", QString( QString("/usr/share/wfview/stylesheets/") + prefs.stylesheetPath).toStdString().c_str() );
+            printf("Tried to load: [%s]\n", f.fileName().toStdString().c_str() );
         }
         else
         {
@@ -2349,6 +2446,7 @@ void wfmain::doCmd(commandtype cmddata)
     {
         case cmdSetFreq:
         {
+            lastFreqCmdTime_ms = QDateTime::currentMSecsSinceEpoch();
             freqt f = (*std::static_pointer_cast<freqt>(data));
             emit setFrequency(f);
             break;
@@ -2406,12 +2504,36 @@ void wfmain::doCmd(commandtype cmddata)
         {
             bool pttrequest = (*std::static_pointer_cast<bool>(data));
             emit setPTT(pttrequest);
+            if(pttrequest)
+            {
+                ui->meterSPoWidget->setMeterType(meterPower);
+            } else {
+                ui->meterSPoWidget->setMeterType(meterS);
+            }
             break;
         }
         case cmdSetATU:
         {
             bool atuOn = (*std::static_pointer_cast<bool>(data));
             emit setATU(atuOn);
+            break;
+        }
+        case cmdSetUTCOffset:
+        {
+            timekind u = (*std::static_pointer_cast<timekind>(data));
+            emit setUTCOffset(u);
+            break;
+        }
+        case cmdSetTime:
+        {
+            timekind t = (*std::static_pointer_cast<timekind>(data));
+            emit setTime(t);
+            break;
+        }
+        case cmdSetDate:
+        {
+            datekind d = (*std::static_pointer_cast<datekind>(data));
+            emit setDate(d);
             break;
         }
         default:
@@ -2565,9 +2687,17 @@ void wfmain::doCmd(cmds cmd)
             if(!amTransmitting)
                 emit getMeters(meterS);
             break;
+        case cmdGetCenterMeter:
+            if(!amTransmitting)
+                emit getMeters(meterCenter);
+            break;
         case cmdGetPowerMeter:
             if(amTransmitting)
                 emit getMeters(meterPower);
+            break;
+        case cmdGetSWRMeter:
+            if(amTransmitting)
+                emit getMeters(meterSWR);
             break;
         case cmdGetIdMeter:
             emit getMeters(meterCurrent);
@@ -2705,8 +2835,25 @@ void wfmain::issueCmd(cmds cmd, freqt f)
     commandtype cmddata;
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<freqt>(new freqt(f));
-    //*static_cast<freqt*>(cmddata.data.get()) = f;
     delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, timekind t)
+{
+    qDebug(logSystem()) << "Issuing timekind command with data: " << t.hours << " hours, " << t.minutes << " minutes, " << t.isMinus << " isMinus";
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<timekind>(new timekind(t));
+    delayedCmdQue.push_front(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, datekind d)
+{
+    qDebug(logSystem()) << "Issuing datekind command with data: " << d.day << " day, " << d.month << " month, " << d.year << " year.";
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<datekind>(new datekind(d));
+    delayedCmdQue.push_front(cmddata);
 }
 
 void wfmain::issueCmd(cmds cmd, int i)
@@ -2921,6 +3068,9 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->antennaSelCombo->setDisabled(true);
         }
 
+        ui->rxAntennaCheck->setEnabled(rigCaps.hasRXAntenna);
+        ui->rxAntennaCheck->setChecked(false);
+
         ui->scopeBWCombo->blockSignals(true);
         ui->scopeBWCombo->clear();
         if(rigCaps.hasSpectrum)
@@ -2973,6 +3123,9 @@ void wfmain::initPeriodicCommands()
     insertSlowPeriodicCommand(cmdGetAttenuator, 128);
     insertSlowPeriodicCommand(cmdGetPTT, 128);
     insertSlowPeriodicCommand(cmdGetPreamp, 128);
+    if (rigCaps.hasRXAntenna) {
+        insertSlowPeriodicCommand(cmdGetAntenna, 128);
+    }
 }
 
 void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
@@ -2987,6 +3140,31 @@ void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
         periodicCmdQueue.push_back(cmd);
     }
 }
+
+void wfmain::insertPeriodicCommandUnique(cmds cmd)
+{
+    // Use this function to insert a non-duplicate command
+    // into the fast periodic polling queue, typically
+    // meter commands where high refresh rates are desirable.
+
+    removePeriodicCommand(cmd);
+    periodicCmdQueue.push_front(cmd);
+}
+
+void wfmain::removePeriodicCommand(cmds cmd)
+{
+    while(true)
+    {
+        auto it = std::find(this->periodicCmdQueue.begin(), this->periodicCmdQueue.end(), cmd);
+        if(it != periodicCmdQueue.end())
+        {
+            periodicCmdQueue.erase(it);
+        } else {
+            break;
+        }
+    }
+}
+
 
 void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority)
 {
@@ -3004,10 +3182,15 @@ void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority)
 void wfmain::receiveFreq(freqt freqStruct)
 {
 
-    //qInfo(logSystem()) << "HEY WE GOT A Frequency: " << freqMhz;
-    ui->freqLabel->setText(QString("%1").arg(freqStruct.MHzDouble, 0, 'f'));
-    freq = freqStruct;
-    //showStatusBarText(QString("Frequency: %1").arg(freqMhz));
+    qint64 tnow_ms = QDateTime::currentMSecsSinceEpoch();
+    if(tnow_ms - lastFreqCmdTime_ms > delayedCommand->interval() * 2)
+    {
+        ui->freqLabel->setText(QString("%1").arg(freqStruct.MHzDouble, 0, 'f'));
+        freq = freqStruct;
+    } else {
+        qDebug(logSystem()) << "Rejecting stale frequency: " << freqStruct.Hz << " Hz, delta time ms = " << tnow_ms - lastFreqCmdTime_ms\
+                            << ", tnow_ms " << tnow_ms << ", last: " << lastFreqCmdTime_ms;
+    }
 }
 
 void wfmain::receivePTTstatus(bool pttOn)
@@ -3151,20 +3334,23 @@ void wfmain::receiveSpectrumMode(spectrumMode spectMode)
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 {
     double x;
-    freqt freq;
+    freqt freqGo;
     //double y;
     //double px;
     if(!freqLock)
     {
         //y = plot->yAxis->pixelToCoord(me->pos().y());
         x = plot->xAxis->pixelToCoord(me->pos().x());
-        freq.Hz = x*1E6;
+        freqGo.Hz = x*1E6;
 
-        freq.Hz = roundFrequency(freq.Hz, tsWfScrollHz);
+        freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
+        freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
 
         //emit setFrequency(freq);
-        issueCmd(cmdSetFreq, freq);
-        issueDelayedCommand(cmdGetFreq);
+        issueCmd(cmdSetFreq, freqGo);
+        freq = freqGo;
+        setUIFreq();
+        //issueDelayedCommand(cmdGetFreq);
         showStatusBarText(QString("Going to %1 MHz").arg(x));
     }
 }
@@ -3172,7 +3358,7 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 void wfmain::handleWFDoubleClick(QMouseEvent *me)
 {
     double x;
-    freqt freq;
+    freqt freqGo;
     //double y;
     //x = wf->xAxis->pixelToCoord(me->pos().x());
     //y = wf->yAxis->pixelToCoord(me->pos().y());
@@ -3180,13 +3366,15 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
     if(!freqLock)
     {
         x = plot->xAxis->pixelToCoord(me->pos().x());
-        freq.Hz = x*1E6;
+        freqGo.Hz = x*1E6;
 
-        freq.Hz = roundFrequency(freq.Hz, tsWfScrollHz);
+        freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
+        freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
 
         //emit setFrequency(freq);
-        issueCmd(cmdSetFreq, freq);
-        issueDelayedCommand(cmdGetFreq);
+        issueCmd(cmdSetFreq, freqGo);
+        freq = freqGo;
+        setUIFreq();
         showStatusBarText(QString("Going to %1 MHz").arg(x));
     }
 }
@@ -3241,7 +3429,7 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     //emit setFrequency(f);
     issueCmdUniquePriority(cmdSetFreq, f);
     ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::handlePlotScroll(QWheelEvent *we)
@@ -3360,31 +3548,31 @@ void wfmain::on_goFreqBtn_clicked()
 {
     freqt f;
     bool ok = false;
-    double freq = 0;
+    double freqDbl = 0;
     int KHz = 0;
 
     if(ui->freqMhzLineEdit->text().contains("."))
     {
 
-        freq = ui->freqMhzLineEdit->text().toDouble(&ok);
+        freqDbl = ui->freqMhzLineEdit->text().toDouble(&ok);
         if(ok)
         {
-            f.Hz = freq*1E6;
-            //emit setFrequency(f);
-            issueCmd(cmdSetFreq, f);
-            //issueCmdSetFreq(f);
-            issueDelayedCommand(cmdGetFreq);
+            f.Hz = freqDbl*1E6;
+            issueCmd(cmdSetFreq, f);            
         }
     } else {
         KHz = ui->freqMhzLineEdit->text().toInt(&ok);
         if(ok)
         {
             f.Hz = KHz*1E3;
-            //issueCmdSetFreq(f);
-            //emit setFrequency(f);
             issueCmd(cmdSetFreq, f);
-            issueDelayedCommand(cmdGetFreq);
         }
+    }
+    if(ok)
+    {
+        f.MHzDouble = (float)f.Hz / 1E6;
+        freq = f;
+        setUIFreq();
     }
 
     ui->freqMhzLineEdit->selectAll();
@@ -3664,17 +3852,19 @@ void wfmain::on_freqDial_valueChanged(int value)
     }
 }
 
-void wfmain::receiveBandStackReg(freqt freq, char mode, char filter, bool dataOn)
+void wfmain::receiveBandStackReg(freqt freqGo, char mode, char filter, bool dataOn)
 {
     // read the band stack and apply by sending out commands
 
-    qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freq.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
+    qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freqGo.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
     //emit setFrequency(freq);
-    issueCmd(cmdSetFreq, freq);
+    issueCmd(cmdSetFreq, freqGo);
     setModeVal = (unsigned char) mode;
     setFilterVal = (unsigned char) filter;
 
     issueDelayedCommand(cmdSetModeFilter);
+    freq = freqGo;
+    setUIFreq();
 
     if(dataOn)
     {
@@ -3682,8 +3872,8 @@ void wfmain::receiveBandStackReg(freqt freq, char mode, char filter, bool dataOn
     } else {
         issueDelayedCommand(cmdSetDataModeOff);
     }
-    issueDelayedCommand(cmdGetFreq);
-    issueDelayedCommand(cmdGetMode);
+    //issueDelayedCommand(cmdGetFreq);
+    //issueDelayedCommand(cmdGetMode);
     ui->tabWidget->setCurrentIndex(0);
 
     receiveMode((unsigned char) mode, (unsigned char) filter); // update UI
@@ -3852,9 +4042,6 @@ void wfmain::on_bandGenbtn_clicked()
 void wfmain::on_aboutBtn_clicked()
 {
     abtBox->show();
-
-
-
 }
 
 void wfmain::on_fStoBtn_clicked()
@@ -3905,7 +4092,6 @@ void wfmain::on_fRclBtn_clicked()
         setModeVal = temp.mode;
         setFilterVal = ui->modeFilterCombo->currentIndex()+1; // TODO, add to memory
         issueDelayedCommand(cmdSetModeFilter);
-        issueDelayedCommand(cmdGetFreq);
         issueDelayedCommand(cmdGetMode);
     } else {
         qInfo(logSystem()) << "Could not recall preset. Valid presets are 0 through 99.";
@@ -4089,7 +4275,7 @@ void wfmain::on_lanEnableBtn_clicked(bool checked)
     //ui->udpServerSetupBtn->setEnabled(false);
     if(checked)
     {
-        showStatusBarText("After filling in values, press Save Settings and re-start wfview.");
+        showStatusBarText("After filling in values, press Save Settings.");
     }
 }
 
@@ -4286,6 +4472,57 @@ void wfmain::on_satOpsBtn_clicked()
     sat->show();
 }
 
+void wfmain::setRadioTimeDatePrep()
+{
+    if(!waitingToSetTimeDate)
+    {
+        // 1: Find the current time and date
+        QDateTime now = QDateTime::currentDateTime();
+        now.setTime(QTime::currentTime());
+
+        int second = now.time().second();
+
+        // 2: Find how many mseconds until next minute
+        int msecdelay = QTime::currentTime().msecsTo( QTime::currentTime().addSecs(60-second) );
+
+        // 3: Compute time and date at one minute later
+        QDateTime setpoint = now.addMSecs(msecdelay); // at HMS or posibly HMS + some ms. Never under though.
+
+        // 4: Prepare data structs for the time at one minute later
+        timesetpoint.hours = (unsigned char)setpoint.time().hour();
+        timesetpoint.minutes = (unsigned char)setpoint.time().minute();
+        datesetpoint.day = (unsigned char)setpoint.date().day();
+        datesetpoint.month = (unsigned char)setpoint.date().month();
+        datesetpoint.year = (uint16_t)setpoint.date().year();
+        unsigned int utcOffsetSeconds = (unsigned int)abs(setpoint.offsetFromUtc());
+        bool isMinus = setpoint.offsetFromUtc() < 0;
+        utcsetting.hours = utcOffsetSeconds / 60 / 60;
+        utcsetting.minutes = (utcOffsetSeconds - (utcsetting.hours*60*60) ) / 60;
+        utcsetting.isMinus = isMinus;
+
+        timeSync->setInterval(msecdelay);
+        timeSync->setSingleShot(true);
+
+        // 5: start one-shot timer for the delta computed in #2.
+        timeSync->start();
+        waitingToSetTimeDate = true;
+        showStatusBarText(QString("Setting time, date, and UTC offset for radio in %1 seconds.").arg(msecdelay/1000));
+    }
+}
+
+void wfmain::setRadioTimeDateSend()
+{
+    // Issue priority commands for UTC offset, date, and time
+    // UTC offset must come first, otherwise the radio may "help" and correct for any changes.
+
+    showStatusBarText(QString("Setting time, date, and UTC offset for radio now."));
+
+    issueCmd(cmdSetTime, timesetpoint);
+    issueCmd(cmdSetDate, datesetpoint);
+    issueCmd(cmdSetUTCOffset, utcsetting);
+    waitingToSetTimeDate = false;
+}
+
 void wfmain::changeSliderQuietly(QSlider *slider, int value)
 {
     slider->blockSignals(true);
@@ -4425,54 +4662,23 @@ void wfmain::receiveLANGain(unsigned char level)
 void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
 {
 
-    unsigned int peak = 0;
-    unsigned int sum=0;
-    unsigned int average=0;
-
     switch(inMeter)
     {
         case meterS:
-            SMeterReadings[(smeterPos++)%SMeterReadings.length()] = level;
-            for(int i=0; i < SMeterReadings.length(); i++)
-            {
-                if((unsigned char)SMeterReadings.at(i) > peak)
-                    peak = (unsigned char)SMeterReadings.at(i);
-                sum += (unsigned char)SMeterReadings.at(i);
-            }
-            average = sum / SMeterReadings.length();
-            ui->meterWidget->setLevels(level, peak, average);
-            ui->meterWidget->repaint();
-            //ui->levelIndicator->setValue((int)level);
-            break;
-        case meterSWR:
-            //ui->levelIndicator->setValue((int)level);
+            ui->meterSPoWidget->setMeterType(meterS);
+            ui->meterSPoWidget->setLevel(level);
+            ui->meterSPoWidget->repaint();
             break;
         case meterPower:
-            powerMeterReadings[(powerMeterPos++)%powerMeterReadings.length()] = level;
-            for(int i=0; i < powerMeterReadings.length(); i++)
-            {
-                if((unsigned char)powerMeterReadings.at(i) > peak)
-                    peak = (unsigned char)powerMeterReadings.at(i);
-                sum += (unsigned char)powerMeterReadings.at(i);
-            }
-            average = sum / powerMeterReadings.length();
-            ui->meterWidget->setLevels(level, peak, average);
-            ui->meterWidget->update();
-            //ui->levelIndicator->setValue((int)level);
-            break;
-        case meterALC:
-            //ui->levelIndicator->setValue((int)level);
-            break;
-        case meterComp:
-            //ui->levelIndicator->setValue((int)level);
-            break;
-        case meterCurrent:
-            //ui->levelIndicator->setValue((int)level);
-            break;
-        case meterVoltage:
-            //ui->levelIndicator->setValue((int)level);
+            ui->meterSPoWidget->setMeterType(meterPower);
+            ui->meterSPoWidget->setLevel(level);
+            ui->meterSPoWidget->update();
             break;
         default:
+            if(ui->meter2Widget->getMeterType() == inMeter)
+            {
+                ui->meter2Widget->setLevel(level);
+            }
             break;
     }
 }
@@ -4681,9 +4887,14 @@ void wfmain::on_preampSelCombo_activated(int index)
 void wfmain::on_antennaSelCombo_activated(int index)
 {
     unsigned char ant = (unsigned char)ui->antennaSelCombo->itemData(index).toInt();
-    emit setAntenna(ant);
+    emit setAntenna(ant,ui->rxAntennaCheck->isChecked());
 }
 
+void wfmain::on_rxAntennaCheck_clicked(bool value)
+{
+    unsigned char ant = (unsigned char)ui->antennaSelCombo->itemData(ui->antennaSelCombo->currentIndex()).toInt();
+    emit setAntenna(ant, value);
+}
 void wfmain::on_wfthemeCombo_activated(int index)
 {
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(ui->wfthemeCombo->itemData(index).toInt()));
@@ -4700,6 +4911,12 @@ void wfmain::receiveAttenuator(unsigned char att)
 {
     int attindex = ui->attSelCombo->findData(att);
     ui->attSelCombo->setCurrentIndex(attindex);
+}
+
+void wfmain::receiveAntennaSel(unsigned char ant, bool rx)
+{
+    ui->antennaSelCombo->setCurrentIndex(ant);
+    ui->rxAntennaCheck->setChecked(rx);
 }
 
 void wfmain::receiveSpectrumSpan(freqt freqspan, bool isSub)
@@ -4799,10 +5016,37 @@ void wfmain::on_rigPowerOnBtn_clicked()
 
 void wfmain::on_rigPowerOffBtn_clicked()
 {
-    QMessageBox::StandardButton reply;
-    reply = QMessageBox::question(this, "Power", "Power down the radio?",
-                                  QMessageBox::Yes|QMessageBox::No);
-    if (reply == QMessageBox::Yes) {
+    // Are you sure?
+    if (!prefs.confirmPowerOff) {
+        powerRigOff();
+        return;
+    }
+    QCheckBox* cb = new QCheckBox("Don't ask me again");
+    QMessageBox msgbox;
+    msgbox.setWindowTitle("Power");
+    msgbox.setText("Power down the radio?\n");
+    msgbox.setIcon(QMessageBox::Icon::Question);
+    QAbstractButton* yesButton = msgbox.addButton(QMessageBox::Yes);
+    msgbox.addButton(QMessageBox::No);
+    msgbox.setDefaultButton(QMessageBox::Yes);
+    msgbox.setCheckBox(cb);
+
+    QObject::connect(cb, &QCheckBox::stateChanged, [this](int state) {
+        if (static_cast<Qt::CheckState>(state) == Qt::CheckState::Checked) {
+            prefs.confirmPowerOff = false;
+        }
+        else {
+            prefs.confirmPowerOff = true;
+        }
+        settings->beginGroup("Interface");
+        settings->setValue("ConfirmPowerOff", this->prefs.confirmPowerOff);
+        settings->endGroup();
+        settings->sync();
+    });
+
+    msgbox.exec();
+
+    if (msgbox.clickedButton() == yesButton) {
         powerRigOff();
     }
 }
@@ -5038,10 +5282,149 @@ void wfmain::on_pollingBtn_clicked()
     }
 }
 
+void wfmain::on_wfAntiAliasChk_clicked(bool checked)
+{
+    colorMap->setAntialiased(checked);
+    prefs.wfAntiAlias = checked;
+}
+
+void wfmain::on_wfInterpolateChk_clicked(bool checked)
+{
+    colorMap->setInterpolate(checked);
+    prefs.wfInterpolate = checked;
+}
+
+wfmain::cmds wfmain::meterKindToMeterCommand(meterKind m)
+{
+    cmds c;
+    switch(m)
+    {
+        case meterNone:
+            c = cmdNone;
+            break;
+        case meterS:
+            c = cmdGetSMeter;
+            break;
+        case meterCenter:
+            c = cmdGetCenterMeter;
+            break;
+        case meterPower:
+            c = cmdGetPowerMeter;
+            break;
+        case meterSWR:
+            c = cmdGetSWRMeter;
+            break;
+        case meterALC:
+            c = cmdGetALCMeter;
+            break;
+        case meterComp:
+            c = cmdGetCompMeter;
+            break;
+        case meterCurrent:
+            c = cmdGetIdMeter;
+            break;
+        case meterVoltage:
+            c = cmdGetVdMeter;
+            break;
+        default:
+            c = cmdNone;
+            break;
+    }
+
+    return c;
+}
+
+
+void wfmain::on_meter2selectionCombo_activated(int index)
+{
+    meterKind newMeterType;
+    meterKind oldMeterType;
+    newMeterType = static_cast<meterKind>(ui->meter2selectionCombo->currentData().toInt());
+    oldMeterType = ui->meter2Widget->getMeterType();
+
+    if(newMeterType == oldMeterType)
+        return;
+
+    cmds newCmd = meterKindToMeterCommand(newMeterType);
+    cmds oldCmd = meterKindToMeterCommand(oldMeterType);
+
+    removePeriodicCommand(oldCmd);
+
+    if(newMeterType==meterNone)
+    {
+        ui->meter2Widget->hide();
+    } else {
+        ui->meter2Widget->show();
+        ui->meter2Widget->setMeterType(newMeterType);
+        insertPeriodicCommandUnique(newCmd);
+    }
+    (void)index;
+}
+
+void wfmain::on_enableRigctldChk_clicked(bool checked)
+{
+    if (rigCtl != Q_NULLPTR)
+    {
+        rigCtl->disconnect();
+        delete rigCtl;
+        rigCtl = Q_NULLPTR;
+    }
+
+    if (checked) {
+        // Start rigctld
+        rigCtl = new rigCtlD(this);
+        rigCtl->startServer(prefs.rigCtlPort);
+        connect(this, SIGNAL(sendRigCaps(rigCapabilities)), rigCtl, SLOT(receiveRigCaps(rigCapabilities)));
+        if (rig != Q_NULLPTR) {
+            // We are already connected to a rig.
+            connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
+            connect(rigCtl, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
+            connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
+            connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
+            connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
+            connect(rigCtl, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
+            connect(rigCtl, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
+
+            connect(rigCtl, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
+            connect(rigCtl, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
+            connect(rigCtl, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
+
+            // Levels: Set:
+            connect(rigCtl, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
+            connect(rigCtl, SIGNAL(setTxPower(unsigned char)), rig, SLOT(setTxPower(unsigned char)));
+            connect(rigCtl, SIGNAL(setMicGain(unsigned char)), rig, SLOT(setMicGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setMonitorLevel(unsigned char)), rig, SLOT(setMonitorLevel(unsigned char)));
+            connect(rigCtl, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
+            connect(rigCtl, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
+
+            emit sendRigCaps(rigCaps);
+            emit requestRigState();
+        }
+    }    
+    prefs.enableRigCtlD = checked;
+}
+
+void wfmain::on_rigctldPortTxt_editingFinished()
+{
+
+    bool okconvert = false;
+    unsigned int port = ui->rigctldPortTxt->text().toUInt(&okconvert);
+    if (okconvert)
+    {
+        prefs.rigCtlPort = port;
+    }
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    trxadj->show();
-}
+    //trxadj->show();
+    //setRadioTimeDatePrep();
+    //wf->setInteraction(QCP::iRangeZoom, true);
+    //wf->setInteraction(QCP::iRangeDrag, true);
 
+}

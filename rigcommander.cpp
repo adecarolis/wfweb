@@ -25,6 +25,9 @@ rigCommander::rigCommander()
     rigState.filter = 0;
     rigState.mode = 0;
     rigState.ptt = 0;
+    rigState.currentVfo = 0;
+    rigState.duplex = dmSplitOff;
+
 }
 
 rigCommander::~rigCommander()
@@ -140,7 +143,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
     // data from the comm port to the program:
 
     emit commReady();
-    emit stateInfo(&rigState);
+    sendState(); // Send current rig state to rigctld
 
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
 
@@ -1218,9 +1221,16 @@ void rigCommander::parseCommand()
             break;
         case '\x0F':
             emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
+            rigState.duplex = (duplexMode)(unsigned char)payloadIn[1];
             break;
         case '\x11':
             emit haveAttenuator((unsigned char)payloadIn.at(1));
+            rigState.attenuator = (unsigned char)payloadIn.at(1);
+            break;
+        case '\x12':
+            emit haveAntenna((unsigned char)payloadIn.at(1), (bool)payloadIn.at(2));
+            rigState.antenna = (unsigned char)payloadIn.at(1);
+            rigState.rxAntenna = (bool)payloadIn.at(2);
             break;
         case '\x14':
             // read levels
@@ -1308,7 +1318,7 @@ void rigCommander::parseLevels()
     unsigned char tens = (payloadIn[3] & 0xf0) >> 4;
     unsigned char units = (payloadIn[3] & 0x0f);
 
-    unsigned char level = (100*hundreds) + (10*tens) + units;
+    unsigned char level = ((unsigned char)100*hundreds) + (10*tens) + units;
 
     //qInfo(logRig()) << "Level is: " << (int)level << " or " << 100.0*level/255.0 << "%";
 
@@ -1384,6 +1394,11 @@ void rigCommander::parseLevels()
             case '\x02':
                 // S-Meter
                 emit haveMeter(meterS, level);
+                rigState.sMeter = level;
+                break;
+            case '\x04':
+                // Center (IC-R8600)
+                emit haveMeter(meterCenter, level);
                 rigState.sMeter = level;
                 break;
             case '\x11':
@@ -1914,6 +1929,9 @@ void rigCommander::getMeters(meterKind meter)
         case meterS:
             getSMeter();
             break;
+        case meterCenter:
+            getCenterMeter();
+            break;
         case meterSWR:
             getSWRMeter();
             break;
@@ -1940,6 +1958,12 @@ void rigCommander::getMeters(meterKind meter)
 void rigCommander::getSMeter()
 {
     QByteArray payload("\x15\x02");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getCenterMeter()
+{
+    QByteArray payload("\x15\x04");
     prepDataAndSend(payload);
 }
 
@@ -2018,6 +2042,143 @@ void rigCommander::setRefAdjustFine(unsigned char level)
     payload.setRawData("\x1A\x05\x00\x73", 4);
     payload.append(bcdEncodeInt((unsigned int)level));
     prepDataAndSend(payload);
+}
+
+void rigCommander::setTime(timekind t)
+{
+    QByteArray payload;
+
+    switch(rigCaps.model)
+    {
+        case model705:
+            payload.setRawData("\x1A\x05\x01\x66", 4);
+            break;
+        case model7300:
+            payload.setRawData("\x1A\x05\x00\x95", 4);
+            break;
+        case model7610:
+            payload.setRawData("\x1A\x05\x01\x59", 4);
+            break;
+        case model7700:
+            payload.setRawData("\x1A\x05\x00\x59", 4);
+            break;
+        case model7850:
+            payload.setRawData("\x1A\x05\x00\x96", 4);
+            break;
+        case model9700:
+            payload.setRawData("\x1A\x05\x01\x80", 4);
+            break;
+        case modelR8600:
+            payload.setRawData("\x1A\x05\x01\x32", 4);
+            break;
+        default:
+            return;
+            break;
+
+    }
+    payload.append(convertNumberToHex(t.hours));
+    payload.append(convertNumberToHex(t.minutes));
+    //qDebug(logRig()) << "Setting time to this: ";
+    //printHex(payload);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setDate(datekind d)
+{
+    QByteArray payload;
+
+    switch(rigCaps.model)
+    {
+        case model705:
+            payload.setRawData("\x1A\x05\x01\x65", 4);
+            break;
+        case model7300:
+            payload.setRawData("\x1A\x05\x00\x94", 4);
+            break;
+        case model7610:
+            payload.setRawData("\x1A\x05\x01\x58", 4);
+            break;
+        case model7700:
+            payload.setRawData("\x1A\x05\x00\x58", 4);
+            break;
+        case model7850:
+            payload.setRawData("\x1A\x05\x00\x95", 4);
+            break;
+        case model9700:
+            payload.setRawData("\x1A\x05\x01\x79", 4);
+            break;
+        case modelR8600:
+            payload.setRawData("\x1A\x05\x01\x31", 4);
+            break;
+        default:
+            return;
+            break;
+
+    }
+    // YYYYMMDD
+    payload.append(convertNumberToHex(d.year/100)); // 20
+    payload.append(convertNumberToHex(d.year - 100*(d.year/100))); // 21
+    payload.append(convertNumberToHex(d.month));
+    payload.append(convertNumberToHex(d.day));
+    //qDebug(logRig()) << "Setting date to this: ";
+    //printHex(payload);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setUTCOffset(timekind t)
+{
+    QByteArray payload;
+
+    switch(rigCaps.model)
+    {
+        case model705:
+            payload.setRawData("\x1A\x05\x01\x70", 4);
+            break;
+        case model7300:
+            payload.setRawData("\x1A\x05\x00\x96", 4);
+            break;
+        case model7610:
+            payload.setRawData("\x1A\x05\x01\x62", 4);
+            break;
+        case model7700:
+            payload.setRawData("\x1A\x05\x00\x61", 4);
+            break;
+        case model7850:
+            // Clock 1:
+            payload.setRawData("\x1A\x05\x00\x99", 4);
+            break;
+        case model9700:
+            payload.setRawData("\x1A\x05\x01\x84", 4);
+            break;
+        case modelR8600:
+            payload.setRawData("\x1A\x05\x01\x35", 4);
+            break;
+        default:
+            return;
+            break;
+
+    }
+    payload.append(convertNumberToHex(t.hours));
+    payload.append(convertNumberToHex(t.minutes));
+    payload.append((unsigned char)t.isMinus);
+    //qDebug(logRig()) << "Setting UTC Offset to this: ";
+    //printHex(payload);
+    prepDataAndSend(payload);
+}
+
+unsigned char rigCommander::convertNumberToHex(unsigned char num)
+{
+    // Two digit only
+    if(num > 99)
+    {
+        qInfo(logRig()) << "Invalid numeric conversion from num " << num << " to hex.";
+        return 0xFA;
+    }
+    unsigned char result = 0;
+    result =  (num/10) << 4;
+    result |= (num - 10*(num/10));
+    qDebug(logRig()) << "Converting number: " << num << " to hex: " + QString("0x%1").arg(result, 2, 16, QChar('0'));
+    return result;
 }
 
 void rigCommander::sendLevelCmd(unsigned char levAddr, unsigned char level)
@@ -2134,7 +2295,7 @@ void rigCommander::parsePTT()
         // PTT on
         emit havePTTStatus(true);
     }
-    rigState.ptt = (unsigned char)payloadIn[2];
+    rigState.ptt = (bool)payloadIn[2];
 
 }
 
@@ -2664,6 +2825,7 @@ void rigCommander::determineRigCaps()
     rigCaps.preamps.push_back('\x00');
 
     rigCaps.hasAntennaSel = false;
+    rigCaps.hasRXAntenna = false;
 
     rigCaps.hasTransmit = true;
     rigCaps.hasPTTCommand = true;
@@ -2697,6 +2859,7 @@ void rigCommander::determineRigCaps()
     switch(model){
         case model7300:
             rigCaps.modelName = QString("IC-7300");
+            rigCaps.rigctlModel = 3073;
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 11;
             rigCaps.spectAmpMax = 160;
@@ -2720,6 +2883,7 @@ void rigCommander::determineRigCaps()
             break;
         case modelR8600:
             rigCaps.modelName = QString("IC-R8600");
+            rigCaps.rigctlModel = 3079;
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 11;
             rigCaps.spectAmpMax = 160;
@@ -2754,6 +2918,7 @@ void rigCommander::determineRigCaps()
             break;
         case model9700:
             rigCaps.modelName = QString("IC-9700");
+            rigCaps.rigctlModel = 3081;
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 11;
             rigCaps.spectAmpMax = 160;
@@ -2781,6 +2946,7 @@ void rigCommander::determineRigCaps()
             break;
         case model910h:
             rigCaps.modelName = QString("IC-910H");
+            rigCaps.rigctlModel = 3044;
             rigCaps.hasSpectrum = false;
             rigCaps.hasLan = false;
             rigCaps.hasEthernet = false;
@@ -2800,8 +2966,33 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[band2m] = 0x01;
             rigCaps.modes = commonModes;
             break;
+        case model7600:
+            rigCaps.modelName = QString("IC-7600");
+            rigCaps.rigctlModel = 3063;
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.append(inputACC);
+            rigCaps.inputs.append(inputUSB);
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
+            rigCaps.hasATU = true;
+            rigCaps.hasCTCSS = false;
+            rigCaps.hasDTCS = false;
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(), {0x00, 0x06, 0x12, 0x18});
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
+            rigCaps.antennas = {0x00, 0x01};
+            rigCaps.bands = standardHF;
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.bsr[bandGen] = 0x11;
+            rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
+                                                       createMode(modePSK_R, 0x13, "PSK-R")});
+            break;
         case model7610:
             rigCaps.modelName = QString("IC-7610");
+            rigCaps.rigctlModel = 3078;
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 15;
             rigCaps.spectAmpMax = 200;
@@ -2828,9 +3019,11 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(band630m);
             rigCaps.bands.push_back(band2200m);
             rigCaps.modes = commonModes;
+            rigCaps.hasRXAntenna = true;
             break;
         case model7850:
             rigCaps.modelName = QString("IC-785x");
+            rigCaps.rigctlModel = 3075;
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 15;
             rigCaps.spectAmpMax = 136;
@@ -2858,9 +3051,11 @@ void rigCommander::determineRigCaps()
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
                                                        createMode(modePSK_R, 0x13, "PSK-R")});
+            rigCaps.hasRXAntenna = true;
             break;
         case model705:
             rigCaps.modelName = QString("IC-705");
+            rigCaps.rigctlModel = 3085;
             rigCaps.hasSpectrum = true;
             rigCaps.spectSeqMax = 11;
             rigCaps.spectAmpMax = 160;
@@ -2896,6 +3091,7 @@ void rigCommander::determineRigCaps()
             break;
         case model7000:
             rigCaps.modelName = QString("IC-7000");
+            rigCaps.rigctlModel = 3060;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.append(inputACC);
             rigCaps.hasLan = false;
@@ -2917,6 +3113,7 @@ void rigCommander::determineRigCaps()
             break;
         case model7410:
             rigCaps.modelName = QString("IC-7410");
+            rigCaps.rigctlModel = 3067;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.append(inputACC);
             rigCaps.hasLan = false;
@@ -2926,7 +3123,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
-            rigCaps.attenuators.push_back('\x12');
+            rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.antennas = {0x00, 0x01};
@@ -2937,6 +3134,7 @@ void rigCommander::determineRigCaps()
             break;
         case model7100:
             rigCaps.modelName = QString("IC-7100");
+            rigCaps.rigctlModel = 3070;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.append(inputUSB);
             rigCaps.inputs.append(inputACC);
@@ -2963,6 +3161,7 @@ void rigCommander::determineRigCaps()
             break;
         case model7200:
             rigCaps.modelName = QString("IC-7200");
+            rigCaps.rigctlModel = 3061;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.append(inputUSB);
             rigCaps.inputs.append(inputACC);
@@ -2982,6 +3181,7 @@ void rigCommander::determineRigCaps()
             break;    
         case model7700:
             rigCaps.modelName = QString("IC-7700");
+            rigCaps.rigctlModel = 3062;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.append(inputLAN);
             //rigCaps.inputs.append(inputSPDIF);
@@ -3007,6 +3207,7 @@ void rigCommander::determineRigCaps()
             break;
         case model706:
             rigCaps.modelName = QString("IC-706");
+            rigCaps.rigctlModel = 3009;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.clear();
             rigCaps.hasLan = false;
@@ -3025,6 +3226,7 @@ void rigCommander::determineRigCaps()
             break;
         case model718:
             rigCaps.modelName = QString("IC-718");
+            rigCaps.rigctlModel = 3013;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.clear();
             rigCaps.hasLan = false;
@@ -3047,6 +3249,7 @@ void rigCommander::determineRigCaps()
             break;
         case model756pro:
             rigCaps.modelName = QString("IC-756 Pro");
+            rigCaps.rigctlModel = 3027;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.clear();
             rigCaps.hasLan = false;
@@ -3065,6 +3268,7 @@ void rigCommander::determineRigCaps()
             break;
         case model756proii:
             rigCaps.modelName = QString("IC-756 Pro II");
+            rigCaps.rigctlModel = 3027;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.clear();
             rigCaps.hasLan = false;
@@ -3083,6 +3287,7 @@ void rigCommander::determineRigCaps()
             break;
         case model756proiii:
             rigCaps.modelName = QString("IC-756 Pro III");
+            rigCaps.rigctlModel = 3027;
             rigCaps.hasSpectrum = false;
             rigCaps.inputs.clear();
             rigCaps.hasLan = false;
@@ -3123,6 +3328,7 @@ void rigCommander::determineRigCaps()
             break;
     }
     haveRigCaps = true;
+
     if(lookingForRig)
     {
         lookingForRig = false;
@@ -3549,11 +3755,11 @@ void rigCommander::setPreamp(unsigned char pre)
     prepDataAndSend(payload);
 }
 
-void rigCommander::setAntenna(unsigned char ant)
+void rigCommander::setAntenna(unsigned char ant, bool rx)
 {
     QByteArray payload("\x12");
     payload.append(ant);
-    payload.append("\x00"); // 0x00 = use for TX and RX
+    payload.append((unsigned char)rx); // 0x00 = use for TX and RX
     prepDataAndSend(payload);
 }
 
@@ -3602,6 +3808,11 @@ QByteArray rigCommander::stripData(const QByteArray &data, unsigned char cutPosi
 
     rtndata = data.right(cutPosition);
     return rtndata;
+}
+
+void rigCommander::sendState()
+{
+    emit stateInfo(&rigState);
 }
 
 void rigCommander::getDebug()

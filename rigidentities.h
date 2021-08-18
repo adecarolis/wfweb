@@ -90,10 +90,9 @@ model_kind determineRadioModel(unsigned char rigID);
 
 struct rigCapabilities {
     model_kind model;
-
     quint8 civ;
     quint8 modelID;
-
+    int rigctlModel;
     QString modelName;
 
     bool hasLan; // OEM ethernet or wifi connection
@@ -121,6 +120,8 @@ struct rigCapabilities {
     bool hasPreamp;
     bool hasAntennaSel;
     bool hasDataModes;
+
+    bool hasRXAntenna;
 
     std::vector <unsigned char> attenuators;
     std::vector <unsigned char> preamps;

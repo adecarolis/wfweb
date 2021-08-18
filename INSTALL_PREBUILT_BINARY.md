@@ -1,4 +1,4 @@
-# How to install wfview without  building yourself on selected linux versions
+# How to install wfview without building yourself on selected linux versions
 
 
 
@@ -22,10 +22,12 @@ Debian 11  (Debian 10 is outdated)
 Fedora 33
 Fedora 34
 mint 20.1 (and up?)
-openSUSE 15.x
-openSUSE Tumbleweed
+openSUSE 15.2
+openSUSE 15.3 (see notes at the end)
+openSUSE Tumbleweed(s)
 SLES 15.x
-Ubuntu 20.04.2 and up (?)
+Ubuntu 20.04.2 
+mint 20.2     (see notes at the end)
 ~~~
 
 
@@ -69,11 +71,36 @@ note: if the above symlink fails, use the following line to fix the library link
 sudo ln -s /lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /lib/x86_64-linux-gnu/libqcustomplot.so.2
 ~~~
 
-### openSUSE/Tumbleweed/SLES:
+### Mint 20.2
+~~~
+
+SEE THE NOTES AT THE END. You need wfview153 binary here
+
+sudo apt install libqcustomplot2.0 libqt5multimedia5 libqt5serialport5
+sudo ln  -s  /usr/lib64/libqcustomplot-qt5.so.2 /usr/lib64/libqcustomplot.so.2
+wfview
+
+note: if the above symlink fails, use the following line to fix the library link:
+
+sudo ln -s /lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /lib/x86_64-linux-gnu/libqcustomplot.so.2
+~~~
+
+
+### openSUSE/Tumbleweed/SLES based on 15.2:
 ~~~
 sudo zypper in libqcustomplot2 libQt5SerialPort5
 wfview
 ~~~
+
+### openSUSE/Tumbleweed/SLES based on 15.3:
+~~~
+
+SEE THE NOTES AT THE END. You need wfview153 here
+
+sudo zypper in libqcustomplot2 libQt5SerialPort5
+wfview
+~~~
+
 
 ### UBUNTU:
 ~~~
@@ -89,4 +116,18 @@ sudo ln -s /lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /lib/x86_64-linux-gnu/l
 
 
 
+### notes:
+~~~
 
+Some newer versions of mint. ubuntu, openSUSE have different kernels and such which cause wfview to segfault.
+
+For these cases we created two binaries: one for current systems ("wfview")  and one for the new systems ("wfview153")
+
+So if you encounter a SEGFAULT at start: 
+
+go in to the dist directory, rename wfview to wfvie152; rename wfview153 to wfview and re-execute the install.sh
+script 
+
+~~~
+
+ 

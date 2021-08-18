@@ -12,7 +12,7 @@ aboutbox::aboutbox(QWidget *parent) :
     ui->logoBtn->setIcon(QIcon(":resources/wfview.png"));
     ui->logoBtn->setStyleSheet("Text-align:left");
 
-    ui->topText->setText("wfview version 1.1a");
+    ui->topText->setText("wfview version 1.1");
 
     QString head = QString("<html><head></head><body>");
     QString copyright = QString("Copyright 2017-2021 Elliott H. Liggett, W6EL. All rights reserved. wfview source code is <a href=\"https://gitlab.com/eliggett/wfview/-/blob/master/LICENSE\">licensed</a> under the GNU GPLv3.");
@@ -49,7 +49,7 @@ aboutbox::aboutbox(QWidget *parent) :
     QString wfviewcommunityack = QString("<br/><br/>The developers of wfview wish to thank the many contributions from the wfview community at-large, including ideas, bug reports, and fixes.");
     QString kappanhangack = QString("<br/><br/>Special thanks to Norbert Varga, and the <a href=\"https://github.com/nonoo/kappanhang\">nonoo/kappanhang team</a> for their initial work on the OEM protocol.");
 
-    QString sxcreditcopyright = QString("Speex copyright notice:\
+    QString sxcreditcopyright = QString("Speex copyright notice: \
 Copyright (C) 2003 Jean-Marc Valin\n\
 Redistribution and use in source and binary forms, with or without\n\
 modification, are permitted provided that the following conditions\n\

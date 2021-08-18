@@ -19,13 +19,19 @@
 #define compCivAddr 0xE1
 
 enum meterKind {
+    meterNone=0,
     meterS,
+    meterCenter,
     meterSWR,
     meterPower,
     meterALC,
     meterComp,
     meterVoltage,
-    meterCurrent
+    meterCurrent,
+    meterRxdB,
+    meterTxMod,
+    meterRxAudio,
+    meterLatency
 };
 
 enum spectrumMode {
@@ -41,13 +47,29 @@ struct freqt {
     double MHzDouble;
 };
 
+struct datekind {
+    uint16_t year;
+    unsigned char month;
+    unsigned char day;
+};
+
+struct timekind {
+    unsigned char hours;
+    unsigned char minutes;
+    bool isMinus;
+};
+
 struct rigStateStruct {
     freqt vfoAFreq;
     freqt vfoBFreq;
-    unsigned char ptt;
+    unsigned char currentVfo;
+    bool ptt;
     unsigned char mode;
     unsigned char filter;
+    duplexMode duplex;
     bool datamode;
+    unsigned char antenna;
+    bool rxAntenna;
     // Tones
     quint16 ctcss;
     quint16 tsql;
@@ -55,6 +77,7 @@ struct rigStateStruct {
     quint16 csql;
     // Levels
     unsigned char preamp;
+    unsigned char attenuator;
     unsigned char modInput;
     unsigned char afGain;
     unsigned char rfGain;
@@ -73,6 +96,38 @@ struct rigStateStruct {
     unsigned char compMeter;
     unsigned char voltageMeter;
     unsigned char currentMeter;
+    // Functions
+    bool fagcFunc=false;
+    bool nbFunc=false;
+    bool compFunc=false;
+    bool voxFunc = false;
+    bool toneFunc = false;
+    bool tsqlFunc = false;
+    bool sbkinFunc = false;
+    bool fbkinFunc = false;
+    bool anfFunc = false;
+    bool nrFunc = false;
+    bool aipFunc = false;
+    bool apfFunc = false;
+    bool monFunc = false;
+    bool mnFunc = false;
+    bool rfFunc = false;
+    bool aroFunc = false;
+    bool muteFunc = false;
+    bool vscFunc = false;
+    bool revFunc = false;
+    bool sqlFunc = false;
+    bool abmFunc = false;
+    bool bcFunc = false;
+    bool mbcFunc = false;
+    bool ritFunc = false;
+    bool afcFunc = false;
+    bool satmodeFunc = false;
+    bool scopeFunc = false;
+    bool resumeFunc = false;
+    bool tburstFunc = false;
+    bool tunerFunc = false;
+    bool lockFunc = false;
 };
 
 class rigCommander : public QObject
@@ -140,7 +195,7 @@ public slots:
     void getAntenna();
     void setAttenuator(unsigned char att);
     void setPreamp(unsigned char pre);
-    void setAntenna(unsigned char ant);
+    void setAntenna(unsigned char ant, bool rx);
 
     // Repeater:
     void setDuplexMode(duplexMode dm);
@@ -207,6 +262,7 @@ public slots:
 
     // Meters:
     void getSMeter();
+    void getCenterMeter();
     void getRFPowerMeter();
     void getSWRMeter();
     void getALCMeter();
@@ -225,6 +281,12 @@ public slots:
     void getRefAdjustFine();
     void setRefAdjustCourse(unsigned char level);
     void setRefAdjustFine(unsigned char level);
+
+    // Time and Date:
+    void setTime(timekind t);
+    void setDate(datekind d);
+    void setUTCOffset(timekind t);
+
 
     // Satellite:
     void setSatelliteMode(bool enabled);
@@ -245,6 +307,7 @@ public slots:
 
     // Housekeeping:
     void handleStatusUpdate(const QString text);
+    void sendState();
     void getDebug();
 
 signals:
@@ -326,7 +389,7 @@ signals:
     void haveATUStatus(unsigned char status);
     void haveAttenuator(unsigned char att);
     void havePreamp(unsigned char pre);
-    void haveAntenna(unsigned char ant);
+    void haveAntenna(unsigned char ant,bool rx);
 
     // Rig State
     void stateInfo(rigStateStruct* state);
@@ -350,6 +413,7 @@ private:
     QByteArray makeFreqPayload(freqt freq);
     QByteArray encodeTone(quint16 tone, bool tinv, bool rinv);
     QByteArray encodeTone(quint16 tone);
+    unsigned char convertNumberToHex(unsigned char num);
     quint16 decodeTone(QByteArray eTone);
     quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
 

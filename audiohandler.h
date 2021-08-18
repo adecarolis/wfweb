@@ -33,7 +33,14 @@ typedef signed short  MY_TYPE;
 #include <QMap>
 #include "resampler/speex_resampler.h"
 #include "ring/ring.h"
+
+#ifdef Q_OS_WIN
+#include "opus.h"
+#else
+#include "opus/opus.h"
+#endif
 #include "audiotaper.h"
+
 
 #include <QDebug>
 
@@ -155,15 +162,13 @@ private:
 #endif
     SpeexResamplerState* resampler = Q_NULLPTR;
 
-    bool            isUlaw;
     quint16         audioLatency;
-    bool            isInput;   // Used to determine whether input or output audio
     unsigned int             chunkSize;
     bool            chunkAvailable;
 
     quint32         lastSeq;
-
-    quint16         radioSampleRate;
+    quint32         lastSentSeq=0;
+        
     quint16         nativeSampleRate=0;
     quint8          radioSampleBits;
     quint8          radioChannels;
@@ -181,6 +186,8 @@ private:
     qreal volume=1.0;
     int devChannels;
     audioSetup setup;
+    OpusEncoder* encoder=Q_NULLPTR;
+    OpusDecoder* decoder=Q_NULLPTR;
 };
 
 #endif // AUDIOHANDLER_H

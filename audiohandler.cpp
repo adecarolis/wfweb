@@ -2,10 +2,12 @@
 	This class handles both RX and TX audio, each is created as a seperate instance of the class
 	but as the setup/handling if output (RX) and input (TX) devices is so similar I have combined them.
 */
+
 #include "audiohandler.h"
 
 #include "logcategories.h"
 #include "ulaw.h"
+
 
 audioHandler::audioHandler(QObject* parent) 
 {
@@ -40,7 +42,14 @@ audioHandler::~audioHandler()
 		speex_resampler_destroy(resampler);
 		qDebug(logAudio()) << "Resampler closed";
 	}
-
+	if (encoder != Q_NULLPTR) {
+		qInfo(logAudio()) << "Destroying opus encoder";
+		opus_encoder_destroy(encoder);
+	}
+	if (decoder != Q_NULLPTR) {
+		qInfo(logAudio()) << "Destroying opus decoder";
+		opus_decoder_destroy(decoder);
+	}
 }
 
 bool audioHandler::init(audioSetup setupIn) 
@@ -65,10 +74,10 @@ bool audioHandler::init(audioSetup setupIn)
 	if (setup.codec == 0x01 || setup.codec == 0x20) {
 		setup.ulaw = true;
 	}
-	if (setup.codec == 0x08 || setup.codec == 0x10 || setup.codec == 0x20) {
+	if (setup.codec == 0x08 || setup.codec == 0x10 || setup.codec == 0x20 || setup.codec == 0x80) {
 		setup.radioChan = 2;
 	}
-	if (setup.codec == 0x04 || setup.codec == 0x10) {
+	if (setup.codec == 0x04 || setup.codec == 0x10 || setup.codec == 0x40 || setup.codec == 0x80) {
 		setup.bits = 16;
 	}
 
@@ -235,16 +244,32 @@ bool audioHandler::init(audioSetup setupIn)
 	}
 
 #endif
-	// Setup resampler if it is needed.
+	// Setup resampler and opus if they are needed.
 	int resample_error = 0;
+	int opus_err = 0;
 	if (setup.isinput) {
 		resampler = wf_resampler_init(devChannels, nativeSampleRate, setup.samplerate, setup.resampleQuality, &resample_error);
+		if (setup.codec == 0x40 || setup.codec == 0x80) {
+			// Opus codec
+			encoder = opus_encoder_create(setup.samplerate, setup.radioChan, OPUS_APPLICATION_AUDIO, &opus_err);
+			opus_encoder_ctl(encoder, OPUS_SET_LSB_DEPTH(16));
+			opus_encoder_ctl(encoder, OPUS_SET_INBAND_FEC(1));
+			opus_encoder_ctl(encoder, OPUS_SET_DTX(1));
+			opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(5));
+			qInfo(logAudio()) << "Creating opus encoder: " << opus_strerror(opus_err);
+		}
 	}
 	else {
 		resampler = wf_resampler_init(devChannels, setup.samplerate, this->nativeSampleRate, setup.resampleQuality, &resample_error);
+		if (setup.codec == 0x40 || setup.codec == 0x80) {
+			// Opus codec
+			decoder = opus_decoder_create(setup.samplerate, setup.radioChan, &opus_err);
+			qInfo(logAudio()) << "Creating opus decoder: " << opus_strerror(opus_err);
+		}
 	}
 	wf_resampler_get_ratio(resampler, &ratioNum, &ratioDen);
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "wf_resampler_init() returned: " << resample_error << " ratioNum" << ratioNum << " ratioDen" << ratioDen;
+
 
     qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "thread id" << QThread::currentThreadId();
 
@@ -459,7 +484,34 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		qDebug(logAudio()) << "Packet received when stream was not ready";
 		return;
 	}
-    //qDebug(logAudio()) << "Got" << radioSampleBits << "bits, length" << inPacket.data.length();
+
+	if (setup.codec == 0x40 || setup.codec == 0x80) {
+		unsigned char* in = (unsigned char*)inPacket.data.data();
+
+		/* Decode the frame. */
+		QByteArray outPacket((setup.samplerate / 50) *  sizeof(qint16) * setup.radioChan, (char)0xff); // Preset the output buffer size.
+		qint16* out = (qint16*)outPacket.data();
+
+		int nSamples = opus_decode(decoder, in, inPacket.data.size(), out, (setup.samplerate / 50), 0);
+
+		if (nSamples < 0)
+		{
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decode failed:" << opus_strerror(nSamples) << "packet size" << inPacket.data.length();
+			return;
+		}
+		else {
+			if (int(nSamples * sizeof(qint16) * setup.radioChan) != outPacket.size())
+			{
+				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoder mismatch: nBytes:" << nSamples * sizeof(qint16) * setup.radioChan << "outPacket:" << outPacket.size();
+				outPacket.resize(nSamples * sizeof(qint16) * setup.radioChan);
+			}
+			//qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << inPacket.data.size() << "bytes, into" << outPacket.length() << "bytes";
+			inPacket.data.clear();
+			inPacket.data = outPacket; // Replace incoming data with converted.
+		}
+	}
+
+    //qDebug(logAudio()) << "Got" << setup.bits << "bits, length" << inPacket.data.length();
 	// Incoming data is 8bits?
 	if (setup.bits == 8)
 	{
@@ -468,12 +520,13 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		qint16* out = (qint16*)outPacket.data();
 		for (int f = 0; f < inPacket.data.length(); f++)
 		{
+			int samp = (quint8)inPacket.data[f];
 			for (int g = setup.radioChan; g <= devChannels; g++)
 			{
-				if (isUlaw)
-					*out++ = ulaw_decode[(quint8)inPacket.data[f]] * this->volume;
+				if (setup.ulaw)
+					*out++ = ulaw_decode[samp] * this->volume;
 				else
-					*out++ = (qint16)(((quint8)inPacket.data[f] << 8) - 32640 * this->volume);
+					*out++ = (qint16)((samp - 128) << 8) * this->volume;
 			}
 		}
 		inPacket.data.clear();
@@ -534,6 +587,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	}
 
     //qDebug(logAudio()) << "Adding packet to buffer:" << inPacket.seq << ": " << inPacket.data.length();
+	lastSentSeq = inPacket.seq;
 
 	if (!ringBuf->try_write(inPacket))
 	{
@@ -552,6 +606,8 @@ int audioHandler::getLatency()
 {
 	return currentLatency;
 }
+
+
 
 void audioHandler::getNextAudioChunk(QByteArray& ret)
 {
@@ -613,28 +669,57 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		
 		//qDebug(logAudio()) << "Now mono, length" << packet.data.length();
 
-		// Do we need to convert 16-bit to 8-bit?
-		if (setup.bits == 8) {
+		if (setup.codec == 0x40 || setup.codec == 0x80) 
+		{
+			//Are we using the opus codec?	
+			qint16* in = (qint16*)packet.data.data();
+
+			/* Encode the frame. */
+			QByteArray outPacket(1275, (char)0xff); // Preset the output buffer size to MAXIMUM possible Opus frame size
+			unsigned char* out = (unsigned char*)outPacket.data();
+
+			int nbBytes = opus_encode(encoder, in, (setup.samplerate / 50), out, outPacket.length());
+			if (nbBytes < 0)
+			{
+				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encode failed:" << opus_strerror(nbBytes);
+				return;
+			}
+			else {
+				outPacket.resize(nbBytes);
+				packet.data.clear();
+				packet.data = outPacket; // Replace incoming data with converted.
+			}
+
+		}
+		else if (setup.bits == 8) 
+		{
+			// Do we need to convert 16-bit to 8-bit?
 			QByteArray outPacket((int)packet.data.length() / 2, (char)0xff);
 			qint16* in = (qint16*)packet.data.data();
 			for (int f = 0; f < outPacket.length(); f++)
 			{
-				quint8 outdata = 0;
-				if (isUlaw) {
-					qint16 enc = qFromLittleEndian<quint16>(in + f);
-					if (enc >= 0)
-						outdata = ulaw_encode[enc];
-					else
-						outdata = 0x7f & ulaw_encode[-enc];
+				qint16 sample = *in++;
+				if (setup.ulaw) {
+					int sign = (sample >> 8) & 0x80;
+					if (sign) 
+						sample = (short)-sample;
+					if (sample > cClip)
+						sample = cClip;
+					sample = (short)(sample + cBias);
+					int exponent = (int)MuLawCompressTable[(sample >> 7) & 0xFF];
+					int mantissa = (sample >> (exponent + 3)) & 0x0F;
+					int compressedByte = ~(sign | (exponent << 4) | mantissa);
+					outPacket[f] = (quint8)compressedByte;
 				}
 				else {
-					outdata = (quint8)(((qFromLittleEndian<qint16>(in + f) >> 8) ^ 0x80) & 0xff);
+					int compressedByte = (((sample + 32768) >> 8) & 0xff);
+					outPacket[f] = (quint8)compressedByte;
 				}
-				outPacket[f] = (char)outdata;
 			}
 			packet.data.clear();
 			packet.data = outPacket; // Copy output packet back to input buffer.
-		}
+		} 
+
 		ret = packet.data;
 		//qDebug(logAudio()) << "Now radio format, length" << packet.data.length();
 	}

@@ -1,16 +1,10 @@
 
-The following highlights are in this dot-release:
+The following highlights are in this 1.x-release:
 
-     added IC7700, 718, 7100. (more testing needed)
-     fixes and improvements to audio
-     ability to choose between rtaudio and qtmultimedia (default) as compile time option
-     fixes and lots of improvements at the usb-server end
-     waterfall length can be adjusted now
-     no need to restart to change CIV address
-     seamless changing rigs without restart
-     started support for older rigs like the 718
-     wf display disappears when there is no wf capable rig
-     IC R8600 support improved
-     for older rigs added a polling timing box to keep stuff keeping smooth 
-     Local af gain now has anti-log audio pot taper.
+	many changes/mods/updates/enhancements to rigctld
+	rigctld box added in the UI
+	build process changed: you  can add the install prefix (derSuessmann)
+        added "do not ask again" for switching off rig and exiting wfview
+        added opus as audio transport 
+        dual meter support
 
