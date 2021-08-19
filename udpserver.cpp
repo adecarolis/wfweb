@@ -382,6 +382,7 @@ void udpServer::controlReceived()
 
                     txaudio = new audioHandler();
                     txAudioThread = new QThread(this);
+                    txAudioThread->setPriority(QThread::TimeCriticalPriority);
                     txaudio->moveToThread(txAudioThread);
 
                     txAudioThread->start();
@@ -402,6 +403,8 @@ void udpServer::controlReceived()
 
                     rxaudio = new audioHandler();
                     rxAudioThread = new QThread(this);
+                    rxAudioThread->setPriority(QThread::TimeCriticalPriority);
+
                     rxaudio->moveToThread(rxAudioThread);
                     rxAudioThread->start();
 
