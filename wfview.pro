@@ -115,8 +115,8 @@ CONFIG(debug, release|debug) {
 linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb -lopus
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lhidapi -lpthread -lopus
 
-win32:LIBS += -L../hidapi/windows/release -lhidapi
 win32:INCLUDEPATH += ../hidapi/hidapi
+win32:SOURCES += ../hidapi/windows/hid.c
 
 #win32:SOURCES += rtaudio/RTAudio.cpp
 #win32:HEADERS += rtaudio/RTAUdio.h

@@ -5,6 +5,7 @@
 #include <QThread>
 #include <QCoreApplication>
 #include <QTimer>
+#include <QDateTime>
 
 #ifndef Q_OS_WIN
 #include "hidapi/hidapi.h"
@@ -43,22 +44,7 @@ signals:
 
     void doShuttle(bool plus, quint8 level);
 
-    void button0(bool);
-    void button1(bool);
-    void button2(bool);
-    void button3(bool);
-    void button4(bool);
-    void button5(bool);
-    void button6(bool);
-    void button7(bool);
-    void button8(bool);
-    void button9(bool);
-    void button10(bool);
-    void button11(bool);
-    void button12(bool);
-    void button13(bool);
-    void button14(bool);
-    void button15(bool);
+    void button(bool,unsigned char num);
 
 private:
     hid_device* handle;
@@ -68,6 +54,8 @@ private:
     unsigned char shutpos=0;
     unsigned char shutMult = 0;
     enum { NONE, shuttleXpress, shuttlePro2, RC28 }usbDevice;
+    QTime	lastShuttle = QTime::currentTime();
+
 
 protected:
 };

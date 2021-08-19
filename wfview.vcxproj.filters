@@ -57,6 +57,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="aboutbox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="audiohandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -67,6 +70,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="freqmemory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\hidapi\windows\hid.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="logcategories.cpp">
@@ -90,7 +96,7 @@
     <ClCompile Include="repeatersetup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="opus-tools\src\resample.c">
+    <ClCompile Include="resampler\resample.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="rigcommander.cpp">
@@ -111,6 +117,9 @@
     <ClCompile Include="shuttle.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="transceiveradjustments.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="udphandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -125,12 +134,18 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="opus-tools\src\arch.h">
+    <QtMoc Include="aboutbox.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <ClInclude Include="resampler\arch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <QtMoc Include="audiohandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <ClInclude Include="audiotaper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <QtMoc Include="calibrationwindow.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -164,7 +179,7 @@
     <QtMoc Include="repeatersetup.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <ClInclude Include="opus-tools\src\resample_sse.h">
+    <ClInclude Include="resampler\resample_sse.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <QtMoc Include="rigcommander.h">
@@ -185,9 +200,12 @@
     <QtMoc Include="shuttle.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <ClInclude Include="opus-tools\src\speex_resampler.h">
+    <ClInclude Include="resampler\speex_resampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <QtMoc Include="transceiveradjustments.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="udphandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -205,6 +223,8 @@
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
+    
+    
     
     
     
@@ -252,8 +272,15 @@
     
     
     
+    
+    
+    
+    
   </ItemGroup>
   <ItemGroup>
+    <QtUic Include="aboutbox.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
     <QtUic Include="calibrationwindow.ui">
       <Filter>Form Files</Filter>
     </QtUic>
@@ -261,6 +288,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="satellitesetup.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="transceiveradjustments.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="udpserversetup.ui">

@@ -1228,15 +1228,14 @@ void wfmain::setupShuttleDevice()
 {
     shuttleDev = new shuttle();
     shuttleThread = new QThread(this);
+    shuttleThread->setPriority(QThread::LowestPriority);
     shuttleDev->moveToThread(shuttleThread);
     connect(shuttleThread, SIGNAL(started()), shuttleDev, SLOT(run()));
     connect(shuttleThread, SIGNAL(finished()), shuttleDev, SLOT(deleteLater()));
     connect(shuttleDev, SIGNAL(jogPlus()), this, SLOT(shortcutStepPlus()));
     connect(shuttleDev, SIGNAL(jogMinus()), this, SLOT(shortcutStepMinus()));
-    connect(shuttleDev, SIGNAL(doShuttle(bool,quint8)), this, SLOT(doShuttle(bool,quint8)));
-    connect(shuttleDev, SIGNAL(button5(bool)), this, SLOT(stepDown()));
-    connect(shuttleDev, SIGNAL(button6(bool)), this, SLOT(pttToggle(bool)));
-    connect(shuttleDev, SIGNAL(button7(bool)), this, SLOT(stepUp()));
+    connect(shuttleDev, SIGNAL(doShuttle(bool, unsigned char)), this, SLOT(doShuttle(bool, unsigned char)));
+    connect(shuttleDev, SIGNAL(button(bool, unsigned char)), this, SLOT(buttonControl(bool, unsigned char)));
     shuttleThread->start();
 }
 
@@ -1258,7 +1257,7 @@ void wfmain::pttToggle(bool status)
     issueDelayedCommand(cmdGetPTT);
 }
 
-void wfmain::doShuttle(bool up, quint8 level)
+void wfmain::doShuttle(bool up, unsigned char level)
 {
     if (level == 1 && up)
             shortcutShiftPlus();
@@ -1276,6 +1275,27 @@ void wfmain::doShuttle(bool up, quint8 level)
     else if (level > 4 && !up)
         for (int i = 4; i < level; i++)
             shortcutControlMinus();
+}
+
+void wfmain::buttonControl(bool on, unsigned char button)
+{
+    //qInfo() << "buttonControl()" << on << button;
+    switch (button)
+    {
+    case(5):
+        if(on)
+            stepDown();
+        break;
+    case(6):
+        pttToggle(on);
+        break;
+    case(7): 
+        if (on)
+            stepUp();
+        break;
+    default:
+        qInfo() << "Unknown button pressed:" << button;
+    }
 }
 
 void wfmain::stepUp()

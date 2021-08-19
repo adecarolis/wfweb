@@ -1,3 +1,4 @@
+#pragma comment (lib, "Setupapi.lib")
 #include "shuttle.h"
 #include <QDebug>
 
@@ -141,17 +142,14 @@ void shuttle::runTimer()
         {
             qDebug() << "BUTTON: " << qSetFieldWidth(16) << bin << tempButtons;
 
-            // Step size down
-            if ((tempButtons >> 5 & 1) && !(buttons >> 5 & 1))
-                emit button5(true);
-            // PTT on and off
-            if ((tempButtons >> 6 & 1) && !(buttons >> 6 & 1))
-                emit button6(true);
-            else if ((buttons >> 6 & 1) && !(tempButtons >> 6 & 1))
-                emit button6(false);
-            // Step size up
-            if ((tempButtons >> 7 & 1) && !(buttons >> 7 & 1))
-                emit button7(true);
+            // Step through all buttons and emit ones that have been pressed.
+            for (unsigned char i = 0; i < 16; i++)
+            {
+                if ((tempButtons >> i & 1) && !(buttons >> i & 1))
+                    emit button(true,i);
+                else if ((buttons >> i & 1) && !(tempButtons >> i & 1))
+                    emit button(false,i);
+            }   
         }
 
         buttons = tempButtons;
@@ -176,21 +174,26 @@ void shuttle::runTimer()
 
 
         }
+
     }
 
-
-    if (shutpos > 0 && shutpos < 8)
+    if (lastShuttle.msecsTo(QTime::currentTime()) >= 1000)
     {
-        shutMult = shutpos;
-        emit doShuttle(true,shutMult);
-        qDebug() << "SHUTTLE PLUS" << shutMult;
+        if (shutpos > 0 && shutpos < 8)
+        {
+            shutMult = shutpos;
+            emit doShuttle(true, shutMult);
+            qInfo() << "SHUTTLE PLUS" << shutMult;
 
+        }
+        else if (shutpos <= 0xff && shutpos >= 0xf0) {
+            shutMult = abs(shutpos - 0xff) + 1;
+            emit doShuttle(false, shutMult);
+            qInfo() << "SHUTTLE MINUS" << shutMult;
+        }
+        lastShuttle = QTime::currentTime();
     }
-    else if (shutpos <= 0xff && shutpos >= 0xf0) {
-        shutMult = abs(shutpos - 0xff)+1;
-        emit doShuttle(false,shutMult);
-        qDebug() << "SHUTTLE MINUS" << shutMult;
-    }
+
 
     // Run every 25ms
     QTimer::singleShot(25, this, SLOT(runTimer()));

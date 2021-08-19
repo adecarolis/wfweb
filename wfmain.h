@@ -198,7 +198,7 @@ private slots:
 
     void handlePttLimit(); // hit at 3 min transmit length
 
-    void doShuttle(bool up, quint8 level);
+    void doShuttle(bool up, unsigned char level);
 
     void receiveCommReady();
     void receiveFreq(freqt);
@@ -263,6 +263,7 @@ private slots:
 
     void setRadioTimeDateSend();
 
+    void buttonControl(bool on, unsigned char button);
 
     // void on_getFreqBtn_clicked();
 
