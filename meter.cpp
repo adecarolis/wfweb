@@ -57,7 +57,8 @@ void meter::clearMeterOnPTTtoggle()
 
 
     if( (meterType == meterALC) || (meterType == meterSWR)
-            || (meterType == meterComp) || (meterType == meterTxMod) )
+            || (meterType == meterComp) || (meterType == meterTxMod)
+            || (meterType == meterCenter ))
     {
         clearMeter();
     }
