@@ -2407,6 +2407,7 @@ void wfmain::doCmd(commandtype cmddata)
         {
             bool pttrequest = (*std::static_pointer_cast<bool>(data));
             emit setPTT(pttrequest);
+            ui->meter2Widget->clearMeterOnPTTtoggle();
             if(pttrequest)
             {
                 ui->meterSPoWidget->setMeterType(meterPower);
@@ -5257,6 +5258,7 @@ void wfmain::on_meter2selectionCombo_activated(int index)
     if(newMeterType==meterNone)
     {
         ui->meter2Widget->hide();
+        ui->meter2Widget->setMeterType(newMeterType);
     } else {
         ui->meter2Widget->show();
         ui->meter2Widget->setMeterType(newMeterType);

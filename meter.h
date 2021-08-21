@@ -24,6 +24,8 @@ public slots:
     void updateDrawing(int num);
     void setLevels(int current, int peak, int average);
     void setLevel(int current);
+    void clearMeterOnPTTtoggle();
+    void clearMeter();
     void setMeterType(meterKind type);
     void setMeterShortString(QString);
     QString getMeterShortString();
@@ -46,8 +48,6 @@ private:
     int peakPosition=0;
     std::vector<unsigned char> avgLevels;
     std::vector<unsigned char> peakLevels;
-
-
 
     int peakRedLevel=0;
     bool drawLabels = true;

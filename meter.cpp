@@ -48,13 +48,23 @@ meter::meter(QWidget *parent) : QWidget(parent)
 
 }
 
-void meter::setMeterType(meterKind type)
+void meter::clearMeterOnPTTtoggle()
 {
-    if(type == meterType)
-        return;
+    // When a meter changes type, such as the fixed S -- TxPo meter,
+    // there is automatic clearing. However, some meters do not switch on thier own,
+    // and thus we are providing this clearing method. We are careful
+    // not to clear meters that don't make sense to clear (such as Vd and Id)
 
-    meterType = type;
-    // clear average and peak vectors:
+
+    if( (meterType == meterALC) || (meterType == meterSWR)
+            || (meterType == meterComp) || (meterType == meterTxMod) )
+    {
+        clearMeter();
+    }
+}
+
+void meter::clearMeter()
+{
     current = 0;
     average = 0;
     peak = 0;
@@ -68,6 +78,16 @@ void meter::setMeterType(meterKind type)
     avgPosition = 0;
     // re-draw scale:
     update();
+}
+
+void meter::setMeterType(meterKind type)
+{
+    if(type == meterType)
+        return;
+
+    meterType = type;
+    // clear average and peak vectors:
+    this->clearMeter();
 }
 
 meterKind meter::getMeterType()
@@ -139,6 +159,9 @@ void meter::paintEvent(QPaintEvent *)
             label = "CMP";
             peakRedLevel = 100;
             drawScaleComp(&painter);
+            break;
+        case meterNone:
+            return;
             break;
         default:
             label = "DN";
