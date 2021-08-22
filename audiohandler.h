@@ -14,10 +14,19 @@
 #include "portaudio.h"
 #error "PORTAUDIO is not currently supported"
 #else
-#include <QAudioOutput>
 #include <QAudioFormat>
+
+#if QT_VERSION < 0x060000
 #include <QAudioDeviceInfo>
 #include <QAudioInput>
+#include <QAudioOutput>
+#else
+#include <QMediaDevices>
+#include <QAudioDevice>
+#include <QAudioSource>
+#include <QAudioSink>
+#endif
+
 #include <QIODevice>
 #endif
 
@@ -71,7 +80,13 @@ struct audioSetup {
     int port;
 #elif defined(PORTAUDIO)
 #else
+
+#if QT_VERSION < 0x060000
     QAudioDeviceInfo port;
+#else
+    QAudioDevice port;
+#endif
+
 #endif
     quint8 resampleQuality;
     unsigned char localAFgain;
@@ -93,7 +108,6 @@ public:
     int getLatency();
 
 #if !defined (RTAUDIO) && !defined(PORTAUDIO)
-    bool setDevice(QAudioDeviceInfo deviceInfo);
 
     void start();
     void flush();
@@ -155,10 +169,18 @@ private:
     RtAudio::DeviceInfo info;
 #elif defined(PORTAUDIO)
 #else
-    QAudioOutput* audioOutput=Q_NULLPTR;
-    QAudioInput* audioInput=Q_NULLPTR;
     QAudioFormat     format;
+
+#if QT_VERSION < 0x060000
     QAudioDeviceInfo deviceInfo;
+    QAudioOutput* audioOutput = Q_NULLPTR;
+    QAudioInput* audioInput = Q_NULLPTR;
+#else
+    QMediaDevices deviceInfo;
+    QAudioSink* audioOutput = Q_NULLPTR;
+    QAudioSource* audioInput = Q_NULLPTR;
+#endif
+
 #endif
     SpeexResamplerState* resampler = Q_NULLPTR;
 

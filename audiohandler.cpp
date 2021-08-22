@@ -191,12 +191,18 @@ bool audioHandler::init(audioSetup setupIn)
 #elif defined(PORTAUDIO)
 #else
 
-	format.setSampleSize(16);
+#if QT_VERSION < 0x060000
+format.setSampleSize(16);
 	format.setChannelCount(2);
 	format.setSampleRate(INTERNAL_SAMPLE_RATE);
 	format.setCodec("audio/pcm");
 	format.setByteOrder(QAudioFormat::LittleEndian);
 	format.setSampleType(QAudioFormat::SignedInt);
+#else
+	format.setSampleFormat(QAudioFormat::Int16);
+	format.setChannelCount(2);
+	format.setSampleRate(INTERNAL_SAMPLE_RATE);
+#endif
 	if (setup.port.isNull())
 	{
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "No audio device was found. You probably need to install libqt5multimedia-plugins.";
@@ -205,7 +211,9 @@ bool audioHandler::init(audioSetup setupIn)
 	else if (!setup.port.isFormatSupported(format))
 	{
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Format not supported, choosing nearest supported format - which may not work!";
+#if QT_VERSION < 0x060000
 		format=setup.port.nearestFormat(format);
+#endif
 	}
 	if (format.channelCount() > 2) {
 		format.setChannelCount(2);
@@ -226,13 +234,23 @@ bool audioHandler::init(audioSetup setupIn)
 	// We "hopefully" now have a valid format that is supported so try connecting
 
 	if (setup.isinput) {
+
+#if QT_VERSION < 0x060000
 		audioInput = new QAudioInput(setup.port, format, this);
+#else
+		audioInput = new QAudioSource(setup.port, format, this);
+#endif
 		connect(audioInput, SIGNAL(notify()), SLOT(notified()));
 		connect(audioInput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
 		isInitialized = true;
 	}
 	else {
+
+#if QT_VERSION < 0x060000
 		audioOutput = new QAudioOutput(setup.port, format, this);
+#else
+		audioOutput = new QAudioSink(setup.port, format, this);
+#endif
 
 #ifdef Q_OS_MAC
         audioOutput->setBufferSize(chunkSize*4);
@@ -379,7 +397,7 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 			while (currentLatency > setup.latency) {
 				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
 					" arrived too late (increase output latency!) " <<
-					dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
+					packet.time.msecsTo(QTime::currentTime()) << "ms";
 				lastSeq = packet.seq;
 				if (!ringBuf->try_read(packet))
 					break;
@@ -621,7 +639,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		while (currentLatency > setup.latency) {
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
 				" arrived too late (increase output latency!) " <<
-				dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
+				packet.time.msecsTo(QTime::currentTime()) << "ms";
 			if (!ringBuf->try_read(packet))
 				break;
 			currentLatency = packet.time.msecsTo(QTime::currentTime());

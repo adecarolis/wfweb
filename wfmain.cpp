@@ -1026,8 +1026,9 @@ void wfmain::setAudioDevicesUI()
     // Use PortAudio device enumeration
 #else
 
-// If no external library is configured, use QTMultimedia
-    // Enumerate audio devices, need to do before settings are loaded.
+#if QT_VERSION < 0x060000
+    // If no external library is configured, use QTMultimedia
+        // Enumerate audio devices, need to do before settings are loaded.
     const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
     for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
         ui->audioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
@@ -1040,6 +1041,24 @@ void wfmain::setAudioDevicesUI()
     // Set these to default audio devices initially.
     rxSetup.port = QAudioDeviceInfo::defaultOutputDevice();
     txSetup.port = QAudioDeviceInfo::defaultInputDevice();
+
+#else
+    // If no external library is configured, use QTMultimedia
+        // Enumerate audio devices, need to do before settings are loaded.
+    const auto audioOutputs = QMediaDevices::audioOutputs();
+    for (const QAudioDevice& deviceInfo : audioOutputs) {
+        ui->audioOutputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
+    }
+
+    const auto audioInputs = QMediaDevices::audioInputs();
+    for (const QAudioDevice& deviceInfo : audioInputs) {
+        ui->audioInputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
+    }
+    // Set these to default audio devices initially.
+    rxSetup.port = QMediaDevices::defaultAudioOutput();
+    txSetup.port = QMediaDevices::defaultAudioInput();
+#endif
+
 #endif
 }
 
@@ -1215,7 +1234,7 @@ void wfmain::setupKeyShortcuts()
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
 
     keyDebug = new QShortcut(this);
-    keyDebug->setKey(Qt::CTRL + Qt::SHIFT + Qt::Key_D);
+    keyDebug->setKey(Qt::CTRL && Qt::SHIFT && Qt::Key_D);
     connect(keyDebug, SIGNAL(activated()), this, SLOT(on_debugBtn_clicked()));
 }
 
@@ -1468,7 +1487,7 @@ void wfmain::loadSettings()
 #elif defined(PORTAUDIO)
 #else
         QVariant v = ui->audioOutputCombo->currentData();
-        rxSetup.port = v.value<QAudioDeviceInfo>();
+        rxSetup.port = v.value<QAudioDevice>();
 #endif
     }
     ui->audioOutputCombo->blockSignals(false);
@@ -1484,7 +1503,7 @@ void wfmain::loadSettings()
 #elif defined(PORTAUDIO)
 #else
         QVariant v = ui->audioInputCombo->currentData();
-        txSetup.port = v.value<QAudioDeviceInfo>();
+        txSetup.port = v.value<QAudioDevice>();
 #endif
     }
     ui->audioInputCombo->blockSignals(false);
@@ -4211,7 +4230,7 @@ void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
 #elif defined(PORTAUDIO)
 #else
     QVariant v = ui->audioOutputCombo->itemData(value);
-    rxSetup.port = v.value<QAudioDeviceInfo>();
+    rxSetup.port = v.value<QAudioDevice>();
 #endif
     rxSetup.name = ui->audioOutputCombo->itemText(value);
     qDebug(logGui()) << "Changed default audio output to:" << rxSetup.name;
@@ -4224,7 +4243,7 @@ void wfmain::on_audioInputCombo_currentIndexChanged(int value)
 #elif defined(PORTAUDIO)
 #else
     QVariant v = ui->audioInputCombo->itemData(value);
-    txSetup.port = v.value<QAudioDeviceInfo>();
+    txSetup.port = v.value<QAudioDevice>();
 #endif
     txSetup.name = ui->audioInputCombo->itemText(value);
     qDebug(logGui()) << "Changed default audio input to:" << txSetup.name;

@@ -146,35 +146,35 @@ void rigCtlClient::socketReadyRead()
             return;
         }
 
-        if (commandBuffer[num] == ";" || commandBuffer[num] == "|" || commandBuffer[num] == ",")
+        if (commandBuffer[num] == ';' || commandBuffer[num] == '|' || commandBuffer[num] == ',')
         {
             sep = commandBuffer[num].toLatin1();
             num++;
         }
-        else if (commandBuffer[num] == "+")
+        else if (commandBuffer[num] == '+')
         {
             longReply = true;
             sep = "\n";
             num++;
         }
-        else if (commandBuffer[num] == "#")
+        else if (commandBuffer[num] == '#')
         {
             return;
         }
-        else if (commandBuffer[num].toLower() == "q")
+        else if (commandBuffer[num].toLower() == 'q')
         {
             closeSocket();
             return;
         }
 
-        if (commandBuffer[num] == "\\")
+        if (commandBuffer[num] == '\\')
         {
             num++;
         }
 
         QStringList command = commandBuffer.mid(num).split(" ");
 
-        if (command[0] == 0xf0 || command[0] == "chk_vfo")
+        if (command[0] == '\xf0' || command[0] == "chk_vfo")
         {
             QString resp;
             if (longReply) {
@@ -960,7 +960,7 @@ void rigCtlClient::socketReadyRead()
             }
             qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2];
         }
-        else if (command.length() > 1 && (command[0] == 0x88 || command[0] == "get_powerstat"))
+        else if (command.length() > 1 && (command[0] == '\x88' || command[0] == "get_powerstat"))
         {
             
             QString resp;
@@ -971,7 +971,7 @@ void rigCtlClient::socketReadyRead()
             response.append(resp);
             
         }
-        else if (command.length() > 1 && (command[0] == 0x87 || command[0] == "set_powerstat"))
+        else if (command.length() > 1 && (command[0] == '\x87' || command[0] == "set_powerstat"))
         {
             setCommand = true;
             if (command[1] == "0")

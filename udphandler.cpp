@@ -965,7 +965,9 @@ void udpAudio::dataReceived()
 
 void udpBase::init()
 {
+#if QT_VERSION < 0x060000
     timeStarted.start();
+#endif
     udp = new QUdpSocket(this);
     udp->bind(); // Bind to random port.
     localPort = udp->localPort();

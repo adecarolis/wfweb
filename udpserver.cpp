@@ -14,7 +14,10 @@ void udpServer::init()
 {
 
     srand(time(NULL)); // Generate random key
+#if QT_VERSION < 0x060000
     timeStarted.start();
+#endif
+
     // Convoluted way to find the external IP address, there must be a better way????
     QString localhostname = QHostInfo::localHostName();
     QList<QHostAddress> hostList = QHostInfo::fromName(localhostname).addresses();
