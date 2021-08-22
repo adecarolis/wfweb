@@ -37,6 +37,7 @@ public slots:
     void init();
     void run();
     void runTimer();
+    void ledControl(bool on, unsigned char num);
 
 signals:
     void jogPlus();
@@ -55,7 +56,8 @@ private:
     unsigned char shutMult = 0;
     enum { NONE, shuttleXpress, shuttlePro2, RC28 }usbDevice;
     QTime	lastShuttle = QTime::currentTime();
-
+    QByteArray lastData="";
+    unsigned char lastDialPos=0;
 
 protected:
 };

@@ -85,117 +85,163 @@ void shuttle::run()
 
 void shuttle::runTimer()
 {
-    int res;
-    QByteArray data(HIDDATALENGTH,0x0);
-    res = hid_read(handle, (unsigned char *)data.data(), HIDDATALENGTH);
-    if (res == 0)
-        ;//printf("waiting...\n");
-    else if (res < 0)
-    {
-        qInfo() << "USB Device disconnected?";
-        hid_close(handle);
-        QTimer::singleShot(1000, this, SLOT(run()));
-        return;
-    }
-    else if (res == 5 && (usbDevice == shuttleXpress || usbDevice == shuttlePro2))
-    {
-        data.resize(res);
-        qDebug() << "Shuttle Data received: " << hex << (unsigned char)data[0] << ":"
-            << hex << (unsigned char)data[1] << ":"
-            << hex << (unsigned char)data[2] << ":"
-            << hex << (unsigned char)data[3] << ":"
-            << hex << (unsigned char)data[4];
-
-        unsigned int tempButtons = (unsigned int)((unsigned char)data[3] | (unsigned char)data[4] << 8);
-        unsigned char tempJogpos = (unsigned char)data[1];
-        unsigned char tempShutpos = (unsigned char)data[0];
-
-        if (tempJogpos == jogpos +1 || (tempJogpos == 0 && jogpos == 0xff))
+    int res=1;
+    while (res > 0) {
+        QByteArray data(HIDDATALENGTH, 0x0);
+        res = hid_read(handle, (unsigned char*)data.data(), HIDDATALENGTH);
+        if (res < 0)
         {
-            qDebug() << "JOG PLUS";
-            emit jogPlus();
+            qInfo() << "USB Device disconnected?";
+            hid_close(handle);
+            QTimer::singleShot(1000, this, SLOT(run()));
+            return;
         }
-        else if (tempJogpos != jogpos) {
-            qDebug() << "JOG MINUS";
-            emit jogMinus();
-        }
-
-        /* Button matrix:
-            1000000000000000 = button15
-            0100000000000000 = button14
-            0010000000000000 = button13
-            0001000000000000 = button12
-            0000100000000000 = button11
-            0000010000000000 = button10
-            0000001000000000 = button9
-            0000000100000000 = button8 - xpress0
-            0000000010000000 = button7 - xpress1
-            0000000001000000 = button6 - xpress2
-            0000000000100000 = button5 - xpress3
-            0000000000010000 = button4 - xpress4
-            0000000000001000 = button3
-            0000000000000100 = button2
-            0000000000000010 = button1
-            0000000000000001 = button0
-        */
-        if (buttons != tempButtons)
+        else if (res == 5 && (usbDevice == shuttleXpress || usbDevice == shuttlePro2))
         {
-            qDebug() << "BUTTON: " << qSetFieldWidth(16) << bin << tempButtons;
+            data.resize(res);
+            qDebug() << "Shuttle Data received: " << hex << (unsigned char)data[0] << ":"
+                << hex << (unsigned char)data[1] << ":"
+                << hex << (unsigned char)data[2] << ":"
+                << hex << (unsigned char)data[3] << ":"
+                << hex << (unsigned char)data[4];
 
-            // Step through all buttons and emit ones that have been pressed.
-            for (unsigned char i = 0; i < 16; i++)
+            unsigned int tempButtons = (unsigned int)((unsigned char)data[3] | (unsigned char)data[4] << 8);
+            unsigned char tempJogpos = (unsigned char)data[1];
+            unsigned char tempShutpos = (unsigned char)data[0];
+
+            if (tempJogpos == jogpos + 1 || (tempJogpos == 0 && jogpos == 0xff))
             {
-                if ((tempButtons >> i & 1) && !(buttons >> i & 1))
-                    emit button(true,i);
-                else if ((buttons >> i & 1) && !(tempButtons >> i & 1))
-                    emit button(false,i);
-            }   
+                qDebug() << "JOG PLUS";
+                emit jogPlus();
+            }
+            else if (tempJogpos != jogpos) {
+                qDebug() << "JOG MINUS";
+                emit jogMinus();
+            }
+
+            /* Button matrix:
+                1000000000000000 = button15
+                0100000000000000 = button14
+                0010000000000000 = button13
+                0001000000000000 = button12
+                0000100000000000 = button11
+                0000010000000000 = button10
+                0000001000000000 = button9
+                0000000100000000 = button8 - xpress0
+                0000000010000000 = button7 - xpress1
+                0000000001000000 = button6 - xpress2
+                0000000000100000 = button5 - xpress3
+                0000000000010000 = button4 - xpress4
+                0000000000001000 = button3
+                0000000000000100 = button2
+                0000000000000010 = button1
+                0000000000000001 = button0
+            */
+            if (buttons != tempButtons)
+            {
+                qDebug() << "BUTTON: " << qSetFieldWidth(16) << bin << tempButtons;
+
+                // Step through all buttons and emit ones that have been pressed.
+                for (unsigned char i = 0; i < 16; i++)
+                {
+                    if ((tempButtons >> i & 1) && !(buttons >> i & 1))
+                        emit button(true, i);
+                    else if ((buttons >> i & 1) && !(tempButtons >> i & 1))
+                        emit button(false, i);
+                }
+            }
+
+            buttons = tempButtons;
+            jogpos = tempJogpos;
+            shutpos = tempShutpos;
+
         }
-
-        buttons = tempButtons;
-        jogpos = tempJogpos;
-        shutpos = tempShutpos;
-
-    }
-    else if (res == 64 && usbDevice == RC28)
-    {
-        // This is a response from the Icom RC28
-        data.resize(8); // Might as well get rid of the unused data.
-        qDebug() << "RC28 Data received: "
-            << hex << (unsigned char)data[0] << ":"
-            << hex << (unsigned char)data[1] << ":"
-            << hex << (unsigned char)data[2] << ":"
-            << hex << (unsigned char)data[3] << ":"
-            << hex << (unsigned char)data[4] << ":"
-            << hex << (unsigned char)data[5] << ":"
-            << hex << (unsigned char)data[6] << ":"
-            << hex << (unsigned char)data[7];
-        if ((unsigned char)data[0] == 0x01) {
-
-
-        }
-
-    }
-
-    if (lastShuttle.msecsTo(QTime::currentTime()) >= 1000)
-    {
-        if (shutpos > 0 && shutpos < 8)
+        else if (res == 64 && usbDevice == RC28)
         {
-            shutMult = shutpos;
-            emit doShuttle(true, shutMult);
-            qInfo() << "SHUTTLE PLUS" << shutMult;
+            // This is a response from the Icom RC28
+            data.resize(8); // Might as well get rid of the unused data.
+            if (((unsigned char)data[5] == 0x06) && ((unsigned char)lastData[5] != 0x06))
+            {
+                emit button(true, 6);
+            }
+            else if (((unsigned char)data[5] != 0x06) && ((unsigned char)lastData[5] == 0x06))
+            {
+                emit button(false, 6);
+            }
+            else if (((unsigned char)data[5] == 0x03) && ((unsigned char)lastData[5] != 0x03))
+            {
+                emit button(true, 7);
+            }
+            else if (((unsigned char)data[5] != 0x03) && ((unsigned char)lastData[5] == 0x03))
+            {
+                emit button(false, 7);
+            }
+            else if (((unsigned char)data[5] == 0x7d) && ((unsigned char)lastData[5] != 0x7d))
+            {
+                emit button(true, 5);
+            }
+            else if (((unsigned char)data[5] != 0x7d) && ((unsigned char)lastData[5] == 0x7d))
+            {
+                emit button(false, 5);
+            }
 
+            if ((unsigned char)data[5] == 0x07)
+            {
+                if ((unsigned char)data[3]==0x01)
+                {
+                    qDebug() << "Frequency UP";
+                        emit jogPlus();
+                }
+                else if ((unsigned char)data[3] == 0x02)
+                {
+                    qDebug() << "Frequency DOWN";
+                        emit jogMinus();
+                }
+            }
+            lastData = data;
         }
-        else if (shutpos <= 0xff && shutpos >= 0xf0) {
-            shutMult = abs(shutpos - 0xff) + 1;
-            emit doShuttle(false, shutMult);
-            qInfo() << "SHUTTLE MINUS" << shutMult;
+
+        if (lastShuttle.msecsTo(QTime::currentTime()) >= 1000)
+        {
+            if (shutpos > 0 && shutpos < 8)
+            {
+                shutMult = shutpos;
+                emit doShuttle(true, shutMult);
+                qInfo() << "SHUTTLE PLUS" << shutMult;
+
+            }
+            else if (shutpos <= 0xff && shutpos >= 0xf0) {
+                shutMult = abs(shutpos - 0xff) + 1;
+                emit doShuttle(false, shutMult);
+                qInfo() << "SHUTTLE MINUS" << shutMult;
+            }
+            lastShuttle = QTime::currentTime();
         }
-        lastShuttle = QTime::currentTime();
+
     }
-
-
     // Run every 25ms
     QTimer::singleShot(25, this, SLOT(runTimer()));
 }
 
+#define BIT_CLEAR(a,b) ((a) &= ~(1ULL<<(b)))
+void shuttle::ledControl(bool on, unsigned char num)
+{
+    QByteArray data(9,0x0);
+    data[0] = 8;
+    data[1] = 0x01;
+    unsigned char ledNum=0x07;
+    if (on)
+        ledNum &= ~(1ULL << (num - 1));
+
+    data[2] = ledNum;
+
+    int res = hid_write(handle, (const unsigned char*)data.constData(), 8);
+
+    if (res < 0) {
+        qDebug() << "Unable to write(), Error:" << hid_error(handle);
+        return;
+    }
+
+    qDebug() << "write() success";
+
+}
