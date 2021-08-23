@@ -684,14 +684,9 @@ void wfmain::setupMainUI()
     ui->meter2selectionCombo->addItem("Center", meterCenter);
     ui->meter2Widget->hide();
 
-#ifdef QT_DEBUG
-    // Experimental feature:
     ui->meter2selectionCombo->show();
     ui->secondaryMeterSelectionLabel->show();
-#else
-    ui->meter2selectionCombo->hide();
-    ui->secondaryMeterSelectionLabel->hide();
-#endif
+
 
     // Future ideas:
     //ui->meter2selectionCombo->addItem("Transmit Audio", meterTxMod);
