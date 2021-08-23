@@ -384,7 +384,7 @@ void udpServer::controlReceived()
                     txAudioThread = new QThread(this);
                     txaudio->moveToThread(txAudioThread);
 
-                    txAudioThread->start();
+                    txAudioThread->start(QThread::TimeCriticalPriority);
 
                     connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
                     connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
@@ -402,8 +402,8 @@ void udpServer::controlReceived()
 
                     rxaudio = new audioHandler();
                     rxAudioThread = new QThread(this);
-                    rxaudio->moveToThread(rxAudioThread);
-                    rxAudioThread->start();
+
+                    rxAudioThread->start(QThread::TimeCriticalPriority);
 
                     connect(this, SIGNAL(setupRxAudio(audioSetup)), rxaudio, SLOT(init(audioSetup)));
                     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
