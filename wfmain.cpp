@@ -1045,6 +1045,13 @@ void wfmain::setAudioDevicesUI()
 #else
     // If no external library is configured, use QTMultimedia
         // Enumerate audio devices, need to do before settings are loaded.
+    QMediaDevices devices;
+    connect(&devices, &QMediaDevices::audioInputsChanged,
+        []() { qDebug() << "available audio inputs have changed"; });
+
+    connect(&devices, &QMediaDevices::audioOutputsChanged,
+        []() { qDebug() << "available audio ourputs have changed"; });
+
     const auto audioOutputs = QMediaDevices::audioOutputs();
     for (const QAudioDevice& deviceInfo : audioOutputs) {
         ui->audioOutputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
