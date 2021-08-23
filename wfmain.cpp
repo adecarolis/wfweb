@@ -1236,6 +1236,7 @@ void wfmain::setupShuttleDevice()
     connect(shuttleDev, SIGNAL(jogMinus()), this, SLOT(shortcutStepMinus()));
     connect(shuttleDev, SIGNAL(doShuttle(bool, unsigned char)), this, SLOT(doShuttle(bool, unsigned char)));
     connect(shuttleDev, SIGNAL(button(bool, unsigned char)), this, SLOT(buttonControl(bool, unsigned char)));
+    connect(this, SIGNAL(shuttleLed(bool, unsigned char)), shuttleDev, SLOT(ledControl(bool, unsigned char)));
     shuttleThread->start();
 }
 
@@ -1250,6 +1251,7 @@ void wfmain::pttToggle(bool status)
     }
 
     emit setPTT(status);
+    emit shuttleLed(status, 1);
     // Start 3 minute timer
     if (status)
         pttTimer->start();

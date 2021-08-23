@@ -157,6 +157,7 @@ signals:
     void sendRigCaps(rigCapabilities caps);
     void openShuttle();
     void requestRigState();
+    void shuttleLed(bool, unsigned char);
 
 private slots:
     void updateSizes(int tabIndex);

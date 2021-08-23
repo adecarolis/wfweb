@@ -223,9 +223,9 @@ void shuttle::runTimer()
     QTimer::singleShot(25, this, SLOT(runTimer()));
 }
 
-#define BIT_CLEAR(a,b) ((a) &= ~(1ULL<<(b)))
 void shuttle::ledControl(bool on, unsigned char num)
 {
+
     QByteArray data(9,0x0);
     data[0] = 8;
     data[1] = 0x01;
