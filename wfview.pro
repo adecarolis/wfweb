@@ -105,10 +105,10 @@ INSTALLS += stylesheets
 
 CONFIG(debug, release|debug) {
   linux: QCPLIB = qcustomplotd
-  win32:LIBS += -L../opus/win32/VS2015/Win32/Debug/ -lopus
+  win32:LIBS += -L../opus/win32/VS2015/x64/Debug/ -lopus
 } else {
   linux: QCPLIB = qcustomplot
-  win32:LIBS += -L../opus/win32/VS2015/Win32/Release/ -lopus
+  win32:LIBS += -L../opus/win32/VS2015/x64/Release/ -lopus
 }
 
 #linux:LIBS += -L./ -l$$QCPLIB -lpulse -lpulse-simple -lpthread
