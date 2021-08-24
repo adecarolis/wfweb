@@ -385,7 +385,7 @@ void udpServer::controlReceived()
                     txAudioThread->setPriority(QThread::TimeCriticalPriority);
                     txaudio->moveToThread(txAudioThread);
 
-                    txAudioThread->start();
+                    txAudioThread->start(QThread::TimeCriticalPriority);
 
                     connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
                     connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
@@ -402,11 +402,11 @@ void udpServer::controlReceived()
                     inAudio.samplerate = current->rxSampleRate;
 
                     rxaudio = new audioHandler();
-                    rxAudioThread = new QThread(this);
-                    rxAudioThread->setPriority(QThread::TimeCriticalPriority);
 
-                    rxaudio->moveToThread(rxAudioThread);
-                    rxAudioThread->start();
+                    rxAudioThread = new QThread(this)
+
+					rxaudio->moveToThread(rxAudioThread);
+                    rxAudioThread->start(QThread::TimeCriticalPriority);
 
                     connect(this, SIGNAL(setupRxAudio(audioSetup)), rxaudio, SLOT(init(audioSetup)));
                     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
