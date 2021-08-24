@@ -240,7 +240,6 @@ format.setSampleSize(16);
 #else
 		audioInput = new QAudioSource(setup.port, format, this);
 #endif
-		connect(audioInput, SIGNAL(notify()), SLOT(notified()));
 		connect(audioInput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
 		isInitialized = true;
 	}
@@ -256,7 +255,6 @@ format.setSampleSize(16);
         audioOutput->setBufferSize(chunkSize*4);
 #endif
 
-		connect(audioOutput, SIGNAL(notify()), SLOT(notified()));
 		connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
 		isInitialized = true;
 	}

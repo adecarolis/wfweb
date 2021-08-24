@@ -56,6 +56,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     setSerialDevicesUI();
 
+#if QT_VERSION >= 0x060000
+    connect(&mediaDevices, &QMediaDevices::audioInputsChanged, this, &wfmain::setAudioDevicesUI);
+    connect(&mediaDevices, &QMediaDevices::audioOutputsChanged, this, &wfmain::setAudioDevicesUI);
+#endif
+
     setAudioDevicesUI();
 
     setDefaultColors();
@@ -1045,19 +1050,13 @@ void wfmain::setAudioDevicesUI()
 #else
     // If no external library is configured, use QTMultimedia
         // Enumerate audio devices, need to do before settings are loaded.
-    QMediaDevices devices;
-    connect(&devices, &QMediaDevices::audioInputsChanged,
-        []() { qDebug() << "available audio inputs have changed"; });
-
-    connect(&devices, &QMediaDevices::audioOutputsChanged,
-        []() { qDebug() << "available audio ourputs have changed"; });
-
-    const auto audioOutputs = QMediaDevices::audioOutputs();
+    ui->audioOutputCombo->clear();
+    const auto audioOutputs = mediaDevices.audioOutputs();
     for (const QAudioDevice& deviceInfo : audioOutputs) {
         ui->audioOutputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
     }
-
-    const auto audioInputs = QMediaDevices::audioInputs();
+    ui->audioInputCombo->clear();
+    const auto audioInputs = mediaDevices.audioInputs();
     for (const QAudioDevice& deviceInfo : audioInputs) {
         ui->audioInputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
     }

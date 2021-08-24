@@ -477,6 +477,8 @@ private slots:
 
     void on_rigctldPortTxt_editingFinished();
 
+    void setAudioDevicesUI();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -562,7 +564,6 @@ private:
     void setupMainUI();
     void setUIToPrefs();
     void setSerialDevicesUI();
-    void setAudioDevicesUI();
     void setServerToPrefs();
     void setInitialTiming();
     void getSettingsFilePath(QString settingsFile);
@@ -812,6 +813,7 @@ private:
     unsigned int tsWfScrollHz;
     unsigned int tsKnobHz;
 
+    QMediaDevices mediaDevices;
 
     SERVERCONFIG serverConfig;
 };
