@@ -403,7 +403,7 @@ void udpServer::controlReceived()
 
                     rxaudio = new audioHandler();
 
-                    rxAudioThread = new QThread(this)
+                    rxAudioThread = new QThread(this);
 
 					rxaudio->moveToThread(rxAudioThread);
                     rxAudioThread->start(QThread::TimeCriticalPriority);
