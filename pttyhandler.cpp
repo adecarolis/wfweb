@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <errno.h>
 #endif
 
 // Copyright 2017-2021 Elliott H. Liggett & Phil Taylor 
