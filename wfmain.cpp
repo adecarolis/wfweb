@@ -684,14 +684,9 @@ void wfmain::setupMainUI()
     ui->meter2selectionCombo->addItem("Center", meterCenter);
     ui->meter2Widget->hide();
 
-#ifdef QT_DEBUG
-    // Experimental feature:
     ui->meter2selectionCombo->show();
     ui->secondaryMeterSelectionLabel->show();
-#else
-    ui->meter2selectionCombo->hide();
-    ui->secondaryMeterSelectionLabel->hide();
-#endif
+
 
     // Future ideas:
     //ui->meter2selectionCombo->addItem("Transmit Audio", meterTxMod);
@@ -1433,6 +1428,8 @@ void wfmain::loadSettings()
     ui->audioRXCodecCombo->addItem("LPCM 2ch 16bit", 16);
     ui->audioRXCodecCombo->addItem("uLaw 2ch 8bit", 32);
     ui->audioRXCodecCombo->addItem("PCM 2ch 8bit", 8);
+    ui->audioRXCodecCombo->addItem("Opus 1ch", 64);
+    ui->audioRXCodecCombo->addItem("Opus 2ch", 128);
 
     ui->audioRXCodecCombo->blockSignals(true);
     rxSetup.codec = settings->value("AudioRXCodec", "4").toInt();
@@ -1445,6 +1442,7 @@ void wfmain::loadSettings()
     ui->audioTXCodecCombo->addItem("LPCM 1ch 16bit", 4);
     ui->audioTXCodecCombo->addItem("LPCM 1ch 8bit", 2);
     ui->audioTXCodecCombo->addItem("uLaw 1ch 8bit", 1);
+    ui->audioTXCodecCombo->addItem("Opus 1ch", 64);
 
     ui->audioRXCodecCombo->blockSignals(true);
     txSetup.codec = settings->value("AudioTXCodec", "4").toInt();
@@ -2242,12 +2240,12 @@ void wfmain::setAppTheme(bool isCustom)
 #ifndef Q_OS_LINUX
         QFile f(":"+prefs.stylesheetPath); // built-in resource
 #else
-        QFile f("/usr/share/wfview/stylesheets/" + prefs.stylesheetPath);
+        QFile f(PREFIX "/share/wfview/" + prefs.stylesheetPath);
 #endif
         if (!f.exists())
         {
             printf("Unable to set stylesheet, file not found\n");
-            printf("Tried to load: [%s]\n", QString( QString("/usr/share/wfview/stylesheets/") + prefs.stylesheetPath).toStdString().c_str() );
+            printf("Tried to load: [%s]\n", f.fileName().toStdString().c_str() );
         }
         else
         {
@@ -2404,6 +2402,7 @@ void wfmain::doCmd(commandtype cmddata)
         {
             bool pttrequest = (*std::static_pointer_cast<bool>(data));
             emit setPTT(pttrequest);
+            ui->meter2Widget->clearMeterOnPTTtoggle();
             if(pttrequest)
             {
                 ui->meterSPoWidget->setMeterType(meterPower);
@@ -3943,9 +3942,6 @@ void wfmain::on_bandGenbtn_clicked()
 void wfmain::on_aboutBtn_clicked()
 {
     abtBox->show();
-
-
-
 }
 
 void wfmain::on_fStoBtn_clicked()
@@ -5257,6 +5253,7 @@ void wfmain::on_meter2selectionCombo_activated(int index)
     if(newMeterType==meterNone)
     {
         ui->meter2Widget->hide();
+        ui->meter2Widget->setMeterType(newMeterType);
     } else {
         ui->meter2Widget->show();
         ui->meter2Widget->setMeterType(newMeterType);

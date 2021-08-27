@@ -24,6 +24,8 @@ public slots:
     void updateDrawing(int num);
     void setLevels(int current, int peak, int average);
     void setLevel(int current);
+    void clearMeterOnPTTtoggle();
+    void clearMeter();
     void setMeterType(meterKind type);
     void setMeterShortString(QString);
     QString getMeterShortString();
@@ -47,10 +49,8 @@ private:
     std::vector<unsigned char> avgLevels;
     std::vector<unsigned char> peakLevels;
 
-
-
     int peakRedLevel=0;
-
+    bool drawLabels = true;
     int mXstart = 0; // Starting point for S=0.
     int mYstart = 14; // height, down from top, where the drawing starts
     int barHeight = 10; // Height of meter "bar" indicators
@@ -67,7 +67,12 @@ private:
     void drawScaleSWR(QPainter *qp);
     void drawScaleVd(QPainter *qp);
     void drawScaleId(QPainter *qp);
+    void drawScaleComp(QPainter *qp);
     void drawScaleRaw(QPainter *qp);
+
+    void drawLabel(QPainter *qp);
+
+    QString label;
 
     QColor currentColor;
     QColor averageColor;

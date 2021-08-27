@@ -364,7 +364,7 @@ void udpServer::controlReceived()
             sendConnectionInfo(current);
             qInfo(logUdpServer()) << current->ipAddress.toString() << ": rxCodec:" << current->rxCodec << " txCodec:" << current->txCodec <<
                 " rxSampleRate" << current->rxSampleRate <<
-                " txSampleRate" << current->rxSampleRate <<
+                " txSampleRate" << current->txSampleRate <<
                 " txBufferLen" << current->txBufferLen;
 
             if (!config.lan) {
@@ -382,6 +382,7 @@ void udpServer::controlReceived()
 
                     txaudio = new audioHandler();
                     txAudioThread = new QThread(this);
+                    txAudioThread->setPriority(QThread::TimeCriticalPriority);
                     txaudio->moveToThread(txAudioThread);
 
                     txAudioThread->start(QThread::TimeCriticalPriority);
@@ -401,7 +402,10 @@ void udpServer::controlReceived()
                     inAudio.samplerate = current->rxSampleRate;
 
                     rxaudio = new audioHandler();
+
                     rxAudioThread = new QThread(this);
+
+					rxaudio->moveToThread(rxAudioThread);
 
                     rxAudioThread->start(QThread::TimeCriticalPriority);
 
@@ -461,7 +465,6 @@ void udpServer::civReceived()
         if (current == Q_NULLPTR)
         {
             current = new CLIENT();
-
             foreach(CLIENT* client, controlClients)
             {
                 if (client != Q_NULLPTR)
@@ -472,6 +475,13 @@ void udpServer::civReceived()
                         client->civClient = current;
                     }
                 }
+            }
+
+            if (current->controlClient == Q_NULLPTR || !current->controlClient->isAuthenticated)
+            {
+                // There is no current controlClient that matches this civClient 
+                delete current;
+                return;
             }
 
             current->type = "CIV";
@@ -504,10 +514,6 @@ void udpServer::civReceived()
 
         }
 
-        if (current->controlClient == Q_NULLPTR || !current->controlClient->isAuthenticated)
-        {
-            return;
-        }
 
         switch (r.length())
         {
@@ -621,6 +627,14 @@ void udpServer::audioReceived()
                     }
                 }
             }
+
+            if (current->controlClient == Q_NULLPTR || !current->controlClient->isAuthenticated)
+            {
+                // There is no current controlClient that matches this audioClient 
+                delete current;
+                return;
+            }
+
             current->type = "Audio";
             current->connected = true;
             current->timeConnected = QDateTime::currentDateTime();
@@ -687,7 +701,8 @@ void udpServer::audioReceived()
             */
             control_packet_t in = (control_packet_t)r.constData();
 
-            if (in->type != 0x01 && in->len >= 0xAC) {
+            if (in->type != 0x01) { 
+                // Opus packets can be smaller than this! && in->len >= 0xAC) {
                 if (in->seq == 0)
                 {
                     // Seq number has rolled over.
@@ -1580,6 +1595,7 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
     while (it != l->end()) {
         CLIENT* client = *it;
         if (client != Q_NULLPTR && client == c) {
+            qInfo(logUdpServer()) << "Found" << client->type << "connection to: " << client->ipAddress.toString() << ":" << QString::number(client->port);
             it = l->erase(it);
         }
         else {

@@ -159,48 +159,7 @@
 #define RIG_FUNC_SPECTRUM   CONSTANT_64BIT_FLAG (43)   /*!< \c SPECTRUM -- Spectrum scope data output ON/OFF */
 #define RIG_FUNC_SPECTRUM_HOLD CONSTANT_64BIT_FLAG (44)   /*!< \c SPECTRUM_HOLD -- Pause spectrum scope updates ON/OFF */
 
-static struct
-{
-    quint64 mode;
-    const char* str;
-} mode_str[] =
-{
-    { RIG_MODE_AM, "AM" },
-    { RIG_MODE_CW, "CW" },
-    { RIG_MODE_USB, "USB" },
-    { RIG_MODE_LSB, "LSB" },
-    { RIG_MODE_RTTY, "RTTY" },
-    { RIG_MODE_FM, "FM" },
-    { RIG_MODE_WFM, "WFM" },
-    { RIG_MODE_CWR, "CWR" },
-    { RIG_MODE_RTTYR, "RTTYR" },
-    { RIG_MODE_AMS, "AMS" },
-    { RIG_MODE_PKTLSB, "PKTLSB" },
-    { RIG_MODE_PKTUSB, "PKTUSB" },
-    { RIG_MODE_PKTFM, "PKTFM" },
-    { RIG_MODE_PKTFMN, "PKTFMN" },
-    { RIG_MODE_ECSSUSB, "ECSSUSB" },
-    { RIG_MODE_ECSSLSB, "ECSSLSB" },
-    { RIG_MODE_FAX, "FAX" },
-    { RIG_MODE_SAM, "SAM" },
-    { RIG_MODE_SAL, "SAL" },
-    { RIG_MODE_SAH, "SAH" },
-    { RIG_MODE_DSB, "DSB"},
-    { RIG_MODE_FMN, "FMN" },
-    { RIG_MODE_PKTAM, "PKTAM"},
-    { RIG_MODE_P25, "P25"},
-    { RIG_MODE_DSTAR, "D-STAR"},
-    { RIG_MODE_DPMR, "DPMR"},
-    { RIG_MODE_NXDNVN, "NXDN-VN"},
-    { RIG_MODE_NXDN_N, "NXDN-N"},
-    { RIG_MODE_DCR, "DCR"},
-    { RIG_MODE_AMN, "AMN"},
-    { RIG_MODE_PSK, "PSK"},
-    { RIG_MODE_PSKR, "PSKR"},
-    { RIG_MODE_C4FM, "C4FM"},
-    { RIG_MODE_SPEC, "SPEC"},
-    { RIG_MODE_NONE, "" },
-};
+#if 0
 
 static struct
 {
@@ -310,6 +269,8 @@ static struct
     { RIG_LEVEL_TEMP_METER, "TEMP_METER" },
     { RIG_LEVEL_NONE, "" },
 };
+
+#endif
 
 struct cal_table {
     int size;                   /*!< number of plots in the table */
