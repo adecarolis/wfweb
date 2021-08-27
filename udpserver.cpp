@@ -404,9 +404,11 @@ void udpServer::controlReceived()
                     inAudio.samplerate = current->rxSampleRate;
 
                     rxaudio = new audioHandler();
+
                     rxAudioThread = new QThread(this);
 
-                    rxaudio->moveToThread(rxAudioThread);
+					rxaudio->moveToThread(rxAudioThread);
+
                     rxAudioThread->start(QThread::TimeCriticalPriority);
 
                     connect(this, SIGNAL(setupRxAudio(audioSetup)), rxaudio, SLOT(init(audioSetup)));

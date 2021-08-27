@@ -12,7 +12,7 @@ aboutbox::aboutbox(QWidget *parent) :
     ui->logoBtn->setIcon(QIcon(":resources/wfview.png"));
     ui->logoBtn->setStyleSheet("Text-align:left");
 
-    ui->topText->setText("wfview version 1.1");
+    ui->topText->setText("wfview version 1.2a");
 
     QString head = QString("<html><head></head><body>");
     QString copyright = QString("Copyright 2017-2021 Elliott H. Liggett, W6EL. All rights reserved. wfview source code is <a href=\"https://gitlab.com/eliggett/wfview/-/blob/master/LICENSE\">licensed</a> under the GNU GPLv3.");

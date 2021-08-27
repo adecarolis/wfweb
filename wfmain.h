@@ -704,6 +704,7 @@ private:
         int wftheme;
         bool confirmExit;
         bool confirmPowerOff;
+        meterKind meter2Type;
         // plot scheme
     } prefs;
 
