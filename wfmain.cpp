@@ -3008,13 +3008,15 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         calculateTimingParameters();
         initPeriodicCommands();
         
+        // Set the second meter here as I suspect we need to be connected for it to work?
         for (int i = 0; i < ui->meter2selectionCombo->count(); i++)
         {
             if (static_cast<meterKind>(ui->meter2selectionCombo->itemData(i).toInt()) == prefs.meter2Type)
             {
-                qInfo() << "*******setting meter id" << i;
+                // I thought that setCurrentIndex() would call the activated() function for the combobox
+                // but it doesn't, so call it manually.
                 ui->meter2selectionCombo->setCurrentIndex(i);
-                on_meter2selectionCombo_activated(i);
+                on_meter2selectionCombo_activated(i); 
             }
         }
     }
@@ -5255,7 +5257,6 @@ void wfmain::on_meter2selectionCombo_activated(int index)
     meterKind oldMeterType;
     newMeterType = static_cast<meterKind>(ui->meter2selectionCombo->currentData().toInt());
     oldMeterType = ui->meter2Widget->getMeterType();
-    qInfo() << "*******setting meter type" << newMeterType;
     if(newMeterType == oldMeterType)
         return;
 
