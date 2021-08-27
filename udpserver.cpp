@@ -406,6 +406,7 @@ void udpServer::controlReceived()
                     rxAudioThread = new QThread(this);
 
 					rxaudio->moveToThread(rxAudioThread);
+
                     rxAudioThread->start(QThread::TimeCriticalPriority);
 
                     connect(this, SIGNAL(setupRxAudio(audioSetup)), rxaudio, SLOT(init(audioSetup)));
