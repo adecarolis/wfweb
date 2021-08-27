@@ -489,6 +489,7 @@ private slots:
 
     void on_rigctldPortTxt_editingFinished();
 
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -716,6 +717,7 @@ private:
         int wftheme;
         bool confirmExit;
         bool confirmPowerOff;
+        meterKind meter2Type;
         // plot scheme
     } prefs;
 

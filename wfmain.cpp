@@ -689,14 +689,11 @@ void wfmain::setupMainUI()
     ui->meter2selectionCombo->addItem("Center", meterCenter);
     ui->meter2Widget->hide();
 
-#ifdef QT_DEBUG
-    // Experimental feature:
     ui->meter2selectionCombo->show();
+    ui->meter2selectionCombo->setCurrentIndex((int)prefs.meter2Type);
+
     ui->secondaryMeterSelectionLabel->show();
-#else
-    ui->meter2selectionCombo->hide();
-    ui->secondaryMeterSelectionLabel->hide();
-#endif
+
 
     // Future ideas:
     //ui->meter2selectionCombo->addItem("Transmit Audio", meterTxMod);
@@ -1334,6 +1331,7 @@ void wfmain::setDefPrefs()
     defPrefs.wftheme = static_cast<int>(QCPColorGradient::gpJet);
     defPrefs.confirmExit = true;
     defPrefs.confirmPowerOff = true;
+    defPrefs.meter2Type = meterNone;
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -1367,7 +1365,7 @@ void wfmain::loadSettings()
     setWindowState(Qt::WindowActive); // Works around QT bug to returns window+keyboard focus.
     prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
-
+    prefs.meter2Type = static_cast<meterKind>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
     settings->endGroup();
 
     // Load color schemes:
@@ -1668,6 +1666,7 @@ void wfmain::saveSettings()
     settings->setValue("WFLength", prefs.wflength);
     settings->setValue("ConfirmExit", prefs.confirmExit);
     settings->setValue("ConfirmPowerOff", prefs.confirmPowerOff);
+    settings->setValue("Meter2Type", (int)prefs.meter2Type);
     settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -2526,6 +2525,7 @@ void wfmain::doCmd(commandtype cmddata)
         {
             bool pttrequest = (*std::static_pointer_cast<bool>(data));
             emit setPTT(pttrequest);
+            ui->meter2Widget->clearMeterOnPTTtoggle();
             if(pttrequest)
             {
                 ui->meterSPoWidget->setMeterType(meterPower);
@@ -3126,6 +3126,18 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // recalculate command timing now that we know the rig better:
         calculateTimingParameters();
         initPeriodicCommands();
+        
+        // Set the second meter here as I suspect we need to be connected for it to work?
+        for (int i = 0; i < ui->meter2selectionCombo->count(); i++)
+        {
+            if (static_cast<meterKind>(ui->meter2selectionCombo->itemData(i).toInt()) == prefs.meter2Type)
+            {
+                // I thought that setCurrentIndex() would call the activated() function for the combobox
+                // but it doesn't, so call it manually.
+                ui->meter2selectionCombo->setCurrentIndex(i);
+                on_meter2selectionCombo_activated(i); 
+            }
+        }
     }
 }
 
@@ -3341,9 +3353,9 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
 void wfmain::receiveSpectrumMode(spectrumMode spectMode)
 {
-    for(int i=0; i < ui->spectrumModeCombo->count(); i++)
+    for (int i = 0; i < ui->spectrumModeCombo->count(); i++)
     {
-        if(static_cast<spectrumMode>(ui->spectrumModeCombo->itemData(i).toInt()) == spectMode)
+        if (static_cast<spectrumMode>(ui->spectrumModeCombo->itemData(i).toInt()) == spectMode)
         {
             ui->spectrumModeCombo->blockSignals(true);
             ui->spectrumModeCombo->setCurrentIndex(i);
@@ -5363,7 +5375,6 @@ void wfmain::on_meter2selectionCombo_activated(int index)
     meterKind oldMeterType;
     newMeterType = static_cast<meterKind>(ui->meter2selectionCombo->currentData().toInt());
     oldMeterType = ui->meter2Widget->getMeterType();
-
     if(newMeterType == oldMeterType)
         return;
 
@@ -5375,11 +5386,14 @@ void wfmain::on_meter2selectionCombo_activated(int index)
     if(newMeterType==meterNone)
     {
         ui->meter2Widget->hide();
+        ui->meter2Widget->setMeterType(newMeterType);
     } else {
         ui->meter2Widget->show();
         ui->meter2Widget->setMeterType(newMeterType);
         insertPeriodicCommandUnique(newCmd);
     }
+    prefs.meter2Type = newMeterType;
+
     (void)index;
 }
 
