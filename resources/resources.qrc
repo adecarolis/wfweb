@@ -1,5 +1,8 @@
 <RCC>
   <qresource prefix="resources">
     <file>wfview.png</file>
+    <file>shuttlexpress.png</file>
+    <file>shuttlepro.png</file>
+    <file>rc28.png</file>
   </qresource>
 </RCC>

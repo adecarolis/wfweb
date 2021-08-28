@@ -32,6 +32,7 @@
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
 #include "shuttle.h"
+#include "shuttlesetup.h"
 
 #include <deque>
 #include <memory>
@@ -798,6 +799,7 @@ private:
     satelliteSetup *sat;
     transceiverAdjustments *trxadj;
     udpServerSetup *srv;
+    shuttleSetup* shut;
     aboutbox *abtBox;
 
 

@@ -27,6 +27,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     sat = new satelliteSetup();
     trxadj = new transceiverAdjustments();
     srv = new udpServerSetup();
+    shut = new shuttleSetup();
     abtBox = new aboutbox();
 
     connect(this, SIGNAL(sendServerConfig(SERVERCONFIG)), srv, SLOT(receiveServerConfig(SERVERCONFIG)));
@@ -1225,7 +1226,6 @@ void wfmain::setupShuttleDevice()
 {
     shuttleDev = new shuttle();
     shuttleThread = new QThread(this);
-    shuttleThread->setPriority(QThread::LowestPriority);
     shuttleDev->moveToThread(shuttleThread);
     connect(shuttleThread, SIGNAL(started()), shuttleDev, SLOT(run()));
     connect(shuttleThread, SIGNAL(finished()), shuttleDev, SLOT(deleteLater()));
@@ -1234,7 +1234,8 @@ void wfmain::setupShuttleDevice()
     connect(shuttleDev, SIGNAL(doShuttle(bool, unsigned char)), this, SLOT(doShuttle(bool, unsigned char)));
     connect(shuttleDev, SIGNAL(button(bool, unsigned char)), this, SLOT(buttonControl(bool, unsigned char)));
     connect(this, SIGNAL(shuttleLed(bool, unsigned char)), shuttleDev, SLOT(ledControl(bool, unsigned char)));
-    shuttleThread->start();
+    connect(shuttleDev, SIGNAL(newDevice(unsigned char)), shut, SLOT(newDevice(unsigned char)));
+    shuttleThread->start(QThread::LowestPriority);
 }
 
 void wfmain::pttToggle(bool status)
@@ -5458,6 +5459,7 @@ void wfmain::on_rigctldPortTxt_editingFinished()
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
+    shut->show();
     //trxadj->show();
     //setRadioTimeDatePrep();
     //wf->setInteraction(QCP::iRangeZoom, true);

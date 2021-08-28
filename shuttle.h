@@ -24,6 +24,7 @@ using namespace std;
 #define HIDDATALENGTH 64
 #define MAX_STR 255
 
+
 class shuttle : public QObject
 {
     Q_OBJECT
@@ -46,15 +47,16 @@ signals:
     void doShuttle(bool plus, quint8 level);
 
     void button(bool,unsigned char num);
+    void newDevice(unsigned char devType);
 
 private:
     hid_device* handle;
+    enum { NONE, shuttleXpress, shuttlePro2, RC28 }usbDevice;
     bool isOpen=false;
     unsigned int buttons=0;
     unsigned char jogpos=0;
     unsigned char shutpos=0;
     unsigned char shutMult = 0;
-    enum { NONE, shuttleXpress, shuttlePro2, RC28 }usbDevice;
     QTime	lastShuttle = QTime::currentTime();
     QByteArray lastData="";
     unsigned char lastDialPos=0;

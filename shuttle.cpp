@@ -55,6 +55,7 @@ void shuttle::run()
         if (!handle) {
             handle = hid_open(0x0C26, 0x001E, NULL);
             if (!handle) {
+                usbDevice = NONE;
                 // No devices found, schedule another check in 1000ms
                 QTimer::singleShot(1000, this, SLOT(run()));
             }
@@ -69,7 +70,8 @@ void shuttle::run()
     else {
         usbDevice = shuttleXpress;
     }
-    
+
+
     if (handle)
     {
         int res;
@@ -79,6 +81,7 @@ void shuttle::run()
         res = hid_get_product_string(handle, product, MAX_STR);
         qInfo() << QString("Found Device: %0 from %1").arg(QString::fromWCharArray(product)).arg(QString::fromWCharArray(manufacturer));
         hid_set_nonblocking(handle, 1);
+        emit newDevice(usbDevice);
         QTimer::singleShot(0, this, SLOT(runTimer()));
     }
 }
@@ -92,6 +95,7 @@ void shuttle::runTimer()
         if (res < 0)
         {
             qInfo() << "USB Device disconnected?";
+            emit newDevice(0);
             hid_close(handle);
             QTimer::singleShot(1000, this, SLOT(run()));
             return;
@@ -160,6 +164,11 @@ void shuttle::runTimer()
         {
             // This is a response from the Icom RC28
             data.resize(8); // Might as well get rid of the unused data.
+
+            if (lastData.size() != 8) {
+                lastData = data;
+            }
+
             if (((unsigned char)data[5] == 0x06) && ((unsigned char)lastData[5] != 0x06))
             {
                 emit button(true, 6);
@@ -198,6 +207,7 @@ void shuttle::runTimer()
                         emit jogMinus();
                 }
             }
+
             lastData = data;
         }
 

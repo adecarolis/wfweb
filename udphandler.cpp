@@ -732,7 +732,6 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, audio
 
     rxaudio = new audioHandler();
     rxAudioThread = new QThread(this);
-    rxAudioThread->setPriority(QThread::TimeCriticalPriority);
 
     rxaudio->moveToThread(rxAudioThread);
 
@@ -750,7 +749,6 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, audio
 
     txaudio = new audioHandler();
     txAudioThread = new QThread(this);
-    txAudioThread->setPriority(QThread::TimeCriticalPriority);
 
     txaudio->moveToThread(txAudioThread);
     
