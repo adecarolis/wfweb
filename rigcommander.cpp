@@ -61,7 +61,6 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
 
     // data from the ptty to the rig:
     connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
-
     // data from the program to the comm port:
     connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
 
@@ -73,6 +72,9 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
 
     connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
     connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
+
+    connect(this, SIGNAL(discoveredRigID(rigCapabilities)), ptty, SLOT(receiveFoundRigID(rigCapabilities)));
+
     emit commReady();
 
 }
@@ -136,6 +138,8 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
 
         connect(ptty, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
         connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
+
+        connect(this, SIGNAL(discoveredRigID(rigCapabilities)), ptty, SLOT(receiveFoundRigID(rigCapabilities)));
 
         emit haveAfGain(rxSetup.localAFgain);
     }
@@ -2880,6 +2884,8 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(band630m);
             rigCaps.bands.push_back(band2200m);
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x71");
+
             break;
         case modelR8600:
             rigCaps.modelName = QString("IC-R8600");
@@ -2915,6 +2921,7 @@ void rigCommander::determineRigCaps()
                                      createMode(modeNXDN_VN, 0x19, "NXDN-VN"), createMode(modeNXDN_N, 0x20, "NXDN-N"),
                                      createMode(modeDCR, 0x21, "DCR")});
             rigCaps.scopeCenterSpans.insert(rigCaps.scopeCenterSpans.end(), {createScopeCenter(cs1M, "±1M"), createScopeCenter(cs2p5M, "±2.5M")});
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x92");
             break;
         case model9700:
             rigCaps.modelName = QString("IC-9700");
@@ -2943,6 +2950,7 @@ void rigCommander::determineRigCaps()
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeDV, 0x17, "DV"),
                                                        createMode(modeDD, 0x22, "DD")});
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x27");
             break;
         case model910h:
             rigCaps.modelName = QString("IC-910H");
@@ -2965,6 +2973,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[band70cm] = 0x02;
             rigCaps.bsr[band2m] = 0x01;
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x58");
             break;
         case model7600:
             rigCaps.modelName = QString("IC-7600");
@@ -2989,6 +2998,7 @@ void rigCommander::determineRigCaps()
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
                                                        createMode(modePSK_R, 0x13, "PSK-R")});
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x97");
             break;
         case model7610:
             rigCaps.modelName = QString("IC-7610");
@@ -3020,6 +3030,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(band2200m);
             rigCaps.modes = commonModes;
             rigCaps.hasRXAntenna = true;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x12");
             break;
         case model7850:
             rigCaps.modelName = QString("IC-785x");
@@ -3052,6 +3063,7 @@ void rigCommander::determineRigCaps()
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
                                                        createMode(modePSK_R, 0x13, "PSK-R")});
             rigCaps.hasRXAntenna = true;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x55");
             break;
         case model705:
             rigCaps.modelName = QString("IC-705");
@@ -3088,6 +3100,7 @@ void rigCommander::determineRigCaps()
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeWFM, 0x06, "WFM"),
                                                        createMode(modeDV, 0x17, "DV")});
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x31");
             break;
         case model7000:
             rigCaps.modelName = QString("IC-7000");
@@ -3110,6 +3123,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[band70cm] = 0x12;
             rigCaps.bsr[bandGen] = 0x13;
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x92");
             break;
         case model7410:
             rigCaps.modelName = QString("IC-7410");
@@ -3131,6 +3145,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x40");
             break;
         case model7100:
             rigCaps.modelName = QString("IC-7100");
@@ -3158,6 +3173,7 @@ void rigCommander::determineRigCaps()
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeWFM, 0x06, "WFM"),
                                                        createMode(modeDV, 0x17, "DV")});
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x95");
             break;
         case model7200:
             rigCaps.modelName = QString("IC-7200");
@@ -3178,7 +3194,8 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
-            break;    
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x03\x48");
+            break;
         case model7700:
             rigCaps.modelName = QString("IC-7700");
             rigCaps.rigctlModel = 3062;
@@ -3204,6 +3221,7 @@ void rigCommander::determineRigCaps()
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
                                                        createMode(modePSK_R, 0x13, "PSK-R")});
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x95");
             break;
         case model706:
             rigCaps.modelName = QString("IC-706");
@@ -3223,6 +3241,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), createMode(modeWFM, 0x06, "WFM"));
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             break;
         case model718:
             rigCaps.modelName = QString("IC-718");
@@ -3246,6 +3265,7 @@ void rigCommander::determineRigCaps()
                               createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
                               createMode(modeRTTY, 0x04, "RTTY"), createMode(modeRTTY_R, 0x08, "RTTY-R")
                             };
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             break;
         case model756pro:
             rigCaps.modelName = QString("IC-756 Pro");
@@ -3265,6 +3285,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             break;
         case model756proii:
             rigCaps.modelName = QString("IC-756 Pro II");
@@ -3284,6 +3305,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             break;
         case model756proiii:
             rigCaps.modelName = QString("IC-756 Pro III");
@@ -3303,6 +3325,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             break;
         default:
             rigCaps.modelName = QString("IC-0x%1").arg(rigCaps.modelID, 2, 16);
@@ -3324,6 +3347,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
             rigCaps.bands.insert(rigCaps.bands.end(), {band23cm, band4m, band630m, band2200m, bandGen});
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             qInfo(logRig()) << "Found unknown rig: 0x" << QString("%1").arg(rigCaps.modelID, 2, 16);
             break;
     }

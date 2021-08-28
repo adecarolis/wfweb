@@ -131,6 +131,8 @@ struct rigCapabilities {
     unsigned char bsr[20] = {0};
 
     std::vector <mode_info> modes;
+
+    QByteArray transceiveCommand;
 };
 
 
