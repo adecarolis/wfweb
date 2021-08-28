@@ -1352,6 +1352,9 @@ void rigCommander::parseLevels()
                 emit haveSql(level);
                 rigState.squelch = level;
                 break;
+            case '\x09':
+                // CW Pitch - ignore for now
+                break;
             case '\x0A':
                 // TX RF level
                 emit haveTxPower(level);
@@ -1362,10 +1365,19 @@ void rigCommander::parseLevels()
                 emit haveMicGain(level);
                 rigState.micGain = level;
                 break;
+            case '\x0C':
+                // CW Keying Speed - ignore for now
+                break;
+            case '\x0D':
+                // Notch filder setting - ignore for now
+                break;
             case '\x0E':
                 // compressor level
                 emit haveCompLevel(level);
                 rigState.compLevel = level;
+                break;
+            case '\x12':
+                // NB level - ignore for now
                 break;
             case '\x15':
                 // monitor level
