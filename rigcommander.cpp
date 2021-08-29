@@ -557,18 +557,24 @@ void rigCommander::getSpectrumMode()
     prepDataAndSend(specModePayload);
 }
 
-void rigCommander::setFrequency(freqt freq)
+void rigCommander::setFrequency(unsigned char vfo, freqt freq)
 {
-    //QByteArray freqPayload = makeFreqPayload(freq);
     QByteArray freqPayload = makeFreqPayload(freq);
     QByteArray cmdPayload;
 
     cmdPayload.append(freqPayload);
-    cmdPayload.prepend('\x00');
-
+    if (vfo == 0) {
+        rigState.vfoAFreq = freq;
+        cmdPayload.prepend('\x00');
+    }
+    else
+    {   
+        rigState.vfoBFreq = freq;
+        cmdPayload.prepend(vfo);
+        cmdPayload.prepend('\x25');
+    }
     //printHex(cmdPayload, false, true);
     prepDataAndSend(cmdPayload);
-    rigState.vfoAFreq = freq;
 }
 
 QByteArray rigCommander::makeFreqPayload(freqt freq)

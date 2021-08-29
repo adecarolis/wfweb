@@ -171,7 +171,7 @@ public slots:
     void getScopeMode();
 
     // Frequency, Mode, BSR:
-    void setFrequency(freqt freq);
+    void setFrequency(unsigned char vfo, freqt freq);
     void getFrequency();
     void setMode(unsigned char mode, unsigned char modeFilter);
     void setMode(mode_info);
