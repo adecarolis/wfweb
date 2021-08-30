@@ -58,7 +58,7 @@ signals:
 
     // Frequency, mode, band:
     void getFrequency();
-    void setFrequency(freqt freq);
+    void setFrequency(unsigned char vfo, freqt freq);
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
     void setMode(mode_info);

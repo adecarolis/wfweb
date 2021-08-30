@@ -336,7 +336,7 @@ signals:
     void onStarted();
     void onStopped();
     void sendData(QString data);
-    void setFrequency(freqt freq);
+    void setFrequency(unsigned char vfo, freqt freq);
     void setPTT(bool state);
     void setMode(unsigned char mode, unsigned char modeFilter);
     void setDataMode(bool dataOn, unsigned char modeFilter);

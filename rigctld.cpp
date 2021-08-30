@@ -57,7 +57,7 @@ rigCtlD::~rigCtlD()
 
 void rigCtlD::receiveFrequency(freqt freq)
 {
-    emit setFrequency(freq);
+    emit setFrequency(0, freq);
 }
 
 void rigCtlD::receiveStateInfo(rigStateStruct* state)
@@ -301,7 +301,7 @@ void rigCtlClient::socketReadyRead()
             if (ok) {
                 freq.Hz = static_cast<int>(newFreq);
                 qDebug(logRigCtlD()) << QString("Set frequency: %1 (%2)").arg(freq.Hz).arg(command[1]);
-                emit parent->setFrequency(freq);
+                emit parent->setFrequency(0, freq);
             }
         }
         else if (command[0] == "1" || command[0] == "dump_caps")
@@ -465,20 +465,45 @@ void rigCtlClient::socketReadyRead()
             }
             response.append(resp);
         }
-        else if (command[0] == "I" || command[0] == "set_split_freq")
+        else if (command.length() > 1 && command[0] == "I" || command[0] == "set_split_freq")
         {
             setCommand = true;
+            freqt freq;
+            bool ok = false;
+            double newFreq = 0.0f;
+            newFreq = command[1].toDouble(&ok);
+            if (ok) {
+                freq.Hz = static_cast<int>(newFreq);
+                qDebug(logRigCtlD()) << QString("set_split_freq: %1 (%2)").arg(freq.Hz).arg(command[1]);
+                emit parent->setFrequency(1, freq);
+            }
         }
-        else if (command[0] == "m" || command[0] == "get_mode")
+        else if (command.length() > 2 && (command[0] == "X" || command[0] == "set_split_mode"))
         {
+            setCommand = true;
+            }
+            else if (command.length() > 0 && (command[0] == "x" || command[0] == "get_split_mode"))
+            {
             if (longReply) {
-                response.append(QString("Mode: %1").arg(getMode(rigState->mode, rigState->datamode)));
-                response.append(QString("Passband: %1").arg(getFilter(rigState->mode, rigState->filter)));
+                response.append(QString("TX Mode: %1").arg(getMode(rigState->mode, rigState->datamode)));
+                response.append(QString("TX Passband: %1").arg(getFilter(rigState->mode, rigState->filter)));
             }
             else {
                 response.append(QString("%1").arg(getMode(rigState->mode, rigState->datamode)));
                 response.append(QString("%1").arg(getFilter(rigState->mode, rigState->filter)));
             }
+        }
+
+        else if (command[0] == "m" || command[0] == "get_mode")
+        {
+        if (longReply) {
+            response.append(QString("Mode: %1").arg(getMode(rigState->mode, rigState->datamode)));
+            response.append(QString("Passband: %1").arg(getFilter(rigState->mode, rigState->filter)));
+        }
+        else {
+            response.append(QString("%1").arg(getMode(rigState->mode, rigState->datamode)));
+            response.append(QString("%1").arg(getFilter(rigState->mode, rigState->filter)));
+        }
         }
         else if (command[0] == "M" || command[0] == "set_mode")
         {
@@ -973,8 +998,8 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command.length() > 1 && (command[0] == 0x87 || command[0] == "set_powerstat"))
         {
-            setCommand = true;
-            if (command[1] == "0")
+        setCommand = true;
+        if (command[1] == "0")
             {
                 emit parent->sendPowerOff();
             }

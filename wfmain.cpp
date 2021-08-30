@@ -273,7 +273,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setScopeMode(spectrumMode)), rig, SLOT(setSpectrumMode(spectrumMode)));
     connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
 
-    connect(this, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
+    connect(this, SIGNAL(setFrequency(unsigned char, freqt)), rig, SLOT(setFrequency(unsigned char, freqt)));
     connect(this, SIGNAL(setScopeEdge(char)), rig, SLOT(setScopeEdge(char)));
     connect(this, SIGNAL(setScopeSpan(char)), rig, SLOT(setScopeSpan(char)));
     //connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
@@ -400,7 +400,7 @@ void wfmain::makeRig()
         if (rigCtl != Q_NULLPTR) {
             connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
             connect(this, SIGNAL(requestRigState()), rig, SLOT(sendState()));
-            connect(rigCtl, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
+            connect(rigCtl, SIGNAL(setFrequency(unsigned char, freqt)), rig, SLOT(setFrequency(unsigned char, freqt)));
             connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
             connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
             connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
@@ -2011,7 +2011,7 @@ void wfmain::shortcutMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2025,7 +2025,7 @@ void wfmain::shortcutPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2039,7 +2039,7 @@ void wfmain::shortcutShiftMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2053,7 +2053,7 @@ void wfmain::shortcutShiftPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2067,7 +2067,7 @@ void wfmain::shortcutControlMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2081,7 +2081,7 @@ void wfmain::shortcutControlPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2095,7 +2095,7 @@ void wfmain::shortcutPageUp()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2109,7 +2109,7 @@ void wfmain::shortcutPageDown()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2350,7 +2350,7 @@ void wfmain::doCmd(commandtype cmddata)
         {
             lastFreqCmdTime_ms = QDateTime::currentMSecsSinceEpoch();
             freqt f = (*std::static_pointer_cast<freqt>(data));
-            emit setFrequency(f);
+            emit setFrequency(0,f);
             break;
         }
         case cmdSetMode:
@@ -3041,6 +3041,7 @@ void wfmain::initPeriodicCommands()
     if (rigCaps.hasRXAntenna) {
         insertSlowPeriodicCommand(cmdGetAntenna, 128);
     }
+    insertSlowPeriodicCommand(cmdGetDuplexMode, 128);
 }
 
 void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
@@ -3261,7 +3262,7 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
         freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
         freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
 
-        //emit setFrequency(freq);
+        //emit setFrequency(0,freq);
         issueCmd(cmdSetFreq, freqGo);
         freq = freqGo;
         setUIFreq();
@@ -3286,7 +3287,7 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
         freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
         freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
 
-        //emit setFrequency(freq);
+        //emit setFrequency(0,freq);
         issueCmd(cmdSetFreq, freqGo);
         freq = freqGo;
         setUIFreq();
@@ -3341,7 +3342,7 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     f.MHzDouble = f.Hz / (double)1E6;
     freq = f;
 
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmdUniquePriority(cmdSetFreq, f);
     ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
     //issueDelayedCommandUnique(cmdGetFreq);
@@ -3758,7 +3759,7 @@ void wfmain::on_freqDial_valueChanged(int value)
 
         ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 
-        //emit setFrequency(f);
+        //emit setFrequency(0,f);
         issueCmdUniquePriority(cmdSetFreq, f);
     } else {
         ui->freqDial->blockSignals(true);
@@ -3773,7 +3774,7 @@ void wfmain::receiveBandStackReg(freqt freqGo, char mode, char filter, bool data
     // read the band stack and apply by sending out commands
 
     qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freqGo.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
-    //emit setFrequency(freq);
+    //emit setFrequency(0,freq);
     issueCmd(cmdSetFreq, freqGo);
     setModeVal = (unsigned char) mode;
     setFilterVal = (unsigned char) filter;
@@ -3843,7 +3844,7 @@ void wfmain::on_band4mbtn_clicked()
         f.Hz = (70.200) * 1E6;
     }
     issueCmd(cmdSetFreq, f);
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
 }
@@ -3910,7 +3911,7 @@ void wfmain::on_band60mbtn_clicked()
     freqt f;
     f.Hz = (5.3305) * 1E6;
     issueCmd(cmdSetFreq, f);
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
 }
@@ -3931,7 +3932,7 @@ void wfmain::on_band630mbtn_clicked()
 {
     freqt f;
     f.Hz = 475 * 1E3;
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
@@ -3941,7 +3942,7 @@ void wfmain::on_band2200mbtn_clicked()
 {
     freqt f;
     f.Hz = 136 * 1E3;
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
@@ -5296,7 +5297,7 @@ void wfmain::on_enableRigctldChk_clicked(bool checked)
         if (rig != Q_NULLPTR) {
             // We are already connected to a rig.
             connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
-            connect(rigCtl, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
+            connect(rigCtl, SIGNAL(setFrequency(unsigned char, freqt)), rig, SLOT(setFrequency(unsigned char, freqt)));
             connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
             connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
             connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
