@@ -654,6 +654,7 @@ void wfmain::setupMainUI()
     ui->tuningStepCombo->addItem("9 kHz",     (unsigned int)    9000);	// European medium wave stepsize
     ui->tuningStepCombo->addItem("10 kHz",    (unsigned int)   10000);
     ui->tuningStepCombo->addItem("12.5 kHz",  (unsigned int)   12500);
+    ui->tuningStepCombo->addItem("25 kHz",    (unsigned int)   25000);
     ui->tuningStepCombo->addItem("100 kHz",   (unsigned int)  100000);
     ui->tuningStepCombo->addItem("250 kHz",   (unsigned int)  250000);
     ui->tuningStepCombo->addItem("1 MHz",     (unsigned int) 1000000);  //for 23 cm and HF
