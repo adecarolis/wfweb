@@ -1,5 +1,9 @@
 # CHANGELOG
 
+- 20210907
+
+	        Make rigctld state work for USB connected rigs
+
 - 20210831
 
     		added 25 kHz step for tuning
