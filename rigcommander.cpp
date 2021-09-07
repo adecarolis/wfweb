@@ -76,6 +76,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
     connect(this, SIGNAL(discoveredRigID(rigCapabilities)), ptty, SLOT(receiveFoundRigID(rigCapabilities)));
 
     emit commReady();
+    sendState(); // Send current rig state to rigctld
 
 }
 
