@@ -465,7 +465,7 @@ void rigCtlClient::socketReadyRead()
             }
             response.append(resp);
         }
-        else if (command.length() > 1 && command[0] == "I" || command[0] == "set_split_freq")
+        else if (command.length() > 1 && (command[0] == "I" || command[0] == "set_split_freq"))
         {
             setCommand = true;
             freqt freq;
