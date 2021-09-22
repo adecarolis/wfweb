@@ -382,7 +382,7 @@ void udpServer::controlReceived()
 
                     txaudio = new audioHandler();
                     txAudioThread = new QThread(this);
-                    txAudioThread->setPriority(QThread::TimeCriticalPriority);
+
                     txaudio->moveToThread(txAudioThread);
 
                     txAudioThread->start(QThread::TimeCriticalPriority);
