@@ -3802,7 +3802,9 @@ void rigCommander::setAntenna(unsigned char ant, bool rx)
 {
     QByteArray payload("\x12");
     payload.append(ant);
-    payload.append((unsigned char)rx); // 0x00 = use for TX and RX
+    if (rigCaps.hasRXAntenna) {
+        payload.append((unsigned char)rx); // 0x00 = use for TX and RX
+    }
     prepDataAndSend(payload);
 }
 
