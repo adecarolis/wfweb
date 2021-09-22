@@ -74,7 +74,7 @@ void pttyHandler::openPort()
         qInfo(logSerial()) << "Opened pseudoterminal, slave name :" << ptsname(ptfd);
 
         // Open the slave device to keep alive.
-        ptKeepAlive = open(ptsnamd(ptfd), O_RDONLY);
+        ptKeepAlive = open(ptsname(ptfd), O_RDONLY);
 
         ptReader = new QSocketNotifier(ptfd, QSocketNotifier::Read, this);
         connect(ptReader, &QSocketNotifier::activated,
