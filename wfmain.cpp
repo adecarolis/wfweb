@@ -752,9 +752,10 @@ void wfmain::setupMainUI()
     ui->statusBar->addPermanentWidget(connectedLed);
 
     rigName = new QLabel(this);
+    rigName->setAlignment(Qt::AlignRight);
     ui->statusBar->addPermanentWidget(rigName);
     rigName->setText("NONE");
-    rigName->setFixedWidth(50);
+    rigName->setFixedWidth(60);
 
     freq.MHzDouble = 0.0;
     freq.Hz = 0;
