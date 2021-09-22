@@ -73,6 +73,9 @@ void pttyHandler::openPort()
         // we're good!
         qInfo(logSerial()) << "Opened pseudoterminal, slave name :" << ptsname(ptfd);
 
+        // Open the slave device to keep alive.
+        ptKeepAlive = open(ptsnamd(ptfd), O_RDONLY);
+
         ptReader = new QSocketNotifier(ptfd, QSocketNotifier::Read, this);
         connect(ptReader, &QSocketNotifier::activated,
                 this, &pttyHandler::receiveDataIn);
@@ -282,6 +285,10 @@ void pttyHandler::closePort()
     if (isConnected && portName != "" && portName.toLower() != "none")
     {
         QFile::remove(portName);
+    }
+
+    if (ptKeepAlive > 0) {
+        close(ptKeepAlive);
     }
 #endif
     isConnected = false;
