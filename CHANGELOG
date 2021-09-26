@@ -1,5 +1,18 @@
 # CHANGELOG
 
+- 202109022
+
+    		Remove duplicate setPriority()
+
+    		Fix typo
+
+		Add keepalive for linux/mac pty
+
+    		Fix alignment of rigname in taskbar
+
+    		Only send RX antenna byte to rig when it has an RX antenna option in rigCaps
+
+
 - 20210907
 
 	        Make rigctld state work for USB connected rigs
