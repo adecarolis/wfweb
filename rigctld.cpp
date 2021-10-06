@@ -55,10 +55,11 @@ rigCtlD::~rigCtlD()
     qInfo(logRigCtlD()) << "closing rigctld";
 }
 
-void rigCtlD::receiveFrequency(freqt freq)
-{
-    emit setFrequency(0, freq);
-}
+//void rigCtlD::receiveFrequency(freqt freq)
+//{
+//    emit setFrequency(0, freq);
+//    emit setFrequency(0, freq);
+//}
 
 void rigCtlD::receiveStateInfo(rigStateStruct* state)
 {
@@ -287,7 +288,7 @@ void rigCtlClient::socketReadyRead()
             freqt freq;
             bool ok=false;
             double newFreq=0.0f;
-            QString vfo = "VFOA";
+            unsigned char vfo=0;
             if (command.length() == 2)
             {
                 newFreq = command[1].toDouble(&ok);
@@ -295,13 +296,20 @@ void rigCtlClient::socketReadyRead()
             else if (command.length() == 3) // Includes VFO 
             {
                 newFreq = command[2].toDouble(&ok);
-                vfo = command[1];
+                if (command[1] == "VFOB")
+                {
+                    vfo = 1;
+                }
             }
 
             if (ok) {
                 freq.Hz = static_cast<int>(newFreq);
                 qDebug(logRigCtlD()) << QString("Set frequency: %1 (%2)").arg(freq.Hz).arg(command[1]);
-                emit parent->setFrequency(0, freq);
+                emit parent->setFrequency(vfo, freq);
+                emit parent->setFrequency(vfo, freq);
+                emit parent->setFrequency(vfo, freq);
+                emit parent->setFrequency(vfo, freq);
+                emit parent->setFrequency(vfo, freq);
             }
         }
         else if (command[0] == "1" || command[0] == "dump_caps")
@@ -343,12 +351,11 @@ void rigCtlClient::socketReadyRead()
         {
             setCommand = true;
             if (rigCaps.hasPTTCommand) {
-                if (command[1] == "0") {
-                    emit parent->setPTT(false);
-                }
-                else {
-                    emit parent->setPTT(true);
-                }
+                emit parent->setPTT(bool(command[1].toInt()));
+                emit parent->setPTT(bool(command[1].toInt()));
+                emit parent->setPTT(bool(command[1].toInt()));
+                emit parent->setPTT(bool(command[1].toInt()));
+                emit parent->setPTT(bool(command[1].toInt()));
             }
             else
             {
@@ -476,6 +483,10 @@ void rigCtlClient::socketReadyRead()
                 freq.Hz = static_cast<int>(newFreq);
                 qDebug(logRigCtlD()) << QString("set_split_freq: %1 (%2)").arg(freq.Hz).arg(command[1]);
                 emit parent->setFrequency(1, freq);
+                emit parent->setFrequency(1, freq);
+                emit parent->setFrequency(1, freq);
+                emit parent->setFrequency(1, freq);
+                emit parent->setFrequency(1, freq);
             }
         }
         else if (command.length() > 2 && (command[0] == "X" || command[0] == "set_split_mode"))
@@ -531,21 +542,23 @@ void rigCtlClient::socketReadyRead()
             emit parent->setMode(getMode(mode), width);
             if (mode.mid(0, 3) == "PKT") {
                 emit parent->setDataMode(true, width);
+                emit parent->setDataMode(true, width);
             }
             else {
+                emit parent->setDataMode(false, width);
                 emit parent->setDataMode(false, width);
             }
         }
         else if (command[0] == "s" || command[0] == "get_split_vfo")
         {
             if (longReply) {
-                response.append(QString("Split: 0"));
-                response.append(QString("TX VFO: VFOA"));
+                response.append(QString("Split: 1"));
+                response.append(QString("TX VFO: VFOB"));
             } 
             else
             {
-                response.append("0");
-                response.append("VFOA");
+                response.append("1");
+                response.append("VFOb");
             }
 
         }

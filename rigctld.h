@@ -369,7 +369,7 @@ public slots:
     virtual void incomingConnection(qintptr socketDescriptor);
     void receiveRigCaps(rigCapabilities caps);
     void receiveStateInfo(rigStateStruct* state);
-    void receiveFrequency(freqt freq);
+//    void receiveFrequency(freqt freq);
 
 private: 
     rigStateStruct* rigState = Q_NULLPTR;
