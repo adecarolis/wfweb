@@ -1,5 +1,10 @@
 # CHANGELOG
 
+- 20211006
+
+    		Send TX/Freq changes multiple times with rigctld
+
+		bumped to 1.2d hopefully last testversion before 1.20
 - 202109022
 
     		Remove duplicate setPriority()
