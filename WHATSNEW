@@ -15,3 +15,5 @@ The following highlights are in this 1.x-release:
         when we use rigctld. 
 
         people should use "fake it" in wsjtx as the split code is not reliable.
+
+        tidied up udp server function for better reliability
