@@ -86,8 +86,8 @@ udpServer::~udpServer()
             delete client->retransmitTimer;
         }
 
-        delete client;
         controlClients.removeAll(client);
+        delete client;
     }
     foreach(CLIENT * client, civClients)
     {
@@ -104,8 +104,9 @@ udpServer::~udpServer()
             client->retransmitTimer->stop();
             delete client->retransmitTimer;
         }
-        delete client;
+
         civClients.removeAll(client);
+        delete client;
     }
     foreach(CLIENT * client, audioClients)
     {
@@ -122,8 +123,8 @@ udpServer::~udpServer()
             client->retransmitTimer->stop();
             delete client->retransmitTimer;
         }
-        delete client;
         audioClients.removeAll(client);
+        delete client;
     }
 
     if (rxAudioTimer != Q_NULLPTR) {
@@ -1519,7 +1520,6 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
             it.value()++;
         }
     }
-    c->missMutex.unlock();
 
     if (missingSeqs.length() != 0)
     {
@@ -1548,6 +1548,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
             udpMutex.unlock();
         }
     }
+    c->missMutex.unlock();
 
 
 }
