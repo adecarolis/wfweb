@@ -67,82 +67,22 @@ udpServer::~udpServer()
 {
     qInfo(logUdpServer()) << "Closing udpServer";
 
-    connMutex.lock();
-
     foreach(CLIENT * client, controlClients)
     {
-        if (client->idleTimer != Q_NULLPTR)
-        {
-            client->idleTimer->stop();
-            delete client->idleTimer;
-        }
-        if (client->pingTimer != Q_NULLPTR) {
-            client->pingTimer->stop();
-            delete client->pingTimer;
-        }
+        deleteConnection(&controlClients, client);
 
-        if (client->retransmitTimer != Q_NULLPTR) {
-            client->retransmitTimer->stop();
-            delete client->retransmitTimer;
-        }
-
-        controlClients.removeAll(client);
-        delete client;
     }
     foreach(CLIENT * client, civClients)
     {
-        if (client->idleTimer != Q_NULLPTR)
-        {
-            client->idleTimer->stop();
-            delete client->idleTimer;
-        }
-        if (client->pingTimer != Q_NULLPTR) {
-            client->pingTimer->stop();
-            delete client->pingTimer;
-        }
-        if (client->retransmitTimer != Q_NULLPTR) {
-            client->retransmitTimer->stop();
-            delete client->retransmitTimer;
-        }
-
-        civClients.removeAll(client);
-        delete client;
+        deleteConnection(&civClients, client);
     }
+
     foreach(CLIENT * client, audioClients)
     {
-        if (client->idleTimer != Q_NULLPTR)
-        {
-            client->idleTimer->stop();
-            delete client->idleTimer;
-        }
-        if (client->pingTimer != Q_NULLPTR) {
-            client->pingTimer->stop();
-            delete client->pingTimer;
-        }
-        if (client->retransmitTimer != Q_NULLPTR) {
-            client->retransmitTimer->stop();
-            delete client->retransmitTimer;
-        }
-        audioClients.removeAll(client);
-        delete client;
+        deleteConnection(&audioClients, client);
     }
 
-    if (rxAudioTimer != Q_NULLPTR) {
-        rxAudioTimer->stop();
-        delete rxAudioTimer;
-        rxAudioTimer = Q_NULLPTR;
-    }
-
-    if (rxAudioThread != Q_NULLPTR) {
-        rxAudioThread->quit();
-        rxAudioThread->wait();
-    }
-
-    if (txAudioThread != Q_NULLPTR) {
-        txAudioThread->quit();
-        txAudioThread->wait();
-    }
-
+    // Now all connections are deleted, close and delete the sockets.
     if (udpControl != Q_NULLPTR) {
         udpControl->close();
         delete udpControl;
@@ -155,10 +95,6 @@ udpServer::~udpServer()
         udpAudio->close();
         delete udpAudio;
     }
-
-    connMutex.unlock();
-
-
 }
 
 
