@@ -272,13 +272,11 @@ void udpServer::controlReceived()
 
             if (current->isAuthenticated) {
                 qInfo(logUdpServer()) << current->ipAddress.toString() << ": User " << current->user.username << " login OK";
-                sendLoginResponse(current, true);
             }
             else {
                 qInfo(logUdpServer()) << current->ipAddress.toString() << ": Incorrect username/password";
-
-                sendLoginResponse(current, false);
             }
+            sendLoginResponse(current, current->isAuthenticated);
             break;
         }
         case (CONNINFO_SIZE):
