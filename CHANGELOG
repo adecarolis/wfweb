@@ -1,5 +1,10 @@
 # CHANGELOG
 
+- 20211022
+
+    		Don't block until audio buffer has space
+
+    		Bit of tidying
 
 - 20211020
 
