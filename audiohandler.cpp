@@ -81,7 +81,7 @@ bool audioHandler::init(audioSetup setupIn)
 		setup.bits = 16;
 	}
 
-	ringBuf = new wilt::Ring<audioPacket>(100); // Should be customizable.
+	ringBuf = new wilt::Ring<audioPacket>(8); // Should be customizable.
 
 	tempBuf.sent = 0;
 

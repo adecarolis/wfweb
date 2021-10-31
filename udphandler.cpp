@@ -945,8 +945,8 @@ void udpAudio::dataReceived()
                     tempAudio.data = r.mid(0x18);
                     // Prefer signal/slot to forward audio as it is thread/safe
                     // Need to do more testing but latency appears fine.
-                    //audioLatency = rxaudio->incomingAudio(tempAudio);
-                    emit haveAudioData(tempAudio);
+                    rxaudio->incomingAudio(tempAudio);
+                    //emit haveAudioData(tempAudio);
                     audioLatency = rxaudio->getLatency();
                 }
                 break;
