@@ -81,7 +81,7 @@ bool audioHandler::init(audioSetup setupIn)
 		setup.bits = 16;
 	}
 
-	ringBuf = new wilt::Ring<audioPacket>(8); // Should be customizable.
+	ringBuf = new wilt::Ring<audioPacket>(setupIn.latency / 8 + 1); // Should be customizable.
 
 	tempBuf.sent = 0;
 
@@ -600,6 +600,8 @@ void audioHandler::changeLatency(const quint16 newSize)
 {
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Changing latency to: " << newSize << " from " << setup.latency;
 	setup.latency = newSize;
+	delete ringBuf;
+	ringBuf = new wilt::Ring<audioPacket>(setup.latency / 8 + 1); // Should be customizable.
 }
 
 int audioHandler::getLatency()
@@ -618,13 +620,13 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 	{
 		currentLatency = packet.time.msecsTo(QTime::currentTime());
 
-		while (currentLatency > setup.latency) {
+		if (currentLatency > setup.latency) {
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
 				" arrived too late (increase output latency!) " <<
 				dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
-			if (!ringBuf->try_read(packet))
-				break;
-			currentLatency = packet.time.msecsTo(QTime::currentTime());
+		//	if (!ringBuf->try_read(packet))
+		//		break;
+		//	currentLatency = packet.time.msecsTo(QTime::currentTime());
 		}
 		
 		//qDebug(logAudio) << "Chunksize" << this->chunkSize << "Packet size" << packet.data.length();
