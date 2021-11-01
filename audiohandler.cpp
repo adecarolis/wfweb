@@ -124,14 +124,9 @@ bool audioHandler::init(audioSetup setupIn)
 
 	if (info.probed)
 	{
-		// if "preferred" sample rate is 44100, try 48K instead
-		if (info.preferredSampleRate == (unsigned int)44100) {
-			qDebug(logAudio()) << "Preferred sample rate 44100, trying 48000";
-			this->nativeSampleRate = 48000;
-		}
-		else {
-			this->nativeSampleRate = info.preferredSampleRate;
-		}
+		// Always use the "preferred" sample rate
+		// We can always resample if needed
+		this->nativeSampleRate = info.preferredSampleRate;
 
 		// Per channel chunk size.
 		this->chunkSize = (this->nativeSampleRate / 50);
@@ -293,7 +288,7 @@ void audioHandler::start()
 	}
 
 	if (setup.isinput) {
-#ifdef Q_OS_MACX
+#ifndef Q_OS_WIN
 		this->open(QIODevice::WriteOnly);
 #else
 		this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
@@ -301,7 +296,7 @@ void audioHandler::start()
 		audioInput->start(this);
 	}
 	else {
-#ifdef Q_OS_MACX
+#ifndef Q_OS_WIN
 		this->open(QIODevice::ReadOnly);
 #else
 		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
