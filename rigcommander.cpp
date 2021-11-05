@@ -231,6 +231,9 @@ void rigCommander::findRigs()
     data.append(payloadSuffix);
 
     emit dataForComm(data);
+    // HACK for testing radios that do not respond to rig ID queries: 
+    //this->model = model736;
+    //this->determineRigCaps();
     return;
 }
 
