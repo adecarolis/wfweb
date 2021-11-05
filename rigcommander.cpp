@@ -3305,7 +3305,7 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardHF;
             rigCaps.modes = { createMode(modeLSB, 0x00, "LSB"), createMode(modeUSB, 0x01, "USB"),
-                              createMode(modeAM, 0x02, "AM"),
+                              createMode(modeAM, 0x02, "AM"), createMode(modeFM, 0x05, "FM"),
                               createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
                             };
             break;
