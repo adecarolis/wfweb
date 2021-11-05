@@ -22,7 +22,20 @@ transceiverAdjustments::~transceiverAdjustments()
 
 void transceiverAdjustments::on_IFShiftSlider_valueChanged(int value)
 {
-    emit setIFShift(value);
+    if(rigCaps.hasIFShift)
+    {
+        emit setIFShift(value);
+    } else {
+        unsigned char inner = ui->TPBFInnerSlider->value();
+        unsigned char outer = ui->TPBFOuterSlider->value();
+        int shift = value - previousIFShift;
+        inner = MAX( 0, MIN(255,int (inner + shift)) );
+        outer = MAX( 0, MIN(255,int (outer + shift)) );
+
+        ui->TPBFInnerSlider->setValue(inner);
+        ui->TPBFOuterSlider->setValue(outer);
+        previousIFShift = value;
+    }
 }
 
 void transceiverAdjustments::on_TPBFInnerSlider_valueChanged(int value)
@@ -38,8 +51,10 @@ void transceiverAdjustments::on_TPBFOuterSlider_valueChanged(int value)
 void transceiverAdjustments::setRig(rigCapabilities rig)
 {
     this->rigCaps = rig;
-    ui->IFShiftSlider->setVisible(rigCaps.hasIFShift);
-    ui->IFShiftLabel->setVisible(rigCaps.hasIFShift);
+    if(!rigCaps.hasIFShift)
+        updateIFShift(128);
+    //ui->IFShiftSlider->setVisible(rigCaps.hasIFShift);
+    //ui->IFShiftLabel->setVisible(rigCaps.hasIFShift);
 
     ui->TPBFInnerSlider->setVisible(rigCaps.hasTBPF);
     ui->TPBFInnerLabel->setVisible(rigCaps.hasTBPF);

@@ -4393,15 +4393,16 @@ void wfmain::on_sqlSlider_valueChanged(int value)
 // These three are from the transceiver adjustment window:
 void wfmain::changeIFShift(unsigned char level)
 {
-    issueCmd(cmdSetIFShift, level);
+    //issueCmd(cmdSetIFShift, level);
+    issueCmdUniquePriority(cmdSetIFShift, level);
 }
 void wfmain::changeTPBFInner(unsigned char level)
 {
-    issueCmd(cmdSetTPBFInner, level);
+    issueCmdUniquePriority(cmdSetTPBFInner, level);
 }
 void wfmain::changeTPBFOuter(unsigned char level)
 {
-    issueCmd(cmdSetTPBFOuter, level);
+    issueCmdUniquePriority(cmdSetTPBFOuter, level);
 }
 
 void wfmain::on_modeFilterCombo_activated(int index)

@@ -1,6 +1,8 @@
 #ifndef TRANSCEIVERADJUSTMENTS_H
 #define TRANSCEIVERADJUSTMENTS_H
 
+#include <sys/param.h>
+
 #include <QWidget>
 #include "rigidentities.h"
 
@@ -40,6 +42,7 @@ private:
     Ui::transceiverAdjustments *ui;
     rigCapabilities rigCaps;
     bool haveRigCaps = false;
+    int previousIFShift = 128;
 };
 
 #endif // TRANSCEIVERADJUSTMENTS_H
