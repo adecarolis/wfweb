@@ -451,13 +451,13 @@ qint64 audioHandler::writeData(const char* data, qint64 nBytes)
 			tempBuf.sent = tempBuf.sent + send;
 		}
 		else {
-			ringBuf->write(tempBuf);
-			/*
+			//ringBuf->write(tempBuf);
+			
 			if (!ringBuf->try_write(tempBuf))
 			{
 				qDebug(logAudio()) << "outgoing audio buffer full!";
 				break;
-			} */
+			} 
 			tempBuf.data.clear();
 			tempBuf.sent = 0;
 		}

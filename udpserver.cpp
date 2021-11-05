@@ -67,81 +67,22 @@ udpServer::~udpServer()
 {
     qInfo(logUdpServer()) << "Closing udpServer";
 
-    connMutex.lock();
-
     foreach(CLIENT * client, controlClients)
     {
-        if (client->idleTimer != Q_NULLPTR)
-        {
-            client->idleTimer->stop();
-            delete client->idleTimer;
-        }
-        if (client->pingTimer != Q_NULLPTR) {
-            client->pingTimer->stop();
-            delete client->pingTimer;
-        }
+        deleteConnection(&controlClients, client);
 
-        if (client->retransmitTimer != Q_NULLPTR) {
-            client->retransmitTimer->stop();
-            delete client->retransmitTimer;
-        }
-
-        delete client;
-        controlClients.removeAll(client);
     }
     foreach(CLIENT * client, civClients)
     {
-        if (client->idleTimer != Q_NULLPTR)
-        {
-            client->idleTimer->stop();
-            delete client->idleTimer;
-        }
-        if (client->pingTimer != Q_NULLPTR) {
-            client->pingTimer->stop();
-            delete client->pingTimer;
-        }
-        if (client->retransmitTimer != Q_NULLPTR) {
-            client->retransmitTimer->stop();
-            delete client->retransmitTimer;
-        }
-        delete client;
-        civClients.removeAll(client);
+        deleteConnection(&civClients, client);
     }
+
     foreach(CLIENT * client, audioClients)
     {
-        if (client->idleTimer != Q_NULLPTR)
-        {
-            client->idleTimer->stop();
-            delete client->idleTimer;
-        }
-        if (client->pingTimer != Q_NULLPTR) {
-            client->pingTimer->stop();
-            delete client->pingTimer;
-        }
-        if (client->retransmitTimer != Q_NULLPTR) {
-            client->retransmitTimer->stop();
-            delete client->retransmitTimer;
-        }
-        delete client;
-        audioClients.removeAll(client);
+        deleteConnection(&audioClients, client);
     }
 
-    if (rxAudioTimer != Q_NULLPTR) {
-        rxAudioTimer->stop();
-        delete rxAudioTimer;
-        rxAudioTimer = Q_NULLPTR;
-    }
-
-    if (rxAudioThread != Q_NULLPTR) {
-        rxAudioThread->quit();
-        rxAudioThread->wait();
-    }
-
-    if (txAudioThread != Q_NULLPTR) {
-        txAudioThread->quit();
-        txAudioThread->wait();
-    }
-
+    // Now all connections are deleted, close and delete the sockets.
     if (udpControl != Q_NULLPTR) {
         udpControl->close();
         delete udpControl;
@@ -154,10 +95,6 @@ udpServer::~udpServer()
         udpAudio->close();
         delete udpAudio;
     }
-
-    connMutex.unlock();
-
-
 }
 
 
@@ -335,13 +272,11 @@ void udpServer::controlReceived()
 
             if (current->isAuthenticated) {
                 qInfo(logUdpServer()) << current->ipAddress.toString() << ": User " << current->user.username << " login OK";
-                sendLoginResponse(current, true);
             }
             else {
                 qInfo(logUdpServer()) << current->ipAddress.toString() << ": Incorrect username/password";
-
-                sendLoginResponse(current, false);
             }
+            sendLoginResponse(current, current->isAuthenticated);
             break;
         }
         case (CONNINFO_SIZE):
@@ -382,9 +317,10 @@ void udpServer::controlReceived()
 
                     txaudio = new audioHandler();
                     txAudioThread = new QThread(this);
+
                     txaudio->moveToThread(txAudioThread);
 
-                    txAudioThread->start();
+                    txAudioThread->start(QThread::TimeCriticalPriority);
 
                     connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
                     connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
@@ -401,9 +337,12 @@ void udpServer::controlReceived()
                     inAudio.samplerate = current->rxSampleRate;
 
                     rxaudio = new audioHandler();
+
                     rxAudioThread = new QThread(this);
-                    rxaudio->moveToThread(rxAudioThread);
-                    rxAudioThread->start();
+
+					rxaudio->moveToThread(rxAudioThread);
+
+                    rxAudioThread->start(QThread::TimeCriticalPriority);
 
                     connect(this, SIGNAL(setupRxAudio(audioSetup)), rxaudio, SLOT(init(audioSetup)));
                     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
@@ -1515,7 +1454,6 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
             it.value()++;
         }
     }
-    c->missMutex.unlock();
 
     if (missingSeqs.length() != 0)
     {
@@ -1544,6 +1482,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
             udpMutex.unlock();
         }
     }
+    c->missMutex.unlock();
 
 
 }

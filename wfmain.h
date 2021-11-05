@@ -58,7 +58,7 @@ signals:
 
     // Frequency, mode, band:
     void getFrequency();
-    void setFrequency(freqt freq);
+    void setFrequency(unsigned char vfo, freqt freq);
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
     void setMode(mode_info);
@@ -477,6 +477,7 @@ private slots:
 
     void on_rigctldPortTxt_editingFinished();
 
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -703,6 +704,7 @@ private:
         int wftheme;
         bool confirmExit;
         bool confirmPowerOff;
+        meterKind meter2Type;
         // plot scheme
     } prefs;
 

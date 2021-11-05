@@ -273,7 +273,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setScopeMode(spectrumMode)), rig, SLOT(setSpectrumMode(spectrumMode)));
     connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
 
-    connect(this, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
+    connect(this, SIGNAL(setFrequency(unsigned char, freqt)), rig, SLOT(setFrequency(unsigned char, freqt)));
     connect(this, SIGNAL(setScopeEdge(char)), rig, SLOT(setScopeEdge(char)));
     connect(this, SIGNAL(setScopeSpan(char)), rig, SLOT(setScopeSpan(char)));
     //connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
@@ -400,7 +400,7 @@ void wfmain::makeRig()
         if (rigCtl != Q_NULLPTR) {
             connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
             connect(this, SIGNAL(requestRigState()), rig, SLOT(sendState()));
-            connect(rigCtl, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
+            connect(rigCtl, SIGNAL(setFrequency(unsigned char, freqt)), rig, SLOT(setFrequency(unsigned char, freqt)));
             connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
             connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
             connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
@@ -654,6 +654,7 @@ void wfmain::setupMainUI()
     ui->tuningStepCombo->addItem("9 kHz",     (unsigned int)    9000);	// European medium wave stepsize
     ui->tuningStepCombo->addItem("10 kHz",    (unsigned int)   10000);
     ui->tuningStepCombo->addItem("12.5 kHz",  (unsigned int)   12500);
+    ui->tuningStepCombo->addItem("25 kHz",    (unsigned int)   25000);
     ui->tuningStepCombo->addItem("100 kHz",   (unsigned int)  100000);
     ui->tuningStepCombo->addItem("250 kHz",   (unsigned int)  250000);
     ui->tuningStepCombo->addItem("1 MHz",     (unsigned int) 1000000);  //for 23 cm and HF
@@ -684,14 +685,11 @@ void wfmain::setupMainUI()
     ui->meter2selectionCombo->addItem("Center", meterCenter);
     ui->meter2Widget->hide();
 
-#ifdef QT_DEBUG
-    // Experimental feature:
     ui->meter2selectionCombo->show();
+    ui->meter2selectionCombo->setCurrentIndex((int)prefs.meter2Type);
+
     ui->secondaryMeterSelectionLabel->show();
-#else
-    ui->meter2selectionCombo->hide();
-    ui->secondaryMeterSelectionLabel->hide();
-#endif
+
 
     // Future ideas:
     //ui->meter2selectionCombo->addItem("Transmit Audio", meterTxMod);
@@ -754,9 +752,10 @@ void wfmain::setupMainUI()
     ui->statusBar->addPermanentWidget(connectedLed);
 
     rigName = new QLabel(this);
+    rigName->setAlignment(Qt::AlignRight);
     ui->statusBar->addPermanentWidget(rigName);
     rigName->setText("NONE");
-    rigName->setFixedWidth(50);
+    rigName->setFixedWidth(60);
 
     freq.MHzDouble = 0.0;
     freq.Hz = 0;
@@ -1241,6 +1240,7 @@ void wfmain::setDefPrefs()
     defPrefs.wftheme = static_cast<int>(QCPColorGradient::gpJet);
     defPrefs.confirmExit = true;
     defPrefs.confirmPowerOff = true;
+    defPrefs.meter2Type = meterNone;
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -1274,7 +1274,7 @@ void wfmain::loadSettings()
     setWindowState(Qt::WindowActive); // Works around QT bug to returns window+keyboard focus.
     prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
-
+    prefs.meter2Type = static_cast<meterKind>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
     settings->endGroup();
 
     // Load color schemes:
@@ -1575,6 +1575,7 @@ void wfmain::saveSettings()
     settings->setValue("WFLength", prefs.wflength);
     settings->setValue("ConfirmExit", prefs.confirmExit);
     settings->setValue("ConfirmPowerOff", prefs.confirmPowerOff);
+    settings->setValue("Meter2Type", (int)prefs.meter2Type);
     settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -2012,7 +2013,7 @@ void wfmain::shortcutMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2026,7 +2027,7 @@ void wfmain::shortcutPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2040,7 +2041,7 @@ void wfmain::shortcutShiftMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2054,7 +2055,7 @@ void wfmain::shortcutShiftPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2068,7 +2069,7 @@ void wfmain::shortcutControlMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2082,7 +2083,7 @@ void wfmain::shortcutControlPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2096,7 +2097,7 @@ void wfmain::shortcutPageUp()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2110,7 +2111,7 @@ void wfmain::shortcutPageDown()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2351,7 +2352,7 @@ void wfmain::doCmd(commandtype cmddata)
         {
             lastFreqCmdTime_ms = QDateTime::currentMSecsSinceEpoch();
             freqt f = (*std::static_pointer_cast<freqt>(data));
-            emit setFrequency(f);
+            emit setFrequency(0,f);
             break;
         }
         case cmdSetMode:
@@ -2407,6 +2408,7 @@ void wfmain::doCmd(commandtype cmddata)
         {
             bool pttrequest = (*std::static_pointer_cast<bool>(data));
             emit setPTT(pttrequest);
+            ui->meter2Widget->clearMeterOnPTTtoggle();
             if(pttrequest)
             {
                 ui->meterSPoWidget->setMeterType(meterPower);
@@ -3007,6 +3009,18 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // recalculate command timing now that we know the rig better:
         calculateTimingParameters();
         initPeriodicCommands();
+        
+        // Set the second meter here as I suspect we need to be connected for it to work?
+        for (int i = 0; i < ui->meter2selectionCombo->count(); i++)
+        {
+            if (static_cast<meterKind>(ui->meter2selectionCombo->itemData(i).toInt()) == prefs.meter2Type)
+            {
+                // I thought that setCurrentIndex() would call the activated() function for the combobox
+                // but it doesn't, so call it manually.
+                ui->meter2selectionCombo->setCurrentIndex(i);
+                on_meter2selectionCombo_activated(i); 
+            }
+        }
     }
 }
 
@@ -3029,6 +3043,7 @@ void wfmain::initPeriodicCommands()
     if (rigCaps.hasRXAntenna) {
         insertSlowPeriodicCommand(cmdGetAntenna, 128);
     }
+    insertSlowPeriodicCommand(cmdGetDuplexMode, 128);
 }
 
 void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
@@ -3222,9 +3237,9 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
 void wfmain::receiveSpectrumMode(spectrumMode spectMode)
 {
-    for(int i=0; i < ui->spectrumModeCombo->count(); i++)
+    for (int i = 0; i < ui->spectrumModeCombo->count(); i++)
     {
-        if(static_cast<spectrumMode>(ui->spectrumModeCombo->itemData(i).toInt()) == spectMode)
+        if (static_cast<spectrumMode>(ui->spectrumModeCombo->itemData(i).toInt()) == spectMode)
         {
             ui->spectrumModeCombo->blockSignals(true);
             ui->spectrumModeCombo->setCurrentIndex(i);
@@ -3249,7 +3264,7 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
         freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
         freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
 
-        //emit setFrequency(freq);
+        //emit setFrequency(0,freq);
         issueCmd(cmdSetFreq, freqGo);
         freq = freqGo;
         setUIFreq();
@@ -3274,7 +3289,7 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
         freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
         freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
 
-        //emit setFrequency(freq);
+        //emit setFrequency(0,freq);
         issueCmd(cmdSetFreq, freqGo);
         freq = freqGo;
         setUIFreq();
@@ -3329,7 +3344,7 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     f.MHzDouble = f.Hz / (double)1E6;
     freq = f;
 
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmdUniquePriority(cmdSetFreq, f);
     ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
     //issueDelayedCommandUnique(cmdGetFreq);
@@ -3746,7 +3761,7 @@ void wfmain::on_freqDial_valueChanged(int value)
 
         ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 
-        //emit setFrequency(f);
+        //emit setFrequency(0,f);
         issueCmdUniquePriority(cmdSetFreq, f);
     } else {
         ui->freqDial->blockSignals(true);
@@ -3761,7 +3776,7 @@ void wfmain::receiveBandStackReg(freqt freqGo, char mode, char filter, bool data
     // read the band stack and apply by sending out commands
 
     qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freqGo.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
-    //emit setFrequency(freq);
+    //emit setFrequency(0,freq);
     issueCmd(cmdSetFreq, freqGo);
     setModeVal = (unsigned char) mode;
     setFilterVal = (unsigned char) filter;
@@ -3831,7 +3846,7 @@ void wfmain::on_band4mbtn_clicked()
         f.Hz = (70.200) * 1E6;
     }
     issueCmd(cmdSetFreq, f);
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
 }
@@ -3898,7 +3913,7 @@ void wfmain::on_band60mbtn_clicked()
     freqt f;
     f.Hz = (5.3305) * 1E6;
     issueCmd(cmdSetFreq, f);
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
 }
@@ -3919,7 +3934,7 @@ void wfmain::on_band630mbtn_clicked()
 {
     freqt f;
     f.Hz = 475 * 1E3;
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
@@ -3929,7 +3944,7 @@ void wfmain::on_band2200mbtn_clicked()
 {
     freqt f;
     f.Hz = 136 * 1E3;
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
@@ -5245,7 +5260,6 @@ void wfmain::on_meter2selectionCombo_activated(int index)
     meterKind oldMeterType;
     newMeterType = static_cast<meterKind>(ui->meter2selectionCombo->currentData().toInt());
     oldMeterType = ui->meter2Widget->getMeterType();
-
     if(newMeterType == oldMeterType)
         return;
 
@@ -5257,11 +5271,14 @@ void wfmain::on_meter2selectionCombo_activated(int index)
     if(newMeterType==meterNone)
     {
         ui->meter2Widget->hide();
+        ui->meter2Widget->setMeterType(newMeterType);
     } else {
         ui->meter2Widget->show();
         ui->meter2Widget->setMeterType(newMeterType);
         insertPeriodicCommandUnique(newCmd);
     }
+    prefs.meter2Type = newMeterType;
+
     (void)index;
 }
 
@@ -5282,7 +5299,7 @@ void wfmain::on_enableRigctldChk_clicked(bool checked)
         if (rig != Q_NULLPTR) {
             // We are already connected to a rig.
             connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
-            connect(rigCtl, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
+            connect(rigCtl, SIGNAL(setFrequency(unsigned char, freqt)), rig, SLOT(setFrequency(unsigned char, freqt)));
             connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
             connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
             connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
