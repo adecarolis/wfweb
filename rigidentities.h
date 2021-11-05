@@ -122,6 +122,8 @@ struct rigCapabilities {
     bool hasPreamp;
     bool hasAntennaSel;
     bool hasDataModes;
+    bool hasIFShift;
+    bool hasTBPF;
 
     bool hasRXAntenna;
 

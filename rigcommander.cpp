@@ -1362,6 +1362,17 @@ void rigCommander::parseLevels()
                 emit haveSql(level);
                 rigState.squelch = level;
                 break;
+            case '\x07':
+                // Twin BPF Inner, or, IF-Shift level
+                if(rigCaps.hasTBPF)
+                    emit haveTPBFInner(level);
+                else
+                    emit haveIFShift(level);
+                break;
+            case '\x08':
+                // Twin BPF Outer
+                emit haveTPBFOuter(level);
+                break;
             case '\x09':
                 // CW Pitch - ignore for now
                 break;
@@ -1467,6 +1478,27 @@ void rigCommander::parseLevels()
     return;
     }
 
+}
+
+void rigCommander::setIFShift(unsigned char level)
+{
+    QByteArray payload("\x14\x07");
+    payload.append(bcdEncodeInt(level));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setTPBFInner(unsigned char level)
+{
+    QByteArray payload("\x14\x07");
+    payload.append(bcdEncodeInt(level));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setTPBFOuter(unsigned char level)
+{
+    QByteArray payload("\x14\x08");
+    payload.append(bcdEncodeInt(level));
+    prepDataAndSend(payload);
 }
 
 void rigCommander::setTxPower(unsigned char power)
@@ -1889,6 +1921,24 @@ void rigCommander::getRfGain()
 void rigCommander::getAfGain()
 {
     QByteArray payload("\x14\x01");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getIFShift()
+{
+    QByteArray payload("\x14\x07");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getTPBFInner()
+{
+    QByteArray payload("\x14\x07");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getTPBFOuter()
+{
+    QByteArray payload("\x14\x08");
     prepDataAndSend(payload);
 }
 
@@ -2827,6 +2877,9 @@ void rigCommander::determineRigCaps()
     rigCaps.hasCTCSS = false;
     rigCaps.hasDTCS = false;
 
+    rigCaps.hasTBPF = false;
+    rigCaps.hasIFShift = false;
+
     rigCaps.spectSeqMax = 0;
     rigCaps.spectAmpMax = 0;
     rigCaps.spectLenMax = 0;
@@ -2897,6 +2950,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -2925,6 +2979,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
             rigCaps.hasDV = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x10');
             rigCaps.attenuators.push_back('\x20');
             rigCaps.attenuators.push_back('\x30');
@@ -2962,6 +3017,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasDV = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x10');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardVU;
@@ -3010,6 +3066,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = false;
             rigCaps.hasDTCS = false;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(), {0x00, 0x06, 0x12, 0x18});
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -3036,6 +3093,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
             rigCaps.hasCTCSS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),
                                       {'\x03', '\x06', '\x09', '\x12',\
                                        '\x15', '\x18', '\x21', '\x24',\
@@ -3070,6 +3128,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),
                                       {'\x03', '\x06', '\x09',
                                        '\x12', '\x15', '\x18', '\x21'});
@@ -3104,6 +3163,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x10' , '\x20'});
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -3136,6 +3196,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x12');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardHF;
@@ -3159,6 +3220,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -3182,6 +3244,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x12');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -3210,6 +3273,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardHF;
@@ -3229,6 +3293,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
             rigCaps.hasCTCSS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),
                                       {'\x06', '\x12', '\x18'});
             rigCaps.preamps.push_back('\x01');
@@ -3276,6 +3341,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = false;
             rigCaps.hasPTTCommand = false;
+            rigCaps.hasIFShift = true;
             rigCaps.hasDataModes = false;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
@@ -3301,6 +3367,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = false;
             rigCaps.hasPTTCommand = false;
             rigCaps.hasDataModes = false;
+            rigCaps.hasIFShift = true; // untested
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardHF;
@@ -3319,6 +3386,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
+            rigCaps.hasTBPF = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
@@ -3339,6 +3407,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
+            rigCaps.hasTBPF = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
@@ -3359,6 +3428,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
+            rigCaps.hasTBPF = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
@@ -3381,6 +3451,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.hasDV = true;
+            rigCaps.hasTBPF = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x20' });
