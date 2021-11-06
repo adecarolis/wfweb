@@ -118,6 +118,7 @@ struct rigCapabilities {
 
     bool hasTransmit;
     bool hasPTTCommand;
+    bool useRTSforPTT;
     bool hasAttenuator;
     bool hasPreamp;
     bool hasAntennaSel;

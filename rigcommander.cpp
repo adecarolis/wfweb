@@ -63,6 +63,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
     connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
     // data from the program to the comm port:
     connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
+    connect(this, SIGNAL(toggleRTS(bool)), comm, SLOT(setRTS(bool)));
 
     // data from the rig to the ptty:
     connect(comm, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
@@ -992,9 +993,14 @@ void rigCommander::getSatelliteMode()
 
 void rigCommander::getPTT()
 {
-    QByteArray payload;
-    payload.setRawData("\x1C\x00", 2);
-    prepDataAndSend(payload);
+    if(rigCaps.useRTSforPTT)
+    {
+        emit havePTTStatus(comm->rtsStatus());
+    } else {
+        QByteArray payload;
+        payload.setRawData("\x1C\x00", 2);
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getBandStackReg(char band, char regCode)
@@ -1011,9 +1017,14 @@ void rigCommander::setPTT(bool pttOn)
 
     if(pttAllowed)
     {
-        QByteArray payload("\x1C\x00", 2);
-        payload.append((char)pttOn);
-        prepDataAndSend(payload);
+        if(rigCaps.useRTSforPTT)
+        {
+            emit toggleRTS(pttOn);
+        } else {
+            QByteArray payload("\x1C\x00", 2);
+            payload.append((char)pttOn);
+            prepDataAndSend(payload);
+        }
         rigState.ptt = pttOn;
     }
 }
@@ -2908,6 +2919,7 @@ void rigCommander::determineRigCaps()
 
     rigCaps.hasTransmit = true;
     rigCaps.hasPTTCommand = true;
+    rigCaps.useRTSforPTT = false;
 
     // Common, reasonable defaults for most supported HF rigs:
     rigCaps.bsr[band160m] = 0x01;
@@ -3321,6 +3333,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.hasPTTCommand = false;
+            rigCaps.useRTSforPTT = true;
             rigCaps.hasDataModes = false;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.bands = standardHF;
@@ -3341,6 +3354,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = false;
             rigCaps.hasPTTCommand = false;
+            rigCaps.useRTSforPTT = true;
             rigCaps.hasIFShift = true;
             rigCaps.hasDataModes = false;
             rigCaps.attenuators.push_back('\x20');
@@ -3366,6 +3380,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = false;
             rigCaps.hasPTTCommand = false;
+            rigCaps.useRTSforPTT = true;
             rigCaps.hasDataModes = false;
             rigCaps.hasIFShift = true; // untested
             rigCaps.attenuators.push_back('\x20');

@@ -45,6 +45,7 @@ commHandler::commHandler(QString portName, quint32 baudRate)
     baudrate = baudRate;
     stopbits = 1;
     this->portName = portName;
+    this->PTTviaRTS = false;
 
     setupComm(); // basic parameters
     openPort();
@@ -160,6 +161,25 @@ void commHandler::receiveDataIn()
         //printHex(inPortData, false, true);
 
     }
+}
+
+void commHandler::setRTS(bool rtsOn)
+{
+    bool success = port->setRequestToSend(rtsOn);
+    if(!success)
+    {
+        qInfo(logSerial()) << "Error, could not set RTS on port " << portName;
+    }
+}
+
+bool commHandler::rtsStatus()
+{
+    return port->isRequestToSend();
+}
+
+void commHandler::setUseRTSforPTT(bool PTTviaRTS)
+{
+    this->PTTviaRTS = PTTviaRTS;
 }
 
 void commHandler::openPort()

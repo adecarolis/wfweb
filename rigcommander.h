@@ -322,6 +322,7 @@ signals:
     void haveSerialPortError(const QString port, const QString errorText);
     void haveStatusUpdate(const QString text);
     void dataForComm(const QByteArray &outData);
+    void toggleRTS(bool rtsOn);
 
     // UDP:
     void haveChangeLatency(quint16 value);
