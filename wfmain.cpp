@@ -106,6 +106,11 @@ wfmain::~wfmain()
     delete rpt;
     delete ui;
     delete settings;
+
+#if defined(PORTAUDIO)
+    Pa_Terminate();
+#endif
+
 }
 
 void wfmain::closeEvent(QCloseEvent *event)
@@ -1046,6 +1051,35 @@ void wfmain::setAudioDevicesUI()
 
 #elif defined(PORTAUDIO)
     // Use PortAudio device enumeration
+
+    PaError err;
+
+    err = Pa_Initialize();
+
+    if (err != paNoError)
+    {
+        qInfo(logAudio()) << "ERROR: Cannot initialize Portaudio";
+    }
+
+    qInfo(logAudio()) << "PortAudio version: " << Pa_GetVersionInfo()->versionText;
+
+    int numDevices;
+    numDevices = Pa_GetDeviceCount();
+    qInfo(logAudio()) << "Pa_CountDevices returned" << numDevices;
+
+    const   PaDeviceInfo* info;
+    for (int i = 0; i < numDevices; i++)
+    {
+        info = Pa_GetDeviceInfo(i);
+        if (info->maxInputChannels > 0) {
+            qInfo(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Output Device : " << info->name;
+            ui->audioInputCombo->addItem(info->name, i);
+        }
+        if (info->maxOutputChannels > 0) {
+            qInfo(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Input Device  : " << info->name;
+            ui->audioOutputCombo->addItem(info->name, i);
+        }
+    }
 #else
 
 // If no external library is configured, use QTMultimedia
@@ -1489,6 +1523,7 @@ void wfmain::loadSettings()
 #if defined(RTAUDIO)
         rxSetup.port = ui->audioOutputCombo->itemData(audioOutputIndex).toInt();
 #elif defined(PORTAUDIO)
+        rxSetup.port = ui->audioOutputCombo->itemData(audioOutputIndex).toInt();
 #else
         QVariant v = ui->audioOutputCombo->currentData();
         rxSetup.port = v.value<QAudioDeviceInfo>();
@@ -1505,6 +1540,7 @@ void wfmain::loadSettings()
 #if defined(RTAUDIO)
         txSetup.port = ui->audioInputCombo->itemData(audioInputIndex).toInt();
 #elif defined(PORTAUDIO)
+        txSetup.port = ui->audioInputCombo->itemData(audioInputIndex).toInt();
 #else
         QVariant v = ui->audioInputCombo->currentData();
         txSetup.port = v.value<QAudioDeviceInfo>();
@@ -4298,6 +4334,7 @@ void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
 #if defined(RTAUDIO)
     rxSetup.port = ui->audioOutputCombo->itemData(value).toInt();
 #elif defined(PORTAUDIO)
+    rxSetup.port = ui->audioOutputCombo->itemData(value).toInt();
 #else
     QVariant v = ui->audioOutputCombo->itemData(value);
     rxSetup.port = v.value<QAudioDeviceInfo>();
@@ -4311,6 +4348,7 @@ void wfmain::on_audioInputCombo_currentIndexChanged(int value)
 #if defined(RTAUDIO)
     txSetup.port = ui->audioInputCombo->itemData(value).toInt();
 #elif defined(PORTAUDIO)
+    txSetup.port = ui->audioInputCombo->itemData(value).toInt();
 #else
     QVariant v = ui->audioInputCombo->itemData(value);
     txSetup.port = v.value<QAudioDeviceInfo>();
