@@ -6,7 +6,24 @@ transceiverAdjustments::transceiverAdjustments(QWidget *parent) :
     ui(new Ui::transceiverAdjustments)
 {
     ui->setupUi(this);
-    // request level updates
+#ifndef QT_DEBUG
+    ui->transmitterControlsGroupBox->setVisible(false); // no controls available so far
+    ui->bassRxLabel->setVisible(false);
+    ui->bassRxSlider->setVisible(false);
+    ui->trebleRxLabel->setVisible(false);
+    ui->trebleRxSlider->setVisible(false);
+
+    ui->NRRxCheckBox->setVisible(false);
+    ui->NRRxSlider->setVisible(false);
+    ui->notchRxChkBox->setVisible(false);
+    ui->notchRxSlider->setVisible(false);
+    ui->NBRxChkBox->setVisible(false);
+    ui->NBRxSlider->setVisible(false);
+    ui->bandwidthGroupBox->setVisible(false);
+    this->window()->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    this->window()->resize(QSizePolicy::Minimum, QSizePolicy::Minimum);
+
+#endif
 
 }
 
