@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>934</width>
+    <width>941</width>
     <height>582</height>
    </rect>
   </property>
@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -465,6 +465,16 @@
               </property>
              </widget>
             </item>
+            <item>
+             <widget class="QPushButton" name="moreControlsBtn">
+              <property name="toolTip">
+               <string>Show additional controls</string>
+              </property>
+              <property name="text">
+               <string>Show More</string>
+              </property>
+             </widget>
+            </item>
            </layout>
           </item>
           <item>
@@ -852,6 +862,9 @@
                 <height>50</height>
                </size>
               </property>
+              <property name="toolTip">
+               <string>Transmit and Receive button</string>
+              </property>
               <property name="text">
                <string>Transmit</string>
               </property>
@@ -885,6 +898,9 @@
             </item>
             <item>
              <widget class="QPushButton" name="rptSetupBtn">
+              <property name="toolTip">
+               <string>Show the repeater tone and offset window</string>
+              </property>
               <property name="text">
                <string>Repeater</string>
               </property>
@@ -2814,8 +2830,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>934</width>
-     <height>21</height>
+     <width>941</width>
+     <height>22</height>
     </rect>
    </property>
   </widget>

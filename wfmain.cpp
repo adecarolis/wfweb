@@ -296,6 +296,9 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getRfGain()), rig, SLOT(getRfGain()));
     connect(this, SIGNAL(getAfGain()), rig, SLOT(getAfGain()));
     connect(this, SIGNAL(getSql()), rig, SLOT(getSql()));
+    connect(this, SIGNAL(getIfShift()), rig, SLOT(getIFShift()));
+    connect(this, SIGNAL(getTPBFInner()), rig, SLOT(getTPBFInner()));
+    connect(this, SIGNAL(getTPBFOuter()), rig, SLOT(getTPBFOuter()));
     connect(this, SIGNAL(getTxPower()), rig, SLOT(getTxLevel()));
     connect(this, SIGNAL(getMicGain()), rig, SLOT(getMicGain()));
     connect(this, SIGNAL(getSpectrumRefLevel()), rig, SLOT(getSpectrumRefLevel()));
@@ -306,6 +309,9 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
     connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
     connect(this, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
+    connect(this, SIGNAL(setIFShift(unsigned char)), rig, SLOT(setIFShift(unsigned char)));
+    connect(this, SIGNAL(setTPBFInner(unsigned char)), rig, SLOT(setTPBFInner(unsigned char)));
+    connect(this, SIGNAL(setTPBFOuter(unsigned char)), rig, SLOT(setTPBFOuter(unsigned char)));
     connect(this, SIGNAL(setTxPower(unsigned char)), rig, SLOT(setTxPower(unsigned char)));
     connect(this, SIGNAL(setMicGain(unsigned char)), rig, SLOT(setMicGain(unsigned char)));
     connect(this, SIGNAL(setMonitorLevel(unsigned char)), rig, SLOT(setMonitorLevel(unsigned char)));
@@ -318,6 +324,9 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveRfGain(unsigned char)), this, SLOT(receiveRfGain(unsigned char)));
     connect(rig, SIGNAL(haveAfGain(unsigned char)), this, SLOT(receiveAfGain(unsigned char)));
     connect(rig, SIGNAL(haveSql(unsigned char)), this, SLOT(receiveSql(unsigned char)));
+    connect(rig, SIGNAL(haveIFShift(unsigned char)), trxadj, SLOT(updateIFShift(unsigned char)));
+    connect(rig, SIGNAL(haveTPBFInner(unsigned char)), trxadj, SLOT(updateTPBFInner(unsigned char)));
+    connect(rig, SIGNAL(haveTPBFOuter(unsigned char)), trxadj, SLOT(updateTPBFOuter(unsigned char)));
     connect(rig, SIGNAL(haveTxPower(unsigned char)), this, SLOT(receiveTxPower(unsigned char)));
     connect(rig, SIGNAL(haveMicGain(unsigned char)), this, SLOT(receiveMicGain(unsigned char)));
     connect(rig, SIGNAL(haveSpectrumRefLevel(int)), this, SLOT(receiveSpectrumRefLevel(int)));
@@ -806,6 +815,20 @@ void wfmain::setupMainUI()
                 ui->wfLengthSlider, &QSlider::valueChanged,
                 [=](const int &newValue) { statusFromSliderRaw("Waterfall Length", newValue);}
     );
+
+    connect(this->trxadj, &transceiverAdjustments::setIFShift,
+            [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetIFShift, newValue);}
+    );
+
+    connect(this->trxadj, &transceiverAdjustments::setTPBFInner,
+            [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetTPBFInner, newValue);}
+    );
+
+    connect(this->trxadj, &transceiverAdjustments::setTPBFOuter,
+            [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetTPBFOuter, newValue);}
+    );
+
+
 
 }
 
@@ -2239,6 +2262,14 @@ void wfmain:: getInitialRigState()
     issueDelayedCommand(cmdGetRitEnabled);
     issueDelayedCommand(cmdGetRitValue);
 
+    if(rigCaps.hasIFShift)
+        issueDelayedCommand(cmdGetIFShift);
+    if(rigCaps.hasTBPF)
+    {
+        issueDelayedCommand(cmdGetTPBFInner);
+        issueDelayedCommand(cmdGetTPBFOuter);
+    }
+
     if(rigCaps.hasSpectrum)
     {
         issueDelayedCommand(cmdGetSpectrumMode);
@@ -2440,6 +2471,24 @@ void wfmain::doCmd(commandtype cmddata)
             emit setSql(sqlLevel);
             break;
         }
+        case cmdSetIFShift:
+        {
+            unsigned char IFShiftLevel = (*std::static_pointer_cast<unsigned char>(data));
+            emit setIFShift(IFShiftLevel);
+            break;
+        }
+        case cmdSetTPBFInner:
+        {
+            unsigned char innterLevel = (*std::static_pointer_cast<unsigned char>(data));
+            emit setTPBFInner(innterLevel);
+            break;
+        }
+        case cmdSetTPBFOuter:
+        {
+            unsigned char outerLevel = (*std::static_pointer_cast<unsigned char>(data));
+            emit setTPBFOuter(outerLevel);
+            break;
+        }
         case cmdSetPTT:
         {
             bool pttrequest = (*std::static_pointer_cast<bool>(data));
@@ -2581,6 +2630,15 @@ void wfmain::doCmd(cmds cmd)
             break;
         case cmdGetSql:
             emit getSql();
+            break;
+        case cmdGetIFShift:
+            emit getIfShift();
+            break;
+        case cmdGetTPBFInner:
+            emit getTPBFInner();
+            break;
+        case cmdGetTPBFOuter:
+            emit getTPBFOuter();
             break;
         case cmdGetTxPower:
             emit getTxPower();
@@ -2907,6 +2965,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // Added so that server receives rig capabilities.
         emit sendRigCaps(rigCaps);
         rpt->setRig(rigCaps);
+        trxadj->setRig(rigCaps);
 
         // Set the mode combo box up:
 
@@ -3027,6 +3086,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->scopeBWCombo->blockSignals(false);
 
         setBandButtons();
+
 
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
@@ -4090,6 +4150,21 @@ void wfmain::receiveSql(unsigned char level)
     ui->sqlSlider->setValue(level);
 }
 
+void wfmain::receiveIFShift(unsigned char level)
+{
+    trxadj->updateIFShift(level);
+}
+
+void wfmain::receiveTBPFInner(unsigned char level)
+{
+    trxadj->updateTPBFInner(level);
+}
+
+void wfmain::receiveTBPFOuter(unsigned char level)
+{
+    trxadj->updateTPBFOuter(level);
+}
+
 void wfmain::on_tuneNowBtn_clicked()
 {
     issueDelayedCommand(cmdStartATU);
@@ -4352,6 +4427,20 @@ void wfmain::on_sqlSlider_valueChanged(int value)
 {
     issueCmd(cmdSetSql, (unsigned char)value);
     //emit setSql((unsigned char)value);
+}
+// These three are from the transceiver adjustment window:
+void wfmain::changeIFShift(unsigned char level)
+{
+    //issueCmd(cmdSetIFShift, level);
+    issueCmdUniquePriority(cmdSetIFShift, level);
+}
+void wfmain::changeTPBFInner(unsigned char level)
+{
+    issueCmdUniquePriority(cmdSetTPBFInner, level);
+}
+void wfmain::changeTPBFOuter(unsigned char level)
+{
+    issueCmdUniquePriority(cmdSetTPBFOuter, level);
 }
 
 void wfmain::on_modeFilterCombo_activated(int index)
@@ -5377,11 +5466,16 @@ void wfmain::on_rigctldPortTxt_editingFinished()
     }
 }
 
+void wfmain::on_moreControlsBtn_clicked()
+{
+    trxadj->show();
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    //trxadj->show();
+    trxadj->show();
     //setRadioTimeDatePrep();
     //wf->setInteraction(QCP::iRangeZoom, true);
     //wf->setInteraction(QCP::iRangeDrag, true);
