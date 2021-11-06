@@ -465,6 +465,16 @@
               </property>
              </widget>
             </item>
+            <item>
+             <widget class="QPushButton" name="moreControlsBtn">
+              <property name="toolTip">
+               <string>Show additional controls</string>
+              </property>
+              <property name="text">
+               <string>Show More</string>
+              </property>
+             </widget>
+            </item>
            </layout>
           </item>
           <item>
@@ -852,6 +862,9 @@
                 <height>50</height>
                </size>
               </property>
+              <property name="toolTip">
+               <string>Transmit and Receive button</string>
+              </property>
               <property name="text">
                <string>Transmit</string>
               </property>
@@ -885,6 +898,9 @@
             </item>
             <item>
              <widget class="QPushButton" name="rptSetupBtn">
+              <property name="toolTip">
+               <string>Show the repeater tone and offset window</string>
+              </property>
               <property name="text">
                <string>Repeater</string>
               </property>

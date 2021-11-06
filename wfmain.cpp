@@ -812,15 +812,15 @@ void wfmain::setupMainUI()
     );
 
     connect(this->trxadj, &transceiverAdjustments::setIFShift,
-            [=](const unsigned char &newValue) { issueCmd(cmdSetIFShift, newValue);}
+            [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetIFShift, newValue);}
     );
 
     connect(this->trxadj, &transceiverAdjustments::setTPBFInner,
-            [=](const unsigned char &newValue) { issueCmd(cmdSetTPBFInner, newValue);}
+            [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetTPBFInner, newValue);}
     );
 
     connect(this->trxadj, &transceiverAdjustments::setTPBFOuter,
-            [=](const unsigned char &newValue) { issueCmd(cmdSetTPBFOuter, newValue);}
+            [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetTPBFOuter, newValue);}
     );
 
 
@@ -5426,6 +5426,11 @@ void wfmain::on_rigctldPortTxt_editingFinished()
     {
         prefs.rigCtlPort = port;
     }
+}
+
+void wfmain::on_moreControlsBtn_clicked()
+{
+    trxadj->show();
 }
 
 // --- DEBUG FUNCTION ---

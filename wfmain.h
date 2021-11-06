@@ -495,6 +495,8 @@ private slots:
     void on_rigctldPortTxt_editingFinished();
 
 
+    void on_moreControlsBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
