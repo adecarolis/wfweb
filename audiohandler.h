@@ -35,6 +35,16 @@ typedef signed short  MY_TYPE;
 #include <QTimer>
 #include <QTime>
 #include <QMap>
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_IX86_FP)
+#if !defined(USE_SSE)
+#define USE_SSE
+#endif
+#else
+#if !defined(USE_NEON)
+#define USE_NEON
+#endif
+#endif
+
 #include "resampler/speex_resampler.h"
 #include "ring/ring.h"
 
