@@ -3964,6 +3964,10 @@ void rigCommander::setRigID(unsigned char rigID)
     lookingForRig = true;
     foundRig = false;
 
+    // needed because this is a fake message and thus the value is uninitialized
+    // this->civAddr comes from how rigCommander is setup and should be accurate.
+    this->incomingCIVAddr = this->civAddr;
+
     this->model = determineRadioModel(rigID);
     rigCaps.modelID = rigID;
     rigCaps.model = determineRadioModel(rigID);
