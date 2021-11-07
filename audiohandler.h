@@ -196,8 +196,7 @@ private:
 
     QMap<quint32, audioPacket>audioBuffer;
 
-    unsigned int ratioNum;
-    unsigned int ratioDen;
+    double resampleRatio;
 
     wilt::Ring<audioPacket> *ringBuf=Q_NULLPTR;
 

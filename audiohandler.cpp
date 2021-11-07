@@ -337,9 +337,12 @@ bool audioHandler::init(audioSetup setupIn)
 			qInfo(logAudio()) << "Creating opus decoder: " << opus_strerror(opus_err);
 		}
 	}
-	wf_resampler_get_ratio(resampler, &ratioNum, &ratioDen);
-	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "wf_resampler_init() returned: " << resample_error << " ratioNum" << ratioNum << " ratioDen" << ratioDen;
+	unsigned int ratioNum;
+	unsigned int ratioDen;
 
+	wf_resampler_get_ratio(resampler, &ratioNum, &ratioDen);
+	resampleRatio = ratioDen / ratioNum;
+	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "wf_resampler_init() returned: " << resample_error << " resampleRatio" << resampleRatio;
 
     qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "thread id" << QThread::currentThreadId();
 
@@ -658,11 +661,11 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		*/
     //qDebug(logAudio()) << "Now 16 bit stereo, length" << inPacket.data.length();
 
-	if (ratioDen != 1) {
+	if (resampleRatio != 1.0) {
 
 		// We need to resample
 		// We have a stereo 16bit stream.
-		quint32 outFrames = ((inPacket.data.length() / 2 / devChannels) * ratioDen);
+		quint32 outFrames = ((inPacket.data.length() / 2 / devChannels) * resampleRatio);
 		quint32 inFrames = (inPacket.data.length() / 2 / devChannels);
 		QByteArray outPacket(outFrames * 4, (char)0xff); // Preset the output buffer size.
 
@@ -723,9 +726,9 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		
 		//qDebug(logAudio) << "Chunksize" << this->chunkSize << "Packet size" << packet.data.length();
 		// Packet will arrive as stereo interleaved 16bit 48K
-		if (ratioNum != 1)
+		if (resampleRatio != 1.0)
 		{
-			quint32 outFrames = ((packet.data.length() / 2 / devChannels) / ratioNum);
+			quint32 outFrames = ((packet.data.length() / 2 / devChannels) / resampleRatio);
 			quint32 inFrames = (packet.data.length() / 2 / devChannels);
 			QByteArray outPacket((int)outFrames * 2 * devChannels, (char)0xff);
 
