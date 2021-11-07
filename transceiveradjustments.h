@@ -1,7 +1,9 @@
 #ifndef TRANSCEIVERADJUSTMENTS_H
 #define TRANSCEIVERADJUSTMENTS_H
 
-#include <sys/param.h>
+
+
+#include <QtGlobal>
 
 #include <QWidget>
 #include "rigidentities.h"

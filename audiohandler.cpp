@@ -8,6 +8,10 @@
 #include "logcategories.h"
 #include "ulaw.h"
 
+#if defined(Q_OS_WIN) && defined(PORTAUDIO)
+#include <objbase.h>
+#endif
+
 
 audioHandler::audioHandler(QObject* parent) 
 {
@@ -29,6 +33,7 @@ audioHandler::~audioHandler()
 		}
 		delete audio;
 #elif defined(PORTAUDIO)
+		Pa_StopStream(audio);
 #else
 		stop();
 #endif
@@ -81,7 +86,7 @@ bool audioHandler::init(audioSetup setupIn)
 		setup.bits = 16;
 	}
 
-	ringBuf = new wilt::Ring<audioPacket>(100); // Should be customizable.
+	ringBuf = new wilt::Ring<audioPacket>(setupIn.latency / 8 + 1); // Should be customizable.
 
 	tempBuf.sent = 0;
 
@@ -124,14 +129,9 @@ bool audioHandler::init(audioSetup setupIn)
 
 	if (info.probed)
 	{
-		// if "preferred" sample rate is 44100, try 48K instead
-		if (info.preferredSampleRate == (unsigned int)44100) {
-			qDebug(logAudio()) << "Preferred sample rate 44100, trying 48000";
-			this->nativeSampleRate = 48000;
-		}
-		else {
-			this->nativeSampleRate = info.preferredSampleRate;
-		}
+		// Always use the "preferred" sample rate
+		// We can always resample if needed
+		this->nativeSampleRate = info.preferredSampleRate;
 
 		// Per channel chunk size.
 		this->chunkSize = (this->nativeSampleRate / 50);
@@ -189,6 +189,79 @@ bool audioHandler::init(audioSetup setupIn)
 
 
 #elif defined(PORTAUDIO)
+
+	PaError err;
+
+#ifdef Q_OS_WIN
+	CoInitialize(0);
+#endif
+
+	memset(&aParams, 0,sizeof(PaStreamParameters));
+
+	if (setup.port > 0) {
+		aParams.device = setup.port;
+	}
+	else if (setup.isinput) {
+		aParams.device = Pa_GetDefaultInputDevice();
+	}
+	else {
+		aParams.device = Pa_GetDefaultOutputDevice();
+	}
+	
+	info = Pa_GetDeviceInfo(aParams.device);
+
+	aParams.channelCount = 2;
+	aParams.hostApiSpecificStreamInfo = NULL;
+	aParams.sampleFormat = paInt16;
+	aParams.suggestedLatency = info->defaultLowInputLatency;
+	aParams.hostApiSpecificStreamInfo = NULL; 
+
+	// Always use the "preferred" sample rate
+	// We can always resample if needed
+	this->nativeSampleRate = info->defaultSampleRate;
+
+	// Per channel chunk size.
+	this->chunkSize = (this->nativeSampleRate / 50);
+
+	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << info->name << "(" << aParams.device << ") successfully probed";
+	if (setup.isinput) {
+		devChannels = info->maxInputChannels;
+	}
+	else {
+		devChannels = info->maxOutputChannels;
+	}
+	qInfo(logAudio()) << "		Channels:" << devChannels;
+	if (devChannels > 2) {
+		devChannels = 2;
+	}
+	aParams.channelCount = devChannels;
+
+	qInfo(logAudio()) << "		chunkSize: " << chunkSize;
+
+	if (setup.isinput) {
+		err=Pa_OpenStream(&audio, &aParams, 0, this->nativeSampleRate, this->chunkSize, paNoFlag, &audioHandler::staticWrite, (void*)this);
+		//err = Pa_OpenDefaultStream(&audio, 2, 0, paFloat32, this->nativeSampleRate, this->chunkSize, &audioHandler::staticWrite, (void*)this);
+	}
+	else {
+		err=Pa_OpenStream(&audio, 0, &aParams, this->nativeSampleRate, this->chunkSize, paNoFlag, &audioHandler::staticRead, (void*)this);
+		//err = Pa_OpenDefaultStream(&audio, 0, 2, paFloat32, this->nativeSampleRate, this->chunkSize, &audioHandler::staticRead, (void*)this);
+	}
+
+	if (err == paNoError) {
+		err = Pa_StartStream(audio);
+	}
+	if (err == paNoError) {
+		isInitialized = true;
+		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "device successfully opened";
+	}
+	else {
+		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "failed to open device" << Pa_GetErrorText(err);
+	}
+	//qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "detected latency:" << audio->getStreamLatency();
+	
+
+
+
 #else
 
 	format.setSampleSize(16);
@@ -293,7 +366,7 @@ void audioHandler::start()
 	}
 
 	if (setup.isinput) {
-#ifdef Q_OS_MACX
+#ifndef Q_OS_WIN
 		this->open(QIODevice::WriteOnly);
 #else
 		this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
@@ -301,7 +374,7 @@ void audioHandler::start()
 		audioInput->start(this);
 	}
 	else {
-#ifdef Q_OS_MACX
+#ifndef Q_OS_WIN
 		this->open(QIODevice::ReadOnly);
 #else
 		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
@@ -328,7 +401,8 @@ void audioHandler::setVolume(unsigned char volume)
 /// <param name="maxlen"></param>
 /// <returns></returns>
 #if defined(RTAUDIO)
-int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status)
+int audioHandler::readData(void* outputBuffer, void* inputBuffer, 
+	unsigned int nFrames, double streamTime, RtAudioStreamStatus status)
 {
 	Q_UNUSED(inputBuffer);
 	Q_UNUSED(streamTime);
@@ -337,6 +411,15 @@ int audioHandler::readData(void* outputBuffer, void* inputBuffer, unsigned int n
 	int nBytes = nFrames * devChannels * 2; // This is ALWAYS 2 bytes per sample and 2 channels
 	quint8* buffer = (quint8*)outputBuffer;
 #elif defined(PORTAUDIO)
+
+int audioHandler::readData(const void* inputBuffer, void* outputBuffer,
+	unsigned long nFrames, const PaStreamCallbackTimeInfo * streamTime, PaStreamCallbackFlags status)
+{
+	Q_UNUSED(inputBuffer);
+	Q_UNUSED(streamTime);
+	Q_UNUSED(status);
+	int nBytes = nFrames * devChannels * 2; // This is ALWAYS 2 bytes per sample and 2 channels
+	quint8* buffer = (quint8*)outputBuffer;
 #else
 qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 {
@@ -416,13 +499,15 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 #if defined(RTAUDIO)
 	return 0;
 #elif defined(PORTAUDIO)
+	return 0;
 #else
 	return nBytes;
 #endif
 }
 
 #if defined(RTAUDIO)
-int audioHandler::writeData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status)
+int audioHandler::writeData(void* outputBuffer, void* inputBuffer, 
+	unsigned int nFrames, double streamTime, RtAudioStreamStatus status)
 {
 	Q_UNUSED(outputBuffer);
 	Q_UNUSED(streamTime);
@@ -430,6 +515,15 @@ int audioHandler::writeData(void* outputBuffer, void* inputBuffer, unsigned int 
 	int nBytes = nFrames * devChannels * 2; // This is ALWAYS 2 bytes per sample and 2 channels
 	const char* data = (const char*)inputBuffer;
 #elif defined(PORTAUDIO)
+int audioHandler::writeData(const void* inputBuffer, void* outputBuffer,
+	unsigned long nFrames, const PaStreamCallbackTimeInfo * streamTime,
+	PaStreamCallbackFlags status)
+{
+	Q_UNUSED(outputBuffer);
+	Q_UNUSED(streamTime);
+	Q_UNUSED(status);
+	int nBytes = nFrames * devChannels * 2; // This is ALWAYS 2 bytes per sample and 2 channels
+    const char* data = (const char*)inputBuffer;
 #else
 qint64 audioHandler::writeData(const char* data, qint64 nBytes)
 {
@@ -467,6 +561,7 @@ qint64 audioHandler::writeData(const char* data, qint64 nBytes)
 #if defined(RTAUDIO)
 	return 0;
 #elif defined(PORTAUDIO)
+	return 0;
 #else
 	return nBytes;
 #endif
@@ -591,7 +686,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 
 	if (!ringBuf->try_write(inPacket))
 	{
-		qDebug(logAudio()) << "Buffer full! capacity:" << ringBuf->capacity() << "length" << ringBuf->size();
+		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Buffer full! capacity:" << ringBuf->capacity() << "length" << ringBuf->size();
 	}
 	return;
 }
@@ -600,6 +695,8 @@ void audioHandler::changeLatency(const quint16 newSize)
 {
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Changing latency to: " << newSize << " from " << setup.latency;
 	setup.latency = newSize;
+	delete ringBuf;
+	ringBuf = new wilt::Ring<audioPacket>(setup.latency / 8 + 1); // Should be customizable.
 }
 
 int audioHandler::getLatency()
@@ -618,13 +715,13 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 	{
 		currentLatency = packet.time.msecsTo(QTime::currentTime());
 
-		while (currentLatency > setup.latency) {
+		if (currentLatency > setup.latency) {
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
 				" arrived too late (increase output latency!) " <<
 				dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
-			if (!ringBuf->try_read(packet))
-				break;
-			currentLatency = packet.time.msecsTo(QTime::currentTime());
+		//	if (!ringBuf->try_read(packet))
+		//		break;
+		//	currentLatency = packet.time.msecsTo(QTime::currentTime());
 		}
 		
 		//qDebug(logAudio) << "Chunksize" << this->chunkSize << "Packet size" << packet.data.length();

@@ -46,8 +46,8 @@ void transceiverAdjustments::on_IFShiftSlider_valueChanged(int value)
         unsigned char inner = ui->TPBFInnerSlider->value();
         unsigned char outer = ui->TPBFOuterSlider->value();
         int shift = value - previousIFShift;
-        inner = MAX( 0, MIN(255,int (inner + shift)) );
-        outer = MAX( 0, MIN(255,int (outer + shift)) );
+        inner = qMax( 0, qMin(255,int (inner + shift)) );
+        outer =qMax( 0, qMin(255,int (outer + shift)) );
 
         ui->TPBFInnerSlider->setValue(inner);
         ui->TPBFOuterSlider->setValue(outer);
