@@ -94,9 +94,7 @@ void commHandler::sendDataOut(const QByteArray &writeData)
         if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\xFD")))
         {
             // Query
-            qDebug(logSerial()) << "Looks like PTT Query";
-
-
+            //qDebug(logSerial()) << "Looks like PTT Query";
             bool pttOn = this->rtsStatus();
             QByteArray pttreturncmd = QByteArray("\xFE\xFE");
             pttreturncmd.append(writeData.at(3));
@@ -104,7 +102,7 @@ void commHandler::sendDataOut(const QByteArray &writeData)
             pttreturncmd.append(QByteArray("\x1C\x00", 2));
             pttreturncmd.append((char)pttOn);
             pttreturncmd.append("\xFD");
-            qDebug(logSerial()) << "Sending fake PTT query result: " << (bool)pttOn;
+            //qDebug(logSerial()) << "Sending fake PTT query result: " << (bool)pttOn;
             printHex(pttreturncmd, false, true);
             emit haveDataFromPort(pttreturncmd);
 
@@ -114,24 +112,17 @@ void commHandler::sendDataOut(const QByteArray &writeData)
         } else if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\x01\xFD")))
         {
             // PTT ON
-            qDebug(logSerial()) << "Looks like PTT ON";
+            //qDebug(logSerial()) << "Looks like PTT ON";
             setRTS(true);
             mutex.unlock();
             return;
         } else if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\x00\xFD")))
         {
             // PTT OFF
-            qDebug(logSerial()) << "Looks like PTT OFF";
+            //qDebug(logSerial()) << "Looks like PTT OFF";
             setRTS(false);
             mutex.unlock();
             return;
-        } else if (writeData.length() > 6)
-        {
-            if(writeData.at(4) == 0x1c )
-            {
-                qDebug(logSerial()) << "Potential 0x1C PTT command did not match. Has length " << writeData.length() << " and contains:";
-                printHex(writeData, false, true);
-            }
         }
     }
 
