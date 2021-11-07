@@ -341,8 +341,8 @@ bool audioHandler::init(audioSetup setupIn)
 	unsigned int ratioDen;
 
 	wf_resampler_get_ratio(resampler, &ratioNum, &ratioDen);
-	resampleRatio = ratioDen / ratioNum;
-	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "wf_resampler_init() returned: " << resample_error << " resampleRatio" << resampleRatio;
+	resampleRatio = static_cast<double>(ratioDen) / ratioNum;
+	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "wf_resampler_init() returned: " << resample_error << " resampleRatio: " << resampleRatio;
 
     qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "thread id" << QThread::currentThreadId();
 
@@ -728,7 +728,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		// Packet will arrive as stereo interleaved 16bit 48K
 		if (resampleRatio != 1.0)
 		{
-			quint32 outFrames = ((packet.data.length() / 2 / devChannels) / resampleRatio);
+			quint32 outFrames = ((packet.data.length() / 2 / devChannels) * resampleRatio);
 			quint32 inFrames = (packet.data.length() / 2 / devChannels);
 			QByteArray outPacket((int)outFrames * 2 * devChannels, (char)0xff);
 
