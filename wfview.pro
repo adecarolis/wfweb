@@ -59,7 +59,7 @@ contains(DEFINES, RTAUDIO) {
 	win32:SOURCES += ../rtaudio/RTAudio.cpp
 	win32:HEADERS += ../rtaudio/RTAUdio.h
 	!linux:INCLUDEPATH += ../rtaudio
-	linux:LIBS += -lpulse -lpulse-simple -lpthread
+	linux:LIBS += -lpulse -lpulse-simple -lrtaudio -lpthread
 }
 
 contains(DEFINES, PORTAUDIO) {
