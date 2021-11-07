@@ -34,6 +34,7 @@ audioHandler::~audioHandler()
 		delete audio;
 #elif defined(PORTAUDIO)
 		Pa_StopStream(audio);
+		Pa_CloseStream(audio);
 #else
 		stop();
 #endif
@@ -230,21 +231,20 @@ bool audioHandler::init(audioSetup setupIn)
 	else {
 		devChannels = info->maxOutputChannels;
 	}
-	qInfo(logAudio()) << "		Channels:" << devChannels;
 	if (devChannels > 2) {
 		devChannels = 2;
 	}
 	aParams.channelCount = devChannels;
 
+	qInfo(logAudio()) << "		Channels:" << devChannels;
 	qInfo(logAudio()) << "		chunkSize: " << chunkSize;
+	qInfo(logAudio()) << "		sampleRate: " << nativeSampleRate;
 
 	if (setup.isinput) {
 		err=Pa_OpenStream(&audio, &aParams, 0, this->nativeSampleRate, this->chunkSize, paNoFlag, &audioHandler::staticWrite, (void*)this);
-		//err = Pa_OpenDefaultStream(&audio, 2, 0, paFloat32, this->nativeSampleRate, this->chunkSize, &audioHandler::staticWrite, (void*)this);
 	}
 	else {
 		err=Pa_OpenStream(&audio, 0, &aParams, this->nativeSampleRate, this->chunkSize, paNoFlag, &audioHandler::staticRead, (void*)this);
-		//err = Pa_OpenDefaultStream(&audio, 0, 2, paFloat32, this->nativeSampleRate, this->chunkSize, &audioHandler::staticRead, (void*)this);
 	}
 
 	if (err == paNoError) {
@@ -257,9 +257,6 @@ bool audioHandler::init(audioSetup setupIn)
 	else {
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "failed to open device" << Pa_GetErrorText(err);
 	}
-	//qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "detected latency:" << audio->getStreamLatency();
-	
-
 
 
 #else

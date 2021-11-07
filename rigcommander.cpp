@@ -63,6 +63,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
     connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
     // data from the program to the comm port:
     connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
+    connect(this, SIGNAL(toggleRTS(bool)), comm, SLOT(setRTS(bool)));
 
     // data from the rig to the ptty:
     connect(comm, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
@@ -236,6 +237,9 @@ void rigCommander::findRigs()
     data.append(payloadSuffix);
 
     emit dataForComm(data);
+    // HACK for testing radios that do not respond to rig ID queries: 
+    //this->model = model736;
+    //this->determineRigCaps();
     return;
 }
 
@@ -989,9 +993,14 @@ void rigCommander::getSatelliteMode()
 
 void rigCommander::getPTT()
 {
-    QByteArray payload;
-    payload.setRawData("\x1C\x00", 2);
-    prepDataAndSend(payload);
+    //if(rigCaps.useRTSforPTT && !usingNativeLAN)
+    //{
+    //    emit havePTTStatus(comm->rtsStatus());
+    //} else {
+        QByteArray payload;
+        payload.setRawData("\x1C\x00", 2);
+        prepDataAndSend(payload);
+    //}
 }
 
 void rigCommander::getBandStackReg(char band, char regCode)
@@ -1359,6 +1368,17 @@ void rigCommander::parseLevels()
                 emit haveSql(level);
                 rigState.squelch = level;
                 break;
+            case '\x07':
+                // Twin BPF Inner, or, IF-Shift level
+                if(rigCaps.hasTBPF)
+                    emit haveTPBFInner(level);
+                else
+                    emit haveIFShift(level);
+                break;
+            case '\x08':
+                // Twin BPF Outer
+                emit haveTPBFOuter(level);
+                break;
             case '\x09':
                 // CW Pitch - ignore for now
                 break;
@@ -1464,6 +1484,27 @@ void rigCommander::parseLevels()
     return;
     }
 
+}
+
+void rigCommander::setIFShift(unsigned char level)
+{
+    QByteArray payload("\x14\x07");
+    payload.append(bcdEncodeInt(level));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setTPBFInner(unsigned char level)
+{
+    QByteArray payload("\x14\x07");
+    payload.append(bcdEncodeInt(level));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setTPBFOuter(unsigned char level)
+{
+    QByteArray payload("\x14\x08");
+    payload.append(bcdEncodeInt(level));
+    prepDataAndSend(payload);
 }
 
 void rigCommander::setTxPower(unsigned char power)
@@ -1889,6 +1930,24 @@ void rigCommander::getAfGain()
     prepDataAndSend(payload);
 }
 
+void rigCommander::getIFShift()
+{
+    QByteArray payload("\x14\x07");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getTPBFInner()
+{
+    QByteArray payload("\x14\x07");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getTPBFOuter()
+{
+    QByteArray payload("\x14\x08");
+    prepDataAndSend(payload);
+}
+
 void rigCommander::getSql()
 {
     QByteArray payload("\x14\x03");
@@ -2276,6 +2335,8 @@ void rigCommander::parseRegister21()
             longfreq = payloadIn.mid(2,2);
             longfreq.append(QByteArray(3,'\x00'));
             f = parseFrequency(longfreq, 3);
+            if(payloadIn.length() < 5)
+                break;
             ritHz = f.Hz*((payloadIn.at(4)=='\x01')?-1:1);
             emit haveRitFrequency(ritHz);
             break;
@@ -2824,6 +2885,9 @@ void rigCommander::determineRigCaps()
     rigCaps.hasCTCSS = false;
     rigCaps.hasDTCS = false;
 
+    rigCaps.hasTBPF = false;
+    rigCaps.hasIFShift = false;
+
     rigCaps.spectSeqMax = 0;
     rigCaps.spectAmpMax = 0;
     rigCaps.spectLenMax = 0;
@@ -2852,6 +2916,7 @@ void rigCommander::determineRigCaps()
 
     rigCaps.hasTransmit = true;
     rigCaps.hasPTTCommand = true;
+    rigCaps.useRTSforPTT = false;
 
     // Common, reasonable defaults for most supported HF rigs:
     rigCaps.bsr[band160m] = 0x01;
@@ -2894,6 +2959,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -2922,6 +2988,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
             rigCaps.hasDV = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x10');
             rigCaps.attenuators.push_back('\x20');
             rigCaps.attenuators.push_back('\x30');
@@ -2959,6 +3026,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasDV = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x10');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardVU;
@@ -3007,6 +3075,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = false;
             rigCaps.hasDTCS = false;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(), {0x00, 0x06, 0x12, 0x18});
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -3033,6 +3102,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
             rigCaps.hasCTCSS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),
                                       {'\x03', '\x06', '\x09', '\x12',\
                                        '\x15', '\x18', '\x21', '\x24',\
@@ -3067,6 +3137,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),
                                       {'\x03', '\x06', '\x09',
                                        '\x12', '\x15', '\x18', '\x21'});
@@ -3101,6 +3172,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x10' , '\x20'});
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -3133,6 +3205,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x12');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardHF;
@@ -3156,6 +3229,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -3179,6 +3253,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x12');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -3207,6 +3282,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardHF;
@@ -3226,6 +3302,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
             rigCaps.hasCTCSS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),
                                       {'\x06', '\x12', '\x18'});
             rigCaps.preamps.push_back('\x01');
@@ -3253,6 +3330,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.hasPTTCommand = false;
+            rigCaps.useRTSforPTT = true;
             rigCaps.hasDataModes = false;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.bands = standardHF;
@@ -3273,6 +3351,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = false;
             rigCaps.hasPTTCommand = false;
+            rigCaps.useRTSforPTT = true;
+            rigCaps.hasIFShift = true;
             rigCaps.hasDataModes = false;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
@@ -3286,6 +3366,28 @@ void rigCommander::determineRigCaps()
                             };
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             break;
+        case model736:
+            rigCaps.modelName = QString("IC-736");
+            rigCaps.rigctlModel = 3020;
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.clear();
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
+            rigCaps.hasATU = false;
+            rigCaps.hasPTTCommand = false;
+            rigCaps.useRTSforPTT = true;
+            rigCaps.hasDataModes = false;
+            rigCaps.hasIFShift = true; // untested
+            rigCaps.attenuators.push_back('\x20');
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.bands = standardHF;
+            rigCaps.modes = { createMode(modeLSB, 0x00, "LSB"), createMode(modeUSB, 0x01, "USB"),
+                              createMode(modeAM, 0x02, "AM"), createMode(modeFM, 0x05, "FM"),
+                              createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
+                            };
+            break;
         case model756pro:
             rigCaps.modelName = QString("IC-756 Pro");
             rigCaps.rigctlModel = 3027;
@@ -3296,6 +3398,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
+            rigCaps.hasTBPF = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
@@ -3316,6 +3419,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
+            rigCaps.hasTBPF = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
@@ -3336,6 +3440,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
+            rigCaps.hasTBPF = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
@@ -3345,6 +3450,34 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
+            break;
+        case model9100:
+            rigCaps.modelName = QString("IC-9100");
+            rigCaps.rigctlModel = 3068;
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.append(inputUSB); // TODO, add commands for this radio's inputs
+            rigCaps.inputs.append(inputACC);
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
+            rigCaps.hasATU = true;
+            rigCaps.hasDV = true;
+            rigCaps.hasTBPF = true;
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x20' });
+            rigCaps.antennas = {0x00, 0x01};
+            rigCaps.bands = standardHF;
+            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+            rigCaps.bands.push_back(band23cm);
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.bsr[band2m] = 0x11;
+            rigCaps.bsr[band70cm] = 0x12;
+            rigCaps.bsr[band23cm] = 0x13;
+            rigCaps.bsr[bandGen] = 0x14;
+            rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeDV, 0x17, "DV")});
             break;
         default:
             rigCaps.modelName = QString("IC-0x%1").arg(rigCaps.modelID, 2, 16);
@@ -3371,6 +3504,10 @@ void rigCommander::determineRigCaps()
             break;
     }
     haveRigCaps = true;
+
+    if(!usingNativeLAN)
+        comm->setUseRTSforPTT(rigCaps.useRTSforPTT);
+
 
     if(lookingForRig)
     {
@@ -3813,6 +3950,29 @@ void rigCommander::getRigID()
     QByteArray payload;
     payload.setRawData("\x19\x00", 2);
     prepDataAndSend(payload);
+}
+
+void rigCommander::setRigID(unsigned char rigID)
+{
+    // This function overrides radio model detection.
+    // It can be used for radios without Rig ID commands,
+    // or to force a specific radio model
+
+    qInfo(logRig()) << "Sending rig ID to: (int)" << (int)rigID;
+
+
+    lookingForRig = true;
+    foundRig = false;
+
+    // needed because this is a fake message and thus the value is uninitialized
+    // this->civAddr comes from how rigCommander is setup and should be accurate.
+    this->incomingCIVAddr = this->civAddr;
+
+    this->model = determineRadioModel(rigID);
+    rigCaps.modelID = rigID;
+    rigCaps.model = determineRadioModel(rigID);
+
+    determineRigCaps();
 }
 
 void rigCommander::changeLatency(const quint16 value)
