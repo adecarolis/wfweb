@@ -20,6 +20,7 @@ commHandler::commHandler()
     baudrate = 115200;
     stopbits = 1;
     portName = "/dev/ttyUSB0";
+    this->PTTviaRTS = false;
 
     setupComm(); // basic parameters
     openPort();
@@ -81,6 +82,59 @@ void commHandler::sendDataOut(const QByteArray &writeData)
     mutex.lock();
 
     qint64 bytesWritten;
+
+    if(PTTviaRTS)
+    {
+        // Size:    1  2  3    4    5    6    7    8
+        //index:    0  1  2    3    4    5    6    7
+        //Query:   FE FE TO FROM 0x1C 0x00 0xFD
+        //PTT On:  FE FE TO FROM 0x1C 0x00 0x01 0xFD
+        //PTT Off: FE FE TO FROM 0x1C 0x00 0x00 0xFD
+
+        if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\xFD")))
+        {
+            // Query
+            qDebug(logSerial()) << "Looks like PTT Query";
+
+
+            bool pttOn = this->rtsStatus();
+            QByteArray pttreturncmd = QByteArray("\xFE\xFE");
+            pttreturncmd.append(writeData.at(3));
+            pttreturncmd.append(writeData.at(2));
+            pttreturncmd.append(QByteArray("\x1C\x00", 2));
+            pttreturncmd.append((char)pttOn);
+            pttreturncmd.append("\xFD");
+            qDebug(logSerial()) << "Sending fake PTT query result: " << (bool)pttOn;
+            printHex(pttreturncmd, false, true);
+            emit haveDataFromPort(pttreturncmd);
+
+
+            mutex.unlock();
+            return;
+        } else if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\x01\xFD")))
+        {
+            // PTT ON
+            qDebug(logSerial()) << "Looks like PTT ON";
+            setRTS(true);
+            mutex.unlock();
+            return;
+        } else if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\x00\xFD")))
+        {
+            // PTT OFF
+            qDebug(logSerial()) << "Looks like PTT OFF";
+            setRTS(false);
+            mutex.unlock();
+            return;
+        } else if (writeData.length() > 6)
+        {
+            if(writeData.at(4) == 0x1c )
+            {
+                qDebug(logSerial()) << "Potential 0x1C PTT command did not match. Has length " << writeData.length() << " and contains:";
+                printHex(writeData, false, true);
+            }
+        }
+    }
+
     bytesWritten = port->write(writeData);
 
     if(bytesWritten != (qint64)writeData.size())

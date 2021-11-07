@@ -993,14 +993,14 @@ void rigCommander::getSatelliteMode()
 
 void rigCommander::getPTT()
 {
-    if(rigCaps.useRTSforPTT)
-    {
-        emit havePTTStatus(comm->rtsStatus());
-    } else {
+    //if(rigCaps.useRTSforPTT && !usingNativeLAN)
+    //{
+    //    emit havePTTStatus(comm->rtsStatus());
+    //} else {
         QByteArray payload;
         payload.setRawData("\x1C\x00", 2);
         prepDataAndSend(payload);
-    }
+    //}
 }
 
 void rigCommander::getBandStackReg(char band, char regCode)
@@ -1017,14 +1017,9 @@ void rigCommander::setPTT(bool pttOn)
 
     if(pttAllowed)
     {
-        if(rigCaps.useRTSforPTT)
-        {
-            emit toggleRTS(pttOn);
-        } else {
-            QByteArray payload("\x1C\x00", 2);
-            payload.append((char)pttOn);
-            prepDataAndSend(payload);
-        }
+        QByteArray payload("\x1C\x00", 2);
+        payload.append((char)pttOn);
+        prepDataAndSend(payload);
         rigState.ptt = pttOn;
     }
 }
@@ -2340,6 +2335,8 @@ void rigCommander::parseRegister21()
             longfreq = payloadIn.mid(2,2);
             longfreq.append(QByteArray(3,'\x00'));
             f = parseFrequency(longfreq, 3);
+            if(payloadIn.length() < 5)
+                break;
             ritHz = f.Hz*((payloadIn.at(4)=='\x01')?-1:1);
             emit haveRitFrequency(ritHz);
             break;
@@ -3507,6 +3504,10 @@ void rigCommander::determineRigCaps()
             break;
     }
     haveRigCaps = true;
+
+    if(!usingNativeLAN)
+        comm->setUseRTSforPTT(rigCaps.useRTSforPTT);
+
 
     if(lookingForRig)
     {

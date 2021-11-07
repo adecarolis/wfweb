@@ -2614,10 +2614,12 @@ void wfmain::doCmd(cmds cmd)
             emit getSpectrumRefLevel();
             break;
         case cmdGetATUStatus:
-            emit getATUStatus();
+            if(rigCaps.hasATU)
+                emit getATUStatus();
             break;
         case cmdStartATU:
-            emit startATU();
+            if(rigCaps.hasATU)
+                emit startATU();
             break;
         case cmdGetAttenuator:
             emit getAttenuator();
@@ -2635,10 +2637,7 @@ void wfmain::doCmd(cmds cmd)
             emit setScopeMode(spectModeFixed);
             break;
         case cmdGetPTT:
-            if(rigCaps.hasPTTCommand)
-            {
-                emit getPTT();
-            }
+            emit getPTT();
             break;
         case cmdGetTxRxMeter:
             if(amTransmitting)
@@ -3094,12 +3093,16 @@ void wfmain::initPeriodicCommands()
 
     insertSlowPeriodicCommand(cmdGetFreq, 128);
     insertSlowPeriodicCommand(cmdGetMode, 128);
-    insertSlowPeriodicCommand(cmdGetPTT, 128);
+    if(rigCaps.hasTransmit)
+        insertSlowPeriodicCommand(cmdGetPTT, 128);
     insertSlowPeriodicCommand(cmdGetTxPower, 128);
     insertSlowPeriodicCommand(cmdGetRxGain, 128);
-    insertSlowPeriodicCommand(cmdGetAttenuator, 128);
-    insertSlowPeriodicCommand(cmdGetPTT, 128);
-    insertSlowPeriodicCommand(cmdGetPreamp, 128);
+    if(rigCaps.hasAttenuator)
+        insertSlowPeriodicCommand(cmdGetAttenuator, 128);
+    if(rigCaps.hasTransmit)
+        insertSlowPeriodicCommand(cmdGetPTT, 128);
+    if(rigCaps.hasPreamp)
+        insertSlowPeriodicCommand(cmdGetPreamp, 128);
     if (rigCaps.hasRXAntenna) {
         insertSlowPeriodicCommand(cmdGetAntenna, 128);
     }
@@ -5437,7 +5440,9 @@ void wfmain::on_moreControlsBtn_clicked()
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    trxadj->show();
+    // issueDelayedCommand(cmdGetRigID);
+    emit getRigCIV();
+    //trxadj->show();
     //setRadioTimeDatePrep();
     //wf->setInteraction(QCP::iRangeZoom, true);
     //wf->setInteraction(QCP::iRangeDrag, true);
