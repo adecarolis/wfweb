@@ -34,6 +34,7 @@ DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 
 # These defines are used for the resampler
 equals(QT_ARCH, i386): DEFINES += USE_SSE
+equals(QT_ARCH, i386): DEFINES += USE_SSE2
 equals(QT_ARCH, arm): DEFINES += USE_NEON
 DEFINES += OUTSIDE_SPEEX
 DEFINES += RANDOM_PREFIX=wf
