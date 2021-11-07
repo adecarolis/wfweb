@@ -408,6 +408,7 @@ void wfmain::makeRig()
         connect(this, SIGNAL(sendCloseComm()), rig, SLOT(closeComm()));
         connect(this, SIGNAL(sendChangeLatency(quint16)), rig, SLOT(changeLatency(quint16)));
         connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
+        connect(this, SIGNAL(setRigID(unsigned char)), rig, SLOT(setRigID(unsigned char)));
         connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
@@ -532,8 +533,14 @@ void wfmain::receiveCommReady()
         // We still query the rigID to find the model, but at least we know the CIV.
         qInfo(logSystem()) << "Skipping automatic CIV, using user-supplied value of " << prefs.radioCIVAddr;
         showStatusBarText(QString("Using user-supplied radio CI-V address of 0x%1").arg(prefs.radioCIVAddr, 2, 16));
-        emit getRigID();
-        getInitialRigState();
+        if(prefs.CIVisRadioModel)
+        {
+            qInfo(logSystem()) << "Skipping Rig ID query, using user-supplied model from CI-V address: " << prefs.radioCIVAddr;
+            emit setRigID(prefs.radioCIVAddr);
+        } else {
+            emit getRigID();
+            getInitialRigState();
+        }
     }
 }
 
@@ -990,6 +997,10 @@ void wfmain::setUIToPrefs()
 
     ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
+
+    ui->useCIVasRigIDChk->blockSignals(true);
+    ui->useCIVasRigIDChk->setChecked(prefs.CIVisRadioModel);
+    ui->useCIVasRigIDChk->blockSignals(false);
 }
 
 void wfmain::setAudioDevicesUI()
@@ -1285,6 +1296,7 @@ void wfmain::setDefPrefs()
     defPrefs.wfInterpolate = true;
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
     defPrefs.radioCIVAddr = 0x00; // previously was 0x94 for 7300.
+    defPrefs.CIVisRadioModel = false;
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.serialPortBaud = 115200;
     defPrefs.enablePTT = false;
@@ -1382,6 +1394,9 @@ void wfmain::loadSettings()
         ui->rigCIVManualAddrChk->setChecked(false);
         ui->rigCIVaddrHexLine->setEnabled(false);
     }
+    prefs.CIVisRadioModel = (bool)settings->value("CIVisRadioModel", defPrefs.CIVisRadioModel).toBool();
+
+
     prefs.serialPortRadio = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
     int serialIndex = ui->serialDeviceListCombo->findText(prefs.serialPortRadio);
     if (serialIndex != -1) {
@@ -1640,6 +1655,7 @@ void wfmain::saveSettings()
     // Radio and Comms: C-IV addr, port to use
     settings->beginGroup("Radio");
     settings->setValue("RigCIVuInt", prefs.radioCIVAddr);
+    settings->setValue("CIVisRadioModel", prefs.CIVisRadioModel);
     settings->setValue("SerialPortRadio", prefs.serialPortRadio);
     settings->setValue("SerialPortBaud", prefs.serialPortBaud);
     settings->setValue("VirtualSerialPort", prefs.virtualSerialPort);
@@ -2650,10 +2666,12 @@ void wfmain::doCmd(cmds cmd)
             emit getSpectrumRefLevel();
             break;
         case cmdGetATUStatus:
-            emit getATUStatus();
+            if(rigCaps.hasATU)
+                emit getATUStatus();
             break;
         case cmdStartATU:
-            emit startATU();
+            if(rigCaps.hasATU)
+                emit startATU();
             break;
         case cmdGetAttenuator:
             emit getAttenuator();
@@ -2671,10 +2689,7 @@ void wfmain::doCmd(cmds cmd)
             emit setScopeMode(spectModeFixed);
             break;
         case cmdGetPTT:
-            if(rigCaps.hasPTTCommand)
-            {
-                emit getPTT();
-            }
+            emit getPTT();
             break;
         case cmdGetTxRxMeter:
             if(amTransmitting)
@@ -3130,12 +3145,16 @@ void wfmain::initPeriodicCommands()
 
     insertSlowPeriodicCommand(cmdGetFreq, 128);
     insertSlowPeriodicCommand(cmdGetMode, 128);
-    insertSlowPeriodicCommand(cmdGetPTT, 128);
+    if(rigCaps.hasTransmit)
+        insertSlowPeriodicCommand(cmdGetPTT, 128);
     insertSlowPeriodicCommand(cmdGetTxPower, 128);
     insertSlowPeriodicCommand(cmdGetRxGain, 128);
-    insertSlowPeriodicCommand(cmdGetAttenuator, 128);
-    insertSlowPeriodicCommand(cmdGetPTT, 128);
-    insertSlowPeriodicCommand(cmdGetPreamp, 128);
+    if(rigCaps.hasAttenuator)
+        insertSlowPeriodicCommand(cmdGetAttenuator, 128);
+    if(rigCaps.hasTransmit)
+        insertSlowPeriodicCommand(cmdGetPTT, 128);
+    if(rigCaps.hasPreamp)
+        insertSlowPeriodicCommand(cmdGetPreamp, 128);
     if (rigCaps.hasRXAntenna) {
         insertSlowPeriodicCommand(cmdGetAntenna, 128);
     }
@@ -5471,11 +5490,18 @@ void wfmain::on_moreControlsBtn_clicked()
     trxadj->show();
 }
 
+void wfmain::on_useCIVasRigIDChk_clicked(bool checked)
+{
+    prefs.CIVisRadioModel = checked;
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    trxadj->show();
+    // issueDelayedCommand(cmdGetRigID);
+    emit getRigCIV();
+    //trxadj->show();
     //setRadioTimeDatePrep();
     //wf->setInteraction(QCP::iRangeZoom, true);
     //wf->setInteraction(QCP::iRangeDrag, true);

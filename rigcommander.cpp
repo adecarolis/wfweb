@@ -993,14 +993,14 @@ void rigCommander::getSatelliteMode()
 
 void rigCommander::getPTT()
 {
-    if(rigCaps.useRTSforPTT)
-    {
-        emit havePTTStatus(comm->rtsStatus());
-    } else {
+    //if(rigCaps.useRTSforPTT && !usingNativeLAN)
+    //{
+    //    emit havePTTStatus(comm->rtsStatus());
+    //} else {
         QByteArray payload;
         payload.setRawData("\x1C\x00", 2);
         prepDataAndSend(payload);
-    }
+    //}
 }
 
 void rigCommander::getBandStackReg(char band, char regCode)
@@ -1017,14 +1017,9 @@ void rigCommander::setPTT(bool pttOn)
 
     if(pttAllowed)
     {
-        if(rigCaps.useRTSforPTT)
-        {
-            emit toggleRTS(pttOn);
-        } else {
-            QByteArray payload("\x1C\x00", 2);
-            payload.append((char)pttOn);
-            prepDataAndSend(payload);
-        }
+        QByteArray payload("\x1C\x00", 2);
+        payload.append((char)pttOn);
+        prepDataAndSend(payload);
         rigState.ptt = pttOn;
     }
 }
@@ -2340,6 +2335,8 @@ void rigCommander::parseRegister21()
             longfreq = payloadIn.mid(2,2);
             longfreq.append(QByteArray(3,'\x00'));
             f = parseFrequency(longfreq, 3);
+            if(payloadIn.length() < 5)
+                break;
             ritHz = f.Hz*((payloadIn.at(4)=='\x01')?-1:1);
             emit haveRitFrequency(ritHz);
             break;
@@ -3508,6 +3505,10 @@ void rigCommander::determineRigCaps()
     }
     haveRigCaps = true;
 
+    if(!usingNativeLAN)
+        comm->setUseRTSforPTT(rigCaps.useRTSforPTT);
+
+
     if(lookingForRig)
     {
         lookingForRig = false;
@@ -3949,6 +3950,29 @@ void rigCommander::getRigID()
     QByteArray payload;
     payload.setRawData("\x19\x00", 2);
     prepDataAndSend(payload);
+}
+
+void rigCommander::setRigID(unsigned char rigID)
+{
+    // This function overrides radio model detection.
+    // It can be used for radios without Rig ID commands,
+    // or to force a specific radio model
+
+    qInfo(logRig()) << "Sending rig ID to: (int)" << (int)rigID;
+
+
+    lookingForRig = true;
+    foundRig = false;
+
+    // needed because this is a fake message and thus the value is uninitialized
+    // this->civAddr comes from how rigCommander is setup and should be accurate.
+    this->incomingCIVAddr = this->civAddr;
+
+    this->model = determineRadioModel(rigID);
+    rigCaps.modelID = rigID;
+    rigCaps.model = determineRadioModel(rigID);
+
+    determineRigCaps();
 }
 
 void rigCommander::changeLatency(const quint16 value)

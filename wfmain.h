@@ -51,6 +51,7 @@ public:
 signals:
     // Basic to rig:
     void setCIVAddr(unsigned char newRigCIVAddr);
+    void setRigID(unsigned char rigID);
 
     // Power
     void sendPowerOn();
@@ -497,6 +498,8 @@ private slots:
 
     void on_moreControlsBtn_clicked();
 
+    void on_useCIVasRigIDChk_clicked(bool checked);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -714,6 +717,7 @@ private:
         bool wfInterpolate;
         QString stylesheetPath;
         unsigned char radioCIVAddr;
+        bool CIVisRadioModel;
         QString serialPortRadio;
         quint32 serialPortBaud;
         bool enablePTT;
