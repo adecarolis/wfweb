@@ -36,13 +36,13 @@ typedef signed short  MY_TYPE;
 #include <QTime>
 #include <QMap>
 #if defined(__x86_64__) || defined(__i386__) || defined(_M_IX86_FP)
-#if !defined(USE_SSE)
-#define USE_SSE
-#endif
+#undef USE_NEON
+#define USE_SSE 1
+#define USE_SSE2 1
 #else
-#if !defined(USE_NEON)
-#define USE_NEON
-#endif
+#undef USE_SSE
+#undef SUE_SSE2
+#define USE_NEON 1
 #endif
 
 #include "resampler/speex_resampler.h"
