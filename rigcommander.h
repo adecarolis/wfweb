@@ -280,6 +280,7 @@ public slots:
     // Rig ID and CIV:
     void getRigID();
     void findRigs();
+    void setRigID(unsigned char rigID);
     void setCIVAddr(unsigned char civAddr);
 
     // Calibration:

@@ -3952,6 +3952,25 @@ void rigCommander::getRigID()
     prepDataAndSend(payload);
 }
 
+void rigCommander::setRigID(unsigned char rigID)
+{
+    // This function overrides radio model detection.
+    // It can be used for radios without Rig ID commands,
+    // or to force a specific radio model
+
+    qInfo(logRig()) << "Sending rig ID to: (int)" << (int)rigID;
+
+
+    lookingForRig = true;
+    foundRig = false;
+
+    this->model = determineRadioModel(rigID);
+    rigCaps.modelID = rigID;
+    rigCaps.model = determineRadioModel(rigID);
+
+    determineRigCaps();
+}
+
 void rigCommander::changeLatency(const quint16 value)
 {
     emit haveChangeLatency(value);
