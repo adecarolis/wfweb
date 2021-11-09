@@ -214,7 +214,13 @@ bool audioHandler::init(audioSetup setupIn)
 	aParams.channelCount = 2;
 	aParams.hostApiSpecificStreamInfo = NULL;
 	aParams.sampleFormat = paInt16;
-	aParams.suggestedLatency = info->defaultLowInputLatency;
+	if (setup.isinput) {
+		aParams.suggestedLatency = info->defaultLowInputLatency;
+	}
+	else {
+		aParams.suggestedLatency = info->defaultLowOutputLatency;
+	}
+
 	aParams.hostApiSpecificStreamInfo = NULL; 
 
 	// Always use the "preferred" sample rate
@@ -459,14 +465,16 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 				//qDebug(logAudio()) << "Adding partial:" << send;
 			}
 
-			while (currentLatency > setup.latency) {
+			if (currentLatency > setup.latency) {
 				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
 					" arrived too late (increase output latency!) " <<
 					dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
-				lastSeq = packet.seq;
-				if (!ringBuf->try_read(packet))
-					break;
-				currentLatency = packet.time.msecsTo(QTime::currentTime());
+				while (currentLatency > setup.latency/2) {
+					if (!ringBuf->try_read(packet)) {
+						break;
+					}
+					currentLatency = packet.time.msecsTo(QTime::currentTime());
+				}
 			}
 
 			int send = qMin((int)nBytes - sentlen, packet.data.length());
