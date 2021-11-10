@@ -575,7 +575,6 @@ qint64 audioHandler::writeData(const char* data, qint64 nBytes)
 #endif
 }
 
-
 void audioHandler::incomingAudio(audioPacket inPacket)
 {
 	// No point buffering audio until stream is actually running.
@@ -594,8 +593,17 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		/* Decode the frame. */
 		QByteArray outPacket((setup.samplerate / 50) *  sizeof(qint16) * setup.radioChan, (char)0xff); // Preset the output buffer size.
 		qint16* out = (qint16*)outPacket.data();
+		
+		std::exception_ptr eptr;
+		int nSamples = 0;
 
-		int nSamples = opus_decode(decoder, in, inPacket.data.size(), out, (setup.samplerate / 50), 0);
+		try {
+			nSamples = opus_decode(decoder, in, inPacket.data.size(), out, (setup.samplerate / 50), 0);
+		}
+		catch (...) {
+			qInfo(logAudio()) << "Exception occurred in opus_decode: nSamples=" << nSamples << 
+				"in=" <<inPacket.data.size() << "bytes, out=" << outPacket.size() << " bytes";
+		}
 
 		if (nSamples < 0)
 		{
