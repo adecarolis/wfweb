@@ -346,7 +346,7 @@ void udpHandler::dataReceived()
                             audio = new udpAudio(localIP, radioIP, audioPort, rxSetup, txSetup);
 
                             QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
-                            //QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+                            QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
                             QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16)));
                             QObject::connect(this, SIGNAL(haveSetVolume(unsigned char)), audio, SLOT(setVolume(unsigned char)));
 
@@ -740,7 +740,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, audio
     connect(this, SIGNAL(setupRxAudio(audioSetup)), rxaudio, SLOT(init(audioSetup)));
 
     // signal/slot not currently used.
-    //connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
+    connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
     connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
     connect(this, SIGNAL(haveSetVolume(unsigned char)), rxaudio, SLOT(setVolume(unsigned char)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
@@ -945,8 +945,8 @@ void udpAudio::dataReceived()
                     tempAudio.data = r.mid(0x18);
                     // Prefer signal/slot to forward audio as it is thread/safe
                     // Need to do more testing but latency appears fine.
-                    rxaudio->incomingAudio(tempAudio);
-                    //emit haveAudioData(tempAudio);
+                    //rxaudio->incomingAudio(tempAudio);
+                    emit haveAudioData(tempAudio);
                     audioLatency = rxaudio->getLatency();
                 }
                 break;

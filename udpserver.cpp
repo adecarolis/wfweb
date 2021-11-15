@@ -670,8 +670,8 @@ void udpServer::audioReceived()
                     tempAudio.sent = 0;
                     tempAudio.data = r.mid(0x18);
                     //qInfo(logUdpServer()) << "sending tx audio " << in->seq;
-                    //emit haveAudioData(tempAudio);
-                    txaudio->incomingAudio(tempAudio);
+                    emit haveAudioData(tempAudio);
+                    //txaudio->incomingAudio(tempAudio);
 
                 }
             }
