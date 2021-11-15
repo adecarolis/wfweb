@@ -32,6 +32,7 @@
 #define AREYOUTHERE_PERIOD 500
 #define WATCHDOG_PERIOD 500
 #define RETRANSMIT_PERIOD 100
+#define LOCK_PERIOD 100
 
 struct udpPreferences {
 	QString ipAddress;
@@ -196,6 +197,8 @@ private:
 
 	QTimer* txAudioTimer=Q_NULLPTR;
 	bool enableTx = true;
+
+	QMutex audioMutex;
 
 };
 

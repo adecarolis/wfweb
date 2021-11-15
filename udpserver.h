@@ -154,6 +154,7 @@ private:
 
 	QMutex udpMutex; // Used for critical operations.
 	QMutex connMutex;
+	QMutex audioMutex;
 
 	QList <CLIENT*> controlClients = QList<CLIENT*>();
 	QList <CLIENT*> civClients = QList<CLIENT*>();

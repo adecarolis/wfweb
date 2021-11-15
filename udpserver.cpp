@@ -159,7 +159,7 @@ void udpServer::controlReceived()
             current->commonCap = 0x8010;
             qInfo(logUdpServer()) << current->ipAddress.toString() << ": New Control connection created";
 
-            if (connMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD))) 
+            if (connMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
             {
                 controlClients.append(current);
                 connMutex.unlock();
@@ -1469,14 +1469,22 @@ void udpServer::sendRxAudio()
 {
     QByteArray audio;
     if (rxaudio) {
-        audio.clear();
-        rxaudio->getNextAudioChunk(audio);
-        int len = 0;
-        while (len < audio.length()) {
-            audioPacket partial;
-            partial.data = audio.mid(len, 1364);
-            receiveAudioData(partial);
-            len = len + partial.data.length();
+        if (audioMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
+        {
+            audio.clear();
+            rxaudio->getNextAudioChunk(audio);
+            // Now we have the next audio chunk, we can release the mutex.
+            audioMutex.unlock();
+            int len = 0;
+            while (len < audio.length()) {
+                audioPacket partial;
+                partial.data = audio.mid(len, 1364);
+                receiveAudioData(partial);
+                len = len + partial.data.length();
+            }
+        }
+        else {
+            qInfo(logUdpServer()) << "Unable to lock mutex for rxaudio";
         }
     }
 }
