@@ -223,10 +223,14 @@ bool audioHandler::init(audioSetup setupIn)
 
 	aParams.hostApiSpecificStreamInfo = NULL; 
 
-	// Always use the "preferred" sample rate
+	// Always use the "preferred" sample rate (unless it is 44100) 
 	// We can always resample if needed
-	this->nativeSampleRate = info->defaultSampleRate;
-
+	if (info->defaultSampleRate == 44100) {
+		this->nativeSampleRate = 48000;
+	} 
+	else {
+		this->nativeSampleRate = info->defaultSampleRate;
+	}
 	// Per channel chunk size.
 	this->chunkSize = (this->nativeSampleRate / 50);
 
