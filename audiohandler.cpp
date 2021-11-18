@@ -223,10 +223,14 @@ bool audioHandler::init(audioSetup setupIn)
 
 	aParams.hostApiSpecificStreamInfo = NULL; 
 
-	// Always use the "preferred" sample rate
+	// Always use the "preferred" sample rate (unless it is 44100) 
 	// We can always resample if needed
-	this->nativeSampleRate = info->defaultSampleRate;
-
+	if (info->defaultSampleRate == 44100) {
+		this->nativeSampleRate = 48000;
+	} 
+	else {
+		this->nativeSampleRate = info->defaultSampleRate;
+	}
 	// Per channel chunk size.
 	this->chunkSize = (this->nativeSampleRate / 50);
 
@@ -444,7 +448,7 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 			audioPacket packet;
 			if (!ringBuf->try_read(packet))
 			{
-				qDebug() << "No more data available but buffer is not full! sentlen:" << sentlen << " nBytes:" << nBytes ;
+				qDebug(logAudio()) << "No more data available but buffer is not full! sentlen:" << sentlen << " nBytes:" << nBytes ;
 				break;
 			}
 			currentLatency = packet.time.msecsTo(QTime::currentTime());
@@ -466,7 +470,7 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 			}
 
 			if (currentLatency > setup.latency) {
-				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
+				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
 					" arrived too late (increase output latency!) " <<
 					dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
 				while (currentLatency > setup.latency/2) {
@@ -489,12 +493,14 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 				break;
 			}
 
+			/*
 			if (packet.seq <= lastSeq) {
 				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Duplicate/early audio packet: " << hex << lastSeq << " got " << hex << packet.seq;
 			}
 			else if (packet.seq != lastSeq + 1) {
 				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Missing audio packet(s) from: " << hex << lastSeq + 1 << " to " << hex << packet.seq - 1;
 			}
+			*/
 			lastSeq = packet.seq;
 		}
 	}

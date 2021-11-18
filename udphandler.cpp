@@ -346,7 +346,7 @@ void udpHandler::dataReceived()
                             audio = new udpAudio(localIP, radioIP, audioPort, rxSetup, txSetup);
 
                             QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
-                            //QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+                            QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
                             QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16)));
                             QObject::connect(this, SIGNAL(haveSetVolume(unsigned char)), audio, SLOT(setVolume(unsigned char)));
 
@@ -740,7 +740,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, audio
     connect(this, SIGNAL(setupRxAudio(audioSetup)), rxaudio, SLOT(init(audioSetup)));
 
     // signal/slot not currently used.
-    //connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
+    connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
     connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
     connect(this, SIGNAL(haveSetVolume(unsigned char)), rxaudio, SLOT(setVolume(unsigned char)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
@@ -856,35 +856,43 @@ void udpAudio::sendTxAudio()
         return;
     }
     QByteArray audio;
-    txaudio->getNextAudioChunk(audio);
+    if (audioMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
+    {
+        txaudio->getNextAudioChunk(audio);
+        // Now we have the next audio chunk, we can release the mutex.
+        audioMutex.unlock();
 
-    if (audio.length() > 0) {
-        int counter = 1;
-        int len = 0;
+        if (audio.length() > 0) {
+            int counter = 1;
+            int len = 0;
 
-        while (len < audio.length()) {
-            QByteArray partial = audio.mid(len, 1364);
-            audio_packet p;
-            memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
-            p.len = sizeof(p) + partial.length();
-            p.sentid = myId;
-            p.rcvdid = remoteId;
-            if (partial.length() == 0xa0) {
-                p.ident = 0x9781;
+            while (len < audio.length()) {
+                QByteArray partial = audio.mid(len, 1364);
+                audio_packet p;
+                memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
+                p.len = sizeof(p) + partial.length();
+                p.sentid = myId;
+                p.rcvdid = remoteId;
+                if (partial.length() == 0xa0) {
+                    p.ident = 0x9781;
+                }
+                else {
+                    p.ident = 0x0080; // TX audio is always this?
+                }
+                p.datalen = (quint16)qToBigEndian((quint16)partial.length());
+                p.sendseq = (quint16)qToBigEndian((quint16)sendAudioSeq); // THIS IS BIG ENDIAN!
+                QByteArray tx = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
+                tx.append(partial);
+                len = len + partial.length();
+                //qInfo(logUdp()) << "Sending audio packet length: " << tx.length();
+                sendTrackedPacket(tx);
+                sendAudioSeq++;
+                counter++;
             }
-            else {
-                p.ident = 0x0080; // TX audio is always this?
-            }
-            p.datalen = (quint16)qToBigEndian((quint16)partial.length());
-            p.sendseq = (quint16)qToBigEndian((quint16)sendAudioSeq); // THIS IS BIG ENDIAN!
-            QByteArray tx = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
-            tx.append(partial);
-            len = len + partial.length();
-            //qInfo(logUdp()) << "Sending audio packet length: " << tx.length();
-            sendTrackedPacket(tx);
-            sendAudioSeq++;
-            counter++;
         }
+    }
+    else {
+        qInfo(logUdpServer()) << "Unable to lock mutex for rxaudio";
     }
 }
 
@@ -945,8 +953,8 @@ void udpAudio::dataReceived()
                     tempAudio.data = r.mid(0x18);
                     // Prefer signal/slot to forward audio as it is thread/safe
                     // Need to do more testing but latency appears fine.
-                    rxaudio->incomingAudio(tempAudio);
-                    //emit haveAudioData(tempAudio);
+                    //rxaudio->incomingAudio(tempAudio);
+                    emit haveAudioData(tempAudio);
                     audioLatency = rxaudio->getLatency();
                 }
                 break;
