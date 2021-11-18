@@ -1130,7 +1130,7 @@ void udpBase::dataReceived(QByteArray r)
             if (match == txSeqBuf.end()) {
                 qDebug(logUdp()) << this->metaObject()->className() << ": Requested packet " << hex << seq << " not found";
                 // Just send idle packet.
-                sendControl(false, 0, match->seqNum);
+                sendControl(false, 0, seq);
             }
             else {
                 // Found matching entry?
