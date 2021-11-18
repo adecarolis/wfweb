@@ -111,6 +111,11 @@ wfmain::~wfmain()
     delete rpt;
     delete ui;
     delete settings;
+
+#if defined(PORTAUDIO)
+    Pa_Terminate();
+#endif
+
 }
 
 void wfmain::closeEvent(QCloseEvent *event)
@@ -278,7 +283,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setScopeMode(spectrumMode)), rig, SLOT(setSpectrumMode(spectrumMode)));
     connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
 
-    connect(this, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
+    connect(this, SIGNAL(setFrequency(unsigned char, freqt)), rig, SLOT(setFrequency(unsigned char, freqt)));
     connect(this, SIGNAL(setScopeEdge(char)), rig, SLOT(setScopeEdge(char)));
     connect(this, SIGNAL(setScopeSpan(char)), rig, SLOT(setScopeSpan(char)));
     //connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
@@ -296,6 +301,9 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getRfGain()), rig, SLOT(getRfGain()));
     connect(this, SIGNAL(getAfGain()), rig, SLOT(getAfGain()));
     connect(this, SIGNAL(getSql()), rig, SLOT(getSql()));
+    connect(this, SIGNAL(getIfShift()), rig, SLOT(getIFShift()));
+    connect(this, SIGNAL(getTPBFInner()), rig, SLOT(getTPBFInner()));
+    connect(this, SIGNAL(getTPBFOuter()), rig, SLOT(getTPBFOuter()));
     connect(this, SIGNAL(getTxPower()), rig, SLOT(getTxLevel()));
     connect(this, SIGNAL(getMicGain()), rig, SLOT(getMicGain()));
     connect(this, SIGNAL(getSpectrumRefLevel()), rig, SLOT(getSpectrumRefLevel()));
@@ -306,6 +314,9 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
     connect(this, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
     connect(this, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
+    connect(this, SIGNAL(setIFShift(unsigned char)), rig, SLOT(setIFShift(unsigned char)));
+    connect(this, SIGNAL(setTPBFInner(unsigned char)), rig, SLOT(setTPBFInner(unsigned char)));
+    connect(this, SIGNAL(setTPBFOuter(unsigned char)), rig, SLOT(setTPBFOuter(unsigned char)));
     connect(this, SIGNAL(setTxPower(unsigned char)), rig, SLOT(setTxPower(unsigned char)));
     connect(this, SIGNAL(setMicGain(unsigned char)), rig, SLOT(setMicGain(unsigned char)));
     connect(this, SIGNAL(setMonitorLevel(unsigned char)), rig, SLOT(setMonitorLevel(unsigned char)));
@@ -318,6 +329,9 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveRfGain(unsigned char)), this, SLOT(receiveRfGain(unsigned char)));
     connect(rig, SIGNAL(haveAfGain(unsigned char)), this, SLOT(receiveAfGain(unsigned char)));
     connect(rig, SIGNAL(haveSql(unsigned char)), this, SLOT(receiveSql(unsigned char)));
+    connect(rig, SIGNAL(haveIFShift(unsigned char)), trxadj, SLOT(updateIFShift(unsigned char)));
+    connect(rig, SIGNAL(haveTPBFInner(unsigned char)), trxadj, SLOT(updateTPBFInner(unsigned char)));
+    connect(rig, SIGNAL(haveTPBFOuter(unsigned char)), trxadj, SLOT(updateTPBFOuter(unsigned char)));
     connect(rig, SIGNAL(haveTxPower(unsigned char)), this, SLOT(receiveTxPower(unsigned char)));
     connect(rig, SIGNAL(haveMicGain(unsigned char)), this, SLOT(receiveMicGain(unsigned char)));
     connect(rig, SIGNAL(haveSpectrumRefLevel(int)), this, SLOT(receiveSpectrumRefLevel(int)));
@@ -399,13 +413,14 @@ void wfmain::makeRig()
         connect(this, SIGNAL(sendCloseComm()), rig, SLOT(closeComm()));
         connect(this, SIGNAL(sendChangeLatency(quint16)), rig, SLOT(changeLatency(quint16)));
         connect(this, SIGNAL(getRigCIV()), rig, SLOT(findRigs()));
+        connect(this, SIGNAL(setRigID(unsigned char)), rig, SLOT(setRigID(unsigned char)));
         connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
         if (rigCtl != Q_NULLPTR) {
             connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
             connect(this, SIGNAL(requestRigState()), rig, SLOT(sendState()));
-            connect(rigCtl, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
+            connect(rigCtl, SIGNAL(setFrequency(unsigned char, freqt)), rig, SLOT(setFrequency(unsigned char, freqt)));
             connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
             connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
             connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
@@ -523,8 +538,14 @@ void wfmain::receiveCommReady()
         // We still query the rigID to find the model, but at least we know the CIV.
         qInfo(logSystem()) << "Skipping automatic CIV, using user-supplied value of " << prefs.radioCIVAddr;
         showStatusBarText(QString("Using user-supplied radio CI-V address of 0x%1").arg(prefs.radioCIVAddr, 2, 16));
-        emit getRigID();
-        getInitialRigState();
+        if(prefs.CIVisRadioModel)
+        {
+            qInfo(logSystem()) << "Skipping Rig ID query, using user-supplied model from CI-V address: " << prefs.radioCIVAddr;
+            emit setRigID(prefs.radioCIVAddr);
+        } else {
+            emit getRigID();
+            getInitialRigState();
+        }
     }
 }
 
@@ -659,6 +680,7 @@ void wfmain::setupMainUI()
     ui->tuningStepCombo->addItem("9 kHz",     (unsigned int)    9000);	// European medium wave stepsize
     ui->tuningStepCombo->addItem("10 kHz",    (unsigned int)   10000);
     ui->tuningStepCombo->addItem("12.5 kHz",  (unsigned int)   12500);
+    ui->tuningStepCombo->addItem("25 kHz",    (unsigned int)   25000);
     ui->tuningStepCombo->addItem("100 kHz",   (unsigned int)  100000);
     ui->tuningStepCombo->addItem("250 kHz",   (unsigned int)  250000);
     ui->tuningStepCombo->addItem("1 MHz",     (unsigned int) 1000000);  //for 23 cm and HF
@@ -756,9 +778,10 @@ void wfmain::setupMainUI()
     ui->statusBar->addPermanentWidget(connectedLed);
 
     rigName = new QLabel(this);
+    rigName->setAlignment(Qt::AlignRight);
     ui->statusBar->addPermanentWidget(rigName);
     rigName->setText("NONE");
-    rigName->setFixedWidth(50);
+    rigName->setFixedWidth(60);
 
     freq.MHzDouble = 0.0;
     freq.Hz = 0;
@@ -804,6 +827,20 @@ void wfmain::setupMainUI()
                 ui->wfLengthSlider, &QSlider::valueChanged,
                 [=](const int &newValue) { statusFromSliderRaw("Waterfall Length", newValue);}
     );
+
+    connect(this->trxadj, &transceiverAdjustments::setIFShift,
+            [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetIFShift, newValue);}
+    );
+
+    connect(this->trxadj, &transceiverAdjustments::setTPBFInner,
+            [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetTPBFInner, newValue);}
+    );
+
+    connect(this->trxadj, &transceiverAdjustments::setTPBFOuter,
+            [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetTPBFOuter, newValue);}
+    );
+
+
 
 }
 
@@ -965,6 +1002,10 @@ void wfmain::setUIToPrefs()
 
     ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
+
+    ui->useCIVasRigIDChk->blockSignals(true);
+    ui->useCIVasRigIDChk->setChecked(prefs.CIVisRadioModel);
+    ui->useCIVasRigIDChk->blockSignals(false);
 }
 
 void wfmain::setAudioDevicesUI()
@@ -1026,6 +1067,35 @@ void wfmain::setAudioDevicesUI()
 
 #elif defined(PORTAUDIO)
     // Use PortAudio device enumeration
+
+    PaError err;
+
+    err = Pa_Initialize();
+
+    if (err != paNoError)
+    {
+        qInfo(logAudio()) << "ERROR: Cannot initialize Portaudio";
+    }
+
+    qInfo(logAudio()) << "PortAudio version: " << Pa_GetVersionInfo()->versionText;
+
+    int numDevices;
+    numDevices = Pa_GetDeviceCount();
+    qInfo(logAudio()) << "Pa_CountDevices returned" << numDevices;
+
+    const   PaDeviceInfo* info;
+    for (int i = 0; i < numDevices; i++)
+    {
+        info = Pa_GetDeviceInfo(i);
+        if (info->maxInputChannels > 0) {
+            qInfo(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Output Device : " << info->name;
+            ui->audioInputCombo->addItem(info->name, i);
+        }
+        if (info->maxOutputChannels > 0) {
+            qInfo(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Input Device  : " << info->name;
+            ui->audioOutputCombo->addItem(info->name, i);
+        }
+    }
 #else
 
 #if QT_VERSION < 0x060000
@@ -1251,6 +1321,7 @@ void wfmain::setDefPrefs()
     defPrefs.wfInterpolate = true;
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
     defPrefs.radioCIVAddr = 0x00; // previously was 0x94 for 7300.
+    defPrefs.CIVisRadioModel = false;
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.serialPortBaud = 115200;
     defPrefs.enablePTT = false;
@@ -1348,6 +1419,9 @@ void wfmain::loadSettings()
         ui->rigCIVManualAddrChk->setChecked(false);
         ui->rigCIVaddrHexLine->setEnabled(false);
     }
+    prefs.CIVisRadioModel = (bool)settings->value("CIVisRadioModel", defPrefs.CIVisRadioModel).toBool();
+
+
     prefs.serialPortRadio = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
     int serialIndex = ui->serialDeviceListCombo->findText(prefs.serialPortRadio);
     if (serialIndex != -1) {
@@ -1489,6 +1563,7 @@ void wfmain::loadSettings()
 #if defined(RTAUDIO)
         rxSetup.port = ui->audioOutputCombo->itemData(audioOutputIndex).toInt();
 #elif defined(PORTAUDIO)
+        rxSetup.port = ui->audioOutputCombo->itemData(audioOutputIndex).toInt();
 #else
         QVariant v = ui->audioOutputCombo->currentData();
         rxSetup.port = v.value<QAudioDevice>();
@@ -1505,6 +1580,7 @@ void wfmain::loadSettings()
 #if defined(RTAUDIO)
         txSetup.port = ui->audioInputCombo->itemData(audioInputIndex).toInt();
 #elif defined(PORTAUDIO)
+        txSetup.port = ui->audioInputCombo->itemData(audioInputIndex).toInt();
 #else
         QVariant v = ui->audioInputCombo->currentData();
         txSetup.port = v.value<QAudioDevice>();
@@ -1604,6 +1680,7 @@ void wfmain::saveSettings()
     // Radio and Comms: C-IV addr, port to use
     settings->beginGroup("Radio");
     settings->setValue("RigCIVuInt", prefs.radioCIVAddr);
+    settings->setValue("CIVisRadioModel", prefs.CIVisRadioModel);
     settings->setValue("SerialPortRadio", prefs.serialPortRadio);
     settings->setValue("SerialPortBaud", prefs.serialPortBaud);
     settings->setValue("VirtualSerialPort", prefs.virtualSerialPort);
@@ -2036,7 +2113,7 @@ void wfmain::shortcutMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2050,7 +2127,7 @@ void wfmain::shortcutPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2064,7 +2141,7 @@ void wfmain::shortcutShiftMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2078,7 +2155,7 @@ void wfmain::shortcutShiftPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2092,7 +2169,7 @@ void wfmain::shortcutControlMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2106,7 +2183,7 @@ void wfmain::shortcutControlPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2120,7 +2197,7 @@ void wfmain::shortcutPageUp()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2134,7 +2211,7 @@ void wfmain::shortcutPageDown()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -2225,6 +2302,14 @@ void wfmain:: getInitialRigState()
 
     issueDelayedCommand(cmdGetRitEnabled);
     issueDelayedCommand(cmdGetRitValue);
+
+    if(rigCaps.hasIFShift)
+        issueDelayedCommand(cmdGetIFShift);
+    if(rigCaps.hasTBPF)
+    {
+        issueDelayedCommand(cmdGetTPBFInner);
+        issueDelayedCommand(cmdGetTPBFOuter);
+    }
 
     if(rigCaps.hasSpectrum)
     {
@@ -2375,7 +2460,7 @@ void wfmain::doCmd(commandtype cmddata)
         {
             lastFreqCmdTime_ms = QDateTime::currentMSecsSinceEpoch();
             freqt f = (*std::static_pointer_cast<freqt>(data));
-            emit setFrequency(f);
+            emit setFrequency(0,f);
             break;
         }
         case cmdSetMode:
@@ -2425,6 +2510,24 @@ void wfmain::doCmd(commandtype cmddata)
         {
             unsigned char sqlLevel = (*std::static_pointer_cast<unsigned char>(data));
             emit setSql(sqlLevel);
+            break;
+        }
+        case cmdSetIFShift:
+        {
+            unsigned char IFShiftLevel = (*std::static_pointer_cast<unsigned char>(data));
+            emit setIFShift(IFShiftLevel);
+            break;
+        }
+        case cmdSetTPBFInner:
+        {
+            unsigned char innterLevel = (*std::static_pointer_cast<unsigned char>(data));
+            emit setTPBFInner(innterLevel);
+            break;
+        }
+        case cmdSetTPBFOuter:
+        {
+            unsigned char outerLevel = (*std::static_pointer_cast<unsigned char>(data));
+            emit setTPBFOuter(outerLevel);
             break;
         }
         case cmdSetPTT:
@@ -2569,6 +2672,15 @@ void wfmain::doCmd(cmds cmd)
         case cmdGetSql:
             emit getSql();
             break;
+        case cmdGetIFShift:
+            emit getIfShift();
+            break;
+        case cmdGetTPBFInner:
+            emit getTPBFInner();
+            break;
+        case cmdGetTPBFOuter:
+            emit getTPBFOuter();
+            break;
         case cmdGetTxPower:
             emit getTxPower();
             break;
@@ -2579,10 +2691,12 @@ void wfmain::doCmd(cmds cmd)
             emit getSpectrumRefLevel();
             break;
         case cmdGetATUStatus:
-            emit getATUStatus();
+            if(rigCaps.hasATU)
+                emit getATUStatus();
             break;
         case cmdStartATU:
-            emit startATU();
+            if(rigCaps.hasATU)
+                emit startATU();
             break;
         case cmdGetAttenuator:
             emit getAttenuator();
@@ -2600,10 +2714,7 @@ void wfmain::doCmd(cmds cmd)
             emit setScopeMode(spectModeFixed);
             break;
         case cmdGetPTT:
-            if(rigCaps.hasPTTCommand)
-            {
-                emit getPTT();
-            }
+            emit getPTT();
             break;
         case cmdGetTxRxMeter:
             if(amTransmitting)
@@ -2894,6 +3005,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // Added so that server receives rig capabilities.
         emit sendRigCaps(rigCaps);
         rpt->setRig(rigCaps);
+        trxadj->setRig(rigCaps);
 
         // Set the mode combo box up:
 
@@ -3015,6 +3127,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         setBandButtons();
 
+
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
 
@@ -3057,15 +3170,20 @@ void wfmain::initPeriodicCommands()
 
     insertSlowPeriodicCommand(cmdGetFreq, 128);
     insertSlowPeriodicCommand(cmdGetMode, 128);
-    insertSlowPeriodicCommand(cmdGetPTT, 128);
+    if(rigCaps.hasTransmit)
+        insertSlowPeriodicCommand(cmdGetPTT, 128);
     insertSlowPeriodicCommand(cmdGetTxPower, 128);
     insertSlowPeriodicCommand(cmdGetRxGain, 128);
-    insertSlowPeriodicCommand(cmdGetAttenuator, 128);
-    insertSlowPeriodicCommand(cmdGetPTT, 128);
-    insertSlowPeriodicCommand(cmdGetPreamp, 128);
+    if(rigCaps.hasAttenuator)
+        insertSlowPeriodicCommand(cmdGetAttenuator, 128);
+    if(rigCaps.hasTransmit)
+        insertSlowPeriodicCommand(cmdGetPTT, 128);
+    if(rigCaps.hasPreamp)
+        insertSlowPeriodicCommand(cmdGetPreamp, 128);
     if (rigCaps.hasRXAntenna) {
         insertSlowPeriodicCommand(cmdGetAntenna, 128);
     }
+    insertSlowPeriodicCommand(cmdGetDuplexMode, 128);
 }
 
 void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
@@ -3286,7 +3404,7 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
         freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
         freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
 
-        //emit setFrequency(freq);
+        //emit setFrequency(0,freq);
         issueCmd(cmdSetFreq, freqGo);
         freq = freqGo;
         setUIFreq();
@@ -3311,7 +3429,7 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
         freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
         freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
 
-        //emit setFrequency(freq);
+        //emit setFrequency(0,freq);
         issueCmd(cmdSetFreq, freqGo);
         freq = freqGo;
         setUIFreq();
@@ -3366,7 +3484,7 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     f.MHzDouble = f.Hz / (double)1E6;
     freq = f;
 
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmdUniquePriority(cmdSetFreq, f);
     ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
     //issueDelayedCommandUnique(cmdGetFreq);
@@ -3783,7 +3901,7 @@ void wfmain::on_freqDial_valueChanged(int value)
 
         ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 
-        //emit setFrequency(f);
+        //emit setFrequency(0,f);
         issueCmdUniquePriority(cmdSetFreq, f);
     } else {
         ui->freqDial->blockSignals(true);
@@ -3798,7 +3916,7 @@ void wfmain::receiveBandStackReg(freqt freqGo, char mode, char filter, bool data
     // read the band stack and apply by sending out commands
 
     qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freqGo.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
-    //emit setFrequency(freq);
+    //emit setFrequency(0,freq);
     issueCmd(cmdSetFreq, freqGo);
     setModeVal = (unsigned char) mode;
     setFilterVal = (unsigned char) filter;
@@ -3868,7 +3986,7 @@ void wfmain::on_band4mbtn_clicked()
         f.Hz = (70.200) * 1E6;
     }
     issueCmd(cmdSetFreq, f);
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
 }
@@ -3935,7 +4053,7 @@ void wfmain::on_band60mbtn_clicked()
     freqt f;
     f.Hz = (5.3305) * 1E6;
     issueCmd(cmdSetFreq, f);
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
 }
@@ -3956,7 +4074,7 @@ void wfmain::on_band630mbtn_clicked()
 {
     freqt f;
     f.Hz = 475 * 1E3;
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
@@ -3966,7 +4084,7 @@ void wfmain::on_band2200mbtn_clicked()
 {
     freqt f;
     f.Hz = 136 * 1E3;
-    //emit setFrequency(f);
+    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
@@ -4074,6 +4192,21 @@ void wfmain::receiveAfGain(unsigned char level)
 void wfmain::receiveSql(unsigned char level)
 {
     ui->sqlSlider->setValue(level);
+}
+
+void wfmain::receiveIFShift(unsigned char level)
+{
+    trxadj->updateIFShift(level);
+}
+
+void wfmain::receiveTBPFInner(unsigned char level)
+{
+    trxadj->updateTPBFInner(level);
+}
+
+void wfmain::receiveTBPFOuter(unsigned char level)
+{
+    trxadj->updateTPBFOuter(level);
 }
 
 void wfmain::on_tuneNowBtn_clicked()
@@ -4245,6 +4378,7 @@ void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
 #if defined(RTAUDIO)
     rxSetup.port = ui->audioOutputCombo->itemData(value).toInt();
 #elif defined(PORTAUDIO)
+    rxSetup.port = ui->audioOutputCombo->itemData(value).toInt();
 #else
     QVariant v = ui->audioOutputCombo->itemData(value);
     rxSetup.port = v.value<QAudioDevice>();
@@ -4258,6 +4392,7 @@ void wfmain::on_audioInputCombo_currentIndexChanged(int value)
 #if defined(RTAUDIO)
     txSetup.port = ui->audioInputCombo->itemData(value).toInt();
 #elif defined(PORTAUDIO)
+    txSetup.port = ui->audioInputCombo->itemData(value).toInt();
 #else
     QVariant v = ui->audioInputCombo->itemData(value);
     txSetup.port = v.value<QAudioDevice>();
@@ -4336,6 +4471,20 @@ void wfmain::on_sqlSlider_valueChanged(int value)
 {
     issueCmd(cmdSetSql, (unsigned char)value);
     //emit setSql((unsigned char)value);
+}
+// These three are from the transceiver adjustment window:
+void wfmain::changeIFShift(unsigned char level)
+{
+    //issueCmd(cmdSetIFShift, level);
+    issueCmdUniquePriority(cmdSetIFShift, level);
+}
+void wfmain::changeTPBFInner(unsigned char level)
+{
+    issueCmdUniquePriority(cmdSetTPBFInner, level);
+}
+void wfmain::changeTPBFOuter(unsigned char level)
+{
+    issueCmdUniquePriority(cmdSetTPBFOuter, level);
 }
 
 void wfmain::on_modeFilterCombo_activated(int index)
@@ -5321,7 +5470,7 @@ void wfmain::on_enableRigctldChk_clicked(bool checked)
         if (rig != Q_NULLPTR) {
             // We are already connected to a rig.
             connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
-            connect(rigCtl, SIGNAL(setFrequency(freqt)), rig, SLOT(setFrequency(freqt)));
+            connect(rigCtl, SIGNAL(setFrequency(unsigned char, freqt)), rig, SLOT(setFrequency(unsigned char, freqt)));
             connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
             connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
             connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
@@ -5361,10 +5510,22 @@ void wfmain::on_rigctldPortTxt_editingFinished()
     }
 }
 
+void wfmain::on_moreControlsBtn_clicked()
+{
+    trxadj->show();
+}
+
+void wfmain::on_useCIVasRigIDChk_clicked(bool checked)
+{
+    prefs.CIVisRadioModel = checked;
+}
+
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
+    // issueDelayedCommand(cmdGetRigID);
+    emit getRigCIV();
     //trxadj->show();
     //setRadioTimeDatePrep();
     //wf->setInteraction(QCP::iRangeZoom, true);

@@ -61,9 +61,9 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
 
     // data from the ptty to the rig:
     connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
-
     // data from the program to the comm port:
     connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
+    connect(this, SIGNAL(toggleRTS(bool)), comm, SLOT(setRTS(bool)));
 
     // data from the rig to the ptty:
     connect(comm, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
@@ -73,7 +73,11 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
 
     connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
     connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
+
+    connect(this, SIGNAL(discoveredRigID(rigCapabilities)), ptty, SLOT(receiveFoundRigID(rigCapabilities)));
+
     emit commReady();
+    sendState(); // Send current rig state to rigctld
 
 }
 
@@ -136,6 +140,8 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
 
         connect(ptty, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
         connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
+
+        connect(this, SIGNAL(discoveredRigID(rigCapabilities)), ptty, SLOT(receiveFoundRigID(rigCapabilities)));
 
         emit haveAfGain(rxSetup.localAFgain);
     }
@@ -231,6 +237,9 @@ void rigCommander::findRigs()
     data.append(payloadSuffix);
 
     emit dataForComm(data);
+    // HACK for testing radios that do not respond to rig ID queries: 
+    //this->model = model736;
+    //this->determineRigCaps();
     return;
 }
 
@@ -553,18 +562,24 @@ void rigCommander::getSpectrumMode()
     prepDataAndSend(specModePayload);
 }
 
-void rigCommander::setFrequency(freqt freq)
+void rigCommander::setFrequency(unsigned char vfo, freqt freq)
 {
-    //QByteArray freqPayload = makeFreqPayload(freq);
     QByteArray freqPayload = makeFreqPayload(freq);
     QByteArray cmdPayload;
 
     cmdPayload.append(freqPayload);
-    cmdPayload.prepend('\x00');
-
+    if (vfo == 0) {
+        rigState.vfoAFreq = freq;
+        cmdPayload.prepend('\x00');
+    }
+    else
+    {   
+        rigState.vfoBFreq = freq;
+        cmdPayload.prepend(vfo);
+        cmdPayload.prepend('\x25');
+    }
     //printHex(cmdPayload, false, true);
     prepDataAndSend(cmdPayload);
-    rigState.vfoAFreq = freq;
 }
 
 QByteArray rigCommander::makeFreqPayload(freqt freq)
@@ -978,9 +993,14 @@ void rigCommander::getSatelliteMode()
 
 void rigCommander::getPTT()
 {
-    QByteArray payload;
-    payload.setRawData("\x1C\x00", 2);
-    prepDataAndSend(payload);
+    //if(rigCaps.useRTSforPTT && !usingNativeLAN)
+    //{
+    //    emit havePTTStatus(comm->rtsStatus());
+    //} else {
+        QByteArray payload;
+        payload.setRawData("\x1C\x00", 2);
+        prepDataAndSend(payload);
+    //}
 }
 
 void rigCommander::getBandStackReg(char band, char regCode)
@@ -1348,6 +1368,20 @@ void rigCommander::parseLevels()
                 emit haveSql(level);
                 rigState.squelch = level;
                 break;
+            case '\x07':
+                // Twin BPF Inner, or, IF-Shift level
+                if(rigCaps.hasTBPF)
+                    emit haveTPBFInner(level);
+                else
+                    emit haveIFShift(level);
+                break;
+            case '\x08':
+                // Twin BPF Outer
+                emit haveTPBFOuter(level);
+                break;
+            case '\x09':
+                // CW Pitch - ignore for now
+                break;
             case '\x0A':
                 // TX RF level
                 emit haveTxPower(level);
@@ -1358,10 +1392,19 @@ void rigCommander::parseLevels()
                 emit haveMicGain(level);
                 rigState.micGain = level;
                 break;
+            case '\x0C':
+                // CW Keying Speed - ignore for now
+                break;
+            case '\x0D':
+                // Notch filder setting - ignore for now
+                break;
             case '\x0E':
                 // compressor level
                 emit haveCompLevel(level);
                 rigState.compLevel = level;
+                break;
+            case '\x12':
+                // NB level - ignore for now
                 break;
             case '\x15':
                 // monitor level
@@ -1441,6 +1484,27 @@ void rigCommander::parseLevels()
     return;
     }
 
+}
+
+void rigCommander::setIFShift(unsigned char level)
+{
+    QByteArray payload("\x14\x07");
+    payload.append(bcdEncodeInt(level));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setTPBFInner(unsigned char level)
+{
+    QByteArray payload("\x14\x07");
+    payload.append(bcdEncodeInt(level));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setTPBFOuter(unsigned char level)
+{
+    QByteArray payload("\x14\x08");
+    payload.append(bcdEncodeInt(level));
+    prepDataAndSend(payload);
 }
 
 void rigCommander::setTxPower(unsigned char power)
@@ -1866,6 +1930,24 @@ void rigCommander::getAfGain()
     prepDataAndSend(payload);
 }
 
+void rigCommander::getIFShift()
+{
+    QByteArray payload("\x14\x07");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getTPBFInner()
+{
+    QByteArray payload("\x14\x07");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getTPBFOuter()
+{
+    QByteArray payload("\x14\x08");
+    prepDataAndSend(payload);
+}
+
 void rigCommander::getSql()
 {
     QByteArray payload("\x14\x03");
@@ -2253,6 +2335,8 @@ void rigCommander::parseRegister21()
             longfreq = payloadIn.mid(2,2);
             longfreq.append(QByteArray(3,'\x00'));
             f = parseFrequency(longfreq, 3);
+            if(payloadIn.length() < 5)
+                break;
             ritHz = f.Hz*((payloadIn.at(4)=='\x01')?-1:1);
             emit haveRitFrequency(ritHz);
             break;
@@ -2801,6 +2885,9 @@ void rigCommander::determineRigCaps()
     rigCaps.hasCTCSS = false;
     rigCaps.hasDTCS = false;
 
+    rigCaps.hasTBPF = false;
+    rigCaps.hasIFShift = false;
+
     rigCaps.spectSeqMax = 0;
     rigCaps.spectAmpMax = 0;
     rigCaps.spectLenMax = 0;
@@ -2829,6 +2916,7 @@ void rigCommander::determineRigCaps()
 
     rigCaps.hasTransmit = true;
     rigCaps.hasPTTCommand = true;
+    rigCaps.useRTSforPTT = false;
 
     // Common, reasonable defaults for most supported HF rigs:
     rigCaps.bsr[band160m] = 0x01;
@@ -2871,6 +2959,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -2880,6 +2969,8 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(band630m);
             rigCaps.bands.push_back(band2200m);
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x71");
+
             break;
         case modelR8600:
             rigCaps.modelName = QString("IC-R8600");
@@ -2897,6 +2988,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
             rigCaps.hasDV = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x10');
             rigCaps.attenuators.push_back('\x20');
             rigCaps.attenuators.push_back('\x30');
@@ -2915,6 +3007,7 @@ void rigCommander::determineRigCaps()
                                      createMode(modeNXDN_VN, 0x19, "NXDN-VN"), createMode(modeNXDN_N, 0x20, "NXDN-N"),
                                      createMode(modeDCR, 0x21, "DCR")});
             rigCaps.scopeCenterSpans.insert(rigCaps.scopeCenterSpans.end(), {createScopeCenter(cs1M, "±1M"), createScopeCenter(cs2p5M, "±2.5M")});
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x92");
             break;
         case model9700:
             rigCaps.modelName = QString("IC-9700");
@@ -2933,6 +3026,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasDV = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x10');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardVU;
@@ -2943,6 +3037,7 @@ void rigCommander::determineRigCaps()
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeDV, 0x17, "DV"),
                                                        createMode(modeDD, 0x22, "DD")});
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x27");
             break;
         case model910h:
             rigCaps.modelName = QString("IC-910H");
@@ -2965,6 +3060,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[band70cm] = 0x02;
             rigCaps.bsr[band2m] = 0x01;
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x58");
             break;
         case model7600:
             rigCaps.modelName = QString("IC-7600");
@@ -2979,6 +3075,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = false;
             rigCaps.hasDTCS = false;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(), {0x00, 0x06, 0x12, 0x18});
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -2989,6 +3086,7 @@ void rigCommander::determineRigCaps()
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
                                                        createMode(modePSK_R, 0x13, "PSK-R")});
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x97");
             break;
         case model7610:
             rigCaps.modelName = QString("IC-7610");
@@ -3004,6 +3102,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
             rigCaps.hasCTCSS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),
                                       {'\x03', '\x06', '\x09', '\x12',\
                                        '\x15', '\x18', '\x21', '\x24',\
@@ -3020,6 +3119,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(band2200m);
             rigCaps.modes = commonModes;
             rigCaps.hasRXAntenna = true;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x12");
             break;
         case model7850:
             rigCaps.modelName = QString("IC-785x");
@@ -3037,6 +3137,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),
                                       {'\x03', '\x06', '\x09',
                                        '\x12', '\x15', '\x18', '\x21'});
@@ -3052,6 +3153,7 @@ void rigCommander::determineRigCaps()
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
                                                        createMode(modePSK_R, 0x13, "PSK-R")});
             rigCaps.hasRXAntenna = true;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x55");
             break;
         case model705:
             rigCaps.modelName = QString("IC-705");
@@ -3070,6 +3172,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x10' , '\x20'});
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -3088,6 +3191,7 @@ void rigCommander::determineRigCaps()
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeWFM, 0x06, "WFM"),
                                                        createMode(modeDV, 0x17, "DV")});
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x31");
             break;
         case model7000:
             rigCaps.modelName = QString("IC-7000");
@@ -3101,6 +3205,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x12');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardHF;
@@ -3110,6 +3215,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[band70cm] = 0x12;
             rigCaps.bsr[bandGen] = 0x13;
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x92");
             break;
         case model7410:
             rigCaps.modelName = QString("IC-7410");
@@ -3123,6 +3229,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -3131,6 +3238,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x40");
             break;
         case model7100:
             rigCaps.modelName = QString("IC-7100");
@@ -3145,6 +3253,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x12');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -3158,6 +3267,7 @@ void rigCommander::determineRigCaps()
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeWFM, 0x06, "WFM"),
                                                        createMode(modeDV, 0x17, "DV")});
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x95");
             break;
         case model7200:
             rigCaps.modelName = QString("IC-7200");
@@ -3172,13 +3282,15 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
-            break;    
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x03\x48");
+            break;
         case model7700:
             rigCaps.modelName = QString("IC-7700");
             rigCaps.rigctlModel = 3062;
@@ -3190,6 +3302,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasEthernet = true;
             rigCaps.hasWiFi = false;
             rigCaps.hasCTCSS = true;
+            rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),
                                       {'\x06', '\x12', '\x18'});
             rigCaps.preamps.push_back('\x01');
@@ -3204,6 +3317,7 @@ void rigCommander::determineRigCaps()
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
                                                        createMode(modePSK_R, 0x13, "PSK-R")});
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x95");
             break;
         case model706:
             rigCaps.modelName = QString("IC-706");
@@ -3216,6 +3330,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
             rigCaps.hasPTTCommand = false;
+            rigCaps.useRTSforPTT = true;
             rigCaps.hasDataModes = false;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.bands = standardHF;
@@ -3223,6 +3338,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), createMode(modeWFM, 0x06, "WFM"));
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             break;
         case model718:
             rigCaps.modelName = QString("IC-718");
@@ -3235,6 +3351,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = false;
             rigCaps.hasPTTCommand = false;
+            rigCaps.useRTSforPTT = true;
+            rigCaps.hasIFShift = true;
             rigCaps.hasDataModes = false;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
@@ -3245,6 +3363,29 @@ void rigCommander::determineRigCaps()
                               createMode(modeAM, 0x02, "AM"),
                               createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
                               createMode(modeRTTY, 0x04, "RTTY"), createMode(modeRTTY_R, 0x08, "RTTY-R")
+                            };
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
+            break;
+        case model736:
+            rigCaps.modelName = QString("IC-736");
+            rigCaps.rigctlModel = 3020;
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.clear();
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
+            rigCaps.hasATU = false;
+            rigCaps.hasPTTCommand = false;
+            rigCaps.useRTSforPTT = true;
+            rigCaps.hasDataModes = false;
+            rigCaps.hasIFShift = true; // untested
+            rigCaps.attenuators.push_back('\x20');
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.bands = standardHF;
+            rigCaps.modes = { createMode(modeLSB, 0x00, "LSB"), createMode(modeUSB, 0x01, "USB"),
+                              createMode(modeAM, 0x02, "AM"), createMode(modeFM, 0x05, "FM"),
+                              createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
                             };
             break;
         case model756pro:
@@ -3257,6 +3398,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
+            rigCaps.hasTBPF = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
@@ -3265,6 +3407,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             break;
         case model756proii:
             rigCaps.modelName = QString("IC-756 Pro II");
@@ -3276,6 +3419,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
+            rigCaps.hasTBPF = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
@@ -3284,6 +3428,7 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             break;
         case model756proiii:
             rigCaps.modelName = QString("IC-756 Pro III");
@@ -3295,6 +3440,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasWiFi = false;
             rigCaps.hasFDcomms = false;
             rigCaps.hasATU = true;
+            rigCaps.hasTBPF = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
@@ -3303,6 +3449,35 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
+            break;
+        case model9100:
+            rigCaps.modelName = QString("IC-9100");
+            rigCaps.rigctlModel = 3068;
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.append(inputUSB); // TODO, add commands for this radio's inputs
+            rigCaps.inputs.append(inputACC);
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
+            rigCaps.hasATU = true;
+            rigCaps.hasDV = true;
+            rigCaps.hasTBPF = true;
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x20' });
+            rigCaps.antennas = {0x00, 0x01};
+            rigCaps.bands = standardHF;
+            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+            rigCaps.bands.push_back(band23cm);
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.bsr[band2m] = 0x11;
+            rigCaps.bsr[band70cm] = 0x12;
+            rigCaps.bsr[band23cm] = 0x13;
+            rigCaps.bsr[bandGen] = 0x14;
+            rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeDV, 0x17, "DV")});
             break;
         default:
             rigCaps.modelName = QString("IC-0x%1").arg(rigCaps.modelID, 2, 16);
@@ -3324,10 +3499,15 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
             rigCaps.bands.insert(rigCaps.bands.end(), {band23cm, band4m, band630m, band2200m, bandGen});
             rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             qInfo(logRig()) << "Found unknown rig: 0x" << QString("%1").arg(rigCaps.modelID, 2, 16);
             break;
     }
     haveRigCaps = true;
+
+    if(!usingNativeLAN)
+        comm->setUseRTSforPTT(rigCaps.useRTSforPTT);
+
 
     if(lookingForRig)
     {
@@ -3759,7 +3939,9 @@ void rigCommander::setAntenna(unsigned char ant, bool rx)
 {
     QByteArray payload("\x12");
     payload.append(ant);
-    payload.append((unsigned char)rx); // 0x00 = use for TX and RX
+    if (rigCaps.hasRXAntenna) {
+        payload.append((unsigned char)rx); // 0x00 = use for TX and RX
+    }
     prepDataAndSend(payload);
 }
 
@@ -3768,6 +3950,29 @@ void rigCommander::getRigID()
     QByteArray payload;
     payload.setRawData("\x19\x00", 2);
     prepDataAndSend(payload);
+}
+
+void rigCommander::setRigID(unsigned char rigID)
+{
+    // This function overrides radio model detection.
+    // It can be used for radios without Rig ID commands,
+    // or to force a specific radio model
+
+    qInfo(logRig()) << "Sending rig ID to: (int)" << (int)rigID;
+
+
+    lookingForRig = true;
+    foundRig = false;
+
+    // needed because this is a fake message and thus the value is uninitialized
+    // this->civAddr comes from how rigCommander is setup and should be accurate.
+    this->incomingCIVAddr = this->civAddr;
+
+    this->model = determineRadioModel(rigID);
+    rigCaps.modelID = rigID;
+    rigCaps.model = determineRadioModel(rigID);
+
+    determineRigCaps();
 }
 
 void rigCommander::changeLatency(const quint16 value)

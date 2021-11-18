@@ -20,6 +20,7 @@ commHandler::commHandler()
     baudrate = 115200;
     stopbits = 1;
     portName = "/dev/ttyUSB0";
+    this->PTTviaRTS = false;
 
     setupComm(); // basic parameters
     openPort();
@@ -45,6 +46,7 @@ commHandler::commHandler(QString portName, quint32 baudRate)
     baudrate = baudRate;
     stopbits = 1;
     this->portName = portName;
+    this->PTTviaRTS = false;
 
     setupComm(); // basic parameters
     openPort();
@@ -80,6 +82,50 @@ void commHandler::sendDataOut(const QByteArray &writeData)
     mutex.lock();
 
     qint64 bytesWritten;
+
+    if(PTTviaRTS)
+    {
+        // Size:    1  2  3    4    5    6    7    8
+        //index:    0  1  2    3    4    5    6    7
+        //Query:   FE FE TO FROM 0x1C 0x00 0xFD
+        //PTT On:  FE FE TO FROM 0x1C 0x00 0x01 0xFD
+        //PTT Off: FE FE TO FROM 0x1C 0x00 0x00 0xFD
+
+        if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\xFD")))
+        {
+            // Query
+            //qDebug(logSerial()) << "Looks like PTT Query";
+            bool pttOn = this->rtsStatus();
+            QByteArray pttreturncmd = QByteArray("\xFE\xFE");
+            pttreturncmd.append(writeData.at(3));
+            pttreturncmd.append(writeData.at(2));
+            pttreturncmd.append(QByteArray("\x1C\x00", 2));
+            pttreturncmd.append((char)pttOn);
+            pttreturncmd.append("\xFD");
+            //qDebug(logSerial()) << "Sending fake PTT query result: " << (bool)pttOn;
+            printHex(pttreturncmd, false, true);
+            emit haveDataFromPort(pttreturncmd);
+
+
+            mutex.unlock();
+            return;
+        } else if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\x01\xFD")))
+        {
+            // PTT ON
+            //qDebug(logSerial()) << "Looks like PTT ON";
+            setRTS(true);
+            mutex.unlock();
+            return;
+        } else if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\x00\xFD")))
+        {
+            // PTT OFF
+            //qDebug(logSerial()) << "Looks like PTT OFF";
+            setRTS(false);
+            mutex.unlock();
+            return;
+        }
+    }
+
     bytesWritten = port->write(writeData);
 
     if(bytesWritten != (qint64)writeData.size())
@@ -160,6 +206,25 @@ void commHandler::receiveDataIn()
         //printHex(inPortData, false, true);
 
     }
+}
+
+void commHandler::setRTS(bool rtsOn)
+{
+    bool success = port->setRequestToSend(rtsOn);
+    if(!success)
+    {
+        qInfo(logSerial()) << "Error, could not set RTS on port " << portName;
+    }
+}
+
+bool commHandler::rtsStatus()
+{
+    return port->isRequestToSend();
+}
+
+void commHandler::setUseRTSforPTT(bool PTTviaRTS)
+{
+    this->PTTviaRTS = PTTviaRTS;
 }
 
 void commHandler::openPort()

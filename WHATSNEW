@@ -7,4 +7,13 @@ The following highlights are in this 1.x-release:
         added "do not ask again" for switching off rig and exiting wfview
         added opus as audio transport 
         dual meter support
+        rigctl basic split support
+        rigctl prevents switching off civ transceive
+        added 25 kHz step
 
+        as a temporary measure sending multiple TX/FREQ change commands to the rig
+        when we use rigctld. 
+
+        people should use "fake it" in wsjtx as the split code is not reliable.
+
+        tidied up udp server function for better reliability

@@ -51,6 +51,7 @@ public:
 signals:
     // Basic to rig:
     void setCIVAddr(unsigned char newRigCIVAddr);
+    void setRigID(unsigned char rigID);
 
     // Power
     void sendPowerOn();
@@ -58,7 +59,7 @@ signals:
 
     // Frequency, mode, band:
     void getFrequency();
-    void setFrequency(freqt freq);
+    void setFrequency(unsigned char vfo, freqt freq);
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
     void setMode(mode_info);
@@ -85,6 +86,9 @@ signals:
     void getRfGain();
     void getAfGain();
     void getSql();
+    void getIfShift();
+    void getTPBFInner();
+    void getTPBFOuter();
     void getTxPower();
     void getMicGain();
     void getSpectrumRefLevel();
@@ -94,6 +98,13 @@ signals:
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
     void setSql(unsigned char level);
+    void setIFShift(unsigned char level);
+    void setTPBFInner(unsigned char level);
+    void setTPBFOuter(unsigned char level);
+
+    void setIFShiftWindow(unsigned char level);
+    void setTPBFInnerWindow(unsigned char level);
+    void setTPBFOuterWindow(unsigned char level);
     void setMicGain(unsigned char);
     void setCompLevel(unsigned char);
     void setTxPower(unsigned char);
@@ -213,6 +224,13 @@ private slots:
     void receiveRfGain(unsigned char level);
     void receiveAfGain(unsigned char level);
     void receiveSql(unsigned char level);
+    void receiveIFShift(unsigned char level);
+    void receiveTBPFInner(unsigned char level);
+    void receiveTBPFOuter(unsigned char level);
+    // 'change' from data in transceiver controls window:
+    void changeIFShift(unsigned char level);
+    void changeTPBFInner(unsigned char level);
+    void changeTPBFOuter(unsigned char level);
     void receiveTxPower(unsigned char power);
     void receiveMicGain(unsigned char gain);
     void receiveCompLevel(unsigned char compLevel);
@@ -479,6 +497,10 @@ private slots:
 
     void setAudioDevicesUI();
 
+    void on_moreControlsBtn_clicked();
+
+    void on_useCIVasRigIDChk_clicked(bool checked);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -600,13 +622,18 @@ private:
     unsigned char setModeVal=0;
     unsigned char setFilterVal=0;
 
-    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode, cmdGetDataMode, cmdSetModeFilter,
-              cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
+    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode,
+              cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
-              cmdGetSql, cmdSetSql, cmdGetATUStatus, cmdSetATU, cmdStartATU, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,
-              cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
+              cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetTPBFInner, cmdSetTPBFInner,
+              cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus,
+              cmdSetATU, cmdStartATU, cmdGetSpectrumMode,
+              cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,
+              cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel,
+              cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
-              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter, cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
+              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
+              cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
               cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
               cmdSetTime, cmdSetDate, cmdSetUTCOffset};
 
@@ -690,6 +717,7 @@ private:
         bool wfInterpolate;
         QString stylesheetPath;
         unsigned char radioCIVAddr;
+        bool CIVisRadioModel;
         QString serialPortRadio;
         quint32 serialPortBaud;
         bool enablePTT;
