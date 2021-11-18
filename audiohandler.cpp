@@ -750,7 +750,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		if (currentLatency > setup.latency) {
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
 				" arrived too late (increase output latency!) " <<
-				dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
+				  packet.time.msecsTo(QTime::currentTime()) << "ms";
 		//	if (!ringBuf->try_read(packet))
 		//		break;
 		//	currentLatency = packet.time.msecsTo(QTime::currentTime());

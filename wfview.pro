@@ -29,7 +29,7 @@ linux:QMAKE_LFLAGS += -O2 -s
 # depend on your compiler). Please consult the documentation of the
 # deprecated API in order to know how to port your code away from it.
 DEFINES += QT_DEPRECATED_WARNINGS
-DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
+DEFINES += QCUSTOMPLOT_USE_LIBRARY
 
 
 # These defines are used for the resampler
@@ -66,6 +66,7 @@ contains(DEFINES, RTAUDIO) {
 contains(DEFINES, PORTAUDIO) {
 	CONFIG(debug, release|debug) {
   		win32:LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
+
 	} else {
   		win32:LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
 	}
@@ -122,19 +123,22 @@ INSTALLS += stylesheets
 
 CONFIG(debug, release|debug) {
   linux: QCPLIB = qcustomplotd
-  win32:LIBS += -L../opus/win32/VS2015/x64/Debug/ -lopus
+  !linux: QCPLIB = qcustomplotd2
+  win32:LIBS += -L../opus/win32/VS2015/x64/Debug/
+  win32:QMAKE_PRE_LINK+=copy /Y ..\qcustomplot\qcustomplotd2.dll debug\
 } else {
   linux: QCPLIB = qcustomplot
-  win32:LIBS += -L../opus/win32/VS2015/x64/Release/ -lopus
+  !linux: QCPLIB = qcustomplot2
+  win32:LIBS += -L../opus/win32/VS2015/x64/Release/
+  win32:QMAKE_PRE_LINK+=copy /Y ..\qcustomplot\qcustomplot2.dll release\
 }
 
+
 linux:LIBS += -L./ -l$$QCPLIB -lopus
+!linux:LIBS += -L../qcustomplot/ -l$$QCPLIB -lopus
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus 
 
-!linux:SOURCES += ../qcustomplot/qcustomplot.cpp 
-!linux:HEADERS += ../qcustomplot/qcustomplot.h
 !linux:INCLUDEPATH += ../qcustomplot
-
 !linux:INCLUDEPATH += ../opus/include
 
 INCLUDEPATH += resampler

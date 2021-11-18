@@ -84,9 +84,6 @@
     <ClCompile Include="pttyhandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\qcustomplot\qcustomplot.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="qledlabel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -161,9 +158,6 @@
     <QtMoc Include="pttyhandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="..\qcustomplot\qcustomplot.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <QtMoc Include="qledlabel.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -230,8 +224,6 @@
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
-    
-    
     
     
     
