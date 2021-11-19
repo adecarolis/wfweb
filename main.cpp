@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 #ifdef Q_OS_WIN
             QMessageBox::information(0, "wfview version", QString(WFVIEW_VERSION));
 #else
-            std::cout << "wfview version: " << QString(WFVIEW_VERSION).toStdString();
+            std::cout << "wfview version: " << QString(WFVIEW_VERSION).toStdString() << "\n";
 #endif
             return 0;
         } else {
