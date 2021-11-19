@@ -38,6 +38,11 @@ int main(int argc, char *argv[])
 
 
     const QString helpText = QString("\nUsage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr, -l --logfile filename.log, -s --settings filename.ini, -d --debug, -v --version\n"); // TODO...
+    const QString version = QString("wfview version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
+            .arg(QString(WFVIEW_VERSION))
+            .arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
+            .arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture())
+            .arg(QT_VERSION_STR).arg(qVersion());
 
     for(int c=1; c<argc; c++)
     {
@@ -100,9 +105,9 @@ int main(int argc, char *argv[])
         else if ((currentArg == "-v") || (currentArg == "--version"))
         {
 #ifdef Q_OS_WIN
-            QMessageBox::information(0, "wfview version", QString(WFVIEW_VERSION));
+            QMessageBox::information(0, "wfview version", version);
 #else
-            std::cout << "wfview version: " << QString(WFVIEW_VERSION).toStdString() << "\n";
+            std::cout << version.toStdString();
 #endif
             return 0;
         } else {
@@ -126,9 +131,7 @@ int main(int argc, char *argv[])
     // Set handler
     qInstallMessageHandler(messageHandler);
 
-    qInfo(logSystem()) << QString("Starting wfview: build %1 on %2 at %3 by %5@%6").arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST);
-    qInfo(logSystem()) << QString("Operating System: %1 (%2)").arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture());
-    qInfo(logSystem()) << QString("Build Qt Version %1. Current Qt Version: %2").arg(QT_VERSION_STR).arg(qVersion());
+    qInfo(logSystem()) << version;
     qDebug(logSystem()) << QString("SerialPortCL as set by parser: %1").arg(serialPortCL);
     qDebug(logSystem()) << QString("remote host as set by parser: %1").arg(hostCL);
     qDebug(logSystem()) << QString("CIV as set by parser: %1").arg(civCL);
