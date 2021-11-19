@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
     QString currentArg;
 
 
-    const QString helpText = QString("\nUsage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr, -l --logfile filename.log, -s --settings filename.ini, -d --debug\n"); // TODO...
+    const QString helpText = QString("\nUsage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr, -l --logfile filename.log, -s --settings filename.ini, -d --debug, -v --version\n"); // TODO...
 
     for(int c=1; c<argc; c++)
     {
@@ -88,12 +88,21 @@ int main(int argc, char *argv[])
                 c += 1;
             }
         }
-        else if ((currentArg == "--help"))
+        else if ((currentArg == "-?") || (currentArg == "--help"))
         {
 #ifdef Q_OS_WIN
             QMessageBox::information(0, "wfview help", helpText);
 #else
             std::cout << helpText.toStdString();
+#endif
+            return 0;
+        }
+        else if ((currentArg == "-v") || (currentArg == "--version"))
+        {
+#ifdef Q_OS_WIN
+            QMessageBox::information(0, "wfview version", QString(WFVIEW_VERSION));
+#else
+            std::cout << "wfview version: " << QString(WFVIEW_VERSION).toStdString();
 #endif
             return 0;
         } else {
