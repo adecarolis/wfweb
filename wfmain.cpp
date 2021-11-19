@@ -5500,8 +5500,8 @@ void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
     // issueDelayedCommand(cmdGetRigID);
-    emit getRigCIV();
-    //trxadj->show();
+    //emit getRigCIV();
+    trxadj->show();
     //setRadioTimeDatePrep();
     //wf->setInteraction(QCP::iRangeZoom, true);
     //wf->setInteraction(QCP::iRangeDrag, true);
