@@ -22,6 +22,8 @@
 
 rigCommander::rigCommander()
 {
+    rigState.mutex = new QMutex();
+    QMutexLocker locker(rigState.mutex);
     rigState.filter = 0;
     rigState.mode = 0;
     rigState.ptt = 0;
@@ -33,6 +35,7 @@ rigCommander::rigCommander()
 rigCommander::~rigCommander()
 {
     closeComm();
+    delete rigState.mutex;
 }
 
 
@@ -569,12 +572,16 @@ void rigCommander::setFrequency(unsigned char vfo, freqt freq)
 
     cmdPayload.append(freqPayload);
     if (vfo == 0) {
+        rigState.mutex->lock();
         rigState.vfoAFreq = freq;
+        rigState.mutex->unlock();
         cmdPayload.prepend('\x00');
     }
     else
     {   
+        rigState.mutex->lock();
         rigState.vfoBFreq = freq;
+        rigState.mutex->unlock();
         cmdPayload.prepend(vfo);
         cmdPayload.prepend('\x25');
     }
@@ -702,6 +709,8 @@ void rigCommander::setMode(mode_info m)
     payload.append(m.filter);
 
     prepDataAndSend(payload);
+
+    QMutexLocker locker(rigState.mutex);
     rigState.mode = m.reg;
     rigState.filter = m.filter;
 }
@@ -733,6 +742,7 @@ void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
         }
 
         prepDataAndSend(payload);
+        QMutexLocker locker(rigState.mutex);
         rigState.mode = mode;
         rigState.filter = modeFilter;
 
@@ -753,6 +763,7 @@ void rigCommander::setDataMode(bool dataOn, unsigned char filter)
         payload.append("\x00\x00", 2); // data mode off, bandwidth not defined per ICD.
     }
     prepDataAndSend(payload);
+    QMutexLocker locker(rigState.mutex);
     rigState.datamode = dataOn;
 }
 
@@ -1020,6 +1031,7 @@ void rigCommander::setPTT(bool pttOn)
         QByteArray payload("\x1C\x00", 2);
         payload.append((char)pttOn);
         prepDataAndSend(payload);
+        QMutexLocker locker(rigState.mutex);
         rigState.ptt = pttOn;
     }
 }
@@ -1241,16 +1253,22 @@ void rigCommander::parseCommand()
             break;
         case '\x0F':
             emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
+            rigState.mutex->lock();
             rigState.duplex = (duplexMode)(unsigned char)payloadIn[1];
+            rigState.mutex->unlock();
             break;
         case '\x11':
             emit haveAttenuator((unsigned char)payloadIn.at(1));
+            rigState.mutex->lock();
             rigState.attenuator = (unsigned char)payloadIn.at(1);
+            rigState.mutex->unlock();
             break;
         case '\x12':
             emit haveAntenna((unsigned char)payloadIn.at(1), (bool)payloadIn.at(2));
+            rigState.mutex->lock();
             rigState.antenna = (unsigned char)payloadIn.at(1);
             rigState.rxAntenna = (bool)payloadIn.at(2);
+            rigState.mutex->unlock();
             break;
         case '\x14':
             // read levels
@@ -1346,7 +1364,6 @@ void rigCommander::parseLevels()
     // "INDEX: 00 01 02 03 04 "
     // "DATA:  14 02 00 78 fd "
 
-
     if(payloadIn[0] == '\x14')
     {
         switch(payloadIn[1])
@@ -1355,18 +1372,24 @@ void rigCommander::parseLevels()
                 // AF level - ignore if LAN connection.
                 if (udp == Q_NULLPTR) {
                     emit haveAfGain(level);
+                    rigState.mutex->lock();
                     rigState.afGain = level;
+                    rigState.mutex->unlock();
                 }
                 break;
             case '\x02':
                 // RX RF Gain
                 emit haveRfGain(level);
+                rigState.mutex->lock();
                 rigState.rfGain = level;
+                rigState.mutex->unlock();
                 break;
             case '\x03':
                 // Squelch level
                 emit haveSql(level);
+                rigState.mutex->lock();
                 rigState.squelch = level;
+                rigState.mutex->unlock();
                 break;
             case '\x07':
                 // Twin BPF Inner, or, IF-Shift level
@@ -1385,12 +1408,16 @@ void rigCommander::parseLevels()
             case '\x0A':
                 // TX RF level
                 emit haveTxPower(level);
+                rigState.mutex->lock();
                 rigState.txPower = level;
+                rigState.mutex->unlock();
                 break;
             case '\x0B':
                 // Mic Gain
                 emit haveMicGain(level);
+                rigState.mutex->lock();
                 rigState.micGain = level;
+                rigState.mutex->unlock();
                 break;
             case '\x0C':
                 // CW Keying Speed - ignore for now
@@ -1401,7 +1428,9 @@ void rigCommander::parseLevels()
             case '\x0E':
                 // compressor level
                 emit haveCompLevel(level);
+                rigState.mutex->lock();
                 rigState.compLevel = level;
+                rigState.mutex->unlock();
                 break;
             case '\x12':
                 // NB level - ignore for now
@@ -1409,17 +1438,23 @@ void rigCommander::parseLevels()
             case '\x15':
                 // monitor level
                 emit haveMonitorLevel(level);
+                rigState.mutex->lock();
                 rigState.monitorLevel = level;
+                rigState.mutex->unlock();
                 break;
             case '\x16':
                 // VOX gain
                 emit haveVoxGain(level);
+                rigState.mutex->lock();
                 rigState.voxGain = level;
+                rigState.mutex->unlock();
                 break;
             case '\x17':
                 // anti-VOX gain
                 emit haveAntiVoxGain(level);
+                rigState.mutex->lock();
                 rigState.antiVoxGain = level;
+                rigState.mutex->unlock();
                 break;
 
             default:
@@ -1437,42 +1472,58 @@ void rigCommander::parseLevels()
             case '\x02':
                 // S-Meter
                 emit haveMeter(meterS, level);
+                rigState.mutex->lock();
                 rigState.sMeter = level;
+                rigState.mutex->unlock();
                 break;
             case '\x04':
                 // Center (IC-R8600)
                 emit haveMeter(meterCenter, level);
+                rigState.mutex->lock();
                 rigState.sMeter = level;
+                rigState.mutex->unlock();
                 break;
             case '\x11':
                 // RF-Power meter
                 emit haveMeter(meterPower, level);
+                rigState.mutex->lock();
                 rigState.powerMeter = level;
+                rigState.mutex->unlock();
                 break;
             case '\x12':
                 // SWR
                 emit haveMeter(meterSWR, level);
+                rigState.mutex->lock();
                 rigState.swrMeter = level;
+                rigState.mutex->unlock();
                 break;
             case '\x13':
                 // ALC
                 emit haveMeter(meterALC, level);
+                rigState.mutex->lock();
                 rigState.alcMeter = level;
+                rigState.mutex->unlock();
                 break;
             case '\x14':
                 // COMP dB reduction
                 emit haveMeter(meterComp, level);
+                rigState.mutex->lock();
                 rigState.compMeter = level;
+                rigState.mutex->unlock();
                 break;
             case '\x15':
                 // VD (12V)
                 emit haveMeter(meterVoltage, level);
+                rigState.mutex->lock();
                 rigState.voltageMeter = level;
+                rigState.mutex->unlock();
                 break;
             case '\x16':
                 // ID
                 emit haveMeter(meterCurrent, level);
+                rigState.mutex->lock();
                 rigState.currentMeter = level;
+                rigState.mutex->unlock();
                 break;
 
             default:
@@ -2379,6 +2430,7 @@ void rigCommander::parsePTT()
         // PTT on
         emit havePTTStatus(true);
     }
+    QMutexLocker locker(rigState.mutex);
     rigState.ptt = (bool)payloadIn[2];
 
 }
@@ -2398,6 +2450,7 @@ void rigCommander::parseRegisters1A()
 
     // "INDEX: 00 01 02 03 04 "
     // "DATA:  1a 06 01 03 fd " (data mode enabled, filter width 3 selected)
+    QMutexLocker locker(rigState.mutex);
 
     switch(payloadIn[01])
     {
@@ -2440,24 +2493,32 @@ void rigCommander::parseRegister1B()
             // "Repeater tone"
             tone = decodeTone(payloadIn);
             emit haveTone(tone);
+            rigState.mutex->lock();
             rigState.ctcss = tone;
+            rigState.mutex->unlock();
             break;
         case '\x01':
             // "TSQL tone"
             tone = decodeTone(payloadIn);
             emit haveTSQL(tone);
+            rigState.mutex->lock();
             rigState.tsql = tone;
+            rigState.mutex->unlock();
             break;
         case '\x02':
             // DTCS (DCS)
             tone = decodeTone(payloadIn, tinv, rinv);
             emit haveDTCS(tone, tinv, rinv);
+            rigState.mutex->lock();
             rigState.dtcs = tone;
+            rigState.mutex->unlock();
             break;
         case '\x07':
             // "CSQL code (DV mode)"
             tone = decodeTone(payloadIn);
+            rigState.mutex->lock();
             rigState.csql = tone;
+            rigState.mutex->unlock();
             break;
         default:
             break;
@@ -2469,6 +2530,7 @@ void rigCommander::parseRegister16()
     //"INDEX: 00 01 02 03 "
     //"DATA:  16 5d 00 fd "
     //               ^-- mode info here
+
     switch(payloadIn.at(1))
     {
         case '\x5d':
@@ -2477,7 +2539,9 @@ void rigCommander::parseRegister16()
         case '\x02':
             // Preamp
             emit havePreamp((unsigned char)payloadIn.at(2));
+            rigState.mutex->lock();
             rigState.preamp = (unsigned char)payloadIn.at(2);
+            rigState.mutex->unlock();
             break;
         default:
             break;
@@ -3790,7 +3854,10 @@ void rigCommander::parseFrequency()
 
     freq.MHzDouble = frequencyMhz;
 
+    rigState.mutex->lock();
     rigState.vfoAFreq = freq;
+    rigState.mutex->unlock();
+
     emit haveFrequency(freq);
 }
 
@@ -3868,8 +3935,10 @@ void rigCommander::parseMode()
     } else {
         filter = 0;
     }
+    rigState.mutex->lock();
     rigState.mode = (unsigned char)payloadIn[01];
     rigState.filter = filter;
+    rigState.mutex->unlock();
     emit haveMode((unsigned char)payloadIn[01], filter);
 }
 
