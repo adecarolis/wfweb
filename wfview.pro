@@ -11,6 +11,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 TARGET = wfview
 TEMPLATE = app
 
+DEFINES += WFVIEW_VERSION=\\\"1.2d\\\"
+
 CONFIG(debug, release|debug) {
 # For Debug builds only:
 QMAKE_CXXFLAGS += -faligned-new
@@ -34,6 +36,7 @@ DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 
 # These defines are used for the resampler
 equals(QT_ARCH, i386): DEFINES += USE_SSE
+equals(QT_ARCH, i386): DEFINES += USE_SSE2
 equals(QT_ARCH, arm): DEFINES += USE_NEON
 DEFINES += OUTSIDE_SPEEX
 DEFINES += RANDOM_PREFIX=wf
@@ -48,13 +51,29 @@ DEFINES += PREFIX=\\\"$$PREFIX\\\"
 # DEFINES += RTAUDIO
 # DEFINES += PORTAUDIO
 
-# RTAudio defines
-win32:DEFINES += __WINDOWS_WASAPI__
-#win32:DEFINES += __WINDOWS_DS__ # Requires DirectSound libraries
-linux:DEFINES += __LINUX_ALSA__
-#linux:DEFINES += __LINUX_OSS__
-#linux:DEFINES += __LINUX_PULSE__
-macx:DEFINES += __MACOSX_CORE__
+contains(DEFINES, RTAUDIO) {
+	# RTAudio defines
+	win32:DEFINES += __WINDOWS_WASAPI__
+	#win32:DEFINES += __WINDOWS_DS__ # Requires DirectSound libraries
+	linux:DEFINES += __LINUX_ALSA__
+	#linux:DEFINES += __LINUX_OSS__
+	#linux:DEFINES += __LINUX_PULSE__
+	macx:DEFINES += __MACOSX_CORE__
+	win32:SOURCES += ../rtaudio/RTAudio.cpp
+	win32:HEADERS += ../rtaudio/RTAUdio.h
+	!linux:INCLUDEPATH += ../rtaudio
+	linux:LIBS += -lpulse -lpulse-simple -lrtaudio -lpthread
+}
+
+contains(DEFINES, PORTAUDIO) {
+	CONFIG(debug, release|debug) {
+  		win32:LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
+	} else {
+  		win32:LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
+	}
+	win32:INCLUDEPATH += ../portaudio/include
+	!win32:LIBS += -lportaudio
+}
 
 macx:INCLUDEPATH += /usr/local/include /opt/local/include
 macx:LIBS += -L/usr/local/lib -L/opt/local/lib
@@ -111,12 +130,9 @@ CONFIG(debug, release|debug) {
   win32:LIBS += -L../opus/win32/VS2015/Win32/Release/ -lopus
 }
 
-#linux:LIBS += -L./ -l$$QCPLIB -lpulse -lpulse-simple -lpthread
 linux:LIBS += -L./ -l$$QCPLIB -lopus
-macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
+macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus 
 
-#win32:SOURCES += rtaudio/RTAudio.cpp
-#win32:HEADERS += rtaudio/RTAUdio.h
 !linux:SOURCES += ../qcustomplot/qcustomplot.cpp 
 !linux:HEADERS += ../qcustomplot/qcustomplot.h
 !linux:INCLUDEPATH += ../qcustomplot
@@ -124,7 +140,6 @@ macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 !linux:INCLUDEPATH += ../opus/include
 
 INCLUDEPATH += resampler
-!linux:INCLUDEPATH += rtaudio
 
 SOURCES += main.cpp\
     wfmain.cpp \

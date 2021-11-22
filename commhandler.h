@@ -18,8 +18,13 @@ public:
     commHandler();
     commHandler(QString portName, quint32 baudRate);
     bool serialError;
+    bool rtsStatus();
 
     ~commHandler();
+
+public slots:
+    void setUseRTSforPTT(bool useRTS);
+    void setRTS(bool rtsOn);
 
 private slots:
     void receiveDataIn(); // from physical port
@@ -37,6 +42,7 @@ private:
     void setupComm();
     void openPort();
     void closePort();
+
 
     void sendDataOut(const QByteArray &writeData); // out to radio
     void debugMe();
@@ -62,6 +68,8 @@ private:
     mutable QMutex ptMutex;
     bool havePt;
     QString ptDevSlave;
+
+    bool PTTviaRTS = false;
 
     bool isConnected; // port opened
     mutable QMutex mutex;

@@ -9,10 +9,14 @@
 #include <QtMath>
 
 #if defined(RTAUDIO)
+#ifdef Q_OS_WIN
+#include "RtAudio.h"
+#else
 #include "rtaudio/RtAudio.h"
+#endif
 #elif defined (PORTAUDIO)
 #include "portaudio.h"
-#error "PORTAUDIO is not currently supported"
+//#error "PORTAUDIO is not currently supported"
 #else
 #include <QAudioOutput>
 #include <QAudioFormat>
@@ -31,6 +35,7 @@ typedef signed short  MY_TYPE;
 #include <QTimer>
 #include <QTime>
 #include <QMap>
+
 #include "resampler/speex_resampler.h"
 #include "ring/ring.h"
 
@@ -67,9 +72,8 @@ struct audioSetup {
     quint8 codec;
     bool ulaw;
     bool isinput;
-#if defined(RTAUDIO)
+#if defined(RTAUDIO) || defined(PORTAUDIO)
     int port;
-#elif defined(PORTAUDIO)
 #else
     QAudioDeviceInfo port;
 #endif
@@ -137,6 +141,21 @@ private:
         return static_cast<audioHandler*>(userData)->writeData(outputBuffer, inputBuffer, nFrames, streamTime, status);
     }
 #elif defined(PORTAUDIO)
+    int readData(const void* inputBuffer, void* outputBuffer,
+        unsigned long nFrames,
+        const PaStreamCallbackTimeInfo* streamTime,
+        PaStreamCallbackFlags status);
+    static int staticRead(const void* inputBuffer, void* outputBuffer, unsigned long nFrames, const PaStreamCallbackTimeInfo* streamTime, PaStreamCallbackFlags status, void* userData) {
+        return ((audioHandler*)userData)->readData(inputBuffer, outputBuffer, nFrames, streamTime, status);
+    }    
+    
+    int writeData(const void* inputBuffer, void* outputBuffer,
+        unsigned long nFrames,
+        const PaStreamCallbackTimeInfo* streamTime,
+        PaStreamCallbackFlags status);
+    static int staticWrite(const void* inputBuffer, void* outputBuffer, unsigned long nFrames, const PaStreamCallbackTimeInfo* streamTime, PaStreamCallbackFlags status, void* userData) {
+        return ((audioHandler*)userData)->writeData(inputBuffer, outputBuffer, nFrames, streamTime, status);
+    }
 
 #else
     qint64 readData(char* data, qint64 nBytes);
@@ -154,6 +173,9 @@ private:
     RtAudio::StreamOptions options;
     RtAudio::DeviceInfo info;
 #elif defined(PORTAUDIO)
+    PaStream* audio = Q_NULLPTR;
+    PaStreamParameters aParams;
+    const PaDeviceInfo *info;
 #else
     QAudioOutput* audioOutput=Q_NULLPTR;
     QAudioInput* audioInput=Q_NULLPTR;
@@ -175,8 +197,7 @@ private:
 
     QMap<quint32, audioPacket>audioBuffer;
 
-    unsigned int ratioNum;
-    unsigned int ratioDen;
+    double resampleRatio;
 
     wilt::Ring<audioPacket> *ringBuf=Q_NULLPTR;
 

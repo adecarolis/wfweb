@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>941</width>
+    <width>948</width>
     <height>554</height>
    </rect>
   </property>
@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -465,6 +465,16 @@
               </property>
              </widget>
             </item>
+            <item>
+             <widget class="QPushButton" name="moreControlsBtn">
+              <property name="toolTip">
+               <string>Show additional controls</string>
+              </property>
+              <property name="text">
+               <string>Show More</string>
+              </property>
+             </widget>
+            </item>
            </layout>
           </item>
           <item>
@@ -852,6 +862,9 @@
                 <height>50</height>
                </size>
               </property>
+              <property name="toolTip">
+               <string>Transmit and Receive button</string>
+              </property>
               <property name="text">
                <string>Transmit</string>
               </property>
@@ -885,6 +898,9 @@
             </item>
             <item>
              <widget class="QPushButton" name="rptSetupBtn">
+              <property name="toolTip">
+               <string>Show the repeater tone and offset window</string>
+              </property>
               <property name="text">
                <string>Repeater</string>
               </property>
@@ -2358,6 +2374,16 @@
            </widget>
           </item>
           <item>
+           <widget class="QCheckBox" name="useCIVasRigIDChk">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Only check for older radios!&lt;/p&gt;&lt;p&gt;This checkbox forces wfview to trust that the CI-V address is also the model number of the radio. This is only useful for older radios that do not reply to our Rig ID requests (0x19 0x00). Do not check this box unless you have an older radio. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>Use as Model too</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <spacer name="tuneSpacer">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -2839,7 +2865,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>941</width>
+     <width>948</width>
      <height>22</height>
     </rect>
    </property>

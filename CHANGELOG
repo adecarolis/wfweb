@@ -1,5 +1,133 @@
 # CHANGELOG
 
+- 20211022
+
+    		Don't block until audio buffer has space
+
+    		Bit of tidying
+
+- 20211020
+
+    		Tidy-up server shutdown
+
+    		Trying to find cause of lockup when client disappears
+
+- 20211006
+
+    		Send TX/Freq changes multiple times with rigctld
+
+		bumped to 1.2d hopefully last testversion before 1.20
+- 202109022
+
+    		Remove duplicate setPriority()
+
+    		Fix typo
+
+		Add keepalive for linux/mac pty
+
+    		Fix alignment of rigname in taskbar
+
+    		Only send RX antenna byte to rig when it has an RX antenna option in rigCaps
+
+
+- 20210907
+
+	        Make rigctld state work for USB connected rigs
+
+- 20210831
+
+    		added 25 kHz step for tuning
+
+- 20210829
+
+    		Experimental support for split mode in rigctld
+
+    		Ignore control levels that we don't currently support
+
+    		Add better detection of ci-v transceive disable
+
+- 20210827
+
+    		Add saving of meter2 state
+
+- 20210823
+
+    		Set audio thread priority in the correct place!
+
+    		Now with dual meters for everyone!
+
+- 20210820
+
+    		Clear Center readout as well.
+
+    		Fixed issue where the "none" selection didn't work quite right. Also
+    		fixed the T/R meter switching to clear out invalid readings.
+
+
+    		Set audio threads to be realtime priority
+
+- 20210817
+
+    		dual meter support/WHATSNEW
+
+    		Current scale tic marks on both sides now!
+
+    		More meter work, fixed some scales and added labels.
+
+    		Better meter fonts
+
+- 20210815
+
+    		Fix for left over CIV client on server
+
+    		Improve detection of unsupported codec.
+
+- 20210814
+
+    		Fix for Opus TX audio
+
+    		txrate logging wrong
+
+    		More warning removal!
+
+    		More commenting in rigctld.h
+
+    		Is this going to fix 8 bit audio?
+
+    		Comment unused structs from rigctld
+
+    		All audio codecs now work in both directions!
+
+		Update audiohandler.cpp
+
+		more 8bit fixes!
+
+		ulaw encoding test
+
+		8 bit encoding fix
+
+		Another issue with  8 bit audio
+
+		Try again to remove debugging!
+
+		Revert "Remove extra opus debugging"  This reverts commit da53f5371bbeb35b10cbb831b83b74e1bdd771f9.
+
+		Remove extra opus debugging
+
+		Move opus init
+
+		Add some debugging for decoder
+
+		Use radio samplerate for opus
+
+		Remove big/little endian conversion
+
+		More Opus fixes
+
+		Update audiohandler.cpp
+
+		Try to fix Opus 2-channel
+
 - 20210809
 
     		Add constants to make parsing (hopefully) easier

@@ -171,7 +171,7 @@ public slots:
     void getScopeMode();
 
     // Frequency, Mode, BSR:
-    void setFrequency(freqt freq);
+    void setFrequency(unsigned char vfo, freqt freq);
     void getFrequency();
     void setMode(unsigned char mode, unsigned char modeFilter);
     void setMode(mode_info);
@@ -215,6 +215,9 @@ public slots:
     void getRfGain();
     void getAfGain();
     void getSql();
+    void getIFShift();
+    void getTPBFInner();
+    void getTPBFOuter();
     void getTxLevel();
     void getMicGain();
     void getCompLevel();
@@ -232,6 +235,9 @@ public slots:
     void setSquelch(unsigned char level);
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
+    void setIFShift(unsigned char level);
+    void setTPBFInner(unsigned char level);
+    void setTPBFOuter(unsigned char level);
     void setTxPower(unsigned char power);
     void setMicGain(unsigned char gain);
     void setUSBGain(unsigned char gain);
@@ -274,6 +280,7 @@ public slots:
     // Rig ID and CIV:
     void getRigID();
     void findRigs();
+    void setRigID(unsigned char rigID);
     void setCIVAddr(unsigned char civAddr);
 
     // Calibration:
@@ -316,6 +323,7 @@ signals:
     void haveSerialPortError(const QString port, const QString errorText);
     void haveStatusUpdate(const QString text);
     void dataForComm(const QByteArray &outData);
+    void toggleRTS(bool rtsOn);
 
     // UDP:
     void haveChangeLatency(quint16 value);
@@ -356,6 +364,9 @@ signals:
     void haveRfGain(unsigned char level);
     void haveAfGain(unsigned char level);
     void haveSql(unsigned char level);
+    void haveTPBFInner(unsigned char level);
+    void haveTPBFOuter(unsigned char level);
+    void haveIFShift(unsigned char level);
     void haveTxPower(unsigned char level);
     void haveMicGain(unsigned char level);
     void haveCompLevel(unsigned char level);
