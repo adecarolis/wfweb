@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>946</width>
-    <height>582</height>
+    <width>948</width>
+    <height>554</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -2684,6 +2684,12 @@
           </item>
           <item>
            <widget class="QComboBox" name="audioOutputCombo">
+            <property name="maximumSize">
+             <size>
+              <width>300</width>
+              <height>16777215</height>
+             </size>
+            </property>
             <property name="accessibleName">
              <string>Audio Output Selector</string>
             </property>
@@ -2698,10 +2704,29 @@
           </item>
           <item>
            <widget class="QComboBox" name="audioInputCombo">
+            <property name="maximumSize">
+             <size>
+              <width>300</width>
+              <height>16777215</height>
+             </size>
+            </property>
             <property name="accessibleName">
              <string>Audio Input Selector</string>
             </property>
            </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_8">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
           </item>
          </layout>
         </item>
@@ -2840,7 +2865,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>946</width>
+     <width>948</width>
      <height>22</height>
     </rect>
    </property>
