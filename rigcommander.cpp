@@ -22,20 +22,16 @@
 
 rigCommander::rigCommander()
 {
-    rigState.mutex = new QMutex();
-    QMutexLocker locker(rigState.mutex);
-    rigState.filter = 0;
-    rigState.mode = 0;
-    rigState.ptt = 0;
-    rigState.currentVfo = 0;
-    rigState.duplex = dmSplitOff;
-
+    state.filter(0,NONE);
+    state.mode(0,NONE);
+    state.ptt(0,NONE);
+    state.currentVfo(0,NONE);
+    state.duplex(dmSplitOff,NONE);
 }
 
 rigCommander::~rigCommander()
 {
     closeComm();
-    delete rigState.mutex;
 }
 
 
@@ -572,16 +568,12 @@ void rigCommander::setFrequency(unsigned char vfo, freqt freq)
 
     cmdPayload.append(freqPayload);
     if (vfo == 0) {
-        rigState.mutex->lock();
-        rigState.vfoAFreq = freq;
-        rigState.mutex->unlock();
+        state.vfoAFreq(freq.Hz,NONE);
         cmdPayload.prepend('\x00');
     }
     else
     {   
-        rigState.mutex->lock();
-        rigState.vfoBFreq = freq;
-        rigState.mutex->unlock();
+        state.vfoBFreq(freq.Hz,NONE);
         cmdPayload.prepend(vfo);
         cmdPayload.prepend('\x25');
     }
@@ -709,10 +701,6 @@ void rigCommander::setMode(mode_info m)
     payload.append(m.filter);
 
     prepDataAndSend(payload);
-
-    QMutexLocker locker(rigState.mutex);
-    rigState.mode = m.reg;
-    rigState.filter = m.filter;
 }
 
 void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
@@ -742,10 +730,6 @@ void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
         }
 
         prepDataAndSend(payload);
-        QMutexLocker locker(rigState.mutex);
-        rigState.mode = mode;
-        rigState.filter = modeFilter;
-
     }
 }
 
@@ -763,8 +747,6 @@ void rigCommander::setDataMode(bool dataOn, unsigned char filter)
         payload.append("\x00\x00", 2); // data mode off, bandwidth not defined per ICD.
     }
     prepDataAndSend(payload);
-    QMutexLocker locker(rigState.mutex);
-    rigState.datamode = dataOn;
 }
 
 void rigCommander::getFrequency()
@@ -1008,9 +990,9 @@ void rigCommander::getPTT()
     //{
     //    emit havePTTStatus(comm->rtsStatus());
     //} else {
-        QByteArray payload;
-        payload.setRawData("\x1C\x00", 2);
-        prepDataAndSend(payload);
+    QByteArray payload;
+    payload.setRawData("\x1C\x00", 2);
+    prepDataAndSend(payload);
     //}
 }
 
@@ -1031,8 +1013,6 @@ void rigCommander::setPTT(bool pttOn)
         QByteArray payload("\x1C\x00", 2);
         payload.append((char)pttOn);
         prepDataAndSend(payload);
-        QMutexLocker locker(rigState.mutex);
-        rigState.ptt = pttOn;
     }
 }
 
@@ -1253,22 +1233,16 @@ void rigCommander::parseCommand()
             break;
         case '\x0F':
             emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
-            rigState.mutex->lock();
-            rigState.duplex = (duplexMode)(unsigned char)payloadIn[1];
-            rigState.mutex->unlock();
+            state.duplex((duplexMode)(unsigned char)payloadIn[1],NONE);
             break;
         case '\x11':
             emit haveAttenuator((unsigned char)payloadIn.at(1));
-            rigState.mutex->lock();
-            rigState.attenuator = (unsigned char)payloadIn.at(1);
-            rigState.mutex->unlock();
+            state.attenuator((unsigned char)payloadIn.at(1),NONE);
             break;
         case '\x12':
             emit haveAntenna((unsigned char)payloadIn.at(1), (bool)payloadIn.at(2));
-            rigState.mutex->lock();
-            rigState.antenna = (unsigned char)payloadIn.at(1);
-            rigState.rxAntenna = (bool)payloadIn.at(2);
-            rigState.mutex->unlock();
+            state.antenna((unsigned char)payloadIn.at(1),NONE);
+            state.rxAntenna((bool)payloadIn.at(2),NONE);
             break;
         case '\x14':
             // read levels
@@ -1372,24 +1346,18 @@ void rigCommander::parseLevels()
                 // AF level - ignore if LAN connection.
                 if (udp == Q_NULLPTR) {
                     emit haveAfGain(level);
-                    rigState.mutex->lock();
-                    rigState.afGain = level;
-                    rigState.mutex->unlock();
+                    state.afGain(level,NONE);
                 }
                 break;
             case '\x02':
                 // RX RF Gain
                 emit haveRfGain(level);
-                rigState.mutex->lock();
-                rigState.rfGain = level;
-                rigState.mutex->unlock();
+                state.rfGain(level,NONE);
                 break;
             case '\x03':
                 // Squelch level
-                emit haveSql(level);
-                rigState.mutex->lock();
-                rigState.squelch = level;
-                rigState.mutex->unlock();
+                emit haveSql(level);                
+                state.squelch(level,NONE);
                 break;
             case '\x07':
                 // Twin BPF Inner, or, IF-Shift level
@@ -1408,16 +1376,12 @@ void rigCommander::parseLevels()
             case '\x0A':
                 // TX RF level
                 emit haveTxPower(level);
-                rigState.mutex->lock();
-                rigState.txPower = level;
-                rigState.mutex->unlock();
+                state.txPower(level,NONE);
                 break;
             case '\x0B':
                 // Mic Gain
                 emit haveMicGain(level);
-                rigState.mutex->lock();
-                rigState.micGain = level;
-                rigState.mutex->unlock();
+                state.micGain(level,NONE);
                 break;
             case '\x0C':
                 // CW Keying Speed - ignore for now
@@ -1428,9 +1392,7 @@ void rigCommander::parseLevels()
             case '\x0E':
                 // compressor level
                 emit haveCompLevel(level);
-                rigState.mutex->lock();
-                rigState.compLevel = level;
-                rigState.mutex->unlock();
+                state.compLevel(level,NONE);
                 break;
             case '\x12':
                 // NB level - ignore for now
@@ -1438,23 +1400,17 @@ void rigCommander::parseLevels()
             case '\x15':
                 // monitor level
                 emit haveMonitorLevel(level);
-                rigState.mutex->lock();
-                rigState.monitorLevel = level;
-                rigState.mutex->unlock();
+                state.monitorLevel(level,NONE);
                 break;
             case '\x16':
                 // VOX gain
                 emit haveVoxGain(level);
-                rigState.mutex->lock();
-                rigState.voxGain = level;
-                rigState.mutex->unlock();
+                state.voxGain(level,NONE);
                 break;
             case '\x17':
                 // anti-VOX gain
                 emit haveAntiVoxGain(level);
-                rigState.mutex->lock();
-                rigState.antiVoxGain = level;
-                rigState.mutex->unlock();
+                state.antiVoxGain(level,NONE);
                 break;
 
             default:
@@ -1472,58 +1428,42 @@ void rigCommander::parseLevels()
             case '\x02':
                 // S-Meter
                 emit haveMeter(meterS, level);
-                rigState.mutex->lock();
-                rigState.sMeter = level;
-                rigState.mutex->unlock();
+                state.sMeter(level,NONE);
                 break;
             case '\x04':
                 // Center (IC-R8600)
                 emit haveMeter(meterCenter, level);
-                rigState.mutex->lock();
-                rigState.sMeter = level;
-                rigState.mutex->unlock();
+                state.sMeter(level,NONE);
                 break;
             case '\x11':
                 // RF-Power meter
                 emit haveMeter(meterPower, level);
-                rigState.mutex->lock();
-                rigState.powerMeter = level;
-                rigState.mutex->unlock();
+                state.powerMeter(level,NONE);
                 break;
             case '\x12':
                 // SWR
                 emit haveMeter(meterSWR, level);
-                rigState.mutex->lock();
-                rigState.swrMeter = level;
-                rigState.mutex->unlock();
+                state.swrMeter(level,NONE);
                 break;
             case '\x13':
                 // ALC
                 emit haveMeter(meterALC, level);
-                rigState.mutex->lock();
-                rigState.alcMeter = level;
-                rigState.mutex->unlock();
+                state.alcMeter(level,NONE);
                 break;
             case '\x14':
                 // COMP dB reduction
                 emit haveMeter(meterComp, level);
-                rigState.mutex->lock();
-                rigState.compMeter = level;
-                rigState.mutex->unlock();
+                state.compMeter(level,NONE);
                 break;
             case '\x15':
                 // VD (12V)
                 emit haveMeter(meterVoltage, level);
-                rigState.mutex->lock();
-                rigState.voltageMeter = level;
-                rigState.mutex->unlock();
+                state.voltageMeter(level,NONE);
                 break;
             case '\x16':
                 // ID
                 emit haveMeter(meterCurrent, level);
-                rigState.mutex->lock();
-                rigState.currentMeter = level;
-                rigState.mutex->unlock();
+                state.currentMeter(level,NONE);
                 break;
 
             default:
@@ -2430,8 +2370,7 @@ void rigCommander::parsePTT()
         // PTT on
         emit havePTTStatus(true);
     }
-    QMutexLocker locker(rigState.mutex);
-    rigState.ptt = (bool)payloadIn[2];
+    state.ptt((bool)payloadIn[2],NONE);
 
 }
 
@@ -2450,7 +2389,6 @@ void rigCommander::parseRegisters1A()
 
     // "INDEX: 00 01 02 03 04 "
     // "DATA:  1a 06 01 03 fd " (data mode enabled, filter width 3 selected)
-    QMutexLocker locker(rigState.mutex);
 
     switch(payloadIn[01])
     {
@@ -2460,6 +2398,9 @@ void rigCommander::parseRegisters1A()
         case '\x01':
             // band stacking register
             parseBandStackReg();
+            break;
+        case '\x04':
+            state.agc(payloadIn[02],AGC);
             break;
         case '\x06':
             // data mode
@@ -2471,7 +2412,7 @@ void rigCommander::parseRegisters1A()
             // YY: filter selected, 01 through 03.;
             // if YY is 00 then XX was also set to 00
             emit haveDataMode((bool)payloadIn[03]);
-            rigState.datamode = (bool)payloadIn[03];
+            state.datamode((bool)payloadIn[03],NONE);
             break;
         case '\x07':
             // IP+ status
@@ -2493,32 +2434,24 @@ void rigCommander::parseRegister1B()
             // "Repeater tone"
             tone = decodeTone(payloadIn);
             emit haveTone(tone);
-            rigState.mutex->lock();
-            rigState.ctcss = tone;
-            rigState.mutex->unlock();
+            state.ctcss(tone,NONE);
             break;
         case '\x01':
             // "TSQL tone"
             tone = decodeTone(payloadIn);
             emit haveTSQL(tone);
-            rigState.mutex->lock();
-            rigState.tsql = tone;
-            rigState.mutex->unlock();
+            state.tsql(tone,NONE);
             break;
         case '\x02':
             // DTCS (DCS)
             tone = decodeTone(payloadIn, tinv, rinv);
             emit haveDTCS(tone, tinv, rinv);
-            rigState.mutex->lock();
-            rigState.dtcs = tone;
-            rigState.mutex->unlock();
+            state.dtcs(tone,NONE);
             break;
         case '\x07':
             // "CSQL code (DV mode)"
             tone = decodeTone(payloadIn);
-            rigState.mutex->lock();
-            rigState.csql = tone;
-            rigState.mutex->unlock();
+            state.csql(tone,NONE);
             break;
         default:
             break;
@@ -2539,9 +2472,49 @@ void rigCommander::parseRegister16()
         case '\x02':
             // Preamp
             emit havePreamp((unsigned char)payloadIn.at(2));
-            rigState.mutex->lock();
-            rigState.preamp = (unsigned char)payloadIn.at(2);
-            rigState.mutex->unlock();
+            state.preamp((unsigned char)payloadIn.at(2),NONE);
+            break;
+        case '\x22':
+            state.nbFunc((bool)payloadIn.at(2), NONE);
+            break;
+        case '\x40':
+            state.nrFunc((bool)payloadIn.at(2), NONE);
+            break;
+        case '\x41': // Auto notch
+            state.anfFunc((bool)payloadIn.at(2), NONE);
+            break;
+        case '\x42':
+            state.toneFunc((bool)payloadIn.at(2), NONE);
+            break;
+        case '\x43':
+            state.tsqlFunc((bool)payloadIn.at(2), NONE);
+            break;
+        case '\44':
+            state.compFunc((bool)payloadIn.at(2), NONE);
+            break;
+        case '\45':
+            state.monFunc((bool)payloadIn.at(2), NONE);
+            break;
+        case '\46':
+            state.voxFunc((bool)payloadIn.at(2), NONE);
+            break;
+        case '\x47':
+            if (payloadIn.at(2) == '\00') {
+                state.fbkinFunc(false, NONE);
+                state.sbkinFunc(false, NONE);
+            }
+            else if (payloadIn.at(2) == '\01') {
+                state.fbkinFunc(false, NONE);
+                state.sbkinFunc(true, NONE);
+
+            }
+            else if (payloadIn.at(2) == '\02') {
+                state.fbkinFunc(true, NONE);
+                state.sbkinFunc(false, NONE);
+            }
+            break;
+        case '\48': // Manual Notch
+            state.mnFunc((bool)payloadIn.at(2), NONE);
             break;
         default:
             break;
@@ -3815,49 +3788,51 @@ void rigCommander::parseFrequency()
 
     // printHex(payloadIn, false, true);
     frequencyMhz = 0.0;
-    if(payloadIn.length() == 7)
+    if (payloadIn.length() == 7)
     {
         // 7300 has these digits too, as zeros.
         // IC-705 or IC-9700 with higher frequency data available.
-        frequencyMhz += 100*(payloadIn[05] & 0x0f);
-        frequencyMhz += (1000*((payloadIn[05] & 0xf0) >> 4));
+        frequencyMhz += 100 * (payloadIn[05] & 0x0f);
+        frequencyMhz += (1000 * ((payloadIn[05] & 0xf0) >> 4));
 
-        freq.Hz += (payloadIn[05] & 0x0f) * 1E6 *          100;
-        freq.Hz += ((payloadIn[05] & 0xf0) >> 4) * 1E6 *  1000;
+        freq.Hz += (payloadIn[05] & 0x0f) * 1E6 * 100;
+        freq.Hz += ((payloadIn[05] & 0xf0) >> 4) * 1E6 * 1000;
 
     }
 
     freq.Hz += (payloadIn[04] & 0x0f) * 1E6;
-    freq.Hz += ((payloadIn[04] & 0xf0) >> 4) * 1E6 *        10;
+    freq.Hz += ((payloadIn[04] & 0xf0) >> 4) * 1E6 * 10;
 
     frequencyMhz += payloadIn[04] & 0x0f;
-    frequencyMhz += 10*((payloadIn[04] & 0xf0) >> 4);
+    frequencyMhz += 10 * ((payloadIn[04] & 0xf0) >> 4);
 
     // KHz land:
-    frequencyMhz += ((payloadIn[03] & 0xf0) >>4)/10.0 ;
+    frequencyMhz += ((payloadIn[03] & 0xf0) >> 4) / 10.0;
     frequencyMhz += (payloadIn[03] & 0x0f) / 100.0;
 
     frequencyMhz += ((payloadIn[02] & 0xf0) >> 4) / 1000.0;
     frequencyMhz += (payloadIn[02] & 0x0f) / 10000.0;
 
-    frequencyMhz += ((payloadIn[01] & 0xf0) >> 4) /  100000.0;
-    frequencyMhz += (payloadIn[01] & 0x0f)        / 1000000.0;
+    frequencyMhz += ((payloadIn[01] & 0xf0) >> 4) / 100000.0;
+    frequencyMhz += (payloadIn[01] & 0x0f) / 1000000.0;
 
     freq.Hz += payloadIn[01] & 0x0f;
-    freq.Hz += ((payloadIn[01] & 0xf0) >> 4)*      10;
+    freq.Hz += ((payloadIn[01] & 0xf0) >> 4) * 10;
 
-    freq.Hz  += (payloadIn[02] & 0x0f) *           100;
-    freq.Hz  += ((payloadIn[02] & 0xf0) >> 4) *   1000;
+    freq.Hz += (payloadIn[02] & 0x0f) * 100;
+    freq.Hz += ((payloadIn[02] & 0xf0) >> 4) * 1000;
 
-    freq.Hz  += (payloadIn[03] & 0x0f) *         10000;
-    freq.Hz  += ((payloadIn[03] & 0xf0) >>4) *  100000;
+    freq.Hz += (payloadIn[03] & 0x0f) * 10000;
+    freq.Hz += ((payloadIn[03] & 0xf0) >> 4) * 100000;
 
     freq.MHzDouble = frequencyMhz;
 
-    rigState.mutex->lock();
-    rigState.vfoAFreq = freq;
-    rigState.mutex->unlock();
-
+    if (state.currentVfo() == 0) {
+        state.vfoAFreq(freq.Hz, NONE);
+    }
+    else {
+        state.vfoBFreq(freq.Hz, NONE);
+    }
     emit haveFrequency(freq);
 }
 
@@ -3935,11 +3910,9 @@ void rigCommander::parseMode()
     } else {
         filter = 0;
     }
-    rigState.mutex->lock();
-    rigState.mode = (unsigned char)payloadIn[01];
-    rigState.filter = filter;
-    rigState.mutex->unlock();
     emit haveMode((unsigned char)payloadIn[01], filter);
+    state.mode((unsigned char)payloadIn[01],NONE);
+    state.filter(filter,NONE);
 }
 
 
@@ -4014,6 +3987,144 @@ void rigCommander::setAntenna(unsigned char ant, bool rx)
     prepDataAndSend(payload);
 }
 
+void rigCommander::setNb(bool enabled) {
+    QByteArray payload("\x16\x22");
+    payload.append((unsigned char)enabled);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getNb()
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x22", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setNr(bool enabled) {
+    QByteArray payload("\x16\x40");
+    payload.append((unsigned char)enabled);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getNr()
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x40", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setAutoNotch(bool enabled)
+{
+    QByteArray payload("\x16\x41");
+    payload.append((unsigned char)enabled);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getAutoNotch()
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x41", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setToneEnabled(bool enabled)
+{
+    QByteArray payload("\x16\x42");
+    payload.append((unsigned char)enabled);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getToneEnabled()
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x42", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setToneSql(bool enabled)
+{
+    QByteArray payload("\x16\x43");
+    payload.append((unsigned char)enabled);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getToneSql()
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x43", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setCompressor(bool enabled)
+{
+    QByteArray payload("\x16\x44");
+    payload.append((unsigned char)enabled);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getCompressor()
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x44", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setMonitor(bool enabled)
+{
+    QByteArray payload("\x16\x45");
+    payload.append((unsigned char)enabled);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getMonitor()
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x45", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setVox(bool enabled)
+{
+    QByteArray payload("\x16\x46");
+    payload.append((unsigned char)enabled);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getVox()
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x46", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setBreakIn(unsigned char type) {
+    QByteArray payload("\x16\x47");
+    payload.append((unsigned char)type);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getBreakIn()
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x47", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setManualNotch(bool enabled)
+{
+    QByteArray payload("\x16\x48");
+    payload.append((unsigned char)enabled);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getManualNotch()
+{
+    QByteArray payload;
+    payload.setRawData("\x16\x48", 2);
+    prepDataAndSend(payload);
+}
+
+
 void rigCommander::getRigID()
 {
     QByteArray payload;
@@ -4086,7 +4197,185 @@ QByteArray rigCommander::stripData(const QByteArray &data, unsigned char cutPosi
 
 void rigCommander::sendState()
 {
-    emit stateInfo(&rigState);
+    emit stateInfo(&state);
+}
+
+void rigCommander::stateUpdated()
+{
+    // A remote process has updated the rigState
+    // First we need to find which item(s) have been updated and send the command(s) to the rig.
+    /*
+       FAGCFUNC, NBFUNC, COMPFUNC, VOXFUNC, TONEFUNC, TSQLFUNC, SBKINFUNC, FBKINFUNC, ANFFUNC, NRFUNC, AIPFUNC, APFFUNC, MONFUNC, MNFUNC,RFFUNC,
+       AROFUNC, MUTEFUNC, VSCFUNC, REVFUNC, SQLFUNC, ABMFUNC, BCFUNC, MBCFUNC, RITFUNC, AFCFUNC, SATMODEFUNC, SCOPEFUNC,
+       RESUMEFUNC, TBURSTFUNC, TUNERFUNC};
+    */
+
+        /* VFOAFREQ, VFOBFREQ, CURRENTVFO, PTT, MODE, FILTER, DUPLEX, DATAMODE, ANTENNA, RXANTENNA, CTCSS, TSQL, DTCS, CSQL */
+
+        if ((state.updated()) & (1ULL <<(VFOAFREQ))) {
+        // VFO A FREQUENCY IS UPDATED!
+        freqt freq;
+        freq.Hz = state.vfoAFreq();
+        setFrequency(0, freq);
+        setFrequency(0, freq);
+        setFrequency(0, freq);
+        getFrequency();
+
+    }
+    if ((state.updated()) & (1ULL <<(VFOBFREQ))) {
+        // VFO B FREQUENCY IS UPDATED!
+        freqt freq;
+        freq.Hz = state.vfoBFreq();
+        setFrequency(1, freq);
+        setFrequency(1, freq);
+        setFrequency(1, freq);
+        getFrequency();
+    }
+    if ((state.updated()) & (1ULL <<(CURRENTVFO))) {
+        // Work on VFOB - how do we do this?
+    }
+    if ((state.updated()) & (1ULL <<(PTT))) {
+        setPTT(state.ptt());
+        setPTT(state.ptt());
+        setPTT(state.ptt());
+        getPTT();
+    }
+    if (((state.updated()) & (1ULL <<(MODE))) || ((state.updated()) & (1ULL <<(FILTER)))) {
+        setMode(state.mode(),state.filter());
+        getMode();
+    }
+
+    if ((state.updated()) & (1ULL <<(DUPLEX))) {
+        setDuplexMode(state.duplex());
+        getDuplexMode();
+    }
+
+    if ((state.updated()) & (1ULL <<(DATAMODE))) {
+        setDataMode(state.datamode(), state.filter());
+        getDataMode();
+    }
+
+    if (((state.updated()) & (1ULL <<(ANTENNA))) || ((state.updated()) & (1ULL <<(RXANTENNA)))) {
+        setAntenna(state.antenna(), state.rxAntenna());
+        getAntenna();
+    }
+
+    if ((state.updated()) & (1ULL <<(CTCSS))) {
+        setTone(state.ctcss());
+        getTone();
+    }
+    if ((state.updated()) & (1ULL <<(TSQL))) {
+        setTSQL(state.tsql());
+        getTSQL();
+    }
+    if ((state.updated()) & (1ULL <<(DTCS))) {
+        setDTCS(state.dtcs(),false,false); // Not sure about this?
+        getDTCS();
+    }
+    if ((state.updated()) & (1ULL <<(CSQL))) { // Not sure about this one?
+        //setTone(state.ctcss());
+        //getTone();
+    }
+
+    /* PREAMP, ATTENUATOR, MODINPUT, AFGAIN, RFGAIN, SQUELCH, TXPOWER, MICGAIN, COMPLEVEL, MONITORLEVEL, VOXGAIN, ANTIVOXGAIN */
+    if ((state.updated()) & (1ULL <<(PREAMP))) { 
+        setPreamp(state.preamp());
+        getPreamp();
+    }
+    if ((state.updated()) & (1ULL <<(ATTENUATOR))) { 
+        setAttenuator(state.attenuator());
+        getAttenuator();
+    }
+    if ((state.updated()) & (1ULL <<(MODINPUT))) { 
+        getModInputLevel(rigInput::inputLAN); // Need to fix this!
+    }
+
+    if ((state.updated()) & (1ULL <<(AFGAIN))) {
+        setAfGain(state.afGain());
+        getAfGain();
+    }
+
+    if ((state.updated()) & (1ULL <<(RFGAIN))) {
+        setRfGain(state.rfGain());
+        getRfGain();
+    }
+
+    if ((state.updated()) & (1ULL <<(SQUELCH))) {
+        setSquelch(state.squelch());
+        getSql();
+    }
+
+    if ((state.updated()) & (1ULL <<(TXPOWER))) {
+        setTxPower(state.txPower());
+        getTxLevel();
+    }
+
+    if ((state.updated()) & (1ULL <<(MICGAIN))) {
+        setMicGain(state.micGain());
+        getMicGain();
+    }
+
+    if ((state.updated()) & (1ULL <<(COMPLEVEL))) {
+        setCompLevel(state.compLevel());
+        getCompLevel();
+    }
+
+    if ((state.updated()) & (1ULL <<(MONITORLEVEL))) {
+        setMonitorLevel(state.monitorLevel());
+        getMonitorLevel();
+    }
+
+    if ((state.updated()) & (1ULL <<(VOXGAIN))) {
+        setVoxGain(state.voxGain());
+        getVoxGain();
+    }
+
+    if ((state.updated()) & (1ULL <<(ANTIVOXGAIN))) {
+        setAntiVoxGain(state.antiVoxGain());
+        getAntiVoxGain();
+    }
+    if ((state.updated()) & (1ULL <<(NBFUNC))) {
+        setNb(state.nbFunc());
+        getNb();
+    }
+    if ((state.updated()) & (1ULL << (NRFUNC))) {
+        setNr(state.nrFunc());
+        getNr();
+    }
+    if ((state.updated()) & (1ULL << (ANFFUNC))) {
+        setAutoNotch(state.anfFunc());
+        getAutoNotch();
+    }
+    if ((state.updated()) & (1ULL << (TONEFUNC))) {
+        setToneEnabled(state.toneFunc());
+        getToneEnabled();
+    }
+    if ((state.updated()) & (1ULL << (TSQLFUNC))) {
+        setToneSql(state.tsqlFunc());
+        getToneSql();
+    }
+    if ((state.updated()) & (1ULL << (COMPFUNC))) {
+        setCompressor(state.compFunc());
+        getCompressor();
+    }
+    if ((state.updated()) & (1ULL << (MONFUNC))) {
+        setMonitor(state.monFunc());
+        getMonitor();
+    }
+    if ((state.updated()) & (1ULL << (VOXFUNC))) {
+        setVox(state.voxFunc());
+        getVox();
+    }
+    if ((state.updated()) & (1ULL <<(FBKINFUNC))) {
+        setBreakIn(state.sbkinFunc()<<1);
+        getBreakIn();
+    }
+    if ((state.updated()) & (1ULL << (MNFUNC))) {
+        setManualNotch(state.mnFunc());
+        getManualNotch();
+    }
+
+    state.updated(0);
 }
 
 void rigCommander::getDebug()

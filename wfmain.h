@@ -14,6 +14,7 @@
 #include "logcategories.h"
 #include "commhandler.h"
 #include "rigcommander.h"
+#include "rigstate.h"
 #include "freqmemory.h"
 #include "rigidentities.h"
 #include "repeaterattributes.h"
@@ -850,7 +851,6 @@ Q_DECLARE_METATYPE(struct rigCapabilities)
 Q_DECLARE_METATYPE(struct freqt)
 Q_DECLARE_METATYPE(struct mode_info)
 Q_DECLARE_METATYPE(struct udpPreferences)
-Q_DECLARE_METATYPE(struct rigStateStruct)
 Q_DECLARE_METATYPE(struct audioPacket)
 Q_DECLARE_METATYPE(struct audioSetup)
 Q_DECLARE_METATYPE(struct timekind)
@@ -858,6 +858,7 @@ Q_DECLARE_METATYPE(struct datekind)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
+Q_DECLARE_METATYPE(rigstate*)
 
 
 #endif // WFMAIN_H

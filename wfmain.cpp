@@ -46,6 +46,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType <audioSetup>();
     qRegisterMetaType <timekind>();
     qRegisterMetaType <datekind>();
+    qRegisterMetaType<rigstate*>();
 
 
     haveRigCaps = false;
@@ -413,7 +414,7 @@ void wfmain::makeRig()
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
         if (rigCtl != Q_NULLPTR) {
-            connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
+            connect(rig, SIGNAL(stateInfo(rigstate*)), rigCtl, SLOT(receiveStateInfo(rigstate*)));
             connect(this, SIGNAL(requestRigState()), rig, SLOT(sendState()));
             connect(rigCtl, SIGNAL(setFrequency(unsigned char, freqt)), rig, SLOT(setFrequency(unsigned char, freqt)));
             connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
@@ -421,6 +422,7 @@ void wfmain::makeRig()
             connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
             connect(rigCtl, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
             connect(rigCtl, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
+            connect(rigCtl, SIGNAL(stateUpdated()), rig, SLOT(stateUpdated()));
 
             connect(rigCtl, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
             connect(rigCtl, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
@@ -5444,13 +5446,14 @@ void wfmain::on_enableRigctldChk_clicked(bool checked)
         connect(this, SIGNAL(sendRigCaps(rigCapabilities)), rigCtl, SLOT(receiveRigCaps(rigCapabilities)));
         if (rig != Q_NULLPTR) {
             // We are already connected to a rig.
-            connect(rig, SIGNAL(stateInfo(rigStateStruct*)), rigCtl, SLOT(receiveStateInfo(rigStateStruct*)));
+            connect(rig, SIGNAL(stateInfo(rigstate*)), rigCtl, SLOT(receiveStateInfo(rigstate*)));
             connect(rigCtl, SIGNAL(setFrequency(unsigned char, freqt)), rig, SLOT(setFrequency(unsigned char, freqt)));
             connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
             connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
             connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
             connect(rigCtl, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
             connect(rigCtl, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
+            connect(rigCtl, SIGNAL(stateUpdated()), rig, SLOT(stateUpdated()));
 
             connect(rigCtl, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
             connect(rigCtl, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));

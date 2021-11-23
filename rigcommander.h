@@ -2,9 +2,9 @@
 #define RIGCOMMANDER_H
 
 #include <QObject>
-#include <QMutex>
 #include <QMutexLocker>
 #include <QDebug>
+
 
 #include "commhandler.h"
 #include "pttyhandler.h"
@@ -12,6 +12,8 @@
 #include "rigidentities.h"
 #include "repeaterattributes.h"
 #include "freqmemory.h"
+
+#include "rigstate.h"
 
 // This file figures out what to send to the comm and also
 // parses returns into useful things.
@@ -61,78 +63,6 @@ struct timekind {
     bool isMinus;
 };
 
-struct rigStateStruct {
-    QMutex *mutex;
-    freqt vfoAFreq;
-    freqt vfoBFreq;
-    unsigned char currentVfo;
-    bool ptt;
-    unsigned char mode;
-    unsigned char filter;
-    duplexMode duplex;
-    bool datamode;
-    unsigned char antenna;
-    bool rxAntenna;
-    // Tones
-    quint16 ctcss;
-    quint16 tsql;
-    quint16 dtcs;
-    quint16 csql;
-    // Levels
-    unsigned char preamp;
-    unsigned char attenuator;
-    unsigned char modInput;
-    unsigned char afGain;
-    unsigned char rfGain;
-    unsigned char squelch;
-    unsigned char txPower;
-    unsigned char micGain;
-    unsigned char compLevel;
-    unsigned char monitorLevel;
-    unsigned char voxGain;
-    unsigned char antiVoxGain;
-    // Meters
-    unsigned char sMeter;
-    unsigned char powerMeter;
-    unsigned char swrMeter;
-    unsigned char alcMeter;
-    unsigned char compMeter;
-    unsigned char voltageMeter;
-    unsigned char currentMeter;
-    // Functions
-    bool fagcFunc=false;
-    bool nbFunc=false;
-    bool compFunc=false;
-    bool voxFunc = false;
-    bool toneFunc = false;
-    bool tsqlFunc = false;
-    bool sbkinFunc = false;
-    bool fbkinFunc = false;
-    bool anfFunc = false;
-    bool nrFunc = false;
-    bool aipFunc = false;
-    bool apfFunc = false;
-    bool monFunc = false;
-    bool mnFunc = false;
-    bool rfFunc = false;
-    bool aroFunc = false;
-    bool muteFunc = false;
-    bool vscFunc = false;
-    bool revFunc = false;
-    bool sqlFunc = false;
-    bool abmFunc = false;
-    bool bcFunc = false;
-    bool mbcFunc = false;
-    bool ritFunc = false;
-    bool afcFunc = false;
-    bool satmodeFunc = false;
-    bool scopeFunc = false;
-    bool resumeFunc = false;
-    bool tburstFunc = false;
-    bool tunerFunc = false;
-    bool lockFunc = false;
-};
-
 class rigCommander : public QObject
 {
     Q_OBJECT
@@ -148,6 +78,7 @@ public slots:
     void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp);
     void commSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp);
     void closeComm();
+    void stateUpdated();
 
     // Power:
     void powerOn();
@@ -199,6 +130,26 @@ public slots:
     void setAttenuator(unsigned char att);
     void setPreamp(unsigned char pre);
     void setAntenna(unsigned char ant, bool rx);
+    void setNb(bool enabled);
+    void getNb();
+    void setNr(bool enabled);
+    void getNr();
+    void setAutoNotch(bool enabled);
+    void getAutoNotch();
+    void setToneEnabled(bool enabled);
+    void getToneEnabled();
+    void setToneSql(bool enabled);
+    void getToneSql();
+    void setCompressor(bool enabled);
+    void getCompressor();
+    void setMonitor(bool enabled);
+    void getMonitor();
+    void setVox(bool enabled);
+    void getVox();
+    void setBreakIn(unsigned char type);
+    void getBreakIn();
+    void setManualNotch(bool enabled);
+    void getManualNotch();
 
     // Repeater:
     void setDuplexMode(duplexMode dm);
@@ -406,7 +357,7 @@ signals:
     void haveAntenna(unsigned char ant,bool rx);
 
     // Rig State
-    void stateInfo(rigStateStruct* state);
+    void stateInfo(rigstate* state);
 
     // Housekeeping:
     void getMoreDebug();
@@ -480,7 +431,7 @@ private:
 
     struct rigCapabilities rigCaps;
     
-    rigStateStruct rigState;
+    rigstate state;
 
     bool haveRigCaps;
     model_kind model;
