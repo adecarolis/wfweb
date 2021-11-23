@@ -175,6 +175,8 @@ void rigCtlClient::socketReadyRead()
 
         QStringList command = commandBuffer.mid(num).split(" ");
 
+        QMutexLocker locker(rigState->mutex);
+
         if (command[0] == 0xf0 || command[0] == "chk_vfo")
         {
             QString resp;
