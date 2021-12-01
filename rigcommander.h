@@ -2,6 +2,8 @@
 #define RIGCOMMANDER_H
 
 #include <QObject>
+#include <QMutex>
+#include <QMutexLocker>
 #include <QDebug>
 
 #include "commhandler.h"
@@ -60,6 +62,7 @@ struct timekind {
 };
 
 struct rigStateStruct {
+    QMutex *mutex;
     freqt vfoAFreq;
     freqt vfoBFreq;
     unsigned char currentVfo;

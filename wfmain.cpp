@@ -2257,14 +2257,22 @@ void wfmain:: getInitialRigState()
     issueDelayedCommand(cmdGetMode);
 
     // From left to right in the UI:
-    issueDelayedCommand(cmdGetDataMode);
-    issueDelayedCommand(cmdGetModInput);
-    issueDelayedCommand(cmdGetModDataInput);
+    if (rigCaps.hasTransmit) 
+    {
+        issueDelayedCommand(cmdGetDataMode);
+        issueDelayedCommand(cmdGetModInput);
+        issueDelayedCommand(cmdGetModDataInput);
+    }
     issueDelayedCommand(cmdGetRxGain);
     issueDelayedCommand(cmdGetAfGain);
     issueDelayedCommand(cmdGetSql);
-    issueDelayedCommand(cmdGetTxPower);
-    issueDelayedCommand(cmdGetCurrentModLevel); // level for currently selected mod sources
+    
+    if (rigCaps.hasTransmit) 
+    {
+        issueDelayedCommand(cmdGetTxPower);
+        issueDelayedCommand(cmdGetCurrentModLevel); // level for currently selected mod sources
+    }
+    
     issueDelayedCommand(cmdGetSpectrumRefLevel);
     issueDelayedCommand(cmdGetDuplexMode);
 
@@ -2273,8 +2281,12 @@ void wfmain:: getInitialRigState()
         issueDelayedCommand(cmdDispEnable);
         issueDelayedCommand(cmdSpecOn);
     }
-    issueDelayedCommand(cmdGetModInput);
-    issueDelayedCommand(cmdGetModDataInput);
+
+    if (rigCaps.hasTransmit)
+    {
+        issueDelayedCommand(cmdGetModInput);
+        issueDelayedCommand(cmdGetModDataInput);
+    }
 
     if(rigCaps.hasCTCSS)
     {
@@ -3547,8 +3559,10 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
 
     // Note: we need to know if the DATA mode is active to reach mode-D
     // some kind of queued query:
-    if(rigCaps.hasDataModes)
+    if (rigCaps.hasDataModes && rigCaps.hasTransmit)
+    {
         issueDelayedCommand(cmdGetDataMode);
+    }
 }
 
 void wfmain::receiveDataModeStatus(bool dataEnabled)
@@ -5525,8 +5539,8 @@ void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
     // issueDelayedCommand(cmdGetRigID);
-    emit getRigCIV();
-    //trxadj->show();
+    //emit getRigCIV();
+    trxadj->show();
     //setRadioTimeDatePrep();
     //wf->setInteraction(QCP::iRangeZoom, true);
     //wf->setInteraction(QCP::iRangeDrag, true);

@@ -11,6 +11,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 TARGET = wfview
 TEMPLATE = app
 
+DEFINES += WFVIEW_VERSION=\\\"1.2d\\\"
+
 CONFIG(debug, release|debug) {
 # For Debug builds only:
 QMAKE_CXXFLAGS += -faligned-new
