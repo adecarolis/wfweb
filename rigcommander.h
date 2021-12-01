@@ -460,6 +460,7 @@ private:
     QString password;
 
     QString serialPortError;
+    unsigned char localVolume=0;
 
 
 };

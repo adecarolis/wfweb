@@ -22,11 +22,6 @@
 
 rigCommander::rigCommander()
 {
-    state.filter(0,NONE);
-    state.mode(0,NONE);
-    state.ptt(0,NONE);
-    state.currentVfo(0,NONE);
-    state.duplex(dmSplitOff,NONE);
 }
 
 rigCommander::~rigCommander()
@@ -143,6 +138,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
         connect(this, SIGNAL(discoveredRigID(rigCapabilities)), ptty, SLOT(receiveFoundRigID(rigCapabilities)));
 
         emit haveAfGain(rxSetup.localAFgain);
+        localVolume = rxSetup.localAFgain;
     }
 
     // data from the comm port to the program:
@@ -262,7 +258,26 @@ void rigCommander::powerOn()
 {
     QByteArray payload;
 
-    for(int i=0; i < 150; i++)
+    int numFE=150;
+    switch (this->rigBaudRate) {
+    case 57600:
+        numFE = 75;
+        break;
+    case 38400:
+        numFE = 50;
+        break;
+    case 19200:
+        numFE = 25;
+        break;
+    case 9600:
+        numFE = 13;
+        break;
+    case 4800:
+        numFE = 7;
+        break;
+    }
+
+    for(int i=0; i < numFE; i++)
     {
         payload.append("\xFE");
     }
@@ -568,12 +583,10 @@ void rigCommander::setFrequency(unsigned char vfo, freqt freq)
 
     cmdPayload.append(freqPayload);
     if (vfo == 0) {
-        state.vfoAFreq(freq.Hz,NONE);
         cmdPayload.prepend('\x00');
     }
     else
     {   
-        state.vfoBFreq(freq.Hz,NONE);
         cmdPayload.prepend(vfo);
         cmdPayload.prepend('\x25');
     }
@@ -1233,16 +1246,16 @@ void rigCommander::parseCommand()
             break;
         case '\x0F':
             emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
-            state.duplex((duplexMode)(unsigned char)payloadIn[1],NONE);
+            state.set(DUPLEX, (duplexMode)(unsigned char)payloadIn[1], false);
             break;
         case '\x11':
             emit haveAttenuator((unsigned char)payloadIn.at(1));
-            state.attenuator((unsigned char)payloadIn.at(1),NONE);
+            state.set(ATTENUATOR, (quint8)payloadIn[1], false);
             break;
         case '\x12':
             emit haveAntenna((unsigned char)payloadIn.at(1), (bool)payloadIn.at(2));
-            state.antenna((unsigned char)payloadIn.at(1),NONE);
-            state.rxAntenna((bool)payloadIn.at(2),NONE);
+            state.set(ANTENNA, (quint8)payloadIn[1], false);
+            state.set(RXANTENNA, (bool)payloadIn[2], false);
             break;
         case '\x14':
             // read levels
@@ -1346,18 +1359,21 @@ void rigCommander::parseLevels()
                 // AF level - ignore if LAN connection.
                 if (udp == Q_NULLPTR) {
                     emit haveAfGain(level);
-                    state.afGain(level,NONE);
+                    state.set(AFGAIN, level, false);
+                }
+                else {
+                    state.set(AFGAIN, localVolume, false);
                 }
                 break;
             case '\x02':
                 // RX RF Gain
                 emit haveRfGain(level);
-                state.rfGain(level,NONE);
+                state.set(RFGAIN, level, false);
                 break;
             case '\x03':
                 // Squelch level
                 emit haveSql(level);                
-                state.squelch(level,NONE);
+                state.set(SQUELCH, level, false);
                 break;
             case '\x07':
                 // Twin BPF Inner, or, IF-Shift level
@@ -1376,12 +1392,12 @@ void rigCommander::parseLevels()
             case '\x0A':
                 // TX RF level
                 emit haveTxPower(level);
-                state.txPower(level,NONE);
+                state.set(TXPOWER, level, false);
                 break;
             case '\x0B':
                 // Mic Gain
                 emit haveMicGain(level);
-                state.micGain(level,NONE);
+                state.set(MICGAIN, level, false);
                 break;
             case '\x0C':
                 // CW Keying Speed - ignore for now
@@ -1392,7 +1408,7 @@ void rigCommander::parseLevels()
             case '\x0E':
                 // compressor level
                 emit haveCompLevel(level);
-                state.compLevel(level,NONE);
+                state.set(COMPLEVEL, level, false);
                 break;
             case '\x12':
                 // NB level - ignore for now
@@ -1400,17 +1416,17 @@ void rigCommander::parseLevels()
             case '\x15':
                 // monitor level
                 emit haveMonitorLevel(level);
-                state.monitorLevel(level,NONE);
+                state.set(MONITORLEVEL, level, false);
                 break;
             case '\x16':
                 // VOX gain
                 emit haveVoxGain(level);
-                state.voxGain(level,NONE);
+                state.set(VOXGAIN, level, false);
                 break;
             case '\x17':
                 // anti-VOX gain
                 emit haveAntiVoxGain(level);
-                state.antiVoxGain(level,NONE);
+                state.set(ANTIVOXGAIN, level, false);
                 break;
 
             default:
@@ -1428,42 +1444,42 @@ void rigCommander::parseLevels()
             case '\x02':
                 // S-Meter
                 emit haveMeter(meterS, level);
-                state.sMeter(level,NONE);
+                state.set(SMETER, level, false);
                 break;
             case '\x04':
                 // Center (IC-R8600)
                 emit haveMeter(meterCenter, level);
-                state.sMeter(level,NONE);
+                state.set(SMETER, level, false);
                 break;
             case '\x11':
                 // RF-Power meter
                 emit haveMeter(meterPower, level);
-                state.powerMeter(level,NONE);
+                state.set(POWERMETER, level, false);
                 break;
             case '\x12':
                 // SWR
                 emit haveMeter(meterSWR, level);
-                state.swrMeter(level,NONE);
+                state.set(SWRMETER, level, false);
                 break;
             case '\x13':
                 // ALC
                 emit haveMeter(meterALC, level);
-                state.alcMeter(level,NONE);
+                state.set(ALCMETER, level, false);
                 break;
             case '\x14':
                 // COMP dB reduction
                 emit haveMeter(meterComp, level);
-                state.compMeter(level,NONE);
+                state.set(COMPMETER, level, false);
                 break;
             case '\x15':
                 // VD (12V)
                 emit haveMeter(meterVoltage, level);
-                state.voltageMeter(level,NONE);
+                state.set(VOLTAGEMETER, level, false);
                 break;
             case '\x16':
                 // ID
                 emit haveMeter(meterCurrent, level);
-                state.currentMeter(level,NONE);
+                state.set(CURRENTMETER, level, false);
                 break;
 
             default:
@@ -2094,6 +2110,7 @@ void rigCommander::setAfGain(unsigned char level)
     }
     else {
         emit haveSetVolume(level);
+        localVolume = level;
     }
 }
 
@@ -2370,8 +2387,7 @@ void rigCommander::parsePTT()
         // PTT on
         emit havePTTStatus(true);
     }
-    state.ptt((bool)payloadIn[2],NONE);
-
+    state.set(PTT,(bool)payloadIn[2],false);
 }
 
 void rigCommander::parseRegisters1A()
@@ -2400,7 +2416,7 @@ void rigCommander::parseRegisters1A()
             parseBandStackReg();
             break;
         case '\x04':
-            state.agc(payloadIn[02],AGC);
+            state.set(AGC, (quint8)payloadIn[2], false);
             break;
         case '\x06':
             // data mode
@@ -2412,7 +2428,7 @@ void rigCommander::parseRegisters1A()
             // YY: filter selected, 01 through 03.;
             // if YY is 00 then XX was also set to 00
             emit haveDataMode((bool)payloadIn[03]);
-            state.datamode((bool)payloadIn[03],NONE);
+            state.set(DATAMODE, (quint8)payloadIn[3], false);
             break;
         case '\x07':
             // IP+ status
@@ -2434,24 +2450,24 @@ void rigCommander::parseRegister1B()
             // "Repeater tone"
             tone = decodeTone(payloadIn);
             emit haveTone(tone);
-            state.ctcss(tone,NONE);
+            state.set(CTCSS, tone, false);
             break;
         case '\x01':
             // "TSQL tone"
             tone = decodeTone(payloadIn);
             emit haveTSQL(tone);
-            state.tsql(tone,NONE);
+            state.set(TSQL, tone, false);
             break;
         case '\x02':
             // DTCS (DCS)
             tone = decodeTone(payloadIn, tinv, rinv);
             emit haveDTCS(tone, tinv, rinv);
-            state.dtcs(tone,NONE);
+            state.set(DTCS, tone, false);
             break;
         case '\x07':
             // "CSQL code (DV mode)"
             tone = decodeTone(payloadIn);
-            state.csql(tone,NONE);
+            state.set(CSQL, tone, false);
             break;
         default:
             break;
@@ -2472,49 +2488,49 @@ void rigCommander::parseRegister16()
         case '\x02':
             // Preamp
             emit havePreamp((unsigned char)payloadIn.at(2));
-            state.preamp((unsigned char)payloadIn.at(2),NONE);
+            state.set(PREAMP, (quint8)payloadIn.at(2), false);
             break;
         case '\x22':
-            state.nbFunc((bool)payloadIn.at(2), NONE);
+            state.set(NBFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x40':
-            state.nrFunc((bool)payloadIn.at(2), NONE);
+            state.set(NRFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x41': // Auto notch
-            state.anfFunc((bool)payloadIn.at(2), NONE);
+            state.set(ANFFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x42':
-            state.toneFunc((bool)payloadIn.at(2), NONE);
+            state.set(TONEFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x43':
-            state.tsqlFunc((bool)payloadIn.at(2), NONE);
+            state.set(TSQLFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\44':
-            state.compFunc((bool)payloadIn.at(2), NONE);
+            state.set(COMPFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\45':
-            state.monFunc((bool)payloadIn.at(2), NONE);
+            state.set(MONFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\46':
-            state.voxFunc((bool)payloadIn.at(2), NONE);
+            state.set(VOXFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x47':
             if (payloadIn.at(2) == '\00') {
-                state.fbkinFunc(false, NONE);
-                state.sbkinFunc(false, NONE);
+                state.set(FBKINFUNC, false, false);
+                state.set(SBKINFUNC, false, false);
             }
             else if (payloadIn.at(2) == '\01') {
-                state.fbkinFunc(false, NONE);
-                state.sbkinFunc(true, NONE);
+                state.set(FBKINFUNC, false, false);
+                state.set(SBKINFUNC, true, false);
 
             }
             else if (payloadIn.at(2) == '\02') {
-                state.fbkinFunc(true, NONE);
-                state.sbkinFunc(false, NONE);
+                state.set(FBKINFUNC, true, false);
+                state.set(SBKINFUNC, false, false);
             }
             break;
         case '\48': // Manual Notch
-            state.mnFunc((bool)payloadIn.at(2), NONE);
+            state.set(MNFUNC, payloadIn.at(2) != 0, false);
             break;
         default:
             break;
@@ -2820,6 +2836,7 @@ void rigCommander::parseWFData()
             break;
         case 0x10:
             // confirming scope is on
+            state.set(SCOPEFUNC, (bool)payloadIn[2], true);
             break;
         case 0x11:
             // confirming output enabled/disabled of wf data.
@@ -3826,13 +3843,14 @@ void rigCommander::parseFrequency()
     freq.Hz += ((payloadIn[03] & 0xf0) >> 4) * 100000;
 
     freq.MHzDouble = frequencyMhz;
-
-    if (state.currentVfo() == 0) {
-        state.vfoAFreq(freq.Hz, NONE);
+    
+    if (state.getChar(CURRENTVFO) == 0) {
+        state.set(VFOAFREQ, freq.Hz, false);
     }
     else {
-        state.vfoBFreq(freq.Hz, NONE);
+        state.set(VFOBFREQ, freq.Hz, false);
     }
+    
     emit haveFrequency(freq);
 }
 
@@ -3911,8 +3929,8 @@ void rigCommander::parseMode()
         filter = 0;
     }
     emit haveMode((unsigned char)payloadIn[01], filter);
-    state.mode((unsigned char)payloadIn[01],NONE);
-    state.filter(filter,NONE);
+    state.set(MODE,(unsigned char)payloadIn[01],false);
+    state.set(FILTER,filter,false);
 }
 
 
@@ -4210,172 +4228,243 @@ void rigCommander::stateUpdated()
        RESUMEFUNC, TBURSTFUNC, TUNERFUNC};
     */
 
-        /* VFOAFREQ, VFOBFREQ, CURRENTVFO, PTT, MODE, FILTER, DUPLEX, DATAMODE, ANTENNA, RXANTENNA, CTCSS, TSQL, DTCS, CSQL */
+    /* VFOAFREQ, VFOBFREQ, CURRENTVFO, PTT, MODE, FILTER, DUPLEX, DATAMODE, ANTENNA, RXANTENNA, CTCSS, TSQL, DTCS, CSQL */
 
-        if ((state.updated()) & (1ULL <<(VFOAFREQ))) {
-        // VFO A FREQUENCY IS UPDATED!
-        freqt freq;
-        freq.Hz = state.vfoAFreq();
-        setFrequency(0, freq);
-        setFrequency(0, freq);
-        setFrequency(0, freq);
-        getFrequency();
+    QMap<stateTypes, value>::iterator i = state.map.begin();
+    while (i != state.map.end()) {
+        if (!i.value()._valid || i.value()._updated)
+        {
+            i.value()._updated = false;
+            i.value()._valid = true; // Set value to valid as we have requested it (even if we haven't had a response)
+            qDebug(logRigCtlD()) << "Got new value:" << i.key() << "=" << i.value()._value;
+            switch (i.key()) {
+            case VFOAFREQ:
+                if (i.value()._valid) {
+                    freqt freq;
+                    freq.Hz = state.getInt64(VFOAFREQ);
+                    setFrequency(0, freq);
+                    setFrequency(0, freq);
+                    setFrequency(0, freq);
+                }
+                getFrequency();
+                break;
+            case VFOBFREQ:
+                if (i.value()._valid) {
+                    freqt freq;
+                    freq.Hz = state.getInt64(VFOBFREQ);
+                    setFrequency(1, freq);
+                    setFrequency(1, freq);
+                    setFrequency(1, freq);
+                }
+                getFrequency();
+                break;
+            case CURRENTVFO:
+                // Work on VFOB - how do we do this?
+                break;
+            case PTT:
+                if (i.value()._valid) {
+                    setPTT(state.getBool(PTT));
+                    setPTT(state.getBool(PTT));
+                    setPTT(state.getBool(PTT));
+                }
+                getPTT();
+                break;
+            case MODE:
+            case FILTER:
+                if (i.value()._valid) {
+                    setMode(state.getChar(MODE), state.getChar(FILTER));
+                }
+                getMode();
+                break;
+            case DUPLEX:
+                if (i.value()._valid) {
+                    setDuplexMode(state.getDuplex(DUPLEX));
+                }
+                getDuplexMode();
+                break;
+            case DATAMODE:
+                if (i.value()._valid) {
+                    setDataMode(state.getBool(DATAMODE), state.getChar(FILTER));
+                }
+                getDuplexMode();
+                break;
+            case ANTENNA:
+            case RXANTENNA:
+                if (i.value()._valid) {
+                    setAntenna(state.getChar(ANTENNA), state.getBool(RXANTENNA));
+                }
+                getAntenna();
+                break;
+            case CTCSS:
+                if (i.value()._valid) {
+                    setTone(state.getChar(CTCSS));
+                }
+                getTone();
+                break;
+            case TSQL:
+                if (i.value()._valid) {
+                    setTSQL(state.getChar(TSQL));
+                }
+                getTSQL();
+                break;
+            case DTCS:
+                if (i.value()._valid) {
+                    setDTCS(state.getChar(DTCS), false, false); // Not sure about this?
+                }
+                getDTCS();
+                break;
+            case CSQL:
+                if (i.value()._valid) {
+                    setTone(state.getChar(CSQL));
+                }
+                getTone();
+                break;
+            case PREAMP:
+                if (i.value()._valid) {
+                    setPreamp(state.getChar(PREAMP));
+                }
+                getPreamp();
+                break;
+            case ATTENUATOR:
+                if (i.value()._valid) {
+                    setAttenuator(state.getChar(ATTENUATOR));
+                }
+                getAttenuator();
+                break;
+            case AFGAIN:
+                if (i.value()._valid) {
+                    setAfGain(state.getChar(AFGAIN));
+                }
+                getAfGain();
+                break;
+            case RFGAIN:
+                if (i.value()._valid) {
+                    setRfGain(state.getChar(RFGAIN));
+                }
+                getRfGain();
+                break;
+            case SQUELCH:
+                if (i.value()._valid) {
+                    setSquelch(state.getChar(SQUELCH));
+                }
+                getSql();
+                break;
+            case TXPOWER:
+                if (i.value()._valid) {
+                    setTxPower(state.getChar(TXPOWER));
+                }
+                getTxLevel();
+                break;
+            case MICGAIN:
+                if (i.value()._valid) {
+                    setMicGain(state.getChar(MICGAIN));
+                }
+                getMicGain();
+                break;
+            case COMPLEVEL:
+                if (i.value()._valid) {
+                    setCompLevel(state.getChar(COMPLEVEL));
+                }
+                getCompLevel();
+                break;
+            case MONITORLEVEL:
+                if (i.value()._valid) {
+                    setMonitorLevel(state.getChar(MONITORLEVEL));
+                }
+                getMonitorLevel();
+                break;
+            case VOXGAIN:
+                if (i.value()._valid) {
+                    setVoxGain(state.getChar(VOXGAIN));
+                }
+                getVoxGain();
+                break;
+            case ANTIVOXGAIN:
+                if (i.value()._valid) {
+                    setAntiVoxGain(state.getChar(ANTIVOXGAIN));
+                }
+                getAntiVoxGain();
+                break;
+            case NBFUNC:
+                if (i.value()._valid) {
+                    setNb(state.getBool(NBFUNC));
+                }
+                getNb();
+                break;
+            case NRFUNC:
+                if (i.value()._valid) {
+                    setNr(state.getBool(NRFUNC));
+                }
+                getNr();
+                break;
+            case ANFFUNC:
+                if (i.value()._valid) {
+                    setAutoNotch(state.getBool(ANFFUNC));
+                }
+                getAutoNotch();
+                break;
+            case TONEFUNC:
+                if (i.value()._valid) {
+                    setToneEnabled(state.getBool(TONEFUNC));
+                }
+                getToneEnabled();
+                break;
+            case TSQLFUNC:
+                if (i.value()._valid) {
+                    setToneSql(state.getBool(TSQLFUNC));
+                }
+                getToneSql();
+                break;
+            case COMPFUNC:
+                if (i.value()._valid) {
+                    setCompressor(state.getBool(COMPFUNC));
+                }
+                getCompressor();
+                break;
+            case MONFUNC:
+                if (i.value()._valid) {
+                    setMonitor(state.getBool(MONFUNC));
+                }
+                getMonitor();
+                break;
+            case VOXFUNC:
+                if (i.value()._valid) {
+                    setVox(state.getBool(VOXFUNC));
+                }
+                getVox();
+                break;
+            case SBKINFUNC:
+                if (i.value()._valid) {
+                    setBreakIn(state.getBool(VOXFUNC));
+                }
+                getVox();
+                break;
+            case FBKINFUNC:
+                if (i.value()._valid) {
+                    setBreakIn(state.getBool(VOXFUNC) << 1);
+                }
+                getBreakIn();
+                break;
+            case MNFUNC:
+                if (i.value()._valid) {
+                    setManualNotch(state.getBool(MNFUNC));
+                }
+                getManualNotch();
+                break;
+            case SCOPEFUNC:
+                if (i.value()._valid) {
+                    if (state.getBool(SCOPEFUNC)) {
+                        enableSpectOutput();
+                    }
+                    else {
+                        disableSpectOutput();
+                    }
+                }
 
+            }
+        }
+        ++i;
     }
-    if ((state.updated()) & (1ULL <<(VFOBFREQ))) {
-        // VFO B FREQUENCY IS UPDATED!
-        freqt freq;
-        freq.Hz = state.vfoBFreq();
-        setFrequency(1, freq);
-        setFrequency(1, freq);
-        setFrequency(1, freq);
-        getFrequency();
-    }
-    if ((state.updated()) & (1ULL <<(CURRENTVFO))) {
-        // Work on VFOB - how do we do this?
-    }
-    if ((state.updated()) & (1ULL <<(PTT))) {
-        setPTT(state.ptt());
-        setPTT(state.ptt());
-        setPTT(state.ptt());
-        getPTT();
-    }
-    if (((state.updated()) & (1ULL <<(MODE))) || ((state.updated()) & (1ULL <<(FILTER)))) {
-        setMode(state.mode(),state.filter());
-        getMode();
-    }
-
-    if ((state.updated()) & (1ULL <<(DUPLEX))) {
-        setDuplexMode(state.duplex());
-        getDuplexMode();
-    }
-
-    if ((state.updated()) & (1ULL <<(DATAMODE))) {
-        setDataMode(state.datamode(), state.filter());
-        getDataMode();
-    }
-
-    if (((state.updated()) & (1ULL <<(ANTENNA))) || ((state.updated()) & (1ULL <<(RXANTENNA)))) {
-        setAntenna(state.antenna(), state.rxAntenna());
-        getAntenna();
-    }
-
-    if ((state.updated()) & (1ULL <<(CTCSS))) {
-        setTone(state.ctcss());
-        getTone();
-    }
-    if ((state.updated()) & (1ULL <<(TSQL))) {
-        setTSQL(state.tsql());
-        getTSQL();
-    }
-    if ((state.updated()) & (1ULL <<(DTCS))) {
-        setDTCS(state.dtcs(),false,false); // Not sure about this?
-        getDTCS();
-    }
-    if ((state.updated()) & (1ULL <<(CSQL))) { // Not sure about this one?
-        //setTone(state.ctcss());
-        //getTone();
-    }
-
-    /* PREAMP, ATTENUATOR, MODINPUT, AFGAIN, RFGAIN, SQUELCH, TXPOWER, MICGAIN, COMPLEVEL, MONITORLEVEL, VOXGAIN, ANTIVOXGAIN */
-    if ((state.updated()) & (1ULL <<(PREAMP))) { 
-        setPreamp(state.preamp());
-        getPreamp();
-    }
-    if ((state.updated()) & (1ULL <<(ATTENUATOR))) { 
-        setAttenuator(state.attenuator());
-        getAttenuator();
-    }
-    if ((state.updated()) & (1ULL <<(MODINPUT))) { 
-        getModInputLevel(rigInput::inputLAN); // Need to fix this!
-    }
-
-    if ((state.updated()) & (1ULL <<(AFGAIN))) {
-        setAfGain(state.afGain());
-        getAfGain();
-    }
-
-    if ((state.updated()) & (1ULL <<(RFGAIN))) {
-        setRfGain(state.rfGain());
-        getRfGain();
-    }
-
-    if ((state.updated()) & (1ULL <<(SQUELCH))) {
-        setSquelch(state.squelch());
-        getSql();
-    }
-
-    if ((state.updated()) & (1ULL <<(TXPOWER))) {
-        setTxPower(state.txPower());
-        getTxLevel();
-    }
-
-    if ((state.updated()) & (1ULL <<(MICGAIN))) {
-        setMicGain(state.micGain());
-        getMicGain();
-    }
-
-    if ((state.updated()) & (1ULL <<(COMPLEVEL))) {
-        setCompLevel(state.compLevel());
-        getCompLevel();
-    }
-
-    if ((state.updated()) & (1ULL <<(MONITORLEVEL))) {
-        setMonitorLevel(state.monitorLevel());
-        getMonitorLevel();
-    }
-
-    if ((state.updated()) & (1ULL <<(VOXGAIN))) {
-        setVoxGain(state.voxGain());
-        getVoxGain();
-    }
-
-    if ((state.updated()) & (1ULL <<(ANTIVOXGAIN))) {
-        setAntiVoxGain(state.antiVoxGain());
-        getAntiVoxGain();
-    }
-    if ((state.updated()) & (1ULL <<(NBFUNC))) {
-        setNb(state.nbFunc());
-        getNb();
-    }
-    if ((state.updated()) & (1ULL << (NRFUNC))) {
-        setNr(state.nrFunc());
-        getNr();
-    }
-    if ((state.updated()) & (1ULL << (ANFFUNC))) {
-        setAutoNotch(state.anfFunc());
-        getAutoNotch();
-    }
-    if ((state.updated()) & (1ULL << (TONEFUNC))) {
-        setToneEnabled(state.toneFunc());
-        getToneEnabled();
-    }
-    if ((state.updated()) & (1ULL << (TSQLFUNC))) {
-        setToneSql(state.tsqlFunc());
-        getToneSql();
-    }
-    if ((state.updated()) & (1ULL << (COMPFUNC))) {
-        setCompressor(state.compFunc());
-        getCompressor();
-    }
-    if ((state.updated()) & (1ULL << (MONFUNC))) {
-        setMonitor(state.monFunc());
-        getMonitor();
-    }
-    if ((state.updated()) & (1ULL << (VOXFUNC))) {
-        setVox(state.voxFunc());
-        getVox();
-    }
-    if ((state.updated()) & (1ULL <<(FBKINFUNC))) {
-        setBreakIn(state.sbkinFunc()<<1);
-        getBreakIn();
-    }
-    if ((state.updated()) & (1ULL << (MNFUNC))) {
-        setManualNotch(state.mnFunc());
-        getManualNotch();
-    }
-
-    state.updated(0);
 }
 
 void rigCommander::getDebug()
