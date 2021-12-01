@@ -2245,9 +2245,9 @@ void wfmain:: getInitialRigState()
     if (rigCaps.hasTransmit) 
     {
         issueDelayedCommand(cmdGetTxPower);
+        issueDelayedCommand(cmdGetCurrentModLevel); // level for currently selected mod sources
     }
     
-    issueDelayedCommand(cmdGetCurrentModLevel); // level for currently selected mod sources
     issueDelayedCommand(cmdGetSpectrumRefLevel);
     issueDelayedCommand(cmdGetDuplexMode);
 
