@@ -166,6 +166,7 @@ signals:
     void sendServerConfig(SERVERCONFIG conf);
     void sendRigCaps(rigCapabilities caps);
     void requestRigState();
+    void stateUpdated();
 
 private slots:
     void updateSizes(int tabIndex);
@@ -500,6 +501,8 @@ private slots:
     void on_moreControlsBtn_clicked();
 
     void on_useCIVasRigIDChk_clicked(bool checked);
+
+    void receiveStateInfo(rigstate* state);
 
 private:
     Ui::wfmain *ui;
@@ -843,6 +846,7 @@ private:
     unsigned int tsWfScrollHz;
     unsigned int tsKnobHz;
 
+    rigstate* rigState = Q_NULLPTR;
 
     SERVERCONFIG serverConfig;
 };

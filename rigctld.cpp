@@ -55,11 +55,7 @@ rigCtlD::~rigCtlD()
     qInfo(logRigCtlD()) << "closing rigctld";
 }
 
-//void rigCtlD::receiveFrequency(freqt freq)
-//{
-//    emit setFrequency(0, freq);
-//    emit setFrequency(0, freq);
-//}
+
 
 void rigCtlD::receiveStateInfo(rigstate* state)
 {
@@ -127,20 +123,28 @@ void rigCtlClient::socketReadyRead()
 {
     QByteArray data = socket->readAll();
     commandBuffer.append(data);
+    QStringList commandList(commandBuffer.split('\n'));
     QString sep = "\n";
     static int num = 0;
-    bool longReply = false;
-    char responseCode = 0;
-    QStringList response;
-    bool setCommand = false;
-    if (commandBuffer.endsWith('\n'))
+
+    for (QString &commands : commandList)
     {
-        //qDebug(logRigCtlD()) << sessionId << "command received" << commandBuffer;
-        commandBuffer.chop(1); // Remove \n character
-        if (commandBuffer.endsWith('\r'))
+        bool longReply = false;
+        char responseCode = 0;
+        QStringList response;
+        bool setCommand = false;
+        //commands.chop(1); // Remove \n character
+        if (commands.endsWith('\r'))
         {
-            commandBuffer.chop(1); // Remove \n character
+            commands.chop(1); // Remove \n character
         }
+
+        if (commands.isEmpty())
+        {
+            continue;
+        }
+
+        qDebug(logRigCtlD()) << sessionId << "command received" << commands;
 
         // We have a full line so process command.
 
@@ -150,33 +154,33 @@ void rigCtlClient::socketReadyRead()
             return;
         }
 
-        if (commandBuffer[num] == ";" || commandBuffer[num] == "|" || commandBuffer[num] == ",")
+        if (commands[num] == ";" || commands[num] == "|" || commands[num] == ",")
         {
-            sep = commandBuffer[num].toLatin1();
+            sep = commands[num].toLatin1();
             num++;
         }
-        else if (commandBuffer[num] == "+")
+        else if (commands[num] == "+")
         {
             longReply = true;
             sep = "\n";
             num++;
         }
-        else if (commandBuffer[num] == "#")
+        else if (commands[num] == "#")
         {
-            return;
+            continue;
         }
-        else if (commandBuffer[num].toLower() == "q")
+        else if (commands[num].toLower() == "q")
         {
             closeSocket();
             return;
         }
 
-        if (commandBuffer[num] == "\\")
+        if (commands[num] == "\\")
         {
             num++;
         }
 
-        QStringList command = commandBuffer.mid(num).split(" ");
+        QStringList command = commands.mid(num).split(" ");
 
 
         if (command[0] == 0xf0 || command[0] == "chk_vfo")
@@ -403,10 +407,10 @@ void rigCtlClient::socketReadyRead()
                 response.append("MEM");
             }
             else if (command[1] == "VFOB" || command[1] == "Sub") {
-                //emit parent->setVFO(1);
+                rigState->set(CURRENTVFO, (quint8)1, true);
             }
             else {
-                //emit parent->setVFO(0);
+                rigState->set(CURRENTVFO, (quint8)0, true);
             }
         }
         else if (command[0] == "s" || command[0] == "get_split_vfo")
@@ -450,8 +454,15 @@ void rigCtlClient::socketReadyRead()
         else if (command[0] == "\xf3" || command[0] == "get_vfo_info")
         {
             if (longReply) {
-                response.append(QString("set_vfo: %1").arg(command[1]));
-
+                if (command[1] == "?") {
+                    if (rigState->getChar(CURRENTVFO) == 0) {
+                        response.append(QString("set_vfo: VFOA"));
+                    }
+                    else
+                    {
+                        response.append(QString("set_vfo: VFOB"));
+                    }
+                }
                 if (command[1] == "VFOB") {
                     response.append(QString("Freq: %1").arg(rigState->getInt64(VFOBFREQ)));
                 }
@@ -1022,17 +1033,17 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command.length() > 1 && (command[0] == 0x87 || command[0] == "set_powerstat"))
         {
-        setCommand = true;
-        if (command[1] == "0")
-            {
-                emit parent->sendPowerOff();
+            setCommand = true;
+            if (command[1] == "0")
+                {
+                rigState->set(POWERONOFF, false, true);
             }
-            else {
-                emit parent->sendPowerOn();
+                else {
+                rigState->set(POWERONOFF, true, true);
             }
         }
         else {
-            qInfo(logRigCtlD()) << "Unimplemented command" << commandBuffer;
+            qInfo(logRigCtlD()) << "Unimplemented command" << commands;
         }
         if (longReply) {
             if (command.length() == 2)
@@ -1045,6 +1056,7 @@ void rigCtlClient::socketReadyRead()
 
         if (setCommand)
         {
+            // This was a set command so state has likely been updated.
             emit parent->stateUpdated();
         }
 
@@ -1067,11 +1079,11 @@ void rigCtlClient::socketReadyRead()
             sendData(QString("\n"));
         }
 
-        commandBuffer.clear();
         sep = " ";
         num = 0;
 
     }
+    commandBuffer.clear();
 }
 
 void rigCtlClient::socketDisconnected()
@@ -1088,7 +1100,7 @@ void rigCtlClient::closeSocket()
 
 void rigCtlClient::sendData(QString data)
 {
-    //qDebug(logRigCtlD()) << "Sending:" << data;
+    qDebug(logRigCtlD()) << "Sending:" << data;
     if (socket != Q_NULLPTR && socket->isValid() && socket->isOpen())
     {
         socket->write(data.toLatin1());

@@ -4222,13 +4222,6 @@ void rigCommander::stateUpdated()
 {
     // A remote process has updated the rigState
     // First we need to find which item(s) have been updated and send the command(s) to the rig.
-    /*
-       FAGCFUNC, NBFUNC, COMPFUNC, VOXFUNC, TONEFUNC, TSQLFUNC, SBKINFUNC, FBKINFUNC, ANFFUNC, NRFUNC, AIPFUNC, APFFUNC, MONFUNC, MNFUNC,RFFUNC,
-       AROFUNC, MUTEFUNC, VSCFUNC, REVFUNC, SQLFUNC, ABMFUNC, BCFUNC, MBCFUNC, RITFUNC, AFCFUNC, SATMODEFUNC, SCOPEFUNC,
-       RESUMEFUNC, TBURSTFUNC, TUNERFUNC};
-    */
-
-    /* VFOAFREQ, VFOBFREQ, CURRENTVFO, PTT, MODE, FILTER, DUPLEX, DATAMODE, ANTENNA, RXANTENNA, CTCSS, TSQL, DTCS, CSQL */
 
     QMap<stateTypes, value>::iterator i = state.map.begin();
     while (i != state.map.end()) {
@@ -4460,7 +4453,22 @@ void rigCommander::stateUpdated()
                         disableSpectOutput();
                     }
                 }
-
+                break;
+            case RIGINPUT:
+                if (i.value()._valid) {
+                    setModInput(state.getInput(RIGINPUT), state.getBool(DATAMODE));
+                }
+                getModInput(state.getBool(DATAMODE));
+                break;
+            case POWERONOFF:
+                if (i.value()._valid) {
+                    if (state.getBool(POWERONOFF)) {
+                        powerOn();
+                    }
+                    else {
+                        powerOff();
+                    }
+                }
             }
         }
         ++i;

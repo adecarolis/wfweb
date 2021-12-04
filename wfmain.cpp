@@ -413,32 +413,12 @@ void wfmain::makeRig()
         connect(rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
         connect(rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
+        connect(this, SIGNAL(requestRigState()), rig, SLOT(sendState()));
+        connect(this, SIGNAL(stateUpdated()), rig, SLOT(stateUpdated()));
+        connect(rig, SIGNAL(stateInfo(rigstate*)), this, SLOT(receiveStateInfo(rigstate*)));
         if (rigCtl != Q_NULLPTR) {
             connect(rig, SIGNAL(stateInfo(rigstate*)), rigCtl, SLOT(receiveStateInfo(rigstate*)));
-            connect(this, SIGNAL(requestRigState()), rig, SLOT(sendState()));
-            connect(rigCtl, SIGNAL(setFrequency(unsigned char, freqt)), rig, SLOT(setFrequency(unsigned char, freqt)));
-            connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
-            connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
-            connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
-            connect(rigCtl, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
-            connect(rigCtl, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
             connect(rigCtl, SIGNAL(stateUpdated()), rig, SLOT(stateUpdated()));
-
-            connect(rigCtl, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
-            connect(rigCtl, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
-            connect(rigCtl, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
-
-            // Levels: Set:
-            connect(rigCtl, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
-            connect(rigCtl, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
-            connect(rigCtl, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
-            connect(rigCtl, SIGNAL(setTxPower(unsigned char)), rig, SLOT(setTxPower(unsigned char)));
-            connect(rigCtl, SIGNAL(setMicGain(unsigned char)), rig, SLOT(setMicGain(unsigned char)));
-            connect(rigCtl, SIGNAL(setMonitorLevel(unsigned char)), rig, SLOT(setMonitorLevel(unsigned char)));
-            connect(rigCtl, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
-            connect(rigCtl, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
-            connect(rigCtl, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
-
         }
     }
 }
@@ -5461,28 +5441,7 @@ void wfmain::on_enableRigctldChk_clicked(bool checked)
         if (rig != Q_NULLPTR) {
             // We are already connected to a rig.
             connect(rig, SIGNAL(stateInfo(rigstate*)), rigCtl, SLOT(receiveStateInfo(rigstate*)));
-            connect(rigCtl, SIGNAL(setFrequency(unsigned char, freqt)), rig, SLOT(setFrequency(unsigned char, freqt)));
-            connect(rigCtl, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
-            connect(rigCtl, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
-            connect(rigCtl, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
-            connect(rigCtl, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
-            connect(rigCtl, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
             connect(rigCtl, SIGNAL(stateUpdated()), rig, SLOT(stateUpdated()));
-
-            connect(rigCtl, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
-            connect(rigCtl, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
-            connect(rigCtl, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
-
-            // Levels: Set:
-            connect(rigCtl, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
-            connect(rigCtl, SIGNAL(setAfGain(unsigned char)), rig, SLOT(setAfGain(unsigned char)));
-            connect(rigCtl, SIGNAL(setSql(unsigned char)), rig, SLOT(setSquelch(unsigned char)));
-            connect(rigCtl, SIGNAL(setTxPower(unsigned char)), rig, SLOT(setTxPower(unsigned char)));
-            connect(rigCtl, SIGNAL(setMicGain(unsigned char)), rig, SLOT(setMicGain(unsigned char)));
-            connect(rigCtl, SIGNAL(setMonitorLevel(unsigned char)), rig, SLOT(setMonitorLevel(unsigned char)));
-            connect(rigCtl, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
-            connect(rigCtl, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
-            connect(rigCtl, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
 
             emit sendRigCaps(rigCaps);
             emit requestRigState();
@@ -5510,6 +5469,12 @@ void wfmain::on_moreControlsBtn_clicked()
 void wfmain::on_useCIVasRigIDChk_clicked(bool checked)
 {
     prefs.CIVisRadioModel = checked;
+}
+
+void wfmain::receiveStateInfo(rigstate* state)
+{
+    qInfo("Setting rig state for wfmain");
+    rigState = state;
 }
 
 // --- DEBUG FUNCTION ---
