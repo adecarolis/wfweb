@@ -10,10 +10,12 @@ The following highlights are in this 1.x-release:
         rigctl basic split support
         rigctl prevents switching off civ transceive
         added 25 kHz step
-
         as a temporary measure sending multiple TX/FREQ change commands to the rig
         when we use rigctld. 
-
         people should use "fake it" in wsjtx as the split code is not reliable.
-
         tidied up udp server function for better reliability
+	added some IC736 stuff
+	added portaudio (you need t change wfview.pro to select 
+        and that lowers the latency to maybe less than 50 ms
+	added PBT and IF-shift
+	several bugs fixed	
