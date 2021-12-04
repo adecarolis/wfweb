@@ -1,5 +1,124 @@
 # CHANGELOG
 
+
+- 20211201
+
+    		Another "minor" update for RX only rigs
+
+    		Disable certain TX commands for RX only rigs
+
+- 20211222
+
+    		Add mutex within rigState to protect access
+
+- 20211119
+
+    		Add more version info
+
+    		Add --version command line argument and WFVIEW_VERSION #define
+
+- 20211118
+
+    		A little less green in our gray.
+
+    		Added size rules for audio source combo boxes.
+
+    		Fix silly bug in retransmit code
+
+    		Remove some extra logging from audio
+
+- 20211115
+
+    		Add mutex for incoming audio on udp and server
+
+    		Force PA to use 48K Sample Rate if default is 44.1K
+
+    		Try using slot for audio again
+
+- 20211110
+
+    		Server only tries mutex lock for 10ms before giving up.
+
+    		Check number of samples in opus packet before attempting decode
+
+- 20211109
+
+    		Small changes to audio handler
+
+- 20211107
+
+    		Add SSE2 enhancements to resampler
+
+    		Update audiohandler.h
+
+    		Enable SSE or NEON enhancements for resampler
+
+    		Fix resample ratio for input and output (hopefully!)
+
+    		Create resampleRatio
+
+    		Close PA stream after stopping it!
+
+    		Fix Linux rtaudio build
+
+    		Pulled out some debug code that isn't needed.
+
+    		Fixed manual rig ID issue with uninitialized variable.
+
+- 20211106
+
+    		Added override allowing the user-specified CI-V address to also be used
+    		as the Rig ID (model). This is useful for older radios that do not reply
+    		to Rig ID queries. For radios using the default CI-V address, it should
+    		"just work".
+
+    		Added PTT "snooping" to the commHandler, such that radios needing RTS
+    		set for PTT will work. Includes replying to PTT queries with the RTS
+    		status. There is currently no UI to manually select radios that need
+    		RTS.
+
+    		deleted a lingering swapfile from one of my vim sessions
+
+- 20211105
+
+    		Added RTS PTT support commHandler and rigCommander. RTS is only sent
+    		from rigCommander at this time, the pty is not parsed.
+
+    		Added geometry constraints to the transceiver adjustments window, and
+    		disable controls which do not function except for debug builds.
+
+
+    		Changed IF/TPBF commands to be "unique priority" inserts. Added "more"
+    		button for extended transceiver controls.
+
+    		Added an IF Shift-like control for radios with Twin PBF.
+
+    		Added support for IF Shift and Twin Pass-Band Filters. Currently
+    		accessable only via the debug button.
+
+- 20211104
+    		Added IC-736 FM mode
+
+    		Added code to force IC-736 to rigID
+
+- 20211101
+
+    		Use QT Audio by default
+
+    		remove unneeded audio signal handler
+
+    		Add portaudio support
+
+    		Make switching between audio apis easier (and tidy .pro file)
+
+    		Use buffered audio for Linux (was just Mac only)
+
+    		Adjust buffer size depending on latency setting
+
+- 20211031
+
+    		Stuff audio buffer directly rather than signal/slot
+
 - 20211022
 
     		Don't block until audio buffer has space
