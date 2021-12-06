@@ -19,3 +19,4 @@ The following highlights are in this 1.x-release:
         and that lowers the latency to maybe less than 50 ms
 	added PBT and IF-shift
 	several bugs fixed	
+	RTS as PTT for several radios like the 706/718/736…
