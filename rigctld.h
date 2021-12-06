@@ -19,6 +19,7 @@
 #include <typeindex>
 
 #include "rigcommander.h"
+#include "rigstate.h"
 
 #define CONSTANT_64BIT_FLAG(BIT) (1ull << (BIT))
 
@@ -343,7 +344,7 @@ signals:
     void setVFO(unsigned char vfo);
     void setSplit(unsigned char split);
     void setDuplexMode(duplexMode dm);
-
+    void stateUpdated();
     // Power
     void sendPowerOn();
     void sendPowerOff();
@@ -368,11 +369,11 @@ signals:
 public slots:
     virtual void incomingConnection(qintptr socketDescriptor);
     void receiveRigCaps(rigCapabilities caps);
-    void receiveStateInfo(rigStateStruct* state);
+    void receiveStateInfo(rigstate* state);
 //    void receiveFrequency(freqt freq);
 
 private: 
-    rigStateStruct* rigState = Q_NULLPTR;
+    rigstate* rigState = Q_NULLPTR;
 };
 
 
@@ -382,7 +383,7 @@ class rigCtlClient : public QObject
 
 public:
 
-    explicit rigCtlClient(int socket, rigCapabilities caps, rigStateStruct *state, rigCtlD* parent = Q_NULLPTR);
+    explicit rigCtlClient(int socket, rigCapabilities caps, rigstate *state, rigCtlD* parent = Q_NULLPTR);
     int getSocketId();
 
 
@@ -399,7 +400,7 @@ protected:
 
 private:
     rigCapabilities rigCaps;
-    rigStateStruct* rigState = Q_NULLPTR;
+    rigstate* rigState = Q_NULLPTR;
     rigCtlD* parent;
     QString getMode(unsigned char mode, bool datamode);
     unsigned char getMode(QString modeString);
@@ -408,6 +409,7 @@ private:
     unsigned char getAntennas();
     quint64 getRadioModes();
     QString getAntName(unsigned char ant);
+    unsigned char antFromName(QString name);
     int getCalibratedValue(unsigned char meter,cal_table_t cal);
 };
 

@@ -14,6 +14,7 @@
 #include "logcategories.h"
 #include "commhandler.h"
 #include "rigcommander.h"
+#include "rigstate.h"
 #include "freqmemory.h"
 #include "rigidentities.h"
 #include "repeaterattributes.h"
@@ -165,6 +166,7 @@ signals:
     void sendServerConfig(SERVERCONFIG conf);
     void sendRigCaps(rigCapabilities caps);
     void requestRigState();
+    void stateUpdated();
 
 private slots:
     void updateSizes(int tabIndex);
@@ -499,6 +501,8 @@ private slots:
     void on_moreControlsBtn_clicked();
 
     void on_useCIVasRigIDChk_clicked(bool checked);
+
+    void receiveStateInfo(rigstate* state);
 
 private:
     Ui::wfmain *ui;
@@ -842,6 +846,7 @@ private:
     unsigned int tsWfScrollHz;
     unsigned int tsKnobHz;
 
+    rigstate* rigState = Q_NULLPTR;
 
     SERVERCONFIG serverConfig;
 };
@@ -850,7 +855,6 @@ Q_DECLARE_METATYPE(struct rigCapabilities)
 Q_DECLARE_METATYPE(struct freqt)
 Q_DECLARE_METATYPE(struct mode_info)
 Q_DECLARE_METATYPE(struct udpPreferences)
-Q_DECLARE_METATYPE(struct rigStateStruct)
 Q_DECLARE_METATYPE(struct audioPacket)
 Q_DECLARE_METATYPE(struct audioSetup)
 Q_DECLARE_METATYPE(struct timekind)
@@ -858,6 +862,7 @@ Q_DECLARE_METATYPE(struct datekind)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
+Q_DECLARE_METATYPE(rigstate*)
 
 
 #endif // WFMAIN_H
