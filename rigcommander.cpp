@@ -675,6 +675,8 @@ void rigCommander::setRitValue(int ritValue)
     bool isNegative = false;
     payload.setRawData("\x21\x00", 2);
 
+    qDebug() << "Sending RIT" << ritValue;
+
     if(ritValue < 0)
     {
         isNegative = true;
@@ -694,6 +696,7 @@ void rigCommander::setRitValue(int ritValue)
     payload.append(QByteArray(1,(char)isNegative));
 
     prepDataAndSend(payload);
+    qDebug() << "Sending RIT" << ritValue;
 }
 
 void rigCommander::setMode(mode_info m)
@@ -2347,6 +2350,7 @@ void rigCommander::parseRegister21()
                 break;
             ritHz = f.Hz*((payloadIn.at(4)=='\x01')?-1:1);
             emit haveRitFrequency(ritHz);
+            state.set(RITVALUE, ritHz, false);
             break;
         case '\x01':
             // RIT on/off
@@ -2356,6 +2360,7 @@ void rigCommander::parseRegister21()
             } else {
                 emit haveRitEnabled(false);
             }
+            state.set(RITFUNC, (bool)payloadIn.at(02), false);
             break;
         case '\x02':
             // Delta TX setting on/off
@@ -2505,13 +2510,13 @@ void rigCommander::parseRegister16()
         case '\x43':
             state.set(TSQLFUNC, payloadIn.at(2) != 0, false);
             break;
-        case '\44':
+        case '\x44':
             state.set(COMPFUNC, payloadIn.at(2) != 0, false);
             break;
-        case '\45':
+        case '\x45':
             state.set(MONFUNC, payloadIn.at(2) != 0, false);
             break;
-        case '\46':
+        case '\x46':
             state.set(VOXFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x47':
@@ -2529,7 +2534,7 @@ void rigCommander::parseRegister16()
                 state.set(SBKINFUNC, false, false);
             }
             break;
-        case '\48': // Manual Notch
+        case '\x48': // Manual Notch
             state.set(MNFUNC, payloadIn.at(2) != 0, false);
             break;
         default:
@@ -4469,6 +4474,27 @@ void rigCommander::stateUpdated()
                         powerOff();
                     }
                 }
+                break;
+            case RITVALUE:
+                if (i.value()._valid) {
+                    setRitValue(state.getInt32(RITVALUE));
+                }
+                getRitValue();
+                break;
+             case RITFUNC:
+                if (i.value()._valid) {
+                    setRitEnable(state.getBool(RITFUNC));
+                }
+                getRitEnabled();
+                break;
+
+             case SMETER:
+             case POWERMETER:
+             case ALCMETER:
+             case COMPMETER:
+             case VOLTAGEMETER:
+             case CURRENTMETER:
+                 break;
             }
         }
         ++i;
