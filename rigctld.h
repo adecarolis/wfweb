@@ -402,6 +402,7 @@ private:
     rigCapabilities rigCaps;
     rigstate* rigState = Q_NULLPTR;
     rigCtlD* parent;
+    bool chkVfoEecuted=false;
     QString getMode(unsigned char mode, bool datamode);
     unsigned char getMode(QString modeString);
     QString getFilter(unsigned char mode, unsigned char filter);

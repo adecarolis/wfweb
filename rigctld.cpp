@@ -185,6 +185,7 @@ void rigCtlClient::socketReadyRead()
 
         if (command[0] == 0xf0 || command[0] == "chk_vfo")
         {
+            chkVfoEecuted = true;
             QString resp;
             if (longReply) {
                 resp.append(QString("ChkVFO: "));
@@ -296,7 +297,20 @@ void rigCtlClient::socketReadyRead()
             response.append("0x7fffffff");
             response.append("0x7fffffff");
             */
-            //response.append("done");
+            if (chkVfoEecuted) {
+                response.append(QString("vfo_ops=0x%1").arg(255, 0, 16));
+                response.append(QString("ptt_type=0x%1").arg(rigCaps.hasTransmit, 0, 16));
+                response.append(QString("has_set_vfo=0x%1").arg(1, 0, 16));
+                response.append(QString("has_get_vfo=0x%1").arg(1, 0, 16));
+                response.append(QString("has_set_freq=0x%1").arg(1, 0, 16));
+                response.append(QString("has_get_freq=0x%1").arg(1, 0, 16));
+                response.append(QString("has_set_conf=0x%1").arg(1, 0, 16));
+                response.append(QString("has_get_conf=0x%1").arg(1, 0, 16));
+                response.append(QString("has_power2mW=0x%1").arg(1, 0, 16));
+                response.append(QString("has_mW2power=0x%1").arg(1, 0, 16));
+                response.append(QString("timeout=0x%1").arg(1000, 0, 16));
+                response.append("done");
+            }
         }
 
         else if (command[0] == "f" || command[0] == "get_freq")
@@ -610,7 +624,6 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command[0] == "J" || command[0] == "set_rit")
         {
-            qDebug(logRigCtlD()) << "set_rit:" << command[1];
             rigState->set(RITVALUE, command[1].toInt(),true);
             setCommand = true;
         }
