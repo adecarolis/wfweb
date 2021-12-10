@@ -22,6 +22,7 @@
 
 rigCommander::rigCommander()
 {
+    state.set(SCOPEFUNC,true,false);
 }
 
 rigCommander::~rigCommander()
@@ -1703,6 +1704,20 @@ void rigCommander::setModInputLevel(rigInput input, unsigned char level)
     }
 }
 
+void rigCommander::setAfMute(bool gainOn)
+{
+    QByteArray payload("\x1a\x09");
+    payload.append((quint8)gainOn);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setDialLock(bool lockOn)
+{
+    QByteArray payload("\x16\x50");
+    payload.append((quint8)lockOn);
+    prepDataAndSend(payload);
+}
+
 void rigCommander::getModInputLevel(rigInput input)
 {
     switch(input)
@@ -1734,6 +1749,18 @@ void rigCommander::getModInputLevel(rigInput input)
         default:
             break;
     }
+}
+
+void rigCommander::getAfMute()
+{
+    QByteArray payload("\x1a\x09");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getDialLock()
+{
+    QByteArray payload("\x16\x50");
+    prepDataAndSend(payload);
 }
 
 QByteArray rigCommander::getUSBAddr()
@@ -2347,6 +2374,7 @@ void rigCommander::parseRegister21()
                 break;
             ritHz = f.Hz*((payloadIn.at(4)=='\x01')?-1:1);
             emit haveRitFrequency(ritHz);
+            state.set(RITVALUE, ritHz, false);
             break;
         case '\x01':
             // RIT on/off
@@ -2356,6 +2384,7 @@ void rigCommander::parseRegister21()
             } else {
                 emit haveRitEnabled(false);
             }
+            state.set(RITFUNC, (bool)payloadIn.at(02), false);
             break;
         case '\x02':
             // Delta TX setting on/off
@@ -2373,6 +2402,8 @@ void rigCommander::parseATU()
     // [1]: 0x01
     // [2]: 0 = off, 0x01 = on, 0x02 = tuning in-progress
     emit haveATUStatus((unsigned char) payloadIn[2]);
+    // This is a bool so any non-zero will mean enabled.
+    state.set(TUNERFUNC, (bool)payloadIn[2], false);
 }
 
 void rigCommander::parsePTT()
@@ -2433,6 +2464,8 @@ void rigCommander::parseRegisters1A()
         case '\x07':
             // IP+ status
             break;
+        case '\x09':
+            state.set(MUTEFUNC, (quint8)payloadIn[2], false);
         default:
             break;
     }
@@ -2505,13 +2538,13 @@ void rigCommander::parseRegister16()
         case '\x43':
             state.set(TSQLFUNC, payloadIn.at(2) != 0, false);
             break;
-        case '\44':
+        case '\x44':
             state.set(COMPFUNC, payloadIn.at(2) != 0, false);
             break;
-        case '\45':
+        case '\x45':
             state.set(MONFUNC, payloadIn.at(2) != 0, false);
             break;
-        case '\46':
+        case '\x46':
             state.set(VOXFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x47':
@@ -2529,8 +2562,11 @@ void rigCommander::parseRegister16()
                 state.set(SBKINFUNC, false, false);
             }
             break;
-        case '\48': // Manual Notch
+        case '\x48': // Manual Notch
             state.set(MNFUNC, payloadIn.at(2) != 0, false);
+            break;
+        case '\x50': // Dial lock
+            state.set(LOCKFUNC, payloadIn.at(2) != 0, false);
             break;
         default:
             break;
@@ -4469,6 +4505,87 @@ void rigCommander::stateUpdated()
                         powerOff();
                     }
                 }
+                break;
+            case RITVALUE:
+                if (i.value()._valid) {
+                    setRitValue(state.getInt32(RITVALUE));
+                }
+                getRitValue();
+                break;
+             case RITFUNC:
+                 if (i.value()._valid) {
+                     setRitEnable(state.getBool(RITFUNC));
+                 }
+                 getRitEnabled();
+                 break;
+                 // All meters can only be updated from the rig end.
+             case SMETER:
+             case POWERMETER:
+             case ALCMETER:
+             case COMPMETER:
+             case VOLTAGEMETER:
+             case CURRENTMETER:
+                 break;
+             case AGC:
+                 break;
+             case MODINPUT:
+                 break;
+             case FAGCFUNC:
+                 break;
+             case AIPFUNC:
+                 break;
+             case APFFUNC:
+                 break;
+             case RFFUNC: // Should this set RF output power to 0?
+                 break;
+             case AROFUNC:
+                 break;
+             case MUTEFUNC:
+                 if (i.value()._valid) {
+                     setAfMute(state.getBool(MUTEFUNC));
+                 }
+                 getAfMute();
+                 break;
+             case VSCFUNC:
+                 break;
+             case REVFUNC:
+                 break;
+             case SQLFUNC:
+                 break;
+             case ABMFUNC:
+                 break;
+             case BCFUNC:
+                 break;
+             case MBCFUNC:
+                 break;
+             case AFCFUNC:
+                 break;
+             case SATMODEFUNC:
+                 break;
+             case NBLEVEL:
+                 break;
+             case NBDEPTH:
+                 break;
+             case NBWIDTH:
+                 break;
+             case NRLEVEL:
+                 break;
+             case RESUMEFUNC:
+                 break;
+             case TBURSTFUNC:
+                 break;
+             case TUNERFUNC:
+                 if (i.value()._valid) {  
+                     setATU(state.getBool(TUNERFUNC));
+                 }
+                 getATUStatus();
+                 break;
+             case LOCKFUNC:
+                 if (i.value()._valid) {
+                     setDialLock(state.getBool(LOCKFUNC));
+                 }
+                 getDialLock();
+                 break;
             }
         }
         ++i;

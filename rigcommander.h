@@ -184,6 +184,8 @@ public slots:
     void getACCGain(unsigned char ab);
     void getModInput(bool dataOn);
     void getModInputLevel(rigInput input);
+    void getAfMute();
+    void getDialLock();
 
     // Set Levels:
     void setSquelch(unsigned char level);
@@ -204,6 +206,8 @@ public slots:
     void setAntiVoxGain(unsigned char gain);
     void setModInput(rigInput input, bool dataOn);
     void setModInputLevel(rigInput input, unsigned char level);
+    void setAfMute(bool muteOn);
+    void setDialLock(bool lockOn);
 
     // NB, NR, IP+:
     void setIPP(bool enabled);

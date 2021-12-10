@@ -12,11 +12,11 @@
 #include "rigidentities.h"
 
 // Meters at the end as they are ALWAYS updated from the rig!
-enum stateTypes { NONE, VFOAFREQ, VFOBFREQ, CURRENTVFO, PTT, MODE, FILTER, DUPLEX, DATAMODE, ANTENNA, RXANTENNA, CTCSS, TSQL, DTCS, CSQL,
+enum stateTypes { VFOAFREQ, VFOBFREQ, CURRENTVFO, PTT, MODE, FILTER, DUPLEX, DATAMODE, ANTENNA, RXANTENNA, CTCSS, TSQL, DTCS, CSQL,
                   PREAMP, AGC, ATTENUATOR, MODINPUT, AFGAIN, RFGAIN, SQUELCH, TXPOWER, MICGAIN, COMPLEVEL, MONITORLEVEL, VOXGAIN, ANTIVOXGAIN,
                   FAGCFUNC, NBFUNC, COMPFUNC, VOXFUNC, TONEFUNC, TSQLFUNC, SBKINFUNC, FBKINFUNC, ANFFUNC, NRFUNC, AIPFUNC, APFFUNC, MONFUNC, MNFUNC,RFFUNC,
                   AROFUNC, MUTEFUNC, VSCFUNC, REVFUNC, SQLFUNC, ABMFUNC, BCFUNC, MBCFUNC, RITFUNC, AFCFUNC, SATMODEFUNC, SCOPEFUNC,
-                  NBLEVEL, NBDEPTH, NBWIDTH, NRLEVEL, RIGINPUT, POWERONOFF,
+                  NBLEVEL, NBDEPTH, NBWIDTH, NRLEVEL, RIGINPUT, POWERONOFF, RITVALUE, 
                   RESUMEFUNC, TBURSTFUNC, TUNERFUNC, LOCKFUNC, SMETER, POWERMETER, SWRMETER, ALCMETER, COMPMETER, VOLTAGEMETER, CURRENTMETER
 };
 
@@ -47,7 +47,7 @@ public:
             _mutex.unlock();
         }
     }
-    void set(stateTypes s, quint32 x, bool u) {
+    void set(stateTypes s, qint32 x, bool u) {
         if ((quint64)x != map[s]._value) {
             _mutex.lock();
             map[s]._value = (quint64)x;
@@ -110,9 +110,9 @@ public:
     }
 
     bool getBool(stateTypes s) { return map[s]._value != 0; }
-    quint8 getChar(stateTypes s) { return map[s]._value & 0xff; }
-    quint16 getInt16(stateTypes s) { return map[s]._value != 0xffff; }
-    quint32 getInt32(stateTypes s) { return map[s]._value != 0xffffffff; }
+    quint8 getChar(stateTypes s) { return (quint8)map[s]._value; }
+    quint16 getInt16(stateTypes s) { return (qint16)map[s]._value; }
+    qint32 getInt32(stateTypes s) { return (qint32)map[s]._value; }
     quint64 getInt64(stateTypes s) { return map[s]._value; }
     duplexMode getDuplex(stateTypes s) { return(duplexMode)map[s]._value; }
     rigInput getInput(stateTypes s) { return(rigInput)map[s]._value; }
