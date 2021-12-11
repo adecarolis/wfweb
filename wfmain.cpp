@@ -649,6 +649,7 @@ void wfmain::setupMainUI()
     ui->tuningStepCombo->addItem("1 Hz",      (unsigned int)       1);
     ui->tuningStepCombo->addItem("10 Hz",     (unsigned int)      10);
     ui->tuningStepCombo->addItem("100 Hz",    (unsigned int)     100);
+    ui->tuningStepCombo->addItem("500 Hz",    (unsigned int)     500);
     ui->tuningStepCombo->addItem("1 kHz",     (unsigned int)    1000);
     ui->tuningStepCombo->addItem("2.5 kHz",   (unsigned int)    2500);
     ui->tuningStepCombo->addItem("5 kHz",     (unsigned int)    5000);
