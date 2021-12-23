@@ -510,6 +510,10 @@ private:
     QSettings *settings=Q_NULLPTR;
     void loadSettings();
     void saveSettings();
+
+    void createSettingsListItems();
+    void connectSettingsList();
+
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
     QCPItemLine * freqIndicatorLine;

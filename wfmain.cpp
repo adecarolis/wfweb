@@ -213,6 +213,25 @@ void wfmain::openRig()
 
 }
 
+void wfmain::createSettingsListItems()
+{
+    // Add items to the settings tab list widget
+    ui->settingsList->addItem("Radio Access");     // 0
+    ui->settingsList->addItem("User Interface");   // 1
+    ui->settingsList->addItem("Radio Settings");   // 2
+    ui->settingsList->addItem("Radio Server");     // 3
+    ui->settingsList->addItem("External Control"); // 4
+    ui->settingsList->addItem("Audio Processing"); // 5
+    ui->settingsList->addItem("Experimental");     // 6
+    ui->settingsList->addItem("About");            // 7
+}
+
+void wfmain::connectSettingsList()
+{
+
+}
+
+
 void wfmain::rigConnections()
 {
     connect(this, SIGNAL(setCIVAddr(unsigned char)), rig, SLOT(setCIVAddr(unsigned char)));
