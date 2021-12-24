@@ -506,6 +506,8 @@ private slots:
 
     void on_settingsList_currentRowChanged(int currentRow);
 
+    void on_setClockBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
