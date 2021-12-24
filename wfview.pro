@@ -49,7 +49,7 @@ DEFINES += PREFIX=\\\"$$PREFIX\\\"
 
 # Choose audio system, uses QTMultimedia if both are commented out.
 # DEFINES += RTAUDIO
-# DEFINES += PORTAUDIO
+DEFINES += PORTAUDIO
 
 contains(DEFINES, RTAUDIO) {
 	# RTAudio defines

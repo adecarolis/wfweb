@@ -2066,7 +2066,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>0</number>
+             <number>2</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -2841,19 +2841,22 @@
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_30">
                 <item>
-                 <widget class="QPushButton" name="satOpsBtn">
+                 <widget class="QLabel" name="label_27">
                   <property name="text">
-                   <string>Satellite Ops</string>
+                   <string>Modulation Input:</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="adjRefBtn">
-                  <property name="toolTip">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click here to adjust the frequency reference on the IC-9700.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 <widget class="QComboBox" name="modInputCombo">
+                  <property name="accessibleName">
+                   <string>Modulation Input</string>
                   </property>
-                  <property name="text">
-                   <string>Adjust Reference</string>
+                  <property name="accessibleDescription">
+                   <string>Transmit modulation source</string>
+                  </property>
+                  <property name="sizeAdjustPolicy">
+                   <enum>QComboBox::AdjustToContents</enum>
                   </property>
                  </widget>
                 </item>
@@ -2871,26 +2874,6 @@
                   </property>
                   <property name="accessibleDescription">
                    <string>Transmit Data-mode modulation input source</string>
-                  </property>
-                  <property name="sizeAdjustPolicy">
-                   <enum>QComboBox::AdjustToContents</enum>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLabel" name="label_27">
-                  <property name="text">
-                   <string>Modulation Input:</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QComboBox" name="modInputCombo">
-                  <property name="accessibleName">
-                   <string>Modulation Input</string>
-                  </property>
-                  <property name="accessibleDescription">
-                   <string>Transmit modulation source</string>
                   </property>
                   <property name="sizeAdjustPolicy">
                    <enum>QComboBox::AdjustToContents</enum>
@@ -2931,6 +2914,23 @@
                   </property>
                   <property name="text">
                    <string>Use UTC</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="satOpsBtn">
+                  <property name="text">
+                   <string>Satellite Ops</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="adjRefBtn">
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click here to adjust the frequency reference on the IC-9700.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                  </property>
+                  <property name="text">
+                   <string>Adjust Reference</string>
                   </property>
                  </widget>
                 </item>
