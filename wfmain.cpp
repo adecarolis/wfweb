@@ -223,6 +223,7 @@ void wfmain::createSettingsListItems()
     ui->settingsList->addItem("External Control"); // 4
     ui->settingsList->addItem("Experimental");     // 5
     //ui->settingsList->addItem("Audio Processing"); // 6
+    ui->settingsStack->setCurrentIndex(0);
 }
 
 void wfmain::on_settingsList_currentRowChanged(int currentRow)
