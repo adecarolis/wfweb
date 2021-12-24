@@ -2066,7 +2066,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>2</number>
+             <number>4</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -3156,13 +3156,13 @@
                  <widget class="QComboBox" name="vspCombo">
                   <property name="minimumSize">
                    <size>
-                    <width>180</width>
+                    <width>250</width>
                     <height>0</height>
                    </size>
                   </property>
                   <property name="maximumSize">
                    <size>
-                    <width>180</width>
+                    <width>250</width>
                     <height>16777215</height>
                    </size>
                   </property>
