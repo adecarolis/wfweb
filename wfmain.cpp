@@ -225,6 +225,12 @@ void wfmain::createSettingsListItems()
     //ui->settingsList->addItem("Audio Processing"); // 6
 }
 
+void wfmain::on_settingsList_currentRowChanged(int currentRow)
+{
+    ui->settingsStack->setCurrentIndex(currentRow);
+}
+
+
 void wfmain::connectSettingsList()
 {
 
@@ -626,6 +632,8 @@ void wfmain::setupPlots()
 
 void wfmain::setupMainUI()
 {
+    createSettingsListItems();
+
     ui->bandStkLastUsedBtn->setVisible(false);
     ui->bandStkVoiceBtn->setVisible(false);
     ui->bandStkDataBtn->setVisible(false);
