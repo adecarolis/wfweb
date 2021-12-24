@@ -4343,6 +4343,13 @@ void wfmain::on_lanEnableBtn_clicked(bool checked)
     ui->controlPortTxt->setEnabled(checked);
     ui->usernameTxt->setEnabled(checked);
     ui->passwordTxt->setEnabled(checked);
+    ui->audioRXCodecCombo->setEnabled(checked);
+    ui->audioTXCodecCombo->setEnabled(checked);
+    ui->audioSampleRateCombo->setEnabled(checked);
+    ui->rxLatencySlider->setEnabled(checked);
+    ui->txLatencySlider->setEnabled(checked);
+    ui->rxLatencyValue->setEnabled(checked);
+    ui->txLatencyValue->setEnabled(checked);
     ui->baudRateCombo->setEnabled(!checked);
     ui->serialDeviceListCombo->setEnabled(!checked);
     //ui->udpServerSetupBtn->setEnabled(false);
