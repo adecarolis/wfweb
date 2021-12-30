@@ -79,6 +79,7 @@ public slots:
     void commSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp);
     void closeComm();
     void stateUpdated();
+    void setRTSforPTT(bool enabled);
 
     // Power:
     void powerOn();
@@ -452,6 +453,9 @@ private:
     unsigned char civAddr;
     unsigned char incomingCIVAddr; // place to store the incoming CIV.
     bool pttAllowed;
+    bool useRTSforPTT_isSet = false;
+    bool useRTSforPTT_manual = false;
+
 
     QString rigSerialPort;
     quint32 rigBaudRate;

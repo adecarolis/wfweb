@@ -52,6 +52,7 @@ signals:
     // Basic to rig:
     void setCIVAddr(unsigned char newRigCIVAddr);
     void setRigID(unsigned char rigID);
+    void setRTSforPTT(bool enabled);
 
     // Power
     void sendPowerOn();
@@ -514,6 +515,8 @@ private slots:
 
     void onServerPasswordChanged();
 
+    void on_useRTSforPTTchk_clicked(bool checked);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -736,6 +739,7 @@ private:
         QString stylesheetPath;
         unsigned char radioCIVAddr;
         bool CIVisRadioModel;
+        bool forceRTSasPTT;
         QString serialPortRadio;
         quint32 serialPortBaud;
         bool enablePTT;

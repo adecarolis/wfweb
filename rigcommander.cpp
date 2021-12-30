@@ -217,6 +217,20 @@ void rigCommander::receiveBaudRate(quint32 baudrate) {
     emit haveBaudRate(baudrate);
 }
 
+void rigCommander::setRTSforPTT(bool enabled)
+{
+    if(!usingNativeLAN)
+    {
+        useRTSforPTT_isSet = true;
+        useRTSforPTT_manual = enabled;
+        if(comm != NULL)
+        {
+            rigCaps.useRTSforPTT=enabled;
+            comm->setUseRTSforPTT(enabled);
+        }
+    }
+}
+
 void rigCommander::findRigs()
 {
     // This function sends data to 0x00 ("broadcast") to look for any connected rig.
@@ -3596,8 +3610,13 @@ void rigCommander::determineRigCaps()
     haveRigCaps = true;
 
     if(!usingNativeLAN)
+    {
+        if(useRTSforPTT_isSet)
+        {
+            rigCaps.useRTSforPTT = useRTSforPTT_manual;
+        }
         comm->setUseRTSforPTT(rigCaps.useRTSforPTT);
-
+    }
 
     if(lookingForRig)
     {

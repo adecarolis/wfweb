@@ -423,7 +423,7 @@ void wfmain::makeRig()
         // Rig comm setup:
         connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)), rig, SLOT(commSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)));
         connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32,QString)), rig, SLOT(commSetup(unsigned char, QString, quint32,QString)));
-
+        connect(this, SIGNAL(setRTSforPTT(bool)), rig, SLOT(setRTSforPTT(bool)));
 
         connect(rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
 
@@ -1312,6 +1312,7 @@ void wfmain::setDefPrefs()
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
     defPrefs.radioCIVAddr = 0x00; // previously was 0x94 for 7300.
     defPrefs.CIVisRadioModel = false;
+    defPrefs.forceRTSasPTT = false;
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.serialPortBaud = 115200;
     defPrefs.enablePTT = false;
@@ -1411,7 +1412,9 @@ void wfmain::loadSettings()
         ui->rigCIVaddrHexLine->setEnabled(false);
     }
     prefs.CIVisRadioModel = (bool)settings->value("CIVisRadioModel", defPrefs.CIVisRadioModel).toBool();
+    prefs.forceRTSasPTT = (bool)settings->value("ForceRTSasPTT", defPrefs.forceRTSasPTT).toBool();
 
+    ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
 
     prefs.serialPortRadio = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
     int serialIndex = ui->serialDeviceListCombo->findText(prefs.serialPortRadio);
@@ -1772,6 +1775,7 @@ void wfmain::saveSettings()
     settings->beginGroup("Radio");
     settings->setValue("RigCIVuInt", prefs.radioCIVAddr);
     settings->setValue("CIVisRadioModel", prefs.CIVisRadioModel);
+    settings->setValue("ForceRTSasPTT", prefs.forceRTSasPTT);
     settings->setValue("SerialPortRadio", prefs.serialPortRadio);
     settings->setValue("SerialPortBaud", prefs.serialPortBaud);
     settings->setValue("VirtualSerialPort", prefs.virtualSerialPort);
@@ -3261,6 +3265,10 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
+
+        ui->useRTSforPTTchk->blockSignals(true);
+        ui->useRTSforPTTchk->setChecked(rigCaps.useRTSforPTT);
+        ui->useRTSforPTTchk->blockSignals(false);
 
         ui->connectBtn->setText("Disconnect"); // We must be connected now.
         prepareWf(ui->wfLengthSlider->value());
@@ -5497,6 +5505,7 @@ void wfmain::on_rigCIVaddrHexLine_editingFinished()
     }
 
 }
+
 void wfmain::on_baudRateCombo_activated(int index)
 {
     bool ok = false;
@@ -5508,6 +5517,12 @@ void wfmain::on_baudRateCombo_activated(int index)
         showStatusBarText(QString("Changed baud rate to %1 bps. Press Save Settings to retain.").arg(baud));
     }
     (void)index;
+}
+
+void wfmain::on_useRTSforPTTchk_clicked(bool checked)
+{
+    emit setRTSforPTT(checked);
+    prefs.forceRTSasPTT = checked;
 }
 
 void wfmain::on_wfLengthSlider_valueChanged(int value)
