@@ -513,6 +513,7 @@ private slots:
     void on_serverTXAudioOutputCombo_currentIndexChanged(int value);
     void on_serverRXAudioInputCombo_currentIndexChanged(int value);
     void onServerPasswordChanged();
+    void on_serverUsersTable_cellChanged(int row, int column);
 
     void on_useRTSforPTTchk_clicked(bool checked);
 

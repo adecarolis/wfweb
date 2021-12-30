@@ -1662,7 +1662,6 @@ void wfmain::loadSettings()
     serverTxSetup.resampleQuality = rxSetup.resampleQuality;
 
     int row = 0;
-
     ui->serverUsersTable->setRowCount(0);
 
     foreach(SERVERUSER user, serverConfig.users)
@@ -1677,7 +1676,6 @@ void wfmain::loadSettings()
     if (row == 0) {
         serverAddUserLine("", "", 0);
     }
-
 
     settings->endGroup();
 
@@ -1719,6 +1717,8 @@ void wfmain::loadSettings()
 
 void wfmain::serverAddUserLine(const QString& user, const QString& pass, const int& type)
 {
+    ui->serverUsersTable->blockSignals(true);
+
     ui->serverUsersTable->insertRow(ui->serverUsersTable->rowCount());
     ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 0, new QTableWidgetItem(user));
     ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 1, new QTableWidgetItem());
@@ -1735,6 +1735,8 @@ void wfmain::serverAddUserLine(const QString& user, const QString& pass, const i
     comboBox->insertItems(0, { "Full User","Full with no TX","Monitor only" });
     comboBox->setCurrentIndex(type);
     ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 2, comboBox);
+    ui->serverUsersTable->blockSignals(false);
+
 }
 
 void wfmain::onServerPasswordChanged()
@@ -1745,6 +1747,23 @@ void wfmain::onServerPasswordChanged()
     passcode(password->text(), pass);
     password->setText(pass);
     qInfo() << "password row" << row << "changed";
+    serverConfig.users.clear();
+    for (int rows = 0; rows < ui->serverUsersTable->model()->rowCount(); rows++)
+    {
+        if (ui->serverUsersTable->item(rows, 0) != NULL)
+        {
+            SERVERUSER user;
+            user.username = ui->serverUsersTable->item(rows, 0)->text();
+            QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(rows, 1);
+            user.password = password->text();
+            QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(rows, 2);
+            user.userType = comboBox->currentIndex();
+            serverConfig.users.append(user);
+        }
+        else {
+            ui->serverUsersTable->removeRow(rows);
+        }
+    }
 }
 
 void wfmain::on_serverUsersTable_cellClicked(int row, int col)
@@ -1755,6 +1774,79 @@ void wfmain::on_serverUsersTable_cellClicked(int row, int col)
     }
 }
 
+
+void wfmain::on_serverEnableCheckbox_clicked(bool checked)
+{
+    ui->serverSetupGroup->setEnabled(checked);
+    serverConfig.enabled = checked;
+    setServerToPrefs();
+}
+
+void wfmain::on_serverControlPortText_textChanged(QString text)
+{
+    serverConfig.controlPort = ui->serverControlPortText->text().toInt();
+}
+
+void wfmain::on_serverCivPortText_textChanged(QString text)
+{
+    serverConfig.civPort = ui->serverCivPortText->text().toInt();
+}
+
+void wfmain::on_serverAudioPortText_textChanged(QString text)
+{
+    serverConfig.audioPort = ui->serverAudioPortText->text().toInt();
+}
+
+void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
+{
+#if defined(RTAUDIO)
+    serverRxSetup.port = ui->serverRXaudioInputCombo->itemData(value).toInt();
+#elif defined(PORTAUDIO)
+    serverRxSetup.port = ui->serverRXaudioInputCombo->itemData(value).toInt();
+#else
+    QVariant v = ui->serverRXAudioInputCombo->itemData(value);
+    serverRxSetup.port = v.value<QAudioDeviceInfo>();
+#endif
+    serverRxSetup.name = ui->serverRXAudioInputCombo->itemText(value);
+    qDebug(logGui()) << "Changed default server audio input to:" << serverRxSetup.name;
+}
+
+void wfmain::on_serverUsersTable_cellChanged(int row, int column)
+{
+    qInfo() << "Cell Changed:" << row << "," << column;
+
+    serverConfig.users.clear();
+    for (int rows = 0; rows < ui->serverUsersTable->model()->rowCount(); rows++)
+    {
+        if (ui->serverUsersTable->item(rows, 0) != NULL)
+        {
+            SERVERUSER user;
+            user.username = ui->serverUsersTable->item(rows, 0)->text();
+            QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(rows, 1);
+            user.password = password->text();
+            QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(rows, 2);
+            user.userType = comboBox->currentIndex();
+            serverConfig.users.append(user);
+        }
+        else {
+            ui->serverUsersTable->removeRow(rows);
+        }
+    }
+}
+
+void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
+{
+#if defined(RTAUDIO)
+    serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(value).toInt();
+#elif defined(PORTAUDIO)
+    serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(value).toInt();
+#else
+    QVariant v = ui->serverTXAudioOutputCombo->itemData(value);
+    serverTxSetup.port = v.value<QAudioDeviceInfo>();
+#endif
+    serverTxSetup.name = ui->serverTXAudioOutputCombo->itemText(value);
+    qDebug(logGui()) << "Changed default server audio output to:" << serverTxSetup.name;
+}
 
 void wfmain::saveSettings()
 {
@@ -1893,24 +1985,6 @@ void wfmain::saveSettings()
     settings->setValue("ServerAudioOutput", serverTxSetup.name);
     settings->setValue("ServerAudioInput", serverRxSetup.name);
 
-    serverConfig.users.clear();
-
-    for (int row = 0; row < ui->serverUsersTable->model()->rowCount(); row++)
-    {
-        if (ui->serverUsersTable->item(row, 0) != NULL)
-        {
-            SERVERUSER user;
-            user.username = ui->serverUsersTable->item(row, 0)->text();
-            QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 1);
-            user.password = password->text();
-            QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(row, 2);
-            user.userType = comboBox->currentIndex();
-            serverConfig.users.append(user);
-        }
-        else {
-            ui->serverUsersTable->removeRow(row);
-        }
-    }
 
     for (int f = 0; f < serverConfig.users.count(); f++)
     {
@@ -5658,56 +5732,6 @@ void wfmain::receiveStateInfo(rigstate* state)
 void wfmain::on_setClockBtn_clicked()
 {
     setRadioTimeDatePrep();
-}
-
-void wfmain::on_serverEnableCheckbox_clicked(bool checked)
-{
-    ui->serverSetupGroup->setEnabled(checked);
-    serverConfig.enabled = checked;
-    setServerToPrefs();
-}
-
-void wfmain::on_serverControlPortText_textChanged(QString text)
-{
-    serverConfig.controlPort = ui->serverControlPortText->text().toInt();
-}
-
-void wfmain::on_serverCivPortText_textChanged(QString text)
-{
-    serverConfig.civPort = ui->serverCivPortText->text().toInt();
-}
-
-void wfmain::on_serverAudioPortText_textChanged(QString text)
-{
-    serverConfig.audioPort = ui->serverAudioPortText->text().toInt();
-}
-
-void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
-{
-#if defined(RTAUDIO)
-    serverRxSetup.port = ui->serverRXaudioInputCombo->itemData(value).toInt();
-#elif defined(PORTAUDIO)
-    serverRxSetup.port = ui->serverRXaudioInputCombo->itemData(value).toInt();
-#else
-    QVariant v = ui->serverRXAudioInputCombo->itemData(value);
-    serverRxSetup.port = v.value<QAudioDeviceInfo>();
-#endif
-    serverRxSetup.name = ui->serverRXAudioInputCombo->itemText(value);
-    qDebug(logGui()) << "Changed default server audio input to:" << serverRxSetup.name;
-}
-
-void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
-{
-#if defined(RTAUDIO)
-    serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(value).toInt();
-#elif defined(PORTAUDIO)
-    serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(value).toInt();
-#else
-    QVariant v = ui->serverTXAudioOutputCombo->itemData(value);
-    serverTxSetup.port = v.value<QAudioDeviceInfo>();
-#endif
-    serverTxSetup.name = ui->serverTXAudioOutputCombo->itemText(value);
-    qDebug(logGui()) << "Changed default server audio output to:" << serverTxSetup.name;
 }
 
 // --- DEBUG FUNCTION ---
