@@ -953,6 +953,14 @@ void wfmain::setServerToPrefs()
 	
     // Start server if enabled in config
     ui->serverSetupGroup->setEnabled(serverConfig.enabled);
+    if (serverThread != Q_NULLPTR) {
+        serverThread->quit();
+        serverThread->wait();
+        serverThread = Q_NULLPTR;
+        udp = Q_NULLPTR;
+        ui->statusBar->showMessage(QString("Server disabled"), 1000);
+    }
+
     if (serverConfig.enabled) {
         serverConfig.lan = prefs.enableLAN;
 
@@ -974,6 +982,7 @@ void wfmain::setServerToPrefs()
         emit initServer();
 
         connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
+        ui->statusBar->showMessage(QString("Server enabled"), 1000);
 
     }
 }
@@ -1875,10 +1884,6 @@ void wfmain::saveSettings()
     settings->endGroup();
 
     settings->beginGroup("Server");
-
-    serverConfig.controlPort = ui->serverControlPortText->text().toInt();
-    serverConfig.civPort = ui->serverCivPortText->text().toInt();
-    serverConfig.audioPort = ui->serverAudioPortText->text().toInt();
 
     settings->setValue("ServerEnabled", serverConfig.enabled);
     settings->setValue("ServerControlPort", serverConfig.controlPort);
@@ -4551,35 +4556,6 @@ void wfmain::on_audioInputCombo_currentIndexChanged(int value)
     qDebug(logGui()) << "Changed default audio input to:" << txSetup.name;
 }
 
-
-void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
-{
-#if defined(RTAUDIO)
-    serverRxSetup.port = ui->serverRXAudioInputCombo->itemData(value).toInt();
-#elif defined(PORTAUDIO)
-    serverRxSetup.port = ui->serverRXAudioInputCombo->itemData(value).toInt();
-#else
-    QVariant v = ui->serverRXAudioInputCombo->itemData(value);
-    serverRxSetup.port = v.value<QAudioDeviceInfo>();
-#endif
-    serverRxSetup.name = ui->serverRXAudioInputCombo->itemText(value);
-    qDebug(logGui()) << "Changed default server audio input to:" << serverRxSetup.name;
-}
-
-void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
-{
-#if defined(RTAUDIO)
-    serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(value).toInt();
-#elif defined(PORTAUDIO)
-    serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(value).toInt();
-#else
-    QVariant v = ui->serverTXAudioOutputCombo->itemData(value);
-    serverTxSetup.port = v.value<QAudioDeviceInfo>();
-#endif
-    serverTxSetup.name = ui->serverTXAudioOutputCombo->itemText(value);
-    qDebug(logGui()) << "Changed default server audio output to:" << serverTxSetup.name;
-}
-
 void wfmain::on_audioSampleRateCombo_currentIndexChanged(QString text)
 {
     //udpPrefs.audioRXSampleRate = text.toInt();
@@ -5688,6 +5664,50 @@ void wfmain::on_serverEnableCheckbox_clicked(bool checked)
 {
     ui->serverSetupGroup->setEnabled(checked);
     serverConfig.enabled = checked;
+    setServerToPrefs();
+}
+
+void wfmain::on_serverControlPortText_textChanged(QString text)
+{
+    serverConfig.controlPort = ui->serverControlPortText->text().toInt();
+}
+
+void wfmain::on_serverCivPortText_textChanged(QString text)
+{
+    serverConfig.civPort = ui->serverCivPortText->text().toInt();
+}
+
+void wfmain::on_serverAudioPortText_textChanged(QString text)
+{
+    serverConfig.audioPort = ui->serverAudioPortText->text().toInt();
+}
+
+void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
+{
+#if defined(RTAUDIO)
+    serverRxSetup.port = ui->serverRXaudioInputCombo->itemData(value).toInt();
+#elif defined(PORTAUDIO)
+    serverRxSetup.port = ui->serverRXaudioInputCombo->itemData(value).toInt();
+#else
+    QVariant v = ui->serverRXAudioInputCombo->itemData(value);
+    serverRxSetup.port = v.value<QAudioDeviceInfo>();
+#endif
+    serverRxSetup.name = ui->serverRXAudioInputCombo->itemText(value);
+    qDebug(logGui()) << "Changed default server audio input to:" << serverRxSetup.name;
+}
+
+void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
+{
+#if defined(RTAUDIO)
+    serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(value).toInt();
+#elif defined(PORTAUDIO)
+    serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(value).toInt();
+#else
+    QVariant v = ui->serverTXAudioOutputCombo->itemData(value);
+    serverTxSetup.port = v.value<QAudioDeviceInfo>();
+#endif
+    serverTxSetup.name = ui->serverTXAudioOutputCombo->itemText(value);
+    qDebug(logGui()) << "Changed default server audio output to:" << serverTxSetup.name;
 }
 
 // --- DEBUG FUNCTION ---

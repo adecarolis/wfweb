@@ -120,9 +120,6 @@
     <ClCompile Include="udpserver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="udpserversetup.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="wfmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -201,9 +198,6 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="udpserver.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="udpserversetup.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <ClInclude Include="ulaw.h">
@@ -375,7 +369,6 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\install.sh">
@@ -390,10 +383,5 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include=".\wfview_resource.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="rigstate.h">
-      <Filter>Generated Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>
