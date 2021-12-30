@@ -23,7 +23,6 @@
 #include "repeatersetup.h"
 #include "satellitesetup.h"
 #include "transceiveradjustments.h"
-#include "udpserversetup.h"
 #include "udpserver.h"
 #include "qledlabel.h"
 #include "rigctld.h"
@@ -163,7 +162,6 @@ signals:
     void sendCloseComm();
     void sendChangeLatency(quint16 latency);
     void initServer();
-    void sendServerConfig(SERVERCONFIG conf);
     void sendRigCaps(rigCapabilities caps);
     void requestRigState();
     void stateUpdated();
@@ -268,7 +266,6 @@ private slots:
     void handlePlotScroll(QWheelEvent *);
     void sendRadioCommandLoop();
     void showStatusBarText(QString text);
-    void serverConfigRequested(SERVERCONFIG conf, bool store);
     void receiveBaudRate(quint32 baudrate);
 
     void setRadioTimeDateSend();
@@ -387,6 +384,10 @@ private slots:
 
     void on_audioInputCombo_currentIndexChanged(int value);
 
+    void on_serverTXAudioOutputCombo_currentIndexChanged(int value);
+
+    void on_serverRXAudioInputCombo_currentIndexChanged(int value);
+
     void on_toFixedBtn_clicked();
 
     void on_connectBtn_clicked();
@@ -411,7 +412,6 @@ private slots:
 
     void on_dataModeBtn_toggled(bool checked);
 
-    void on_udpServerSetupBtn_clicked();
 
     void on_transmitBtn_clicked();
 
@@ -507,6 +507,12 @@ private slots:
     void on_settingsList_currentRowChanged(int currentRow);
 
     void on_setClockBtn_clicked();
+
+    void on_serverEnableCheckbox_clicked(bool checked);
+
+    void on_serverUsersTable_cellClicked(int row, int col);
+
+    void onServerPasswordChanged();
 
 private:
     Ui::wfmain *ui;
@@ -756,6 +762,9 @@ private:
     audioSetup rxSetup;
     audioSetup txSetup;
 
+    audioSetup serverRxSetup;
+    audioSetup serverTxSetup;
+
     colors defaultColors;
 
     void setDefaultColors(); // populate with default values
@@ -824,7 +833,6 @@ private:
     repeaterSetup *rpt;
     satelliteSetup *sat;
     transceiverAdjustments *trxadj;
-    udpServerSetup *srv;
     aboutbox *abtBox;
 
 
@@ -857,6 +865,8 @@ private:
     rigstate* rigState = Q_NULLPTR;
 
     SERVERCONFIG serverConfig;
+    void serverAddUserLine(const QString& user, const QString& pass, const int& type);
+
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
