@@ -154,28 +154,28 @@ void rigCtlClient::socketReadyRead()
             return;
         }
 
-        if (commands[num] == QString(";") || commands[num] == QString("|") || commands[num] == QString(","))
+        if (commands[num] == ';' || commands[num] == '|' || commands[num] == ',')
         {
             sep = commands[num].toLatin1();
             num++;
         }
-        else if (commands[num] == QString("+"))
+        else if (commands[num] == '+')
         {
             longReply = true;
             sep = "\n";
             num++;
         }
-        else if (commands[num] == QString("#"))
+        else if (commands[num] == '#')
         {
             continue;
         }
-        else if (commands[num].toLower() == QString("q"))
+        else if (commands[num].toLower() == 'q')
         {
             closeSocket();
             return;
         }
 
-        if (commands[num] == QString("\\"))
+        if (commands[num] == '\\')
         {
             num++;
         }
@@ -183,7 +183,7 @@ void rigCtlClient::socketReadyRead()
         QStringList command = commands.mid(num).split(" ");
 
 
-        if (command[0] == QString((char)0xf0) || command[0] == "chk_vfo")
+        if (command[0] == '\xf0' || command[0] == "chk_vfo")
         {
             chkVfoEecuted = true;
             QString resp;
@@ -1048,7 +1048,7 @@ void rigCtlClient::socketReadyRead()
             
             qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2];
         }
-        else if (command.length() > 0 && (command[0] == QString((char)0x88) || command[0] == "get_powerstat"))
+        else if (command.length() > 0 && (command[0] == '\x88' || command[0] == "get_powerstat"))
         {
             
             QString resp;
