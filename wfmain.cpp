@@ -1145,15 +1145,19 @@ void wfmain::setAudioDevicesUI()
     const auto audioOutputs = mediaDevices.audioOutputs();
     for (const QAudioDevice& deviceInfo : audioOutputs) {
         ui->audioOutputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
+        ui->serverTXAudioOutputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
     }
     ui->audioInputCombo->clear();
     const auto audioInputs = mediaDevices.audioInputs();
     for (const QAudioDevice& deviceInfo : audioInputs) {
         ui->audioInputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
+        ui->serverRXAudioInputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
     }
     // Set these to default audio devices initially.
     rxSetup.port = QMediaDevices::defaultAudioOutput();
     txSetup.port = QMediaDevices::defaultAudioInput();
+    serverTxSetup.port = QMediaDevices::defaultAudioOutput();
+    serverRxSetup.port = QMediaDevices::defaultAudioInput();
 #endif
 
 #endif
@@ -1658,10 +1662,15 @@ void wfmain::loadSettings()
         serverRxSetup.port = ui->audioOutputCombo->itemData(serverAudioInputIndex).toInt();
 #else
         QVariant v = ui->serverRXAudioInputCombo->currentData();
+#if QT_VERSION >= 0x060000
+        serverRxSetup.port = v.value<QAudioDevice>();
+#else
         serverRxSetup.port = v.value<QAudioDeviceInfo>();
+#endif
 #endif
     }
     ui->serverRXAudioInputCombo->blockSignals(false);
+
 
     serverRxSetup.resampleQuality = settings->value("ResampleQuality", "4").toInt();
     serverRxSetup.resampleQuality = rxSetup.resampleQuality;
@@ -1678,7 +1687,11 @@ void wfmain::loadSettings()
         serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(serverAudioOutputIndex).toInt();
 #else
         QVariant v = ui->serverTXAudioOutputCombo->currentData();
+#if QT_VERSION >= 0x060000
+        serverRxSetup.port = v.value<QAudioDevice>();
+#else
         serverRxSetup.port = v.value<QAudioDeviceInfo>();
+#endif
 #endif
     }
     ui->serverTXAudioOutputCombo->blockSignals(false);
@@ -1830,7 +1843,11 @@ void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
     serverRxSetup.port = ui->serverRXAudioInputCombo->itemData(value).toInt();
 #else
     QVariant v = ui->serverRXAudioInputCombo->itemData(value);
+#if QT_VERSION < 0x060000
     serverRxSetup.port = v.value<QAudioDeviceInfo>();
+#else
+    serverRxSetup.port = v.value<QAudioDevice>();
+#endif
 #endif
     serverRxSetup.name = ui->serverRXAudioInputCombo->itemText(value);
     qDebug(logGui()) << "Changed default server audio input to:" << serverRxSetup.name;
@@ -1844,7 +1861,11 @@ void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
     serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(value).toInt();
 #else
     QVariant v = ui->serverTXAudioOutputCombo->itemData(value);
+#if QT_VERSION < 0x060000
     serverTxSetup.port = v.value<QAudioDeviceInfo>();
+#else
+    serverTxSetup.port = v.value<QAudioDevice>();
+#endif
 #endif
     serverTxSetup.name = ui->serverTXAudioOutputCombo->itemText(value);
     qDebug(logGui()) << "Changed default server audio output to:" << serverTxSetup.name;

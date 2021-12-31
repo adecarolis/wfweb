@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Form Files">
@@ -122,238 +122,156 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="aboutbox.h">
+    <QtMoc Include="aboutbox.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
+    </QtMoc>
     <ClInclude Include="resampler\arch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <CustomBuild Include="audiohandler.h">
+    <QtMoc Include="audiohandler.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
+    </QtMoc>
     <ClInclude Include="audiotaper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <CustomBuild Include="calibrationwindow.h">
+    <QtMoc Include="calibrationwindow.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="commhandler.h">
+    </QtMoc>
+    <QtMoc Include="commhandler.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
+    </QtMoc>
     <ClInclude Include="freqmemory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="logcategories.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <CustomBuild Include="meter.h">
+    <QtMoc Include="meter.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
+    </QtMoc>
     <ClInclude Include="packettypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <CustomBuild Include="pttyhandler.h">
+    <QtMoc Include="pttyhandler.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="qledlabel.h">
+    </QtMoc>
+    <QtMoc Include="qledlabel.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
+    </QtMoc>
     <ClInclude Include="repeaterattributes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <CustomBuild Include="repeatersetup.h">
+    <QtMoc Include="repeatersetup.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
+    </QtMoc>
     <ClInclude Include="resampler\resample_sse.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <CustomBuild Include="rigcommander.h">
+    <QtMoc Include="rigcommander.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="rigctld.h">
+    </QtMoc>
+    <QtMoc Include="rigctld.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
+    </QtMoc>
     <ClInclude Include="rigidentities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ring\ring.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <CustomBuild Include="satellitesetup.h">
+    <QtMoc Include="satellitesetup.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
+    </QtMoc>
     <ClInclude Include="resampler\speex_resampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <CustomBuild Include="transceiveradjustments.h">
+    <QtMoc Include="transceiveradjustments.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="udphandler.h">
+    </QtMoc>
+    <QtMoc Include="udphandler.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="udpserver.h">
+    </QtMoc>
+    <QtMoc Include="udpserver.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
+    </QtMoc>
     <ClInclude Include="ulaw.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <CustomBuild Include="wfmain.h">
+    <QtMoc Include="wfmain.h">
       <Filter>Header Files</Filter>
-    </CustomBuild>
+    </QtMoc>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="debug\moc_aboutbox.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_aboutbox.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug\moc_audiohandler.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_audiohandler.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug\moc_calibrationwindow.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_calibrationwindow.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug\moc_commhandler.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_commhandler.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug\moc_meter.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_meter.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
-    <ClCompile Include="debug\moc_pttyhandler.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_pttyhandler.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug\moc_qledlabel.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_qledlabel.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug\moc_repeatersetup.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_repeatersetup.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug\moc_rigcommander.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_rigcommander.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug\moc_rigctld.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_rigctld.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug\moc_satellitesetup.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_satellitesetup.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug\moc_transceiveradjustments.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_transceiveradjustments.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug\moc_udphandler.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_udphandler.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug\moc_udpserver.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_udpserver.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug\moc_wfmain.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\moc_wfmain.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug\qrc_resources.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\qrc_resources.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug\qrc_style.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClCompile Include="release\qrc_style.cpp">
-      <Filter>Generated Files</Filter>
-    </ClCompile>
-    <ClInclude Include="ui_aboutbox.h">
-      <Filter>Generated Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ui_calibrationwindow.h">
-      <Filter>Generated Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ui_repeatersetup.h">
-      <Filter>Generated Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ui_satellitesetup.h">
-      <Filter>Generated Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ui_transceiveradjustments.h">
-      <Filter>Generated Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ui_udpserversetup.h">
-      <Filter>Generated Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ui_wfmain.h">
-      <Filter>Generated Files</Filter>
-    </ClInclude>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="aboutbox.ui">
+    <QtUic Include="aboutbox.ui">
       <Filter>Form Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="calibrationwindow.ui">
+    </QtUic>
+    <QtUic Include="calibrationwindow.ui">
       <Filter>Form Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="repeatersetup.ui">
+    </QtUic>
+    <QtUic Include="repeatersetup.ui">
       <Filter>Form Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="satellitesetup.ui">
+    </QtUic>
+    <QtUic Include="satellitesetup.ui">
       <Filter>Form Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="transceiveradjustments.ui">
+    </QtUic>
+    <QtUic Include="transceiveradjustments.ui">
       <Filter>Form Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="udpserversetup.ui">
+    </QtUic>
+    <QtUic Include="udpserversetup.ui">
       <Filter>Form Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="wfmain.ui">
+    </QtUic>
+    <QtUic Include="wfmain.ui">
       <Filter>Form Files</Filter>
-    </CustomBuild>
+    </QtUic>
   </ItemGroup>
   <ItemGroup>
     <None Include="qdarkstyle\rc\Hmovetoolbar.png">
@@ -443,9 +361,9 @@
     <None Include="qdarkstyle\rc\radio_unchecked_focus.png">
       <Filter>Resource Files</Filter>
     </None>
-    <CustomBuild Include="resources\resources.qrc">
+    <QtRcc Include="resources\resources.qrc">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
+    </QtRcc>
     <None Include="qdarkstyle\rc\right_arrow.png">
       <Filter>Resource Files</Filter>
     </None>
@@ -455,9 +373,9 @@
     <None Include="qdarkstyle\rc\sizegrip.png">
       <Filter>Resource Files</Filter>
     </None>
-    <CustomBuild Include="qdarkstyle\style.qrc">
+    <QtRcc Include="qdarkstyle\style.qrc">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
+    </QtRcc>
     <None Include="qdarkstyle\style.qss">
       <Filter>Resource Files</Filter>
     </None>
