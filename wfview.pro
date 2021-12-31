@@ -126,18 +126,35 @@ INSTALLS += stylesheets
 CONFIG(debug, release|debug) {
   linux: QCPLIB = qcustomplotd
   !linux: QCPLIB = qcustomplotd2
-  win32:LIBS += -L../opus/win32/VS2015/x64/Debug/
-  win32:QMAKE_PRE_LINK+=copy /Y ..\qcustomplot\qcustomplotd2.dll debug\
+  win32 {
+    contains(QMAKE_TARGET.arch, x86_64) {
+      LIBS += -L../opus/win32/VS2015/x64/Debug/
+      LIBS += -L../qcustomplot/x64
+      QMAKE_PRE_LINK+=copy /Y ..\qcustomplot\x64\qcustomplotd2.dll debug\
+    } else {
+      LIBS += -L../opus/win32/VS2015/win32/Debug/
+      LIBS += -L../qcustomplot/win32
+      QMAKE_PRE_LINK+=copy /Y ..\qcustomplot\win32\qcustomplotd2.dll debug\
+    }
+  }
 } else {
   linux: QCPLIB = qcustomplot
   !linux: QCPLIB = qcustomplot2
-  win32:LIBS += -L../opus/win32/VS2015/x64/Release/
-  win32:QMAKE_PRE_LINK+=copy /Y ..\qcustomplot\qcustomplot2.dll release\
+  win32 {
+    contains(QMAKE_TARGET.arch, x86_64) {
+      LIBS += -L../opus/win32/VS2015/x64/Release/
+      LIBS += -L../qcustomplot/x64
+      QMAKE_PRE_LINK+=copy /Y ..\qcustomplot\x64\qcustomplot2.dll release\
+    } else {
+      LIBS += -L../opus/win32/VS2015/win32/Release/
+      LIBS += -L../qcustomplot/win32
+      QMAKE_PRE_LINK+=copy /Y ..\qcustomplot\win32\qcustomplot2.dll release\
+    }
+  }
 }
 
-
 linux:LIBS += -L./ -l$$QCPLIB -lopus
-!linux:LIBS += -L../qcustomplot/ -l$$QCPLIB -lopus
+!linux:LIBS += -l$$QCPLIB -lopus
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus 
 
 !linux:INCLUDEPATH += ../qcustomplot
@@ -198,7 +215,6 @@ HEADERS  += wfmain.h \
 FORMS    += wfmain.ui \
     calibrationwindow.ui \
     satellitesetup.ui \
-    udpserversetup.ui \
     repeatersetup.ui \
     transceiveradjustments.ui \
     aboutbox.ui

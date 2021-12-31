@@ -1597,7 +1597,12 @@ void wfmain::loadSettings()
         rxSetup.port = ui->audioOutputCombo->itemData(audioOutputIndex).toInt();
 #else
         QVariant v = ui->audioOutputCombo->currentData();
+
+#if QT_VERSION >= 0x060000
         rxSetup.port = v.value<QAudioDevice>();
+#else
+        rxSetup.port = v.value<QAudioDeviceInfo>();
+#endif
 #endif
     }
     ui->audioOutputCombo->blockSignals(false);
@@ -1614,7 +1619,11 @@ void wfmain::loadSettings()
         txSetup.port = ui->audioInputCombo->itemData(audioInputIndex).toInt();
 #else
         QVariant v = ui->audioInputCombo->currentData();
+#if QT_VERSION >= 0x060000
         txSetup.port = v.value<QAudioDevice>();
+#else
+        txSetup.port = v.value<QAudioDeviceInfo>();
+#endif
 #endif
     }
     ui->audioInputCombo->blockSignals(false);
@@ -4657,7 +4666,12 @@ void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
     rxSetup.port = ui->audioOutputCombo->itemData(value).toInt();
 #else
     QVariant v = ui->audioOutputCombo->itemData(value);
+
+#if QT_VERSION >= 0x060000
     rxSetup.port = v.value<QAudioDevice>();
+#else
+    rxSetup.port = v.value<QAudioDeviceInfo>();
+#endif
 #endif
     rxSetup.name = ui->audioOutputCombo->itemText(value);
     qDebug(logGui()) << "Changed default audio output to:" << rxSetup.name;
@@ -4671,7 +4685,11 @@ void wfmain::on_audioInputCombo_currentIndexChanged(int value)
     txSetup.port = ui->audioInputCombo->itemData(value).toInt();
 #else
     QVariant v = ui->audioInputCombo->itemData(value);
+#if QT_VERSION >= 0x060000
     txSetup.port = v.value<QAudioDevice>();
+#else
+    txSetup.port = v.value<QAudioDeviceInfo>();
+#endif
 #endif
     txSetup.name = ui->audioInputCombo->itemText(value);
     qDebug(logGui()) << "Changed default audio input to:" << txSetup.name;

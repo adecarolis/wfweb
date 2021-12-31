@@ -248,7 +248,6 @@
     
     
     
-    
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="aboutbox.ui">
@@ -264,9 +263,6 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="transceiveradjustments.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
-    <QtUic Include="udpserversetup.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="wfmain.ui">
