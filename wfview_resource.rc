@@ -1,6 +1,6 @@
 #include <windows.h>
 
-IDI_ICON1	ICON	"C:\\Users\\Phil\\source\\repos\\wfview\\resources\\wfview.ico"
+IDI_ICON1	ICON	DISCARDABLE	"C:\\Users\\Phil\\source\\repos\\wfview\\resources\\wfview.ico"
 
 VS_VERSION_INFO VERSIONINFO
 	FILEVERSION 0,0,0,0
@@ -11,9 +11,9 @@ VS_VERSION_INFO VERSIONINFO
 #else
 	FILEFLAGS 0x0L
 #endif
-	FILEOS VOS_NT_WINDOWS32
+	FILEOS VOS__WINDOWS32
 	FILETYPE VFT_DLL
-	FILESUBTYPE VFT2_UNKNOWN
+	FILESUBTYPE 0x0L
 	BEGIN
 		BLOCK "StringFileInfo"
 		BEGIN
@@ -26,9 +26,6 @@ VS_VERSION_INFO VERSIONINFO
 				VALUE "OriginalFilename", "wfview.exe\0"
 				VALUE "ProductName", "wfview\0"
 				VALUE "ProductVersion", "0.0.0.0\0"
-				VALUE "InternalName", "\0"
-				VALUE "Comments", "\0"
-				VALUE "LegalTrademarks", "\0"
 			END
 		END
 		BLOCK "VarFileInfo"
