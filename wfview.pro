@@ -156,7 +156,6 @@ SOURCES += main.cpp\
     audiohandler.cpp \
     calibrationwindow.cpp \
     satellitesetup.cpp \
-    udpserversetup.cpp \
     udpserver.cpp \
     meter.cpp \
     qledlabel.cpp \
@@ -178,7 +177,6 @@ HEADERS  += wfmain.h \
     audiohandler.h \
     calibrationwindow.h \
     satellitesetup.h \
-    udpserversetup.h \
     udpserver.h \
     packettypes.h \
     meter.h \

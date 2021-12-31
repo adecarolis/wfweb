@@ -14,6 +14,7 @@
 #include "logcategories.h"
 #include "commhandler.h"
 #include "rigcommander.h"
+#include "rigstate.h"
 #include "freqmemory.h"
 #include "rigidentities.h"
 #include "repeaterattributes.h"
@@ -22,7 +23,6 @@
 #include "repeatersetup.h"
 #include "satellitesetup.h"
 #include "transceiveradjustments.h"
-#include "udpserversetup.h"
 #include "udpserver.h"
 #include "qledlabel.h"
 #include "rigctld.h"
@@ -52,6 +52,7 @@ signals:
     // Basic to rig:
     void setCIVAddr(unsigned char newRigCIVAddr);
     void setRigID(unsigned char rigID);
+    void setRTSforPTT(bool enabled);
 
     // Power
     void sendPowerOn();
@@ -162,9 +163,9 @@ signals:
     void sendCloseComm();
     void sendChangeLatency(quint16 latency);
     void initServer();
-    void sendServerConfig(SERVERCONFIG conf);
     void sendRigCaps(rigCapabilities caps);
     void requestRigState();
+    void stateUpdated();
 
 private slots:
     void updateSizes(int tabIndex);
@@ -266,7 +267,6 @@ private slots:
     void handlePlotScroll(QWheelEvent *);
     void sendRadioCommandLoop();
     void showStatusBarText(QString text);
-    void serverConfigRequested(SERVERCONFIG conf, bool store);
     void receiveBaudRate(quint32 baudrate);
 
     void setRadioTimeDateSend();
@@ -409,7 +409,6 @@ private slots:
 
     void on_dataModeBtn_toggled(bool checked);
 
-    void on_udpServerSetupBtn_clicked();
 
     void on_transmitBtn_clicked();
 
@@ -501,12 +500,34 @@ private slots:
 
     void on_useCIVasRigIDChk_clicked(bool checked);
 
+    void receiveStateInfo(rigstate* state);
+
+    void on_settingsList_currentRowChanged(int currentRow);
+
+    void on_setClockBtn_clicked();
+
+    void on_serverEnableCheckbox_clicked(bool checked);
+    void on_serverUsersTable_cellClicked(int row, int col);
+    void on_serverControlPortText_textChanged(QString text);
+    void on_serverCivPortText_textChanged(QString text);
+    void on_serverAudioPortText_textChanged(QString text);
+    void on_serverTXAudioOutputCombo_currentIndexChanged(int value);
+    void on_serverRXAudioInputCombo_currentIndexChanged(int value);
+    void onServerPasswordChanged();
+    void on_serverUsersTable_cellChanged(int row, int column);
+
+    void on_useRTSforPTTchk_clicked(bool checked);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
     QSettings *settings=Q_NULLPTR;
     void loadSettings();
     void saveSettings();
+
+    void createSettingsListItems();
+    void connectSettingsList();
+
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
     QCPItemLine * freqIndicatorLine;
@@ -718,6 +739,7 @@ private:
         QString stylesheetPath;
         unsigned char radioCIVAddr;
         bool CIVisRadioModel;
+        bool forceRTSasPTT;
         QString serialPortRadio;
         quint32 serialPortBaud;
         bool enablePTT;
@@ -743,6 +765,9 @@ private:
     // Configuration for audio output and input.
     audioSetup rxSetup;
     audioSetup txSetup;
+
+    audioSetup serverRxSetup;
+    audioSetup serverTxSetup;
 
     colors defaultColors;
 
@@ -812,7 +837,6 @@ private:
     repeaterSetup *rpt;
     satelliteSetup *sat;
     transceiverAdjustments *trxadj;
-    udpServerSetup *srv;
     aboutbox *abtBox;
 
 
@@ -842,16 +866,18 @@ private:
     unsigned int tsWfScrollHz;
     unsigned int tsKnobHz;
 
+    rigstate* rigState = Q_NULLPTR;
     QMediaDevices mediaDevices;
 
     SERVERCONFIG serverConfig;
+    void serverAddUserLine(const QString& user, const QString& pass, const int& type);
+
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
 Q_DECLARE_METATYPE(struct freqt)
 Q_DECLARE_METATYPE(struct mode_info)
 Q_DECLARE_METATYPE(struct udpPreferences)
-Q_DECLARE_METATYPE(struct rigStateStruct)
 Q_DECLARE_METATYPE(struct audioPacket)
 Q_DECLARE_METATYPE(struct audioSetup)
 Q_DECLARE_METATYPE(struct timekind)
@@ -859,6 +885,7 @@ Q_DECLARE_METATYPE(struct datekind)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
+Q_DECLARE_METATYPE(rigstate*)
 
 
 #endif // WFMAIN_H

@@ -19,7 +19,6 @@
 
 #include <QDebug>
 
-#include <udpserversetup.h>
 #include "packettypes.h"
 #include "rigidentities.h"
 #include "audiohandler.h"
@@ -33,6 +32,28 @@ struct SEQBUFENTRY {
 	QByteArray data;
 	quint8 retransmitCount;
 };
+
+
+struct SERVERUSER {
+	QString username;
+	QString password;
+	quint8 userType;
+};
+
+struct SERVERCONFIG {
+	bool enabled;
+	bool lan;
+	quint16 controlPort;
+	quint16 civPort;
+	quint16 audioPort;
+	int audioOutput;
+	int audioInput;
+	quint8 resampleQuality;
+	quint32 baudRate;
+
+	QList <SERVERUSER> users;
+};
+
 
 class udpServer : public QObject
 {

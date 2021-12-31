@@ -19,10 +19,16 @@ aboutbox::aboutbox(QWidget *parent) :
     QString nacode = QString("<br/><br/>Networking, audio, rigctl server, and much more written by Phil Taylor, M0VSE");
     QString doctest = QString("<br/><br/>Testing, documentation, bug fixes, and development mentorship from<br/>Roeland Jansen, PA3MET, and Jim Nijkamp, PA8E.");
 
-
+#if defined(Q_OS_LINUX)
     QString ssCredit = QString("<br/><br/>Stylesheet <a href=\"https://github.com/ColinDuquesnoy/QDarkStyleSheet/tree/master/qdarkstyle\"  style=\"color: cyan;\">qdarkstyle</a> used under MIT license, stored in /usr/share/wfview/stylesheets/.");
+#else
+    QString ssCredit = QString("<br/><br/>Stylesheet <a href=\"https://github.com/ColinDuquesnoy/QDarkStyleSheet/tree/master/qdarkstyle\"  style=\"color: cyan;\">qdarkstyle</a> used under MIT license.");
+#endif
 
     QString website = QString("<br/><br/>Please visit <a href=\"https://wfview.org/\"  style=\"color: cyan;\">https://wfview.org/</a> for the latest information.");
+
+    QString donate = QString("<br/><br/>Join us on <a href=\"https://www.patreon.com/wfview\">Patreon</a> for a behind-the-scenes look at wfview development, nightly builds, and to support the software you love.");
+
     QString docs = QString("<br/><br/>Be sure to check the <a href=\"https://wfview.org/wfview-user-manual/\"  style=\"color: cyan;\">User Manual</a> and <a href=\"https://forum.wfview.org/\"  style=\"color: cyan;\">the Forum</a> if you have any questions.");
     QString support = QString("<br/><br/>For support, please visit <a href=\"https://forum.wfview.org/\">the official wfview support forum</a>.");
     QString gitcodelink = QString("<a href=\"https://gitlab.com/eliggett/wfview/-/tree/%1\"  style=\"color: cyan;\">").arg(GITSHORT);
@@ -78,7 +84,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
     // String it all together:
 
     QString aboutText = head + copyright + "\n" + nacode + "\n" + doctest + wfviewcommunityack;
-    aboutText.append(website + "\n"+ docs + support + contact +"\n");
+    aboutText.append(website + "\n" + donate + "\n"+ docs + support + contact +"\n");
     aboutText.append("\n" + ssCredit + "\n" + rsCredit + "\n");
 
 #if defined(RTAUDIO)
