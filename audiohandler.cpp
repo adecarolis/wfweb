@@ -63,7 +63,6 @@ bool audioHandler::init(audioSetup setupIn)
 	if (isInitialized) {
 		return false;
 	}
-	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "audio handler starting:" << setup.name;
 
 	/*
 	0x01 uLaw 1ch 8bit
@@ -77,6 +76,7 @@ bool audioHandler::init(audioSetup setupIn)
 	setup = setupIn;
 	setup.radioChan = 1;
 	setup.bits = 8;
+	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "audio handler starting:" << setup.name;
 
 	if (setup.codec == 0x01 || setup.codec == 0x20) {
 		setup.ulaw = true;
