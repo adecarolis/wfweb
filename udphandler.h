@@ -24,15 +24,6 @@
 #include "audiohandler.h"
 #include "packettypes.h"
 
-#define PURGE_SECONDS 10
-#define TOKEN_RENEWAL 60000
-#define PING_PERIOD 100
-#define IDLE_PERIOD 100
-#define TXAUDIO_PERIOD 10 
-#define AREYOUTHERE_PERIOD 500
-#define WATCHDOG_PERIOD 500
-#define RETRANSMIT_PERIOD 100
-#define LOCK_PERIOD 100
 
 struct udpPreferences {
 	QString ipAddress;

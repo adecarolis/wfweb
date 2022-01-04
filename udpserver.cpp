@@ -1,8 +1,6 @@
 #include "udpserver.h"
 #include "logcategories.h"
 
-#define STALE_CONNECTION 15
-#define LOCK_PERIOD 10 // time to attempt to lock Mutex in ms
 udpServer::udpServer(SERVERCONFIG config, audioSetup outAudio, audioSetup inAudio) :
     config(config),
     outAudio(outAudio),
@@ -96,6 +94,21 @@ udpServer::~udpServer()
         udpAudio->close();
         delete udpAudio;
     }
+
+    if (rxAudioThread != Q_NULLPTR) {
+        rxAudioThread->quit();
+        rxAudioThread->wait();
+        rxaudio = Q_NULLPTR;
+        rxAudioThread = Q_NULLPTR;
+    }
+
+    if (txAudioThread != Q_NULLPTR) {
+        txAudioThread->quit();
+        txAudioThread->wait();
+        txaudio = Q_NULLPTR;
+        txAudioThread = Q_NULLPTR;
+    }
+
     emit haveNetworkStatus(QString(""));
 
 }
@@ -105,8 +118,6 @@ void udpServer::receiveRigCaps(rigCapabilities caps)
 {
     this->rigCaps = caps;
 }
-
-#define RETRANSMIT_PERIOD 100
 
 void udpServer::controlReceived()
 {
@@ -596,7 +607,7 @@ void udpServer::audioReceived()
 
             current->pingTimer = new QTimer();
             connect(current->pingTimer, &QTimer::timeout, this, std::bind(&udpServer::sendPing, this, &audioClients, current, (quint16)0x00, false));
-            current->pingTimer->start(100);
+            current->pingTimer->start(PING_PERIOD);
 
             current->retransmitTimer = new QTimer();
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
@@ -630,15 +641,9 @@ void udpServer::audioReceived()
                     sendPing(&audioClients, current, in->seq, true);
                 }
                 else if (in->reply == 0x01) {
-                    if (in->seq == current->pingSeq || in->seq == current->pingSeq - 1)
+                    if (in->seq == current->pingSeq)
                     {
-                        // A Reply to our ping!
-                        if (in->seq == current->pingSeq) {
-                            current->pingSeq++;
-                        }
-                        else {
-                            qInfo(logUdpServer()) << current->ipAddress.toString() << ": got out of sequence ping reply. Got: " << in->seq << " expecting: " << current->pingSeq;
-                        }
+                        current->pingSeq++;
                     }
                 }
             }
@@ -1291,8 +1296,6 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
 
     return;
 }
-
-#define PURGE_SECONDS 60
 
 void udpServer::watchdog()
 {

@@ -4,6 +4,19 @@
 
 #pragma pack(push, 1)
 
+// Various settings used by both client and server
+#define PURGE_SECONDS 10
+#define TOKEN_RENEWAL 60000
+#define PING_PERIOD 500
+#define IDLE_PERIOD 100
+#define TXAUDIO_PERIOD 10 
+#define AREYOUTHERE_PERIOD 500
+#define WATCHDOG_PERIOD 500             
+#define RETRANSMIT_PERIOD 100           // How often to attempt retransmit
+#define LOCK_PERIOD 10                  // How long to try to lock mutex (ms)
+#define STALE_CONNECTION 15             // Not heard from in this many seconds
+
+
 // Fixed Size Packets
 #define CONTROL_SIZE            0x10
 #define WATCHDOG_SIZE           0x14
