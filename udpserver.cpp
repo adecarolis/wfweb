@@ -322,6 +322,7 @@ void udpServer::controlReceived()
                     outAudio.codec = current->txCodec;
                     outAudio.samplerate = current->txSampleRate;
                     outAudio.latency = current->txBufferLen;
+                    outAudio.isinput = false;
 
                     txaudio = new audioHandler();
                     txAudioThread = new QThread(this);
@@ -343,6 +344,7 @@ void udpServer::controlReceived()
                 {
                     inAudio.codec = current->rxCodec;
                     inAudio.samplerate = current->rxSampleRate;
+                    inAudio.isinput = true;
 
                     rxaudio = new audioHandler();
 
