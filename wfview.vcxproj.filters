@@ -120,6 +120,9 @@
     <ClCompile Include="udpserver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="udpserversetup.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="wfmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -200,6 +203,9 @@
     <QtMoc Include="udpserver.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="udpserversetup.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <ClInclude Include="ulaw.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -208,55 +214,12 @@
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="aboutbox.ui">
@@ -411,6 +374,8 @@
     <None Include="resources\wfview.png">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="resources\wfview.png" />
+    <None Include="resources\wfview.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="resources\install.sh">
@@ -424,6 +389,11 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="C:\Users\Phil\source\repos\wfview\wfview_resource.rc" />
+    <ResourceCompile Include=".\wfview_resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="rigstate.h">
+      <Filter>Generated Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
