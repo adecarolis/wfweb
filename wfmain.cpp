@@ -40,6 +40,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType<mode_info>();
     qRegisterMetaType<audioPacket>();
     qRegisterMetaType <audioSetup>();
+    qRegisterMetaType <SERVERCONFIG>();
     qRegisterMetaType <timekind>();
     qRegisterMetaType <datekind>();
     qRegisterMetaType<rigstate*>();
