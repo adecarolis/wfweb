@@ -964,13 +964,13 @@ void wfmain::setServerToPrefs()
     if (serverConfig.enabled) {
         serverConfig.lan = prefs.enableLAN;
 
-        udp = new udpServer(serverConfig,serverTxSetup,serverRxSetup);
+        udp = new udpServer();
 
         serverThread = new QThread(this);
 
         udp->moveToThread(serverThread);
 
-        connect(this, SIGNAL(initServer()), udp, SLOT(init()));
+        connect(this, SIGNAL(initServer(SERVERCONFIG, audioSetup, audioSetup)), udp, SLOT(init(SERVERCONFIG, audioSetup, audioSetup)));
         connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
 
         if (!prefs.enableLAN && udp != Q_NULLPTR) {
@@ -979,7 +979,7 @@ void wfmain::setServerToPrefs()
 
         serverThread->start();
 
-        emit initServer();
+        emit initServer(serverConfig, serverTxSetup, serverRxSetup);
 
         connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
         ui->statusBar->showMessage(QString("Server enabled"), 1000);
@@ -1638,8 +1638,7 @@ void wfmain::loadSettings()
     }
     ui->serverRXAudioInputCombo->blockSignals(false);
 
-    serverRxSetup.resampleQuality = settings->value("ResampleQuality", "4").toInt();
-    serverRxSetup.resampleQuality = rxSetup.resampleQuality;
+    serverTxSetup.resampleQuality = settings->value("ResampleQuality", "4").toInt();
 
     ui->serverTXAudioOutputCombo->blockSignals(true);
     serverTxSetup.name = settings->value("ServerAudioOutput", "").toString();
@@ -1659,7 +1658,6 @@ void wfmain::loadSettings()
     ui->serverTXAudioOutputCombo->blockSignals(false);
 
     serverTxSetup.resampleQuality = settings->value("ResampleQuality", "4").toInt();
-    serverTxSetup.resampleQuality = rxSetup.resampleQuality;
 
     int row = 0;
     ui->serverUsersTable->setRowCount(0);

@@ -60,11 +60,11 @@ class udpServer : public QObject
 	Q_OBJECT
 
 public:
-	udpServer(SERVERCONFIG config,audioSetup outAudio, audioSetup inAudio);
+	udpServer();
 	~udpServer();
 
 public slots:
-	void init();
+	void init(SERVERCONFIG sc, audioSetup ai, audioSetup ao);
 	void dataForServer(QByteArray);
 	void receiveAudioData(const audioPacket &data);
 	void receiveRigCaps(rigCapabilities caps);

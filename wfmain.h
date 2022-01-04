@@ -162,7 +162,7 @@ signals:
     void sendCommSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp);
     void sendCloseComm();
     void sendChangeLatency(quint16 latency);
-    void initServer();
+    void initServer(SERVERCONFIG sc, audioSetup ai, audioSetup ao);
     void sendRigCaps(rigCapabilities caps);
     void requestRigState();
     void stateUpdated();

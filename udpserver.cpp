@@ -1,17 +1,16 @@
 #include "udpserver.h"
 #include "logcategories.h"
 
-udpServer::udpServer(SERVERCONFIG config, audioSetup outAudio, audioSetup inAudio) :
-    config(config),
-    outAudio(outAudio),
-    inAudio(inAudio)
+udpServer::udpServer()
 {
     qInfo(logUdpServer()) << "Starting udp server";
 }
 
-void udpServer::init()
+void udpServer::init(SERVERCONFIG conf, audioSetup out, audioSetup in)
 {
-
+    this->config = conf;
+    this->outAudio = out;
+    this->inAudio = in;
     srand(time(NULL)); // Generate random key
     timeStarted.start();
     // Convoluted way to find the external IP address, there must be a better way????
@@ -93,20 +92,6 @@ udpServer::~udpServer()
     if (udpAudio != Q_NULLPTR) {
         udpAudio->close();
         delete udpAudio;
-    }
-
-    if (rxAudioThread != Q_NULLPTR) {
-        rxAudioThread->quit();
-        rxAudioThread->wait();
-        rxaudio = Q_NULLPTR;
-        rxAudioThread = Q_NULLPTR;
-    }
-
-    if (txAudioThread != Q_NULLPTR) {
-        txAudioThread->quit();
-        txAudioThread->wait();
-        txaudio = Q_NULLPTR;
-        txAudioThread = Q_NULLPTR;
     }
 
     emit haveNetworkStatus(QString(""));
