@@ -120,9 +120,6 @@
     <ClCompile Include="udpserver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="udpserversetup.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="wfmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -203,9 +200,6 @@
     <QtMoc Include="udpserver.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="udpserversetup.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <ClInclude Include="ulaw.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -230,8 +224,6 @@
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
-    
-    
     
     
     
