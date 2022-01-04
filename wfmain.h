@@ -23,7 +23,6 @@
 #include "repeatersetup.h"
 #include "satellitesetup.h"
 #include "transceiveradjustments.h"
-#include "udpserversetup.h"
 #include "udpserver.h"
 #include "qledlabel.h"
 #include "rigctld.h"
@@ -53,6 +52,7 @@ signals:
     // Basic to rig:
     void setCIVAddr(unsigned char newRigCIVAddr);
     void setRigID(unsigned char rigID);
+    void setRTSforPTT(bool enabled);
 
     // Power
     void sendPowerOn();
@@ -163,7 +163,6 @@ signals:
     void sendCloseComm();
     void sendChangeLatency(quint16 latency);
     void initServer();
-    void sendServerConfig(SERVERCONFIG conf);
     void sendRigCaps(rigCapabilities caps);
     void requestRigState();
     void stateUpdated();
@@ -268,7 +267,6 @@ private slots:
     void handlePlotScroll(QWheelEvent *);
     void sendRadioCommandLoop();
     void showStatusBarText(QString text);
-    void serverConfigRequested(SERVERCONFIG conf, bool store);
     void receiveBaudRate(quint32 baudrate);
 
     void setRadioTimeDateSend();
@@ -411,7 +409,6 @@ private slots:
 
     void on_dataModeBtn_toggled(bool checked);
 
-    void on_udpServerSetupBtn_clicked();
 
     void on_transmitBtn_clicked();
 
@@ -504,12 +501,32 @@ private slots:
 
     void receiveStateInfo(rigstate* state);
 
+    void on_settingsList_currentRowChanged(int currentRow);
+
+    void on_setClockBtn_clicked();
+
+    void on_serverEnableCheckbox_clicked(bool checked);
+    void on_serverUsersTable_cellClicked(int row, int col);
+    void on_serverControlPortText_textChanged(QString text);
+    void on_serverCivPortText_textChanged(QString text);
+    void on_serverAudioPortText_textChanged(QString text);
+    void on_serverTXAudioOutputCombo_currentIndexChanged(int value);
+    void on_serverRXAudioInputCombo_currentIndexChanged(int value);
+    void onServerPasswordChanged();
+    void on_serverUsersTable_cellChanged(int row, int column);
+
+    void on_useRTSforPTTchk_clicked(bool checked);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
     QSettings *settings=Q_NULLPTR;
     void loadSettings();
     void saveSettings();
+
+    void createSettingsListItems();
+    void connectSettingsList();
+
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
     QCPItemLine * freqIndicatorLine;
@@ -722,6 +739,7 @@ private:
         QString stylesheetPath;
         unsigned char radioCIVAddr;
         bool CIVisRadioModel;
+        bool forceRTSasPTT;
         QString serialPortRadio;
         quint32 serialPortBaud;
         bool enablePTT;
@@ -747,6 +765,9 @@ private:
     // Configuration for audio output and input.
     audioSetup rxSetup;
     audioSetup txSetup;
+
+    audioSetup serverRxSetup;
+    audioSetup serverTxSetup;
 
     colors defaultColors;
 
@@ -816,7 +837,6 @@ private:
     repeaterSetup *rpt;
     satelliteSetup *sat;
     transceiverAdjustments *trxadj;
-    udpServerSetup *srv;
     aboutbox *abtBox;
 
 
@@ -849,6 +869,8 @@ private:
     rigstate* rigState = Q_NULLPTR;
 
     SERVERCONFIG serverConfig;
+    void serverAddUserLine(const QString& user, const QString& pass, const int& type);
+
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)

@@ -27,12 +27,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     rpt = new repeaterSetup();
     sat = new satelliteSetup();
     trxadj = new transceiverAdjustments();
-    srv = new udpServerSetup();
     abtBox = new aboutbox();
 
-    connect(this, SIGNAL(sendServerConfig(SERVERCONFIG)), srv, SLOT(receiveServerConfig(SERVERCONFIG)));
-    connect(srv, SIGNAL(serverConfig(SERVERCONFIG, bool)), this, SLOT(serverConfigRequested(SERVERCONFIG, bool)));
-       
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
     qRegisterMetaType<rigCapabilities>();
     qRegisterMetaType<duplexMode>();
@@ -212,6 +208,31 @@ void wfmain::openRig()
 
 
 }
+
+void wfmain::createSettingsListItems()
+{
+    // Add items to the settings tab list widget
+    ui->settingsList->addItem("Radio Access");     // 0
+    ui->settingsList->addItem("User Interface");   // 1
+    ui->settingsList->addItem("Radio Settings");   // 2
+    ui->settingsList->addItem("Radio Server");     // 3
+    ui->settingsList->addItem("External Control"); // 4
+    ui->settingsList->addItem("Experimental");     // 5
+    //ui->settingsList->addItem("Audio Processing"); // 6
+    ui->settingsStack->setCurrentIndex(0);
+}
+
+void wfmain::on_settingsList_currentRowChanged(int currentRow)
+{
+    ui->settingsStack->setCurrentIndex(currentRow);
+}
+
+
+void wfmain::connectSettingsList()
+{
+
+}
+
 
 void wfmain::rigConnections()
 {
@@ -402,7 +423,7 @@ void wfmain::makeRig()
         // Rig comm setup:
         connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)), rig, SLOT(commSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)));
         connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32,QString)), rig, SLOT(commSetup(unsigned char, QString, quint32,QString)));
-
+        connect(this, SIGNAL(setRTSforPTT(bool)), rig, SLOT(setRTSforPTT(bool)));
 
         connect(rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
 
@@ -608,6 +629,8 @@ void wfmain::setupPlots()
 
 void wfmain::setupMainUI()
 {
+    createSettingsListItems();
+
     ui->bandStkLastUsedBtn->setVisible(false);
     ui->bandStkVoiceBtn->setVisible(false);
     ui->bandStkDataBtn->setVisible(false);
@@ -649,6 +672,7 @@ void wfmain::setupMainUI()
     ui->tuningStepCombo->addItem("1 Hz",      (unsigned int)       1);
     ui->tuningStepCombo->addItem("10 Hz",     (unsigned int)      10);
     ui->tuningStepCombo->addItem("100 Hz",    (unsigned int)     100);
+    ui->tuningStepCombo->addItem("500 Hz",    (unsigned int)     500);
     ui->tuningStepCombo->addItem("1 kHz",     (unsigned int)    1000);
     ui->tuningStepCombo->addItem("2.5 kHz",   (unsigned int)    2500);
     ui->tuningStepCombo->addItem("5 kHz",     (unsigned int)    5000);
@@ -928,10 +952,19 @@ void wfmain::setServerToPrefs()
 {
 	
     // Start server if enabled in config
+    ui->serverSetupGroup->setEnabled(serverConfig.enabled);
+    if (serverThread != Q_NULLPTR) {
+        serverThread->quit();
+        serverThread->wait();
+        serverThread = Q_NULLPTR;
+        udp = Q_NULLPTR;
+        ui->statusBar->showMessage(QString("Server disabled"), 1000);
+    }
+
     if (serverConfig.enabled) {
         serverConfig.lan = prefs.enableLAN;
 
-        udp = new udpServer(serverConfig,rxSetup,txSetup);
+        udp = new udpServer(serverConfig,serverTxSetup,serverRxSetup);
 
         serverThread = new QThread(this);
 
@@ -949,6 +982,7 @@ void wfmain::setServerToPrefs()
         emit initServer();
 
         connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
+        ui->statusBar->showMessage(QString("Server enabled"), 1000);
 
     }
 }
@@ -1033,10 +1067,12 @@ void wfmain::setAudioDevicesUI()
         if (info.outputChannels > 0) {
             qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name);
             ui->audioOutputCombo->addItem(QString::fromStdString(info.name), i);
+            ui->serverTXAudioOutputCombo->addItem(QString::fromStdString(info.name), i);
         }
         if (info.inputChannels > 0) {
             qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name);
             ui->audioInputCombo->addItem(QString::fromStdString(info.name), i);
+            ui->serverRXAudioInputCombo->addItem(QString::fromStdString(info.name), i);            
         }
     }
 
@@ -1067,11 +1103,13 @@ void wfmain::setAudioDevicesUI()
         if (info->maxInputChannels > 0) {
             qInfo(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Output Device : " << info->name;
             ui->audioInputCombo->addItem(info->name, i);
+            ui->serverRXAudioInputCombo->addItem(info->name, i);
         }
         if (info->maxOutputChannels > 0) {
             qInfo(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Input Device  : " << info->name;
             ui->audioOutputCombo->addItem(info->name, i);
-        }
+            ui->serverTXAudioOutputCombo->addItem(info->name, i);
+}
     }
 #else
 
@@ -1080,15 +1118,19 @@ void wfmain::setAudioDevicesUI()
     const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
     for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
         ui->audioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
+        ui->serverTXAudioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
     }
 
     const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
     for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
         ui->audioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
+        ui->serverRXAudioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
     }
     // Set these to default audio devices initially.
     rxSetup.port = QAudioDeviceInfo::defaultOutputDevice();
     txSetup.port = QAudioDeviceInfo::defaultInputDevice();
+    serverRxSetup.port = QAudioDeviceInfo::defaultOutputDevice();
+    serverTxSetup.port = QAudioDeviceInfo::defaultInputDevice();
 #endif
 }
 
@@ -1279,6 +1321,7 @@ void wfmain::setDefPrefs()
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
     defPrefs.radioCIVAddr = 0x00; // previously was 0x94 for 7300.
     defPrefs.CIVisRadioModel = false;
+    defPrefs.forceRTSasPTT = false;
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.serialPortBaud = 115200;
     defPrefs.enablePTT = false;
@@ -1316,7 +1359,7 @@ void wfmain::loadSettings()
     prefs.drawPeaks = settings->value("DrawPeaks", defPrefs.drawPeaks).toBool();
     prefs.wfAntiAlias = settings->value("WFAntiAlias", defPrefs.wfAntiAlias).toBool();
     prefs.wfInterpolate = settings->value("WFInterpolate", defPrefs.wfInterpolate).toBool();
-    prefs.wflength = (unsigned int) settings->value("WFLength", defPrefs.wflength).toInt();
+    prefs.wflength = (unsigned int)settings->value("WFLength", defPrefs.wflength).toInt();
     prefs.stylesheetPath = settings->value("StylesheetPath", defPrefs.stylesheetPath).toString();
     ui->splitter->restoreState(settings->value("splitter").toByteArray());
 
@@ -1364,20 +1407,23 @@ void wfmain::loadSettings()
 
     // Radio and Comms: C-IV addr, port to use
     settings->beginGroup("Radio");
-    prefs.radioCIVAddr = (unsigned char) settings->value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
-    if(prefs.radioCIVAddr!=0)
+    prefs.radioCIVAddr = (unsigned char)settings->value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
+    if (prefs.radioCIVAddr != 0)
     {
         ui->rigCIVManualAddrChk->setChecked(true);
         ui->rigCIVaddrHexLine->blockSignals(true);
         ui->rigCIVaddrHexLine->setText(QString("%1").arg(prefs.radioCIVAddr, 2, 16));
         ui->rigCIVaddrHexLine->setEnabled(true);
         ui->rigCIVaddrHexLine->blockSignals(false);
-    } else {
+    }
+    else {
         ui->rigCIVManualAddrChk->setChecked(false);
         ui->rigCIVaddrHexLine->setEnabled(false);
     }
     prefs.CIVisRadioModel = (bool)settings->value("CIVisRadioModel", defPrefs.CIVisRadioModel).toBool();
+    prefs.forceRTSasPTT = (bool)settings->value("ForceRTSasPTT", defPrefs.forceRTSasPTT).toBool();
 
+    ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
 
     prefs.serialPortRadio = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
     int serialIndex = ui->serialDeviceListCombo->findText(prefs.serialPortRadio);
@@ -1385,9 +1431,9 @@ void wfmain::loadSettings()
         ui->serialDeviceListCombo->setCurrentIndex(serialIndex);
     }
 
-    prefs.serialPortBaud = (quint32) settings->value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
+    prefs.serialPortBaud = (quint32)settings->value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
     ui->baudRateCombo->blockSignals(true);
-    ui->baudRateCombo->setCurrentIndex( ui->baudRateCombo->findData(prefs.serialPortBaud) );
+    ui->baudRateCombo->setCurrentIndex(ui->baudRateCombo->findData(prefs.serialPortBaud));
     ui->baudRateCombo->blockSignals(false);
 
     if (prefs.serialPortBaud > 0)
@@ -1403,10 +1449,10 @@ void wfmain::loadSettings()
     else
     {
         ui->vspCombo->addItem(prefs.virtualSerialPort);
-        ui->vspCombo->setCurrentIndex(ui->vspCombo->count()-1);
+        ui->vspCombo->setCurrentIndex(ui->vspCombo->count() - 1);
     }
 
-    prefs.localAFgain = (unsigned char) settings->value("localAFgain", defPrefs.localAFgain).toUInt();
+    prefs.localAFgain = (unsigned char)settings->value("localAFgain", defPrefs.localAFgain).toUInt();
     rxSetup.localAFgain = prefs.localAFgain;
     settings->endGroup();
 
@@ -1420,15 +1466,14 @@ void wfmain::loadSettings()
     settings->beginGroup("LAN");
 
     prefs.enableLAN = settings->value("EnableLAN", defPrefs.enableLAN).toBool();
-    if(prefs.enableLAN)
+    if (prefs.enableLAN)
     {
         ui->baudRateCombo->setEnabled(false);
         ui->serialDeviceListCombo->setEnabled(false);
-        //ui->udpServerSetupBtn->setEnabled(false);
-    } else {
+    }
+    else {
         ui->baudRateCombo->setEnabled(true);
         ui->serialDeviceListCombo->setEnabled(true);
-        //ui->udpServerSetupBtn->setEnabled(true);
     }
 
     ui->lanEnableBtn->setChecked(prefs.enableLAN);
@@ -1444,15 +1489,15 @@ void wfmain::loadSettings()
     udpPrefs.ipAddress = settings->value("IPAddress", udpDefPrefs.ipAddress).toString();
     ui->ipAddressTxt->setEnabled(ui->lanEnableBtn->isChecked());
     ui->ipAddressTxt->setText(udpPrefs.ipAddress);
-    
+
     udpPrefs.controlLANPort = settings->value("ControlLANPort", udpDefPrefs.controlLANPort).toInt();
     ui->controlPortTxt->setEnabled(ui->lanEnableBtn->isChecked());
     ui->controlPortTxt->setText(QString("%1").arg(udpPrefs.controlLANPort));
-    
+
     udpPrefs.username = settings->value("Username", udpDefPrefs.username).toString();
     ui->usernameTxt->setEnabled(ui->lanEnableBtn->isChecked());
     ui->usernameTxt->setText(QString("%1").arg(udpPrefs.username));
-    
+
     udpPrefs.password = settings->value("Password", udpDefPrefs.password).toString();
     ui->passwordTxt->setEnabled(ui->lanEnableBtn->isChecked());
     ui->passwordTxt->setText(QString("%1").arg(udpPrefs.password));
@@ -1568,6 +1613,70 @@ void wfmain::loadSettings()
         serverConfig.users.append(user);
     }
 
+    ui->serverEnableCheckbox->setChecked(serverConfig.enabled);
+    ui->serverControlPortText->setText(QString::number(serverConfig.controlPort));
+    ui->serverCivPortText->setText(QString::number(serverConfig.civPort));
+    ui->serverAudioPortText->setText(QString::number(serverConfig.audioPort));
+
+    serverRxSetup.isinput = true;
+    serverTxSetup.isinput = false;
+
+    ui->serverRXAudioInputCombo->blockSignals(true);
+    serverRxSetup.name = settings->value("ServerAudioInput", "").toString();
+    qInfo(logGui()) << "Got Server Audio Input: " << serverRxSetup.name;
+    int serverAudioInputIndex = ui->serverRXAudioInputCombo->findText(serverRxSetup.name);
+    if (serverAudioInputIndex != -1) {
+        ui->serverRXAudioInputCombo->setCurrentIndex(serverAudioInputIndex);
+#if defined(RTAUDIO)
+        serverRxSetup.port = ui->serverRXAudioInputCombo->itemData(serverAudioInputIndex).toInt();
+#elif defined(PORTAUDIO)
+        serverRxSetup.port = ui->audioOutputCombo->itemData(serverAudioInputIndex).toInt();
+#else
+        QVariant v = ui->serverRXAudioInputCombo->currentData();
+        serverRxSetup.port = v.value<QAudioDeviceInfo>();
+#endif
+    }
+    ui->serverRXAudioInputCombo->blockSignals(false);
+
+    serverRxSetup.resampleQuality = settings->value("ResampleQuality", "4").toInt();
+    serverRxSetup.resampleQuality = rxSetup.resampleQuality;
+
+    ui->serverTXAudioOutputCombo->blockSignals(true);
+    serverTxSetup.name = settings->value("ServerAudioOutput", "").toString();
+    qInfo(logGui()) << "Got Server Audio Output: " << serverTxSetup.name;
+    int serverAudioOutputIndex = ui->serverTXAudioOutputCombo->findText(serverTxSetup.name);
+    if (serverAudioOutputIndex != -1) {
+        ui->serverTXAudioOutputCombo->setCurrentIndex(serverAudioOutputIndex);
+#if defined(RTAUDIO)
+        serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(serverAudioOutputIndex).toInt();
+#elif defined(PORTAUDIO)
+        serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(serverAudioOutputIndex).toInt();
+#else
+        QVariant v = ui->serverTXAudioOutputCombo->currentData();
+        serverRxSetup.port = v.value<QAudioDeviceInfo>();
+#endif
+    }
+    ui->serverTXAudioOutputCombo->blockSignals(false);
+
+    serverTxSetup.resampleQuality = settings->value("ResampleQuality", "4").toInt();
+    serverTxSetup.resampleQuality = rxSetup.resampleQuality;
+
+    int row = 0;
+    ui->serverUsersTable->setRowCount(0);
+
+    foreach(SERVERUSER user, serverConfig.users)
+    {
+        if (user.username != "" && user.password != "")
+        {
+            serverAddUserLine(user.username, user.password, user.userType);
+            row++;
+        }
+    }
+
+    if (row == 0) {
+        serverAddUserLine("", "", 0);
+    }
+
     settings->endGroup();
 
     // Memory channels
@@ -1587,7 +1696,7 @@ void wfmain::loadSettings()
     // Also annoying that the preference groups are not written in
     // the order they are specified here.
 
-    for(int i=0; i < size; i++)
+    for (int i = 0; i < size; i++)
     {
         settings->setArrayIndex(i);
         chan = settings->value("chan", 0).toInt();
@@ -1595,7 +1704,7 @@ void wfmain::loadSettings()
         mode = settings->value("mode", 0).toInt();
         isSet = settings->value("isSet", false).toBool();
 
-        if(isSet)
+        if (isSet)
         {
             mem.setPreset(chan, freq, (mode_kind)mode);
         }
@@ -1604,10 +1713,140 @@ void wfmain::loadSettings()
     settings->endArray();
     settings->endGroup();
 
-    emit sendServerConfig(serverConfig);
+}
+
+void wfmain::serverAddUserLine(const QString& user, const QString& pass, const int& type)
+{
+    ui->serverUsersTable->blockSignals(true);
+
+    ui->serverUsersTable->insertRow(ui->serverUsersTable->rowCount());
+    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 0, new QTableWidgetItem(user));
+    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 1, new QTableWidgetItem());
+    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 2, new QTableWidgetItem());
+
+    QLineEdit* password = new QLineEdit();
+    password->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
+    password->setEchoMode(QLineEdit::PasswordEchoOnEdit);
+    password->setText(pass);
+    connect(password, SIGNAL(editingFinished()), this, SLOT(onServerPasswordChanged()));
+    ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 1, password);
+
+    QComboBox* comboBox = new QComboBox();
+    comboBox->insertItems(0, { "Full User","Full with no TX","Monitor only" });
+    comboBox->setCurrentIndex(type);
+    ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 2, comboBox);
+    ui->serverUsersTable->blockSignals(false);
 
 }
 
+void wfmain::onServerPasswordChanged()
+{
+    int row = sender()->property("row").toInt();
+    QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 1);
+    QByteArray pass;
+    passcode(password->text(), pass);
+    password->setText(pass);
+    qInfo() << "password row" << row << "changed";
+    serverConfig.users.clear();
+    for (int rows = 0; rows < ui->serverUsersTable->model()->rowCount(); rows++)
+    {
+        if (ui->serverUsersTable->item(rows, 0) != NULL)
+        {
+            SERVERUSER user;
+            user.username = ui->serverUsersTable->item(rows, 0)->text();
+            QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(rows, 1);
+            user.password = password->text();
+            QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(rows, 2);
+            user.userType = comboBox->currentIndex();
+            serverConfig.users.append(user);
+        }
+        else {
+            ui->serverUsersTable->removeRow(rows);
+        }
+    }
+}
+
+void wfmain::on_serverUsersTable_cellClicked(int row, int col)
+{
+    qInfo() << "Clicked on " << row << "," << col;
+    if (row == ui->serverUsersTable->model()->rowCount() - 1 && ui->serverUsersTable->item(row, 0) != NULL) {
+        serverAddUserLine("", "", 0);
+    }
+}
+
+
+void wfmain::on_serverEnableCheckbox_clicked(bool checked)
+{
+    ui->serverSetupGroup->setEnabled(checked);
+    serverConfig.enabled = checked;
+    setServerToPrefs();
+}
+
+void wfmain::on_serverControlPortText_textChanged(QString text)
+{
+    serverConfig.controlPort = ui->serverControlPortText->text().toInt();
+}
+
+void wfmain::on_serverCivPortText_textChanged(QString text)
+{
+    serverConfig.civPort = ui->serverCivPortText->text().toInt();
+}
+
+void wfmain::on_serverAudioPortText_textChanged(QString text)
+{
+    serverConfig.audioPort = ui->serverAudioPortText->text().toInt();
+}
+
+void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
+{
+#if defined(RTAUDIO)
+    serverRxSetup.port = ui->serverRXAudioInputCombo->itemData(value).toInt();
+#elif defined(PORTAUDIO)
+    serverRxSetup.port = ui->serverRXAudioInputCombo->itemData(value).toInt();
+#else
+    QVariant v = ui->serverRXAudioInputCombo->itemData(value);
+    serverRxSetup.port = v.value<QAudioDeviceInfo>();
+#endif
+    serverRxSetup.name = ui->serverRXAudioInputCombo->itemText(value);
+    qDebug(logGui()) << "Changed default server audio input to:" << serverRxSetup.name;
+}
+
+void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
+{
+#if defined(RTAUDIO)
+    serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(value).toInt();
+#elif defined(PORTAUDIO)
+    serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(value).toInt();
+#else
+    QVariant v = ui->serverTXAudioOutputCombo->itemData(value);
+    serverTxSetup.port = v.value<QAudioDeviceInfo>();
+#endif
+    serverTxSetup.name = ui->serverTXAudioOutputCombo->itemText(value);
+    qDebug(logGui()) << "Changed default server audio output to:" << serverTxSetup.name;
+}
+
+void wfmain::on_serverUsersTable_cellChanged(int row, int column)
+{
+    qInfo() << "Cell Changed:" << row << "," << column;
+
+    serverConfig.users.clear();
+    for (int rows = 0; rows < ui->serverUsersTable->model()->rowCount(); rows++)
+    {
+        if (ui->serverUsersTable->item(rows, 0) != NULL)
+        {
+            SERVERUSER user;
+            user.username = ui->serverUsersTable->item(rows, 0)->text();
+            QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(rows, 1);
+            user.password = password->text();
+            QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(rows, 2);
+            user.userType = comboBox->currentIndex();
+            serverConfig.users.append(user);
+        }
+        else {
+            ui->serverUsersTable->removeRow(rows);
+        }
+    }
+}
 
 
 void wfmain::saveSettings()
@@ -1638,6 +1877,7 @@ void wfmain::saveSettings()
     settings->beginGroup("Radio");
     settings->setValue("RigCIVuInt", prefs.radioCIVAddr);
     settings->setValue("CIVisRadioModel", prefs.CIVisRadioModel);
+    settings->setValue("ForceRTSasPTT", prefs.forceRTSasPTT);
     settings->setValue("SerialPortRadio", prefs.serialPortRadio);
     settings->setValue("SerialPortBaud", prefs.serialPortBaud);
     settings->setValue("VirtualSerialPort", prefs.virtualSerialPort);
@@ -1743,12 +1983,18 @@ void wfmain::saveSettings()
     settings->setValue("ServerCivPort", serverConfig.civPort);
     settings->setValue("ServerAudioPort", serverConfig.audioPort);
     settings->setValue("ServerNumUsers", serverConfig.users.count());
+    settings->setValue("ServerAudioOutput", serverTxSetup.name);
+    settings->setValue("ServerAudioInput", serverRxSetup.name);
+
+
     for (int f = 0; f < serverConfig.users.count(); f++)
     {
         settings->setValue("ServerUsername_" + QString::number(f), serverConfig.users[f].username);
         settings->setValue("ServerPassword_" + QString::number(f), serverConfig.users[f].password);
         settings->setValue("ServerUserType_" + QString::number(f), serverConfig.users[f].userType);
     }
+
+    qInfo() << "Server config stored";
 
     settings->endGroup();
 
@@ -3100,6 +3346,10 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
 
+        ui->useRTSforPTTchk->blockSignals(true);
+        ui->useRTSforPTTchk->setChecked(rigCaps.useRTSforPTT);
+        ui->useRTSforPTTchk->blockSignals(false);
+
         ui->connectBtn->setText("Disconnect"); // We must be connected now.
         prepareWf(ui->wfLengthSlider->value());
         if(usingLAN)
@@ -4302,9 +4552,10 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
     ui->txLatencySlider->setEnabled(!checked);
     ui->rxLatencyValue->setEnabled(!checked);
     ui->txLatencyValue->setEnabled(!checked);
+    ui->audioOutputCombo->setEnabled(!checked);
+    ui->audioInputCombo->setEnabled(!checked);
     ui->baudRateCombo->setEnabled(checked);
     ui->serialDeviceListCombo->setEnabled(checked);
-    //ui->udpServerSetupBtn->setEnabled(true);
 }
 
 void wfmain::on_lanEnableBtn_clicked(bool checked)
@@ -4315,9 +4566,17 @@ void wfmain::on_lanEnableBtn_clicked(bool checked)
     ui->controlPortTxt->setEnabled(checked);
     ui->usernameTxt->setEnabled(checked);
     ui->passwordTxt->setEnabled(checked);
+    ui->audioRXCodecCombo->setEnabled(checked);
+    ui->audioTXCodecCombo->setEnabled(checked);
+    ui->audioSampleRateCombo->setEnabled(checked);
+    ui->rxLatencySlider->setEnabled(checked);
+    ui->txLatencySlider->setEnabled(checked);
+    ui->rxLatencyValue->setEnabled(checked);
+    ui->txLatencyValue->setEnabled(checked);
+    ui->audioOutputCombo->setEnabled(checked);
+    ui->audioInputCombo->setEnabled(checked);
     ui->baudRateCombo->setEnabled(!checked);
     ui->serialDeviceListCombo->setEnabled(!checked);
-    //ui->udpServerSetupBtn->setEnabled(false);
     if(checked)
     {
         showStatusBarText("After filling in values, press Save Settings.");
@@ -4434,10 +4693,6 @@ void wfmain::on_connectBtn_clicked()
     }
 }
 
-void wfmain::on_udpServerSetupBtn_clicked()
-{
-    srv->show();
-}
 void wfmain::on_sqlSlider_valueChanged(int value)
 {
     issueCmd(cmdSetSql, (unsigned char)value);
@@ -4538,8 +4793,15 @@ void wfmain::setRadioTimeDatePrep()
     if(!waitingToSetTimeDate)
     {
         // 1: Find the current time and date
-        QDateTime now = QDateTime::currentDateTime();
-        now.setTime(QTime::currentTime());
+        QDateTime now;
+        if(ui->useUTCChk->isChecked())
+        {
+            now = QDateTime::currentDateTimeUtc();
+            now.setTime(QTime::currentTime());
+        } else {
+            now = QDateTime::currentDateTime();
+            now.setTime(QTime::currentTime());
+        }
 
         int second = now.time().second();
 
@@ -4784,22 +5046,6 @@ void wfmain::on_scopeRefLevelSlider_valueChanged(int value)
 void wfmain::receiveSpectrumRefLevel(int level)
 {
     changeSliderQuietly(ui->scopeRefLevelSlider, level);
-}
-
-// Slot to send/receive server config.
-// If store is true then write to config otherwise send current config by signal
-void wfmain::serverConfigRequested(SERVERCONFIG conf, bool store)
-{
-
-    if (!store) {
-        emit sendServerConfig(serverConfig);
-    }
-    else {
-        // Store config in file!
-        qInfo(logSystem()) << "Storing server config";
-        serverConfig = conf;
-    }
-
 }
 
 void wfmain::on_modInputCombo_activated(int index)
@@ -5310,6 +5556,7 @@ void wfmain::on_rigCIVaddrHexLine_editingFinished()
     }
 
 }
+
 void wfmain::on_baudRateCombo_activated(int index)
 {
     bool ok = false;
@@ -5321,6 +5568,12 @@ void wfmain::on_baudRateCombo_activated(int index)
         showStatusBarText(QString("Changed baud rate to %1 bps. Press Save Settings to retain.").arg(baud));
     }
     (void)index;
+}
+
+void wfmain::on_useRTSforPTTchk_clicked(bool checked)
+{
+    emit setRTSforPTT(checked);
+    prefs.forceRTSasPTT = checked;
 }
 
 void wfmain::on_wfLengthSlider_valueChanged(int value)
@@ -5475,6 +5728,11 @@ void wfmain::receiveStateInfo(rigstate* state)
 {
     qInfo("Setting rig state for wfmain");
     rigState = state;
+}
+
+void wfmain::on_setClockBtn_clicked()
+{
+    setRadioTimeDatePrep();
 }
 
 // --- DEBUG FUNCTION ---
