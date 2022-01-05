@@ -605,8 +605,12 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			qInfo(logAudio()) << "Opus nSamples=" << nSamples << " expected:" << (setup.samplerate / 50);
 			return;
 		}
-		nSamples = opus_decode(decoder, in, inPacket.data.size(), out, (setup.samplerate / 50), 0);
-
+		if (inPacket.seq > lastSentSeq + 1) {
+			nSamples = opus_decode(decoder, in, inPacket.data.size(), out, (setup.samplerate / 50), 1);
+		}
+		else {
+			nSamples = opus_decode(decoder, in, inPacket.data.size(), out, (setup.samplerate / 50), 0);
+		}
 		if (nSamples < 0)
 		{
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decode failed:" << opus_strerror(nSamples) << "packet size" << inPacket.data.length();
@@ -700,12 +704,17 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	}
 
     //qDebug(logAudio()) << "Adding packet to buffer:" << inPacket.seq << ": " << inPacket.data.length();
-	lastSentSeq = inPacket.seq;
 
 	if (!ringBuf->try_write(inPacket))
 	{
 		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Buffer full! capacity:" << ringBuf->capacity() << "length" << ringBuf->size();
 	}
+	if (inPacket.seq > lastSentSeq + 1) {
+		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempting FEC on packet" << inPacket.seq << "as last is"<<lastSentSeq ;
+		lastSentSeq = inPacket.seq;
+		incomingAudio(inPacket); // Call myself again to run the packet a second time (FEC)
+	}
+	lastSentSeq = inPacket.seq;
 	return;
 }
 
