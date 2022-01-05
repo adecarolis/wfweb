@@ -1099,10 +1099,6 @@ void udpBase::dataReceived(QByteArray r)
                         // This is response to OUR request so increment counter
                         pingSendSeq++;
                     }
-                    else {
-                        // Not sure what to do here, need to spend more time with the protocol but will try sending ping with same seq next time.
-                        //qInfo(logUdp()) << this->metaObject()->className() << "Received out-of-sequence ping response. Sent:" << pingSendSeq << " received " << in->seq;
-                    }
                 }
                 else {
                     qInfo(logUdp()) << this->metaObject()->className() << "Unhandled response to ping. I have never seen this! 0x10=" << r[16];

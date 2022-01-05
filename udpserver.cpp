@@ -208,15 +208,9 @@ void udpServer::controlReceived()
                     sendPing(&controlClients, current, in->seq, true);
                 }
                 else if (in->reply == 0x01) {
-                    if (in->seq == current->pingSeq || in->seq == current->pingSeq - 1)
-                    {
-                        // A Reply to our ping!
-                        if (in->seq == current->pingSeq) {
-                            current->pingSeq++;
-                        }
-                        else {
-                            qInfo(logUdpServer()) << current->ipAddress.toString() << ": got out of sequence ping reply. Got: " << in->seq << " expecting: " << current->pingSeq;
-                        }
+                    // A Reply to our ping!
+                    if (in->seq == current->pingSeq) {
+                        current->pingSeq++;
                     }
                 }
             }
@@ -485,15 +479,9 @@ void udpServer::civReceived()
                     sendPing(&civClients, current, in->seq, true);
                 }
                 else if (in->reply == 0x01) {
-                    if (in->seq == current->pingSeq || in->seq == current->pingSeq - 1)
-                    {
-                        // A Reply to our ping!
-                        if (in->seq == current->pingSeq) {
-                            current->pingSeq++;
-                        }
-                        else {
-                            qInfo(logUdpServer()) << current->ipAddress.toString() << ": got out of sequence ping reply. Got: " << in->seq << " expecting: " << current->pingSeq;
-                        }
+                    // A Reply to our ping!
+                    if (in->seq == current->pingSeq) {
+                        current->pingSeq++;
                     }
                 }
             }
@@ -632,15 +620,9 @@ void udpServer::audioReceived()
                     sendPing(&audioClients, current, in->seq, true);
                 }
                 else if (in->reply == 0x01) {
-                    if (in->seq == current->pingSeq || in->seq == current->pingSeq - 1)
-                    {
-                        // A Reply to our ping!
-                        if (in->seq == current->pingSeq) {
-                            current->pingSeq++;
-                        }
-                        else {
-                            qInfo(logUdpServer()) << current->ipAddress.toString() << ": got out of sequence ping reply. Got: " << in->seq << " expecting: " << current->pingSeq;
-                        }
+                    // A Reply to our ping!
+                    if (in->seq == current->pingSeq) {
+                        current->pingSeq++;
                     }
                 }
             }
