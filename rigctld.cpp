@@ -199,7 +199,7 @@ void rigCtlClient::socketReadyRead()
             response.append("1"); // rigctld protocol version
             response.append(QString("%1").arg(rigCaps.rigctlModel)); 
             response.append("0"); // Print something
-            bandType lastBand;
+            bandType lastBand=(bandType)-1;
             for (bandType band : rigCaps.bands)
             {
                 if (band != lastBand)

@@ -1782,17 +1782,17 @@ void wfmain::on_serverEnableCheckbox_clicked(bool checked)
 
 void wfmain::on_serverControlPortText_textChanged(QString text)
 {
-    serverConfig.controlPort = ui->serverControlPortText->text().toInt();
+    serverConfig.controlPort = text.toInt();
 }
 
 void wfmain::on_serverCivPortText_textChanged(QString text)
 {
-    serverConfig.civPort = ui->serverCivPortText->text().toInt();
+    serverConfig.civPort = text.toInt();
 }
 
 void wfmain::on_serverAudioPortText_textChanged(QString text)
 {
-    serverConfig.audioPort = ui->serverAudioPortText->text().toInt();
+    serverConfig.audioPort = text.toInt();
 }
 
 void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
