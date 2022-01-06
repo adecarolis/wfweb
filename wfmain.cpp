@@ -1630,7 +1630,7 @@ void wfmain::loadSettings()
 #if defined(RTAUDIO)
         serverRxSetup.port = ui->serverRXAudioInputCombo->itemData(serverAudioInputIndex).toInt();
 #elif defined(PORTAUDIO)
-        serverRxSetup.port = ui->audioOutputCombo->itemData(serverAudioInputIndex).toInt();
+        serverRxSetup.port = ui->serverRXAudioInputCombo->itemData(serverAudioInputIndex).toInt();
 #else
         QVariant v = ui->serverRXAudioInputCombo->currentData();
         serverRxSetup.port = v.value<QAudioDeviceInfo>();
