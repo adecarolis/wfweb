@@ -66,13 +66,20 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     setUIToPrefs();
 
-    setServerToPrefs();
-
     setInitialTiming();
 
     openRig();
 
     rigConnections();
+
+/*    if (serverConfig.enabled && udp != Q_NULLPTR) {
+        // Server
+        connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
+        connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
+        connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
+    } */
+
+    setServerToPrefs();
 
     amTransmitting = false;
 
@@ -966,6 +973,12 @@ void wfmain::setServerToPrefs()
         connect(this, SIGNAL(initServer()), udp, SLOT(init()));
         connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
 
+        if (rig != Q_NULLPTR) {
+            connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
+            connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
+            connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
+        }
+
         if (!prefs.enableLAN) {
             connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(receiveStatusUpdate(QString)));
         }
@@ -975,10 +988,6 @@ void wfmain::setServerToPrefs()
         emit initServer();
 
         connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
-        connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
-        connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
-        connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
-
         ui->statusBar->showMessage(QString("Server enabled"), 1000);
 
     }
