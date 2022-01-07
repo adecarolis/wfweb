@@ -613,7 +613,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			nSamples = opus_decode(decoder, in, livePacket.data.size(), out, nSamples, 1);
 		}
 		else {
-			nSamples = opus_decode(decoder, in, livePacket.data.size(), out, nSamples, 0);
+			nSamples = opus_decode(decoder, in, livePacket.data.size(), out, (setup.samplerate / 50), 0);
 		}
 		if (nSamples < 0)
 		{
