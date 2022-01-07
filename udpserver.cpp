@@ -1573,56 +1573,53 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
             // We have at least 1 missing packet!
             qDebug(logUdp()) << "Missing Seq: size=" << c->rxSeqBuf.size() << "firstKey=" << c->rxSeqBuf.firstKey() << "lastKey=" << c->rxSeqBuf.lastKey() << "missing=" << c->rxSeqBuf.lastKey() - c->rxSeqBuf.firstKey() - c->rxSeqBuf.size() + 1;
             // We are missing packets so iterate through the buffer and add the missing ones to missing packet list
-            for (int i = 0; i < c->rxSeqBuf.keys().length() - 1; i++) {
-                for (quint16 j = c->rxSeqBuf.keys()[i] + 1; j < c->rxSeqBuf.keys()[i + 1]; j++) {
-                    auto s = c->rxMissing.find(j);
-                    if (s == c->rxMissing.end())
-                    {
-                        // We haven't seen this missing packet before
-                        qDebug(logUdp()) << this->metaObject()->className() << ": Adding to missing buffer (len=" << c->rxMissing.size() << "): " << j;
-
-                        if (c->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
+            if (c->rxMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
+            {
+                for (int i = 0; i < c->rxSeqBuf.keys().length() - 1; i++) {
+                    for (quint16 j = c->rxSeqBuf.keys()[i] + 1; j < c->rxSeqBuf.keys()[i + 1]; j++) {
+                        auto s = c->rxMissing.find(j);
+                        if (s == c->rxMissing.end())
                         {
-                            c->rxMissing.insert(j, 0);
-                            c->missMutex.unlock();
-                        }
-                        else {
-                            qInfo(logUdpServer()) << "Unable to lock missMutex()";
-                        }
-
-
-                        if (c->rxMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
-                        {
-                            if (c->rxSeqBuf.size() > 400)
-                            {
-                                c->rxSeqBuf.remove(0);
-                            }
-                            c->rxSeqBuf.insert(j, QTime::currentTime()); // Add this missing packet to the rxbuffer as we now long about it.
-                            c->rxMutex.unlock();
-                        }
-                        else {
-                            qInfo(logUdpServer()) << "Unable to lock rxMutex()";
-                        }
-
-                    }
-                    else {
-                        if (s.value() == 4)
-                        {
-                            // We have tried 4 times to request this packet, time to give up!
+                            // We haven't seen this missing packet before
+                            qDebug(logUdp()) << this->metaObject()->className() << ": Adding to missing buffer (len=" << c->rxMissing.size() << "): " << j;
                             if (c->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                             {
-                                s = c->rxMissing.erase(s);
+                                c->rxMissing.insert(j, 0);
                                 c->missMutex.unlock();
                             }
                             else {
                                 qInfo(logUdpServer()) << "Unable to lock missMutex()";
                             }
 
+                            if (c->rxSeqBuf.size() > 400)
+                            {
+                                c->rxSeqBuf.remove(0);
+                                c->rxSeqBuf.insert(j, QTime::currentTime()); // Add this missing packet to the rxbuffer as we now long about it.
+                            }
                         }
+                        else {
+                            if (s.value() == 4)
+                            {
+                                // We have tried 4 times to request this packet, time to give up!
+                                if (c->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
+                                {
+                                    s = c->rxMissing.erase(s);
+                                    c->missMutex.unlock();
+                                }
+                                else {
+                                    qInfo(logUdpServer()) << "Unable to lock missMutex()";
+                                }
 
+                            }
+                        }
                     }
                 }
+                c->rxMutex.unlock();
             }
+            else {
+                qInfo(logUdpServer()) << "Unable to lock rxMutex()";
+            }
+
         }
     }
 
@@ -1667,9 +1664,10 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
             {
                 qDebug(logUdp()) << this->metaObject()->className() << ": sending request for multiple missing packets : " << missingSeqs.toHex();
 
+                missingSeqs.insert(0, p.packet, sizeof(p.packet));
+
                 if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                 {
-                    missingSeqs.insert(0, p.packet, sizeof(p.packet));
                     c->socket->writeDatagram(missingSeqs, c->ipAddress, c->port);
                     udpMutex.unlock();
                 }
