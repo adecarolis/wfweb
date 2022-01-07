@@ -602,7 +602,11 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		QByteArray outPacket((setup.samplerate / 50) *  sizeof(qint16) * setup.radioChan, (char)0xff); // Preset the output buffer size.
 		qint16* out = (qint16*)outPacket.data();
 		int nSamples = opus_packet_get_nb_samples(in, livePacket.data.size(),setup.samplerate);
-		if (nSamples != setup.samplerate / 50)
+		if (nSamples == -1) {
+			// No opus data yet?
+			return;
+		} 
+		else if (nSamples != setup.samplerate / 50)
 		{
 			qInfo(logAudio()) << "Opus nSamples=" << nSamples << " expected:" << (setup.samplerate / 50);
 			return;

@@ -3,6 +3,7 @@
 
 #define STALE_CONNECTION 15
 #define LOCK_PERIOD 10 // time to attempt to lock Mutex in ms
+#define AUDIO_SEND_PERIOD 20 // how often to call the RX audio send function in ms
 udpServer::udpServer(SERVERCONFIG config, audioSetup outAudio, audioSetup inAudio) :
     config(config),
     outAudio(outAudio),
@@ -356,7 +357,7 @@ void udpServer::controlReceived()
                     rxAudioTimer = new QTimer();
                     rxAudioTimer->setTimerType(Qt::PreciseTimer);
                     connect(rxAudioTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRxAudio, this));
-                    rxAudioTimer->start(20);
+                    rxAudioTimer->start(AUDIO_SEND_PERIOD);
                 }
 
             }
@@ -1275,8 +1276,6 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
 
     return;
 }
-
-#define PURGE_SECONDS 60
 
 void udpServer::watchdog()
 {
