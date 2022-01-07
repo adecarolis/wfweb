@@ -1459,8 +1459,6 @@ void udpServer::sendRxAudio()
         {
             audio.clear();
             rxaudio->getNextAudioChunk(audio);
-            // Now we have the next audio chunk, we can release the mutex.
-            audioMutex.unlock();
             int len = 0;
             while (len < audio.length()) {
                 audioPacket partial;
@@ -1468,6 +1466,7 @@ void udpServer::sendRxAudio()
                 receiveAudioData(partial);
                 len = len + partial.data.length();
             }
+            audioMutex.unlock();
         }
         else {
             qInfo(logUdpServer()) << "Unable to lock mutex for rxaudio";

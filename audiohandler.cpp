@@ -601,17 +601,19 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		/* Decode the frame. */
 		QByteArray outPacket((setup.samplerate / 50) *  sizeof(qint16) * setup.radioChan, (char)0xff); // Preset the output buffer size.
 		qint16* out = (qint16*)outPacket.data();
-		int nSamples = opus_packet_get_nb_samples(in, livePacket.data.size(),setup.samplerate);
-		if (nSamples != setup.samplerate / 50)
+		int nSamples = opus_packet_get_nb_samples(in, livePacket.data.size(), setup.samplerate);
+		if (nSamples < 1)
 		{
 			qInfo(logAudio()) << "Opus nSamples=" << nSamples << " expected:" << (setup.samplerate / 50);
 			return;
 		}
 		if (livePacket.seq > lastSentSeq + 1) {
-			nSamples = opus_decode(decoder, in, livePacket.data.size(), out, (setup.samplerate / 50), 1);
+			opus_decoder_ctl(decoder, OPUS_GET_LAST_PACKET_DURATION(&nSamples));
+			qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempting FEC on packet" << inPacket.seq << "as last is" << lastSentSeq << "nSamples=" << nSamples;
+			nSamples = opus_decode(decoder, in, livePacket.data.size(), out, nSamples, 1);
 		}
 		else {
-			nSamples = opus_decode(decoder, in, livePacket.data.size(), out, (setup.samplerate / 50), 0);
+			nSamples = opus_decode(decoder, in, livePacket.data.size(), out, nSamples, 0);
 		}
 		if (nSamples < 0)
 		{
@@ -712,7 +714,6 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Buffer full! capacity:" << ringBuf->capacity() << "length" << ringBuf->size();
 	}
 	if ((inPacket.seq > lastSentSeq + 1) && (setup.codec == 0x40 || setup.codec == 0x80)) {
-		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempting FEC on packet" << inPacket.seq << "as last is"<<lastSentSeq ;
 		lastSentSeq = inPacket.seq;
 		incomingAudio(inPacket); // Call myself again to run the packet a second time (FEC)
 	}
