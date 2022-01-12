@@ -1800,29 +1800,15 @@ void wfmain::on_serverAudioPortText_textChanged(QString text)
 void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
 {
 #if defined(RTAUDIO)
-    serverRxSetup.port = ui->serverRXAudioInputCombo->itemData(value).toInt();
+    serverRxSetup.port = ui->serverRXaudioInputCombo->itemData(value).toInt();
 #elif defined(PORTAUDIO)
-    serverRxSetup.port = ui->serverRXAudioInputCombo->itemData(value).toInt();
+    serverRxSetup.port = ui->serverRXaudioInputCombo->itemData(value).toInt();
 #else
     QVariant v = ui->serverRXAudioInputCombo->itemData(value);
     serverRxSetup.port = v.value<QAudioDeviceInfo>();
 #endif
     serverRxSetup.name = ui->serverRXAudioInputCombo->itemText(value);
     qDebug(logGui()) << "Changed default server audio input to:" << serverRxSetup.name;
-}
-
-void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
-{
-#if defined(RTAUDIO)
-    serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(value).toInt();
-#elif defined(PORTAUDIO)
-    serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(value).toInt();
-#else
-    QVariant v = ui->serverTXAudioOutputCombo->itemData(value);
-    serverTxSetup.port = v.value<QAudioDeviceInfo>();
-#endif
-    serverTxSetup.name = ui->serverTXAudioOutputCombo->itemText(value);
-    qDebug(logGui()) << "Changed default server audio output to:" << serverTxSetup.name;
 }
 
 void wfmain::on_serverUsersTable_cellChanged(int row, int column)
@@ -1848,6 +1834,19 @@ void wfmain::on_serverUsersTable_cellChanged(int row, int column)
     }
 }
 
+void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
+{
+#if defined(RTAUDIO)
+    serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(value).toInt();
+#elif defined(PORTAUDIO)
+    serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(value).toInt();
+#else
+    QVariant v = ui->serverTXAudioOutputCombo->itemData(value);
+    serverTxSetup.port = v.value<QAudioDeviceInfo>();
+#endif
+    serverTxSetup.name = ui->serverTXAudioOutputCombo->itemText(value);
+    qDebug(logGui()) << "Changed default server audio output to:" << serverTxSetup.name;
+}
 
 void wfmain::saveSettings()
 {
