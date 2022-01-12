@@ -221,8 +221,9 @@ void wfmain::createSettingsListItems()
     ui->settingsList->addItem("Radio Settings");   // 2
     ui->settingsList->addItem("Radio Server");     // 3
     ui->settingsList->addItem("External Control"); // 4
-    ui->settingsList->addItem("Experimental");     // 5
-    //ui->settingsList->addItem("Audio Processing"); // 6
+    ui->settingsList->addItem("Audio Processing"); // 5
+    ui->settingsList->addItem("Experimental");     // 6
+    ui->settingsList->addItem("About");            // 7
 }
 
 void wfmain::connectSettingsList()
