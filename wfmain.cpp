@@ -4547,9 +4547,9 @@ void wfmain::on_audioInputCombo_currentIndexChanged(int value)
 void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
 {
 #if defined(RTAUDIO)
-    serverRxSetup.port = ui->serverRXAudioInputCombo->itemData(value).toInt();
+    serverRxSetup.port = ui->serverRXaudioInputCombo->itemData(value).toInt();
 #elif defined(PORTAUDIO)
-    serverRxSetup.port = ui->serverRXAudioInputCombo->itemData(value).toInt();
+    serverRxSetup.port = ui->serverRXaudioInputCombo->itemData(value).toInt();
 #else
     QVariant v = ui->serverRXAudioInputCombo->itemData(value);
     serverRxSetup.port = v.value<QAudioDeviceInfo>();
