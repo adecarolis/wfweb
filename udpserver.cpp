@@ -96,8 +96,6 @@ udpServer::~udpServer()
         udpAudio->close();
         delete udpAudio;
     }
-    emit haveNetworkStatus(QString(""));
-
 }
 
 
