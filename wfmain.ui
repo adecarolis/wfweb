@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>946</width>
-    <height>569</height>
+    <width>940</width>
+    <height>554</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -3103,13 +3103,13 @@
                        </property>
                        <property name="minimumSize">
                         <size>
-                         <width>130</width>
+                         <width>0</width>
                          <height>25</height>
                         </size>
                        </property>
                        <property name="maximumSize">
                         <size>
-                         <width>130</width>
+                         <width>16777215</width>
                          <height>25</height>
                         </size>
                        </property>
@@ -3123,6 +3123,19 @@
                         <bool>true</bool>
                        </property>
                       </widget>
+                     </item>
+                     <item>
+                      <spacer name="horizontalSpacer_25">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
                      </item>
                      <item>
                       <widget class="QLabel" name="label_37">
@@ -3153,13 +3166,13 @@
                       <widget class="QLineEdit" name="serverCivPortText">
                        <property name="minimumSize">
                         <size>
-                         <width>130</width>
+                         <width>0</width>
                          <height>25</height>
                         </size>
                        </property>
                        <property name="maximumSize">
                         <size>
-                         <width>130</width>
+                         <width>16777215</width>
                          <height>25</height>
                         </size>
                        </property>
@@ -3170,6 +3183,19 @@
                         <string>50002</string>
                        </property>
                       </widget>
+                     </item>
+                     <item>
+                      <spacer name="horizontalSpacer_26">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
                      </item>
                      <item>
                       <widget class="QLabel" name="label_36">
@@ -3194,13 +3220,13 @@
                       <widget class="QLineEdit" name="serverAudioPortText">
                        <property name="minimumSize">
                         <size>
-                         <width>130</width>
+                         <width>0</width>
                          <height>25</height>
                         </size>
                        </property>
                        <property name="maximumSize">
                         <size>
-                         <width>130</width>
+                         <width>16777215</width>
                          <height>25</height>
                         </size>
                        </property>
@@ -3211,19 +3237,6 @@
                         <string>50003</string>
                        </property>
                       </widget>
-                     </item>
-                     <item>
-                      <spacer name="horizontalSpacer_25">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>40</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </spacer>
                      </item>
                     </layout>
                    </item>
@@ -3237,43 +3250,7 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QComboBox" name="serverRXAudioInputCombo">
-                       <property name="minimumSize">
-                        <size>
-                         <width>100</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>300</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="label_34">
-                       <property name="text">
-                        <string>TX Audio Output</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QComboBox" name="serverTXAudioOutputCombo">
-                       <property name="minimumSize">
-                        <size>
-                         <width>100</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>300</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                      </widget>
+                      <widget class="QComboBox" name="serverRXAudioInputCombo"/>
                      </item>
                      <item>
                       <spacer name="horizontalSpacer_23">
@@ -3288,7 +3265,30 @@
                        </property>
                       </spacer>
                      </item>
+                     <item>
+                      <widget class="QLabel" name="label_34">
+                       <property name="text">
+                        <string>TX Audio Output</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QComboBox" name="serverTXAudioOutputCombo"/>
+                     </item>
                     </layout>
+                   </item>
+                   <item>
+                    <spacer name="verticalSpacer_7">
+                     <property name="orientation">
+                      <enum>Qt::Vertical</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>20</width>
+                       <height>40</height>
+                      </size>
+                     </property>
+                    </spacer>
                    </item>
                    <item>
                     <layout class="QHBoxLayout" name="horizontalLayout_32">
@@ -3376,19 +3376,6 @@
                       </spacer>
                      </item>
                     </layout>
-                   </item>
-                   <item>
-                    <spacer name="verticalSpacer_7">
-                     <property name="orientation">
-                      <enum>Qt::Vertical</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>20</width>
-                       <height>40</height>
-                      </size>
-                     </property>
-                    </spacer>
                    </item>
                   </layout>
                  </widget>
@@ -3660,8 +3647,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>946</width>
-     <height>22</height>
+     <width>940</width>
+     <height>21</height>
     </rect>
    </property>
   </widget>
