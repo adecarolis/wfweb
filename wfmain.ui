@@ -2066,7 +2066,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>0</number>
+             <number>4</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -2109,18 +2109,6 @@
                 </item>
                 <item>
                  <widget class="QGroupBox" name="groupBox_8">
-                  <property name="minimumSize">
-                   <size>
-                    <width>300</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>300</width>
-                    <height>16777215</height>
-                   </size>
-                  </property>
                   <property name="title">
                    <string>CI-V and Model</string>
                   </property>
