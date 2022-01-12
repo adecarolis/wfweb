@@ -504,8 +504,6 @@ private slots:
 
     void receiveStateInfo(rigstate* state);
 
-    void on_settingsList_currentRowChanged(int currentRow);
-
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);

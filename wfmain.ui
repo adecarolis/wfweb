@@ -2060,7 +2060,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>0</number>
+             <number>2</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -2349,7 +2349,7 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="usernameTxt">
+                      <widget class="QLineEdit" name="lineEdit_3">
                        <property name="minimumSize">
                         <size>
                          <width>256</width>
@@ -2372,7 +2372,7 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="passwordTxt">
+                      <widget class="QLineEdit" name="lineEdit_4">
                        <property name="minimumSize">
                         <size>
                          <width>180</width>
@@ -2788,6 +2788,23 @@
                  <number>0</number>
                 </property>
                 <item>
+                 <widget class="QPushButton" name="pttOffBtn">
+                  <property name="text">
+                   <string>PTT Off</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="pttOnBtn">
+                  <property name="text">
+                   <string>PTT On</string>
+                  </property>
+                  <property name="shortcut">
+                   <string>Ctrl+S</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
                  <widget class="QCheckBox" name="pttEnableChk">
                   <property name="text">
                    <string>Enable PTT Controls</string>
@@ -2938,50 +2955,6 @@
                </layout>
               </item>
               <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_39">
-                <property name="topMargin">
-                 <number>0</number>
-                </property>
-                <item>
-                 <widget class="QLabel" name="label_32">
-                  <property name="text">
-                   <string>Manual PTT Toggle</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="pttOnBtn">
-                  <property name="text">
-                   <string>PTT On</string>
-                  </property>
-                  <property name="shortcut">
-                   <string>Ctrl+S</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="pttOffBtn">
-                  <property name="text">
-                   <string>PTT Off</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <spacer name="horizontalSpacer_22">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </item>
-              <item>
                <spacer name="verticalSpacer_3">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>
@@ -2989,7 +2962,7 @@
                 <property name="sizeHint" stdset="0">
                  <size>
                   <width>20</width>
-                  <height>279</height>
+                  <height>312</height>
                  </size>
                 </property>
                </spacer>
@@ -3208,62 +3181,25 @@
              </layout>
             </widget>
             <widget class="QWidget" name="experimental">
-             <layout class="QVBoxLayout" name="verticalLayout_28">
-              <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_37">
-                <item>
-                 <widget class="QLabel" name="label_31">
-                  <property name="text">
-                   <string>This page contains experimental features. Use at your own risk.</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </item>
-              <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_38">
-                <item>
-                 <widget class="QPushButton" name="debugBtn">
-                  <property name="toolTip">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This button runs debug functions, and is provided as a convenience for programmers. The functions executed are under:&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; color:#ffff55;&quot;&gt;void&lt;/span&gt;&lt;span style=&quot; color:#55ff55;&quot;&gt;wfmain&lt;/span&gt;&lt;span style=&quot; color:#aaaaaa;&quot;&gt;::&lt;/span&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;on_debugBtn_clicked&lt;/span&gt;&lt;span style=&quot; color:#aaaaaa;&quot;&gt;()&lt;/span&gt;&lt;/p&gt;&lt;p&gt;in wfmain.cpp.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                  <property name="text">
-                   <string>Debug</string>
-                  </property>
-                  <property name="shortcut">
-                   <string>Ctrl+Alt+D</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <spacer name="horizontalSpacer_21">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </item>
-              <item>
-               <spacer name="verticalSpacer_6">
-                <property name="orientation">
-                 <enum>Qt::Vertical</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>20</width>
-                  <height>320</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
+             <widget class="QPushButton" name="debugBtn">
+              <property name="geometry">
+               <rect>
+                <x>70</x>
+                <y>130</y>
+                <width>80</width>
+                <height>25</height>
+               </rect>
+              </property>
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This button runs debug functions, and is provided as a convenience for programmers. The functions executed are under:&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; color:#ffff55;&quot;&gt;void&lt;/span&gt;&lt;span style=&quot; color:#55ff55;&quot;&gt;wfmain&lt;/span&gt;&lt;span style=&quot; color:#aaaaaa;&quot;&gt;::&lt;/span&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;on_debugBtn_clicked&lt;/span&gt;&lt;span style=&quot; color:#aaaaaa;&quot;&gt;()&lt;/span&gt;&lt;/p&gt;&lt;p&gt;in wfmain.cpp.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="text">
+               <string>Debug</string>
+              </property>
+              <property name="shortcut">
+               <string>Ctrl+Alt+D</string>
+              </property>
+             </widget>
             </widget>
             <widget class="QWidget" name="audioProcessing"/>
            </widget>
