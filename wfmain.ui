@@ -2066,7 +2066,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>0</number>
+             <number>3</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -2247,16 +2247,6 @@
                        <width>120</width>
                        <height>16777215</height>
                       </size>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="useRTSforPTTchk">
-                     <property name="toolTip">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This feature is for older radios that respond best to an RTS serial port signal than a PTT command.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;For radios lacking PTT commands, this is automatic and transparent, but for radios which have a PTT command, you can check this box to override and force the PTT to be done using RTS. Do not check this box unless you really need this and have an appropriate adapter with RTS connected to the PTT line of the transceiver. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                     </property>
-                     <property name="text">
-                      <string>Send RTS for PTT</string>
                      </property>
                     </widget>
                    </item>
