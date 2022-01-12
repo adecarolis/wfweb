@@ -4330,8 +4330,6 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
     ui->txLatencySlider->setEnabled(!checked);
     ui->rxLatencyValue->setEnabled(!checked);
     ui->txLatencyValue->setEnabled(!checked);
-    ui->audioOutputCombo->setEnabled(!checked);
-    ui->audioInputCombo->setEnabled(!checked);
     ui->baudRateCombo->setEnabled(checked);
     ui->serialDeviceListCombo->setEnabled(checked);
     //ui->udpServerSetupBtn->setEnabled(true);
@@ -4352,8 +4350,6 @@ void wfmain::on_lanEnableBtn_clicked(bool checked)
     ui->txLatencySlider->setEnabled(checked);
     ui->rxLatencyValue->setEnabled(checked);
     ui->txLatencyValue->setEnabled(checked);
-    ui->audioOutputCombo->setEnabled(checked);
-    ui->audioInputCombo->setEnabled(checked);
     ui->baudRateCombo->setEnabled(!checked);
     ui->serialDeviceListCombo->setEnabled(!checked);
     //ui->udpServerSetupBtn->setEnabled(false);
