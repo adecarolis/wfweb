@@ -4566,15 +4566,8 @@ void wfmain::setRadioTimeDatePrep()
     if(!waitingToSetTimeDate)
     {
         // 1: Find the current time and date
-        QDateTime now;
-        if(ui->useUTCChk->isChecked())
-        {
-            now = QDateTime::currentDateTimeUtc();
-            now.setTime(QTime::currentTime());
-        } else {
-            now = QDateTime::currentDateTime();
-            now.setTime(QTime::currentTime());
-        }
+        QDateTime now = QDateTime::currentDateTime();
+        now.setTime(QTime::currentTime());
 
         int second = now.time().second();
 
@@ -5510,11 +5503,6 @@ void wfmain::receiveStateInfo(rigstate* state)
 {
     qInfo("Setting rig state for wfmain");
     rigState = state;
-}
-
-void wfmain::on_setClockBtn_clicked()
-{
-    setRadioTimeDatePrep();
 }
 
 // --- DEBUG FUNCTION ---
