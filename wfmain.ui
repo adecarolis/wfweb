@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>940</width>
+    <width>948</width>
     <height>554</height>
    </rect>
   </property>
@@ -2066,7 +2066,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>3</number>
+             <number>0</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -3025,32 +3025,20 @@
             </widget>
             <widget class="QWidget" name="radioServer">
              <layout class="QVBoxLayout" name="verticalLayout_27">
-              <property name="sizeConstraint">
-               <enum>QLayout::SetDefaultConstraint</enum>
-              </property>
               <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_35">
+               <layout class="QHBoxLayout" name="horizontalLayout_32">
                 <item>
-                 <widget class="QCheckBox" name="serverEnableCheckbox">
-                  <property name="minimumSize">
-                   <size>
-                    <width>0</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>16777215</width>
-                    <height>20</height>
-                   </size>
+                 <widget class="QPushButton" name="udpServerSetupBtn">
+                  <property name="toolTip">
+                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press here to set up the built-in rig server. The built-in server is intended to allow access over the network to a serial or USB-connected radio. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                   </property>
                   <property name="text">
-                   <string>Enable</string>
+                   <string>Server Setup</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <spacer name="horizontalSpacer_24">
+                 <spacer name="horizontalSpacer_17">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
                   </property>
@@ -3065,322 +3053,34 @@
                </layout>
               </item>
               <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_41">
+               <layout class="QHBoxLayout" name="horizontalLayout_33">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
                 <item>
-                 <widget class="QGroupBox" name="serverSetupGroup">
-                  <property name="title">
-                   <string>Server Setup</string>
+                 <widget class="QLabel" name="label_26">
+                  <property name="text">
+                   <string>Audio Sources here</string>
                   </property>
-                  <layout class="QVBoxLayout" name="verticalLayout_31">
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_40">
-                     <item>
-                      <widget class="QLabel" name="label_38">
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>Contol Port</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLineEdit" name="serverControlPortText">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>25</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>25</height>
-                        </size>
-                       </property>
-                       <property name="inputMask">
-                        <string>99999</string>
-                       </property>
-                       <property name="text">
-                        <string>50001</string>
-                       </property>
-                       <property name="frame">
-                        <bool>true</bool>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <spacer name="horizontalSpacer_25">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>40</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </spacer>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="label_37">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>Civ Port</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLineEdit" name="serverCivPortText">
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>25</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>25</height>
-                        </size>
-                       </property>
-                       <property name="inputMask">
-                        <string>99999</string>
-                       </property>
-                       <property name="text">
-                        <string>50002</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <spacer name="horizontalSpacer_26">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>40</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </spacer>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="label_36">
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>Audio Port</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QLineEdit" name="serverAudioPortText">
-                       <property name="minimumSize">
-                        <size>
-                         <width>0</width>
-                         <height>25</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>16777215</width>
-                         <height>25</height>
-                        </size>
-                       </property>
-                       <property name="inputMask">
-                        <string>99999</string>
-                       </property>
-                       <property name="text">
-                        <string>50003</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_33">
-                     <item>
-                      <widget class="QLabel" name="label_33">
-                       <property name="text">
-                        <string>RX Audio Input</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QComboBox" name="serverRXAudioInputCombo"/>
-                     </item>
-                     <item>
-                      <spacer name="horizontalSpacer_23">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>40</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </spacer>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="label_34">
-                       <property name="text">
-                        <string>TX Audio Output</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QComboBox" name="serverTXAudioOutputCombo"/>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <spacer name="verticalSpacer_7">
-                     <property name="orientation">
-                      <enum>Qt::Vertical</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>20</width>
-                       <height>40</height>
-                      </size>
-                     </property>
-                    </spacer>
-                   </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_32">
-                     <item>
-                      <widget class="QTableWidget" name="serverUsersTable">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                       <property name="minimumSize">
-                        <size>
-                         <width>400</width>
-                         <height>160</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>750</width>
-                         <height>330</height>
-                        </size>
-                       </property>
-                       <property name="frameShape">
-                        <enum>QFrame::StyledPanel</enum>
-                       </property>
-                       <property name="lineWidth">
-                        <number>1</number>
-                       </property>
-                       <property name="midLineWidth">
-                        <number>0</number>
-                       </property>
-                       <property name="columnCount">
-                        <number>3</number>
-                       </property>
-                       <attribute name="horizontalHeaderCascadingSectionResizes">
-                        <bool>false</bool>
-                       </attribute>
-                       <attribute name="horizontalHeaderDefaultSectionSize">
-                        <number>100</number>
-                       </attribute>
-                       <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
-                        <bool>false</bool>
-                       </attribute>
-                       <attribute name="horizontalHeaderStretchLastSection">
-                        <bool>true</bool>
-                       </attribute>
-                       <attribute name="verticalHeaderVisible">
-                        <bool>false</bool>
-                       </attribute>
-                       <attribute name="verticalHeaderShowSortIndicator" stdset="0">
-                        <bool>true</bool>
-                       </attribute>
-                       <attribute name="verticalHeaderStretchLastSection">
-                        <bool>false</bool>
-                       </attribute>
-                       <column>
-                        <property name="text">
-                         <string>Username</string>
-                        </property>
-                       </column>
-                       <column>
-                        <property name="text">
-                         <string>Password</string>
-                        </property>
-                       </column>
-                       <column>
-                        <property name="text">
-                         <string>Admin</string>
-                        </property>
-                       </column>
-                      </widget>
-                     </item>
-                     <item>
-                      <spacer name="horizontalSpacer_17">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>40</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </spacer>
-                     </item>
-                    </layout>
-                   </item>
-                  </layout>
                  </widget>
                 </item>
                </layout>
+              </item>
+              <item>
+               <spacer name="verticalSpacer_5">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>320</height>
+                 </size>
+                </property>
+               </spacer>
               </item>
              </layout>
             </widget>
@@ -3647,8 +3347,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>940</width>
-     <height>21</height>
+     <width>948</width>
+     <height>22</height>
     </rect>
    </property>
   </widget>
