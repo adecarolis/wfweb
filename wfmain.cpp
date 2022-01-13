@@ -1135,8 +1135,8 @@ void wfmain::setAudioDevicesUI()
     // Set these to default audio devices initially.
     rxSetup.port = QAudioDeviceInfo::defaultOutputDevice();
     txSetup.port = QAudioDeviceInfo::defaultInputDevice();
-    serverRxSetup.port = QAudioDeviceInfo::defaultOutputDevice();
-    serverTxSetup.port = QAudioDeviceInfo::defaultInputDevice();
+    serverRxSetup.port = QAudioDeviceInfo::defaultInputDevice();
+    serverTxSetup.port = QAudioDeviceInfo::defaultOutputDevice();
 #endif
 }
 

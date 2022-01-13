@@ -38,7 +38,7 @@ void udpServer::init()
 
     uint32_t addr = localIP.toIPv4Address();
 
-    qInfo(logUdpServer()) << " My IP Address: " << QHostAddress(addr).toString() << " My MAC Address: " << macAddress;
+    qInfo(logUdpServer()) << "My IP Address:" << QHostAddress(addr).toString() << "My MAC Address:" << macAddress;
 
 
     controlId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (config.controlPort & 0xffff);
@@ -60,6 +60,13 @@ void udpServer::init()
     udpAudio->bind(config.audioPort);
     QUdpSocket::connect(udpAudio, &QUdpSocket::readyRead, this, &udpServer::audioReceived);
 
+#if !defined(PORTAUDIO) && !defined(RTAUDIO)
+    qInfo(logUdpServer()) << "Server audio input:" << inAudio.port.deviceName();
+    qInfo(logUdpServer()) << "Server audio output:" << outAudio.port.deviceName();
+#else
+    qInfo(logUdpServer()) << "Server audio input:" << inAudio.name;
+    qInfo(logUdpServer()) << "Server audio output:" << outAudio.name;
+#endif
     wdTimer = new QTimer();
     connect(wdTimer, &QTimer::timeout, this, &udpServer::watchdog);
     wdTimer->start(500);
