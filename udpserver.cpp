@@ -831,7 +831,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                 // Add incoming packet to the received buffer and if it is in the missing buffer, remove it.
                 if (current->rxMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                 {
-                    if (current->rxSeqBuf.size() > 400)
+                    if (current->rxSeqBuf.size() > BUFSIZE)
                     {
                         current->rxSeqBuf.remove(current->rxSeqBuf.firstKey());
                     }
@@ -1126,7 +1126,7 @@ void udpServer::sendCapabilities(CLIENT* c)
     s.data = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
     if (c->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
     {
-        if (c->txSeqBuf.size() > 400)
+        if (c->txSeqBuf.size() > BUFSIZE)
         {
             c->txSeqBuf.remove(c->txSeqBuf.firstKey());
         }
@@ -1197,7 +1197,7 @@ void udpServer::sendConnectionInfo(CLIENT* c)
  
     if (c->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
     {
-        if (c->txSeqBuf.size() > 400)
+        if (c->txSeqBuf.size() > BUFSIZE)
         {
             c->txSeqBuf.remove(c->txSeqBuf.firstKey());
         }
@@ -1255,7 +1255,7 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
 
     if (c->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
     {
-        if (c->txSeqBuf.size() > 400)
+        if (c->txSeqBuf.size() > BUFSIZE)
         {
             c->txSeqBuf.remove(c->txSeqBuf.firstKey());
         }
@@ -1373,7 +1373,7 @@ void udpServer::sendStatus(CLIENT* c)
     s.data = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
     if (c->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
     {
-        if (c->txSeqBuf.size() > 400)
+        if (c->txSeqBuf.size() > BUFSIZE)
         {
             c->txSeqBuf.remove(c->txSeqBuf.firstKey());
         }
@@ -1428,7 +1428,7 @@ void udpServer::dataForServer(QByteArray d)
 
             if (client->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
             {
-                if (client->txSeqBuf.size() > 400)
+                if (client->txSeqBuf.size() > BUFSIZE)
                 {
                     client->txSeqBuf.remove(client->txSeqBuf.firstKey());
                 }
@@ -1510,7 +1510,7 @@ void udpServer::receiveAudioData(const audioPacket& d)
             s.data = t;
             if (client->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
             {
-                if (client->txSeqBuf.size() > 400)
+                if (client->txSeqBuf.size() > BUFSIZE)
                 {
                     client->txSeqBuf.remove(client->txSeqBuf.firstKey());
                 }
@@ -1605,7 +1605,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
                                 qDebug(logUdp()) << this->metaObject()->className() << ": Adding to missing buffer (len=" << c->rxMissing.size() << "): " << j << dec << missingTime.msecsTo(QTime::currentTime()) << "ms";
                                 c->rxMissing.insert(j, 0);
 
-                                if (c->rxSeqBuf.size() > 400)
+                                if (c->rxSeqBuf.size() > BUFSIZE)
                                 {
                                     c->rxSeqBuf.remove(c->rxSeqBuf.firstKey());
                                 }

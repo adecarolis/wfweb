@@ -1154,7 +1154,7 @@ void udpBase::dataReceived(QByteArray r)
     {
         rxBufferMutex.lock();
         if (rxSeqBuf.isEmpty()) {
-            if (rxSeqBuf.size() > 400)
+            if (rxSeqBuf.size() > BUFSIZE)
             {
                 rxSeqBuf.erase(rxSeqBuf.begin());
             }
@@ -1178,7 +1178,7 @@ void udpBase::dataReceived(QByteArray r)
             {
                 // Add incoming packet to the received buffer and if it is in the missing buffer, remove it.
                 rxSeqBuf.insert(in->seq, QTime::currentTime());
-                if (rxSeqBuf.size() > 400)
+                if (rxSeqBuf.size() > BUFSIZE)
                 {
                     rxSeqBuf.erase(rxSeqBuf.begin());
                 }
@@ -1242,7 +1242,7 @@ void udpBase::sendRetransmitRequest()
                             rxMissing.erase(rxMissing.begin());
                         }
                         rxMissing.insert(j, 0);
-                        if (rxSeqBuf.size() > 400)
+                        if (rxSeqBuf.size() > BUFSIZE)
                         {
                             rxSeqBuf.erase(rxSeqBuf.begin());
                         }
@@ -1388,7 +1388,7 @@ void udpBase::sendTrackedPacket(QByteArray d)
             congestion = 0;
         }
         txSeqBuf.insert(sendSeq,s);
-        if (txSeqBuf.size() > 400)
+        if (txSeqBuf.size() > BUFSIZE)
         {
             txSeqBuf.erase(txSeqBuf.begin());
         }

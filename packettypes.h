@@ -22,6 +22,8 @@
 #define AUDIO_SIZE            0x18
 #define DATA_SIZE               0x15
 
+#define BUFSIZE 50 // Number of packets to buffer
+
 // 0x10 length control packet (connect/disconnect/idle.)
 typedef union control_packet {
     struct {
