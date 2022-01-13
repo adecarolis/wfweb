@@ -1550,7 +1550,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
  // This will run every 100ms so out-of-sequence packets will not trigger a retransmit request.
 
     QByteArray missingSeqs;
-
+    QTime missingTime = QTime::currentTime();
 
     if (!c->rxSeqBuf.empty() && c->rxSeqBuf.size() <= c->rxSeqBuf.lastKey() - c->rxSeqBuf.firstKey())
     {
@@ -1691,6 +1691,9 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
         qInfo(logUdpServer()) << "Unable to lock missMutex()";
     }
 
+    if (missingTime.msecsTo(QTime::currentTime()) > 10) {
+        qInfo(logUdpServer()) << "Missing processing took" << missingTime.msecsTo(QTime::currentTime()) << "to run!!!!";
+    }
 }
 
 
