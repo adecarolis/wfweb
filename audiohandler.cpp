@@ -554,7 +554,7 @@ qint64 audioHandler::writeData(const char* data, qint64 nBytes)
 			int send = qMin((int)(nBytes - sentlen), chunkBytes - tempBuf.sent);
 			tempBuf.data.append(QByteArray::fromRawData(data + sentlen, send));
 			sentlen = sentlen + send;
-			tempBuf.seq = 0; // Not used in TX
+			tempBuf.seq = lastSentSeq;
 			tempBuf.time = QTime::currentTime();
 			tempBuf.sent = tempBuf.sent + send;
 		}
@@ -568,6 +568,7 @@ qint64 audioHandler::writeData(const char* data, qint64 nBytes)
 			} 
 			tempBuf.data.clear();
 			tempBuf.sent = 0;
+			lastSentSeq++;
 		}
 	}
 
@@ -750,7 +751,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 
 		if (currentLatency > setup.latency) {
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
-				" arrived too late (increase output latency!) " <<
+				" arrived too late (increase latency!) " <<
 				dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
 		//	if (!ringBuf->try_read(packet))
 		//		break;

@@ -61,11 +61,11 @@ void udpServer::init()
     QUdpSocket::connect(udpAudio, &QUdpSocket::readyRead, this, &udpServer::audioReceived);
 
 #if !defined(PORTAUDIO) && !defined(RTAUDIO)
-    qInfo(logUdpServer()) << "Server audio input:" << inAudio.port.deviceName();
-    qInfo(logUdpServer()) << "Server audio output:" << outAudio.port.deviceName();
+    qInfo(logUdpServer()) << "Server audio input (RX):" << inAudio.port.deviceName();
+    qInfo(logUdpServer()) << "Server audio output (TX):" << outAudio.port.deviceName();
 #else
-    qInfo(logUdpServer()) << "Server audio input:" << inAudio.name;
-    qInfo(logUdpServer()) << "Server audio output:" << outAudio.name;
+    qInfo(logUdpServer()) << "Server audio input (RX):" << inAudio.name;
+    qInfo(logUdpServer()) << "Server audio output (TX):" << outAudio.name;
 #endif
     wdTimer = new QTimer();
     connect(wdTimer, &QTimer::timeout, this, &udpServer::watchdog);
@@ -323,7 +323,6 @@ void udpServer::controlReceived()
                 {
                     outAudio.codec = current->txCodec;
                     outAudio.samplerate = current->txSampleRate;
-                    outAudio.latency = current->txBufferLen;
                     outAudio.isinput = false;
 
                     txaudio = new audioHandler();
@@ -346,6 +345,7 @@ void udpServer::controlReceived()
                 {
                     inAudio.codec = current->rxCodec;
                     inAudio.samplerate = current->rxSampleRate;
+                    inAudio.latency = current->txBufferLen;
                     inAudio.isinput = true;
 
                     rxaudio = new audioHandler();
