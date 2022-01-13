@@ -1589,7 +1589,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
                         if (s == c->rxMissing.end())
                         {
                             // We haven't seen this missing packet before
-                            qDebug(logUdp()) << this->metaObject()->className() << ": Adding to missing buffer (len=" << c->rxMissing.size() << "): " << j;
+                            qDebug(logUdp()) << this->metaObject()->className() << ": Adding to missing buffer (len=" << c->rxMissing.size() << "): " << j << dec << missingTime.msecsTo(QTime::currentTime()) << "ms";
                             if (c->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                             {
                                 c->rxMissing.insert(j, 0);
@@ -1631,6 +1631,10 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
         }
     }
 
+    if (missingTime.msecsTo(QTime::currentTime()) > 10) {
+        qInfo(logUdpServer()) << "Initial missing processing has been running for" << missingTime.msecsTo(QTime::currentTime()) << "(ms)";
+    }
+
     if (c->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
     {
         for (auto it = c->rxMissing.begin(); it != c->rxMissing.end(); ++it)
@@ -1656,7 +1660,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
             if (missingSeqs.length() == 4) // This is just a single missing packet so send using a control.
             {
                 p.seq = (missingSeqs[0] & 0xff) | (quint16)(missingSeqs[1] << 8);
-                qDebug(logUdp()) << this->metaObject()->className() << ": sending request for missing packet : " << hex << p.seq;
+                qDebug(logUdp()) << this->metaObject()->className() << ": sending request for missing packet : " << hex << p.seq << dec << missingTime.msecsTo(QTime::currentTime()) << "ms";
 
                 if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                 {
@@ -1692,7 +1696,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
     }
 
     if (missingTime.msecsTo(QTime::currentTime()) > 10) {
-        qInfo(logUdpServer()) << "Missing processing took" << missingTime.msecsTo(QTime::currentTime()) << "to run!!!!";
+        qInfo(logUdpServer()) << "Missing processing took" << missingTime.msecsTo(QTime::currentTime()) << "(ms) to run!!!!";
     }
 }
 
