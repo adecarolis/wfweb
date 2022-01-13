@@ -833,7 +833,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                 {
                     if (current->rxSeqBuf.size() > 400)
                     {
-                        current->rxSeqBuf.remove(0);
+                        current->rxSeqBuf.remove(current->rxSeqBuf.firstKey());
                     }
                     current->rxSeqBuf.insert(in->seq, QTime::currentTime());
                     current->rxMutex.unlock();
@@ -1128,7 +1128,7 @@ void udpServer::sendCapabilities(CLIENT* c)
     {
         if (c->txSeqBuf.size() > 400)
         {
-            c->txSeqBuf.remove(0);
+            c->txSeqBuf.remove(c->txSeqBuf.firstKey());
         }
         c->txSeqBuf.insert(p.seq, s);
         c->txSeq++;
@@ -1199,7 +1199,7 @@ void udpServer::sendConnectionInfo(CLIENT* c)
     {
         if (c->txSeqBuf.size() > 400)
         {
-            c->txSeqBuf.remove(0);
+            c->txSeqBuf.remove(c->txSeqBuf.firstKey());
         }
         c->txSeqBuf.insert(p.seq, s);
         c->txSeq++;
@@ -1257,7 +1257,7 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
     {
         if (c->txSeqBuf.size() > 400)
         {
-            c->txSeqBuf.remove(0);
+            c->txSeqBuf.remove(c->txSeqBuf.firstKey());
         }
         c->txSeqBuf.insert(p.seq, s);
         c->txSeq++;
@@ -1375,7 +1375,7 @@ void udpServer::sendStatus(CLIENT* c)
     {
         if (c->txSeqBuf.size() > 400)
         {
-            c->txSeqBuf.remove(0);
+            c->txSeqBuf.remove(c->txSeqBuf.firstKey());
         }
         c->txSeq++;
         c->txSeqBuf.insert(p.seq, s);
@@ -1430,7 +1430,7 @@ void udpServer::dataForServer(QByteArray d)
             {
                 if (client->txSeqBuf.size() > 400)
                 {
-                    client->txSeqBuf.remove(0);
+                    client->txSeqBuf.remove(client->txSeqBuf.firstKey());
                 }
                 client->txSeqBuf.insert(p.seq, s);
                 client->txSeq++;
@@ -1512,7 +1512,7 @@ void udpServer::receiveAudioData(const audioPacket& d)
             {
                 if (client->txSeqBuf.size() > 400)
                 {
-                    client->txSeqBuf.remove(0);
+                    client->txSeqBuf.remove(client->txSeqBuf.firstKey());
                 }
                 client->txSeqBuf.insert(p.seq, s);
                 client->txSeq++;
@@ -1584,9 +1584,20 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
             if (c->rxMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
             {
                 if (c->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
-                {
+                {                    
                     for (int i = 0; i < c->rxSeqBuf.keys().length() - 1; i++) {
                         for (quint16 j = c->rxSeqBuf.keys()[i] + 1; j < c->rxSeqBuf.keys()[i + 1]; j++) {
+
+                            /*
+                            if (c->rxSeqBuf.lastKey() - c->rxSeqBuf.firstKey() - c->rxSeqBuf.size() == 0 && c->type == "AUDIO" &&
+                                    (c->txCodec == 0x40 || c->txCodec == 0x80))
+                            {
+                                // Single missing audio packet ignore it!
+                                qDebug(logUdpServer()) << "Single missing audio packet";
+                                c->rxSeqBuf.insert(j, QTime::currentTime()); // Add this missing packet to the rxbuffer as we now long about it.
+                                break;
+                            }
+                            */
                             auto s = c->rxMissing.find(j);
                             if (s == c->rxMissing.end())
                             {
@@ -1596,9 +1607,9 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
 
                                 if (c->rxSeqBuf.size() > 400)
                                 {
-                                    c->rxSeqBuf.remove(0);
-                                    c->rxSeqBuf.insert(j, QTime::currentTime()); // Add this missing packet to the rxbuffer as we now long about it.
+                                    c->rxSeqBuf.remove(c->rxSeqBuf.firstKey());
                                 }
+                                c->rxSeqBuf.insert(j, QTime::currentTime()); // Add this missing packet to the rxbuffer as we now long about it.
                             }
                             else {
                                 if (s.value() == 4)

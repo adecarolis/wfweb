@@ -1229,8 +1229,8 @@ void udpBase::sendRetransmitRequest()
             // We have at least 1 missing packet!
             qDebug(logUdp()) << "Missing Seq: size=" << rxSeqBuf.size() << "firstKey=" << rxSeqBuf.firstKey() << "lastKey=" << rxSeqBuf.lastKey() << "missing=" << rxSeqBuf.lastKey() - rxSeqBuf.firstKey() - rxSeqBuf.size() + 1;
             // We are missing packets so iterate through the buffer and add the missing ones to missing packet list
+            missingMutex.lock();
             for (int i = 0; i < rxSeqBuf.keys().length() - 1; i++) {
-                missingMutex.lock();
                 for (quint16 j = rxSeqBuf.keys()[i] + 1; j < rxSeqBuf.keys()[i + 1]; j++) {
                     auto s = rxMissing.find(j);
                     if (s == rxMissing.end())
@@ -1258,8 +1258,8 @@ void udpBase::sendRetransmitRequest()
 
                     }
                 }
-                missingMutex.unlock();
             }
+            missingMutex.unlock();
         }
     }
     rxBufferMutex.unlock();
