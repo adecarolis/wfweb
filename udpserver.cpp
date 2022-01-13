@@ -1588,16 +1588,18 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
                     for (int i = 0; i < c->rxSeqBuf.keys().length() - 1; i++) {
                         for (quint16 j = c->rxSeqBuf.keys()[i] + 1; j < c->rxSeqBuf.keys()[i + 1]; j++) {
 
-                            /*
+                            
                             if (c->rxSeqBuf.lastKey() - c->rxSeqBuf.firstKey() - c->rxSeqBuf.size() == 0 && c->type == "AUDIO" &&
                                     (c->txCodec == 0x40 || c->txCodec == 0x80))
                             {
                                 // Single missing audio packet ignore it!
-                                qDebug(logUdpServer()) << "Single missing audio packet";
+                                qDebug(logUdpServer()) << "Single missing audio packet will be handled by FEC (" << hex << j << ")";
                                 c->rxSeqBuf.insert(j, QTime::currentTime()); // Add this missing packet to the rxbuffer as we now long about it.
-                                break;
+                                c->rxMutex.unlock();
+                                c->missMutex.unlock();
+                                return;
                             }
-                            */
+                            
                             auto s = c->rxMissing.find(j);
                             if (s == c->rxMissing.end())
                             {
