@@ -617,6 +617,11 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		qDebug(logAudio()) << "Packet received when stream was not ready";
 		return;
 	}
+	if (!audioBuffered && ringBuf->size() > ringBuf->capacity() / 2)
+	{
+		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio buffering complete, capacity:" << ringBuf->capacity() << ", used:" << ringBuf->size();
+		audioBuffered = true;
+	}
 
 	audioPacket livePacket = inPacket;
 
@@ -748,11 +753,6 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		incomingAudio(inPacket); // Call myself again to run the packet a second time (FEC)
 	}
 	lastSentSeq = inPacket.seq;
-	if (!audioBuffered && ringBuf->size() > ringBuf->capacity() / 2)
-	{
-		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio buffering complete, capacity:" <<ringBuf->capacity() << ", used:" << ringBuf->size();
-		audioBuffered = true;
-	}
 	return;
 }
 
