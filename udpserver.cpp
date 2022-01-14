@@ -365,7 +365,7 @@ void udpServer::controlReceived()
                     rxAudioTimer = new QTimer();
                     rxAudioTimer->setTimerType(Qt::PreciseTimer);
                     connect(rxAudioTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRxAudio, this));
-                    rxAudioTimer->start(20);
+                    rxAudioTimer->start(TXAUDIO_PERIOD);
                 }
 
             }

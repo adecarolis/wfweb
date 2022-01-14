@@ -761,6 +761,7 @@ void audioHandler::changeLatency(const quint16 newSize)
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Changing latency to: " << newSize << " from " << setup.latency;
 	setup.latency = newSize;
 	delete ringBuf;
+	audioBuffered = false;
 	ringBuf = new wilt::Ring<audioPacket>(setup.latency / 8 + 1); // Should be customizable.
 }
 
