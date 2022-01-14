@@ -23,7 +23,7 @@
 #define DATA_SIZE               0x15
 
 #define BUFSIZE 50 // Number of packets to buffer
-#define TXAUDIO_PERIOD 10 
+#define TXAUDIO_PERIOD 20 
 
 // 0x10 length control packet (connect/disconnect/idle.)
 typedef union control_packet {
