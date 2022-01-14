@@ -720,6 +720,8 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	if (!ringBuf->try_write(livePacket))
 	{
 		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Buffer full! capacity:" << ringBuf->capacity() << "length" << ringBuf->size();
+		while (ringBuf->try_read(inPacket)); // Empty buffer
+		return;
 	}
 	if ((inPacket.seq > lastSentSeq + 1) && (setup.codec == 0x40 || setup.codec == 0x80)) {
 		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempting FEC on packet" << inPacket.seq << "as last is"<<lastSentSeq ;
