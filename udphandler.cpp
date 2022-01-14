@@ -1235,6 +1235,11 @@ void udpBase::sendRetransmitRequest()
             while (i != rxSeqBuf.keys().end())
             {
                 quint16 j = 1 + *i;
+                ++i;
+                if (i == rxSeqBuf.keys().end())
+                {
+                    continue;
+                }
 
                 auto s = rxMissing.find(j);
                 if (s == rxMissing.end())
@@ -1260,7 +1265,6 @@ void udpBase::sendRetransmitRequest()
                         s = rxMissing.erase(s);
                     }
                 }
-                ++i;
             }
             missingMutex.unlock();
         }

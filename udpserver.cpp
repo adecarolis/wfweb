@@ -1589,7 +1589,11 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
                     while (i != c->rxSeqBuf.keys().end())
                     {
                         quint16 j = 1 + *i;
-
+                        ++i;
+                        if (i == c->rxSeqBuf.keys().end())
+                        {
+                            continue;
+                        }
                         if (c->rxSeqBuf.lastKey() - c->rxSeqBuf.firstKey() - c->rxSeqBuf.size() == 0 && c->type == "AUDIO" &&
                             (c->txCodec == 0x40 || c->txCodec == 0x80))
                         {
@@ -1621,7 +1625,6 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
                                 s = c->rxMissing.erase(s);
                             }
                         }
-                        ++i;
 
                     }
                 }
