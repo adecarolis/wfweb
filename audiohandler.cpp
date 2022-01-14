@@ -63,15 +63,6 @@ bool audioHandler::init(audioSetup setupIn)
 	if (isInitialized) {
 		return false;
 	}
-	qDebug(logAudio()) << "Creating" << (setupIn.isinput ? "Input" : "Output") << "audio device:" << setupIn.name << 
-						", bits" << setupIn.bits <<
-						", codec" << setupIn.codec <<
-						", latency" << setupIn.latency <<
-						", localAFGain" << setupIn.localAFgain << 
-						", radioChan" << setupIn.radioChan << 
-						", resampleQuality" << setupIn.resampleQuality << 
-						", samplerate" << setupIn.samplerate << 
-						", uLaw" << setupIn.ulaw;
 	/*
 	0x01 uLaw 1ch 8bit
 	0x02 PCM 1ch 8bit
@@ -94,6 +85,17 @@ bool audioHandler::init(audioSetup setupIn)
 	if (setup.codec == 0x04 || setup.codec == 0x10 || setup.codec == 0x40 || setup.codec == 0x80) {
 		setup.bits = 16;
 	}
+
+	qDebug(logAudio()) << "Creating" << (setup.isinput ? "Input" : "Output") << "audio device:" << setup.name <<
+		", bits" << setup.bits <<
+		", codec" << setup.codec <<
+		", latency" << setup.latency <<
+		", localAFGain" << setup.localAFgain <<
+		", radioChan" << setup.radioChan <<
+		", resampleQuality" << setup.resampleQuality <<
+		", samplerate" << setup.samplerate <<
+		", uLaw" << setup.ulaw;
+
 
 	ringBuf = new wilt::Ring<audioPacket>(setupIn.latency / 8 + 1); // Should be customizable.
 

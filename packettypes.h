@@ -343,7 +343,7 @@ typedef union capabilities_packet {
         quint32 baudrate;         // 0x9c
         quint16 capf;             // 0xa0
         char unusedi;             // 0xa2
-        quint16 capg;             // 0xa3
+        quint16 txbuffer;         // 0xa3
         char unusedj[3];          // 0xa5
     };
     char packet[CAPABILITIES_SIZE];
