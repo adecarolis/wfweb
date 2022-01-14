@@ -1584,43 +1584,45 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
             if (c->rxMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
             {
                 if (c->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
-                {                    
-                    for (int i = 0; i < c->rxSeqBuf.keys().length() - 1; i++) {
-                        for (quint16 j = c->rxSeqBuf.keys()[i] + 1; j < c->rxSeqBuf.keys()[i + 1]; j++) {
+                {
+                    auto i = std::adjacent_find(c->rxSeqBuf.keys().begin(), c->rxSeqBuf.keys().end(), [](int l, int r) {return l + 1 < r; });
+                    while (i != c->rxSeqBuf.keys().end())
+                    {
+                        quint16 j = 1 + *i;
 
-                            
-                            if (c->rxSeqBuf.lastKey() - c->rxSeqBuf.firstKey() - c->rxSeqBuf.size() == 0 && c->type == "AUDIO" &&
-                                    (c->txCodec == 0x40 || c->txCodec == 0x80))
-                            {
-                                // Single missing audio packet ignore it!
-                                qDebug(logUdpServer()) << "Single missing audio packet will be handled by FEC (" << hex << j << ")";
-                                c->rxSeqBuf.insert(j, QTime::currentTime()); // Add this missing packet to the rxbuffer as we now long about it.
-                                c->rxMutex.unlock();
-                                c->missMutex.unlock();
-                                return;
-                            }
-                            
-                            auto s = c->rxMissing.find(j);
-                            if (s == c->rxMissing.end())
-                            {
-                                // We haven't seen this missing packet before
-                                qDebug(logUdp()) << this->metaObject()->className() << ": Adding to missing buffer (len=" << c->rxMissing.size() << "): " << j << dec << missingTime.msecsTo(QTime::currentTime()) << "ms";
-                                c->rxMissing.insert(j, 0);
+                        if (c->rxSeqBuf.lastKey() - c->rxSeqBuf.firstKey() - c->rxSeqBuf.size() == 0 && c->type == "AUDIO" &&
+                            (c->txCodec == 0x40 || c->txCodec == 0x80))
+                        {
+                            // Single missing audio packet ignore it!
+                            qDebug(logUdpServer()) << "Single missing audio packet will be handled by FEC (" << hex << j << ")";
+                            c->rxSeqBuf.insert(j, QTime::currentTime()); // Add this missing packet to the rxbuffer so it doesn't try to retransmit
+                            c->missMutex.unlock();
+                            c->rxMutex.unlock();
+                            return;
+                        }
 
-                                if (c->rxSeqBuf.size() > BUFSIZE)
-                                {
-                                    c->rxSeqBuf.remove(c->rxSeqBuf.firstKey());
-                                }
-                                c->rxSeqBuf.insert(j, QTime::currentTime()); // Add this missing packet to the rxbuffer as we now long about it.
+                        auto s = c->rxMissing.find(j);
+                        if (s == c->rxMissing.end())
+                        {
+                            // We haven't seen this missing packet before
+                            qDebug(logUdp()) << this->metaObject()->className() << ": Adding to missing buffer (len=" << c->rxMissing.size() << "): " << j << dec << missingTime.msecsTo(QTime::currentTime()) << "ms";
+                            c->rxMissing.insert(j, 0);
+
+                            if (c->rxSeqBuf.size() > BUFSIZE)
+                            {
+                                c->rxSeqBuf.remove(c->rxSeqBuf.firstKey());
                             }
-                            else {
-                                if (s.value() == 4)
-                                {
-                                    // We have tried 4 times to request this packet, time to give up!
-                                    s = c->rxMissing.erase(s);
-                                }
+                            c->rxSeqBuf.insert(j, QTime::currentTime()); // Add this missing packet to the rxbuffer as we now long about it.
+                        }
+                        else {
+                            if (s.value() == 4)
+                            {
+                                // We have tried 4 times to request this packet, time to give up!
+                                s = c->rxMissing.erase(s);
                             }
                         }
+                        ++i;
+
                     }
                 }
                 else {
@@ -1632,7 +1634,6 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
                 qInfo(logUdpServer()) << "Unable to lock rxMutex()";
             }
             c->missMutex.unlock();
-
         }
     }
 
