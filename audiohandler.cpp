@@ -63,7 +63,15 @@ bool audioHandler::init(audioSetup setupIn)
 	if (isInitialized) {
 		return false;
 	}
-
+	qDebug(logAudio()) << "Creating" << (setupIn.isinput ? "Input" : "Output") << "audio device:" << setupIn.name << 
+						", bits" << setupIn.bits <<
+						", codec" << setupIn.codec <<
+						", latency" << setupIn.latency <<
+						", localAFGain" << setupIn.localAFgain << 
+						", radioChan" << setupIn.radioChan << 
+						", resampleQuality" << setupIn.resampleQuality << 
+						", samplerate" << setupIn.samplerate << 
+						", uLaw" << setupIn.ulaw;
 	/*
 	0x01 uLaw 1ch 8bit
 	0x02 PCM 1ch 8bit

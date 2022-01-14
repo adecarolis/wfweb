@@ -1625,6 +1625,7 @@ void wfmain::loadSettings()
     ui->serverAudioPortText->setText(QString::number(serverConfig.audioPort));
 
     serverRxSetup.isinput = true;
+
     serverTxSetup.isinput = false;
 
     ui->serverRXAudioInputCombo->blockSignals(true);
@@ -1644,7 +1645,8 @@ void wfmain::loadSettings()
     }
     ui->serverRXAudioInputCombo->blockSignals(false);
 
-    serverRxSetup.resampleQuality = settings->value("ResampleQuality", "4").toInt();
+    serverRxSetup.resampleQuality = rxSetup.resampleQuality;
+    serverTxSetup.resampleQuality = serverRxSetup.resampleQuality;
 
     ui->serverTXAudioOutputCombo->blockSignals(true);
     serverTxSetup.name = settings->value("ServerAudioOutput", "").toString();
@@ -1662,8 +1664,6 @@ void wfmain::loadSettings()
 #endif
     }
     ui->serverTXAudioOutputCombo->blockSignals(false);
-
-    serverTxSetup.resampleQuality = settings->value("ResampleQuality", "4").toInt();
 
     int row = 0;
     ui->serverUsersTable->setRowCount(0);
