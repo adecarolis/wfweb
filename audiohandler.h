@@ -165,7 +165,7 @@ private:
     void reinit();
     bool            isInitialized=false;
     bool            isReady = false;
-
+    bool            audioBuffered = false;
 #if defined(RTAUDIO)
     RtAudio* audio = Q_NULLPTR;
     int audioDevice = 0;

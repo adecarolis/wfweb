@@ -449,6 +449,15 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 	if (!isReady) {
 		isReady = true;
 	}
+	if (!audioBuffered) {
+#if defined(RTAUDIO)
+		return 0;
+#elif defined(PORTAUDIO)
+		return 0;
+#else
+		return nBytes;
+#endif
+	}
 	audioPacket packet;
 	if (ringBuf->size()>0)
 	{
@@ -458,7 +467,7 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 		{
 			if (!ringBuf->try_read(packet))
 			{
-				qDebug(logAudio()) << "No more data available but buffer is not full! sentlen:" << sentlen << " nBytes:" << nBytes ;
+				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "buffer is empty, sentlen:" << sentlen << " nBytes:" << nBytes ;
 				break;
 			}
 			currentLatency = packet.time.msecsTo(QTime::currentTime());
@@ -739,6 +748,10 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		incomingAudio(inPacket); // Call myself again to run the packet a second time (FEC)
 	}
 	lastSentSeq = inPacket.seq;
+	if (ringBuf->size() > ringBuf->capacity() / 2)
+	{
+		audioBuffered = true;
+	}
 	return;
 }
 
