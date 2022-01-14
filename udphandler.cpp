@@ -1232,6 +1232,7 @@ void udpBase::sendRetransmitRequest()
             missingMutex.lock();
             auto i = std::adjacent_find(rxSeqBuf.keys().begin(), rxSeqBuf.keys().end(), [](int l, int r) {return l + 1 < r; });
 
+            int missCounter = 0;
             while (i != rxSeqBuf.keys().end())
             {
                 quint16 j = 1 + *i;
@@ -1239,6 +1240,18 @@ void udpBase::sendRetransmitRequest()
                 if (i == rxSeqBuf.keys().end())
                 {
                     continue;
+                }
+
+                missCounter++;
+
+                if (missCounter > 20) {
+                    // More than 20 packets missing, something horrific has happened!
+                    qDebug(logUdp()) << this->metaObject()->className() << ": Too many missing packets, clearing buffer";
+                    rxSeqBuf.clear();
+                    rxMissing.clear();
+                    missingMutex.unlock();
+                    rxBufferMutex.unlock();
+                    return;
                 }
 
                 auto s = rxMissing.find(j);

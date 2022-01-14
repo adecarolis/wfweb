@@ -1586,6 +1586,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
             {
                 if (c->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                 {
+                    int missCounter = 0;
                     auto i = std::adjacent_find(c->rxSeqBuf.keys().begin(), c->rxSeqBuf.keys().end(), [](int l, int r) {return l + 1 < r; });
                     while (i != c->rxSeqBuf.keys().end())
                     {
@@ -1606,6 +1607,17 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
                             return;
                         }
 
+                        missCounter++;
+
+                        if (missCounter > 20) {
+                            // More than 20 packets missing, something horrific has happened!
+                            qDebug(logUdpServer()) << ": Too many missing packets, clearing buffer";
+                            c->rxSeqBuf.clear();
+                            c->rxMissing.clear();
+                            c->missMutex.unlock();
+                            c->rxMutex.unlock();
+                            return;
+                        }
                         auto s = c->rxMissing.find(j);
                         if (s == c->rxMissing.end())
                         {
