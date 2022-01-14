@@ -1628,6 +1628,10 @@ void wfmain::loadSettings()
 
     serverTxSetup.isinput = false;
 
+    serverRxSetup.localAFgain = 255;
+
+    serverTxSetup.localAFgain = 255;
+
     ui->serverRXAudioInputCombo->blockSignals(true);
     serverRxSetup.name = settings->value("ServerAudioInput", "").toString();
     qInfo(logGui()) << "Got Server Audio Input: " << serverRxSetup.name;
