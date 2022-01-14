@@ -439,13 +439,13 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 	if (!isReady) {
 		isReady = true;
 	}
+	audioPacket packet;
 	if (ringBuf->size()>0)
 	{
 		// Output buffer is ALWAYS 16 bit.
 		//qDebug(logAudio()) << "Read: nFrames" << nFrames << "nBytes" << nBytes;
 		while (sentlen < nBytes)
 		{
-			audioPacket packet;
 			if (!ringBuf->try_read(packet))
 			{
 				qDebug(logAudio()) << "No more data available but buffer is not full! sentlen:" << sentlen << " nBytes:" << nBytes ;
@@ -479,6 +479,7 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 					}
 					currentLatency = packet.time.msecsTo(QTime::currentTime());
 				}
+				delayedPackets++;
 			}
 
 			int send = qMin((int)nBytes - sentlen, packet.data.length());
@@ -510,6 +511,12 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
     if (nBytes > sentlen) {
         memset(buffer+sentlen,0,nBytes-sentlen);
     }
+
+	if (delayedPackets > 10) {
+		while (ringBuf->try_read(packet)); // Empty buffer
+		delayedPackets = 0;
+	}
+
 #if defined(RTAUDIO)
 	return 0;
 #elif defined(PORTAUDIO)
@@ -751,6 +758,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
 				" arrived too late (increase latency!) " <<
 				dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
+			delayedPackets++;
 		//	if (!ringBuf->try_read(packet))
 		//		break;
 		//	currentLatency = packet.time.msecsTo(QTime::currentTime());
@@ -851,6 +859,11 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 
 		ret = packet.data;
 		//qDebug(logAudio()) << "Now radio format, length" << packet.data.length();
+		if (delayedPackets > 10) {
+			while (ringBuf->try_read(packet)); // Empty buffer
+			delayedPackets = 0;
+		}
+
 	}
 
 

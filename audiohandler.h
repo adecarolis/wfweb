@@ -195,6 +195,8 @@ private:
     quint8          radioSampleBits;
     quint8          radioChannels;
 
+    int             delayedPackets=0;
+
     QMap<quint32, audioPacket>audioBuffer;
 
     double resampleRatio;
