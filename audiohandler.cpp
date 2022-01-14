@@ -743,13 +743,14 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		return;
 	}
 	if ((inPacket.seq > lastSentSeq + 1) && (setup.codec == 0x40 || setup.codec == 0x80)) {
-		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempting FEC on packet" << inPacket.seq << "as last is"<<lastSentSeq ;
+		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempting FEC on packet" << inPacket.seq << "as last is" << lastSentSeq;
 		lastSentSeq = inPacket.seq;
 		incomingAudio(inPacket); // Call myself again to run the packet a second time (FEC)
 	}
 	lastSentSeq = inPacket.seq;
-	if (ringBuf->size() > ringBuf->capacity() / 2)
+	if (!audioBuffered && ringBuf->size() > ringBuf->capacity() / 2)
 	{
+		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio buffering complete, capacity:" <<ringBuf->capacity() << ", used:" << ringBuf->size();
 		audioBuffered = true;
 	}
 	return;
