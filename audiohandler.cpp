@@ -450,6 +450,7 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 		isReady = true;
 	}
 	if (!audioBuffered) {
+		memset(buffer, 0, nBytes);
 #if defined(RTAUDIO)
 		return 0;
 #elif defined(PORTAUDIO)
@@ -528,8 +529,8 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 
     // fill the rest of the buffer with silence
     if (nBytes > sentlen) {
-        memset(buffer+sentlen,0,nBytes-sentlen);
-    }
+		memset(buffer + sentlen, 0, nBytes - sentlen);
+	}
 
 	if (delayedPackets > 10) {
 		while (ringBuf->try_read(packet)); // Empty buffer

@@ -1460,6 +1460,8 @@ void wfmain::loadSettings()
 
     prefs.localAFgain = (unsigned char)settings->value("localAFgain", defPrefs.localAFgain).toUInt();
     rxSetup.localAFgain = prefs.localAFgain;
+    txSetup.localAFgain = 255;
+
     settings->endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
