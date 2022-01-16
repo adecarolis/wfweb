@@ -16,8 +16,7 @@
     <Keyword>QtVS_v304</Keyword>
     <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
     <WindowsTargetPlatformMinVersion>10.0.19041.0</WindowsTargetPlatformMinVersion>
-    <QtMsBuild Condition="'$(QtMsBuild)'=='' or !Exists('$(QtMsBuild)\qt.targets')">$(MSBuildProjectDirectory)\QtMsBuild</QtMsBuild>
-  </PropertyGroup>
+  <QtMsBuild Condition="'$(QtMsBuild)'=='' or !Exists('$(QtMsBuild)\qt.targets')">$(MSBuildProjectDirectory)\QtMsBuild</QtMsBuild></PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <PlatformToolset>v142</PlatformToolset>
@@ -37,10 +36,7 @@
     <IntermediateDirectory>debug\</IntermediateDirectory>
     <PrimaryOutput>wfview</PrimaryOutput>
   </PropertyGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
-    <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
-  </Target>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" /><Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')"><Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." /></Target>
   <ImportGroup Label="ExtensionSettings" />
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" />
@@ -48,34 +44,8 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" />
   </ImportGroup>
-  <PropertyGroup Label="UserMacros" />
-  <ImportGroup Condition="Exists('$(QtMsBuild)\qt_defaults.props')">
-    <Import Project="$(QtMsBuild)\qt_defaults.props" />
-  </ImportGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>debug\</OutDir>
-    <IntDir>debug\</IntDir>
-    <TargetName>wfview</TargetName>
-    <IgnoreImportLibrary>true</IgnoreImportLibrary>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>release\</OutDir>
-    <IntDir>release\</IntDir>
-    <TargetName>wfview</TargetName>
-    <IgnoreImportLibrary>true</IgnoreImportLibrary>
-    <LinkIncremental>false</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <QtInstall>msvc2019</QtInstall>
-    <QtModules>core;network;gui;multimedia;widgets;serialport;printsupport</QtModules>
-  </PropertyGroup>
-  <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <QtInstall>msvc2019</QtInstall>
-    <QtModules>core;network;gui;multimedia;widgets;serialport;printsupport</QtModules>
-  </PropertyGroup>
-  <ImportGroup Condition="Exists('$(QtMsBuild)\qt.props')">
-    <Import Project="$(QtMsBuild)\qt.props" />
-  </ImportGroup>
+  <PropertyGroup Label="UserMacros" /><ImportGroup Condition="Exists('$(QtMsBuild)\qt_defaults.props')"><Import Project="$(QtMsBuild)\qt_defaults.props" /></ImportGroup><PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"><OutDir>debug\</OutDir><IntDir>debug\</IntDir><TargetName>wfview</TargetName><IgnoreImportLibrary>true</IgnoreImportLibrary></PropertyGroup><PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"><OutDir>release\</OutDir><IntDir>release\</IntDir><TargetName>wfview</TargetName><IgnoreImportLibrary>true</IgnoreImportLibrary><LinkIncremental>false</LinkIncremental></PropertyGroup><PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"><QtInstall>msvc2019</QtInstall><QtModules>core;network;gui;multimedia;widgets;serialport;printsupport</QtModules></PropertyGroup><PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"><QtInstall>msvc2019</QtInstall><QtModules>core;network;gui;multimedia;widgets;serialport;printsupport</QtModules></PropertyGroup><ImportGroup Condition="Exists('$(QtMsBuild)\qt.props')"><Import Project="$(QtMsBuild)\qt.props" /></ImportGroup>
+  
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <AdditionalIncludeDirectories>.;..\qcustomplot;..\opus\include;resampler;release;/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -87,16 +57,14 @@
       <ExceptionHandling>Sync</ExceptionHandling>
       <ObjectFileName>release\</ObjectFileName>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION="1.2d";QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;PREFIX="/usr/local";GITSHORT="62771f6";HOST="wfview.org";UNAME="build";NDEBUG;QT_NO_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION="1.2d";QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;PREFIX="/usr/local";GITSHORT="01ea44d";HOST="wfview.org";UNAME="build";NDEBUG;QT_NO_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
-      <ProgramDataBaseFileName>
-      </ProgramDataBaseFileName>
+      <ProgramDataBaseFileName></ProgramDataBaseFileName>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
       <WarningLevel>Level3</WarningLevel>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-    </ClCompile>
+    <MultiProcessorCompilation>true</MultiProcessorCompilation></ClCompile>
     <Link>
       <AdditionalDependencies>..\opus\win32\VS2015\Win32\Release\opus.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\opus\win32\VS2015\Win32\Release;C:\opensslx86\lib;C:\Utils\my_sql\mysql-5.7.25-win32\lib;C:\Utils\postgresqlx86\pgsql\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -117,28 +85,9 @@
       <WarningLevel>0</WarningLevel>
     </Midl>
     <ResourceCompile>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION="1.2d";QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;PREFIX=\"/usr/local\";GITSHORT=\"62771f6\";HOST=\"wfview.org\";UNAME=\"build\";NDEBUG;QT_NO_DEBUG;QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION=\"1.2d\";QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;PREFIX=\"/usr/local\";GITSHORT=\"01ea44d\";HOST=\"wfview.org\";UNAME=\"build\";NDEBUG;QT_NO_DEBUG;QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
-    <QtMoc>
-      <CompilerFlavor>msvc</CompilerFlavor>
-      <Include>./$(Configuration)/moc_predefs.h</Include>
-      <ExecutionDescription>Moc'ing %(Identity)...</ExecutionDescription>
-      <DynamicSource>output</DynamicSource>
-      <QtMocDir>$(Configuration)</QtMocDir>
-      <QtMocFileName>moc_%(Filename).cpp</QtMocFileName>
-    </QtMoc>
-    <QtRcc>
-      <Compression>default</Compression>
-      <ExecutionDescription>Rcc'ing %(Identity)...</ExecutionDescription>
-      <QtRccDir>$(Configuration)</QtRccDir>
-      <QtRccFileName>qrc_%(Filename).cpp</QtRccFileName>
-    </QtRcc>
-    <QtUic>
-      <ExecutionDescription>Uic'ing %(Identity)...</ExecutionDescription>
-      <QtUicDir>$(ProjectDir)</QtUicDir>
-      <QtUicFileName>ui_%(Filename).h</QtUicFileName>
-    </QtUic>
-  </ItemDefinitionGroup>
+  <QtMoc><CompilerFlavor>msvc</CompilerFlavor><Include>./$(Configuration)/moc_predefs.h</Include><ExecutionDescription>Moc'ing %(Identity)...</ExecutionDescription><DynamicSource>output</DynamicSource><QtMocDir>$(Configuration)</QtMocDir><QtMocFileName>moc_%(Filename).cpp</QtMocFileName></QtMoc><QtRcc><Compression>default</Compression><ExecutionDescription>Rcc'ing %(Identity)...</ExecutionDescription><QtRccDir>$(Configuration)</QtRccDir><QtRccFileName>qrc_%(Filename).cpp</QtRccFileName></QtRcc><QtUic><ExecutionDescription>Uic'ing %(Identity)...</ExecutionDescription><QtUicDir>$(ProjectDir)</QtUicDir><QtUicFileName>ui_%(Filename).h</QtUicFileName></QtUic></ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <AdditionalIncludeDirectories>.;..\qcustomplot;..\opus\include;resampler;debug;/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -150,14 +99,13 @@
       <ExceptionHandling>Sync</ExceptionHandling>
       <ObjectFileName>debug\</ObjectFileName>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION="1.2d";QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;PREFIX="/usr/local";GITSHORT="62771f6";HOST="wfview.org";UNAME="build";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION="1.2d";QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;PREFIX="/usr/local";GITSHORT="01ea44d";HOST="wfview.org";UNAME="build";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
       <WarningLevel>Level3</WarningLevel>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-    </ClCompile>
+    <MultiProcessorCompilation>true</MultiProcessorCompilation></ClCompile>
     <Link>
       <AdditionalDependencies>..\opus\win32\VS2015\Win32\Debug\opus.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\opus\win32\VS2015\Win32\Debug;C:\opensslx86\lib;C:\Utils\my_sql\mysql-5.7.25-win32\lib;C:\Utils\postgresqlx86\pgsql\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -176,28 +124,9 @@
       <WarningLevel>0</WarningLevel>
     </Midl>
     <ResourceCompile>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION="1.2d";QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;PREFIX=\"/usr/local\";GITSHORT=\"62771f6\";HOST=\"wfview.org\";UNAME=\"build\";QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION=\"1.2d\";QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;PREFIX=\"/usr/local\";GITSHORT=\"01ea44d\";HOST=\"wfview.org\";UNAME=\"build\";QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
-    <QtMoc>
-      <CompilerFlavor>msvc</CompilerFlavor>
-      <Include>./$(Configuration)/moc_predefs.h</Include>
-      <ExecutionDescription>Moc'ing %(Identity)...</ExecutionDescription>
-      <DynamicSource>output</DynamicSource>
-      <QtMocDir>$(Configuration)</QtMocDir>
-      <QtMocFileName>moc_%(Filename).cpp</QtMocFileName>
-    </QtMoc>
-    <QtRcc>
-      <Compression>default</Compression>
-      <ExecutionDescription>Rcc'ing %(Identity)...</ExecutionDescription>
-      <QtRccDir>$(Configuration)</QtRccDir>
-      <QtRccFileName>qrc_%(Filename).cpp</QtRccFileName>
-    </QtRcc>
-    <QtUic>
-      <ExecutionDescription>Uic'ing %(Identity)...</ExecutionDescription>
-      <QtUicDir>$(ProjectDir)</QtUicDir>
-      <QtUicFileName>ui_%(Filename).h</QtUicFileName>
-    </QtUic>
-  </ItemDefinitionGroup>
+  <QtMoc><CompilerFlavor>msvc</CompilerFlavor><Include>./$(Configuration)/moc_predefs.h</Include><ExecutionDescription>Moc'ing %(Identity)...</ExecutionDescription><DynamicSource>output</DynamicSource><QtMocDir>$(Configuration)</QtMocDir><QtMocFileName>moc_%(Filename).cpp</QtMocFileName></QtMoc><QtRcc><Compression>default</Compression><ExecutionDescription>Rcc'ing %(Identity)...</ExecutionDescription><QtRccDir>$(Configuration)</QtRccDir><QtRccFileName>qrc_%(Filename).cpp</QtRccFileName></QtRcc><QtUic><ExecutionDescription>Uic'ing %(Identity)...</ExecutionDescription><QtUicDir>$(ProjectDir)</QtUicDir><QtUicFileName>ui_%(Filename).h</QtUicFileName></QtUic></ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="aboutbox.cpp" />
     <ClCompile Include="audiohandler.cpp" />
@@ -220,58 +149,192 @@
     <ClCompile Include="transceiveradjustments.cpp" />
     <ClCompile Include="udphandler.cpp" />
     <ClCompile Include="udpserver.cpp" />
-    <ClCompile Include="udpserversetup.cpp" />
     <ClCompile Include="wfmain.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="aboutbox.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
     <ClInclude Include="resampler\arch.h" />
     <QtMoc Include="audiohandler.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
     <ClInclude Include="audiotaper.h" />
     <QtMoc Include="calibrationwindow.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
     <QtMoc Include="commhandler.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
     <ClInclude Include="freqmemory.h" />
     <ClInclude Include="logcategories.h" />
     <QtMoc Include="meter.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
     <ClInclude Include="packettypes.h" />
     <QtMoc Include="pttyhandler.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
     <QtMoc Include="..\qcustomplot\qcustomplot.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
     <QtMoc Include="qledlabel.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
     <ClInclude Include="repeaterattributes.h" />
     <QtMoc Include="repeatersetup.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
     <ClInclude Include="resampler\resample_sse.h" />
     <QtMoc Include="rigcommander.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
     <QtMoc Include="rigctld.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
     <ClInclude Include="rigidentities.h" />
-    <ClInclude Include="rigstate.h" />
     <ClInclude Include="ring\ring.h" />
     <QtMoc Include="satellitesetup.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
     <ClInclude Include="resampler\speex_resampler.h" />
     <QtMoc Include="transceiveradjustments.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
     <QtMoc Include="udphandler.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
     <QtMoc Include="udpserver.h">
-    </QtMoc>
-    <QtMoc Include="udpserversetup.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
     <ClInclude Include="ulaw.h" />
     <QtMoc Include="wfmain.h">
+      
+      
+      
+      
+      
+      
+      
+      
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <FileType>Document</FileType>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
@@ -288,21 +351,117 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">release\moc_predefs.h;%(Outputs)</Outputs>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </CustomBuild>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="aboutbox.ui">
+      
+      
+      
+      
+      
+      
+      
+      
+      
     </QtUic>
     <QtUic Include="calibrationwindow.ui">
+      
+      
+      
+      
+      
+      
+      
+      
+      
     </QtUic>
     <QtUic Include="repeatersetup.ui">
+      
+      
+      
+      
+      
+      
+      
+      
+      
     </QtUic>
     <QtUic Include="satellitesetup.ui">
+      
+      
+      
+      
+      
+      
+      
+      
+      
     </QtUic>
     <QtUic Include="transceiveradjustments.ui">
+      
+      
+      
+      
+      
+      
+      
+      
+      
     </QtUic>
     <QtUic Include="udpserversetup.ui">
+      
+      
+      
+      
+      
+      
+      
+      
+      
     </QtUic>
     <QtUic Include="wfmain.ui">
+      
+      
+      
+      
+      
+      
+      
+      
+      
     </QtUic>
   </ItemGroup>
   <ItemGroup>
@@ -336,16 +495,30 @@
     <None Include="qdarkstyle\rc\radio_unchecked_disabled.png" />
     <None Include="qdarkstyle\rc\radio_unchecked_focus.png" />
     <QtRcc Include="resources\resources.qrc">
-      <InitFuncName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">resources</InitFuncName>
-      <InitFuncName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">resources</InitFuncName>
-    </QtRcc>
+      
+      
+      
+      
+      
+      
+      
+      
+      
+    <InitFuncName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">resources</InitFuncName><InitFuncName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">resources</InitFuncName></QtRcc>
     <None Include="qdarkstyle\rc\right_arrow.png" />
     <None Include="qdarkstyle\rc\right_arrow_disabled.png" />
     <None Include="qdarkstyle\rc\sizegrip.png" />
     <QtRcc Include="qdarkstyle\style.qrc">
-      <InitFuncName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">style</InitFuncName>
-      <InitFuncName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">style</InitFuncName>
-    </QtRcc>
+      
+      
+      
+      
+      
+      
+      
+      
+      
+    <InitFuncName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">style</InitFuncName><InitFuncName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">style</InitFuncName></QtRcc>
     <None Include="qdarkstyle\style.qss" />
     <None Include="qdarkstyle\rc\stylesheet-branch-end.png" />
     <None Include="qdarkstyle\rc\stylesheet-branch-more.png" />
@@ -364,9 +537,6 @@
   <ItemGroup>
     <ResourceCompile Include=".\wfview_resource.rc" />
   </ItemGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
-    <Import Project="$(QtMsBuild)\qt.targets" />
-  </ImportGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" /><ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')"><Import Project="$(QtMsBuild)\qt.targets" /></ImportGroup>
   <ImportGroup Label="ExtensionTargets" />
 </Project>

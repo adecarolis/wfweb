@@ -63,7 +63,6 @@ bool audioHandler::init(audioSetup setupIn)
 	if (isInitialized) {
 		return false;
 	}
-
 	/*
 	0x01 uLaw 1ch 8bit
 	0x02 PCM 1ch 8bit
@@ -87,6 +86,17 @@ bool audioHandler::init(audioSetup setupIn)
 	if (setup.codec == 0x04 || setup.codec == 0x10 || setup.codec == 0x40 || setup.codec == 0x80) {
 		setup.bits = 16;
 	}
+
+	qDebug(logAudio()) << "Creating" << (setup.isinput ? "Input" : "Output") << "audio device:" << setup.name <<
+		", bits" << setup.bits <<
+		", codec" << setup.codec <<
+		", latency" << setup.latency <<
+		", localAFGain" << setup.localAFgain <<
+		", radioChan" << setup.radioChan <<
+		", resampleQuality" << setup.resampleQuality <<
+		", samplerate" << setup.samplerate <<
+		", uLaw" << setup.ulaw;
+
 
 	ringBuf = new wilt::Ring<audioPacket>(setupIn.latency / 8 + 1); // Should be customizable.
 
@@ -440,16 +450,26 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 	if (!isReady) {
 		isReady = true;
 	}
+	if (!audioBuffered) {
+		memset(buffer, 0, nBytes);
+#if defined(RTAUDIO)
+		return 0;
+#elif defined(PORTAUDIO)
+		return 0;
+#else
+		return nBytes;
+#endif
+	}
+	audioPacket packet;
 	if (ringBuf->size()>0)
 	{
 		// Output buffer is ALWAYS 16 bit.
 		//qDebug(logAudio()) << "Read: nFrames" << nFrames << "nBytes" << nBytes;
 		while (sentlen < nBytes)
 		{
-			audioPacket packet;
 			if (!ringBuf->try_read(packet))
 			{
-				qDebug(logAudio()) << "No more data available but buffer is not full! sentlen:" << sentlen << " nBytes:" << nBytes ;
+				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "buffer is empty, sentlen:" << sentlen << " nBytes:" << nBytes ;
 				break;
 			}
 			currentLatency = packet.time.msecsTo(QTime::currentTime());
@@ -480,6 +500,7 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 					}
 					currentLatency = packet.time.msecsTo(QTime::currentTime());
 				}
+				delayedPackets++;
 			}
 
 			int send = qMin((int)nBytes - sentlen, packet.data.length());
@@ -509,8 +530,14 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 
     // fill the rest of the buffer with silence
     if (nBytes > sentlen) {
-        memset(buffer+sentlen,0,nBytes-sentlen);
-    }
+		memset(buffer + sentlen, 0, nBytes - sentlen);
+	}
+
+	if (delayedPackets > 10) {
+		while (ringBuf->try_read(packet)); // Empty buffer
+		delayedPackets = 0;
+	}
+
 #if defined(RTAUDIO)
 	return 0;
 #elif defined(PORTAUDIO)
@@ -555,20 +582,19 @@ qint64 audioHandler::writeData(const char* data, qint64 nBytes)
 			int send = qMin((int)(nBytes - sentlen), chunkBytes - tempBuf.sent);
 			tempBuf.data.append(QByteArray::fromRawData(data + sentlen, send));
 			sentlen = sentlen + send;
-			tempBuf.seq = 0; // Not used in TX
+			tempBuf.seq = lastSentSeq;
 			tempBuf.time = QTime::currentTime();
 			tempBuf.sent = tempBuf.sent + send;
 		}
 		else {
-			//ringBuf->write(tempBuf);
-			
 			if (!ringBuf->try_write(tempBuf))
 			{
-				qDebug(logAudio()) << "outgoing audio buffer full!";
+				qDebug(logAudio()) <<  (setup.isinput ? "Input" : "Output") << " audio buffer full!";
 				break;
 			} 
 			tempBuf.data.clear();
 			tempBuf.sent = 0;
+			lastSentSeq++;
 		}
 	}
 
@@ -593,6 +619,13 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		qDebug(logAudio()) << "Packet received when stream was not ready";
 		return;
 	}
+	if (!audioBuffered && ringBuf->size() > ringBuf->capacity() / 2)
+	{
+		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio buffering complete, capacity:" << ringBuf->capacity() << ", used:" << ringBuf->size();
+		audioBuffered = true;
+	}
+
+	audioPacket livePacket = inPacket;
 
 	if (setup.codec == 0x40 || setup.codec == 0x80) {
 		unsigned char* in = (unsigned char*)inPacket.data.data();
@@ -600,17 +633,25 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		/* Decode the frame. */
 		QByteArray outPacket((setup.samplerate / 50) *  sizeof(qint16) * setup.radioChan, (char)0xff); // Preset the output buffer size.
 		qint16* out = (qint16*)outPacket.data();
-		int nSamples = opus_packet_get_nb_samples(in, inPacket.data.size(),setup.samplerate);
-		if (nSamples != setup.samplerate / 50)
+		int nSamples = opus_packet_get_nb_samples(in, livePacket.data.size(),setup.samplerate);
+		if (nSamples == -1) {
+			// No opus data yet?
+			return;
+		} 
+		else if (nSamples != setup.samplerate / 50)
 		{
 			qInfo(logAudio()) << "Opus nSamples=" << nSamples << " expected:" << (setup.samplerate / 50);
 			return;
 		}
-		nSamples = opus_decode(decoder, in, inPacket.data.size(), out, (setup.samplerate / 50), 0);
-
+		if (livePacket.seq > lastSentSeq + 1) {
+			nSamples = opus_decode(decoder, in, livePacket.data.size(), out, (setup.samplerate / 50), 1);
+		}
+		else {
+			nSamples = opus_decode(decoder, in, livePacket.data.size(), out, (setup.samplerate / 50), 0);
+		}
 		if (nSamples < 0)
 		{
-			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decode failed:" << opus_strerror(nSamples) << "packet size" << inPacket.data.length();
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decode failed:" << opus_strerror(nSamples) << "packet size" << livePacket.data.length();
 			return;
 		}
 		else {
@@ -619,22 +660,22 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoder mismatch: nBytes:" << nSamples * sizeof(qint16) * setup.radioChan << "outPacket:" << outPacket.size();
 				outPacket.resize(nSamples * sizeof(qint16) * setup.radioChan);
 			}
-			//qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << inPacket.data.size() << "bytes, into" << outPacket.length() << "bytes";
-			inPacket.data.clear();
-			inPacket.data = outPacket; // Replace incoming data with converted.
+			//qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << livePacket.data.size() << "bytes, into" << outPacket.length() << "bytes";
+			livePacket.data.clear();
+			livePacket.data = outPacket; // Replace incoming data with converted.
 		}
 	}
 
-    //qDebug(logAudio()) << "Got" << setup.bits << "bits, length" << inPacket.data.length();
+    //qDebug(logAudio()) << "Got" << setup.bits << "bits, length" << livePacket.data.length();
 	// Incoming data is 8bits?
 	if (setup.bits == 8)
 	{
 		// Current packet is 8bit so need to create a new buffer that is 16bit 
-		QByteArray outPacket((int)inPacket.data.length() * 2 * (devChannels / setup.radioChan), (char)0xff);
+		QByteArray outPacket((int)livePacket.data.length() * 2 * (devChannels / setup.radioChan), (char)0xff);
 		qint16* out = (qint16*)outPacket.data();
-		for (int f = 0; f < inPacket.data.length(); f++)
+		for (int f = 0; f < livePacket.data.length(); f++)
 		{
-			int samp = (quint8)inPacket.data[f];
+			int samp = (quint8)livePacket.data[f];
 			for (int g = setup.radioChan; g <= devChannels; g++)
 			{
 				if (setup.ulaw)
@@ -643,30 +684,30 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 					*out++ = (qint16)((samp - 128) << 8) * this->volume;
 			}
 		}
-		inPacket.data.clear();
-		inPacket.data = outPacket; // Replace incoming data with converted.
+		livePacket.data.clear();
+		livePacket.data = outPacket; // Replace incoming data with converted.
 	}
 	else 
 	{
 		// This is already a 16bit stream, do we need to convert to stereo?
 		if (setup.radioChan == 1 && devChannels > 1) {
 			// Yes
-			QByteArray outPacket(inPacket.data.length() * 2, (char)0xff); // Preset the output buffer size.
-			qint16* in = (qint16*)inPacket.data.data();
+			QByteArray outPacket(livePacket.data.length() * 2, (char)0xff); // Preset the output buffer size.
+			qint16* in = (qint16*)livePacket.data.data();
 			qint16* out = (qint16*)outPacket.data();
-			for (int f = 0; f < inPacket.data.length() / 2; f++)
+			for (int f = 0; f < livePacket.data.length() / 2; f++)
 			{
 				*out++ = (qint16)*in * this->volume;
 				*out++ = (qint16)*in++ * this->volume;
 			}
-			inPacket.data.clear();
-			inPacket.data = outPacket; // Replace incoming data with converted.
+			livePacket.data.clear();
+			livePacket.data = outPacket; // Replace incoming data with converted.
 		}
 		else 
 		{
 			// We already have the same number of channels so just update volume.
-			qint16* in = (qint16*)inPacket.data.data();
-			for (int f = 0; f < inPacket.data.length() / 2; f++)
+			qint16* in = (qint16*)livePacket.data.data();
+			for (int f = 0; f < livePacket.data.length() / 2; f++)
 			{
                 *in = *in * this->volume;
                 in++;
@@ -678,17 +719,17 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	/*	We now have an array of 16bit samples in the NATIVE samplerate of the radio
 		If the radio sample rate is below 48000, we need to resample.
 		*/
-    //qDebug(logAudio()) << "Now 16 bit stereo, length" << inPacket.data.length();
+    //qDebug(logAudio()) << "Now 16 bit stereo, length" << livePacket.data.length();
 
 	if (resampleRatio != 1.0) {
 
 		// We need to resample
 		// We have a stereo 16bit stream.
-		quint32 outFrames = ((inPacket.data.length() / 2 / devChannels) * resampleRatio);
-		quint32 inFrames = (inPacket.data.length() / 2 / devChannels);
+		quint32 outFrames = ((livePacket.data.length() / 2 / devChannels) * resampleRatio);
+		quint32 inFrames = (livePacket.data.length() / 2 / devChannels);
 		QByteArray outPacket(outFrames * 4, (char)0xff); // Preset the output buffer size.
 
-		const qint16* in = (qint16*)inPacket.data.constData();
+		const qint16* in = (qint16*)livePacket.data.constData();
 		qint16* out = (qint16*)outPacket.data();
 
 		int err = 0;
@@ -696,17 +737,24 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		if (err) {
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
 		}
-		inPacket.data.clear();
-		inPacket.data = outPacket; // Replace incoming data with converted.
+		livePacket.data.clear();
+		livePacket.data = outPacket; // Replace incoming data with converted.
 	}
 
-    //qDebug(logAudio()) << "Adding packet to buffer:" << inPacket.seq << ": " << inPacket.data.length();
-	lastSentSeq = inPacket.seq;
+    //qDebug(logAudio()) << "Adding packet to buffer:" << livePacket.seq << ": " << livePacket.data.length();
 
-	if (!ringBuf->try_write(inPacket))
+	if (!ringBuf->try_write(livePacket))
 	{
 		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Buffer full! capacity:" << ringBuf->capacity() << "length" << ringBuf->size();
+		while (ringBuf->try_read(inPacket)); // Empty buffer
+		return;
 	}
+	if ((inPacket.seq > lastSentSeq + 1) && (setup.codec == 0x40 || setup.codec == 0x80)) {
+		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempting FEC on packet" << inPacket.seq << "as last is" << lastSentSeq;
+		lastSentSeq = inPacket.seq;
+		incomingAudio(inPacket); // Call myself again to run the packet a second time (FEC)
+	}
+	lastSentSeq = inPacket.seq;
 	return;
 }
 
@@ -715,6 +763,7 @@ void audioHandler::changeLatency(const quint16 newSize)
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Changing latency to: " << newSize << " from " << setup.latency;
 	setup.latency = newSize;
 	delete ringBuf;
+	audioBuffered = false;
 	ringBuf = new wilt::Ring<audioPacket>(setup.latency / 8 + 1); // Should be customizable.
 }
 
@@ -736,8 +785,9 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 
 		if (currentLatency > setup.latency) {
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
-				" arrived too late (increase output latency!) " <<
+				" arrived too late (increase latency!) " <<
 				dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
+			delayedPackets++;
 		//	if (!ringBuf->try_read(packet))
 		//		break;
 		//	currentLatency = packet.time.msecsTo(QTime::currentTime());
@@ -838,6 +888,11 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 
 		ret = packet.data;
 		//qDebug(logAudio()) << "Now radio format, length" << packet.data.length();
+		if (delayedPackets > 10) {
+			while (ringBuf->try_read(packet)); // Empty buffer
+			delayedPackets = 0;
+		}
+
 	}
 
 

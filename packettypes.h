@@ -35,6 +35,9 @@
 #define AUDIO_SIZE            0x18
 #define DATA_SIZE               0x15
 
+#define BUFSIZE 50 // Number of packets to buffer
+#define TXAUDIO_PERIOD 20 
+
 // 0x10 length control packet (connect/disconnect/idle.)
 typedef union control_packet {
     struct {
@@ -354,7 +357,7 @@ typedef union capabilities_packet {
         quint32 baudrate;         // 0x9c
         quint16 capf;             // 0xa0
         char unusedi;             // 0xa2
-        quint16 capg;             // 0xa3
+        quint16 capg;         // 0xa3
         char unusedj[3];          // 0xa5
     };
     char packet[CAPABILITIES_SIZE];

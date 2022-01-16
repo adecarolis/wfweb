@@ -1099,10 +1099,6 @@ void udpBase::dataReceived(QByteArray r)
                         // This is response to OUR request so increment counter
                         pingSendSeq++;
                     }
-                    else {
-                        // Not sure what to do here, need to spend more time with the protocol but will try sending ping with same seq next time.
-                        //qInfo(logUdp()) << this->metaObject()->className() << "Received out-of-sequence ping response. Sent:" << pingSendSeq << " received " << in->seq;
-                    }
                 }
                 else {
                     qInfo(logUdp()) << this->metaObject()->className() << "Unhandled response to ping. I have never seen this! 0x10=" << r[16];
@@ -1158,7 +1154,7 @@ void udpBase::dataReceived(QByteArray r)
     {
         rxBufferMutex.lock();
         if (rxSeqBuf.isEmpty()) {
-            if (rxSeqBuf.size() > 400)
+            if (rxSeqBuf.size() > BUFSIZE)
             {
                 rxSeqBuf.erase(rxSeqBuf.begin());
             }
@@ -1182,7 +1178,7 @@ void udpBase::dataReceived(QByteArray r)
             {
                 // Add incoming packet to the received buffer and if it is in the missing buffer, remove it.
                 rxSeqBuf.insert(in->seq, QTime::currentTime());
-                if (rxSeqBuf.size() > 400)
+                if (rxSeqBuf.size() > BUFSIZE)
                 {
                     rxSeqBuf.erase(rxSeqBuf.begin());
                 }
@@ -1233,37 +1229,57 @@ void udpBase::sendRetransmitRequest()
             // We have at least 1 missing packet!
             qDebug(logUdp()) << "Missing Seq: size=" << rxSeqBuf.size() << "firstKey=" << rxSeqBuf.firstKey() << "lastKey=" << rxSeqBuf.lastKey() << "missing=" << rxSeqBuf.lastKey() - rxSeqBuf.firstKey() - rxSeqBuf.size() + 1;
             // We are missing packets so iterate through the buffer and add the missing ones to missing packet list
-            for (int i = 0; i < rxSeqBuf.keys().length() - 1; i++) {
-                missingMutex.lock();
-                for (quint16 j = rxSeqBuf.keys()[i] + 1; j < rxSeqBuf.keys()[i + 1]; j++) {
-                    auto s = rxMissing.find(j);
-                    if (s == rxMissing.end())
-                    {
-                        // We haven't seen this missing packet before
-                        qDebug(logUdp()) << this->metaObject()->className() << ": Adding to missing buffer (len=" << rxMissing.size() << "): " << j;
-                        if (rxMissing.size() > 25)
-                        {
-                            rxMissing.erase(rxMissing.begin());
-                        }
-                        rxMissing.insert(j, 0);
-                        if (rxSeqBuf.size() > 400)
-                        {
-                            rxSeqBuf.erase(rxSeqBuf.begin());
-                        }
-                        rxSeqBuf.insert(j, QTime::currentTime()); // Add this missing packet to the rxbuffer as we now long about it.
-                        packetsLost++;
-                    }
-                    else {
-                        if (s.value() == 4)
-                        {
-                            // We have tried 4 times to request this packet, time to give up!
-                            s = rxMissing.erase(s);
-                        }
+            missingMutex.lock();
+            auto i = std::adjacent_find(rxSeqBuf.keys().begin(), rxSeqBuf.keys().end(), [](int l, int r) {return l + 1 < r; });
 
+            int missCounter = 0;
+            while (i != rxSeqBuf.keys().end())
+            {
+                quint16 j = 1 + *i;
+                ++i;
+                if (i == rxSeqBuf.keys().end())
+                {
+                    continue;
+                }
+
+                missCounter++;
+
+                if (missCounter > 20) {
+                    // More than 20 packets missing, something horrific has happened!
+                    qDebug(logUdp()) << this->metaObject()->className() << ": Too many missing packets, clearing buffer";
+                    rxSeqBuf.clear();
+                    rxMissing.clear();
+                    missingMutex.unlock();
+                    rxBufferMutex.unlock();
+                    return;
+                }
+
+                auto s = rxMissing.find(j);
+                if (s == rxMissing.end())
+                {
+                    // We haven't seen this missing packet before
+                    qDebug(logUdp()) << this->metaObject()->className() << ": Adding to missing buffer (len=" << rxMissing.size() << "): " << j;
+                    if (rxMissing.size() > 25)
+                    {
+                        rxMissing.erase(rxMissing.begin());
+                    }
+                    rxMissing.insert(j, 0);
+                    if (rxSeqBuf.size() > BUFSIZE)
+                    {
+                        rxSeqBuf.erase(rxSeqBuf.begin());
+                    }
+                    rxSeqBuf.insert(j, QTime::currentTime()); // Add this missing packet to the rxbuffer as we now long about it.
+                    packetsLost++;
+                }
+                else {
+                    if (s.value() == 4)
+                    {
+                        // We have tried 4 times to request this packet, time to give up!
+                        s = rxMissing.erase(s);
                     }
                 }
-                missingMutex.unlock();
             }
+            missingMutex.unlock();
         }
     }
     rxBufferMutex.unlock();
@@ -1392,7 +1408,7 @@ void udpBase::sendTrackedPacket(QByteArray d)
             congestion = 0;
         }
         txSeqBuf.insert(sendSeq,s);
-        if (txSeqBuf.size() > 400)
+        if (txSeqBuf.size() > BUFSIZE)
         {
             txSeqBuf.erase(txSeqBuf.begin());
         }

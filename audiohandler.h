@@ -165,7 +165,7 @@ private:
     void reinit();
     bool            isInitialized=false;
     bool            isReady = false;
-
+    bool            audioBuffered = false;
 #if defined(RTAUDIO)
     RtAudio* audio = Q_NULLPTR;
     int audioDevice = 0;
@@ -194,6 +194,8 @@ private:
     quint16         nativeSampleRate=0;
     quint8          radioSampleBits;
     quint8          radioChannels;
+
+    int             delayedPackets=0;
 
     QMap<quint32, audioPacket>audioBuffer;
 

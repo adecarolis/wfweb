@@ -67,20 +67,20 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     setUIToPrefs();
 
-    setServerToPrefs();
-
     setInitialTiming();
 
     openRig();
 
     rigConnections();
 
-    if (serverConfig.enabled && udp != Q_NULLPTR) {
+/*    if (serverConfig.enabled && udp != Q_NULLPTR) {
         // Server
         connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
         connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
         connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
-    }
+    } */
+
+    setServerToPrefs();
 
     amTransmitting = false;
 
@@ -976,7 +976,13 @@ void wfmain::setServerToPrefs()
         connect(this, SIGNAL(initServer(SERVERCONFIG, audioSetup, audioSetup)), udp, SLOT(init(SERVERCONFIG, audioSetup, audioSetup)));
         connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
 
-        if (!prefs.enableLAN && udp != Q_NULLPTR) {
+        if (rig != Q_NULLPTR) {
+            connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
+            connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
+            connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
+        }
+
+        if (!prefs.enableLAN) {
             connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(receiveStatusUpdate(QString)));
         }
 
@@ -1133,8 +1139,8 @@ void wfmain::setAudioDevicesUI()
     // Set these to default audio devices initially.
     rxSetup.port = QAudioDeviceInfo::defaultOutputDevice();
     txSetup.port = QAudioDeviceInfo::defaultInputDevice();
-    serverRxSetup.port = QAudioDeviceInfo::defaultOutputDevice();
-    serverTxSetup.port = QAudioDeviceInfo::defaultInputDevice();
+    serverRxSetup.port = QAudioDeviceInfo::defaultInputDevice();
+    serverTxSetup.port = QAudioDeviceInfo::defaultOutputDevice();
 #endif
 }
 
@@ -1458,6 +1464,8 @@ void wfmain::loadSettings()
 
     prefs.localAFgain = (unsigned char)settings->value("localAFgain", defPrefs.localAFgain).toUInt();
     rxSetup.localAFgain = prefs.localAFgain;
+    txSetup.localAFgain = 255;
+
     settings->endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
@@ -1623,7 +1631,12 @@ void wfmain::loadSettings()
     ui->serverAudioPortText->setText(QString::number(serverConfig.audioPort));
 
     serverRxSetup.isinput = true;
+
     serverTxSetup.isinput = false;
+
+    serverRxSetup.localAFgain = 255;
+
+    serverTxSetup.localAFgain = 255;
 
     ui->serverRXAudioInputCombo->blockSignals(true);
     serverRxSetup.name = settings->value("ServerAudioInput", "").toString();
@@ -1634,7 +1647,7 @@ void wfmain::loadSettings()
 #if defined(RTAUDIO)
         serverRxSetup.port = ui->serverRXAudioInputCombo->itemData(serverAudioInputIndex).toInt();
 #elif defined(PORTAUDIO)
-        serverRxSetup.port = ui->audioOutputCombo->itemData(serverAudioInputIndex).toInt();
+        serverRxSetup.port = ui->serverRXAudioInputCombo->itemData(serverAudioInputIndex).toInt();
 #else
         QVariant v = ui->serverRXAudioInputCombo->currentData();
         serverRxSetup.port = v.value<QAudioDeviceInfo>();
@@ -1642,7 +1655,8 @@ void wfmain::loadSettings()
     }
     ui->serverRXAudioInputCombo->blockSignals(false);
 
-    serverTxSetup.resampleQuality = settings->value("ResampleQuality", "4").toInt();
+    serverRxSetup.resampleQuality = rxSetup.resampleQuality;
+    serverTxSetup.resampleQuality = serverRxSetup.resampleQuality;
 
     ui->serverTXAudioOutputCombo->blockSignals(true);
     serverTxSetup.name = settings->value("ServerAudioOutput", "").toString();
@@ -1656,12 +1670,10 @@ void wfmain::loadSettings()
         serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(serverAudioOutputIndex).toInt();
 #else
         QVariant v = ui->serverTXAudioOutputCombo->currentData();
-        serverRxSetup.port = v.value<QAudioDeviceInfo>();
+        serverTxSetup.port = v.value<QAudioDeviceInfo>();
 #endif
     }
     ui->serverTXAudioOutputCombo->blockSignals(false);
-
-    serverTxSetup.resampleQuality = settings->value("ResampleQuality", "4").toInt();
 
     int row = 0;
     ui->serverUsersTable->setRowCount(0);
@@ -1786,17 +1798,17 @@ void wfmain::on_serverEnableCheckbox_clicked(bool checked)
 
 void wfmain::on_serverControlPortText_textChanged(QString text)
 {
-    serverConfig.controlPort = ui->serverControlPortText->text().toInt();
+    serverConfig.controlPort = text.toInt();
 }
 
 void wfmain::on_serverCivPortText_textChanged(QString text)
 {
-    serverConfig.civPort = ui->serverCivPortText->text().toInt();
+    serverConfig.civPort = text.toInt();
 }
 
 void wfmain::on_serverAudioPortText_textChanged(QString text)
 {
-    serverConfig.audioPort = ui->serverAudioPortText->text().toInt();
+    serverConfig.audioPort = text.toInt();
 }
 
 void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
