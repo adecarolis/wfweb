@@ -531,6 +531,7 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Too many delayed packets, flushing buffer";
 		while (ringBuf->try_read(packet)); // Empty buffer
 		delayedPackets = 0;
+		audioBuffered = false;
 	}
 
 #if defined(RTAUDIO)
@@ -884,6 +885,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Too many delayed packets, flushing buffer";
 			while (ringBuf->try_read(packet)); // Empty buffer
 			delayedPackets = 0;
+			audioBuffered = false;
 		}
 
 	}
