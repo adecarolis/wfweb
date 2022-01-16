@@ -966,14 +966,14 @@ void wfmain::setServerToPrefs()
         serverConfig.lan = prefs.enableLAN;
         qInfo(logAudio()) << "Audio Input device " << serverRxSetup.name;
         qInfo(logAudio()) << "Audio Output device " << serverTxSetup.name;
-        udp = new udpServer();
+        udp = new udpServer(serverConfig, serverTxSetup, serverRxSetup);
 
         serverThread = new QThread(this);
 
         udp->moveToThread(serverThread);
 
 
-        connect(this, SIGNAL(initServer(SERVERCONFIG, audioSetup, audioSetup)), udp, SLOT(init(SERVERCONFIG, audioSetup, audioSetup)));
+        connect(this, SIGNAL(initServer()), udp, SLOT(init()));
         connect(serverThread, SIGNAL(finished()), udp, SLOT(deleteLater()));
 
         if (rig != Q_NULLPTR) {
@@ -988,7 +988,7 @@ void wfmain::setServerToPrefs()
 
         serverThread->start();
 
-        emit initServer(serverConfig, serverTxSetup, serverRxSetup);
+        emit initServer();
 
         connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
 

@@ -9,12 +9,13 @@
 #define TOKEN_RENEWAL 60000
 #define PING_PERIOD 500
 #define IDLE_PERIOD 100
-#define TXAUDIO_PERIOD 10 
 #define AREYOUTHERE_PERIOD 500
 #define WATCHDOG_PERIOD 500             
 #define RETRANSMIT_PERIOD 100           // How often to attempt retransmit
 #define LOCK_PERIOD 10                  // How long to try to lock mutex (ms)
 #define STALE_CONNECTION 15             // Not heard from in this many seconds
+#define BUFSIZE 50 // Number of packets to buffer
+#define TXAUDIO_PERIOD 20 
 
 
 // Fixed Size Packets
@@ -35,8 +36,6 @@
 #define AUDIO_SIZE            0x18
 #define DATA_SIZE               0x15
 
-#define BUFSIZE 50 // Number of packets to buffer
-#define TXAUDIO_PERIOD 20 
 
 // 0x10 length control packet (connect/disconnect/idle.)
 typedef union control_packet {

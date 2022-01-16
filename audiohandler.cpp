@@ -407,7 +407,7 @@ void audioHandler::start()
 
 void audioHandler::setVolume(unsigned char volume)
 {
-    //this->volume = (qreal)volume/255.0;
+
     this->volume = audiopot[volume];
 
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
@@ -494,12 +494,6 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Packet " << hex << packet.seq <<
 					" arrived too late (increase output latency!) " <<
 					dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
-				while (currentLatency > setup.latency/2) {
-					if (!ringBuf->try_read(packet)) {
-						break;
-					}
-					currentLatency = packet.time.msecsTo(QTime::currentTime());
-				}
 				delayedPackets++;
 			}
 
@@ -534,6 +528,7 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 	}
 
 	if (delayedPackets > 10) {
+		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Too many delayed packets, flushing buffer";
 		while (ringBuf->try_read(packet)); // Empty buffer
 		delayedPackets = 0;
 	}
@@ -788,9 +783,6 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 				" arrived too late (increase latency!) " <<
 				dec << packet.time.msecsTo(QTime::currentTime()) << "ms";
 			delayedPackets++;
-		//	if (!ringBuf->try_read(packet))
-		//		break;
-		//	currentLatency = packet.time.msecsTo(QTime::currentTime());
 		}
 		
 		//qDebug(logAudio) << "Chunksize" << this->chunkSize << "Packet size" << packet.data.length();
@@ -889,6 +881,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		ret = packet.data;
 		//qDebug(logAudio()) << "Now radio format, length" << packet.data.length();
 		if (delayedPackets > 10) {
+			qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Too many delayed packets, flushing buffer";
 			while (ringBuf->try_read(packet)); // Empty buffer
 			delayedPackets = 0;
 		}

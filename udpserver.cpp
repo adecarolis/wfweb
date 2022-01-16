@@ -12,14 +12,9 @@ udpServer::udpServer(SERVERCONFIG config, audioSetup outAudio, audioSetup inAudi
     qInfo(logUdpServer()) << "Starting udp server";
 }
 
-void udpServer::init(SERVERCONFIG conf, audioSetup out, audioSetup in)
+void udpServer::init()
 {
 
-    qInfo(logUdpServer()) << "Input audio device:" << in.name;
-    qInfo(logUdpServer()) << "Output audio device:" << out.name;
-    this->config = conf;
-    this->outAudio = out;
-    this->inAudio = in;
     srand(time(NULL)); // Generate random key
     timeStarted.start();
     // Convoluted way to find the external IP address, there must be a better way????
