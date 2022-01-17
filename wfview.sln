@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wfview", "wfview.vcxproj", "{326108AD-FA9D-3AAF-8D3E-062C4DDC34E2}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wfserver", "wfserver.vcxproj", "{00E054F8-A1D4-3ECA-A8D6-DFC8A68AFD56}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -15,6 +17,10 @@ Global
 		{326108AD-FA9D-3AAF-8D3E-062C4DDC34E2}.Debug|x86.Build.0 = Debug|Win32
 		{326108AD-FA9D-3AAF-8D3E-062C4DDC34E2}.Release|x86.ActiveCfg = Release|Win32
 		{326108AD-FA9D-3AAF-8D3E-062C4DDC34E2}.Release|x86.Build.0 = Release|Win32
+		{00E054F8-A1D4-3ECA-A8D6-DFC8A68AFD56}.Debug|x86.ActiveCfg = Debug|Win32
+		{00E054F8-A1D4-3ECA-A8D6-DFC8A68AFD56}.Debug|x86.Build.0 = Debug|Win32
+		{00E054F8-A1D4-3ECA-A8D6-DFC8A68AFD56}.Release|x86.ActiveCfg = Release|Win32
+		{00E054F8-A1D4-3ECA-A8D6-DFC8A68AFD56}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -98,7 +98,7 @@ bool audioHandler::init(audioSetup setupIn)
 		", uLaw" << setup.ulaw;
 
 
-	ringBuf = new wilt::Ring<audioPacket>(setupIn.latency / 20 + 1); // Should be customizable.
+	ringBuf = new wilt::Ring<audioPacket>(setup.latency / 20 + 1); // Should be customizable.
 
 	tempBuf.sent = 0;
 

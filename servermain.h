@@ -1,12 +1,10 @@
-#ifdef WFSERVER
-#include "servermain.h"
-#else
-
 #ifndef WFMAIN_H
 #define WFMAIN_H
 
-#include <QMainWindow>
-#include <QCloseEvent>
+#include <QtCore/QCoreApplication>
+#include <QtCore/QDirIterator>
+#include <QtCore/QStandardPaths>
+
 #include <QThread>
 #include <QString>
 #include <QVector>
@@ -23,16 +21,10 @@
 #include "rigidentities.h"
 #include "repeaterattributes.h"
 
-#include "calibrationwindow.h"
-#include "repeatersetup.h"
-#include "satellitesetup.h"
-#include "transceiveradjustments.h"
 #include "udpserver.h"
-#include "qledlabel.h"
 #include "rigctld.h"
-#include "aboutbox.h"
+#include "signal.h"
 
-#include <qcustomplot.h>
 #include <qserialportinfo.h>
 
 #include <deque>
@@ -42,15 +34,15 @@ namespace Ui {
 class wfmain;
 }
 
-class wfmain : public QMainWindow
+class servermain : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, QWidget *parent = 0);
+    servermain(const QString serialPortCL, const QString hostCL, const QString settingsFile);
     QString serialPortCL;
     QString hostCL;
-    ~wfmain();
+    ~servermain();
 
 signals:
     // Basic to rig:
@@ -172,49 +164,9 @@ signals:
     void stateUpdated();
 
 private slots:
-    void updateSizes(int tabIndex);
-    void shortcutF1();
-    void shortcutF2();
-    void shortcutF3();
-    void shortcutF4();
-    void shortcutF5();
-
-    void shortcutF6();
-    void shortcutF7();
-    void shortcutF8();
-    void shortcutF9();
-    void shortcutF10();
-    void shortcutF11();
-    void shortcutF12();
-
-    void shortcutControlT();
-    void shortcutControlR();
-    void shortcutControlI();
-    void shortcutControlU();
-
-    void shortcutStar();
-    void shortcutSlash();
-    void shortcutMinus();
-    void shortcutPlus();
-    void shortcutShiftMinus();
-    void shortcutShiftPlus();
-    void shortcutControlMinus();
-    void shortcutControlPlus();
-
-    void shortcutPageUp();
-    void shortcutPageDown();
-
-    void shortcutF();
-    void shortcutM();
-
-    void handlePttLimit(); // hit at 3 min transmit length
 
     void receiveCommReady();
     void receiveFreq(freqt);
-    void receiveMode(unsigned char mode, unsigned char filter);
-    void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);
-    void receiveSpectrumMode(spectrumMode spectMode);
-    void receiveSpectrumSpan(freqt freqspan, bool isSub);
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(bool dataOn);
     void receiveBandStackReg(freqt f, char mode, char filter, bool dataOn); // freq, mode, (filter,) datamode
@@ -233,9 +185,6 @@ private slots:
     void receiveTBPFInner(unsigned char level);
     void receiveTBPFOuter(unsigned char level);
     // 'change' from data in transceiver controls window:
-    void changeIFShift(unsigned char level);
-    void changeTPBFInner(unsigned char level);
-    void changeTPBFOuter(unsigned char level);
     void receiveTxPower(unsigned char power);
     void receiveMicGain(unsigned char gain);
     void receiveCompLevel(unsigned char compLevel);
@@ -255,295 +204,25 @@ private slots:
 //    void receiveCompMeter(unsigned char level);
 
 
-    void receiveATUStatus(unsigned char atustatus);
     void receivePreamp(unsigned char pre);
     void receiveAttenuator(unsigned char att);
     void receiveAntennaSel(unsigned char ant, bool rx);
     void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
     void receiveSerialPortError(QString port, QString errorText);
-    void receiveStatusUpdate(QString errorText);
-    void handlePlotClick(QMouseEvent *);
-    void handlePlotDoubleClick(QMouseEvent *);
-    void handleWFClick(QMouseEvent *);
-    void handleWFDoubleClick(QMouseEvent *);
-    void handleWFScroll(QWheelEvent *);
-    void handlePlotScroll(QWheelEvent *);
     void sendRadioCommandLoop();
-    void showStatusBarText(QString text);
     void receiveBaudRate(quint32 baudrate);
 
     void setRadioTimeDateSend();
 
-
-    // void on_getFreqBtn_clicked();
-
-    // void on_getModeBtn_clicked();
-
-    // void on_debugBtn_clicked();
-
-    void on_clearPeakBtn_clicked();
-
-    void on_drawPeakChk_clicked(bool checked);
-
-    void on_fullScreenChk_clicked(bool checked);
-
-    void on_goFreqBtn_clicked();
-
-    void on_f0btn_clicked();
-    void on_f1btn_clicked();
-    void on_f2btn_clicked();
-    void on_f3btn_clicked();
-    void on_f4btn_clicked();
-    void on_f5btn_clicked();
-    void on_f6btn_clicked();
-    void on_f7btn_clicked();
-    void on_f8btn_clicked();
-    void on_f9btn_clicked();
-    void on_fDotbtn_clicked();
-
-
-
-    void on_fBackbtn_clicked();
-
-    void on_fCEbtn_clicked();
-
-    void on_fEnterBtn_clicked();
-
-    void on_scopeBWCombo_currentIndexChanged(int index);
-
-    void on_scopeEdgeCombo_currentIndexChanged(int index);
-
-    // void on_modeSelectCombo_currentIndexChanged(int index);
-
-    void on_useDarkThemeChk_clicked(bool checked);
-
-    void on_modeSelectCombo_activated(int index);
-
-    // void on_freqDial_actionTriggered(int action);
-
-    void on_freqDial_valueChanged(int value);
-
-    void on_band6mbtn_clicked();
-
-    void on_band10mbtn_clicked();
-
-    void on_band12mbtn_clicked();
-
-    void on_band15mbtn_clicked();
-
-    void on_band17mbtn_clicked();
-
-    void on_band20mbtn_clicked();
-
-    void on_band30mbtn_clicked();
-
-    void on_band40mbtn_clicked();
-
-    void on_band60mbtn_clicked();
-
-    void on_band80mbtn_clicked();
-
-    void on_band160mbtn_clicked();
-
-    void on_bandGenbtn_clicked();
-
-    void on_aboutBtn_clicked();
-
-    void on_fStoBtn_clicked();
-
-    void on_fRclBtn_clicked();
-
-    void on_rfGainSlider_valueChanged(int value);
-
-    void on_afGainSlider_valueChanged(int value);
-
-    void on_tuneNowBtn_clicked();
-
-    void on_tuneEnableChk_clicked(bool checked);
-
-    void on_exitBtn_clicked();
-
-    void on_pttOnBtn_clicked();
-
-    void on_pttOffBtn_clicked();
-
-    void on_saveSettingsBtn_clicked();
-
-
-    void on_debugBtn_clicked();
-
-    void on_pttEnableChk_clicked(bool checked);
-
-    void on_lanEnableBtn_clicked(bool checked);
-
-    void on_ipAddressTxt_textChanged(QString text);
-
-    void on_controlPortTxt_textChanged(QString text);
-
-    void on_usernameTxt_textChanged(QString text);
-
-    void on_passwordTxt_textChanged(QString text);
-
-    void on_audioOutputCombo_currentIndexChanged(int value);
-
-    void on_audioInputCombo_currentIndexChanged(int value);
-
-    void on_toFixedBtn_clicked();
-
-    void on_connectBtn_clicked();
-
-    void on_rxLatencySlider_valueChanged(int value);
-
-    void on_txLatencySlider_valueChanged(int value);
-
-    void on_audioRXCodecCombo_currentIndexChanged(int value);
-
-    void on_audioTXCodecCombo_currentIndexChanged(int value);
-
-    void on_audioSampleRateCombo_currentIndexChanged(QString text);
-
-    void on_vspCombo_currentIndexChanged(int value);
-
-    void on_scopeEnableWFBtn_clicked(bool checked);
-
-    void on_sqlSlider_valueChanged(int value);
-
-    void on_modeFilterCombo_activated(int index);
-
-    void on_dataModeBtn_toggled(bool checked);
-
-
-    void on_transmitBtn_clicked();
-
-    void on_adjRefBtn_clicked();
-
-    void on_satOpsBtn_clicked();
-
-    void on_txPowerSlider_valueChanged(int value);
-
-    void on_micGainSlider_valueChanged(int value);
-
-    void on_scopeRefLevelSlider_valueChanged(int value);
-
-    void on_useSystemThemeChk_clicked(bool checked);
-
-    void on_modInputCombo_activated(int index);
-
-    void on_modInputDataCombo_activated(int index);
-
-    void on_tuneLockChk_clicked(bool checked);
-
-    void on_spectrumModeCombo_currentIndexChanged(int index);
-
-    void on_serialEnableBtn_clicked(bool checked);
-
-    void on_tuningStepCombo_currentIndexChanged(int index);
-
-    void on_serialDeviceListCombo_activated(const QString &arg1);
-
-    void on_rptSetupBtn_clicked();
-
-    void on_attSelCombo_activated(int index);
-
-    void on_preampSelCombo_activated(int index);
-
-    void on_antennaSelCombo_activated(int index);
-
-    void on_rxAntennaCheck_clicked(bool value);
-
-    void on_wfthemeCombo_activated(int index);
-
-    void on_rigPowerOnBtn_clicked();
-
-    void on_rigPowerOffBtn_clicked();
-
-    void on_ritTuneDial_valueChanged(int value);
-
-    void on_ritEnableChk_clicked(bool checked);
-
-    void on_band23cmbtn_clicked();
-
-    void on_band70cmbtn_clicked();
-
-    void on_band2mbtn_clicked();
-
-    void on_band4mbtn_clicked();
-
-    void on_band630mbtn_clicked();
-
-    void on_band2200mbtn_clicked();
-
-    void on_bandAirbtn_clicked();
-
-    void on_bandWFMbtn_clicked();
-
-    void on_rigCIVManualAddrChk_clicked(bool checked);
-
-    void on_rigCIVaddrHexLine_editingFinished();
-
-    void on_baudRateCombo_activated(int);
-
-    void on_wfLengthSlider_valueChanged(int value);
-
-    void on_pollingBtn_clicked();
-
-    void on_wfAntiAliasChk_clicked(bool checked);
-
-    void on_wfInterpolateChk_clicked(bool checked);
-
-    void on_meter2selectionCombo_activated(int index);
-
-    void on_enableRigctldChk_clicked(bool checked);
-
-    void on_rigctldPortTxt_editingFinished();
-
-
-    void on_moreControlsBtn_clicked();
-
-    void on_useCIVasRigIDChk_clicked(bool checked);
-
-    void receiveStateInfo(rigstate* state);
-
-    void on_settingsList_currentRowChanged(int currentRow);
-
-    void on_setClockBtn_clicked();
-
-    void on_serverEnableCheckbox_clicked(bool checked);
-    void on_serverUsersTable_cellClicked(int row, int col);
-    void on_serverControlPortText_textChanged(QString text);
-    void on_serverCivPortText_textChanged(QString text);
-    void on_serverAudioPortText_textChanged(QString text);
-    void on_serverTXAudioOutputCombo_currentIndexChanged(int value);
-    void on_serverRXAudioInputCombo_currentIndexChanged(int value);
-    void onServerPasswordChanged();
-    void on_serverUsersTable_cellChanged(int row, int column);
-
-    void on_useRTSforPTTchk_clicked(bool checked);
 
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
     QSettings *settings=Q_NULLPTR;
     void loadSettings();
-    void saveSettings();
 
-    void createSettingsListItems();
-    void connectSettingsList();
-
-    QCustomPlot *plot; // line plot
-    QCustomPlot *wf; // waterfall image
-    QCPItemLine * freqIndicatorLine;
-    //commHandler *comm;
-    void setAppTheme(bool isCustom);
-    void setPlotTheme(QCustomPlot *plot, bool isDark);
-    void prepareWf();
-    void prepareWf(unsigned int wfLength);
-    void showHideSpectrum(bool show);
     void getInitialRigState();
-    void setBandButtons();
-    void showButton(QPushButton *btn);
-    void hideButton(QPushButton *btn);
 
     void openRig();
     void powerRigOff();
@@ -551,66 +230,18 @@ private:
     QStringList portList;
     QString serialPortRig;
 
-    QShortcut *keyF1;
-    QShortcut *keyF2;
-    QShortcut *keyF3;
-    QShortcut *keyF4;
-    QShortcut *keyF5;
-
-    QShortcut *keyF6;
-    QShortcut *keyF7;
-    QShortcut *keyF8;
-    QShortcut *keyF9;
-    QShortcut *keyF10;
-    QShortcut *keyF11;
-    QShortcut *keyF12;
-
-    QShortcut *keyControlT;
-    QShortcut *keyControlR;
-    QShortcut *keyControlI;
-    QShortcut *keyControlU;
-
-    QShortcut *keyStar;
-    QShortcut *keySlash;
-    QShortcut *keyMinus;
-    QShortcut *keyPlus;
-
-    QShortcut *keyShiftMinus;
-    QShortcut *keyShiftPlus;
-    QShortcut *keyControlMinus;
-    QShortcut *keyControlPlus;
-    QShortcut *keyQuit;
-
-    QShortcut *keyPageUp;
-    QShortcut *keyPageDown;
-
-    QShortcut *keyF;
-    QShortcut *keyM;
-
-    QShortcut *keyDebug;
-
-
     rigCommander * rig=Q_NULLPTR;
     QThread* rigThread = Q_NULLPTR;
-    QCPColorMap * colorMap;
-    QCPColorMapData * colorMapData;
-    QCPColorScale * colorScale;
     QTimer * delayedCommand;
     QTimer * pttTimer;
     uint16_t loopTickCounter;
     uint16_t slowCmdNum;
 
-    void setupPlots();
     void makeRig();
     void rigConnections();
     void removeRig();
     void findSerialPort();
 
-    void setupKeyShortcuts();
-    void setupMainUI();
-    void setUIToPrefs();
-    void setSerialDevicesUI();
-    void setAudioDevicesUI();
     void setServerToPrefs();
     void setInitialTiming();
     void getSettingsFilePath(QString settingsFile);
@@ -620,10 +251,6 @@ private:
     QStringList spans;
     QStringList edges;
     QStringList commPorts;
-    QLabel* rigStatus;
-    QLabel* rigName;
-    QLedLabel* pttLed;
-    QLedLabel* connectedLed;
 
     quint16 spectWidth;
     quint16 wfLength;
@@ -784,16 +411,10 @@ private:
     quint64 roundFrequencyWithStep(quint64 oldFreq, int steps,\
                                    unsigned int tsHz);
 
-    void setUIFreq(double frequency);
-    void setUIFreq();
-
     void changeTxBtn();
     void issueDelayedCommand(cmds cmd);
     void issueDelayedCommandPriority(cmds cmd);
     void issueDelayedCommandUnique(cmds cmd);
-    void changeSliderQuietly(QSlider *slider, int value);
-    void statusFromSliderPercent(QString name, int percentValue);
-    void statusFromSliderRaw(QString name, int rawValue);
 
     void processModLevel(rigInput source, unsigned char level);
 
@@ -837,12 +458,6 @@ private:
     unsigned char usbGain=0;
     unsigned char lanGain=0;
 
-    calibrationWindow *cal;
-    repeaterSetup *rpt;
-    satelliteSetup *sat;
-    transceiverAdjustments *trxadj;
-    aboutbox *abtBox;
-
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
@@ -873,8 +488,8 @@ private:
     rigstate* rigState = Q_NULLPTR;
 
     SERVERCONFIG serverConfig;
-    void serverAddUserLine(const QString& user, const QString& pass, const int& type);
 
+    static void handleCtrlC(int sig);
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
@@ -893,4 +508,3 @@ Q_DECLARE_METATYPE(rigstate*)
 
 
 #endif // WFMAIN_H
-#endif
