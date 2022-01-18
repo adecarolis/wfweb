@@ -1,5 +1,4 @@
-//#undef WFSERVER
-#ifdef WFSERVER
+#ifdef BUILD_WFSERVER
 #include <QtCore/QCoreApplication>
 #else
 #include <QApplication>
@@ -20,7 +19,7 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
 
 int main(int argc, char *argv[])
 {
-#ifdef WFSERVER
+#ifdef BUILD_WFSERVER
     QCoreApplication a(argc, argv);
 #else
     QApplication a(argc, argv);
@@ -49,7 +48,7 @@ int main(int argc, char *argv[])
 
 
     const QString helpText = QString("\nUsage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr, -l --logfile filename.log, -s --settings filename.ini, -d --debug, -v --version\n"); // TODO...
-#ifdef WFSERVER
+#ifdef BUILD_WFSERVER
     const QString version = QString("wfserver version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
         .arg(QString(WFVIEW_VERSION))
         .arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
@@ -140,7 +139,7 @@ int main(int argc, char *argv[])
     qDebug(logSystem()) << QString("remote host as set by parser: %1").arg(hostCL);
     qDebug(logSystem()) << QString("CIV as set by parser: %1").arg(civCL);
 
-#ifdef WFSERVER
+#ifdef BUILD_WFSERVER
     servermain *w = new servermain(serialPortCL, hostCL, settingsFile);
 
 #else
@@ -189,7 +188,7 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
     } 
     // Write to the output category of the message and the message itself
     out << context.category << ": " << msg << "\n";
-#ifdef WFSERVER
+#ifdef BUILD_WFSERVER
     std::cout << msg.toLocal8Bit().toStdString() << "\n";
 #endif
     out.flush();    // Clear the buffered data

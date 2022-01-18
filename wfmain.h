@@ -1,4 +1,4 @@
-#ifdef WFSERVER
+#ifdef BUILD_WFSERVER
 #include "servermain.h"
 #else
 

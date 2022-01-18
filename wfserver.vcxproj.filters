@@ -140,12 +140,32 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    
+    
+    
+    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
   </ItemGroup>
   <ItemGroup>
     <None Include="qdarkstyle\rc\Hmovetoolbar.png">
@@ -279,6 +299,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include=".\wfserver_resource.rc" />
+    <ResourceCompile Include="C:\Users\Phil\source\repos\wfview\wfserver_resource.rc" />
   </ItemGroup>
 </Project>

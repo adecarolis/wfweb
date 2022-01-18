@@ -15,7 +15,7 @@ CONFIG += console
 
 DEFINES += WFVIEW_VERSION=\\\"1.2d\\\"
 
-DEFINES += WFSERVER
+DEFINES += BUILD_WFSERVER
 
 CONFIG(debug, release|debug) {
 # For Debug builds only:

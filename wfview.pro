@@ -13,6 +13,8 @@ TEMPLATE = app
 
 DEFINES += WFVIEW_VERSION=\\\"1.2d\\\"
 
+DEFINES += BUILD_WFVIEW
+
 CONFIG(debug, release|debug) {
 # For Debug builds only:
 QMAKE_CXXFLAGS += -faligned-new
