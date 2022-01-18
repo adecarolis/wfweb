@@ -332,7 +332,10 @@ void servermain::findSerialPort()
 
 void servermain::receiveStatusUpdate(QString text)
 {
-    std::cout << text.toLocal8Bit().toStdString() << "\n";
+    if (text != lastMessage) {
+        std::cout << text.toLocal8Bit().toStdString() << "\n";
+        lastMessage = text;
+    }
 }
 
 

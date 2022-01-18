@@ -195,6 +195,7 @@ private:
     QTimer * pttTimer;
     uint16_t loopTickCounter;
     uint16_t slowCmdNum;
+    QString lastMessage="";
 
     void makeRig();
     void rigConnections();
