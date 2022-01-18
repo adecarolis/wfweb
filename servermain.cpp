@@ -704,12 +704,12 @@ void servermain::loadSettings()
     for (unsigned int i = 1; i < devices; i++) {
         info = audio->getDeviceInfo(i);
         if (info.outputChannels > 0) {
-            if (QString::fromStdString(info.name) == serverTxSetup.name) {
+            if (serverTxSetup.name == info->name) {
                 serverTxSetup.port = i;
             }
         }
         if (info.inputChannels > 0) {
-            if (QString::fromStdString(info.name) == serverRxSetup.name) {
+            if (serverRxSetup.name == info->name) {
                 serverRxSetup.port = i;
             }
         }
@@ -740,12 +740,12 @@ void servermain::loadSettings()
     {
         info = Pa_GetDeviceInfo(i);
         if (info->maxInputChannels > 0) {
-            if (QString::fromStdString(info.name) == serverTxSetup.name) {
+            if (serverTxSetup.name == info->name) {
                 serverTxSetup.port = i;
             }
         }
         if (info->maxOutputChannels > 0) {
-            if (QString::fromStdString(info.name) == serverRxSetup.name) {
+            if (serverRxSetup.name == info->name) {
                 serverRxSetup.port = i;
             }
         }
