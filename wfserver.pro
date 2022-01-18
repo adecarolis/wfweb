@@ -115,7 +115,7 @@ CONFIG(debug, release|debug) {
   win32:LIBS += -L../opus/win32/VS2015/Win32/Release/ -lopus
 }
 
-linux:LIBS += -L./ -l$$QCPLIB -lopus
+linux:LIBS += -L./ -lopus
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus 
 
 !linux:INCLUDEPATH += ../opus/include
