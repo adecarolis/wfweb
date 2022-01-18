@@ -176,6 +176,7 @@ private slots:
 
     void handlePttLimit();
     void receiveStatusUpdate(QString text);
+    void receiveStateInfo(rigstate* state);
 
 private:
     QSettings *settings=Q_NULLPTR;

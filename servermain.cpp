@@ -142,7 +142,6 @@ void servermain::rigConnections()
     connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
     connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
 
-    connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
 
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
     connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
@@ -448,10 +447,6 @@ void servermain::setInitialTiming()
     pttTimer->setSingleShot(true);
     connect(pttTimer, SIGNAL(timeout()), this, SLOT(handlePttLimit()));
 
-    timeSync = new QTimer(this);
-    connect(timeSync, SIGNAL(timeout()), this, SLOT(setRadioTimeDateSend()));
-    waitingToSetTimeDate = false;
-    lastFreqCmdTime_ms = QDateTime::currentMSecsSinceEpoch() - 5000; // 5 seconds ago
 }
 
 void servermain::setServerToPrefs()
@@ -1580,6 +1575,11 @@ void servermain::powerRigOff()
     emit sendPowerOff();
 }
 
+void servermain::receiveStateInfo(rigstate* state)
+{
+    qInfo("Setting rig state for wfmain");
+    rigState = state;
+}
 
 
 void servermain::handleCtrlC(int sig) {
