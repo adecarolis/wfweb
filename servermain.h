@@ -166,59 +166,18 @@ signals:
 private slots:
 
     void receiveCommReady();
-    void receiveFreq(freqt);
     void receivePTTstatus(bool pttOn);
-    void receiveDataModeStatus(bool dataOn);
-    void receiveBandStackReg(freqt f, char mode, char filter, bool dataOn); // freq, mode, (filter,) datamode
-    void receiveRITStatus(bool ritEnabled);
-    void receiveRITValue(int ritValHz);
-    void receiveModInput(rigInput input, bool dataOn);
-    //void receiveDuplexMode(duplexMode dm);
 
-
-
-    // Levels:
-    void receiveRfGain(unsigned char level);
-    void receiveAfGain(unsigned char level);
-    void receiveSql(unsigned char level);
-    void receiveIFShift(unsigned char level);
-    void receiveTBPFInner(unsigned char level);
-    void receiveTBPFOuter(unsigned char level);
-    // 'change' from data in transceiver controls window:
-    void receiveTxPower(unsigned char power);
-    void receiveMicGain(unsigned char gain);
-    void receiveCompLevel(unsigned char compLevel);
-    void receiveMonitorGain(unsigned char monitorGain);
-    void receiveVoxGain(unsigned char voxGain);
-    void receiveAntiVoxGain(unsigned char antiVoxGain);
-    void receiveSpectrumRefLevel(int level);
-    void receiveACCGain(unsigned char level, unsigned char ab);
-    void receiveUSBGain(unsigned char level);
-    void receiveLANGain(unsigned char level);
-
-    // Meters:
-    void receiveMeter(meterKind meter, unsigned char level);
-//    void receiveSMeter(unsigned char level);
-//    void receivePowerMeter(unsigned char level);
-//    void receiveALCMeter(unsigned char level);
-//    void receiveCompMeter(unsigned char level);
-
-
-    void receivePreamp(unsigned char pre);
-    void receiveAttenuator(unsigned char att);
-    void receiveAntennaSel(unsigned char ant, bool rx);
     void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
     void receiveSerialPortError(QString port, QString errorText);
     void sendRadioCommandLoop();
     void receiveBaudRate(quint32 baudrate);
 
-    void setRadioTimeDateSend();
-
+    void handlePttLimit();
+    void receiveStatusUpdate(QString text);
 
 private:
-    Ui::wfmain *ui;
-    void closeEvent(QCloseEvent *event);
     QSettings *settings=Q_NULLPTR;
     void loadSettings();
 
@@ -402,28 +361,11 @@ private:
 
     colors defaultColors;
 
-    void setDefaultColors(); // populate with default values
-    void useColors(); // set the plot up
     void setDefPrefs(); // populate default values to default prefs
-    void setTuningSteps();
 
-    quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
-    quint64 roundFrequencyWithStep(quint64 oldFreq, int steps,\
-                                   unsigned int tsHz);
-
-    void changeTxBtn();
     void issueDelayedCommand(cmds cmd);
     void issueDelayedCommandPriority(cmds cmd);
     void issueDelayedCommandUnique(cmds cmd);
-
-    void processModLevel(rigInput source, unsigned char level);
-
-    void processChangingCurrentModLevel(unsigned char level);
-
-    void changeModLabel(rigInput source);
-    void changeModLabel(rigInput source, bool updateLevel);
-
-    void changeModLabelAndSlider(rigInput source);
 
     // Fast command queue:
     void initPeriodicCommands();
@@ -434,8 +376,6 @@ private:
     void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
     void calculateTimingParameters();
 
-    void changeMode(mode_kind mode);
-    void changeMode(mode_kind mode, bool dataOn);
 
     cmds meterKindToMeterCommand(meterKind m);
 

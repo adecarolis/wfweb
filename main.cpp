@@ -142,11 +142,13 @@ int main(int argc, char *argv[])
 
 #ifdef WFSERVER
     servermain *w = new servermain(serialPortCL, hostCL, settingsFile);
+
 #else
     a.setWheelScrollLines(1); // one line per wheel click
     wfmain w(serialPortCL, hostCL, settingsFile);
 
     w.show();
+    
 #endif
     return a.exec();
 

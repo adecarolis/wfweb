@@ -3,6 +3,7 @@
 #include "commhandler.h"
 #include "rigidentities.h"
 #include "logcategories.h"
+#include <iostream>
 
 // This code is copyright 2017-2020 Elliott H. Liggett
 // All rights reserved
@@ -28,7 +29,7 @@ servermain::servermain(const QString serialPortCL, const QString hostCL, const Q
     qRegisterMetaType <datekind>();
     qRegisterMetaType<rigstate*>();
 
-    //signal(SIGINT, handleCtrlC);
+    signal(SIGINT, handleCtrlC);
 
     haveRigCaps = false;
 
@@ -67,11 +68,6 @@ servermain::~servermain()
     Pa_Terminate();
 #endif
 
-}
-
-void servermain::closeEvent(QCloseEvent *event)
-{
-    // Are you sure?
 }
 
 void servermain::openRig()
@@ -141,45 +137,18 @@ void servermain::rigConnections()
     connect(this, SIGNAL(sendPowerOn()), rig, SLOT(powerOn()));
     connect(this, SIGNAL(sendPowerOff()), rig, SLOT(powerOff()));
 
-    connect(rig, SIGNAL(haveFrequency(freqt)), this, SLOT(receiveFreq(freqt)));
-    connect(this, SIGNAL(getFrequency()), rig, SLOT(getFrequency()));
-    connect(this, SIGNAL(getMode()), rig, SLOT(getMode()));
-    connect(this, SIGNAL(getDataMode()), rig, SLOT(getDataMode()));
-    connect(this, SIGNAL(setDataMode(bool, unsigned char)), rig, SLOT(setDataMode(bool, unsigned char)));
-    connect(this, SIGNAL(getBandStackReg(char,char)), rig, SLOT(getBandStackReg(char,char)));
     connect(rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
     connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
     connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
-    connect(rig, SIGNAL(haveBandStackReg(freqt,char,char,bool)), this, SLOT(receiveBandStackReg(freqt,char,char,bool)));
-    connect(this, SIGNAL(setRitEnable(bool)), rig, SLOT(setRitEnable(bool)));
-    connect(this, SIGNAL(setRitValue(int)), rig, SLOT(setRitValue(int)));
-    connect(rig, SIGNAL(haveRitEnabled(bool)), this, SLOT(receiveRITStatus(bool)));
-    connect(rig, SIGNAL(haveRitFrequency(int)), this, SLOT(receiveRITValue(int)));
-    connect(this, SIGNAL(getRitEnabled()), rig, SLOT(getRitEnabled()));
-    connect(this, SIGNAL(getRitValue()), rig, SLOT(getRitValue()));
-
     connect(this, SIGNAL(getDebug()), rig, SLOT(getDebug()));
 
-    connect(this, SIGNAL(spectOutputDisable()), rig, SLOT(disableSpectOutput()));
-    connect(this, SIGNAL(spectOutputEnable()), rig, SLOT(enableSpectOutput()));
-    connect(this, SIGNAL(scopeDisplayDisable()), rig, SLOT(disableSpectrumDisplay()));
-    connect(this, SIGNAL(scopeDisplayEnable()), rig, SLOT(enableSpectrumDisplay()));
     connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
-
 
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
     connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(this, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(this, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
-    //connect(this, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
-    //connect(rig, SIGNAL(haveDuplexMode(duplexMode)), this, SLOT(receiveDuplexMode(duplexMode)));
-
-    connect(this, SIGNAL(getModInput(bool)), rig, SLOT(getModInput(bool)));
-    connect(rig, SIGNAL(haveModInput(rigInput,bool)), this, SLOT(receiveModInput(rigInput, bool)));
-    connect(this, SIGNAL(setModInput(rigInput, bool)), rig, SLOT(setModInput(rigInput,bool)));
-
-    connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
-    connect(rig, SIGNAL(haveSpectrumMode(spectrumMode)), this, SLOT(receiveSpectrumMode(spectrumMode)));
+ 
     connect(this, SIGNAL(setScopeMode(spectrumMode)), rig, SLOT(setSpectrumMode(spectrumMode)));
     connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
 
@@ -189,7 +158,6 @@ void servermain::rigConnections()
     //connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
     connect(this, SIGNAL(getScopeEdge()), rig, SLOT(getScopeEdge()));
     connect(this, SIGNAL(getScopeSpan()), rig, SLOT(getScopeSpan()));
-    connect(rig, SIGNAL(haveScopeSpan(freqt,bool)), this, SLOT(receiveSpectrumSpan(freqt,bool)));
     connect(this, SIGNAL(setScopeFixedEdge(double,double,unsigned char)), rig, SLOT(setSpectrumBounds(double,double,unsigned char)));
 
     connect(this, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
@@ -225,44 +193,24 @@ void servermain::rigConnections()
     connect(this, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
     connect(this, SIGNAL(setModLevel(rigInput, unsigned char)), rig, SLOT(setModInputLevel(rigInput, unsigned char)));
 
-    // Levels: handle return on query:
-    connect(rig, SIGNAL(haveRfGain(unsigned char)), this, SLOT(receiveRfGain(unsigned char)));
-    connect(rig, SIGNAL(haveAfGain(unsigned char)), this, SLOT(receiveAfGain(unsigned char)));
-    connect(rig, SIGNAL(haveSql(unsigned char)), this, SLOT(receiveSql(unsigned char)));
-    connect(rig, SIGNAL(haveTxPower(unsigned char)), this, SLOT(receiveTxPower(unsigned char)));
-    connect(rig, SIGNAL(haveMicGain(unsigned char)), this, SLOT(receiveMicGain(unsigned char)));
-    connect(rig, SIGNAL(haveSpectrumRefLevel(int)), this, SLOT(receiveSpectrumRefLevel(int)));
-    connect(rig, SIGNAL(haveACCGain(unsigned char,unsigned char)), this, SLOT(receiveACCGain(unsigned char,unsigned char)));
-    connect(rig, SIGNAL(haveUSBGain(unsigned char)), this, SLOT(receiveUSBGain(unsigned char)));
-    connect(rig, SIGNAL(haveLANGain(unsigned char)), this, SLOT(receiveLANGain(unsigned char)));
-
-    //Metering:
-    connect(this, SIGNAL(getMeters(meterKind)), rig, SLOT(getMeters(meterKind)));
-    connect(rig, SIGNAL(haveMeter(meterKind,unsigned char)), this, SLOT(receiveMeter(meterKind,unsigned char)));
-
     // Rig and ATU info:
     connect(this, SIGNAL(startATU()), rig, SLOT(startATU()));
     connect(this, SIGNAL(setATU(bool)), rig, SLOT(setATU(bool)));
     connect(this, SIGNAL(getATUStatus()), rig, SLOT(getATUStatus()));
     connect(this, SIGNAL(getRigID()), rig, SLOT(getRigID()));
-    connect(rig, SIGNAL(haveATUStatus(unsigned char)), this, SLOT(receiveATUStatus(unsigned char)));
     connect(rig, SIGNAL(haveRigID(rigCapabilities)), this, SLOT(receiveRigID(rigCapabilities)));
     connect(this, SIGNAL(setAttenuator(unsigned char)), rig, SLOT(setAttenuator(unsigned char)));
     connect(this, SIGNAL(setPreamp(unsigned char)), rig, SLOT(setPreamp(unsigned char)));
     connect(this, SIGNAL(setAntenna(unsigned char, bool)), rig, SLOT(setAntenna(unsigned char, bool)));
     connect(this, SIGNAL(getPreamp()), rig, SLOT(getPreamp()));
-    connect(rig, SIGNAL(havePreamp(unsigned char)), this, SLOT(receivePreamp(unsigned char)));
     connect(this, SIGNAL(getAttenuator()), rig, SLOT(getAttenuator()));
-    connect(rig, SIGNAL(haveAttenuator(unsigned char)), this, SLOT(receiveAttenuator(unsigned char)));
     connect(this, SIGNAL(getAntenna()), rig, SLOT(getAntenna()));
-    connect(rig, SIGNAL(haveAntenna(unsigned char,bool)), this, SLOT(receiveAntennaSel(unsigned char,bool)));
 
 
     // Speech (emitted from rig speaker)
     connect(this, SIGNAL(sayAll()), rig, SLOT(sayAll()));
     connect(this, SIGNAL(sayFrequency()), rig, SLOT(sayFrequency()));
     connect(this, SIGNAL(sayMode()), rig, SLOT(sayMode()));
-
 
     // Date and Time:
     connect(this, SIGNAL(setTime(timekind)), rig, SLOT(setTime(timekind)));
@@ -381,6 +329,12 @@ void servermain::findSerialPort()
 #endif
     }
 }
+
+void servermain::receiveStatusUpdate(QString text)
+{
+    std::cout << text.toLocal8Bit().toStdString() << "\n";
+}
+
 
 void servermain::receiveCommReady()
 {
@@ -752,17 +706,11 @@ void servermain::loadSettings()
     for (unsigned int i = 1; i < devices; i++) {
         info = audio->getDeviceInfo(i);
         if (info.outputChannels > 0) {
-            if (QString::fromStdString(info.name) == rxSetup.name) {
-                rxSetup.port = i;
-            }
             if (QString::fromStdString(info.name) == serverTxSetup.name) {
                 serverTxSetup.port = i;
             }
         }
         if (info.inputChannels > 0) {
-            if (QString::fromStdString(info.name) == txSetup.name) {
-                txSetup.port = i;
-            }
             if (QString::fromStdString(info.name) == serverRxSetup.name) {
                 serverRxSetup.port = i;
             }
@@ -794,17 +742,11 @@ void servermain::loadSettings()
     {
         info = Pa_GetDeviceInfo(i);
         if (info->maxInputChannels > 0) {
-            if (QString::fromStdString(info.name) == rxSetup.name) {
-                rxSetup.port = i;
-            }
             if (QString::fromStdString(info.name) == serverTxSetup.name) {
                 serverTxSetup.port = i;
             }
         }
         if (info->maxOutputChannels > 0) {
-            if (QString::fromStdString(info.name) == txSetup.name) {
-                txSetup.port = i;
-            }
             if (QString::fromStdString(info.name) == serverRxSetup.name) {
                 serverRxSetup.port = i;
             }
@@ -824,10 +766,6 @@ void servermain::loadSettings()
     // Enumerate audio devices, need to do before settings are loaded.
     const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
     for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
-        if (deviceInfo.deviceName() == rxSetup.name) {
-            rxSetup.port = deviceInfo;
-            qInfo(logGui()) << "Setting Audio Output: " << rxSetup.name;
-        }
         if (deviceInfo.deviceName() == serverTxSetup.name) {
             serverTxSetup.port = deviceInfo;
             qInfo(logGui()) << "Setting Server Audio Input: " << serverTxSetup.name;
@@ -836,10 +774,6 @@ void servermain::loadSettings()
 
     const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
     for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
-        if (deviceInfo.deviceName() == txSetup.name) {
-            txSetup.port = deviceInfo;
-            qInfo(logGui()) << "Setting Audio Input: " << txSetup.name;
-        }
         if (deviceInfo.deviceName() == serverRxSetup.name) {
             serverRxSetup.port = deviceInfo;
             qInfo(logGui()) << "Setting Server Audio Output: " << serverRxSetup.name;
@@ -850,25 +784,6 @@ void servermain::loadSettings()
 
 }
 
-
-quint64 servermain::roundFrequency(quint64 frequency, unsigned int tsHz)
-{
-        return frequency;
-}
-
-quint64 servermain::roundFrequencyWithStep(quint64 frequency, int steps, unsigned int tsHz)
-{
-    quint64 rounded = 0;
-
-    if(steps > 0)
-    {
-        frequency = frequency + (quint64)(steps*tsHz);
-    } else {
-        frequency = frequency - std::min((quint64)(abs(steps)*tsHz), frequency);
-    }
-
-    return frequency;
-}
 
 
 void servermain:: getInitialRigState()
@@ -969,6 +884,13 @@ void servermain:: getInitialRigState()
     }
 
     delayedCommand->start();
+}
+
+void servermain::receivePTTstatus(bool pttOn)
+{
+    // This is the only place where amTransmitting and the transmit button text should be changed:
+    //qInfo(logSystem()) << "PTT status: " << pttOn;
+    amTransmitting = pttOn;
 }
 
 
@@ -1095,8 +1017,201 @@ void servermain::doCmd(commandtype cmddata)
 
 void servermain::doCmd(cmds cmd)
 {
-
+    // Use this function to take action upon a command.
+    switch (cmd)
+    {
+    case cmdNone:
+        //qInfo(logSystem()) << "NOOP";
+        break;
+    case cmdGetRigID:
+        emit getRigID();
+        break;
+    case cmdGetRigCIV:
+        // if(!know rig civ already)
+        if (!haveRigCaps)
+        {
+            emit getRigCIV();
+            issueDelayedCommand(cmdGetRigCIV); // This way, we stay here until we get an answer.
+        }
+        break;
+    case cmdGetFreq:
+        emit getFrequency();
+        break;
+    case cmdGetMode:
+        emit getMode();
+        break;
+    case cmdGetDataMode:
+        if (rigCaps.hasDataModes)
+            emit getDataMode();
+        break;
+    case cmdSetModeFilter:
+        emit setMode(setModeVal, setFilterVal);
+        break;
+    case cmdSetDataModeOff:
+        break;
+    case cmdSetDataModeOn:
+        break;
+    case cmdGetRitEnabled:
+        emit getRitEnabled();
+        break;
+    case cmdGetRitValue:
+        emit getRitValue();
+        break;
+    case cmdGetModInput:
+        emit getModInput(false);
+        break;
+    case cmdGetModDataInput:
+        emit getModInput(true);
+        break;
+    case cmdGetCurrentModLevel:
+        // TODO: Add delay between these queries
+        emit getModInputLevel(currentModSrc);
+        emit getModInputLevel(currentModDataSrc);
+        break;
+    case cmdGetDuplexMode:
+        emit getDuplexMode();
+        break;
+    case cmdGetTone:
+        emit getTone();
+        break;
+    case cmdGetTSQL:
+        emit getTSQL();
+        break;
+    case cmdGetDTCS:
+        emit getDTCS();
+        break;
+    case cmdGetRptAccessMode:
+        emit getRptAccessMode();
+        break;
+    case cmdDispEnable:
+        emit scopeDisplayEnable();
+        break;
+    case cmdDispDisable:
+        emit scopeDisplayDisable();
+        break;
+    case cmdGetSpectrumMode:
+        emit getScopeMode();
+        break;
+    case cmdGetSpectrumSpan:
+        emit getScopeSpan();
+        break;
+    case cmdSpecOn:
+        emit spectOutputEnable();
+        break;
+    case cmdSpecOff:
+        emit spectOutputDisable();
+        break;
+    case cmdGetRxGain:
+        emit getRfGain();
+        break;
+    case cmdGetAfGain:
+        emit getAfGain();
+        break;
+    case cmdGetSql:
+        emit getSql();
+        break;
+    case cmdGetIFShift:
+        emit getIfShift();
+        break;
+    case cmdGetTPBFInner:
+        emit getTPBFInner();
+        break;
+    case cmdGetTPBFOuter:
+        emit getTPBFOuter();
+        break;
+    case cmdGetTxPower:
+        emit getTxPower();
+        break;
+    case cmdGetMicGain:
+        emit getMicGain();
+        break;
+    case cmdGetSpectrumRefLevel:
+        emit getSpectrumRefLevel();
+        break;
+    case cmdGetATUStatus:
+        if (rigCaps.hasATU)
+            emit getATUStatus();
+        break;
+    case cmdStartATU:
+        if (rigCaps.hasATU)
+            emit startATU();
+        break;
+    case cmdGetAttenuator:
+        emit getAttenuator();
+        break;
+    case cmdGetPreamp:
+        emit getPreamp();
+        break;
+    case cmdGetAntenna:
+        emit getAntenna();
+        break;
+    case cmdScopeCenterMode:
+        emit setScopeMode(spectModeCenter);
+        break;
+    case cmdScopeFixedMode:
+        emit setScopeMode(spectModeFixed);
+        break;
+    case cmdGetPTT:
+        emit getPTT();
+        break;
+    case cmdGetTxRxMeter:
+        if (amTransmitting)
+            emit getMeters(meterPower);
+        else
+            emit getMeters(meterS);
+        break;
+    case cmdGetSMeter:
+        if (!amTransmitting)
+            emit getMeters(meterS);
+        break;
+    case cmdGetCenterMeter:
+        if (!amTransmitting)
+            emit getMeters(meterCenter);
+        break;
+    case cmdGetPowerMeter:
+        if (amTransmitting)
+            emit getMeters(meterPower);
+        break;
+    case cmdGetSWRMeter:
+        if (amTransmitting)
+            emit getMeters(meterSWR);
+        break;
+    case cmdGetIdMeter:
+        emit getMeters(meterCurrent);
+        break;
+    case cmdGetVdMeter:
+        emit getMeters(meterVoltage);
+        break;
+    case cmdGetALCMeter:
+        if (amTransmitting)
+            emit getMeters(meterALC);
+        break;
+    case cmdGetCompMeter:
+        if (amTransmitting)
+            emit getMeters(meterComp);
+        break;
+    case cmdStartRegularPolling:
+        runPeriodicCommands = true;
+        break;
+    case cmdStopRegularPolling:
+        runPeriodicCommands = false;
+        break;
+    case cmdQueNormalSpeed:
+        if (usingLAN)
+        {
+            delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
+        }
+        else {
+            delayedCommand->setInterval(delayedCmdIntervalSerial_ms);
+        }
+        break;
+    default:
+        qInfo(logSystem()) << __PRETTY_FUNCTION__ << "WARNING: Command fell through of type: " << (unsigned int)cmd;
+        break;
+    }
 }
+
+
 
 
 void servermain::sendRadioCommandLoop()
@@ -1336,24 +1451,6 @@ void servermain::initPeriodicCommands()
     // The commands are run using a timer,
     // and the timer is started by the delayed command cmdStartPeriodicTimer.
 
-    insertPeriodicCommand(cmdGetTxRxMeter, 128);
-
-    insertSlowPeriodicCommand(cmdGetFreq, 128);
-    insertSlowPeriodicCommand(cmdGetMode, 128);
-    if(rigCaps.hasTransmit)
-        insertSlowPeriodicCommand(cmdGetPTT, 128);
-    insertSlowPeriodicCommand(cmdGetTxPower, 128);
-    insertSlowPeriodicCommand(cmdGetRxGain, 128);
-    if(rigCaps.hasAttenuator)
-        insertSlowPeriodicCommand(cmdGetAttenuator, 128);
-    if(rigCaps.hasTransmit)
-        insertSlowPeriodicCommand(cmdGetPTT, 128);
-    if(rigCaps.hasPreamp)
-        insertSlowPeriodicCommand(cmdGetPreamp, 128);
-    if (rigCaps.hasRXAntenna) {
-        insertSlowPeriodicCommand(cmdGetAntenna, 128);
-    }
-    insertSlowPeriodicCommand(cmdGetDuplexMode, 128);
 }
 
 void servermain::insertPeriodicCommand(cmds cmd, unsigned char priority)
@@ -1407,301 +1504,14 @@ void servermain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority)
     }
 }
 
-void servermain::receiveFreq(freqt freqStruct)
+
+void servermain::handlePttLimit()
 {
-
-    qint64 tnow_ms = QDateTime::currentMSecsSinceEpoch();
-    if(tnow_ms - lastFreqCmdTime_ms > delayedCommand->interval() * 2)
-    {
-        freq = freqStruct;
-    } else {
-        qDebug(logSystem()) << "Rejecting stale frequency: " << freqStruct.Hz << " Hz, delta time ms = " << tnow_ms - lastFreqCmdTime_ms\
-                            << ", tnow_ms " << tnow_ms << ", last: " << lastFreqCmdTime_ms;
-    }
+    // transmission time exceeded!
+    std::cout << "Transmit timeout at 3 minutes. Sending PTT OFF command now.\n";
+    issueCmdUniquePriority(cmdSetPTT, false);
+    issueDelayedCommand(cmdGetPTT);
 }
-
-void servermain::receivePTTstatus(bool pttOn)
-{
-    // This is the only place where amTransmitting and the transmit button text should be changed:
-    //qInfo(logSystem()) << "PTT status: " << pttOn;
-    amTransmitting = pttOn;
-}
-
-void servermain::changeTxBtn()
-{
-}
-
-
-void servermain::receiveDataModeStatus(bool dataEnabled)
-{
-}
-
-void servermain::checkFreqSel()
-{
-    if(freqTextSelected)
-    {
-        freqTextSelected = false;
-    }
-}
-
-void servermain::changeMode(mode_kind mode)
-{
-    bool dataOn = false;
-    if(((unsigned char) mode >> 4) == 0x08)
-    {
-        dataOn = true;
-        mode = (mode_kind)((int)mode & 0x0f);
-    }
-
-    changeMode(mode, dataOn);
-}
-
-void servermain::changeMode(mode_kind mode, bool dataOn)
-{
-}
-
-void servermain::receiveBandStackReg(freqt freqGo, char mode, char filter, bool dataOn)
-{
-    // read the band stack and apply by sending out commands
-
-    qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freqGo.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
-    //emit setFrequency(0,freq);
-    issueCmd(cmdSetFreq, freqGo);
-    setModeVal = (unsigned char) mode;
-    setFilterVal = (unsigned char) filter;
-
-    issueDelayedCommand(cmdSetModeFilter);
-    freq = freqGo;
-
-    if(dataOn)
-    {
-        issueDelayedCommand(cmdSetDataModeOn);
-    } else {
-        issueDelayedCommand(cmdSetDataModeOff);
-    }
-    //issueDelayedCommand(cmdGetFreq);
-    //issueDelayedCommand(cmdGetMode);
-
-}
-
-void servermain::bandStackBtnClick()
-{
-}
-
-void servermain::receiveRfGain(unsigned char level)
-{
-}
-
-void servermain::receiveAfGain(unsigned char level)
-{
-}
-
-void servermain::receiveSql(unsigned char level)
-{
-}
-
-void servermain::receiveIFShift(unsigned char level)
-{
-}
-
-void servermain::receiveTBPFInner(unsigned char level)
-{
-}
-
-void servermain::receiveTBPFOuter(unsigned char level)
-{
-}
-
-void servermain::setRadioTimeDatePrep()
-{
-    if(!waitingToSetTimeDate)
-    {
-        // 1: Find the current time and date
-        QDateTime now;
-        now = QDateTime::currentDateTime();
-        now.setTime(QTime::currentTime());
-
-        int second = now.time().second();
-
-        // 2: Find how many mseconds until next minute
-        int msecdelay = QTime::currentTime().msecsTo( QTime::currentTime().addSecs(60-second) );
-
-        // 3: Compute time and date at one minute later
-        QDateTime setpoint = now.addMSecs(msecdelay); // at HMS or posibly HMS + some ms. Never under though.
-
-        // 4: Prepare data structs for the time at one minute later
-        timesetpoint.hours = (unsigned char)setpoint.time().hour();
-        timesetpoint.minutes = (unsigned char)setpoint.time().minute();
-        datesetpoint.day = (unsigned char)setpoint.date().day();
-        datesetpoint.month = (unsigned char)setpoint.date().month();
-        datesetpoint.year = (uint16_t)setpoint.date().year();
-        unsigned int utcOffsetSeconds = (unsigned int)abs(setpoint.offsetFromUtc());
-        bool isMinus = setpoint.offsetFromUtc() < 0;
-        utcsetting.hours = utcOffsetSeconds / 60 / 60;
-        utcsetting.minutes = (utcOffsetSeconds - (utcsetting.hours*60*60) ) / 60;
-        utcsetting.isMinus = isMinus;
-
-        timeSync->setInterval(msecdelay);
-        timeSync->setSingleShot(true);
-
-        // 5: start one-shot timer for the delta computed in #2.
-        timeSync->start();
-        waitingToSetTimeDate = true;
-    }
-}
-
-void servermain::setRadioTimeDateSend()
-{
-    // Issue priority commands for UTC offset, date, and time
-    // UTC offset must come first, otherwise the radio may "help" and correct for any changes.
-
-    issueCmd(cmdSetTime, timesetpoint);
-    issueCmd(cmdSetDate, datesetpoint);
-    issueCmd(cmdSetUTCOffset, utcsetting);
-    waitingToSetTimeDate = false;
-}
-
-
-void servermain::receiveTxPower(unsigned char power)
-{
-}
-
-void servermain::receiveMicGain(unsigned char gain)
-{
-    processModLevel(inputMic, gain);
-}
-
-void servermain::processModLevel(rigInput source, unsigned char level)
-{
-    rigInput currentIn;
-    if(usingDataMode)
-    {
-        currentIn = currentModDataSrc;
-    } else {
-        currentIn = currentModSrc;
-    }
-
-    switch(source)
-    {
-        case inputMic:
-            micGain = level;
-            break;
-        case inputACC:
-            accGain = level;
-            break;
-
-        case inputACCA:
-            accAGain = level;
-            break;
-
-        case inputACCB:
-            accBGain = level;
-            break;
-
-        case inputUSB:
-            usbGain = level;
-            break;
-
-        case inputLAN:
-            lanGain = level;
-            break;
-
-        default:
-            break;
-    }
-
-}
-
-void servermain::receiveModInput(rigInput input, bool dataOn)
-{
-}
-
-void servermain::receiveACCGain(unsigned char level, unsigned char ab)
-{
-    if(ab==1)
-    {
-    processModLevel(inputACCB, level);
-    } else {
-        if(rigCaps.model == model7850)
-        {
-            processModLevel(inputACCA, level);
-        } else {
-            processModLevel(inputACC, level);
-        }
-    }
-}
-
-void servermain::receiveUSBGain(unsigned char level)
-{
-    processModLevel(inputUSB, level);
-}
-
-void servermain::receiveLANGain(unsigned char level)
-{
-    processModLevel(inputLAN, level);
-}
-
-void servermain::receiveMeter(meterKind inMeter, unsigned char level)
-{
-
-}
-
-void servermain::receiveCompLevel(unsigned char compLevel)
-{
-    (void)compLevel;
-}
-
-void servermain::receiveMonitorGain(unsigned char monitorGain)
-{
-    (void)monitorGain;
-}
-
-void servermain::receiveVoxGain(unsigned char voxGain)
-{
-    (void)voxGain;
-}
-
-void servermain::receiveAntiVoxGain(unsigned char antiVoxGain)
-{
-    (void)antiVoxGain;
-}
-
-
-void servermain::receiveSpectrumRefLevel(int level)
-{
-}
-
-void servermain::changeModLabelAndSlider(rigInput source)
-{
-    changeModLabel(source, true);
-}
-
-void servermain::changeModLabel(rigInput input)
-{
-    changeModLabel(input, false);
-}
-
-void servermain::changeModLabel(rigInput input, bool updateLevel)
-{
-}
-
-void servermain::processChangingCurrentModLevel(unsigned char level)
-{
-    // slider moved, so find the current mod and issue the level set command.
-    issueCmd(cmdSetModLevel, level);
-}
-void servermain::receivePreamp(unsigned char pre)
-{
-}
-
-void servermain::receiveAttenuator(unsigned char att)
-{
-}
-
-void servermain::receiveAntennaSel(unsigned char ant, bool rx)
-{
-}
-
 
 void servermain::calculateTimingParameters()
 {
@@ -1767,54 +1577,6 @@ void servermain::powerRigOff()
     emit sendPowerOff();
 }
 
-
-void servermain::receiveRITStatus(bool ritEnabled)
-{
-}
-
-void servermain::receiveRITValue(int ritValHz)
-{
-}
-
-servermain::cmds servermain::meterKindToMeterCommand(meterKind m)
-{
-    cmds c;
-    switch(m)
-    {
-        case meterNone:
-            c = cmdNone;
-            break;
-        case meterS:
-            c = cmdGetSMeter;
-            break;
-        case meterCenter:
-            c = cmdGetCenterMeter;
-            break;
-        case meterPower:
-            c = cmdGetPowerMeter;
-            break;
-        case meterSWR:
-            c = cmdGetSWRMeter;
-            break;
-        case meterALC:
-            c = cmdGetALCMeter;
-            break;
-        case meterComp:
-            c = cmdGetCompMeter;
-            break;
-        case meterCurrent:
-            c = cmdGetIdMeter;
-            break;
-        case meterVoltage:
-            c = cmdGetVdMeter;
-            break;
-        default:
-            c = cmdNone;
-            break;
-    }
-
-    return c;
-}
 
 
 void servermain::handleCtrlC(int sig) {
