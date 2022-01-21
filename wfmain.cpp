@@ -865,13 +865,11 @@ void wfmain::updateSizes(int tabIndex)
             ui->tabWidget->widget(0)->setMaximumSize(ui->tabWidget->widget(0)->minimumSizeHint());
             ui->tabWidget->widget(0)->adjustSize(); // tab
             this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-            this->setMaximumSize(QSize(929, 270));
-            this->setMinimumSize(QSize(929, 270));
+            this->setMaximumSize(QSize(1024,350));
+            this->setMinimumSize(QSize(1024,350));
 
             resize(minimumSize());
             adjustSize(); // main window
-            adjustSize();
-
         } else if(tabIndex==0 && rigCaps.hasSpectrum) {
             // At main tab (0) and we have spectrum:
             ui->tabWidget->widget(0)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
@@ -882,8 +880,9 @@ void wfmain::updateSizes(int tabIndex)
             // At some other tab, with or without spectrum:
             ui->tabWidget->widget(tabIndex)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
             this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-            this->setMinimumSize(QSize(994, 455)); // not large enough for settings tab
+            this->setMinimumSize(QSize(1024, 600)); // not large enough for settings tab
             this->setMaximumSize(QSize(65535,65535));
+            adjustSize();
         }
     } else {
         ui->tabWidget->widget(tabIndex)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
@@ -5751,9 +5750,21 @@ void wfmain::on_debugBtn_clicked()
     qInfo(logSystem()) << "Debug button pressed.";
     // issueDelayedCommand(cmdGetRigID);
     //emit getRigCIV();
-    trxadj->show();
+    //trxadj->show();
     //setRadioTimeDatePrep();
     //wf->setInteraction(QCP::iRangeZoom, true);
     //wf->setInteraction(QCP::iRangeDrag, true);
+    bool ok;
+    int height = QInputDialog::getInt(this, "wfview Radio Polling Setup", "Poll Timing Interval (ms)", 350, 1, 500, 1, &ok );
+
+    this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    this->setMaximumSize(QSize(1025,height));
+    this->setMinimumSize(QSize(1025,height));
+    //this->setMaximumSize(QSize(929, 270));
+    //this->setMinimumSize(QSize(929, 270));
+
+    resize(minimumSize());
+    adjustSize(); // main window
+    adjustSize();
 
 }
