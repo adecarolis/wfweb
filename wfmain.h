@@ -523,6 +523,8 @@ private slots:
 
     void on_useRTSforPTTchk_clicked(bool checked);
 
+    void on_radioStatusBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);

@@ -422,8 +422,8 @@ void wfmain::makeRig()
         connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
         connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
         connect(rig, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
-        connect(rig, SIGNAL(setRadioUsage(int, QString, QString)), selRad, SLOT(setInUse(int, QString, QString)));
-
+        connect(rig, SIGNAL(setRadioUsage(int, bool, QString, QString)), selRad, SLOT(setInUse(int, bool, QString, QString)));
+        connect(selRad, SIGNAL(selectedRadio(int)), rig, SLOT(setCurrentRadio(int)));
         // Rig comm setup:
         connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)), rig, SLOT(commSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)));
         connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32,QString)), rig, SLOT(commSetup(unsigned char, QString, quint32,QString)));
@@ -5755,7 +5755,18 @@ void wfmain::on_setClockBtn_clicked()
 void wfmain::radioSelection(QList<radio_cap_packet> radios)
 {
     selRad->populate(radios);
-    selRad->setVisible(true);
+}
+
+void wfmain::on_radioStatusBtn_clicked()
+{
+    if (selRad->isVisible())
+    {
+        selRad->hide();
+    }
+    else
+    {
+        selRad->show();
+    }
 }
 
 // --- DEBUG FUNCTION ---

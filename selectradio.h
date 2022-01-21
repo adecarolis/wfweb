@@ -22,8 +22,8 @@ public:
 
 public slots:
     void on_table_cellClicked(int row, int col);
-    void on_table_sectionClicked(int index);
-    void setInUse(int radio, QString user, QString ip);
+    void setInUse(int radio, bool busy, QString user, QString ip);
+    void on_cancelButton_clicked();
 
 signals:
     void selectedRadio(int radio);

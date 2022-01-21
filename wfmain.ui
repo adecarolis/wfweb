@@ -3635,6 +3635,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="radioStatusBtn">
+        <property name="text">
+         <string>Radio Status</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="horizontalSpacer_9">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -3671,7 +3678,7 @@
      <x>0</x>
      <y>0</y>
      <width>946</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

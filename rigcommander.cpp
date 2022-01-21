@@ -139,7 +139,8 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
         connect(this, SIGNAL(discoveredRigID(rigCapabilities)), ptty, SLOT(receiveFoundRigID(rigCapabilities)));
 
         connect(udp, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
-        connect(udp, SIGNAL(setRadioUsage(int, QString, QString)), this, SLOT(radioUsage(int, QString, QString)));
+        connect(udp, SIGNAL(setRadioUsage(int, bool, QString, QString)), this, SLOT(radioUsage(int, bool, QString, QString)));
+        connect(this, SIGNAL(selectedRadio(int)), udp, SLOT(setCurrentRadio(int)));
         emit haveAfGain(rxSetup.localAFgain);
         localVolume = rxSetup.localAFgain;
     }
@@ -4284,10 +4285,13 @@ void rigCommander::radioSelection(QList<radio_cap_packet> radios)
     emit requestRadioSelection(radios);
 }
 
-void rigCommander::radioUsage(int radio, QString user, QString ip) {
-    emit setRadioUsage(radio, user, ip);
+void rigCommander::radioUsage(int radio, bool busy, QString user, QString ip) {
+    emit setRadioUsage(radio, busy, user, ip);
 }
 
+void rigCommander::setCurrentRadio(int radio) {
+    emit selectedRadio(radio);
+}
 
 void rigCommander::stateUpdated()
 {

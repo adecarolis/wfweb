@@ -45,16 +45,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Distribution Files">
-      <UniqueIdentifier>{B83CAF91-C7BF-462F-B76C-EA11631F866C}</UniqueIdentifier>
-      <Extensions>*</Extensions>
-      <ParseFiles>false</ParseFiles>
-    </Filter>
-    <Filter Include="Distribution Files">
-      <UniqueIdentifier>{B83CAF91-C7BF-462F-B76C-EA11631F866C}</UniqueIdentifier>
-      <Extensions>*</Extensions>
-      <ParseFiles>false</ParseFiles>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="aboutbox.cpp">
@@ -111,6 +101,9 @@
     <ClCompile Include="satellitesetup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="selectradio.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="transceiveradjustments.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -122,9 +115,6 @@
     </ClCompile>
     <ClCompile Include="wfmain.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="selectradio.cpp">
-      <Filter>Generated Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -191,6 +181,9 @@
     <QtMoc Include="satellitesetup.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="selectradio.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <ClInclude Include="resampler\speex_resampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -209,17 +202,59 @@
     <QtMoc Include="wfmain.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="selectradio.h">
-      <Filter>Generated Files</Filter>
-    </QtMoc>
   </ItemGroup>
   <ItemGroup>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="aboutbox.ui">
@@ -234,16 +269,13 @@
     <QtUic Include="satellitesetup.ui">
       <Filter>Form Files</Filter>
     </QtUic>
+    <QtUic Include="selectradio.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
     <QtUic Include="transceiveradjustments.ui">
       <Filter>Form Files</Filter>
     </QtUic>
-    <QtUic Include="udpserversetup.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
     <QtUic Include="wfmain.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
-    <QtUic Include="selectradio.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
@@ -377,21 +409,8 @@
     <None Include="resources\wfview.png">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="resources\wfview.png" />
-    <None Include="resources\wfview.png" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="resources\install.sh">
-      <Filter>Distribution Files</Filter>
-    </None>
-    <None Include="resources\wfview.desktop">
-      <Filter>Distribution Files</Filter>
-    </None>
-    <None Include="resources\wfview.png">
-      <Filter>Distribution Files</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include=".\wfview_resource.rc" />
+    <ResourceCompile Include="C:\Users\Phil\source\repos\wfview\wfview_resource.rc" />
   </ItemGroup>
 </Project>

@@ -219,6 +219,8 @@ public slots:
 	void changeLatency(quint16 value);
 	void setVolume(unsigned char value);
 	void init();
+	void setCurrentRadio(int radio);
+
 
 signals:
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
@@ -229,7 +231,7 @@ signals:
 	void haveNetworkStatus(QString);
 	void haveBaudRate(quint32 baudrate);
 	void requestRadioSelection(QList<radio_cap_packet> radios);
-	void setRadioUsage(int, QString name, QString mac);
+	void setRadioUsage(int, bool busy, QString name, QString mac);
 private:
 	
 	void sendAreYouThere();
@@ -265,7 +267,8 @@ private:
 	quint32 token;
 	// These are for stream ident info.
 	quint8 macaddress[8];
-
+	GUID guid;
+	bool useGuid = false;
 	QByteArray usernameEncoded;
 	QByteArray passwordEncoded;
 

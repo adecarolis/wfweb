@@ -327,12 +327,12 @@ void udpHandler::dataReceived()
                 conninfo_packet_t in = (conninfo_packet_t)r.constData();
                 QHostAddress ip = QHostAddress(qToBigEndian(in->ipaddress));
 
-                qInfo(logUdp()) << "Got Connection status for:" << in->name << "Computer" << in->computer << "User" << in->username << "IP" << ip.toString() << "GUID" << in->guid;
+                qInfo(logUdp()) << "Got Connection status for:" << in->name << "Busy:" << in->busy << "Computer" << in->computer << "IP" << ip.toString() << "GUID" << in->guid;
 
                 // First we need to find this radio in our capabilities packet, there aren't many so just step through
                 for (int f = 0; f < radios.length(); f++)
                 {
-                    if ((radios[f].commoncap == 0x8010 && 
+                    if ((radios[f].commoncap == 0x8010 &&
                         radios[f].macaddress[0] == in->macaddress[0] &&
                         radios[f].macaddress[1] == in->macaddress[1] &&
                         radios[f].macaddress[2] == in->macaddress[2] &&
@@ -341,14 +341,12 @@ void udpHandler::dataReceived()
                         radios[f].macaddress[5] == in->macaddress[5]) ||
                         (QUuid)radios[f].guid == (QUuid)in->guid)
                     {
-                        emit setRadioUsage(f,QString(in->computer),ip.toString());
+                        emit setRadioUsage(f, (bool)in->busy, QString(in->computer), ip.toString());
                     }
                 }
-                if (in->type != 0x01 && numRadios == 1) {
+                if (in->type != 0x01 && !streamOpened) {
 
-                    devName = in->name;
-                    QHostAddress ip = QHostAddress(qToBigEndian(in->ipaddress));
-                    if (!streamOpened && in->busy)
+                    if (!streamOpened && in->busy && numRadios == 1 )
                     {
                         if (in->ipaddress != 0x00 && strcmp(in->computer, compName.toLocal8Bit()))
                         {
@@ -356,32 +354,7 @@ void udpHandler::dataReceived()
                             sendControl(false, 0x00, in->seq); // Respond with an idle
                         }
                         else {
-                            civ = new udpCivData(localIP, radioIP, civPort);
-    
-                            // TX is not supported
-                            if (txSampleRates <2 ) { 
-                                txSetup.samplerate = 0;
-                                txSetup.codec = 0;
-                            }
-
-                            audio = new udpAudio(localIP, radioIP, audioPort, rxSetup, txSetup);
-
-                            QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
-                            QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
-                            QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16)));
-                            QObject::connect(this, SIGNAL(haveSetVolume(unsigned char)), audio, SLOT(setVolume(unsigned char)));
-
-                            streamOpened = true;
-
-                            emit haveNetworkStatus(devName);
-
-                            qInfo(logUdp()) << this->metaObject()->className() << "Got serial and audio request success, device name: " << devName;
-
-                            // Stuff can change in the meantime because of a previous login...
-                            remoteId = in->sentid;
-                            myId = in->rcvdid;
-                            tokRequest = in->tokrequest;
-                            token = in->token;
+                            setCurrentRadio(0);
                         }
                     }
                     else if (!streamOpened && !in->busy)
@@ -389,7 +362,6 @@ void udpHandler::dataReceived()
                         emit haveNetworkStatus(devName + " available");
 
                         memcpy(macaddress, in->macaddress, 6);
-
                         sendRequestStream();
                     }
                     else if (streamOpened) 
@@ -411,7 +383,6 @@ void udpHandler::dataReceived()
                     break;
                 }
 
-                int baudrate = 0;
 
                 capabilities_packet_t in = (capabilities_packet_t)r.constData();
                 numRadios = in->numradios;
@@ -420,11 +391,6 @@ void udpHandler::dataReceived()
                     radio_cap_packet rad;
                     const char* tmpRad = r.constData();
                     memcpy(&rad, tmpRad+f, RADIO_CAP_SIZE);
-                    devName = rad.name;
-                    audioType = rad.audio;
-                    civId = rad.civ;
-                    rxSampleRates = rad.rxsample;
-                    txSampleRates = rad.txsample;
                     radios.append(rad);
                 }
                 for(const radio_cap_packet radio : radios)
@@ -442,11 +408,8 @@ void udpHandler::dataReceived()
                         // GUID not MAC address
                         qInfo(logUdp()) << this->metaObject()->className() << "Radio GUID" << radio.guid;
                     }
-
-                    baudrate = qFromBigEndian(radio.baudrate);
                 }
                 emit requestRadioSelection(radios);
-                emit haveBaudRate(baudrate);
                 break;
             }
     
@@ -457,6 +420,52 @@ void udpHandler::dataReceived()
 
     }
     return;
+}
+
+
+void udpHandler::setCurrentRadio(int radio) {
+    if (!streamOpened) {
+        qInfo(logUdp()) << "Got Radio" << radio;
+        int baudrate = qFromBigEndian(radios[radio].baudrate);
+        emit haveBaudRate(baudrate);
+
+        if (radios[radio].commoncap == 0x8010) {
+            memcpy(macaddress, radios[radio].macaddress, 6);
+            useGuid = false;
+        }
+        else {
+            useGuid = true;
+            guid = radios[radio].guid;
+        }
+
+        devName =radios[radio].name;
+        audioType = radios[radio].audio;
+        civId = radios[radio].civ;
+        rxSampleRates = radios[radio].rxsample;
+        txSampleRates = radios[radio].txsample;
+
+        civ = new udpCivData(localIP, radioIP, civPort);
+
+        // TX is not supported
+        if (txSampleRates < 2) {
+            txSetup.samplerate = 0;
+            txSetup.codec = 0;
+        }
+
+        audio = new udpAudio(localIP, radioIP, audioPort, rxSetup, txSetup);
+
+        QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
+        QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+        QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16)));
+        QObject::connect(this, SIGNAL(haveSetVolume(unsigned char)), audio, SLOT(setVolume(unsigned char)));
+
+        streamOpened = true;
+        emit haveNetworkStatus(devName);
+
+        qInfo(logUdp()) << this->metaObject()->className() << "Got serial and audio request success, device name: " << devName;
+
+        sendRequestStream();
+    }
 }
 
 
@@ -473,8 +482,13 @@ void udpHandler::sendRequestStream()
     p.rcvdid = remoteId;
     p.code = 0x0180;
     p.res = 0x03;
-    p.commoncap = 0x8010;
-    memcpy(p.macaddress, macaddress, 6);
+    if (!useGuid) {
+        p.commoncap = 0x8010;
+        memcpy(p.macaddress, macaddress, 6);
+    }
+    else {
+        p.guid = guid;
+    }
     p.innerseq = authSeq++;
     p.tokrequest = tokRequest;
     p.token = token;
