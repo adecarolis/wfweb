@@ -104,8 +104,7 @@ private:
 		quint16 authSeq;
 		quint16 innerSeq;
 		quint16 sendAudioSeq;
-		quint8 identa;
-		quint32 identb;
+		quint8 macaddress[4];
 		quint16 tokenRx;
 		quint32 tokenTx;
 		quint32 commonCap;

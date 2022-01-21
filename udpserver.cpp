@@ -229,8 +229,7 @@ void udpServer::controlReceived()
             token_packet_t in = (token_packet_t)r.constData();
             current->rxSeq = in->seq;
             current->authInnerSeq = in->innerseq;
-            current->identa = in->identa;
-            current->identb = in->identb;
+            memcpy(current->macaddress, in->macaddress, 6);
             if (in->res == 0x02) {
                 // Request for new token
                 qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received create token request";
@@ -301,8 +300,8 @@ void udpServer::controlReceived()
             current->txSampleRate = qFromBigEndian<quint32>(in->txsample);
             current->txBufferLen = qFromBigEndian<quint32>(in->txbuffer);
             current->authInnerSeq = in->innerseq;
-            current->identa = in->identa;
-            current->identb = in->identb;
+
+            memcpy(current->macaddress, in->macaddress, 6);
             sendStatus(current);
             current->authInnerSeq = 0x00;
             sendConnectionInfo(current);
@@ -1040,7 +1039,9 @@ void udpServer::sendCapabilities(CLIENT* c)
     qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Capabilities :" << c->txSeq;
 
     capabilities_packet p;
+    radio_cap_packet r;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
+    memset(r.packet, 0x0, sizeof(r)); // We can't be sure it is initialized with 0x00!
     p.len = sizeof(p);
     p.type = 0x00;
     p.seq = c->txSeq;
@@ -1049,28 +1050,26 @@ void udpServer::sendCapabilities(CLIENT* c)
     p.innerseq = c->authInnerSeq;
     p.tokrequest = c->tokenRx;
     p.token = c->tokenTx;
-    p.code = 0x0298;
-    p.res = 0x02;
-    p.capa = 0x01;
-    p.commoncap = c->commonCap;
+    p.payloadsize = sizeof(p)-0x0f;
+    p.res = 0x0202;
+    p.numradios = 0x01;
+    r.commoncap = c->commonCap;
 
-    memcpy(p.macaddress, macAddress.toLocal8Bit(), 6);
+    memcpy(r.macaddress, macAddress.toLocal8Bit(), 6);
     // IRU seems to expect an "Icom" mac address so replace the first 3 octets of our Mac with one in their range!
-    memcpy(p.macaddress, QByteArrayLiteral("\x00\x90\xc7").constData(), 3);
-
-
-    memcpy(p.name, rigCaps.modelName.toLocal8Bit(), rigCaps.modelName.length());
-    memcpy(p.audio, QByteArrayLiteral("ICOM_VAUDIO").constData(), 11);
+    memcpy(r.macaddress, QByteArrayLiteral("\x00\x90\xc7").constData(), 3);
+    memcpy(r.name, rigCaps.modelName.toLocal8Bit(), rigCaps.modelName.length());
+    memcpy(r.audio, QByteArrayLiteral("ICOM_VAUDIO").constData(), 11);
 
     if (rigCaps.hasWiFi && !rigCaps.hasEthernet) {
-        p.conntype = 0x0707; // 0x0707 for wifi rig.
+        r.conntype = 0x0707; // 0x0707 for wifi rig.
     }
     else {
-        p.conntype = 0x073f; // 0x073f for ethernet rig.
+        r.conntype = 0x073f; // 0x073f for ethernet rig.
     }
 
-    p.civ = rigCaps.civ;
-    p.baudrate = (quint32)qToBigEndian(config.baudRate);
+    r.civ = rigCaps.civ;
+    r.baudrate = (quint32)qToBigEndian(config.baudRate);
     /*
         0x80 = 12K only
         0x40 = 44.1K only
@@ -1082,49 +1081,48 @@ void udpServer::sendCapabilities(CLIENT* c)
         0x01 = 8K only
     */
     if (rxaudio == Q_NULLPTR) {
-        p.rxsample = 0x8b01; // all rx sample frequencies supported
+        r.rxsample = 0x8b01; // all rx sample frequencies supported
     }
     else {
         if (rxSampleRate == 48000) {
-            p.rxsample = 0x0800; // fixed rx sample frequency
+            r.rxsample = 0x0800; // fixed rx sample frequency
         }
         else if (rxSampleRate == 32000) {
-            p.rxsample = 0x0400;
+            r.rxsample = 0x0400;
         }
         else if (rxSampleRate == 24000) {
-            p.rxsample = 0x0001;
+            r.rxsample = 0x0001;
         }
         else if (rxSampleRate == 16000) {
-            p.rxsample = 0x0200;
+            r.rxsample = 0x0200;
         }
         else if (rxSampleRate == 12000) {
-            p.rxsample = 0x8000;
+            r.rxsample = 0x8000;
         }
     }
 
     if (txaudio == Q_NULLPTR) {
-        p.txsample = 0x8b01; // all tx sample frequencies supported
-        p.enablea = 0x01; // 0x01 enables TX 24K mode?
+        r.txsample = 0x8b01; // all tx sample frequencies supported
+        r.enablea = 0x01; // 0x01 enables TX 24K mode?
         qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Client will have TX audio";
     }
     else {
         qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Disable tx audio for client";
-        p.txsample = 0;
+        r.txsample = 0;
     }
 
     // I still don't know what these are?
-    p.enableb = 0x01; // 0x01 doesn't seem to do anything?
-    p.enablec = 0x01; // 0x01 doesn't seem to do anything?
-    p.capf = 0x5001;
-    p.capg = 0x0190;
-
-
+    r.enableb = 0x01; // 0x01 doesn't seem to do anything?
+    r.enablec = 0x01; // 0x01 doesn't seem to do anything?
+    r.capf = 0x5001;
+    r.capg = 0x0190;
 
     SEQBUFENTRY s;
     s.seqNum = p.seq;
     s.timeSent = QTime::currentTime();
     s.retransmitCount = 0;
     s.data = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
+    s.data.append(QByteArray::fromRawData((const char*)r.packet, sizeof(r)));
     if (c->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
     {
         if (c->txSeqBuf.size() > BUFSIZE)
@@ -1141,7 +1139,7 @@ void udpServer::sendCapabilities(CLIENT* c)
 
     if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
     {
-        c->socket->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), c->ipAddress, c->port);
+        c->socket->writeDatagram((const char*)s.data, s.data.length(), c->ipAddress, c->port);
         udpMutex.unlock();
     }
     else {
@@ -1172,8 +1170,7 @@ void udpServer::sendConnectionInfo(CLIENT* c)
     p.token = c->tokenTx;
     p.code = 0x0380;
     p.commoncap = c->commonCap;
-    p.identa = c->identa;
-    p.identb = c->identb;
+    memcpy(p.macaddress, c->macaddress, 6);
 
     // 0x1a-0x1f is authid (random number?
     // memcpy(p + 0x40, QByteArrayLiteral("IC-7851").constData(), 7);
@@ -1185,8 +1182,7 @@ void udpServer::sendConnectionInfo(CLIENT* c)
         p.busy = 0x01;
         memcpy(p.computer, c->clientName.constData(), c->clientName.length());
         p.ipaddress = qToBigEndian(c->ipAddress.toIPv4Address());
-        p.identa = c->identa;
-        p.identb = c->identb;
+        memcpy(p.macaddress, c->macaddress, 6);
     }
 
 
@@ -1242,8 +1238,7 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
     p.tokrequest = c->tokenRx;
     p.token = c->tokenTx;
     p.code = 0x0230;
-    p.identa = c->identa;
-    p.identb = c->identb;
+    memcpy(p.macaddress, c->macaddress, 6);
     p.commoncap = c->commonCap;
     p.res = type;
 
@@ -1356,8 +1351,8 @@ void udpServer::sendStatus(CLIENT* c)
     p.res = 0x03;
     p.unknown = 0x1000;
     p.unusede = (char)0x80;
-    p.identa = c->identa;
-    p.identb = c->identb;
+    memcpy(p.macaddress, c->macaddress, 6);
+
 
     p.civport = qToBigEndian(c->civPort);
     p.audioport = qToBigEndian(c->audioPort);

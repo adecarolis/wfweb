@@ -28,6 +28,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     sat = new satelliteSetup();
     trxadj = new transceiverAdjustments();
     abtBox = new aboutbox();
+    selRad = new selectRadio();
 
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
     qRegisterMetaType<rigCapabilities>();
@@ -44,7 +45,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType <timekind>();
     qRegisterMetaType <datekind>();
     qRegisterMetaType<rigstate*>();
-
+    qRegisterMetaType<QList<radio_cap_packet>>();
 
     haveRigCaps = false;
 
@@ -420,6 +421,8 @@ void wfmain::makeRig()
         // Rig status and Errors:
         connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
         connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
+        connect(rig, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
+        connect(rig, SIGNAL(setRadioUsage(int, QString, QString)), selRad, SLOT(setInUse(int, QString, QString)));
 
         // Rig comm setup:
         connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)), rig, SLOT(commSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)));
@@ -1156,6 +1159,7 @@ void wfmain::setSerialDevicesUI()
         ui->serialDeviceListCombo->addItem(QString("/dev/")+serialPortInfo.portName(), i++);
 #else
         ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
+        qInfo(logSystem()) << "Serial Port found: " << serialPortInfo.portName() << "Manufacturer:" << serialPortInfo.manufacturer() << "Product ID" << serialPortInfo.description() << "S/N" << serialPortInfo.serialNumber();
 #endif
     }
 #if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
@@ -5747,6 +5751,12 @@ void wfmain::receiveStateInfo(rigstate* state)
 void wfmain::on_setClockBtn_clicked()
 {
     setRadioTimeDatePrep();
+}
+
+void wfmain::radioSelection(QList<radio_cap_packet> radios)
+{
+    selRad->populate(radios);
+    selRad->setVisible(true);
 }
 
 // --- DEBUG FUNCTION ---

@@ -322,8 +322,29 @@ void udpHandler::dataReceived()
             }
             case (CONNINFO_SIZE):
             {
+                // Once connected, the server will send a conninfo packet for each radio that is connected
+
                 conninfo_packet_t in = (conninfo_packet_t)r.constData();
-                if (in->type != 0x01) {
+                QHostAddress ip = QHostAddress(qToBigEndian(in->ipaddress));
+
+                qInfo(logUdp()) << "Got Connection status for:" << in->name << "Computer" << in->computer << "User" << in->username << "IP" << ip.toString() << "GUID" << in->guid;
+
+                // First we need to find this radio in our capabilities packet, there aren't many so just step through
+                for (int f = 0; f < radios.length(); f++)
+                {
+                    if ((radios[f].commoncap == 0x8010 && 
+                        radios[f].macaddress[0] == in->macaddress[0] &&
+                        radios[f].macaddress[1] == in->macaddress[1] &&
+                        radios[f].macaddress[2] == in->macaddress[2] &&
+                        radios[f].macaddress[3] == in->macaddress[3] &&
+                        radios[f].macaddress[4] == in->macaddress[4] &&
+                        radios[f].macaddress[5] == in->macaddress[5]) ||
+                        (QUuid)radios[f].guid == (QUuid)in->guid)
+                    {
+                        emit setRadioUsage(f,QString(in->computer),ip.toString());
+                    }
+                }
+                if (in->type != 0x01 && numRadios == 1) {
 
                     devName = in->name;
                     QHostAddress ip = QHostAddress(qToBigEndian(in->ipaddress));
@@ -367,8 +388,7 @@ void udpHandler::dataReceived()
                     {
                         emit haveNetworkStatus(devName + " available");
 
-                        identa = in->identa;
-                        identb = in->identb;
+                        memcpy(macaddress, in->macaddress, 6);
 
                         sendRequestStream();
                     }
@@ -383,28 +403,50 @@ void udpHandler::dataReceived()
                 break;
             }
     
-            case (CAPABILITIES_SIZE):
+            default:
             {
-                capabilities_packet_t in = (capabilities_packet_t)r.constData();
-                if (in->type != 0x01)
+                if ((r.length() - CAPABILITIES_SIZE) % RADIO_CAP_SIZE != 0)
                 {
-                    audioType = in->audio;
-                    devName = in->name;
-                    civId = in->civ;
-                    rxSampleRates = in->rxsample;
-                    txSampleRates = in->txsample;
-                    emit haveBaudRate(qFromBigEndian(in->baudrate));
-                    //replyId = r.mid(0x42, 16);
-                    qInfo(logUdp()) << this->metaObject()->className() << "Received radio capabilities, Name:" <<
-                        devName << " Audio:" <<
-                        audioType << "CIV:" << hex << civId; 
+                    qInfo(logUdp()) << this->metaObject()->className() << "Packet received" << r.length() << "not recognised";
+                    break;
+                }
 
-                    if (txSampleRates < 2)
+                int baudrate = 0;
+
+                capabilities_packet_t in = (capabilities_packet_t)r.constData();
+                numRadios = in->numradios;
+
+                for (int f = CAPABILITIES_SIZE; f < r.length(); f = f + RADIO_CAP_SIZE) {
+                    radio_cap_packet rad;
+                    const char* tmpRad = r.constData();
+                    memcpy(&rad, tmpRad+f, RADIO_CAP_SIZE);
+                    devName = rad.name;
+                    audioType = rad.audio;
+                    civId = rad.civ;
+                    rxSampleRates = rad.rxsample;
+                    txSampleRates = rad.txsample;
+                    radios.append(rad);
+                }
+                for(const radio_cap_packet radio : radios)
+                {
+                    qInfo(logUdp()) << this->metaObject()->className() << "Received radio capabilities, Name:" <<
+                        radio.name << " Audio:" <<
+                        radio.audio << "CIV:" << hex << (unsigned char)radio.civ <<
+                        "CAPF" << radio.capf;
+                    if (radio.txsample < 2)
                     {
                         // TX not supported
                         qInfo(logUdp()) << this->metaObject()->className() << "TX audio is disabled";
                     }
+                    if (radio.commoncap != 0x8010) {
+                        // GUID not MAC address
+                        qInfo(logUdp()) << this->metaObject()->className() << "Radio GUID" << radio.guid;
+                    }
+
+                    baudrate = qFromBigEndian(radio.baudrate);
                 }
+                emit requestRadioSelection(radios);
+                emit haveBaudRate(baudrate);
                 break;
             }
     
@@ -432,8 +474,7 @@ void udpHandler::sendRequestStream()
     p.code = 0x0180;
     p.res = 0x03;
     p.commoncap = 0x8010;
-    p.identa = identa;
-    p.identb = identb;
+    memcpy(p.macaddress, macaddress, 6);
     p.innerseq = authSeq++;
     p.tokrequest = tokRequest;
     p.token = token;

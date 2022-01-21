@@ -273,6 +273,8 @@ public slots:
 
     // Housekeeping:
     void handleStatusUpdate(const QString text);
+    void radioSelection(QList<radio_cap_packet> radios);
+    void radioUsage(int radio, QString name, QString ip);
     void sendState();
     void getDebug();
 
@@ -365,6 +367,8 @@ signals:
     void stateInfo(rigstate* state);
 
     // Housekeeping:
+    void requestRadioSelection(QList<radio_cap_packet> radios);
+    void setRadioUsage(int radio, QString user, QString ip);
     void getMoreDebug();
     void finished();
 

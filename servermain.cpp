@@ -28,6 +28,7 @@ servermain::servermain(const QString serialPortCL, const QString hostCL, const Q
     qRegisterMetaType <timekind>();
     qRegisterMetaType <datekind>();
     qRegisterMetaType<rigstate*>();
+    qRegisterMetaType<QList<radio_cap_packet>>() ;
 
     signal(SIGINT, handleCtrlC);
 

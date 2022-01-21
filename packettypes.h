@@ -1,6 +1,7 @@
 #ifndef PACKETTYPES_H
 #define PACKETTYPES_H
 #include <QObject>
+#include <QtCore/quuid.h>
 
 #pragma pack(push, 1)
 
@@ -29,7 +30,8 @@
 #define LOGIN_RESPONSE_SIZE     0x60
 #define LOGIN_SIZE              0x80
 #define CONNINFO_SIZE           0x90
-#define CAPABILITIES_SIZE       0xA8
+#define CAPABILITIES_SIZE       0x42
+#define RADIO_CAP_SIZE          0x66
 
 // Variable size packets + payload
 #define CIV_SIZE                0x15
@@ -172,9 +174,8 @@ typedef union token_packet {
         quint32 token;              // 0x1c
         char unusedd[7];            // 0x20
         quint16 commoncap;          // 0x27
-        char unuseddd[2];           // 0x29
-        char identa;                // 0x2b
-        quint32 identb;             // 0x2c
+        char unuseddd;              // 0x29
+        char macaddress[6];             // 0x2a
         quint32 response;           // 0x30
         char unusede[12];           // 0x34
     };
@@ -201,9 +202,8 @@ typedef union status_packet {
         char unusedd[6];          // 0x20
         quint16 unknown;            // 0x26
         char unusede;             // 0x28
-        char unusedf[2];          // 0x29
-        char identa;              // 0x2b
-        quint32 identb;           // 0x2c
+        char unusedf;          // 0x29
+        quint8 macaddress[6];       // 0x2a
         quint32 error;             // 0x30
         char unusedg[12];         // 0x34
         char disc;                // 0x40
@@ -286,14 +286,18 @@ typedef union conninfo_packet {
         char unusedb;             // 0x19
         quint16 tokrequest;       // 0x1a
         quint32 token;            // 0x1c 
-        quint16 authstartid;      // 0x20
-        char unusedd[5];          // 0x22
-        quint32 commoncap;        // 0x27
-        char identa;              // 0x2b
-        quint32 identb;           // 0x2c
-        char unusedf[16];         // 0x30
-        char name[16];            // 0x40
-        char unusedg[16];         // 0x50
+        union {
+            struct {
+                quint16 authstartid;    // 0x20
+                char unusedg[5];        // 0x22
+                quint16 commoncap;      // 0x27
+                char unusedh;           // 0x29
+                char macaddress[6];     // 0x2a
+            };
+            GUID guid;                  // 0x20
+        };
+        char unusedab[16];        // 0x30
+        char name[32];                  // 0x40
         union { // This contains differences between the send/receive packet
             struct { // Receive
                 quint32 busy;            // 0x60
@@ -321,6 +325,42 @@ typedef union conninfo_packet {
     char packet[CONNINFO_SIZE];
 } *conninfo_packet_t;
 
+
+// 0x64 length radio capabilities part of cap packet.
+/*
+        };*/
+typedef union radio_cap_packet {
+    struct
+    {
+        union {
+            struct {
+                char unusede[7];          // 0x0
+                quint16 commoncap;        // 0x0
+                char unused;              // 0x0
+                char macaddress[6];       // 0x0
+            };
+            GUID guid;                // 0x0
+        };
+        char name[32];            // 0x10
+        char audio[32];           // 0x30
+        quint16 conntype;         // 0x50
+        char civ;                 // 0x52
+        quint16 rxsample;         // 0x53
+        quint16 txsample;         // 0x55
+        quint8 enablea;           // 0x57
+        quint8 enableb;           // 0x58
+        quint8 enablec;           // 0x59
+        quint32 baudrate;         // 0x5a
+        quint16 capf;             // 0x5e
+        char unusedi;             // 0x60
+        quint16 capg;             // 0x61
+        char unusedj[3];          // 0x66
+    };
+    char packet[RADIO_CAP_SIZE];
+} *radio_cap_packet_t;
+
+
+
 // 0xA8 length capabilities packet
 typedef union capabilities_packet {
     struct
@@ -330,38 +370,19 @@ typedef union capabilities_packet {
         quint16 seq;              // 0x06
         quint32 sentid;           // 0x08 
         quint32 rcvdid;           // 0x0c
-        char unuseda[3];          // 0x10
-        quint16 code;             // 0x13
-        quint16 res;              // 0x15
-        quint8 innerseq;          // 0x17
+        char unuseda[2];          // 0x10
+        quint16 payloadsize;      // 0x12
+        quint16 res;              // 0x14
+        quint16 innerseq;         // 0x16
         char unusedb;             // 0x18
         char unusedc;             // 0x19
         quint16 tokrequest;       // 0x1a
         quint32 token;            // 0x1c 
         char unusedd[33];         // 0x20
-        char capa;                // 0x41
-        char unusede[7];          // 0x42
-        quint16 commoncap;        // 0x49
-        char unused;              // 0x4b
-        char macaddress[6];       // 0x4c
-        char name[32];            // 0x52
-        char audio[32];           // 0x72
-        quint16 conntype;         // 0x92
-        char civ;                 // 0x94
-        quint16 rxsample;             // 0x95
-        quint16 txsample;             // 0x97
-        quint8 enablea;           // 0x99
-        quint8 enableb;           // 0x9a
-        quint8 enablec;           // 0x9b
-        quint32 baudrate;         // 0x9c
-        quint16 capf;             // 0xa0
-        char unusedi;             // 0xa2
-        quint16 capg;         // 0xa3
-        char unusedj[3];          // 0xa5
+        char numradios;           // 0x41
     };
     char packet[CAPABILITIES_SIZE];
 } *capabilities_packet_t;
-
 
 
 

@@ -209,6 +209,8 @@ public:
 	udpCivData* civ = Q_NULLPTR;
 	udpAudio* audio = Q_NULLPTR;
 
+	unsigned char numRadios;
+	QList<radio_cap_packet> radios;
 
 public slots:
 	void receiveDataFromUserToRig(QByteArray); // This slot will send data on to 
@@ -226,7 +228,8 @@ signals:
 	void haveSetVolume(unsigned char value);
 	void haveNetworkStatus(QString);
 	void haveBaudRate(quint32 baudrate);
-
+	void requestRadioSelection(QList<radio_cap_packet> radios);
+	void setRadioUsage(int, QString name, QString mac);
 private:
 	
 	void sendAreYouThere();
@@ -261,8 +264,7 @@ private:
 	quint16 tokRequest;
 	quint32 token;
 	// These are for stream ident info.
-	char identa;
-	quint32 identb;
+	quint8 macaddress[8];
 
 	QByteArray usernameEncoded;
 	QByteArray passwordEncoded;

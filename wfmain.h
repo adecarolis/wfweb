@@ -31,6 +31,7 @@
 #include "qledlabel.h"
 #include "rigctld.h"
 #include "aboutbox.h"
+#include "selectradio.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -272,6 +273,7 @@ private slots:
     void sendRadioCommandLoop();
     void showStatusBarText(QString text);
     void receiveBaudRate(quint32 baudrate);
+    void radioSelection(QList<radio_cap_packet> radios);
 
     void setRadioTimeDateSend();
 
@@ -842,7 +844,7 @@ private:
     satelliteSetup *sat;
     transceiverAdjustments *trxadj;
     aboutbox *abtBox;
-
+    selectRadio *selRad;
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
@@ -890,6 +892,7 @@ Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
 Q_DECLARE_METATYPE(rigstate*)
+Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 
 
 #endif // WFMAIN_H
