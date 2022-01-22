@@ -28,6 +28,9 @@ void selectRadio::populate(QList<radio_cap_packet> radios)
         ui->table->setItem(row, 1, new QTableWidgetItem(QString("%1").arg((unsigned char)radios[row].civ, 2, 16, QLatin1Char('0')).toUpper()));
         ui->table->setItem(row, 2, new QTableWidgetItem(QString::number(qFromBigEndian(radios[row].baudrate))));
     }
+    if (radios.count() > 1) {
+        this->setVisible(true);
+    }
 }
 
 void selectRadio::setInUse(int radio, bool busy, QString user, QString ip)
