@@ -891,12 +891,11 @@ Q_DECLARE_METATYPE(struct audioSetup)
 Q_DECLARE_METATYPE(struct SERVERCONFIG)
 Q_DECLARE_METATYPE(struct timekind)
 Q_DECLARE_METATYPE(struct datekind)
-Q_DECLARE_METATYPE(union radio_cap_packet)
-Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 Q_DECLARE_METATYPE(struct networkStatus)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
+Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 Q_DECLARE_METATYPE(rigstate*)
 
 
