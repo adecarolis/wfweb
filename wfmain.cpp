@@ -45,6 +45,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType <timekind>();
     qRegisterMetaType <datekind>();
     qRegisterMetaType<rigstate*>();
+    qRegisterMetaType<radio_cap_packet>();
     qRegisterMetaType<QList<radio_cap_packet>>();
     qRegisterMetaType<networkStatus>();
 
