@@ -131,7 +131,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
 
         // Connect for errors/alerts
         connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
-        connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(handleStatusUpdate(QString)));
+        connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(handleStatusUpdate(networkStatus)));
 
         connect(ptty, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
         connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
@@ -206,9 +206,9 @@ void rigCommander::handleSerialPortError(const QString port, const QString error
     emit haveSerialPortError(port, errorText);
 }
 
-void rigCommander::handleStatusUpdate(const QString text)
+void rigCommander::handleStatusUpdate(const networkStatus status)
 {
-    emit haveStatusUpdate(text);
+    emit haveStatusUpdate(status);
 }
 
 bool rigCommander::usingLAN()
@@ -4278,10 +4278,6 @@ void rigCommander::sendState()
 
 void rigCommander::radioSelection(QList<radio_cap_packet> radios)
 {
-    for (const radio_cap_packet radio : radios)
-    {
-        qInfo(logSystem()) << "Radio Name" << radio.name;
-    }
     emit requestRadioSelection(radios);
 }
 

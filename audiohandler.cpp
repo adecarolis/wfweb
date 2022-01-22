@@ -664,6 +664,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 
     //qDebug(logAudio()) << "Got" << setup.bits << "bits, length" << livePacket.data.length();
 	// Incoming data is 8bits?
+	int tempAmplitude=0;
 	if (setup.bits == 8)
 	{
 		// Current packet is 8bit so need to create a new buffer that is 16bit 
@@ -672,12 +673,15 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		for (int f = 0; f < livePacket.data.length(); f++)
 		{
 			int samp = (quint8)livePacket.data[f];
+			tempAmplitude = qMax(tempAmplitude, abs(samp));
 			for (int g = setup.radioChan; g <= devChannels; g++)
 			{
-				if (setup.ulaw)
+				if (setup.ulaw) {
 					*out++ = ulaw_decode[samp] * this->volume;
-				else
+				}
+				else {
 					*out++ = (qint16)((samp - 128) << 8) * this->volume;
+				}
 			}
 		}
 		livePacket.data.clear();
@@ -693,6 +697,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			qint16* out = (qint16*)outPacket.data();
 			for (int f = 0; f < livePacket.data.length() / 2; f++)
 			{
+				tempAmplitude = qMax(tempAmplitude, (int)(abs(*in) / 256));
 				*out++ = (qint16)*in * this->volume;
 				*out++ = (qint16)*in++ * this->volume;
 			}
@@ -705,13 +710,14 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			qint16* in = (qint16*)livePacket.data.data();
 			for (int f = 0; f < livePacket.data.length() / 2; f++)
 			{
-                *in = *in * this->volume;
+				tempAmplitude = qMax(tempAmplitude, (int)(abs(*in) / 256));
+				*in = *in * this->volume;
                 in++;
 			}
 		}
 
 	}
-
+	amplitude = tempAmplitude;
 	/*	We now have an array of 16bit samples in the NATIVE samplerate of the radio
 		If the radio sample rate is below 48000, we need to resample.
 		*/
@@ -810,6 +816,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 
 		//qDebug(logAudio()) << "Now resampled, length" << packet.data.length();
 
+		int tempAmplitude = 0;
 		// Do we need to convert mono to stereo?
 		if (setup.radioChan == 1 && devChannels > 1)
 		{
@@ -819,6 +826,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			qint16* out = (qint16*)outPacket.data();
 			for (int f = 0; f < outPacket.length()/2; f++)
 			{
+				tempAmplitude = qMax(tempAmplitude, (int)(abs(*in) / 256));
 				*out++ = *in++;
 				in++; // Skip each even channel.
 			}
@@ -852,6 +860,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		}
 		else if (setup.bits == 8) 
 		{
+
 			// Do we need to convert 16-bit to 8-bit?
 			QByteArray outPacket((int)packet.data.length() / 2, (char)0xff);
 			qint16* in = (qint16*)packet.data.data();
@@ -874,10 +883,12 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 					int compressedByte = (((sample + 32768) >> 8) & 0xff);
 					outPacket[f] = (quint8)compressedByte;
 				}
+				tempAmplitude = qMax(tempAmplitude, abs(outPacket[f]));
 			}
 			packet.data.clear();
 			packet.data = outPacket; // Copy output packet back to input buffer.
 		} 
+		amplitude = tempAmplitude;
 
 		ret = packet.data;
 		//qDebug(logAudio()) << "Now radio format, length" << packet.data.length();
@@ -889,7 +900,6 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 		}
 
 	}
-
 
 	return;
 
@@ -973,4 +983,8 @@ void audioHandler::stop()
 
 #endif
 
+quint16 audioHandler::getAmplitude()
+{
+	return amplitude;
+}
 

@@ -170,20 +170,21 @@ void udpHandler::dataReceived()
                 if (in->type == 0x07 && in->reply == 0x01 && streamOpened)
                 {
                     // This is a response to our ping request so measure latency
-                    latency += lastPingSentTime.msecsTo(QDateTime::currentDateTime());
-                    latency /= 2;
-                    quint32 totalsent = packetsSent;
-                    quint32 totallost = packetsLost;
+                    status.networkLatency += lastPingSentTime.msecsTo(QDateTime::currentDateTime());
+                    status.networkLatency /= 2;
+                    status.packetsSent = packetsSent;
+                    status.packetsLost = packetsLost;
                     if (audio != Q_NULLPTR) {
-                        totalsent = totalsent + audio->packetsSent;
-                        totallost = totallost + audio->packetsLost;
+                        status.packetsSent = status.packetsSent + audio->packetsSent;
+                        status.packetsLost = status.packetsLost + audio->packetsLost;
                     }
                     if (civ != Q_NULLPTR) {
-                        totalsent = totalsent + civ->packetsSent;
-                        totallost = totallost + civ->packetsLost;
+                        status.packetsSent = status.packetsSent + civ->packetsSent;
+                        status.packetsLost = status.packetsLost + civ->packetsLost;
                     }
 
                     QString tempLatency;
+                    status.rxLatency = audio->audioLatency;
                     if (rxSetup.latency > audio->audioLatency)
                     {
                         tempLatency = QString("%1 ms").arg(audio->audioLatency,3);
@@ -195,7 +196,14 @@ void udpHandler::dataReceived()
                     if (txSetup.codec == 0) {
                         txString = "(no tx)";
                     }
-                    emit haveNetworkStatus(QString("<pre>%1 rx latency: %2 / rtt: %3 ms / loss: %4/%5</pre>").arg(txString).arg(tempLatency).arg(latency, 3).arg(totallost, 3).arg(totalsent, 3));
+                    status.message = QString("<pre>%1 rx latency: %2 / rtt: %3 ms / loss: %4/%5</pre>").arg(txString).arg(tempLatency).arg(latency, 3).arg(status.packetsLost, 3).arg(status.packetsSent, 3);
+
+                    if (audio != Q_NULLPTR) {
+                        status.rxAudioLevel = audio->getRxAmplitude();
+                        status.txAudioLevel = audio->getTxAmplitude();
+                    }
+                    emit haveNetworkStatus(status);
+
                 }
                 break;
             }
@@ -295,7 +303,7 @@ void udpHandler::dataReceived()
 
                     if (in->error == 0xfeffffff)
                     {
-                        emit haveNetworkStatus("Invalid Username/Password");
+                        status.message = "Invalid Username/Password";
                         qInfo(logUdp()) << this->metaObject()->className() << ": Invalid Username/Password";
                     }
                     else if (!isAuthenticated)
@@ -303,7 +311,7 @@ void udpHandler::dataReceived()
 
                         if (in->tokrequest == tokRequest)
                         {
-                            emit haveNetworkStatus("Radio Login OK!");
+                            status.message="Radio Login OK!";
                             qInfo(logUdp()) << this->metaObject()->className() << ": Received matching token response to our request";
                             token = in->token;
                             sendToken(0x02);
@@ -346,31 +354,48 @@ void udpHandler::dataReceived()
                 }
                 if (in->type != 0x01 && !streamOpened) {
 
-                    if (!streamOpened && in->busy && numRadios == 1 )
+                    if (in->busy && numRadios == 1)
                     {
                         if (in->ipaddress != 0x00 && strcmp(in->computer, compName.toLocal8Bit()))
                         {
-                            emit haveNetworkStatus(devName + " in use by: " + in->computer + " (" + ip.toString() + ")");
+                            status.message = devName + " in use by: " + in->computer + " (" + ip.toString() + ")";
                             sendControl(false, 0x00, in->seq); // Respond with an idle
                         }
                         else {
                             setCurrentRadio(0);
                         }
                     }
-                    else if (!streamOpened && !in->busy)
+                    else if (!in->busy && numRadios == 1)
                     {
-                        emit haveNetworkStatus(devName + " available");
+                        status.message = devName + " available";
 
-                        memcpy(macaddress, in->macaddress, 6);
-                        sendRequestStream();
+                        if (civPort == 0) {
+                            qInfo(logUdp()) << this->metaObject()->className() << "civPort not yet configured!";
+                        }
+
+                        if (radios[0].commoncap == 0x8010) {
+                            memcpy(macaddress, radios[0].macaddress, 6);
+                            useGuid = false;
+                        }
+                        else {
+                            useGuid = true;
+                            guid = radios[0].guid;
+                        }
+
+                        devName = radios[0].name;
+                        audioType = radios[0].audio;
+                        civId = radios[0].civ;
+                        rxSampleRates = radios[0].rxsample;
+                        txSampleRates = radios[0].txsample;
+                        sendRequestStream(); // Send initial stream request.
                     }
-                    else if (streamOpened) 
-                    /* If another client connects/disconnects from the server, the server will emit 
-                        a CONNINFO packet, send our details to confirm we still want the stream */
-                    {
-                        // Received while stream is open.
-                        sendRequestStream();
-                    }
+                }
+                else if (streamOpened) 
+                   /* If another client connects/disconnects from the server, the server will emit 
+                   a CONNINFO packet, send our details to confirm we still want the stream */
+                {
+                    // Received while stream is open.
+                    sendRequestStream();
                 }
                 break;
             }
@@ -393,7 +418,7 @@ void udpHandler::dataReceived()
                     memcpy(&rad, tmpRad+f, RADIO_CAP_SIZE);
                     radios.append(rad);
                 }
-                for(const radio_cap_packet radio : radios)
+                for(const radio_cap_packet &radio : radios)
                 {
                     qInfo(logUdp()) << this->metaObject()->className() << "Received radio capabilities, Name:" <<
                         radio.name << " Audio:" <<
@@ -417,32 +442,32 @@ void udpHandler::dataReceived()
         udpBase::dataReceived(r); // Call parent function to process the rest.
         r.clear();
         datagram.clear();
-
     }
     return;
 }
 
 
 void udpHandler::setCurrentRadio(int radio) {
+    qInfo(logUdp()) << "Got Radio" << radio;
+    int baudrate = qFromBigEndian(radios[radio].baudrate);
+    emit haveBaudRate(baudrate);
+
+    if (radios[radio].commoncap == 0x8010) {
+        memcpy(macaddress, radios[radio].macaddress, 6);
+        useGuid = false;
+    }
+    else {
+        useGuid = true;
+        guid = radios[radio].guid;
+    }
+
+    devName =radios[radio].name;
+    audioType = radios[radio].audio;
+    civId = radios[radio].civ;
+    rxSampleRates = radios[radio].rxsample;
+    txSampleRates = radios[radio].txsample;
+
     if (!streamOpened) {
-        qInfo(logUdp()) << "Got Radio" << radio;
-        int baudrate = qFromBigEndian(radios[radio].baudrate);
-        emit haveBaudRate(baudrate);
-
-        if (radios[radio].commoncap == 0x8010) {
-            memcpy(macaddress, radios[radio].macaddress, 6);
-            useGuid = false;
-        }
-        else {
-            useGuid = true;
-            guid = radios[radio].guid;
-        }
-
-        devName =radios[radio].name;
-        audioType = radios[radio].audio;
-        civId = radios[radio].civ;
-        rxSampleRates = radios[radio].rxsample;
-        txSampleRates = radios[radio].txsample;
 
         civ = new udpCivData(localIP, radioIP, civPort);
 
@@ -451,21 +476,17 @@ void udpHandler::setCurrentRadio(int radio) {
             txSetup.samplerate = 0;
             txSetup.codec = 0;
         }
-
         audio = new udpAudio(localIP, radioIP, audioPort, rxSetup, txSetup);
-
         QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
         QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
         QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16)));
         QObject::connect(this, SIGNAL(haveSetVolume(unsigned char)), audio, SLOT(setVolume(unsigned char)));
 
         streamOpened = true;
-        emit haveNetworkStatus(devName);
-
-        qInfo(logUdp()) << this->metaObject()->className() << "Got serial and audio request success, device name: " << devName;
-
-        sendRequestStream();
     }
+    qInfo(logUdp()) << this->metaObject()->className() << "Got serial and audio request success, device name: " << devName;
+
+    sendRequestStream();
 }
 
 
@@ -515,7 +536,7 @@ void udpHandler::sendAreYouThere()
     if (areYouThereCounter == 20)
     {
         qInfo(logUdp()) << this->metaObject()->className() << ": Radio not responding.";
-        emit haveNetworkStatus("Radio not responding!");
+        status.message = "Radio not responding!";
     }
     qInfo(logUdp()) << this->metaObject()->className() << ": Sending Are You There...";
 
@@ -959,6 +980,24 @@ void udpAudio::changeLatency(quint16 value)
 void udpAudio::setVolume(unsigned char value)
 {
     emit haveSetVolume(value);
+}
+
+quint16 udpAudio::getRxAmplitude() {
+    if (rxaudio != Q_NULLPTR) {
+        return rxaudio->getAmplitude();
+    }
+    else {
+        return 0;
+    }
+}
+
+quint16 udpAudio::getTxAmplitude() {
+    if (txaudio != Q_NULLPTR) {
+        return txaudio->getAmplitude();
+    } 
+    else {
+        return 0;
+    }
 }
 
 void udpAudio::dataReceived()

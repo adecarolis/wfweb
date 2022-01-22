@@ -21,6 +21,7 @@
 
 #include "packettypes.h"
 #include "rigidentities.h"
+#include "udphandler.h"
 #include "audiohandler.h"
 
 extern void passcode(QString in,QByteArray& out);
@@ -72,7 +73,7 @@ public slots:
 signals:
 	void haveDataFromServer(QByteArray);
 	void haveAudioData(audioPacket data);
-	void haveNetworkStatus(QString);
+	void haveNetworkStatus(networkStatus);
 
 	void setupTxAudio(audioSetup);
 	void setupRxAudio(audioSetup);

@@ -272,7 +272,7 @@ public slots:
     void sayAll();
 
     // Housekeeping:
-    void handleStatusUpdate(const QString text);
+    void handleStatusUpdate(const networkStatus status);
     void radioSelection(QList<radio_cap_packet> radios);
     void radioUsage(int radio, bool busy, QString name, QString ip);
     void setCurrentRadio(int radio);
@@ -283,7 +283,7 @@ signals:
     // Communication:
     void commReady();
     void haveSerialPortError(const QString port, const QString errorText);
-    void haveStatusUpdate(const QString text);
+    void haveStatusUpdate(const networkStatus status);
     void dataForComm(const QByteArray &outData);
     void toggleRTS(bool rtsOn);
 

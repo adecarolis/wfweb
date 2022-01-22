@@ -35,6 +35,20 @@ struct udpPreferences {
 	QString clientName;
 };
 
+struct networkStatus {
+	quint8 rxAudioBufferPercent;
+	quint8 txAudioBufferPercent;
+	quint8 rxAudioLevel;
+	quint8 txAudioLevel;
+	quint16 rxLatency;
+	quint16 txLatency;
+	quint32 packetsSent;
+	quint32 packetsLost;
+	quint16 rtt;
+	quint32 networkLatency;
+	QString message;
+};
+
 void passcode(QString in, QByteArray& out);
 QByteArray parseNullTerminatedString(QByteArray c, int s);
 
@@ -158,6 +172,8 @@ public:
 	~udpAudio();
 
 	int audioLatency = 0;
+	quint16 getRxAmplitude();
+	quint16 getTxAmplitude();
 
 signals:
 	void haveAudioData(audioPacket data);
@@ -228,7 +244,7 @@ signals:
 	void haveNetworkError(QString, QString);
 	void haveChangeLatency(quint16 value);
 	void haveSetVolume(unsigned char value);
-	void haveNetworkStatus(QString);
+	void haveNetworkStatus(networkStatus);
 	void haveBaudRate(quint32 baudrate);
 	void requestRadioSelection(QList<radio_cap_packet> radios);
 	void setRadioUsage(int, bool busy, QString name, QString mac);
@@ -279,6 +295,7 @@ private:
 	quint8 civId = 0;
 	quint16 rxSampleRates = 0;
 	quint16 txSampleRates = 0;
+	networkStatus status;
 };
 
 

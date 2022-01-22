@@ -51,3 +51,11 @@ void selectRadio::on_table_cellClicked(int row, int col) {
 void selectRadio::on_cancelButton_clicked() {
     this->setVisible(false);
 }
+
+void selectRadio::audioOutputLevel(quint16 level) {
+    ui->afLevel->setValue(level);
+}
+
+void selectRadio::audioInputLevel(quint16 level) {
+    ui->modLevel->setValue(level);
+}

@@ -46,6 +46,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType <datekind>();
     qRegisterMetaType<rigstate*>();
     qRegisterMetaType<QList<radio_cap_packet>>();
+    qRegisterMetaType<networkStatus>();
 
     haveRigCaps = false;
 
@@ -420,7 +421,7 @@ void wfmain::makeRig()
 
         // Rig status and Errors:
         connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
-        connect(rig, SIGNAL(haveStatusUpdate(QString)), this, SLOT(receiveStatusUpdate(QString)));
+        connect(rig, SIGNAL(haveStatusUpdate(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
         connect(rig, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
         connect(rig, SIGNAL(setRadioUsage(int, bool, QString, QString)), selRad, SLOT(setInUse(int, bool, QString, QString)));
         connect(selRad, SIGNAL(selectedRadio(int)), rig, SLOT(setCurrentRadio(int)));
@@ -579,9 +580,13 @@ void wfmain::receiveSerialPortError(QString port, QString errorText)
     // TODO: Dialog box, exit, etc
 }
 
-void wfmain::receiveStatusUpdate(QString text)
+void wfmain::receiveStatusUpdate(networkStatus status)
 {
-    this->rigStatus->setText(text);
+    
+    this->rigStatus->setText(status.message);
+    selRad->audioOutputLevel(status.rxAudioLevel);
+    selRad->audioInputLevel(status.txAudioLevel);
+    //qInfo(logSystem()) << "Got Status Update" << status.rxAudioLevel;
 }
 
 void wfmain::setupPlots()
@@ -985,7 +990,7 @@ void wfmain::setServerToPrefs()
         }
 
         if (!prefs.enableLAN) {
-            connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(receiveStatusUpdate(QString)));
+            connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
         }
 
         serverThread->start();

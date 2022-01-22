@@ -107,6 +107,7 @@ public:
 #endif
 
     void getNextAudioChunk(QByteArray &data);
+    quint16 getAmplitude();
 
 public slots:
     bool init(audioSetup setup);
@@ -206,6 +207,7 @@ private:
     volatile bool ready = false;
     audioPacket tempBuf;
     quint16 currentLatency;
+    quint16 amplitude = 0;
     qreal volume=1.0;
     int devChannels;
     audioSetup setup;

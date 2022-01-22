@@ -263,7 +263,7 @@ private slots:
     void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
     void receiveSerialPortError(QString port, QString errorText);
-    void receiveStatusUpdate(QString errorText);
+    void receiveStatusUpdate(networkStatus status);
     void handlePlotClick(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);
@@ -895,6 +895,7 @@ Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
 Q_DECLARE_METATYPE(rigstate*)
 Q_DECLARE_METATYPE(QList<radio_cap_packet>)
+Q_DECLARE_METATYPE(struct networkStatus)
 
 
 #endif // WFMAIN_H

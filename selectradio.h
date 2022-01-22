@@ -19,6 +19,8 @@ public:
     explicit selectRadio(QWidget* parent = 0);
     ~selectRadio();
     void populate(QList<radio_cap_packet> radios);
+    void audioOutputLevel(quint16 level);
+    void audioInputLevel(quint16 level);
 
 public slots:
     void on_table_cellClicked(int row, int col);
