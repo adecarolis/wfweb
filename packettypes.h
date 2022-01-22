@@ -7,10 +7,10 @@
 
 #ifndef Q_OS_WIN
 typedef struct _GUID {
-    unsigned long  Data1;
-    unsigned short Data2;
-    unsigned short Data3;
-    unsigned char  Data4[8];
+    quint32  Data1;
+    quint16 Data2;
+    quint16 Data3;
+    quint8  Data4[8];
 } GUID;
 #endif
 
@@ -363,7 +363,7 @@ typedef union radio_cap_packet {
         quint16 capf;             // 0x5e
         char unusedi;             // 0x60
         quint16 capg;             // 0x61
-        char unusedj[3];          // 0x66
+        char unusedj[3];          // 0x63
     };
     char packet[RADIO_CAP_SIZE];
 } *radio_cap_packet_t;
