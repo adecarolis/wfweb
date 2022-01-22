@@ -6,8 +6,8 @@
 
 udpHandler::udpHandler(udpPreferences prefs, audioSetup rx, audioSetup tx) :
     controlPort(prefs.controlLANPort),
-    civPort(0),
-    audioPort(0),
+    civPort(50002),
+    audioPort(50003),
     rxSetup(rx),
     txSetup(tx)
 {
@@ -335,7 +335,7 @@ void udpHandler::dataReceived()
                 conninfo_packet_t in = (conninfo_packet_t)r.constData();
                 QHostAddress ip = QHostAddress(qToBigEndian(in->ipaddress));
 
-                qInfo(logUdp()) << "Got Connection status for:" << in->name << "Busy:" << in->busy << "Computer" << in->computer << "IP" << ip.toString() << "GUID" << in->guid;
+                qInfo(logUdp()) << "Got Connection status for:" << in->name << "Busy:" << in->busy << "Computer" << in->computer << "IP" << ip.toString();
 
                 // First we need to find this radio in our capabilities packet, there aren't many so just step through
                 for (int f = 0; f < radios.length(); f++)
@@ -347,7 +347,10 @@ void udpHandler::dataReceived()
                         radios[f].macaddress[3] == in->macaddress[3] &&
                         radios[f].macaddress[4] == in->macaddress[4] &&
                         radios[f].macaddress[5] == in->macaddress[5]) ||
-                        (QUuid)radios[f].guid == (QUuid)in->guid)
+                        (radios[f].guid.Data1 == in->guid.Data1 &&
+                         radios[f].guid.Data2 == in->guid.Data2 &&
+                         radios[f].guid.Data3 == in->guid.Data3 &&
+                         radios[f].guid.Data4 == in->guid.Data4))
                     {
                         emit setRadioUsage(f, (bool)in->busy, QString(in->computer), ip.toString());
                     }
@@ -430,8 +433,7 @@ void udpHandler::dataReceived()
                         qInfo(logUdp()) << this->metaObject()->className() << "TX audio is disabled";
                     }
                     if (radio.commoncap != 0x8010) {
-                        // GUID not MAC address
-                        qInfo(logUdp()) << this->metaObject()->className() << "Radio GUID" << radio.guid;
+                        useGuid = true;
                     }
                 }
                 emit requestRadioSelection(radios);
