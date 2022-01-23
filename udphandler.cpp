@@ -361,7 +361,7 @@ void udpHandler::dataReceived()
                 qInfo(logUdp()) << "Got Connection status for:" << in->name << "Busy:" << in->busy << "Computer" << in->computer << "IP" << ip.toString();
 
                 // First we need to find this radio in our capabilities packet, there aren't many so just step through
-                for (int f = 0; f < radios.length(); f++)
+                for (unsigned char f = 0; f < radios.length(); f++)
                 {
                     if ((radios[f].commoncap == 0x8010 &&
                         radios[f].macaddress[0] == in->macaddress[0] &&
@@ -370,12 +370,9 @@ void udpHandler::dataReceived()
                         radios[f].macaddress[3] == in->macaddress[3] &&
                         radios[f].macaddress[4] == in->macaddress[4] &&
                         radios[f].macaddress[5] == in->macaddress[5]) ||
-                        (radios[f].guid.Data1 == in->guid.Data1 &&
-                         radios[f].guid.Data2 == in->guid.Data2 &&
-                         radios[f].guid.Data3 == in->guid.Data3 &&
-                         radios[f].guid.Data4 == in->guid.Data4))
+                        !memcmp(radios[f].guid,in->guid,sizeof(in->guid)))
                     {
-                        emit setRadioUsage(f, (bool)in->busy, QString(in->computer), ip.toString());
+                        emit setRadioUsage(f, in->busy, QString(in->computer), ip.toString());
                     }
                 }
                 if (in->type != 0x01 && !streamOpened) {
@@ -431,14 +428,6 @@ void udpHandler::dataReceived()
                         radio.name << " Audio:" <<
                         radio.audio << "CIV:" << hex << (unsigned char)radio.civ <<
                         "CAPF" << radio.capf;
-                    if (radio.txsample < 2)
-                    {
-                        // TX not supported
-                        qInfo(logUdp()) << this->metaObject()->className() << "TX audio is disabled";
-                    }
-                    if (radio.commoncap != 0x8010) {
-                        useGuid = true;
-                    }
                 }
                 emit requestRadioSelection(radios);
                 break;
@@ -453,7 +442,7 @@ void udpHandler::dataReceived()
 }
 
 
-void udpHandler::setCurrentRadio(int radio) {
+void udpHandler::setCurrentRadio(quint8 radio) {
     qInfo(logUdp()) << "Got Radio" << radio;
     qInfo(logUdp()) << "Find available local ports";
 
@@ -474,12 +463,12 @@ void udpHandler::setCurrentRadio(int radio) {
     emit haveBaudRate(baudrate);
 
     if (radios[radio].commoncap == 0x8010) {
-        memcpy(macaddress, radios[radio].macaddress, 6);
+        memcpy(&macaddress, radios[radio].macaddress, sizeof(macaddress));
         useGuid = false;
     }
     else {
         useGuid = true;
-        guid = radios[radio].guid;
+        memcpy(&guid, radios[radio].guid, sizeof(guid));
     }
 
     devName =radios[radio].name;
@@ -507,10 +496,10 @@ void udpHandler::sendRequestStream()
     p.res = 0x03;
     if (!useGuid) {
         p.commoncap = 0x8010;
-        memcpy(p.macaddress, macaddress, 6);
+        memcpy(&p.macaddress, macaddress, 6);
     }
     else {
-        p.guid = guid;
+        memcpy(&p.guid, guid, sizeof(p.guid));
     }
     p.innerseq = authSeq++;
     p.tokrequest = tokRequest;

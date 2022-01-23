@@ -11,6 +11,7 @@
 #include <QByteArray>
 #include <QVector>
 #include <QMap>
+#include <QUuid>
 
 // Allow easy endian-ness conversions
 #include <QtEndian>
@@ -237,7 +238,7 @@ public slots:
 	void changeLatency(quint16 value);
 	void setVolume(unsigned char value);
 	void init();
-	void setCurrentRadio(int radio);
+	void setCurrentRadio(quint8 radio);
 
 
 signals:
@@ -249,7 +250,7 @@ signals:
 	void haveNetworkStatus(networkStatus);
 	void haveBaudRate(quint32 baudrate);
 	void requestRadioSelection(QList<radio_cap_packet> radios);
-	void setRadioUsage(int, bool busy, QString name, QString mac);
+	void setRadioUsage(quint8, quint8 busy, QString name, QString mac);
 private:
 	
 	void sendAreYouThere();
@@ -288,7 +289,7 @@ private:
 	quint32 token;
 	// These are for stream ident info.
 	quint8 macaddress[8];
-	GUID guid;
+	quint8 guid[16];
 	bool useGuid = false;
 	QByteArray usernameEncoded;
 	QByteArray passwordEncoded;

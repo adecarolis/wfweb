@@ -1,18 +1,8 @@
 #ifndef PACKETTYPES_H
 #define PACKETTYPES_H
 #include <QObject>
-#include <QtCore/quuid.h>
 
 #pragma pack(push, 1)
-
-#ifndef Q_OS_WIN
-typedef struct _GUID {
-    quint32  Data1;
-    quint16 Data2;
-    quint16 Data3;
-    quint8  Data4[8];
-} GUID;
-#endif
 
 // Various settings used by both client and server
 #define PURGE_SECONDS 10
@@ -303,7 +293,7 @@ typedef union conninfo_packet {
                 char unusedh;           // 0x29
                 char macaddress[6];     // 0x2a
             };
-            GUID guid;                  // 0x20
+            quint8 guid[16];                  // 0x20
         };
         char unusedab[16];        // 0x30
         char name[32];                  // 0x40
@@ -348,7 +338,7 @@ typedef union radio_cap_packet {
                 char unused;              // 0x0
                 char macaddress[6];       // 0x0
             };
-            GUID guid;                // 0x0
+            quint8 guid[16];                // 0x0
         };
         char name[32];            // 0x10
         char audio[32];           // 0x30

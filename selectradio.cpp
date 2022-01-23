@@ -33,7 +33,7 @@ void selectRadio::populate(QList<radio_cap_packet> radios)
     }
 }
 
-void selectRadio::setInUse(int radio, bool busy, QString user, QString ip)
+void selectRadio::setInUse(quint8 radio, quint8 busy, QString user, QString ip)
 {
     if ((radio > 0)&& !this->isVisible()) {
         qInfo() << "setInUse: radio:" << radio <<"busy" << busy << "user" << user << "ip"<<ip;
@@ -41,6 +41,15 @@ void selectRadio::setInUse(int radio, bool busy, QString user, QString ip)
     }
     ui->table->setItem(radio, 3, new QTableWidgetItem(user));
     ui->table->setItem(radio, 4, new QTableWidgetItem(ip));
+    for (int f = 0; f < 5; f++) {
+        if (busy == 1)
+            ui->table->item(radio, f)->setBackground(Qt::darkGreen);
+        else if (busy == 2)
+            ui->table->item(radio, f)->setBackground(Qt::red);
+        else
+            ui->table->item(radio, f)->setBackground(Qt::black);
+    }
+
 }
 
 void selectRadio::on_table_cellClicked(int row, int col) {

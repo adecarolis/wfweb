@@ -24,11 +24,11 @@ public:
 
 public slots:
     void on_table_cellClicked(int row, int col);
-    void setInUse(int radio, bool busy, QString user, QString ip);
+    void setInUse(quint8 radio, quint8 busy, QString user, QString ip);
     void on_cancelButton_clicked();
 
 signals:
-    void selectedRadio(int radio);
+    void selectedRadio(quint8 radio);
 
 private:
     Ui::selectRadio* ui;
