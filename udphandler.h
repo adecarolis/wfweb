@@ -60,7 +60,9 @@ class udpBase : public QObject
 public:
 	~udpBase();
 
-	void init();
+	void init(quint16 local);
+
+	void reconnect();
 
 	void dataReceived(QByteArray r); 
 	void sendPing();
@@ -142,7 +144,7 @@ class udpCivData : public udpBase
 	Q_OBJECT
 
 public:
-	udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort);
+	udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort, quint16 lport);
 	~udpCivData();
 	QMutex serialmutex;
 
@@ -168,7 +170,7 @@ class udpAudio : public udpBase
 	Q_OBJECT
 
 public:
-	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, audioSetup rxSetup, audioSetup txSetup);
+	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 lport, audioSetup rxSetup, audioSetup txSetup);
 	~udpAudio();
 
 	int audioLatency = 0;
@@ -270,6 +272,9 @@ private:
 	quint16 controlPort;
 	quint16 civPort;
 	quint16 audioPort;
+
+	quint16 civLocalPort;
+	quint16 audioLocalPort;
 
 	audioSetup rxSetup;
 	audioSetup txSetup;

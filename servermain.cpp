@@ -598,15 +598,36 @@ void servermain::loadSettings()
     serverConfig.controlPort = settings->value("ServerControlPort", 50001).toInt();
     serverConfig.civPort = settings->value("ServerCivPort", 50002).toInt();
     serverConfig.audioPort = settings->value("ServerAudioPort", 50003).toInt();
-    int numUsers = settings->value("ServerNumUsers", 2).toInt();
+
     serverConfig.users.clear();
-    for (int f = 0; f < numUsers; f++)
-    {
-        SERVERUSER user;
-        user.username = settings->value("ServerUsername_" + QString::number(f), "").toString();
-        user.password = settings->value("ServerPassword_" + QString::number(f), "").toString();
-        user.userType = settings->value("ServerUserType_" + QString::number(f), 0).toInt();
-        serverConfig.users.append(user);
+
+    int numUsers = settings->beginReadArray("Users");
+    if (numUsers > 0) {
+        {
+            for (int f = 0; f < numUsers; f++)
+            {
+                settings->setArrayIndex(f);
+                SERVERUSER user;
+                user.username = settings->value("Username", "").toString();
+                user.password = settings->value("Password", "").toString();
+                user.userType = settings->value("UserType", 0).toInt();
+                serverConfig.users.append(user);
+            }
+        }
+        settings->endArray();
+    }
+    else {
+        /* Support old way of storing users*/
+        settings->endArray();
+        numUsers = settings->value("ServerNumUsers", 2).toInt();
+        for (int f = 0; f < numUsers; f++)
+        {
+            SERVERUSER user;
+            user.username = settings->value("ServerUsername_" + QString::number(f), "").toString();
+            user.password = settings->value("ServerPassword_" + QString::number(f), "").toString();
+            user.userType = settings->value("ServerUserType_" + QString::number(f), 0).toInt();
+            serverConfig.users.append(user);
+        }
     }
 
     serverRxSetup.isinput = true;

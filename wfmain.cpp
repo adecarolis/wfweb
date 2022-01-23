@@ -1622,16 +1622,38 @@ void wfmain::loadSettings()
     serverConfig.controlPort = settings->value("ServerControlPort", 50001).toInt();
     serverConfig.civPort = settings->value("ServerCivPort", 50002).toInt();
     serverConfig.audioPort = settings->value("ServerAudioPort", 50003).toInt();
-    int numUsers = settings->value("ServerNumUsers", 2).toInt();
+
     serverConfig.users.clear();
-    for (int f = 0; f < numUsers; f++)
-    {
-        SERVERUSER user;
-        user.username = settings->value("ServerUsername_" + QString::number(f), "").toString();
-        user.password = settings->value("ServerPassword_" + QString::number(f), "").toString();
-        user.userType = settings->value("ServerUserType_" + QString::number(f), 0).toInt();
-        serverConfig.users.append(user);
+
+    int numUsers = settings->beginReadArray("Users");
+    if (numUsers > 0) {
+        {
+            for (int f = 0; f < numUsers; f++)
+            {
+                settings->setArrayIndex(f);
+                SERVERUSER user;
+                user.username = settings->value("Username", "").toString();
+                user.password = settings->value("Password", "").toString();
+                user.userType = settings->value("UserType", 0).toInt();
+                serverConfig.users.append(user);
+            }
+        }
+        settings->endArray();
     }
+    else {
+        /* Support old way of storing users*/
+        settings->endArray();
+        numUsers = settings->value("ServerNumUsers", 2).toInt();
+        for (int f = 0; f < numUsers; f++)
+        {
+            SERVERUSER user;
+            user.username = settings->value("ServerUsername_" + QString::number(f), "").toString();
+            user.password = settings->value("ServerPassword_" + QString::number(f), "").toString();
+            user.userType = settings->value("ServerUserType_" + QString::number(f), 0).toInt();
+            serverConfig.users.append(user);
+        }
+    }
+
 
     ui->serverEnableCheckbox->setChecked(serverConfig.enabled);
     ui->serverControlPortText->setText(QString::number(serverConfig.controlPort));
@@ -2004,18 +2026,32 @@ void wfmain::saveSettings()
     settings->setValue("ServerControlPort", serverConfig.controlPort);
     settings->setValue("ServerCivPort", serverConfig.civPort);
     settings->setValue("ServerAudioPort", serverConfig.audioPort);
-    settings->setValue("ServerNumUsers", serverConfig.users.count());
     settings->setValue("ServerAudioOutput", serverTxSetup.name);
     settings->setValue("ServerAudioInput", serverRxSetup.name);
 
+    /* Remove old format users*/
+    int numUsers = settings->value("ServerNumUsers", 0).toInt();
+    if (numUsers > 0) {
+        settings->remove("ServerNumUsers");
+        for (int f = 0; f < numUsers; f++)
+        {
+            settings->remove("ServerUsername_" + QString::number(f));
+            settings->remove("ServerPassword_" + QString::number(f));
+            settings->remove("ServerUserType_" + QString::number(f));
+        }
+    }
+
+    settings->beginWriteArray("Users");
 
     for (int f = 0; f < serverConfig.users.count(); f++)
     {
-        settings->setValue("ServerUsername_" + QString::number(f), serverConfig.users[f].username);
-        settings->setValue("ServerPassword_" + QString::number(f), serverConfig.users[f].password);
-        settings->setValue("ServerUserType_" + QString::number(f), serverConfig.users[f].userType);
+        settings->setArrayIndex(f);
+        settings->setValue("Username", serverConfig.users[f].username);
+        settings->setValue("Password", serverConfig.users[f].password);
+        settings->setValue("UserType", serverConfig.users[f].userType);
     }
 
+    settings->endArray();
     qInfo() << "Server config stored";
 
     settings->endGroup();

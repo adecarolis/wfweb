@@ -6,8 +6,10 @@
 
 udpHandler::udpHandler(udpPreferences prefs, audioSetup rx, audioSetup tx) :
     controlPort(prefs.controlLANPort),
-    civPort(50002),
-    audioPort(50003),
+    civPort(0),
+    audioPort(0),
+    civLocalPort(0),
+    audioLocalPort(0),
     rxSetup(rx),
     txSetup(tx)
 {
@@ -55,7 +57,7 @@ udpHandler::udpHandler(udpPreferences prefs, audioSetup rx, audioSetup tx) :
 
 void udpHandler::init()
 {
-    udpBase::init(); // Perform UDP socket initialization.
+    udpBase::init(0); // Perform UDP socket initialization.
 
     // Connect socket to my dataReceived function.
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpHandler::dataReceived);
@@ -219,7 +221,7 @@ void udpHandler::dataReceived()
                         gotAuthOK = true;
                         if (!streamOpened)
                         {
-                            sendRequestStream();
+                           sendRequestStream();
                         }
 
                     }
@@ -272,6 +274,27 @@ void udpHandler::dataReceived()
                     else {
                         civPort = qFromBigEndian(in->civport);
                         audioPort = qFromBigEndian(in->audioport);
+                        if (!streamOpened) {
+
+                            civ = new udpCivData(localIP, radioIP, civPort, civLocalPort);
+
+                            // TX is not supported
+                            if (txSampleRates < 2) {
+                                txSetup.samplerate = 0;
+                                txSetup.codec = 0;
+                            }
+                            audio = new udpAudio(localIP, radioIP, audioPort, audioLocalPort, rxSetup, txSetup);
+
+                            QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
+                            QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+                            QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16)));
+                            QObject::connect(this, SIGNAL(haveSetVolume(unsigned char)), audio, SLOT(setVolume(unsigned char)));
+
+                            streamOpened = true;
+                        }
+                        qInfo(logUdp()) << this->metaObject()->className() << "Got serial and audio request success, device name: " << devName;
+
+
                     }
                 }
                 break;
@@ -365,32 +388,13 @@ void udpHandler::dataReceived()
                             sendControl(false, 0x00, in->seq); // Respond with an idle
                         }
                         else {
-                            setCurrentRadio(0);
                         }
                     }
                     else if (!in->busy && numRadios == 1)
                     {
                         status.message = devName + " available";
-
-                        if (civPort == 0) {
-                            qInfo(logUdp()) << this->metaObject()->className() << "civPort not yet configured!";
-                        }
-
-                        if (radios[0].commoncap == 0x8010) {
-                            memcpy(macaddress, radios[0].macaddress, 6);
-                            useGuid = false;
-                        }
-                        else {
-                            useGuid = true;
-                            guid = radios[0].guid;
-                        }
-
-                        devName = radios[0].name;
-                        audioType = radios[0].audio;
-                        civId = radios[0].civ;
-                        rxSampleRates = radios[0].rxsample;
-                        txSampleRates = radios[0].txsample;
-                        sendRequestStream(); // Send initial stream request.
+                        
+                        setCurrentRadio(0);
                     }
                 }
                 else if (streamOpened) 
@@ -398,7 +402,7 @@ void udpHandler::dataReceived()
                    a CONNINFO packet, send our details to confirm we still want the stream */
                 {
                     // Received while stream is open.
-                    sendRequestStream();
+                    //sendRequestStream();
                 }
                 break;
             }
@@ -451,6 +455,21 @@ void udpHandler::dataReceived()
 
 void udpHandler::setCurrentRadio(int radio) {
     qInfo(logUdp()) << "Got Radio" << radio;
+    qInfo(logUdp()) << "Find available local ports";
+
+    /* This seems to be the only way to find some available local ports.
+        The problem is we need to know the local AND remote ports but send the 
+        local port to the server first and it replies with the remote ports! */
+    if (civLocalPort == 0 || audioLocalPort == 0) {
+        QUdpSocket* tempudp = new QUdpSocket();
+        tempudp->bind(); // Bind to random port.
+        civLocalPort = tempudp->localPort();
+        tempudp->close();
+        tempudp->bind();
+        audioLocalPort = tempudp->localPort();
+        tempudp->close();
+        delete tempudp;
+    }
     int baudrate = qFromBigEndian(radios[radio].baudrate);
     emit haveBaudRate(baudrate);
 
@@ -468,25 +487,6 @@ void udpHandler::setCurrentRadio(int radio) {
     civId = radios[radio].civ;
     rxSampleRates = radios[radio].rxsample;
     txSampleRates = radios[radio].txsample;
-
-    if (!streamOpened) {
-
-        civ = new udpCivData(localIP, radioIP, civPort);
-
-        // TX is not supported
-        if (txSampleRates < 2) {
-            txSetup.samplerate = 0;
-            txSetup.codec = 0;
-        }
-        audio = new udpAudio(localIP, radioIP, audioPort, rxSetup, txSetup);
-        QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
-        QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
-        QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16)));
-        QObject::connect(this, SIGNAL(haveSetVolume(unsigned char)), audio, SLOT(setVolume(unsigned char)));
-
-        streamOpened = true;
-    }
-    qInfo(logUdp()) << this->metaObject()->className() << "Got serial and audio request success, device name: " << devName;
 
     sendRequestStream();
 }
@@ -525,8 +525,8 @@ void udpHandler::sendRequestStream()
     memcpy(&p.username, usernameEncoded.constData(), usernameEncoded.length());
     p.rxsample = qToBigEndian((quint32)rxSetup.samplerate);
     p.txsample = qToBigEndian((quint32)txSetup.samplerate);
-    p.civport = qToBigEndian((quint32)civPort);
-    p.audioport = qToBigEndian((quint32)audioPort);
+    p.civport = qToBigEndian((quint32)civLocalPort);
+    p.audioport = qToBigEndian((quint32)audioLocalPort);
     p.txbuffer = qToBigEndian((quint32)txSetup.latency);
     p.convert = 1;
     sendTrackedPacket(QByteArray::fromRawData((const char*)p.packet, sizeof(p)));
@@ -597,14 +597,14 @@ void udpHandler::sendToken(uint8_t magic)
 
 
 // Class that manages all Civ Data to/from the rig
-udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort) 
+udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort,quint16 localPort=0) 
 {
     qInfo(logUdp()) << "Starting udpCivData";
     localIP = local;
     port = civPort;
     radioIP = ip;
 
-    udpBase::init(); // Perform connection
+    udpBase::init(localPort); // Perform connection
 
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpCivData::dataReceived);
 
@@ -793,7 +793,7 @@ void udpCivData::dataReceived()
 
 
 // Audio stream
-udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, audioSetup rxSetup, audioSetup txSetup)
+udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint16 lport, audioSetup rxSetup, audioSetup txSetup)
 {
     qInfo(logUdp()) << "Starting udpAudio";
     this->localIP = local;
@@ -804,7 +804,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, audio
         enableTx = false;
     }
 
-    init(); // Perform connection
+    init(lport); // Perform connection
 
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::dataReceived);
 
@@ -1065,11 +1065,11 @@ void udpAudio::dataReceived()
 
 
 
-void udpBase::init()
+void udpBase::init(quint16 lport)
 {
     timeStarted.start();
     udp = new QUdpSocket(this);
-    udp->bind(); // Bind to random port.
+    udp->bind(lport); // Bind to random port.
     localPort = udp->localPort();
     qInfo(logUdp()) << "UDP Stream bound to local port:" << localPort << " remote port:" << port;
     uint32_t addr = localIP.toIPv4Address();
@@ -1078,7 +1078,6 @@ void udpBase::init()
     retransmitTimer = new QTimer();
     connect(retransmitTimer, &QTimer::timeout, this, &udpBase::sendRetransmitRequest);
     retransmitTimer->start(RETRANSMIT_PERIOD);
-
 }
 
 udpBase::~udpBase()
