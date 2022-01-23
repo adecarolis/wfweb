@@ -4555,6 +4555,7 @@ void rigCommander::stateUpdated()
                  break;
                  // All meters can only be updated from the rig end.
              case SMETER:
+             case SWRMETER:
              case POWERMETER:
              case ALCMETER:
              case COMPMETER:

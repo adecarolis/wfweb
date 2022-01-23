@@ -141,6 +141,7 @@ int main(int argc, char *argv[])
 
 #ifdef BUILD_WFSERVER
     servermain *w = new servermain(serialPortCL, hostCL, settingsFile);
+    Q_UNUSED(w); // Prevent warning!
 
 #else
     a.setWheelScrollLines(1); // one line per wheel click
