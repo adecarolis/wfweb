@@ -22,11 +22,20 @@
 
 rigCommander::rigCommander()
 {
-    state.set(SCOPEFUNC,true,false);
+    qInfo(logRig()) << "creating instance of rigCommander()";
+    state.set(SCOPEFUNC, true, false);
+}
+
+rigCommander::rigCommander(quint8 guid[16])
+{
+    qInfo(logRig()) << "creating instance of rigCommander()";
+    state.set(SCOPEFUNC, true, false);
+    memcpy(this->guid, guid, sizeof(this->guid));
 }
 
 rigCommander::~rigCommander()
 {
+    qInfo(logRig()) << "closing instance of rigCommander()";
     closeComm();
 }
 
@@ -40,13 +49,14 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
     // civAddr = 0x94; // address of the radio. Decimal is 148.
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
     usingNativeLAN = false;
-
+    //qInfo(logRig()) << "Opening connection to Rig:" << hex << (unsigned char)rigCivAddr << "on serial port" << rigSerialPort << "at baud rate" << rigBaudRate;
     // ---
     setup();
     // ---
 
     this->rigSerialPort = rigSerialPort;
     this->rigBaudRate = rigBaudRate;
+    rigCaps.baudRate = rigBaudRate;
 
     comm = new commHandler(rigSerialPort, rigBaudRate);
     ptty = new pttyHandler(vsp);
@@ -217,6 +227,7 @@ bool rigCommander::usingLAN()
 }
 
 void rigCommander::receiveBaudRate(quint32 baudrate) {
+    rigCaps.baudRate = baudrate;
     emit haveBaudRate(baudrate);
 }
 
@@ -3612,6 +3623,9 @@ void rigCommander::determineRigCaps()
     }
     haveRigCaps = true;
 
+    // Copy received guid so we can recognise this radio.
+    memcpy(rigCaps.guid, this->guid, sizeof(rigCaps.guid));
+
     if(!usingNativeLAN)
     {
         if(useRTSforPTT_isSet)
@@ -4676,6 +4690,9 @@ void rigCommander::dataFromServer(QByteArray data)
     emit dataForComm(data);
 }
 
+quint8* rigCommander::getGUID() {
+    return guid;
+}
 
 
 

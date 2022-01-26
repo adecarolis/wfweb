@@ -138,6 +138,8 @@ struct rigCapabilities {
     std::vector <mode_info> modes;
 
     QByteArray transceiveCommand;
+    quint8 guid[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+    quint32 baudRate;
 };
 
 

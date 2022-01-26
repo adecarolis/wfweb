@@ -4,6 +4,11 @@
 #include <QApplication>
 #endif
 
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <csignal>
+#endif
+
 #include <iostream>
 #include "wfmain.h"
 #include "logcategories.h"
@@ -14,6 +19,29 @@
 QScopedPointer<QFile>   m_logFile;
 QMutex logMutex;
 bool debugMode=false;
+
+#ifdef BUILD_WFSERVER
+    servermain* w=Q_NULLPTR;
+
+    #ifdef Q_OS_WIN
+    bool __stdcall cleanup(DWORD sig)
+    #else
+    static void cleanup(int sig)
+    #endif
+    {
+        Q_UNUSED(sig)
+        qDebug() << "Exiting via SIGNAL";
+        if (w!=Q_NULLPTR) w->deleteLater();
+        qApp->quit();
+
+        #ifdef Q_OS_WIN
+            return true;
+        #else
+            return;
+        #endif
+    }
+
+#endif
 
 void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
 
@@ -140,9 +168,12 @@ int main(int argc, char *argv[])
     qDebug(logSystem()) << QString("CIV as set by parser: %1").arg(civCL);
 
 #ifdef BUILD_WFSERVER
-    servermain *w = new servermain(serialPortCL, hostCL, settingsFile);
-    Q_UNUSED(w); // Prevent warning!
-
+#ifdef Q_OS_WIN
+    SetConsoleCtrlHandler((PHANDLER_ROUTINE)cleanup, TRUE);
+#else
+    signal(SIGINT, cleanup);
+#endif
+    w = new servermain(serialPortCL, hostCL, settingsFile);
 #else
     a.setWheelScrollLines(1); // one line per wheel click
     wfmain w(serialPortCL, hostCL, settingsFile);

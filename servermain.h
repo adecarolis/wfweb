@@ -168,21 +168,17 @@ private slots:
     void receiveCommReady();
     void receivePTTstatus(bool pttOn);
 
-    void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
     void receiveSerialPortError(QString port, QString errorText);
-    void sendRadioCommandLoop();
     void receiveBaudRate(quint32 baudrate);
 
     void handlePttLimit();
-    void receiveStatusUpdate(QString text);
+    void receiveStatusUpdate(networkStatus status);
     void receiveStateInfo(rigstate* state);
 
 private:
     QSettings *settings=Q_NULLPTR;
     void loadSettings();
-
-    void getInitialRigState();
 
     void openRig();
     void powerRigOff();
@@ -190,8 +186,6 @@ private:
     QStringList portList;
     QString serialPortRig;
 
-    rigCommander * rig=Q_NULLPTR;
-    QThread* rigThread = Q_NULLPTR;
     QTimer * delayedCommand;
     QTimer * pttTimer;
     uint16_t loopTickCounter;
@@ -199,7 +193,6 @@ private:
     QString lastMessage="";
 
     void makeRig();
-    void rigConnections();
     void removeRig();
     void findSerialPort();
 
@@ -235,119 +228,19 @@ private:
     unsigned char setModeVal=0;
     unsigned char setFilterVal=0;
 
-    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode,
-              cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
-              cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
-              cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetTPBFInner, cmdSetTPBFInner,
-              cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus,
-              cmdSetATU, cmdStartATU, cmdGetSpectrumMode,
-              cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,
-              cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel,
-              cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
-              cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
-              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
-              cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
-              cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
-              cmdSetTime, cmdSetDate, cmdSetUTCOffset};
-
-    struct commandtype {
-        cmds cmd;
-        std::shared_ptr<void> data;
-    };
-
-    std::deque <commandtype> delayedCmdQue;    // rapid que for commands to the radio
-    std::deque <cmds> periodicCmdQueue; // rapid que for metering
-    std::deque <cmds> slowPollCmdQueue; // slow, regular checking for UI sync
-    void doCmd(cmds cmd);
-    void doCmd(commandtype cmddata);
-
-    void issueCmd(cmds cmd, freqt f);
-    void issueCmd(cmds cmd, mode_info m);
-    void issueCmd(cmds cmd, timekind t);
-    void issueCmd(cmds cmd, datekind d);
-    void issueCmd(cmds cmd, int i);
-    void issueCmd(cmds cmd, unsigned char c);
-    void issueCmd(cmds cmd, char c);
-    void issueCmd(cmds cmd, bool b);
-
-    // These commands pop_front and remove similar commands:
-    void issueCmdUniquePriority(cmds cmd, bool b);
-    void issueCmdUniquePriority(cmds cmd, unsigned char c);
-    void issueCmdUniquePriority(cmds cmd, char c);
-    void issueCmdUniquePriority(cmds cmd, freqt f);
-
-    void removeSimilarCommand(cmds cmd);
-
-    qint64 lastFreqCmdTime_ms;
-
-    int pCmdNum = 0;
-    int delayedCmdIntervalLAN_ms = 100;
-    int delayedCmdIntervalSerial_ms = 100;
-    int delayedCmdStartupInterval_ms = 100;
-    bool runPeriodicCommands;
     bool usingLAN = false;
 
-    // Radio time sync:
-    QTimer *timeSync;
-    bool waitingToSetTimeDate;
-    void setRadioTimeDatePrep();
-    timekind timesetpoint;
-    timekind utcsetting;
-    datekind datesetpoint;
-
-    freqMemory mem;
-    struct colors {
-        QColor Dark_PlotBackground;
-        QColor Dark_PlotAxisPen;
-        QColor Dark_PlotLegendTextColor;
-        QColor Dark_PlotLegendBorderPen;
-        QColor Dark_PlotLegendBrush;
-        QColor Dark_PlotTickLabel;
-        QColor Dark_PlotBasePen;
-        QColor Dark_PlotTickPen;
-        QColor Dark_PeakPlotLine;
-        QColor Dark_TuningLine;
-
-        QColor Light_PlotBackground;
-        QColor Light_PlotAxisPen;
-        QColor Light_PlotLegendTextColor;
-        QColor Light_PlotLegendBorderPen;
-        QColor Light_PlotLegendBrush;
-        QColor Light_PlotTickLabel;
-        QColor Light_PlotBasePen;
-        QColor Light_PlotTickPen;
-        QColor Light_PeakPlotLine;
-        QColor Light_TuningLine;
-
-    } colorScheme;
-
     struct preferences {
-        bool useFullScreen;
-        bool useDarkMode;
-        bool useSystemTheme;
-        bool drawPeaks;
-        bool wfAntiAlias;
-        bool wfInterpolate;
-        QString stylesheetPath;
         unsigned char radioCIVAddr;
         bool CIVisRadioModel;
         bool forceRTSasPTT;
         QString serialPortRadio;
         quint32 serialPortBaud;
-        bool enablePTT;
-        bool niceTS;
-        bool enableLAN;
-        bool enableRigCtlD;
-        quint16 rigCtlPort;
-        colors colorScheme;
-        QString virtualSerialPort;
         unsigned char localAFgain;
-        unsigned int wflength;
-        int wftheme;
-        bool confirmExit;
-        bool confirmPowerOff;
-        meterKind meter2Type;
-        // plot scheme
+        audioSetup rxAudio;
+        audioSetup txAudio;
+        rigCapabilities rigCaps;
+        bool haveRigCaps = false;
     } prefs;
 
     preferences defPrefs;
@@ -361,35 +254,9 @@ private:
     audioSetup serverRxSetup;
     audioSetup serverTxSetup;
 
-    colors defaultColors;
 
     void setDefPrefs(); // populate default values to default prefs
 
-    void issueDelayedCommand(cmds cmd);
-    void issueDelayedCommandPriority(cmds cmd);
-    void issueDelayedCommandUnique(cmds cmd);
-
-    // Fast command queue:
-    void initPeriodicCommands();
-    void insertPeriodicCommand(cmds cmd, unsigned char priority);
-    void insertPeriodicCommandUnique(cmds cmd);
-    void removePeriodicCommand(cmds cmd);
-
-    void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
-    void calculateTimingParameters();
-
-
-    cmds meterKindToMeterCommand(meterKind m);
-
-    int oldFreqDialVal;
-
-    rigCapabilities rigCaps;
-    rigInput currentModSrc = inputUnknown;
-    rigInput currentModDataSrc = inputUnknown;
-    mode_kind currentMode = modeUSB;
-    mode_info currentModeInfo;
-
-    bool haveRigCaps;
     bool amTransmitting;
     bool usingDataMode = false;
 
@@ -405,33 +272,9 @@ private:
     rigCtlD* rigCtl = Q_NULLPTR;
     QThread* serverThread = Q_NULLPTR;
 
-    void bandStackBtnClick();
-    bool waitingForBandStackRtn;
-    char bandStkBand;
-    char bandStkRegCode;
-
-    bool freqLock;
-
-    float tsPlus;
-    float tsPlusShift;
-    float tsPlusControl;
-    float tsPage;
-    float tsPageShift;
-    float tsWfScroll;
-
-    unsigned int tsPlusHz;
-    unsigned int tsPlusShiftHz;
-    unsigned int tsPlusControlHz;
-    unsigned int tsPageHz;
-    unsigned int tsPageShiftHz;
-    unsigned int tsWfScrollHz;
-    unsigned int tsKnobHz;
-
     rigstate* rigState = Q_NULLPTR;
 
     SERVERCONFIG serverConfig;
-
-    static void handleCtrlC(int sig);
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)

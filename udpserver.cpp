@@ -4,8 +4,8 @@
 #define STALE_CONNECTION 15
 #define LOCK_PERIOD 10 // time to attempt to lock Mutex in ms
 #define AUDIO_SEND_PERIOD 20 //
-udpServer::udpServer(SERVERCONFIG config, audioSetup outAudio, audioSetup inAudio) :
-    config(config),
+udpServer::udpServer(SERVERCONFIG* config, audioSetup outAudio, audioSetup inAudio) :
+    config(*config),
     outAudio(outAudio),
     inAudio(inAudio)
 {
@@ -15,6 +15,31 @@ udpServer::udpServer(SERVERCONFIG config, audioSetup outAudio, audioSetup inAudi
 void udpServer::init()
 {
 
+    for (RIGCONFIG rig : config.rigs)
+    {
+        qDebug(logUdpServer()) << "CIV:" << rig.civAddr;
+        qDebug(logUdpServer()) << "Model:" << rig.modelName;
+        qDebug(logUdpServer()) << "Name:" << rig.rigName;
+        qDebug(logUdpServer()) << "CIV:" << rig.civAddr;
+        qDebug(logUdpServer()).noquote() << QString("GUID: {%1%2%3%4-%5%6-%7%8-%9%10-%11%12%13%14%15%16}")
+            .arg(rig.guid[0], 2, 16, QLatin1Char('0'))
+            .arg(rig.guid[1], 2, 16, QLatin1Char('0'))
+            .arg(rig.guid[2], 2, 16, QLatin1Char('0'))
+            .arg(rig.guid[3], 2, 16, QLatin1Char('0'))
+            .arg(rig.guid[4], 2, 16, QLatin1Char('0'))
+            .arg(rig.guid[5], 2, 16, QLatin1Char('0'))
+            .arg(rig.guid[6], 2, 16, QLatin1Char('0'))
+            .arg(rig.guid[7], 2, 16, QLatin1Char('0'))
+            .arg(rig.guid[8], 2, 16, QLatin1Char('0'))
+            .arg(rig.guid[9], 2, 16, QLatin1Char('0'))
+            .arg(rig.guid[10], 2, 16, QLatin1Char('0'))
+            .arg(rig.guid[11], 2, 16, QLatin1Char('0'))
+            .arg(rig.guid[12], 2, 16, QLatin1Char('0'))
+            .arg(rig.guid[13], 2, 16, QLatin1Char('0'))
+            .arg(rig.guid[14], 2, 16, QLatin1Char('0'))
+            .arg(rig.guid[15], 2, 16, QLatin1Char('0'))
+            ;
+    }
     srand(time(NULL)); // Generate random key
     timeStarted.start();
     // Convoluted way to find the external IP address, there must be a better way????
@@ -112,7 +137,17 @@ udpServer::~udpServer()
 
 void udpServer::receiveRigCaps(rigCapabilities caps)
 {
-    this->rigCaps = caps;
+    for (RIGCONFIG &rig: config.rigs) {
+        if (!memcmp(rig.guid, caps.guid, sizeof(rig.guid))) {
+            // Matching rig, fill-in missing details
+            rig.rigAvailable = true;
+            rig.modelName = caps.modelName;
+            rig.civAddr = caps.civ;
+            if (rig.rigName=="<NONE>") {
+                rig.rigName = caps.modelName;
+            }
+        }
+    }
 }
 
 void udpServer::controlReceived()
@@ -164,8 +199,6 @@ void udpServer::controlReceived()
             connect(current->retransmitTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRetransmitRequest, this, current));
             current->retransmitTimer->start(RETRANSMIT_PERIOD);
 
-
-            current->commonCap = 0x8010;
             qInfo(logUdpServer()) << current->ipAddress.toString() << ": New Control connection created";
 
             if (connMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -234,7 +267,9 @@ void udpServer::controlReceived()
                 // Request for new token
                 qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received create token request";
                 sendCapabilities(current);
-                sendConnectionInfo(current);
+                for (RIGCONFIG& radio : config.rigs) {
+                    sendConnectionInfo(current, radio.guid);
+                }
             }
             else if (in->res == 0x01) {
                 // Token disconnect
@@ -245,7 +280,12 @@ void udpServer::controlReceived()
                 // Disconnect audio/civ
                 sendTokenResponse(current, in->res);
                 current->isStreaming = false;
-                sendConnectionInfo(current);
+                for (RIGCONFIG& radio : config.rigs) {
+                    if (!memcmp(radio.guid, current->guid, sizeof(radio.guid)))
+                    {
+                        sendConnectionInfo(current, radio.guid);
+                    }
+                }
             }
             else {
                 qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received token request";
@@ -301,10 +341,10 @@ void udpServer::controlReceived()
             current->txBufferLen = qFromBigEndian<quint32>(in->txbuffer);
             current->authInnerSeq = in->innerseq;
 
-            memcpy(current->macaddress, in->macaddress, 6);
+            memcpy(current->guid, in->guid, sizeof(in->guid));
             sendStatus(current);
             current->authInnerSeq = 0x00;
-            sendConnectionInfo(current);
+            sendConnectionInfo(current,in->guid);
             qInfo(logUdpServer()) << current->ipAddress.toString() << ": rxCodec:" << current->rxCodec << " txCodec:" << current->txCodec <<
                 " rxSampleRate" << current->rxSampleRate <<
                 " txSampleRate" << current->txSampleRate <<
@@ -316,55 +356,62 @@ void udpServer::controlReceived()
 
                 audioSetup setup;
                 setup.resampleQuality = config.resampleQuality;
+                for (RIGCONFIG& radio : config.rigs) {
+                    if (!memcmp(radio.guid, current->guid, sizeof(radio.guid)) && radio.txaudio == Q_NULLPTR)
+                    {
+                        radio.txAudioSetup.codec = current->txCodec;
+                        radio.txAudioSetup.samplerate = current->txSampleRate;
+                        radio.txAudioSetup.isinput = false;
+                        radio.txAudioSetup.latency = current->txBufferLen;
+                        outAudio.isinput = false;
 
-                if (txaudio == Q_NULLPTR)
-                {
-                    outAudio.codec = current->txCodec;
-                    outAudio.samplerate = current->txSampleRate;
-                    outAudio.isinput = false;
-                    outAudio.latency = current->txBufferLen;
-                    outAudio.isinput = false;
+                        radio.txaudio = new audioHandler();
+                        radio.txAudioThread = new QThread(this);
 
-                    txaudio = new audioHandler();
-                    txAudioThread = new QThread(this);
+                        radio.txaudio->moveToThread(radio.txAudioThread);
 
-                    txaudio->moveToThread(txAudioThread);
+                        radio.txAudioThread->start(QThread::TimeCriticalPriority);
 
-                    txAudioThread->start(QThread::TimeCriticalPriority);
+                        //connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
+                        connect(radio.txAudioThread, SIGNAL(finished()), radio.txaudio, SLOT(deleteLater()));
 
-                    connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
-                    connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
+                        QMetaObject::invokeMethod(radio.txaudio, [=]() {
+                            radio.txaudio->init(radio.txAudioSetup);
+                        }, Qt::QueuedConnection);
 
-                    emit setupTxAudio(outAudio);
-                    hasTxAudio = datagram.senderAddress();
+                        emit setupTxAudio(outAudio);
+                        hasTxAudio = datagram.senderAddress();
 
-                    connect(this, SIGNAL(haveAudioData(audioPacket)), txaudio, SLOT(incomingAudio(audioPacket)));
+                        connect(this, SIGNAL(haveAudioData(audioPacket)), radio.txaudio, SLOT(incomingAudio(audioPacket)));
 
-                }
-                if (rxaudio == Q_NULLPTR)
-                {
-                    inAudio.codec = current->rxCodec;
-                    inAudio.samplerate = current->rxSampleRate;
-                    inAudio.latency = current->txBufferLen;
-                    inAudio.isinput = true;
+                    }
+                    if (!memcmp(radio.guid, current->guid, sizeof(radio.guid)) && radio.rxaudio == Q_NULLPTR)
+                    {
+                        radio.rxAudioSetup.codec = current->rxCodec;
+                        radio.rxAudioSetup.samplerate = current->rxSampleRate;
+                        radio.rxAudioSetup.latency = current->txBufferLen;
+                        radio.rxAudioSetup.isinput = true;
 
-                    rxaudio = new audioHandler();
+                        radio.rxaudio = new audioHandler();
 
-                    rxAudioThread = new QThread(this);
+                        radio.rxAudioThread = new QThread(this);
 
-					rxaudio->moveToThread(rxAudioThread);
+                        radio.rxaudio->moveToThread(radio.rxAudioThread);
 
-                    rxAudioThread->start(QThread::TimeCriticalPriority);
+                        radio.rxAudioThread->start(QThread::TimeCriticalPriority);
 
-                    connect(this, SIGNAL(setupRxAudio(audioSetup)), rxaudio, SLOT(init(audioSetup)));
-                    connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
+                        //connect(this, SIGNAL(setupRxAudio(audioSetup)), rxaudio, SLOT(init(audioSetup)));
+                        connect(radio.rxAudioThread, SIGNAL(finished()), radio.rxaudio, SLOT(deleteLater()));
 
-                    emit setupRxAudio(inAudio);
+                        QMetaObject::invokeMethod(radio.rxaudio, [=]() {
+                            radio.rxaudio->init(radio.rxAudioSetup);
+                        }, Qt::QueuedConnection);
 
-                    rxAudioTimer = new QTimer();
-                    rxAudioTimer->setTimerType(Qt::PreciseTimer);
-                    connect(rxAudioTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRxAudio, this));
-                    rxAudioTimer->start(TXAUDIO_PERIOD);
+                        radio.rxAudioTimer = new QTimer();
+                        radio.rxAudioTimer->setTimerType(Qt::PreciseTimer);
+                        connect(radio.rxAudioTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRxAudio, this));
+                        radio.rxAudioTimer->start(TXAUDIO_PERIOD);
+                    }
                 }
 
             }
@@ -420,6 +467,7 @@ void udpServer::civReceived()
                     {
                         current->controlClient = client;
                         client->civClient = current;
+                        memcpy(current->guid, client->guid, sizeof(current->guid));
                     }
                 }
             }
@@ -518,9 +566,18 @@ void udpServer::civReceived()
                             qDebug(logUdpServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << hex << current->civId;                            qInfo(logUdpServer()) << current->ipAddress.toString() << ": Detected different remote CI-V:" << hex << current->civId;
                         } else if (r.length() > lastFE+2 && (quint8)r[lastFE+2] != 0xE1) {
                             qDebug(logUdpServer()) << current->ipAddress.toString() << ": Detected invalid remote CI-V:" << hex << (quint8)r[lastFE+2];
-			}
+			            }
 
-                        emit haveDataFromServer(r.mid(0x15));
+                        for (RIGCONFIG& radio : config.rigs) {
+                            if (!memcmp(radio.guid, current->guid, sizeof(radio.guid)))
+                            {
+                                // Only send to the rig that it belongs to!
+                                QMetaObject::invokeMethod(radio.rig, [=]() {
+                                    radio.rig->dataFromServer(r.mid(0x15));;
+                                }, Qt::DirectConnection);
+                            }
+                        }
+
                     }
                     else {
                         qInfo(logUdpServer()) << current->ipAddress.toString() << ": Datalen mismatch " << quint16(in->datalen + 0x15) << ":" << (quint16)in->len;
@@ -571,6 +628,7 @@ void udpServer::audioReceived()
                     {
                         current->controlClient = client;
                         client->audioClient = current;
+                        memcpy(current->guid, client->guid, sizeof(current->guid));
                     }
                 }
             }
@@ -743,7 +801,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
     }
     default:
     {
-        //break;
+        //break
     }
     }
 
@@ -1036,13 +1094,8 @@ void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
 
 void udpServer::sendCapabilities(CLIENT* c)
 {
-    qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Capabilities :" << c->txSeq;
-
     capabilities_packet p;
-    radio_cap_packet r;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
-    memset(r.packet, 0x0, sizeof(r)); // We can't be sure it is initialized with 0x00!
-    p.len = sizeof(p);
     p.type = 0x00;
     p.seq = c->txSeq;
     p.sentid = c->myId;
@@ -1050,79 +1103,86 @@ void udpServer::sendCapabilities(CLIENT* c)
     p.innerseq = c->authInnerSeq;
     p.tokrequest = c->tokenRx;
     p.token = c->tokenTx;
-    p.payloadsize = sizeof(p)-0x0f;
     p.res = 0x0202;
-    p.numradios = 0x01;
-    r.commoncap = c->commonCap;
-
-    memcpy(r.macaddress, macAddress.toLocal8Bit(), 6);
-    // IRU seems to expect an "Icom" mac address so replace the first 3 octets of our Mac with one in their range!
-    memcpy(r.macaddress, QByteArrayLiteral("\x00\x90\xc7").constData(), 3);
-    memcpy(r.name, rigCaps.modelName.toLocal8Bit(), rigCaps.modelName.length());
-    memcpy(r.audio, QByteArrayLiteral("ICOM_VAUDIO").constData(), 11);
-
-    if (rigCaps.hasWiFi && !rigCaps.hasEthernet) {
-        r.conntype = 0x0707; // 0x0707 for wifi rig.
-    }
-    else {
-        r.conntype = 0x073f; // 0x073f for ethernet rig.
-    }
-
-    r.civ = rigCaps.civ;
-    r.baudrate = (quint32)qToBigEndian(config.baudRate);
-    /*
-        0x80 = 12K only
-        0x40 = 44.1K only
-        0x20 = 22.05K only
-        0x10 = 11.025K only
-        0x08 = 48K only
-        0x04 = 32K only
-        0x02 = 16K only
-        0x01 = 8K only
-    */
-    if (rxaudio == Q_NULLPTR) {
-        r.rxsample = 0x8b01; // all rx sample frequencies supported
-    }
-    else {
-        if (rxSampleRate == 48000) {
-            r.rxsample = 0x0800; // fixed rx sample frequency
-        }
-        else if (rxSampleRate == 32000) {
-            r.rxsample = 0x0400;
-        }
-        else if (rxSampleRate == 24000) {
-            r.rxsample = 0x0001;
-        }
-        else if (rxSampleRate == 16000) {
-            r.rxsample = 0x0200;
-        }
-        else if (rxSampleRate == 12000) {
-            r.rxsample = 0x8000;
-        }
-    }
-
-    if (txaudio == Q_NULLPTR) {
-        r.txsample = 0x8b01; // all tx sample frequencies supported
-        r.enablea = 0x01; // 0x01 enables TX 24K mode?
-        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Client will have TX audio";
-    }
-    else {
-        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Disable tx audio for client";
-        r.txsample = 0;
-    }
-
-    // I still don't know what these are?
-    r.enableb = 0x01; // 0x01 doesn't seem to do anything?
-    r.enablec = 0x01; // 0x01 doesn't seem to do anything?
-    r.capf = 0x5001;
-    r.capg = 0x0190;
+    p.numradios = config.rigs.count();
 
     SEQBUFENTRY s;
     s.seqNum = p.seq;
     s.timeSent = QTime::currentTime();
     s.retransmitCount = 0;
-    s.data = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
-    s.data.append(QByteArray::fromRawData((const char*)r.packet, sizeof(r)));
+
+    for (RIGCONFIG &rig : config.rigs) {
+        qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Capabilities :" << c->txSeq << "for" << rig.modelName;
+        radio_cap_packet r;
+        memset(r.packet, 0x0, sizeof(r)); // We can't be sure it is initialized with 0x00!
+
+        memcpy(r.guid, rig.guid, sizeof(r.guid));
+        memcpy(r.name, rig.rigName.toLocal8Bit(), sizeof(r.name));
+        memcpy(r.audio, QByteArrayLiteral("ICOM_VAUDIO").constData(), 11);
+
+        if (rig.hasWiFi && !rig.hasEthernet) {
+            r.conntype = 0x0707; // 0x0707 for wifi rig.
+        }
+        else {
+            r.conntype = 0x073f; // 0x073f for ethernet rig.
+        }
+
+        r.civ = rig.civAddr;
+        r.baudrate = (quint32)qToBigEndian(rig.baudRate);
+        /*
+            0x80 = 12K only
+            0x40 = 44.1K only
+            0x20 = 22.05K only
+            0x10 = 11.025K only
+            0x08 = 48K only
+            0x04 = 32K only
+            0x02 = 16K only
+            0x01 = 8K only
+        */
+        if (rig.rxaudio == Q_NULLPTR) {
+            r.rxsample = 0x8b01; // all rx sample frequencies supported
+        }
+        else {
+            if (rxSampleRate == 48000) {
+                r.rxsample = 0x0800; // fixed rx sample frequency
+            }
+            else if (rxSampleRate == 32000) {
+                r.rxsample = 0x0400;
+            }
+            else if (rxSampleRate == 24000) {
+                r.rxsample = 0x0001;
+            }
+            else if (rxSampleRate == 16000) {
+                r.rxsample = 0x0200;
+            }
+            else if (rxSampleRate == 12000) {
+                r.rxsample = 0x8000;
+            }
+        }
+
+        if (rig.txaudio == Q_NULLPTR) {
+            r.txsample = 0x8b01; // all tx sample frequencies supported
+            r.enablea = 0x01; // 0x01 enables TX 24K mode?
+            qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Client will have TX audio";
+        }
+        else {
+            qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Disable tx audio for client";
+            r.txsample = 0;
+        }
+
+        // I still don't know what these are?
+        r.enableb = 0x01; // 0x01 doesn't seem to do anything?
+        r.enablec = 0x01; // 0x01 doesn't seem to do anything?
+        r.capf = 0x5001;
+        r.capg = 0x0190;
+        s.data.append(QByteArray::fromRawData((const char*)r.packet, sizeof(r)));
+    }
+
+    p.len = sizeof(p)+s.data.length();
+    p.payloadsize = sizeof(p)+s.data.length() - 0x0f;
+
+    s.data.insert(0,QByteArray::fromRawData((const char*)p.packet, sizeof(p)));
+
     if (c->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
     {
         if (c->txSeqBuf.size() > BUFSIZE)
@@ -1155,68 +1215,79 @@ void udpServer::sendCapabilities(CLIENT* c)
 
 // When client has requested civ/audio connection, this will contain their details
 // Also used to display currently connected used information.
-void udpServer::sendConnectionInfo(CLIENT* c)
+void udpServer::sendConnectionInfo(CLIENT* c, quint8 guid[16])
 {
-    qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending ConnectionInfo :" << c->txSeq;
-    conninfo_packet p;
-    memset(p.packet, 0x0, sizeof(p));
-    p.len = sizeof(p);
-    p.type = 0x00;
-    p.seq = c->txSeq;
-    p.sentid = c->myId;
-    p.rcvdid = c->remoteId;
-    //p.innerseq = c->authInnerSeq; // Innerseq not used in user packet
-    p.tokrequest = c->tokenRx;
-    p.token = c->tokenTx;
-    p.code = 0x0380;
-    p.commoncap = c->commonCap;
-    memcpy(p.macaddress, c->macaddress, 6);
-
-    // 0x1a-0x1f is authid (random number?
-    // memcpy(p + 0x40, QByteArrayLiteral("IC-7851").constData(), 7);
-
-    memcpy(p.packet + 0x40, rigCaps.modelName.toLocal8Bit(), rigCaps.modelName.length());
-
-    // This is the current streaming client (should we support multiple clients?)
-    if (c->isStreaming) {
-        p.busy = 0x01;
-        memcpy(p.computer, c->clientName.constData(), c->clientName.length());
-        p.ipaddress = qToBigEndian(c->ipAddress.toIPv4Address());
-        memcpy(p.macaddress, c->macaddress, 6);
-    }
-
-
-    SEQBUFENTRY s;
-    s.seqNum = p.seq;
-    s.timeSent = QTime::currentTime();
-    s.retransmitCount = 0;
-    s.data = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
- 
-    if (c->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
-    {
-        if (c->txSeqBuf.size() > BUFSIZE)
+    for (RIGCONFIG& radio : config.rigs) {
+        if (!memcmp(guid, radio.guid, sizeof(guid)))
         {
-            c->txSeqBuf.remove(c->txSeqBuf.firstKey());
+            qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending ConnectionInfo :" << c->txSeq;
+            conninfo_packet p;
+            memset(p.packet, 0x0, sizeof(p));
+            p.len = sizeof(p);
+            p.type = 0x00;
+            p.seq = c->txSeq;
+            p.sentid = c->myId;
+            p.rcvdid = c->remoteId;
+            //p.innerseq = c->authInnerSeq; // Innerseq not used in user packet
+            p.tokrequest = c->tokenRx;
+            p.token = c->tokenTx;
+            p.code = 0x0380;
+            memcpy(p.guid, radio.guid, sizeof(p.guid));
+            memcpy(p.name, radio.rigName.toLocal8Bit(), sizeof(p.name));
+
+            if (radio.rigAvailable) {
+                if (c->isStreaming) {
+                    p.busy = 0x01;
+                }
+                else {
+                    p.busy = 0x00;
+                }
+            }
+            else
+            {
+                p.busy = 0x02;
+            }
+ 
+            // This is the current streaming client (should we support multiple clients?)
+            if (c->isStreaming) {
+                memcpy(p.computer, c->clientName.constData(), c->clientName.length());
+                p.ipaddress = qToBigEndian(c->ipAddress.toIPv4Address());
+ 
+            }
+
+
+            SEQBUFENTRY s;
+            s.seqNum = p.seq;
+            s.timeSent = QTime::currentTime();
+            s.retransmitCount = 0;
+            s.data = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
+
+            if (c->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
+            {
+                if (c->txSeqBuf.size() > BUFSIZE)
+                {
+                    c->txSeqBuf.remove(c->txSeqBuf.firstKey());
+                }
+                c->txSeqBuf.insert(p.seq, s);
+                c->txSeq++;
+                c->txMutex.unlock();
+            }
+            else {
+                qInfo(logUdpServer()) << "Unable to lock txMutex()";
+            }
+
+
+            if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
+            {
+                c->socket->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), c->ipAddress, c->port);
+                udpMutex.unlock();
+            }
+            else {
+                qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+            }
+
         }
-        c->txSeqBuf.insert(p.seq, s);
-        c->txSeq++;
-        c->txMutex.unlock();
     }
-    else {
-        qInfo(logUdpServer()) << "Unable to lock txMutex()";
-    }
-
-
-    if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
-    {
-        c->socket->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), c->ipAddress, c->port);
-        udpMutex.unlock();
-    }
-    else {
-        qInfo(logUdpServer()) << "Unable to lock udpMutex()";
-    }
-
-
     if (c->idleTimer != Q_NULLPTR)
         c->idleTimer->start(100);
 
@@ -1395,84 +1466,108 @@ void udpServer::sendStatus(CLIENT* c)
 void udpServer::dataForServer(QByteArray d)
 {
 
-    //qInfo(logUdpServer()) << "Server got:" << d;
-    foreach(CLIENT * client, civClients)
+    rigCommander* sender = qobject_cast<rigCommander*>(QObject::sender());
+
+    if (sender == Q_NULLPTR)
     {
-        int lastFE = d.lastIndexOf((quint8)0xfe);
-        if (client != Q_NULLPTR && client->connected && d.length() > lastFE + 2 &&
-		((quint8)d[lastFE + 1] == client->civId || (quint8)d[lastFE + 2] == client->civId ||
-        (quint8)d[lastFE + 1] == 0x00 || (quint8)d[lastFE + 2]==0x00 || (quint8)d[lastFE + 1] == 0xE1 || (quint8)d[lastFE + 2] == 0xE1)) {
-            data_packet p;
-            memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
-            p.len = (quint16)d.length() + sizeof(p);
-            p.seq = client->txSeq;
-            p.sentid = client->myId;
-            p.rcvdid = client->remoteId;
-            p.reply = (char)0xc1;
-            p.datalen = (quint16)d.length();
-            p.sendseq = client->innerSeq;
-            QByteArray t = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
-            t.append(d);
-
-            SEQBUFENTRY s;
-            s.seqNum = p.seq;
-            s.timeSent = QTime::currentTime();
-            s.retransmitCount = 0;
-            s.data = t;
-
-            if (client->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
-            {
-                if (client->txSeqBuf.size() > BUFSIZE)
-                {
-                    client->txSeqBuf.remove(client->txSeqBuf.firstKey());
-                }
-                client->txSeqBuf.insert(p.seq, s);
-                client->txSeq++;
-                client->innerSeq++;
-                client->txMutex.unlock();
-            }
-            else {
-                qInfo(logUdpServer()) << "Unable to lock txMutex()";
-            }
-
-
-            if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
-            {
-                client->socket->writeDatagram(t, client->ipAddress, client->port);
-                udpMutex.unlock();
-            }
-            else {
-                qInfo(logUdpServer()) << "Unable to lock udpMutex()";
-            }
-
-        } else {
-		qInfo(logUdpServer()) << "Got data for different ID" << hex << (quint8)d[lastFE+1] << ":" << hex << (quint8)d[lastFE+2];
-	}
+        return;
     }
 
+    for (CLIENT* client : civClients)
+    {
+        if (client == Q_NULLPTR || !client->connected)
+        {
+            continue;
+        }
+        for (RIGCONFIG& radio : config.rigs)
+        {
+            
+            if (memcmp(radio.guid, client->guid, sizeof(radio.guid)))
+            {
+                continue;
+            }
+
+            int lastFE = d.lastIndexOf((quint8)0xfe);
+            // Use the GUID to determine which radio the response is from
+            qInfo(logUdpServer()) << "Server got CIV data from" << radio.rigName << "length" << d.length();
+            if (client->connected && d.length() > lastFE + 2 &&
+                    ((quint8)d[lastFE + 1] == client->civId || (quint8)d[lastFE + 2] == client->civId ||
+                    (quint8)d[lastFE + 1] == 0x00 || (quint8)d[lastFE + 2] == 0x00 || (quint8)d[lastFE + 1] == 0xE1 || (quint8)d[lastFE + 2] == 0xE1))
+            {
+                data_packet p;
+                memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
+                p.len = (quint16)d.length() + sizeof(p);
+                p.seq = client->txSeq;
+                p.sentid = client->myId;
+                p.rcvdid = client->remoteId;
+                p.reply = (char)0xc1;
+                p.datalen = (quint16)d.length();
+                p.sendseq = client->innerSeq;
+                QByteArray t = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
+                t.append(d);
+
+                SEQBUFENTRY s;
+                s.seqNum = p.seq;
+                s.timeSent = QTime::currentTime();
+                s.retransmitCount = 0;
+                s.data = t;
+
+                if (client->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
+                {
+                    if (client->txSeqBuf.size() > BUFSIZE)
+                    {
+                        client->txSeqBuf.remove(client->txSeqBuf.firstKey());
+                    }
+                    client->txSeqBuf.insert(p.seq, s);
+                    client->txSeq++;
+                    client->innerSeq++;
+                    client->txMutex.unlock();
+                }
+                else {
+                    qInfo(logUdpServer()) << "Unable to lock txMutex()";
+                }
+
+
+                if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
+                {
+                    client->socket->writeDatagram(t, client->ipAddress, client->port);
+                    udpMutex.unlock();
+                }
+                else {
+                    qInfo(logUdpServer()) << "Unable to lock udpMutex()";
+                }
+            }
+            else {
+                qInfo(logUdpServer()) << "Got data for different ID" << hex << (quint8)d[lastFE + 1] << ":" << hex << (quint8)d[lastFE + 2];
+            }
+        }
+    }
     return;
 }
 
 void udpServer::sendRxAudio()
 {
     QByteArray audio;
-    if (rxaudio) {
-        if (audioMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
-        {
-            audio.clear();
-            rxaudio->getNextAudioChunk(audio);
-            int len = 0;
-            while (len < audio.length()) {
-                audioPacket partial;
-                partial.data = audio.mid(len, 1364);
-                receiveAudioData(partial);
-                len = len + partial.data.length();
+    for (RIGCONFIG &rig : config.rigs) {
+
+        if (rig.rxaudio != Q_NULLPTR) {
+            if (audioMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
+            {
+                audio.clear();
+                rig.rxaudio->getNextAudioChunk(audio);
+                int len = 0;
+                while (len < audio.length()) {
+                    audioPacket partial;
+                    partial.data = audio.mid(len, 1364);
+                    receiveAudioData(partial);
+                    len = len + partial.data.length();
+                }
+                // Now we have the next audio chunk, we can release the mutex.
+                audioMutex.unlock();
             }
-            // Now we have the next audio chunk, we can release the mutex.
-            audioMutex.unlock();
-        }
-        else {
-            qInfo(logUdpServer()) << "Unable to lock mutex for rxaudio";
+            else {
+                qInfo(logUdpServer()) << "Unable to lock mutex for rxaudio";
+            }
         }
     }
 }
@@ -1721,6 +1816,10 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
 void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
 {
 
+    quint8 guid[16];
+    memcpy(guid, c->guid, sizeof(guid));
+    int len = l->length();
+
     qInfo(logUdpServer()) << "Deleting" << c->type << "connection to: " << c->ipAddress.toString() << ":" << QString::number(c->port);
     if (c->idleTimer != Q_NULLPTR) {
         c->idleTimer->stop();
@@ -1774,6 +1873,7 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
             if (client != Q_NULLPTR && client == c) {
                 qInfo(logUdpServer()) << "Found" << client->type << "connection to: " << client->ipAddress.toString() << ":" << QString::number(client->port);
                 it = l->erase(it);
+                len--;
             }
             else {
                 ++it;
@@ -1788,27 +1888,30 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
         qInfo(logUdpServer()) << "Unable to lock connMutex()";
     }
 
-    if (l->length() == 0) {
+    if (len == 0) {
+        for (RIGCONFIG& radio : config.rigs) {
+            if (!memcmp(radio.guid, guid, sizeof(radio.guid)))
+            {
+                if (radio.rxAudioTimer != Q_NULLPTR) {
+                    radio.rxAudioTimer->stop();
+                    delete radio.rxAudioTimer;
+                    radio.rxAudioTimer = Q_NULLPTR;
+                }
 
-        if (rxAudioTimer != Q_NULLPTR) {
-            rxAudioTimer->stop();
-            delete rxAudioTimer;
-            rxAudioTimer = Q_NULLPTR;
+                if (radio.rxAudioThread != Q_NULLPTR) {
+                    radio.rxAudioThread->quit();
+                    radio.rxAudioThread->wait();
+                    radio.rxaudio = Q_NULLPTR;
+                    radio.rxAudioThread = Q_NULLPTR;
+                }
+
+                if (radio.txAudioThread != Q_NULLPTR) {
+                    radio.txAudioThread->quit();
+                    radio.txAudioThread->wait();
+                    radio.txaudio = Q_NULLPTR;
+                    radio.txAudioThread = Q_NULLPTR;
+                }
+            }
         }
-
-        if (rxAudioThread != Q_NULLPTR) {
-            rxAudioThread->quit();
-            rxAudioThread->wait();
-            rxaudio = Q_NULLPTR;
-            rxAudioThread = Q_NULLPTR;
-        }
-
-        if (txAudioThread != Q_NULLPTR) {
-            txAudioThread->quit();
-            txAudioThread->wait();
-            txaudio = Q_NULLPTR;
-            txAudioThread = Q_NULLPTR;
-        }
-
     }
 }

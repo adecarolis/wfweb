@@ -69,13 +69,16 @@ class rigCommander : public QObject
 
 public:
     rigCommander();
+    rigCommander(quint8 guid[16]);
     ~rigCommander();
 
     bool usingLAN();
 
+    quint8* getGUID();
+
 public slots:
     void process();
-    void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp);
+    void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp);
     void commSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp);
     void closeComm();
     void stateUpdated();
@@ -475,7 +478,7 @@ private:
 
     QString serialPortError;
     unsigned char localVolume=0;
-
+    quint8 guid[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 
 };
 
