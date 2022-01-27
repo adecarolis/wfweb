@@ -48,14 +48,16 @@ servermain::servermain(const QString serialPortCL, const QString hostCL, const Q
 
 servermain::~servermain()
 {
-    for (RIGCONFIG& radio : serverConfig.rigs)
+    for (RIGCONFIG* radio : serverConfig.rigs)
     {
-        if (radio.rigThread != Q_NULLPTR)
+        if (radio->rigThread != Q_NULLPTR)
         {
-            radio.rigThread->quit();
-            radio.rigThread->wait();
+            radio->rigThread->quit();
+            radio->rigThread->wait();
         }
+        delete radio; // This has been created by new in loadSettings();
     }
+    serverConfig.rigs.clear();
     if (serverThread != Q_NULLPTR) {
         serverThread->quit();
         serverThread->wait();
@@ -79,26 +81,14 @@ void servermain::openRig()
 
     makeRig();
 
-    if( (prefs.serialPortRadio.toLower() == QString("auto")) && (serialPortCL.isEmpty()))
-    {
-        findSerialPort();
-
-    } else {
-        if(serialPortCL.isEmpty())
-        {
-            serialPortRig = prefs.serialPortRadio;
-        } else {
-            serialPortRig = serialPortCL;
-        }
-    }
-    for (RIGCONFIG& radio : serverConfig.rigs)
+    for (RIGCONFIG* radio : serverConfig.rigs)
     {
         //qInfo(logSystem()) << "Opening rig";
-        if (radio.rigThread != Q_NULLPTR)
+        if (radio->rigThread != Q_NULLPTR)
         {
             //qInfo(logSystem()) << "Got rig";
-            QMetaObject::invokeMethod(radio.rig, [=]() {
-                radio.rig->commSetup(radio.civAddr, radio.serialPort, radio.baudRate, QString("none"));
+            QMetaObject::invokeMethod(radio->rig, [=]() {
+                radio->rig->commSetup(radio->civAddr, radio->serialPort, radio->baudRate, QString("none"));
             }, Qt::QueuedConnection);
         }
     }
@@ -106,49 +96,49 @@ void servermain::openRig()
 
 void servermain::makeRig()
 {
-    for (RIGCONFIG& radio : serverConfig.rigs)
+    for (RIGCONFIG* radio : serverConfig.rigs)
     {
-        if (radio.rigThread == Q_NULLPTR)
+        if (radio->rigThread == Q_NULLPTR)
         {
             qInfo(logSystem()) << "Creating new rigThread()";
-            radio.rig = new rigCommander(radio.guid);
-            radio.rigThread = new QThread(this);
+            radio->rig = new rigCommander(radio->guid);
+            radio->rigThread = new QThread(this);
 
             // Thread:
-            radio.rig->moveToThread(radio.rigThread);
-            connect(radio.rigThread, SIGNAL(started()), radio.rig, SLOT(process()));
-            connect(radio.rigThread, SIGNAL(finished()), radio.rig, SLOT(deleteLater()));
-            radio.rigThread->start();
+            radio->rig->moveToThread(radio->rigThread);
+            connect(radio->rigThread, SIGNAL(started()), radio->rig, SLOT(process()));
+            connect(radio->rigThread, SIGNAL(finished()), radio->rig, SLOT(deleteLater()));
+            radio->rigThread->start();
             // Rig status and Errors:
-            connect(radio.rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
-            connect(radio.rig, SIGNAL(haveStatusUpdate(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
+            connect(radio->rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
+            connect(radio->rig, SIGNAL(haveStatusUpdate(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
 
             // Rig comm setup:
-            //connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)), radio.rig, SLOT(commSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)));
-            //connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32, QString)), radio.rig, SLOT(commSetup(unsigned char, QString, quint32, QString)));
-            connect(this, SIGNAL(setRTSforPTT(bool)), radio.rig, SLOT(setRTSforPTT(bool)));
+            //connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)), radio->rig, SLOT(commSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)));
+            //connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32, QString)), radio->rig, SLOT(commSetup(unsigned char, QString, quint32, QString)));
+            connect(this, SIGNAL(setRTSforPTT(bool)), radio->rig, SLOT(setRTSforPTT(bool)));
 
-            connect(radio.rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
+            connect(radio->rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
 
-            connect(this, SIGNAL(sendCloseComm()), radio.rig, SLOT(closeComm()));
-            connect(this, SIGNAL(sendChangeLatency(quint16)), radio.rig, SLOT(changeLatency(quint16)));
-            //connect(this, SIGNAL(getRigCIV()), radio.rig, SLOT(findRigs()));
-            //connect(this, SIGNAL(setRigID(unsigned char)), radio.rig, SLOT(setRigID(unsigned char)));
-            connect(radio.rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
-            connect(radio.rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
+            connect(this, SIGNAL(sendCloseComm()), radio->rig, SLOT(closeComm()));
+            connect(this, SIGNAL(sendChangeLatency(quint16)), radio->rig, SLOT(changeLatency(quint16)));
+            //connect(this, SIGNAL(getRigCIV()), radio->rig, SLOT(findRigs()));
+            //connect(this, SIGNAL(setRigID(unsigned char)), radio->rig, SLOT(setRigID(unsigned char)));
+            connect(radio->rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
+            connect(radio->rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
 
-            connect(this, SIGNAL(requestRigState()), radio.rig, SLOT(sendState()));
-            connect(this, SIGNAL(stateUpdated()), radio.rig, SLOT(stateUpdated()));
-            connect(radio.rig, SIGNAL(stateInfo(rigstate*)), this, SLOT(receiveStateInfo(rigstate*)));
+            connect(this, SIGNAL(requestRigState()), radio->rig, SLOT(sendState()));
+            connect(this, SIGNAL(stateUpdated()), radio->rig, SLOT(stateUpdated()));
+            connect(radio->rig, SIGNAL(stateInfo(rigstate*)), this, SLOT(receiveStateInfo(rigstate*)));
 
             //Other connections
-            connect(this, SIGNAL(setCIVAddr(unsigned char)), radio.rig, SLOT(setCIVAddr(unsigned char)));
+            connect(this, SIGNAL(setCIVAddr(unsigned char)), radio->rig, SLOT(setCIVAddr(unsigned char)));
 
-            connect(radio.rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
-            connect(this, SIGNAL(setPTT(bool)), radio.rig, SLOT(setPTT(bool)));
-            connect(this, SIGNAL(getPTT()), radio.rig, SLOT(getPTT()));
-            connect(this, SIGNAL(getDebug()), radio.rig, SLOT(getDebug()));
-            if (radio.rigThread->isRunning()) {
+            connect(radio->rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
+            connect(this, SIGNAL(setPTT(bool)), radio->rig, SLOT(setPTT(bool)));
+            connect(this, SIGNAL(getPTT()), radio->rig, SLOT(getPTT()));
+            connect(this, SIGNAL(getDebug()), radio->rig, SLOT(getDebug()));
+            if (radio->rigThread->isRunning()) {
                 qInfo(logSystem()) << "Rig thread is running";
             }
             else {
@@ -163,15 +153,15 @@ void servermain::makeRig()
 
 void servermain::removeRig()
 {
-    for (RIGCONFIG& radio : serverConfig.rigs)
+    for (RIGCONFIG* radio : serverConfig.rigs)
     {
-        if (radio.rigThread != Q_NULLPTR)
+        if (radio->rigThread != Q_NULLPTR)
         {
-            radio.rigThread->disconnect();
-            radio.rig->disconnect();
-            delete radio.rigThread;
-            delete radio.rig;
-            radio.rig = Q_NULLPTR;
+            radio->rigThread->disconnect();
+            radio->rig->disconnect();
+            delete radio->rigThread;
+            delete radio->rig;
+            radio->rig = Q_NULLPTR;
         }
     }
 }
@@ -242,28 +232,28 @@ void servermain::receiveCommReady()
 
     // Use the GUID to determine which radio the response is from
 
-    for (RIGCONFIG& radio : serverConfig.rigs)
+    for (RIGCONFIG* radio : serverConfig.rigs)
     {
-        if (sender != Q_NULLPTR && radio.rig != Q_NULLPTR && !memcmp(sender->getGUID(), radio.guid, sizeof(radio.guid)))
+        if (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !memcmp(sender->getGUID(), radio->guid, sizeof(radio->guid)))
         {
 
             qInfo(logSystem()) << "Received CommReady!! ";
-            if (radio.civAddr == 0)
+            if (radio->civAddr == 0)
             {
                 // tell rigCommander to broadcast a request for all rig IDs.
                 // qInfo(logSystem()) << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
-                if (!radio.rigAvailable) {
-                    QMetaObject::invokeMethod(radio.rig, [=]() {
-                        radio.rig->findRigs();
+                if (!radio->rigAvailable) {
+                    QMetaObject::invokeMethod(radio->rig, [=]() {
+                        radio->rig->findRigs();
                     }, Qt::QueuedConnection);
                 }
             }
             else {
                 // don't bother, they told us the CIV they want, stick with it.
                 // We still query the rigID to find the model, but at least we know the CIV.
-                qInfo(logSystem()) << "Skipping automatic CIV, using user-supplied value of " << radio.civAddr;
-                QMetaObject::invokeMethod(radio.rig, [=]() {
-                    radio.rig->setRigID(radio.civAddr);
+                qInfo(logSystem()) << "Skipping automatic CIV, using user-supplied value of " << radio->civAddr;
+                QMetaObject::invokeMethod(radio->rig, [=]() {
+                    radio->rig->setRigID(radio->civAddr);
                     }, Qt::QueuedConnection);
             }
         }
@@ -279,10 +269,10 @@ void servermain::receiveFoundRigID(rigCapabilities rigCaps)
     rigCommander* sender = qobject_cast<rigCommander*>(QObject::sender());
 
     // Use the GUID to determine which radio the response is from
-    for (RIGCONFIG& radio : serverConfig.rigs)
+    for (RIGCONFIG* radio : serverConfig.rigs)
     {
 
-        if (sender != Q_NULLPTR && radio.rig != Q_NULLPTR && !radio.rigAvailable && !memcmp(sender->getGUID(), radio.guid, sizeof(radio.guid)))
+        if (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !radio->rigAvailable && !memcmp(sender->getGUID(), radio->guid, sizeof(radio->guid)))
         {
 
             qDebug(logSystem()) << "Rig name: " << rigCaps.modelName;
@@ -309,7 +299,7 @@ void servermain::receiveFoundRigID(rigCapabilities rigCaps)
                 .arg(rigCaps.guid[14], 2, 16, QLatin1Char('0'))
                 .arg(rigCaps.guid[15], 2, 16, QLatin1Char('0'))
                 ;
-            radio.rigCaps = rigCaps;
+            radio->rigCaps = rigCaps;
             // Added so that server receives rig capabilities.
             emit sendRigCaps(rigCaps);
         }
@@ -372,7 +362,7 @@ void servermain::setServerToPrefs()
         udp = Q_NULLPTR;
     }
 
-    udp = new udpServer(&serverConfig, serverTxSetup, serverRxSetup);
+    udp = new udpServer(serverConfig, serverTxSetup, serverRxSetup);
 
     serverThread = new QThread(this);
 
@@ -385,15 +375,15 @@ void servermain::setServerToPrefs()
     // Step through all radios and connect them to the server, 
     // server will then use GUID to determine which actual radio it belongs to.
 
-    for (RIGCONFIG& radio : serverConfig.rigs)
+    for (RIGCONFIG* radio : serverConfig.rigs)
     {
-        if (radio.rigThread != Q_NULLPTR)
+        if (radio->rigThread != Q_NULLPTR)
         {
 
-            if (radio.rig != Q_NULLPTR) {
-                connect(radio.rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
-                connect(radio.rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
-                //connect(udp, SIGNAL(haveDataFromServer(QByteArray)), radio.rig, SLOT(dataFromServer(QByteArray)));
+            if (radio->rig != Q_NULLPTR) {
+                connect(radio->rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
+                connect(radio->rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
+                //connect(udp, SIGNAL(haveDataFromServer(QByteArray)), radio->rig, SLOT(dataFromServer(QByteArray)));
                 connect(this, SIGNAL(sendRigCaps(rigCapabilities)), udp, SLOT(receiveRigCaps(rigCapabilities)));
             }
         }
@@ -508,21 +498,21 @@ void servermain::loadSettings()
         else {
             settings->setArrayIndex(i);
         }
-        RIGCONFIG tempPrefs;
-        tempPrefs.civAddr = (unsigned char)settings->value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
-        tempPrefs.forceRTSasPTT = (bool)settings->value("ForceRTSasPTT", defPrefs.forceRTSasPTT).toBool();
-        tempPrefs.serialPort = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
-        tempPrefs.rigName = settings->value("RigName", "<NONE>").toString();
-        tempPrefs.baudRate = (quint32)settings->value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
+        RIGCONFIG* tempPrefs = new RIGCONFIG();
+        tempPrefs->civAddr = (unsigned char)settings->value("RigCIVuInt", defPrefs.radioCIVAddr).toInt();
+        tempPrefs->forceRTSasPTT = (bool)settings->value("ForceRTSasPTT", defPrefs.forceRTSasPTT).toBool();
+        tempPrefs->serialPort = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
+        tempPrefs->rigName = settings->value("RigName", "<NONE>").toString();
+        tempPrefs->baudRate = (quint32)settings->value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
 
-        if (tempPrefs.rigName=="<NONE>")
+        if (tempPrefs->rigName=="<NONE>")
         {
             foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
             {
                 //qInfo(logSystem()) << "Serial Port found: " << serialPortInfo.portName() << "Manufacturer:" << serialPortInfo.manufacturer() << "Product ID" << serialPortInfo.description() << "S/N" << serialPortInfo.serialNumber();
-                if (serialPortInfo.portName() == tempPrefs.serialPort && !serialPortInfo.serialNumber().isEmpty())
+                if (serialPortInfo.portName() == tempPrefs->serialPort && !serialPortInfo.serialNumber().isEmpty())
                 {
-                    tempPrefs.rigName = serialPortInfo.serialNumber();
+                    tempPrefs->rigName = serialPortInfo.serialNumber();
                 }
             }
         }
@@ -531,30 +521,33 @@ void servermain::loadSettings()
             guid = QUuid::createUuid().toString();
             settings->setValue("GUID", guid);
         }
-        memcpy(tempPrefs.guid, QUuid::fromString(guid).toRfc4122().constData(), sizeof(tempPrefs.guid));
+        memcpy(tempPrefs->guid, QUuid::fromString(guid).toRfc4122().constData(), sizeof(tempPrefs->guid));
 
-        tempPrefs.rxAudioSetup.isinput = true;
-        tempPrefs.txAudioSetup.isinput = false;
-        tempPrefs.rxAudioSetup.localAFgain = 255;
-        tempPrefs.txAudioSetup.localAFgain = 255;
-        tempPrefs.rxAudioSetup.resampleQuality = 4;
-        tempPrefs.txAudioSetup.resampleQuality = 4;
+        tempPrefs->rxAudioSetup.isinput = true;
+        tempPrefs->txAudioSetup.isinput = false;
+        tempPrefs->rxAudioSetup.localAFgain = 255;
+        tempPrefs->txAudioSetup.localAFgain = 255;
+        tempPrefs->rxAudioSetup.resampleQuality = 4;
+        tempPrefs->txAudioSetup.resampleQuality = 4;
 
-        tempPrefs.rxAudioSetup.name = settings->value("AudioInput", "").toString();
-        tempPrefs.txAudioSetup.name = settings->value("AudioOutput", "").toString();
-
+        tempPrefs->rxAudioSetup.name = settings->value("AudioInput", "").toString();
+        tempPrefs->txAudioSetup.name = settings->value("AudioOutput", "").toString();
+        bool rxDeviceFound = false;
+        bool txDeviceFound = false;
         // Find the actual audio devices 
 #if defined(RTAUDIO)
         for (unsigned int i = 1; i < devices; i++) {
             info = audio->getDeviceInfo(i);
             if (info.outputChannels > 0) {
-                if (tempPrefs.txAudio.name == info->name) {
-                    tempPrefs.txAudio.port = i;
+                if (tempPrefs->txAudio.name == info->name) {
+                    tempPrefs->txAudio.port = i;
+                    txDeviceFound = true;
                 }
             }
             if (info.inputChannels > 0) {
-                if (tempPrefs.rxAudio.name == info->name) {
-                    tempPrefs.rxAudio.port = i;
+                if (tempPrefs->rxAudio.name == info->name) {
+                    tempPrefs->rxAudio.port = i;
+                    rxDeviceFound = true;
                 }
             }
         }
@@ -563,14 +556,16 @@ void servermain::loadSettings()
         {
             info = Pa_GetDeviceInfo(i);
             if (info->maxInputChannels > 0) {
-                if (tempPrefs.txAudio.name == info->name) {
-                    tempPrefs.txAudio.port = i;
+                if (tempPrefs->txAudio.name == info->name) {
+                    tempPrefs->txAudio.port = i;
+                    txDeviceFound = true;
                 }
             }
             if (info->maxOutputChannels > 0) {
-                if (tempPrefs.rxAudio.name == info->name) {
-                    tempPrefs.rxAudio.port = i;
-                }
+                if (tempPrefs->rxAudio.name == info->name) {
+                    tempPrefs->rxAudio.port = i;
+                    rxDeviceFound = true;
+    }
             }
         }
 #else
@@ -581,20 +576,29 @@ void servermain::loadSettings()
 
         //qInfo(logAudio()) << "Looking for audio output devices";
         for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
-            if (deviceInfo.deviceName() == tempPrefs.txAudioSetup.name) {
-                tempPrefs.txAudioSetup.port = deviceInfo;
+            if (deviceInfo.deviceName() == tempPrefs->txAudioSetup.name) {
+                tempPrefs->txAudioSetup.port = deviceInfo;
+                txDeviceFound = true;
             }
         }
 
         //qInfo(logAudio()) << "Looking for audio input devices";
         for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
-            if (deviceInfo.deviceName() == tempPrefs.rxAudioSetup.name) {
-                tempPrefs.rxAudioSetup.port = deviceInfo;
+            if (deviceInfo.deviceName() == tempPrefs->rxAudioSetup.name) {
+                tempPrefs->rxAudioSetup.port = deviceInfo;
+                rxDeviceFound = true;
             }
         }
 #endif
-        tempPrefs.rig = Q_NULLPTR;
-        tempPrefs.rigThread = Q_NULLPTR;
+
+        if (!txDeviceFound) {
+            qInfo() << "Cannot find txAudioDevice" << tempPrefs->txAudioSetup.name;
+        }
+        if (!rxDeviceFound) {
+            qInfo() << "Cannot find rxAudioDevice" << tempPrefs->rxAudioSetup.name;
+        }
+        tempPrefs->rig = Q_NULLPTR;
+        tempPrefs->rigThread = Q_NULLPTR;
         serverConfig.rigs.append(tempPrefs);
         if (tempNum == 0) {
             settings->endGroup();

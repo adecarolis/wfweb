@@ -79,7 +79,7 @@ struct SERVERCONFIG {
 	quint8 resampleQuality;
 	quint32 baudRate;
 	QList <SERVERUSER> users;
-	QList <RIGCONFIG> rigs;
+	QList <RIGCONFIG*> rigs;
 };
 
 
@@ -88,7 +88,7 @@ class udpServer : public QObject
 	Q_OBJECT
 
 public:
-	udpServer(SERVERCONFIG* config, audioSetup outAudio, audioSetup inAudio);
+	udpServer(SERVERCONFIG& config, audioSetup outAudio, audioSetup inAudio);
 	~udpServer();
 
 public slots:

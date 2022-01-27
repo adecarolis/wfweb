@@ -14,7 +14,7 @@
 #define RETRANSMIT_PERIOD 100           // How often to attempt retransmit
 #define LOCK_PERIOD 10                  // How long to try to lock mutex (ms)
 #define STALE_CONNECTION 15             // Not heard from in this many seconds
-#define BUFSIZE 50 // Number of packets to buffer
+#define BUFSIZE 500 // Number of packets to buffer
 #define TXAUDIO_PERIOD 20 
 
 

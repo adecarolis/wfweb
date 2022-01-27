@@ -1246,7 +1246,6 @@ void udpBase::dataReceived(QByteArray r)
         } 
         else
         {
-            //std::sort(rxSeqBuf.begin(), rxSeqBuf.end());
             if (in->seq < rxSeqBuf.firstKey())
             {
                 qInfo(logUdp()) << this->metaObject()->className() << ": ******* seq number has rolled over ****** previous highest: " << hex << rxSeqBuf.lastKey() << " current: " << hex << in->seq;
@@ -1261,10 +1260,43 @@ void udpBase::dataReceived(QByteArray r)
             if (!rxSeqBuf.contains(in->seq))
             {
                 // Add incoming packet to the received buffer and if it is in the missing buffer, remove it.
-                rxSeqBuf.insert(in->seq, QTime::currentTime());
-                if (rxSeqBuf.size() > BUFSIZE)
-                {
-                    rxSeqBuf.erase(rxSeqBuf.begin());
+
+
+                if (in->seq > rxSeqBuf.lastKey() + 1) {
+                    // We are likely missing packets then!
+                    missingMutex.lock();
+                    int missCounter = 0;
+                    for (quint16 f = rxSeqBuf.lastKey() + 1; f < in->seq; f++)
+                    {
+                        if (missCounter > 50) {
+                            // More than 50 packets missing, something horrific has happened!
+                            qDebug(logUdp()) << "Too many missing packets, full reset!";
+                            rxSeqBuf.clear();
+                            rxMissing.clear();
+                            missingMutex.unlock();
+                            break;
+                        }
+                        qDebug(logUdp()) << "Detected missing packet" << f;
+
+                        if (rxSeqBuf.size() > BUFSIZE)
+                        {
+                            rxSeqBuf.erase(rxSeqBuf.begin());
+                        }
+                        rxSeqBuf.insert(f, QTime::currentTime());
+                        if (!rxMissing.contains(f))
+                        {
+                            rxMissing.insert(f, 0);
+                        }
+                    }
+                    missingMutex.unlock();
+                }
+                else {
+                    if (rxSeqBuf.size() > BUFSIZE)
+                    {
+                        rxSeqBuf.erase(rxSeqBuf.begin());
+                    }
+                    rxSeqBuf.insert(in->seq, QTime::currentTime());
+
                 }
             }
             else {
