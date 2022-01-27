@@ -1306,6 +1306,7 @@ void udpBase::dataReceived(QByteArray r)
                 if (s != rxMissing.end())
                 {
                     qDebug(logUdp()) << this->metaObject()->className() << ": Missing SEQ has been received! " << hex << in->seq;
+
                     s = rxMissing.erase(s);
                 }
                 missingMutex.unlock();

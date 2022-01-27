@@ -365,9 +365,14 @@ void udpServer::controlReceived()
                     //connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
                     connect(radio->txAudioThread, SIGNAL(finished()), radio->txaudio, SLOT(deleteLater()));
 
+                    // Not sure how we make this work in QT5.9?
+#if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
                     QMetaObject::invokeMethod(radio->txaudio, [=]() {
                         radio->txaudio->init(radio->txAudioSetup);
                     }, Qt::QueuedConnection);
+#else
+                    #warn "QT 5.9 is not fully supported"
+#endif
 
                     emit setupTxAudio(outAudio);
                     hasTxAudio = datagram.senderAddress();
@@ -400,9 +405,13 @@ void udpServer::controlReceived()
 
                     connect(radio->rxAudioThread, SIGNAL(finished()), radio->rxaudio, SLOT(deleteLater()));
 
+#if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
                     QMetaObject::invokeMethod(radio->rxaudio, [=]() {
                         radio->rxaudio->init(radio->rxAudioSetup);
                     }, Qt::QueuedConnection);
+#else
+                    #warn "QT 5.9 is not fully supported"
+#endif
 
                     radio->rxAudioTimer = new QTimer();
                     radio->rxAudioTimer->setTimerType(Qt::PreciseTimer);
@@ -568,9 +577,15 @@ void udpServer::civReceived()
                             if (!memcmp(radio->guid, current->guid, sizeof(radio->guid)))
                             {
                                 // Only send to the rig that it belongs to!
+
+#if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
                                 QMetaObject::invokeMethod(radio->rig, [=]() {
                                     radio->rig->dataFromServer(r.mid(0x15));;
                                 }, Qt::DirectConnection);
+#else
+                                #warn "QT 5.9 is not fully supported"
+#endif
+
                             }
                         }
 
