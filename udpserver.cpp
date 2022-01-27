@@ -371,7 +371,7 @@ void udpServer::controlReceived()
                         radio->txaudio->init(radio->txAudioSetup);
                     }, Qt::QueuedConnection);
 #else
-                    #warn "QT 5.9 is not fully supported"
+                    #warning "QT 5.9 is not fully supported"
 #endif
 
                     emit setupTxAudio(outAudio);
@@ -410,7 +410,7 @@ void udpServer::controlReceived()
                         radio->rxaudio->init(radio->rxAudioSetup);
                     }, Qt::QueuedConnection);
 #else
-                    #warn "QT 5.9 is not fully supported"
+                    #warning "QT 5.9 is not fully supported"
 #endif
 
                     radio->rxAudioTimer = new QTimer();
@@ -583,7 +583,7 @@ void udpServer::civReceived()
                                     radio->rig->dataFromServer(r.mid(0x15));;
                                 }, Qt::DirectConnection);
 #else
-                                #warn "QT 5.9 is not fully supported"
+                                #warning "QT 5.9 is not fully supported"
 #endif
 
                             }
