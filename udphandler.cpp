@@ -1325,11 +1325,12 @@ void udpBase::sendRetransmitRequest()
     else if (rxMissing.size() > 100) {
         qDebug(logUdp()) << "Too many missing packets," << rxMissing.size() << "flushing all buffers";
         missingMutex.lock();
-        rxBufferMutex.lock();
-        qDebug(logUdp()) << "Too many missing packets, full reset!";
-        rxSeqBuf.clear();
         rxMissing.clear();
         missingMutex.unlock();
+
+        rxBufferMutex.lock();
+        rxSeqBuf.clear();
+        rxBufferMutex.unlock();
         return;
     }
 

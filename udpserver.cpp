@@ -1690,10 +1690,10 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
     }
     else if (c->rxMissing.size() > 100) {
         qDebug(logUdp()) << "Too many missing packets," << c->rxMissing.size() << "flushing all buffers";
-        c->missMutex.lock();
         c->rxMutex.lock();
-        qDebug(logUdp()) << "Too many missing packets, full reset!";
         c->rxSeqBuf.clear();
+        c->rxMutex.unlock();
+        c->missMutex.lock();
         c->rxMissing.clear();
         c->missMutex.unlock();
         return;
