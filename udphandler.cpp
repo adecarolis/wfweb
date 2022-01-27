@@ -1124,7 +1124,7 @@ void udpBase::dataReceived(QByteArray r)
             {
                 // Single packet request
                 packetsLost++;
-                congestion ++;
+                congestion = packetsSent/packetsLost * 100;
                 txBufferMutex.lock();
                 QMap<quint16,SEQBUFENTRY>::iterator match = txSeqBuf.find(in->seq);
                 if (match != txSeqBuf.end()) {
@@ -1230,7 +1230,7 @@ void udpBase::dataReceived(QByteArray r)
                 udpMutex.unlock();
                 match++;
                 packetsLost++;
-                congestion++;
+                congestion=packetsSent/packetsLost * 100;
             }
         }
     } 
@@ -1331,7 +1331,7 @@ void udpBase::sendRetransmitRequest()
         rxBufferMutex.lock();
         rxSeqBuf.clear();
         rxBufferMutex.unlock();
-        return;
+        return
     }
 
     QByteArray missingSeqs;
