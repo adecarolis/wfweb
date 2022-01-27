@@ -908,14 +908,6 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
 
                             for (quint16 f = current->rxSeqBuf.lastKey() + 1; f < in->seq; f++)
                             {
-                                if (missCounter > 50) {
-                                    // More than 50 packets missing, something horrific has happened!
-                                    qDebug(logUdpServer()) << "Too many missing packets, full reset!";
-                                    current->rxSeqBuf.clear();
-                                    current->rxMissing.clear();
-                                    current->missMutex.unlock();
-                                    break;
-                                }
 
                                 qInfo(logUdpServer()) << "Detected missing packet" << f;
 
@@ -1696,6 +1688,17 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
     if (c->rxMissing.isEmpty()) {
         return;
     }
+    else if (c->rxMissing.size() > 100) {
+        qDebug(logUdp()) << "Too many missing packets," << c->rxMissing.size() << "flushing all buffers";
+        c->missMutex.lock();
+        c->rxMutex.lock();
+        qDebug(logUdp()) << "Too many missing packets, full reset!";
+        c->rxSeqBuf.clear();
+        c->rxMissing.clear();
+        c->missMutex.unlock();
+        return;
+    }
+
 
     QByteArray missingSeqs;
 

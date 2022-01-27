@@ -1268,14 +1268,6 @@ void udpBase::dataReceived(QByteArray r)
                     int missCounter = 0;
                     for (quint16 f = rxSeqBuf.lastKey() + 1; f < in->seq; f++)
                     {
-                        if (missCounter > 50) {
-                            // More than 50 packets missing, something horrific has happened!
-                            qDebug(logUdp()) << "Too many missing packets, full reset!";
-                            rxSeqBuf.clear();
-                            rxMissing.clear();
-                            missingMutex.unlock();
-                            break;
-                        }
                         qDebug(logUdp()) << "Detected missing packet" << f;
 
                         if (rxSeqBuf.size() > BUFSIZE)
@@ -1328,6 +1320,16 @@ void udpBase::sendRetransmitRequest()
     // Find all gaps in received packets and then send requests for them.
     // This will run every 100ms so out-of-sequence packets will not trigger a retransmit request.
     if (rxMissing.isEmpty()) {
+        return;
+    }
+    else if (rxMissing.size() > 100) {
+        qDebug(logUdp()) << "Too many missing packets," << rxMissing.size() << "flushing all buffers";
+        missingMutex.lock();
+        rxBufferMutex.lock();
+        qDebug(logUdp()) << "Too many missing packets, full reset!";
+        rxSeqBuf.clear();
+        rxMissing.clear();
+        missingMutex.unlock();
         return;
     }
 
