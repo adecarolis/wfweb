@@ -1327,6 +1327,9 @@ void udpBase::sendRetransmitRequest()
 {
     // Find all gaps in received packets and then send requests for them.
     // This will run every 100ms so out-of-sequence packets will not trigger a retransmit request.
+    if (rxMissing.isEmpty()) {
+        return;
+    }
 
     QByteArray missingSeqs;
 

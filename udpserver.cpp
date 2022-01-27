@@ -1693,7 +1693,12 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
     // Find all gaps in received packets and then send requests for them.
  // This will run every 100ms so out-of-sequence packets will not trigger a retransmit request.
 
+    if (c->rxMissing.isEmpty()) {
+        return;
+    }
+
     QByteArray missingSeqs;
+
     QTime missingTime = QTime::currentTime();
 
     if (c->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
@@ -1714,8 +1719,6 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
                 qDebug(logUdp()) << this->metaObject()->className() << ": No response for missing packet" << it.key() << "deleting";
                 it = c->rxMissing.erase(it);
             }
-
-
         }
 
         if (missingSeqs.length() != 0)
