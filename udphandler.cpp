@@ -1331,7 +1331,7 @@ void udpBase::sendRetransmitRequest()
         rxBufferMutex.lock();
         rxSeqBuf.clear();
         rxBufferMutex.unlock();
-        return
+        return;
     }
 
     QByteArray missingSeqs;
