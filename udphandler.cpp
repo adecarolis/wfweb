@@ -1322,7 +1322,7 @@ void udpBase::sendRetransmitRequest()
     if (rxMissing.isEmpty()) {
         return;
     }
-    else if (rxMissing.size() > 100) {
+    else if (rxMissing.size() > MAX_MISSING) {
         qDebug(logUdp()) << "Too many missing packets," << rxMissing.size() << "flushing all buffers";
         missingMutex.lock();
         rxMissing.clear();

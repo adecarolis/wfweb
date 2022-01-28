@@ -823,11 +823,12 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
     {
         for (quint16 i = 0x10; i < r.length(); i = i + 2)
         {
-            auto match = std::find_if(current->txSeqBuf.begin(), current->txSeqBuf.end(), [&cs = in->seq](SEQBUFENTRY& s) {
+            quint16 seq = (quint8)r[i] | (quint8)r[i + 1] << 8;
+            auto match = std::find_if(current->txSeqBuf.begin(), current->txSeqBuf.end(), [&cs = seq](SEQBUFENTRY& s) {
                 return s.seqNum == cs;
             });
             if (match == current->txSeqBuf.end()) {
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Requested packet " << hex << in->seq << " not found";
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Requested packet " << hex << seq << " not found";
                 // Just send idle packet.
                 sendControl(current, 0, in->seq);
             }
@@ -1688,7 +1689,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
     if (c->rxMissing.isEmpty()) {
         return;
     }
-    else if (c->rxMissing.size() > 100) {
+    else if (c->rxMissing.size() > MAX_MISSING) {
         qDebug(logUdp()) << "Too many missing packets," << c->rxMissing.size() << "flushing all buffers";
         c->rxMutex.lock();
         c->rxSeqBuf.clear();

@@ -15,6 +15,7 @@
 #define LOCK_PERIOD 10                  // How long to try to lock mutex (ms)
 #define STALE_CONNECTION 15             // Not heard from in this many seconds
 #define BUFSIZE 500 // Number of packets to buffer
+#define MAX_MISSING 400 // Make the maximum number of possible missing packets less than total buffer size!
 #define TXAUDIO_PERIOD 20 
 
 
