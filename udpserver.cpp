@@ -1709,7 +1709,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
     {
         for (auto it = c->rxMissing.begin(); it != c->rxMissing.end(); ++it)
         {
-            if (it.value() < 4)
+            if (&it != Q_NULLPTR && it.value() < 4)
             {
                 missingSeqs.append(it.key() & 0xff);
                 missingSeqs.append(it.key() >> 8 & 0xff);
