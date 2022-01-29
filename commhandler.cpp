@@ -60,7 +60,10 @@ commHandler::commHandler(QString portName, quint32 baudRate)
 
 commHandler::~commHandler()
 {
-    this->closePort();
+    if (isConnected) {
+        this->closePort();
+    }
+    delete port;
 }
 
 void commHandler::setupComm()
@@ -78,9 +81,16 @@ void commHandler::receiveDataFromUserToRig(const QByteArray &data)
 
 void commHandler::sendDataOut(const QByteArray &writeData)
 {
-
     mutex.lock();
+    // Recycle port to attempt reconnection.
+    if (!this->isConnected) {
+        closePort();
+        openPort();
+    }
 
+    if (!this->isConnected) {
+        return;
+    }
     qint64 bytesWritten;
 
     if(PTTviaRTS)
@@ -230,7 +240,6 @@ void commHandler::setUseRTSforPTT(bool PTTviaRTS)
 void commHandler::openPort()
 {
     bool success;
-    // port->open();
     success = port->open(QIODevice::ReadWrite);
     if(success)
     {
@@ -253,7 +262,7 @@ void commHandler::closePort()
     if(port)
     {
         port->close();
-        delete port;
+        //delete port;
     }
     isConnected = false;
 }

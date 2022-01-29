@@ -234,7 +234,7 @@ void servermain::receiveCommReady()
 
     for (RIGCONFIG* radio : serverConfig.rigs)
     {
-        if (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !memcmp(sender->getGUID(), radio->guid, sizeof(radio->guid)))
+        if (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !memcmp(sender->getGUID(), radio->guid, GUIDLEN))
         {
 
             qInfo(logSystem()) << "Received CommReady!! ";
@@ -243,9 +243,11 @@ void servermain::receiveCommReady()
                 // tell rigCommander to broadcast a request for all rig IDs.
                 // qInfo(logSystem()) << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
                 if (!radio->rigAvailable) {
-                    QMetaObject::invokeMethod(radio->rig, [=]() {
-                        radio->rig->findRigs();
-                    }, Qt::QueuedConnection);
+                    if (radio->connectTimer == Q_NULLPTR) {
+                        radio->connectTimer = new QTimer();
+                        connect(radio->connectTimer, &QTimer::timeout, this, std::bind(&servermain::connectToRig, this, radio));
+                    }
+                    radio->connectTimer->start(500);
                 }
             }
             else {
@@ -260,6 +262,18 @@ void servermain::receiveCommReady()
     }
 }
 
+void servermain::connectToRig(RIGCONFIG* rig)
+{
+    if (!rig->rigAvailable) {
+        //qDebug(logSystem()) << "Searching for rig on" << rig->serialPort;
+        QMetaObject::invokeMethod(rig->rig, [=]() {
+            rig->rig->findRigs();
+        }, Qt::QueuedConnection);
+    }
+    else {
+        rig->connectTimer->stop();
+    }
+}
 
 void servermain::receiveFoundRigID(rigCapabilities rigCaps)
 {
@@ -272,7 +286,7 @@ void servermain::receiveFoundRigID(rigCapabilities rigCaps)
     for (RIGCONFIG* radio : serverConfig.rigs)
     {
 
-        if (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !radio->rigAvailable && !memcmp(sender->getGUID(), radio->guid, sizeof(radio->guid)))
+        if (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !radio->rigAvailable && !memcmp(sender->getGUID(), radio->guid, GUIDLEN))
         {
 
             qDebug(logSystem()) << "Rig name: " << rigCaps.modelName;
@@ -521,7 +535,7 @@ void servermain::loadSettings()
             guid = QUuid::createUuid().toString();
             settings->setValue("GUID", guid);
         }
-        memcpy(tempPrefs->guid, QUuid::fromString(guid).toRfc4122().constData(), sizeof(tempPrefs->guid));
+        memcpy(tempPrefs->guid, QUuid::fromString(guid).toRfc4122().constData(), GUIDLEN);
 
         tempPrefs->rxAudioSetup.isinput = true;
         tempPrefs->txAudioSetup.isinput = false;
@@ -576,7 +590,12 @@ void servermain::loadSettings()
 
         //qInfo(logAudio()) << "Looking for audio output devices";
         for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
-            if (deviceInfo.deviceName() == tempPrefs->txAudioSetup.name) {
+            if (deviceInfo.deviceName() == tempPrefs->txAudioSetup.name
+#ifdef Q_OS_WIN
+                && deviceInfo.realm() == "wasapi"
+#endif
+          ) {
+                qDebug(logSystem()) << "Audio output: " << deviceInfo.deviceName() << "Realm:" << deviceInfo.realm();
                 tempPrefs->txAudioSetup.port = deviceInfo;
                 txDeviceFound = true;
             }
@@ -584,7 +603,12 @@ void servermain::loadSettings()
 
         //qInfo(logAudio()) << "Looking for audio input devices";
         for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
-            if (deviceInfo.deviceName() == tempPrefs->rxAudioSetup.name) {
+            if (deviceInfo.deviceName() == tempPrefs->rxAudioSetup.name
+#ifdef Q_OS_WIN
+                && deviceInfo.realm() == "wasapi"
+#endif
+          ) {
+                qDebug(logSystem()) << "Audio input: " << deviceInfo.deviceName() << "Realm:" << deviceInfo.realm();
                 tempPrefs->rxAudioSetup.port = deviceInfo;
                 rxDeviceFound = true;
             }

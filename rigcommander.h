@@ -69,7 +69,7 @@ class rigCommander : public QObject
 
 public:
     rigCommander();
-    rigCommander(quint8 guid[16]);
+    rigCommander(quint8 guid[GUIDLEN]);
     ~rigCommander();
 
     bool usingLAN();
@@ -478,7 +478,7 @@ private:
 
     QString serialPortError;
     unsigned char localVolume=0;
-    quint8 guid[16] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+    quint8 guid[GUIDLEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 
 };
 

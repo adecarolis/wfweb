@@ -15,8 +15,9 @@
 #define LOCK_PERIOD 10                  // How long to try to lock mutex (ms)
 #define STALE_CONNECTION 15             // Not heard from in this many seconds
 #define BUFSIZE 500 // Number of packets to buffer
-#define MAX_MISSING 100 // Make the maximum number of possible missing packets much less than total buffer size!
+#define MAX_MISSING 50 // Make the maximum number of possible missing packets much less than total buffer size!
 #define TXAUDIO_PERIOD 20 
+#define GUIDLEN 16
 
 
 // Fixed Size Packets
@@ -294,7 +295,7 @@ typedef union conninfo_packet {
                 char unusedh;           // 0x29
                 char macaddress[6];     // 0x2a
             };
-            quint8 guid[16];                  // 0x20
+            quint8 guid[GUIDLEN];                  // 0x20
         };
         char unusedab[16];        // 0x30
         char name[32];                  // 0x40
@@ -339,7 +340,7 @@ typedef union radio_cap_packet {
                 char unused;              // 0x0
                 char macaddress[6];       // 0x0
             };
-            quint8 guid[16];                // 0x0
+            quint8 guid[GUIDLEN];                // 0x0
         };
         char name[32];            // 0x10
         char audio[32];           // 0x30

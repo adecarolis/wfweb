@@ -198,7 +198,7 @@ void udpHandler::dataReceived()
                     if (txSetup.codec == 0) {
                         txString = "(no tx)";
                     }
-                    status.message = QString("<pre>%1 rx latency: %2 / rtt: %3 ms / loss: %4/%5</pre>").arg(txString).arg(tempLatency).arg(latency, 3).arg(status.packetsLost, 3).arg(status.packetsSent, 3);
+                    status.message = QString("<pre>%1 rx latency: %2 / rtt: %3 ms / loss: %4/%5</pre>").arg(txString).arg(tempLatency).arg(status.networkLatency, 3).arg(status.packetsLost, 3).arg(status.packetsSent, 3);
 
                     if (audio != Q_NULLPTR) {
                         status.rxAudioLevel = audio->getRxAmplitude();
@@ -370,7 +370,7 @@ void udpHandler::dataReceived()
                         radios[f].macaddress[3] == in->macaddress[3] &&
                         radios[f].macaddress[4] == in->macaddress[4] &&
                         radios[f].macaddress[5] == in->macaddress[5]) ||
-                        !memcmp(radios[f].guid,in->guid,sizeof(in->guid)))
+                        !memcmp(radios[f].guid,in->guid, GUIDLEN))
                     {
                         emit setRadioUsage(f, in->busy, QString(in->computer), ip.toString());
                     }
@@ -408,7 +408,7 @@ void udpHandler::dataReceived()
             {
                 if ((r.length() - CAPABILITIES_SIZE) % RADIO_CAP_SIZE != 0)
                 {
-                    qInfo(logUdp()) << this->metaObject()->className() << "Packet received" << r.length() << "not recognised";
+                    // Likely a retransmit request?
                     break;
                 }
 
@@ -468,7 +468,7 @@ void udpHandler::setCurrentRadio(quint8 radio) {
     }
     else {
         useGuid = true;
-        memcpy(&guid, radios[radio].guid, sizeof(guid));
+        memcpy(&guid, radios[radio].guid, GUIDLEN);
     }
 
     devName =radios[radio].name;
@@ -499,7 +499,7 @@ void udpHandler::sendRequestStream()
         memcpy(&p.macaddress, macaddress, 6);
     }
     else {
-        memcpy(&p.guid, guid, sizeof(p.guid));
+        memcpy(&p.guid, guid, GUIDLEN);
     }
     p.innerseq = authSeq++;
     p.tokrequest = tokRequest;
@@ -1265,10 +1265,10 @@ void udpBase::dataReceived(QByteArray r)
                 if (in->seq > rxSeqBuf.lastKey() + 1) {
                     // We are likely missing packets then!
                     missingMutex.lock();
-                    int missCounter = 0;
+                    //int missCounter = 0;
                     for (quint16 f = rxSeqBuf.lastKey() + 1; f < in->seq; f++)
                     {
-                        qDebug(logUdp()) << "Detected missing packet" << f;
+                        //qDebug(logUdp()) << "Detected missing packet" << f;
 
                         if (rxSeqBuf.size() > BUFSIZE)
                         {

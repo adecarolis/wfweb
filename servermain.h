@@ -175,6 +175,7 @@ private slots:
     void handlePttLimit();
     void receiveStatusUpdate(networkStatus status);
     void receiveStateInfo(rigstate* state);
+    void connectToRig(RIGCONFIG* rig);
 
 private:
     QSettings *settings=Q_NULLPTR;

@@ -25,6 +25,9 @@
 #include <QIODevice>
 #endif
 
+
+#include "packettypes.h"
+
 typedef signed short  MY_TYPE;
 #define FORMAT RTAUDIO_SINT16
 #define SCALE  32767.0
@@ -61,6 +64,7 @@ struct audioPacket {
     QTime time;
     quint16 sent;
     QByteArray data;
+    quint8 guid[GUIDLEN];
 };
 
 struct audioSetup {

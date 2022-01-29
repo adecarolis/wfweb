@@ -43,10 +43,10 @@ struct networkStatus {
 	quint8 txAudioLevel;
 	quint16 rxLatency;
 	quint16 txLatency;
-	quint32 packetsSent;
-	quint32 packetsLost;
-	quint16 rtt;
-	quint32 networkLatency;
+	quint32 packetsSent=0;
+	quint32 packetsLost=0;
+	quint16 rtt=0;
+	quint32 networkLatency=0;
 	QString message;
 };
 
@@ -289,7 +289,7 @@ private:
 	quint32 token;
 	// These are for stream ident info.
 	quint8 macaddress[8];
-	quint8 guid[16];
+	quint8 guid[GUIDLEN];
 	bool useGuid = false;
 	QByteArray usernameEncoded;
 	QByteArray passwordEncoded;

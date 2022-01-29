@@ -26,11 +26,11 @@ rigCommander::rigCommander()
     state.set(SCOPEFUNC, true, false);
 }
 
-rigCommander::rigCommander(quint8 guid[16])
+rigCommander::rigCommander(quint8 guid[GUIDLEN])
 {
     qInfo(logRig()) << "creating instance of rigCommander()";
     state.set(SCOPEFUNC, true, false);
-    memcpy(this->guid, guid, sizeof(this->guid));
+    memcpy(this->guid, guid, GUIDLEN);
 }
 
 rigCommander::~rigCommander()
@@ -3624,7 +3624,7 @@ void rigCommander::determineRigCaps()
     haveRigCaps = true;
 
     // Copy received guid so we can recognise this radio.
-    memcpy(rigCaps.guid, this->guid, sizeof(rigCaps.guid));
+    memcpy(rigCaps.guid, this->guid, GUIDLEN);
 
     if(!usingNativeLAN)
     {

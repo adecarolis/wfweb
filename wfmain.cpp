@@ -446,6 +446,11 @@ void wfmain::makeRig()
             connect(rig, SIGNAL(stateInfo(rigstate*)), rigCtl, SLOT(receiveStateInfo(rigstate*)));
             connect(rigCtl, SIGNAL(stateUpdated()), rig, SLOT(stateUpdated()));
         }
+        // Create link for server so it can have easy access to rig.
+        if (serverConfig.rigs.first() != Q_NULLPTR) {
+            serverConfig.rigs.first()->rig = rig;
+            serverConfig.rigs.first()->rigThread = rigThread;
+        }
     }
 }
 
@@ -1163,7 +1168,7 @@ void wfmain::setSerialDevicesUI()
         ui->serialDeviceListCombo->addItem(QString("/dev/")+serialPortInfo.portName(), i++);
 #else
         ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
-        qInfo(logSystem()) << "Serial Port found: " << serialPortInfo.portName() << "Manufacturer:" << serialPortInfo.manufacturer() << "Product ID" << serialPortInfo.description() << "S/N" << serialPortInfo.serialNumber();
+        //qInfo(logSystem()) << "Serial Port found: " << serialPortInfo.portName() << "Manufacturer:" << serialPortInfo.manufacturer() << "Product ID" << serialPortInfo.description() << "S/N" << serialPortInfo.serialNumber();
 #endif
     }
 #if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
@@ -1659,18 +1664,29 @@ void wfmain::loadSettings()
     ui->serverCivPortText->setText(QString::number(serverConfig.civPort));
     ui->serverAudioPortText->setText(QString::number(serverConfig.audioPort));
 
-    serverRxSetup.isinput = true;
+    RIGCONFIG* rigTemp = new RIGCONFIG();
+    rigTemp->rxAudioSetup.isinput = true;
+    rigTemp->txAudioSetup.isinput = true;
+    rigTemp->rxAudioSetup.localAFgain = 255;
+    rigTemp->txAudioSetup.localAFgain = 255;
+    rigTemp->rxAudioSetup.resampleQuality = 4;
+    rigTemp->txAudioSetup.resampleQuality = 4;
 
-    serverTxSetup.isinput = false;
+    rigTemp->baudRate = prefs.serialPortBaud;
+    rigTemp->civAddr = prefs.radioCIVAddr;
+    rigTemp->serialPort = prefs.serialPortBaud;
 
-    serverRxSetup.localAFgain = 255;
-
-    serverTxSetup.localAFgain = 255;
+    QString guid = settings->value("GUID", "").toString();
+    if (guid.isEmpty()) {
+        guid = QUuid::createUuid().toString();
+        settings->setValue("GUID", guid);
+    }
+    memcpy(rigTemp->guid, QUuid::fromString(guid).toRfc4122().constData(), GUIDLEN);
 
     ui->serverRXAudioInputCombo->blockSignals(true);
-    serverRxSetup.name = settings->value("ServerAudioInput", "").toString();
-    qInfo(logGui()) << "Got Server Audio Input: " << serverRxSetup.name;
-    int serverAudioInputIndex = ui->serverRXAudioInputCombo->findText(serverRxSetup.name);
+    rigTemp->rxAudioSetup.name = settings->value("ServerAudioInput", "").toString();
+    qInfo(logGui()) << "Got Server Audio Input: " << rigTemp->rxAudioSetup.name;
+    int serverAudioInputIndex = ui->serverRXAudioInputCombo->findText(rigTemp->rxAudioSetup.name);
     if (serverAudioInputIndex != -1) {
         ui->serverRXAudioInputCombo->setCurrentIndex(serverAudioInputIndex);
 #if defined(RTAUDIO)
@@ -1679,18 +1695,15 @@ void wfmain::loadSettings()
         serverRxSetup.port = ui->serverRXAudioInputCombo->itemData(serverAudioInputIndex).toInt();
 #else
         QVariant v = ui->serverRXAudioInputCombo->currentData();
-        serverRxSetup.port = v.value<QAudioDeviceInfo>();
+        rigTemp->rxAudioSetup.port = v.value<QAudioDeviceInfo>();
 #endif
     }
     ui->serverRXAudioInputCombo->blockSignals(false);
 
-    serverRxSetup.resampleQuality = rxSetup.resampleQuality;
-    serverTxSetup.resampleQuality = serverRxSetup.resampleQuality;
-
     ui->serverTXAudioOutputCombo->blockSignals(true);
-    serverTxSetup.name = settings->value("ServerAudioOutput", "").toString();
-    qInfo(logGui()) << "Got Server Audio Output: " << serverTxSetup.name;
-    int serverAudioOutputIndex = ui->serverTXAudioOutputCombo->findText(serverTxSetup.name);
+    rigTemp->txAudioSetup.name = settings->value("ServerAudioOutput", "").toString();
+    qInfo(logGui()) << "Got Server Audio Output: " << rigTemp->txAudioSetup.name;
+    int serverAudioOutputIndex = ui->serverTXAudioOutputCombo->findText(rigTemp->txAudioSetup.name);
     if (serverAudioOutputIndex != -1) {
         ui->serverTXAudioOutputCombo->setCurrentIndex(serverAudioOutputIndex);
 #if defined(RTAUDIO)
@@ -1699,10 +1712,12 @@ void wfmain::loadSettings()
         serverTxSetup.port = ui->serverTXAudioOutputCombo->itemData(serverAudioOutputIndex).toInt();
 #else
         QVariant v = ui->serverTXAudioOutputCombo->currentData();
-        serverTxSetup.port = v.value<QAudioDeviceInfo>();
+        rigTemp->txAudioSetup.port = v.value<QAudioDeviceInfo>();
 #endif
     }
     ui->serverTXAudioOutputCombo->blockSignals(false);
+
+    serverConfig.rigs.append(rigTemp);
 
     int row = 0;
     ui->serverUsersTable->setRowCount(0);

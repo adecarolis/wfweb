@@ -54,7 +54,7 @@ struct RIGCONFIG {
 	audioSetup txAudioSetup;
 	QString modelName;
 	QString rigName;
-	quint8 guid[16];
+	quint8 guid[GUIDLEN];
 	bool rigAvailable=false;
 	rigCapabilities rigCaps;
 	rigCommander* rig = Q_NULLPTR;
@@ -64,7 +64,7 @@ struct RIGCONFIG {
 	audioHandler* txaudio = Q_NULLPTR;
 	QThread* txAudioThread = Q_NULLPTR;
 	QTimer* rxAudioTimer = Q_NULLPTR;
-
+	QTimer* connectTimer = Q_NULLPTR;
 };
 
 
@@ -167,7 +167,7 @@ private:
 		CLIENT* controlClient = Q_NULLPTR;
 		CLIENT* civClient = Q_NULLPTR;
 		CLIENT* audioClient = Q_NULLPTR;
-		quint8 guid[16];
+		quint8 guid[GUIDLEN];
 	};
 
 	void controlReceived();
@@ -179,7 +179,7 @@ private:
 	void sendControl(CLIENT* c, quint8 type, quint16 seq);
 	void sendLoginResponse(CLIENT* c, bool allowed);
 	void sendCapabilities(CLIENT* c);
-	void sendConnectionInfo(CLIENT* c,quint8 guid[16]);
+	void sendConnectionInfo(CLIENT* c,quint8 guid[GUIDLEN]);
 	void sendTokenResponse(CLIENT* c,quint8 type);
 	void sendStatus(CLIENT* c);
 	void sendRetransmitRequest(CLIENT* c);
