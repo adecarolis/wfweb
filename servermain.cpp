@@ -535,8 +535,9 @@ void servermain::loadSettings()
             guid = QUuid::createUuid().toString();
             settings->setValue("GUID", guid);
         }
+#if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
         memcpy(tempPrefs->guid, QUuid::fromString(guid).toRfc4122().constData(), GUIDLEN);
-
+#endif
         tempPrefs->rxAudioSetup.isinput = true;
         tempPrefs->txAudioSetup.isinput = false;
         tempPrefs->rxAudioSetup.localAFgain = 255;

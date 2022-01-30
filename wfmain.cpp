@@ -1693,7 +1693,9 @@ void wfmain::loadSettings()
         guid = QUuid::createUuid().toString();
         settings->setValue("GUID", guid);
     }
+#if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
     memcpy(rigTemp->guid, QUuid::fromString(guid).toRfc4122().constData(), GUIDLEN);
+#endif
 
     ui->serverRXAudioInputCombo->blockSignals(true);
     rigTemp->rxAudioSetup.name = settings->value("ServerAudioInput", "").toString();
