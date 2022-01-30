@@ -372,7 +372,7 @@ void udpServer::controlReceived()
                         radio->txaudio->init(radio->txAudioSetup);
                     }, Qt::QueuedConnection);
 #else
-                    emit setupTxAudio(radio->txAudioSetup)
+                    emit setupTxAudio(radio->txAudioSetup);
                     #warning "QT 5.9 is not fully supported multiple rigs will NOT work!"
 #endif
                     hasTxAudio = datagram.senderAddress();
