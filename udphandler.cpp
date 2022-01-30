@@ -1005,7 +1005,7 @@ void udpAudio::dataReceived()
                 control_packet_t in = (control_packet_t)r.constData();
                 if (in->type == 0x04 && enableTx)
                 {
-                    txAudioTimer->start(TXAUDIO_PERIOD);
+                    txAudioTimer->start(AUDIO_PERIOD);
                 }
 
                 break;

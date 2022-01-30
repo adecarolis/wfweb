@@ -595,7 +595,7 @@ void servermain::loadSettings()
                 && deviceInfo.realm() == "wasapi"
 #endif
           ) {
-                qDebug(logSystem()) << "Audio output: " << deviceInfo.deviceName() << "Realm:" << deviceInfo.realm();
+                qDebug(logSystem()) << "Audio output: " << deviceInfo.deviceName();
                 tempPrefs->txAudioSetup.port = deviceInfo;
                 txDeviceFound = true;
             }
@@ -608,7 +608,7 @@ void servermain::loadSettings()
                 && deviceInfo.realm() == "wasapi"
 #endif
           ) {
-                qDebug(logSystem()) << "Audio input: " << deviceInfo.deviceName() << "Realm:" << deviceInfo.realm();
+                qDebug(logSystem()) << "Audio input: " << deviceInfo.deviceName();
                 tempPrefs->rxAudioSetup.port = deviceInfo;
                 rxDeviceFound = true;
             }
@@ -715,5 +715,6 @@ void servermain::powerRigOff()
 void servermain::receiveStateInfo(rigstate* state)
 {
     qInfo("Received rig state for wfmain");
+    Q_UNUSED(state);
     //rigState = state;
 }

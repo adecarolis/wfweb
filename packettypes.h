@@ -16,7 +16,7 @@
 #define STALE_CONNECTION 15             // Not heard from in this many seconds
 #define BUFSIZE 500 // Number of packets to buffer
 #define MAX_MISSING 50 // Make the maximum number of possible missing packets much less than total buffer size!
-#define TXAUDIO_PERIOD 20 
+#define AUDIO_PERIOD 20 
 #define GUIDLEN 16
 
 

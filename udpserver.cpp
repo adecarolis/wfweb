@@ -363,7 +363,7 @@ void udpServer::controlReceived()
 
                     radio->txAudioThread->start(QThread::TimeCriticalPriority);
 
-                    //connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
+                    connect(this, SIGNAL(setupTxAudio(audioSetup)), radio->txaudio, SLOT(init(audioSetup)));
                     connect(radio->txAudioThread, SIGNAL(finished()), radio->txaudio, SLOT(deleteLater()));
 
                     // Not sure how we make this work in QT5.9?
@@ -372,10 +372,9 @@ void udpServer::controlReceived()
                         radio->txaudio->init(radio->txAudioSetup);
                     }, Qt::QueuedConnection);
 #else
-                    #warning "QT 5.9 is not fully supported"
+                    emit setupTxAudio(radio->txAudioSetup)
+                    #warning "QT 5.9 is not fully supported multiple rigs will NOT work!"
 #endif
-
-                    emit setupTxAudio(outAudio);
                     hasTxAudio = datagram.senderAddress();
 
                     connect(this, SIGNAL(haveAudioData(audioPacket)), radio->txaudio, SLOT(incomingAudio(audioPacket)));
@@ -404,6 +403,7 @@ void udpServer::controlReceived()
 
                     radio->rxAudioThread->start(QThread::TimeCriticalPriority);
 
+                    connect(this, SIGNAL(setupRxAudio(audioSetup)), radio->rxaudio, SLOT(init(audioSetup)));
                     connect(radio->rxAudioThread, SIGNAL(finished()), radio->rxaudio, SLOT(deleteLater()));
 
 #if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
@@ -411,13 +411,14 @@ void udpServer::controlReceived()
                         radio->rxaudio->init(radio->rxAudioSetup);
                     }, Qt::QueuedConnection);
 #else
-                    #warning "QT 5.9 is not fully supported"
+                    #warning "QT 5.9 is not fully supported multiple rigs will NOT work!"
+                    setupRxAudio(radio->rxAudioSetup);
 #endif
 
                     radio->rxAudioTimer = new QTimer();
                     radio->rxAudioTimer->setTimerType(Qt::PreciseTimer);
                     connect(radio->rxAudioTimer, &QTimer::timeout, this, std::bind(&udpServer::sendRxAudio, this));
-                    radio->rxAudioTimer->start(TXAUDIO_PERIOD);
+                    radio->rxAudioTimer->start(AUDIO_PERIOD);
                 }
 
             }
@@ -578,13 +579,13 @@ void udpServer::civReceived()
                             if (!memcmp(radio->guid, current->guid, sizeof(radio->guid)))
                             {
                                 // Only send to the rig that it belongs to!
-
 #if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
                                 QMetaObject::invokeMethod(radio->rig, [=]() {
                                     radio->rig->dataFromServer(r.mid(0x15));;
                                 }, Qt::DirectConnection);
 #else
-                                #warning "QT 5.9 is not fully supported"
+                                #warning "QT 5.9 is not fully supported, multiple rigs will NOT work!"
+                                emit haveDataFromServer(r.mid(0x15));
 #endif
 
                             }
@@ -1714,13 +1715,13 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
 
     QByteArray missingSeqs;
 
-    QTime missingTime = QTime::currentTime();
+    //QTime missingTime = QTime::currentTime();
 
     if (c->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
     {
         for (auto it = c->rxMissing.begin(); it != c->rxMissing.end(); ++it)
         {
-            if (&it != Q_NULLPTR && it.value() < 4)
+            if (&it.key() != Q_NULLPTR && it.value() < 4)
             {
                 missingSeqs.append(it.key() & 0xff);
                 missingSeqs.append(it.key() >> 8 & 0xff);
