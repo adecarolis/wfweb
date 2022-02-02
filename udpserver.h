@@ -220,6 +220,8 @@ private:
 
 	QHostAddress hasTxAudio;
 	QTimer* wdTimer;
+
+	networkStatus status;
 };
 
 

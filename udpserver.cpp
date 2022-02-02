@@ -122,9 +122,8 @@ udpServer::~udpServer()
         udpAudio->close();
         delete udpAudio;
     }
-
-    //emit haveNetworkStatus(QString(""));
-
+    status.message = QString("");
+    emit haveNetworkStatus(status);
 }
 
 
@@ -1455,7 +1454,8 @@ void udpServer::watchdog()
         }
     }
 
-    //emit haveNetworkStatus(QString("<pre>Server connections: Control:%1 CI-V:%2 Audio:%3</pre>").arg(controlClients.size()).arg(civClients.size()).arg(audioClients.size()));
+    status.message = QString("<pre>Server connections: Control:%1 CI-V:%2 Audio:%3</pre>").arg(controlClients.size()).arg(civClients.size()).arg(audioClients.size());
+    emit haveNetworkStatus(status);
 }
 
 void udpServer::sendStatus(CLIENT* c)

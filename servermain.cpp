@@ -403,7 +403,7 @@ void servermain::setServerToPrefs()
         }
     }
 
-    connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(receiveStatusUpdate(QString)));
+    connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
 
     serverThread->start();
 
@@ -554,14 +554,14 @@ void servermain::loadSettings()
         for (unsigned int i = 1; i < devices; i++) {
             info = audio->getDeviceInfo(i);
             if (info.outputChannels > 0) {
-                if (tempPrefs->txAudio.name == info->name) {
-                    tempPrefs->txAudio.port = i;
+                if (tempPrefs->txAudioSetup.name == info->name) {
+                    tempPrefs->txAudioSetup.port = i;
                     txDeviceFound = true;
                 }
             }
             if (info.inputChannels > 0) {
-                if (tempPrefs->rxAudio.name == info->name) {
-                    tempPrefs->rxAudio.port = i;
+                if (tempPrefs->rxAudioSetup.name == info->name) {
+                    tempPrefs->rxAudioSetup.port = i;
                     rxDeviceFound = true;
                 }
             }
@@ -571,14 +571,14 @@ void servermain::loadSettings()
         {
             info = Pa_GetDeviceInfo(i);
             if (info->maxInputChannels > 0) {
-                if (tempPrefs->txAudio.name == info->name) {
-                    tempPrefs->txAudio.port = i;
+                if (tempPrefs->txAudioSetup.name == info->name) {
+                    tempPrefs->txAudioSetup.port = i;
                     txDeviceFound = true;
                 }
             }
             if (info->maxOutputChannels > 0) {
-                if (tempPrefs->rxAudio.name == info->name) {
-                    tempPrefs->rxAudio.port = i;
+                if (tempPrefs->rxAudioSetup.name == info->name) {
+                    tempPrefs->rxAudioSetup.port = i;
                     rxDeviceFound = true;
     }
             }
