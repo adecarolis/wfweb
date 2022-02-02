@@ -523,7 +523,7 @@ void servermain::loadSettings()
         {
             foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
             {
-                //qInfo(logSystem()) << "Serial Port found: " << serialPortInfo.portName() << "Manufacturer:" << serialPortInfo.manufacturer() << "Product ID" << serialPortInfo.description() << "S/N" << serialPortInfo.serialNumber();
+                qDebug(logSystem()) << "Serial Port found: " << serialPortInfo.portName() << "Manufacturer:" << serialPortInfo.manufacturer() << "Product ID" << serialPortInfo.description() << "S/N" << serialPortInfo.serialNumber();
                 if (serialPortInfo.portName() == tempPrefs->serialPort && !serialPortInfo.serialNumber().isEmpty())
                 {
                     tempPrefs->rigName = serialPortInfo.serialNumber();
@@ -591,6 +591,7 @@ void servermain::loadSettings()
 
         //qInfo(logAudio()) << "Looking for audio output devices";
         for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
+            qDebug(logSystem()) << "Found Audio output: " << deviceInfo.deviceName();
             if (deviceInfo.deviceName() == tempPrefs->txAudioSetup.name
 #ifdef Q_OS_WIN
                 && deviceInfo.realm() == "wasapi"
@@ -604,6 +605,7 @@ void servermain::loadSettings()
 
         //qInfo(logAudio()) << "Looking for audio input devices";
         for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
+            qDebug(logSystem()) << "Found Audio input: " << deviceInfo.deviceName();
             if (deviceInfo.deviceName() == tempPrefs->rxAudioSetup.name
 #ifdef Q_OS_WIN
                 && deviceInfo.realm() == "wasapi"
