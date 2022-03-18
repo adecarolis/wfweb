@@ -1261,15 +1261,12 @@ void udpBase::dataReceived(QByteArray r)
             {
                 // Add incoming packet to the received buffer and if it is in the missing buffer, remove it.
 
-
                 if (in->seq > rxSeqBuf.lastKey() + 1) {
                     // We are likely missing packets then!
                     missingMutex.lock();
                     //int missCounter = 0;
                     for (quint16 f = rxSeqBuf.lastKey() + 1; f < in->seq; f++)
                     {
-                        //qDebug(logUdp()) << "Detected missing packet" << f;
-
                         if (rxSeqBuf.size() > BUFSIZE)
                         {
                             rxSeqBuf.erase(rxSeqBuf.begin());
@@ -1367,7 +1364,7 @@ void udpBase::sendRetransmitRequest()
         }
         else
         {
-            qDebug(logUdp()) << this->metaObject()->className() << ": sending request for multiple missing packets : " << missingSeqs.toHex();
+            qDebug(logUdp()) << this->metaObject()->className() << ": sending request for multiple missing packets : " << missingSeqs.toHex(':');
             missingMutex.lock();
             missingSeqs.insert(0, p.packet, sizeof(p.packet));
             missingMutex.unlock();

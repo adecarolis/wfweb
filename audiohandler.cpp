@@ -98,7 +98,7 @@ bool audioHandler::init(audioSetup setupIn)
 		", uLaw" << setup.ulaw;
 
 
-	ringBuf = new wilt::Ring<audioPacket>(setup.latency / 20 + 1); // Should be customizable.
+	ringBuf = new wilt::Ring<audioPacket>(setup.latency + 1); // Should be customizable.
 
 	tempBuf.sent = 0;
 
@@ -390,7 +390,8 @@ void audioHandler::start()
 #ifndef Q_OS_WIN
 		this->open(QIODevice::WriteOnly);
 #else
-		this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
+		this->open(QIODevice::WriteOnly);
+		//this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
 #endif
 		audioInput->start(this);
 	}
@@ -398,7 +399,8 @@ void audioHandler::start()
 #ifndef Q_OS_WIN
 		this->open(QIODevice::ReadOnly);
 #else
-		this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
+		//this->open(QIODevice::ReadOnly | QIODevice::Unbuffered);
+		this->open(QIODevice::ReadOnly);
 #endif
 		audioOutput->start(this);
 	}
@@ -464,7 +466,6 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 	if (ringBuf->size()>0)
 	{
 		// Output buffer is ALWAYS 16 bit.
-		//qDebug(logAudio()) << "Read: nFrames" << nFrames << "nBytes" << nBytes;
 		while (sentlen < nBytes)
 		{
 			if (!ringBuf->try_read(packet))
@@ -472,6 +473,7 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "buffer is empty, sentlen:" << sentlen << " nBytes:" << nBytes ;
 				break;
 			}
+			//qDebug(logAudio()) << "Packet size:" << packet.data.length() << "nBytes (requested)" << nBytes << "remaining" << nBytes-sentlen;
 			currentLatency = packet.time.msecsTo(QTime::currentTime());
 
 			// This shouldn't be required but if we did output a partial packet
@@ -509,29 +511,29 @@ qint64 audioHandler::readData(char* buffer, qint64 nBytes)
 				break;
 			}
 
-			/*
+			
 			if (packet.seq <= lastSeq) {
 				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Duplicate/early audio packet: " << hex << lastSeq << " got " << hex << packet.seq;
 			}
 			else if (packet.seq != lastSeq + 1) {
 				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Missing audio packet(s) from: " << hex << lastSeq + 1 << " to " << hex << packet.seq - 1;
 			}
-			*/
+			
 			lastSeq = packet.seq;
 		}
 	}
-    //qDebug(logAudio()) << "looking for: " << nBytes << " got: " << sentlen;
 
     // fill the rest of the buffer with silence
     if (nBytes > sentlen) {
+		qDebug(logAudio()) << "looking for: " << nBytes << " got: " << sentlen;
 		memset(buffer + sentlen, 0, nBytes - sentlen);
 	}
 
 	if (delayedPackets > 10) {
 		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Too many delayed packets, flushing buffer";
-		while (ringBuf->try_read(packet)); // Empty buffer
+		//while (ringBuf->try_read(packet)); // Empty buffer
 		delayedPackets = 0;
-		audioBuffered = false;
+		//audioBuffered = false;
 	}
 
 #if defined(RTAUDIO)
@@ -609,6 +611,11 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	// No point buffering audio until stream is actually running.
 	// Regardless of the radio stream format, the buffered audio will ALWAYS be
 	// 16bit sample interleaved stereo 48K (or whatever the native sample rate is)
+
+	if (inPacket.time.msecsTo(QTime::currentTime()) > 20)
+	{
+		qInfo(logUdp()) << "Audio took" << inPacket.time.msecsTo(QTime::currentTime()) << "ms to arrive!";
+	}
 
 	if (!isInitialized && !isReady)
 	{
@@ -757,6 +764,11 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		incomingAudio(inPacket); // Call myself again to run the packet a second time (FEC)
 	}
 	lastSentSeq = inPacket.seq;
+	//if (inPacket.time.msecsTo(QTime::currentTime()) > 20)
+	//{
+		//qDebug(logAudio()) << "After processing, audio took" << inPacket.time.msecsTo(QTime::currentTime()) << "ms to arrive!";
+	//}
+
 	return;
 }
 
@@ -766,7 +778,7 @@ void audioHandler::changeLatency(const quint16 newSize)
 	setup.latency = newSize;
 	delete ringBuf;
 	audioBuffered = false;
-	ringBuf = new wilt::Ring<audioPacket>(setup.latency / 20 + 1); // Should be customizable.
+	ringBuf = new wilt::Ring<audioPacket>(setup.latency + 1); // Should be customizable.
 }
 
 int audioHandler::getLatency()
