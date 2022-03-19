@@ -1407,7 +1407,7 @@ void rigCommander::parseLevels()
             case '\x0A':
                 // TX RF level
                 emit haveTxPower(level);
-                state.set(TXPOWER, level, false);
+                state.set(RFPOWER, level, false);
                 break;
             case '\x0B':
                 // Mic Gain
@@ -4397,9 +4397,9 @@ void rigCommander::stateUpdated()
                 }
                 getSql();
                 break;
-            case TXPOWER:
+            case RFPOWER:
                 if (i.value()._valid) {
-                    setTxPower(state.getChar(TXPOWER));
+                    setTxPower(state.getChar(RFPOWER));
                 }
                 getTxLevel();
                 break;
