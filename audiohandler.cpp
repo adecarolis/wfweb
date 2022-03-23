@@ -1,5 +1,5 @@
 /*
-	This class handles both RX and TX audio, each is created as a seperate instance of the class
+	This class handles both RX and TX audio, each is created as a separate instance of the class
 	but as the setup/handling if output (RX) and input (TX) devices is so similar I have combined them.
 */
 
