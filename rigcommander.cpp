@@ -129,6 +129,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
         ptty = new pttyHandler(vsp);
 
         tcp = new tcpServer(this);
+        tcp->startServer(5010);
 
         // Data from UDP to the program
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
@@ -137,7 +138,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
 
         // data from the rig to tcp:
-        connect(udp, SIGNAL(haveDataFromPort(QByteArray)), tcp, SLOT(dataToPort(QByteArray)));
+        connect(udp, SIGNAL(haveDataFromPort(QByteArray)), tcp, SLOT(sendData(QByteArray)));
 
 
         // Audio from UDP
@@ -150,7 +151,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
         connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
 
         // data from the tcp port to the Rig:
-        connect(tcp, SIGNAL(haveDataFromPort(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+        connect(tcp, SIGNAL(haveData(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
 
         connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
         connect(this, SIGNAL(haveSetVolume(unsigned char)), udp, SLOT(setVolume(unsigned char)));

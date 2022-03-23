@@ -1,26 +1,62 @@
 #ifndef TCPSERVER_H
 #define TCPSERVER_H
 
-#include <QCoreApplication>
+#include <QObject>
+#include <QDebug>
 #include <QTcpServer>
 #include <QTcpSocket>
-#include <qtcpserver.h>
-class tcpServer :
-    public QObject
+#include <QSet>
+#include <QDataStream>
+
+#include <map>
+#include <vector>
+#include <typeindex>
+
+class tcpServer : public QTcpServer
 {
     Q_OBJECT
+
 public:
-    explicit tcpServer(QObject* parent = 0);
+    explicit tcpServer(QObject* parent = Q_NULLPTR);
     ~tcpServer();
+    int startServer(qint16 port);
+    void stopServer();
+
 public slots:
-    void dataToPort(QByteArray data);
-    void readyRead();
-    void newConnection();
+    virtual void incomingConnection(qintptr socketDescriptor);
+    void receiveDataFromClient(QByteArray data);
+    void sendData(QByteArray data);
 signals:
-    void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
+    void onStarted();
+    void onStopped();
+    void haveData(QByteArray data); // emit this when we have data from tcp client, connect to rigcommander
+    void sendDataToClient(QByteArray data);
+
 private:
     QTcpServer* server;
     QTcpSocket* socket = Q_NULLPTR;
+};
+
+class tcpServerClient : public QObject 
+{
+    Q_OBJECT
+
+public: 
+    explicit tcpServerClient(int socket, tcpServer* parent = Q_NULLPTR);
+public slots:
+    void socketReadyRead();
+    void socketDisconnected();
+    void closeSocket();
+    void receiveDataToClient(QByteArray);
+
+signals:
+    void sendDataFromClient(QByteArray data);
+protected:
+    int sessionId;
+    QTcpSocket* socket = Q_NULLPTR;
+
+private:
+    tcpServer* parent;
 };
 
 #endif

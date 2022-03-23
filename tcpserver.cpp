@@ -2,55 +2,97 @@
 
 #include "logcategories.h"
 
-tcpServer::tcpServer(QObject* parent) : QObject(parent)
+tcpServer::tcpServer(QObject* parent) : QTcpServer(parent)
 {
-    server = new QTcpServer(this);
-    connect(server, SIGNAL(newConnection()), this, SLOT(newConnection()));
-    if (!server->listen(QHostAddress::Any, 5010))
-    {
-        qDebug() << "TCP Server could not start";
-    }
-    else
-    {
-        qDebug() << "TCP Server started!";
-    }
 }
 
 tcpServer::~tcpServer()
 {
-    if (socket != Q_NULLPTR)
-    {
-        socket->close();
-        delete socket;
+    qInfo(logTcpServer()) << "closing tcpServer";
+}
+
+int tcpServer::startServer(qint16 port) {
+
+    if (!this->listen(QHostAddress::Any, port)) {
+        qInfo(logTcpServer()) << "could not start on port " << port;
+        return -1;
     }
-    server->close();
-    delete server;
+    else
+    {
+        qInfo(logTcpServer()) << "started on port " << port;
+    }
 
+    return 0;
 }
 
-void tcpServer::newConnection()
+void tcpServer::incomingConnection(qintptr socket) {
+    tcpServerClient* client = new tcpServerClient(socket, this);
+    connect(this, SIGNAL(onStopped()), client, SLOT(closeSocket()));
+}
+
+void tcpServer::stopServer()
 {
-    qDebug(logSystem()) << QString("Incoming Connection");
-    socket = server->nextPendingConnection();
-    connect(socket, SIGNAL(readyRead()), this, SLOT(readyRead()));
+    qInfo(logTcpServer()) << "stopping server";
+    emit onStopped();
 }
 
-void tcpServer::readyRead() {
+
+void tcpServer::receiveDataFromClient(QByteArray data)
+{
+    emit haveData(data);
+}
+
+void tcpServer::sendData(QByteArray data) {
+
+    emit sendDataToClient(data);
+
+}
+
+tcpServerClient::tcpServerClient(int socketId, tcpServer* parent) : QObject(parent)
+{
+    sessionId = socketId;
+    socket = new QTcpSocket(this);
+    this->parent = parent;
+    if (!socket->setSocketDescriptor(sessionId))
+    {
+        qInfo(logTcpServer()) << " error binding socket: " << sessionId;
+        return;
+    }
+    connect(socket, SIGNAL(readyRead()), this, SLOT(socketReadyRead()), Qt::DirectConnection);
+    connect(socket, SIGNAL(disconnected()), this, SLOT(socketDisconnected()), Qt::DirectConnection);
+    connect(parent, SIGNAL(sendDataToClient(QByteArray)), this, SLOT(receiveDataToClient(QByteArray)), Qt::DirectConnection);
+    connect(this, SIGNAL(sendDataFromClient(QByteArray)), parent, SLOT(receiveDataFromClient(QByteArray)), Qt::DirectConnection);
+    qInfo(logTcpServer()) << " session connected: " << sessionId;
+
+}
+
+void tcpServerClient::socketReadyRead() {
     QByteArray data;
     if (socket->bytesAvailable()) {
         data=socket->readAll();
-        emit haveDataFromPort(data);
+        emit sendDataFromClient(data);
     }
-    //qDebug(logSystem()) << QString("Data IN!");
-
 }
 
+void tcpServerClient::socketDisconnected() {
+    qInfo(logTcpServer()) << sessionId << "disconnected";
+    socket->deleteLater();
+    this->deleteLater();
+}
 
-void tcpServer::dataToPort(QByteArray data) {
-    //qDebug(logSystem()) << QString("TCP Send");
+void tcpServerClient::closeSocket()
+{
+    socket->close();
+}
 
-    if (socket != Q_NULLPTR) {
+void tcpServerClient::receiveDataToClient(QByteArray data) {
+
+    if (socket != Q_NULLPTR && socket->isValid() && socket->isOpen())
+    {
         socket->write(data);
-        socket->flush();
+    }
+    else
+    {
+        qInfo(logTcpServer()) << "socket not open!";
     }
 }
