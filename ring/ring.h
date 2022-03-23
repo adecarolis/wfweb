@@ -52,11 +52,11 @@ namespace wilt
   // The class works by allocating the array and storing two pointers (for the
   // beginning and end of the allocated space). Two atomic pointers are used to
   // track the beginning and end of the currently used storage space. To
-  // facilitate concurrent reads and writes, theres a read buffer pointer before
+  // facilitate concurrent reads and writes, there's a read buffer pointer before
   // the read pointer for data currently being read, and a corresponding write
   // buffer pointer beyond the write pointer for data currently being written.
   // These buffer pointers cannot overlap. Just using these pointers suffer from
-  // some minute inefficiencies and a few ABA problems. Therfore, atomic
+  // some minute inefficiencies and a few ABA problems. Therefore, atomic
   // integers are used to store the currently used and currently free sizes.
   // 
   // It allows multiple readers and multiple writers by implementing a reserve-
@@ -71,7 +71,7 @@ namespace wilt
   // done yet, the reader must wait until the read buffer pointer points to
   // where the read started. Only, then is the read buffer pointer updated, and
   // the free size increased. So while this implementation is lock-free, it is
-  // not wait-free. This same principle works the same when writing (ammended
+  // not wait-free. This same principle works the same when writing (amended
   // for the appropriate pointers).
   // 
   // If two readers try to read at the same time and there is only enough data

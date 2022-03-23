@@ -108,7 +108,7 @@
           <item>
            <widget class="QPushButton" name="toFixedBtn">
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;The currently-selected edge slot will be overriden.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;The currently-selected edge slot will be overridden.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
              <string>ToFixed</string>
@@ -148,7 +148,7 @@
              <string>Waterfall display color theme</string>
             </property>
             <property name="accessibleDescription">
-             <string>Selects the theme for the color waterfall dispaly</string>
+             <string>Selects the theme for the color waterfall display</string>
             </property>
            </widget>
           </item>
@@ -2163,7 +2163,7 @@
                       </size>
                      </property>
                      <property name="toolTip">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the address in as hexidecimal, without any prefix, just as the radio presents the address in the menu. &lt;/p&gt;&lt;p&gt;Here are some common examples:&lt;/p&gt;
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the address in as hexadecimal, without any prefix, just as the radio presents the address in the menu. &lt;/p&gt;&lt;p&gt;Here are some common examples:&lt;/p&gt;
 &lt;p&gt;IC-706: 58 
 &lt;br/&gt;IC-756: 50
 &lt;br/&gt;IC-756 Pro: 5C
@@ -3099,7 +3099,7 @@
                         </size>
                        </property>
                        <property name="text">
-                        <string>Contol Port</string>
+                        <string>Control Port</string>
                        </property>
                       </widget>
                      </item>

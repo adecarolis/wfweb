@@ -62,7 +62,7 @@ private:
     bool rolledBack;
 
     int ptfd; // pseudo-terminal file desc.
-    int ptKeepAlive=0; // Used to keep the pty alive after client disconects.
+    int ptKeepAlive=0; // Used to keep the pty alive after client disconnects.
     bool havePt;
     QString ptDevSlave;
 

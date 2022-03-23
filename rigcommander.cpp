@@ -4,7 +4,7 @@
 #include "rigidentities.h"
 #include "logcategories.h"
 
-// Copytight 2017-2020 Elliott H. Liggett
+// Copyright 2017-2020 Elliott H. Liggett
 
 // This file parses data from the radio and also forms commands to the radio.
 // The radio physical interface is handled by the commHandler() instance "comm"
@@ -1439,7 +1439,7 @@ void rigCommander::parseLevels()
             case '\x0A':
                 // TX RF level
                 emit haveTxPower(level);
-                state.set(TXPOWER, level, false);
+                state.set(RFPOWER, level, false);
                 break;
             case '\x0B':
                 // Mic Gain
@@ -3765,7 +3765,7 @@ void rigCommander::parseSpectrum()
         spectrumEndFreq = fEnd.MHzDouble;
         if(scopeMode == spectModeCenter)
         {
-            // "center" mode, start is actuall center, end is bandwidth.
+            // "center" mode, start is actual center, end is bandwidth.
             spectrumStartFreq -= spectrumEndFreq;
             spectrumEndFreq = spectrumStartFreq + 2*(spectrumEndFreq);
             // emit haveSpectrumCenterSpan(span);
@@ -4064,7 +4064,7 @@ void rigCommander::getPreamp()
 
 void rigCommander::getAntenna()
 {
-    // This one might neet some thought
+    // This one might need some thought
     // as it seems each antenna has to be checked.
     // Maybe 0x12 alone will do it.
     QByteArray payload("\x12");
@@ -4445,9 +4445,9 @@ void rigCommander::stateUpdated()
                 }
                 getSql();
                 break;
-            case TXPOWER:
+            case RFPOWER:
                 if (i.value()._valid) {
-                    setTxPower(state.getChar(TXPOWER));
+                    setTxPower(state.getChar(RFPOWER));
                 }
                 getTxLevel();
                 break;

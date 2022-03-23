@@ -3,7 +3,7 @@
 
 #include <QDebug>
 
-// Copytight 2017-2020 Elliott H. Liggett
+// Copyright 2017-2020 Elliott H. Liggett
 
 commHandler::commHandler()
 {
@@ -192,13 +192,13 @@ void commHandler::receiveDataIn()
 
             if(rolledBack)
             {
-                // qInfo(logSerial()) << "Rolled back and was successfull. Length: " << inPortData.length();
+                // qInfo(logSerial()) << "Rolled back and was successful. Length: " << inPortData.length();
                 //printHex(inPortData, false, true);
                 rolledBack = false;
             }
         } else {
             // did not receive the entire thing so roll back:
-            // qInfo(logSerial()) << "Rolling back transaction. End not detected. Lenth: " << inPortData.length();
+            // qInfo(logSerial()) << "Rolling back transaction. End not detected. Length: " << inPortData.length();
             //printHex(inPortData, false, true);
             port->rollbackTransaction();
             rolledBack = true;
