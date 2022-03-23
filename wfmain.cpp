@@ -2449,7 +2449,7 @@ void wfmain:: getInitialRigState()
     // These are made when the program starts up
     // and are used to adjust the UI to match the radio settings
     // the polling interval is set at 200ms. Faster is possible but slower
-    // computers will glitch occassionally.
+    // computers will glitch occasionally.
 
     issueDelayedCommand(cmdGetFreq);
     issueDelayedCommand(cmdGetMode);
@@ -3316,7 +3316,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->antennaSelCombo->setDisabled(false);
             for(unsigned int i=0; i < rigCaps.antennas.size(); i++)
             {
-                inName = QString("%1").arg(rigCaps.antennas.at(i)+1, 0, 16);		// adding 1 to have the combobox start with ant 1 insted of 0
+                inName = QString("%1").arg(rigCaps.antennas.at(i)+1, 0, 16);		// adding 1 to have the combobox start with ant 1 instead of 0
                 ui->antennaSelCombo->addItem(inName, rigCaps.antennas.at(i));
             }
         } else {
@@ -3447,7 +3447,7 @@ void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority)
 {
     // TODO: meaningful priority
     // These commands are run every 20 "ticks" of the primary radio command loop
-    // Basically 20 times less often than the standard peridic command
+    // Basically 20 times less often than the standard periodic command
     if(priority < 10)
     {
         slowPollCmdQueue.push_front(cmd);
@@ -4007,7 +4007,7 @@ void wfmain::changeMode(mode_kind mode, bool dataOn)
 void wfmain::on_modeSelectCombo_activated(int index)
 {
     // The "acticvated" signal means the user initiated a mode change.
-    // This function is not called if code initated the change.
+    // This function is not called if code initiated the change.
 
     mode_info mode;
     unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->itemData(index).toUInt());
@@ -4110,7 +4110,7 @@ void wfmain::on_freqDial_valueChanged(int value)
     }
 
     // With the number of steps and direction of steps established,
-    // we can now adjust the frequeny:
+    // we can now adjust the frequency:
 
     f.Hz = roundFrequencyWithStep(freq.Hz, delta, tsKnobHz);
     f.MHzDouble = f.Hz / (double)1E6;
@@ -4809,7 +4809,7 @@ void wfmain::setRadioTimeDatePrep()
         int msecdelay = QTime::currentTime().msecsTo( QTime::currentTime().addSecs(60-second) );
 
         // 3: Compute time and date at one minute later
-        QDateTime setpoint = now.addMSecs(msecdelay); // at HMS or posibly HMS + some ms. Never under though.
+        QDateTime setpoint = now.addMSecs(msecdelay); // at HMS or possibly HMS + some ms. Never under though.
 
         // 4: Prepare data structs for the time at one minute later
         timesetpoint.hours = (unsigned char)setpoint.time().hour();

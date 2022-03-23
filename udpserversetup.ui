@@ -139,7 +139,7 @@
           </size>
          </property>
          <property name="text">
-          <string>Contol Port</string>
+          <string>Control Port</string>
          </property>
         </widget>
        </item>

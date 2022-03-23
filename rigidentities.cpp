@@ -1,7 +1,7 @@
 #include "rigidentities.h"
 #include "logcategories.h"
 
-// Copytight 2017-2021 Elliott H. Liggett
+// Copyright 2017-2021 Elliott H. Liggett
 
 model_kind determineRadioModel(unsigned char rigID)
 {

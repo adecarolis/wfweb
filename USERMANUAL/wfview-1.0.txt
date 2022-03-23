@@ -42,7 +42,7 @@ on/off switch for the scope/waterfall
 wf theme
 
 Currently fixed selections how the scope and waterfall look like 
-with colors. At som epoint we may add the ability to accept the 
+with colors. At some point we may add the ability to accept the 
 RGB values like the rig does.
 
 

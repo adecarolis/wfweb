@@ -550,7 +550,7 @@ udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort)
     // Start sending are you there packets - will be stopped once "I am here" received
     // send ping packets every 100 ms (maybe change to less frequent?)
     pingTimer->start(PING_PERIOD);
-    // Send idle packets every 100ms, this timer will be reset everytime a non-idle packet is sent.
+    // Send idle packets every 100ms, this timer will be reset every time a non-idle packet is sent.
     idleTimer->start(IDLE_PERIOD);
     areYouThereTimer->start(AREYOUTHERE_PERIOD);
 }

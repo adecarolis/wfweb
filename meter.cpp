@@ -51,7 +51,7 @@ meter::meter(QWidget *parent) : QWidget(parent)
 void meter::clearMeterOnPTTtoggle()
 {
     // When a meter changes type, such as the fixed S -- TxPo meter,
-    // there is automatic clearing. However, some meters do not switch on thier own,
+    // there is automatic clearing. However, some meters do not switch on their own,
     // and thus we are providing this clearing method. We are careful
     // not to clear meters that don't make sense to clear (such as Vd and Id)
 
@@ -110,7 +110,7 @@ void meter::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
     // This next line sets up a canvis within the
-    // space of the widget, and gives it corrdinates.
+    // space of the widget, and gives it coordinates.
     // The end effect, is that the drawing functions will all
     // scale to the window size.
     painter.setRenderHint(QPainter::SmoothPixmapTransform);

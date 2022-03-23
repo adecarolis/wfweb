@@ -245,14 +245,14 @@ void pttyHandler::receiveDataIn(int fd) {
 
             if (rolledBack)
             {
-                // qInfo(logSerial()) << "Rolled back and was successfull. Length: " << inPortData.length();
+                // qInfo(logSerial()) << "Rolled back and was successful. Length: " << inPortData.length();
                 //printHex(inPortData, false, true);
                 rolledBack = false;
             }
         }
         else {
             // did not receive the entire thing so roll back:
-            // qInfo(logSerial()) << "Rolling back transaction. End not detected. Lenth: " << inPortData.length();
+            // qInfo(logSerial()) << "Rolling back transaction. End not detected. Length: " << inPortData.length();
             //printHex(inPortData, false, true);
             rolledBack = true;
 #ifdef Q_OS_WIN
