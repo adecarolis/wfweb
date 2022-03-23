@@ -104,6 +104,9 @@
     <ClCompile Include="selectradio.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="tcpserver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="transceiveradjustments.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -187,6 +190,9 @@
     <ClInclude Include="resampler\speex_resampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <QtMoc Include="tcpserver.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="transceiveradjustments.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -220,6 +226,8 @@
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
+    
+    
     
     
     

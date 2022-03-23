@@ -12,6 +12,7 @@
 #include "rigidentities.h"
 #include "repeaterattributes.h"
 #include "freqmemory.h"
+#include "tcpserver.h"
 
 #include "rigstate.h"
 
@@ -425,6 +426,7 @@ private:
 
     commHandler* comm = Q_NULLPTR;
     pttyHandler* ptty = Q_NULLPTR;
+    tcpServer* tcp = Q_NULLPTR;
     udpHandler* udp=Q_NULLPTR;
     QThread* udpHandlerThread = Q_NULLPTR;
 

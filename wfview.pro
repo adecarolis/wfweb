@@ -164,6 +164,7 @@ SOURCES += main.cpp\
     ring/ring.cpp \
     transceiveradjustments.cpp \
     selectradio.cpp \
+	tcpserver.cpp \
     aboutbox.cpp
 
 HEADERS  += wfmain.h \
@@ -192,6 +193,7 @@ HEADERS  += wfmain.h \
     transceiveradjustments.h \
     audiotaper.h \
     selectradio.h \
+	tcpserver.h \
     aboutbox.h
 
 
