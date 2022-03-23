@@ -25,6 +25,7 @@
 #include <QIODevice>
 #endif
 
+#include <Eigen>
 
 #include "packettypes.h"
 
@@ -33,6 +34,11 @@ typedef signed short  MY_TYPE;
 #define SCALE  32767.0
 
 #define LOG100 4.60517018599
+
+typedef Eigen::Matrix<quint8, Eigen::Dynamic, 1> VectorXuint8;
+typedef Eigen::Matrix<qint8, Eigen::Dynamic, 1> VectorXint8;
+typedef Eigen::Matrix<qint16, Eigen::Dynamic, 1> VectorXint16;
+typedef Eigen::Matrix<qint32, Eigen::Dynamic, 1> VectorXint32;
 
 #include <QThread>
 #include <QTimer>

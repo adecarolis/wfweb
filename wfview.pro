@@ -37,11 +37,20 @@ DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
 
 
 # These defines are used for the resampler
-equals(QT_ARCH, i386): DEFINES += USE_SSE
-equals(QT_ARCH, i386): DEFINES += USE_SSE2
+equals(QT_ARCH, i386): win32:DEFINES += USE_SSE
+equals(QT_ARCH, i386): win32:DEFINES += USE_SSE2
+equals(QT_ARCH, x86_64): DEFINES += USE_SSE
+equals(QT_ARCH, x86_64): DEFINES += USE_SSE2
 equals(QT_ARCH, arm): DEFINES += USE_NEON
 DEFINES += OUTSIDE_SPEEX
 DEFINES += RANDOM_PREFIX=wf
+
+# These defines are used for the Eigen library
+DEFINES += EIGEN_MPL2_ONLY
+DEFINES += EIGEN_DONT_VECTORIZE #Clear vector flags
+equals(QT_ARCH, i386): win32:DEFINES += EIGEN_VECTORIZE_SSE3
+equals(QT_ARCH, x86_64): DEFINES += EIGEN_VECTORIZE_SSE3
+
 
 isEmpty(PREFIX) {
   PREFIX = /usr/local
@@ -77,7 +86,7 @@ contains(DEFINES, PORTAUDIO) {
 	!win32:LIBS += -lportaudio
 }
 
-macx:INCLUDEPATH += /usr/local/include /opt/local/include
+macx:INCLUDEPATH += /usr/local/include /opt/local/include 
 macx:LIBS += -L/usr/local/lib -L/opt/local/lib
 
 macx:ICON = ../wfview/resources/wfview.icns
@@ -140,6 +149,8 @@ macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 !linux:INCLUDEPATH += ../qcustomplot
 
 !linux:INCLUDEPATH += ../opus/include
+
+!linux:INCLUDEPATH += ../eigen/Eigen
 
 INCLUDEPATH += resampler
 
