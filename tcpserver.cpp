@@ -28,6 +28,7 @@ int tcpServer::startServer(qint16 port) {
 void tcpServer::incomingConnection(qintptr socket) {
     tcpServerClient* client = new tcpServerClient(socket, this);
     connect(this, SIGNAL(onStopped()), client, SLOT(closeSocket()));
+    emit newClient(socket); // Signal par
 }
 
 void tcpServer::stopServer()
@@ -39,7 +40,7 @@ void tcpServer::stopServer()
 
 void tcpServer::receiveDataFromClient(QByteArray data)
 {
-    emit haveData(data);
+    emit receiveData(data);
 }
 
 void tcpServer::sendData(QByteArray data) {

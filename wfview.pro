@@ -150,7 +150,8 @@ macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 
 !linux:INCLUDEPATH += ../opus/include
 
-!linux:INCLUDEPATH += ../eigen/Eigen
+!linux:INCLUDEPATH += ../eigen
+!linux:INCLUDEPATH += ../r8brain-free-src
 
 INCLUDEPATH += resampler
 
@@ -175,8 +176,8 @@ SOURCES += main.cpp\
     ring/ring.cpp \
     transceiveradjustments.cpp \
     selectradio.cpp \
-	tcpserver.cpp \
-    aboutbox.cpp
+    tcpserver.cpp \
+    aboutbox.cpp 
 
 HEADERS  += wfmain.h \
     commhandler.h \
@@ -204,7 +205,8 @@ HEADERS  += wfmain.h \
     transceiveradjustments.h \
     audiotaper.h \
     selectradio.h \
-	tcpserver.h \
+    tcpserver.h \
+    audiocommon.h \
     aboutbox.h
 
 

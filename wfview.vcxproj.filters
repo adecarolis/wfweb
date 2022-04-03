@@ -127,6 +127,9 @@
     <ClInclude Include="resampler\arch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="audiocommon.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <QtMoc Include="audiohandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>

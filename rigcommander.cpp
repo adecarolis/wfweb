@@ -151,7 +151,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
         connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
 
         // data from the tcp port to the Rig:
-        connect(tcp, SIGNAL(haveData(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+        connect(tcp, SIGNAL(receiveData(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
 
         connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
         connect(this, SIGNAL(haveSetVolume(unsigned char)), udp, SLOT(setVolume(unsigned char)));

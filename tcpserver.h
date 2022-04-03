@@ -29,8 +29,9 @@ public slots:
 signals:
     void onStarted();
     void onStopped();
-    void haveData(QByteArray data); // emit this when we have data from tcp client, connect to rigcommander
+    void receiveData(QByteArray data); // emit this when we have data from tcp client, connect to rigcommander
     void sendDataToClient(QByteArray data);
+    void newClient(int socketId);
 
 private:
     QTcpServer* server;
