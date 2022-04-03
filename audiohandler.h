@@ -45,7 +45,11 @@ typedef signed short  MY_TYPE;
 #endif
 #include "audiotaper.h"
 
+#ifdef Q_OS_LINUX
+#include <eigen3/Eigen/Eigen>
+#else
 #include <Eigen/Eigen>
+#endif
 
 //#include <r8bbase.h>
 //#include <CDSPResampler.h>
@@ -165,7 +169,12 @@ private:
 
 static inline qint64 getAudioSize(qint64 timeInMs, const QAudioFormat& format)
 {
+#ifdef Q_OS_LINUX
+    qint64 value = qint64(qCeil(format.channelCount() * (format.sampleSize() / 8) * format.sampleRate() / qreal(1000) * timeInMs));
+#else
     qint64 value = qint64(qCeil(format.channelCount() * (format.sampleSize() / 8) * format.sampleRate() / qreal(10000) * timeInMs));
+#endif
+
 
     if (value % (format.channelCount() * (format.sampleSize() / 8)) != 0)
         value += (format.channelCount() * (format.sampleSize() / 8) - value % (format.channelCount() * (format.sampleSize() / 8)));

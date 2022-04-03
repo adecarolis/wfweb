@@ -206,7 +206,6 @@ HEADERS  += wfmain.h \
     audiotaper.h \
     selectradio.h \
     tcpserver.h \
-    audiocommon.h \
     aboutbox.h
 
 
