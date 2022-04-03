@@ -333,7 +333,6 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 
 		// Set the max amplitude found in the vector
 		amplitude = samplesF.array().abs().maxCoeff();
-		qDebug(logAudio()) << "Current amplitude" << QString::number(amplitude, 'f', 4) << getAmplitude() ;
 		// Set the volume
 		samplesF *= volume;
 
