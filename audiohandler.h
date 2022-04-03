@@ -69,29 +69,18 @@ struct audioPacket {
 
 struct audioSetup {
     QString name;
-//    quint8 bits;
-//    quint8 radioChan;
-//    quint16 samplerate;
     quint16 latency;
     quint8 codec;
     bool ulaw = false;
     bool isinput;
     QAudioFormat format; // Use this for all audio APIs
-#if defined(RTAUDIO) || defined(PORTAUDIO)
-    int port;
-#else
     QAudioDeviceInfo port;
-#endif
     quint8 resampleQuality;
     unsigned char localAFgain;
 };
 
 // For QtMultimedia, use a native QIODevice
-#if !defined(PORTAUDIO) && !defined(RTAUDIO)
-class audioHandler : public QIODevice
-#else
 class audioHandler : public QObject
-#endif
 {
     Q_OBJECT
 
@@ -101,15 +90,8 @@ public:
 
     int getLatency();
 
-#if !defined (RTAUDIO) && !defined(PORTAUDIO)
-    bool setDevice(QAudioDeviceInfo deviceInfo);
-
     void start();
-    void flush();
     void stop();
-    qint64 bytesAvailable() const;
-    bool isSequential() const;
-#endif
 
     void getNextAudioChunk(QByteArray &data);
     quint16 getAmplitude();
@@ -121,10 +103,6 @@ public slots:
     void incomingAudio(const audioPacket data);
 
 private slots:
-#if !defined (RTAUDIO) && !defined(PORTAUDIO)
-    void notified();
-    void stateChanged(QAudio::State state);
-#endif
 
 signals:
     void audioMessage(QString message);
@@ -134,61 +112,18 @@ signals:
 
 private:
 
-#if defined(RTAUDIO)
-    int readData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status);
-
-    static int staticRead(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status, void* userData) {
-        return static_cast<audioHandler*>(userData)->readData(outputBuffer, inputBuffer, nFrames, streamTime, status);
-    }
-
-    int writeData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status);
-
-    static int staticWrite(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status, void* userData) {
-        return static_cast<audioHandler*>(userData)->writeData(outputBuffer, inputBuffer, nFrames, streamTime, status);
-    }
-#elif defined(PORTAUDIO)
-    int readData(const void* inputBuffer, void* outputBuffer,
-        unsigned long nFrames,
-        const PaStreamCallbackTimeInfo* streamTime,
-        PaStreamCallbackFlags status);
-    static int staticRead(const void* inputBuffer, void* outputBuffer, unsigned long nFrames, const PaStreamCallbackTimeInfo* streamTime, PaStreamCallbackFlags status, void* userData) {
-        return ((audioHandler*)userData)->readData(inputBuffer, outputBuffer, nFrames, streamTime, status);
-    }    
-    
-    int writeData(const void* inputBuffer, void* outputBuffer,
-        unsigned long nFrames,
-        const PaStreamCallbackTimeInfo* streamTime,
-        PaStreamCallbackFlags status);
-    static int staticWrite(const void* inputBuffer, void* outputBuffer, unsigned long nFrames, const PaStreamCallbackTimeInfo* streamTime, PaStreamCallbackFlags status, void* userData) {
-        return ((audioHandler*)userData)->writeData(inputBuffer, outputBuffer, nFrames, streamTime, status);
-    }
-
-#else
-    qint64 readData(char* data, qint64 nBytes);
     qint64 writeData(const char* data, qint64 nBytes);
-#endif
 
-    void reinit();
     bool            isInitialized=false;
     bool            isReady = false;
     bool            audioBuffered = false;
-#if defined(RTAUDIO)
-    RtAudio* audio = Q_NULLPTR;
-    int audioDevice = 0;
-    RtAudio::StreamParameters aParams;
-    RtAudio::StreamOptions options;
-    RtAudio::DeviceInfo info;
-#elif defined(PORTAUDIO)
-    PaStream* audio = Q_NULLPTR;
-    PaStreamParameters aParams;
-    const PaDeviceInfo *info;
-#else
+
     QAudioOutput* audioOutput=Q_NULLPTR;
     QAudioInput* audioInput=Q_NULLPTR;
     QIODevice* audioDevice=Q_NULLPTR;
     QAudioFormat     format;
     QAudioDeviceInfo deviceInfo;
-#endif
+
     SpeexResamplerState* resampler = Q_NULLPTR;
 
     //r8b::CFixedBuffer<double>* resampBufs;
