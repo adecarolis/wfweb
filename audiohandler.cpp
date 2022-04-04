@@ -126,8 +126,6 @@ bool audioHandler::init(audioSetup setupIn)
 
 	devChannels = format.channelCount();
 	nativeSampleRate = format.sampleRate();
-	// chunk size is always relative to Internal Sample Rate.
-	this->chunkSize = (nativeSampleRate / 50);
 
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Internal: sample rate" << format.sampleRate() << "channel count" << format.channelCount();
 
@@ -188,11 +186,6 @@ void audioHandler::start()
 {
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "start() running";
 
-	if ((audioOutput == Q_NULLPTR || audioOutput->state() != QAudio::StoppedState) &&
-		(audioInput == Q_NULLPTR || audioInput->state() != QAudio::StoppedState)) {
-		return;
-	}
-
 	if (setup.isinput) {
 		audioDevice = audioInput->start();
 		connect(audioInput, &QAudioOutput::destroyed, audioDevice, &QIODevice::deleteLater, Qt::UniqueConnection);
@@ -212,43 +205,9 @@ void audioHandler::start()
 void audioHandler::setVolume(unsigned char volume)
 {
     this->volume = audiopot[volume];
-	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
+	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
 }
 
-
-qint64 audioHandler::writeData(const char* data, qint64 nBytes)
-{
-	if (!isReady) {
-		isReady = true;
-	}
-	int sentlen = 0;
-	//qDebug(logAudio()) << "nFrames" << nFrames << "nBytes" << nBytes;
-	int chunkBytes = chunkSize * devChannels * 2;
-	while (sentlen < nBytes) {
-		if (tempBuf.sent != chunkBytes)
-		{
-			int send = qMin((int)(nBytes - sentlen), chunkBytes - tempBuf.sent);
-			tempBuf.data.append(QByteArray::fromRawData(data + sentlen, send));
-			sentlen = sentlen + send;
-			tempBuf.seq = lastSentSeq;
-			tempBuf.time = QTime::currentTime();
-			tempBuf.sent = tempBuf.sent + send;
-		}
-		else {
-			if (!ringBuf->try_write(tempBuf))
-			{
-				qDebug(logAudio()) <<  (setup.isinput ? "Input" : "Output") << " audio buffer full!";
-				break;
-			} 
-			tempBuf.data.clear();
-			tempBuf.sent = 0;
-			lastSentSeq++;
-		}
-	}
-
-	//qDebug(logAudio()) << "sentlen" << sentlen;
-	return nBytes;
-}
 
 void audioHandler::incomingAudio(audioPacket inPacket)
 {
@@ -272,7 +231,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		} 
 		else if (nSamples != setup.format.sampleRate() / 50)
 		{
-			qInfo(logAudio()) << "Opus nSamples=" << nSamples << " expected:" << (setup.format.sampleRate() / 50);
+			qDebug(logAudio()) << "Opus nSamples=" << nSamples << " expected:" << (setup.format.sampleRate() / 50);
 			return;
 		}
 		if (livePacket.seq > lastSentSeq + 1) {
@@ -289,7 +248,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		else {
 			if (int(nSamples * sizeof(qint16) * setup.format.channelCount()) != outPacket.size())
 			{
-				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoder mismatch: nBytes:" << nSamples * sizeof(qint16) * setup.format.channelCount() << "outPacket:" << outPacket.size();
+				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoder mismatch: nBytes:" << nSamples * sizeof(qint16) * setup.format.channelCount() << "outPacket:" << outPacket.size();
 				outPacket.resize(nSamples * sizeof(qint16) * setup.format.channelCount());
 			}
 			//qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << livePacket.data.size() << "bytes, into" << outPacket.length() << "bytes";
@@ -382,8 +341,9 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		
 		currentLatency = livePacket.time.msecsTo(QTime::currentTime()) + getAudioDuration(audioOutput->bufferSize()-audioOutput->bytesFree(),format);
 
-		audioDevice->write(livePacket.data);
-
+		if (audioDevice != Q_NULLPTR) {
+			audioDevice->write(livePacket.data);
+		}
 		if ((inPacket.seq > lastSentSeq + 1) && (setup.codec == 0x40 || setup.codec == 0x80)) {
 			qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempting FEC on packet" << inPacket.seq << "as last is" << lastSentSeq;
 			lastSentSeq = inPacket.seq;
@@ -399,7 +359,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 void audioHandler::changeLatency(const quint16 newSize)
 {
 
-	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Changing latency to: " << newSize << " from " << setup.latency;
+	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Changing latency to: " << newSize << " from " << setup.latency;
 	setup.latency = newSize;
 
 	if (!setup.isinput) {
@@ -426,7 +386,6 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 	}
 	if (packet.data.length() > 0)
 	{		
-		//qDebug(logAudio) << "Chunksize" << this->chunkSize << "Packet size" << packet.data.length();
 		// Packet will arrive as stereo interleaved 16bit 48K
 		if (resampleRatio != 1.0)
 		{
@@ -442,8 +401,6 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			if (err) {
 				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
 			}
-			//qInfo(logAudio()) << "Resampler run " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
-			//qInfo(logAudio()) << "Resampler run inLen:" << packet->datain.length() << " outLen:" << packet->dataout.length();
 			packet.data.clear();
 			packet.data = outPacket; // Copy output packet back to input buffer.
 		}
@@ -535,6 +492,8 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 
 void audioHandler::stop()
 {
+	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "stop() running";
+
 	if (audioOutput != Q_NULLPTR && audioOutput->state() != QAudio::StoppedState) {
 		// Stop audio output
 		audioOutput->stop();
@@ -544,7 +503,7 @@ void audioHandler::stop()
 		// Stop audio output
 		audioInput->stop();
 	}
-	isInitialized = false;
+	audioDevice = Q_NULLPTR;
 }
 
 

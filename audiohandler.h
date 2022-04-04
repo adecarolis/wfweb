@@ -116,7 +116,6 @@ signals:
 
 private:
 
-    qint64 writeData(const char* data, qint64 nBytes);
 
     bool            isInitialized=false;
     bool            isReady = false;
@@ -134,7 +133,6 @@ private:
     //r8b::CPtrKeeper<r8b::CDSPResampler24*>* resamps;
 
     quint16         audioLatency;
-    unsigned int             chunkSize;
     bool            chunkAvailable;
 
     quint32         lastSeq;

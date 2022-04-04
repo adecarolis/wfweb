@@ -20,6 +20,7 @@ DEFINES += BUILD_WFSERVER
 CONFIG(debug, release|debug) {
 # For Debug builds only:
 QMAKE_CXXFLAGS += -faligned-new
+WIN32:DESTDIR = wfview-release
 
 } else {
 # For Release builds only:
@@ -28,6 +29,7 @@ QMAKE_CXXFLAGS += -fvisibility=hidden
 QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
 QMAKE_CXXFLAGS += -faligned-new
 linux:QMAKE_LFLAGS += -O2 -s
+WIN32:DESTDIR = wfview-debug
 }
 
 # The following define makes your compiler emit warnings if you use
@@ -48,6 +50,12 @@ DEFINES += RANDOM_PREFIX=wf
 isEmpty(PREFIX) {
   PREFIX = /usr/local
 }
+
+# These defines are used for the Eigen library
+DEFINES += EIGEN_MPL2_ONLY
+DEFINES += EIGEN_DONT_VECTORIZE #Clear vector flags
+equals(QT_ARCH, i386): win32:DEFINES += EIGEN_VECTORIZE_SSE3
+equals(QT_ARCH, x86_64): DEFINES += EIGEN_VECTORIZE_SSE3
 
 DEFINES += PREFIX=\\\"$$PREFIX\\\"
 
@@ -120,6 +128,9 @@ macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 
 !linux:INCLUDEPATH += ../opus/include
 
+!linux:INCLUDEPATH += ../eigen
+!linux:INCLUDEPATH += ../r8brain-free-src
+
 INCLUDEPATH += resampler
 
 SOURCES += main.cpp\
@@ -135,6 +146,7 @@ SOURCES += main.cpp\
     pttyhandler.cpp \
     resampler/resample.c \
     rigctld.cpp \
+    tcpserver.cpp \
     ring/ring.cpp
 
 HEADERS  += servermain.h \
@@ -155,4 +167,5 @@ HEADERS  += servermain.h \
     rigctld.h \
     ulaw.h \
     ring/ring.h \
+    tcpserver.h \
     audiotaper.h 

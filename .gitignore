@@ -3,4 +3,8 @@
 .qmake.stash
 debug
 release
+wfview-debug
+wfserver-debug
+wfview-release
+wfserver-release
 ui_*

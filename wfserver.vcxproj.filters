@@ -73,6 +73,9 @@
     <ClCompile Include="servermain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="tcpserver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="udphandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -129,6 +132,9 @@
     <ClInclude Include="resampler\speex_resampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <QtMoc Include="tcpserver.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="udphandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -140,32 +146,12 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    
-    
-    
-    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
   </ItemGroup>
   <ItemGroup>
     <None Include="qdarkstyle\rc\Hmovetoolbar.png">
@@ -299,6 +285,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="C:\Users\Phil\source\repos\wfview\wfserver_resource.rc" />
+    <ResourceCompile Include=".\wfserver_resource.rc" />
   </ItemGroup>
 </Project>
