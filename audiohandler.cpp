@@ -189,17 +189,32 @@ void audioHandler::start()
 	if (setup.isinput) {
 		audioDevice = audioInput->start();
 		connect(audioInput, &QAudioOutput::destroyed, audioDevice, &QIODevice::deleteLater, Qt::UniqueConnection);
-		connect(audioDevice, &QIODevice::destroyed, this, &QAudioInput::deleteLater, Qt::UniqueConnection);
 	}
 	else {
 		audioDevice = audioOutput->start();
 		connect(audioOutput, &QAudioOutput::destroyed, audioDevice, &QIODevice::deleteLater, Qt::UniqueConnection);
-		connect(audioDevice, &QIODevice::destroyed, this, &QAudioOutput::deleteLater, Qt::UniqueConnection);
 	}
 	if (!audioDevice) {
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio device failed to start()";
 		return;
 	}
+}
+
+
+void audioHandler::stop()
+{
+	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "stop() running";
+
+	if (audioOutput != Q_NULLPTR && audioOutput->state() != QAudio::StoppedState) {
+		// Stop audio output
+		audioOutput->stop();
+	}
+
+	if (audioInput != Q_NULLPTR && audioInput->state() != QAudio::StoppedState) {
+		// Stop audio output
+		audioInput->stop();
+	}
+	audioDevice = Q_NULLPTR;
 }
 
 void audioHandler::setVolume(unsigned char volume)
@@ -489,22 +504,6 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 
 }
 
-
-void audioHandler::stop()
-{
-	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "stop() running";
-
-	if (audioOutput != Q_NULLPTR && audioOutput->state() != QAudio::StoppedState) {
-		// Stop audio output
-		audioOutput->stop();
-	}
-
-	if (audioInput != Q_NULLPTR && audioInput->state() != QAudio::StoppedState) {
-		// Stop audio output
-		audioInput->stop();
-	}
-	audioDevice = Q_NULLPTR;
-}
 
 
 quint16 audioHandler::getAmplitude()
