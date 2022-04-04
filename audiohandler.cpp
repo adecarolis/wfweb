@@ -374,7 +374,6 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 void audioHandler::changeLatency(const quint16 newSize)
 {
 
-	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Changing latency to: " << newSize << " from " << setup.latency;
 	setup.latency = newSize;
 
 	if (!setup.isinput) {
@@ -382,6 +381,7 @@ void audioHandler::changeLatency(const quint16 newSize)
 		audioOutput->setBufferSize(getAudioSize(setup.latency, format));
 		start();
 	}
+	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Configured latency: " << setup.latency << "Buffer Duration:" << getAudioDuration(audioOutput->bufferSize(),format) <<"ms";
 
 }
 
