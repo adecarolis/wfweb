@@ -174,7 +174,6 @@ SOURCES += main.cpp\
     resampler/resample.c \
     repeatersetup.cpp \
     rigctld.cpp \
-    ring/ring.cpp \
     transceiveradjustments.cpp \
     selectradio.cpp \
     tcpserver.cpp \
@@ -202,7 +201,6 @@ HEADERS  += wfmain.h \
     repeaterattributes.h \
     rigctld.h \
     ulaw.h \
-    ring/ring.h \
     transceiveradjustments.h \
     audiotaper.h \
     selectradio.h \

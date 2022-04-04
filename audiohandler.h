@@ -36,7 +36,6 @@ typedef signed short  MY_TYPE;
 #include <QMap>
 
 #include "resampler/speex_resampler.h"
-#include "ring/ring.h"
 
 #ifdef Q_OS_WIN
 #include "opus.h"
@@ -148,8 +147,6 @@ private:
     QMap<quint32, audioPacket>audioBuffer;
 
     double resampleRatio;
-
-    wilt::Ring<audioPacket> *ringBuf=Q_NULLPTR;
 
     volatile bool ready = false;
     audioPacket tempBuf;

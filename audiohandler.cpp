@@ -22,10 +22,6 @@ audioHandler::~audioHandler()
 		stop();
 	}
 
-	if (ringBuf != Q_NULLPTR) {
-		delete ringBuf;
-	}
-
 	if (audioInput != Q_NULLPTR) {
 		audioInput = Q_NULLPTR;
 		delete audioInput;
@@ -99,12 +95,15 @@ bool audioHandler::init(audioSetup setupIn)
         this->setVolume(setup.localAFgain);
     }
 
-	format.setSampleSize(16);
+/*	format.setSampleSize(16);
 	format.setChannelCount(2);
 	format.setSampleRate(INTERNAL_SAMPLE_RATE);
 	format.setCodec("audio/pcm");
 	format.setByteOrder(QAudioFormat::LittleEndian);
-	format.setSampleType(QAudioFormat::SignedInt);
+	format.setSampleType(QAudioFormat::SignedInt); */
+	format = setup.port.preferredFormat();
+	qDebug(logAudio()) << "Preferred Format: SampleSize" << format.sampleSize() << "Channel Count" << format.channelCount() <<
+		"Sample Rate" << format.sampleRate() << "Codec" << format.codec() << "Sample Type" << format.sampleType();
 	if (setup.port.isNull())
 	{
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "No audio device was found. You probably need to install libqt5multimedia-plugins.";
@@ -139,7 +138,6 @@ bool audioHandler::init(audioSetup setupIn)
 	else {
 		audioOutput = new QAudioOutput(setup.port, format, this);
 
-		audioOutput->setBufferSize(getAudioSize(setup.latency, format));
 		isInitialized = true;
 	}
 
@@ -191,6 +189,8 @@ void audioHandler::start()
 		connect(audioInput, &QAudioOutput::destroyed, audioDevice, &QIODevice::deleteLater, Qt::UniqueConnection);
 	}
 	else {
+		// Buffer size must be set before audio is started.
+		audioOutput->setBufferSize(getAudioSize(setup.latency, format));
 		audioDevice = audioOutput->start();
 		connect(audioOutput, &QAudioOutput::destroyed, audioDevice, &QIODevice::deleteLater, Qt::UniqueConnection);
 	}
@@ -294,23 +294,26 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	if (!livePacket.data.isEmpty()) {
 
 		Eigen::VectorXf samplesF;
-		if (setup.format.sampleSize() == 16)
+		if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 16)
 		{
 			VectorXint16 samplesI = Eigen::Map<VectorXint16>(reinterpret_cast<qint16*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(qint16)));
 			samplesF = samplesI.cast<float>() / float(std::numeric_limits<qint16>::max());
 		}
-		else
+		else if (setup.format.sampleType() == QAudioFormat::UnSignedInt && setup.format.sampleSize() == 8)
 		{
 			VectorXuint8 samplesI = Eigen::Map<VectorXuint8>(reinterpret_cast<quint8*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(quint8)));
 			samplesF = samplesI.cast<float>() / float(std::numeric_limits<quint8>::max());;
 		}
 
+		/* samplesF is now an Eigen Vector of the current samples in float format */
+
 		// Set the max amplitude found in the vector
+		// Should it be before or after volume is applied?
 		amplitude = samplesF.array().abs().maxCoeff();
 		// Set the volume
 		samplesF *= volume;
 
-		// Convert mono to stereo
+		// Convert mono to stereo if required
 		if (setup.format.channelCount() == 1) {
 			Eigen::VectorXf samplesTemp(samplesF.size() * 2);
 			Eigen::Map<Eigen::VectorXf, 0, Eigen::InnerStride<2> >(samplesTemp.data(), samplesF.size()) = samplesF;
@@ -319,15 +322,30 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		}
 
 
-		if (format.sampleType() == QAudioFormat::SignedInt)
+		if (format.sampleType() == QAudioFormat::UnSignedInt && format.sampleSize() == 8)
+		{
+			Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<quint8>::max());
+			VectorXuint8 samplesI = samplesITemp.cast<quint8>();
+			livePacket.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(quint8)));
+		}
+		if (format.sampleType() == QAudioFormat::SignedInt && format.sampleSize() == 16)
 		{
 			Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint16>::max());
 			VectorXint16 samplesI = samplesITemp.cast<qint16>();
 			livePacket.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint16)));
 		}
-		else
+		else if (format.sampleType() == QAudioFormat::SignedInt && format.sampleSize() == 32)
+		{
+			Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint32>::max());
+			VectorXint32 samplesI = samplesITemp.cast<qint32>();
+			livePacket.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint32)));
+		}
+		else if (format.sampleType() == QAudioFormat::Float)
 		{
 			livePacket.data = QByteArray(reinterpret_cast<char*>(samplesF.data()), int(samplesF.size()) * int(sizeof(float)));
+		}
+		else {
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported Sample Type:" << format.sampleType();
 		}
 
 
@@ -378,7 +396,6 @@ void audioHandler::changeLatency(const quint16 newSize)
 
 	if (!setup.isinput) {
 		stop();
-		audioOutput->setBufferSize(getAudioSize(setup.latency, format));
 		start();
 	}
 	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Configured latency: " << setup.latency << "Buffer Duration:" << getAudioDuration(audioOutput->bufferSize(),format) <<"ms";

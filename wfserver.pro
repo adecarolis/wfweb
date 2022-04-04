@@ -147,7 +147,6 @@ SOURCES += main.cpp\
     resampler/resample.c \
     rigctld.cpp \
     tcpserver.cpp \
-    ring/ring.cpp
 
 HEADERS  += servermain.h \
     commhandler.h \
@@ -166,6 +165,5 @@ HEADERS  += servermain.h \
     repeaterattributes.h \
     rigctld.h \
     ulaw.h \
-    ring/ring.h \
     tcpserver.h \
     audiotaper.h 
