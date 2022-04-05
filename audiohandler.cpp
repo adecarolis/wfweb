@@ -316,11 +316,10 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 
 			// We need to resample
 			// We have a stereo 16bit stream.
-			livePacket.data = QByteArray(reinterpret_cast<char*>(samplesF.data()), int(samplesF.size()) * int(sizeof(float)));
-			quint32 outFrames = ((livePacket.data.length() / sizeof(float) / format.channelCount()) * resampleRatio);
-			quint32 inFrames = (livePacket.data.length() / sizeof(float) / format.channelCount());
+			quint32 outFrames = ((samplesF.size() / format.channelCount()) * resampleRatio);
+			quint32 inFrames = (samplesF.size() / format.channelCount());
 			QByteArray outPacket(outFrames * format.channelCount() * sizeof(float), (char)0xff); // Preset the output buffer size.
-			const float* in = (float*)livePacket.data.data();
+			const float* in = (float*)samplesF.data();
 			float* out = (float*)outPacket.data();
 
 			int err = 0;
@@ -357,11 +356,6 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported Sample Type:" << format.sampleType();
 		}
 
-
-
-
-		//qDebug(logAudio()) << "Adding packet to buffer:" << livePacket.seq << ": " << livePacket.data.length();
-		
 		currentLatency = livePacket.time.msecsTo(QTime::currentTime()) + getAudioDuration(audioOutput->bufferSize()-audioOutput->bytesFree(),format);
 
 		if (audioDevice != Q_NULLPTR) {
@@ -423,12 +417,11 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 
 				// We need to resample
 				// We have a stereo 16bit stream.
-				livePacket.data = QByteArray(reinterpret_cast<char*>(samplesF.data()), int(samplesF.size()) * int(sizeof(float)));
 				quint32 outFrames = ((samplesF.size() / format.channelCount()) * resampleRatio);
 				quint32 inFrames = (samplesF.size() / format.channelCount());
 	
 				QByteArray outPacket(outFrames * format.channelCount() * sizeof(float), (char)0xff); // Preset the output buffer size.
-				const float* in = (float*)livePacket.data.data();
+				const float* in = (float*)samplesF.data();
 				float* out = (float*)outPacket.data();
 
 				int err = 0;
@@ -472,8 +465,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported Sample Type:" << format.sampleType();
 			}
 
-			//qDebug(logAudio()) << "Now mono, length" << packet.data.length();
-			
+			/* Need to find a floating point uLaw encoder!*/
 			if (setup.ulaw)
 			{
 				QByteArray outPacket((int)livePacket.data.length() / 2, (char)0xff);
@@ -497,7 +489,6 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 				livePacket.data.clear();
 				livePacket.data = outPacket; // Copy output packet back to input buffer.
 			}
-
 			else if (setup.codec == 0x40 || setup.codec == 0x80)
 			{
 				//Are we using the opus codec?	
@@ -518,11 +509,8 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 					livePacket.data.clear();
 					livePacket.data = outPacket; // Replace incoming data with converted.
 				}
-
 			}
-
 			ret = livePacket.data;
-
 		}
 	}
 	return;
