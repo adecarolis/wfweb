@@ -66,12 +66,23 @@ bool audioHandler::init(audioSetup setupIn)
 	setup.format.setSampleType(QAudioFormat::UnSignedInt);
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "audio handler starting:" << setup.name;
 
+	if (setup.port.isNull())
+	{
+		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "No audio device was found. You probably need to install libqt5multimedia-plugins.";
+		return false;
+	}
+
 	if (setup.codec == 0x01 || setup.codec == 0x20) {
+		/* Althought uLaw is 8bit unsigned, it is 16bit signed once decoded*/
 		setup.ulaw = true;
+		setup.format.setSampleSize(16);
+		setup.format.setSampleType(QAudioFormat::SignedInt);
+
 	}
 	if (setup.codec == 0x08 || setup.codec == 0x10 || setup.codec == 0x20 || setup.codec == 0x80) {
 		setup.format.setChannelCount(2);
 	}
+
 	if (setup.codec == 0x04 || setup.codec == 0x10 || setup.codec == 0x40 || setup.codec == 0x80) {
 		setup.format.setSampleSize(16);
 		setup.format.setSampleType(QAudioFormat::SignedInt);
@@ -95,25 +106,9 @@ bool audioHandler::init(audioSetup setupIn)
         this->setVolume(setup.localAFgain);
     }
 
-/*	format.setSampleSize(16);
-	format.setChannelCount(2);
-	format.setSampleRate(INTERNAL_SAMPLE_RATE);
-	format.setCodec("audio/pcm");
-	format.setByteOrder(QAudioFormat::LittleEndian);
-	format.setSampleType(QAudioFormat::SignedInt); */
 	format = setup.port.preferredFormat();
-	qDebug(logAudio()) << "Preferred Format: SampleSize" << format.sampleSize() << "Channel Count" << format.channelCount() <<
+	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Preferred Format: SampleSize" << format.sampleSize() << "Channel Count" << format.channelCount() <<
 		"Sample Rate" << format.sampleRate() << "Codec" << format.codec() << "Sample Type" << format.sampleType();
-	if (setup.port.isNull())
-	{
-		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "No audio device was found. You probably need to install libqt5multimedia-plugins.";
-		return false;
-	}
-	else if (!setup.port.isFormatSupported(format))
-	{
-		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Format not supported, choosing nearest supported format - which may not work!";
-		format=setup.port.nearestFormat(format);
-	}
 	if (format.channelCount() > 2) {
 		format.setChannelCount(2);
 	}
@@ -123,29 +118,22 @@ bool audioHandler::init(audioSetup setupIn)
 		return false;
 	}
 
-	devChannels = format.channelCount();
-	nativeSampleRate = format.sampleRate();
-
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Internal: sample rate" << format.sampleRate() << "channel count" << format.channelCount();
 
 	// We "hopefully" now have a valid format that is supported so try connecting
 
 	if (setup.isinput) {
 		audioInput = new QAudioInput(setup.port, format, this);
-		//connect(audioInput, SIGNAL(notify()), SLOT(notified()));
-		isInitialized = true;
 	}
 	else {
 		audioOutput = new QAudioOutput(setup.port, format, this);
-
-		isInitialized = true;
 	}
 
 	// Setup resampler and opus if they are needed.
 	int resample_error = 0;
 	int opus_err = 0;
 	if (setup.isinput) {
-		resampler = wf_resampler_init(devChannels, nativeSampleRate, setup.format.sampleRate(), setup.resampleQuality, &resample_error);
+		resampler = wf_resampler_init(format.channelCount(), format.sampleRate(), setup.format.sampleRate(), setup.resampleQuality, &resample_error);
 		if (setup.codec == 0x40 || setup.codec == 0x80) {
 			// Opus codec
 			encoder = opus_encoder_create(setup.format.sampleRate(), setup.format.channelCount(), OPUS_APPLICATION_AUDIO, &opus_err);
@@ -160,7 +148,7 @@ bool audioHandler::init(audioSetup setupIn)
 
 		//resampBufs = new r8b::CFixedBuffer<double>[format.channelCount()];
 		//resamps = new r8b::CPtrKeeper<r8b::CDSPResampler24*>[format.channelCount()];
-		resampler = wf_resampler_init(devChannels, setup.format.sampleRate(), this->nativeSampleRate, setup.resampleQuality, &resample_error);
+		resampler = wf_resampler_init(format.channelCount(), setup.format.sampleRate(), format.sampleRate(), setup.resampleQuality, &resample_error);
 		if (setup.codec == 0x40 || setup.codec == 0x80) {
 			// Opus codec
 			decoder = opus_decoder_create(setup.format.sampleRate(), setup.format.sampleRate(), &opus_err);
@@ -177,7 +165,7 @@ bool audioHandler::init(audioSetup setupIn)
     qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "thread id" << QThread::currentThreadId();
 
 	this->start();
-	return isInitialized;
+	return true;
 }
 
 void audioHandler::start()
@@ -284,8 +272,6 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		}
 		livePacket.data.clear();
 		livePacket.data = outPacket; // Replace incoming data with converted.
-		setup.format.setSampleSize(16);
-		setup.format.setSampleType(QAudioFormat::SignedInt);
 		// Buffer now contains 16bit signed samples.
 	}
 
@@ -304,6 +290,10 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			VectorXuint8 samplesI = Eigen::Map<VectorXuint8>(reinterpret_cast<quint8*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(quint8)));
 			samplesF = samplesI.cast<float>() / float(std::numeric_limits<quint8>::max());;
 		}
+		else {
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported Sample Type:" << format.sampleType();
+		}
+
 
 		/* samplesF is now an Eigen Vector of the current samples in float format */
 
@@ -321,6 +311,25 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			samplesF = samplesTemp;
 		}
 
+
+		if (resampleRatio != 1.0) {
+
+			// We need to resample
+			// We have a stereo 16bit stream.
+			livePacket.data = QByteArray(reinterpret_cast<char*>(samplesF.data()), int(samplesF.size()) * int(sizeof(float)));
+			quint32 outFrames = ((livePacket.data.length() / sizeof(float) / format.channelCount()) * resampleRatio);
+			quint32 inFrames = (livePacket.data.length() / sizeof(float) / format.channelCount());
+			QByteArray outPacket(outFrames * format.channelCount() * sizeof(float), (char)0xff); // Preset the output buffer size.
+			const float* in = (float*)livePacket.data.data();
+			float* out = (float*)outPacket.data();
+
+			int err = 0;
+			err = wf_resampler_process_interleaved_float(resampler, in, &inFrames, out, &outFrames);
+			if (err) {
+				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
+			}
+			samplesF = Eigen::Map<Eigen::VectorXf>(reinterpret_cast<float*>(outPacket.data()), outPacket.size() / int(sizeof(float)));
+		}
 
 		if (format.sampleType() == QAudioFormat::UnSignedInt && format.sampleSize() == 8)
 		{
@@ -349,25 +358,6 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		}
 
 
-		if (resampleRatio != 1.0) {
-
-			// We need to resample
-			// We have a stereo 16bit stream.
-			quint32 outFrames = ((livePacket.data.length() / 2 / devChannels) * resampleRatio);
-			quint32 inFrames = (livePacket.data.length() / 2 / devChannels);
-			QByteArray outPacket(outFrames * 4, (char)0xff); // Preset the output buffer size.
-
-			const qint16* in = (qint16*)livePacket.data.constData();
-			qint16* out = (qint16*)outPacket.data();
-
-			int err = 0;
-			err = wf_resampler_process_interleaved_int(resampler, in, &inFrames, out, &outFrames);
-			if (err) {
-				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
-			}
-			livePacket.data.clear();
-			livePacket.data = outPacket; // Replace incoming data with converted.
-		}
 
 
 		//qDebug(logAudio()) << "Adding packet to buffer:" << livePacket.seq << ": " << livePacket.data.length();
@@ -389,6 +379,157 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	return;
 }
 
+
+void audioHandler::getNextAudioChunk(QByteArray& ret)
+{
+	audioPacket livePacket;
+	livePacket.sent = 0;
+	if (audioDevice != Q_NULLPTR) {
+		livePacket.data = audioDevice->readAll();
+		if (livePacket.data.length() > 0)
+		{
+			Eigen::VectorXf samplesF;
+			if (format.sampleType() == QAudioFormat::SignedInt && format.sampleSize() == 32)
+			{
+				VectorXint32 samplesI = Eigen::Map<VectorXint32>(reinterpret_cast<qint32*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(qint32)));
+				samplesF = samplesI.cast<float>() / float(std::numeric_limits<qint32>::max());
+			}
+			else if (format.sampleType() == QAudioFormat::SignedInt && format.sampleSize() == 16)
+			{
+				VectorXint16 samplesI = Eigen::Map<VectorXint16>(reinterpret_cast<qint16*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(qint16)));
+				samplesF = samplesI.cast<float>() / float(std::numeric_limits<qint16>::max());
+			}
+			else if (format.sampleType() == QAudioFormat::UnSignedInt && format.sampleSize() == 8)
+			{
+				VectorXuint8 samplesI = Eigen::Map<VectorXuint8>(reinterpret_cast<quint8*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(quint8)));
+				samplesF = samplesI.cast<float>() / float(std::numeric_limits<quint8>::max());;
+			}
+			else if (format.sampleType() == QAudioFormat::Float)
+			{
+				samplesF = Eigen::Map<Eigen::VectorXf>(reinterpret_cast<float*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(float)));
+			}
+			else {
+				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported Sample Type:" << format.sampleType() << format.sampleSize();
+			}
+
+			/* samplesF is now an Eigen Vector of the current samples in float format */
+
+			// Set the max amplitude found in the vector
+			amplitude = samplesF.array().abs().maxCoeff();
+			
+			// Channel count should now match the device that audio is going to (rig)
+
+			if (resampleRatio != 1.0) {
+
+				// We need to resample
+				// We have a stereo 16bit stream.
+				livePacket.data = QByteArray(reinterpret_cast<char*>(samplesF.data()), int(samplesF.size()) * int(sizeof(float)));
+				quint32 outFrames = ((samplesF.size() / format.channelCount()) * resampleRatio);
+				quint32 inFrames = (samplesF.size() / format.channelCount());
+	
+				QByteArray outPacket(outFrames * format.channelCount() * sizeof(float), (char)0xff); // Preset the output buffer size.
+				const float* in = (float*)livePacket.data.data();
+				float* out = (float*)outPacket.data();
+
+				int err = 0;
+				err = wf_resampler_process_interleaved_float(resampler, in, &inFrames, out, &outFrames);
+				if (err) {
+					qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
+				}
+				samplesF = Eigen::Map<Eigen::VectorXf>(reinterpret_cast<float*>(outPacket.data()), outPacket.size() / int(sizeof(float)));
+			}
+
+			// If we need to drop one of the audio channels, do it now 
+			if (format.channelCount() == 2 && setup.format.channelCount() == 1) {
+				Eigen::VectorXf samplesTemp(samplesF.size() / 2);
+				samplesTemp = Eigen::Map<Eigen::VectorXf, 0, Eigen::InnerStride<2> >(samplesF.data(), samplesF.size() / 2);
+				samplesF = samplesTemp;
+			}
+
+			if (setup.format.sampleType() == QAudioFormat::UnSignedInt && setup.format.sampleSize() == 8)
+			{
+				Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<quint8>::max());
+				VectorXuint8 samplesI = samplesITemp.cast<quint8>();
+				livePacket.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(quint8)));
+			}
+			if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 16)
+			{
+				Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint16>::max());
+				VectorXint16 samplesI = samplesITemp.cast<qint16>();
+				livePacket.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint16)));
+			}
+			else if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 32)
+			{
+				Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint32>::max());
+				VectorXint32 samplesI = samplesITemp.cast<qint32>();
+				livePacket.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint32)));
+			}
+			else if (setup.format.sampleType() == QAudioFormat::Float)
+			{
+				livePacket.data = QByteArray(reinterpret_cast<char*>(samplesF.data()), int(samplesF.size()) * int(sizeof(float)));
+			}
+			else {
+				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported Sample Type:" << format.sampleType();
+			}
+
+			//qDebug(logAudio()) << "Now mono, length" << packet.data.length();
+			
+			if (setup.ulaw)
+			{
+				QByteArray outPacket((int)livePacket.data.length() / 2, (char)0xff);
+				qint16* in = (qint16*)livePacket.data.data();
+				for (int f = 0; f < outPacket.length(); f++)
+				{
+					qint16 sample = *in++;
+					if (setup.ulaw) {
+						int sign = (sample >> 8) & 0x80;
+						if (sign)
+							sample = (short)-sample;
+						if (sample > cClip)
+							sample = cClip;
+						sample = (short)(sample + cBias);
+						int exponent = (int)MuLawCompressTable[(sample >> 7) & 0xFF];
+						int mantissa = (sample >> (exponent + 3)) & 0x0F;
+						int compressedByte = ~(sign | (exponent << 4) | mantissa);
+						outPacket[f] = (quint8)compressedByte;
+					}
+				}
+				livePacket.data.clear();
+				livePacket.data = outPacket; // Copy output packet back to input buffer.
+			}
+
+			else if (setup.codec == 0x40 || setup.codec == 0x80)
+			{
+				//Are we using the opus codec?	
+				qint16* in = (qint16*)livePacket.data.data();
+
+				/* Encode the frame. */
+				QByteArray outPacket(1275, (char)0xff); // Preset the output buffer size to MAXIMUM possible Opus frame size
+				unsigned char* out = (unsigned char*)outPacket.data();
+
+				int nbBytes = opus_encode(encoder, in, (setup.format.sampleRate() / 50), out, outPacket.length());
+				if (nbBytes < 0)
+				{
+					qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encode failed:" << opus_strerror(nbBytes);
+					return;
+				}
+				else {
+					outPacket.resize(nbBytes);
+					livePacket.data.clear();
+					livePacket.data = outPacket; // Replace incoming data with converted.
+				}
+
+			}
+
+			ret = livePacket.data;
+
+		}
+	}
+	return;
+
+}
+
+
 void audioHandler::changeLatency(const quint16 newSize)
 {
 
@@ -398,127 +539,13 @@ void audioHandler::changeLatency(const quint16 newSize)
 		stop();
 		start();
 	}
-	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Configured latency: " << setup.latency << "Buffer Duration:" << getAudioDuration(audioOutput->bufferSize(),format) <<"ms";
+	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Configured latency: " << setup.latency << "Buffer Duration:" << getAudioDuration(audioOutput->bufferSize(), format) << "ms";
 
 }
 
 int audioHandler::getLatency()
 {
 	return currentLatency;
-}
-
-
-
-void audioHandler::getNextAudioChunk(QByteArray& ret)
-{
-	audioPacket packet;
-	packet.sent = 0;
-	if (audioDevice != Q_NULLPTR) {
-		packet.data = audioDevice->readAll();
-	}
-	if (packet.data.length() > 0)
-	{		
-		// Packet will arrive as stereo interleaved 16bit 48K
-		if (resampleRatio != 1.0)
-		{
-			quint32 outFrames = ((packet.data.length() / 2 / devChannels) * resampleRatio);
-			quint32 inFrames = (packet.data.length() / 2 / devChannels);
-			QByteArray outPacket((int)outFrames * 2 * devChannels, (char)0xff);
-
-			const qint16* in = (qint16*)packet.data.constData();
-			qint16* out = (qint16*)outPacket.data();
-
-			int err = 0;
-			err = wf_resampler_process_interleaved_int(resampler, in, &inFrames, out, &outFrames);
-			if (err) {
-				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
-			}
-			packet.data.clear();
-			packet.data = outPacket; // Copy output packet back to input buffer.
-		}
-
-		//qDebug(logAudio()) << "Now resampled, length" << packet.data.length();
-
-		int tempAmplitude = 0;
-		// Do we need to convert mono to stereo?
-		if (setup.format.channelCount() == 1 && devChannels > 1)
-		{
-			// Strip out right channel?
-			QByteArray outPacket(packet.data.length()/2, (char)0xff);
-			const qint16* in = (qint16*)packet.data.constData();
-			qint16* out = (qint16*)outPacket.data();
-			for (int f = 0; f < outPacket.length()/2; f++)
-			{
-				tempAmplitude = qMax(tempAmplitude, (int)(abs(*in) / 256));
-				*out++ = *in++;
-				in++; // Skip each even channel.
-			}
-			packet.data.clear();
-			packet.data = outPacket; // Copy output packet back to input buffer.
-		}
-		
-		//qDebug(logAudio()) << "Now mono, length" << packet.data.length();
-
-		if (setup.codec == 0x40 || setup.codec == 0x80) 
-		{
-			//Are we using the opus codec?	
-			qint16* in = (qint16*)packet.data.data();
-
-			/* Encode the frame. */
-			QByteArray outPacket(1275, (char)0xff); // Preset the output buffer size to MAXIMUM possible Opus frame size
-			unsigned char* out = (unsigned char*)outPacket.data();
-
-			int nbBytes = opus_encode(encoder, in, (setup.format.sampleRate() / 50), out, outPacket.length());
-			if (nbBytes < 0)
-			{
-				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encode failed:" << opus_strerror(nbBytes);
-				return;
-			}
-			else {
-				outPacket.resize(nbBytes);
-				packet.data.clear();
-				packet.data = outPacket; // Replace incoming data with converted.
-			}
-
-		}
-		else if (setup.format.sampleSize() == 8) 
-		{
-
-			// Do we need to convert 16-bit to 8-bit?
-			QByteArray outPacket((int)packet.data.length() / 2, (char)0xff);
-			qint16* in = (qint16*)packet.data.data();
-			for (int f = 0; f < outPacket.length(); f++)
-			{
-				qint16 sample = *in++;
-				if (setup.ulaw) {
-					int sign = (sample >> 8) & 0x80;
-					if (sign) 
-						sample = (short)-sample;
-					if (sample > cClip)
-						sample = cClip;
-					sample = (short)(sample + cBias);
-					int exponent = (int)MuLawCompressTable[(sample >> 7) & 0xFF];
-					int mantissa = (sample >> (exponent + 3)) & 0x0F;
-					int compressedByte = ~(sign | (exponent << 4) | mantissa);
-					outPacket[f] = (quint8)compressedByte;
-				}
-				else {
-					int compressedByte = (((sample + 32768) >> 8) & 0xff);
-					outPacket[f] = (quint8)compressedByte;
-				}
-				tempAmplitude = qMax(tempAmplitude, abs(outPacket[f]));
-			}
-			packet.data.clear();
-			packet.data = outPacket; // Copy output packet back to input buffer.
-		} 
-		amplitude = tempAmplitude;
-
-		ret = packet.data;
-
-	}
-
-	return;
-
 }
 
 

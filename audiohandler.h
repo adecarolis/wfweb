@@ -1,63 +1,52 @@
 #ifndef AUDIOHANDLER_H
 #define AUDIOHANDLER_H
 
+/* QT Headers */
 #include <QObject>
-
 #include <QByteArray>
 #include <QMutex>
 #include <QtEndian>
 #include <QtMath>
+#include <QThread>
+#include <QTimer>
+#include <QTime>
+#include <QMap>
+#include <QDebug>
 
-#if defined(RTAUDIO)
-#ifdef Q_OS_WIN
-#include "RtAudio.h"
-#else
-#include "rtaudio/RtAudio.h"
-#endif
-#elif defined (PORTAUDIO)
-#include "portaudio.h"
-//#error "PORTAUDIO is not currently supported"
-#else
+/* QT Audio Headers */
 #include <QAudioOutput>
 #include <QAudioFormat>
 #include <QAudioDeviceInfo>
 #include <QAudioInput>
 #include <QIODevice>
-#endif
 
-#include "packettypes.h"
-
-typedef signed short  MY_TYPE;
-#define FORMAT RTAUDIO_SINT16
-
-#include <QThread>
-#include <QTimer>
-#include <QTime>
-#include <QMap>
-
+/* Current resampler code */
 #include "resampler/speex_resampler.h"
 
+/* Potential new resampler */
+//#include <r8bbase.h>
+//#include <CDSPResampler.h>
+
+
+/* Opus */
 #ifdef Q_OS_WIN
 #include "opus.h"
 #else
 #include "opus/opus.h"
 #endif
-#include "audiotaper.h"
 
+/* Eigen */
 #ifdef Q_OS_LINUX
 #include <eigen3/Eigen/Eigen>
 #else
 #include <Eigen/Eigen>
 #endif
 
-//#include <r8bbase.h>
-//#include <CDSPResampler.h>
+/* wfview Packet types */
+#include "packettypes.h"
 
-#include <QDebug>
-
-//#define BUFFER_SIZE (32*1024)
-
-#define INTERNAL_SAMPLE_RATE 48000
+/* Logarithmic taper for volume control */
+#include "audiotaper.h"
 
 #define MULAW_BIAS 33
 #define MULAW_MAX 0x1fff
@@ -132,19 +121,12 @@ private:
     //r8b::CPtrKeeper<r8b::CDSPResampler24*>* resamps;
 
     quint16         audioLatency;
-    bool            chunkAvailable;
 
     quint32         lastSeq;
     quint32         lastSentSeq=0;
     qint64          elapsedMs = 0;
         
-    quint16         nativeSampleRate=0;
-    quint8          radioSampleBits;
-    quint8          radioChannels;
-
     int             delayedPackets=0;
-
-    QMap<quint32, audioPacket>audioBuffer;
 
     double resampleRatio;
 
@@ -153,8 +135,9 @@ private:
     quint16 currentLatency;
     float amplitude;
     qreal volume=1.0;
-    int devChannels;
+
     audioSetup setup;
+
     OpusEncoder* encoder=Q_NULLPTR;
     OpusDecoder* decoder=Q_NULLPTR;
 };
