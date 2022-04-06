@@ -95,16 +95,18 @@ public slots:
     void incomingAudio(const audioPacket data);
 
 private slots:
+    void stateChanged(QAudio::State state);
+    void clearUnderrun();
 
 signals:
     void audioMessage(QString message);
     void sendLatency(quint16 newSize);
     void haveAudioData(const QByteArray& data);
-
+    void haveLevels(quint16 amplitude,quint16 latency,quint16 current,bool under);
 
 private:
 
-
+    bool            isUnderrun = false;
     bool            isInitialized=false;
     bool            isReady = false;
     bool            audioBuffered = false;
@@ -140,6 +142,7 @@ private:
 
     OpusEncoder* encoder=Q_NULLPTR;
     OpusDecoder* decoder=Q_NULLPTR;
+    QTimer * underTimer=Q_NULLPTR;
 };
 
 

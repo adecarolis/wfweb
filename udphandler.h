@@ -43,6 +43,10 @@ struct networkStatus {
 	quint8 txAudioLevel;
 	quint16 rxLatency;
 	quint16 txLatency;
+	bool rxUnderrun;
+	bool txUnderrun;
+	quint16 rxCurrentLatency;
+	quint16 txCurrentLatency;
 	quint32 packetsSent=0;
 	quint32 packetsLost=0;
 	quint16 rtt=0;
@@ -175,8 +179,6 @@ public:
 	~udpAudio();
 
 	int audioLatency = 0;
-	quint16 getRxAmplitude();
-	quint16 getTxAmplitude();
 
 signals:
 	void haveAudioData(audioPacket data);
@@ -186,10 +188,14 @@ signals:
 
 	void haveChangeLatency(quint16 value);
 	void haveSetVolume(unsigned char value);
+	void haveRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
+	void haveTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
 
 public slots:
 	void changeLatency(quint16 value);
 	void setVolume(unsigned char value);
+	void getRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
+	void getTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
 
 private:
 
@@ -239,6 +245,8 @@ public slots:
 	void setVolume(unsigned char value);
 	void init();
 	void setCurrentRadio(quint8 radio);
+	void getRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
+	void getTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
 
 
 signals:

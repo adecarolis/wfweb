@@ -124,9 +124,11 @@ bool audioHandler::init(audioSetup setupIn)
 
 	if (setup.isinput) {
 		audioInput = new QAudioInput(setup.port, format, this);
+		connect(audioInput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
 	}
 	else {
 		audioOutput = new QAudioOutput(setup.port, format, this);
+		connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
 	}
 
 	// Setup resampler and opus if they are needed.
@@ -357,7 +359,6 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		}
 
 		currentLatency = livePacket.time.msecsTo(QTime::currentTime()) + getAudioDuration(audioOutput->bufferSize()-audioOutput->bytesFree(),format);
-
 		if (audioDevice != Q_NULLPTR) {
 			audioDevice->write(livePacket.data);
 		}
@@ -369,6 +370,8 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 
 		lastSentSeq = inPacket.seq;
 	}
+
+	emit haveLevels(getAmplitude(), setup.latency, currentLatency,isUnderrun);
 
 	return;
 }
@@ -525,6 +528,9 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			}
 		}
 	}
+
+	emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun);
+
 	return;
 
 }
@@ -555,3 +561,46 @@ quint16 audioHandler::getAmplitude()
 	return static_cast<quint16>(amplitude * 255.0);
 }
 
+
+
+void audioHandler::stateChanged(QAudio::State state)
+{
+	// Process the state
+	switch (state)
+	{
+	case QAudio::IdleState:
+	{
+		isUnderrun = true;
+		break;
+	}
+	case QAudio::ActiveState:
+	{
+		//qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio started!";
+		if (underTimer == Q_NULLPTR) {
+			underTimer = new QTimer();
+			underTimer->setSingleShot(true);
+			connect(underTimer, &QTimer::timeout, this, &audioHandler::clearUnderrun);
+			underTimer->start(500);
+		}
+		break;
+	}
+	case QAudio::SuspendedState:
+	{
+		break;
+	}
+	case QAudio::StoppedState:
+	{
+		break;
+	}
+	default: {
+	}
+	    break;
+	}
+}
+
+void audioHandler::clearUnderrun()
+{
+	isUnderrun = false;
+	delete underTimer;
+	underTimer = Q_NULLPTR;
+}
