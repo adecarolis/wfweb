@@ -58,6 +58,7 @@ int main(int argc, char *argv[])
     a.setOrganizationName("wfview");
     a.setOrganizationDomain("wfview.org");
     a.setApplicationName("wfview");
+    Qt::AA_EnableHighDpiScaling;
 
 #ifdef QT_DEBUG
     debugMode = true;
@@ -177,7 +178,6 @@ int main(int argc, char *argv[])
 #else
     a.setWheelScrollLines(1); // one line per wheel click
     wfmain w(serialPortCL, hostCL, settingsFile);
-
     w.show();
     
 #endif
