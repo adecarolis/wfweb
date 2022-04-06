@@ -186,6 +186,7 @@ void audioHandler::start()
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio device failed to start()";
 		return;
 	}
+
 }
 
 
@@ -214,9 +215,6 @@ void audioHandler::setVolume(unsigned char volume)
 
 void audioHandler::incomingAudio(audioPacket inPacket)
 {
-	// No point buffering audio until stream is actually running.
-	// Regardless of the radio stream format, the buffered audio will ALWAYS be
-	// 16bit sample interleaved stereo 48K (or whatever the native sample rate is)
 
 	audioPacket livePacket = inPacket;
 
@@ -297,8 +295,10 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 
 		/* samplesF is now an Eigen Vector of the current samples in float format */
 
+
 		// Set the max amplitude found in the vector
 		// Should it be before or after volume is applied?
+
 		amplitude = samplesF.array().abs().maxCoeff();
 		// Set the volume
 		samplesF *= volume;
@@ -398,6 +398,11 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 				VectorXuint8 samplesI = Eigen::Map<VectorXuint8>(reinterpret_cast<quint8*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(quint8)));
 				samplesF = samplesI.cast<float>() / float(std::numeric_limits<quint8>::max());;
 			}
+			else if (format.sampleType() == QAudioFormat::SignedInt && format.sampleSize() == 8)
+			{
+				VectorXint8 samplesI = Eigen::Map<VectorXint8>(reinterpret_cast<qint8*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(qint8)));
+				samplesF = samplesI.cast<float>() / float(std::numeric_limits<qint8>::max());;
+			}
 			else if (format.sampleType() == QAudioFormat::Float)
 			{
 				samplesF = Eigen::Map<Eigen::VectorXf>(reinterpret_cast<float*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(float)));
@@ -409,108 +414,115 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 			/* samplesF is now an Eigen Vector of the current samples in float format */
 
 			// Set the max amplitude found in the vector
-			amplitude = samplesF.array().abs().maxCoeff();
-			
-			// Channel count should now match the device that audio is going to (rig)
+			if (samplesF.size() > 0) {
+				amplitude = samplesF.array().abs().maxCoeff();
+				// Channel count should now match the device that audio is going to (rig)
 
-			if (resampleRatio != 1.0) {
+				if (resampleRatio != 1.0) {
 
-				// We need to resample
-				// We have a stereo 16bit stream.
-				quint32 outFrames = ((samplesF.size() / format.channelCount()) * resampleRatio);
-				quint32 inFrames = (samplesF.size() / format.channelCount());
-	
-				QByteArray outPacket(outFrames * format.channelCount() * sizeof(float), (char)0xff); // Preset the output buffer size.
-				const float* in = (float*)samplesF.data();
-				float* out = (float*)outPacket.data();
+					// We need to resample
+					// We have a stereo 16bit stream.
+					quint32 outFrames = ((samplesF.size() / format.channelCount()) * resampleRatio);
+					quint32 inFrames = (samplesF.size() / format.channelCount());
 
-				int err = 0;
-				err = wf_resampler_process_interleaved_float(resampler, in, &inFrames, out, &outFrames);
-				if (err) {
-					qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
-				}
-				samplesF = Eigen::Map<Eigen::VectorXf>(reinterpret_cast<float*>(outPacket.data()), outPacket.size() / int(sizeof(float)));
-			}
+					QByteArray outPacket(outFrames * format.channelCount() * sizeof(float), (char)0xff); // Preset the output buffer size.
+					const float* in = (float*)samplesF.data();
+					float* out = (float*)outPacket.data();
 
-			// If we need to drop one of the audio channels, do it now 
-			if (format.channelCount() == 2 && setup.format.channelCount() == 1) {
-				Eigen::VectorXf samplesTemp(samplesF.size() / 2);
-				samplesTemp = Eigen::Map<Eigen::VectorXf, 0, Eigen::InnerStride<2> >(samplesF.data(), samplesF.size() / 2);
-				samplesF = samplesTemp;
-			}
-
-			if (setup.format.sampleType() == QAudioFormat::UnSignedInt && setup.format.sampleSize() == 8)
-			{
-				Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<quint8>::max());
-				VectorXuint8 samplesI = samplesITemp.cast<quint8>();
-				livePacket.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(quint8)));
-			}
-			if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 16)
-			{
-				Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint16>::max());
-				VectorXint16 samplesI = samplesITemp.cast<qint16>();
-				livePacket.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint16)));
-			}
-			else if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 32)
-			{
-				Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint32>::max());
-				VectorXint32 samplesI = samplesITemp.cast<qint32>();
-				livePacket.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint32)));
-			}
-			else if (setup.format.sampleType() == QAudioFormat::Float)
-			{
-				livePacket.data = QByteArray(reinterpret_cast<char*>(samplesF.data()), int(samplesF.size()) * int(sizeof(float)));
-			}
-			else {
-				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported Sample Type:" << format.sampleType();
-			}
-
-			/* Need to find a floating point uLaw encoder!*/
-			if (setup.ulaw)
-			{
-				QByteArray outPacket((int)livePacket.data.length() / 2, (char)0xff);
-				qint16* in = (qint16*)livePacket.data.data();
-				for (int f = 0; f < outPacket.length(); f++)
-				{
-					qint16 sample = *in++;
-					if (setup.ulaw) {
-						int sign = (sample >> 8) & 0x80;
-						if (sign)
-							sample = (short)-sample;
-						if (sample > cClip)
-							sample = cClip;
-						sample = (short)(sample + cBias);
-						int exponent = (int)MuLawCompressTable[(sample >> 7) & 0xFF];
-						int mantissa = (sample >> (exponent + 3)) & 0x0F;
-						int compressedByte = ~(sign | (exponent << 4) | mantissa);
-						outPacket[f] = (quint8)compressedByte;
+					int err = 0;
+					err = wf_resampler_process_interleaved_float(resampler, in, &inFrames, out, &outFrames);
+					if (err) {
+						qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
 					}
+					samplesF = Eigen::Map<Eigen::VectorXf>(reinterpret_cast<float*>(outPacket.data()), outPacket.size() / int(sizeof(float)));
 				}
-				livePacket.data.clear();
-				livePacket.data = outPacket; // Copy output packet back to input buffer.
-			}
-			else if (setup.codec == 0x40 || setup.codec == 0x80)
-			{
-				//Are we using the opus codec?	
-				qint16* in = (qint16*)livePacket.data.data();
 
-				/* Encode the frame. */
-				QByteArray outPacket(1275, (char)0xff); // Preset the output buffer size to MAXIMUM possible Opus frame size
-				unsigned char* out = (unsigned char*)outPacket.data();
+				// If we need to drop one of the audio channels, do it now 
+				if (format.channelCount() == 2 && setup.format.channelCount() == 1) {
+					Eigen::VectorXf samplesTemp(samplesF.size() / 2);
+					samplesTemp = Eigen::Map<Eigen::VectorXf, 0, Eigen::InnerStride<2> >(samplesF.data(), samplesF.size() / 2);
+					samplesF = samplesTemp;
+				}
 
-				int nbBytes = opus_encode(encoder, in, (setup.format.sampleRate() / 50), out, outPacket.length());
-				if (nbBytes < 0)
+				if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 8)
 				{
-					qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encode failed:" << opus_strerror(nbBytes);
-					return;
+					Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint8>::max());
+					VectorXint8 samplesI = samplesITemp.cast<qint8>();
+					livePacket.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint8)));
+				}
+				else if (setup.format.sampleType() == QAudioFormat::UnSignedInt && setup.format.sampleSize() == 8)
+				{
+					Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<quint8>::max());
+					VectorXuint8 samplesI = samplesITemp.cast<quint8>();
+					livePacket.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(quint8)));
+				}
+				else if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 16)
+				{
+					Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint16>::max());
+					VectorXint16 samplesI = samplesITemp.cast<qint16>();
+					livePacket.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint16)));
+				}
+				else if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 32)
+				{
+					Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint32>::max());
+					VectorXint32 samplesI = samplesITemp.cast<qint32>();
+					livePacket.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint32)));
+				}
+				else if (setup.format.sampleType() == QAudioFormat::Float)
+				{
+					livePacket.data = QByteArray(reinterpret_cast<char*>(samplesF.data()), int(samplesF.size()) * int(sizeof(float)));
 				}
 				else {
-					outPacket.resize(nbBytes);
-					livePacket.data.clear();
-					livePacket.data = outPacket; // Replace incoming data with converted.
+					qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported Sample Type:" << format.sampleType();
 				}
+
+				/* Need to find a floating point uLaw encoder!*/
+				if (setup.ulaw)
+				{
+					QByteArray outPacket((int)livePacket.data.length() / 2, (char)0xff);
+					qint16* in = (qint16*)livePacket.data.data();
+					for (int f = 0; f < outPacket.length(); f++)
+					{
+						qint16 sample = *in++;
+						if (setup.ulaw) {
+							int sign = (sample >> 8) & 0x80;
+							if (sign)
+								sample = (short)-sample;
+							if (sample > cClip)
+								sample = cClip;
+							sample = (short)(sample + cBias);
+							int exponent = (int)MuLawCompressTable[(sample >> 7) & 0xFF];
+							int mantissa = (sample >> (exponent + 3)) & 0x0F;
+							int compressedByte = ~(sign | (exponent << 4) | mantissa);
+							outPacket[f] = (quint8)compressedByte;
+						}
+					}
+					livePacket.data.clear();
+					livePacket.data = outPacket; // Copy output packet back to input buffer.
+				}
+				else if (setup.codec == 0x40 || setup.codec == 0x80)
+				{
+					//Are we using the opus codec?	
+					qint16* in = (qint16*)livePacket.data.data();
+
+					/* Encode the frame. */
+					QByteArray outPacket(1275, (char)0xff); // Preset the output buffer size to MAXIMUM possible Opus frame size
+					unsigned char* out = (unsigned char*)outPacket.data();
+
+					int nbBytes = opus_encode(encoder, in, (setup.format.sampleRate() / 50), out, outPacket.length());
+					if (nbBytes < 0)
+					{
+						qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encode failed:" << opus_strerror(nbBytes);
+						return;
+					}
+					else {
+						outPacket.resize(nbBytes);
+						livePacket.data.clear();
+						livePacket.data = outPacket; // Replace incoming data with converted.
+					}
+				}
+				ret = livePacket.data;
 			}
-			ret = livePacket.data;
 		}
 	}
 	return;

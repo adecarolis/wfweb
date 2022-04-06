@@ -20,7 +20,7 @@ DEFINES += BUILD_WFSERVER
 CONFIG(debug, release|debug) {
 # For Debug builds only:
 QMAKE_CXXFLAGS += -faligned-new
-WIN32:DESTDIR = wfview-release
+WIN32:DESTDIR = wfview-debug
 
 } else {
 # For Release builds only:
@@ -29,7 +29,7 @@ QMAKE_CXXFLAGS += -fvisibility=hidden
 QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
 QMAKE_CXXFLAGS += -faligned-new
 linux:QMAKE_LFLAGS += -O2 -s
-WIN32:DESTDIR = wfview-debug
+WIN32:DESTDIR = wfview-release
 }
 
 # The following define makes your compiler emit warnings if you use
