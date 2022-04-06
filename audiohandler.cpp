@@ -166,7 +166,12 @@ bool audioHandler::init(audioSetup setupIn)
 
     qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "thread id" << QThread::currentThreadId();
 
+	underTimer = new QTimer();
+	underTimer->setSingleShot(true);
+	connect(underTimer, &QTimer::timeout, this, &audioHandler::clearUnderrun);
+
 	this->start();
+
 	return true;
 }
 
@@ -571,15 +576,15 @@ void audioHandler::stateChanged(QAudio::State state)
 	case QAudio::IdleState:
 	{
 		isUnderrun = true;
+		if (underTimer->isActive()) {
+			underTimer->stop();
+		}
 		break;
 	}
 	case QAudio::ActiveState:
 	{
 		//qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio started!";
-		if (underTimer == Q_NULLPTR) {
-			underTimer = new QTimer();
-			underTimer->setSingleShot(true);
-			connect(underTimer, &QTimer::timeout, this, &audioHandler::clearUnderrun);
+		if (!underTimer->isActive()) {
 			underTimer->start(500);
 		}
 		break;
@@ -601,6 +606,5 @@ void audioHandler::stateChanged(QAudio::State state)
 void audioHandler::clearUnderrun()
 {
 	isUnderrun = false;
-	delete underTimer;
-	underTimer = Q_NULLPTR;
+	underTimer->stop();
 }

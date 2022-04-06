@@ -142,7 +142,7 @@ private:
 
     OpusEncoder* encoder=Q_NULLPTR;
     OpusDecoder* decoder=Q_NULLPTR;
-    QTimer * underTimer=Q_NULLPTR;
+    QTimer* underTimer;
 };
 
 
