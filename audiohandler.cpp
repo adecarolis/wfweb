@@ -400,12 +400,8 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 {
 	audioPacket livePacket;
 	livePacket.sent = 0;
-	// Don't start sending until we have setup.latency of audio buffered
-	if (audioDevice->bytesAvailable() < format.bytesForDuration((setup.latency*1000)))
-	{
-		return;
-	}
-	if (audioDevice != Q_NULLPTR) {
+	// Don't start sending until we have at least 1/2 of setup.latency of audio buffered
+	if (audioDevice != Q_NULLPTR && audioDevice->bytesAvailable() > format.bytesForDuration(setup.latency * 500)) {
 		livePacket.data = audioDevice->read(format.bytesForDuration(20000)); // 20000uS is 20ms in NATIVE format.
 		if (livePacket.data.length() > 0)
 		{
