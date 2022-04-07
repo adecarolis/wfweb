@@ -153,7 +153,7 @@ bool audioHandler::init(audioSetup setupIn)
 		resampler = wf_resampler_init(format.channelCount(), setup.format.sampleRate(), format.sampleRate(), setup.resampleQuality, &resample_error);
 		if (setup.codec == 0x40 || setup.codec == 0x80) {
 			// Opus codec
-			decoder = opus_decoder_create(setup.format.sampleRate(), setup.format.sampleRate(), &opus_err);
+			decoder = opus_decoder_create(setup.format.sampleRate(), setup.format.channelCount(), &opus_err);
 			qInfo(logAudio()) << "Creating opus decoder: " << opus_strerror(opus_err);
 		}
 	}
@@ -224,47 +224,6 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 {
 
 	audioPacket livePacket = inPacket;
-
-	if (setup.codec == 0x40 || setup.codec == 0x80) {
-		/* Opus data */
-		unsigned char* in = (unsigned char*)inPacket.data.data();
-
-		/* Decode the frame. */
-		QByteArray outPacket((setup.format.sampleRate() / 50) *  sizeof(qint16) * setup.format.channelCount(), (char)0xff); // Preset the output buffer size.
-		qint16* out = (qint16*)outPacket.data();
-		int nSamples = opus_packet_get_nb_samples(in, livePacket.data.size(),setup.format.sampleRate());
-		if (nSamples == -1) {
-			// No opus data yet?
-			return;
-		} 
-		else if (nSamples != setup.format.sampleRate() / 50)
-		{
-			qDebug(logAudio()) << "Opus nSamples=" << nSamples << " expected:" << (setup.format.sampleRate() / 50);
-			return;
-		}
-		if (livePacket.seq > lastSentSeq + 1) {
-			nSamples = opus_decode(decoder, in, livePacket.data.size(), out, (setup.format.sampleRate() / 50), 1);
-		}
-		else {
-			nSamples = opus_decode(decoder, in, livePacket.data.size(), out, (setup.format.sampleRate() / 50), 0);
-		}
-		if (nSamples < 0)
-		{
-			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decode failed:" << opus_strerror(nSamples) << "packet size" << livePacket.data.length();
-			return;
-		}
-		else {
-			if (int(nSamples * sizeof(qint16) * setup.format.channelCount()) != outPacket.size())
-			{
-				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoder mismatch: nBytes:" << nSamples * sizeof(qint16) * setup.format.channelCount() << "outPacket:" << outPacket.size();
-				outPacket.resize(nSamples * sizeof(qint16) * setup.format.channelCount());
-			}
-			//qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << livePacket.data.size() << "bytes, into" << outPacket.length() << "bytes";
-			livePacket.data.clear();
-			livePacket.data = outPacket; // Replace incoming data with converted.
-		}
-	}
-
 	// Process uLaw.
 	if (setup.ulaw)
 	{
@@ -281,6 +240,47 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	}
 
 
+		/* Opus data */
+	if (setup.codec == 0x40 || setup.codec == 0x80) {
+		unsigned char* in = (unsigned char*)inPacket.data.data();
+
+		//Decode the frame.
+		QByteArray outPacket((setup.format.sampleRate() / 50) *  sizeof(float) * setup.format.channelCount(), (char)0xff); // Preset the output buffer size.
+		float* out = (float*)outPacket.data();
+		int nSamples = opus_packet_get_nb_samples(in, livePacket.data.size(),setup.format.sampleRate());
+		if (nSamples == -1) {
+			// No opus data yet?
+			return;
+		}
+		else if (nSamples != setup.format.sampleRate() / 50)
+		{
+			qDebug(logAudio()) << "Opus nSamples=" << nSamples << " expected:" << (setup.format.sampleRate() / 50);
+			return;
+		}
+		if (livePacket.seq > lastSentSeq + 1) {
+			nSamples = opus_decode_float(decoder, Q_NULLPTR,0, out, (setup.format.sampleRate() / 50), 1);
+		}
+		else {
+			nSamples = opus_decode_float(decoder, in, livePacket.data.size(), out, (setup.format.sampleRate() / 50), 0);
+		}
+		if (nSamples < 0)
+		{
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decode failed:" << opus_strerror(nSamples) << "packet size" << livePacket.data.length();
+			return;
+		}
+		else {
+			if (int(nSamples * sizeof(float) * setup.format.channelCount()) != outPacket.size())
+			{
+				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoder mismatch: nBytes:" << nSamples * sizeof(float) * setup.format.channelCount() << "outPacket:" << outPacket.size();
+				outPacket.resize(nSamples * sizeof(float) * setup.format.channelCount());
+			}
+			//qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decoded" << livePacket.data.size() << "bytes, into" << outPacket.length() << "bytes";
+			livePacket.data.clear();
+			livePacket.data = outPacket; // Replace incoming data with converted.
+		}
+		setup.format.setSampleType(QAudioFormat::Float);
+	}
+
 
 	if (!livePacket.data.isEmpty()) {
 
@@ -295,7 +295,11 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			VectorXuint8 samplesI = Eigen::Map<VectorXuint8>(reinterpret_cast<quint8*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(quint8)));
 			samplesF = samplesI.cast<float>() / float(std::numeric_limits<quint8>::max());;
 		}
-		else {
+		else if (setup.format.sampleType() == QAudioFormat::Float) {
+			samplesF = Eigen::Map<Eigen::VectorXf>(reinterpret_cast<float*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(float)));
+		}
+		else
+		{ 
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported Sample Type:" << format.sampleType();
 		}
 
@@ -330,7 +334,13 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			float* out = (float*)outPacket.data();
 
 			int err = 0;
-			err = wf_resampler_process_interleaved_float(resampler, in, &inFrames, out, &outFrames);
+			if (format.channelCount() == 1) {
+				err = wf_resampler_process_float(resampler, 0, in, &inFrames, out, &outFrames);
+			}
+			else {
+				err = wf_resampler_process_interleaved_float(resampler, in, &inFrames, out, &outFrames);
+			}
+
 			if (err) {
 				qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
 			}
@@ -438,7 +448,12 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 					float* out = (float*)outPacket.data();
 
 					int err = 0;
-					err = wf_resampler_process_interleaved_float(resampler, in, &inFrames, out, &outFrames);
+					if (format.channelCount() == 1) {
+						err = wf_resampler_process_float(resampler, 0, in, &inFrames, out, &outFrames);
+					}
+					else {
+						err = wf_resampler_process_interleaved_float(resampler, in, &inFrames, out, &outFrames);
+					}
 					if (err) {
 						qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Resampler error " << err << " inFrames:" << inFrames << " outFrames:" << outFrames;
 					}
