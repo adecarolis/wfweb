@@ -83,9 +83,13 @@ bool audioHandler::init(audioSetup setupIn)
 		setup.format.setChannelCount(2);
 	}
 
-	if (setup.codec == 0x04 || setup.codec == 0x10 || setup.codec == 0x40 || setup.codec == 0x80) {
+	if (setup.codec == 0x04 || setup.codec == 0x10) {
 		setup.format.setSampleSize(16);
 		setup.format.setSampleType(QAudioFormat::SignedInt);
+	}
+
+	if (setup.codec == 0x40 || setup.codec == 0x80) {
+		setup.format.setSampleType(QAudioFormat::Float);
 	}
 
 	qDebug(logAudio()) << "Creating" << (setup.isinput ? "Input" : "Output") << "audio device:" << setup.name <<
@@ -245,23 +249,23 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		unsigned char* in = (unsigned char*)inPacket.data.data();
 
 		//Decode the frame.
-		QByteArray outPacket((setup.format.sampleRate() / 50) *  sizeof(float) * setup.format.channelCount(), (char)0xff); // Preset the output buffer size.
+		QByteArray outPacket((getAudioSize(20, setup.format)) *  sizeof(float) * setup.format.channelCount(), (char)0xff); // Preset the output buffer size.
 		float* out = (float*)outPacket.data();
 		int nSamples = opus_packet_get_nb_samples(in, livePacket.data.size(),setup.format.sampleRate());
 		if (nSamples == -1) {
 			// No opus data yet?
 			return;
 		}
-		else if (nSamples != setup.format.sampleRate() / 50)
+		else if (nSamples != getAudioSize(20, setup.format))
 		{
-			qDebug(logAudio()) << "Opus nSamples=" << nSamples << " expected:" << (setup.format.sampleRate() / 50);
-			return;
+			qDebug(logAudio()) << "Opus nSamples=" << nSamples << " expected:" << (getAudioSize(20, setup.format));
+			//return;
 		}
 		if (livePacket.seq > lastSentSeq + 1) {
-			nSamples = opus_decode_float(decoder, Q_NULLPTR,0, out, (setup.format.sampleRate() / 50), 1);
+			nSamples = opus_decode_float(decoder, Q_NULLPTR,0, out, getAudioSize(20, setup.format), 1);
 		}
 		else {
-			nSamples = opus_decode_float(decoder, in, livePacket.data.size(), out, (setup.format.sampleRate() / 50), 0);
+			nSamples = opus_decode_float(decoder, in, livePacket.data.size(), out, (getAudioSize(20, setup.format)), 0);
 		}
 		if (nSamples < 0)
 		{
@@ -397,7 +401,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 	audioPacket livePacket;
 	livePacket.sent = 0;
 	if (audioDevice != Q_NULLPTR) {
-		livePacket.data = audioDevice->readAll();
+		livePacket.data = audioDevice->read(setup.format.bytesForDuration(20000)); // 20000uS is 20ms
 		if (livePacket.data.length() > 0)
 		{
 			Eigen::VectorXf samplesF;
