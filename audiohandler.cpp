@@ -401,7 +401,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 	audioPacket livePacket;
 	livePacket.sent = 0;
 	if (audioDevice != Q_NULLPTR) {
-		livePacket.data = audioDevice->read(setup.format.bytesForDuration(20000)); // 20000uS is 20ms
+		livePacket.data = audioDevice->read(format.bytesForDuration(20000)); // 20000uS is 20ms in NATIVE format.
 		if (livePacket.data.length() > 0)
 		{
 			Eigen::VectorXf samplesF;
@@ -484,7 +484,7 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 					int nbBytes = opus_encode_float(encoder, in, (samplesF.size()/setup.format.channelCount()), out, outPacket.length());
 					if (nbBytes < 0)
 					{
-						qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encode failed:" << opus_strerror(nbBytes);
+						qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encode failed:" << opus_strerror(nbBytes) << "Num Samples:" << samplesF.size();
 						return;
 					}
 					else {
