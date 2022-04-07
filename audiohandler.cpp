@@ -249,24 +249,22 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		unsigned char* in = (unsigned char*)inPacket.data.data();
 
 		//Decode the frame.
-		QByteArray outPacket((960) *  sizeof(float) * setup.format.channelCount(), (char)0xff); // Preset the output buffer size.
-		float* out = (float*)outPacket.data();
 		int nSamples = opus_packet_get_nb_samples(in, livePacket.data.size(),setup.format.sampleRate());
 		if (nSamples == -1) {
 			// No opus data yet?
 			return;
 		}
-		else if (nSamples != 960)
-		{
-			qDebug(logAudio()) << "Opus nSamples=" << nSamples << " expected:" << 960;
-			//return;
-		}
+
+		QByteArray outPacket(nSamples*sizeof(float)*setup.format.channelCount(), (char)0xff); // Preset the output buffer size.
+		float* out = (float*)outPacket.data();
+
 		if (livePacket.seq > lastSentSeq + 1) {
-			nSamples = opus_decode_float(decoder, Q_NULLPTR,0, out, 960, 1);
+			nSamples = opus_decode_float(decoder, Q_NULLPTR,0, out, nSamples, 1);
 		}
 		else {
-			nSamples = opus_decode_float(decoder, in, livePacket.data.size(), out, 960, 0);
+			nSamples = opus_decode_float(decoder, in, livePacket.data.size(), out, nSamples, 0);
 		}
+
 		if (nSamples < 0)
 		{
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus decode failed:" << opus_strerror(nSamples) << "packet size" << livePacket.data.length();
@@ -401,7 +399,8 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 	audioPacket livePacket;
 	livePacket.sent = 0;
 	// Don't start sending until we have at least 1/2 of setup.latency of audio buffered
-	if (audioInput != Q_NULLPTR && audioDevice != Q_NULLPTR && audioInput->bytesReady() > format.bytesForDuration(setup.latency)) {
+	// For some reason the audioDevice->bytesAvailable() function always returns 0?
+	if (audioInput != Q_NULLPTR && audioDevice != Q_NULLPTR && audioInput->bytesReady() > format.bytesForDuration(setup.latency*500)) {
 		livePacket.data = audioDevice->read(format.bytesForDuration(20000)); // 20000uS is 20ms in NATIVE format.
 		if (livePacket.data.length() > 0)
 		{
