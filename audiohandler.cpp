@@ -467,6 +467,29 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 					samplesF = samplesTemp;
 				}
 
+
+				if (setup.codec == 0x40 || setup.codec == 0x80)
+				{
+					//Are we using the opus codec?	
+					float* in = (float*)samplesF.data();
+
+					/* Encode the frame. */
+					QByteArray outPacket(1275, (char)0xff); // Preset the output buffer size to MAXIMUM possible Opus frame size
+					unsigned char* out = (unsigned char*)outPacket.data();
+
+					int nbBytes = opus_encode_float(encoder, in, (samplesF.size()/setup.format.channelCount()), out, outPacket.length());
+					if (nbBytes < 0)
+					{
+						qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encode failed:" << opus_strerror(nbBytes);
+						return;
+					}
+					else {
+						outPacket.resize(nbBytes);
+						samplesF = Eigen::Map<Eigen::VectorXf>(reinterpret_cast<float*>(outPacket.data()), outPacket.size() / int(sizeof(float)));
+					}
+				}
+
+
 				if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 8)
 				{
 					Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint8>::max());
@@ -522,27 +545,6 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 					}
 					livePacket.data.clear();
 					livePacket.data = outPacket; // Copy output packet back to input buffer.
-				}
-				else if (setup.codec == 0x40 || setup.codec == 0x80)
-				{
-					//Are we using the opus codec?	
-					qint16* in = (qint16*)livePacket.data.data();
-
-					/* Encode the frame. */
-					QByteArray outPacket(1275, (char)0xff); // Preset the output buffer size to MAXIMUM possible Opus frame size
-					unsigned char* out = (unsigned char*)outPacket.data();
-
-					int nbBytes = opus_encode(encoder, in, (setup.format.sampleRate() / 50), out, outPacket.length());
-					if (nbBytes < 0)
-					{
-						qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Opus encode failed:" << opus_strerror(nbBytes);
-						return;
-					}
-					else {
-						outPacket.resize(nbBytes);
-						livePacket.data.clear();
-						livePacket.data = outPacket; // Replace incoming data with converted.
-					}
 				}
 				ret = livePacket.data;
 			}
