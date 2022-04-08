@@ -400,8 +400,13 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 	livePacket.sent = 0;
 	// Don't start sending until we have at least 1/2 of setup.latency of audio buffered
 	// For some reason the audioDevice->bytesAvailable() function always returns 0?
-	if (audioInput != Q_NULLPTR && audioDevice != Q_NULLPTR && audioInput->bytesReady() > format.bytesForDuration(setup.latency*500)) {
-		livePacket.data = audioDevice->read(format.bytesForDuration(20000)); // 20000uS is 20ms in NATIVE format.
+	if (audioInput != Q_NULLPTR && audioDevice != Q_NULLPTR && audioInput->bytesReady() > format.bytesForDuration(setup.latency)) {
+		if (setup.codec == 0x40 || setup.codec == 0x80) {
+			livePacket.data = audioDevice->read(format.bytesForDuration(20000)); // 20000uS is 20ms in NATIVE format.
+		}
+		else {
+			livePacket.data = audioDevice->readAll(); // 20000uS is 20ms in NATIVE format.
+		}
 		if (livePacket.data.length() > 0)
 		{
 			Eigen::VectorXf samplesF;
