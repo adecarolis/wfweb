@@ -89,7 +89,7 @@ void servermain::openRig()
         {
             //qInfo(logSystem()) << "Got rig";
             QMetaObject::invokeMethod(radio->rig, [=]() {
-                radio->rig->commSetup(radio->civAddr, radio->serialPort, radio->baudRate, QString("none"));
+                radio->rig->commSetup(radio->civAddr, radio->serialPort, radio->baudRate, QString("none"),prefs.tcpPort);
             }, Qt::QueuedConnection);
         }
     }
@@ -115,8 +115,6 @@ void servermain::makeRig()
             connect(radio->rig, SIGNAL(haveStatusUpdate(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
 
             // Rig comm setup:
-            //connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)), radio->rig, SLOT(commSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString)));
-            //connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32, QString)), radio->rig, SLOT(commSetup(unsigned char, QString, quint32, QString)));
             connect(this, SIGNAL(setRTSforPTT(bool)), radio->rig, SLOT(setRTSforPTT(bool)));
 
             connect(radio->rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
@@ -420,6 +418,7 @@ void servermain::setDefPrefs()
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.serialPortBaud = 115200;
     defPrefs.localAFgain = 255;
+    defPrefs.tcpPort = 0;
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
