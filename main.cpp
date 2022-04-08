@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
     a.setOrganizationName("wfview");
     a.setOrganizationDomain("wfview.org");
     a.setApplicationName("wfview");
-    Qt::AA_EnableHighDpiScaling;
+    a.setAttribute(Qt::AA_EnableHighDpiScaling);
 
 #ifdef QT_DEBUG
     debugMode = true;
