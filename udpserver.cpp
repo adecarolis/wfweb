@@ -908,10 +908,8 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                         if (current->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                         {
 
-                            for (quint16 f = current->rxSeqBuf.lastKey() + 1; f < in->seq; f++)
+                            for (quint16 f = current->rxSeqBuf.lastKey() + 1; f <= in->seq; f++)
                             {
-
-                                qInfo(logUdpServer()) << "Detected missing packet" << f;
 
                                 if (current->rxSeqBuf.size() > BUFSIZE)
                                 {
@@ -919,9 +917,12 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                                 }
                                 current->rxSeqBuf.insert(f, QTime::currentTime());
 
-                                if (!current->rxMissing.contains(f))
-                                {
-                                    current->rxMissing.insert(f, 0);
+                                if (f != in->seq) {
+                                    qInfo(logUdpServer()) << "Detected missing packet" << f;
+                                    if (!current->rxMissing.contains(f))
+                                    {
+                                        current->rxMissing.insert(f, 0);
+                                    }
                                 }
                             }
                             current->missMutex.unlock();
