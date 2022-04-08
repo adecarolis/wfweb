@@ -1246,17 +1246,21 @@ void udpBase::dataReceived(QByteArray r)
                 rxSeqBuf.erase(rxSeqBuf.begin());
             }
             rxSeqBuf.insert(in->seq, QTime::currentTime());
-        } 
+        }
         else
         {
-            if (in->seq < rxSeqBuf.firstKey())
+            if (in->seq < rxSeqBuf.firstKey() || in->seq - rxSeqBuf.lastKey() > MAX_MISSING)
             {
-                qInfo(logUdp()) << this->metaObject()->className() << ": ******* seq number has rolled over ****** previous highest: " << hex << rxSeqBuf.lastKey() << " current: " << hex << in->seq;
+                qInfo(logUdp()) << this->metaObject()->className() << "Large seq number gap detected, previous highest: " << hex << rxSeqBuf.lastKey() << " current: " << hex << in->seq;
                 //seqPrefix++;
                 // Looks like it has rolled over so clear buffer and start again.
                 rxSeqBuf.clear();
-                rxMissing.clear();
+                // Add this packet to the incoming buffer
+                rxSeqBuf.insert(in->seq, QTime::currentTime());
                 rxBufferMutex.unlock();
+                missingMutex.lock();
+                rxMissing.clear();
+                missingMutex.unlock();
                 return;
             }
 
@@ -1268,6 +1272,7 @@ void udpBase::dataReceived(QByteArray r)
                     // We are likely missing packets then!
                     missingMutex.lock();
                     //int missCounter = 0;
+                    // Sanity check!
                     for (quint16 f = rxSeqBuf.lastKey() + 1; f < in->seq; f++)
                     {
                         if (rxSeqBuf.size() > BUFSIZE)
