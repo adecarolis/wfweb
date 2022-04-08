@@ -67,12 +67,16 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     loadSettings(); // Look for saved preferences
     setTuningSteps(); // TODO: Combine into preferences
 
+    qDebug(logSystem()) << "Running setUIToPrefs()";
     setUIToPrefs();
 
+    qDebug(logSystem()) << "Running setInititalTiming()";
     setInitialTiming();
 
+    qDebug(logSystem()) << "Running openRig()";
     openRig();
 
+    qDebug(logSystem()) << "Running rigConnections()";
     rigConnections();
 
 /*    if (serverConfig.enabled && udp != Q_NULLPTR) {
@@ -1155,6 +1159,7 @@ void wfmain::setAudioDevicesUI()
 
 // If no external library is configured, use QTMultimedia
     // Enumerate audio devices, need to do before settings are loaded.
+    qDebug(logSystem()) << "Finding audio input devices";
     const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
     for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
 #ifdef Q_OS_WIN
@@ -1164,9 +1169,11 @@ void wfmain::setAudioDevicesUI()
             ui->serverTXAudioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
 #ifdef Q_OS_WIN
         }
+
 #endif
     }
 
+    qDebug(logSystem()) << "Finding audio output devices";
     const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
     for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
 #ifdef Q_OS_WIN
@@ -1179,10 +1186,12 @@ void wfmain::setAudioDevicesUI()
 #endif
     }
     // Set these to default audio devices initially.
+    qDebug(logSystem()) << "Audio devices done.";
     rxSetup.port = QAudioDeviceInfo::defaultOutputDevice();
     txSetup.port = QAudioDeviceInfo::defaultInputDevice();
-    serverRxSetup.port = QAudioDeviceInfo::defaultInputDevice();
-    serverTxSetup.port = QAudioDeviceInfo::defaultOutputDevice();
+    serverRxSetup.port = txSetup.port;
+    serverTxSetup.port = rxSetup.port;
+    qDebug(logSystem()) << "Audio set to default device initially";
 #endif
 }
 
