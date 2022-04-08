@@ -1269,18 +1269,19 @@ void udpBase::dataReceived(QByteArray r)
                 // Add incoming packet to the received buffer and if it is in the missing buffer, remove it.
 
                 if (in->seq > rxSeqBuf.lastKey() + 1) {
+                    qInfo(logUdp()) << this->metaObject()->className() << "1 or more missing packets detected, previous: " << hex << rxSeqBuf.lastKey() << " current: " << hex << in->seq;
                     // We are likely missing packets then!
                     missingMutex.lock();
                     //int missCounter = 0;
                     // Sanity check!
-                    for (quint16 f = rxSeqBuf.lastKey() + 1; f < in->seq; f++)
+                    for (quint16 f = rxSeqBuf.lastKey() + 1; f <= in->seq; f++)
                     {
                         if (rxSeqBuf.size() > BUFSIZE)
                         {
                             rxSeqBuf.erase(rxSeqBuf.begin());
                         }
                         rxSeqBuf.insert(f, QTime::currentTime());
-                        if (!rxMissing.contains(f))
+                        if (f != in->seq && !rxMissing.contains(f))
                         {
                             rxMissing.insert(f, 0);
                         }
