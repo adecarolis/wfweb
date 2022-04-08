@@ -36,7 +36,7 @@
 #endif
 
 /* Eigen */
-#ifdef Q_OS_LINUX
+#ifndef Q_OS_WIN
 #include <eigen3/Eigen/Eigen>
 #else
 #include <Eigen/Eigen>

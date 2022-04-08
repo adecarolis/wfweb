@@ -151,8 +151,8 @@ macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 
 !linux:INCLUDEPATH += ../opus/include
 
-!linux:INCLUDEPATH += ../eigen
-!linux:INCLUDEPATH += ../r8brain-free-src
+win32:INCLUDEPATH += ../eigen
+win32:INCLUDEPATH += ../r8brain-free-src
 
 INCLUDEPATH += resampler
 
