@@ -1219,14 +1219,14 @@ void udpBase::dataReceived(QByteArray r)
             quint16 seq = (quint8)r[i] | (quint8)r[i + 1] << 8;
             QMap<quint16, SEQBUFENTRY>::iterator match = txSeqBuf.find(seq);
             if (match == txSeqBuf.end()) {
-                qDebug(logUdp()) << this->metaObject()->className() << ": Requested packet " << hex << seq << " not found";
+                qDebug(logUdp()) << this->metaObject()->className() << ": Remote requested packet " << hex << seq << " not found";
                 // Just send idle packet.
                 sendControl(false, 0, seq);
             }
             else {
                 // Found matching entry?
                 // Send "untracked" as it has already been sent once.
-                qDebug(logUdp()) << this->metaObject()->className() << ": Sending retransmit (range) of " << hex << match->seqNum;
+                qDebug(logUdp()) << this->metaObject()->className() << ": Remote has requested retransmit of " << hex << match->seqNum;
                 match->retransmitCount++;
                 udpMutex.lock();
                 udp->writeDatagram(match->data, radioIP, port);
