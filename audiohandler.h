@@ -153,7 +153,7 @@ static inline qint64 getAudioSize(qint64 timeInMs, const QAudioFormat& format)
 #ifdef Q_OS_LINUX
     qint64 value = qint64(qCeil(format.channelCount() * (format.sampleSize() / 8) * format.sampleRate() / qreal(1000) * timeInMs));
 #else
-    qint64 value = qint64(qCeil(format.channelCount() * (format.sampleSize() / 8) * format.sampleRate() / qreal(10000) * timeInMs));
+    qint64 value = qint64(qCeil(format.channelCount() * (format.sampleSize() / 8) * format.sampleRate() / qreal(1000) * timeInMs));
 #endif
 
 
