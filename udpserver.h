@@ -96,6 +96,7 @@ public slots:
 	void dataForServer(QByteArray);
 	void receiveAudioData(const audioPacket &data);
 	void receiveRigCaps(rigCapabilities caps);
+	void sendRxAudio(const audioPacket &audio);
 
 signals:
 	void haveDataFromServer(QByteArray);
@@ -184,7 +185,6 @@ private:
 	void sendStatus(CLIENT* c);
 	void sendRetransmitRequest(CLIENT* c);
 	void watchdog();
-	void sendRxAudio();
 	void deleteConnection(QList<CLIENT*> *l, CLIENT* c);
 
 	SERVERCONFIG config;

@@ -31,6 +31,12 @@ audioHandler::~audioHandler()
 		audioOutput = Q_NULLPTR;
 	}
 
+	if (audioTimer != Q_NULLPTR) {
+		audioTimer->stop();
+		delete audioTimer;
+		audioTimer = Q_NULLPTR;
+	}
+
 
 	if (resampler != Q_NULLPTR) {
 		speex_resampler_destroy(resampler);
@@ -128,6 +134,11 @@ bool audioHandler::init(audioSetup setupIn)
 
 	if (setup.isinput) {
 		audioInput = new QAudioInput(setup.port, format, this);
+		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Starting audio timer";
+		audioTimer = new QTimer();
+		audioTimer->setTimerType(Qt::PreciseTimer);
+		connect(audioTimer, &QTimer::timeout, this, &audioHandler::getNextAudioChunk);
+
 		connect(audioInput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
 	}
 	else {
@@ -186,6 +197,7 @@ void audioHandler::start()
 	if (setup.isinput) {
 		audioDevice = audioInput->start();
 		connect(audioInput, &QAudioOutput::destroyed, audioDevice, &QIODevice::deleteLater, Qt::UniqueConnection);
+		audioTimer->start(setup.blockSize);
 	}
 	else {
 		// Buffer size must be set before audio is started.
@@ -394,19 +406,17 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 }
 
 
-void audioHandler::getNextAudioChunk(QByteArray& ret)
+void audioHandler::getNextAudioChunk()
 {
 	audioPacket livePacket;
+	livePacket.time= QTime::currentTime();
 	livePacket.sent = 0;
-	// Don't start sending until we have at least 1/2 of setup.latency of audio buffered
-	// For some reason the audioDevice->bytesAvailable() function always returns 0?
-	if (audioInput != Q_NULLPTR && audioDevice != Q_NULLPTR && audioInput->bytesReady() > format.bytesForDuration(setup.latency)) {
-		if (setup.codec == 0x40 || setup.codec == 0x80) {
-			livePacket.data = audioDevice->read(format.bytesForDuration(20000)); // 20000uS is 20ms in NATIVE format.
-		}
-		else {
-			livePacket.data = audioDevice->readAll(); // 20000uS is 20ms in NATIVE format.
-		}
+	memcpy(&livePacket.guid, setup.guid, GUIDLEN);
+
+	if (audioInput != Q_NULLPTR && audioDevice != Q_NULLPTR) { 
+
+		livePacket.data = audioDevice->readAll();
+
 		if (livePacket.data.length() > 0)
 		{
 			Eigen::VectorXf samplesF;
@@ -555,12 +565,13 @@ void audioHandler::getNextAudioChunk(QByteArray& ret)
 					livePacket.data.clear();
 					livePacket.data = outPacket; // Copy output packet back to input buffer.
 				}
-				ret = livePacket.data;
+				emit haveAudioData(livePacket);
+				//ret = livePacket.data;
 			}
 		}
+		emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun);
 	}
 
-	emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun);
 
 	return;
 

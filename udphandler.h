@@ -196,6 +196,7 @@ public slots:
 	void setVolume(unsigned char value);
 	void getRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
 	void getTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
+	void receiveAudioData(audioPacket audio);
 
 private:
 
@@ -211,7 +212,7 @@ private:
 	audioHandler* txaudio = Q_NULLPTR;
 	QThread* txAudioThread = Q_NULLPTR;
 
-	QTimer* txAudioTimer=Q_NULLPTR;
+	QTimer* txAudioTimer = Q_NULLPTR;
 	bool enableTx = true;
 
 	QMutex audioMutex;

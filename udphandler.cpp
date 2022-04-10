@@ -826,17 +826,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     
     txSetup.format.setChannelCount(1); // TX Audio is always single channel.
 
-    txaudio = new audioHandler();
-    txAudioThread = new QThread(this);
 
-    txaudio->moveToThread(txAudioThread);
-    
-    txAudioThread->start(QThread::TimeCriticalPriority);
-
-    connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
-    connect(txaudio, SIGNAL(haveLevels(quint16, quint16, quint16, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, bool)));
-
-    connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
 
     sendControl(false, 0x03, 0x00); // First connect packet
 
@@ -845,6 +835,18 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     pingTimer->start(PING_PERIOD); // send ping packets every 100ms
 
     if (enableTx) {
+        txaudio = new audioHandler();
+        txAudioThread = new QThread(this);
+
+        txaudio->moveToThread(txAudioThread);
+
+        txAudioThread->start(QThread::TimeCriticalPriority);
+
+        connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
+        connect(txaudio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+        connect(txaudio, SIGNAL(haveLevels(quint16, quint16, quint16, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, bool)));
+
+        connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
         emit setupTxAudio(txSetup);
     }
 
@@ -853,10 +855,6 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     watchdogTimer = new QTimer();
     connect(watchdogTimer, &QTimer::timeout, this, &udpAudio::watchdog);
     watchdogTimer->start(WATCHDOG_PERIOD);
-
-    txAudioTimer = new QTimer();
-    txAudioTimer->setTimerType(Qt::PreciseTimer);
-    connect(txAudioTimer, &QTimer::timeout, this, &udpAudio::sendTxAudio);
 
     areYouThereTimer = new QTimer();
     connect(areYouThereTimer, &QTimer::timeout, this, std::bind(&udpBase::sendControl, this, false, 0x03, 0));
@@ -887,13 +885,6 @@ udpAudio::~udpAudio()
         watchdogTimer->stop();
         delete watchdogTimer;
         watchdogTimer = Q_NULLPTR;
-    }
-
-    if (txAudioTimer != Q_NULLPTR)
-    {
-        qDebug(logUdp()) << "Stopping txaudio timer";
-        txAudioTimer->stop();
-        delete txAudioTimer;
     }
 
     if (rxAudioThread != Q_NULLPTR) {
@@ -935,44 +926,41 @@ void udpAudio::sendTxAudio()
     if (txaudio == Q_NULLPTR) {
         return;
     }
-    QByteArray audio;
-    if (audioMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
-    {
-        txaudio->getNextAudioChunk(audio);
-        // Now we have the next audio chunk, we can release the mutex.
-        audioMutex.unlock();
 
-        if (audio.length() > 0) {
-            int counter = 1;
-            int len = 0;
+}
 
-            while (len < audio.length()) {
-                QByteArray partial = audio.mid(len, 1364);
-                audio_packet p;
-                memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
-                p.len = sizeof(p) + partial.length();
-                p.sentid = myId;
-                p.rcvdid = remoteId;
-                if (partial.length() == 0xa0) {
-                    p.ident = 0x9781;
-                }
-                else {
-                    p.ident = 0x0080; // TX audio is always this?
-                }
-                p.datalen = (quint16)qToBigEndian((quint16)partial.length());
-                p.sendseq = (quint16)qToBigEndian((quint16)sendAudioSeq); // THIS IS BIG ENDIAN!
-                QByteArray tx = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
-                tx.append(partial);
-                len = len + partial.length();
-                //qInfo(logUdp()) << "Sending audio packet length: " << tx.length();
-                sendTrackedPacket(tx);
-                sendAudioSeq++;
-                counter++;
-            }
-        }
+void udpAudio::receiveAudioData(audioPacket audio) {
+    // I really can't see how this could be possible but a quick sanity check!
+    if (txaudio == Q_NULLPTR) {
+        return;
     }
-    else {
-        qInfo(logUdpServer()) << "Unable to lock mutex for rxaudio";
+    if (audio.data.length() > 0) {
+        int counter = 1;
+        int len = 0;
+
+        while (len < audio.data.length()) {
+            QByteArray partial = audio.data.mid(len, 1364);
+            audio_packet p;
+            memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
+            p.len = sizeof(p) + partial.length();
+            p.sentid = myId;
+            p.rcvdid = remoteId;
+            if (partial.length() == 0xa0) {
+                p.ident = 0x9781;
+            }
+            else {
+                p.ident = 0x0080; // TX audio is always this?
+            }
+            p.datalen = (quint16)qToBigEndian((quint16)partial.length());
+            p.sendseq = (quint16)qToBigEndian((quint16)sendAudioSeq); // THIS IS BIG ENDIAN!
+            QByteArray tx = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
+            tx.append(partial);
+            len = len + partial.length();
+            //qInfo(logUdp()) << "Sending audio packet length: " << tx.length();
+            sendTrackedPacket(tx);
+            sendAudioSeq++;
+            counter++;
+        }
     }
 }
 
@@ -1006,12 +994,7 @@ void udpAudio::dataReceived()
         {
             case (16): // Response to control packet handled in udpBase
             {
-                control_packet_t in = (control_packet_t)r.constData();
-                if (in->type == 0x04 && enableTx)
-                {
-                    txAudioTimer->start(AUDIO_PERIOD);
-                }
-
+                //control_packet_t in = (control_packet_t)r.constData();
                 break;
             }
             default:
@@ -1024,7 +1007,6 @@ void udpAudio::dataReceived()
 
                 */
                 control_packet_t in = (control_packet_t)r.constData();
-
                 
                 if (in->type != 0x01 && in->len >= 0x20) {
                     if (in->seq == 0)

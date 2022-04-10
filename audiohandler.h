@@ -69,6 +69,8 @@ struct audioSetup {
     QAudioDeviceInfo port;
     quint8 resampleQuality;
     unsigned char localAFgain;
+    quint16 blockSize=20; // Each 'block' of audio is 20ms long by default.
+    quint8 guid[GUIDLEN];
 };
 
 // For QtMultimedia, use a native QIODevice
@@ -85,7 +87,6 @@ public:
     void start();
     void stop();
 
-    void getNextAudioChunk(QByteArray &data);
     quint16 getAmplitude();
 
 public slots:
@@ -96,14 +97,14 @@ public slots:
 
 private slots:
     void stateChanged(QAudio::State state);
-    void clearUnderrun();
+    void clearUnderrun();    
+    void getNextAudioChunk();
 
 signals:
     void audioMessage(QString message);
     void sendLatency(quint16 newSize);
-    void haveAudioData(const QByteArray& data);
+    void haveAudioData(const audioPacket& data);
     void haveLevels(quint16 amplitude,quint16 latency,quint16 current,bool under);
-
 private:
 
     bool            isUnderrun = false;
@@ -114,9 +115,9 @@ private:
     QAudioOutput* audioOutput=Q_NULLPTR;
     QAudioInput* audioInput=Q_NULLPTR;
     QIODevice* audioDevice=Q_NULLPTR;
+    QTimer* audioTimer = Q_NULLPTR;
     QAudioFormat     format;
     QAudioDeviceInfo deviceInfo;
-
     SpeexResamplerState* resampler = Q_NULLPTR;
 
     //r8b::CFixedBuffer<double>* resampBufs;
