@@ -96,7 +96,6 @@ public slots:
 	void dataForServer(QByteArray);
 	void receiveAudioData(const audioPacket &data);
 	void receiveRigCaps(rigCapabilities caps);
-	void sendRxAudio(const audioPacket &audio);
 
 signals:
 	void haveDataFromServer(QByteArray);

@@ -1595,17 +1595,6 @@ void udpServer::dataForServer(QByteArray d)
     return;
 }
 
-void udpServer::sendRxAudio(const audioPacket& audio)
-{
-    audioHandler* sender = qobject_cast<audioHandler*>(QObject::sender());
-    for (RIGCONFIG* rig : config.rigs) {
-
-        if (sender != Q_NULLPTR && rig->rxaudio == sender) {
-        }
-    }
-}
-
-
 
 void udpServer::receiveAudioData(const audioPacket& d)
 {

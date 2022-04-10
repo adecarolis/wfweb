@@ -415,8 +415,13 @@ void audioHandler::getNextAudioChunk()
 
 	if (audioInput != Q_NULLPTR && audioDevice != Q_NULLPTR) { 
 
-		livePacket.data = audioDevice->readAll();
-
+		if (setup.codec == 0x40 || setup.codec == 0x80) {
+			livePacket.data = audioDevice->read(format.bytesForDuration(setup.blockSize*1000));
+		}
+		else
+		{
+			livePacket.data = audioDevice->readAll();
+		}
 		if (livePacket.data.length() > 0)
 		{
 			Eigen::VectorXf samplesF;
