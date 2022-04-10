@@ -115,7 +115,6 @@ private:
     QAudioOutput* audioOutput=Q_NULLPTR;
     QAudioInput* audioInput=Q_NULLPTR;
     QIODevice* audioDevice=Q_NULLPTR;
-    QTimer* audioTimer = Q_NULLPTR;
     QAudioFormat     format;
     QAudioDeviceInfo deviceInfo;
     SpeexResamplerState* resampler = Q_NULLPTR;
