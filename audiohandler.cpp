@@ -402,6 +402,9 @@ void audioHandler::getNextAudioChunk()
 	if (tempBuf.data.length() < getAudioSize(setup.blockSize,format)) {
 		return;
 	}
+	else if (tempBuf.data.length() > getAudioSize(setup.latency, format)) {
+		tempBuf.data.clear();
+	}
 	
 	audioPacket livePacket;
 	livePacket.time= QTime::currentTime();
