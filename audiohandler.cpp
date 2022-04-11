@@ -31,6 +31,12 @@ audioHandler::~audioHandler()
 		audioOutput = Q_NULLPTR;
 	}
 
+	if (audioTimer != Q_NULLPTR) {
+		audioTimer->stop();
+		delete audioTimer;
+		audioTimer = Q_NULLPTR;
+	}
+
 
 	if (resampler != Q_NULLPTR) {
 		speex_resampler_destroy(resampler);
@@ -127,6 +133,9 @@ bool audioHandler::init(audioSetup setupIn)
 	if (setup.isinput) {
 		audioInput = new QAudioInput(setup.port, format, this);
 		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Starting audio timer";
+		audioTimer = new QTimer();
+		audioTimer->setTimerType(Qt::PreciseTimer);
+		connect(audioTimer, &QTimer::timeout, this, &audioHandler::getNextAudioChunk);
 
 		connect(audioInput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
 	}
@@ -186,7 +195,8 @@ void audioHandler::start()
 	if (setup.isinput) {
 		audioDevice = audioInput->start();
 		connect(audioInput, &QAudioInput::destroyed, audioDevice, &QIODevice::deleteLater, Qt::UniqueConnection);
-		connect(audioDevice, &QIODevice::readyRead, this, &audioHandler::getNextAudioChunk);
+		//connect(audioDevice, &QIODevice::readyRead, this, &audioHandler::getNextAudioChunk);
+		audioTimer->start(setup.blockSize);
 	}
 	else {
 		// Buffer size must be set before audio is started.
