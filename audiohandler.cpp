@@ -126,6 +126,11 @@ bool audioHandler::init(audioSetup setupIn)
 		return false;
 	}
 
+	if (format.sampleSize() == 24) {
+		// We can't convert this easily
+		format.setSampleSize(16);
+	}
+
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Internal: sample rate" << format.sampleRate() << "channel count" << format.channelCount();
 
 	// We "hopefully" now have a valid format that is supported so try connecting
