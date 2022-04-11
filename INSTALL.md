@@ -70,12 +70,12 @@ sudo usermod -aG dialout $USER
 ### opensuse/sles/tumbleweed install
 ---
 
-install wfview on suse 15.x sles 15.x or tumbleweed; this was done on a clean install/updated OS. 
+install wfview on suse 15.3 & up, sles 15.x or tumbleweed; this was done on a clean install/updated OS. 
 
 we need to add packages to be able to build the stuff.
 
 - sudo zypper in --type pattern devel_basis
-- sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel libqt5-qtmultimedia-devel lv2-devel libopus-devel
+- sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel libqt5-qtmultimedia-devel lv2-devel libopus-devel eigen3-devel
 
 optional (mainly for development specifics): get and install qt5:
 
@@ -94,9 +94,9 @@ in this case, use your homedir:
 - mkdir -p ~/src/build && cd src
 - git clone https://gitlab.com/eliggett/wfview.git
 - cd build
-- qmake-qt5 ../wfview/wfview.pro
+- qmake-qt5 ../wfview/wfview.pro  (wfserver.pro if you build the server version)
 - make -j
-- sudo ./install.sh
+- sudo make install
 
 wfview is now installed in /usr/local/bin
 
