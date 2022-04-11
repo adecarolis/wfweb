@@ -490,7 +490,7 @@ void audioHandler::getNextAudioChunk()
 					samplesF = samplesTemp;
 				}
 
-				qInfo(logAudio()) << "Sending audio len" << livePacket.data.length() << "remaining" << tempBuf.data.length() << "resampled" << samplesF.size();
+				//qInfo(logAudio()) << "Sending audio len" << livePacket.data.length() << "remaining" << tempBuf.data.length() << "resampled" << samplesF.size();
 
 				if (setup.codec == 0x40 || setup.codec == 0x80)
 				{
