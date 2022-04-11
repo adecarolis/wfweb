@@ -1626,7 +1626,7 @@ void udpServer::receiveAudioData(const audioPacket& d)
                 p.sendseq = (quint16)qToBigEndian((quint16)client->sendAudioSeq); // THIS IS BIG ENDIAN!
                 p.seq = client->txSeq;
                 QByteArray t = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
-                t.append(d.data);
+                t.append(partial);
 
                 SEQBUFENTRY s;
                 s.seqNum = p.seq;
