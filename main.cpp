@@ -221,7 +221,7 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
     // Write to the output category of the message and the message itself
     out << context.category << ": " << msg << "\n";
 #ifdef BUILD_WFSERVER
-    std::cout << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ") << msg.toLocal8Bit().toStdString() << "\n";
+    std::cout << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ").toLocal8Bit().toStdString() << msg.toLocal8Bit().toStdString() << "\n";
 #endif
     out.flush();    // Clear the buffered data
 }
