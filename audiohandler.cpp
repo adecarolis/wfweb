@@ -399,7 +399,7 @@ void audioHandler::getNextAudioChunk()
 {
 	tempBuf.data.append(audioDevice->readAll());
 
-	if (tempBuf.data.length() <= getAudioSize(setup.latency,format)) {
+	if (tempBuf.data.length() < getAudioSize(setup.blockSize,format)) {
 		return;
 	}
 	
@@ -407,7 +407,7 @@ void audioHandler::getNextAudioChunk()
 	livePacket.time= QTime::currentTime();
 	livePacket.sent = 0;
 	memcpy(&livePacket.guid, setup.guid, GUIDLEN);
-	livePacket.data = tempBuf.data.left(getAudioSize(setup.blockSize,format));
+	livePacket.data = tempBuf.data.mid(0,getAudioSize(setup.blockSize,format));
 	tempBuf.data.remove(0, getAudioSize(setup.blockSize,format));
 	qInfo(logAudio()) << "Sending audio len" << livePacket.data.length() << "remaining" << tempBuf.data.length();
 	if (livePacket.data.length() > 0)
