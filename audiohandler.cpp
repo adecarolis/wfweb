@@ -409,7 +409,6 @@ void audioHandler::getNextAudioChunk()
 	memcpy(&livePacket.guid, setup.guid, GUIDLEN);
 	livePacket.data = tempBuf.data.mid(0,getAudioSize(setup.blockSize,format));
 	tempBuf.data.remove(0, getAudioSize(setup.blockSize,format));
-	qInfo(logAudio()) << "Sending audio len" << livePacket.data.length() << "remaining" << tempBuf.data.length();
 	if (livePacket.data.length() > 0)
 	{
 		Eigen::VectorXf samplesF;
@@ -479,6 +478,7 @@ void audioHandler::getNextAudioChunk()
 				samplesF = samplesTemp;
 			}
 
+			qInfo(logAudio()) << "Sending audio len" << livePacket.data.length() << "remaining" << tempBuf.data.length() << "resampled" << samplesF.size();
 
 			if (setup.codec == 0x40 || setup.codec == 0x80)
 			{
