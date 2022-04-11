@@ -399,7 +399,7 @@ void audioHandler::getNextAudioChunk()
 {
 	tempBuf.data.append(audioDevice->readAll());
 
-	if (tempBuf.data.length() < getAudioSize(setup.blockSize,format)) {
+	if (tempBuf.data.length() < format.bytesForDuration(setup.blockSize * 1000)) {
 		return;
 	}
 	
@@ -407,8 +407,8 @@ void audioHandler::getNextAudioChunk()
 	livePacket.time= QTime::currentTime();
 	livePacket.sent = 0;
 	memcpy(&livePacket.guid, setup.guid, GUIDLEN);
-	livePacket.data = tempBuf.data.mid(0,getAudioSize(setup.blockSize,format));
-	tempBuf.data.remove(0, getAudioSize(setup.blockSize,format));
+	livePacket.data = tempBuf.data.mid(0, format.bytesForDuration(setup.blockSize * 1000));
+	tempBuf.data.remove(0, format.bytesForDuration(setup.blockSize * 1000));
 	if (livePacket.data.length() > 0)
 	{
 		Eigen::VectorXf samplesF;
