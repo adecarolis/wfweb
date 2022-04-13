@@ -1,5 +1,6 @@
 #ifdef BUILD_WFSERVER
 #include <QtCore/QCoreApplication>
+#include "keyboard.h"
 #else
 #include <QApplication>
 #endif
@@ -47,18 +48,21 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
 
 int main(int argc, char *argv[])
 {
+
 #ifdef BUILD_WFSERVER
     QCoreApplication a(argc, argv);
+    a.setOrganizationName("wfview");
+    a.setOrganizationDomain("wfview.org");
+    a.setApplicationName("wfserver");
+    keyboard* kb = new keyboard();
+    kb->start();
 #else
     QApplication a(argc, argv);
-#endif
-
-    //a.setStyle( "Fusion" );
-
     a.setOrganizationName("wfview");
     a.setOrganizationDomain("wfview.org");
     a.setApplicationName("wfview");
     a.setAttribute(Qt::AA_EnableHighDpiScaling);
+#endif
 
 #ifdef QT_DEBUG
     debugMode = true;

@@ -147,6 +147,7 @@ SOURCES += main.cpp\
     resampler/resample.c \
     rigctld.cpp \
     tcpserver.cpp \
+    keyboard.cpp
 
 HEADERS  += servermain.h \
     commhandler.h \
@@ -166,4 +167,5 @@ HEADERS  += servermain.h \
     rigctld.h \
     ulaw.h \
     tcpserver.h \
-    audiotaper.h 
+    audiotaper.h \
+    keyboard.h
