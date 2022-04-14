@@ -1,6 +1,34 @@
 # CHANGELOG
 
+- 20220414	
 
+		this is a cherrypicked CHANGELOG add as there are loads of changes due to different 
+		audio transport ideas etc. For a full changelog exec: git log"
+
+    		About box updated to include Patreon site 
+
+    		added 500 Hz step for VFO
+
+		Added clock and UTC toggle.
+
+    		Added forced manual RTS setting
+
+    		Add RIT function and other rigctl fixes
+
+    		Adjusted window size for radios without spectrum. Thanks K5TUX.
+
+    		Allow dynamic restarting of server
+
+    		New Settings tab
+
+    		Enable High DPI Scaling
+
+    		More multi-radio support
+
+		many rigctl improvements/cmpat adds
+
+		N1MM+ TCP connection added
+    
 - 20211201
 
     		Another "minor" update for RX only rigs

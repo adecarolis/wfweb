@@ -20,3 +20,18 @@ The following highlights are in this 1.x-release:
 	added PBT and IF-shift
 	several bugs fixed	
 	RTS as PTT for several radios like the 706/718/736…
++	New major change is the audio transport mechanism. Lower latencies.
++	Author: Daniele Forsi <dforsi@gmail.com>/Author: Daniele Forsi <dforsi@gmail.com>
++	Author: Russ Woodman - K5TUX <k5tux@k5tux.us>
++    	About box updated to include Patreon site 
++    	added 500 Hz step for VFO
++    	Added clock and UTC toggle.
++    	Added forced manual RTS setting
++    	Add RIT function and other rigctl fixes
++    	Adjusted window size for radios without spectrum. Thanks K5TUX.
++    	Allow dynamic restarting of server
++    	New Settings tab
++    	Enable High DPI Scaling
++    	More multi-radio support (nearly working!)
++       N1MM+ TCP add.    
+
