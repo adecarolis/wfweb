@@ -31,7 +31,7 @@ commHandler::commHandler()
     connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
 }
 
-commHandler::commHandler(QString portName, quint32 baudRate)
+commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat)
 {
     //constructor
     // grab baud rate and other comm port details
@@ -39,6 +39,11 @@ commHandler::commHandler(QString portName, quint32 baudRate)
     // destroy this and create a new one.
 
     port = new QSerialPort();
+
+    if (wfFormat == 1) { // Single waterfall packet
+        combineWf = true;
+        qDebug(logSerial()) << "*********** Combine Waterfall Mode Enabled!";
+    }
 
     // TODO: The following should become arguments and/or functions
     // Add signal/slot everywhere for comm port setup.
@@ -175,7 +180,7 @@ void commHandler::receiveDataIn()
     }
 
 
-    if(inPortData.startsWith("\xFE\xFE"))
+    if (inPortData.startsWith("\xFE\xFE"))
     {
         if(inPortData.contains("\xFC"))
         {
@@ -188,6 +193,63 @@ void commHandler::receiveDataIn()
         {
             // good!
             port->commitTransaction();
+
+            //payloadIn = data.right(data.length() - 4);
+
+            // Do we need to combine waterfall into single packet?
+            int combined = 0;
+            if (combineWf) {
+                int pos = inPortData.indexOf(QByteArrayLiteral("\x27\x00\x00"));
+                int fdPos = inPortData.mid(pos).indexOf(QByteArrayLiteral("\xfd"));
+                //printHex(inPortData, false, true);
+                while (pos > -1 && fdPos > -1) {
+                    combined++;
+                    spectrumDivisionNumber = 0;
+                    spectrumDivisionNumber = inPortData[pos + 3] & 0x0f;
+                    spectrumDivisionNumber += ((inPortData[pos + 3] & 0xf0) >> 4) * 10;
+
+                    if (spectrumDivisionNumber == 1) {
+                        // This is the first waveform data.
+                        spectrumDivisionMax = 0;
+                        spectrumDivisionMax = inPortData[pos + 4] & 0x0f;
+                        spectrumDivisionMax += ((inPortData[pos + 4] & 0xf0) >> 4) * 10;
+                        spectrumData.clear();
+                        spectrumData = inPortData.mid(pos - 4, fdPos+4); // Don't include terminating FD
+                        spectrumData[8] = spectrumData[7]; // Make max = current;
+                        //qDebug() << "New Spectrum seq:" << spectrumDivisionNumber << "pos = " << pos << "len" << fdPos;
+
+                    }
+                    else  if (spectrumDivisionNumber > lastSpectrum && spectrumDivisionNumber <= spectrumDivisionMax) {
+                        spectrumData.insert(spectrumData.length(), inPortData.mid(pos + 4, fdPos-5));
+                        //qDebug() << "Added spectrum seq:" << spectrumDivisionNumber << "len" << fdPos-5;
+                        //printHex(inPortData.mid((pos+4),fdPos - (pos+5)), false, true);
+                    }
+                    else {
+                        qDebug() << "Invalid Spectrum Division received" << spectrumDivisionNumber << "last Spectrum" << lastSpectrum;
+                    }
+
+                    lastSpectrum = spectrumDivisionNumber;
+                        
+                    if (spectrumDivisionNumber == spectrumDivisionMax) {
+                        //qDebug() << "Got Spectrum! length=" << spectrumData.length();
+                        spectrumData.append("\xfd"); // Need to add FD on the end.
+                        //printHex(spectrumData, false, true);
+                        emit haveDataFromPort(spectrumData);
+                        lastSpectrum = 0;
+                    }
+                    inPortData = inPortData.remove(pos-4, fdPos+5);
+                    pos = inPortData.indexOf(QByteArrayLiteral("\x27\x00\x00"));
+                    fdPos = inPortData.mid(pos).indexOf(QByteArrayLiteral("\xfd"));
+                }
+                // If we still have data left, let the main function deal with it, any spectrum data has been removed
+                if (inPortData.length() == 0)
+                {
+                    return;
+                }
+               // qDebug() << "Got extra data!";
+                //printHex(inPortData, false, true);
+            }
+            // 
             emit haveDataFromPort(inPortData);
 
             if(rolledBack)

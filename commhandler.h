@@ -16,7 +16,7 @@ class commHandler : public QObject
 
 public:
     commHandler();
-    commHandler(QString portName, quint32 baudRate);
+    commHandler(QString portName, quint32 baudRate, quint8 wfFormat);
     bool serialError;
     bool rtsStatus();
 
@@ -74,7 +74,14 @@ private:
     bool isConnected; // port opened
     mutable QMutex mutex;
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
-
+    bool combineWf = false;
+    QByteArray spectrumData;
+    quint8 spectrumDivisionNumber;
+    quint8 spectrumDivisionMax;
+    quint8 spectrumCenterOrFixed;
+    quint8 spectrumInformation;
+    quint8 spectrumOutOfRange;
+    quint8 lastSpectrum = 0;
 };
 
 #endif // COMMHANDLER_H

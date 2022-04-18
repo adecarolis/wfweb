@@ -13,13 +13,15 @@ udpHandler::udpHandler(udpPreferences prefs, audioSetup rx, audioSetup tx) :
     rxSetup(rx),
     txSetup(tx)
 {
-
-
     this->port = this->controlPort;
     this->username = prefs.username;
     this->password = prefs.password;
     this->compName = prefs.clientName.mid(0,8) + "-wfview";
 
+    if (prefs.waterfallFormat == 2)
+    {
+        splitWf = true;
+    }
     qInfo(logUdp()) << "Starting udpHandler user:" << username << " rx latency:" << rxSetup.latency  << " tx latency:" << txSetup.latency << " rx sample rate: " << rxSetup.format.sampleRate() <<
         " rx codec: " << rxSetup.codec << " tx sample rate: " << txSetup.format.sampleRate() << " tx codec: " << txSetup.codec;
 
@@ -285,7 +287,7 @@ void udpHandler::dataReceived()
                         audioPort = qFromBigEndian(in->audioport);
                         if (!streamOpened) {
 
-                            civ = new udpCivData(localIP, radioIP, civPort, civLocalPort);
+                            civ = new udpCivData(localIP, radioIP, civPort, civLocalPort,splitWf);
 
                             // TX is not supported
                             if (txSampleRates < 2) {
@@ -597,12 +599,13 @@ void udpHandler::sendToken(uint8_t magic)
 
 
 // Class that manages all Civ Data to/from the rig
-udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort,quint16 localPort=0) 
+udpCivData::udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort, bool splitWf, quint16 localPort=0 )
 {
     qInfo(logUdp()) << "Starting udpCivData";
     localIP = local;
     port = civPort;
     radioIP = ip;
+    splitWaterfall = splitWf;
 
     udpBase::init(localPort); // Perform connection
 
@@ -774,8 +777,77 @@ void udpCivData::dataReceived()
                         if (quint16(in->datalen + 0x15) == (quint16)in->len)
                         {
                             //if (r.mid(0x15).length() != 157)
-                               emit receive(r.mid(0x15));
+                            // Find data length
+                            int pos = r.indexOf(QByteArrayLiteral("\x27\x00\x00"))+2;
+                            int len = r.mid(pos).indexOf(QByteArrayLiteral("\xfd"));
+                            if (splitWaterfall && pos > 1 && len > 100) {
+                                // We need to split waterfall data into its component parts
+                                // There are only 2 types that we are currently aware of
+                                int numDivisions = 0;
+                                if (len == 490) // IC705, IC9700, IC7300(LAN) 
+                                {
+                                    numDivisions = 11;
+                                }
+                                else if (len == 704) // IC7610, IC7851, ICR8600
+                                {
+                                    numDivisions = 15;
+                                }
+                                else {
+                                    qInfo(logUdp()) << "Unknown spectrum size" << len;
+                                    break;
+                                }
+                                // (sequence #1) includes center/fixed mode at [05]. No pixels.
+                                // "INDEX: 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 "
+                                // "DATA:  27 00 00 01 11 01 00 00 00 14 00 00 00 35 14 00 00 fd "
+                                // (sequences 2-10, 50 pixels)
+                                // "INDEX: 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 "
+                                // "DATA:  27 00 00 07 11 27 13 15 01 00 22 21 09 08 06 19 0e 20 23 25 2c 2d 17 27 29 16 14 1b 1b 21 27 1a 18 17 1e 21 1b 24 21 22 23 13 19 23 2f 2d 25 25 0a 0e 1e 20 1f 1a 0c fd "
+                                //                  ^--^--(seq 7/11)
+                                //                        ^-- start waveform data 0x00 to 0xA0, index 05 to 54
+                                // (sequence #11)
+                                // "INDEX: 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 "
+                                // "DATA:  27 00 00 11 11 0b 13 21 23 1a 1b 22 1e 1a 1d 13 21 1d 26 28 1f 19 1a 18 09 2c 2c 2c 1a 1b fd "
+
+                                int divSize = (len / numDivisions)+6;
+                                QByteArray wfPacket;
+                                for (int i = 0; i < numDivisions; i++) {
+
+                                    wfPacket = r.mid(pos - 6, 9); // First part of packet 
+
+                                    wfPacket = r.mid(pos - 6, 9); // First part of packet 
+                                    char tens = ((i + 1) / 10);
+                                    char units = ((i + 1) - (10 * tens));
+                                    wfPacket[7] = units | (tens << 4);
+                                    
+                                    tens = (numDivisions / 10);
+                                    units = (numDivisions - (10 * tens));
+                                    wfPacket[8] = units | (tens << 4);
+
+                                    if (i == 0) {
+                                        //Just send initial data, first BCD encode the max number:
+                                        wfPacket.append(r.mid(pos + 3, 12));
+                                    }
+                                    else
+                                    {
+                                        wfPacket.append(r.mid((pos + 15) + ((i-1) * divSize),divSize));
+                                    }
+                                    if (i < numDivisions-1) {
+                                        wfPacket.append('\xfd');
+                                    }
+                                    //printHex(wfPacket, false, true);
+                                    
+                                    emit receive(wfPacket);
+                                    wfPacket.clear();
+
+                                }
+                                //qDebug(logUdp()) << "Waterfall packet len" << len << "Num Divisions" << numDivisions << "Division Size" << divSize;
+                            }
+                            else {
+                                // Not waterfall data or split not enabled.
+                                emit receive(r.mid(0x15));
+                            }
                             //qDebug(logUdp()) << "Got incoming CIV datagram" << r.mid(0x15).length();
+
                         }
 
                     }
@@ -1535,6 +1607,42 @@ void udpBase::purgeOldEntries()
     } else {
         qInfo(logUdp()) << this->metaObject()->className() << ": missingBuffer mutex is locked";
     }
+}
+
+void udpBase::printHex(const QByteArray& pdata)
+{
+    printHex(pdata, false, true);
+}
+
+void udpBase::printHex(const QByteArray& pdata, bool printVert, bool printHoriz)
+{
+    qDebug(logUdp()) << "---- Begin hex dump -----:";
+    QString sdata("DATA:  ");
+    QString index("INDEX: ");
+    QStringList strings;
+
+    for (int i = 0; i < pdata.length(); i++)
+    {
+        strings << QString("[%1]: %2").arg(i, 8, 10, QChar('0')).arg((unsigned char)pdata[i], 2, 16, QChar('0'));
+        sdata.append(QString("%1 ").arg((unsigned char)pdata[i], 2, 16, QChar('0')));
+        index.append(QString("%1 ").arg(i, 2, 10, QChar('0')));
+    }
+
+    if (printVert)
+    {
+        for (int i = 0; i < strings.length(); i++)
+        {
+            //sdata = QString(strings.at(i));
+            qDebug(logUdp()) << strings.at(i);
+        }
+    }
+
+    if (printHoriz)
+    {
+        qDebug(logUdp()) << index;
+        qDebug(logUdp()) << sdata;
+    }
+    qDebug(logUdp()) << "----- End hex dump -----";
 }
 
 /// <summary>

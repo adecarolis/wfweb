@@ -40,7 +40,7 @@ rigCommander::~rigCommander()
 }
 
 
-void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort)
+void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -49,6 +49,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
     // civAddr = 0x94; // address of the radio. Decimal is 148.
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
     usingNativeLAN = false;
+
     //qInfo(logRig()) << "Opening connection to Rig:" << hex << (unsigned char)rigCivAddr << "on serial port" << rigSerialPort << "at baud rate" << rigBaudRate;
     // ---
     setup();
@@ -58,7 +59,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
     this->rigBaudRate = rigBaudRate;
     rigCaps.baudRate = rigBaudRate;
 
-    comm = new commHandler(rigSerialPort, rigBaudRate);
+    comm = new commHandler(rigSerialPort, rigBaudRate,wf);
     ptty = new pttyHandler(vsp);
 
     if (tcpPort > 0) {
@@ -107,7 +108,6 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
     // civAddr = 0x94; // address of the radio. Decimal is 148.
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
     usingNativeLAN = true;
-
     // ---
     setup();
     // ---
