@@ -21,8 +21,6 @@ The following highlights are in this 1.x-release:
 	several bugs fixed	
 	RTS as PTT for several radios like the 706/718/736…
 +	New major change is the audio transport mechanism. Lower latencies.
-+	Author: Daniele Forsi <dforsi@gmail.com>/Author: Daniele Forsi <dforsi@gmail.com>
-+	Author: Russ Woodman - K5TUX <k5tux@k5tux.us>
 +    	About box updated to include Patreon site 
 +    	added 500 Hz step for VFO
 +    	Added clock and UTC toggle.
