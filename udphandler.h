@@ -34,6 +34,7 @@ struct udpPreferences {
 	QString username;
 	QString password;
 	QString clientName;
+	quint8 waterfallFormat;
 };
 
 struct networkStatus {
@@ -74,6 +75,10 @@ public:
 	void sendRetransmitRange(quint16 first, quint16 second, quint16 third,quint16 fourth);
 
 	void sendControl(bool tracked,quint8 id, quint16 seq);
+
+	void printHex(const QByteArray& pdata);
+	void printHex(const QByteArray& pdata, bool printVert, bool printHoriz);
+
 
 	QTime timeStarted;
 
@@ -142,14 +147,13 @@ private:
 
 };
 
-
 // Class for all (pseudo) serial communications
 class udpCivData : public udpBase
 {
 	Q_OBJECT
 
 public:
-	udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort, quint16 lport);
+	udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort, bool splitWf, quint16 lport);
 	~udpCivData();
 	QMutex serialmutex;
 
@@ -166,6 +170,7 @@ private:
 	void sendOpenClose(bool close);
 
 	QTimer* startCivDataTimer = Q_NULLPTR;
+	bool splitWaterfall = false;
 };
 
 
@@ -311,6 +316,7 @@ private:
 	quint16 rxSampleRates = 0;
 	quint16 txSampleRates = 0;
 	networkStatus status;
+	bool splitWf = false;
 };
 
 

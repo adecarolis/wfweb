@@ -192,6 +192,7 @@ void wfmain::openRig()
         ui->lanEnableBtn->setChecked(true);
         usingLAN = true;
         // We need to setup the tx/rx audio:
+        udpPrefs.waterfallFormat = prefs.waterfallFormat;
         emit sendCommSetup(prefs.radioCIVAddr, udpPrefs, rxSetup, txSetup, prefs.virtualSerialPort, prefs.tcpPort);
     } else {
         ui->serialEnableBtn->setChecked(true);
@@ -207,7 +208,7 @@ void wfmain::openRig()
             }
         }
         usingLAN = false;
-        emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort, prefs.tcpPort);
+        emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort, prefs.tcpPort,prefs.waterfallFormat);
         ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
     }
 
@@ -430,7 +431,7 @@ void wfmain::makeRig()
         connect(selRad, SIGNAL(selectedRadio(quint8)), rig, SLOT(setCurrentRadio(quint8)));
         // Rig comm setup:
         connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)), rig, SLOT(commSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)));
-        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32,QString, quint16)), rig, SLOT(commSetup(unsigned char, QString, quint32,QString, quint16)));
+        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32,QString, quint16,quint8)), rig, SLOT(commSetup(unsigned char, QString, quint32,QString, quint16,quint8)));
         connect(this, SIGNAL(setRTSforPTT(bool)), rig, SLOT(setRTSforPTT(bool)));
 
         connect(rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
@@ -1398,6 +1399,7 @@ void wfmain::setDefPrefs()
     defPrefs.confirmPowerOff = true;
     defPrefs.meter2Type = meterNone;
     defPrefs.tcpPort = 0;
+    defPrefs.waterfallFormat = 0;
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -1543,14 +1545,20 @@ void wfmain::loadSettings()
     ui->lanEnableBtn->setChecked(prefs.enableLAN);
     ui->connectBtn->setEnabled(true);
 
-    prefs.tcpPort = settings->value("TcpServerPort", defPrefs.tcpPort).toInt();
-
     prefs.enableRigCtlD = settings->value("EnableRigCtlD", defPrefs.enableRigCtlD).toBool();
     ui->enableRigctldChk->setChecked(prefs.enableRigCtlD);
     prefs.rigCtlPort = settings->value("RigCtlPort", defPrefs.rigCtlPort).toInt();
     ui->rigctldPortTxt->setText(QString("%1").arg(prefs.rigCtlPort));
     // Call the function to start rigctld if enabled.
     on_enableRigctldChk_clicked(prefs.enableRigCtlD);
+
+    prefs.tcpPort = settings->value("TcpServerPort", defPrefs.tcpPort).toInt();
+    ui->tcpServerPortTxt->setText(QString("%1").arg(prefs.tcpPort));
+
+    prefs.waterfallFormat = settings->value("WaterfallFormat", defPrefs.waterfallFormat).toInt();
+    ui->waterfallFormatCombo->blockSignals(true);
+    ui->waterfallFormatCombo->setCurrentIndex(prefs.waterfallFormat);
+    ui->waterfallFormatCombo->blockSignals(false);
 
     udpPrefs.ipAddress = settings->value("IPAddress", udpDefPrefs.ipAddress).toString();
     ui->ipAddressTxt->setEnabled(ui->lanEnableBtn->isChecked());
@@ -1998,6 +2006,7 @@ void wfmain::saveSettings()
     settings->setValue("EnableRigCtlD", prefs.enableRigCtlD);
     settings->setValue("TcpServerPort", prefs.tcpPort);
     settings->setValue("RigCtlPort", prefs.rigCtlPort);
+    settings->setValue("tcpServerPort", prefs.tcpPort);
     settings->setValue("IPAddress", udpPrefs.ipAddress);
     settings->setValue("ControlLANPort", udpPrefs.controlLANPort);
     settings->setValue("SerialLANPort", udpPrefs.serialLANPort);
@@ -2014,6 +2023,8 @@ void wfmain::saveSettings()
     settings->setValue("AudioInput", txSetup.name);
     settings->setValue("ResampleQuality", rxSetup.resampleQuality);
     settings->setValue("ClientName", udpPrefs.clientName);
+    settings->setValue("WaterfallFormat", prefs.waterfallFormat);
+
     settings->endGroup();
 
     // Memory channels
@@ -5830,6 +5841,22 @@ void wfmain::on_rigctldPortTxt_editingFinished()
     {
         prefs.rigCtlPort = port;
     }
+}
+
+void wfmain::on_tcpServerPortTxt_editingFinished()
+{
+
+    bool okconvert = false;
+    unsigned int port = ui->tcpServerPortTxt->text().toUInt(&okconvert);
+    if (okconvert)
+    {
+        prefs.tcpPort = port;
+    }
+}
+
+void wfmain::on_waterfallFormatCombo_activated(int index)
+{
+    prefs.waterfallFormat = index;
 }
 
 void wfmain::on_moreControlsBtn_clicked()

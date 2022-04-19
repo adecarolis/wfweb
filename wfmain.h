@@ -164,7 +164,7 @@ signals:
     void sayFrequency();
     void sayMode();
     void sayAll();
-    void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp, quint16 tcp);
+    void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp, quint16 tcp, quint8 wf);
     void sendCommSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     void sendCloseComm();
     void sendChangeLatency(quint16 latency);
@@ -497,10 +497,13 @@ private slots:
 
     void on_meter2selectionCombo_activated(int index);
 
+    void on_waterfallFormatCombo_activated(int index);
+
     void on_enableRigctldChk_clicked(bool checked);
 
     void on_rigctldPortTxt_editingFinished();
 
+    void on_tcpServerPortTxt_editingFinished();
 
     void on_moreControlsBtn_clicked();
 
@@ -765,6 +768,7 @@ private:
         bool confirmPowerOff;
         meterKind meter2Type;
         quint16 tcpPort;
+        quint8 waterfallFormat;
         // plot scheme
     } prefs;
 
