@@ -375,7 +375,7 @@ void servermain::setServerToPrefs()
         udp = Q_NULLPTR;
     }
 
-    udp = new udpServer(serverConfig);
+    udp = new udpServer(&serverConfig);
 
     serverThread = new QThread(this);
 
