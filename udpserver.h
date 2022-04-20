@@ -42,6 +42,7 @@ struct SERVERUSER {
 	quint8 userType;
 };
 
+
 struct RIGCONFIG {
 	QString serialPort;
 	quint32 baudRate;
@@ -54,7 +55,17 @@ struct RIGCONFIG {
 	audioSetup txAudioSetup;
 	QString modelName;
 	QString rigName;
-	quint8 guid[GUIDLEN];
+#pragma pack(push, 1)
+	union {
+		struct {
+			quint8 unused[7];        // 0x22
+			quint16 commoncap;      // 0x27
+			quint8 unusedb;           // 0x29
+			quint8 macaddress[6];     // 0x2a
+		};
+		quint8 guid[GUIDLEN];                  // 0x20
+	};
+#pragma pack(pop)
 	bool rigAvailable=false;
 	rigCapabilities rigCaps;
 	rigCommander* rig = Q_NULLPTR;
@@ -88,7 +99,7 @@ class udpServer : public QObject
 	Q_OBJECT
 
 public:
-	udpServer(SERVERCONFIG& config, audioSetup outAudio, audioSetup inAudio);
+	udpServer(SERVERCONFIG* config);
 	~udpServer();
 
 public slots:
@@ -128,11 +139,11 @@ private:
 		quint16 connSeq;
 		quint16 pingSeq;
 		quint32 rxPingTime; // 32bit as has other info
-		quint8 authInnerSeq;
+		quint16 authInnerSeq;
 		quint16 authSeq;
 		quint16 innerSeq;
 		quint16 sendAudioSeq;
-		quint8 macaddress[4];
+		quint8 macaddress[6];
 		quint16 tokenRx;
 		quint32 tokenTx;
 		quint32 commonCap;
@@ -186,13 +197,13 @@ private:
 	void watchdog();
 	void deleteConnection(QList<CLIENT*> *l, CLIENT* c);
 
-	SERVERCONFIG config;
+	SERVERCONFIG *config;
 
 	QUdpSocket* udpControl = Q_NULLPTR;
 	QUdpSocket* udpCiv = Q_NULLPTR;
 	QUdpSocket* udpAudio = Q_NULLPTR;
 	QHostAddress localIP;
-	QString macAddress;
+	quint8 macAddress[6];
 	
 	quint32 controlId = 0;
 	quint32 civId = 0;

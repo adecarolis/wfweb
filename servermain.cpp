@@ -89,7 +89,7 @@ void servermain::openRig()
         {
             //qInfo(logSystem()) << "Got rig";
             QMetaObject::invokeMethod(radio->rig, [=]() {
-                radio->rig->commSetup(radio->civAddr, radio->serialPort, radio->baudRate, QString("none"),prefs.tcpPort);
+                radio->rig->commSetup(radio->civAddr, radio->serialPort, radio->baudRate, QString("none"),prefs.tcpPort,0);
             }, Qt::QueuedConnection);
         }
     }
@@ -375,7 +375,7 @@ void servermain::setServerToPrefs()
         udp = Q_NULLPTR;
     }
 
-    udp = new udpServer(serverConfig, serverTxSetup, serverRxSetup);
+    udp = new udpServer(serverConfig);
 
     serverThread = new QThread(this);
 

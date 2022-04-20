@@ -121,6 +121,7 @@ typedef union audio_packet {
         quint16 seq;        // 0x06
         quint32 sentid;     // 0x08
         quint32 rcvdid;     // 0x0c
+
         quint16 ident;      // 0x10
         quint16 sendseq;    // 0x12
         quint16 unused;     // 0x14
@@ -165,18 +166,24 @@ typedef union token_packet {
         quint16 seq;                // 0x06
         quint32 sentid;             // 0x08 
         quint32 rcvdid;             // 0x0c
-        char unuseda[3];            // 0x10
-        quint16 code;               // 0x13
-        quint16 res;                // 0x15
-        quint8 innerseq;            // 0x17
-        char unusedb;               // 0x18
-        char unusedc;               // 0x19
+        char unuseda[2];          // 0x10
+        quint16 payloadsize;      // 0x12
+        quint8 requestreply;      // 0x13
+        quint8 requesttype;       // 0x14
+        quint16 innerseq;         // 0x16
+        char unusedb[2];          // 0x18
         quint16 tokrequest;         // 0x1a
         quint32 token;              // 0x1c
-        char unusedd[7];            // 0x20
-        quint16 commoncap;          // 0x27
-        char unuseddd;              // 0x29
-        char macaddress[6];             // 0x2a
+        union {
+            struct {
+                quint16 authstartid;    // 0x20
+                char unusedg[5];        // 0x22
+                quint16 commoncap;      // 0x27
+                char unusedh;           // 0x29
+                quint8 macaddress[6];     // 0x2a
+            };
+            quint8 guid[GUIDLEN];                  // 0x20
+        };
         quint32 response;           // 0x30
         char unusede[12];           // 0x34
     };
@@ -192,19 +199,24 @@ typedef union status_packet {
         quint16 seq;                // 0x06
         quint32 sentid;             // 0x08 
         quint32 rcvdid;             // 0x0c
-        char unuseda[3];          // 0x10
-        quint16 code;               // 0x13
-        quint16 res;                // 0x15
-        quint8 innerseq;           // 0x17
-        char unusedb;             // 0x18
-        char unusedc;             // 0x19
+        char unuseda[2];          // 0x10
+        quint16 payloadsize;      // 0x12
+        quint8 requestreply;      // 0x13
+        quint8 requesttype;       // 0x14
+        quint16 innerseq;         // 0x16
+        char unusedb[2];          // 0x18
         quint16 tokrequest;         // 0x1a
         quint32 token;              // 0x1c 
-        char unusedd[6];          // 0x20
-        quint16 unknown;            // 0x26
-        char unusede;             // 0x28
-        char unusedf;          // 0x29
-        quint8 macaddress[6];       // 0x2a
+        union {
+            struct {
+                quint16 authstartid;    // 0x20
+                char unusedd[5];        // 0x22
+                quint16 commoncap;      // 0x27
+                char unusede;           // 0x29
+                quint8 macaddress[6];     // 0x2a
+            };
+            quint8 guid[GUIDLEN];                  // 0x20
+        };
         quint32 error;             // 0x30
         char unusedg[12];         // 0x34
         char disc;                // 0x40
@@ -226,12 +238,12 @@ typedef union login_response_packet {
         quint16 seq;                // 0x06
         quint32 sentid;             // 0x08 
         quint32 rcvdid;             // 0x0c
-        char unuseda[3];            // 0x10
-        quint16 code;               // 0x13
-        quint16 res;                // 0x15
-        quint8 innerseq;            // 0x17
-        char unusedb;               // 0x18
-        char unusedc;               // 0x19
+        char unuseda[2];          // 0x10
+        quint16 payloadsize;      // 0x12
+        quint8 requestreply;      // 0x13
+        quint8 requesttype;       // 0x14
+        quint16 innerseq;         // 0x16
+        char unusedb[2];          // 0x18
         quint16 tokrequest;         // 0x1a
         quint32 token;              // 0x1c 
         quint16 authstartid;        // 0x20
@@ -253,12 +265,12 @@ typedef union login_packet {
         quint16 seq;                // 0x06
         quint32 sentid;             // 0x08 
         quint32 rcvdid;             // 0x0c
-        char unuseda[3];            // 0x10
-        quint16 code;               // 0x13
-        quint16 res;                // 0x15
-        quint8 innerseq;            // 0x17
-        char unusedaa;              // 0x18;
-        char unusedb;               // 0x19
+        char unuseda[2];            // 0x10
+        quint16 payloadsize;        // 0x12
+        quint8 requestreply;      // 0x13
+        quint8 requesttype;       // 0x14
+        quint16 innerseq;           // 0x16
+        char unusedb[2];            // 0x18
         quint16 tokrequest;         // 0x1a
         quint32 token;              // 0x1c 
         char unusedc[32];           // 0x20
@@ -279,12 +291,12 @@ typedef union conninfo_packet {
         quint16 seq;              // 0x06
         quint32 sentid;           // 0x08 
         quint32 rcvdid;           // 0x0c
-        char unuseda[3];          // 0x10
-        quint16 code;             // 0x13
-        quint16 res;              // 0x15
-        quint8 innerseq;          // 0x17
-        char unusedaa;            // 0x18
-        char unusedb;             // 0x19
+        char unuseda[2];          // 0x10
+        quint16 payloadsize;      // 0x12
+        quint8 requestreply;      // 0x13
+        quint8 requesttype;       // 0x14
+        quint16 innerseq;         // 0x16
+        char unusedb[2];          // 0x18
         quint16 tokrequest;       // 0x1a
         quint32 token;            // 0x1c 
         union {
@@ -293,7 +305,7 @@ typedef union conninfo_packet {
                 char unusedg[5];        // 0x22
                 quint16 commoncap;      // 0x27
                 char unusedh;           // 0x29
-                char macaddress[6];     // 0x2a
+                quint8 macaddress[6];     // 0x2a
             };
             quint8 guid[GUIDLEN];                  // 0x20
         };
@@ -328,19 +340,18 @@ typedef union conninfo_packet {
 
 
 // 0x64 length radio capabilities part of cap packet.
-/*
-        };*/
+
 typedef union radio_cap_packet {
     struct
     {
         union {
             struct {
-                char unusede[7];          // 0x0
-                quint16 commoncap;        // 0x0
-                char unused;              // 0x0
-                char macaddress[6];       // 0x0
+                quint8 unusede[7];          // 0x00
+                quint16 commoncap;          // 0x07
+                quint8 unused;              // 0x09
+                quint8 macaddress[6];       // 0x0a
             };
-            quint8 guid[GUIDLEN];                // 0x0
+            quint8 guid[GUIDLEN];           // 0x0
         };
         char name[32];            // 0x10
         char audio[32];           // 0x30
@@ -373,14 +384,14 @@ typedef union capabilities_packet {
         quint32 rcvdid;           // 0x0c
         char unuseda[2];          // 0x10
         quint16 payloadsize;      // 0x12
-        quint16 res;              // 0x14
+        quint8 requestreply;      // 0x13
+        quint8 requesttype;       // 0x14
         quint16 innerseq;         // 0x16
-        char unusedb;             // 0x18
-        char unusedc;             // 0x19
+        char unusedb[2];          // 0x18
         quint16 tokrequest;       // 0x1a
         quint32 token;            // 0x1c 
-        char unusedd[33];         // 0x20
-        char numradios;           // 0x41
+        char unusedd[32];         // 0x20
+        quint16 numradios;        // 0x40
     };
     char packet[CAPABILITIES_SIZE];
 } *capabilities_packet_t;

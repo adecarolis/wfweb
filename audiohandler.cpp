@@ -125,6 +125,13 @@ bool audioHandler::init(audioSetup setupIn)
 		qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "No channels found, aborting setup.";
 		return false;
 	}
+	if (format.channelCount() == 1 && setup.format.channelCount() == 2) {
+		format.setChannelCount(2);
+		if (!setup.port.isFormatSupported(format)) {
+			qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Cannot request stereo input!";
+			format.setChannelCount(1);
+		}
+	}
 
 	if (format.sampleSize() == 24) {
 		// We can't convert this easily
@@ -492,6 +499,13 @@ void audioHandler::getNextAudioChunk()
 				if (format.channelCount() == 2 && setup.format.channelCount() == 1) {
 					Eigen::VectorXf samplesTemp(samplesF.size() / 2);
 					samplesTemp = Eigen::Map<Eigen::VectorXf, 0, Eigen::InnerStride<2> >(samplesF.data(), samplesF.size() / 2);
+					samplesF = samplesTemp;
+				}
+				else if (format.channelCount() == 1 && setup.format.channelCount() == 2) {
+					// Convert mono to stereo if required
+					Eigen::VectorXf samplesTemp(samplesF.size() * 2);
+					Eigen::Map<Eigen::VectorXf, 0, Eigen::InnerStride<2> >(samplesTemp.data(), samplesF.size()) = samplesF;
+					Eigen::Map<Eigen::VectorXf, 0, Eigen::InnerStride<2> >(samplesTemp.data() + 1, samplesF.size()) = samplesF;
 					samplesF = samplesTemp;
 				}
 

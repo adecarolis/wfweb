@@ -780,8 +780,6 @@ private:
     audioSetup rxSetup;
     audioSetup txSetup;
 
-    audioSetup serverRxSetup;
-    audioSetup serverTxSetup;
 
     colors defaultColors;
 
