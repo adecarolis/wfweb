@@ -1493,6 +1493,9 @@ void rigCommander::parseLevels()
     {
         switch(payloadIn[1])
         {
+            case '\x01':
+                // noise or s-meter sequelch status
+                break;
             case '\x02':
                 // S-Meter
                 emit haveMeter(meterS, level);
@@ -1502,6 +1505,9 @@ void rigCommander::parseLevels()
                 // Center (IC-R8600)
                 emit haveMeter(meterCenter, level);
                 state.set(SMETER, level, false);
+                break;
+            case '\x05':
+                // Various squelch (tone etc.)
                 break;
             case '\x11':
                 // RF-Power meter
@@ -4709,7 +4715,7 @@ void rigCommander::printHex(const QByteArray &pdata, bool printVert, bool printH
 
 void rigCommander::dataFromServer(QByteArray data)
 {
-    //qInfo(logRig()) << "emit dataForComm()";
+    //qInfo(logRig()) << "***************** emit dataForComm()" << data;
     emit dataForComm(data);
 }
 

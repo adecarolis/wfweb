@@ -223,7 +223,7 @@ void udpHandler::dataReceived()
             case (TOKEN_SIZE): // Response to Token request
             {
                 token_packet_t in = (token_packet_t)r.constData();
-                if (in->res == 0x05 && in->type != 0x01)
+                if (in->requesttype == 0x05 && in->requestreply == 0x02 && in->type != 0x01)
                 {
                     if (in->response == 0x0000)
                     {
@@ -374,8 +374,9 @@ void udpHandler::dataReceived()
                 qInfo(logUdp()) << "Got Connection status for:" << in->name << "Busy:" << in->busy << "Computer" << in->computer << "IP" << ip.toString();
 
                 // First we need to find this radio in our capabilities packet, there aren't many so just step through
-                for (unsigned char f = 0; f < radios.length(); f++)
+                for (unsigned char f = 0; f < radios.size(); f++)
                 {
+
                     if ((radios[f].commoncap == 0x8010 &&
                         radios[f].macaddress[0] == in->macaddress[0] &&
                         radios[f].macaddress[1] == in->macaddress[1] &&
@@ -386,11 +387,15 @@ void udpHandler::dataReceived()
                         !memcmp(radios[f].guid,in->guid, GUIDLEN))
                     {
                         emit setRadioUsage(f, in->busy, QString(in->computer), ip.toString());
+                        qDebug(logUdp()) << "Set radio usage num:" << f << in->name << "Busy:" << in->busy << "Computer" << in->computer << "IP" << ip.toString();
                     }
                 }
-                if (in->type != 0x01 && !streamOpened) {
 
-                    if (in->busy && numRadios == 1)
+                if (!streamOpened && radios.size()==1) {
+
+                    qDebug(logUdp()) << "Single radio available, can I connect to it?";
+
+                    if (in->busy)
                     {
                         if (in->ipaddress != 0x00 && strcmp(in->computer, compName.toLocal8Bit()))
                         {
@@ -400,17 +405,19 @@ void udpHandler::dataReceived()
                         else {
                         }
                     }
-                    else if (!in->busy && numRadios == 1)
+                    else if (!in->busy)
                     {
+                        qDebug(logUdp()) << "Attempting to connect to radio";
                         status.message = devName + " available";
                         
                         setCurrentRadio(0);
                     }
                 }
                 else if (streamOpened) 
-                   /* If another client connects/disconnects from the server, the server will emit 
+                /* If another client connects/disconnects from the server, the server will emit
                    a CONNINFO packet, send our details to confirm we still want the stream */
                 {
+                    //qDebug(logUdp()) << "I am already connected????";
                     // Received while stream is open.
                     //sendRequestStream();
                 }
@@ -440,9 +447,16 @@ void udpHandler::dataReceived()
                     qInfo(logUdp()) << this->metaObject()->className() << "Received radio capabilities, Name:" <<
                         radio.name << " Audio:" <<
                         radio.audio << "CIV:" << hex << (unsigned char)radio.civ <<
+                        "MAC:" << radio.macaddress[0] <<
+                        ":" << radio.macaddress[1] <<
+                        ":" << radio.macaddress[2] <<
+                        ":" << radio.macaddress[3] <<
+                        ":" << radio.macaddress[4] <<
+                        ":" << radio.macaddress[5] <<
                         "CAPF" << radio.capf;
                 }
                 emit requestRadioSelection(radios);
+
                 break;
             }
     
@@ -505,8 +519,10 @@ void udpHandler::sendRequestStream()
     p.len = sizeof(p);
     p.sentid = myId;
     p.rcvdid = remoteId;
-    p.code = 0x0180;
-    p.res = 0x03;
+    p.payloadsize = qToBigEndian((quint16)(sizeof(p) - 0x10));
+    p.requesttype = 0x03;
+    p.requestreply = 0x01;
+
     if (!useGuid) {
         p.commoncap = 0x8010;
         memcpy(&p.macaddress, macaddress, 6);
@@ -514,7 +530,7 @@ void udpHandler::sendRequestStream()
     else {
         memcpy(&p.guid, guid, GUIDLEN);
     }
-    p.innerseq = authSeq++;
+    p.innerseq = qToBigEndian(authSeq++);
     p.tokrequest = tokRequest;
     p.token = token;
     memcpy(&p.name, devName.toLocal8Bit().constData(), devName.length());
@@ -565,8 +581,11 @@ void udpHandler::sendLogin() // Only used on control stream.
     p.len = sizeof(p);
     p.sentid = myId;
     p.rcvdid = remoteId;
-    p.code = 0x0170; // Not sure what this is?
-    p.innerseq = authSeq++;
+    p.payloadsize = qToBigEndian((quint16)(sizeof(p) - 0x10));
+    p.requesttype = 0x00;
+    p.requestreply = 0x01;
+
+    p.innerseq = qToBigEndian(authSeq++);
     p.tokrequest = tokRequest;
     memcpy(p.username, usernameEncoded.constData(), usernameEncoded.length());
     memcpy(p.password, passwordEncoded.constData(), passwordEncoded.length());
@@ -585,9 +604,10 @@ void udpHandler::sendToken(uint8_t magic)
     p.len = sizeof(p);
     p.sentid = myId;
     p.rcvdid = remoteId;
-    p.code = 0x0130; // Not sure what this is?
-    p.res = magic;
-    p.innerseq = authSeq++;
+    p.payloadsize = qToBigEndian((quint16)(sizeof(p) - 0x10));
+    p.requesttype = magic;
+    p.requestreply = 0x01;
+    p.innerseq = qToBigEndian(authSeq++);
     p.tokrequest = tokRequest;
     p.token = token;
 

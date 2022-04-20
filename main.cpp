@@ -57,11 +57,11 @@ int main(int argc, char *argv[])
     keyboard* kb = new keyboard();
     kb->start();
 #else
+    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QApplication a(argc, argv);
     a.setOrganizationName("wfview");
     a.setOrganizationDomain("wfview.org");
     a.setApplicationName("wfview");
-    a.setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
 
 #ifdef QT_DEBUG

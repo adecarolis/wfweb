@@ -85,7 +85,7 @@ public:
 	QUdpSocket* udp=Q_NULLPTR;
 	uint32_t myId = 0;
 	uint32_t remoteId = 0;
-	uint8_t authSeq = 0x00;
+	uint16_t authSeq = 0x30;
 	uint16_t sendSeqB = 0;
 	uint16_t sendSeq = 1;
 	uint16_t lastReceivedSeq = 1;

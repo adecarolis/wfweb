@@ -4,10 +4,8 @@
 #define STALE_CONNECTION 15
 #define LOCK_PERIOD 10 // time to attempt to lock Mutex in ms
 #define AUDIO_SEND_PERIOD 20 //
-udpServer::udpServer(SERVERCONFIG& config, audioSetup outAudio, audioSetup inAudio) :
-    config(config),
-    outAudio(outAudio),
-    inAudio(inAudio)
+udpServer::udpServer(SERVERCONFIG* config) :
+    config(config)
 {
     qInfo(logUdpServer()) << "Starting udp server";
 }
@@ -15,7 +13,7 @@ udpServer::udpServer(SERVERCONFIG& config, audioSetup outAudio, audioSetup inAud
 void udpServer::init()
 {
 
-    for (RIGCONFIG* rig : config.rigs)
+    for (RIGCONFIG* rig : config->rigs)
     {
         qDebug(logUdpServer()) << "CIV:" << rig->civAddr;
         qDebug(logUdpServer()) << "Model:" << rig->modelName;
@@ -53,36 +51,40 @@ void udpServer::init()
         }
     }
 
+    QString macTemp;
     foreach(QNetworkInterface netInterface, QNetworkInterface::allInterfaces())
     {
         // Return only the first non-loopback MAC Address
         if (!(netInterface.flags() & QNetworkInterface::IsLoopBack)) {
-            macAddress = netInterface.hardwareAddress();
+            macTemp = netInterface.hardwareAddress();
         }
     }
 
+    memcpy(&macAddress, macTemp.toLocal8Bit(), 6);
+    memcpy(&macAddress, QByteArrayLiteral("\x00\x90\xc7").constData(), 3);
+
     uint32_t addr = localIP.toIPv4Address();
 
-    qInfo(logUdpServer()) << "My IP Address:" << QHostAddress(addr).toString() << "My MAC Address:" << macAddress;
+    qInfo(logUdpServer()) << "My IP Address:" << QHostAddress(addr).toString();
 
 
-    controlId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (config.controlPort & 0xffff);
-    civId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (config.civPort & 0xffff);
-    audioId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (config.audioPort & 0xffff);
+    controlId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (config->controlPort & 0xffff);
+    civId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (config->civPort & 0xffff);
+    audioId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (config->audioPort & 0xffff);
 
-    qInfo(logUdpServer()) << "Server Binding Control to: " << config.controlPort;
+    qInfo(logUdpServer()) << "Server Binding Control to: " << config->controlPort;
     udpControl = new QUdpSocket(this);
-    udpControl->bind(config.controlPort);
+    udpControl->bind(config->controlPort);
     QUdpSocket::connect(udpControl, &QUdpSocket::readyRead, this, &udpServer::controlReceived);
 
-    qInfo(logUdpServer()) << "Server Binding CIV to: " << config.civPort;
+    qInfo(logUdpServer()) << "Server Binding CIV to: " << config->civPort;
     udpCiv = new QUdpSocket(this);
-    udpCiv->bind(config.civPort);
+    udpCiv->bind(config->civPort);
     QUdpSocket::connect(udpCiv, &QUdpSocket::readyRead, this, &udpServer::civReceived);
 
-    qInfo(logUdpServer()) << "Server Binding Audio to: " << config.audioPort;
+    qInfo(logUdpServer()) << "Server Binding Audio to: " << config->audioPort;
     udpAudio = new QUdpSocket(this);
-    udpAudio->bind(config.audioPort);
+    udpAudio->bind(config->audioPort);
     QUdpSocket::connect(udpAudio, &QUdpSocket::readyRead, this, &udpServer::audioReceived);
 
     wdTimer = new QTimer();
@@ -129,8 +131,8 @@ udpServer::~udpServer()
 
 void udpServer::receiveRigCaps(rigCapabilities caps)
 {
-    for (RIGCONFIG* rig: config.rigs) {
-        if (!memcmp(rig->guid, caps.guid, GUIDLEN)) {
+    for (RIGCONFIG* rig: config->rigs) {
+        if (!memcmp(rig->guid, caps.guid, GUIDLEN) || config->rigs.size()==1) {
             // Matching rig, fill-in missing details
             rig->rigAvailable = true;
             rig->modelName = caps.modelName;
@@ -173,8 +175,8 @@ void udpServer::controlReceived()
             current->timeConnected = QDateTime::currentDateTime();
             current->ipAddress = datagram.senderAddress();
             current->port = datagram.senderPort();
-            current->civPort = config.civPort;
-            current->audioPort = config.audioPort;
+            current->civPort = config->civPort;
+            current->audioPort = config->audioPort;
             current->myId = controlId;
             current->remoteId = qFromLittleEndian<quint32>(r.mid(8, 4));
             current->socket = udpControl;
@@ -194,8 +196,16 @@ void udpServer::controlReceived()
 
             qInfo(logUdpServer()) << current->ipAddress.toString() << ": New Control connection created";
 
+
             if (connMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
             {
+                // Quick hack to replace the GUID with a MAC address. 
+                if (config->rigs.size() == 1) {
+                    memset(config->rigs.first()->guid, 0, GUIDLEN);
+                    config->rigs.first()->commoncap = (quint16)0x8010;
+                    memcpy(config->rigs.first()->macaddress, macAddress, 6);
+                    memcpy(current->guid, config->rigs.first()->guid, GUIDLEN);
+                }
                 controlClients.append(current);
                 connMutex.unlock();
             }
@@ -255,26 +265,26 @@ void udpServer::controlReceived()
             token_packet_t in = (token_packet_t)r.constData();
             current->rxSeq = in->seq;
             current->authInnerSeq = in->innerseq;
-            memcpy(current->macaddress, in->macaddress, 6);
-            if (in->res == 0x02) {
+            memcpy(current->guid, in->guid, GUIDLEN);
+            if (in->requesttype == 0x02 && in->requestreply == 0x01) {
                 // Request for new token
                 qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received create token request";
                 sendCapabilities(current);
-                for (RIGCONFIG* radio : config.rigs) {
+                for (RIGCONFIG* radio : config->rigs) {
                     sendConnectionInfo(current, radio->guid);
                 }
             }
-            else if (in->res == 0x01) {
+            else if (in->requesttype == 0x01 && in->requestreply == 0x01) {
                 // Token disconnect
                 qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received token disconnect request";
-                sendTokenResponse(current, in->res);
+                sendTokenResponse(current, in->requesttype);
             }
-            else if (in->res == 0x04) {
+            else if (in->requesttype == 0x04 && in->requestreply == 0x01) {
                 // Disconnect audio/civ
-                sendTokenResponse(current, in->res);
+                sendTokenResponse(current, in->requesttype);
                 current->isStreaming = false;
-                for (RIGCONFIG* radio : config.rigs) {
-                    if (!memcmp(radio->guid, current->guid, GUIDLEN))
+                for (RIGCONFIG* radio : config->rigs) {
+                    if (!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size() == 1)
                     {
                         sendConnectionInfo(current, radio->guid);
                     }
@@ -282,7 +292,7 @@ void udpServer::controlReceived()
             }
             else {
                 qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received token request";
-                sendTokenResponse(current, in->res);
+                sendTokenResponse(current, in->requesttype);
             }
             break;
         }
@@ -290,7 +300,7 @@ void udpServer::controlReceived()
         {
             login_packet_t in = (login_packet_t)r.constData();
             qInfo(logUdpServer()) << current->ipAddress.toString() << ": Received 'login'";
-            foreach(SERVERUSER user, config.users)
+            foreach(SERVERUSER user, config->users)
             {
                 QByteArray usercomp;
                 passcode(user.username, usercomp);
@@ -345,9 +355,9 @@ void udpServer::controlReceived()
 
 
             audioSetup setup;
-            setup.resampleQuality = config.resampleQuality;
-            for (RIGCONFIG* radio : config.rigs) {
-                if (!memcmp(radio->guid, current->guid, GUIDLEN) && radio->txaudio == Q_NULLPTR)
+            setup.resampleQuality = config->resampleQuality;
+            for (RIGCONFIG* radio : config->rigs) {
+                if ((!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size()==1) && radio->txaudio == Q_NULLPTR )
                 {
                     radio->txAudioSetup.codec = current->txCodec;
                     radio->txAudioSetup.format.setSampleRate(current->txSampleRate);
@@ -380,7 +390,7 @@ void udpServer::controlReceived()
                     connect(this, SIGNAL(haveAudioData(audioPacket)), radio->txaudio, SLOT(incomingAudio(audioPacket)));
 
                 }
-                if (!memcmp(radio->guid, current->guid, GUIDLEN) && radio->rxaudio == Q_NULLPTR)
+                if ((!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size() == 1) && radio->rxaudio == Q_NULLPTR)
                 {
                     #if !defined(PORTAUDIO) && !defined(RTAUDIO)
                     qInfo(logUdpServer()) << "Radio" << radio->rigName << "audio input(RX) :" << radio->rxAudioSetup.port.deviceName();
@@ -404,7 +414,6 @@ void udpServer::controlReceived()
 
                     radio->rxAudioThread->start(QThread::TimeCriticalPriority);
 
-                    connect(this, SIGNAL(setupRxAudio(audioSetup)), radio->rxaudio, SLOT(init(audioSetup)));
                     connect(radio->rxAudioThread, SIGNAL(finished()), radio->rxaudio, SLOT(deleteLater()));
                     connect(radio->rxaudio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
 
@@ -414,6 +423,7 @@ void udpServer::controlReceived()
                     }, Qt::QueuedConnection);
 #else
                     #warning "QT 5.9 is not fully supported multiple rigs will NOT work!"
+                    connect(this, SIGNAL(setupRxAudio(audioSetup)), radio->rxaudio, SLOT(init(audioSetup)));
                     setupRxAudio(radio->rxAudioSetup);
 #endif
 
@@ -573,10 +583,11 @@ void udpServer::civReceived()
                             qDebug(logUdpServer()) << current->ipAddress.toString() << ": Detected invalid remote CI-V:" << hex << (quint8)r[lastFE+2];
 			            }
 
-                        for (RIGCONFIG* radio : config.rigs) {
-                            if (!memcmp(radio->guid, current->guid, sizeof(radio->guid)))
+                        for (RIGCONFIG* radio : config->rigs) {
+                            if (!memcmp(radio->guid, current->guid, sizeof(radio->guid)) || config->rigs.size()==1)
                             {
                                 // Only send to the rig that it belongs to!
+                                //qDebug(logUdpServer()) << "Sending data" << r.mid(0x15);
 #if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
                                 QMetaObject::invokeMethod(radio->rig, [=]() {
                                     radio->rig->dataFromServer(r.mid(0x15));;
@@ -1095,7 +1106,9 @@ void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
     p.innerseq = c->authInnerSeq;
     p.tokrequest = c->tokenRx;
     p.token = c->tokenTx;
-    p.code = 0x0250;
+    p.payloadsize = qToBigEndian((quint16)(sizeof(p) - 0x10));
+    p.requesttype = 0x00;
+    p.requestreply = 0x01;
 
 
     if (!allowed) {
@@ -1108,7 +1121,8 @@ void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
             c->retransmitTimer->stop();
     }
     else {
-        strcpy(p.connection, "WFVIEW");
+        //strcpy(p.connection, "WFVIEW");
+        strcpy(p.connection, "FTTH");
     }
 
     SEQBUFENTRY s;
@@ -1157,20 +1171,21 @@ void udpServer::sendCapabilities(CLIENT* c)
     p.innerseq = c->authInnerSeq;
     p.tokrequest = c->tokenRx;
     p.token = c->tokenTx;
-    p.res = 0x0202;
-    p.numradios = config.rigs.count();
-
+    p.requesttype = 0x02;
+    p.requestreply = 0x02;
+    p.numradios = qToBigEndian((quint16)config->rigs.size());
     SEQBUFENTRY s;
     s.seqNum = p.seq;
     s.timeSent = QTime::currentTime();
     s.retransmitCount = 0;
 
-    for (RIGCONFIG* rig : config.rigs) {
+    for (RIGCONFIG* rig : config->rigs) {
         qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending Capabilities :" << c->txSeq << "for" << rig->modelName;
         radio_cap_packet r;
         memset(r.packet, 0x0, sizeof(r)); // We can't be sure it is initialized with 0x00!
-
+        
         memcpy(r.guid, rig->guid, GUIDLEN);
+
         memcpy(r.name, rig->rigName.toLocal8Bit(), sizeof(r.name));
         memcpy(r.audio, QByteArrayLiteral("ICOM_VAUDIO").constData(), 11);
 
@@ -1233,7 +1248,7 @@ void udpServer::sendCapabilities(CLIENT* c)
     }
 
     p.len = sizeof(p)+s.data.length();
-    p.payloadsize = sizeof(p)+s.data.length() - 0x0f;
+    p.payloadsize = qToBigEndian((quint16)(sizeof(p) + s.data.length() - 0x10));
 
     s.data.insert(0,QByteArray::fromRawData((const char*)p.packet, sizeof(p)));
 
@@ -1271,8 +1286,8 @@ void udpServer::sendCapabilities(CLIENT* c)
 // Also used to display currently connected used information.
 void udpServer::sendConnectionInfo(CLIENT* c, quint8 guid[GUIDLEN])
 {
-    for (RIGCONFIG* radio : config.rigs) {
-        if (!memcmp(guid, radio->guid, GUIDLEN))
+    for (RIGCONFIG* radio : config->rigs) {
+        if (!memcmp(guid, radio->guid, GUIDLEN) || config->rigs.size()==1)
         {
             qInfo(logUdpServer()) << c->ipAddress.toString() << "(" << c->type << "): Sending ConnectionInfo :" << c->txSeq;
             conninfo_packet p;
@@ -1285,7 +1300,10 @@ void udpServer::sendConnectionInfo(CLIENT* c, quint8 guid[GUIDLEN])
             //p.innerseq = c->authInnerSeq; // Innerseq not used in user packet
             p.tokrequest = c->tokenRx;
             p.token = c->tokenTx;
-            p.code = 0x0380;
+            p.payloadsize = qToBigEndian((quint16)(sizeof(p) - 0x10));
+            p.requesttype = 0x00;
+            p.requestreply = 0x03;
+
             memcpy(p.guid, radio->guid, GUIDLEN);
             memcpy(p.name, radio->rigName.toLocal8Bit(), sizeof(p.name));
 
@@ -1362,11 +1380,11 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
     p.innerseq = c->authInnerSeq;
     p.tokrequest = c->tokenRx;
     p.token = c->tokenTx;
-    p.code = 0x0230;
-    memcpy(p.macaddress, c->macaddress, 6);
-    p.commoncap = c->commonCap;
-    p.res = type;
+    p.payloadsize = qToBigEndian((quint16)(sizeof(p) - 0x10));
 
+    memcpy(p.guid, c->guid, GUIDLEN);
+    p.requesttype = type;
+    p.requestreply = 0x02;
 
     SEQBUFENTRY s;
     s.seqNum = p.seq;
@@ -1473,11 +1491,10 @@ void udpServer::sendStatus(CLIENT* c)
     p.innerseq = c->authInnerSeq;
     p.tokrequest = c->tokenRx;
     p.token = c->tokenTx;
-    p.code = 0x0240;
-    p.res = 0x03;
-    p.unknown = 0x1000;
-    p.unusede = (char)0x80;
-    memcpy(p.macaddress, c->macaddress, 6);
+    p.payloadsize = qToBigEndian((quint16)(sizeof(p) - 0x10));
+    p.requestreply = 0x02;
+    p.requesttype = 0x03;
+    memcpy(p.guid, c->guid, GUIDLEN); // May be MAC address OR guid.
 
 
     p.civport = qToBigEndian(c->civPort);
@@ -1534,7 +1551,7 @@ void udpServer::dataForServer(QByteArray d)
             continue;
         }
         // Use the GUID to determine which radio the response is from
-        if (memcmp(sender->getGUID(), client->guid, GUIDLEN))
+        if (memcmp(sender->getGUID(), client->guid, GUIDLEN) && config->rigs.size()>1)
         {
             continue; // Rig guid doesn't match the one requested by the client.
         }
@@ -1571,7 +1588,7 @@ void udpServer::dataForServer(QByteArray d)
                 }
                 client->txSeqBuf.insert(p.seq, s);
                 client->txSeq++;
-                client->innerSeq++;
+                //client->innerSeq = (qToBigEndian(qFromBigEndian(client->innerSeq) + 1));
                 client->txMutex.unlock();
             }
             else {
@@ -1607,7 +1624,7 @@ void udpServer::receiveAudioData(const audioPacket& d)
     else {
         memcpy(guid, d.guid, GUIDLEN);
     }
-//qInfo(logUdpServer()) << "Server got:" << d.data.length();
+    //qInfo(logUdpServer()) << "Server got:" << d.data.length();
     foreach(CLIENT * client, audioClients)
     {
         int len = 0;
@@ -1615,7 +1632,7 @@ void udpServer::receiveAudioData(const audioPacket& d)
             QByteArray partial;
             partial = d.data.mid(len, 1364);
             len = len + partial.length();
-            if (client != Q_NULLPTR && client->connected && !memcmp(client->guid, guid, GUIDLEN)) {
+            if (client != Q_NULLPTR && client->connected && (!memcmp(client->guid, guid, GUIDLEN) || config->rigs.size()== 1)) {
                 audio_packet p;
                 memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
                 p.len = sizeof(p) + partial.length();
@@ -1698,19 +1715,22 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
     {
         for (auto it = c->rxMissing.begin(); it != c->rxMissing.end(); ++it)
         {
-            if (&it.key() != Q_NULLPTR && it.value() < 4)
+            if (&it.key() != Q_NULLPTR)
             {
-                missingSeqs.append(it.key() & 0xff);
-                missingSeqs.append(it.key() >> 8 & 0xff);
-                missingSeqs.append(it.key() & 0xff);
-                missingSeqs.append(it.key() >> 8 & 0xff);
-                it.value()++;
-            } 
+                if (it.value() < 4)
+                {
+                    missingSeqs.append(it.key() & 0xff);
+                    missingSeqs.append(it.key() >> 8 & 0xff);
+                    missingSeqs.append(it.key() & 0xff);
+                    missingSeqs.append(it.key() >> 8 & 0xff);
+                    it.value()++;
+                }
 
-            else {
-                // We have tried 4 times to request this packet, time to give up!
-                qDebug(logUdp()) << this->metaObject()->className() << ": No response for missing packet" << it.key() << "deleting";
-                it = c->rxMissing.erase(it);
+                else {
+                    // We have tried 4 times to request this packet, time to give up!
+                    qDebug(logUdp()) << this->metaObject()->className() << ": No response for missing packet" << it.key() << "deleting";
+                    it = c->rxMissing.erase(it);
+                }
             }
         }
 
@@ -1844,8 +1864,8 @@ void udpServer::deleteConnection(QList<CLIENT*>* l, CLIENT* c)
     }
 
     if (len == 0) {
-        for (RIGCONFIG* radio : config.rigs) {
-            if (!memcmp(radio->guid, guid, GUIDLEN))
+        for (RIGCONFIG* radio : config->rigs) {
+            if (!memcmp(radio->guid, guid, GUIDLEN) || config->rigs.size() == 1)
             {
 
                 if (radio->rxAudioThread != Q_NULLPTR) {
