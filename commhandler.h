@@ -16,10 +16,15 @@ class commHandler : public QObject
 
 public:
     commHandler();
-    commHandler(QString portName, quint32 baudRate);
+    commHandler(QString portName, quint32 baudRate, quint8 wfFormat);
     bool serialError;
+    bool rtsStatus();
 
     ~commHandler();
+
+public slots:
+    void setUseRTSforPTT(bool useRTS);
+    void setRTS(bool rtsOn);
 
 private slots:
     void receiveDataIn(); // from physical port
@@ -37,6 +42,7 @@ private:
     void setupComm();
     void openPort();
     void closePort();
+
 
     void sendDataOut(const QByteArray &writeData); // out to radio
     void debugMe();
@@ -63,10 +69,19 @@ private:
     bool havePt;
     QString ptDevSlave;
 
+    bool PTTviaRTS = false;
+
     bool isConnected; // port opened
     mutable QMutex mutex;
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
-
+    bool combineWf = false;
+    QByteArray spectrumData;
+    quint8 spectrumDivisionNumber;
+    quint8 spectrumDivisionMax;
+    quint8 spectrumCenterOrFixed;
+    quint8 spectrumInformation;
+    quint8 spectrumOutOfRange;
+    quint8 lastSpectrum = 0;
 };
 
 #endif // COMMHANDLER_H

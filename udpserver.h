@@ -19,10 +19,11 @@
 
 #include <QDebug>
 
-#include <udpserversetup.h>
 #include "packettypes.h"
 #include "rigidentities.h"
+#include "udphandler.h"
 #include "audiohandler.h"
+#include "rigcommander.h"
 
 extern void passcode(QString in,QByteArray& out);
 extern QByteArray parseNullTerminatedString(QByteArray c, int s);
@@ -34,12 +35,71 @@ struct SEQBUFENTRY {
 	quint8 retransmitCount;
 };
 
+
+struct SERVERUSER {
+	QString username;
+	QString password;
+	quint8 userType;
+};
+
+
+struct RIGCONFIG {
+	QString serialPort;
+	quint32 baudRate;
+	unsigned char civAddr;
+	bool civIsRadioModel;
+	bool forceRTSasPTT;
+	bool hasWiFi = false;
+	bool hasEthernet=false;
+	audioSetup rxAudioSetup;
+	audioSetup txAudioSetup;
+	QString modelName;
+	QString rigName;
+#pragma pack(push, 1)
+	union {
+		struct {
+			quint8 unused[7];        // 0x22
+			quint16 commoncap;      // 0x27
+			quint8 unusedb;           // 0x29
+			quint8 macaddress[6];     // 0x2a
+		};
+		quint8 guid[GUIDLEN];                  // 0x20
+	};
+#pragma pack(pop)
+	bool rigAvailable=false;
+	rigCapabilities rigCaps;
+	rigCommander* rig = Q_NULLPTR;
+	QThread* rigThread = Q_NULLPTR;
+	audioHandler* rxaudio = Q_NULLPTR;
+	QThread* rxAudioThread = Q_NULLPTR;
+	audioHandler* txaudio = Q_NULLPTR;
+	QThread* txAudioThread = Q_NULLPTR;
+	QTimer* rxAudioTimer = Q_NULLPTR;
+	QTimer* connectTimer = Q_NULLPTR;
+};
+
+
+struct SERVERCONFIG {
+	bool enabled;
+	bool lan;
+	quint16 controlPort;
+	quint16 civPort;
+	quint16 audioPort;
+	int audioOutput;
+	int audioInput;
+	quint8 resampleQuality;
+	quint32 baudRate;
+	QList <SERVERUSER> users;
+	QList <RIGCONFIG*> rigs;
+};
+
+
 class udpServer : public QObject
 {
 	Q_OBJECT
 
 public:
-	udpServer(SERVERCONFIG config,audioSetup outAudio, audioSetup inAudio);
+	udpServer(SERVERCONFIG* config);
 	~udpServer();
 
 public slots:
@@ -51,7 +111,7 @@ public slots:
 signals:
 	void haveDataFromServer(QByteArray);
 	void haveAudioData(audioPacket data);
-	void haveNetworkStatus(QString);
+	void haveNetworkStatus(networkStatus);
 
 	void setupTxAudio(audioSetup);
 	void setupRxAudio(audioSetup);
@@ -79,12 +139,11 @@ private:
 		quint16 connSeq;
 		quint16 pingSeq;
 		quint32 rxPingTime; // 32bit as has other info
-		quint8 authInnerSeq;
+		quint16 authInnerSeq;
 		quint16 authSeq;
 		quint16 innerSeq;
 		quint16 sendAudioSeq;
-		quint8 identa;
-		quint32 identb;
+		quint8 macaddress[6];
 		quint16 tokenRx;
 		quint32 tokenTx;
 		quint32 commonCap;
@@ -119,6 +178,7 @@ private:
 		CLIENT* controlClient = Q_NULLPTR;
 		CLIENT* civClient = Q_NULLPTR;
 		CLIENT* audioClient = Q_NULLPTR;
+		quint8 guid[GUIDLEN];
 	};
 
 	void controlReceived();
@@ -130,47 +190,39 @@ private:
 	void sendControl(CLIENT* c, quint8 type, quint16 seq);
 	void sendLoginResponse(CLIENT* c, bool allowed);
 	void sendCapabilities(CLIENT* c);
-	void sendConnectionInfo(CLIENT* c);
+	void sendConnectionInfo(CLIENT* c,quint8 guid[GUIDLEN]);
 	void sendTokenResponse(CLIENT* c,quint8 type);
 	void sendStatus(CLIENT* c);
 	void sendRetransmitRequest(CLIENT* c);
 	void watchdog();
-	void sendRxAudio();
 	void deleteConnection(QList<CLIENT*> *l, CLIENT* c);
 
-	SERVERCONFIG config;
+	SERVERCONFIG *config;
 
 	QUdpSocket* udpControl = Q_NULLPTR;
 	QUdpSocket* udpCiv = Q_NULLPTR;
 	QUdpSocket* udpAudio = Q_NULLPTR;
 	QHostAddress localIP;
-	QString macAddress;
+	quint8 macAddress[6];
 	
 	quint32 controlId = 0;
 	quint32 civId = 0;
 	quint32 audioId = 0;
 
-	quint8 rigciv = 0xa2;
-
 	QMutex udpMutex; // Used for critical operations.
 	QMutex connMutex;
+	QMutex audioMutex;
 
 	QList <CLIENT*> controlClients = QList<CLIENT*>();
 	QList <CLIENT*> civClients = QList<CLIENT*>();
 	QList <CLIENT*> audioClients = QList<CLIENT*>();
+
 	QTime timeStarted;
-	rigCapabilities rigCaps;
 
-	audioHandler* rxaudio = Q_NULLPTR;
-	QThread* rxAudioThread = Q_NULLPTR;
-
-	audioHandler* txaudio = Q_NULLPTR;
-	QThread* txAudioThread = Q_NULLPTR;
 
 	audioSetup outAudio;
 	audioSetup inAudio;
 
-	QTimer* rxAudioTimer=Q_NULLPTR;
 	quint16 rxSampleRate = 0;
 	quint16 txSampleRate = 0;
 	quint8 rxCodec = 0;
@@ -178,6 +230,8 @@ private:
 
 	QHostAddress hasTxAudio;
 	QTimer* wdTimer;
+
+	networkStatus status;
 };
 
 

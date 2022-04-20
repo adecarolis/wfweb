@@ -11,6 +11,7 @@
 #include <QByteArray>
 #include <QVector>
 #include <QMap>
+#include <QUuid>
 
 // Allow easy endian-ness conversions
 #include <QtEndian>
@@ -24,14 +25,6 @@
 #include "audiohandler.h"
 #include "packettypes.h"
 
-#define PURGE_SECONDS 10
-#define TOKEN_RENEWAL 60000
-#define PING_PERIOD 100
-#define IDLE_PERIOD 100
-#define TXAUDIO_PERIOD 10 
-#define AREYOUTHERE_PERIOD 500
-#define WATCHDOG_PERIOD 500
-#define RETRANSMIT_PERIOD 100
 
 struct udpPreferences {
 	QString ipAddress;
@@ -41,6 +34,25 @@ struct udpPreferences {
 	QString username;
 	QString password;
 	QString clientName;
+	quint8 waterfallFormat;
+};
+
+struct networkStatus {
+	quint8 rxAudioBufferPercent;
+	quint8 txAudioBufferPercent;
+	quint8 rxAudioLevel;
+	quint8 txAudioLevel;
+	quint16 rxLatency;
+	quint16 txLatency;
+	bool rxUnderrun;
+	bool txUnderrun;
+	quint16 rxCurrentLatency;
+	quint16 txCurrentLatency;
+	quint32 packetsSent=0;
+	quint32 packetsLost=0;
+	quint16 rtt=0;
+	quint32 networkLatency=0;
+	QString message;
 };
 
 void passcode(QString in, QByteArray& out);
@@ -54,7 +66,9 @@ class udpBase : public QObject
 public:
 	~udpBase();
 
-	void init();
+	void init(quint16 local);
+
+	void reconnect();
 
 	void dataReceived(QByteArray r); 
 	void sendPing();
@@ -62,12 +76,16 @@ public:
 
 	void sendControl(bool tracked,quint8 id, quint16 seq);
 
+	void printHex(const QByteArray& pdata);
+	void printHex(const QByteArray& pdata, bool printVert, bool printHoriz);
+
+
 	QTime timeStarted;
 
 	QUdpSocket* udp=Q_NULLPTR;
 	uint32_t myId = 0;
 	uint32_t remoteId = 0;
-	uint8_t authSeq = 0x00;
+	uint16_t authSeq = 0x30;
 	uint16_t sendSeqB = 0;
 	uint16_t sendSeq = 1;
 	uint16_t lastReceivedSeq = 1;
@@ -129,14 +147,13 @@ private:
 
 };
 
-
 // Class for all (pseudo) serial communications
 class udpCivData : public udpBase
 {
 	Q_OBJECT
 
 public:
-	udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort);
+	udpCivData(QHostAddress local, QHostAddress ip, quint16 civPort, bool splitWf, quint16 lport);
 	~udpCivData();
 	QMutex serialmutex;
 
@@ -153,6 +170,7 @@ private:
 	void sendOpenClose(bool close);
 
 	QTimer* startCivDataTimer = Q_NULLPTR;
+	bool splitWaterfall = false;
 };
 
 
@@ -162,7 +180,7 @@ class udpAudio : public udpBase
 	Q_OBJECT
 
 public:
-	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, audioSetup rxSetup, audioSetup txSetup);
+	udpAudio(QHostAddress local, QHostAddress ip, quint16 aport, quint16 lport, audioSetup rxSetup, audioSetup txSetup);
 	~udpAudio();
 
 	int audioLatency = 0;
@@ -175,10 +193,15 @@ signals:
 
 	void haveChangeLatency(quint16 value);
 	void haveSetVolume(unsigned char value);
+	void haveRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
+	void haveTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
 
 public slots:
 	void changeLatency(quint16 value);
 	void setVolume(unsigned char value);
+	void getRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
+	void getTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
+	void receiveAudioData(audioPacket audio);
 
 private:
 
@@ -194,8 +217,10 @@ private:
 	audioHandler* txaudio = Q_NULLPTR;
 	QThread* txAudioThread = Q_NULLPTR;
 
-	QTimer* txAudioTimer=Q_NULLPTR;
+	QTimer* txAudioTimer = Q_NULLPTR;
 	bool enableTx = true;
+
+	QMutex audioMutex;
 
 };
 
@@ -215,6 +240,8 @@ public:
 	udpCivData* civ = Q_NULLPTR;
 	udpAudio* audio = Q_NULLPTR;
 
+	unsigned char numRadios;
+	QList<radio_cap_packet> radios;
 
 public slots:
 	void receiveDataFromUserToRig(QByteArray); // This slot will send data on to 
@@ -223,6 +250,10 @@ public slots:
 	void changeLatency(quint16 value);
 	void setVolume(unsigned char value);
 	void init();
+	void setCurrentRadio(quint8 radio);
+	void getRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
+	void getTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
+
 
 signals:
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
@@ -230,9 +261,10 @@ signals:
 	void haveNetworkError(QString, QString);
 	void haveChangeLatency(quint16 value);
 	void haveSetVolume(unsigned char value);
-	void haveNetworkStatus(QString);
+	void haveNetworkStatus(networkStatus);
 	void haveBaudRate(quint32 baudrate);
-
+	void requestRadioSelection(QList<radio_cap_packet> radios);
+	void setRadioUsage(quint8, quint8 busy, QString name, QString mac);
 private:
 	
 	void sendAreYouThere();
@@ -256,6 +288,9 @@ private:
 	quint16 civPort;
 	quint16 audioPort;
 
+	quint16 civLocalPort;
+	quint16 audioLocalPort;
+
 	audioSetup rxSetup;
 	audioSetup txSetup;
 
@@ -267,9 +302,9 @@ private:
 	quint16 tokRequest;
 	quint32 token;
 	// These are for stream ident info.
-	char identa;
-	quint32 identb;
-
+	quint8 macaddress[8];
+	quint8 guid[GUIDLEN];
+	bool useGuid = false;
 	QByteArray usernameEncoded;
 	QByteArray passwordEncoded;
 
@@ -280,6 +315,8 @@ private:
 	quint8 civId = 0;
 	quint16 rxSampleRates = 0;
 	quint16 txSampleRates = 0;
+	networkStatus status;
+	bool splitWf = false;
 };
 
 

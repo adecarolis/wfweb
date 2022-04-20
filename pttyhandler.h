@@ -9,6 +9,8 @@
 #include <QSocketNotifier>
 #include <QtSerialPort/QSerialPort>
 
+#include "rigidentities.h"
+
 // This class abstracts the comm port in a useful way and connects to
 // the command creator and command parser.
 
@@ -27,6 +29,7 @@ private slots:
     void receiveDataIn(int fd); // from physical port
     void receiveDataFromRigToPtty(const QByteArray& data);
     void debugThis();
+    void receiveFoundRigID(rigCapabilities rigCaps);
 
 signals:
     void haveTextMessage(QString message); // status, debug only
@@ -59,6 +62,7 @@ private:
     bool rolledBack;
 
     int ptfd; // pseudo-terminal file desc.
+    int ptKeepAlive=0; // Used to keep the pty alive after client disconnects.
     bool havePt;
     QString ptDevSlave;
 
@@ -66,8 +70,9 @@ private:
     mutable QMutex mutex;
     void printHex(const QByteArray& pdata, bool printVert, bool printHoriz);
     bool disableTransceive = false;
-    QSocketNotifier *ptReader = nullptr;
+    QSocketNotifier *ptReader = Q_NULLPTR;
     quint8 civId=0;
+    rigCapabilities rigCaps;
 };
 
 #endif // PTTYHANDLER_H

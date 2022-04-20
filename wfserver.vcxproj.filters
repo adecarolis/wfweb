@@ -1,16 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Form Files">
-      <UniqueIdentifier>{99349809-55BA-4b9d-BF79-8FDBB0286EB3}</UniqueIdentifier>
-      <Extensions>ui</Extensions>
-      <ParseFiles>false</ParseFiles>
-    </Filter>
-    <Filter Include="Form Files">
-      <UniqueIdentifier>{99349809-55BA-4b9d-BF79-8FDBB0286EB3}</UniqueIdentifier>
-      <Extensions>ui</Extensions>
-      <ParseFiles>false</ParseFiles>
-    </Filter>
     <Filter Include="Generated Files">
       <UniqueIdentifier>{71ED8ED8-ACB9-4CE9-BBE1-E00B30144E11}</UniqueIdentifier>
       <Extensions>cpp;c;cxx;moc;h;def;odl;idl;res;</Extensions>
@@ -47,13 +37,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="aboutbox.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="audiohandler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="calibrationwindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="commhandler.cpp">
@@ -68,19 +52,7 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="meter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="pttyhandler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\qcustomplot\qcustomplot.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="qledlabel.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="repeatersetup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="resampler\resample.c">
@@ -95,16 +67,10 @@
     <ClCompile Include="rigidentities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="satellitesetup.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="selectradio.cpp">
+    <ClCompile Include="servermain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="tcpserver.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="transceiveradjustments.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="udphandler.cpp">
@@ -113,14 +79,11 @@
     <ClCompile Include="udpserver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="wfmain.cpp">
+    <ClCompile Include="keyboard.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <QtMoc Include="aboutbox.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <ClInclude Include="resampler\arch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -130,9 +93,6 @@
     <ClInclude Include="audiotaper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <QtMoc Include="calibrationwindow.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <QtMoc Include="commhandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -142,27 +102,15 @@
     <ClInclude Include="logcategories.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <QtMoc Include="meter.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <ClInclude Include="packettypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <QtMoc Include="pttyhandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="..\qcustomplot\qcustomplot.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="qledlabel.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <ClInclude Include="repeaterattributes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <QtMoc Include="repeatersetup.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <ClInclude Include="resampler\resample_sse.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -175,19 +123,13 @@
     <ClInclude Include="rigidentities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <QtMoc Include="satellitesetup.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="selectradio.h">
+    <QtMoc Include="servermain.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <ClInclude Include="resampler\speex_resampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <QtMoc Include="tcpserver.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="transceiveradjustments.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="udphandler.h">
@@ -199,87 +141,14 @@
     <ClInclude Include="ulaw.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <QtMoc Include="wfmain.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
   </ItemGroup>
   <ItemGroup>
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-  </ItemGroup>
-  <ItemGroup>
-    <QtUic Include="aboutbox.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
-    <QtUic Include="calibrationwindow.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
-    <QtUic Include="repeatersetup.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
-    <QtUic Include="satellitesetup.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
-    <QtUic Include="selectradio.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
-    <QtUic Include="transceiveradjustments.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
-    <QtUic Include="wfmain.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
   </ItemGroup>
   <ItemGroup>
     <None Include="qdarkstyle\rc\Hmovetoolbar.png">
@@ -413,6 +282,11 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="C:\Users\Phil\source\repos\wfview\wfview_resource.rc" />
+    <ResourceCompile Include=".\wfserver_resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="keyboard.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
 </Project>

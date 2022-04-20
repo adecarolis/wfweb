@@ -1,5 +1,280 @@
 # CHANGELOG
 
+- 20220414	
+
+		this is a cherrypicked CHANGELOG add as there are loads of changes due to different 
+		audio transport ideas etc. For a full changelog exec: git log"
+
+    		About box updated to include Patreon site 
+
+    		added 500 Hz step for VFO
+
+		Added clock and UTC toggle.
+
+    		Added forced manual RTS setting
+
+    		Add RIT function and other rigctl fixes
+
+    		Adjusted window size for radios without spectrum. Thanks K5TUX.
+
+    		Allow dynamic restarting of server
+
+    		New Settings tab
+
+    		Enable High DPI Scaling
+
+    		More multi-radio support
+
+		many rigctl improvements/cmpat adds
+
+		N1MM+ TCP connection added
+    
+- 20211201
+
+    		Another "minor" update for RX only rigs
+
+    		Disable certain TX commands for RX only rigs
+
+- 20211222
+
+    		Add mutex within rigState to protect access
+
+- 20211119
+
+    		Add more version info
+
+    		Add --version command line argument and WFVIEW_VERSION #define
+
+- 20211118
+
+    		A little less green in our gray.
+
+    		Added size rules for audio source combo boxes.
+
+    		Fix silly bug in retransmit code
+
+    		Remove some extra logging from audio
+
+- 20211115
+
+    		Add mutex for incoming audio on udp and server
+
+    		Force PA to use 48K Sample Rate if default is 44.1K
+
+    		Try using slot for audio again
+
+- 20211110
+
+    		Server only tries mutex lock for 10ms before giving up.
+
+    		Check number of samples in opus packet before attempting decode
+
+- 20211109
+
+    		Small changes to audio handler
+
+- 20211107
+
+    		Add SSE2 enhancements to resampler
+
+    		Update audiohandler.h
+
+    		Enable SSE or NEON enhancements for resampler
+
+    		Fix resample ratio for input and output (hopefully!)
+
+    		Create resampleRatio
+
+    		Close PA stream after stopping it!
+
+    		Fix Linux rtaudio build
+
+    		Pulled out some debug code that isn't needed.
+
+    		Fixed manual rig ID issue with uninitialized variable.
+
+- 20211106
+
+    		Added override allowing the user-specified CI-V address to also be used
+    		as the Rig ID (model). This is useful for older radios that do not reply
+    		to Rig ID queries. For radios using the default CI-V address, it should
+    		"just work".
+
+    		Added PTT "snooping" to the commHandler, such that radios needing RTS
+    		set for PTT will work. Includes replying to PTT queries with the RTS
+    		status. There is currently no UI to manually select radios that need
+    		RTS.
+
+    		deleted a lingering swapfile from one of my vim sessions
+
+- 20211105
+
+    		Added RTS PTT support commHandler and rigCommander. RTS is only sent
+    		from rigCommander at this time, the pty is not parsed.
+
+    		Added geometry constraints to the transceiver adjustments window, and
+    		disable controls which do not function except for debug builds.
+
+
+    		Changed IF/TPBF commands to be "unique priority" inserts. Added "more"
+    		button for extended transceiver controls.
+
+    		Added an IF Shift-like control for radios with Twin PBF.
+
+    		Added support for IF Shift and Twin Pass-Band Filters. Currently
+    		accessible only via the debug button.
+
+- 20211104
+    		Added IC-736 FM mode
+
+    		Added code to force IC-736 to rigID
+
+- 20211101
+
+    		Use QT Audio by default
+
+    		remove unneeded audio signal handler
+
+    		Add portaudio support
+
+    		Make switching between audio apis easier (and tidy .pro file)
+
+    		Use buffered audio for Linux (was just Mac only)
+
+    		Adjust buffer size depending on latency setting
+
+- 20211031
+
+    		Stuff audio buffer directly rather than signal/slot
+
+- 20211022
+
+    		Don't block until audio buffer has space
+
+    		Bit of tidying
+
+- 20211020
+
+    		Tidy-up server shutdown
+
+    		Trying to find cause of lockup when client disappears
+
+- 20211006
+
+    		Send TX/Freq changes multiple times with rigctld
+
+		bumped to 1.2d hopefully last testversion before 1.20
+- 202109022
+
+    		Remove duplicate setPriority()
+
+    		Fix typo
+
+		Add keepalive for linux/mac pty
+
+    		Fix alignment of rigname in taskbar
+
+    		Only send RX antenna byte to rig when it has an RX antenna option in rigCaps
+
+
+- 20210907
+
+	        Make rigctld state work for USB connected rigs
+
+- 20210831
+
+    		added 25 kHz step for tuning
+
+- 20210829
+
+    		Experimental support for split mode in rigctld
+
+    		Ignore control levels that we don't currently support
+
+    		Add better detection of ci-v transceive disable
+
+- 20210827
+
+    		Add saving of meter2 state
+
+- 20210823
+
+    		Set audio thread priority in the correct place!
+
+    		Now with dual meters for everyone!
+
+- 20210820
+
+    		Clear Center readout as well.
+
+    		Fixed issue where the "none" selection didn't work quite right. Also
+    		fixed the T/R meter switching to clear out invalid readings.
+
+
+    		Set audio threads to be realtime priority
+
+- 20210817
+
+    		dual meter support/WHATSNEW
+
+    		Current scale tic marks on both sides now!
+
+    		More meter work, fixed some scales and added labels.
+
+    		Better meter fonts
+
+- 20210815
+
+    		Fix for left over CIV client on server
+
+    		Improve detection of unsupported codec.
+
+- 20210814
+
+    		Fix for Opus TX audio
+
+    		txrate logging wrong
+
+    		More warning removal!
+
+    		More commenting in rigctld.h
+
+    		Is this going to fix 8 bit audio?
+
+    		Comment unused structs from rigctld
+
+    		All audio codecs now work in both directions!
+
+		Update audiohandler.cpp
+
+		more 8bit fixes!
+
+		ulaw encoding test
+
+		8 bit encoding fix
+
+		Another issue with  8 bit audio
+
+		Try again to remove debugging!
+
+		Revert "Remove extra opus debugging"  This reverts commit da53f5371bbeb35b10cbb831b83b74e1bdd771f9.
+
+		Remove extra opus debugging
+
+		Move opus init
+
+		Add some debugging for decoder
+
+		Use radio samplerate for opus
+
+		Remove big/little endian conversion
+
+		More Opus fixes
+
+		Update audiohandler.cpp
+
+		Try to fix Opus 2-channel
+
 - 20210809
 
     		Add constants to make parsing (hopefully) easier
@@ -247,7 +522,7 @@
     
     		Just helps keep the UI in sync with changes taking place at the rig. The
     		polling is slow enough that it doesn't impact anything. But quick enough
-    		that it catches discrepencies pretty quickly.
+    		that it catches discrepancies pretty quickly.
 
 - 20210619
 
@@ -288,7 +563,7 @@
     		Changed collision detection code so that we can more easily see what
     		message was missed.
 
-    		Added collision detection for serial commands. Collisions are aparently
+    		Added collision detection for serial commands. Collisions are apparently
     		frequent for true 1-wire CI-V radios.
 
     		We now calculate polling rates immediately upon receiveCommReady for
@@ -442,7 +717,7 @@
 
 - 20210601
 
-    		Stop deleting audio after last client disconects
+    		Stop deleting audio after last client disconnects
 
     		Change udpserver packet handling to be similar to udphandler
 
@@ -560,7 +835,7 @@
 
     		Add debugging and fix silly error in audiooutput combobox
 
-    		reenable audio buffers
+    		re-enable audio buffers
 
     		Attempt to fix crash
 
@@ -583,7 +858,7 @@
 
     		Fix for stuttering audio on mac
 
-    		Fixed missing break in switchs.
+    		Fixed missing break in switches.
 
     		Typo in message about CI-V
 
@@ -619,7 +894,7 @@
     		Fixed issue where unknown rigs were identified as 0xff. All rigs are now
     		identified using rigCaps.modelID, populated with the raw response from
     		the Rig ID query. Enumerations of known rig types continue to fall into
-    		rigCaps.model, and unknwn rigs will match to rigCaps.model=modelUnknown,
+    		rigCaps.model, and unknown rigs will match to rigCaps.model=modelUnknown,
     		as before.
 
     		Serial baud rate is in the UI now. Added some enable/disable code to
@@ -808,7 +1083,7 @@
 
     		Additional bands added, Airband, WFM
 
-    		added 630/2200m for 705; probably like the 7300 hardly useable for TX though. Also added auomatic switching to the view pane after non-BSR bands are selected
+    		added 630/2200m for 705; probably like the 7300 hardly usable for TX though. Also added auomatic switching to the view pane after non-BSR bands are selected
 
     		added 630/2200m to 7300/7610/785x
 
@@ -884,7 +1159,7 @@
 - 20210411	Added ATU feature on 7610.
 
     		Now grabs scope state on startup. Found bug, did not fix, in the
-    		frequency parsing code. Worked aroud it by using doubles for now.
+    		frequency parsing code. Worked around it by using doubles for now.
 
 
 - 20210410	Preamp and attenuator are now queried on startup. Additionally, the
@@ -1011,7 +1286,7 @@
 
                 S-meter ballistics:
                 Turned up the speed. Once you see fast meters, there's no going back.
-		Tested at 5ms without any issues, comitting at 10ms for now. Note that
+		Tested at 5ms without any issues, committing at 10ms for now. Note that
     		50ms in the first 'fixed' meter code is the same as 25ms now due to how
     		the command queue is structured. So 10ms is only a bit faster than
     		before.

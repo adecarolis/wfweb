@@ -3,7 +3,7 @@
 
 #include <QDebug>
 
-// Copytight 2017-2020 Elliott H. Liggett
+// Copyright 2017-2020 Elliott H. Liggett
 
 commHandler::commHandler()
 {
@@ -20,6 +20,7 @@ commHandler::commHandler()
     baudrate = 115200;
     stopbits = 1;
     portName = "/dev/ttyUSB0";
+    this->PTTviaRTS = false;
 
     setupComm(); // basic parameters
     openPort();
@@ -30,7 +31,7 @@ commHandler::commHandler()
     connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
 }
 
-commHandler::commHandler(QString portName, quint32 baudRate)
+commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat)
 {
     //constructor
     // grab baud rate and other comm port details
@@ -39,12 +40,18 @@ commHandler::commHandler(QString portName, quint32 baudRate)
 
     port = new QSerialPort();
 
+    if (wfFormat == 1) { // Single waterfall packet
+        combineWf = true;
+        qDebug(logSerial()) << "*********** Combine Waterfall Mode Enabled!";
+    }
+
     // TODO: The following should become arguments and/or functions
     // Add signal/slot everywhere for comm port setup.
     // Consider how to "re-setup" and how to save the state for next time.
     baudrate = baudRate;
     stopbits = 1;
     this->portName = portName;
+    this->PTTviaRTS = false;
 
     setupComm(); // basic parameters
     openPort();
@@ -58,7 +65,10 @@ commHandler::commHandler(QString portName, quint32 baudRate)
 
 commHandler::~commHandler()
 {
-    this->closePort();
+    if (isConnected) {
+        this->closePort();
+    }
+    delete port;
 }
 
 void commHandler::setupComm()
@@ -76,10 +86,61 @@ void commHandler::receiveDataFromUserToRig(const QByteArray &data)
 
 void commHandler::sendDataOut(const QByteArray &writeData)
 {
-
     mutex.lock();
+    // Recycle port to attempt reconnection.
+    if (!this->isConnected) {
+        closePort();
+        openPort();
+    }
 
+    if (!this->isConnected) {
+        return;
+    }
     qint64 bytesWritten;
+
+    if(PTTviaRTS)
+    {
+        // Size:    1  2  3    4    5    6    7    8
+        //index:    0  1  2    3    4    5    6    7
+        //Query:   FE FE TO FROM 0x1C 0x00 0xFD
+        //PTT On:  FE FE TO FROM 0x1C 0x00 0x01 0xFD
+        //PTT Off: FE FE TO FROM 0x1C 0x00 0x00 0xFD
+
+        if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\xFD")))
+        {
+            // Query
+            //qDebug(logSerial()) << "Looks like PTT Query";
+            bool pttOn = this->rtsStatus();
+            QByteArray pttreturncmd = QByteArray("\xFE\xFE");
+            pttreturncmd.append(writeData.at(3));
+            pttreturncmd.append(writeData.at(2));
+            pttreturncmd.append(QByteArray("\x1C\x00", 2));
+            pttreturncmd.append((char)pttOn);
+            pttreturncmd.append("\xFD");
+            //qDebug(logSerial()) << "Sending fake PTT query result: " << (bool)pttOn;
+            printHex(pttreturncmd, false, true);
+            emit haveDataFromPort(pttreturncmd);
+
+
+            mutex.unlock();
+            return;
+        } else if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\x01\xFD")))
+        {
+            // PTT ON
+            //qDebug(logSerial()) << "Looks like PTT ON";
+            setRTS(true);
+            mutex.unlock();
+            return;
+        } else if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\x00\xFD")))
+        {
+            // PTT OFF
+            //qDebug(logSerial()) << "Looks like PTT OFF";
+            setRTS(false);
+            mutex.unlock();
+            return;
+        }
+    }
+
     bytesWritten = port->write(writeData);
 
     if(bytesWritten != (qint64)writeData.size())
@@ -119,7 +180,7 @@ void commHandler::receiveDataIn()
     }
 
 
-    if(inPortData.startsWith("\xFE\xFE"))
+    if (inPortData.startsWith("\xFE\xFE"))
     {
         if(inPortData.contains("\xFC"))
         {
@@ -132,17 +193,74 @@ void commHandler::receiveDataIn()
         {
             // good!
             port->commitTransaction();
+
+            //payloadIn = data.right(data.length() - 4);
+
+            // Do we need to combine waterfall into single packet?
+            int combined = 0;
+            if (combineWf) {
+                int pos = inPortData.indexOf(QByteArrayLiteral("\x27\x00\x00"));
+                int fdPos = inPortData.mid(pos).indexOf(QByteArrayLiteral("\xfd"));
+                //printHex(inPortData, false, true);
+                while (pos > -1 && fdPos > -1) {
+                    combined++;
+                    spectrumDivisionNumber = 0;
+                    spectrumDivisionNumber = inPortData[pos + 3] & 0x0f;
+                    spectrumDivisionNumber += ((inPortData[pos + 3] & 0xf0) >> 4) * 10;
+
+                    if (spectrumDivisionNumber == 1) {
+                        // This is the first waveform data.
+                        spectrumDivisionMax = 0;
+                        spectrumDivisionMax = inPortData[pos + 4] & 0x0f;
+                        spectrumDivisionMax += ((inPortData[pos + 4] & 0xf0) >> 4) * 10;
+                        spectrumData.clear();
+                        spectrumData = inPortData.mid(pos - 4, fdPos+4); // Don't include terminating FD
+                        spectrumData[8] = spectrumData[7]; // Make max = current;
+                        //qDebug() << "New Spectrum seq:" << spectrumDivisionNumber << "pos = " << pos << "len" << fdPos;
+
+                    }
+                    else  if (spectrumDivisionNumber > lastSpectrum && spectrumDivisionNumber <= spectrumDivisionMax) {
+                        spectrumData.insert(spectrumData.length(), inPortData.mid(pos + 4, fdPos-5));
+                        //qDebug() << "Added spectrum seq:" << spectrumDivisionNumber << "len" << fdPos-5;
+                        //printHex(inPortData.mid((pos+4),fdPos - (pos+5)), false, true);
+                    }
+                    else {
+                        qDebug() << "Invalid Spectrum Division received" << spectrumDivisionNumber << "last Spectrum" << lastSpectrum;
+                    }
+
+                    lastSpectrum = spectrumDivisionNumber;
+                        
+                    if (spectrumDivisionNumber == spectrumDivisionMax) {
+                        //qDebug() << "Got Spectrum! length=" << spectrumData.length();
+                        spectrumData.append("\xfd"); // Need to add FD on the end.
+                        //printHex(spectrumData, false, true);
+                        emit haveDataFromPort(spectrumData);
+                        lastSpectrum = 0;
+                    }
+                    inPortData = inPortData.remove(pos-4, fdPos+5);
+                    pos = inPortData.indexOf(QByteArrayLiteral("\x27\x00\x00"));
+                    fdPos = inPortData.mid(pos).indexOf(QByteArrayLiteral("\xfd"));
+                }
+                // If we still have data left, let the main function deal with it, any spectrum data has been removed
+                if (inPortData.length() == 0)
+                {
+                    return;
+                }
+               // qDebug() << "Got extra data!";
+                //printHex(inPortData, false, true);
+            }
+            // 
             emit haveDataFromPort(inPortData);
 
             if(rolledBack)
             {
-                // qInfo(logSerial()) << "Rolled back and was successfull. Length: " << inPortData.length();
+                // qInfo(logSerial()) << "Rolled back and was successful. Length: " << inPortData.length();
                 //printHex(inPortData, false, true);
                 rolledBack = false;
             }
         } else {
             // did not receive the entire thing so roll back:
-            // qInfo(logSerial()) << "Rolling back transaction. End not detected. Lenth: " << inPortData.length();
+            // qInfo(logSerial()) << "Rolling back transaction. End not detected. Length: " << inPortData.length();
             //printHex(inPortData, false, true);
             port->rollbackTransaction();
             rolledBack = true;
@@ -162,10 +280,28 @@ void commHandler::receiveDataIn()
     }
 }
 
+void commHandler::setRTS(bool rtsOn)
+{
+    bool success = port->setRequestToSend(rtsOn);
+    if(!success)
+    {
+        qInfo(logSerial()) << "Error, could not set RTS on port " << portName;
+    }
+}
+
+bool commHandler::rtsStatus()
+{
+    return port->isRequestToSend();
+}
+
+void commHandler::setUseRTSforPTT(bool PTTviaRTS)
+{
+    this->PTTviaRTS = PTTviaRTS;
+}
+
 void commHandler::openPort()
 {
     bool success;
-    // port->open();
     success = port->open(QIODevice::ReadWrite);
     if(success)
     {
@@ -188,7 +324,7 @@ void commHandler::closePort()
     if(port)
     {
         port->close();
-        delete port;
+        //delete port;
     }
     isConnected = false;
 }

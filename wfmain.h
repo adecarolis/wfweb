@@ -1,3 +1,7 @@
+#ifdef BUILD_WFSERVER
+#include "servermain.h"
+#else
+
 #ifndef WFMAIN_H
 #define WFMAIN_H
 
@@ -15,19 +19,21 @@
 #include "logcategories.h"
 #include "commhandler.h"
 #include "rigcommander.h"
+#include "rigstate.h"
 #include "freqmemory.h"
 #include "rigidentities.h"
 #include "repeaterattributes.h"
 
+#include "packettypes.h"
 #include "calibrationwindow.h"
 #include "repeatersetup.h"
 #include "satellitesetup.h"
 #include "transceiveradjustments.h"
-#include "udpserversetup.h"
 #include "udpserver.h"
 #include "qledlabel.h"
 #include "rigctld.h"
 #include "aboutbox.h"
+#include "selectradio.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -54,6 +60,8 @@ public:
 signals:
     // Basic to rig:
     void setCIVAddr(unsigned char newRigCIVAddr);
+    void setRigID(unsigned char rigID);
+    void setRTSforPTT(bool enabled);
 
     // Power
     void sendPowerOn();
@@ -61,7 +69,7 @@ signals:
 
     // Frequency, mode, band:
     void getFrequency();
-    void setFrequency(freqt freq);
+    void setFrequency(unsigned char vfo, freqt freq);
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
     void setMode(mode_info);
@@ -88,6 +96,9 @@ signals:
     void getRfGain();
     void getAfGain();
     void getSql();
+    void getIfShift();
+    void getTPBFInner();
+    void getTPBFOuter();
     void getTxPower();
     void getMicGain();
     void getSpectrumRefLevel();
@@ -97,6 +108,13 @@ signals:
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
     void setSql(unsigned char level);
+    void setIFShift(unsigned char level);
+    void setTPBFInner(unsigned char level);
+    void setTPBFOuter(unsigned char level);
+
+    void setIFShiftWindow(unsigned char level);
+    void setTPBFInnerWindow(unsigned char level);
+    void setTPBFOuterWindow(unsigned char level);
     void setMicGain(unsigned char);
     void setCompLevel(unsigned char);
     void setTxPower(unsigned char);
@@ -149,15 +167,15 @@ signals:
     void sayFrequency();
     void sayMode();
     void sayAll();
-    void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp);
-    void sendCommSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp);
+    void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp, quint16 tcp, quint8 wf);
+    void sendCommSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     void sendCloseComm();
     void sendChangeLatency(quint16 latency);
     void initServer();
-    void sendServerConfig(SERVERCONFIG conf);
     void sendRigCaps(rigCapabilities caps);
     void openShuttle();
     void requestRigState();
+    void stateUpdated();
     void shuttleLed(bool, unsigned char);
 
 private slots:
@@ -222,6 +240,13 @@ private slots:
     void receiveRfGain(unsigned char level);
     void receiveAfGain(unsigned char level);
     void receiveSql(unsigned char level);
+    void receiveIFShift(unsigned char level);
+    void receiveTBPFInner(unsigned char level);
+    void receiveTBPFOuter(unsigned char level);
+    // 'change' from data in transceiver controls window:
+    void changeIFShift(unsigned char level);
+    void changeTPBFInner(unsigned char level);
+    void changeTPBFOuter(unsigned char level);
     void receiveTxPower(unsigned char power);
     void receiveMicGain(unsigned char gain);
     void receiveCompLevel(unsigned char compLevel);
@@ -248,7 +273,7 @@ private slots:
     void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
     void receiveSerialPortError(QString port, QString errorText);
-    void receiveStatusUpdate(QString errorText);
+    void receiveStatusUpdate(networkStatus status);
     void handlePlotClick(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);
@@ -257,11 +282,8 @@ private slots:
     void handlePlotScroll(QWheelEvent *);
     void sendRadioCommandLoop();
     void showStatusBarText(QString text);
-    void serverConfigRequested(SERVERCONFIG conf, bool store);
     void receiveBaudRate(quint32 baudrate);
-    void pttToggle(bool);
-    void stepUp();
-    void stepDown();
+    void radioSelection(QList<radio_cap_packet> radios);
 
     void setRadioTimeDateSend();
 
@@ -404,7 +426,6 @@ private slots:
 
     void on_dataModeBtn_toggled(bool checked);
 
-    void on_udpServerSetupBtn_clicked();
 
     void on_transmitBtn_clicked();
 
@@ -486,10 +507,37 @@ private slots:
 
     void on_meter2selectionCombo_activated(int index);
 
+    void on_waterfallFormatCombo_activated(int index);
+
     void on_enableRigctldChk_clicked(bool checked);
 
     void on_rigctldPortTxt_editingFinished();
 
+    void on_tcpServerPortTxt_editingFinished();
+
+    void on_moreControlsBtn_clicked();
+
+    void on_useCIVasRigIDChk_clicked(bool checked);
+
+    void receiveStateInfo(rigstate* state);
+
+    void on_settingsList_currentRowChanged(int currentRow);
+
+    void on_setClockBtn_clicked();
+
+    void on_serverEnableCheckbox_clicked(bool checked);
+    void on_serverUsersTable_cellClicked(int row, int col);
+    void on_serverControlPortText_textChanged(QString text);
+    void on_serverCivPortText_textChanged(QString text);
+    void on_serverAudioPortText_textChanged(QString text);
+    void on_serverTXAudioOutputCombo_currentIndexChanged(int value);
+    void on_serverRXAudioInputCombo_currentIndexChanged(int value);
+    void onServerPasswordChanged();
+    void on_serverUsersTable_cellChanged(int row, int column);
+
+    void on_useRTSforPTTchk_clicked(bool checked);
+
+    void on_radioStatusBtn_clicked();
 
 private:
     Ui::wfmain *ui;
@@ -497,6 +545,10 @@ private:
     QSettings *settings=Q_NULLPTR;
     void loadSettings();
     void saveSettings();
+
+    void createSettingsListItems();
+    void connectSettingsList();
+
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
     QCPItemLine * freqIndicatorLine;
@@ -614,13 +666,18 @@ private:
     unsigned char setModeVal=0;
     unsigned char setFilterVal=0;
 
-    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode, cmdGetDataMode, cmdSetModeFilter,
-              cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
+    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode,
+              cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
-              cmdGetSql, cmdSetSql, cmdGetATUStatus, cmdSetATU, cmdStartATU, cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,
-              cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel, cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
+              cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetTPBFInner, cmdSetTPBFInner,
+              cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus,
+              cmdSetATU, cmdStartATU, cmdGetSpectrumMode,
+              cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,
+              cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel,
+              cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
               cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
-              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter, cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
+              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
+              cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
               cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
               cmdSetTime, cmdSetDate, cmdSetUTCOffset};
 
@@ -704,6 +761,8 @@ private:
         bool wfInterpolate;
         QString stylesheetPath;
         unsigned char radioCIVAddr;
+        bool CIVisRadioModel;
+        bool forceRTSasPTT;
         QString serialPortRadio;
         quint32 serialPortBaud;
         bool enablePTT;
@@ -719,6 +778,8 @@ private:
         bool confirmExit;
         bool confirmPowerOff;
         meterKind meter2Type;
+        quint16 tcpPort;
+        quint8 waterfallFormat;
         // plot scheme
     } prefs;
 
@@ -729,6 +790,7 @@ private:
     // Configuration for audio output and input.
     audioSetup rxSetup;
     audioSetup txSetup;
+
 
     colors defaultColors;
 
@@ -801,7 +863,7 @@ private:
     udpServerSetup *srv;
     shuttleSetup* shut;
     aboutbox *abtBox;
-
+    selectRadio *selRad;
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
@@ -829,6 +891,7 @@ private:
     unsigned int tsWfScrollHz;
     unsigned int tsKnobHz;
 
+    rigstate* rigState = Q_NULLPTR;
 
     SERVERCONFIG serverConfig;
     shuttle *shuttleDev = Q_NULLPTR;
@@ -843,14 +906,18 @@ Q_DECLARE_METATYPE(struct rigCapabilities)
 Q_DECLARE_METATYPE(struct freqt)
 Q_DECLARE_METATYPE(struct mode_info)
 Q_DECLARE_METATYPE(struct udpPreferences)
-Q_DECLARE_METATYPE(struct rigStateStruct)
 Q_DECLARE_METATYPE(struct audioPacket)
 Q_DECLARE_METATYPE(struct audioSetup)
+Q_DECLARE_METATYPE(struct SERVERCONFIG)
 Q_DECLARE_METATYPE(struct timekind)
 Q_DECLARE_METATYPE(struct datekind)
+Q_DECLARE_METATYPE(struct networkStatus)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
+Q_DECLARE_METATYPE(QList<radio_cap_packet>)
+Q_DECLARE_METATYPE(rigstate*)
 
 
 #endif // WFMAIN_H
+#endif

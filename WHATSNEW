@@ -7,4 +7,31 @@ The following highlights are in this 1.x-release:
         added "do not ask again" for switching off rig and exiting wfview
         added opus as audio transport 
         dual meter support
+        rigctl basic split support
+        rigctl prevents switching off civ transceive
+        added 25 kHz step
+        as a temporary measure sending multiple TX/FREQ change commands to the rig
+        when we use rigctld. 
+        people should use "fake it" in wsjtx as the split code is not reliable.
+        tidied up udp server function for better reliability
+	added some IC736 stuff
+	added portaudio (you need t change wfview.pro to select 
+        and that lowers the latency to maybe less than 50 ms
+	added PBT and IF-shift
+	several bugs fixed	
+	RTS as PTT for several radios like the 706/718/736…
++	New major change is the audio transport mechanism. Lower latencies.
++	Author: Daniele Forsi <dforsi@gmail.com>/Author: Daniele Forsi <dforsi@gmail.com>
++	Author: Russ Woodman - K5TUX <k5tux@k5tux.us>
++    	About box updated to include Patreon site 
++    	added 500 Hz step for VFO
++    	Added clock and UTC toggle.
++    	Added forced manual RTS setting
++    	Add RIT function and other rigctl fixes
++    	Adjusted window size for radios without spectrum. Thanks K5TUX.
++    	Allow dynamic restarting of server
++    	New Settings tab
++    	Enable High DPI Scaling
++    	More multi-radio support (nearly working!)
++       N1MM+ TCP add.    
 

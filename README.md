@@ -14,7 +14,7 @@ Other models to be tested/added (including the IC-705)..
 
 website - [WFVIEW](https://wfview.org/) wfview.org
 
-wfview supports viewing the spectrum display waterfall and most normal radio controls. Using wfview, the radio can be operated using the mouse, or just the keyboard (great for those with visual impairments), or even a touch screen display. The gorgous waterfall spectrum can be displayed on a monitor of any size, and can even projected onto a wall for a presentation. Even a VNC session can make use of wfview for interesting remote rig posibilities. wfview runs on humble hardware, ranging from the $35 Raspberry Pi, to laptops, to desktops. wfview is designed to run on GNU Linux, but can probably be adapted to run on other operating systems. In fact we do have  working example in windows as well.
+wfview supports viewing the spectrum display waterfall and most normal radio controls. Using wfview, the radio can be operated using the mouse, or just the keyboard (great for those with visual impairments), or even a touch screen display. The gorgous waterfall spectrum can be displayed on a monitor of any size, and can even projected onto a wall for a presentation. Even a VNC session can make use of wfview for interesting remote rig possibilities. wfview runs on humble hardware, ranging from the $35 Raspberry Pi, to laptops, to desktops. wfview is designed to run on GNU Linux, but can probably be adapted to run on other operating systems. In fact we do have  working example in windows as well.
 
 
 
@@ -29,16 +29,16 @@ wfview is copyright 2017-2020 Elliott H. Liggett. All rights reserved. wfview so
 2. Double-click anywhere on the bandscope or waterfall to tune the radio. 
 3. Entry of frequency is permitted under the "Frequency" tab. Buttons are provided for touch-screen control
 4. Bandscope parameters (span and mode) are adjustable. 
-5. Full [keyboard](https://gitlab.com/eliggett/wfview/-/wikis/Keystrokes) and mouse control. Operate in whichever way you like. Most radio functions can be operated from a numberic keypad! This also enables those with visual impairments to use the IC-7300. 
+5. Full [keyboard](https://gitlab.com/eliggett/wfview/-/wikis/Keystrokes) and mouse control. Operate in whichever way you like. Most radio functions can be operated from a numeric keypad! This also enables those with visual impairments to use the IC-7300. 
 6. 100 user memories stored in plain text on the computer
 7. Stylable GUI using CSS
 8. pseudo-terminal device, which allows for secondary program to control the radio while wfview is running
-9. works for radios that support the ethernet interface with compareable waterfall speeds as on the radio itself.
+9. works for radios that support the ethernet interface with comparable waterfall speeds as on the radio itself.
 
 ### Build Requirements:
 1. gcc / g++ / make
 2. qmake
-3. qt5 (proably the package named "qt5-default")
+3. qt5 (probably the package named "qt5-default")
 4. libqt5serialport5-dev
 5. libqcustomplot-dev 
 

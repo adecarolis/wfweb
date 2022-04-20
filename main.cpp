@@ -1,25 +1,68 @@
+#ifdef BUILD_WFSERVER
+#include <QtCore/QCoreApplication>
+#include "keyboard.h"
+#else
 #include <QApplication>
+#endif
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <csignal>
+#endif
+
 #include <iostream>
 #include "wfmain.h"
 #include "logcategories.h"
 
-// Copytight 2017-2021 Elliott H. Liggett
+// Copyright 2017-2021 Elliott H. Liggett
 
 // Smart pointer to log file
 QScopedPointer<QFile>   m_logFile;
 QMutex logMutex;
 bool debugMode=false;
 
+#ifdef BUILD_WFSERVER
+    servermain* w=Q_NULLPTR;
+
+    #ifdef Q_OS_WIN
+    bool __stdcall cleanup(DWORD sig)
+    #else
+    static void cleanup(int sig)
+    #endif
+    {
+        Q_UNUSED(sig)
+        qDebug() << "Exiting via SIGNAL";
+        if (w!=Q_NULLPTR) w->deleteLater();
+        qApp->quit();
+
+        #ifdef Q_OS_WIN
+            return true;
+        #else
+            return;
+        #endif
+    }
+
+#endif
+
 void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
-    //a.setStyle( "Fusion" );
 
+#ifdef BUILD_WFSERVER
+    QCoreApplication a(argc, argv);
+    a.setOrganizationName("wfview");
+    a.setOrganizationDomain("wfview.org");
+    a.setApplicationName("wfserver");
+    keyboard* kb = new keyboard();
+    kb->start();
+#else
+    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QApplication a(argc, argv);
     a.setOrganizationName("wfview");
     a.setOrganizationDomain("wfview.org");
     a.setApplicationName("wfview");
+#endif
 
 #ifdef QT_DEBUG
     debugMode = true;
@@ -37,8 +80,20 @@ int main(int argc, char *argv[])
     QString currentArg;
 
 
-    const QString helpText = QString("\nUsage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr, -l --logfile filename.log, -s --settings filename.ini, -d --debug\n"); // TODO...
-
+    const QString helpText = QString("\nUsage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr, -l --logfile filename.log, -s --settings filename.ini, -d --debug, -v --version\n"); // TODO...
+#ifdef BUILD_WFSERVER
+    const QString version = QString("wfserver version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
+        .arg(QString(WFVIEW_VERSION))
+        .arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
+        .arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture())
+        .arg(QT_VERSION_STR).arg(qVersion());
+#else
+    const QString version = QString("wfview version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
+        .arg(QString(WFVIEW_VERSION))
+        .arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
+        .arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture())
+        .arg(QT_VERSION_STR).arg(qVersion());
+#endif
     for(int c=1; c<argc; c++)
     {
         //qInfo() << "Argc: " << c << " argument: " << argv[c];
@@ -88,24 +143,19 @@ int main(int argc, char *argv[])
                 c += 1;
             }
         }
-        else if ((currentArg == "--help"))
+        else if ((currentArg == "-?") || (currentArg == "--help"))
         {
-#ifdef Q_OS_WIN
-            QMessageBox::information(0, "wfview help", helpText);
-#else
             std::cout << helpText.toStdString();
-#endif
+            return 0;
+        }
+        else if ((currentArg == "-v") || (currentArg == "--version"))
+        {
+            std::cout << version.toStdString();
             return 0;
         } else {
-
-#ifdef Q_OS_WIN
-            QMessageBox::information(0, "wfview unrecognised argument", helpText);
-#else
             std::cout << "Unrecognized option: " << currentArg.toStdString();
             std::cout << helpText.toStdString();
-#endif
-
-	    return -1;
+            return -1;
         }
 
     }
@@ -117,19 +167,24 @@ int main(int argc, char *argv[])
     // Set handler
     qInstallMessageHandler(messageHandler);
 
-    qInfo(logSystem()) << QString("Starting wfview: build %1 on %2 at %3 by %5@%6").arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST);
-    qInfo(logSystem()) << QString("Operating System: %1 (%2)").arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture());
-    qInfo(logSystem()) << QString("Build Qt Version %1. Current Qt Version: %2").arg(QT_VERSION_STR).arg(qVersion());
+    qInfo(logSystem()) << version;
     qDebug(logSystem()) << QString("SerialPortCL as set by parser: %1").arg(serialPortCL);
     qDebug(logSystem()) << QString("remote host as set by parser: %1").arg(hostCL);
     qDebug(logSystem()) << QString("CIV as set by parser: %1").arg(civCL);
+
+#ifdef BUILD_WFSERVER
+#ifdef Q_OS_WIN
+    SetConsoleCtrlHandler((PHANDLER_ROUTINE)cleanup, TRUE);
+#else
+    signal(SIGINT, cleanup);
+#endif
+    w = new servermain(serialPortCL, hostCL, settingsFile);
+#else
     a.setWheelScrollLines(1); // one line per wheel click
-    wfmain w( serialPortCL, hostCL, settingsFile);
-
+    wfmain w(serialPortCL, hostCL, settingsFile);
     w.show();
-
-
-
+    
+#endif
     return a.exec();
 
 }
@@ -169,5 +224,8 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
     } 
     // Write to the output category of the message and the message itself
     out << context.category << ": " << msg << "\n";
+#ifdef BUILD_WFSERVER
+    std::cout << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ").toLocal8Bit().toStdString() << msg.toLocal8Bit().toStdString() << "\n";
+#endif
     out.flush();    // Clear the buffered data
 }

@@ -2,7 +2,9 @@
 #define RIGCOMMANDER_H
 
 #include <QObject>
+#include <QMutexLocker>
 #include <QDebug>
+
 
 #include "commhandler.h"
 #include "pttyhandler.h"
@@ -10,6 +12,9 @@
 #include "rigidentities.h"
 #include "repeaterattributes.h"
 #include "freqmemory.h"
+#include "tcpserver.h"
+
+#include "rigstate.h"
 
 // This file figures out what to send to the comm and also
 // parses returns into useful things.
@@ -59,92 +64,26 @@ struct timekind {
     bool isMinus;
 };
 
-struct rigStateStruct {
-    freqt vfoAFreq;
-    freqt vfoBFreq;
-    unsigned char currentVfo;
-    bool ptt;
-    unsigned char mode;
-    unsigned char filter;
-    duplexMode duplex;
-    bool datamode;
-    unsigned char antenna;
-    bool rxAntenna;
-    // Tones
-    quint16 ctcss;
-    quint16 tsql;
-    quint16 dtcs;
-    quint16 csql;
-    // Levels
-    unsigned char preamp;
-    unsigned char attenuator;
-    unsigned char modInput;
-    unsigned char afGain;
-    unsigned char rfGain;
-    unsigned char squelch;
-    unsigned char txPower;
-    unsigned char micGain;
-    unsigned char compLevel;
-    unsigned char monitorLevel;
-    unsigned char voxGain;
-    unsigned char antiVoxGain;
-    // Meters
-    unsigned char sMeter;
-    unsigned char powerMeter;
-    unsigned char swrMeter;
-    unsigned char alcMeter;
-    unsigned char compMeter;
-    unsigned char voltageMeter;
-    unsigned char currentMeter;
-    // Functions
-    bool fagcFunc=false;
-    bool nbFunc=false;
-    bool compFunc=false;
-    bool voxFunc = false;
-    bool toneFunc = false;
-    bool tsqlFunc = false;
-    bool sbkinFunc = false;
-    bool fbkinFunc = false;
-    bool anfFunc = false;
-    bool nrFunc = false;
-    bool aipFunc = false;
-    bool apfFunc = false;
-    bool monFunc = false;
-    bool mnFunc = false;
-    bool rfFunc = false;
-    bool aroFunc = false;
-    bool muteFunc = false;
-    bool vscFunc = false;
-    bool revFunc = false;
-    bool sqlFunc = false;
-    bool abmFunc = false;
-    bool bcFunc = false;
-    bool mbcFunc = false;
-    bool ritFunc = false;
-    bool afcFunc = false;
-    bool satmodeFunc = false;
-    bool scopeFunc = false;
-    bool resumeFunc = false;
-    bool tburstFunc = false;
-    bool tunerFunc = false;
-    bool lockFunc = false;
-};
-
 class rigCommander : public QObject
 {
     Q_OBJECT
 
 public:
     rigCommander();
+    rigCommander(quint8 guid[GUIDLEN]);
     ~rigCommander();
 
     bool usingLAN();
 
+    quint8* getGUID();
+
 public slots:
     void process();
-    void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp);
-    void commSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp);
+    void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
+    void commSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     void closeComm();
+    void stateUpdated();
+    void setRTSforPTT(bool enabled);
 
     // Power:
     void powerOn();
@@ -171,7 +110,7 @@ public slots:
     void getScopeMode();
 
     // Frequency, Mode, BSR:
-    void setFrequency(freqt freq);
+    void setFrequency(unsigned char vfo, freqt freq);
     void getFrequency();
     void setMode(unsigned char mode, unsigned char modeFilter);
     void setMode(mode_info);
@@ -196,6 +135,26 @@ public slots:
     void setAttenuator(unsigned char att);
     void setPreamp(unsigned char pre);
     void setAntenna(unsigned char ant, bool rx);
+    void setNb(bool enabled);
+    void getNb();
+    void setNr(bool enabled);
+    void getNr();
+    void setAutoNotch(bool enabled);
+    void getAutoNotch();
+    void setToneEnabled(bool enabled);
+    void getToneEnabled();
+    void setToneSql(bool enabled);
+    void getToneSql();
+    void setCompressor(bool enabled);
+    void getCompressor();
+    void setMonitor(bool enabled);
+    void getMonitor();
+    void setVox(bool enabled);
+    void getVox();
+    void setBreakIn(unsigned char type);
+    void getBreakIn();
+    void setManualNotch(bool enabled);
+    void getManualNotch();
 
     // Repeater:
     void setDuplexMode(duplexMode dm);
@@ -215,6 +174,9 @@ public slots:
     void getRfGain();
     void getAfGain();
     void getSql();
+    void getIFShift();
+    void getTPBFInner();
+    void getTPBFOuter();
     void getTxLevel();
     void getMicGain();
     void getCompLevel();
@@ -227,11 +189,16 @@ public slots:
     void getACCGain(unsigned char ab);
     void getModInput(bool dataOn);
     void getModInputLevel(rigInput input);
+    void getAfMute();
+    void getDialLock();
 
     // Set Levels:
     void setSquelch(unsigned char level);
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
+    void setIFShift(unsigned char level);
+    void setTPBFInner(unsigned char level);
+    void setTPBFOuter(unsigned char level);
     void setTxPower(unsigned char power);
     void setMicGain(unsigned char gain);
     void setUSBGain(unsigned char gain);
@@ -244,6 +211,8 @@ public slots:
     void setAntiVoxGain(unsigned char gain);
     void setModInput(rigInput input, bool dataOn);
     void setModInputLevel(rigInput input, unsigned char level);
+    void setAfMute(bool muteOn);
+    void setDialLock(bool lockOn);
 
     // NB, NR, IP+:
     void setIPP(bool enabled);
@@ -274,6 +243,7 @@ public slots:
     // Rig ID and CIV:
     void getRigID();
     void findRigs();
+    void setRigID(unsigned char rigID);
     void setCIVAddr(unsigned char civAddr);
 
     // Calibration:
@@ -306,7 +276,10 @@ public slots:
     void sayAll();
 
     // Housekeeping:
-    void handleStatusUpdate(const QString text);
+    void handleStatusUpdate(const networkStatus status);
+    void radioSelection(QList<radio_cap_packet> radios);
+    void radioUsage(quint8 radio, quint8 busy, QString name, QString ip);
+    void setCurrentRadio(quint8 radio);
     void sendState();
     void getDebug();
 
@@ -314,8 +287,9 @@ signals:
     // Communication:
     void commReady();
     void haveSerialPortError(const QString port, const QString errorText);
-    void haveStatusUpdate(const QString text);
+    void haveStatusUpdate(const networkStatus status);
     void dataForComm(const QByteArray &outData);
+    void toggleRTS(bool rtsOn);
 
     // UDP:
     void haveChangeLatency(quint16 value);
@@ -356,6 +330,9 @@ signals:
     void haveRfGain(unsigned char level);
     void haveAfGain(unsigned char level);
     void haveSql(unsigned char level);
+    void haveTPBFInner(unsigned char level);
+    void haveTPBFOuter(unsigned char level);
+    void haveIFShift(unsigned char level);
     void haveTxPower(unsigned char level);
     void haveMicGain(unsigned char level);
     void haveCompLevel(unsigned char level);
@@ -392,9 +369,12 @@ signals:
     void haveAntenna(unsigned char ant,bool rx);
 
     // Rig State
-    void stateInfo(rigStateStruct* state);
+    void stateInfo(rigstate* state);
 
     // Housekeeping:
+    void requestRadioSelection(QList<radio_cap_packet> radios);
+    void setRadioUsage(quint8 radio, quint8 busy, QString user, QString ip);
+    void selectedRadio(quint8 radio);
     void getMoreDebug();
     void finished();
 
@@ -446,6 +426,7 @@ private:
 
     commHandler* comm = Q_NULLPTR;
     pttyHandler* ptty = Q_NULLPTR;
+    tcpServer* tcp = Q_NULLPTR;
     udpHandler* udp=Q_NULLPTR;
     QThread* udpHandlerThread = Q_NULLPTR;
 
@@ -466,7 +447,7 @@ private:
 
     struct rigCapabilities rigCaps;
     
-    rigStateStruct rigState;
+    rigstate state;
 
     bool haveRigCaps;
     model_kind model;
@@ -483,6 +464,9 @@ private:
     unsigned char civAddr;
     unsigned char incomingCIVAddr; // place to store the incoming CIV.
     bool pttAllowed;
+    bool useRTSforPTT_isSet = false;
+    bool useRTSforPTT_manual = false;
+
 
     QString rigSerialPort;
     quint32 rigBaudRate;
@@ -495,7 +479,8 @@ private:
     QString password;
 
     QString serialPortError;
-
+    unsigned char localVolume=0;
+    quint8 guid[GUIDLEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 
 };
 

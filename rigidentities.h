@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "freqmemory.h"
+#include "packettypes.h"
 
 // Credit for parts of CIV list:
 // http://www.docksideradio.com/Icom%20Radio%20Hex%20Addresses.htm
@@ -29,10 +30,12 @@ enum model_kind {
     model705 = 0xA4,
     model706 = 0x58,
     model718 = 0x5E,
+    model736 = 0x40,
     model756pro = 0x5C,
     model756proii = 0x64,
     model756proiii = 0x6E,
     model910h = 0x60,
+    model9100 = 0x7C,
     modelUnknown = 0xFF
 };
 
@@ -116,10 +119,13 @@ struct rigCapabilities {
 
     bool hasTransmit;
     bool hasPTTCommand;
+    bool useRTSforPTT;
     bool hasAttenuator;
     bool hasPreamp;
     bool hasAntennaSel;
     bool hasDataModes;
+    bool hasIFShift;
+    bool hasTBPF;
 
     bool hasRXAntenna;
 
@@ -131,6 +137,10 @@ struct rigCapabilities {
     unsigned char bsr[20] = {0};
 
     std::vector <mode_info> modes;
+
+    QByteArray transceiveCommand;
+    quint8 guid[GUIDLEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+    quint32 baudRate;
 };
 
 

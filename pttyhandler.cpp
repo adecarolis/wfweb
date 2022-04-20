@@ -73,6 +73,9 @@ void pttyHandler::openPort()
         // we're good!
         qInfo(logSerial()) << "Opened pseudoterminal, slave name :" << ptsname(ptfd);
 
+        // Open the slave device to keep alive.
+        ptKeepAlive = open(ptsname(ptfd), O_RDONLY);
+
         ptReader = new QSocketNotifier(ptfd, QSocketNotifier::Read, this);
         connect(ptReader, &QSocketNotifier::activated,
                 this, &pttyHandler::receiveDataIn);
@@ -218,9 +221,8 @@ void pttyHandler::receiveDataIn(int fd) {
                 civId = (quint8)inPortData[lastFE + 2];
                 qInfo(logSerial()) << "pty remote CI-V changed:" << hex << (quint8)civId;
             }
-
-            // filter 1A 05 01 12/27 = C-IV transceive command before forwarding on.
-            if (inPortData.contains(QByteArrayLiteral("\x1a\x05\x01\x12")) || inPortData.contains(QByteArrayLiteral("\x1a\x05\x01\x27")))
+            // filter C-IV transceive command before forwarding on.
+            if (inPortData.contains(rigCaps.transceiveCommand))
             {
                 //qInfo(logSerial()) << "Filtered transceive command";
                 //printHex(inPortData, false, true);
@@ -243,14 +245,14 @@ void pttyHandler::receiveDataIn(int fd) {
 
             if (rolledBack)
             {
-                // qInfo(logSerial()) << "Rolled back and was successfull. Length: " << inPortData.length();
+                // qInfo(logSerial()) << "Rolled back and was successful. Length: " << inPortData.length();
                 //printHex(inPortData, false, true);
                 rolledBack = false;
             }
         }
         else {
             // did not receive the entire thing so roll back:
-            // qInfo(logSerial()) << "Rolling back transaction. End not detected. Lenth: " << inPortData.length();
+            // qInfo(logSerial()) << "Rolling back transaction. End not detected. Length: " << inPortData.length();
             //printHex(inPortData, false, true);
             rolledBack = true;
 #ifdef Q_OS_WIN
@@ -283,6 +285,10 @@ void pttyHandler::closePort()
     if (isConnected && portName != "" && portName.toLower() != "none")
     {
         QFile::remove(portName);
+    }
+
+    if (ptKeepAlive > 0) {
+        close(ptKeepAlive);
     }
 #endif
     isConnected = false;
@@ -329,6 +335,12 @@ void pttyHandler::printHex(const QByteArray& pdata, bool printVert, bool printHo
         qDebug(logSerial()) << sdata;
     }
     qDebug(logSerial()) << "----- End hex dump -----";
+}
+
+void pttyHandler::receiveFoundRigID(rigCapabilities rigCaps) {
+    this->rigCaps = rigCaps;
+    qInfo(logSerial) << "Received rigCapabilities for" << rigCaps.modelName;
+
 }
 
 
