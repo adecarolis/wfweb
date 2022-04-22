@@ -14,6 +14,7 @@
 
 // 7850 and 7851 have the same commands and are essentially identical
 
+
 enum model_kind {
     model7100 = 0x88,
     model7200 = 0x76,

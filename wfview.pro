@@ -143,7 +143,7 @@ CONFIG(debug, release|debug) {
 }
 
 linux:LIBS += -L./ -l$$QCPLIB -lopus
-macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus 
+macx:LIBS += -framework CoreAudio -framework CoreFoundation -hidapi -lpthread -lopus 
 
 win32:INCLUDEPATH += ../hidapi/hidapi
 win32:SOURCES += ../hidapi/windows/hid.c
@@ -180,8 +180,7 @@ SOURCES += main.cpp\
     resampler/resample.c \
     repeatersetup.cpp \
     rigctld.cpp \
-    ring/ring.cpp \
-    shuttle.cpp \
+    usbcontroller.cpp \
     shuttlesetup.cpp \
     transceiveradjustments.cpp \
     selectradio.cpp \
@@ -210,8 +209,7 @@ HEADERS  += wfmain.h \
     repeaterattributes.h \
     rigctld.h \
     ulaw.h \
-    ring/ring.h \
-    shuttle.h \
+    usbcontroller.h \
     shuttlesetup.h \
     transceiveradjustments.h \
     audiotaper.h \
@@ -225,7 +223,7 @@ FORMS    += wfmain.ui \
     selectradio.ui \
     repeatersetup.ui \
     transceiveradjustments.ui \
-	shuttlesetup.ui
+    shuttlesetup.ui \
     aboutbox.ui
 
 

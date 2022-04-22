@@ -7,10 +7,21 @@ shuttleSetup::shuttleSetup(QWidget* parent) :
     ui(new Ui::shuttleSetup)
 {
     ui->setupUi(this);
-    scene = new QGraphicsScene();
+    scene = new shuttleScene();
+    connect(scene, SIGNAL(mousePressed(QPoint)), this, SLOT(mousePressed(QPoint)));
     ui->graphicsView->setScene(scene);
     textItem = scene->addText("No USB controller found");
     textItem->setDefaultTextColor(Qt::gray);
+
+    for (QString cmd : onEventCommands) {
+        onEvent.addItem(cmd);
+    }
+    for (QString cmd : offEventCommands) {
+        offEvent.addItem(cmd);
+    }
+
+    connect(&onEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(onEventIndexChanged(int)));
+    connect(&offEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(offEventIndexChanged(int)));
 }
 
 shuttleSetup::~shuttleSetup()
@@ -24,12 +35,79 @@ shuttleSetup::~shuttleSetup()
     }
 }
 
-void shuttleSetup::newDevice(unsigned char devType)
+void shuttleSetup::mousePressed(QPoint p) 
 {
+    // Receive mouse event from the scene
+    qDebug() << "Looking for button Point x=" << p.x() << " y=" << p.y();
+    bool found = false;
+    for (BUTTON& b : *buttons)
+    {
+        if (b.pos.contains(p))
+        {
+            found = true;
+            currentButton = &b;
+            // Add off event first so it doesn't obscure on event.
+            if (offEventProxy == Q_NULLPTR) {
+                offEventProxy = scene->addWidget(&offEvent);
+            }
+            if (onEventProxy == Q_NULLPTR) {
+                onEventProxy = scene->addWidget(&onEvent);
+            }
+            onEvent.blockSignals(true);
+            onEvent.move(p);
+            onEvent.setCurrentIndex(currentButton->onEvent);
+            onEvent.show();
+            onEvent.blockSignals(false);
+
+            p.setY(p.y() + 40);
+            offEvent.blockSignals(true);
+            offEvent.move(p);
+            offEvent.setCurrentIndex(currentButton->offEvent);
+            offEvent.show();
+            offEvent.blockSignals(false);
+
+        }
+    }
+
+    if (!found) {
+        onEvent.hide();
+        offEvent.hide();
+    }
+
+}
+
+void shuttleSetup::onEventIndexChanged(int index) {
+    qDebug() << "On Event for button" << currentButton->num << "Event" << index;
+    if (currentButton != Q_NULLPTR) {
+        currentButton->onEvent = index;
+        currentButton->onCommand.text->setPlainText(onEventCommands[index]);
+        currentButton->onCommand.index = index;
+    }
+}
+
+
+void shuttleSetup::offEventIndexChanged(int index) {
+    qDebug() << "Off Event for button" << currentButton->num << "Event" << index;
+    if (currentButton != Q_NULLPTR) {
+        currentButton->offEvent = index;
+        currentButton->offCommand.text->setPlainText(offEventCommands[index]);
+        currentButton->offCommand.index = index;
+    }
+}
+
+
+void shuttleSetup::newDevice(unsigned char devType, QVector<BUTTON>* but)
+{
+    buttons = but;
+ 
     if (bgImage != Q_NULLPTR) {
         scene->removeItem(bgImage);
         delete bgImage;
         bgImage = Q_NULLPTR;
+        if (onEventProxy != Q_NULLPTR)
+            scene->removeItem(onEventProxy);
+        if (offEventProxy != Q_NULLPTR)
+            scene->removeItem(offEventProxy);
     }
     QImage image;
 
@@ -51,6 +129,21 @@ void shuttleSetup::newDevice(unsigned char devType)
     bgImage = new QGraphicsPixmapItem(QPixmap::fromImage(image));
     scene->addItem(bgImage);
 
-    ui->graphicsView->setMinimumSize(bgImage->boundingRect().width() + 2, bgImage->boundingRect().height() + 2);
+    ui->graphicsView->setMinimumSize(bgImage->boundingRect().width() + 100, bgImage->boundingRect().height() + 2);
     this->resize(this->sizeHint());
+    currentDevice = devType;
+
+    // Set button text
+    for (BUTTON& b : *buttons)
+    {
+        b.onCommand.text = new QGraphicsTextItem(onEventCommands[b.onEvent]);
+        b.onCommand.text->setDefaultTextColor(b.textColour);
+        scene->addItem(b.onCommand.text);
+        b.onCommand.text->setPos(b.pos.x(), b.pos.y());
+
+        b.offCommand.text = new QGraphicsTextItem(offEventCommands[b.onEvent]);
+        b.offCommand.text->setDefaultTextColor(b.textColour);
+        scene->addItem(b.offCommand.text);
+        b.offCommand.text->setPos(b.pos.x(), b.pos.y()+10);
+    }
 }

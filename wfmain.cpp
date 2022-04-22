@@ -26,7 +26,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     rpt = new repeaterSetup();
     sat = new satelliteSetup();
     trxadj = new transceiverAdjustments();
-    srv = new udpServerSetup();
     shut = new shuttleSetup();
     abtBox = new aboutbox();
     selRad = new selectRadio();
@@ -47,6 +46,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType <datekind>();
     qRegisterMetaType<rigstate*>();
     qRegisterMetaType<QList<radio_cap_packet>>();
+    qRegisterMetaType<QVector<BUTTON>*>();
     qRegisterMetaType<networkStatus>();
 
     haveRigCaps = false;
@@ -59,7 +59,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     setAudioDevicesUI();
 
-    setupShuttleDevice();
+    setupUsbControllerDevice();
 
     setDefaultColors();
     setDefPrefs();
@@ -113,9 +113,9 @@ wfmain::~wfmain()
     delete rpt;
     delete ui;
     delete settings;
-    if (shuttleThread != Q_NULLPTR) {
-        shuttleThread->quit();
-        shuttleThread->wait();
+    if (usbControllerThread != Q_NULLPTR) {
+        usbControllerThread->quit();
+        usbControllerThread->wait();
     }
 }
 
@@ -1280,20 +1280,20 @@ void wfmain::setupKeyShortcuts()
     connect(keyDebug, SIGNAL(activated()), this, SLOT(on_debugBtn_clicked()));
 }
 
-void wfmain::setupShuttleDevice()
+void wfmain::setupUsbControllerDevice()
 {
-    shuttleDev = new shuttle();
-    shuttleThread = new QThread(this);
-    shuttleDev->moveToThread(shuttleThread);
-    connect(shuttleThread, SIGNAL(started()), shuttleDev, SLOT(run()));
-    connect(shuttleThread, SIGNAL(finished()), shuttleDev, SLOT(deleteLater()));
-    connect(shuttleDev, SIGNAL(jogPlus()), this, SLOT(shortcutStepPlus()));
-    connect(shuttleDev, SIGNAL(jogMinus()), this, SLOT(shortcutStepMinus()));
-    connect(shuttleDev, SIGNAL(doShuttle(bool, unsigned char)), this, SLOT(doShuttle(bool, unsigned char)));
-    connect(shuttleDev, SIGNAL(button(bool, unsigned char)), this, SLOT(buttonControl(bool, unsigned char)));
-    connect(this, SIGNAL(shuttleLed(bool, unsigned char)), shuttleDev, SLOT(ledControl(bool, unsigned char)));
-    connect(shuttleDev, SIGNAL(newDevice(unsigned char)), shut, SLOT(newDevice(unsigned char)));
-    shuttleThread->start(QThread::LowestPriority);
+    usbControllerDev = new usbController();
+    usbControllerThread = new QThread(this);
+    usbControllerDev->moveToThread(usbControllerThread);
+    connect(usbControllerThread, SIGNAL(started()), usbControllerDev, SLOT(run()));
+    connect(usbControllerThread, SIGNAL(finished()), usbControllerDev, SLOT(deleteLater()));
+    connect(usbControllerDev, SIGNAL(sendJog(int)), this, SLOT(changeFrequency(int)));
+    connect(usbControllerDev, SIGNAL(doShuttle(bool, unsigned char)), this, SLOT(doShuttle(bool, unsigned char)));
+    connect(usbControllerDev, SIGNAL(button(bool, unsigned char)), this, SLOT(buttonControl(bool, unsigned char)));
+    connect(usbControllerDev, SIGNAL(setBand(int)), this, SLOT(setBand(int)));
+    connect(this, SIGNAL(shuttleLed(bool, unsigned char)), usbControllerDev, SLOT(ledControl(bool, unsigned char)));
+    connect(usbControllerDev, SIGNAL(newDevice(unsigned char, QVector<BUTTON>*)), shut, SLOT(newDevice(unsigned char, QVector<BUTTON>*)));
+    usbControllerThread->start(QThread::LowestPriority);
 }
 
 void wfmain::pttToggle(bool status)
@@ -1366,6 +1366,18 @@ void wfmain::stepDown()
 {
     if (ui->tuningStepCombo->currentIndex() > 0)
         ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->currentIndex() - 1);
+}
+
+void wfmain::changeFrequency(int value) {
+    if (freqLock) return;
+
+    freqt f;
+    f.Hz = roundFrequencyWithStep(freq.Hz, value, tsKnobHz);
+
+    f.MHzDouble = f.Hz / (double)1E6;
+    setUIFreq();
+    issueCmdUniquePriority(cmdSetFreq, f);
+    issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::setDefPrefs()
@@ -2418,8 +2430,8 @@ void wfmain::shortcutMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(0,f);
-    issueCmd(cmdSetFreq, f);
+    //issueCmd(cmdSetFreq, f);
+    issueCmdUniquePriority(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -2432,8 +2444,8 @@ void wfmain::shortcutPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    //emit setFrequency(0,f);
-    issueCmd(cmdSetFreq, f);
+    //issueCmd(cmdSetFreq, f);
+    issueCmdUniquePriority(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -2446,7 +2458,7 @@ void wfmain::shortcutStepMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -2459,7 +2471,7 @@ void wfmain::shortcutStepPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    emit setFrequency(f);
+    issueCmd(cmdSetFreq, f);
     issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -4300,6 +4312,12 @@ void wfmain::bandStackBtnClick()
     emit getBandStackReg(bandStkBand, bandStkRegCode);
 }
 
+void wfmain::setBand(int band)
+{
+    bandStkBand = rigCaps.bsr[(bandType)band]; // 23cm
+    bandStackBtnClick();
+}
+
 void wfmain::on_band23cmbtn_clicked()
 {
     bandStkBand = rigCaps.bsr[band23cm]; // 23cm
@@ -5901,17 +5919,17 @@ void wfmain::on_debugBtn_clicked()
     //setRadioTimeDatePrep();
     //wf->setInteraction(QCP::iRangeZoom, true);
     //wf->setInteraction(QCP::iRangeDrag, true);
-    bool ok;
-    int height = QInputDialog::getInt(this, "wfview Radio Polling Setup", "Poll Timing Interval (ms)", 350, 1, 500, 1, &ok );
+    //bool ok;
+    //int height = QInputDialog::getInt(this, "wfview Radio Polling Setup", "Poll Timing Interval (ms)", 350, 1, 500, 1, &ok );
 
-    this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-    this->setMaximumSize(QSize(1025,height));
-    this->setMinimumSize(QSize(1025,height));
+    //this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    //this->setMaximumSize(QSize(1025,height));
+    //this->setMinimumSize(QSize(1025,height));
     //this->setMaximumSize(QSize(929, 270));
     //this->setMinimumSize(QSize(929, 270));
 
-    resize(minimumSize());
-    adjustSize(); // main window
-    adjustSize();
+    //resize(minimumSize());
+    //adjustSize(); // main window
+    //adjustSize();
 
 }

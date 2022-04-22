@@ -62,6 +62,9 @@
     <ClCompile Include="freqmemory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\hidapi\windows\hid.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="logcategories.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -101,6 +104,9 @@
     <ClCompile Include="selectradio.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="shuttlesetup.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="tcpserver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -111,6 +117,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="udpserver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="usbcontroller.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="wfmain.cpp">
@@ -181,6 +190,9 @@
     <QtMoc Include="selectradio.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="shuttlesetup.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <ClInclude Include="resampler\speex_resampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -199,6 +211,9 @@
     <ClInclude Include="ulaw.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <QtMoc Include="usbcontroller.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="wfmain.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -257,6 +272,11 @@
     
     
     
+    
+    
+    
+    
+    
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="aboutbox.ui">
@@ -272,6 +292,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="selectradio.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="shuttlesetup.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="transceiveradjustments.ui">
@@ -369,6 +392,9 @@
     <None Include="qdarkstyle\rc\radio_unchecked_focus.png">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="resources\rc28.png">
+      <Filter>Resource Files</Filter>
+    </None>
     <QtRcc Include="resources\resources.qrc">
       <Filter>Resource Files</Filter>
     </QtRcc>
@@ -376,6 +402,12 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="qdarkstyle\rc\right_arrow_disabled.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="resources\shuttlepro.png">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="resources\shuttlexpress.png">
       <Filter>Resource Files</Filter>
     </None>
     <None Include="qdarkstyle\rc\sizegrip.png">

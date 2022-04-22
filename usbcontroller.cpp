@@ -1,26 +1,33 @@
 #pragma comment (lib, "Setupapi.lib")
-#include "shuttle.h"
+#include "usbcontroller.h"
 #include <QDebug>
 
-shuttle::shuttle()
+usbController::usbController()
 {
 	qInfo() << "Starting HID USB device detection";
 }
 
-shuttle::~shuttle()
+usbController::~usbController()
 {
     qDebug() << "************ Ending HID";
     hid_close(handle);
     hid_exit();
+    for (BUTTON& b : buttonList)
+    {
+        if (b.onCommand.text)
+            delete b.onCommand.text;
+        if (b.offCommand.text)
+            delete b.offCommand.text;
+    }
 }
 
-void shuttle::init()
+void usbController::init()
 {
 
 }
 
 
-int shuttle::hidApiWrite(unsigned char* data, unsigned char length)
+int usbController::hidApiWrite(unsigned char* data, unsigned char length)
 {
     Q_UNUSED(data);
     Q_UNUSED(length);
@@ -47,7 +54,7 @@ int shuttle::hidApiWrite(unsigned char* data, unsigned char length)
 }
 
 
-void shuttle::run()
+void usbController::run()
 {
     handle = hid_open(0x0b33, 0x0020, NULL);
     if (!handle) {
@@ -65,12 +72,28 @@ void shuttle::run()
         }
         else {
             usbDevice = shuttlePro2;
+            buttonList.clear();
+            buttonList.append(BUTTON(0, QRect(60, 66, 40, 30), Qt::red));
+            buttonList.append(BUTTON(1, QRect(114, 50, 40, 30), Qt::red));
+            buttonList.append(BUTTON(2, QRect(169, 47, 40, 30), Qt::red));
+            buttonList.append(BUTTON(3, QRect(225, 59, 40, 30), Qt::red));
+            buttonList.append(BUTTON(4, QRect(41, 132, 40, 30), Qt::red));
+            buttonList.append(BUTTON(5, QRect(91, 105, 40, 30), Qt::red));
+            buttonList.append(BUTTON(6, QRect(144, 93, 40, 30), Qt::red));
+            buttonList.append(BUTTON(7, QRect(204, 99, 40, 30), Qt::red));
+            buttonList.append(BUTTON(8, QRect(253, 124, 40, 30), Qt::red));
+            buttonList.append(BUTTON(9, QRect(50, 270, 70, 55), Qt::red));
+            buttonList.append(BUTTON(10, QRect(210, 270, 70, 55), Qt::red));
+            buttonList.append(BUTTON(11, QRect(50, 335, 70, 55), Qt::red));
+            buttonList.append(BUTTON(12, QRect(210, 335, 70, 55), Qt::red));
+            buttonList.append(BUTTON(13, QRect(30, 195, 25, 80), Qt::red));
+            buttonList.append(BUTTON(14, QRect(280, 195, 25, 80), Qt::red));
+
         }
     }
     else {
         usbDevice = shuttleXpress;
     }
-
 
     if (handle)
     {
@@ -81,12 +104,12 @@ void shuttle::run()
         res = hid_get_product_string(handle, product, MAX_STR);
         qInfo() << QString("Found Device: %0 from %1").arg(QString::fromWCharArray(product)).arg(QString::fromWCharArray(manufacturer));
         hid_set_nonblocking(handle, 1);
-        emit newDevice(usbDevice);
+        emit newDevice(usbDevice,&buttonList);
         QTimer::singleShot(0, this, SLOT(runTimer()));
     }
 }
 
-void shuttle::runTimer()
+void usbController::runTimer()
 {
     int res=1;
     while (res > 0) {
@@ -95,7 +118,7 @@ void shuttle::runTimer()
         if (res < 0)
         {
             qInfo() << "USB Device disconnected?";
-            emit newDevice(0);
+            emit newDevice(0,&buttonList);
             hid_close(handle);
             QTimer::singleShot(1000, this, SLOT(run()));
             return;
@@ -103,24 +126,25 @@ void shuttle::runTimer()
         else if (res == 5 && (usbDevice == shuttleXpress || usbDevice == shuttlePro2))
         {
             data.resize(res);
-            qDebug() << "Shuttle Data received: " << hex << (unsigned char)data[0] << ":"
+            
+            /*qDebug() << "usbController Data received " << hex << (unsigned char)data[0] << ":"
                 << hex << (unsigned char)data[1] << ":"
                 << hex << (unsigned char)data[2] << ":"
                 << hex << (unsigned char)data[3] << ":"
                 << hex << (unsigned char)data[4];
-
+                */
             unsigned int tempButtons = (unsigned int)((unsigned char)data[3] | (unsigned char)data[4] << 8);
             unsigned char tempJogpos = (unsigned char)data[1];
             unsigned char tempShutpos = (unsigned char)data[0];
 
             if (tempJogpos == jogpos + 1 || (tempJogpos == 0 && jogpos == 0xff))
             {
-                qDebug() << "JOG PLUS";
-                emit jogPlus();
+                counter++;
+                //qDebug() << "JOG PLUS" << counter;
             }
             else if (tempJogpos != jogpos) {
-                qDebug() << "JOG MINUS";
-                emit jogMinus();
+                counter--;
+                //qDebug() << "JOG MINUS" << counter;
             }
 
             /* Button matrix:
@@ -143,15 +167,38 @@ void shuttle::runTimer()
             */
             if (buttons != tempButtons)
             {
-                qDebug() << "BUTTON: " << qSetFieldWidth(16) << bin << tempButtons;
+                //qDebug() << "BUTTON: " << qSetFieldWidth(16) << bin << tempButtons;
 
                 // Step through all buttons and emit ones that have been pressed.
                 for (unsigned char i = 0; i < 16; i++)
                 {
-                    if ((tempButtons >> i & 1) && !(buttons >> i & 1))
-                        emit button(true, i);
+                    if ((tempButtons >> i & 1) && !(buttons >> i & 1)) 
+{
+                        if (i < buttonList.size() && buttonList[i].onCommand.text && buttonList[i].onCommand.index>0) {
+                            qDebug() << "On Button event:" << buttonList[i].onCommand.text->toPlainText();
+                            if (buttonList[i].onCommand.index > 12) // Band selection
+                            {
+                                emit setBand(buttonList[i].onCommand.index - 13);
+                            }
+                            else {
+                                emit button(true, i);
+                            }
+                        }
+                    }
                     else if ((buttons >> i & 1) && !(tempButtons >> i & 1))
-                        emit button(false, i);
+                    {
+                        if (i < buttonList.size() && buttonList[i].offCommand.text && buttonList[i].onCommand.index>0) {
+                            qDebug() << "Off Button event:" << buttonList[i].offCommand.text->toPlainText();
+                            if (buttonList[i].offCommand.index > 2) // Band selection
+                            {
+                                emit setBand(buttonList[i].offCommand.index - 3);
+                            }
+                            else {
+                                emit button(false, i);
+                            }
+                        }
+
+                    }
                 }
             }
 
@@ -196,36 +243,44 @@ void shuttle::runTimer()
 
             if ((unsigned char)data[5] == 0x07)
             {
-                if ((unsigned char)data[3]==0x01)
+                if ((unsigned char)data[3] == 0x01)
                 {
-                    qDebug() << "Frequency UP";
-                        emit jogPlus();
+                    //qDebug() << "Frequency UP";
+                    counter++;
+                    //emit jogPlus();
                 }
                 else if ((unsigned char)data[3] == 0x02)
                 {
-                    qDebug() << "Frequency DOWN";
-                        emit jogMinus();
+                    //qDebug() << "Frequency DOWN";
+                    emit jogMinus();
+                    counter--;
                 }
             }
 
             lastData = data;
         }
 
-        if (lastShuttle.msecsTo(QTime::currentTime()) >= 1000)
+        if (lastusbController.msecsTo(QTime::currentTime()) >= 500 || lastusbController > QTime::currentTime())
         {
             if (shutpos > 0 && shutpos < 8)
             {
                 shutMult = shutpos;
                 emit doShuttle(true, shutMult);
-                qInfo() << "SHUTTLE PLUS" << shutMult;
+                //qInfo() << "Shuttle PLUS" << shutMult;
 
             }
             else if (shutpos <= 0xff && shutpos >= 0xf0) {
                 shutMult = abs(shutpos - 0xff) + 1;
                 emit doShuttle(false, shutMult);
-                qInfo() << "SHUTTLE MINUS" << shutMult;
+                //qInfo() << "Shuttle MINUS" << shutMult;
             }
-            lastShuttle = QTime::currentTime();
+            if (counter != 0) {
+                emit sendJog(counter); 
+                //qInfo() << "Change Frequency by" << counter << "hz";
+                counter = 0;
+            }
+
+            lastusbController = QTime::currentTime();
         }
 
     }
@@ -233,25 +288,25 @@ void shuttle::runTimer()
     QTimer::singleShot(25, this, SLOT(runTimer()));
 }
 
-void shuttle::ledControl(bool on, unsigned char num)
+void usbController::ledControl(bool on, unsigned char num)
 {
+    if (usbDevice == RC28) {
+        QByteArray data(9, 0x0);
+        data[0] = 8;
+        data[1] = 0x01;
+        unsigned char ledNum = 0x07;
+        if (on)
+            ledNum &= ~(1ULL << (num - 1));
 
-    QByteArray data(9,0x0);
-    data[0] = 8;
-    data[1] = 0x01;
-    unsigned char ledNum=0x07;
-    if (on)
-        ledNum &= ~(1ULL << (num - 1));
+        data[2] = ledNum;
 
-    data[2] = ledNum;
+        int res = hid_write(handle, (const unsigned char*)data.constData(), 8);
 
-    int res = hid_write(handle, (const unsigned char*)data.constData(), 8);
+        if (res < 0) {
+            qDebug() << "Unable to write(), Error:" << hid_error(handle);
+            return;
+        }
 
-    if (res < 0) {
-        qDebug() << "Unable to write(), Error:" << hid_error(handle);
-        return;
+        qDebug() << "write() success";
     }
-
-    qDebug() << "write() success";
-
 }

@@ -37,7 +37,7 @@
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
-#include "shuttle.h"
+#include "usbcontroller.h"
 #include "shuttlesetup.h"
 
 #include <deque>
@@ -284,6 +284,13 @@ private slots:
     void showStatusBarText(QString text);
     void receiveBaudRate(quint32 baudrate);
     void radioSelection(QList<radio_cap_packet> radios);
+
+    // Added for RC28/Shuttle support
+    void pttToggle(bool);
+    void stepUp();
+    void stepDown();
+    void changeFrequency(int value);
+    void setBand(int band);
 
     void setRadioTimeDateSend();
 
@@ -630,7 +637,7 @@ private:
     void setSerialDevicesUI();
     void setAudioDevicesUI();
     void setServerToPrefs();
-    void setupShuttleDevice();
+    void setupUsbControllerDevice();
     void setInitialTiming();
     void getSettingsFilePath(QString settingsFile);
 
@@ -666,6 +673,7 @@ private:
     unsigned char setModeVal=0;
     unsigned char setFilterVal=0;
 
+    /* Any additions/modifications to cmds enum must also be made in usbcontroller.h */
     enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode,
               cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
@@ -860,7 +868,6 @@ private:
     repeaterSetup *rpt;
     satelliteSetup *sat;
     transceiverAdjustments *trxadj;
-    udpServerSetup *srv;
     shuttleSetup* shut;
     aboutbox *abtBox;
     selectRadio *selRad;
@@ -894,11 +901,11 @@ private:
     rigstate* rigState = Q_NULLPTR;
 
     SERVERCONFIG serverConfig;
-    shuttle *shuttleDev = Q_NULLPTR;
-    QThread *shuttleThread = Q_NULLPTR;
-#ifdef RTAUDIO
-    RtAudio audio;
-#endif
+    void serverAddUserLine(const QString& user, const QString& pass, const int& type);
+
+    usbController *usbControllerDev = Q_NULLPTR;
+    QThread *usbControllerThread = Q_NULLPTR;
+
 
 };
 
@@ -917,7 +924,7 @@ Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
 Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 Q_DECLARE_METATYPE(rigstate*)
-
+Q_DECLARE_METATYPE(QVector <BUTTON>*)
 
 #endif // WFMAIN_H
 #endif
