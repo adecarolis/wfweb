@@ -2922,6 +2922,14 @@ void wfmain::doCmd(commandtype cmddata)
             emit setDate(d);
             break;
         }
+        case cmdGetBandStackReg:
+        {
+            char band = (*std::static_pointer_cast<char>(data));
+            bandStkBand = rigCaps.bsr[(bandType)band]; // 23cm
+            bandStkRegCode = ui->bandStkPopdown->currentIndex() + 1;
+            emit getBandStackReg(bandStkBand, bandStkRegCode);
+            break;
+        }
         default:
             doCmd(cmd);
             break;
@@ -4314,8 +4322,8 @@ void wfmain::bandStackBtnClick()
 
 void wfmain::setBand(int band)
 {
-    bandStkBand = rigCaps.bsr[(bandType)band]; // 23cm
-    bandStackBtnClick();
+    issueCmdUniquePriority(cmdGetBandStackReg, (char)band);
+    //bandStackBtnClick();
 }
 
 void wfmain::on_band23cmbtn_clicked()
