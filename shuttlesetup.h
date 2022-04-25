@@ -12,7 +12,7 @@
 #include <QRect>
 #include <QComboBox>
 #include <QLabel>
-#include <QGraphicsProxyWidget.h>
+#include <QGraphicsProxyWidget>
 
 #include <QDebug>
 #include <QObject>
