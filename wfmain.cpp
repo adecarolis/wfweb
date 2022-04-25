@@ -47,6 +47,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType<rigstate*>();
     qRegisterMetaType<QList<radio_cap_packet>>();
     qRegisterMetaType<QVector<BUTTON>*>();
+    qRegisterMetaType<QVector<COMMAND>*>();
+    qRegisterMetaType<COMMAND*>();
     qRegisterMetaType<networkStatus>();
 
     haveRigCaps = false;
@@ -1292,7 +1294,7 @@ void wfmain::setupUsbControllerDevice()
     connect(usbControllerDev, SIGNAL(button(bool, unsigned char)), this, SLOT(buttonControl(bool, unsigned char)));
     connect(usbControllerDev, SIGNAL(setBand(int)), this, SLOT(setBand(int)));
     connect(this, SIGNAL(shuttleLed(bool, unsigned char)), usbControllerDev, SLOT(ledControl(bool, unsigned char)));
-    connect(usbControllerDev, SIGNAL(newDevice(unsigned char, QVector<BUTTON>*)), shut, SLOT(newDevice(unsigned char, QVector<BUTTON>*)));
+    connect(usbControllerDev, SIGNAL(newDevice(unsigned char, QVector<BUTTON>*, QVector<COMMAND>*)), shut, SLOT(newDevice(unsigned char, QVector<BUTTON>*,QVector<COMMAND>*)));
     usbControllerThread->start(QThread::LowestPriority);
 }
 

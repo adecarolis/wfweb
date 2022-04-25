@@ -9,6 +9,7 @@
 #include <QRect>
 #include <QGraphicsTextItem>
 #include <QColor>
+#include <QVector>
 
 
 #ifndef Q_OS_WIN
@@ -48,19 +49,24 @@ enum cmds {
     cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
     cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
     cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
+    cmdGetBandStackReg,
     cmdSetTime, cmdSetDate, cmdSetUTCOffset
 };
 
 struct COMMAND {
-/*    COMMAND(cmds command, char suffix, bool bandswitch, bandType band) :
-        command(command), suffix(suffix), bandswitch(bandswitch), band(band) {} */
+    COMMAND(){}
+
+    COMMAND(int index, QString text, cmds command, char suffix) :
+        index(index), text(text), command(command), suffix(suffix), bandswitch(false){}
+    COMMAND(int index, QString text, cmds command, bandType band) :
+        index(index), text(text), command(command),band(band), bandswitch(true) {}
 
     int index;
     cmds command;
     char suffix;
     bool bandswitch;
     bandType band;
-    QGraphicsTextItem* text;
+    QString text;
 };
 
 struct BUTTON {
@@ -74,6 +80,8 @@ struct BUTTON {
     COMMAND onCommand;
     COMMAND offCommand;
     const QColor textColour;
+    QGraphicsTextItem* onText;
+    QGraphicsTextItem* offText;
 };
 
 class usbController : public QObject
@@ -99,7 +107,7 @@ signals:
     void setBand(int band);
 
     void button(bool,unsigned char num);
-    void newDevice(unsigned char devType, QVector<BUTTON>* but);
+    void newDevice(unsigned char devType, QVector<BUTTON>* but,QVector<COMMAND>* cmd);
 private:
     hid_device* handle;
     enum { NONE, shuttleXpress, shuttlePro2, RC28 }usbDevice;
@@ -113,7 +121,7 @@ private:
     unsigned char lastDialPos=0;
     int counter = 0;
     QVector<BUTTON> buttonList;
-
+    QVector<COMMAND> commands;
 
 protected:
 };

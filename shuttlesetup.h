@@ -8,14 +8,14 @@
 #include <QGraphicsPixmapItem>
 #include <QPoint>
 #include <QGraphicsSceneMouseEvent>
-#include <QVector.h>
-#include <QRect.h>
-#include <QComboBox.h>
-#include <QLabel.h>
+#include <QVector>
+#include <QRect>
+#include <QComboBox>
+#include <QLabel>
 #include <QGraphicsProxyWidget.h>
 
 #include <QDebug>
-#include <qobject.h>
+#include <QObject>
 
 #include "usbcontroller.h"
 
@@ -34,7 +34,7 @@ public:
     ~shuttleSetup();
 
 public slots:
-    void newDevice(unsigned char devType, QVector<BUTTON>* but);
+    void newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<COMMAND>* cmd);
     void mousePressed(QPoint p);
     void onEventIndexChanged(int index);
     void offEventIndexChanged(int index);
@@ -48,18 +48,12 @@ private:
     QLabel* imgLabel;
     unsigned char currentDevice = 0;
     QVector<BUTTON>* buttons;
+    QVector<COMMAND>* commands;
     BUTTON* currentButton=Q_NULLPTR;
     QComboBox onEvent;
     QComboBox offEvent;
     QGraphicsProxyWidget* onEventProxy=Q_NULLPTR;
     QGraphicsProxyWidget* offEventProxy=Q_NULLPTR;
-
-
-    QStringList onEventCommands = {"None", "PTT Toggle", "PTT On", "Tune","Step+","Step-", "NR","NB","AGC","Mode+","Mode-","Band+", "Band-",
-        "23cm","70cm","2m","AIR","WFM","4m","6m","10m","12m","15m","17m","20m","30m","40m","60m","80m","160m","630m","2200m","GEN" };
-
-    QStringList offEventCommands = { "None", "PTT Toggle", "PTT Off",
-    "23cm", "70cm", "2m", "AIR","WFM","4m", "6m", "10m", "12m", "15m","17m", "20m", "30m", "40m", "60m", "80m", "160m","630m","2200m","GEN"};
 
 };
 

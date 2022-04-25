@@ -14,16 +14,15 @@ usbController::~usbController()
     hid_exit();
     for (BUTTON& b : buttonList)
     {
-        if (b.onCommand.text)
-            delete b.onCommand.text;
-        if (b.offCommand.text)
-            delete b.offCommand.text;
+        if (b.onText)
+            delete b.onText;
+        if (b.offText)
+            delete b.offText;
     }
 }
 
 void usbController::init()
 {
-
 }
 
 
@@ -56,6 +55,45 @@ int usbController::hidApiWrite(unsigned char* data, unsigned char length)
 
 void usbController::run()
 {
+
+    commands.append(COMMAND(0, "None", cmdNone, 0x0));
+    commands.append(COMMAND(1, "PTT On", cmdSetPTT, 0x1));
+    commands.append(COMMAND(2, "PTT Off", cmdSetPTT, 0x0));
+    commands.append(COMMAND(3, "PTT Toggle", cmdSetPTT, 0x1));
+    commands.append(COMMAND(4, "Tune", cmdNone, 0x0));
+    commands.append(COMMAND(5, "Step+", cmdNone, 0x0));
+    commands.append(COMMAND(6, "Step-", cmdNone, 0x0));
+    commands.append(COMMAND(7, "Mode+", cmdNone, 0x0));
+    commands.append(COMMAND(8, "Mode-", cmdNone, 0x0));
+    commands.append(COMMAND(9, "Band+", cmdNone, 0x0));
+    commands.append(COMMAND(10, "Band-", cmdNone, 0x0));
+    commands.append(COMMAND(9, "NR", cmdNone, 0x0));
+    commands.append(COMMAND(10, "NB", cmdNone, 0x0));
+    commands.append(COMMAND(11, "AGC", cmdNone, 0x0));
+    commands.append(COMMAND(12, "NB", cmdNone, 0x0));
+    commands.append(COMMAND(14, "23cm", cmdGetBandStackReg, band23cm));
+    commands.append(COMMAND(15, "70cm", cmdGetBandStackReg, band70cm));
+    commands.append(COMMAND(16, "2m", cmdGetBandStackReg, band2m));
+    commands.append(COMMAND(17, "AIR", cmdGetBandStackReg, bandAir));
+    commands.append(COMMAND(18, "WFM", cmdGetBandStackReg, bandWFM));
+    commands.append(COMMAND(19, "4m", cmdGetBandStackReg, band4m));
+    commands.append(COMMAND(20, "6m", cmdGetBandStackReg, band6m));
+    commands.append(COMMAND(21, "10m", cmdGetBandStackReg, band10m));
+    commands.append(COMMAND(22, "12m", cmdGetBandStackReg, band12m));
+    commands.append(COMMAND(23, "15m", cmdGetBandStackReg, band15m));
+    commands.append(COMMAND(24, "17m", cmdGetBandStackReg, band17m));
+    commands.append(COMMAND(25, "20m", cmdGetBandStackReg, band20m));
+    commands.append(COMMAND(26, "30m", cmdGetBandStackReg, band30m));
+    commands.append(COMMAND(27, "40m", cmdGetBandStackReg, band40m));
+    commands.append(COMMAND(28, "60m", cmdGetBandStackReg, band60m));
+    commands.append(COMMAND(29, "80m", cmdGetBandStackReg, band80m));
+    commands.append(COMMAND(30, "160m", cmdGetBandStackReg, band160m));
+    commands.append(COMMAND(31, "630m", cmdGetBandStackReg, band630m));
+    commands.append(COMMAND(32, "2200m", cmdGetBandStackReg, band2200m));
+    commands.append(COMMAND(33, "GEN", cmdGetBandStackReg, bandGen));
+
+
+
     handle = hid_open(0x0b33, 0x0020, NULL);
     if (!handle) {
         handle = hid_open(0x0b33, 0x0030, NULL);
@@ -104,7 +142,7 @@ void usbController::run()
         res = hid_get_product_string(handle, product, MAX_STR);
         qInfo() << QString("Found Device: %0 from %1").arg(QString::fromWCharArray(product)).arg(QString::fromWCharArray(manufacturer));
         hid_set_nonblocking(handle, 1);
-        emit newDevice(usbDevice,&buttonList);
+        emit newDevice(usbDevice,&buttonList, &commands); // Let the UI know we have a new controller
         QTimer::singleShot(0, this, SLOT(runTimer()));
     }
 }
@@ -118,7 +156,7 @@ void usbController::runTimer()
         if (res < 0)
         {
             qInfo() << "USB Device disconnected?";
-            emit newDevice(0,&buttonList);
+            emit newDevice(0,&buttonList,&commands);
             hid_close(handle);
             QTimer::singleShot(1000, this, SLOT(run()));
             return;
@@ -174,11 +212,11 @@ void usbController::runTimer()
                 {
                     if ((tempButtons >> i & 1) && !(buttons >> i & 1)) 
 {
-                        if (i < buttonList.size() && buttonList[i].onCommand.text && buttonList[i].onCommand.index>0) {
-                            qDebug() << "On Button event:" << buttonList[i].onCommand.text->toPlainText();
-                            if (buttonList[i].onCommand.index > 12) // Band selection
+                        if (i < buttonList.size()) {
+                            qDebug() << "On Button event:" << buttonList[i].onCommand.text;
+                            if (buttonList[i].onCommand.bandswitch) 
                             {
-                                emit setBand(buttonList[i].onCommand.index - 13);
+                                //emit setBand(buttonList[i].onCommand.index - 13);
                             }
                             else {
                                 emit button(true, i);
@@ -187,7 +225,7 @@ void usbController::runTimer()
                     }
                     else if ((buttons >> i & 1) && !(tempButtons >> i & 1))
                     {
-                        if (i < buttonList.size() && buttonList[i].offCommand.text && buttonList[i].onCommand.index>0) {
+                       /* if (i < buttonList.size() && buttonList[i].offCommand.text && buttonList[i].onCommand.index>0) {
                             qDebug() << "Off Button event:" << buttonList[i].offCommand.text->toPlainText();
                             if (buttonList[i].offCommand.index > 2) // Band selection
                             {
@@ -197,7 +235,7 @@ void usbController::runTimer()
                                 emit button(false, i);
                             }
                         }
-
+                        */
                     }
                 }
             }
