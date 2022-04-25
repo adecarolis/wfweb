@@ -142,8 +142,8 @@ CONFIG(debug, release|debug) {
   win32:LIBS += -L../opus/win32/VS2015/Win32/Release/ -lopus
 }
 
-linux:LIBS += -L./ -l$$QCPLIB -lopus
-macx:LIBS += -framework CoreAudio -framework CoreFoundation -hidapi -lpthread -lopus 
+linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb -lopus
+macx:LIBS += -framework CoreAudio -framework CoreFoundation -lhidapi -lpthread -lopus 
 
 win32:INCLUDEPATH += ../hidapi/hidapi
 win32:SOURCES += ../hidapi/windows/hid.c
