@@ -1121,8 +1121,8 @@ void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
             c->retransmitTimer->stop();
     }
     else {
-        //strcpy(p.connection, "WFVIEW");
-        strcpy(p.connection, "FTTH");
+        strcpy(p.connection, "WFVIEW");
+        //strcpy(p.connection, "FTTH");
     }
 
     SEQBUFENTRY s;
