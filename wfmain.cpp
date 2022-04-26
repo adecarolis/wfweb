@@ -1291,7 +1291,7 @@ void wfmain::setupUsbControllerDevice()
     connect(usbControllerThread, SIGNAL(finished()), usbControllerDev, SLOT(deleteLater()));
     connect(usbControllerDev, SIGNAL(sendJog(int)), this, SLOT(changeFrequency(int)));
     connect(usbControllerDev, SIGNAL(doShuttle(bool, unsigned char)), this, SLOT(doShuttle(bool, unsigned char)));
-    connect(usbControllerDev, SIGNAL(button(bool, unsigned char)), this, SLOT(buttonControl(bool, unsigned char)));
+    connect(usbControllerDev, SIGNAL(button(COMMAND*)), this, SLOT(buttonControl(COMMAND*)));
     connect(usbControllerDev, SIGNAL(setBand(int)), this, SLOT(setBand(int)));
     connect(this, SIGNAL(shuttleLed(bool, unsigned char)), usbControllerDev, SLOT(ledControl(bool, unsigned char)));
     connect(usbControllerDev, SIGNAL(newDevice(unsigned char, QVector<BUTTON>*, QVector<COMMAND>*)), shut, SLOT(newDevice(unsigned char, QVector<BUTTON>*,QVector<COMMAND>*)));
@@ -1337,24 +1337,15 @@ void wfmain::doShuttle(bool up, unsigned char level)
             shortcutControlMinus();
 }
 
-void wfmain::buttonControl(bool on, unsigned char button)
+void wfmain::buttonControl(COMMAND* cmd)
 {
-    //qInfo() << "buttonControl()" << on << button;
-    switch (button)
-    {
-    case(5):
-        if(on)
-            stepDown();
-        break;
-    case(6):
-        pttToggle(on);
-        break;
-    case(7): 
-        if (on)
-            stepUp();
-        break;
-    default:
-        qInfo() << "Unknown button pressed:" << button;
+    if (!cmd->bandswitch) {
+        qDebug() << "Other command";
+        issueCmdUniquePriority((cmds)cmd->command, cmd->suffix);
+    }
+    else {
+        qDebug() << "Bandswitch";
+        issueCmdUniquePriority((cmds)cmd->command, (char)cmd->band);
     }
 }
 

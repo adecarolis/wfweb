@@ -64,7 +64,7 @@ struct COMMAND {
     int index;
     QString text;
     cmds command;
-    char suffix;
+    unsigned char suffix;
     bandType band;
     bool bandswitch;
 };
@@ -108,7 +108,7 @@ signals:
     void doShuttle(bool plus, quint8 level);
     void setBand(int band);
 
-    void button(bool,unsigned char num);
+    void button(COMMAND* cmd);
     void newDevice(unsigned char devType, QVector<BUTTON>* but,QVector<COMMAND>* cmd);
 private:
     hid_device* handle;

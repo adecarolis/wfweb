@@ -294,7 +294,7 @@ private slots:
 
     void setRadioTimeDateSend();
 
-    void buttonControl(bool on, unsigned char button);
+    void buttonControl(COMMAND* cmd);
 
     // void on_getFreqBtn_clicked();
 

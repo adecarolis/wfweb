@@ -214,28 +214,15 @@ void usbController::runTimer()
 {
                         if (i < buttonList.size()) {
                             qDebug() << "On Button event:" << buttonList[i].onCommand.text;
-                            if (buttonList[i].onCommand.bandswitch) 
-                            {
-                                //emit setBand(buttonList[i].onCommand.index - 13);
-                            }
-                            else {
-                                emit button(true, i);
-                            }
+                            emit button(&buttonList[i].onCommand);
                         }
                     }
                     else if ((buttons >> i & 1) && !(tempButtons >> i & 1))
                     {
                         if (i < buttonList.size()) {
                             qDebug() << "Off Button event:" << buttonList[i].offCommand.text;
-                            if (buttonList[i].offCommand.bandswitch)
-                            {
-                                //emit setBand(buttonList[i].onCommand.index - 13);
-                            }
-                            else {
-                                emit button(false, i);
-                            }
+                            emit button(&buttonList[i].offCommand);
                         }
-                        
                     }
                 }
             }
@@ -256,27 +243,27 @@ void usbController::runTimer()
 
             if (((unsigned char)data[5] == 0x06) && ((unsigned char)lastData[5] != 0x06))
             {
-                emit button(true, 6);
+                //emit button(true, 6);
             }
             else if (((unsigned char)data[5] != 0x06) && ((unsigned char)lastData[5] == 0x06))
             {
-                emit button(false, 6);
+                //emit button(false, 6);
             }
             else if (((unsigned char)data[5] == 0x03) && ((unsigned char)lastData[5] != 0x03))
             {
-                emit button(true, 7);
+                //emit button(true, 7);
             }
             else if (((unsigned char)data[5] != 0x03) && ((unsigned char)lastData[5] == 0x03))
             {
-                emit button(false, 7);
+                //emit button(false, 7);
             }
             else if (((unsigned char)data[5] == 0x7d) && ((unsigned char)lastData[5] != 0x7d))
             {
-                emit button(true, 5);
+                //emit button(true, 5);
             }
             else if (((unsigned char)data[5] != 0x7d) && ((unsigned char)lastData[5] == 0x7d))
             {
-                emit button(false, 5);
+                //emit button(false, 5);
             }
 
             if ((unsigned char)data[5] == 0x07)
