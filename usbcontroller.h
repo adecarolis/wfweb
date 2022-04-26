@@ -118,10 +118,10 @@ private:
     unsigned char jogpos=0;
     unsigned char shutpos=0;
     unsigned char shutMult = 0;
+    int jogCounter = 0;
     QTime	lastusbController = QTime::currentTime();
     QByteArray lastData="";
     unsigned char lastDialPos=0;
-    int counter = 0;
     QVector<BUTTON> buttonList;
     QVector<COMMAND> commands;
 

@@ -177,12 +177,12 @@ void usbController::runTimer()
 
             if (tempJogpos == jogpos + 1 || (tempJogpos == 0 && jogpos == 0xff))
             {
-                counter++;
-                //qDebug() << "JOG PLUS" << counter;
+                jogCounter++;
+                //qDebug() << "JOG PLUS" << jogCounter;
             }
             else if (tempJogpos != jogpos) {
-                counter--;
-                //qDebug() << "JOG MINUS" << counter;
+                jogCounter--;
+                //qDebug() << "JOG MINUS" << jogCounter;
             }
 
             /* Button matrix:
@@ -284,14 +284,14 @@ void usbController::runTimer()
                 if ((unsigned char)data[3] == 0x01)
                 {
                     //qDebug() << "Frequency UP";
-                    counter++;
+                    jogCounter++;
                     //emit jogPlus();
                 }
                 else if ((unsigned char)data[3] == 0x02)
                 {
                     //qDebug() << "Frequency DOWN";
                     emit jogMinus();
-                    counter--;
+                    jogCounter--;
                 }
             }
 
@@ -300,22 +300,22 @@ void usbController::runTimer()
 
         if (lastusbController.msecsTo(QTime::currentTime()) >= 500 || lastusbController > QTime::currentTime())
         {
-            if (shutpos > 0 && shutpos < 8)
+            if (shutpos < 0x08)
             {
                 shutMult = shutpos;
                 emit doShuttle(true, shutMult);
                 //qInfo() << "Shuttle PLUS" << shutMult;
 
             }
-            else if (shutpos >= 0xf0) {
+            else if (shutpos > 0xEF) {
                 shutMult = abs(shutpos - 0xff) + 1;
                 emit doShuttle(false, shutMult);
                 //qInfo() << "Shuttle MINUS" << shutMult;
             }
-            if (counter != 0) {
-                emit sendJog(counter); 
-                //qInfo() << "Change Frequency by" << counter << "hz";
-                counter = 0;
+            if (jogCounter != 0) {
+                emit sendJog(jogCounter); 
+                //qInfo() << "Change Frequency by" << jogCounter << "hz";
+                jogCounter = 0;
             }
 
             lastusbController = QTime::currentTime();
