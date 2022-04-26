@@ -307,7 +307,7 @@ void usbController::runTimer()
                 //qInfo() << "Shuttle PLUS" << shutMult;
 
             }
-            else if (shutpos <= 0xff && shutpos >= 0xf0) {
+            else if (shutpos >= 0xf0) {
                 shutMult = abs(shutpos - 0xff) + 1;
                 emit doShuttle(false, shutMult);
                 //qInfo() << "Shuttle MINUS" << shutMult;
