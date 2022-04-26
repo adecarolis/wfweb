@@ -225,17 +225,17 @@ void usbController::runTimer()
                     }
                     else if ((buttons >> i & 1) && !(tempButtons >> i & 1))
                     {
-                       /* if (i < buttonList.size() && buttonList[i].offCommand.text && buttonList[i].onCommand.index>0) {
-                            qDebug() << "Off Button event:" << buttonList[i].offCommand.text->toPlainText();
-                            if (buttonList[i].offCommand.index > 2) // Band selection
+                        if (i < buttonList.size()) {
+                            qDebug() << "Off Button event:" << buttonList[i].offCommand.text;
+                            if (buttonList[i].offCommand.bandswitch)
                             {
-                                emit setBand(buttonList[i].offCommand.index - 3);
+                                //emit setBand(buttonList[i].onCommand.index - 13);
                             }
                             else {
                                 emit button(false, i);
                             }
                         }
-                        */
+                        
                     }
                 }
             }

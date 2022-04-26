@@ -54,7 +54,7 @@ enum cmds {
 };
 
 struct COMMAND {
-    COMMAND(){}
+    COMMAND() {}
 
     COMMAND(int index, QString text, cmds command, char suffix) :
         index(index), text(text), command(command), suffix(suffix), bandswitch(false){}
@@ -62,24 +62,26 @@ struct COMMAND {
         index(index), text(text), command(command),band(band), bandswitch(true) {}
 
     int index;
+    QString text;
     cmds command;
     char suffix;
-    bool bandswitch;
     bandType band;
-    QString text;
+    bool bandswitch;
 };
 
 struct BUTTON {
-    BUTTON(char num, QRect pos, const QColor col) :
-        num(num), pos(pos), textColour(col) {}
+    BUTTON() {}
+
+    BUTTON(char num, QRect pos, const QColor textColour) :
+        num(num), pos(pos), textColour(textColour) {}
 
     quint8 num;
     QRect pos;
+    const QColor textColour;
     int onEvent = 0;
     int offEvent = 0;
     COMMAND onCommand;
     COMMAND offCommand;
-    const QColor textColour;
     QGraphicsTextItem* onText;
     QGraphicsTextItem* offText;
 };
