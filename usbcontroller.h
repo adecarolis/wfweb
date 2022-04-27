@@ -80,8 +80,8 @@ struct BUTTON {
     const QColor textColour;
     int onEvent = 0;
     int offEvent = 0;
-    COMMAND onCommand;
-    COMMAND offCommand;
+    const COMMAND* onCommand=Q_NULLPTR;
+    const COMMAND* offCommand=Q_NULLPTR;
     QGraphicsTextItem* onText;
     QGraphicsTextItem* offText;
 };
@@ -108,7 +108,7 @@ signals:
     void doShuttle(bool plus, quint8 level);
     void setBand(int band);
 
-    void button(COMMAND* cmd);
+    void button(const COMMAND* cmd);
     void newDevice(unsigned char devType, QVector<BUTTON>* but,QVector<COMMAND>* cmd);
 private:
     hid_device* handle;
@@ -124,6 +124,9 @@ private:
     unsigned char lastDialPos=0;
     QVector<BUTTON> buttonList;
     QVector<COMMAND> commands;
+    QString product="";
+    QString manufacturer="";
+    QString serial="<none>";
 
 protected:
 };

@@ -2,14 +2,16 @@
 #include "usbcontroller.h"
 #include <QDebug>
 
+#include "logcategories.h"
+
 usbController::usbController()
 {
-	qInfo() << "Starting HID USB device detection";
+	qInfo(logUsbControl()) << "Starting usbController()";
 }
 
 usbController::~usbController()
 {
-    qDebug() << "************ Ending HID";
+    qInfo(logUsbControl) << "Ending usbController()";
     hid_close(handle);
     hid_exit();
     for (BUTTON& b : buttonList)
@@ -131,6 +133,12 @@ void usbController::run()
     }
     else {
         usbDevice = shuttleXpress;
+        buttonList.append(BUTTON(0, QRect(60, 66, 40, 30), Qt::red));
+        buttonList.append(BUTTON(1, QRect(114, 50, 40, 30), Qt::red));
+        buttonList.append(BUTTON(2, QRect(169, 47, 40, 30), Qt::red));
+        buttonList.append(BUTTON(3, QRect(225, 59, 40, 30), Qt::red));
+        buttonList.append(BUTTON(4, QRect(41, 132, 40, 30), Qt::red));
+
     }
 
     if (handle)
@@ -138,9 +146,27 @@ void usbController::run()
         int res;
         wchar_t manufacturer[MAX_STR];
         wchar_t product[MAX_STR];
+        wchar_t serial[MAX_STR];
+
         res = hid_get_manufacturer_string(handle, manufacturer, MAX_STR);
+        if (res > -1)
+        {
+            this->manufacturer = QString::fromWCharArray(manufacturer);
+        }
+ 
         res = hid_get_product_string(handle, product, MAX_STR);
-        qInfo() << QString("Found Device: %0 from %1").arg(QString::fromWCharArray(product)).arg(QString::fromWCharArray(manufacturer));
+        if (res > -1)
+        {
+            this->product = QString::fromWCharArray(product);
+        }
+
+        res = hid_get_serial_number_string(handle, serial, MAX_STR);
+        if (res > -1)
+        {
+            this->serial = QString::fromWCharArray(serial);
+        }
+
+        qInfo(logUsbControl()) << QString("Found Device: %0 from %1 S/N %2").arg(this->product).arg(this->manufacturer).arg(this->serial);
         hid_set_nonblocking(handle, 1);
         emit newDevice(usbDevice,&buttonList, &commands); // Let the UI know we have a new controller
         QTimer::singleShot(0, this, SLOT(runTimer()));
@@ -155,8 +181,11 @@ void usbController::runTimer()
         res = hid_read(handle, (unsigned char*)data.data(), HIDDATALENGTH);
         if (res < 0)
         {
-            qInfo() << "USB Device disconnected?";
+            qInfo(logUsbControl()) << "USB Device disconnected" << this->product;
             emit newDevice(0,&buttonList,&commands);
+            this->product = "";
+            this->manufacturer = "";
+            this->serial = "<none>";
             hid_close(handle);
             QTimer::singleShot(1000, this, SLOT(run()));
             return;
@@ -165,7 +194,7 @@ void usbController::runTimer()
         {
             data.resize(res);
             
-            /*qDebug() << "usbController Data received " << hex << (unsigned char)data[0] << ":"
+            /*qDebug(logUsbControl()) << "usbController Data received " << hex << (unsigned char)data[0] << ":"
                 << hex << (unsigned char)data[1] << ":"
                 << hex << (unsigned char)data[2] << ":"
                 << hex << (unsigned char)data[3] << ":"
@@ -178,11 +207,11 @@ void usbController::runTimer()
             if (tempJogpos == jogpos + 1 || (tempJogpos == 0 && jogpos == 0xff))
             {
                 jogCounter++;
-                //qDebug() << "JOG PLUS" << jogCounter;
+                //qDebug(logUsbControl()) << "JOG PLUS" << jogCounter;
             }
             else if (tempJogpos != jogpos) {
                 jogCounter--;
-                //qDebug() << "JOG MINUS" << jogCounter;
+                //qDebug(logUsbControl()) << "JOG MINUS" << jogCounter;
             }
 
             /* Button matrix:
@@ -205,23 +234,23 @@ void usbController::runTimer()
             */
             if (buttons != tempButtons)
             {
-                //qDebug() << "BUTTON: " << qSetFieldWidth(16) << bin << tempButtons;
+                //qDebug(logUsbControl()) << "BUTTON: " << qSetFieldWidth(16) << bin << tempButtons;
 
                 // Step through all buttons and emit ones that have been pressed.
                 for (unsigned char i = 0; i < 16; i++)
                 {
                     if ((tempButtons >> i & 1) && !(buttons >> i & 1)) 
 {
-                        if (i < buttonList.size()) {
-                            qDebug() << "On Button event:" << buttonList[i].onCommand.text;
-                            emit button(&buttonList[i].onCommand);
+                        if (i < buttonList.size() && buttonList[i].onCommand != Q_NULLPTR && buttonList[i].onCommand->index > 0) {
+                            qDebug() << "On Button event:" << buttonList[i].onCommand->text;
+                            emit button(buttonList[i].onCommand);
                         }
                     }
                     else if ((buttons >> i & 1) && !(tempButtons >> i & 1))
                     {
-                        if (i < buttonList.size()) {
-                            qDebug() << "Off Button event:" << buttonList[i].offCommand.text;
-                            emit button(&buttonList[i].offCommand);
+                        if (i < buttonList.size() && buttonList[i].offCommand != Q_NULLPTR && buttonList[i].offCommand->index > 0) {
+                            qDebug() << "Off Button event:" << buttonList[i].offCommand->text;
+                            emit button(buttonList[i].offCommand);
                         }
                     }
                 }
@@ -270,13 +299,13 @@ void usbController::runTimer()
             {
                 if ((unsigned char)data[3] == 0x01)
                 {
-                    //qDebug() << "Frequency UP";
+                    //qDebug(logUsbControl()) << "Frequency UP";
                     jogCounter++;
                     //emit jogPlus();
                 }
                 else if ((unsigned char)data[3] == 0x02)
                 {
-                    //qDebug() << "Frequency DOWN";
+                    //qDebug(logUsbControl()) << "Frequency DOWN";
                     emit jogMinus();
                     jogCounter--;
                 }
@@ -291,17 +320,17 @@ void usbController::runTimer()
             {
                 shutMult = shutpos;
                 emit doShuttle(true, shutMult);
-                //qInfo() << "Shuttle PLUS" << shutMult;
+                //qDebug(logUsbControl()) << "Shuttle PLUS" << shutMult;
 
             }
             else if (shutpos > 0xEF) {
                 shutMult = abs(shutpos - 0xff) + 1;
                 emit doShuttle(false, shutMult);
-                //qInfo() << "Shuttle MINUS" << shutMult;
+                //qDebug(logUsbControl()) << "Shuttle MINUS" << shutMult;
             }
             if (jogCounter != 0) {
                 emit sendJog(jogCounter); 
-                //qInfo() << "Change Frequency by" << jogCounter << "hz";
+                qDebug(logUsbControl()) << "Change Frequency by" << jogCounter << "hz";
                 jogCounter = 0;
             }
 
@@ -328,10 +357,10 @@ void usbController::ledControl(bool on, unsigned char num)
         int res = hid_write(handle, (const unsigned char*)data.constData(), 8);
 
         if (res < 0) {
-            qDebug() << "Unable to write(), Error:" << hid_error(handle);
+            qDebug(logUsbControl()) << "Unable to write(), Error:" << hid_error(handle);
             return;
         }
 
-        qDebug() << "write() success";
+        qDebug(logUsbControl()) << "write() success";
     }
 }

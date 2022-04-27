@@ -72,9 +72,8 @@ void shuttleSetup::mousePressed(QPoint p)
 void shuttleSetup::onEventIndexChanged(int index) {
     qDebug() << "On Event for button" << currentButton->num << "Event" << index;
     if (currentButton != Q_NULLPTR && index < commands->size()) {
-        currentButton->onCommand = commands->at(index);
-        currentButton->onText->setPlainText(currentButton->onCommand.text);
-        currentButton->onCommand.index = index;
+        currentButton->onCommand = &commands->at(index);
+        currentButton->onText->setPlainText(currentButton->onCommand->text);
     }
 }
 
@@ -82,9 +81,8 @@ void shuttleSetup::onEventIndexChanged(int index) {
 void shuttleSetup::offEventIndexChanged(int index) {
     qDebug() << "Off Event for button" << currentButton->num << "Event" << index;
     if (currentButton != Q_NULLPTR && index < commands->size()) {
-        currentButton->offCommand = commands->at(index);
-        currentButton->offText->setPlainText(currentButton->offCommand.text);
-        currentButton->offCommand.index = index;
+        currentButton->offCommand = &commands->at(index);
+        currentButton->offText->setPlainText(currentButton->offCommand->text);
     }
 }
 
@@ -142,12 +140,14 @@ void shuttleSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVecto
     // Set button text
     for (BUTTON& b : *buttons)
     {
-        b.onText = new QGraphicsTextItem(commands->at(0).text);
+        b.onCommand = &commands->at(0);
+        b.onText = new QGraphicsTextItem(b.onCommand->text);
         b.onText->setDefaultTextColor(b.textColour);
         scene->addItem(b.onText);
         b.onText->setPos(b.pos.x(), b.pos.y());
 
-        b.offText = new QGraphicsTextItem(commands->at(0).text);
+        b.offCommand = &commands->at(0);
+        b.offText = new QGraphicsTextItem(b.offCommand->text);
         b.offText->setDefaultTextColor(b.textColour);
         scene->addItem(b.offText);
         b.offText->setPos(b.pos.x(), b.pos.y()+10);

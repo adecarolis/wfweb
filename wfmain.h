@@ -294,7 +294,7 @@ private slots:
 
     void setRadioTimeDateSend();
 
-    void buttonControl(COMMAND* cmd);
+    void buttonControl(const COMMAND* cmd);
 
     // void on_getFreqBtn_clicked();
 
@@ -927,7 +927,7 @@ Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 Q_DECLARE_METATYPE(rigstate*)
 Q_DECLARE_METATYPE(QVector <BUTTON>*)
 Q_DECLARE_METATYPE(QVector <COMMAND>*)
-Q_DECLARE_METATYPE(COMMAND*)
+Q_DECLARE_METATYPE(const COMMAND*)
 
 #endif // WFMAIN_H
 #endif

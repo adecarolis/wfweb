@@ -48,7 +48,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType<QList<radio_cap_packet>>();
     qRegisterMetaType<QVector<BUTTON>*>();
     qRegisterMetaType<QVector<COMMAND>*>();
-    qRegisterMetaType<COMMAND*>();
+    qRegisterMetaType<const COMMAND*>();
     qRegisterMetaType<networkStatus>();
 
     haveRigCaps = false;
@@ -1291,7 +1291,7 @@ void wfmain::setupUsbControllerDevice()
     connect(usbControllerThread, SIGNAL(finished()), usbControllerDev, SLOT(deleteLater()));
     connect(usbControllerDev, SIGNAL(sendJog(int)), this, SLOT(changeFrequency(int)));
     connect(usbControllerDev, SIGNAL(doShuttle(bool, unsigned char)), this, SLOT(doShuttle(bool, unsigned char)));
-    connect(usbControllerDev, SIGNAL(button(COMMAND*)), this, SLOT(buttonControl(COMMAND*)));
+    connect(usbControllerDev, SIGNAL(button(const COMMAND*)), this, SLOT(buttonControl(const COMMAND*)));
     connect(usbControllerDev, SIGNAL(setBand(int)), this, SLOT(setBand(int)));
     connect(this, SIGNAL(shuttleLed(bool, unsigned char)), usbControllerDev, SLOT(ledControl(bool, unsigned char)));
     connect(usbControllerDev, SIGNAL(newDevice(unsigned char, QVector<BUTTON>*, QVector<COMMAND>*)), shut, SLOT(newDevice(unsigned char, QVector<BUTTON>*,QVector<COMMAND>*)));
@@ -1337,14 +1337,15 @@ void wfmain::doShuttle(bool up, unsigned char level)
             shortcutControlMinus();
 }
 
-void wfmain::buttonControl(COMMAND* cmd)
+void wfmain::buttonControl(const COMMAND* cmd)
 {
+
     if (!cmd->bandswitch) {
-        qDebug() << "Other command";
+        //qDebug() << "Other command";
         issueCmdUniquePriority((cmds)cmd->command, cmd->suffix);
     }
     else {
-        qDebug() << "Bandswitch";
+        //qDebug() << "Bandswitch";
         issueCmdUniquePriority((cmds)cmd->command, (char)cmd->band);
     }
 }
