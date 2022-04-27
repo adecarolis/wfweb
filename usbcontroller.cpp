@@ -330,7 +330,7 @@ void usbController::runTimer()
             }
             if (jogCounter != 0) {
                 emit sendJog(jogCounter); 
-                qDebug(logUsbControl()) << "Change Frequency by" << jogCounter << "hz";
+                //qDebug(logUsbControl()) << "Change Frequency by" << jogCounter << "hz";
                 jogCounter = 0;
             }
 
