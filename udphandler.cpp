@@ -1377,7 +1377,7 @@ void udpBase::dataReceived(QByteArray r)
                 QMap<quint16,int>::iterator s = rxMissing.find(in->seq);
                 if (s != rxMissing.end())
                 {
-                    qDebug(logUdp()) << this->metaObject()->className() << ": Missing SEQ has been received! " << hex << in->seq;
+                    qInfo(logUdp()) << this->metaObject()->className() << ": Missing SEQ has been received! " << hex << in->seq;
 
                     s = rxMissing.erase(s);
                 }
@@ -1403,7 +1403,7 @@ void udpBase::sendRetransmitRequest()
         return;
     }
     else if (rxMissing.size() > MAX_MISSING) {
-        qDebug(logUdp()) << "Too many missing packets," << rxMissing.size() << "flushing all buffers";
+        qInfo(logUdp()) << "Too many missing packets," << rxMissing.size() << "flushing all buffers";
         missingMutex.lock();
         rxMissing.clear();
         missingMutex.unlock();
@@ -1440,14 +1440,14 @@ void udpBase::sendRetransmitRequest()
         if (missingSeqs.length() == 4) // This is just a single missing packet so send using a control.
         {
             p.seq = (missingSeqs[0] & 0xff) | (quint16)(missingSeqs[1] << 8);
-            qDebug(logUdp()) << this->metaObject()->className() << ": sending request for missing packet : " << hex << p.seq;
+            qInfo(logUdp()) << this->metaObject()->className() << ": sending request for missing packet : " << hex << p.seq;
             udpMutex.lock();
             udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
             udpMutex.unlock();
         }
         else
         {
-            qDebug(logUdp()) << this->metaObject()->className() << ": sending request for multiple missing packets : " << missingSeqs.toHex(':');
+            qInfo(logUdp()) << this->metaObject()->className() << ": sending request for multiple missing packets : " << missingSeqs.toHex(':');
             missingMutex.lock();
             missingSeqs.insert(0, p.packet, sizeof(p.packet));
             missingMutex.unlock();

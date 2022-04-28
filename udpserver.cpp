@@ -1696,7 +1696,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
         return;
     }
     else if (c->rxMissing.size() > MAX_MISSING) {
-        qDebug(logUdp()) << "Too many missing packets," << c->rxMissing.size() << "flushing all buffers";
+        qInfo(logUdp()) << "Too many missing packets," << c->rxMissing.size() << "flushing all buffers";
         c->rxMutex.lock();
         c->rxSeqBuf.clear();
         c->rxMutex.unlock();
@@ -1728,7 +1728,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
 
                 else {
                     // We have tried 4 times to request this packet, time to give up!
-                    qDebug(logUdp()) << this->metaObject()->className() << ": No response for missing packet" << it.key() << "deleting";
+                    qInfo(logUdp()) << this->metaObject()->className() << ": No response for missing packet" << it.key() << "deleting";
                     it = c->rxMissing.erase(it);
                 }
             }
@@ -1745,7 +1745,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
             if (missingSeqs.length() == 4) // This is just a single missing packet so send using a control.
             {
                 p.seq = (missingSeqs[0] & 0xff) | (quint16)(missingSeqs[1] << 8);
-                qDebug(logUdp()) << this->metaObject()->className() << ": sending request for missing packet : " << hex << p.seq;
+                qInfo(logUdp()) << this->metaObject()->className() << ": sending request for missing packet : " << hex << p.seq;
 
                 if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                 {
@@ -1759,7 +1759,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
             }
             else
             {
-                qDebug(logUdp()) << this->metaObject()->className() << ": sending request for multiple missing packets : " << missingSeqs.toHex();
+                qInfo(logUdp()) << this->metaObject()->className() << ": sending request for multiple missing packets : " << missingSeqs.toHex();
 
                 missingSeqs.insert(0, p.packet, sizeof(p.packet));
 
