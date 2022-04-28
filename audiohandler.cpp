@@ -316,7 +316,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		Eigen::VectorXf samplesF;
 		if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 32)
 		{
-			VectorXint16 samplesI = Eigen::Map<VectorXint32>(reinterpret_cast<qint32*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(qint32)));
+			VectorXint32 samplesI = Eigen::Map<VectorXint32>(reinterpret_cast<qint32*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(qint32)));
 			samplesF = samplesI.cast<float>() / float(std::numeric_limits<qint32>::max());
 		}
 		else if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 16)
@@ -326,7 +326,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		}
 		else if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 8)
 		{
-			VectorXuint8 samplesI = Eigen::Map<VectorXint8>(reinterpret_cast<qint8*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(qint8)));
+			VectorXint8 samplesI = Eigen::Map<VectorXint8>(reinterpret_cast<qint8*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(qint8)));
 			samplesF = samplesI.cast<float>() / float(std::numeric_limits<qint8>::max());;
 		}
 		else if (setup.format.sampleType() == QAudioFormat::UnSignedInt && setup.format.sampleSize() == 8)
