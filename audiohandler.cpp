@@ -79,12 +79,9 @@ bool audioHandler::init(audioSetup setupIn)
 	}
 
 	if (setup.codec == 0x01 || setup.codec == 0x20) {
-		/* Althought uLaw is 8bit unsigned, it is 16bit signed once decoded*/
 		setup.ulaw = true;
-		setup.format.setSampleSize(16);
-		setup.format.setSampleType(QAudioFormat::SignedInt);
-
 	}
+
 	if (setup.codec == 0x08 || setup.codec == 0x10 || setup.codec == 0x20 || setup.codec == 0x80) {
 		setup.format.setChannelCount(2);
 	}
@@ -134,8 +131,12 @@ bool audioHandler::init(audioSetup setupIn)
 	}
 
 	if (format.sampleSize() == 24) {
-		// We can't convert this easily
-		format.setSampleSize(16);
+		// We can't convert this easily so use 32 bit instead.
+		format.setSampleSize(32);
+		if (!setup.port.isFormatSupported(format)) {
+			qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "24 bit requested and 32 bit audio not supported, try 16 bit instead";
+			format.setSampleSize(16);
+		}
 	}
 
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Internal: sample rate" << format.sampleRate() << "channel count" << format.channelCount();
@@ -264,6 +265,9 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		livePacket.data.clear();
 		livePacket.data = outPacket; // Replace incoming data with converted.
 		// Buffer now contains 16bit signed samples.
+		setup.format.setSampleSize(16);
+		setup.format.setSampleType(QAudioFormat::SignedInt);
+
 	}
 
 
@@ -310,10 +314,20 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 	if (!livePacket.data.isEmpty()) {
 
 		Eigen::VectorXf samplesF;
-		if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 16)
+		if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 32)
+		{
+			VectorXint16 samplesI = Eigen::Map<VectorXint32>(reinterpret_cast<qint32*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(qint32)));
+			samplesF = samplesI.cast<float>() / float(std::numeric_limits<qint32>::max());
+		}
+		else if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 16)
 		{
 			VectorXint16 samplesI = Eigen::Map<VectorXint16>(reinterpret_cast<qint16*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(qint16)));
 			samplesF = samplesI.cast<float>() / float(std::numeric_limits<qint16>::max());
+		}
+		else if (setup.format.sampleType() == QAudioFormat::SignedInt && setup.format.sampleSize() == 8)
+		{
+			VectorXuint8 samplesI = Eigen::Map<VectorXint8>(reinterpret_cast<qint8*>(livePacket.data.data()), livePacket.data.size() / int(sizeof(qint8)));
+			samplesF = samplesI.cast<float>() / float(std::numeric_limits<qint8>::max());;
 		}
 		else if (setup.format.sampleType() == QAudioFormat::UnSignedInt && setup.format.sampleSize() == 8)
 		{
@@ -339,14 +353,22 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		// Set the volume
 		samplesF *= volume;
 
-		// Convert mono to stereo if required
-		if (setup.format.channelCount() == 1) {
+
+		if (setup.format.channelCount() == 2 && format.channelCount() == 1) {
+			// If we need to drop one of the audio channels, do it now 
+			Eigen::VectorXf samplesTemp(samplesF.size() / 2);
+			samplesTemp = Eigen::Map<Eigen::VectorXf, 0, Eigen::InnerStride<2> >(samplesF.data(), samplesF.size() / 2);
+			samplesF = samplesTemp;
+		}
+		else if (setup.format.channelCount() == 1 && format.channelCount() == 2) {
+			// Convert mono to stereo if required
 			Eigen::VectorXf samplesTemp(samplesF.size() * 2);
 			Eigen::Map<Eigen::VectorXf, 0, Eigen::InnerStride<2> >(samplesTemp.data(), samplesF.size()) = samplesF;
 			Eigen::Map<Eigen::VectorXf, 0, Eigen::InnerStride<2> >(samplesTemp.data() + 1, samplesF.size()) = samplesF;
 			samplesF = samplesTemp;
 		}
 
+		// We now have format.channelCount() (native) channels of audio.
 
 		if (resampleRatio != 1.0) {
 
@@ -377,6 +399,12 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<quint8>::max());
 			VectorXuint8 samplesI = samplesITemp.cast<quint8>();
 			livePacket.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(quint8)));
+		}
+		if (format.sampleType() == QAudioFormat::SignedInt && format.sampleSize() == 8)
+		{
+			Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint8>::max());
+			VectorXint8 samplesI = samplesITemp.cast<qint8>();
+			livePacket.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint8)));
 		}
 		if (format.sampleType() == QAudioFormat::SignedInt && format.sampleSize() == 16)
 		{
@@ -469,7 +497,6 @@ void audioHandler::getNextAudioChunk()
 			// Set the max amplitude found in the vector
 			if (samplesF.size() > 0) {
 				amplitude = samplesF.array().abs().maxCoeff();
-				// Channel count should now match the device that audio is going to (rig)
 
 				if (resampleRatio != 1.0) {
 
