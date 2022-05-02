@@ -104,6 +104,7 @@ void servermain::makeRig()
             qInfo(logSystem()) << "Creating new rigThread()";
             radio->rig = new rigCommander(radio->guid);
             radio->rigThread = new QThread(this);
+            radio->rigThread->setObjectName("rigCommander()");
 
             // Thread:
             radio->rig->moveToThread(radio->rigThread);
@@ -378,6 +379,7 @@ void servermain::setServerToPrefs()
     udp = new udpServer(&serverConfig);
 
     serverThread = new QThread(this);
+    serverThread->setObjectName("udpServer()");
 
     udp->moveToThread(serverThread);
 

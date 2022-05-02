@@ -412,6 +412,8 @@ void wfmain::makeRig()
     {
         rig = new rigCommander();
         rigThread = new QThread(this);
+        rigThread->setObjectName("rigCommander()");
+
 
         // Thread:
         rig->moveToThread(rigThread);
