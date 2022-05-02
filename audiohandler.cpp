@@ -31,12 +31,6 @@ audioHandler::~audioHandler()
 		audioOutput = Q_NULLPTR;
 	}
 
-	if (audioTimer != Q_NULLPTR) {
-		audioTimer->stop();
-		delete audioTimer;
-		audioTimer = Q_NULLPTR;
-	}
-
 
 	if (resampler != Q_NULLPTR) {
 		speex_resampler_destroy(resampler);
@@ -145,13 +139,6 @@ bool audioHandler::init(audioSetup setupIn)
 
 	if (setup.isinput) {
 		audioInput = new QAudioInput(setup.port, format, this);
-		//audioInput->setNotifyInterval(setup.blockSize);
-		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Starting audio timer";
-
-		//audioTimer = new QTimer();
-		//audioTimer->setTimerType(Qt::PreciseTimer);
-		//connect(audioTimer, &QTimer::timeout, this, &audioHandler::getNextAudioChunk);
-		//connect(audioInput, SIGNAL(notify()), this, SLOT(getNextAudioChunk()),Qt::DirectConnection);
 
 		connect(audioInput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
 	}
@@ -212,8 +199,6 @@ void audioHandler::start()
 		audioDevice = audioInput->start();
 		connect(audioInput, &QAudioInput::destroyed, audioDevice, &QIODevice::deleteLater, Qt::UniqueConnection);
 		connect(audioDevice, &QIODevice::readyRead, this, &audioHandler::getNextAudioChunk);
-		//audioTimer->start(setup.blockSize);
-		//qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Notify interval set to" << audioInput->notifyInterval() << "requested" << setup.blockSize;
 	}
 	else {
 		// Buffer size must be set before audio is started.
@@ -244,7 +229,6 @@ void audioHandler::stop()
 
 	if (audioInput != Q_NULLPTR && audioInput->state() != QAudio::StoppedState) {
 		// Stop audio output
-		//audioTimer->stop();
 		audioInput->stop();
 	}
 	audioDevice = Q_NULLPTR;
@@ -439,7 +423,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		currentLatency = livePacket.time.msecsTo(QTime::currentTime()) + (format.durationForBytes(audioOutput->bufferSize()-audioOutput->bytesFree())/1000);
 		if (audioDevice != Q_NULLPTR) {
 			audioDevice->write(livePacket.data);
-			if (lastReceived.msecsTo(QTime::currentTime()) > 50) {
+			if (lastReceived.msecsTo(QTime::currentTime()) > 100) {
 				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize << "Processing time" << startProcessing.msecsTo(QTime::currentTime());
 			}
 			lastReceived = QTime::currentTime();
@@ -633,7 +617,7 @@ void audioHandler::getNextAudioChunk()
 					livePacket.data = outPacket; // Copy output packet back to input buffer.
 				}
 				emit haveAudioData(livePacket);
-				if (lastReceived.msecsTo(QTime::currentTime()) > 50) {
+				if (lastReceived.msecsTo(QTime::currentTime()) > 100) {
 					qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize << "Processing time" << startProcessing.msecsTo(QTime::currentTime());
 				}
 
@@ -712,5 +696,4 @@ void audioHandler::stateChanged(QAudio::State state)
 void audioHandler::clearUnderrun()
 {
 	isUnderrun = false;
-	underTimer->stop();
 }
