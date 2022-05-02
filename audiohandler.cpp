@@ -159,7 +159,7 @@ bool audioHandler::init(audioSetup setupIn)
 			opus_encoder_ctl(encoder, OPUS_SET_INBAND_FEC(1));
 			opus_encoder_ctl(encoder, OPUS_SET_DTX(1));
 			opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(5));
-			opus_encoder_ctl(encoder, OPUS_SET_COMPLEXITY(5)); // Reduce complexity to maybe lower CPU?
+			opus_encoder_ctl(encoder, OPUS_SET_COMPLEXITY(7)); // Reduce complexity to maybe lower CPU?
 			qInfo(logAudio()) << "Creating opus encoder: " << opus_strerror(opus_err);
 		}
 	}
