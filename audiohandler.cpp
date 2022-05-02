@@ -212,9 +212,18 @@ void audioHandler::start()
 		audioTimer->start(setup.blockSize);
 	}
 	else {
-		// Buffer size must be set before audio is started.
-		audioOutput->setBufferSize(getAudioSize(setup.latency, format));
+		/*	OK I don't understand what is happening here?
+			On Windows, I set the buffer size and when the stream is started, the buffer size is multiplied by 10?
+			this doesn't happen on Linux/
+			We want the buffer sizes to be slightly more than the setup.latency value 
+		*/
+#ifdef Q_OS_WIN
+		audioOutput->setBufferSize(format.bytesForDuration(setup.latency * 100));
+#else
+		audioOutput->setBufferSize(format.bytesForDuration(setup.latency * 1000));
+#endif
 		audioDevice = audioOutput->start();
+		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "bufferSize needed" << format.bytesForDuration((quint32)setup.latency * 1000) << "got" << audioOutput->bufferSize();
 		connect(audioOutput, &QAudioOutput::destroyed, audioDevice, &QIODevice::deleteLater, Qt::UniqueConnection);
 	}
 	if (!audioDevice) {
@@ -244,6 +253,13 @@ void audioHandler::stop()
 
 void audioHandler::setVolume(unsigned char volume)
 {
+	/*float volumeLevelLinear = float(0.5); //cut amplitude in half
+	float volumeLevelDb = float(10 * (qLn(double(volumeLevelLinear)) / qLn(10)));
+	float volumeLinear = (volume / float(100));
+	this->volume = volumeLinear * float(qPow(10, (qreal(volumeLevelDb)) / 20));
+
+	this->volume = qMin(this->volume, float(1));
+	*/
     this->volume = audiopot[volume];
 	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
 }
@@ -251,7 +267,12 @@ void audioHandler::setVolume(unsigned char volume)
 
 void audioHandler::incomingAudio(audioPacket inPacket)
 {
-	
+
+
+	if (lastReceived.msecsTo(QTime::currentTime()) > 30) {
+		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize;
+	}
+	lastReceived = QTime::currentTime();
 	audioPacket livePacket = inPacket;
 	// Process uLaw.
 	if (setup.ulaw)
@@ -427,7 +448,6 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported Sample Type:" << format.sampleType();
 		}
 
-		currentLatency = livePacket.time.msecsTo(QTime::currentTime()) + getAudioDuration(audioOutput->bufferSize()-audioOutput->bytesFree(),format);
 		if (audioDevice != Q_NULLPTR) {
 			audioDevice->write(livePacket.data);
 		}
@@ -437,7 +457,11 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			incomingAudio(inPacket); // Call myself again to run the packet a second time (FEC)
 		}
 
+		currentLatency = livePacket.time.msecsTo(QTime::currentTime()) + (format.durationForBytes(audioOutput->bufferSize() - audioOutput->bytesFree()) / 1000);
 		lastSentSeq = inPacket.seq;
+	}
+	 else {
+	 qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Received audio packet is empty?";
 	}
 
 	emit haveLevels(getAmplitude(), setup.latency, currentLatency,isUnderrun);
@@ -454,14 +478,18 @@ void audioHandler::getNextAudioChunk()
 		return;
 	}
 	
+
 	audioPacket livePacket;
 	livePacket.time= QTime::currentTime();
 	livePacket.sent = 0;
 	memcpy(&livePacket.guid, setup.guid, GUIDLEN);
 	while (tempBuf.data.length() > format.bytesForDuration(setup.blockSize * 1000)) {
+		QTime startProcessing = QTime::currentTime();
 		livePacket.data.clear();
 		livePacket.data = tempBuf.data.mid(0, format.bytesForDuration(setup.blockSize * 1000));
 		tempBuf.data.remove(0, format.bytesForDuration(setup.blockSize * 1000));
+		//qDebug(logAudio()) << "Got bytes " << format.bytesForDuration(setup.blockSize * 1000);
+
 		if (livePacket.data.length() > 0)
 		{
 			Eigen::VectorXf samplesF;
@@ -618,6 +646,11 @@ void audioHandler::getNextAudioChunk()
 					livePacket.data = outPacket; // Copy output packet back to input buffer.
 				}
 				emit haveAudioData(livePacket);
+				if (lastReceived.msecsTo(QTime::currentTime()) > 30) {
+					qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize << "Processing time" <<startProcessing.msecsTo(QTime::currentTime());
+				}
+				lastReceived = QTime::currentTime();
+
 				//ret = livePacket.data;
 			}
 		}
@@ -637,7 +670,7 @@ void audioHandler::changeLatency(const quint16 newSize)
 		stop();
 		start();
 	}
-	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Configured latency: " << setup.latency << "Buffer Duration:" << getAudioDuration(audioOutput->bufferSize(), format) << "ms";
+	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Configured latency: " << setup.latency << "Buffer Duration:" << format.durationForBytes(audioOutput->bufferSize()/1000) << "ms";
 
 }
 
@@ -662,18 +695,22 @@ void audioHandler::stateChanged(QAudio::State state)
 	{
 	case QAudio::IdleState:
 	{
-		isUnderrun = true;
-		if (underTimer->isActive()) {
-			underTimer->stop();
+		if (!setup.isinput)
+		{
+			qDebug(logAudio()) << "Output Underrun detected" << "Buffer size" << audioOutput->bufferSize() << "Bytes free" << audioOutput->bytesFree();
+			if (isUnderrun && audioOutput->bytesFree() > audioOutput->bufferSize()/2) {
+				audioOutput->suspend();
+			}
 		}
+		isUnderrun = true;
+		if (!underTimer->isActive()) {
+			underTimer->start(setup.latency/2);
+		}
+		
 		break;
 	}
 	case QAudio::ActiveState:
 	{
-		//qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio started!";
-		if (!underTimer->isActive()) {
-			underTimer->start(500);
-		}
 		break;
 	}
 	case QAudio::SuspendedState:
@@ -694,4 +731,8 @@ void audioHandler::clearUnderrun()
 {
 	isUnderrun = false;
 	underTimer->stop();
+	if (!setup.isinput) {
+		qDebug(logAudio()) << "clearUnderrun() " << "Buffer size" << audioOutput->bufferSize() << "Bytes free" << audioOutput->bytesFree();
+		audioOutput->resume();
+	}
 }
