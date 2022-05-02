@@ -448,15 +448,11 @@ void audioHandler::getNextAudioChunk()
 
 	tempBuf.data.append(audioDevice->readAll());
 
-	if (tempBuf.data.length() < format.bytesForDuration(setup.blockSize * 1000)) {
-		return;
-	}
-	
-	audioPacket livePacket;
-	livePacket.time= QTime::currentTime();
-	livePacket.sent = 0;
-	memcpy(&livePacket.guid, setup.guid, GUIDLEN);
-	while (tempBuf.data.length() > format.bytesForDuration(setup.blockSize * 1000)) {
+	while (tempBuf.data.length() >= format.bytesForDuration(setup.blockSize * 1000)) {
+		audioPacket livePacket;
+		livePacket.time = QTime::currentTime();
+		livePacket.sent = 0;
+		memcpy(&livePacket.guid, setup.guid, GUIDLEN);
 		QTime startProcessing = QTime::currentTime();
 		livePacket.data.clear();
 		livePacket.data = tempBuf.data.mid(0, format.bytesForDuration(setup.blockSize * 1000));
