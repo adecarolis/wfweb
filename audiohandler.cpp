@@ -209,7 +209,7 @@ void audioHandler::start()
 		audioDevice = audioInput->start();
 		connect(audioInput, &QAudioInput::destroyed, audioDevice, &QIODevice::deleteLater, Qt::UniqueConnection);
 		//connect(audioDevice, &QIODevice::readyRead, this, &audioHandler::getNextAudioChunk);
-		audioTimer->start(setup.blockSize/2);
+		audioTimer->start(setup.blockSize);
 	}
 	else {
 		/*	OK I don't understand what is happening here?
