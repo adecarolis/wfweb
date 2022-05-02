@@ -251,7 +251,8 @@ void audioHandler::setVolume(unsigned char volume)
 
 void audioHandler::incomingAudio(audioPacket inPacket)
 {
-	
+	QTime startProcessing = QTime::currentTime();
+
 	audioPacket livePacket = inPacket;
 	// Process uLaw.
 	if (setup.ulaw)
@@ -430,6 +431,10 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		currentLatency = livePacket.time.msecsTo(QTime::currentTime()) + getAudioDuration(audioOutput->bufferSize()-audioOutput->bytesFree(),format);
 		if (audioDevice != Q_NULLPTR) {
 			audioDevice->write(livePacket.data);
+			if (lastReceived.msecsTo(QTime::currentTime()) > 50) {
+				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize << "Processing time" << startProcessing.msecsTo(QTime::currentTime());
+			}
+			lastReceived = QTime::currentTime();
 		}
 		if ((inPacket.seq > lastSentSeq + 1) && (setup.codec == 0x40 || setup.codec == 0x80)) {
 			qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempting FEC on packet" << inPacket.seq << "as last is" << lastSentSeq;
@@ -448,6 +453,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 
 void audioHandler::getNextAudioChunk()
 {
+
 	tempBuf.data.append(audioDevice->readAll());
 
 	if (tempBuf.data.length() < format.bytesForDuration(setup.blockSize * 1000)) {
@@ -459,6 +465,7 @@ void audioHandler::getNextAudioChunk()
 	livePacket.sent = 0;
 	memcpy(&livePacket.guid, setup.guid, GUIDLEN);
 	while (tempBuf.data.length() > format.bytesForDuration(setup.blockSize * 1000)) {
+		QTime startProcessing = QTime::currentTime();
 		livePacket.data.clear();
 		livePacket.data = tempBuf.data.mid(0, format.bytesForDuration(setup.blockSize * 1000));
 		tempBuf.data.remove(0, format.bytesForDuration(setup.blockSize * 1000));
@@ -618,6 +625,10 @@ void audioHandler::getNextAudioChunk()
 					livePacket.data = outPacket; // Copy output packet back to input buffer.
 				}
 				emit haveAudioData(livePacket);
+				if (lastReceived.msecsTo(QTime::currentTime()) > 50) {
+					qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize << "Processing time" << startProcessing.msecsTo(QTime::currentTime());
+				}
+
 				//ret = livePacket.data;
 			}
 		}

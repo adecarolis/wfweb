@@ -119,7 +119,7 @@ private:
     QAudioFormat     format;
     QAudioDeviceInfo deviceInfo;
     SpeexResamplerState* resampler = Q_NULLPTR;
-
+    QTime lastReceived;
     //r8b::CFixedBuffer<double>* resampBufs;
     //r8b::CPtrKeeper<r8b::CDSPResampler24*>* resamps;
 
