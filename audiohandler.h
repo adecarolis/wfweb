@@ -12,7 +12,6 @@
 #include <QTime>
 #include <QMap>
 #include <QDebug>
-#include <QDateTime>
 
 /* QT Audio Headers */
 #include <QAudioOutput>
@@ -112,7 +111,7 @@ private:
     bool            isInitialized=false;
     bool            isReady = false;
     bool            audioBuffered = false;
-    QTime       lastReceived;
+
     QAudioOutput* audioOutput=Q_NULLPTR;
     QAudioInput* audioInput=Q_NULLPTR;
     QIODevice* audioDevice=Q_NULLPTR;
@@ -138,7 +137,7 @@ private:
     audioPacket tempBuf;
     quint16 currentLatency;
     float amplitude;
-    float volume=1.0;
+    qreal volume=1.0;
 
     audioSetup setup;
 
@@ -150,12 +149,6 @@ private:
 
 // Various audio handling functions declared inline
 
-typedef Eigen::Matrix<quint8, Eigen::Dynamic, 1> VectorXuint8;
-typedef Eigen::Matrix<qint8, Eigen::Dynamic, 1> VectorXint8;
-typedef Eigen::Matrix<qint16, Eigen::Dynamic, 1> VectorXint16;
-typedef Eigen::Matrix<qint32, Eigen::Dynamic, 1> VectorXint32;
-
-/*
 static inline qint64 getAudioSize(qint64 timeInMs, const QAudioFormat& format)
 {
 #ifdef Q_OS_LINUX
@@ -175,6 +168,11 @@ static inline qint64 getAudioDuration(qint64 bytes, const QAudioFormat& format)
 {
     return qint64(qFloor(bytes / (format.channelCount() * (format.sampleSize() / 8) * format.sampleRate() / qreal(1000))));
 }
+
+typedef Eigen::Matrix<quint8, Eigen::Dynamic, 1> VectorXuint8;
+typedef Eigen::Matrix<qint8, Eigen::Dynamic, 1> VectorXint8;
+typedef Eigen::Matrix<qint16, Eigen::Dynamic, 1> VectorXint16;
+typedef Eigen::Matrix<qint32, Eigen::Dynamic, 1> VectorXint32;
 
 static inline QByteArray samplesToInt(const QByteArray& data, const QAudioFormat& supported_format)
 {
@@ -349,5 +347,4 @@ static inline QByteArray samplesToFloat(const QByteArray& data, const QAudioForm
 
     return QByteArray();
 }
-*/
 #endif // AUDIOHANDLER_H
