@@ -145,10 +145,13 @@ bool audioHandler::init(audioSetup setupIn)
 
 	if (setup.isinput) {
 		audioInput = new QAudioInput(setup.port, format, this);
+		audioInput->setNotifyInterval(setup.blockSize);
 		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Starting audio timer";
-		audioTimer = new QTimer();
-		audioTimer->setTimerType(Qt::PreciseTimer);
-		connect(audioTimer, &QTimer::timeout, this, &audioHandler::getNextAudioChunk);
+
+		//audioTimer = new QTimer();
+		//audioTimer->setTimerType(Qt::PreciseTimer);
+		//connect(audioTimer, &QTimer::timeout, this, &audioHandler::getNextAudioChunk);
+		connect(audioInput, SIGNAL(notify()), this, SLOT(getNextAudioChunk()),Qt::DirectConnection);
 
 		connect(audioInput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
 	}
@@ -209,11 +212,16 @@ void audioHandler::start()
 		audioDevice = audioInput->start();
 		connect(audioInput, &QAudioInput::destroyed, audioDevice, &QIODevice::deleteLater, Qt::UniqueConnection);
 		//connect(audioDevice, &QIODevice::readyRead, this, &audioHandler::getNextAudioChunk);
-		audioTimer->start(setup.blockSize);
+		//audioTimer->start(setup.blockSize);
+		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Notify interval set to" << audioInput->notifyInterval() << "requested" << setup.blockSize;
 	}
 	else {
 		// Buffer size must be set before audio is started.
-		audioOutput->setBufferSize(getAudioSize(setup.latency, format));
+#ifdef Q_OS_WIN
+		audioOutput->setBufferSize(format.bytesForDuration(setup.latency * 100));
+#else
+		audioOutput->setBufferSize(format.bytesForDuration(setup.latency * 1000));
+#endif
 		audioDevice = audioOutput->start();
 		connect(audioOutput, &QAudioOutput::destroyed, audioDevice, &QIODevice::deleteLater, Qt::UniqueConnection);
 	}
@@ -236,7 +244,7 @@ void audioHandler::stop()
 
 	if (audioInput != Q_NULLPTR && audioInput->state() != QAudio::StoppedState) {
 		// Stop audio output
-		audioTimer->stop();
+		//audioTimer->stop();
 		audioInput->stop();
 	}
 	audioDevice = Q_NULLPTR;
@@ -428,7 +436,7 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported Sample Type:" << format.sampleType();
 		}
 
-		currentLatency = livePacket.time.msecsTo(QTime::currentTime()) + getAudioDuration(audioOutput->bufferSize()-audioOutput->bytesFree(),format);
+		currentLatency = livePacket.time.msecsTo(QTime::currentTime()) + (format.durationForBytes(audioOutput->bufferSize()-audioOutput->bytesFree())/1000);
 		if (audioDevice != Q_NULLPTR) {
 			audioDevice->write(livePacket.data);
 			if (lastReceived.msecsTo(QTime::currentTime()) > 50) {
@@ -648,7 +656,7 @@ void audioHandler::changeLatency(const quint16 newSize)
 		stop();
 		start();
 	}
-	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Configured latency: " << setup.latency << "Buffer Duration:" << getAudioDuration(audioOutput->bufferSize(), format) << "ms";
+	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Configured latency: " << setup.latency << "Buffer Duration:" << format.durationForBytes(audioOutput->bufferSize())/1000 << "ms";
 
 }
 
