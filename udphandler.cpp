@@ -902,6 +902,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     rxaudio = new audioHandler();
     rxAudioThread = new QThread(this);
+    rxAudioThread->setObjectName("rxAudio()");
 
     rxaudio->moveToThread(rxAudioThread);
 
@@ -929,6 +930,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     if (enableTx) {
         txaudio = new audioHandler();
         txAudioThread = new QThread(this);
+        rxAudioThread->setObjectName("txAudio()");
 
         txaudio->moveToThread(txAudioThread);
 

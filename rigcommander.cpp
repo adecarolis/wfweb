@@ -118,6 +118,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
         udp = new udpHandler(prefs,rxSetup,txSetup);
 
         udpHandlerThread = new QThread(this);
+        udpHandlerThread->setObjectName("udpHandler()");
 
         udp->moveToThread(udpHandlerThread);
 

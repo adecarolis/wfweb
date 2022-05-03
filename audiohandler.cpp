@@ -74,6 +74,8 @@ bool audioHandler::init(audioSetup setupIn)
 
 	if (setup.codec == 0x01 || setup.codec == 0x20) {
 		setup.ulaw = true;
+		setup.format.setSampleSize(16);
+		setup.format.setSampleType(QAudioFormat::SignedInt);
 	}
 
 	if (setup.codec == 0x08 || setup.codec == 0x10 || setup.codec == 0x20 || setup.codec == 0x80) {
@@ -159,6 +161,7 @@ bool audioHandler::init(audioSetup setupIn)
 			opus_encoder_ctl(encoder, OPUS_SET_INBAND_FEC(1));
 			opus_encoder_ctl(encoder, OPUS_SET_DTX(1));
 			opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(5));
+			opus_encoder_ctl(encoder, OPUS_SET_COMPLEXITY(7)); // Reduce complexity to maybe lower CPU?
 			qInfo(logAudio()) << "Creating opus encoder: " << opus_strerror(opus_err);
 		}
 	}
@@ -184,7 +187,7 @@ bool audioHandler::init(audioSetup setupIn)
 
 	underTimer = new QTimer();
 	underTimer->setSingleShot(true);
-	connect(underTimer, &QTimer::timeout, this, &audioHandler::clearUnderrun);
+	connect(underTimer, SIGNAL(timeout()), this, SLOT(clearUnderrun()));
 
 	this->start();
 
@@ -197,8 +200,8 @@ void audioHandler::start()
 
 	if (setup.isinput) {
 		audioDevice = audioInput->start();
-		connect(audioInput, &QAudioInput::destroyed, audioDevice, &QIODevice::deleteLater, Qt::UniqueConnection);
-		connect(audioDevice, &QIODevice::readyRead, this, &audioHandler::getNextAudioChunk);
+		connect(audioInput, SIGNAL(destroyed()), audioDevice, SLOT(deleteLater()), Qt::UniqueConnection);
+		connect(audioDevice, SIGNAL(readyRead()), this, SLOT(getNextAudioChunk()), Qt::UniqueConnection);
 	}
 	else {
 		// Buffer size must be set before audio is started.
@@ -208,7 +211,7 @@ void audioHandler::start()
 		audioOutput->setBufferSize(format.bytesForDuration(setup.latency * 1000));
 #endif
 		audioDevice = audioOutput->start();
-		connect(audioOutput, &QAudioOutput::destroyed, audioDevice, &QIODevice::deleteLater, Qt::UniqueConnection);
+		connect(audioOutput, SIGNAL(destroyed()), audioDevice, SLOT(deleteLater()), Qt::UniqueConnection);
 	}
 	if (!audioDevice) {
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio device failed to start()";
@@ -258,10 +261,6 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		}
 		livePacket.data.clear();
 		livePacket.data = outPacket; // Replace incoming data with converted.
-		// Buffer now contains 16bit signed samples.
-		setup.format.setSampleSize(16);
-		setup.format.setSampleType(QAudioFormat::SignedInt);
-
 	}
 
 
@@ -301,7 +300,6 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			livePacket.data.clear();
 			livePacket.data = outPacket; // Replace incoming data with converted.
 		}
-		setup.format.setSampleType(QAudioFormat::Float);
 	}
 
 
@@ -445,18 +443,13 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 
 void audioHandler::getNextAudioChunk()
 {
-
 	tempBuf.data.append(audioDevice->readAll());
 
-	if (tempBuf.data.length() < format.bytesForDuration(setup.blockSize * 1000)) {
-		return;
-	}
-	
-	audioPacket livePacket;
-	livePacket.time= QTime::currentTime();
-	livePacket.sent = 0;
-	memcpy(&livePacket.guid, setup.guid, GUIDLEN);
-	while (tempBuf.data.length() > format.bytesForDuration(setup.blockSize * 1000)) {
+	while (tempBuf.data.length() >= format.bytesForDuration(setup.blockSize * 1000)) {
+		audioPacket livePacket;
+		livePacket.time = QTime::currentTime();
+		livePacket.sent = 0;
+		memcpy(&livePacket.guid, setup.guid, GUIDLEN);
 		QTime startProcessing = QTime::currentTime();
 		livePacket.data.clear();
 		livePacket.data = tempBuf.data.mid(0, format.bytesForDuration(setup.blockSize * 1000));
@@ -620,7 +613,7 @@ void audioHandler::getNextAudioChunk()
 				if (lastReceived.msecsTo(QTime::currentTime()) > 100) {
 					qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize << "Processing time" << startProcessing.msecsTo(QTime::currentTime());
 				}
-
+				lastReceived = QTime::currentTime();
 				//ret = livePacket.data;
 			}
 		}
