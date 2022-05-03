@@ -261,10 +261,6 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 		}
 		livePacket.data.clear();
 		livePacket.data = outPacket; // Replace incoming data with converted.
-		// Buffer now contains 16bit signed samples.
-		setup.format.setSampleSize(16);
-		setup.format.setSampleType(QAudioFormat::SignedInt);
-
 	}
 
 
@@ -304,7 +300,6 @@ void audioHandler::incomingAudio(audioPacket inPacket)
 			livePacket.data.clear();
 			livePacket.data = outPacket; // Replace incoming data with converted.
 		}
-		setup.format.setSampleType(QAudioFormat::Float);
 	}
 
 
