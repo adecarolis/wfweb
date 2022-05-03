@@ -50,7 +50,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
     usingNativeLAN = false;
 
-    //qInfo(logRig()) << "Opening connection to Rig:" << hex << (unsigned char)rigCivAddr << "on serial port" << rigSerialPort << "at baud rate" << rigBaudRate;
+    //qInfo(logRig()) << "Opening connection to Rig:" << QString("0x%1").arg((unsigned char)rigCivAddr,0,16) << "on serial port" << rigSerialPort << "at baud rate" << rigBaudRate;
     // ---
     setup();
     // ---
@@ -3675,7 +3675,7 @@ void rigCommander::determineRigCaps()
         payloadPrefix.append(civAddr);
         payloadPrefix.append((char)compCivAddr);
         // if there is a compile-time error, remove the following line, the "hex" part is the issue:
-        qInfo(logRig()) << "Using incomingCIVAddr: (int): " << this->civAddr << " hex: " << hex << this->civAddr;
+        qInfo(logRig()) << "Using incomingCIVAddr: (int): " << this->civAddr << " hex: " << QString("0x%1").arg(this->civAddr,0,16);
         emit discoveredRigID(rigCaps);
     } else {
         if(!foundRig)
