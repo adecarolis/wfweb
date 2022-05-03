@@ -74,6 +74,8 @@ bool audioHandler::init(audioSetup setupIn)
 
 	if (setup.codec == 0x01 || setup.codec == 0x20) {
 		setup.ulaw = true;
+		setup.format.setSampleSize(16);
+		setup.format.setSampleType(QAudioFormat::SignedInt);
 	}
 
 	if (setup.codec == 0x08 || setup.codec == 0x10 || setup.codec == 0x20 || setup.codec == 0x80) {
