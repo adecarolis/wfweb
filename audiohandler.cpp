@@ -90,7 +90,7 @@ bool audioHandler::init(audioSetup setupIn)
 	if (setup.codec == 0x40 || setup.codec == 0x80) {
 		setup.format.setSampleType(QAudioFormat::Float);
 	}
-
+	
 	qDebug(logAudio()) << "Creating" << (setup.isinput ? "Input" : "Output") << "audio device:" << setup.name <<
 		", bits" << setup.format.sampleSize() <<
 		", codec" << setup.codec <<
@@ -134,8 +134,14 @@ bool audioHandler::init(audioSetup setupIn)
 			format.setSampleSize(16);
 		}
 	}
+	format.setSampleType(QAudioFormat::Float);
+	if (!setup.port.isFormatSupported(format)) {
+		qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempt to select Float failed, reverting to SignedInt";
+		format.setSampleType(QAudioFormat::SignedInt);
+	}
 
-	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Internal: sample rate" << format.sampleRate() << "channel count" << format.channelCount();
+	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Selected format: SampleSize" << format.sampleSize() << "Channel Count" << format.channelCount() <<
+		"Sample Rate" << format.sampleRate() << "Codec" << format.codec() << "Sample Type" << format.sampleType();
 
 	// We "hopefully" now have a valid format that is supported so try connecting
 
