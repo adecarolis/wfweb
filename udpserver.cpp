@@ -796,17 +796,15 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
             if (current->idleTimer != Q_NULLPTR && !current->idleTimer->isActive()) {
                 current->idleTimer->start(100);
             }
-        } // This is a retransmit request
-        else if (in->type == 0x01)
+        } // This is a single packet retransmit request
+        else if (in->type == 0x01 && in->len == 0x10)
         {
-            // Single packet request
-            qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'retransmit' request for " << QString("0x%1").arg(in->seq,0,16);
             QMap<quint16, SEQBUFENTRY>::iterator match = current->txSeqBuf.find(in->seq);
 
             if (match != current->txSeqBuf.end() && match->retransmitCount < 5) {
                 // Found matching entry?
                 // Don't constantly retransmit the same packet, give-up eventually
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending retransmit of " << QString("0x%1").arg(match->seqNum,0,16);
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending (single packet) retransmit of " << QString("0x%1").arg(match->seqNum, 0, 16);
                 match->retransmitCount++;
                 if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                 {
@@ -820,6 +818,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
             }
             else {
                 // Just send an idle!
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Requested (single) packet " << QString("0x%1").arg(in->seq, 0, 16) << "not found";
                 sendControl(current, 0x00, in->seq);
             }
         }
@@ -843,7 +842,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                 return s.seqNum == cs;
             });
             if (match == current->txSeqBuf.end()) {
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Requested packet " << QString("0x%1").arg(seq,0,16) << " not found";
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Requested (multiple) packet " << QString("0x%1").arg(seq,0,16) << " not found";
                 // Just send idle packet.
                 sendControl(current, 0, in->seq);
             }
@@ -851,7 +850,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
             {
                 // Found matching entry?
                 // Send "untracked" as it has already been sent once.
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending retransmit of " << QString("0x%1").arg(match->seqNum,0,16);
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Sending (multiple packet) retransmit of " << QString("0x%1").arg(match->seqNum,0,16);
                 match->retransmitCount++;
                 if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                 {
@@ -933,9 +932,9 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                                 current->rxSeqBuf.insert(f, QTime::currentTime());
 
                                 if (f != in->seq) {
-                                    qInfo(logUdpServer()) << "Detected missing packet" << f;
                                     if (!current->rxMissing.contains(f))
                                     {
+                                        qInfo(logUdpServer()) << "Detected new missing packet" << f;
                                         current->rxMissing.insert(f, 0);
                                     }
                                 }
@@ -1750,6 +1749,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
             p.rcvdid = c->remoteId;
             if (missingSeqs.length() == 4) // This is just a single missing packet so send using a control.
             {
+                p.len = sizeof(p);
                 p.seq = (missingSeqs[0] & 0xff) | (quint16)(missingSeqs[1] << 8);
                 qInfo(logUdp()) << this->metaObject()->className() << ": sending request for missing packet : " << QString("0x%1").arg(p.seq,0,16);
 
@@ -1767,7 +1767,8 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
             {
                 qInfo(logUdp()) << this->metaObject()->className() << ": sending request for multiple missing packets : " << missingSeqs.toHex();
 
-                missingSeqs.insert(0, p.packet, sizeof(p.packet));
+                p.len = sizeof(p) + missingSeqs.size();
+                missingSeqs.insert(0, p.packet, sizeof(p));
 
                 if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                 {

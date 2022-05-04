@@ -202,7 +202,7 @@ void udpHandler::dataReceived()
                     }
 
                     QString tempLatency;
-                    if (status.rxLatency > status.rxCurrentLatency && !status.rxUnderrun)
+                    if (status.rxCurrentLatency < status.rxLatency*1.2 && !status.rxUnderrun)
                     {
                         tempLatency = QString("%1 ms").arg(status.rxCurrentLatency,3);
                     }
@@ -1199,7 +1199,7 @@ void udpBase::dataReceived(QByteArray r)
         case (CONTROL_SIZE): // Empty response used for simple comms and retransmit requests.
         {
             control_packet_t in = (control_packet_t)r.constData();
-            if (in->type == 0x01)
+            if (in->type == 0x01 && in->len == 0x10)
             {
                 // Single packet request
                 packetsLost++;
@@ -1210,7 +1210,7 @@ void udpBase::dataReceived(QByteArray r)
                     // Found matching entry?
                     // Send "untracked" as it has already been sent once.
                     // Don't constantly retransmit the same packet, give-up eventually
-                    qDebug(logUdp()) << this->metaObject()->className() << ": Sending retransmit of " << QString("0x%1").arg(match->seqNum,0,16);
+                    qDebug(logUdp()) << this->metaObject()->className() << ": Sending (single packet) retransmit of " << QString("0x%1").arg(match->seqNum,0,16);
                     match->retransmitCount++;
                     udpMutex.lock();
                     udp->writeDatagram(match->data, radioIP, port);
@@ -1302,7 +1302,7 @@ void udpBase::dataReceived(QByteArray r)
             else {
                 // Found matching entry?
                 // Send "untracked" as it has already been sent once.
-                qDebug(logUdp()) << this->metaObject()->className() << ": Remote has requested retransmit of " << QString("0x%1").arg(match->seqNum,0,16);
+                qDebug(logUdp()) << this->metaObject()->className() << ": Sending (multiple packet) retransmit of " << QString("0x%1").arg(match->seqNum,0,16);
                 match->retransmitCount++;
                 udpMutex.lock();
                 udp->writeDatagram(match->data, radioIP, port);
@@ -1423,20 +1423,28 @@ void udpBase::sendRetransmitRequest()
     missingMutex.lock();
     for (auto it = rxMissing.begin(); it != rxMissing.end(); ++it)
     {
-        if (it.value() < 10)
-        {
-            missingSeqs.append(it.key() & 0xff);
-            missingSeqs.append(it.key() >> 8 & 0xff);
-            missingSeqs.append(it.key() & 0xff);
-            missingSeqs.append(it.key() >> 8 & 0xff);
-            it.value()++;
+        if (&it.key() != Q_NULLPTR) {
+            if (it.value() < 4)
+            {
+                missingSeqs.append(it.key() & 0xff);
+                missingSeqs.append(it.key() >> 8 & 0xff);
+                missingSeqs.append(it.key() & 0xff);
+                missingSeqs.append(it.key() >> 8 & 0xff);
+                it.value()++;
+            }
+            else {
+                qInfo(logUdp()) << this->metaObject()->className() << ": No response for missing packet" << it.key() << "deleting";
+                it = rxMissing.erase(it);
+            }
         }
     }
     missingMutex.unlock();
+
     if (missingSeqs.length() != 0)
     {
         control_packet p;
         memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
+        p.len = sizeof(p);
         p.type = 0x01;
         p.seq = 0x0000;
         p.sentid = myId;
@@ -1453,7 +1461,8 @@ void udpBase::sendRetransmitRequest()
         {
             qInfo(logUdp()) << this->metaObject()->className() << ": sending request for multiple missing packets : " << missingSeqs.toHex(':');
             missingMutex.lock();
-            missingSeqs.insert(0, p.packet, sizeof(p.packet));
+            p.len = sizeof(p)+missingSeqs.size();
+            missingSeqs.insert(0, p.packet, sizeof(p));
             missingMutex.unlock();
 
             udpMutex.lock();
@@ -1500,24 +1509,6 @@ void udpBase::sendPing()
     p.seq = pingSendSeq;
     p.time = timeStarted.msecsSinceStartOfDay();
     lastPingSentTime = QDateTime::currentDateTime();
-    udpMutex.lock();
-    udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
-    udpMutex.unlock();
-    return;
-}
-
-void udpBase::sendRetransmitRange(quint16 first, quint16 second, quint16 third, quint16 fourth)
-{
-    retransmit_range_packet p;
-    memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
-    p.len = sizeof(p);
-    p.type = 0x00;
-    p.sentid = myId;
-    p.rcvdid = remoteId;
-    p.first = first;
-    p.second = second;
-    p.third = third;
-    p.fourth = fourth;
     udpMutex.lock();
     udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);
     udpMutex.unlock();
