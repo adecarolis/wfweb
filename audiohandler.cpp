@@ -126,6 +126,17 @@ bool audioHandler::init(audioSetup setupIn)
 		}
 	}
 
+    if (format.sampleType()==QAudioFormat::SignedInt) {
+        format.setSampleType(QAudioFormat::Float);
+        format.setSampleSize(32);
+        if (!setup.port.isFormatSupported(format)) {
+            qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempt to select 32bit Float failed, reverting to SignedInt";
+            format.setSampleType(QAudioFormat::SignedInt);
+            format.setSampleSize(16);
+        }
+
+    }
+
 	if (format.sampleSize() == 24) {
 		// We can't convert this easily so use 32 bit instead.
 		format.setSampleSize(32);
@@ -133,11 +144,6 @@ bool audioHandler::init(audioSetup setupIn)
 			qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "24 bit requested and 32 bit audio not supported, try 16 bit instead";
 			format.setSampleSize(16);
 		}
-	}
-	format.setSampleType(QAudioFormat::Float);
-	if (!setup.port.isFormatSupported(format)) {
-		qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempt to select Float failed, reverting to SignedInt";
-		format.setSampleType(QAudioFormat::SignedInt);
 	}
 
 	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Selected format: SampleSize" << format.sampleSize() << "Channel Count" << format.channelCount() <<
