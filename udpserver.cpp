@@ -885,10 +885,10 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
         else
         {
             
-            if (in->seq < current->rxSeqBuf.firstKey())
+            if (in->seq < current->rxSeqBuf.firstKey() || in->seq - current->rxSeqBuf.lastKey() > MAX_MISSING)
             {
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): ******* seq number may have rolled over ****** previous highest: " << 
-                    QString("0x%1").arg(current->rxSeqBuf.lastKey(),0,16) << " current: " << QString("0x%1").arg(in->seq,0,16);
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "Large seq number gap detected, previous highest: " <<
+                    QString("0x%1").arg(current->rxSeqBuf.lastKey(), 0, 16) << " current: " << QString("0x%1").arg(in->seq, 0, 16);
                 // Looks like it has rolled over so clear buffer and start again.
                 if (current->rxMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                 {
@@ -918,6 +918,8 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                     // Add incoming packet to the received buffer and if it is in the missing buffer, remove it.
                     //int missCounter = 0;
                     if (in->seq > current->rxSeqBuf.lastKey() + 1) {
+                        qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "1 or more missing packets detected, previous: " <<
+                            QString("0x%1").arg(current->rxSeqBuf.lastKey(), 0, 16) << " current: " << QString("0x%1").arg(in->seq, 0, 16);
                         // We are likely missing packets then!
                         if (current->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                         {
@@ -931,12 +933,9 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                                 }
                                 current->rxSeqBuf.insert(f, QTime::currentTime());
 
-                                if (f != in->seq) {
-                                    if (!current->rxMissing.contains(f))
-                                    {
-                                        qInfo(logUdpServer()) << "Detected new missing packet" << f;
-                                        current->rxMissing.insert(f, 0);
-                                    }
+                                if (f != in->seq && !current->rxMissing.contains(f))
+                                {
+                                    current->rxMissing.insert(f, 0);
                                 }
                             }
                             current->missMutex.unlock();

@@ -1317,10 +1317,6 @@ void udpBase::dataReceived(QByteArray r)
     {
         rxBufferMutex.lock();
         if (rxSeqBuf.isEmpty()) {
-            if (rxSeqBuf.size() > BUFSIZE)
-            {
-                rxSeqBuf.erase(rxSeqBuf.begin());
-            }
             rxSeqBuf.insert(in->seq, QTime::currentTime());
         }
         else
