@@ -1715,7 +1715,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
     {
         for (auto it = c->rxMissing.begin(); it != c->rxMissing.end(); ++it)
         {
-            if (&it.key() != Q_NULLPTR)
+            if (it.key() != NULL)
             {
                 if (it.value() < 4)
                 {

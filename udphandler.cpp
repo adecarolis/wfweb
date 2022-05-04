@@ -1421,7 +1421,7 @@ void udpBase::sendRetransmitRequest()
     missingMutex.lock();
     for (auto it = rxMissing.begin(); it != rxMissing.end(); ++it)
     {
-        if (&it.key() != Q_NULLPTR) {
+        if (it.key() != NULL) {
             if (it.value() < 4)
             {
                 missingSeqs.append(it.key() & 0xff);
