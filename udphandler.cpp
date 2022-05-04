@@ -1217,7 +1217,7 @@ void udpBase::dataReceived(QByteArray r)
                     udpMutex.unlock();
                 }
                 else {
-                    qDebug(logUdp()) << this->metaObject()->className() << ": Remote requested packet " << QString("0x%1").arg(in->seq, 0, 16) << " not found, have " << txSeqBuf.begin()->seqNum << "to" << txSeqBuf.end()->seqNum;;
+                    qDebug(logUdp()) << this->metaObject()->className() << ": Remote requested packet " << QString("0x%1").arg(in->seq, 0, 16) << " not found, have " << txSeqBuf.firstKey() << "to" << txSeqBuf.lastKey();
                 }
                 txBufferMutex.unlock();
             }
@@ -1298,7 +1298,7 @@ void udpBase::dataReceived(QByteArray r)
             quint16 seq = (quint8)r[i] | (quint8)r[i + 1] << 8;
             auto match = txSeqBuf.find(seq);
             if (match == txSeqBuf.end()) {
-                qDebug(logUdp()) << this->metaObject()->className() << ": Remote requested packet " << QString("0x%1").arg(seq, 0, 16) << " not found, have " << txSeqBuf.begin()->seqNum << "to" << txSeqBuf.end()->seqNum;;
+                qDebug(logUdp()) << this->metaObject()->className() << ": Remote requested packet " << QString("0x%1").arg(seq, 0, 16) << " not found, have " << txSeqBuf.firstKey() << "to" << txSeqBuf.lastKey();
                 // Just send idle packet.
                 sendControl(false, 0, seq);
             }
