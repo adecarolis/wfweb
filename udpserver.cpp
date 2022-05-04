@@ -799,7 +799,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
         } // This is a single packet retransmit request
         else if (in->type == 0x01 && in->len == 0x10)
         {
-            QMap<quint16, SEQBUFENTRY>::iterator match = current->txSeqBuf.find(in->seq);
+            auto match = current->txSeqBuf.find(in->seq);
 
             if (match != current->txSeqBuf.end() && match->retransmitCount < 5) {
                 // Found matching entry?
@@ -818,7 +818,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
             }
             else {
                 // Just send an idle!
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Requested (single) packet " << QString("0x%1").arg(in->seq, 0, 16) << "not found";
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Requested (single) packet " << QString("0x%1").arg(in->seq, 0, 16) << "not found, have " << current->txSeqBuf.begin()->seqNum << "to" << current->txSeqBuf.end()->seqNum;
                 sendControl(current, 0x00, in->seq);
             }
         }
@@ -838,11 +838,9 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
         for (quint16 i = 0x10; i < r.length(); i = i + 2)
         {
             quint16 seq = (quint8)r[i] | (quint8)r[i + 1] << 8;
-            auto match = std::find_if(current->txSeqBuf.begin(), current->txSeqBuf.end(), [&cs = seq](SEQBUFENTRY& s) {
-                return s.seqNum == cs;
-            });
+            auto match = current->txSeqBuf.find(seq);
             if (match == current->txSeqBuf.end()) {
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Requested (multiple) packet " << QString("0x%1").arg(seq,0,16) << " not found";
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Requested (multiple) packet " << QString("0x%1").arg(seq,0,16) << " not found , have " << current->txSeqBuf.begin()->seqNum << "to" << current->txSeqBuf.end()->seqNum;;
                 // Just send idle packet.
                 sendControl(current, 0, in->seq);
             }
@@ -860,8 +858,6 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                 else {
                     qInfo(logUdpServer()) << "Unable to lock udpMutex()";
                 }
-
-                match++;
             }
         }
     }
@@ -962,7 +958,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
                 // Check whether this is one of our missing ones!
                 if (current->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                 {
-                    QMap<quint16, int>::iterator s = current->rxMissing.find(in->seq);
+                    auto s = current->rxMissing.find(in->seq);
                     if (s != current->rxMissing.end())
                     {
                         qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Missing SEQ has been received! " << QString("0x%1").arg(in->seq,0,16);

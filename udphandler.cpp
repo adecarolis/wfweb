@@ -1205,16 +1205,19 @@ void udpBase::dataReceived(QByteArray r)
                 packetsLost++;
                 congestion = static_cast<double>(packetsSent) / packetsLost * 100;
                 txBufferMutex.lock();
-                QMap<quint16,SEQBUFENTRY>::iterator match = txSeqBuf.find(in->seq);
+                auto match = txSeqBuf.find(in->seq);
                 if (match != txSeqBuf.end()) {
                     // Found matching entry?
                     // Send "untracked" as it has already been sent once.
                     // Don't constantly retransmit the same packet, give-up eventually
-                    qDebug(logUdp()) << this->metaObject()->className() << ": Sending (single packet) retransmit of " << QString("0x%1").arg(match->seqNum,0,16);
+                    qDebug(logUdp()) << this->metaObject()->className() << ": Sending (single packet) retransmit of " << QString("0x%1").arg(match->seqNum, 0, 16);
                     match->retransmitCount++;
                     udpMutex.lock();
                     udp->writeDatagram(match->data, radioIP, port);
                     udpMutex.unlock();
+                }
+                else {
+                    qDebug(logUdp()) << this->metaObject()->className() << ": Remote requested packet " << QString("0x%1").arg(in->seq, 0, 16) << " not found, have " << txSeqBuf.begin()->seqNum << "to" << txSeqBuf.end()->seqNum;;
                 }
                 txBufferMutex.unlock();
             }
@@ -1293,9 +1296,9 @@ void udpBase::dataReceived(QByteArray r)
         for (quint16 i = 0x10; i < r.length(); i = i + 2)
         {
             quint16 seq = (quint8)r[i] | (quint8)r[i + 1] << 8;
-            QMap<quint16, SEQBUFENTRY>::iterator match = txSeqBuf.find(seq);
+            auto match = txSeqBuf.find(seq);
             if (match == txSeqBuf.end()) {
-                qDebug(logUdp()) << this->metaObject()->className() << ": Remote requested packet " << QString("0x%1").arg(seq,0,16) << " not found";
+                qDebug(logUdp()) << this->metaObject()->className() << ": Remote requested packet " << QString("0x%1").arg(seq, 0, 16) << " not found, have " << txSeqBuf.begin()->seqNum << "to" << txSeqBuf.end()->seqNum;;
                 // Just send idle packet.
                 sendControl(false, 0, seq);
             }
@@ -1307,7 +1310,6 @@ void udpBase::dataReceived(QByteArray r)
                 udpMutex.lock();
                 udp->writeDatagram(match->data, radioIP, port);
                 udpMutex.unlock();
-                match++;
                 packetsLost++;
                 congestion = static_cast<double>(packetsSent) / packetsLost * 100;
             }
@@ -1374,7 +1376,7 @@ void udpBase::dataReceived(QByteArray r)
             else {
                 // This is probably one of our missing packets!
                 missingMutex.lock();
-                QMap<quint16,int>::iterator s = rxMissing.find(in->seq);
+                auto s = rxMissing.find(in->seq);
                 if (s != rxMissing.end())
                 {
                     qInfo(logUdp()) << this->metaObject()->className() << ": Missing SEQ has been received! " << QString("0x%1").arg(in->seq,0,16);
