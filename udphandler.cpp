@@ -1419,7 +1419,8 @@ void udpBase::sendRetransmitRequest()
     QByteArray missingSeqs;
 
     missingMutex.lock();
-    for (auto it = rxMissing.begin(); it != rxMissing.end(); ++it)
+    auto it = rxMissing.begin();
+    while (it != rxMissing.end())
     {
         if (it.key() != 0x0)
         {

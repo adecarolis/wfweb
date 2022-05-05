@@ -1713,7 +1713,8 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
 
     if (c->missMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
     {
-        for (auto it = c->rxMissing.begin(); it != c->rxMissing.end(); ++it)
+        auto it = c->rxMissing.begin();
+        while (it != c->rxMissing.end())
         {
             if (it.key() != 0x00)
             {
