@@ -1494,9 +1494,10 @@ void udpServer::watchdog()
             qInfo(logUdpServer()) << "Current client is NULL!";
         }
     }
-
-    status.message = QString("<pre>Server connections: Control:%1 CI-V:%2 Audio:%3</pre>").arg(controlClients.size()).arg(civClients.size()).arg(audioClients.size());
-    emit haveNetworkStatus(status);
+    if (!config->lan) {
+        status.message = QString("<pre>Server connections: Control:%1 CI-V:%2 Audio:%3</pre>").arg(controlClients.size()).arg(civClients.size()).arg(audioClients.size());
+        emit haveNetworkStatus(status);
+    }
 }
 
 void udpServer::sendStatus(CLIENT* c)
@@ -1583,7 +1584,7 @@ void udpServer::dataForServer(QByteArray d)
         }
 
         int lastFE = d.lastIndexOf((quint8)0xfe);
-        //qInfo(logUdpServer()) << "Server got CIV data from" << radio->rigName << "length" << d.length();
+        //qInfo(logUdpServer()) << "Server got CIV data from" << config->rigs.first()->rigName << "length" << d.length() << d.toHex();
         if (client->connected && d.length() > lastFE + 2 &&
                 ((quint8)d[lastFE + 1] == client->civId || (quint8)d[lastFE + 2] == client->civId ||
                 (quint8)d[lastFE + 1] == 0x00 || (quint8)d[lastFE + 2] == 0x00 || (quint8)d[lastFE + 1] == 0xE1 || (quint8)d[lastFE + 2] == 0xE1))

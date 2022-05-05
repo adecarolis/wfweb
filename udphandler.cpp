@@ -22,6 +22,10 @@ udpHandler::udpHandler(udpPreferences prefs, audioSetup rx, audioSetup tx) :
     {
         splitWf = true;
     }
+    else
+    {
+        splitWf = false;
+    }
     qInfo(logUdp()) << "Starting udpHandler user:" << username << " rx latency:" << rxSetup.latency  << " tx latency:" << txSetup.latency << " rx sample rate: " << rxSetup.format.sampleRate() <<
         " rx codec: " << rxSetup.codec << " tx sample rate: " << txSetup.format.sampleRate() << " tx codec: " << txSetup.codec;
 
@@ -287,7 +291,7 @@ void udpHandler::dataReceived()
                         audioPort = qFromBigEndian(in->audioport);
                         if (!streamOpened) {
 
-                            civ = new udpCivData(localIP, radioIP, civPort, civLocalPort,splitWf);
+                            civ = new udpCivData(localIP, radioIP, civPort, splitWf, civLocalPort);
 
                             // TX is not supported
                             if (txSampleRates < 2) {
@@ -800,6 +804,7 @@ void udpCivData::dataReceived()
                             // Find data length
                             int pos = r.indexOf(QByteArrayLiteral("\x27\x00\x00"))+2;
                             int len = r.mid(pos).indexOf(QByteArrayLiteral("\xfd"));
+                            //splitWaterfall = false;
                             if (splitWaterfall && pos > 1 && len > 100) {
                                 // We need to split waterfall data into its component parts
                                 // There are only 2 types that we are currently aware of

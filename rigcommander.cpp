@@ -108,7 +108,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
     // civAddr = 0x94; // address of the radio. Decimal is 148.
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
     usingNativeLAN = true;
-    // ---
+    // -- 
     setup();
     // ---
 
