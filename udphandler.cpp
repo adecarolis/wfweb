@@ -1421,7 +1421,8 @@ void udpBase::sendRetransmitRequest()
     missingMutex.lock();
     for (auto it = rxMissing.begin(); it != rxMissing.end(); ++it)
     {
-        if (it.key() != NULL) {
+        if (it.key() != 0x0)
+        {
             if (it.value() < 4)
             {
                 missingSeqs.append(it.key() & 0xff);
@@ -1429,11 +1430,15 @@ void udpBase::sendRetransmitRequest()
                 missingSeqs.append(it.key() & 0xff);
                 missingSeqs.append(it.key() >> 8 & 0xff);
                 it.value()++;
+                it++;
             }
             else {
                 qInfo(logUdp()) << this->metaObject()->className() << ": No response for missing packet" << it.key() << "deleting";
                 it = rxMissing.erase(it);
-            }
+            }            
+        } else {
+            qInfo(logUdp()) << this->metaObject()->className() << ": found empty key in missing buffer";
+            it++;
         }
     }
     missingMutex.unlock();

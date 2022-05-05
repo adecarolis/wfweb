@@ -1715,7 +1715,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
     {
         for (auto it = c->rxMissing.begin(); it != c->rxMissing.end(); ++it)
         {
-            if (it.key() != NULL)
+            if (it.key() != 0x00)
             {
                 if (it.value() < 4)
                 {
@@ -1724,6 +1724,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
                     missingSeqs.append(it.key() & 0xff);
                     missingSeqs.append(it.key() >> 8 & 0xff);
                     it.value()++;
+                    it++;
                 }
 
                 else {
@@ -1731,6 +1732,9 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
                     qInfo(logUdp()) << this->metaObject()->className() << ": No response for missing packet" << it.key() << "deleting";
                     it = c->rxMissing.erase(it);
                 }
+            } else {
+                 qInfo(logUdp()) << this->metaObject()->className() << ": found empty key in missing buffer";
+                 it++;
             }
         }
 
