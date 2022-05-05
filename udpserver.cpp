@@ -818,7 +818,10 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
             }
             else {
                 // Just send an idle!
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Requested (single) packet " << QString("0x%1").arg(in->seq, 0, 16) << "not found, have " << current->txSeqBuf.firstKey() << "to" << current->txSeqBuf.lastKey();
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << 
+                    "): Requested (single) packet " << QString("0x%1").arg(in->seq, 0, 16) << 
+                    "not found, have " << QString("0x%1").arg(current->txSeqBuf.firstKey(), 0, 16) <<
+                    "to" << QString("0x%1").arg(current->txSeqBuf.lastKey(), 0, 16);
                 sendControl(current, 0x00, in->seq);
             }
         }
@@ -840,7 +843,11 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
             quint16 seq = (quint8)r[i] | (quint8)r[i + 1] << 8;
             auto match = current->txSeqBuf.find(seq);
             if (match == current->txSeqBuf.end()) {
-                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Requested (multiple) packet " << QString("0x%1").arg(seq,0,16) << " not found , have " << current->txSeqBuf.firstKey() << "to" << current->txSeqBuf.lastKey();
+                qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << 
+                    "): Requested (multiple) packet " << QString("0x%1").arg(seq,0,16) << 
+                    "not found, have " << QString("0x%1").arg(current->txSeqBuf.firstKey(), 0, 16) <<
+                    "to" << QString("0x%1").arg(current->txSeqBuf.lastKey(), 0, 16);
+
                 // Just send idle packet.
                 sendControl(current, 0, in->seq);
             }
@@ -998,12 +1005,16 @@ void udpServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
         s.data = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
         if (c->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
         {
-            if (c->txSeqBuf.size() > BUFSIZE)
+            if (c->txSeq == 0) {
+                c->txSeqBuf.clear();
+            }
+            else
+                if (c->txSeqBuf.size() > BUFSIZE)
             {
                 c->txSeqBuf.remove(c->txSeqBuf.firstKey());
             }
 
-            c->txSeqBuf.insert(seq, s);
+            c->txSeqBuf.insert(c->txSeq, s);
             c->txSeq++;
             c->txMutex.unlock();
         }
@@ -1131,7 +1142,10 @@ void udpServer::sendLoginResponse(CLIENT* c, bool allowed)
     s.data = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
     if (c->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
     {
-        if (c->txSeqBuf.size() > BUFSIZE)
+        if (c->txSeq == 0) {
+            c->txSeqBuf.clear();
+        }
+        else if (c->txSeqBuf.size() > BUFSIZE)
         {
             c->txSeqBuf.remove(c->txSeqBuf.firstKey());
         }
@@ -1253,11 +1267,14 @@ void udpServer::sendCapabilities(CLIENT* c)
 
     if (c->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
     {
-        if (c->txSeqBuf.size() > BUFSIZE)
+        if (c->txSeq == 0) {
+            c->txSeqBuf.clear();
+        }
+        else if (c->txSeqBuf.size() > BUFSIZE)
         {
             c->txSeqBuf.remove(c->txSeqBuf.firstKey());
         }
-        c->txSeqBuf.insert(p.seq, s);
+        c->txSeqBuf.insert(c->txSeq, s);
         c->txSeq++;
         c->txMutex.unlock();
     }
@@ -1335,11 +1352,14 @@ void udpServer::sendConnectionInfo(CLIENT* c, quint8 guid[GUIDLEN])
 
             if (c->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
             {
-                if (c->txSeqBuf.size() > BUFSIZE)
+                if (c->txSeq == 0) {
+                    c->txSeqBuf.clear();
+                }
+                else if (c->txSeqBuf.size() > BUFSIZE)
                 {
                     c->txSeqBuf.remove(c->txSeqBuf.firstKey());
                 }
-                c->txSeqBuf.insert(p.seq, s);
+                c->txSeqBuf.insert(c->txSeq, s);
                 c->txSeq++;
                 c->txMutex.unlock();
             }
@@ -1393,11 +1413,14 @@ void udpServer::sendTokenResponse(CLIENT* c, quint8 type)
 
     if (c->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
     {
-        if (c->txSeqBuf.size() > BUFSIZE)
+        if (c->txSeq == 0) {
+            c->txSeqBuf.clear();
+        }
+        else if (c->txSeqBuf.size() > BUFSIZE)
         {
             c->txSeqBuf.remove(c->txSeqBuf.firstKey());
         }
-        c->txSeqBuf.insert(p.seq, s);
+        c->txSeqBuf.insert(c->txSeq, s);
         c->txSeq++;
         c->txMutex.unlock();
     }
@@ -1509,12 +1532,15 @@ void udpServer::sendStatus(CLIENT* c)
     s.data = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
     if (c->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
     {
-        if (c->txSeqBuf.size() > BUFSIZE)
+        if (c->txSeq == 0) {
+            c->txSeqBuf.clear();
+        }
+        else if (c->txSeqBuf.size() > BUFSIZE)
         {
             c->txSeqBuf.remove(c->txSeqBuf.firstKey());
         }
         c->txSeq++;
-        c->txSeqBuf.insert(p.seq, s);
+        c->txSeqBuf.insert(c->txSeq, s);
         c->txMutex.unlock();
     }
     else {
@@ -1581,11 +1607,14 @@ void udpServer::dataForServer(QByteArray d)
 
             if (client->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
             {
-                if (client->txSeqBuf.size() > BUFSIZE)
+                if (client->txSeq == 0) {
+                    client->txSeqBuf.clear();
+                }
+                else if (client->txSeqBuf.size() > BUFSIZE)
                 {
                     client->txSeqBuf.remove(client->txSeqBuf.firstKey());
                 }
-                client->txSeqBuf.insert(p.seq, s);
+                client->txSeqBuf.insert(client->txSeq, s);
                 client->txSeq++;
                 //client->innerSeq = (qToBigEndian(qFromBigEndian(client->innerSeq) + 1));
                 client->txMutex.unlock();
@@ -1652,11 +1681,14 @@ void udpServer::receiveAudioData(const audioPacket& d)
                 s.data = t;
                 if (client->txMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))
                 {
-                    if (client->txSeqBuf.size() > BUFSIZE)
+                    if (client->txSeq == 0) {
+                        client->txSeqBuf.clear();
+                    }
+                    else if (client->txSeqBuf.size() > BUFSIZE)
                     {
                         client->txSeqBuf.remove(client->txSeqBuf.firstKey());
                     }
-                    client->txSeqBuf.insert(p.seq, s);
+                    client->txSeqBuf.insert(client->txSeq, s);
                     client->txSeq++;
                     client->sendAudioSeq++;
                     client->txMutex.unlock();
