@@ -999,7 +999,7 @@ void udpServer::sendControl(CLIENT* c, quint8 type, quint16 seq)
     {
         p.seq = c->txSeq;
         SEQBUFENTRY s;
-        s.seqNum = seq;
+        s.seqNum = c->txSeq;
         s.timeSent = QTime::currentTime();
         s.retransmitCount = 0;
         s.data = QByteArray::fromRawData((const char*)p.packet, sizeof(p));
