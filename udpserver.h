@@ -217,7 +217,7 @@ private:
 	QList <CLIENT*> civClients = QList<CLIENT*>();
 	QList <CLIENT*> audioClients = QList<CLIENT*>();
 
-	QTime timeStarted;
+    //QTime timeStarted;
 
 
 	audioSetup outAudio;

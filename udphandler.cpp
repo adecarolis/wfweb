@@ -1135,7 +1135,7 @@ void udpAudio::dataReceived()
 
 void udpBase::init(quint16 lport)
 {
-    timeStarted.start();
+    //timeStarted.start();
     udp = new QUdpSocket(this);
     udp->bind(lport); // Bind to random port.
     localPort = udp->localPort();
@@ -1517,7 +1517,8 @@ void udpBase::sendPing()
     p.sentid = myId;
     p.rcvdid = remoteId;
     p.seq = pingSendSeq;
-    p.time = timeStarted.msecsSinceStartOfDay();
+    QTime now=QTime::currentTime();
+    p.time = (quint32)now.msecsSinceStartOfDay();
     lastPingSentTime = QDateTime::currentDateTime();
     udpMutex.lock();
     udp->writeDatagram(QByteArray::fromRawData((const char*)p.packet, sizeof(p)), radioIP, port);

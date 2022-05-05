@@ -80,7 +80,7 @@ public:
 	void printHex(const QByteArray& pdata, bool printVert, bool printHoriz);
 
 
-	QTime timeStarted;
+    //QTime timeStarted;
 
 	QUdpSocket* udp=Q_NULLPTR;
 	uint32_t myId = 0;
