@@ -1440,7 +1440,7 @@ void udpBase::sendRetransmitRequest()
                 it++;
             }
             else {
-                qInfo(logUdp()) << this->metaObject()->className() << ": No response for missing packet" << it.key() << "deleting";
+                qInfo(logUdp()) << this->metaObject()->className() << ": No response for missing packet" << QString("0x%1").arg(it.key(), 0, 16) << "deleting";
                 it = rxMissing.erase(it);
             }            
         } else {

@@ -1762,7 +1762,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
 
                 else {
                     // We have tried 4 times to request this packet, time to give up!
-                    qInfo(logUdp()) << this->metaObject()->className() << ": No response for missing packet" << it.key() << "deleting";
+                    qInfo(logUdp()) << this->metaObject()->className() << ": No response for missing packet" << QString("0x%1").arg(it.key(), 0, 16) << "deleting";
                     it = c->rxMissing.erase(it);
                 }
             } else {
