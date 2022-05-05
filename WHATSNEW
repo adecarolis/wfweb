@@ -36,6 +36,9 @@ The following highlights are in this 1.x-release:
 +	added radio status display with meters for audio (speaker/mic)
 
 
-Note:
+Notes:
 
-We know about high CPU usage on RPi.
+- We know about high CPU usage on RPi.
+- the audio stack has been rewritten multiple times to get the best out of it and have the lowest possible latencies.
+  (At least three times)
+
