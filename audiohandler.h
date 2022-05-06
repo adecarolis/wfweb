@@ -48,16 +48,14 @@
 /* Logarithmic taper for volume control */
 #include "audiotaper.h"
 
+
+/* Audio converter class*/
+#include "audioconverter.h"
+
+
 #define MULAW_BIAS 33
 #define MULAW_MAX 0x1fff
 
-struct audioPacket {
-    quint32 seq;
-    QTime time;
-    quint16 sent;
-    QByteArray data;
-    quint8 guid[GUIDLEN];
-};
 
 struct audioSetup {
     QString name;
@@ -74,7 +72,7 @@ struct audioSetup {
 };
 
 // For QtMultimedia, use a native QIODevice
-class audioHandler : public QObject
+class audioHandler : public QIODevice
 {
     Q_OBJECT
 
@@ -94,6 +92,8 @@ public slots:
     void changeLatency(const quint16 newSize);
     void setVolume(unsigned char volume);
     void incomingAudio(const audioPacket data);
+    void convertedInput(audioPacket audio);
+    void convertedOutput(audioPacket audio);
 
 private slots:
     void stateChanged(QAudio::State state);
@@ -105,7 +105,15 @@ signals:
     void sendLatency(quint16 newSize);
     void haveAudioData(const audioPacket& data);
     void haveLevels(quint16 amplitude,quint16 latency,quint16 current,bool under);
+    void setupConverter(QAudioFormat in, QAudioFormat out, quint8 opus, quint8 resamp);
+    void sendToConverter(audioPacket audio);
+
+
 private:
+
+    qint64 readData(char* data, qint64 nBytes);
+    qint64 writeData(const char* data, qint64 nBytes);
+
 
     bool            isUnderrun = false;
     bool            isInitialized=false;
@@ -117,7 +125,9 @@ private:
     QIODevice* audioDevice=Q_NULLPTR;
     QAudioFormat     format;
     QAudioDeviceInfo deviceInfo;
-    SpeexResamplerState* resampler = Q_NULLPTR;
+
+    audioConverter* converter=Q_NULLPTR;
+    QThread* converterThread = Q_NULLPTR;
     QTime lastReceived;
     //r8b::CFixedBuffer<double>* resampBufs;
     //r8b::CPtrKeeper<r8b::CDSPResampler24*>* resamps;
@@ -136,21 +146,14 @@ private:
     audioPacket tempBuf;
     quint16 currentLatency;
     float amplitude;
-    qreal volume=1.0;
+    qreal volume = 1.0;
 
     audioSetup setup;
 
-    OpusEncoder* encoder=Q_NULLPTR;
-    OpusDecoder* decoder=Q_NULLPTR;
+    OpusEncoder* encoder = Q_NULLPTR;
+    OpusDecoder* decoder = Q_NULLPTR;
     QTimer* underTimer;
 };
 
-
-// Various audio handling functions declared inline
-
-typedef Eigen::Matrix<quint8, Eigen::Dynamic, 1> VectorXuint8;
-typedef Eigen::Matrix<qint8, Eigen::Dynamic, 1> VectorXint8;
-typedef Eigen::Matrix<qint16, Eigen::Dynamic, 1> VectorXint16;
-typedef Eigen::Matrix<qint32, Eigen::Dynamic, 1> VectorXint32;
 
 #endif // AUDIOHANDLER_H
