@@ -189,7 +189,7 @@ void audioHandler::start()
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "start() running";
 
 	if (setup.isinput) {
-		this->open(QIODevice::WriteOnly);
+		this->open(QIODevice::WriteOnly | QIODevice::Unbuffered);
 		audioInput->start(this);
 		connect(audioInput, SIGNAL(destroyed()), audioDevice, SLOT(deleteLater()), Qt::UniqueConnection);
 		//connect(audioDevice, SIGNAL(readyRead()), this, SLOT(getNextAudioChunk()), Qt::UniqueConnection);
