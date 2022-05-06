@@ -274,7 +274,7 @@ void audioHandler::incomingAudio(audioPacket packet)
 void audioHandler::convertedOutput(audioPacket packet) {
 	
 	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (format.durationForBytes(audioOutput->bufferSize() - audioOutput->bytesFree()) / 1000);
-	if (audioDevice != Q_NULLPTR) {
+	if (audioDevice != Q_NULLPTR && audioOutput != Q_NULLPTR) {
 		audioDevice->write(packet.data);
 		if (lastReceived.msecsTo(QTime::currentTime()) > 100) {
 			qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize;
