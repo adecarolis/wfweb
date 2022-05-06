@@ -79,12 +79,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qDebug(logSystem()) << "Running rigConnections()";
     rigConnections();
 
-/*    if (serverConfig.enabled && udp != Q_NULLPTR) {
-        // Server
-        connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
-        connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
-        connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
-    } */
+
 
     setServerToPrefs();
 
@@ -997,8 +992,7 @@ void wfmain::setServerToPrefs()
 
     if (serverConfig.enabled) {
         serverConfig.lan = prefs.enableLAN;
-        qInfo(logAudio()) << "Audio Input device " << serverConfig.rigs.first()->rxAudioSetup.name;
-        qInfo(logAudio()) << "Audio Output device " << serverConfig.rigs.first()->txAudioSetup.name;
+
         udp = new udpServer(&serverConfig);
 
         serverThread = new QThread(this);
@@ -1011,12 +1005,17 @@ void wfmain::setServerToPrefs()
 
         if (rig != Q_NULLPTR) {
             connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
+            // Need to add a signal/slot for audio from the client to rig.
+            //connect(udp, SIGNAL(haveAudioData(audioPacket)), rig, SLOT(receiveAudioData(audioPacket)));
             connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
             connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
         }
 
-        if (!prefs.enableLAN) {
+        if (serverConfig.lan) {
             connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
+        } else {
+            qInfo(logAudio()) << "Audio Input device " << serverConfig.rigs.first()->rxAudioSetup.name;
+            qInfo(logAudio()) << "Audio Output device " << serverConfig.rigs.first()->txAudioSetup.name;
         }
 
         serverThread->start();
@@ -1435,15 +1434,13 @@ void wfmain::loadSettings()
     settings->beginGroup("LAN");
 
     prefs.enableLAN = settings->value("EnableLAN", defPrefs.enableLAN).toBool();
-    if (prefs.enableLAN)
-    {
-        ui->baudRateCombo->setEnabled(false);
-        ui->serialDeviceListCombo->setEnabled(false);
-    }
-    else {
-        ui->baudRateCombo->setEnabled(true);
-        ui->serialDeviceListCombo->setEnabled(true);
-    }
+
+    // If LAN is enabled, server gets its audio straight from the LAN
+    ui->serverRXAudioInputCombo->setEnabled(!prefs.enableLAN);
+    ui->serverTXAudioOutputCombo->setEnabled(!prefs.enableLAN);
+
+    ui->baudRateCombo->setEnabled(!prefs.enableLAN);
+    ui->serialDeviceListCombo->setEnabled(!prefs.enableLAN);
 
     ui->lanEnableBtn->setChecked(prefs.enableLAN);
     ui->connectBtn->setEnabled(true);
@@ -4572,6 +4569,8 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
     ui->audioInputCombo->setEnabled(!checked);
     ui->baudRateCombo->setEnabled(checked);
     ui->serialDeviceListCombo->setEnabled(checked);
+    ui->serverRXAudioInputCombo->setEnabled(checked);
+    ui->serverTXAudioOutputCombo->setEnabled(checked);
 }
 
 void wfmain::on_lanEnableBtn_clicked(bool checked)
@@ -4593,6 +4592,8 @@ void wfmain::on_lanEnableBtn_clicked(bool checked)
     ui->audioInputCombo->setEnabled(checked);
     ui->baudRateCombo->setEnabled(!checked);
     ui->serialDeviceListCombo->setEnabled(!checked);
+    ui->serverRXAudioInputCombo->setEnabled(!checked);
+    ui->serverTXAudioOutputCombo->setEnabled(!checked);
     if(checked)
     {
         showStatusBarText("After filling in values, press Save Settings.");

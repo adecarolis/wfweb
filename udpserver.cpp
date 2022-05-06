@@ -39,7 +39,7 @@ void udpServer::init()
             ;
     }
     srand(time(NULL)); // Generate random 
-    timeStarted.start();
+    //timeStarted.start();
     // Convoluted way to find the external IP address, there must be a better way????
     QString localhostname = QHostInfo::localHostName();
     QList<QHostAddress> hostList = QHostInfo::fromName(localhostname).addresses();
@@ -357,7 +357,7 @@ void udpServer::controlReceived()
             audioSetup setup;
             setup.resampleQuality = config->resampleQuality;
             for (RIGCONFIG* radio : config->rigs) {
-                if ((!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size()==1) && radio->txaudio == Q_NULLPTR )
+                if ((!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size()==1) && radio->txaudio == Q_NULLPTR && !config->lan)
                 {
                     radio->txAudioSetup.codec = current->txCodec;
                     radio->txAudioSetup.format.setSampleRate(current->txSampleRate);
@@ -392,7 +392,7 @@ void udpServer::controlReceived()
                     connect(this, SIGNAL(haveAudioData(audioPacket)), radio->txaudio, SLOT(incomingAudio(audioPacket)));
 
                 }
-                if ((!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size() == 1) && radio->rxaudio == Q_NULLPTR)
+                if ((!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size() == 1) && radio->rxaudio == Q_NULLPTR && !config->lan)
                 {
                     #if !defined(PORTAUDIO) && !defined(RTAUDIO)
                     qInfo(logUdpServer()) << "Radio" << radio->rigName << "audio input(RX) :" << radio->rxAudioSetup.port.deviceName();
@@ -1072,7 +1072,8 @@ void udpServer::sendPing(QList<CLIENT*>* l, CLIENT* c, quint16 seq, bool reply)
         pingTime = c->rxPingTime;
     }
     else {
-        pingTime = (quint32)timeStarted.msecsSinceStartOfDay();
+        QTime now=QTime::currentTime();
+        pingTime = (quint32)now.msecsSinceStartOfDay();
         seq = c->pingSeq;
         // Don't increment pingseq until we receive a reply.
     }
@@ -1493,9 +1494,10 @@ void udpServer::watchdog()
             qInfo(logUdpServer()) << "Current client is NULL!";
         }
     }
-
-    status.message = QString("<pre>Server connections: Control:%1 CI-V:%2 Audio:%3</pre>").arg(controlClients.size()).arg(civClients.size()).arg(audioClients.size());
-    emit haveNetworkStatus(status);
+    if (!config->lan) {
+        status.message = QString("<pre>Server connections: Control:%1 CI-V:%2 Audio:%3</pre>").arg(controlClients.size()).arg(civClients.size()).arg(audioClients.size());
+        emit haveNetworkStatus(status);
+    }
 }
 
 void udpServer::sendStatus(CLIENT* c)
@@ -1582,7 +1584,7 @@ void udpServer::dataForServer(QByteArray d)
         }
 
         int lastFE = d.lastIndexOf((quint8)0xfe);
-        //qInfo(logUdpServer()) << "Server got CIV data from" << radio->rigName << "length" << d.length();
+        //qInfo(logUdpServer()) << "Server got CIV data from" << config->rigs.first()->rigName << "length" << d.length() << d.toHex();
         if (client->connected && d.length() > lastFE + 2 &&
                 ((quint8)d[lastFE + 1] == client->civId || (quint8)d[lastFE + 2] == client->civId ||
                 (quint8)d[lastFE + 1] == 0x00 || (quint8)d[lastFE + 2] == 0x00 || (quint8)d[lastFE + 1] == 0xE1 || (quint8)d[lastFE + 2] == 0xE1))
