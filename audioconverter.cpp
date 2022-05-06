@@ -78,6 +78,11 @@ audioConverter::~audioConverter()
 bool audioConverter::convert(audioPacket audio)
 {
 
+	if (audio.data.size() == 0)
+	{
+		return false;
+	}
+
 	if (inFormat.codec() == "audio/opus")
 	{
 		unsigned char* in = (unsigned char*)audio.data.data();
