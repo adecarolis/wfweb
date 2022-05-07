@@ -193,7 +193,7 @@ void audioHandler::start()
 		//audioInput->start(this);
 		audioDevice = audioInput->start();
 		connect(audioInput, SIGNAL(destroyed()), audioDevice, SLOT(deleteLater()), Qt::UniqueConnection);
-		connect(audioDevice, SIGNAL(readyRead()), this, SLOT(getNextAudioChunk()), Qt::DirectConnection);
+		connect(audioDevice, SIGNAL(readyRead()), this, SLOT(getNextAudioChunk()), Qt::UniqueConnection);
 		//audioInput->setNotifyInterval(setup.blockSize/2);
 		//connect(audioInput, SIGNAL(notify()), this, SLOT(getNextAudioChunk()), Qt::UniqueConnection);
 	}
