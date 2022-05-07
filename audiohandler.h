@@ -72,7 +72,8 @@ struct audioSetup {
 };
 
 // For QtMultimedia, use a native QIODevice
-class audioHandler : public QIODevice
+//class audioHandler : public QIODevice
+class audioHandler : public QObject
 {
     Q_OBJECT
 
@@ -111,8 +112,8 @@ signals:
 
 private:
 
-    qint64 readData(char* data, qint64 nBytes);
-    qint64 writeData(const char* data, qint64 nBytes);
+    //qint64 readData(char* data, qint64 nBytes);
+    //qint64 writeData(const char* data, qint64 nBytes);
 
 
     bool            isUnderrun = false;
