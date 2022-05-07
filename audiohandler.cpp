@@ -193,7 +193,9 @@ void audioHandler::start()
 		//audioInput->start(this);
 		audioDevice = audioInput->start();
 		connect(audioInput, SIGNAL(destroyed()), audioDevice, SLOT(deleteLater()), Qt::UniqueConnection);
-		connect(audioDevice, SIGNAL(readyRead()), this, SLOT(getNextAudioChunk()), Qt::UniqueConnection);
+		connect(audioDevice, SIGNAL(readyRead()), this, SLOT(getNextAudioChunk()), Qt::DirectConnection);
+		//audioInput->setNotifyInterval(setup.blockSize/2);
+		//connect(audioInput, SIGNAL(notify()), this, SLOT(getNextAudioChunk()), Qt::UniqueConnection);
 	}
 	else {
 		// Buffer size must be set before audio is started.
