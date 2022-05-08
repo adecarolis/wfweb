@@ -209,7 +209,7 @@ bool audioConverter::convert(audioPacket audio)
 	}
 
 	/*
-		Output is Opus so encode it now	
+		If output is Opus so encode it now, don't do any more conversion on the output of Opus.
 	*/
 
 	if (outFormat.codec() == "audio/opus")

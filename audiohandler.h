@@ -63,7 +63,7 @@ struct audioSetup {
     quint8 codec;
     bool ulaw = false;
     bool isinput;
-    QAudioFormat format; // Use this for all audio APIs
+    quint32 sampleRate;
     QAudioDeviceInfo port;
     quint8 resampleQuality;
     unsigned char localAFgain;
@@ -124,7 +124,8 @@ private:
     QAudioOutput* audioOutput=Q_NULLPTR;
     QAudioInput* audioInput=Q_NULLPTR;
     QIODevice* audioDevice=Q_NULLPTR;
-    QAudioFormat     format;
+    QAudioFormat     inFormat;
+    QAudioFormat     outFormat;
     QAudioDeviceInfo deviceInfo;
 
     audioConverter* converter=Q_NULLPTR;

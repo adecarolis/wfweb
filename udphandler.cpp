@@ -26,8 +26,8 @@ udpHandler::udpHandler(udpPreferences prefs, audioSetup rx, audioSetup tx) :
     {
         splitWf = false;
     }
-    qInfo(logUdp()) << "Starting udpHandler user:" << username << " rx latency:" << rxSetup.latency  << " tx latency:" << txSetup.latency << " rx sample rate: " << rxSetup.format.sampleRate() <<
-        " rx codec: " << rxSetup.codec << " tx sample rate: " << txSetup.format.sampleRate() << " tx codec: " << txSetup.codec;
+    qInfo(logUdp()) << "Starting udpHandler user:" << username << " rx latency:" << rxSetup.latency  << " tx latency:" << txSetup.latency << " rx sample rate: " << rxSetup.sampleRate <<
+        " rx codec: " << rxSetup.codec << " tx sample rate: " << txSetup.sampleRate << " tx codec: " << txSetup.codec;
 
     // Try to set the IP address, if it is a hostname then perform a DNS lookup.
     if (!radioIP.setAddress(prefs.ipAddress))
@@ -295,7 +295,7 @@ void udpHandler::dataReceived()
 
                             // TX is not supported
                             if (txSampleRates < 2) {
-                                txSetup.format.setSampleRate(0);
+                                txSetup.sampleRate=0;
                                 txSetup.codec = 0;
                             }
                             audio = new udpAudio(localIP, radioIP, audioPort, audioLocalPort, rxSetup, txSetup);
@@ -545,8 +545,8 @@ void udpHandler::sendRequestStream()
     }
     p.rxcodec = rxSetup.codec;
     memcpy(&p.username, usernameEncoded.constData(), usernameEncoded.length());
-    p.rxsample = qToBigEndian((quint32)rxSetup.format.sampleRate());
-    p.txsample = qToBigEndian((quint32)txSetup.format.sampleRate());
+    p.rxsample = qToBigEndian((quint32)rxSetup.sampleRate);
+    p.txsample = qToBigEndian((quint32)txSetup.sampleRate);
     p.civport = qToBigEndian((quint32)civLocalPort);
     p.audioport = qToBigEndian((quint32)audioLocalPort);
     p.txbuffer = qToBigEndian((quint32)txSetup.latency);
@@ -897,7 +897,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     this->port = audioPort;
     this->radioIP = ip;
 
-    if (txSetup.format.sampleRate() == 0) {
+    if (txSetup.sampleRate == 0) {
         enableTx = false;
     }
 
@@ -922,9 +922,6 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     connect(rxaudio, SIGNAL(haveLevels(quint16, quint16, quint16,bool)), this, SLOT(getRxLevels(quint16, quint16, quint16,bool)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
     
-    txSetup.format.setChannelCount(1); // TX Audio is always single channel.
-
-
 
     sendControl(false, 0x03, 0x00); // First connect packet
 

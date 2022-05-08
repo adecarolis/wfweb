@@ -65,6 +65,7 @@ commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat)
 
 commHandler::~commHandler()
 {
+    qInfo(logSerial()) << "Closing serial port: " << port->portName();
     if (isConnected) {
         this->closePort();
     }
