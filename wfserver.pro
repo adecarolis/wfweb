@@ -142,6 +142,7 @@ SOURCES += main.cpp\
     udphandler.cpp \
     logcategories.cpp \
     audiohandler.cpp \
+    audioconverter.cpp \
     udpserver.cpp \
     pttyhandler.cpp \
     resampler/resample.c \
@@ -157,6 +158,7 @@ HEADERS  += servermain.h \
     udphandler.h \
     logcategories.h \
     audiohandler.h \
+    audioconverter.h \
     udpserver.h \
     packettypes.h \
     pttyhandler.h \
