@@ -921,7 +921,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::dataReceived);
 
-    rxaudio = new audioHandler();
+    rxaudio = new audioHandler(this);
     rxAudioThread = new QThread(this);
     rxAudioThread->setObjectName("rxAudio()");
 
@@ -946,7 +946,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     pingTimer->start(PING_PERIOD); // send ping packets every 100ms
 
     if (enableTx) {
-        txaudio = new audioHandler();
+        txaudio = new audioHandler(this);
         txAudioThread = new QThread(this);
         rxAudioThread->setObjectName("txAudio()");
 

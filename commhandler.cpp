@@ -5,7 +5,7 @@
 
 // Copyright 2017-2020 Elliott H. Liggett
 
-commHandler::commHandler()
+commHandler::commHandler(QObject* parent) : QObject(parent)
 {
     //constructor
     // grab baud rate and other comm port details
@@ -31,7 +31,7 @@ commHandler::commHandler()
     connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
 }
 
-commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat)
+commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat, QObject* parent) : QObject(parent)
 {
     //constructor
     // grab baud rate and other comm port details

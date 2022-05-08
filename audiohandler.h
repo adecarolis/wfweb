@@ -78,7 +78,7 @@ class audioHandler : public QObject
     Q_OBJECT
 
 public:
-    audioHandler(QObject* parent = 0);
+    explicit audioHandler(QObject* parent = nullptr);
     ~audioHandler();
 
     int getLatency();

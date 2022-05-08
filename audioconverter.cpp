@@ -2,7 +2,8 @@
 #include "logcategories.h"
 #include "ulaw.h"
 
-audioConverter::audioConverter(){
+audioConverter::audioConverter(QObject* parent) : QObject(parent) 
+{
 }
 
 bool audioConverter::init(QAudioFormat inFormat, QAudioFormat outFormat, quint8 opusComplexity, quint8 resampleQuality)

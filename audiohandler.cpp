@@ -10,7 +10,7 @@
 
 
 
-audioHandler::audioHandler(QObject* parent) 
+audioHandler::audioHandler(QObject* parent) : QObject(parent)
 {
 	Q_UNUSED(parent)
 }
@@ -112,7 +112,7 @@ bool audioHandler::init(audioSetup setup)
 
 	// We "hopefully" now have a valid format that is supported so try connecting
 
-	converter = new audioConverter();
+	converter = new audioConverter(this);
 	converterThread = new QThread(this);
 	if (setup.isinput) {
 		converterThread->setObjectName("audioConvIn()");

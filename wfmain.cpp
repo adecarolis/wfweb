@@ -405,7 +405,7 @@ void wfmain::makeRig()
 {
     if (rigThread == Q_NULLPTR)
     {
-        rig = new rigCommander();
+        rig = new rigCommander(this);
         rigThread = new QThread(this);
         rigThread->setObjectName("rigCommander()");
 
@@ -993,7 +993,7 @@ void wfmain::setServerToPrefs()
     if (serverConfig.enabled) {
         serverConfig.lan = prefs.enableLAN;
 
-        udp = new udpServer(&serverConfig);
+        udp = new udpServer(&serverConfig,this);
 
         serverThread = new QThread(this);
 

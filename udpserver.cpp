@@ -4,8 +4,9 @@
 #define STALE_CONNECTION 15
 #define LOCK_PERIOD 10 // time to attempt to lock Mutex in ms
 #define AUDIO_SEND_PERIOD 20 //
-udpServer::udpServer(SERVERCONFIG* config) :
-    config(config)
+udpServer::udpServer(SERVERCONFIG* config, QObject* parent) :
+    config(config),
+    QObject(parent)
 {
     qInfo(logUdpServer()) << "Starting udp server";
 }
@@ -366,7 +367,7 @@ void udpServer::controlReceived()
 
                     outAudio.isinput = false;
 
-                    radio->txaudio = new audioHandler();
+                    radio->txaudio = new audioHandler(this);
                     radio->txAudioThread = new QThread(this);
                     radio->txAudioThread->setObjectName("txAudio()");
 
@@ -408,7 +409,7 @@ void udpServer::controlReceived()
                     radio->rxAudioSetup.isinput = true;
                     memcpy(radio->rxAudioSetup.guid, radio->guid, GUIDLEN);
 
-                    radio->rxaudio = new audioHandler();
+                    radio->rxaudio = new audioHandler(this);
 
                     radio->rxAudioThread = new QThread(this);
                     radio->rxAudioThread->setObjectName("rxAudio()");

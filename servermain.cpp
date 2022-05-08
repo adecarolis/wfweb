@@ -102,7 +102,7 @@ void servermain::makeRig()
         if (radio->rigThread == Q_NULLPTR)
         {
             qInfo(logSystem()) << "Creating new rigThread()";
-            radio->rig = new rigCommander(radio->guid);
+            radio->rig = new rigCommander(radio->guid,this);
             radio->rigThread = new QThread(this);
             radio->rigThread->setObjectName("rigCommander()");
 
@@ -376,7 +376,7 @@ void servermain::setServerToPrefs()
         udp = Q_NULLPTR;
     }
 
-    udp = new udpServer(&serverConfig);
+    udp = new udpServer(&serverConfig,this);
 
     serverThread = new QThread(this);
     serverThread->setObjectName("udpServer()");

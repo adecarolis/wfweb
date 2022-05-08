@@ -35,7 +35,7 @@ class audioConverter : public QObject
     Q_OBJECT
 
 public:
-    audioConverter();
+    explicit audioConverter(QObject* parent = nullptr);;
     ~audioConverter();
 
 public slots:

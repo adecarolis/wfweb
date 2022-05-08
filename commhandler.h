@@ -15,8 +15,8 @@ class commHandler : public QObject
     Q_OBJECT
 
 public:
-    commHandler();
-    commHandler(QString portName, quint32 baudRate, quint8 wfFormat);
+    commHandler(QObject* parent = nullptr);
+    commHandler(QString portName, quint32 baudRate, quint8 wfFormat,QObject* parent = nullptr);
     bool serialError;
     bool rtsStatus();
 

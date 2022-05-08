@@ -99,7 +99,7 @@ class udpServer : public QObject
 	Q_OBJECT
 
 public:
-	udpServer(SERVERCONFIG* config);
+	explicit udpServer(SERVERCONFIG* config, QObject* parent = nullptr);
 	~udpServer();
 
 public slots:

@@ -69,8 +69,8 @@ class rigCommander : public QObject
     Q_OBJECT
 
 public:
-    rigCommander();
-    rigCommander(quint8 guid[GUIDLEN]);
+    explicit rigCommander(QObject* parent=nullptr);
+    explicit rigCommander(quint8 guid[GUIDLEN], QObject* parent = nullptr);
     ~rigCommander();
 
     bool usingLAN();
