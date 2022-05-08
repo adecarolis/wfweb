@@ -90,10 +90,12 @@ udpHandler::~udpHandler()
     if (streamOpened) {
         if (audio != Q_NULLPTR) {
             delete audio;
+            audio = Q_NULLPTR;
         }
 
         if (civ != Q_NULLPTR) {
             delete civ;
+            civ = Q_NULLPTR;
         }
         qInfo(logUdp()) << "Sending token removal packet";
         sendToken(0x01);
@@ -282,7 +284,7 @@ void udpHandler::dataReceived()
                                 delete civ;
                                 civ = Q_NULLPTR;
                             }
-                            
+
                             streamOpened = false;
                         }
                     }
@@ -474,6 +476,20 @@ void udpHandler::dataReceived()
 
 
 void udpHandler::setCurrentRadio(quint8 radio) {
+
+    // If we are currently connected to a different radio, disconnect first
+    if (audio != Q_NULLPTR) {
+        delete audio;
+        audio = Q_NULLPTR;
+    }
+
+    if (civ != Q_NULLPTR) {
+        delete civ;
+        civ = Q_NULLPTR;
+    }
+
+    streamOpened = false;
+
     qInfo(logUdp()) << "Got Radio" << radio;
     qInfo(logUdp()) << "Find available local ports";
 
