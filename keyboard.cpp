@@ -19,7 +19,7 @@ void keyboard::run()
     {
         char key = getchar();
         if (key == 'q') {
-            QCoreApplication::exit(0);
+            QCoreApplication::quit();
         }
     }
     return;
