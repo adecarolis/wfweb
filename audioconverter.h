@@ -65,7 +65,7 @@ typedef Eigen::Matrix<qint8, Eigen::Dynamic, 1> VectorXint8;
 typedef Eigen::Matrix<qint16, Eigen::Dynamic, 1> VectorXint16;
 typedef Eigen::Matrix<qint32, Eigen::Dynamic, 1> VectorXint32;
 
-static QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
+QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
 {
     QAudioFormat format;
 
