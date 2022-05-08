@@ -360,7 +360,7 @@ void udpServer::controlReceived()
                 if ((!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size()==1) && radio->txaudio == Q_NULLPTR && !config->lan)
                 {
                     radio->txAudioSetup.codec = current->txCodec;
-                    radio->txAudioSetup.format.setSampleRate(current->txSampleRate);
+                    radio->txAudioSetup.sampleRate=current->txSampleRate;
                     radio->txAudioSetup.isinput = false;
                     radio->txAudioSetup.latency = current->txBufferLen;
 
@@ -403,7 +403,7 @@ void udpServer::controlReceived()
                     #endif
 
                     radio->rxAudioSetup.codec = current->rxCodec;
-                    radio->rxAudioSetup.format.setSampleRate(current->rxSampleRate);
+                    radio->rxAudioSetup.sampleRate=current->rxSampleRate;
                     radio->rxAudioSetup.latency = current->txBufferLen;
                     radio->rxAudioSetup.isinput = true;
                     memcpy(radio->rxAudioSetup.guid, radio->guid, GUIDLEN);

@@ -1490,11 +1490,11 @@ void wfmain::loadSettings()
     ui->txLatencySlider->setTracking(false); // Stop it sending value on every change.
 
     ui->audioSampleRateCombo->blockSignals(true);
-    rxSetup.format.setSampleRate(settings->value("AudioRXSampleRate", "48000").toInt());
-    txSetup.format.setSampleRate(rxSetup.format.sampleRate());
+    rxSetup.sampleRate=settings->value("AudioRXSampleRate", "48000").toInt();
+    txSetup.sampleRate=rxSetup.sampleRate;
 
     ui->audioSampleRateCombo->setEnabled(ui->lanEnableBtn->isChecked());
-    int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(rxSetup.format.sampleRate()));
+    int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(rxSetup.sampleRate));
     if (audioSampleRateIndex != -1) {
         ui->audioSampleRateCombo->setCurrentIndex(audioSampleRateIndex);
     }
@@ -1893,9 +1893,9 @@ void wfmain::saveSettings()
     settings->setValue("Password", udpPrefs.password);
     settings->setValue("AudioRXLatency", rxSetup.latency);
     settings->setValue("AudioTXLatency", txSetup.latency);
-    settings->setValue("AudioRXSampleRate", rxSetup.format.sampleRate());
+    settings->setValue("AudioRXSampleRate", rxSetup.sampleRate);
     settings->setValue("AudioRXCodec", rxSetup.codec);
-    settings->setValue("AudioTXSampleRate", txSetup.format.sampleRate());
+    settings->setValue("AudioTXSampleRate", txSetup.sampleRate);
     settings->setValue("AudioTXCodec", txSetup.codec);
     settings->setValue("AudioOutput", rxSetup.name);
     settings->setValue("AudioInput", txSetup.name);
@@ -4642,8 +4642,8 @@ void wfmain::on_audioSampleRateCombo_currentIndexChanged(QString text)
 {
     //udpPrefs.audioRXSampleRate = text.toInt();
     //udpPrefs.audioTXSampleRate = text.toInt();
-    rxSetup.format.setSampleRate(text.toInt());
-    txSetup.format.setSampleRate(text.toInt());
+    rxSetup.sampleRate=text.toInt();
+    txSetup.sampleRate=text.toInt();
 }
 
 void wfmain::on_audioRXCodecCombo_currentIndexChanged(int value)
