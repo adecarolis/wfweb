@@ -165,6 +165,7 @@ SOURCES += main.cpp\
     udphandler.cpp \
     logcategories.cpp \
     audiohandler.cpp \
+    audioconverter.cpp \
     calibrationwindow.cpp \
     satellitesetup.cpp \
     udpserver.cpp \
@@ -187,6 +188,7 @@ HEADERS  += wfmain.h \
     udphandler.h \
     logcategories.h \
     audiohandler.h \
+    audioconverter.h \
     calibrationwindow.h \
     satellitesetup.h \
     udpserver.h \
