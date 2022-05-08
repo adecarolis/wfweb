@@ -85,6 +85,7 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
 	format.setSampleType(QAudioFormat::UnSignedInt);
 	format.setByteOrder(QAudioFormat::LittleEndian);
 	format.setCodec("audio/pcm");
+    format.setSampleRate(sampleRate);
 
 	if (codec == 0x01 || codec == 0x20) {
 		/* Set sample to be what is expected by the encoder and the output of the decoder */
@@ -108,7 +109,6 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
 		format.setCodec("audio/opus");
 	}
 
-	format.setSampleRate(sampleRate);
 	return format;
 }
 
