@@ -300,6 +300,10 @@ bool audioConverter::convert(audioPacket audio)
                 }
             }
         }
+        else 
+        {
+            qDebug(logAudioConverter) << "Detected empty packet";
+        }
     }
 
 	emit converted(audio);
