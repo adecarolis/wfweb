@@ -209,8 +209,8 @@ void audioHandler::setVolume(unsigned char volume)
 
 void audioHandler::incomingAudio(audioPacket packet)
 {
-	//QTime startProcessing = QTime::currentTime();
-	if (audioDevice != Q_NULLPTR) {
+
+    if (audioDevice != Q_NULLPTR && packet.data.size() > 0) {
 		packet.volume = volume;
 
 		emit sendToConverter(packet);
@@ -221,32 +221,35 @@ void audioHandler::incomingAudio(audioPacket packet)
 
 void audioHandler::convertedOutput(audioPacket packet) {
 	
-	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audioOutput->bufferSize() - audioOutput->bytesFree()) / 1000);
-	if (audioDevice != Q_NULLPTR) {
-		audioDevice->write(packet.data);
-		if (lastReceived.msecsTo(QTime::currentTime()) > 100) {
-			qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize;
-		}
-		lastReceived = QTime::currentTime();
-	}
-	/*if ((packet.seq > lastSentSeq + 1) && (setup.codec == 0x40 || setup.codec == 0x80)) {
-		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempting FEC on packet" << packet.seq << "as last is" << lastSentSeq;
-		lastSentSeq = packet.seq;
-		incomingAudio(packet); // Call myself again to run the packet a second time (FEC)
-	}
-	*/
-	lastSentSeq = packet.seq;
-	emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun);
+    if (packet.data.size() > 0 ) {
 
-	amplitude = packet.amplitude;
+        currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audioOutput->bufferSize() - audioOutput->bytesFree()) / 1000);
+        if (audioDevice != Q_NULLPTR) {
+            audioDevice->write(packet.data);
+            if (lastReceived.msecsTo(QTime::currentTime()) > 100) {
+                qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize;
+            }
+            lastReceived = QTime::currentTime();
+        }
+        /*if ((packet.seq > lastSentSeq + 1) && (setup.codec == 0x40 || setup.codec == 0x80)) {
+            qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Attempting FEC on packet" << packet.seq << "as last is" << lastSentSeq;
+            lastSentSeq = packet.seq;
+            incomingAudio(packet); // Call myself again to run the packet a second time (FEC)
+        }
+        */
+        lastSentSeq = packet.seq;
+        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun);
 
+        amplitude = packet.amplitude;
+    }
 }
 
 void audioHandler::getNextAudioChunk()
 {
-	tempBuf.data.append(audioDevice->readAll());
-
-	while (tempBuf.data.length() >= outFormat.bytesForDuration(setup.blockSize * 1000)) {
+    if (audioDevice) {
+        tempBuf.data.append(audioDevice->readAll());
+    }
+    if (tempBuf.data.length() >= outFormat.bytesForDuration(setup.blockSize * 1000)) {
 		audioPacket packet;
 		packet.time = QTime::currentTime();
 		packet.sent = 0;
@@ -259,20 +262,27 @@ void audioHandler::getNextAudioChunk()
 
 		emit sendToConverter(packet);
 	}
-	return;
 
+    /* If there is still enough data in the buffer, call myself again in 20ms */
+    if (tempBuf.data.length() >= outFormat.bytesForDuration(setup.blockSize * 1000)) {
+        QTimer::singleShot(setup.blockSize, this, &audioHandler::getNextAudioChunk);
+    }
+
+	return;
 }
 
 
 void audioHandler::convertedInput(audioPacket audio) 
 {
-	emit haveAudioData(audio);
-	if (lastReceived.msecsTo(QTime::currentTime()) > 100) {
-		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize ;
-	}
-	lastReceived = QTime::currentTime();
-	amplitude = audio.amplitude;
-	emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun);	
+    if (audio.data.size() > 0) {
+        emit haveAudioData(audio);
+        if (lastReceived.msecsTo(QTime::currentTime()) > 100) {
+            qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize ;
+        }
+        lastReceived = QTime::currentTime();
+        amplitude = audio.amplitude;
+        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun);
+    }
 }
 
 void audioHandler::changeLatency(const quint16 newSize)
