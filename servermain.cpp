@@ -102,7 +102,7 @@ void servermain::makeRig()
         if (radio->rigThread == Q_NULLPTR)
         {
             qInfo(logSystem()) << "Creating new rigThread()";
-            radio->rig = new rigCommander(radio->guid,this);
+            radio->rig = new rigCommander(radio->guid);
             radio->rigThread = new QThread(this);
             radio->rigThread->setObjectName("rigCommander()");
 

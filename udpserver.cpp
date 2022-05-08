@@ -367,7 +367,7 @@ void udpServer::controlReceived()
 
                     outAudio.isinput = false;
 
-                    radio->txaudio = new audioHandler(this);
+                    radio->txaudio = new audioHandler();
                     radio->txAudioThread = new QThread(this);
                     radio->txAudioThread->setObjectName("txAudio()");
 
@@ -409,7 +409,7 @@ void udpServer::controlReceived()
                     radio->rxAudioSetup.isinput = true;
                     memcpy(radio->rxAudioSetup.guid, radio->guid, GUIDLEN);
 
-                    radio->rxaudio = new audioHandler(this);
+                    radio->rxaudio = new audioHandler();
 
                     radio->rxAudioThread = new QThread(this);
                     radio->rxAudioThread->setObjectName("rxAudio()");

@@ -112,7 +112,7 @@ bool audioHandler::init(audioSetup setup)
 
 	// We "hopefully" now have a valid format that is supported so try connecting
 
-	converter = new audioConverter(this);
+	converter = new audioConverter();
 	converterThread = new QThread(this);
 	if (setup.isinput) {
 		converterThread->setObjectName("audioConvIn()");
