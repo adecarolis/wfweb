@@ -151,7 +151,7 @@ bool audioConverter::convert(audioPacket audio)
         }
         else
         {
-            qInfo(logAudio()) << "Unsupported Sample Type:" << inFormat.sampleType() << "Size:" << inFormat.sampleSize();
+            qInfo(logAudio()) << "Unsupported Input Sample Type:" << inFormat.sampleType() << "Size:" << inFormat.sampleSize();
         }
 
         if (samplesF.size() > 0)
@@ -245,13 +245,13 @@ bool audioConverter::convert(audioPacket audio)
                     VectorXuint8 samplesI = samplesITemp.cast<quint8>();
                     audio.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(quint8)));
                 }
-                if (outFormat.sampleType() == QAudioFormat::SignedInt && outFormat.sampleSize() == 8)
+                else if (outFormat.sampleType() == QAudioFormat::SignedInt && outFormat.sampleSize() == 8)
                 {
                     Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint8>::max());
                     VectorXint8 samplesI = samplesITemp.cast<qint8>();
                     audio.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint8)));
                 }
-                if (outFormat.sampleType() == QAudioFormat::SignedInt && outFormat.sampleSize() == 16)
+                else if (outFormat.sampleType() == QAudioFormat::SignedInt && outFormat.sampleSize() == 16)
                 {
                     Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint16>::max());
                     VectorXint16 samplesI = samplesITemp.cast<qint16>();
@@ -268,7 +268,7 @@ bool audioConverter::convert(audioPacket audio)
                     audio.data = QByteArray(reinterpret_cast<char*>(samplesF.data()), int(samplesF.size()) * int(sizeof(float)));
                 }
                 else {
-                    qInfo(logAudio()) << "Unsupported Sample Type:" << outFormat.sampleType();
+                    qInfo(logAudio()) << "Unsupported Output Sample Type:" << outFormat.sampleType() << "Size:" << outFormat.sampleSize();
                 }
 
                 /*

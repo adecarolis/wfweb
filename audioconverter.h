@@ -80,9 +80,6 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
 	0x80 Opus 2ch
 	*/
 
-	format.setChannelCount(1);
-	format.setSampleSize(8);
-	format.setSampleType(QAudioFormat::UnSignedInt);
 	format.setByteOrder(QAudioFormat::LittleEndian);
 	format.setCodec("audio/pcm");
     format.setSampleRate(sampleRate);
@@ -94,9 +91,15 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
 		format.setCodec("audio/PCMU");
 	}
 
+    if (codec == 0x02 || codec == 0x08) {
+        format.setSampleSize(8);
+        format.setSampleType(QAudioFormat::UnSignedInt);
+    }
 	if (codec == 0x08 || codec == 0x10 || codec == 0x20 || codec == 0x80) {
 		format.setChannelCount(2);
-	}
+    } else {
+        format.setChannelCount(1);
+    }
 
 	if (codec == 0x04 || codec == 0x10) {
 		format.setSampleSize(16);
