@@ -79,7 +79,8 @@ bool audioHandler::init(audioSetup setup)
 		qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "No channels found, aborting setup.";
 		return false;
 	}
-	if (outFormat.channelCount() == 1 && inFormat.channelCount() == 2) {
+
+	/*	if (outFormat.channelCount() == 1 && inFormat.channelCount() == 2) {
 		outFormat.setChannelCount(2);
 		if (!setup.port.isFormatSupported(outFormat)) {
 			qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Cannot request stereo input!";
@@ -97,6 +98,7 @@ bool audioHandler::init(audioSetup setup)
         }
 
     }
+	*/
 
 	if (outFormat.sampleSize() == 24) {
 		// We can't convert this easily so use 32 bit instead.
