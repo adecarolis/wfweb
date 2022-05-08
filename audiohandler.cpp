@@ -57,6 +57,7 @@ bool audioHandler::init(audioSetup setupIn)
 	setup.format.setChannelCount(1);
 	setup.format.setSampleSize(8);
 	setup.format.setSampleType(QAudioFormat::UnSignedInt);
+	setup.format.setByteOrder(QAudioFormat::LittleEndian);
 	setup.format.setCodec("audio/pcm");
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "audio handler starting:" << setup.name;
 
@@ -267,10 +268,11 @@ void audioHandler::setVolume(unsigned char volume)
 void audioHandler::incomingAudio(audioPacket packet)
 {
 	//QTime startProcessing = QTime::currentTime();
+	if (audioDevice != Q_NULLPTR) {
+		packet.volume = volume;
 
-	packet.volume = volume;
-
-	emit sendToConverter(packet);
+		emit sendToConverter(packet);
+	}
 
 	return;
 }
