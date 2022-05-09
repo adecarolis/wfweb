@@ -35,10 +35,10 @@ bool audioConverter::init(QAudioFormat inFormat, QAudioFormat outFormat, quint8 
 		// Create instance of opus encoder
 		int opus_err = 0;
 		opusEncoder = opus_encoder_create(outFormat.sampleRate(), outFormat.channelCount(), OPUS_APPLICATION_AUDIO, &opus_err);
-		opus_encoder_ctl(opusEncoder, OPUS_SET_LSB_DEPTH(16));
+		//opus_encoder_ctl(opusEncoder, OPUS_SET_LSB_DEPTH(16));
 		//opus_encoder_ctl(opusEncoder, OPUS_SET_INBAND_FEC(1));
-		opus_encoder_ctl(opusEncoder, OPUS_SET_DTX(1));
-		opus_encoder_ctl(opusEncoder, OPUS_SET_PACKET_LOSS_PERC(5));
+		//opus_encoder_ctl(opusEncoder, OPUS_SET_DTX(1));
+		//opus_encoder_ctl(opusEncoder, OPUS_SET_PACKET_LOSS_PERC(5));
 		opus_encoder_ctl(opusEncoder, OPUS_SET_COMPLEXITY(opusComplexity)); // Reduce complexity to maybe lower CPU?
 		qInfo(logAudioConverter()) << "Creating opus encoder: " << opus_strerror(opus_err);
 	}
