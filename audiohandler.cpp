@@ -97,6 +97,17 @@ bool audioHandler::init(audioSetup setup)
         }
     }
 
+    if (outFormat.sampleType() == QAudioFormat::UnSignedInt && outFormat.sampleSize()==8) {
+        outFormat.setSampleType(QAudioFormat::SignedInt);
+        outFormat.setSampleSize(16);
+
+        if (!setup.port.isFormatSupported(outFormat)) {
+            qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Cannot request 16bit Signed samples, reverting to 8bit Unsigned";
+            outFormat.setSampleType(QAudioFormat::UnSignedInt);
+            outFormat.setSampleSize(8);
+        }
+    }
+
     /*
 
     if (outFormat.sampleType()==QAudioFormat::SignedInt) {
