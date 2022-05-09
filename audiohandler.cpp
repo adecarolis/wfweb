@@ -162,6 +162,11 @@ void audioHandler::start()
 	if (setup.isinput) {
 		//this->open(QIODevice::WriteOnly);
 		//audioInput->start(this);
+#ifdef Q_OS_WIN
+		audioInput->setBufferSize(inFormat.bytesForDuration(setup.latency * 100));
+#else
+		audioInput->setBufferSize(inFormat.bytesForDuration(setup.latency * 1000));
+#endif
 		audioDevice = audioInput->start();
 		connect(audioInput, SIGNAL(destroyed()), audioDevice, SLOT(deleteLater()), Qt::UniqueConnection);
 		connect(audioDevice, SIGNAL(readyRead()), this, SLOT(getNextAudioChunk()), Qt::UniqueConnection);
