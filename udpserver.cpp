@@ -4,7 +4,8 @@
 #define STALE_CONNECTION 15
 #define LOCK_PERIOD 10 // time to attempt to lock Mutex in ms
 #define AUDIO_SEND_PERIOD 20 //
-udpServer::udpServer(SERVERCONFIG* config) :
+udpServer::udpServer(SERVERCONFIG* config, QObject* parent) :
+    QObject(parent),
     config(config)
 {
     qInfo(logUdpServer()) << "Starting udp server";

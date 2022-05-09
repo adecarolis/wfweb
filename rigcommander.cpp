@@ -20,13 +20,13 @@
 
 // Note: When sending \x00, must use QByteArray.setRawData()
 
-rigCommander::rigCommander()
+rigCommander::rigCommander(QObject* parent) : QObject(parent)
 {
     qInfo(logRig()) << "creating instance of rigCommander()";
     state.set(SCOPEFUNC, true, false);
 }
 
-rigCommander::rigCommander(quint8 guid[GUIDLEN])
+rigCommander::rigCommander(quint8 guid[GUIDLEN], QObject* parent) : QObject(parent)
 {
     qInfo(logRig()) << "creating instance of rigCommander()";
     state.set(SCOPEFUNC, true, false);
@@ -59,8 +59,8 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
     this->rigBaudRate = rigBaudRate;
     rigCaps.baudRate = rigBaudRate;
 
-    comm = new commHandler(rigSerialPort, rigBaudRate,wf);
-    ptty = new pttyHandler(vsp);
+    comm = new commHandler(rigSerialPort, rigBaudRate,wf,this);
+    ptty = new pttyHandler(vsp,this);
 
     if (tcpPort > 0) {
         tcp = new tcpServer(this);
@@ -132,7 +132,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
         //this->rigSerialPort = rigSerialPort;
         //this->rigBaudRate = rigBaudRate;
 
-        ptty = new pttyHandler(vsp);
+        ptty = new pttyHandler(vsp,this);
 
         if (tcpPort > 0) {
             tcp = new tcpServer(this);

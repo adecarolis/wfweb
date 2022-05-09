@@ -13,7 +13,7 @@
 
 // Copyright 2017-2021 Elliott H. Liggett & Phil Taylor 
 
-pttyHandler::pttyHandler(QString pty)
+pttyHandler::pttyHandler(QString pty, QObject* parent) : QObject(parent)
 {
     //constructor
     if (pty == "" || pty.toLower() == "none")
