@@ -80,13 +80,24 @@ bool audioHandler::init(audioSetup setup)
 		return false;
 	}
 
-	/*	if (outFormat.channelCount() == 1 && inFormat.channelCount() == 2) {
+    if (outFormat.channelCount() == 1 && inFormat.channelCount() == 2) {
 		outFormat.setChannelCount(2);
 		if (!setup.port.isFormatSupported(outFormat)) {
-			qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Cannot request stereo input!";
+            qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Cannot request stereo reverting to mono";
 			outFormat.setChannelCount(1);
 		}
 	}
+
+    if (outFormat.sampleRate() < 48000) {
+        int tempRate=outFormat.sampleRate();
+        outFormat.setSampleRate(48000);
+        if (!setup.port.isFormatSupported(outFormat)) {
+            qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Cannot request 48K, reverting to "<< tempRate;
+            outFormat.setSampleRate(tempRate);
+        }
+    }
+
+    /*
 
     if (outFormat.sampleType()==QAudioFormat::SignedInt) {
         outFormat.setSampleType(QAudioFormat::Float);
