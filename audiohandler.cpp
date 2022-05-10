@@ -35,9 +35,7 @@ audioHandler::~audioHandler()
 		converterThread->quit();
 		converterThread->wait();
 	}
-}
-
-bool audioHandler::init(audioSetup setup) 
+}bool audioHandler::init(audioSetup setup) 
 {
 	if (isInitialized) {
 		return false;
@@ -80,13 +78,36 @@ bool audioHandler::init(audioSetup setup)
 		return false;
 	}
 
-	/*	if (outFormat.channelCount() == 1 && inFormat.channelCount() == 2) {
+    if (outFormat.channelCount() == 1 && inFormat.channelCount() == 2) {
 		outFormat.setChannelCount(2);
 		if (!setup.port.isFormatSupported(outFormat)) {
-			qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Cannot request stereo input!";
+            qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Cannot request stereo reverting to mono";
 			outFormat.setChannelCount(1);
 		}
 	}
+
+    if (outFormat.sampleRate() < 48000) {
+        int tempRate=outFormat.sampleRate();
+        outFormat.setSampleRate(48000);
+        if (!setup.port.isFormatSupported(outFormat)) {
+            qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Cannot request 48K, reverting to "<< tempRate;
+            outFormat.setSampleRate(tempRate);
+        }
+    }
+
+    if (outFormat.sampleType() == QAudioFormat::UnSignedInt && outFormat.sampleSize()==8) {
+        outFormat.setSampleType(QAudioFormat::SignedInt);
+        outFormat.setSampleSize(16);
+
+        if (!setup.port.isFormatSupported(outFormat)) {
+            qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Cannot request 16bit Signed samples, reverting to 8bit Unsigned";
+            outFormat.setSampleType(QAudioFormat::UnSignedInt);
+            outFormat.setSampleSize(8);
+        }
+    }
+
+
+    /*
 
     if (outFormat.sampleType()==QAudioFormat::SignedInt) {
         outFormat.setSampleType(QAudioFormat::Float);
@@ -232,7 +253,12 @@ void audioHandler::convertedOutput(audioPacket packet) {
 
         currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audioOutput->bufferSize() - audioOutput->bytesFree()) / 1000);
         if (audioDevice != Q_NULLPTR) {
-            audioDevice->write(packet.data);
+            if (audioDevice->write(packet.data) < packet.data.size()) {
+                    qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Buffer full!";
+                    isOverrun=true;
+            } else {
+                isOverrun = false;
+            }
             if (lastReceived.msecsTo(QTime::currentTime()) > 100) {
                 qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize;
             }
@@ -245,7 +271,7 @@ void audioHandler::convertedOutput(audioPacket packet) {
         }
         */
         lastSentSeq = packet.seq;
-        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun);
+        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
 
         amplitude = packet.amplitude;
     }
@@ -288,7 +314,7 @@ void audioHandler::convertedInput(audioPacket audio)
         }
         lastReceived = QTime::currentTime();
         amplitude = audio.amplitude;
-        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun);
+        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
     }
 }
 

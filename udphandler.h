@@ -56,8 +56,8 @@ public slots:
 	void setVolume(unsigned char value);
 	void init();
 	void setCurrentRadio(quint8 radio);
-	void getRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
-	void getTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
+    void getRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under, bool over);
+    void getTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under, bool over);
 
 
 signals:
