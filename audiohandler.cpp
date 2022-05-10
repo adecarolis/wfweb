@@ -35,9 +35,7 @@ audioHandler::~audioHandler()
 		converterThread->quit();
 		converterThread->wait();
 	}
-}
-
-bool audioHandler::init(audioSetup setup) 
+}bool audioHandler::init(audioSetup setup) 
 {
 	if (isInitialized) {
 		return false;
@@ -107,6 +105,7 @@ bool audioHandler::init(audioSetup setup)
             outFormat.setSampleSize(8);
         }
     }
+
 
     /*
 
@@ -254,7 +253,12 @@ void audioHandler::convertedOutput(audioPacket packet) {
 
         currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audioOutput->bufferSize() - audioOutput->bytesFree()) / 1000);
         if (audioDevice != Q_NULLPTR) {
-            audioDevice->write(packet.data);
+            if (audioDevice->write(packet.data) < packet.data.size()) {
+                    qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Buffer full!";
+                    isOverrun=true;
+            } else {
+                isOverrun = false;
+            }
             if (lastReceived.msecsTo(QTime::currentTime()) > 100) {
                 qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize;
             }
@@ -267,7 +271,7 @@ void audioHandler::convertedOutput(audioPacket packet) {
         }
         */
         lastSentSeq = packet.seq;
-        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun);
+        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
 
         amplitude = packet.amplitude;
     }
@@ -310,7 +314,7 @@ void audioHandler::convertedInput(audioPacket audio)
         }
         lastReceived = QTime::currentTime();
         amplitude = audio.amplitude;
-        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun);
+        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
     }
 }
 

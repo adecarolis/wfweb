@@ -46,6 +46,8 @@ struct networkStatus {
 	quint16 txLatency;
 	bool rxUnderrun;
 	bool txUnderrun;
+    bool txOverrun;
+    bool rxOverrun;
 	quint16 rxCurrentLatency;
 	quint16 txCurrentLatency;
 	quint32 packetsSent=0;
@@ -193,14 +195,14 @@ signals:
 
 	void haveChangeLatency(quint16 value);
 	void haveSetVolume(unsigned char value);
-	void haveRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
-	void haveTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
+    void haveRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under, bool over);
+    void haveTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under, bool over);
 
 public slots:
 	void changeLatency(quint16 value);
 	void setVolume(unsigned char value);
-	void getRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
-	void getTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
+    void getRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under, bool over);
+    void getTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under, bool over);
 	void receiveAudioData(audioPacket audio);
 
 private:
@@ -251,8 +253,8 @@ public slots:
 	void setVolume(unsigned char value);
 	void init();
 	void setCurrentRadio(quint8 radio);
-	void getRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
-	void getTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under);
+    void getRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under, bool over);
+    void getTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under, bool over);
 
 
 signals:

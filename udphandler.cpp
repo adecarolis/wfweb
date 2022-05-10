@@ -143,18 +143,20 @@ void udpHandler::receiveDataFromUserToRig(QByteArray data)
     }
 }
 
-void udpHandler::getRxLevels(quint16 amplitude,quint16 latency,quint16 current, bool under) {
+void udpHandler::getRxLevels(quint16 amplitude,quint16 latency,quint16 current, bool under, bool over) {
     status.rxAudioLevel = amplitude;
     status.rxLatency = latency;
     status.rxCurrentLatency = current;
     status.rxUnderrun = under;
+    status.rxOverrun = over;
 }
 
-void udpHandler::getTxLevels(quint16 amplitude,quint16 latency, quint16 current, bool under) {
+void udpHandler::getTxLevels(quint16 amplitude,quint16 latency, quint16 current, bool under, bool over) {
     status.txAudioLevel = amplitude;
     status.txLatency = latency;
     status.txCurrentLatency = current;
     status.txUnderrun = under;
+    status.txOverrun = over;
 }
 
 void udpHandler::dataReceived()
@@ -208,12 +210,18 @@ void udpHandler::dataReceived()
                     }
 
                     QString tempLatency;
-                    if (status.rxCurrentLatency < status.rxLatency*1.2 && !status.rxUnderrun)
+                    if (status.rxCurrentLatency < status.rxLatency*1.2 && !status.rxUnderrun && !status.rxOverrun)
                     {
                         tempLatency = QString("%1 ms").arg(status.rxCurrentLatency,3);
                     }
-                    else {
+                    else if (status.rxUnderrun){
                         tempLatency = QString("<span style = \"color:red\">%1 ms</span>").arg(status.rxCurrentLatency,3);
+                    }
+                    else if (status.rxOverrun){
+                        tempLatency = QString("<span style = \"color:orange\">%1 ms</span>").arg(status.rxCurrentLatency,3);
+                    } else
+                    {
+                        tempLatency = QString("<span style = \"color:green\">%1 ms</span>").arg(status.rxCurrentLatency,3);
                     }
                     QString txString="";
                     if (txSetup.codec == 0) {
@@ -306,8 +314,8 @@ void udpHandler::dataReceived()
                             QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
                             QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16)));
                             QObject::connect(this, SIGNAL(haveSetVolume(unsigned char)), audio, SLOT(setVolume(unsigned char)));
-                            QObject::connect(audio, SIGNAL(haveRxLevels(quint16, quint16, quint16,bool)), this, SLOT(getRxLevels(quint16, quint16,quint16,bool)));
-                            QObject::connect(audio, SIGNAL(haveTxLevels(quint16, quint16,quint16,bool)), this, SLOT(getTxLevels(quint16, quint16,quint16,bool)));
+                            QObject::connect(audio, SIGNAL(haveRxLevels(quint16, quint16, quint16,bool,bool)), this, SLOT(getRxLevels(quint16, quint16,quint16,bool,bool)));
+                            QObject::connect(audio, SIGNAL(haveTxLevels(quint16, quint16,quint16,bool,bool)), this, SLOT(getTxLevels(quint16, quint16,quint16,bool,bool)));
 
                             streamOpened = true;
                         }
@@ -935,7 +943,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
     connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
     connect(this, SIGNAL(haveSetVolume(unsigned char)), rxaudio, SLOT(setVolume(unsigned char)));
-    connect(rxaudio, SIGNAL(haveLevels(quint16, quint16, quint16,bool)), this, SLOT(getRxLevels(quint16, quint16, quint16,bool)));
+    connect(rxaudio, SIGNAL(haveLevels(quint16, quint16, quint16,bool,bool)), this, SLOT(getRxLevels(quint16, quint16, quint16,bool,bool)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
     
 
@@ -956,7 +964,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
         connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
         connect(txaudio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
-        connect(txaudio, SIGNAL(haveLevels(quint16, quint16, quint16, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, bool)));
+        connect(txaudio, SIGNAL(haveLevels(quint16, quint16, quint16, bool,bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, bool,bool)));
 
         connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
         emit setupTxAudio(txSetup);
@@ -1086,13 +1094,13 @@ void udpAudio::setVolume(unsigned char value)
     emit haveSetVolume(value);
 }
 
-void udpAudio::getRxLevels(quint16 amplitude,quint16 latency, quint16 current, bool under) {
+void udpAudio::getRxLevels(quint16 amplitude,quint16 latency, quint16 current, bool under, bool over) {
 
-    emit haveRxLevels(amplitude,latency, current, under);
+    emit haveRxLevels(amplitude,latency, current, under, over);
 }
 
-void udpAudio::getTxLevels(quint16 amplitude,quint16 latency, quint16 current, bool under) {
-    emit haveTxLevels(amplitude,latency, current, under);
+void udpAudio::getTxLevels(quint16 amplitude,quint16 latency, quint16 current, bool under, bool over) {
+    emit haveTxLevels(amplitude,latency, current, under, over);
 }
 
 void udpAudio::dataReceived()

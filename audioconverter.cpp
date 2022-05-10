@@ -83,8 +83,8 @@ audioConverter::~audioConverter()
 bool audioConverter::convert(audioPacket audio)
 {
 
-    // If inFormat and outFormat are identical, just emit the data back.
-    if (audio.data.size() > 0 && inFormat != outFormat)
+    // If inFormat and outFormat are identical, just emit the data back (removed as it doesn't then process amplitude)
+    if (audio.data.size() > 0)
 	{
 
         if (inFormat.codec() == "audio/opus")
