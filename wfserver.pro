@@ -139,7 +139,10 @@ SOURCES += main.cpp\
     rigcommander.cpp \
     freqmemory.cpp \
     rigidentities.cpp \
+    udpbase.cpp \
     udphandler.cpp \
+    udpcivdata.cpp \
+    udpaudio.cpp \
     logcategories.cpp \
     audiohandler.cpp \
     audioconverter.cpp \
@@ -155,7 +158,10 @@ HEADERS  += servermain.h \
     rigcommander.h \
     freqmemory.h \
     rigidentities.h \
+    udpbase.h \
     udphandler.h \
+    udpcivdata.h \
+    udpaudio.h \
     logcategories.h \
     audiohandler.h \
     audioconverter.h \
