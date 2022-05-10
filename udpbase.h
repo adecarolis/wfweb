@@ -46,6 +46,8 @@ struct networkStatus {
 	quint16 txLatency;
 	bool rxUnderrun;
 	bool txUnderrun;
+	bool rxOverrun;
+	bool txOverrun;
 	quint16 rxCurrentLatency;
 	quint16 txCurrentLatency;
 	quint32 packetsSent = 0;
