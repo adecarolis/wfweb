@@ -210,7 +210,7 @@ void udpHandler::dataReceived()
                     }
 
                     QString tempLatency;
-                    if (status.rxCurrentLatency < status.rxLatency*1.2 && !status.rxUnderrun && !status.rxOverrun)
+                    if (status.rxCurrentLatency <= status.rxLatency && !status.rxUnderrun && !status.rxOverrun)
                     {
                         tempLatency = QString("%1 ms").arg(status.rxCurrentLatency,3);
                     }
