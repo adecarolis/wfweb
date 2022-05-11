@@ -220,6 +220,9 @@
     <ClCompile Include="selectradio.cpp" />
     <ClCompile Include="tcpserver.cpp" />
     <ClCompile Include="transceiveradjustments.cpp" />
+    <ClCompile Include="udpaudio.cpp" />
+    <ClCompile Include="udpbase.cpp" />
+    <ClCompile Include="udpcivdata.cpp" />
     <ClCompile Include="udphandler.cpp" />
     <ClCompile Include="udpserver.cpp" />
     <ClCompile Include="wfmain.cpp" />
@@ -269,6 +272,9 @@
     </QtMoc>
     <QtMoc Include="udpserver.h">
     </QtMoc>
+    <QtMoc Include="udpaudio.h" />
+    <ClInclude Include="udpbase.h" />
+    <QtMoc Include="udpcivdata.h" />
     <ClInclude Include="ulaw.h" />
     <QtMoc Include="wfmain.h">
     </QtMoc>

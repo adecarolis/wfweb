@@ -119,6 +119,15 @@
     <ClCompile Include="audioconverter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="udpbase.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="udpaudio.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="udpcivdata.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="aboutbox.h">
@@ -206,6 +215,12 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="audioconverter.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="udpcivdata.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="udpaudio.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>
@@ -373,5 +388,10 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include=".\wfview_resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="udpbase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
