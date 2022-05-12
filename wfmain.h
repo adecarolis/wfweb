@@ -40,6 +40,14 @@
 #include <deque>
 #include <memory>
 
+#include <portaudio.h>
+#ifdef Q_OS_WIN
+#include "RtAudio.h"
+#else
+#include "rtaudio/RtAudio.h"
+#endif
+
+
 namespace Ui {
 class wfmain;
 }
@@ -529,6 +537,8 @@ private slots:
 
     void on_radioStatusBtn_clicked();
 
+    void on_audioSystemCombo_currentIndexChanged(int value);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -769,6 +779,7 @@ private:
         meterKind meter2Type;
         quint16 tcpPort;
         quint8 waterfallFormat;
+        audioType audioSystem;
         // plot scheme
     } prefs;
 
