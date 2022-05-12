@@ -243,6 +243,7 @@ private:
         rigCapabilities rigCaps;
         bool haveRigCaps = false;
         quint16 tcpPort;
+        audioType audioSystem;
     } prefs;
 
     preferences defPrefs;

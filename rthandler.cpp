@@ -74,7 +74,7 @@ bool rtHandler::init(audioSetup setup)
 	audio = new RtAudio(RtAudio::Api::MACOSX_CORE);
 #endif
 
-	options.numberOfBuffers = setup.latency/setup.blockSize;
+	options.numberOfBuffers = int(setup.latency/setup.blockSize);
 
 	if (setup.portInt > 0) {
 		aParams.deviceId = setup.portInt;

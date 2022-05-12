@@ -5842,13 +5842,13 @@ void wfmain::setAudioDevicesUI()
             {
                 info = Pa_GetDeviceInfo(i);
                 if (info->maxInputChannels > 0) {
-                    qInfo(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Output Device : " << info->name;
+                    qDebug(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Input Device : " << info->name;
 
                     ui->audioInputCombo->addItem(info->name, i);
                     ui->serverRXAudioInputCombo->addItem(info->name, i);
                 }
                 if (info->maxOutputChannels > 0) {
-                    qInfo(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Input Device  : " << info->name;
+                    qDebug(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Output Device  : " << info->name;
                     ui->audioOutputCombo->addItem(info->name, i);
                     ui->serverTXAudioOutputCombo->addItem(info->name, i);
                 }
