@@ -48,7 +48,7 @@
   
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>.;..\rtaudio;..\portaudio\include;..\qcustomplot;..\opus\include;..\eigen;..\r8brain-free-src;resampler;release;/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;..\rtaudio;..\portaudio\include;..\hidapi\hidapi;..\qcustomplot;..\opus\include;..\eigen;..\r8brain-free-src;resampler;release;/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>-Zc:rvalueCast -Zc:inline -Zc:strictStrings -Zc:throwingNew -Zc:referenceBinding -Zc:__cplusplus -w34100 -w34189 -w44996 -w44456 -w44457 -w44458 %(AdditionalOptions)</AdditionalOptions>
       <AssemblerListingLocation>release\</AssemblerListingLocation>
       <BrowseInformation>false</BrowseInformation>
@@ -57,7 +57,7 @@
       <ExceptionHandling>Sync</ExceptionHandling>
       <ObjectFileName>release\</ObjectFileName>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION="1.2e";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX="/usr/local";GITSHORT="63c5e02";HOST="wfview.org";UNAME="build";NDEBUG;QT_NO_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION="1.2e";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX="/usr/local";GITSHORT="11c0973";HOST="wfview.org";UNAME="build";NDEBUG;QT_NO_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <ProgramDataBaseFileName></ProgramDataBaseFileName>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -85,12 +85,12 @@
       <WarningLevel>0</WarningLevel>
     </Midl>
     <ResourceCompile>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION=\"1.2e\";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX=\"/usr/local\";GITSHORT=\"63c5e02\";HOST=\"wfview.org\";UNAME=\"build\";NDEBUG;QT_NO_DEBUG;QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION=\"1.2e\";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX=\"/usr/local\";GITSHORT=\"11c0973\";HOST=\"wfview.org\";UNAME=\"build\";NDEBUG;QT_NO_DEBUG;QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
   <QtMoc><CompilerFlavor>msvc</CompilerFlavor><Include>./$(Configuration)/moc_predefs.h</Include><ExecutionDescription>Moc'ing %(Identity)...</ExecutionDescription><DynamicSource>output</DynamicSource><QtMocDir>$(Configuration)</QtMocDir><QtMocFileName>moc_%(Filename).cpp</QtMocFileName></QtMoc><QtRcc><Compression>default</Compression><ExecutionDescription>Rcc'ing %(Identity)...</ExecutionDescription><QtRccDir>$(Configuration)</QtRccDir><QtRccFileName>qrc_%(Filename).cpp</QtRccFileName></QtRcc><QtUic><ExecutionDescription>Uic'ing %(Identity)...</ExecutionDescription><QtUicDir>$(ProjectDir)</QtUicDir><QtUicFileName>ui_%(Filename).h</QtUicFileName></QtUic></ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>.;..\rtaudio;..\portaudio\include;..\qcustomplot;..\opus\include;..\eigen;..\r8brain-free-src;resampler;debug;/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;..\rtaudio;..\portaudio\include;..\hidapi\hidapi;..\qcustomplot;..\opus\include;..\eigen;..\r8brain-free-src;resampler;debug;/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>-Zc:rvalueCast -Zc:inline -Zc:strictStrings -Zc:throwingNew -Zc:referenceBinding -Zc:__cplusplus -w34100 -w34189 -w44996 -w44456 -w44457 -w44458 %(AdditionalOptions)</AdditionalOptions>
       <AssemblerListingLocation>debug\</AssemblerListingLocation>
       <BrowseInformation>false</BrowseInformation>
@@ -99,7 +99,7 @@
       <ExceptionHandling>Sync</ExceptionHandling>
       <ObjectFileName>debug\</ObjectFileName>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION="1.2e";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX="/usr/local";GITSHORT="63c5e02";HOST="wfview.org";UNAME="build";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION="1.2e";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX="/usr/local";GITSHORT="11c0973";HOST="wfview.org";UNAME="build";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -124,7 +124,7 @@
       <WarningLevel>0</WarningLevel>
     </Midl>
     <ResourceCompile>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION=\"1.2e\";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX=\"/usr/local\";GITSHORT=\"63c5e02\";HOST=\"wfview.org\";UNAME=\"build\";QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION=\"1.2e\";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_COMPILE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX=\"/usr/local\";GITSHORT=\"11c0973\";HOST=\"wfview.org\";UNAME=\"build\";QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
   <QtMoc><CompilerFlavor>msvc</CompilerFlavor><Include>./$(Configuration)/moc_predefs.h</Include><ExecutionDescription>Moc'ing %(Identity)...</ExecutionDescription><DynamicSource>output</DynamicSource><QtMocDir>$(Configuration)</QtMocDir><QtMocFileName>moc_%(Filename).cpp</QtMocFileName></QtMoc><QtRcc><Compression>default</Compression><ExecutionDescription>Rcc'ing %(Identity)...</ExecutionDescription><QtRccDir>$(Configuration)</QtRccDir><QtRccFileName>qrc_%(Filename).cpp</QtRccFileName></QtRcc><QtUic><ExecutionDescription>Uic'ing %(Identity)...</ExecutionDescription><QtUicDir>$(ProjectDir)</QtUicDir><QtUicFileName>ui_%(Filename).h</QtUicFileName></QtUic></ItemDefinitionGroup>
   <ItemGroup>
@@ -135,6 +135,7 @@
     <ClCompile Include="calibrationwindow.cpp" />
     <ClCompile Include="commhandler.cpp" />
     <ClCompile Include="freqmemory.cpp" />
+    <ClCompile Include="..\hidapi\windows\hid.c" />
     <ClCompile Include="logcategories.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="meter.cpp" />
@@ -150,6 +151,7 @@
     <ClCompile Include="rthandler.cpp" />
     <ClCompile Include="satellitesetup.cpp" />
     <ClCompile Include="selectradio.cpp" />
+    <ClCompile Include="shuttlesetup.cpp" />
     <ClCompile Include="tcpserver.cpp" />
     <ClCompile Include="transceiveradjustments.cpp" />
     <ClCompile Include="udpaudio.cpp" />
@@ -157,6 +159,7 @@
     <ClCompile Include="udpcivdata.cpp" />
     <ClCompile Include="udphandler.cpp" />
     <ClCompile Include="udpserver.cpp" />
+    <ClCompile Include="usbcontroller.cpp" />
     <ClCompile Include="wfmain.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -329,6 +332,16 @@
       
       
     </QtMoc>
+    <QtMoc Include="shuttlesetup.h">
+      
+      
+      
+      
+      
+      
+      
+      
+    </QtMoc>
     <ClInclude Include="resampler\speex_resampler.h" />
     <QtMoc Include="tcpserver.h">
       
@@ -392,6 +405,16 @@
       
     </QtMoc>
     <ClInclude Include="ulaw.h" />
+    <QtMoc Include="usbcontroller.h">
+      
+      
+      
+      
+      
+      
+      
+      
+    </QtMoc>
     <QtMoc Include="wfmain.h">
       
       
@@ -434,6 +457,11 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">release\moc_predefs.h;%(Outputs)</Outputs>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </CustomBuild>
+    
+    
+    
+    
+    
     
     
     
@@ -534,6 +562,17 @@
       
       
     </QtUic>
+    <QtUic Include="shuttlesetup.ui">
+      
+      
+      
+      
+      
+      
+      
+      
+      
+    </QtUic>
     <QtUic Include="transceiveradjustments.ui">
       
       
@@ -587,6 +626,7 @@
     <None Include="qdarkstyle\rc\radio_unchecked.png" />
     <None Include="qdarkstyle\rc\radio_unchecked_disabled.png" />
     <None Include="qdarkstyle\rc\radio_unchecked_focus.png" />
+    <None Include="resources\rc28.png" />
     <QtRcc Include="resources\resources.qrc">
       
       
@@ -600,6 +640,8 @@
     <InitFuncName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">resources</InitFuncName><InitFuncName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">resources</InitFuncName></QtRcc>
     <None Include="qdarkstyle\rc\right_arrow.png" />
     <None Include="qdarkstyle\rc\right_arrow_disabled.png" />
+    <None Include="resources\shuttlepro.png" />
+    <None Include="resources\shuttlexpress.png" />
     <None Include="qdarkstyle\rc\sizegrip.png" />
     <QtRcc Include="qdarkstyle\style.qrc">
       
