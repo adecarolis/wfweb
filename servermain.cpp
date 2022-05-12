@@ -456,8 +456,8 @@ void servermain::loadSettings()
             settings->setValue("SerialPortRadio", defPrefs.serialPortRadio);
             settings->setValue("RigName", "<NONE>");
             settings->setValue("SerialPortBaud", defPrefs.serialPortBaud);
-            settings->setValue("AudioInput", defPrefs.rxAudio.name);
-            settings->setValue("AudioOutput", defPrefs.txAudio.name);
+            settings->setValue("AudioInput", "default");
+            settings->setValue("AudioOutput", "default");
         }
         settings->endArray();
 
@@ -495,6 +495,8 @@ void servermain::loadSettings()
         tempPrefs->serialPort = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
         tempPrefs->rigName = settings->value("RigName", "<NONE>").toString();
         tempPrefs->baudRate = (quint32)settings->value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
+        tempPrefs->rxAudioSetup.name = settings->value("AudioInput", "default").toString();
+        tempPrefs->txAudioSetup.name = settings->value("AudioOutput", "default").toString();
 
         QString tempPort = "auto";
         if (tempPrefs->rigName=="<NONE>")
@@ -528,8 +530,6 @@ void servermain::loadSettings()
         tempPrefs->rxAudioSetup.resampleQuality = 4;
         tempPrefs->txAudioSetup.resampleQuality = 4;
 
-        tempPrefs->rxAudioSetup.name = settings->value("AudioInput", "").toString();
-        tempPrefs->txAudioSetup.name = settings->value("AudioOutput", "").toString();
         tempPrefs->rig = Q_NULLPTR;
         tempPrefs->rigThread = Q_NULLPTR;
         serverConfig.rigs.append(tempPrefs);
