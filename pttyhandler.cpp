@@ -13,7 +13,7 @@
 
 // Copyright 2017-2021 Elliott H. Liggett & Phil Taylor 
 
-pttyHandler::pttyHandler(QString pty)
+pttyHandler::pttyHandler(QString pty, QObject* parent) : QObject(parent)
 {
     //constructor
     if (pty == "" || pty.toLower() == "none")
@@ -214,12 +214,12 @@ void pttyHandler::receiveDataIn(int fd) {
             if (civId == 0 && inPortData.length() > lastFE + 2 && (quint8)inPortData[lastFE + 2] > (quint8)0xdf && (quint8)inPortData[lastFE + 2] < (quint8)0xef) {
                 // This is (should be) the remotes CIV id.
                 civId = (quint8)inPortData[lastFE + 2];
-                qInfo(logSerial()) << "pty detected remote CI-V:" << hex << civId;
+                qInfo(logSerial()) << "pty detected remote CI-V:" << QString("0x%1").arg(civId,0,16);
             }
             else if (civId != 0 && inPortData.length() > lastFE + 2 && (quint8)inPortData[lastFE + 2] != civId)
             {
                 civId = (quint8)inPortData[lastFE + 2];
-                qInfo(logSerial()) << "pty remote CI-V changed:" << hex << (quint8)civId;
+                qInfo(logSerial()) << "pty remote CI-V changed:" << QString("0x%1").arg((quint8)civId,0,16);
             }
             // filter C-IV transceive command before forwarding on.
             if (inPortData.contains(rigCaps.transceiveCommand))

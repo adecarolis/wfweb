@@ -70,6 +70,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     setupPlots();
     loadSettings(); // Look for saved preferences
+
+    setAudioDevicesUI();
+
     setTuningSteps(); // TODO: Combine into preferences
 
     qDebug(logSystem()) << "Running setUIToPrefs()";
@@ -84,12 +87,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qDebug(logSystem()) << "Running rigConnections()";
     rigConnections();
 
-/*    if (serverConfig.enabled && udp != Q_NULLPTR) {
-        // Server
-        connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
-        connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
-        connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
-    } */
+
 
     setServerToPrefs();
 
@@ -111,6 +109,10 @@ wfmain::~wfmain()
     }
     if (rigCtl != Q_NULLPTR) {
         delete rigCtl;
+    }
+
+    if (prefs.audioSystem == portAudio) {
+        Pa_Terminate();
     }
     delete rpt;
     delete ui;
@@ -420,6 +422,8 @@ void wfmain::makeRig()
     {
         rig = new rigCommander();
         rigThread = new QThread(this);
+        rigThread->setObjectName("rigCommander()");
+
 
         // Thread:
         rig->moveToThread(rigThread);
@@ -472,7 +476,7 @@ void wfmain::removeRig()
         rigThread->disconnect();
 
         rig->disconnect();
-
+        
         delete rigThread;
         delete rig;
         rig = Q_NULLPTR;
@@ -1003,8 +1007,7 @@ void wfmain::setServerToPrefs()
 
     if (serverConfig.enabled) {
         serverConfig.lan = prefs.enableLAN;
-        qInfo(logAudio()) << "Audio Input device " << serverConfig.rigs.first()->rxAudioSetup.name;
-        qInfo(logAudio()) << "Audio Output device " << serverConfig.rigs.first()->txAudioSetup.name;
+
         udp = new udpServer(&serverConfig);
 
         serverThread = new QThread(this);
@@ -1017,12 +1020,17 @@ void wfmain::setServerToPrefs()
 
         if (rig != Q_NULLPTR) {
             connect(rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
+            // Need to add a signal/slot for audio from the client to rig.
+            //connect(udp, SIGNAL(haveAudioData(audioPacket)), rig, SLOT(receiveAudioData(audioPacket)));
             connect(rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
             connect(udp, SIGNAL(haveDataFromServer(QByteArray)), rig, SLOT(dataFromServer(QByteArray)));
         }
 
-        if (!prefs.enableLAN) {
+        if (serverConfig.lan) {
             connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
+        } else {
+            qInfo(logAudio()) << "Audio Input device " << serverConfig.rigs.first()->rxAudioSetup.name;
+            qInfo(logAudio()) << "Audio Output device " << serverConfig.rigs.first()->txAudioSetup.name;
         }
 
         serverThread->start();
@@ -1066,43 +1074,6 @@ void wfmain::setUIToPrefs()
     ui->useCIVasRigIDChk->blockSignals(true);
     ui->useCIVasRigIDChk->setChecked(prefs.CIVisRadioModel);
     ui->useCIVasRigIDChk->blockSignals(false);
-}
-
-void wfmain::setAudioDevicesUI()
-{
-
-    // Enumerate audio devices, need to do before settings are loaded.
-    qDebug(logSystem()) << "Finding audio output devices";
-    const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
-    for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
-#ifdef Q_OS_WIN
-        if (deviceInfo.realm() == "wasapi") {
-#endif
-            ui->audioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
-            ui->serverTXAudioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
-#ifdef Q_OS_WIN
-        }
-
-#endif
-    }
-
-    qDebug(logSystem()) << "Finding audio input devices";
-    const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
-    for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
-#ifdef Q_OS_WIN
-        if (deviceInfo.realm() == "wasapi") {
-#endif
-            ui->audioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
-            ui->serverRXAudioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
-#ifdef Q_OS_WIN
-        }
-#endif
-    }
-    // Set these to default audio devices initially.
-    qDebug(logSystem()) << "Audio devices done.";
-    rxSetup.port = QAudioDeviceInfo::defaultOutputDevice();
-    txSetup.port = QAudioDeviceInfo::defaultInputDevice();
-    qDebug(logSystem()) << "Audio set to default device initially";
 }
 
 void wfmain::setSerialDevicesUI()
@@ -1401,6 +1372,7 @@ void wfmain::setDefPrefs()
     defPrefs.meter2Type = meterNone;
     defPrefs.tcpPort = 0;
     defPrefs.waterfallFormat = 0;
+    defPrefs.audioSystem = qtAudio;
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -1521,6 +1493,12 @@ void wfmain::loadSettings()
     rxSetup.localAFgain = prefs.localAFgain;
     txSetup.localAFgain = 255;
 
+    prefs.audioSystem = static_cast<audioType>(settings->value("AudioSystem", defPrefs.audioSystem).toInt());
+    ui->audioSystemCombo->blockSignals(true);
+    ui->audioSystemCombo->setCurrentIndex(prefs.audioSystem);
+    ui->audioSystemCombo->blockSignals(false);
+
+
     settings->endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
@@ -1528,20 +1506,19 @@ void wfmain::loadSettings()
     prefs.enablePTT = settings->value("EnablePTT", defPrefs.enablePTT).toBool();
     ui->pttEnableChk->setChecked(prefs.enablePTT);
     prefs.niceTS = settings->value("NiceTS", defPrefs.niceTS).toBool();
+
     settings->endGroup();
 
     settings->beginGroup("LAN");
 
     prefs.enableLAN = settings->value("EnableLAN", defPrefs.enableLAN).toBool();
-    if (prefs.enableLAN)
-    {
-        ui->baudRateCombo->setEnabled(false);
-        ui->serialDeviceListCombo->setEnabled(false);
-    }
-    else {
-        ui->baudRateCombo->setEnabled(true);
-        ui->serialDeviceListCombo->setEnabled(true);
-    }
+
+    // If LAN is enabled, server gets its audio straight from the LAN
+    ui->serverRXAudioInputCombo->setEnabled(!prefs.enableLAN);
+    ui->serverTXAudioOutputCombo->setEnabled(!prefs.enableLAN);
+
+    ui->baudRateCombo->setEnabled(!prefs.enableLAN);
+    ui->serialDeviceListCombo->setEnabled(!prefs.enableLAN);
 
     ui->lanEnableBtn->setChecked(prefs.enableLAN);
     ui->connectBtn->setEnabled(true);
@@ -1591,11 +1568,11 @@ void wfmain::loadSettings()
     ui->txLatencySlider->setTracking(false); // Stop it sending value on every change.
 
     ui->audioSampleRateCombo->blockSignals(true);
-    rxSetup.format.setSampleRate(settings->value("AudioRXSampleRate", "48000").toInt());
-    txSetup.format.setSampleRate(rxSetup.format.sampleRate());
+    rxSetup.sampleRate=settings->value("AudioRXSampleRate", "48000").toInt();
+    txSetup.sampleRate=rxSetup.sampleRate;
 
     ui->audioSampleRateCombo->setEnabled(ui->lanEnableBtn->isChecked());
-    int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(rxSetup.format.sampleRate()));
+    int audioSampleRateIndex = ui->audioSampleRateCombo->findText(QString::number(rxSetup.sampleRate));
     if (audioSampleRateIndex != -1) {
         ui->audioSampleRateCombo->setCurrentIndex(audioSampleRateIndex);
     }
@@ -1632,31 +1609,12 @@ void wfmain::loadSettings()
             ui->audioTXCodecCombo->setCurrentIndex(f);
     ui->audioRXCodecCombo->blockSignals(false);
 
-    ui->audioOutputCombo->blockSignals(true);
     rxSetup.name = settings->value("AudioOutput", "").toString();
-    qInfo(logGui()) << "Got Audio Output: " << rxSetup.name;
-    int audioOutputIndex = ui->audioOutputCombo->findText(rxSetup.name);
-    if (audioOutputIndex != -1) {
-        ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
+    qInfo(logGui()) << "Got Audio Output from Settings: " << rxSetup.name;
 
-        QVariant v = ui->audioOutputCombo->currentData();
-        rxSetup.port = v.value<QAudioDeviceInfo>();
-
-    }
-    ui->audioOutputCombo->blockSignals(false);
-
-    ui->audioInputCombo->blockSignals(true);
     txSetup.name = settings->value("AudioInput", "").toString();
-    qInfo(logGui()) << "Got Audio Input: " << txSetup.name;
-    int audioInputIndex = ui->audioInputCombo->findText(txSetup.name);
-    if (audioInputIndex != -1) {
-        ui->audioInputCombo->setCurrentIndex(audioInputIndex);
+    qInfo(logGui()) << "Got Audio Input from Settings: " << txSetup.name;
 
-        QVariant v = ui->audioInputCombo->currentData();
-        txSetup.port = v.value<QAudioDeviceInfo>();
-
-    }
-    ui->audioInputCombo->blockSignals(false);
 
     rxSetup.resampleQuality = settings->value("ResampleQuality", "4").toInt();
     txSetup.resampleQuality = rxSetup.resampleQuality;
@@ -1715,6 +1673,8 @@ void wfmain::loadSettings()
     rigTemp->txAudioSetup.localAFgain = 255;
     rigTemp->rxAudioSetup.resampleQuality = 4;
     rigTemp->txAudioSetup.resampleQuality = 4;
+    rigTemp->rxAudioSetup.type = prefs.audioSystem;
+    rigTemp->txAudioSetup.type = prefs.audioSystem;
 
     rigTemp->baudRate = prefs.serialPortBaud;
     rigTemp->civAddr = prefs.radioCIVAddr;
@@ -1729,31 +1689,8 @@ void wfmain::loadSettings()
     memcpy(rigTemp->guid, QUuid::fromString(guid).toRfc4122().constData(), GUIDLEN);
 #endif
 
-    ui->serverRXAudioInputCombo->blockSignals(true);
     rigTemp->rxAudioSetup.name = settings->value("ServerAudioInput", "").toString();
-    qInfo(logGui()) << "Got Server Audio Input: " << rigTemp->rxAudioSetup.name;
-    int serverAudioInputIndex = ui->serverRXAudioInputCombo->findText(rigTemp->rxAudioSetup.name);
-    if (serverAudioInputIndex != -1) {
-        ui->serverRXAudioInputCombo->setCurrentIndex(serverAudioInputIndex);
-
-        QVariant v = ui->serverRXAudioInputCombo->currentData();
-        rigTemp->rxAudioSetup.port = v.value<QAudioDeviceInfo>();
-
-    }
-    ui->serverRXAudioInputCombo->blockSignals(false);
-
-    ui->serverTXAudioOutputCombo->blockSignals(true);
     rigTemp->txAudioSetup.name = settings->value("ServerAudioOutput", "").toString();
-    qInfo(logGui()) << "Got Server Audio Output: " << rigTemp->txAudioSetup.name;
-    int serverAudioOutputIndex = ui->serverTXAudioOutputCombo->findText(rigTemp->txAudioSetup.name);
-    if (serverAudioOutputIndex != -1) {
-        ui->serverTXAudioOutputCombo->setCurrentIndex(serverAudioOutputIndex);
-
-        QVariant v = ui->serverTXAudioOutputCombo->currentData();
-        rigTemp->txAudioSetup.port = v.value<QAudioDeviceInfo>();
-
-    }
-    ui->serverTXAudioOutputCombo->blockSignals(false);
     serverConfig.rigs.append(rigTemp);
 
     int row = 0;
@@ -1894,25 +1831,40 @@ void wfmain::on_serverAudioPortText_textChanged(QString text)
 
 void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
 {
-    if (serverConfig.rigs.size() > 0)
-    {
-        QVariant v = ui->serverRXAudioInputCombo->itemData(value);
-        serverConfig.rigs.first()->rxAudioSetup.port = v.value<QAudioDeviceInfo>();
 
-        serverConfig.rigs.first()->rxAudioSetup.name = ui->serverRXAudioInputCombo->itemText(value);
-        qDebug(logGui()) << "Changed default server audio input to:" << serverConfig.rigs.first()->rxAudioSetup.name;
+    if (!serverConfig.rigs.isEmpty())
+    {
+        if (prefs.audioSystem == qtAudio) {
+            QVariant v = ui->serverRXAudioInputCombo->itemData(value);
+            serverConfig.rigs.first()->rxAudioSetup.port = v.value<QAudioDeviceInfo>();
+        }
+        else {
+            serverConfig.rigs.first()->rxAudioSetup.portInt = ui->serverRXAudioInputCombo->itemData(value).toInt();
+        }
+
     }
+
+    serverConfig.rigs.first()->rxAudioSetup.name = ui->audioInputCombo->itemText(value);
+
 }
 
 void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
 {
-    if (serverConfig.rigs.size() > 0) {
-        QVariant v = ui->serverTXAudioOutputCombo->itemData(value);
-        serverConfig.rigs.first()->txAudioSetup.port = v.value<QAudioDeviceInfo>();
 
-        serverConfig.rigs.first()->txAudioSetup.name = ui->serverTXAudioOutputCombo->itemText(value);
-        qDebug(logGui()) << "Changed default server audio output to:" << serverConfig.rigs.first()->txAudioSetup.name;
+    if (!serverConfig.rigs.isEmpty())
+    {
+        if (prefs.audioSystem == qtAudio) {
+            QVariant v = ui->serverTXAudioOutputCombo->itemData(value);
+            serverConfig.rigs.first()->txAudioSetup.port = v.value<QAudioDeviceInfo>();
+        }
+        else {
+            serverConfig.rigs.first()->txAudioSetup.portInt = ui->serverTXAudioOutputCombo->itemData(value).toInt();
+        }
+
     }
+
+    serverConfig.rigs.first()->txAudioSetup.name = ui->audioInputCombo->itemText(value);
+
 }
 
 void wfmain::on_serverUsersTable_cellChanged(int row, int column)
@@ -1972,6 +1924,8 @@ void wfmain::saveSettings()
     settings->setValue("SerialPortBaud", prefs.serialPortBaud);
     settings->setValue("VirtualSerialPort", prefs.virtualSerialPort);
     settings->setValue("localAFgain", prefs.localAFgain);
+    settings->setValue("AudioSystem", prefs.audioSystem);
+
     settings->endGroup();
 
     // Misc. user settings (enable PTT, draw peaks, etc)
@@ -1994,9 +1948,9 @@ void wfmain::saveSettings()
     settings->setValue("Password", udpPrefs.password);
     settings->setValue("AudioRXLatency", rxSetup.latency);
     settings->setValue("AudioTXLatency", txSetup.latency);
-    settings->setValue("AudioRXSampleRate", rxSetup.format.sampleRate());
+    settings->setValue("AudioRXSampleRate", rxSetup.sampleRate);
     settings->setValue("AudioRXCodec", rxSetup.codec);
-    settings->setValue("AudioTXSampleRate", txSetup.format.sampleRate());
+    settings->setValue("AudioTXSampleRate", txSetup.sampleRate);
     settings->setValue("AudioTXCodec", txSetup.codec);
     settings->setValue("AudioOutput", rxSetup.name);
     settings->setValue("AudioInput", txSetup.name);
@@ -3499,6 +3453,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->useRTSforPTTchk->blockSignals(false);
 
         ui->connectBtn->setText("Disconnect"); // We must be connected now.
+        ui->audioSystemCombo->setEnabled(false);
+
         prepareWf(ui->wfLengthSlider->value());
         if(usingLAN)
         {
@@ -4710,6 +4666,8 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
     ui->audioInputCombo->setEnabled(!checked);
     ui->baudRateCombo->setEnabled(checked);
     ui->serialDeviceListCombo->setEnabled(checked);
+    ui->serverRXAudioInputCombo->setEnabled(checked);
+    ui->serverTXAudioOutputCombo->setEnabled(checked);
 }
 
 void wfmain::on_lanEnableBtn_clicked(bool checked)
@@ -4731,6 +4689,8 @@ void wfmain::on_lanEnableBtn_clicked(bool checked)
     ui->audioInputCombo->setEnabled(checked);
     ui->baudRateCombo->setEnabled(!checked);
     ui->serialDeviceListCombo->setEnabled(!checked);
+    ui->serverRXAudioInputCombo->setEnabled(!checked);
+    ui->serverTXAudioOutputCombo->setEnabled(!checked);
     if(checked)
     {
         showStatusBarText("After filling in values, press Save Settings.");
@@ -4759,28 +4719,41 @@ void wfmain::on_passwordTxt_textChanged(QString text)
 
 void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
 {
-    QVariant v = ui->audioOutputCombo->itemData(value);
-    rxSetup.port = v.value<QAudioDeviceInfo>();
+
+    if (prefs.audioSystem == qtAudio) {
+        QVariant v = ui->audioOutputCombo->itemData(value);
+        rxSetup.port = v.value<QAudioDeviceInfo>();
+    }
+    else {
+        rxSetup.portInt = ui->audioOutputCombo->itemData(value).toInt();
+    }
 
     rxSetup.name = ui->audioOutputCombo->itemText(value);
-    qDebug(logGui()) << "Changed default audio output to:" << rxSetup.name;
+    qDebug(logGui()) << "Changed audio output to:" << rxSetup.name;
 }
 
 void wfmain::on_audioInputCombo_currentIndexChanged(int value)
 {
-    QVariant v = ui->audioInputCombo->itemData(value);
-    txSetup.port = v.value<QAudioDeviceInfo>();
+
+    if (prefs.audioSystem == qtAudio) {
+        QVariant v = ui->audioInputCombo->itemData(value);
+        txSetup.port = v.value<QAudioDeviceInfo>();
+    }
+    else {
+        txSetup.portInt = ui->audioInputCombo->itemData(value).toInt();
+    }
 
     txSetup.name = ui->audioInputCombo->itemText(value);
-    qDebug(logGui()) << "Changed default audio input to:" << txSetup.name;
+
+    qDebug(logGui()) << "Changed audio input to:" << txSetup.name;
 }
 
 void wfmain::on_audioSampleRateCombo_currentIndexChanged(QString text)
 {
     //udpPrefs.audioRXSampleRate = text.toInt();
     //udpPrefs.audioTXSampleRate = text.toInt();
-    rxSetup.format.setSampleRate(text.toInt());
-    txSetup.format.setSampleRate(text.toInt());
+    rxSetup.sampleRate=text.toInt();
+    txSetup.sampleRate=text.toInt();
 }
 
 void wfmain::on_audioRXCodecCombo_currentIndexChanged(int value)
@@ -4827,6 +4800,7 @@ void wfmain::on_connectBtn_clicked()
     if (haveRigCaps) {
         emit sendCloseComm();
         ui->connectBtn->setText("Connect");
+        ui->audioSystemCombo->setEnabled(true);
         haveRigCaps = false;
         rigName->setText("NONE");
     }
@@ -5934,4 +5908,205 @@ void wfmain::on_debugBtn_clicked()
     //adjustSize(); // main window
     //adjustSize();
 
+}
+
+
+void wfmain::setAudioDevicesUI()
+{
+
+    // Enumerate audio devices, need to do before settings are loaded, 
+    // First clear all existing entries
+    ui->audioInputCombo->blockSignals(true);
+    ui->audioOutputCombo->blockSignals(true);
+    ui->serverTXAudioOutputCombo->blockSignals(true);
+    ui->serverRXAudioInputCombo->blockSignals(true);
+
+    ui->audioInputCombo->clear();
+    ui->audioOutputCombo->clear();
+    ui->serverTXAudioOutputCombo->clear();
+    ui->serverRXAudioInputCombo->clear();
+
+    qDebug(logSystem()) << "Finding audio devices, output=" << rxSetup.name << "input="<<txSetup.name;
+
+    switch (prefs.audioSystem) 
+    {
+        case qtAudio:
+        {
+            Pa_Terminate();
+
+            const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
+            for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
+    #ifdef Q_OS_WIN
+                if (deviceInfo.realm() == "wasapi") {
+    #endif
+                    ui->audioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
+                    ui->serverTXAudioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
+#ifdef Q_OS_WIN
+                }
+    #endif
+            }
+
+            const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
+            for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
+#ifdef Q_OS_WIN
+                if (deviceInfo.realm() == "wasapi") {
+#endif
+                    ui->audioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
+                    ui->serverRXAudioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
+#ifdef Q_OS_WIN
+                }
+#endif
+            }
+
+        }
+        break;
+        case portAudio:
+        {
+            PaError err;
+
+            err = Pa_Initialize();
+
+            if (err != paNoError)
+            {
+                qInfo(logAudio()) << "ERROR: Cannot initialize Portaudio";
+                return;
+            }
+
+            qInfo(logAudio()) << "PortAudio version: " << Pa_GetVersionInfo()->versionText;
+
+            int numDevices;
+            numDevices = Pa_GetDeviceCount();
+            qInfo(logAudio()) << "Pa_CountDevices returned" << numDevices;
+
+            const   PaDeviceInfo* info;
+            for (int i = 0; i < numDevices; i++)
+            {
+                info = Pa_GetDeviceInfo(i);
+                if (info->maxInputChannels > 0) {
+                    qDebug(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Input Device : " << info->name;
+
+                    ui->audioInputCombo->addItem(info->name, i);
+                    ui->serverRXAudioInputCombo->addItem(info->name, i);
+                }
+                if (info->maxOutputChannels > 0) {
+                    qDebug(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Output Device  : " << info->name;
+                    ui->audioOutputCombo->addItem(info->name, i);
+                    ui->serverTXAudioOutputCombo->addItem(info->name, i);
+                }
+            }
+        }
+        break;
+        case rtAudio:
+        {
+            Pa_Terminate();
+
+#if defined(Q_OS_LINUX)
+            RtAudio* audio = new RtAudio(RtAudio::Api::LINUX_ALSA);
+#elif defined(Q_OS_WIN)
+            RtAudio* audio = new RtAudio(RtAudio::Api::WINDOWS_WASAPI);
+#elif defined(Q_OS_MACX)
+            RtAudio* audio = new RtAudio(RtAudio::Api::MACOSX_CORE);
+#endif
+
+
+            // Enumerate audio devices, need to do before settings are loaded.
+            std::map<int, std::string> apiMap;
+            apiMap[RtAudio::MACOSX_CORE] = "OS-X Core Audio";
+            apiMap[RtAudio::WINDOWS_ASIO] = "Windows ASIO";
+            apiMap[RtAudio::WINDOWS_DS] = "Windows DirectSound";
+            apiMap[RtAudio::WINDOWS_WASAPI] = "Windows WASAPI";
+            apiMap[RtAudio::UNIX_JACK] = "Jack Client";
+            apiMap[RtAudio::LINUX_ALSA] = "Linux ALSA";
+            apiMap[RtAudio::LINUX_PULSE] = "Linux PulseAudio";
+            apiMap[RtAudio::LINUX_OSS] = "Linux OSS";
+            apiMap[RtAudio::RTAUDIO_DUMMY] = "RtAudio Dummy";
+
+            std::vector< RtAudio::Api > apis;
+            RtAudio::getCompiledApi(apis);
+
+            qInfo(logAudio()) << "RtAudio Version " << QString::fromStdString(RtAudio::getVersion());
+
+            qInfo(logAudio()) << "Compiled APIs:";
+            for (unsigned int i = 0; i < apis.size(); i++) {
+                qInfo(logAudio()) << "  " << QString::fromStdString(apiMap[apis[i]]);
+            }
+
+            RtAudio::DeviceInfo info;
+
+            qInfo(logAudio()) << "Current API: " << QString::fromStdString(apiMap[audio->getCurrentApi()]);
+
+            unsigned int devices = audio->getDeviceCount();
+            qInfo(logAudio()) << "Found " << devices << " audio device(s) *=default";
+
+            for (unsigned int i = 1; i < devices; i++) {
+                info = audio->getDeviceInfo(i);
+                if (info.outputChannels > 0) {
+                    qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name);
+                    ui->audioOutputCombo->addItem(QString::fromStdString(info.name), i);
+                    ui->serverTXAudioOutputCombo->addItem(QString::fromStdString(info.name), i);
+                }
+                if (info.inputChannels > 0) {
+                    qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name);
+                    ui->audioInputCombo->addItem(QString::fromStdString(info.name), i);
+                    ui->serverRXAudioInputCombo->addItem(QString::fromStdString(info.name), i);
+                }
+            }
+
+            delete audio;
+
+        }
+        break;
+
+    }
+    
+
+    // Stop blocking signals so we can set the current values
+    ui->audioInputCombo->blockSignals(false);
+    ui->audioOutputCombo->blockSignals(false);
+    ui->serverTXAudioOutputCombo->blockSignals(false);
+    ui->serverRXAudioInputCombo->blockSignals(false);
+
+
+    rxSetup.type = prefs.audioSystem;
+    txSetup.type = prefs.audioSystem;
+
+    int audioInputIndex = ui->audioInputCombo->findText(txSetup.name);
+    if (audioInputIndex != -1) {
+        ui->audioInputCombo->setCurrentIndex(audioInputIndex);
+    }
+    else {
+        qDebug(logSystem()) << "Audio input not found";
+    }
+
+    int audioOutputIndex = ui->audioOutputCombo->findText(rxSetup.name);
+    if (audioOutputIndex != -1) {
+        ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
+    }
+    else {
+        qDebug(logSystem()) << "Audio output not found";
+    }
+
+    if (!serverConfig.rigs.isEmpty())
+
+    {
+        qInfo(logGui()) << "Got Server Audio Input: " << serverConfig.rigs.first()->rxAudioSetup.name;
+        int serverAudioInputIndex = ui->serverRXAudioInputCombo->findText(serverConfig.rigs.first()->rxAudioSetup.name);
+        if (serverAudioInputIndex != -1) {
+            ui->serverRXAudioInputCombo->setCurrentIndex(serverAudioInputIndex);
+        }
+
+        qInfo(logGui()) << "Got Server Audio Output: " << serverConfig.rigs.first()->txAudioSetup.name;
+        int serverAudioOutputIndex = ui->serverTXAudioOutputCombo->findText(serverConfig.rigs.first()->txAudioSetup.name);
+        if (serverAudioOutputIndex != -1) {
+            ui->serverTXAudioOutputCombo->setCurrentIndex(serverAudioOutputIndex);
+        }
+    }
+    // Set these to default audio devices initially.
+    qDebug(logSystem()) << "Audio devices done.";
+}
+
+void wfmain::on_audioSystemCombo_currentIndexChanged(int value) 
+{
+    prefs.audioSystem = static_cast<audioType>(value);
+    setAudioDevicesUI(); // Force all audio devices to update
 }

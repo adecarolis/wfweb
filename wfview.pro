@@ -16,18 +16,35 @@ DEFINES += WFVIEW_VERSION=\\\"1.2e\\\"
 DEFINES += BUILD_WFVIEW
 
 CONFIG(debug, release|debug) {
-# For Debug builds only:
-QMAKE_CXXFLAGS += -faligned-new
-WIN32:DESTDIR = wfview-release
+    # For Debug builds only:
+    QMAKE_CXXFLAGS += -faligned-new
+    win32:DESTDIR = wfview-release
+    win32:LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
 } else {
-# For Release builds only:
-linux:QMAKE_CXXFLAGS += -s
-QMAKE_CXXFLAGS += -fvisibility=hidden
-QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
-QMAKE_CXXFLAGS += -faligned-new
-linux:QMAKE_LFLAGS += -O2 -s
-WIN32:DESTDIR = wfview-debug
+    # For Release builds only:
+    linux:QMAKE_CXXFLAGS += -s
+    QMAKE_CXXFLAGS += -fvisibility=hidden
+    QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
+    QMAKE_CXXFLAGS += -faligned-new
+    linux:QMAKE_LFLAGS += -O2 -s
+    win32:DESTDIR = wfview-debug
+    win32:LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
 }
+
+# RTAudio defines
+win32:DEFINES += __WINDOWS_WASAPI__
+#win32:DEFINES += __WINDOWS_DS__ # Requires DirectSound libraries
+#linux:DEFINES += __LINUX_ALSA__
+#linux:DEFINES += __LINUX_OSS__
+linux:DEFINES += __LINUX_PULSE__
+macx:DEFINES += __MACOSX_CORE__
+win32:SOURCES += ../rtaudio/RTAudio.cpp
+win32:HEADERS += ../rtaudio/RTAUdio.h
+!linux:INCLUDEPATH += ../rtaudio
+linux:LIBS += -lpulse -lpulse-simple -lrtaudio -lpthread
+
+win32:INCLUDEPATH += ../portaudio/include
+!win32:LIBS += -lportaudio
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which as been marked as deprecated (the exact warnings
@@ -58,10 +75,6 @@ isEmpty(PREFIX) {
 }
 
 DEFINES += PREFIX=\\\"$$PREFIX\\\"
-
-# Choose audio system, uses QTMultimedia if both are commented out.
-# DEFINES += RTAUDIO
-# DEFINES += PORTAUDIO
 
 contains(DEFINES, RTAUDIO) {
 	# RTAudio defines
@@ -168,9 +181,15 @@ SOURCES += main.cpp\
     rigcommander.cpp \
     freqmemory.cpp \
     rigidentities.cpp \
+    udpbase.cpp \
     udphandler.cpp \
+    udpcivdata.cpp \
+    udpaudio.cpp \
     logcategories.cpp \
+    pahandler.cpp \
+    rthandler.cpp \
     audiohandler.cpp \
+    audioconverter.cpp \
     calibrationwindow.cpp \
     satellitesetup.cpp \
     udpserver.cpp \
@@ -192,9 +211,15 @@ HEADERS  += wfmain.h \
     rigcommander.h \
     freqmemory.h \
     rigidentities.h \
+    udpbase.h \
     udphandler.h \
+    udpcivdata.h \
+    udpaudio.h \
     logcategories.h \
+    pahandler.h \
+    rthandler.h \
     audiohandler.h \
+    audioconverter.h \
     calibrationwindow.h \
     satellitesetup.h \
     udpserver.h \

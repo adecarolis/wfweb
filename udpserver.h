@@ -70,9 +70,9 @@ struct RIGCONFIG {
 	rigCapabilities rigCaps;
 	rigCommander* rig = Q_NULLPTR;
 	QThread* rigThread = Q_NULLPTR;
-	audioHandler* rxaudio = Q_NULLPTR;
+	QObject* rxaudio = Q_NULLPTR;
 	QThread* rxAudioThread = Q_NULLPTR;
-	audioHandler* txaudio = Q_NULLPTR;
+	QObject* txaudio = Q_NULLPTR;
 	QThread* txAudioThread = Q_NULLPTR;
 	QTimer* rxAudioTimer = Q_NULLPTR;
 	QTimer* connectTimer = Q_NULLPTR;
@@ -99,7 +99,7 @@ class udpServer : public QObject
 	Q_OBJECT
 
 public:
-	udpServer(SERVERCONFIG* config);
+	explicit udpServer(SERVERCONFIG* config, QObject* parent = nullptr);
 	~udpServer();
 
 public slots:
@@ -217,7 +217,7 @@ private:
 	QList <CLIENT*> civClients = QList<CLIENT*>();
 	QList <CLIENT*> audioClients = QList<CLIENT*>();
 
-	QTime timeStarted;
+    //QTime timeStarted;
 
 
 	audioSetup outAudio;

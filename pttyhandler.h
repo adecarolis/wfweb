@@ -19,7 +19,7 @@ class pttyHandler : public QObject
     Q_OBJECT
 
 public:
-    pttyHandler(QString portName);
+    explicit pttyHandler(QString portName, QObject* parent = nullptr);
     pttyHandler(QString portName, quint32 baudRate);
     bool serialError;
 

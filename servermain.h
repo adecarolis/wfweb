@@ -30,6 +30,13 @@
 #include <deque>
 #include <memory>
 
+#include <portaudio.h>
+#ifdef Q_OS_WIN
+#include "RtAudio.h"
+#else
+#include "rtaudio/RtAudio.h"
+#endif
+
 namespace Ui {
 class wfmain;
 }
@@ -243,6 +250,7 @@ private:
         rigCapabilities rigCaps;
         bool haveRigCaps = false;
         quint16 tcpPort;
+        audioType audioSystem;
     } prefs;
 
     preferences defPrefs;
