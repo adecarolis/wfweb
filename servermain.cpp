@@ -497,8 +497,9 @@ void servermain::loadSettings()
         tempPrefs->baudRate = (quint32)settings->value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
         tempPrefs->rxAudioSetup.name = settings->value("AudioInput", "default").toString();
         tempPrefs->txAudioSetup.name = settings->value("AudioOutput", "default").toString();
+        tempPrefs->rxAudioSetup.type = prefs.audioSystem;
+        tempPrefs->txAudioSetup.type = prefs.audioSystem;
 
- 
         QString tempPort = "auto";
         if (tempPrefs->rigName=="<NONE>")
         {
