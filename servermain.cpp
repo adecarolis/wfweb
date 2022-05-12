@@ -463,9 +463,9 @@ void servermain::loadSettings()
 
         settings->beginGroup("Server");
         settings->setValue("ServerEnabled", true);
-        settings->setValue("ServerControlPort", serverConfig.controlPort);
-        settings->setValue("ServerCivPort", serverConfig.civPort);
-        settings->setValue("ServerAudioPort", serverConfig.audioPort);
+        settings->setValue("ServerControlPort", udpDefPrefs.controlLANPort);
+        settings->setValue("ServerCivPort", udpDefPrefs.serialLANPort);
+        settings->setValue("ServerAudioPort", udpDefPrefs.audioLANPort);
 
         settings->beginWriteArray("Users");
         settings->setArrayIndex(0);
