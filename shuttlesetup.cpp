@@ -39,6 +39,7 @@ void shuttleSetup::mousePressed(QPoint p)
         {
             found = true;
             currentButton = &b;
+            qDebug() << "Button" << currentButton->num << "On Event" << currentButton->onCommand->text << "Off Event" << currentButton->offCommand->text;
             // Add off event first so it doesn't obscure on event.
             if (offEventProxy == Q_NULLPTR) {
                 offEventProxy = scene->addWidget(&offEvent);
@@ -48,14 +49,14 @@ void shuttleSetup::mousePressed(QPoint p)
             }
             onEvent.blockSignals(true);
             onEvent.move(p);
-            onEvent.setCurrentIndex(currentButton->onEvent);
+            onEvent.setCurrentIndex(currentButton->onCommand->index);
             onEvent.show();
             onEvent.blockSignals(false);
 
             p.setY(p.y() + 40);
             offEvent.blockSignals(true);
             offEvent.move(p);
-            offEvent.setCurrentIndex(currentButton->offEvent);
+            offEvent.setCurrentIndex(currentButton->offCommand->index);
             offEvent.show();
             offEvent.blockSignals(false);
 
