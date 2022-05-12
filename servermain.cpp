@@ -591,6 +591,8 @@ void servermain::loadSettings()
                 info = audio->getDeviceInfo(i);
                 for (RIGCONFIG* rig : serverConfig.rigs)
                 {
+                    qDebug(logAudio()) << "Rig" << rig->rigName << "rxAudio device:" << rig->rxAudioSetup.name;
+                    qDebug(logAudio()) << "Rig" << rig->rigName << "txAudio device:" << rig->txAudioSetup.name;
                     if (info.outputChannels > 0)
                     {
                         qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name);
@@ -636,6 +638,8 @@ void servermain::loadSettings()
                 info = Pa_GetDeviceInfo(i);
                 for (RIGCONFIG* rig : serverConfig.rigs)
                 {
+                    qDebug(logAudio()) << "Rig" << rig->rigName << "rxAudio device:" << rig->rxAudioSetup.name;
+                    qDebug(logAudio()) << "Rig" << rig->rigName << "txAudio device:" << rig->txAudioSetup.name;
                     if (info->maxInputChannels > 0) {
                         qDebug(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Input Device : " << info->name;
 
@@ -663,6 +667,8 @@ void servermain::loadSettings()
                 qDebug(logSystem()) << "Found Audio input: " << deviceInfo.deviceName();
                 for (RIGCONFIG* rig : serverConfig.rigs)
                 {
+                    qDebug(logAudio()) << "Rig" << rig->rigName << "rxAudio device:" << rig->rxAudioSetup.name;
+                    qDebug(logAudio()) << "Rig" << rig->rigName << "txAudio device:" << rig->txAudioSetup.name;
                     if (deviceInfo.deviceName() == rig->rxAudioSetup.name
 #ifdef Q_OS_WIN
                         && deviceInfo.realm() == "wasapi"
