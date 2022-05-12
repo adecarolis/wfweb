@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QByteArray>
 #include <QThread>
+#include <QMutex>
 
 #ifdef Q_OS_WIN
 #include "RtAudio.h"
@@ -106,6 +107,7 @@ private:
     QByteArray arrayBuffer;    
     bool            isUnderrun = false;
     bool            isOverrun = true;
+    QMutex          audioMutex;
 };
 
 #endif // rtHandler_H

@@ -249,8 +249,11 @@ int rtHandler::readData(void* outputBuffer, void* inputBuffer,
 
 	//lastSentSeq = packet.seq;
 	if (arrayBuffer.length() >= nBytes) {
-		std::memcpy(outputBuffer, arrayBuffer.constData(), nBytes);
-		arrayBuffer.remove(0, nBytes);
+		if (audioMutex.tryLock(0)) {
+			std::memcpy(outputBuffer, arrayBuffer.constData(), nBytes);
+			arrayBuffer.remove(0, nBytes);
+			audioMutex.unlock();
+		}
 	}
 
 	if (status == RTAUDIO_INPUT_OVERFLOW) {
@@ -299,7 +302,9 @@ int rtHandler::writeData(void* outputBuffer, void* inputBuffer,
 
 void rtHandler::convertedOutput(audioPacket packet) 
 {
+	audioMutex.lock();
 	arrayBuffer.append(packet.data);
+	audioMutex.unlock();
 	amplitude = packet.amplitude;
 	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * (outFormat.sampleSize() / 8) * outFormat.channelCount()) * 1000);
 	emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
