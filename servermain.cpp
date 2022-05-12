@@ -639,14 +639,15 @@ void servermain::loadSettings()
                     if (info->maxInputChannels > 0) {
                         qDebug(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Input Device : " << info->name;
 
-                        if (rig->txAudioSetup.name == info->name) {
-                            rig->txAudioSetup.portInt = i;
+                        if (rig->rxAudioSetup.name == info->name) {
+                            qDebug(logAudio()) << "Rig" << rig->rigName << "Selected rxAudio device:" << QString(info->name);
+                            rig->rxAudioSetup.portInt = i;
                         }
                     }
                     if (info->maxOutputChannels > 0) {
-                        qDebug(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Output Device : " << info->name;
-                        if (rig->rxAudioSetup.name == info->name) {
-                            rig->rxAudioSetup.portInt = i;
+                        if (rig->txAudioSetup.name == info->name) {
+                            qDebug(logAudio()) << "Rig" << rig->rigName << "Selected txAudio device:" << QString(info->name);
+                            rig->txAudioSetup.portInt = i;
                         }
                     }
                 }
@@ -668,7 +669,7 @@ void servermain::loadSettings()
 #endif
                         )
                     {
-                        qDebug(logSystem()) << "Audio input: " << deviceInfo.deviceName();
+                        qDebug(logAudio()) << "Rig" << rig->rigName << "Selected rxAudio device:" << deviceInfo.deviceName();
                         rig->rxAudioSetup.port = deviceInfo;
                     }
                 }
@@ -685,7 +686,7 @@ void servermain::loadSettings()
 #endif
                         ) 
                     {
-                        qDebug(logSystem()) << "Audio output: " << deviceInfo.deviceName();
+                        qDebug(logAudio()) << "Rig" << rig->rigName << "Selected txAudio device:" << deviceInfo.deviceName();
                         rig->txAudioSetup.port = deviceInfo;
                     }
                 }
