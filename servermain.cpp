@@ -550,8 +550,8 @@ void servermain::loadSettings()
         case rtAudio:
         {
 #if defined(Q_OS_LINUX)
-//            RtAudio* audio = new RtAudio(RtAudio::Api::LINUX_ALSA);
-            RtAudio* audio = new RtAudio(RtAudio::Api::LINUX_PULSE);
+            RtAudio* audio = new RtAudio(RtAudio::Api::LINUX_ALSA);
+//            RtAudio* audio = new RtAudio(RtAudio::Api::LINUX_PULSE);
 #elif defined(Q_OS_WIN)
             RtAudio* audio = new RtAudio(RtAudio::Api::WINDOWS_WASAPI);
 #elif defined(Q_OS_MACX)
