@@ -596,6 +596,7 @@ void servermain::loadSettings()
                         qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name);
                         if (rig->txAudioSetup.name.toStdString() == info.name) {
                             rig->txAudioSetup.portInt = i;
+                            qDebug(logAudio()) << "Rig" << rig->rigName << "Selected txAudio device:" << QString(info.name.c_str());
                         }
                     }
                     if (info.inputChannels > 0)
@@ -603,6 +604,7 @@ void servermain::loadSettings()
                         qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name);
                         if (rig->rxAudioSetup.name.toStdString() == info.name) {
                             rig->rxAudioSetup.portInt = i;
+                            qDebug(logAudio()) << "Rig" << rig->rigName << "Selected rxAudio device:" << QString(info.name.c_str());
                         }
                     }
                 }
