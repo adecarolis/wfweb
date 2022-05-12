@@ -466,7 +466,7 @@ void wfmain::removeRig()
         rigThread->disconnect();
 
         rig->disconnect();
-
+        
         delete rigThread;
         delete rig;
         rig = Q_NULLPTR;

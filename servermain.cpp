@@ -498,6 +498,7 @@ void servermain::loadSettings()
         tempPrefs->rxAudioSetup.name = settings->value("AudioInput", "default").toString();
         tempPrefs->txAudioSetup.name = settings->value("AudioOutput", "default").toString();
 
+ 
         QString tempPort = "auto";
         if (tempPrefs->rigName=="<NONE>")
         {
