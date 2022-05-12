@@ -300,6 +300,7 @@ int rtHandler::writeData(void* outputBuffer, void* inputBuffer,
 void rtHandler::convertedOutput(audioPacket packet) 
 {
 	arrayBuffer.append(packet.data);
+	amplitude = packet.amplitude;
 	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * (outFormat.sampleSize() / 8) * outFormat.channelCount()) * 1000);
 	emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
 }
