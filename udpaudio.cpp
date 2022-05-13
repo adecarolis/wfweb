@@ -16,8 +16,20 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     init(lport); // Perform connection
 
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::dataReceived);
+    if (rxSetup.type == qtAudio) {
+        rxaudio = new audioHandler();
+    }
+    else if (rxSetup.type == portAudio) {
+        rxaudio = new paHandler();
+    }
+    else if (rxSetup.type == rtAudio) {
+        rxaudio = new rtHandler();
+    }
+    else
+    {
+        qCritical(logAudio()) << "Unsupported Receive Audio Handler selected!";
+    }
 
-    rxaudio = new audioHandler();
     rxAudioThread = new QThread(this);
     rxAudioThread->setObjectName("rxAudio()");
 
@@ -42,7 +54,20 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     pingTimer->start(PING_PERIOD); // send ping packets every 100ms
 
     if (enableTx) {
-        txaudio = new audioHandler();
+        if (txSetup.type == qtAudio) {
+            txaudio = new audioHandler();
+        }
+        else if (txSetup.type == portAudio) {
+            txaudio = new paHandler();
+        }
+        else if (txSetup.type == rtAudio) {
+            txaudio = new rtHandler();
+        }
+        else
+        {
+            qCritical(logAudio()) << "Unsupported Transmit Audio Handler selected!";
+        }
+
         txAudioThread = new QThread(this);
         rxAudioThread->setObjectName("txAudio()");
 
@@ -52,7 +77,7 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
         connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
         connect(txaudio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
-        connect(txaudio, SIGNAL(haveLevels(quint16, quint16, quint16, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, bool)));
+        connect(txaudio, SIGNAL(haveLevels(quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, bool, bool)));
 
         connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
         emit setupTxAudio(txSetup);

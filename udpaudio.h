@@ -28,6 +28,8 @@
 #include "udpbase.h"
 
 #include "audiohandler.h"
+#include "pahandler.h"
+#include "rthandler.h"
 
 
 // Class for all audio communications.
@@ -67,10 +69,10 @@ private:
 
 	uint16_t sendAudioSeq = 0;
 
-	audioHandler* rxaudio = Q_NULLPTR;
+	QObject* rxaudio = Q_NULLPTR;
 	QThread* rxAudioThread = Q_NULLPTR;
 
-	audioHandler* txaudio = Q_NULLPTR;
+	QObject* txaudio = Q_NULLPTR;
 	QThread* txAudioThread = Q_NULLPTR;
 
 	QTimer* txAudioTimer = Q_NULLPTR;

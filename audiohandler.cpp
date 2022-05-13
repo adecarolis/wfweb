@@ -330,7 +330,6 @@ void audioHandler::changeLatency(const quint16 newSize)
 	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Configured latency: " << setup.latency << "Buffer Duration:" << outFormat.durationForBytes(audioOutput->bufferSize())/1000 << "ms";
 
 }
-
 int audioHandler::getLatency()
 {
 	return currentLatency;

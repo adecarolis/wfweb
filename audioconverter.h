@@ -6,6 +6,7 @@
 #include <QMap>
 #include <QDebug>
 #include <QAudioFormat>
+#include <QAudioDeviceInfo>
 
 /* Opus and Eigen */
 #ifdef Q_OS_WIN
@@ -15,6 +16,8 @@
 #include "opus/opus.h"
 #include <eigen3/Eigen/Eigen>
 #endif
+
+enum audioType {qtAudio,portAudio,rtAudio};
 
 #include "resampler/speex_resampler.h"
 
@@ -28,6 +31,22 @@ struct audioPacket {
     quint8 guid[GUIDLEN];
     float amplitude;
     qreal volume = 1.0;
+};
+
+struct audioSetup {
+    audioType type;
+    QString name;
+    quint16 latency;
+    quint8 codec;
+    bool ulaw = false;
+    bool isinput;
+    quint32 sampleRate;
+    QAudioDeviceInfo port;
+    int portInt;
+    quint8 resampleQuality;
+    unsigned char localAFgain;
+    quint16 blockSize = 20; // Each 'block' of audio is 20ms long by default.
+    quint8 guid[GUIDLEN];
 };
 
 class audioConverter : public QObject
@@ -80,8 +99,8 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
 	0x80 Opus 2ch
 	*/
 
-	format.setByteOrder(QAudioFormat::LittleEndian);
-	format.setCodec("audio/pcm");
+    format.setByteOrder(QAudioFormat::LittleEndian);
+    format.setCodec("audio/pcm");
     format.setSampleRate(sampleRate);
 
 	if (codec == 0x01 || codec == 0x20) {

@@ -20,27 +20,6 @@
 #include <QAudioInput>
 #include <QIODevice>
 
-/* Current resampler code */
-#include "resampler/speex_resampler.h"
-
-/* Potential new resampler */
-//#include <r8bbase.h>
-//#include <CDSPResampler.h>
-
-
-/* Opus */
-#ifdef Q_OS_WIN
-#include "opus.h"
-#else
-#include "opus/opus.h"
-#endif
-
-/* Eigen */
-#ifndef Q_OS_WIN
-#include <eigen3/Eigen/Eigen>
-#else
-#include <Eigen/Eigen>
-#endif
 
 /* wfview Packet types */
 #include "packettypes.h"
@@ -56,20 +35,6 @@
 #define MULAW_BIAS 33
 #define MULAW_MAX 0x1fff
 
-
-struct audioSetup {
-    QString name;
-    quint16 latency;
-    quint8 codec;
-    bool ulaw = false;
-    bool isinput;
-    quint32 sampleRate;
-    QAudioDeviceInfo port;
-    quint8 resampleQuality;
-    unsigned char localAFgain;
-    quint16 blockSize=20; // Each 'block' of audio is 20ms long by default.
-    quint8 guid[GUIDLEN];
-};
 
 // For QtMultimedia, use a native QIODevice
 //class audioHandler : public QIODevice

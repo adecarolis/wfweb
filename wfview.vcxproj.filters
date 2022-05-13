@@ -47,7 +47,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\rtaudio\RTAudio.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="aboutbox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="audioconverter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="audiohandler.cpp">
@@ -69,6 +75,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="meter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pahandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pttyhandler.cpp">
@@ -95,6 +104,9 @@
     <ClCompile Include="rigidentities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="rthandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="satellitesetup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -107,6 +119,15 @@
     <ClCompile Include="transceiveradjustments.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="udpaudio.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="udpbase.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="udpcivdata.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="udphandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -116,26 +137,20 @@
     <ClCompile Include="wfmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="audioconverter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="udpbase.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="udpaudio.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="udpcivdata.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\rtaudio\RTAUdio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <QtMoc Include="aboutbox.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <ClInclude Include="resampler\arch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <QtMoc Include="audioconverter.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="audiohandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -160,6 +175,9 @@
     <ClInclude Include="packettypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <QtMoc Include="pahandler.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="pttyhandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -187,6 +205,9 @@
     <ClInclude Include="rigidentities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <QtMoc Include="rthandler.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="satellitesetup.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -202,6 +223,15 @@
     <QtMoc Include="transceiveradjustments.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="udpaudio.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <ClInclude Include="udpbase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <QtMoc Include="udpcivdata.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="udphandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -214,23 +244,71 @@
     <QtMoc Include="wfmain.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="audioconverter.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="udpcivdata.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="udpaudio.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
   </ItemGroup>
   <ItemGroup>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="aboutbox.ui">
@@ -387,11 +465,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include=".\wfview_resource.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="udpbase.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+    <ResourceCompile Include="C:\Users\Phil\source\repos\wfview\wfview_resource.rc" />
   </ItemGroup>
 </Project>

@@ -241,7 +241,8 @@ bool audioConverter::convert(audioPacket audio)
 
                 if (outFormat.sampleType() == QAudioFormat::UnSignedInt && outFormat.sampleSize() == 8)
                 {
-                    Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<quint8>::max());
+                    Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint8>::max());                    
+                    samplesITemp.array() += 127;
                     VectorXuint8 samplesI = samplesITemp.cast<quint8>();
                     audio.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(quint8)));
                 }
