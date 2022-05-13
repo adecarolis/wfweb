@@ -17,8 +17,7 @@
 // Copyright 2017-2021 Elliott H. Liggett
 
 // Smart pointer to log file
-QScopedPointer<QFile>   m_logFile;
-QMutex logMutex;
+QScopedPointer<QFile>   logFile;
 bool debugMode=false;
 
 #ifdef BUILD_WFSERVER
@@ -161,9 +160,9 @@ int main(int argc, char *argv[])
     }
 
     // Set the logging file before doing anything else.
-    m_logFile.reset(new QFile(logFilename));
+    logFile.reset(new QFile(logFilename));
     // Open the file logging
-    m_logFile.data()->open(QFile::WriteOnly | QFile::Truncate | QFile::Text);
+    logFile.data()->open(QFile::WriteOnly | QFile::Truncate | QFile::Text);
     // Set handler
     qInstallMessageHandler(messageHandler);
 
@@ -197,8 +196,9 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
     {
         return;
     }
-    QMutexLocker locker(&logMutex);
-    QTextStream out(m_logFile.data());
+    static QMutex mutex;
+    QMutexLocker locker(&mutex);
+    QTextStream out(logFile.data());
 
     // Write the date of recording
     out << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ");
