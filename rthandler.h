@@ -106,7 +106,7 @@ private:
     QThread* converterThread = Q_NULLPTR;
     QByteArray arrayBuffer;    
     bool            isUnderrun = false;
-    bool            isOverrun = true;
+    bool            isOverrun = false;
     QMutex          audioMutex;
 };
 

@@ -82,7 +82,7 @@ private:
 
 
     bool            isUnderrun = false;
-    bool            isOverrun = true;
+    bool            isOverrun = false;
     bool            isInitialized=false;
     bool            isReady = false;
     bool            audioBuffered = false;

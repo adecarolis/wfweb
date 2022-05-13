@@ -62,7 +62,7 @@ bool rtHandler::init(audioSetup setup)
 		", uLaw" << setup.ulaw;
 
 #if !defined(Q_OS_MACX)
-	//options.flags = !RTAUDIO_HOG_DEVICE | RTAUDIO_MINIMIZE_LATENCY;
+	options.flags = ((!RTAUDIO_HOG_DEVICE) | (RTAUDIO_MINIMIZE_LATENCY));
 	//options.flags = RTAUDIO_MINIMIZE_LATENCY;
 #endif
 
@@ -303,17 +303,18 @@ void rtHandler::convertedOutput(audioPacket packet)
 	arrayBuffer.append(packet.data);
 	audioMutex.unlock();
 	amplitude = packet.amplitude;
-	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * (outFormat.sampleSize() / 8) * outFormat.channelCount()) * 1000);
+	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * (outFormat.sampleSize() / 8) * outFormat.channelCount())/1000);
 	emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
 }
 
 
 
-void rtHandler::convertedInput(audioPacket audio)
+void rtHandler::convertedInput(audioPacket packet)
 {
-	if (audio.data.size() > 0) {
-		emit haveAudioData(audio);
-		amplitude = audio.amplitude;
+	if (packet.data.size() > 0) {
+		emit haveAudioData(packet);
+		amplitude = packet.amplitude;
+		currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * (outFormat.sampleSize() / 8) * outFormat.channelCount())/1000);
 		emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
 	}
 }
