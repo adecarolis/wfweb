@@ -76,6 +76,7 @@ struct RIGCONFIG {
 	QThread* txAudioThread = Q_NULLPTR;
 	QTimer* rxAudioTimer = Q_NULLPTR;
 	QTimer* connectTimer = Q_NULLPTR;
+	quint8 waterfallFormat;
 };
 
 
