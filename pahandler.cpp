@@ -38,7 +38,7 @@ bool paHandler::init(audioSetup setup)
 	this->setup = setup;
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "PortAudio handler starting:" << setup.name;
 
-	if (setup.portInt==-1)
+	if (setup.portInt == -1)
 	{
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "No audio device was found.";
 		return false;
@@ -82,7 +82,7 @@ bool paHandler::init(audioSetup setup)
 		outFormat.setChannelCount(info->maxOutputChannels);
 	}
 
-	aParams.suggestedLatency = (float)setup.latency/1000.0f;
+	aParams.suggestedLatency = (float)setup.latency / 1000.0f;
 	outFormat.setSampleRate(info->defaultSampleRate);
 	aParams.sampleFormat = paFloat32;
 	outFormat.setSampleSize(32);
@@ -90,11 +90,6 @@ bool paHandler::init(audioSetup setup)
 	outFormat.setByteOrder(QAudioFormat::LittleEndian);
 	outFormat.setCodec("audio/pcm");
 
-
-	if (!setup.isinput)
-	{
-		this->setVolume(setup.localAFgain);
-	}
 
 	if (outFormat.channelCount() > 2) {
 		outFormat.setChannelCount(2);
@@ -114,7 +109,7 @@ bool paHandler::init(audioSetup setup)
 	if (outFormat.sampleRate() < 44100) {
 		outFormat.setSampleRate(48000);
 	}
-	
+
 
 	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Selected format: SampleSize" << outFormat.sampleSize() << "Channel Count" << outFormat.channelCount() <<
 		"Sample Rate" << outFormat.sampleRate() << "Codec" << outFormat.codec() << "Sample Type" << outFormat.sampleType();
@@ -139,10 +134,59 @@ bool paHandler::init(audioSetup setup)
 	aParams.hostApiSpecificStreamInfo = NULL;
 
 	// Per channel chunk size.
-	this->chunkSize = (outFormat.bytesForDuration(setup.blockSize*1000)/sizeof(float))*outFormat.channelCount();
+	this->chunkSize = (outFormat.bytesForDuration(setup.blockSize * 1000) / sizeof(float)) * outFormat.channelCount();
+
+	// Check the format is supported
 
 
 	if (setup.isinput) {
+		err = Pa_IsFormatSupported(&aParams, NULL, outFormat.sampleRate());
+	}
+	else
+	{
+		err = Pa_IsFormatSupported(NULL,&aParams, outFormat.sampleRate());
+	}
+
+	if (err != paNoError) {
+		if (err == paInvalidChannelCount)
+		{
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported channel count" << aParams.channelCount;
+			if (aParams.channelCount == 2) {
+				aParams.channelCount = 1;
+				outFormat.setChannelCount(1);
+			}
+			else {
+				aParams.channelCount = 2;
+				outFormat.setChannelCount(2);
+			}
+		}
+		else if (err == paInvalidSampleRate)
+		{
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported sample rate" << outFormat.sampleRate();
+			outFormat.setSampleRate(44100);
+		}
+		else if (err == paSampleFormatNotSupported)
+		{
+			aParams.sampleFormat = paInt16;
+			outFormat.setSampleType(QAudioFormat::SignedInt);
+			outFormat.setSampleSize(16);
+		}
+
+		if (setup.isinput) {
+			err = Pa_IsFormatSupported(&aParams, NULL, outFormat.sampleRate());
+		}
+		else
+		{
+			err = Pa_IsFormatSupported(NULL, &aParams, outFormat.sampleRate());
+		}
+		if (err != paNoError) {
+			qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Cannot find suitable format, aborting:" << Pa_GetErrorText(err);
+			return false;
+		}
+	}
+
+	if (setup.isinput) {
+
 		err = Pa_OpenStream(&audio, &aParams, 0, outFormat.sampleRate(), this->chunkSize, paNoFlag, &paHandler::staticWrite, (void*)this);
 		emit setupConverter(outFormat, inFormat, 7, setup.resampleQuality);
 		connect(converter, SIGNAL(converted(audioPacket)), this, SLOT(convertedInput(audioPacket)));
