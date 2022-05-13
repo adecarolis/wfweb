@@ -164,6 +164,8 @@ bool paHandler::init(audioSetup setup)
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "failed to open device" << Pa_GetErrorText(err);
 	}
 
+	this->setVolume(setup.localAFgain);
+
 	return isInitialized;
 }
 
