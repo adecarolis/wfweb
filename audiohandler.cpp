@@ -61,10 +61,6 @@ audioHandler::~audioHandler()
 
 	inFormat = toQAudioFormat(setup.codec, setup.sampleRate);
 
-    if(!setup.isinput)
-    {
-        this->setVolume(setup.localAFgain);
-    }
 
 	outFormat = setup.port.preferredFormat();
 	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Preferred Format: SampleSize" << outFormat.sampleSize() << "Channel Count" << outFormat.channelCount() <<
@@ -170,6 +166,8 @@ audioHandler::~audioHandler()
 	underTimer = new QTimer();
 	underTimer->setSingleShot(true);
 	connect(underTimer, SIGNAL(timeout()), this, SLOT(clearUnderrun()));
+
+	this->setVolume(setup.localAFgain);
 
 	this->start();
 

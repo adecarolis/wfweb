@@ -215,10 +215,7 @@ bool rtHandler::init(audioSetup setup)
 		qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << QString::fromStdString(info.name) << "(" << aParams.deviceId << ") could not be probed, check audio configuration!";
 	}
 
-	if (!setup.isinput)
-	{
-		this->setVolume(setup.localAFgain);
-	}
+	this->setVolume(setup.localAFgain);
 
 	
 	return isInitialized;
