@@ -88,6 +88,8 @@ private:
     QAudioFormat     outFormat;
     audioConverter* converter = Q_NULLPTR;
     QThread* converterThread = Q_NULLPTR;
+    bool            isUnderrun = false;
+    bool            isOverrun = false;
 };
 
 #endif // PAHANDLER_H
