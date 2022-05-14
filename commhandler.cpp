@@ -88,7 +88,7 @@ void commHandler::receiveDataFromUserToRig(const QByteArray &data)
 void commHandler::sendDataOut(const QByteArray &writeData)
 {
     // Recycle port to attempt reconnection.
-    if (!this->isConnected || lastDataReceived.msecsTo(QTime::currentTime()) > 2000) {
+    if (lastDataReceived.msecsTo(QTime::currentTime()) > 2000) {
         qDebug(logSerial()) << "Serial port error? Attempting reconnect...";
         lastDataReceived = QTime::currentTime();
         QTimer::singleShot(500, this, SLOT(init()));
@@ -378,8 +378,11 @@ void commHandler::handleError(QSerialPort::SerialPortError err)
         case QSerialPort::NoError:
             break;
         default:
-            qDebug(logSerial()) << "Serial port" << port->portName() << "Error, attempting disconnect/reconnect";
-            QTimer::singleShot(500, this, SLOT(init()));
+            if (lastDataReceived.msecsTo(QTime::currentTime()) > 2000) {
+                qDebug(logSerial()) << "Serial port" << port->portName() << "Error, attempting disconnect/reconnect";
+                lastDataReceived = QTime::currentTime();
+                QTimer::singleShot(500, this, SLOT(init()));
+            }
             break;
     }
 }
