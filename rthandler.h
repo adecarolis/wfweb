@@ -25,14 +25,14 @@
 /* Logarithmic taper for volume control */
 #include "audiotaper.h"
 
-
+#include "audiohandler.h"
 /* Audio converter class*/
 #include "audioconverter.h"
 
 #include <QDebug>
 
 
-class rtHandler : public QObject
+class rtHandler : public audioHandler
 {
     Q_OBJECT
 
