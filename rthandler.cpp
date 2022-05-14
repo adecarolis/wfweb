@@ -41,7 +41,7 @@ bool rtHandler::init(audioSetup setup)
 	}
 
 	this->setup = setup;
-	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "PortAudio handler starting:" << setup.name;
+	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "RTAudio handler starting:" << setup.name;
 
 	if (setup.portInt==-1)
 	{
