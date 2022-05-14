@@ -40,7 +40,6 @@ commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat, QO
     // if they need to be changed later, please
     // destroy this and create a new one.
 
-    port = new QSerialPort();
 
     if (wfFormat == 1) { // Single waterfall packet
         combineWf = true;
@@ -55,6 +54,17 @@ commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat, QO
     this->portName = portName;
     this->PTTviaRTS = false;
 
+}
+
+void commHandler::init()
+{
+    if (port != Q_NULLPTR) {
+        delete port;
+        port = Q_NULLPTR;
+        isConnected = false;
+    }
+
+    port = new QSerialPort();
     setupComm(); // basic parameters
     openPort();
     // qInfo(logSerial()) << "Serial buffer size: " << port->readBufferSize();
@@ -62,8 +72,9 @@ commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat, QO
     //qInfo(logSerial()) << "Serial buffer size: " << port->readBufferSize();
 
     connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
+    connect(port, SIGNAL(error(QSerialPort::SerialPortError)), this, SLOT(handleError(QSerialPort::SerialPortError)));
+    lastDataReceived = QTime::currentTime();
 }
-
 
 commHandler::~commHandler()
 {
@@ -89,18 +100,16 @@ void commHandler::receiveDataFromUserToRig(const QByteArray &data)
 
 void commHandler::sendDataOut(const QByteArray &writeData)
 {
-    mutex.lock();
     // Recycle port to attempt reconnection.
     if (!this->isConnected || !port->isOpen() || lastDataReceived.msecsTo(QTime::currentTime()) > 2000) {
         qDebug(logSerial()) << "Serial port error? Attempting reconnect...";
-        closePort();
-        openPort();
-    }
-
-    if (!this->isConnected) {
-        mutex.unlock();
+        lastDataReceived = QTime::currentTime();
+        QTimer::singleShot(500, this, SLOT(init()));
         return;
     }
+
+    mutex.lock();
+
     qint64 bytesWritten;
 
     if(PTTviaRTS)
@@ -383,8 +392,7 @@ void commHandler::handleError(QSerialPort::SerialPortError err)
             break;
         default:
             qDebug(logSerial()) << "Serial port" << port->portName() << "Error, attempting disconnect/reconnect";
-            closePort();
-            openPort();
+            QTimer::singleShot(500, this, SLOT(init()));
             break;
     }
 }
