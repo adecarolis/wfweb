@@ -20,7 +20,7 @@ rtHandler::~rtHandler()
 			audio->abortStream();
 			audio->closeStream();
 		}
-		catch (RtAudioError& e) {
+        catch (RtAudioError& e) {
 			qInfo(logAudio()) << "Error closing stream:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
 		}
 		delete audio;
@@ -90,7 +90,7 @@ bool rtHandler::init(audioSetup setup)
 	try {
 		info = audio->getDeviceInfo(aParams.deviceId);
 	}
-	catch (RtAudioError& e) {
+    catch (RtAudioError e) {
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Device exception:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
 		goto errorHandler;
 	}

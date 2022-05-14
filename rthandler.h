@@ -6,7 +6,7 @@
 #include <QThread>
 #include <QMutex>
 
-#ifdef Q_OS_WIN
+#ifndef Q_OS_LINUX
 #include "RtAudio.h"
 #else
 #include "rtaudio/RtAudio.h"
