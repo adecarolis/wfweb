@@ -92,11 +92,7 @@ bool rtHandler::init(audioSetup setup)
 	}
 	catch (RtAudioError& e) {
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Device exception:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
-		if (retryConnectCount < 10) {
-			QTimer::singleShot(500, this, std::bind(&rtHandler::init, this, setup));
-			retryConnectCount++;
-		}
-		return isInitialized;
+		goto errorHandler;
 	}
 
 	if (info.probed)
@@ -110,7 +106,7 @@ bool rtHandler::init(audioSetup setup)
 		if (info.nativeFormats == 0)
 		{
 			qCritical(logAudio()) << "		No natively supported data formats!";
-			return false;
+			goto errorHandler;
 		}
 		else {
 			qDebug(logAudio()) << "		Supported formats:" <<
@@ -137,11 +133,7 @@ bool rtHandler::init(audioSetup setup)
 			else if (outFormat.channelCount() < 1)
 			{
 				qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "No channels found, aborting setup.";
-				if (retryConnectCount < 10) {
-					QTimer::singleShot(500, this, std::bind(&rtHandler::init, this, setup));
-					retryConnectCount++;
-					return false;
-				}
+				goto errorHandler;
 			}
 
 			aParams.nChannels = outFormat.channelCount();
@@ -170,7 +162,7 @@ bool rtHandler::init(audioSetup setup)
 			}
 			else {
 				qCritical(logAudio()) << "Cannot find supported sample format!";
-				return false;
+				goto errorHandler;
 			}
 		}
 
@@ -217,27 +209,32 @@ bool rtHandler::init(audioSetup setup)
 		catch (RtAudioError& e) {
 			qInfo(logAudio()) << "Error opening:" << QString::fromStdString(e.getMessage());
 			// Try again?
-			if (retryConnectCount < 10) {
-				QTimer::singleShot(500, this, std::bind(&rtHandler::init, this, setup));
-				retryConnectCount++;
-				return false;
-			}
+			goto errorHandler;
 		}
 	}
 	else
 	{
-		qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << QString::fromStdString(info.name) << "(" << aParams.deviceId << ") could not be probed, check audio configuration!";
-		if (retryConnectCount < 10) {
-			QTimer::singleShot(500, this, std::bind(&rtHandler::init, this, setup));
-			retryConnectCount++;
-			return false;
-		}
+		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << QString::fromStdString(info.name) << "(" << aParams.deviceId << ") could not be probed, check audio configuration!";
+		goto errorHandler;
 	}
 
 	this->setVolume(setup.localAFgain);
 
 	
 	return isInitialized;
+
+errorHandler:
+	if (retryConnectCount < 10) {
+		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "*** Attempting to reconnect to audio device in 500ms";
+		QTimer::singleShot(500, this, std::bind(&rtHandler::init, this, setup));
+		retryConnectCount++;
+	}
+	else
+	{
+		qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "*** Retry count exceeded, giving up!";
+	}
+	return false;
+
 }
 
 
