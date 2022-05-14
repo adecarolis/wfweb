@@ -30,6 +30,7 @@ commHandler::commHandler(QObject* parent) : QObject(parent)
 
     connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
     connect(port, SIGNAL(error(QSerialPort::SerialPortError)), this, SLOT(handleError(QSerialPort::SerialPortError)));
+    lastDataReceived = QTime::currentTime();
 }
 
 commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat, QObject* parent) : QObject(parent)
@@ -90,7 +91,8 @@ void commHandler::sendDataOut(const QByteArray &writeData)
 {
     mutex.lock();
     // Recycle port to attempt reconnection.
-    if (!this->isConnected || !port->isOpen()) {
+    if (!this->isConnected || !port->isOpen() || lastDataReceived.msecsTo(QTime::currentTime()) > 2000) {
+        qDebug(logSerial()) << "Serial port error? Attempting reconnect...";
         closePort();
         openPort();
     }
@@ -164,6 +166,7 @@ void commHandler::receiveDataIn()
     // because we know what constitutes a valid "frame" of data.
 
     // new code:
+    lastDataReceived = QTime::currentTime();
     port->startTransaction();
     inPortData = port->readAll();
 

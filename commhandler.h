@@ -6,6 +6,7 @@
 #include <QMutex>
 #include <QDataStream>
 #include <QtSerialPort/QSerialPort>
+#include <QTime>
 
 // This class abstracts the comm port in a useful way and connects to
 // the command creator and command parser.
@@ -83,6 +84,7 @@ private:
     quint8 spectrumInformation;
     quint8 spectrumOutOfRange;
     quint8 lastSpectrum = 0;
+    QTime lastDataReceived;
 };
 
 #endif // COMMHANDLER_H
