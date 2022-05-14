@@ -16,6 +16,7 @@
 #include <QAudioFormat>
 #include <QTime>
 #include <QMap>
+#include <QTimer>
 
 
 /* wfview Packet types */
@@ -108,6 +109,7 @@ private:
     bool            isUnderrun = false;
     bool            isOverrun = false;
     QMutex          audioMutex;
+    int             retryConnectCount = 0;
 };
 
 #endif // rtHandler_H

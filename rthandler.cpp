@@ -208,6 +208,12 @@ bool rtHandler::init(audioSetup setup)
 		}
 		catch (RtAudioError& e) {
 			qInfo(logAudio()) << "Error opening:" << QString::fromStdString(e.getMessage());
+			// Try again?
+			if (retryConnectCount < 10) {
+				QTimer::singleShot(500, this, std::bind(&rtHandler::init, this, setup));
+				retryConnectCount++;
+				return false;
+			}
 		}
 	}
 	else
