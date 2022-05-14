@@ -43,28 +43,28 @@ class audioHandler : public QObject
     Q_OBJECT
 
 public:
-    explicit audioHandler(QObject* parent = nullptr);
-    ~audioHandler();
+    audioHandler(QObject* parent = nullptr);
+    virtual ~audioHandler();
 
-    int getLatency();
+    virtual int getLatency();
 
-    void start();
-    void stop();
+    virtual void start();
+    virtual void stop();
 
-    quint16 getAmplitude();
+    virtual quint16 getAmplitude();
 
 public slots:
-    bool init(audioSetup setup);
-    void changeLatency(const quint16 newSize);
-    void setVolume(unsigned char volume);
-    void incomingAudio(const audioPacket data);
-    void convertedInput(audioPacket audio);
-    void convertedOutput(audioPacket audio);
+    virtual bool init(audioSetup setup);
+    virtual void changeLatency(const quint16 newSize);
+    virtual void setVolume(unsigned char volume);
+    virtual void incomingAudio(const audioPacket data);
+    virtual void convertedInput(audioPacket audio);
+    virtual void convertedOutput(audioPacket audio);
 
 private slots:
-    void stateChanged(QAudio::State state);
-    void clearUnderrun();    
-    void getNextAudioChunk();
+    virtual void stateChanged(QAudio::State state);
+    virtual void clearUnderrun();    
+    virtual void getNextAudioChunk();
 
 signals:
     void audioMessage(QString message);
