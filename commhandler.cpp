@@ -53,6 +53,7 @@ commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat, QO
     stopbits = 1;
     this->portName = portName;
     this->PTTviaRTS = false;
+    init();
 
 }
 
