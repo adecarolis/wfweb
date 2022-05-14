@@ -334,5 +334,5 @@ int rtHandler::getLatency()
 
 quint16 rtHandler::getAmplitude()
 {
-	return amplitude;
+	return static_cast<quint16>(amplitude * 255.0);
 }

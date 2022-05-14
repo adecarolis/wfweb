@@ -313,5 +313,5 @@ int paHandler::getLatency()
 
 quint16 paHandler::getAmplitude()
 {
-	return amplitude;
+	return static_cast<quint16>(amplitude * 255.0);
 }

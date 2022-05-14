@@ -96,7 +96,7 @@ private:
     quint32         lastSentSeq = 0;
 
     quint16 currentLatency;
-    quint16 amplitude = 0;
+    float amplitude = 0.0;
     qreal volume = 1.0;
 
     audioSetup setup;
