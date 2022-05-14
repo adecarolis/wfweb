@@ -25,6 +25,7 @@ public:
 public slots:
     void setUseRTSforPTT(bool useRTS);
     void setRTS(bool rtsOn);
+    void handleError(QSerialPort::SerialPortError error);
 
 private slots:
     void receiveDataIn(); // from physical port

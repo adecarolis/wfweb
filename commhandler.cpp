@@ -29,6 +29,7 @@ commHandler::commHandler(QObject* parent) : QObject(parent)
     //qInfo(logSerial()) << "Serial buffer size: " << port->readBufferSize();
 
     connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
+    connect(port, SIGNAL(error(QSerialPort::SerialPortError)), this, SLOT(handleError(QSerialPort::SerialPortError)));
 }
 
 commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat, QObject* parent) : QObject(parent)
@@ -143,7 +144,7 @@ void commHandler::sendDataOut(const QByteArray &writeData)
     }
 
     bytesWritten = port->write(writeData);
-
+    
     if(bytesWritten != (qint64)writeData.size())
     {
     qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
@@ -371,3 +372,15 @@ void commHandler::printHex(const QByteArray &pdata, bool printVert, bool printHo
 }
 
 
+void commHandler::handleError(QSerialPort::SerialPortError err)
+{
+    switch (err) {
+        case QSerialPort::NoError:
+            break;
+        default:
+            qDebug(logSerial()) << "Serial port" << port->portName() << "Error, attempting disconnect/reconnect";
+            closePort();
+            openPort();
+            break;
+    }
+}
