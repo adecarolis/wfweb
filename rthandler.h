@@ -6,7 +6,7 @@
 #include <QThread>
 #include <QMutex>
 
-#ifdef Q_OS_WIN
+#ifndef Q_OS_LINUX
 #include "RtAudio.h"
 #else
 #include "rtaudio/RtAudio.h"
@@ -25,14 +25,14 @@
 /* Logarithmic taper for volume control */
 #include "audiotaper.h"
 
-
+#include "audiohandler.h"
 /* Audio converter class*/
 #include "audioconverter.h"
 
 #include <QDebug>
 
 
-class rtHandler : public QObject
+class rtHandler : public audioHandler
 {
     Q_OBJECT
 

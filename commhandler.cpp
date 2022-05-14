@@ -8,12 +8,6 @@
 commHandler::commHandler(QObject* parent) : QObject(parent)
 {
     //constructor
-    // grab baud rate and other comm port details
-    // if they need to be changed later, please
-    // destroy this and create a new one.
-    port = new QSerialPort();
-
-
     // TODO: The following should become arguments and/or functions
     // Add signal/slot everywhere for comm port setup.
     // Consider how to "re-setup" and how to save the state for next time.
@@ -22,13 +16,7 @@ commHandler::commHandler(QObject* parent) : QObject(parent)
     portName = "/dev/ttyUSB0";
     this->PTTviaRTS = false;
 
-    setupComm(); // basic parameters
-    openPort();
-    //qInfo(logSerial()) << "Serial buffer size: " << port->readBufferSize();
-    //port->setReadBufferSize(1024); // manually. 256 never saw any return from the radio. why...
-    //qInfo(logSerial()) << "Serial buffer size: " << port->readBufferSize();
-
-    connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
+    init();
 }
 
 commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat, QObject* parent) : QObject(parent)
@@ -38,7 +26,6 @@ commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat, QO
     // if they need to be changed later, please
     // destroy this and create a new one.
 
-    port = new QSerialPort();
 
     if (wfFormat == 1) { // Single waterfall packet
         combineWf = true;
@@ -52,7 +39,19 @@ commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat, QO
     stopbits = 1;
     this->portName = portName;
     this->PTTviaRTS = false;
+    init();
 
+}
+
+void commHandler::init()
+{
+    if (port != Q_NULLPTR) {
+        delete port;
+        port = Q_NULLPTR;
+        isConnected = false;
+    }
+
+    port = new QSerialPort();
     setupComm(); // basic parameters
     openPort();
     // qInfo(logSerial()) << "Serial buffer size: " << port->readBufferSize();
@@ -60,8 +59,9 @@ commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat, QO
     //qInfo(logSerial()) << "Serial buffer size: " << port->readBufferSize();
 
     connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
+    connect(port, SIGNAL(error(QSerialPort::SerialPortError)), this, SLOT(handleError(QSerialPort::SerialPortError)));
+    lastDataReceived = QTime::currentTime();
 }
-
 
 commHandler::~commHandler()
 {
@@ -87,16 +87,16 @@ void commHandler::receiveDataFromUserToRig(const QByteArray &data)
 
 void commHandler::sendDataOut(const QByteArray &writeData)
 {
-    mutex.lock();
     // Recycle port to attempt reconnection.
-    if (!this->isConnected) {
-        closePort();
-        openPort();
-    }
-
-    if (!this->isConnected) {
+    if (lastDataReceived.msecsTo(QTime::currentTime()) > 2000) {
+        qDebug(logSerial()) << "Serial port error? Attempting reconnect...";
+        lastDataReceived = QTime::currentTime();
+        QTimer::singleShot(500, this, SLOT(init()));
         return;
     }
+
+    mutex.lock();
+
     qint64 bytesWritten;
 
     if(PTTviaRTS)
@@ -143,7 +143,7 @@ void commHandler::sendDataOut(const QByteArray &writeData)
     }
 
     bytesWritten = port->write(writeData);
-
+    
     if(bytesWritten != (qint64)writeData.size())
     {
     qDebug(logSerial()) << "bytesWritten: " << bytesWritten << " length of byte array: " << writeData.length()\
@@ -162,6 +162,7 @@ void commHandler::receiveDataIn()
     // because we know what constitutes a valid "frame" of data.
 
     // new code:
+    lastDataReceived = QTime::currentTime();
     port->startTransaction();
     inPortData = port->readAll();
 
@@ -371,3 +372,17 @@ void commHandler::printHex(const QByteArray &pdata, bool printVert, bool printHo
 }
 
 
+void commHandler::handleError(QSerialPort::SerialPortError err)
+{
+    switch (err) {
+        case QSerialPort::NoError:
+            break;
+        default:
+            if (lastDataReceived.msecsTo(QTime::currentTime()) > 2000) {
+                qDebug(logSerial()) << "Serial port" << port->portName() << "Error, attempting disconnect/reconnect";
+                lastDataReceived = QTime::currentTime();
+                QTimer::singleShot(500, this, SLOT(init()));
+            }
+            break;
+    }
+}
