@@ -133,7 +133,11 @@ bool rtHandler::init(audioSetup setup)
 			else if (outFormat.channelCount() < 1)
 			{
 				qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "No channels found, aborting setup.";
-				return false;
+				if (retryConnectCount < 10) {
+					QTimer::singleShot(500, this, std::bind(&rtHandler::init, this, setup));
+					retryConnectCount++;
+					return false;
+				}
 			}
 
 			aParams.nChannels = outFormat.channelCount();
