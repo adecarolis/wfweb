@@ -91,7 +91,7 @@ bool rtHandler::init(audioSetup setup)
 		info = audio->getDeviceInfo(aParams.deviceId);
 	}
 	catch (RtAudioError& e) {
-		qInfo(logAudio()) << "Device error:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
+		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Device exception:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
 		if (retryConnectCount < 10) {
 			QTimer::singleShot(500, this, std::bind(&rtHandler::init, this, setup));
 			retryConnectCount++;
