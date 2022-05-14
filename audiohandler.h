@@ -113,7 +113,7 @@ private:
     volatile bool ready = false;
     audioPacket tempBuf;
     quint16 currentLatency;
-    float amplitude;
+    float amplitude=0.0;
     qreal volume = 1.0;
 
     audioSetup setup;
