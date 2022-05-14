@@ -219,6 +219,11 @@ bool rtHandler::init(audioSetup setup)
 	else
 	{
 		qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << QString::fromStdString(info.name) << "(" << aParams.deviceId << ") could not be probed, check audio configuration!";
+		if (retryConnectCount < 10) {
+			QTimer::singleShot(500, this, std::bind(&rtHandler::init, this, setup));
+			retryConnectCount++;
+			return false;
+		}
 	}
 
 	this->setVolume(setup.localAFgain);
