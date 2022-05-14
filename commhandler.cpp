@@ -90,7 +90,7 @@ void commHandler::sendDataOut(const QByteArray &writeData)
 {
     mutex.lock();
     // Recycle port to attempt reconnection.
-    if (!this->isConnected) {
+    if (!this->isConnected || !port->isOpen()) {
         closePort();
         openPort();
     }
