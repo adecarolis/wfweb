@@ -96,6 +96,7 @@ void commHandler::sendDataOut(const QByteArray &writeData)
     }
 
     if (!this->isConnected) {
+        mutex.unlock();
         return;
     }
     qint64 bytesWritten;
