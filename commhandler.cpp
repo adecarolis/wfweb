@@ -8,12 +8,6 @@
 commHandler::commHandler(QObject* parent) : QObject(parent)
 {
     //constructor
-    // grab baud rate and other comm port details
-    // if they need to be changed later, please
-    // destroy this and create a new one.
-    port = new QSerialPort();
-
-
     // TODO: The following should become arguments and/or functions
     // Add signal/slot everywhere for comm port setup.
     // Consider how to "re-setup" and how to save the state for next time.
@@ -22,15 +16,7 @@ commHandler::commHandler(QObject* parent) : QObject(parent)
     portName = "/dev/ttyUSB0";
     this->PTTviaRTS = false;
 
-    setupComm(); // basic parameters
-    openPort();
-    //qInfo(logSerial()) << "Serial buffer size: " << port->readBufferSize();
-    //port->setReadBufferSize(1024); // manually. 256 never saw any return from the radio. why...
-    //qInfo(logSerial()) << "Serial buffer size: " << port->readBufferSize();
-
-    connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
-    connect(port, SIGNAL(error(QSerialPort::SerialPortError)), this, SLOT(handleError(QSerialPort::SerialPortError)));
-    lastDataReceived = QTime::currentTime();
+    init();
 }
 
 commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat, QObject* parent) : QObject(parent)
