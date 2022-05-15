@@ -70,12 +70,13 @@ struct RIGCONFIG {
 	rigCapabilities rigCaps;
 	rigCommander* rig = Q_NULLPTR;
 	QThread* rigThread = Q_NULLPTR;
-	QObject* rxaudio = Q_NULLPTR;
+	audioHandler* rxaudio = Q_NULLPTR;
 	QThread* rxAudioThread = Q_NULLPTR;
-	QObject* txaudio = Q_NULLPTR;
+	audioHandler* txaudio = Q_NULLPTR;
 	QThread* txAudioThread = Q_NULLPTR;
 	QTimer* rxAudioTimer = Q_NULLPTR;
 	QTimer* connectTimer = Q_NULLPTR;
+	quint8 waterfallFormat;
 };
 
 

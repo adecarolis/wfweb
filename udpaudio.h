@@ -69,10 +69,10 @@ private:
 
 	uint16_t sendAudioSeq = 0;
 
-	QObject* rxaudio = Q_NULLPTR;
+	audioHandler* rxaudio = Q_NULLPTR;
 	QThread* rxAudioThread = Q_NULLPTR;
 
-	QObject* txaudio = Q_NULLPTR;
+	audioHandler* txaudio = Q_NULLPTR;
 	QThread* txAudioThread = Q_NULLPTR;
 
 	QTimer* txAudioTimer = Q_NULLPTR;

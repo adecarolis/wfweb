@@ -395,13 +395,13 @@ void udpServer::controlReceived()
                     connect(radio->txAudioThread, SIGNAL(finished()), radio->txaudio, SLOT(deleteLater()));
 
                     // Not sure how we make this work in QT5.9?
-#if (QT_VERSION >= QT_VERSION_CHECK(7,10,0))
-                    QMetaObject::invokeMethod((audioHandler*)radio->txaudio, [=]() {
+#if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
+                    QMetaObject::invokeMethod(radio->txaudio, [=]() {
                         radio->txaudio->init(radio->txAudioSetup);
                     }, Qt::QueuedConnection);
 #else
                     emit setupTxAudio(radio->txAudioSetup);
-                    //#warning "QT 5.9 is not fully supported multiple rigs will NOT work!"
+                    #warning "QT 5.9 is not fully supported multiple rigs will NOT work!"
 #endif
                     hasTxAudio = datagram.senderAddress();
 
@@ -442,7 +442,7 @@ void udpServer::controlReceived()
                     connect(radio->rxAudioThread, SIGNAL(finished()), radio->rxaudio, SLOT(deleteLater()));
                     connect(radio->rxaudio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
 
-#if (QT_VERSION >= QT_VERSION_CHECK(7,10,0))
+#if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
                     QMetaObject::invokeMethod(radio->rxaudio, [=]() {
                         radio->rxaudio->init(radio->rxAudioSetup);
                     }, Qt::QueuedConnection);

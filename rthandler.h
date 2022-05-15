@@ -6,7 +6,7 @@
 #include <QThread>
 #include <QMutex>
 
-#ifdef Q_OS_WIN
+#ifndef Q_OS_LINUX
 #include "RtAudio.h"
 #else
 #include "rtaudio/RtAudio.h"
@@ -16,6 +16,7 @@
 #include <QAudioFormat>
 #include <QTime>
 #include <QMap>
+#include <QTimer>
 
 
 /* wfview Packet types */
@@ -24,14 +25,14 @@
 /* Logarithmic taper for volume control */
 #include "audiotaper.h"
 
-
+#include "audiohandler.h"
 /* Audio converter class*/
 #include "audioconverter.h"
 
 #include <QDebug>
 
 
-class rtHandler : public QObject
+class rtHandler : public audioHandler
 {
     Q_OBJECT
 
@@ -96,7 +97,7 @@ private:
     quint32         lastSentSeq = 0;
 
     quint16 currentLatency;
-    quint16 amplitude = 0;
+    float amplitude = 0.0;
     qreal volume = 1.0;
 
     audioSetup setup;
@@ -106,8 +107,9 @@ private:
     QThread* converterThread = Q_NULLPTR;
     QByteArray arrayBuffer;    
     bool            isUnderrun = false;
-    bool            isOverrun = true;
+    bool            isOverrun = false;
     QMutex          audioMutex;
+    int             retryConnectCount = 0;
 };
 
 #endif // rtHandler_H

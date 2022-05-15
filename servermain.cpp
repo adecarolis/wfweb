@@ -89,7 +89,7 @@ void servermain::openRig()
         {
             //qInfo(logSystem()) << "Got rig";
             QMetaObject::invokeMethod(radio->rig, [=]() {
-                radio->rig->commSetup(radio->civAddr, radio->serialPort, radio->baudRate, QString("none"),prefs.tcpPort,0);
+                radio->rig->commSetup(radio->civAddr, radio->serialPort, radio->baudRate, QString("none"),prefs.tcpPort,radio->waterfallFormat);
             }, Qt::QueuedConnection);
         }
     }
@@ -458,6 +458,7 @@ void servermain::loadSettings()
             settings->setValue("SerialPortBaud", defPrefs.serialPortBaud);
             settings->setValue("AudioInput", "default");
             settings->setValue("AudioOutput", "default");
+            settings->setValue("WaterfallFormat", 0);
         }
         settings->endArray();
 
@@ -497,6 +498,7 @@ void servermain::loadSettings()
         tempPrefs->baudRate = (quint32)settings->value("SerialPortBaud", defPrefs.serialPortBaud).toInt();
         tempPrefs->rxAudioSetup.name = settings->value("AudioInput", "default").toString();
         tempPrefs->txAudioSetup.name = settings->value("AudioOutput", "default").toString();
+        tempPrefs->waterfallFormat = settings->value("WaterfallFormat", 0).toInt();
         tempPrefs->rxAudioSetup.type = prefs.audioSystem;
         tempPrefs->txAudioSetup.type = prefs.audioSystem;
 
