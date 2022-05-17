@@ -1265,8 +1265,10 @@ void wfmain::setupUsbControllerDevice()
     connect(usbControllerDev, SIGNAL(button(const COMMAND*)), this, SLOT(buttonControl(const COMMAND*)));
     connect(usbControllerDev, SIGNAL(setBand(int)), this, SLOT(setBand(int)));
     connect(this, SIGNAL(shuttleLed(bool, unsigned char)), usbControllerDev, SLOT(ledControl(bool, unsigned char)));
-    connect(usbControllerDev, SIGNAL(newDevice(unsigned char, QVector<BUTTON>*, QVector<COMMAND>*)), shut, SLOT(newDevice(unsigned char, QVector<BUTTON>*,QVector<COMMAND>*)));
+    connect(usbControllerDev, SIGNAL(newDevice(unsigned char, QVector<BUTTON>*, QVector<COMMAND>*)), shut, SLOT(newDevice(unsigned char, QVector<BUTTON>*, QVector<COMMAND>*)));
+    connect(shut, SIGNAL(setButtonCommand(QString, BUTTON*)), this, SLOT(getButtonCommand(QString, BUTTON*)));
     usbControllerThread->start(QThread::LowestPriority);
+
 }
 
 void wfmain::pttToggle(bool status)
@@ -1745,6 +1747,51 @@ void wfmain::loadSettings()
     settings->endArray();
     settings->endGroup();
 
+    /* Load USB buttons*/
+    settings->beginGroup("USB");
+    size=settings->beginReadArray("Buttons");
+    if (size == 0) {
+        settings->endArray();
+        // We have no buttons so create defaults
+        usbCommands.append(COMMAND(0, "None", cmdNone, 0x0));
+        usbCommands.append(COMMAND(1, "PTT On", cmdSetPTT, 0x1));
+        usbCommands.append(COMMAND(2, "PTT Off", cmdSetPTT, 0x0));
+        usbCommands.append(COMMAND(3, "PTT Toggle", cmdSetPTT, 0x1));
+        usbCommands.append(COMMAND(4, "Tune", cmdNone, 0x0));
+        usbCommands.append(COMMAND(5, "Step+", cmdNone, 0x0));
+        usbCommands.append(COMMAND(6, "Step-", cmdNone, 0x0));
+        usbCommands.append(COMMAND(7, "Mode+", cmdNone, 0x0));
+        usbCommands.append(COMMAND(8, "Mode-", cmdNone, 0x0));
+        usbCommands.append(COMMAND(9, "Band+", cmdNone, 0x0));
+        usbCommands.append(COMMAND(10, "Band-", cmdNone, 0x0));
+        usbCommands.append(COMMAND(9, "NR", cmdNone, 0x0));
+        usbCommands.append(COMMAND(10, "NB", cmdNone, 0x0));
+        usbCommands.append(COMMAND(11, "AGC", cmdNone, 0x0));
+        usbCommands.append(COMMAND(12, "NB", cmdNone, 0x0));
+        usbCommands.append(COMMAND(14, "23cm", cmdGetBandStackReg, band23cm));
+        usbCommands.append(COMMAND(15, "70cm", cmdGetBandStackReg, band70cm));
+        usbCommands.append(COMMAND(16, "2m", cmdGetBandStackReg, band2m));
+        usbCommands.append(COMMAND(17, "AIR", cmdGetBandStackReg, bandAir));
+        usbCommands.append(COMMAND(18, "WFM", cmdGetBandStackReg, bandWFM));
+        usbCommands.append(COMMAND(19, "4m", cmdGetBandStackReg, band4m));
+        usbCommands.append(COMMAND(20, "6m", cmdGetBandStackReg, band6m));
+        usbCommands.append(COMMAND(21, "10m", cmdGetBandStackReg, band10m));
+        usbCommands.append(COMMAND(22, "12m", cmdGetBandStackReg, band12m));
+        usbCommands.append(COMMAND(23, "15m", cmdGetBandStackReg, band15m));
+        usbCommands.append(COMMAND(24, "17m", cmdGetBandStackReg, band17m));
+        usbCommands.append(COMMAND(25, "20m", cmdGetBandStackReg, band20m));
+        usbCommands.append(COMMAND(26, "30m", cmdGetBandStackReg, band30m));
+        usbCommands.append(COMMAND(27, "40m", cmdGetBandStackReg, band40m));
+        usbCommands.append(COMMAND(28, "60m", cmdGetBandStackReg, band60m));
+        usbCommands.append(COMMAND(29, "80m", cmdGetBandStackReg, band80m));
+        usbCommands.append(COMMAND(30, "160m", cmdGetBandStackReg, band160m));
+        usbCommands.append(COMMAND(31, "630m", cmdGetBandStackReg, band630m));
+        usbCommands.append(COMMAND(32, "2200m", cmdGetBandStackReg, band2200m));
+        usbCommands.append(COMMAND(33, "GEN", cmdGetBandStackReg, bandGen));
+    }
+
+    settings->endGroup();
+
 }
 
 void wfmain::serverAddUserLine(const QString& user, const QString& pass, const int& type)
@@ -1965,7 +2012,7 @@ void wfmain::saveSettings()
     settings->beginWriteArray("Channel", (int)mem.getNumPresets());
 
     preset_kind temp;
-    for(int i=0; i < (int)mem.getNumPresets(); i++)
+    for (int i = 0; i < (int)mem.getNumPresets(); i++)
     {
         temp = mem.getPreset((int)i);
         settings->setArrayIndex(i);
@@ -2058,6 +2105,25 @@ void wfmain::saveSettings()
     settings->endArray();
     qInfo() << "Server config stored";
 
+    settings->endGroup();
+
+    settings->beginGroup("USB");
+    settings->beginGroup(usbDeviceName);
+    settings->beginWriteArray("Buttons");
+
+    QHashIterator<quint8, BUTTON*> i(usbButtons);
+    int count = 0;
+    while (i.hasNext()) {
+        i.next();
+        settings->setArrayIndex(count++);
+        settings->setValue("Number", i.value()->num);
+        settings->setValue("OnCommand", i.value()->onCommand->text);
+        settings->setValue("OffCommand", i.value()->offCommand->text);
+    }
+
+    settings->endArray();
+
+    settings->endGroup();
     settings->endGroup();
 
 
@@ -6141,4 +6207,34 @@ void wfmain::on_audioSystemCombo_currentIndexChanged(int value)
 {
     prefs.audioSystem = static_cast<audioType>(value);
     setAudioDevicesUI(); // Force all audio devices to update
+}
+
+void wfmain::on_usbControllerBtn_clicked() 
+{
+    if (shut != Q_NULLPTR) {
+        if (shut->isVisible()) {
+            shut->hide();
+        }
+        else {
+            shut->show();
+        }
+    }
+}
+
+
+void wfmain::getButtonCommand(QString device, BUTTON* but)
+{
+    if (device != usbDeviceName) {
+        // New or unknown device?
+        usbDeviceName = device;
+        qDebug(logUsbControl()) << "New controller:" << device;
+        usbButtons.clear();
+    }
+    qDebug(logUsbControl()) << "Adding" << "Commands for" << device << "button" << but->num << "onCommand" << but->onCommand->text << "offCommand" << but->offCommand->text;
+    usbButtons.insert(but->num, but);
+}
+
+void wfmain::updateUsbButtons()
+{
+
 }

@@ -107,12 +107,15 @@ void shuttleSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVecto
     switch (devType) {
         case shuttleXpress:
             image.load(":/resources/shuttlexpress.png");
+            deviceName = "shuttleXpress";
             break;
         case shuttlePro2:
             image.load(":/resources/shuttlepro.png");
+            deviceName = "shuttlePro2";
             break;
         case RC28:
             image.load(":/resources/rc28.png");
+            deviceName = "RC28";
             break;
         default:
             textItem->show();

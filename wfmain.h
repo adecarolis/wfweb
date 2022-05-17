@@ -304,6 +304,9 @@ private slots:
 
     void buttonControl(const COMMAND* cmd);
 
+    void getButtonCommand(QString dev, BUTTON* but);
+
+
     // void on_getFreqBtn_clicked();
 
     // void on_getModeBtn_clicked();
@@ -337,6 +340,7 @@ private slots:
     void on_fCEbtn_clicked();
 
     void on_fEnterBtn_clicked();
+    void on_usbControllerBtn_clicked();
 
     void on_scopeBWCombo_currentIndexChanged(int index);
 
@@ -857,6 +861,8 @@ private:
 
     cmds meterKindToMeterCommand(meterKind m);
 
+    void updateUsbButtons();
+
     int oldFreqDialVal;
 
     rigCapabilities rigCaps;
@@ -918,6 +924,10 @@ private:
     usbController *usbControllerDev = Q_NULLPTR;
     QThread *usbControllerThread = Q_NULLPTR;
 
+    QHash<quint8, BUTTON*> usbButtons;
+    QString usbDeviceName;
+    QVector<COMMAND> usbCommands;
+
 
 };
 
@@ -937,6 +947,7 @@ Q_DECLARE_METATYPE(enum spectrumMode)
 Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 Q_DECLARE_METATYPE(rigstate*)
 Q_DECLARE_METATYPE(QVector <BUTTON>*)
+Q_DECLARE_METATYPE(struct BUTTON*)
 Q_DECLARE_METATYPE(QVector <COMMAND>*)
 Q_DECLARE_METATYPE(const COMMAND*)
 

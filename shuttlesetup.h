@@ -33,6 +33,9 @@ public:
     explicit shuttleSetup(QWidget* parent = 0);
     ~shuttleSetup();
 
+signals:
+
+
 public slots:
     void newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<COMMAND>* cmd);
     void mousePressed(QPoint p);
@@ -54,6 +57,7 @@ private:
     QComboBox offEvent;
     QGraphicsProxyWidget* onEventProxy=Q_NULLPTR;
     QGraphicsProxyWidget* offEventProxy=Q_NULLPTR;
+    QString deviceName;
 
 };
 

@@ -57,7 +57,7 @@ int usbController::hidApiWrite(unsigned char* data, unsigned char length)
 
 void usbController::run()
 {
-
+/*
     commands.append(COMMAND(0, "None", cmdNone, 0x0));
     commands.append(COMMAND(1, "PTT On", cmdSetPTT, 0x1));
     commands.append(COMMAND(2, "PTT Off", cmdSetPTT, 0x0));
@@ -94,7 +94,7 @@ void usbController::run()
     commands.append(COMMAND(32, "2200m", cmdGetBandStackReg, band2200m));
     commands.append(COMMAND(33, "GEN", cmdGetBandStackReg, bandGen));
 
-
+*/
 
     handle = hid_open(0x0b33, 0x0020, NULL);
     if (!handle) {
