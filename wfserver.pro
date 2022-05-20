@@ -22,7 +22,7 @@ CONFIG(debug, release|debug) {
     # For Debug builds only:
     QMAKE_CXXFLAGS += -faligned-new
     win32:DESTDIR = wfview-release
-    win32:LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
+    win32:LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86 -ole32
 } else {
     # For Release builds only:
     linux:QMAKE_CXXFLAGS += -s
@@ -31,7 +31,7 @@ CONFIG(debug, release|debug) {
     QMAKE_CXXFLAGS += -faligned-new
     linux:QMAKE_LFLAGS += -O2 -s
     win32:DESTDIR = wfview-debug
-    win32:LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
+    win32:LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86 -lole32
 }
 
 # RTAudio defines
@@ -75,34 +75,6 @@ equals(QT_ARCH, i386): win32:DEFINES += EIGEN_VECTORIZE_SSE3
 equals(QT_ARCH, x86_64): DEFINES += EIGEN_VECTORIZE_SSE3
 
 DEFINES += PREFIX=\\\"$$PREFIX\\\"
-
-# Choose audio system, uses QTMultimedia if both are commented out.
-# DEFINES += RTAUDIO
-# DEFINES += PORTAUDIO
-
-contains(DEFINES, RTAUDIO) {
-	# RTAudio defines
-	win32:DEFINES += __WINDOWS_WASAPI__
-	#win32:DEFINES += __WINDOWS_DS__ # Requires DirectSound libraries
-	linux:DEFINES += __LINUX_ALSA__
-	#linux:DEFINES += __LINUX_OSS__
-	#linux:DEFINES += __LINUX_PULSE__
-	macx:DEFINES += __MACOSX_CORE__
-	win32:SOURCES += ../rtaudio/RTAudio.cpp
-	win32:HEADERS += ../rtaudio/RTAUdio.h
-	!linux:INCLUDEPATH += ../rtaudio
-	linux:LIBS += -lpulse -lpulse-simple -lrtaudio -lpthread
-}
-
-contains(DEFINES, PORTAUDIO) {
-	CONFIG(debug, release|debug) {
-  		win32:LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
-	} else {
-  		win32:LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
-	}
-	win32:INCLUDEPATH += ../portaudio/include
-	!win32:LIBS += -lportaudio
-}
 
 macx:INCLUDEPATH += /usr/local/include /opt/local/include
 macx:LIBS += -L/usr/local/lib -L/opt/local/lib
