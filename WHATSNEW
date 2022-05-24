@@ -32,13 +32,12 @@ The following highlights are in this 1.x-release:
 +    	More multi-radio support (mostly working!)
 +       Split LAN waterfall data for N1MM+ Spectrum Scope support: There is a combobox that allows you to select 
         split/combine (or default). Split only makes sense for LAN and Combine for USB.
-+ 	portaudio removed
 +	added radio status display with meters for audio (speaker/mic)
-
++       selector for audio: QT, PortAudio, RealTime audio (
 
 Notes:
 
 - We know about high CPU usage on RPi.
 - the audio stack has been rewritten multiple times to get the best out of it and have the lowest possible latencies.
-  (At least three times)
+  (At least five times - you can choose now)
 
