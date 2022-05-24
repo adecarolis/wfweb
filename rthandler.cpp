@@ -6,6 +6,7 @@
 #include <objbase.h>
 #endif
 
+#define RT_EXCEPTION
 
 rtHandler::rtHandler(QObject* parent)
 {
@@ -16,13 +17,17 @@ rtHandler::~rtHandler()
 {
 
 	if (isInitialized) {
+#ifdef RT_EXCEPTION
 		try {
+#endif
 			audio->abortStream();
 			audio->closeStream();
+#ifdef RT_EXCEPTION
 		}
         catch (RtAudioError& e) {
 			qInfo(logAudio()) << "Error closing stream:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
 		}
+#endif
 		delete audio;
 
 	}
@@ -87,14 +92,17 @@ bool rtHandler::init(audioSetup setup)
 	}
 	aParams.firstChannel = 0;
 
+#ifdef RT_EXCEPTION
 	try {
+#endif
 		info = audio->getDeviceInfo(aParams.deviceId);
+#ifdef RT_EXCEPTION
 	}
     catch (RtAudioError e) {
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Device exception:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
 		goto errorHandler;
 	}
-
+#endif
 	if (info.probed)
 	{
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << QString::fromStdString(info.name) << "(" << aParams.deviceId << ") successfully probed";
@@ -190,7 +198,9 @@ bool rtHandler::init(audioSetup setup)
 		// Per channel chunk size.
 		this->chunkSize = (outFormat.bytesForDuration(setup.blockSize * 1000) / (outFormat.sampleSize()/8) / outFormat.channelCount());
 
+#ifdef RT_EXCEPTION
 		try {
+#endif
 			if (setup.isinput) {
 				audio->openStream(NULL, &aParams, sampleFormat, outFormat.sampleRate(), &this->chunkSize, &staticWrite, this, &options);
 				emit setupConverter(outFormat, inFormat, 7, setup.resampleQuality);
@@ -205,12 +215,14 @@ bool rtHandler::init(audioSetup setup)
 			isInitialized = true;
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "device successfully opened";
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "detected latency:" << audio->getStreamLatency();
+#ifdef RT_EXCEPTION
 		}
 		catch (RtAudioError& e) {
 			qInfo(logAudio()) << "Error opening:" << QString::fromStdString(e.getMessage());
 			// Try again?
 			goto errorHandler;
 		}
+#endif
 	}
 	else
 	{
