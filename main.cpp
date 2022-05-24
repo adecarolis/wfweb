@@ -33,7 +33,7 @@ bool debugMode=false;
         Q_UNUSED(sig)
         qDebug() << "Exiting via SIGNAL";
         if (w!=Q_NULLPTR) w->deleteLater();
-        qApp->quit();
+        QCoreApplication::quit();
 
         #ifdef Q_OS_WIN
             return true;
@@ -177,6 +177,8 @@ int main(int argc, char *argv[])
     SetConsoleCtrlHandler((PHANDLER_ROUTINE)cleanup, TRUE);
 #else
     signal(SIGINT, cleanup);
+    signal(SIG_TERM, cleanup);
+    signal(SIG_CLOSE, cleanup);
 #endif
     w = new servermain(serialPortCL, hostCL, settingsFile);
 #else
