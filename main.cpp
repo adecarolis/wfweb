@@ -177,8 +177,8 @@ int main(int argc, char *argv[])
     SetConsoleCtrlHandler((PHANDLER_ROUTINE)cleanup, TRUE);
 #else
     signal(SIGINT, cleanup);
-    signal(SIG_TERM, cleanup);
-    signal(SIG_CLOSE, cleanup);
+    signal(SIGTERM, cleanup);
+    signal(SIGKILL, cleanup);
 #endif
     w = new servermain(serialPortCL, hostCL, settingsFile);
 #else
