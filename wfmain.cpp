@@ -1740,9 +1740,9 @@ void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
             serverConfig.rigs.first()->rxAudioSetup.portInt = ui->serverRXAudioInputCombo->itemData(value).toInt();
         }
 
+        serverConfig.rigs.first()->rxAudioSetup.name = ui->serverRXAudioInputCombo->itemText(value);
     }
 
-    serverConfig.rigs.first()->rxAudioSetup.name = ui->audioInputCombo->itemText(value);
 
 }
 
@@ -1759,9 +1759,9 @@ void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
             serverConfig.rigs.first()->txAudioSetup.portInt = ui->serverTXAudioOutputCombo->itemData(value).toInt();
         }
 
+        serverConfig.rigs.first()->txAudioSetup.name = ui->serverTXAudioOutputCombo->itemText(value);
     }
 
-    serverConfig.rigs.first()->txAudioSetup.name = ui->audioInputCombo->itemText(value);
 
 }
 
