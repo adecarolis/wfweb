@@ -15,17 +15,15 @@ paHandler::paHandler(QObject* parent)
 paHandler::~paHandler()
 {
 
-	if (isInitialized) {
-		Pa_StopStream(audio);
-		Pa_CloseStream(audio);
-	}
-
 	if (converterThread != Q_NULLPTR) {
 		converterThread->quit();
 		converterThread->wait();
 	}
 
-	//Pa_Terminate();
+	if (isInitialized) {
+		Pa_StopStream(audio);
+		Pa_CloseStream(audio);
+	}
 	
 }
 

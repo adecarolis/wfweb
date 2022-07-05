@@ -16,7 +16,13 @@ rtHandler::rtHandler(QObject* parent)
 rtHandler::~rtHandler()
 {
 
+	if (converterThread != Q_NULLPTR) {
+		converterThread->quit();
+		converterThread->wait();
+	}
+
 	if (isInitialized) {
+
 #ifdef RT_EXCEPTION
 		try {
 #endif
@@ -30,11 +36,6 @@ rtHandler::~rtHandler()
 #endif
 		delete audio;
 
-	}
-
-	if (converterThread != Q_NULLPTR) {
-		converterThread->quit();
-		converterThread->wait();
 	}
 	
 }

@@ -18,23 +18,24 @@ audioHandler::audioHandler(QObject* parent) : QObject(parent)
 audioHandler::~audioHandler()
 {
 
+	if (converterThread != Q_NULLPTR) {
+		converterThread->quit();
+		converterThread->wait();
+	}
+
 	if (isInitialized) {
 		stop();
 	}
 
 	if (audioInput != Q_NULLPTR) {
-		audioInput = Q_NULLPTR;
 		delete audioInput;
+		audioInput = Q_NULLPTR;
 	}
 	if (audioOutput != Q_NULLPTR) {
 		delete audioOutput;
 		audioOutput = Q_NULLPTR;
 	}
 
-	if (converterThread != Q_NULLPTR) {
-		converterThread->quit();
-		converterThread->wait();
-	}
 }bool audioHandler::init(audioSetup setup) 
 {
 	if (isInitialized) {
