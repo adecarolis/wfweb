@@ -96,6 +96,16 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
 udpAudio::~udpAudio()
 {
+
+    // Send empty packet before deleting audio
+    audioPacket tempAudio;
+    QByteArray tempArray((const char *)'\0', 1920);
+    tempAudio.seq = 0;
+    tempAudio.time = lastReceived;
+    tempAudio.sent = 0;
+    tempAudio.data = tempArray;
+    emit haveAudioData(tempAudio);
+
     if (pingTimer != Q_NULLPTR)
     {
         qDebug(logUdp()) << "Stopping pingTimer";
