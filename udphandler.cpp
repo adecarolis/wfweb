@@ -302,23 +302,25 @@ void udpHandler::dataReceived()
                         if (!streamOpened) {
 
                             civ = new udpCivData(localIP, radioIP, civPort, splitWf, civLocalPort);
+                            QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
 
                             // TX is not supported
                             if (txSampleRates < 2) {
                                 txSetup.sampleRate=0;
                                 txSetup.codec = 0;
                             }
+                            streamOpened = true;
+                        }
+                        if (audio == Q_NULLPTR) {
                             audio = new udpAudio(localIP, radioIP, audioPort, audioLocalPort, rxSetup, txSetup);
 
-                            QObject::connect(civ, SIGNAL(receive(QByteArray)), this, SLOT(receiveFromCivStream(QByteArray)));
                             QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
                             QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16)));
                             QObject::connect(this, SIGNAL(haveSetVolume(unsigned char)), audio, SLOT(setVolume(unsigned char)));
-                            QObject::connect(audio, SIGNAL(haveRxLevels(quint16, quint16, quint16,bool,bool)), this, SLOT(getRxLevels(quint16, quint16,quint16,bool,bool)));
-                            QObject::connect(audio, SIGNAL(haveTxLevels(quint16, quint16,quint16,bool,bool)), this, SLOT(getTxLevels(quint16, quint16,quint16,bool,bool)));
-
-                            streamOpened = true;
+                            QObject::connect(audio, SIGNAL(haveRxLevels(quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, bool, bool)));
+                            QObject::connect(audio, SIGNAL(haveTxLevels(quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, bool, bool)));
                         }
+
                         qInfo(logUdp()) << this->metaObject()->className() << "Got serial and audio request success, device name: " << devName;
 
 

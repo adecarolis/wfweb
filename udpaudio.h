@@ -66,6 +66,9 @@ private:
 	void sendTxAudio();
 	void dataReceived();
 	void watchdog();
+	void startAudio();
+	audioSetup rxSetup;
+	audioSetup txSetup;
 
 	uint16_t sendAudioSeq = 0;
 

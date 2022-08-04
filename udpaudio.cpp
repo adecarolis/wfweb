@@ -8,6 +8,8 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     this->localIP = local;
     this->port = audioPort;
     this->radioIP = ip;
+    this->rxSetup = rxSetup;
+    this->txSetup = txSetup;
 
     if (txSetup.sampleRate == 0) {
         enableTx = false;
@@ -16,74 +18,8 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
     init(lport); // Perform connection
 
     QUdpSocket::connect(udp, &QUdpSocket::readyRead, this, &udpAudio::dataReceived);
-    if (rxSetup.type == qtAudio) {
-        rxaudio = new audioHandler();
-    }
-    else if (rxSetup.type == portAudio) {
-        rxaudio = new paHandler();
-    }
-    else if (rxSetup.type == rtAudio) {
-        rxaudio = new rtHandler();
-    }
-    else
-    {
-        qCritical(logAudio()) << "Unsupported Receive Audio Handler selected!";
-    }
-
-    rxAudioThread = new QThread(this);
-    rxAudioThread->setObjectName("rxAudio()");
-
-    rxaudio->moveToThread(rxAudioThread);
-
-    rxAudioThread->start(QThread::TimeCriticalPriority);
-
-    connect(this, SIGNAL(setupRxAudio(audioSetup)), rxaudio, SLOT(init(audioSetup)));
-
-    // signal/slot not currently used.
-    connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
-    connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
-    connect(this, SIGNAL(haveSetVolume(unsigned char)), rxaudio, SLOT(setVolume(unsigned char)));
-    connect(rxaudio, SIGNAL(haveLevels(quint16, quint16, quint16, bool,bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, bool,bool)));
-    connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
-
-
-    sendControl(false, 0x03, 0x00); // First connect packet
-
-    pingTimer = new QTimer();
-    connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
-    pingTimer->start(PING_PERIOD); // send ping packets every 100ms
-
-    if (enableTx) {
-        if (txSetup.type == qtAudio) {
-            txaudio = new audioHandler();
-        }
-        else if (txSetup.type == portAudio) {
-            txaudio = new paHandler();
-        }
-        else if (txSetup.type == rtAudio) {
-            txaudio = new rtHandler();
-        }
-        else
-        {
-            qCritical(logAudio()) << "Unsupported Transmit Audio Handler selected!";
-        }
-
-        txAudioThread = new QThread(this);
-        rxAudioThread->setObjectName("txAudio()");
-
-        txaudio->moveToThread(txAudioThread);
-
-        txAudioThread->start(QThread::TimeCriticalPriority);
-
-        connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
-        connect(txaudio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
-        connect(txaudio, SIGNAL(haveLevels(quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, bool, bool)));
-
-        connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
-        emit setupTxAudio(txSetup);
-    }
-
-    emit setupRxAudio(rxSetup);
+ 
+    startAudio();
 
     watchdogTimer = new QTimer();
     connect(watchdogTimer, &QTimer::timeout, this, &udpAudio::watchdog);
@@ -96,15 +32,6 @@ udpAudio::udpAudio(QHostAddress local, QHostAddress ip, quint16 audioPort, quint
 
 udpAudio::~udpAudio()
 {
-
-    // Send empty packet before deleting audio
-    audioPacket tempAudio;
-    QByteArray tempArray((const char *)'\0', 1920);
-    tempAudio.seq = 0;
-    tempAudio.time = lastReceived;
-    tempAudio.sent = 0;
-    tempAudio.data = tempArray;
-    emit haveAudioData(tempAudio);
 
     if (pingTimer != Q_NULLPTR)
     {
@@ -155,6 +82,21 @@ void udpAudio::watchdog()
 
             qInfo(logUdp()) << " Audio Watchdog: no audio data received for 2s, restart required?";
             alerted = true;
+            if (rxAudioThread != Q_NULLPTR) {
+                qDebug(logUdp()) << "Stopping rxaudio thread";
+                rxAudioThread->quit();
+                rxAudioThread->wait();
+                rxAudioThread = Q_NULLPTR;
+                rxaudio = Q_NULLPTR;
+            }
+
+            if (txAudioThread != Q_NULLPTR) {
+                qDebug(logUdp()) << "Stopping txaudio thread";
+                txAudioThread->quit();
+                txAudioThread->wait();
+                txAudioThread = Q_NULLPTR;
+                txaudio = Q_NULLPTR;
+            }            
         }
     }
     else
@@ -228,6 +170,7 @@ void udpAudio::getTxLevels(quint16 amplitude, quint16 latency, quint16 current, 
 
 void udpAudio::dataReceived()
 {
+
     while (udp->hasPendingDatagrams()) {
         QNetworkDatagram datagram = udp->receiveDatagram();
         //qInfo(logUdp()) << "Received: " << datagram.data().mid(0,10);
@@ -268,6 +211,10 @@ void udpAudio::dataReceived()
                 // Prefer signal/slot to forward audio as it is thread/safe
                 // Need to do more testing but latency appears fine.
                 //rxaudio->incomingAudio(tempAudio);
+                if (rxAudioThread == Q_NULLPTR)
+                {
+                    startAudio();
+                }
                 emit haveAudioData(tempAudio);
             }
             break;
@@ -280,4 +227,75 @@ void udpAudio::dataReceived()
     }
 }
 
+void udpAudio::startAudio() {
 
+    if (rxSetup.type == qtAudio) {
+        rxaudio = new audioHandler();
+    }
+    else if (rxSetup.type == portAudio) {
+        rxaudio = new paHandler();
+    }
+    else if (rxSetup.type == rtAudio) {
+        rxaudio = new rtHandler();
+    }
+    else
+    {
+        qCritical(logAudio()) << "Unsupported Receive Audio Handler selected!";
+    }
+
+    rxAudioThread = new QThread(this);
+    rxAudioThread->setObjectName("rxAudio()");
+
+    rxaudio->moveToThread(rxAudioThread);
+
+    rxAudioThread->start(QThread::TimeCriticalPriority);
+
+    connect(this, SIGNAL(setupRxAudio(audioSetup)), rxaudio, SLOT(init(audioSetup)));
+
+    // signal/slot not currently used.
+    connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
+    connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
+    connect(this, SIGNAL(haveSetVolume(unsigned char)), rxaudio, SLOT(setVolume(unsigned char)));
+    connect(rxaudio, SIGNAL(haveLevels(quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, bool, bool)));
+    connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
+
+
+    sendControl(false, 0x03, 0x00); // First connect packet
+
+    pingTimer = new QTimer();
+    connect(pingTimer, &QTimer::timeout, this, &udpBase::sendPing);
+    pingTimer->start(PING_PERIOD); // send ping packets every 100ms
+
+    if (enableTx) {
+        if (txSetup.type == qtAudio) {
+            txaudio = new audioHandler();
+        }
+        else if (txSetup.type == portAudio) {
+            txaudio = new paHandler();
+        }
+        else if (txSetup.type == rtAudio) {
+            txaudio = new rtHandler();
+        }
+        else
+        {
+            qCritical(logAudio()) << "Unsupported Transmit Audio Handler selected!";
+        }
+
+        txAudioThread = new QThread(this);
+        rxAudioThread->setObjectName("txAudio()");
+
+        txaudio->moveToThread(txAudioThread);
+
+        txAudioThread->start(QThread::TimeCriticalPriority);
+
+        connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
+        connect(txaudio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+        connect(txaudio, SIGNAL(haveLevels(quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, bool, bool)));
+
+        connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
+        emit setupTxAudio(txSetup);
+    }
+
+    emit setupRxAudio(rxSetup);
+
+}
