@@ -3551,7 +3551,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
         {
             freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
-            freqIndicatorLine->end->setCoords(freq.MHzDouble,160);
+            freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
         }
         if(drawPeaks)
         {
