@@ -557,6 +557,7 @@ private:
     void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
+    void computePlasma();
     void showHideSpectrum(bool show);
     void getInitialRigState();
     void setBandButtons();
@@ -648,6 +649,10 @@ private:
     bool spectrumDrawLock;
 
     QByteArray spectrumPeaks;
+    QVector <double> spectrumPlasmaLine;
+    QVector <QByteArray> spectrumPlasma;
+    unsigned int spectrumPlasmaSize = 64;
+    bool drawPlasma = true;
 
     QVector <QByteArray> wfimage;
     unsigned int wfLengthMax;

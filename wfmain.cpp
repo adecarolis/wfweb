@@ -2035,6 +2035,15 @@ void wfmain::prepareWf(unsigned int wfLength)
         QByteArray empty((int)spectWidth, '\x01');
         spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
 
+        if(spectrumPlasmaSize == 0)
+            spectrumPlasmaSize = 128;
+
+        //spectrumPlasma.resize(spectrumPlasmaSize);
+        for(unsigned int p=0; p < spectrumPlasmaSize; p++)
+        {
+            spectrumPlasma.append(empty);
+        }
+
         //wfimage.resize(wfLengthMax);
 
         if((unsigned int)wfimage.size() < wfLengthMax)
@@ -3522,6 +3531,12 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         }
 
     }
+    spectrumPlasma.push_front(spectrum);
+    spectrumPlasma.resize(spectrumPlasmaSize);
+
+    // HACK DO NOT CHECK IN:
+    drawPeaks = false;
+    drawPlasma = true;
 
     if(!spectrumDrawLock)
     {
@@ -3535,6 +3550,9 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         if(drawPeaks)
         {
             plot->graph(1)->setData(x,y2); // peaks
+        } else if (drawPlasma) {
+            computePlasma();
+            plot->graph(1)->setData(x,spectrumPlasmaLine); // peaks
         }
         plot->yAxis->setRange(0, rigCaps.spectAmpMax+1);
         plot->xAxis->setRange(startFreq, endFreq);
@@ -3558,6 +3576,35 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
            wf->yAxis->setRange(0,wfLength - 1);
            wf->xAxis->setRange(0, spectWidth-1);
            wf->replot();
+        }
+    }
+}
+
+void wfmain::computePlasma()
+{
+    spectrumPlasmaLine.clear();
+    spectrumPlasmaLine.resize(spectWidth);
+    bool averageMode = true;
+    if(averageMode)
+    {
+        for(int col=0; col < spectWidth; col++)
+        {
+            for(int pos=0; pos < spectrumPlasma.size(); pos++)
+            {
+                spectrumPlasmaLine[col] += spectrumPlasma[pos][col];
+
+            }
+            spectrumPlasmaLine[col] = spectrumPlasmaLine[col] / spectrumPlasma.size();
+        }
+    } else {
+        // peak mode, running peak display
+        for(int col=0; col < spectWidth; col++)
+        {
+            for(int pos=0; pos < spectrumPlasma.size(); pos++)
+            {
+                if((double)(spectrumPlasma[pos][col]) > spectrumPlasmaLine[col])
+                    spectrumPlasmaLine[col] = spectrumPlasma[pos][col];
+            }
         }
     }
 }
