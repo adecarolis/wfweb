@@ -3192,6 +3192,11 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         }
         setWindowTitle(rigCaps.modelName);
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
+        wfCeiling = rigCaps.spectAmpMax;
+        plotCeiling = rigCaps.spectAmpMax;
+        ui->topLevelSlider->setMaximum(rigCaps.spectAmpMax);
+        wfFloor = 0;
+        plotFloor = 0;
         haveRigCaps = true;
         // Added so that server receives rig capabilities.
         emit sendRigCaps(rigCaps);
@@ -3555,7 +3560,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             computePlasma();
             plot->graph(1)->setData(x,spectrumPlasmaLine); // peaks
         }
-        plot->yAxis->setRange(0, rigCaps.spectAmpMax+1);
+        plot->yAxis->setRange(plotFloor, plotCeiling);
         plot->xAxis->setRange(startFreq, endFreq);
         plot->replot();
 
@@ -5792,32 +5797,6 @@ void wfmain::on_radioStatusBtn_clicked()
     }
 }
 
-// --- DEBUG FUNCTION ---
-void wfmain::on_debugBtn_clicked()
-{
-    qInfo(logSystem()) << "Debug button pressed.";
-    // issueDelayedCommand(cmdGetRigID);
-    //emit getRigCIV();
-    //trxadj->show();
-    //setRadioTimeDatePrep();
-    //wf->setInteraction(QCP::iRangeZoom, true);
-    //wf->setInteraction(QCP::iRangeDrag, true);
-    bool ok;
-    int height = QInputDialog::getInt(this, "wfview Radio Polling Setup", "Poll Timing Interval (ms)", 350, 1, 500, 1, &ok );
-
-    this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-    this->setMaximumSize(QSize(1025,height));
-    this->setMinimumSize(QSize(1025,height));
-    //this->setMaximumSize(QSize(929, 270));
-    //this->setMinimumSize(QSize(929, 270));
-
-    resize(minimumSize());
-    adjustSize(); // main window
-    adjustSize();
-
-}
-
-
 void wfmain::setAudioDevicesUI()
 {
 
@@ -6048,4 +6027,46 @@ void wfmain::on_audioSystemCombo_currentIndexChanged(int value)
 {
     prefs.audioSystem = static_cast<audioType>(value);
     setAudioDevicesUI(); // Force all audio devices to update
+}
+
+void wfmain::on_topLevelSlider_valueChanged(int value)
+{
+    wfCeiling = value;
+    plotCeiling = value;
+    plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
+    colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+}
+
+void wfmain::on_botLevelSlider_valueChanged(int value)
+{
+    wfFloor = value;
+    plotFloor = value;
+    plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
+    colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+}
+
+
+// --- DEBUG FUNCTION ---
+void wfmain::on_debugBtn_clicked()
+{
+    qInfo(logSystem()) << "Debug button pressed.";
+    // issueDelayedCommand(cmdGetRigID);
+    //emit getRigCIV();
+    //trxadj->show();
+    //setRadioTimeDatePrep();
+    //wf->setInteraction(QCP::iRangeZoom, true);
+    //wf->setInteraction(QCP::iRangeDrag, true);
+    bool ok;
+    int height = QInputDialog::getInt(this, "wfview window fixed height", "number: ", 350, 1, 500, 1, &ok );
+
+    this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+    this->setMaximumSize(QSize(1025,height));
+    this->setMinimumSize(QSize(1025,height));
+    //this->setMaximumSize(QSize(929, 270));
+    //this->setMinimumSize(QSize(929, 270));
+
+    resize(minimumSize());
+    adjustSize(); // main window
+    adjustSize();
+
 }

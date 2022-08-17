@@ -539,6 +539,10 @@ private slots:
 
     void on_audioSystemCombo_currentIndexChanged(int value);
 
+    void on_topLevelSlider_valueChanged(int value);
+
+    void on_botLevelSlider_valueChanged(int value);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -653,6 +657,11 @@ private:
     QVector <QByteArray> spectrumPlasma;
     unsigned int spectrumPlasmaSize = 64;
     bool drawPlasma = true;
+
+    double plotFloor = 0;
+    double plotCeiling = 160;
+    double wfFloor = 0;
+    double wfCeiling = 160;
 
     QVector <QByteArray> wfimage;
     unsigned int wfLengthMax;
