@@ -617,20 +617,21 @@ void wfmain::receiveStatusUpdate(networkStatus status)
 
 void wfmain::setupPlots()
 {
-
-// Line 290--
     spectrumDrawLock = true;
-    plot = ui->plot; // rename it waterfall.
+    plot = ui->plot;
 
     wf = ui->waterfall;
 
     freqIndicatorLine = new QCPItemLine(plot);
     freqIndicatorLine->setAntialiased(true);
     freqIndicatorLine->setPen(QPen(Qt::blue));
-//
 
     ui->plot->addGraph(); // primary
-    ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first?
+    ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first.
+    ui->plot->addLayer( "Top Layer", ui->plot->layer("main"));
+    ui->plot->graph(0)->setLayer("Top Layer");
+
+
     ui->waterfall->addGraph();
 
     colorMap = new QCPColorMap(wf->xAxis, wf->yAxis);
