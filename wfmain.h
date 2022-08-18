@@ -14,6 +14,8 @@
 #include <QSettings>
 #include <QShortcut>
 #include <QMetaType>
+#include <QMutex>
+#include <QMutexLocker>
 
 #include "logcategories.h"
 #include "commhandler.h"
@@ -671,6 +673,8 @@ private:
     unsigned int spectrumPlasmaSize = 64;
     underlay_t underlayMode = underlayNone;
     bool drawPlasma = true;
+    QMutex plasmaMutex;
+    void resizePlasmaBuffer(int newSize);
 
     double plotFloor = 0;
     double plotCeiling = 160;

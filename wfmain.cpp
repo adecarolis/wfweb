@@ -3581,10 +3581,12 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             }
             y2[i] = (unsigned char)spectrumPeaks.at(i);
         }
-
     }
+    plasmaMutex.lock();
     spectrumPlasma.push_front(spectrum);
-    spectrumPlasma.resize(spectrumPlasmaSize);
+    spectrumPlasma.pop_back();
+    //spectrumPlasma.resize(spectrumPlasmaSize);
+    plasmaMutex.unlock();
 
     // HACK DO NOT CHECK IN:
     drawPeaks = false;
@@ -3637,6 +3639,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
 void wfmain::computePlasma()
 {
+    plasmaMutex.lock();
     spectrumPlasmaLine.clear();
     spectrumPlasmaLine.resize(spectWidth);
     int specPlasmaSize = spectrumPlasma.size();
@@ -3661,6 +3664,8 @@ void wfmain::computePlasma()
             }
         }
     }
+    plasmaMutex.unlock();
+
 }
 
 void wfmain::receiveSpectrumMode(spectrumMode spectMode)
@@ -6097,9 +6102,34 @@ void wfmain::on_botLevelSlider_valueChanged(int value)
 
 void wfmain::on_underlayBufferSlider_valueChanged(int value)
 {
-    // TODO: lock first...
-    spectrumPlasma.resize(value);
+    resizePlasmaBuffer(value);
     prefs.underlayBufferSize = value;
+}
+
+void wfmain::resizePlasmaBuffer(int newSize)
+{
+
+    QByteArray empty((int)spectWidth, '\x01');
+    plasmaMutex.lock();
+
+    int oldSize = spectrumPlasma.size();
+
+    if(oldSize < newSize)
+    {
+        spectrumPlasma.resize(newSize);
+        for(int p=oldSize; p < newSize; p++)
+        {
+            spectrumPlasma.append(empty);
+        }
+    } else if (oldSize > newSize){
+        for(int p = oldSize; p > newSize; p--)
+        {
+            spectrumPlasma.pop_back();
+        }
+    }
+
+    spectrumPlasma.squeeze();
+    plasmaMutex.unlock();
 }
 
 void wfmain::on_underlayNone_toggled(bool checked)
