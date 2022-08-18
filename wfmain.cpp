@@ -617,20 +617,21 @@ void wfmain::receiveStatusUpdate(networkStatus status)
 
 void wfmain::setupPlots()
 {
-
-// Line 290--
     spectrumDrawLock = true;
-    plot = ui->plot; // rename it waterfall.
+    plot = ui->plot;
 
     wf = ui->waterfall;
 
     freqIndicatorLine = new QCPItemLine(plot);
     freqIndicatorLine->setAntialiased(true);
     freqIndicatorLine->setPen(QPen(Qt::blue));
-//
 
     ui->plot->addGraph(); // primary
-    ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first?
+    ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first.
+    ui->plot->addLayer( "Top Layer", ui->plot->layer("main"));
+    ui->plot->graph(0)->setLayer("Top Layer");
+
+
     ui->waterfall->addGraph();
 
     colorMap = new QCPColorMap(wf->xAxis, wf->yAxis);
@@ -1047,7 +1048,28 @@ void wfmain::setUIToPrefs()
 
     ui->drawPeakChk->setChecked(prefs.drawPeaks);
     on_drawPeakChk_clicked(prefs.drawPeaks);
-    drawPeaks = prefs.drawPeaks;
+
+    underlayMode = prefs.underlayMode;
+    switch(underlayMode)
+    {
+        case underlayNone:
+            ui->underlayNone->setChecked(true);
+            break;
+        case underlayPeakHold:
+            ui->underlayPeakHold->setChecked(true);
+            break;
+        case underlayPeakBuffer:
+            ui->underlayPeakBuffer->setChecked(true);
+            break;
+        case underlayAverageBuffer:
+            ui->underlayAverageBuffer->setChecked(true);
+            break;
+        default:
+            break;
+    }
+
+    ui->underlayBufferSlider->setValue(prefs.underlayBufferSize);
+    on_underlayBufferSlider_valueChanged(prefs.underlayBufferSize);
 
     ui->wfAntiAliasChk->setChecked(prefs.wfAntiAlias);
     on_wfAntiAliasChk_clicked(prefs.wfAntiAlias);
@@ -1057,6 +1079,12 @@ void wfmain::setUIToPrefs()
 
     ui->wfLengthSlider->setValue(prefs.wflength);
     prepareWf(prefs.wflength);
+    preparePlasma();
+    ui->topLevelSlider->setValue(prefs.plotCeiling);
+    ui->botLevelSlider->setValue(prefs.plotFloor);
+
+    plot->yAxis->setRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
+    colorMap->setDataRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
 
     ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
@@ -1249,6 +1277,8 @@ void wfmain::setDefPrefs()
     defPrefs.useDarkMode = true;
     defPrefs.useSystemTheme = false;
     defPrefs.drawPeaks = true;
+    defPrefs.underlayMode = underlayNone;
+    defPrefs.underlayBufferSize = 64;
     defPrefs.wfAntiAlias = false;
     defPrefs.wfInterpolate = true;
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
@@ -1265,6 +1295,8 @@ void wfmain::setDefPrefs()
     defPrefs.localAFgain = 255;
     defPrefs.wflength = 160;
     defPrefs.wftheme = static_cast<int>(QCPColorGradient::gpJet);
+    defPrefs.plotFloor = 0;
+    defPrefs.plotCeiling = 160;
     defPrefs.confirmExit = true;
     defPrefs.confirmPowerOff = true;
     defPrefs.meter2Type = meterNone;
@@ -1292,7 +1324,15 @@ void wfmain::loadSettings()
     prefs.useDarkMode = settings->value("UseDarkMode", defPrefs.useDarkMode).toBool();
     prefs.useSystemTheme = settings->value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
     prefs.wftheme = settings->value("WFTheme", defPrefs.wftheme).toInt();
+    prefs.plotFloor = settings->value("plotFloor", defPrefs.plotFloor).toInt();
+    prefs.plotCeiling = settings->value("plotCeiling", defPrefs.plotCeiling).toInt();
+    plotFloor = prefs.plotFloor;
+    plotCeiling = prefs.plotCeiling;
+    wfFloor = prefs.plotFloor;
+    wfCeiling = prefs.plotCeiling;
     prefs.drawPeaks = settings->value("DrawPeaks", defPrefs.drawPeaks).toBool();
+    prefs.underlayBufferSize = settings->value("underlayBufferSize", defPrefs.underlayBufferSize).toInt();
+    prefs.underlayMode = static_cast<underlay_t>(settings->value("underlayMode", defPrefs.underlayMode).toInt());
     prefs.wfAntiAlias = settings->value("WFAntiAlias", defPrefs.wfAntiAlias).toBool();
     prefs.wfInterpolate = settings->value("WFInterpolate", defPrefs.wfInterpolate).toBool();
     prefs.wflength = (unsigned int)settings->value("WFLength", defPrefs.wflength).toInt();
@@ -1800,9 +1840,13 @@ void wfmain::saveSettings()
     settings->setValue("UseSystemTheme", prefs.useSystemTheme);
     settings->setValue("UseDarkMode", prefs.useDarkMode);
     settings->setValue("DrawPeaks", prefs.drawPeaks);
+    settings->setValue("underlayMode", prefs.underlayMode);
+    settings->setValue("underlayBufferSize", prefs.underlayBufferSize);
     settings->setValue("WFAntiAlias", prefs.wfAntiAlias);
     settings->setValue("WFInterpolate", prefs.wfInterpolate);
     settings->setValue("WFTheme", prefs.wftheme);
+    settings->setValue("plotFloor", prefs.plotFloor);
+    settings->setValue("plotCeiling", prefs.plotCeiling);
     settings->setValue("StylesheetPath", prefs.stylesheetPath);
     settings->setValue("splitter", ui->splitter->saveState());
     settings->setValue("windowGeometry", saveGeometry());
@@ -2035,8 +2079,6 @@ void wfmain::prepareWf(unsigned int wfLength)
         QByteArray empty((int)spectWidth, '\x01');
         spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
 
-        //wfimage.resize(wfLengthMax);
-
         if((unsigned int)wfimage.size() < wfLengthMax)
         {
             unsigned int i=0;
@@ -2056,7 +2098,7 @@ void wfmain::prepareWf(unsigned int wfLength)
 
         colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
         colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
-        colorMap->setDataRange(QCPRange(0, rigCaps.spectAmpMax));
+        colorMap->setDataRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
         colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(ui->wfthemeCombo->currentData().toInt()));
 
         if(colorMapData == Q_NULLPTR)
@@ -3182,6 +3224,10 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         }
         setWindowTitle(rigCaps.modelName);
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
+        //wfCeiling = rigCaps.spectAmpMax;
+        //plotCeiling = rigCaps.spectAmpMax;
+        ui->topLevelSlider->setMaximum(rigCaps.spectAmpMax);
+
         haveRigCaps = true;
         // Added so that server receives rig capabilities.
         emit sendRigCaps(rigCaps);
@@ -3301,6 +3347,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             {
                 ui->scopeBWCombo->addItem(rigCaps.scopeCenterSpans.at(i).name, (int)rigCaps.scopeCenterSpans.at(i).cstype);
             }
+            plot->yAxis->setRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
+            colorMap->setDataRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
         } else {
             ui->scopeBWCombo->setHidden(true);
         }
@@ -3473,15 +3521,19 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         return;
     }
 
+    QElapsedTimer performanceTimer;
+    bool updateRange = false;
+
     if((startFreq != oldLowerFreq) || (endFreq != oldUpperFreq))
     {
         // If the frequency changed and we were drawing peaks, now is the time to clearn them
-        if(drawPeaks)
+        if(underlayMode == underlayPeakHold)
         {
             // TODO: create non-button function to do this
             // This will break if the button is ever moved or renamed.
             on_clearPeakBtn_clicked();
         }
+        // TODO: Add clear-out for the buffer
     }
 
     oldLowerFreq = startFreq;
@@ -3503,6 +3555,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
     QVector <double> x(spectWidth), y(spectWidth), y2(spectWidth);
 
+    // TODO: Keep x around unless the frequency range changes. Should save a little time.
     for(int i=0; i < spectWidth; i++)
     {
         x[i] = (i * (endFreq-startFreq)/spectWidth) + startFreq;
@@ -3512,7 +3565,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     {
         //x[i] = (i * (endFreq-startFreq)/specLen) + startFreq;
         y[i] = (unsigned char)spectrum.at(i);
-        if(drawPeaks)
+        if(underlayMode == underlayPeakHold)
         {
             if((unsigned char)spectrum.at(i) > (unsigned char)spectrumPeaks.at(i))
             {
@@ -3520,46 +3573,119 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             }
             y2[i] = (unsigned char)spectrumPeaks.at(i);
         }
-
     }
+    plasmaMutex.lock();
+    spectrumPlasma.push_front(spectrum);
+    spectrumPlasma.pop_back();
+    //spectrumPlasma.resize(spectrumPlasmaSize);
+    plasmaMutex.unlock();
+
 
     if(!spectrumDrawLock)
     {
+        if((plotFloor != oldPlotFloor) || (plotCeiling != oldPlotCeiling))
+            updateRange = true;
+
         //ui->qcp->addGraph();
-        plot->graph(0)->setData(x,y);
+        plot->graph(0)->setData(x,y, true);
         if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
         {
             freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
-            freqIndicatorLine->end->setCoords(freq.MHzDouble,160);
+            freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
         }
-        if(drawPeaks)
+        if(underlayMode == underlayPeakHold)
         {
-            plot->graph(1)->setData(x,y2); // peaks
+            plot->graph(1)->setData(x,y2, true); // peaks
+        } else if (underlayMode != underlayNone) {
+            computePlasma();
+            plot->graph(1)->setData(x,spectrumPlasmaLine, true);
+        } else {
+            plot->graph(1)->setData(x,y2, true); // peaks, but probably cleared out
         }
-        plot->yAxis->setRange(0, rigCaps.spectAmpMax+1);
+
+        if(updateRange)
+            plot->yAxis->setRange(prefs.plotFloor, prefs.plotCeiling);
+
         plot->xAxis->setRange(startFreq, endFreq);
         plot->replot();
 
         if(specLen == spectWidth)
         {
             wfimage.prepend(spectrum);
-            wfimage.resize(wfLengthMax);
-            wfimage.squeeze();
-
+            wfimage.pop_back();
+            QByteArray wfRow;
             // Waterfall:
             for(int row = 0; row < wfLength; row++)
             {
+                wfRow = wfimage.at(row);
                 for(int col = 0; col < spectWidth; col++)
                 {
-                    colorMap->data()->setCell( col, row, wfimage.at(row).at(col));
+                    colorMap->data()->setCell( col, row, wfRow.at(col));
                 }
             }
+            if(updateRange)
+            {
+                colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+            }
+            wf->yAxis->setRange(0,wfLength - 1);
+            wf->xAxis->setRange(0, spectWidth-1);
+            wf->replot();
+        }
+        oldPlotFloor = plotFloor;
+        oldPlotCeiling = plotCeiling;
+    }
+}
 
-           wf->yAxis->setRange(0,wfLength - 1);
-           wf->xAxis->setRange(0, spectWidth-1);
-           wf->replot();
+void wfmain::preparePlasma()
+{
+    if(plasmaPrepared)
+        return;
+    QByteArray empty((int)spectWidth, '\x01');
+
+    if(spectrumPlasmaSize == 0)
+        spectrumPlasmaSize = 128;
+
+    plasmaMutex.lock();
+    spectrumPlasma.clear();
+
+    for(unsigned int p=0; p < spectrumPlasmaSize; p++)
+    {
+        spectrumPlasma.append(empty);
+    }
+
+    spectrumPlasma.squeeze();
+    plasmaMutex.unlock();
+    plasmaPrepared = true;
+}
+
+void wfmain::computePlasma()
+{
+    plasmaMutex.lock();
+    spectrumPlasmaLine.clear();
+    spectrumPlasmaLine.resize(spectWidth);
+    int specPlasmaSize = spectrumPlasma.size();
+    if(underlayMode == underlayAverageBuffer)
+    {
+        for(int col=0; col < spectWidth; col++)
+        {
+            for(int pos=0; pos < specPlasmaSize; pos++)
+            {
+                spectrumPlasmaLine[col] += (unsigned char)spectrumPlasma[pos][col];
+            }
+            spectrumPlasmaLine[col] = spectrumPlasmaLine[col] / specPlasmaSize;
+        }
+    } else if (underlayMode == underlayPeakBuffer){
+        // peak mode, running peak display
+        for(int col=0; col < spectWidth; col++)
+        {
+            for(int pos=0; pos < specPlasmaSize; pos++)
+            {
+                if((double)((unsigned char)spectrumPlasma[pos][col]) > spectrumPlasmaLine[col])
+                    spectrumPlasmaLine[col] = (unsigned char)spectrumPlasma[pos][col];
+            }
         }
     }
+    plasmaMutex.unlock();
 }
 
 void wfmain::receiveSpectrumMode(spectrumMode spectMode)
@@ -3763,10 +3889,8 @@ void wfmain::on_drawPeakChk_clicked(bool checked)
     if(checked)
     {
         on_clearPeakBtn_clicked(); // clear
-        drawPeaks = true;
 
     } else {
-        drawPeaks = false;
 
 #if QCUSTOMPLOT_VERSION >= 0x020000
         plot->graph(1)->data()->clear();
@@ -5744,32 +5868,6 @@ void wfmain::on_radioStatusBtn_clicked()
     }
 }
 
-// --- DEBUG FUNCTION ---
-void wfmain::on_debugBtn_clicked()
-{
-    qInfo(logSystem()) << "Debug button pressed.";
-    // issueDelayedCommand(cmdGetRigID);
-    //emit getRigCIV();
-    //trxadj->show();
-    //setRadioTimeDatePrep();
-    //wf->setInteraction(QCP::iRangeZoom, true);
-    //wf->setInteraction(QCP::iRangeDrag, true);
-    bool ok;
-    int height = QInputDialog::getInt(this, "wfview Radio Polling Setup", "Poll Timing Interval (ms)", 350, 1, 500, 1, &ok );
-
-    this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-    this->setMaximumSize(QSize(1025,height));
-    this->setMinimumSize(QSize(1025,height));
-    //this->setMaximumSize(QSize(929, 270));
-    //this->setMinimumSize(QSize(929, 270));
-
-    resize(minimumSize());
-    adjustSize(); // main window
-    adjustSize();
-
-}
-
-
 void wfmain::setAudioDevicesUI()
 {
 
@@ -6000,4 +6098,125 @@ void wfmain::on_audioSystemCombo_currentIndexChanged(int value)
 {
     prefs.audioSystem = static_cast<audioType>(value);
     setAudioDevicesUI(); // Force all audio devices to update
+}
+
+void wfmain::on_topLevelSlider_valueChanged(int value)
+{
+    wfCeiling = value;
+    plotCeiling = value;
+    prefs.plotCeiling = value;
+    plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
+    colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+}
+
+void wfmain::on_botLevelSlider_valueChanged(int value)
+{
+    wfFloor = value;
+    plotFloor = value;
+    prefs.plotFloor = value;
+    plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
+    colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+}
+
+void wfmain::on_underlayBufferSlider_valueChanged(int value)
+{
+    resizePlasmaBuffer(value);
+    prefs.underlayBufferSize = value;
+}
+
+void wfmain::resizePlasmaBuffer(int newSize)
+{
+
+    QByteArray empty((int)spectWidth, '\x01');
+    plasmaMutex.lock();
+
+    int oldSize = spectrumPlasma.size();
+
+    if(oldSize < newSize)
+    {
+        spectrumPlasma.resize(newSize);
+        for(int p=oldSize; p < newSize; p++)
+        {
+            spectrumPlasma.append(empty);
+        }
+    } else if (oldSize > newSize){
+        for(int p = oldSize; p > newSize; p--)
+        {
+            spectrumPlasma.pop_back();
+        }
+    }
+
+    spectrumPlasma.squeeze();
+    plasmaMutex.unlock();
+}
+
+void wfmain::on_underlayNone_toggled(bool checked)
+{
+    ui->underlayBufferSlider->setDisabled(checked);
+    if(checked)
+    {
+        underlayMode = underlayNone;
+        prefs.underlayMode = underlayMode;
+        on_clearPeakBtn_clicked();
+    }
+}
+
+void wfmain::on_underlayPeakHold_toggled(bool checked)
+{
+    ui->underlayBufferSlider->setDisabled(checked);
+    if(checked)
+    {
+        underlayMode = underlayPeakHold;
+        prefs.underlayMode = underlayMode;
+        on_clearPeakBtn_clicked();
+    }
+
+}
+
+void wfmain::on_underlayPeakBuffer_toggled(bool checked)
+{
+    ui->underlayBufferSlider->setDisabled(!checked);
+    if(checked)
+    {
+        underlayMode = underlayPeakBuffer;
+        prefs.underlayMode = underlayMode;
+    }
+}
+
+void wfmain::on_underlayAverageBuffer_toggled(bool checked)
+{
+    ui->underlayBufferSlider->setDisabled(!checked);
+    if(checked)
+    {
+        underlayMode = underlayAverageBuffer;
+        prefs.underlayMode = underlayMode;
+    }
+}
+
+// --- DEBUG FUNCTION ---
+void wfmain::on_debugBtn_clicked()
+{
+    qInfo(logSystem()) << "Debug button pressed.";
+    // issueDelayedCommand(cmdGetRigID);
+    //emit getRigCIV();
+    //trxadj->show();
+    //setRadioTimeDatePrep();
+    //wf->setInteraction(QCP::iRangeZoom, true);
+    //wf->setInteraction(QCP::iRangeDrag, true);
+    plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
+    colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+
+//    bool ok;
+//    int height = QInputDialog::getInt(this, "wfview window fixed height", "number: ", 350, 1, 500, 1, &ok );
+
+//    this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+//    this->setMaximumSize(QSize(1025,height));
+//    this->setMinimumSize(QSize(1025,height));
+//    //this->setMaximumSize(QSize(929, 270));
+//    //this->setMinimumSize(QSize(929, 270));
+
+//    resize(minimumSize());
+//    adjustSize(); // main window
+//    adjustSize();
+
 }
