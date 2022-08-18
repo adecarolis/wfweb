@@ -680,6 +680,8 @@ private:
     double plotCeiling = 160;
     double wfFloor = 0;
     double wfCeiling = 160;
+    double oldPlotFloor = -1;
+    double oldPlotCeiling = 999;
 
     QVector <QByteArray> wfimage;
     unsigned int wfLengthMax;

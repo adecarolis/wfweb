@@ -3533,6 +3533,9 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         return;
     }
 
+    QElapsedTimer performanceTimer;
+    bool updateRange = false;
+
     if((startFreq != oldLowerFreq) || (endFreq != oldUpperFreq))
     {
         // If the frequency changed and we were drawing peaks, now is the time to clearn them
@@ -3594,6 +3597,9 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
     if(!spectrumDrawLock)
     {
+        if((plotFloor != oldPlotFloor) || (plotCeiling != oldPlotCeiling))
+            updateRange = true;
+
         //ui->qcp->addGraph();
         plot->graph(0)->setData(x,y, true);
         if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
@@ -3611,29 +3617,36 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             plot->graph(1)->setData(x,y2, true); // peaks, but probably cleared out
         }
 
-        plot->yAxis->setRange(prefs.plotFloor, prefs.plotCeiling);
+        if(updateRange)
+            plot->yAxis->setRange(prefs.plotFloor, prefs.plotCeiling);
+
         plot->xAxis->setRange(startFreq, endFreq);
         plot->replot();
 
         if(specLen == spectWidth)
         {
             wfimage.prepend(spectrum);
-            wfimage.resize(wfLengthMax);
-            wfimage.squeeze();
-
+            wfimage.pop_back();
+            QByteArray wfRow;
             // Waterfall:
             for(int row = 0; row < wfLength; row++)
             {
+                wfRow = wfimage.at(row);
                 for(int col = 0; col < spectWidth; col++)
                 {
-                    colorMap->data()->setCell( col, row, wfimage.at(row).at(col));
+                    colorMap->data()->setCell( col, row, wfRow.at(col));
                 }
             }
-            colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+            if(updateRange)
+            {
+                colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+            }
             wf->yAxis->setRange(0,wfLength - 1);
             wf->xAxis->setRange(0, spectWidth-1);
             wf->replot();
         }
+        oldPlotFloor = plotFloor;
+        oldPlotCeiling = plotCeiling;
     }
 }
 
