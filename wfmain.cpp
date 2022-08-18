@@ -1069,6 +1069,9 @@ void wfmain::setUIToPrefs()
             break;
     }
 
+    ui->underlayBufferSlider->setValue(prefs.underlayBufferSize);
+    on_underlayBufferSlider_valueChanged(prefs.underlayBufferSize);
+
     ui->wfAntiAliasChk->setChecked(prefs.wfAntiAlias);
     on_wfAntiAliasChk_clicked(prefs.wfAntiAlias);
 
@@ -1276,6 +1279,7 @@ void wfmain::setDefPrefs()
     defPrefs.useSystemTheme = false;
     defPrefs.drawPeaks = true;
     defPrefs.underlayMode = underlayNone;
+    defPrefs.underlayBufferSize = 64;
     defPrefs.wfAntiAlias = false;
     defPrefs.wfInterpolate = true;
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
@@ -1328,6 +1332,7 @@ void wfmain::loadSettings()
     wfFloor = prefs.plotFloor;
     wfCeiling = prefs.plotCeiling;
     prefs.drawPeaks = settings->value("DrawPeaks", defPrefs.drawPeaks).toBool();
+    prefs.underlayBufferSize = settings->value("underlayBufferSize", defPrefs.underlayBufferSize).toInt();
     prefs.underlayMode = static_cast<underlay_t>(settings->value("underlayMode", defPrefs.underlayMode).toInt());
     prefs.wfAntiAlias = settings->value("WFAntiAlias", defPrefs.wfAntiAlias).toBool();
     prefs.wfInterpolate = settings->value("WFInterpolate", defPrefs.wfInterpolate).toBool();
@@ -1837,6 +1842,7 @@ void wfmain::saveSettings()
     settings->setValue("UseDarkMode", prefs.useDarkMode);
     settings->setValue("DrawPeaks", prefs.drawPeaks);
     settings->setValue("underlayMode", prefs.underlayMode);
+    settings->setValue("underlayBufferSize", prefs.underlayBufferSize);
     settings->setValue("WFAntiAlias", prefs.wfAntiAlias);
     settings->setValue("WFInterpolate", prefs.wfInterpolate);
     settings->setValue("WFTheme", prefs.wftheme);
@@ -6092,6 +6098,7 @@ void wfmain::on_underlayBufferSlider_valueChanged(int value)
 {
     // TODO: lock first...
     spectrumPlasma.resize(value);
+    prefs.underlayBufferSize = value;
 }
 
 void wfmain::on_underlayNone_toggled(bool checked)

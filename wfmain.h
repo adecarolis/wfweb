@@ -785,6 +785,7 @@ private:
         bool useSystemTheme;
         bool drawPeaks;
         underlay_t underlayMode = underlayNone;
+        int underlayBufferSize = 64;
         bool wfAntiAlias;
         bool wfInterpolate;
         QString stylesheetPath;
