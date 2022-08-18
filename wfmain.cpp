@@ -3593,6 +3593,8 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
             freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
         }
+
+#if QCUSTOMPLOT_VERSION >= 0x020000
         if(underlayMode == underlayPeakHold)
         {
             plot->graph(1)->setData(x,y2, true); // peaks
@@ -3602,6 +3604,17 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         } else {
             plot->graph(1)->setData(x,y2, true); // peaks, but probably cleared out
         }
+#else
+        if(underlayMode == underlayPeakHold)
+        {
+            plot->graph(1)->setData(x,y2); // peaks
+        } else if (underlayMode != underlayNone) {
+            computePlasma();
+            plot->graph(1)->setData(x,spectrumPlasmaLine);
+        } else {
+            plot->graph(1)->setData(x,y2); // peaks, but probably cleared out
+        }
+#endif
 
         if(updateRange)
             plot->yAxis->setRange(prefs.plotFloor, prefs.plotCeiling);
