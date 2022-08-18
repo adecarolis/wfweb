@@ -3536,12 +3536,13 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     if((startFreq != oldLowerFreq) || (endFreq != oldUpperFreq))
     {
         // If the frequency changed and we were drawing peaks, now is the time to clearn them
-        if(drawPeaks)
+        if(underlayMode == underlayPeakHold)
         {
             // TODO: create non-button function to do this
             // This will break if the button is ever moved or renamed.
             on_clearPeakBtn_clicked();
         }
+        // TODO: Add clear-out for the buffer
     }
 
     oldLowerFreq = startFreq;
@@ -3638,22 +3639,22 @@ void wfmain::computePlasma()
 {
     spectrumPlasmaLine.clear();
     spectrumPlasmaLine.resize(spectWidth);
+    int specPlasmaSize = spectrumPlasma.size();
     if(underlayMode == underlayAverageBuffer)
     {
         for(int col=0; col < spectWidth; col++)
         {
-            for(int pos=0; pos < spectrumPlasma.size(); pos++)
+            for(int pos=0; pos < specPlasmaSize; pos++)
             {
                 spectrumPlasmaLine[col] += spectrumPlasma[pos][col];
-
             }
-            spectrumPlasmaLine[col] = spectrumPlasmaLine[col] / spectrumPlasma.size();
+            spectrumPlasmaLine[col] = spectrumPlasmaLine[col] / specPlasmaSize;
         }
     } else if (underlayMode == underlayPeakBuffer){
         // peak mode, running peak display
         for(int col=0; col < spectWidth; col++)
         {
-            for(int pos=0; pos < spectrumPlasma.size(); pos++)
+            for(int pos=0; pos < specPlasmaSize; pos++)
             {
                 if((double)(spectrumPlasma[pos][col]) > spectrumPlasmaLine[col])
                     spectrumPlasmaLine[col] = spectrumPlasma[pos][col];
