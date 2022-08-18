@@ -543,6 +543,16 @@ private slots:
 
     void on_botLevelSlider_valueChanged(int value);
 
+    void on_underlayBufferSlider_valueChanged(int value);
+
+    void on_underlayNone_toggled(bool checked);
+
+    void on_underlayPeakHold_toggled(bool checked);
+
+    void on_underlayPeakBuffer_toggled(bool checked);
+
+    void on_underlayAverageBuffer_toggled(bool checked);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -652,10 +662,14 @@ private:
     quint16 wfLength;
     bool spectrumDrawLock;
 
+    enum underlay_t { underlayNone, underlayPeakHold, underlayPeakBuffer, underlayAverageBuffer };
+
+
     QByteArray spectrumPeaks;
     QVector <double> spectrumPlasmaLine;
     QVector <QByteArray> spectrumPlasma;
     unsigned int spectrumPlasmaSize = 64;
+    underlay_t underlayMode = underlayNone;
     bool drawPlasma = true;
 
     double plotFloor = 0;
@@ -770,6 +784,7 @@ private:
         bool useDarkMode;
         bool useSystemTheme;
         bool drawPeaks;
+        underlay_t underlayMode = underlayNone;
         bool wfAntiAlias;
         bool wfInterpolate;
         QString stylesheetPath;
@@ -788,13 +803,14 @@ private:
         unsigned char localAFgain;
         unsigned int wflength;
         int wftheme;
+        int plotFloor;
+        int plotCeiling;
         bool confirmExit;
         bool confirmPowerOff;
         meterKind meter2Type;
         quint16 tcpPort;
         quint8 waterfallFormat;
         audioType audioSystem;
-        // plot scheme
     } prefs;
 
     preferences defPrefs;

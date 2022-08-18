@@ -1050,6 +1050,25 @@ void wfmain::setUIToPrefs()
     on_drawPeakChk_clicked(prefs.drawPeaks);
     drawPeaks = prefs.drawPeaks;
 
+    underlayMode = prefs.underlayMode;
+    switch(underlayMode)
+    {
+        case underlayNone:
+            ui->underlayNone->setChecked(true);
+            break;
+        case underlayPeakHold:
+            ui->underlayPeakHold->setChecked(true);
+            break;
+        case underlayPeakBuffer:
+            ui->underlayPeakBuffer->setChecked(true);
+            break;
+        case underlayAverageBuffer:
+            ui->underlayAverageBuffer->setChecked(true);
+            break;
+        default:
+            break;
+    }
+
     ui->wfAntiAliasChk->setChecked(prefs.wfAntiAlias);
     on_wfAntiAliasChk_clicked(prefs.wfAntiAlias);
 
@@ -1058,6 +1077,12 @@ void wfmain::setUIToPrefs()
 
     ui->wfLengthSlider->setValue(prefs.wflength);
     prepareWf(prefs.wflength);
+
+    ui->topLevelSlider->setValue(prefs.plotCeiling);
+    ui->botLevelSlider->setValue(prefs.plotFloor);
+
+    plot->yAxis->setRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
+    colorMap->setDataRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
 
     ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
@@ -1250,6 +1275,7 @@ void wfmain::setDefPrefs()
     defPrefs.useDarkMode = true;
     defPrefs.useSystemTheme = false;
     defPrefs.drawPeaks = true;
+    defPrefs.underlayMode = underlayNone;
     defPrefs.wfAntiAlias = false;
     defPrefs.wfInterpolate = true;
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
@@ -1266,6 +1292,8 @@ void wfmain::setDefPrefs()
     defPrefs.localAFgain = 255;
     defPrefs.wflength = 160;
     defPrefs.wftheme = static_cast<int>(QCPColorGradient::gpJet);
+    defPrefs.plotFloor = 0;
+    defPrefs.plotCeiling = 160;
     defPrefs.confirmExit = true;
     defPrefs.confirmPowerOff = true;
     defPrefs.meter2Type = meterNone;
@@ -1293,7 +1321,14 @@ void wfmain::loadSettings()
     prefs.useDarkMode = settings->value("UseDarkMode", defPrefs.useDarkMode).toBool();
     prefs.useSystemTheme = settings->value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
     prefs.wftheme = settings->value("WFTheme", defPrefs.wftheme).toInt();
+    prefs.plotFloor = settings->value("plotFloor", defPrefs.plotFloor).toInt();
+    prefs.plotCeiling = settings->value("plotCeiling", defPrefs.plotCeiling).toInt();
+    plotFloor = prefs.plotFloor;
+    plotCeiling = prefs.plotCeiling;
+    wfFloor = prefs.plotFloor;
+    wfCeiling = prefs.plotCeiling;
     prefs.drawPeaks = settings->value("DrawPeaks", defPrefs.drawPeaks).toBool();
+    prefs.underlayMode = static_cast<underlay_t>(settings->value("underlayMode", defPrefs.underlayMode).toInt());
     prefs.wfAntiAlias = settings->value("WFAntiAlias", defPrefs.wfAntiAlias).toBool();
     prefs.wfInterpolate = settings->value("WFInterpolate", defPrefs.wfInterpolate).toBool();
     prefs.wflength = (unsigned int)settings->value("WFLength", defPrefs.wflength).toInt();
@@ -1801,9 +1836,12 @@ void wfmain::saveSettings()
     settings->setValue("UseSystemTheme", prefs.useSystemTheme);
     settings->setValue("UseDarkMode", prefs.useDarkMode);
     settings->setValue("DrawPeaks", prefs.drawPeaks);
+    settings->setValue("underlayMode", prefs.underlayMode);
     settings->setValue("WFAntiAlias", prefs.wfAntiAlias);
     settings->setValue("WFInterpolate", prefs.wfInterpolate);
     settings->setValue("WFTheme", prefs.wftheme);
+    settings->setValue("plotFloor", prefs.plotFloor);
+    settings->setValue("plotCeiling", prefs.plotCeiling);
     settings->setValue("StylesheetPath", prefs.stylesheetPath);
     settings->setValue("splitter", ui->splitter->saveState());
     settings->setValue("windowGeometry", saveGeometry());
@@ -3195,8 +3233,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         wfCeiling = rigCaps.spectAmpMax;
         plotCeiling = rigCaps.spectAmpMax;
         ui->topLevelSlider->setMaximum(rigCaps.spectAmpMax);
-        wfFloor = 0;
-        plotFloor = 0;
+
         haveRigCaps = true;
         // Added so that server receives rig capabilities.
         emit sendRigCaps(rigCaps);
@@ -3316,6 +3353,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             {
                 ui->scopeBWCombo->addItem(rigCaps.scopeCenterSpans.at(i).name, (int)rigCaps.scopeCenterSpans.at(i).cstype);
             }
+            plot->yAxis->setRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
+            colorMap->setDataRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
         } else {
             ui->scopeBWCombo->setHidden(true);
         }
@@ -3527,7 +3566,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     {
         //x[i] = (i * (endFreq-startFreq)/specLen) + startFreq;
         y[i] = (unsigned char)spectrum.at(i);
-        if(drawPeaks)
+        if(underlayMode == underlayPeakHold)
         {
             if((unsigned char)spectrum.at(i) > (unsigned char)spectrumPeaks.at(i))
             {
@@ -3553,13 +3592,16 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
             freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
         }
-        if(drawPeaks)
+        if(underlayMode == underlayPeakHold)
         {
             plot->graph(1)->setData(x,y2); // peaks
-        } else if (drawPlasma) {
+        } else if (underlayMode != underlayNone) {
             computePlasma();
-            plot->graph(1)->setData(x,spectrumPlasmaLine); // peaks
+            plot->graph(1)->setData(x,spectrumPlasmaLine);
+        } else {
+            plot->graph(1)->setData(x,y2); // peaks, but probably cleared out
         }
+
         plot->yAxis->setRange(plotFloor, plotCeiling);
         plot->xAxis->setRange(startFreq, endFreq);
         plot->replot();
@@ -3590,8 +3632,7 @@ void wfmain::computePlasma()
 {
     spectrumPlasmaLine.clear();
     spectrumPlasmaLine.resize(spectWidth);
-    bool averageMode = true;
-    if(averageMode)
+    if(underlayMode == underlayAverageBuffer)
     {
         for(int col=0; col < spectWidth; col++)
         {
@@ -3602,7 +3643,7 @@ void wfmain::computePlasma()
             }
             spectrumPlasmaLine[col] = spectrumPlasmaLine[col] / spectrumPlasma.size();
         }
-    } else {
+    } else if (underlayMode == underlayPeakBuffer){
         // peak mode, running peak display
         for(int col=0; col < spectWidth; col++)
         {
@@ -6033,6 +6074,7 @@ void wfmain::on_topLevelSlider_valueChanged(int value)
 {
     wfCeiling = value;
     plotCeiling = value;
+    prefs.plotCeiling = value;
     plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
     colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
 }
@@ -6041,10 +6083,59 @@ void wfmain::on_botLevelSlider_valueChanged(int value)
 {
     wfFloor = value;
     plotFloor = value;
+    prefs.plotFloor = value;
     plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
     colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
 }
 
+void wfmain::on_underlayBufferSlider_valueChanged(int value)
+{
+    // TODO: lock first...
+    spectrumPlasma.resize(value);
+}
+
+void wfmain::on_underlayNone_toggled(bool checked)
+{
+    ui->underlayBufferSlider->setDisabled(checked);
+    if(checked)
+    {
+        underlayMode = underlayNone;
+        prefs.underlayMode = underlayMode;
+        on_clearPeakBtn_clicked();
+    }
+}
+
+void wfmain::on_underlayPeakHold_toggled(bool checked)
+{
+    ui->underlayBufferSlider->setDisabled(checked);
+    if(checked)
+    {
+        underlayMode = underlayPeakHold;
+        prefs.underlayMode = underlayMode;
+        on_clearPeakBtn_clicked();
+    }
+
+}
+
+void wfmain::on_underlayPeakBuffer_toggled(bool checked)
+{
+    ui->underlayBufferSlider->setDisabled(!checked);
+    if(checked)
+    {
+        underlayMode = underlayPeakBuffer;
+        prefs.underlayMode = underlayMode;
+    }
+}
+
+void wfmain::on_underlayAverageBuffer_toggled(bool checked)
+{
+    ui->underlayBufferSlider->setDisabled(!checked);
+    if(checked)
+    {
+        underlayMode = underlayAverageBuffer;
+        prefs.underlayMode = underlayMode;
+    }
+}
 
 // --- DEBUG FUNCTION ---
 void wfmain::on_debugBtn_clicked()
@@ -6056,17 +6147,20 @@ void wfmain::on_debugBtn_clicked()
     //setRadioTimeDatePrep();
     //wf->setInteraction(QCP::iRangeZoom, true);
     //wf->setInteraction(QCP::iRangeDrag, true);
-    bool ok;
-    int height = QInputDialog::getInt(this, "wfview window fixed height", "number: ", 350, 1, 500, 1, &ok );
+    plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
+    colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
 
-    this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-    this->setMaximumSize(QSize(1025,height));
-    this->setMinimumSize(QSize(1025,height));
-    //this->setMaximumSize(QSize(929, 270));
-    //this->setMinimumSize(QSize(929, 270));
+//    bool ok;
+//    int height = QInputDialog::getInt(this, "wfview window fixed height", "number: ", 350, 1, 500, 1, &ok );
 
-    resize(minimumSize());
-    adjustSize(); // main window
-    adjustSize();
+//    this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+//    this->setMaximumSize(QSize(1025,height));
+//    this->setMinimumSize(QSize(1025,height));
+//    //this->setMaximumSize(QSize(929, 270));
+//    //this->setMinimumSize(QSize(929, 270));
+
+//    resize(minimumSize());
+//    adjustSize(); // main window
+//    adjustSize();
 
 }
