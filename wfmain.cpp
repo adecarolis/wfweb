@@ -1079,7 +1079,7 @@ void wfmain::setUIToPrefs()
 
     ui->wfLengthSlider->setValue(prefs.wflength);
     prepareWf(prefs.wflength);
-
+    preparePlasma();
     ui->topLevelSlider->setValue(prefs.plotCeiling);
     ui->botLevelSlider->setValue(prefs.plotFloor);
 
@@ -2078,17 +2078,6 @@ void wfmain::prepareWf(unsigned int wfLength)
 
         QByteArray empty((int)spectWidth, '\x01');
         spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
-
-        if(spectrumPlasmaSize == 0)
-            spectrumPlasmaSize = 128;
-
-        //spectrumPlasma.resize(spectrumPlasmaSize);
-        for(unsigned int p=0; p < spectrumPlasmaSize; p++)
-        {
-            spectrumPlasma.append(empty);
-        }
-
-        //wfimage.resize(wfLengthMax);
 
         if((unsigned int)wfimage.size() < wfLengthMax)
         {
@@ -3644,6 +3633,28 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         oldPlotFloor = plotFloor;
         oldPlotCeiling = plotCeiling;
     }
+}
+
+void wfmain::preparePlasma()
+{
+    if(plasmaPrepared)
+        return;
+    QByteArray empty((int)spectWidth, '\x01');
+
+    if(spectrumPlasmaSize == 0)
+        spectrumPlasmaSize = 128;
+
+    plasmaMutex.lock();
+    spectrumPlasma.clear();
+
+    for(unsigned int p=0; p < spectrumPlasmaSize; p++)
+    {
+        spectrumPlasma.append(empty);
+    }
+
+    spectrumPlasma.squeeze();
+    plasmaMutex.unlock();
+    plasmaPrepared = true;
 }
 
 void wfmain::computePlasma()
