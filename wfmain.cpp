@@ -2098,7 +2098,7 @@ void wfmain::prepareWf(unsigned int wfLength)
 
         colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
         colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
-        colorMap->setDataRange(QCPRange(0, rigCaps.spectAmpMax));
+        colorMap->setDataRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
         colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(ui->wfthemeCombo->currentData().toInt()));
 
         if(colorMapData == Q_NULLPTR)
