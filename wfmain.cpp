@@ -3555,6 +3555,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
     QVector <double> x(spectWidth), y(spectWidth), y2(spectWidth);
 
+    // TODO: Keep x around unless the frequency range changes. Should save a little time.
     for(int i=0; i < spectWidth; i++)
     {
         x[i] = (i * (endFreq-startFreq)/spectWidth) + startFreq;
@@ -3669,7 +3670,7 @@ void wfmain::computePlasma()
         {
             for(int pos=0; pos < specPlasmaSize; pos++)
             {
-                spectrumPlasmaLine[col] += spectrumPlasma[pos][col];
+                spectrumPlasmaLine[col] += (unsigned char)spectrumPlasma[pos][col];
             }
             spectrumPlasmaLine[col] = spectrumPlasmaLine[col] / specPlasmaSize;
         }
@@ -3679,8 +3680,8 @@ void wfmain::computePlasma()
         {
             for(int pos=0; pos < specPlasmaSize; pos++)
             {
-                if((double)(spectrumPlasma[pos][col]) > spectrumPlasmaLine[col])
-                    spectrumPlasmaLine[col] = spectrumPlasma[pos][col];
+                if((double)((unsigned char)spectrumPlasma[pos][col]) > spectrumPlasmaLine[col])
+                    spectrumPlasmaLine[col] = (unsigned char)spectrumPlasma[pos][col];
             }
         }
     }
