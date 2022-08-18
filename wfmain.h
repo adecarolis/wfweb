@@ -672,7 +672,6 @@ private:
     QVector <QByteArray> spectrumPlasma;
     unsigned int spectrumPlasmaSize = 64;
     underlay_t underlayMode = underlayNone;
-    bool drawPlasma = true;
     QMutex plasmaMutex;
     void resizePlasmaBuffer(int newSize);
 
@@ -687,7 +686,6 @@ private:
     unsigned int wfLengthMax;
 
     bool onFullscreen;
-    bool drawPeaks;
     bool freqTextSelected;
     void checkFreqSel();
 

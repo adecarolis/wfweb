@@ -1048,7 +1048,6 @@ void wfmain::setUIToPrefs()
 
     ui->drawPeakChk->setChecked(prefs.drawPeaks);
     on_drawPeakChk_clicked(prefs.drawPeaks);
-    drawPeaks = prefs.drawPeaks;
 
     underlayMode = prefs.underlayMode;
     switch(underlayMode)
@@ -3591,9 +3590,6 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     //spectrumPlasma.resize(spectrumPlasmaSize);
     plasmaMutex.unlock();
 
-    // HACK DO NOT CHECK IN:
-    drawPeaks = false;
-    drawPlasma = true;
 
     if(!spectrumDrawLock)
     {
@@ -3678,7 +3674,6 @@ void wfmain::computePlasma()
         }
     }
     plasmaMutex.unlock();
-
 }
 
 void wfmain::receiveSpectrumMode(spectrumMode spectMode)
@@ -3882,10 +3877,8 @@ void wfmain::on_drawPeakChk_clicked(bool checked)
     if(checked)
     {
         on_clearPeakBtn_clicked(); // clear
-        drawPeaks = true;
 
     } else {
-        drawPeaks = false;
 
 #if QCUSTOMPLOT_VERSION >= 0x020000
         plot->graph(1)->data()->clear();

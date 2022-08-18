@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -2974,7 +2974,7 @@
                 <item>
                  <widget class="QLabel" name="label_42">
                   <property name="text">
-                   <string>Uneerlay Buffer Size:</string>
+                   <string>Underlay Buffer Size:</string>
                   </property>
                  </widget>
                 </item>
