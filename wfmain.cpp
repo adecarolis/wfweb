@@ -3587,6 +3587,8 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             updateRange = true;
 
         //ui->qcp->addGraph();
+#if QCUSTOMPLOT_VERSION >= 0x020000
+
         plot->graph(0)->setData(x,y, true);
         if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
         {
@@ -3594,7 +3596,6 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
         }
 
-#if QCUSTOMPLOT_VERSION >= 0x020000
         if(underlayMode == underlayPeakHold)
         {
             plot->graph(1)->setData(x,y2, true); // peaks
@@ -3605,6 +3606,13 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             plot->graph(1)->setData(x,y2, true); // peaks, but probably cleared out
         }
 #else
+        plot->graph(0)->setData(x,y);
+        if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
+        {
+            freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
+            freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
+        }
+
         if(underlayMode == underlayPeakHold)
         {
             plot->graph(1)->setData(x,y2); // peaks
