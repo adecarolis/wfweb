@@ -3597,7 +3597,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             plot->graph(1)->setData(x,y2, true); // peaks
         } else if (underlayMode != underlayNone) {
             computePlasma();
-            plot->graph(1)->setData(x,spectrumPlasmaLine);
+            plot->graph(1)->setData(x,spectrumPlasmaLine, true);
         } else {
             plot->graph(1)->setData(x,y2, true); // peaks, but probably cleared out
         }
