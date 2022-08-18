@@ -3236,8 +3236,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         }
         setWindowTitle(rigCaps.modelName);
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
-        wfCeiling = rigCaps.spectAmpMax;
-        plotCeiling = rigCaps.spectAmpMax;
+        //wfCeiling = rigCaps.spectAmpMax;
+        //plotCeiling = rigCaps.spectAmpMax;
         ui->topLevelSlider->setMaximum(rigCaps.spectAmpMax);
 
         haveRigCaps = true;
@@ -3611,7 +3611,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             plot->graph(1)->setData(x,y2, true); // peaks, but probably cleared out
         }
 
-        plot->yAxis->setRange(plotFloor, plotCeiling);
+        plot->yAxis->setRange(prefs.plotFloor, prefs.plotCeiling);
         plot->xAxis->setRange(startFreq, endFreq);
         plot->replot();
 
@@ -3629,10 +3629,10 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
                     colorMap->data()->setCell( col, row, wfimage.at(row).at(col));
                 }
             }
-
-           wf->yAxis->setRange(0,wfLength - 1);
-           wf->xAxis->setRange(0, spectWidth-1);
-           wf->replot();
+            colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+            wf->yAxis->setRange(0,wfLength - 1);
+            wf->xAxis->setRange(0, spectWidth-1);
+            wf->replot();
         }
     }
 }
