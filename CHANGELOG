@@ -1,5 +1,15 @@
 # CHANGELOG
 
+- 20220819      
+
+		version bumped to 1.4
+		temporary squashed logs; may redo later
+                audio fixes at exit
+                introduction of peak decays at the scope
+                resizing of top and bottom scope/waterfall
+                various fixes on the spectrum display 
+                
+
 - 20220414	
 
 		this is a cherrypicked CHANGELOG add as there are loads of changes due to different 
