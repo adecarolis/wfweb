@@ -39,3 +39,51 @@ void QLedLabel::setState(bool state)
 {
     setState(state ? StateOk : StateError);
 }
+
+void QLedLabel::setColor(QColor customColor, bool applyGradient=true)
+{
+    QColor top,middle,bottom;
+    this->baseColor = customColor;
+
+    if(applyGradient)
+    {
+        top = customColor.lighter(200);
+        middle = customColor;
+        bottom = customColor.darker(200);
+    } else {
+        top = customColor;
+        middle = customColor;
+        bottom = customColor;
+    }
+
+    // Stop 0 is the upper corner color, white-ish
+    // Stop 0.4 is the middle color
+    // Stop 1 is the bottom-right corner, darker.
+
+    QString colorSS = QString("color: white;\
+            border-radius: %1;background-color: \
+            qlineargradient(spread:pad, x1:0.04, \
+            y1:0.0565909, x2:0.799, y2:0.795, \
+            stop:0 \
+            rgba(%2, %3, %4, %5), \
+            stop:0.41206 \
+            rgba(%6, %7, %8, %9), \
+            stop:1 \
+            rgba(%10, %11, %12, %13));").arg(SIZE / 3)
+            .arg(top.red()).arg(top.green()).arg(top.blue()).arg(top.alpha())
+            .arg(middle.red()).arg(middle.green()).arg(middle.blue()).arg(middle.alpha())
+            .arg(bottom.red()).arg(bottom.green()).arg(bottom.blue()).arg(bottom.alpha());
+
+    setStyleSheet(colorSS);
+}
+
+void QLedLabel::setColor(QString colorString, bool applyGradient=true)
+{
+    QColor c = QColor(colorString);
+    setColor(c, applyGradient);
+}
+
+QColor QLedLabel::getColor()
+{
+    return baseColor;
+}

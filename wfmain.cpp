@@ -6219,3 +6219,58 @@ void wfmain::on_debugBtn_clicked()
 //    adjustSize();
 
 }
+
+void wfmain::setColorElement(QColor color,
+                             QLedLabel *led,
+                             QLabel *label,
+                             QLineEdit *lineText)
+{
+    if(led != Q_NULLPTR)
+    {
+        led->setColor(color, true);
+    }
+    if(label != Q_NULLPTR)
+    {
+        label->setText(color.name(QColor::HexArgb));
+    }
+    if(lineText != Q_NULLPTR)
+    {
+        lineText->setText(color.name(QColor::HexArgb));
+    }
+}
+
+void wfmain::setColorElement(QColor color, QLedLabel *led, QLabel *label)
+{
+    setColorElement(color, led, label, Q_NULLPTR);
+}
+
+void wfmain::setColorElement(QColor color, QLedLabel *led, QLineEdit *lineText)
+{
+    setColorElement(color, led, Q_NULLPTR, lineText);
+}
+
+QColor wfmain::getColor(QColor initialColor)
+{
+    QColorDialog::ColorDialogOptions options;
+    options.setFlag(QColorDialog::ShowAlphaChannel, true);
+    options.setFlag(QColorDialog::DontUseNativeDialog, true);
+    QColor selColor = QColorDialog::getColor(initialColor, this, "Select Color", options);
+    return selColor;
+}
+
+void wfmain::getSetColor(QLedLabel *led, QLabel *label)
+{
+    QColor selColor = getColor(led->getColor());
+    setColorElement(selColor, led, label);
+}
+
+void wfmain::getSetColor(QLedLabel *led, QLineEdit *line)
+{
+    QColor selColor = getColor(led->getColor());
+    setColorElement(selColor, led, line);
+}
+
+void wfmain::on_colorSetBtnGrid_clicked()
+{
+    getSetColor(ui->colorSwatchGrid, ui->colorLabelGrid);
+}

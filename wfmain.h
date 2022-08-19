@@ -16,6 +16,8 @@
 #include <QMetaType>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QColorDialog>
+#include <QColor>
 
 #include "logcategories.h"
 #include "commhandler.h"
@@ -553,6 +555,8 @@ private slots:
 
     void on_underlayAverageBuffer_toggled(bool checked);
 
+    void on_colorSetBtnGrid_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -833,6 +837,12 @@ private:
     void useColors(); // set the plot up
     void setDefPrefs(); // populate default values to default prefs
     void setTuningSteps();
+    void setColorElement(QColor color, QLedLabel *led, QLabel *label);
+    void setColorElement(QColor color, QLedLabel *led, QLineEdit *lineText);
+    void setColorElement(QColor color, QLedLabel *led, QLabel *label, QLineEdit *lineText);
+    QColor getColor(QColor initialColor);
+    void getSetColor(QLedLabel *led, QLabel *label);
+    void getSetColor(QLedLabel *led, QLineEdit *line);
 
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
     quint64 roundFrequencyWithStep(quint64 oldFreq, int steps,\
