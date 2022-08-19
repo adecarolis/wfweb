@@ -3583,7 +3583,6 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         if((plotFloor != oldPlotFloor) || (plotCeiling != oldPlotCeiling))
             updateRange = true;
 
-        //ui->qcp->addGraph();
 #if QCUSTOMPLOT_VERSION >= 0x020000
 
         plot->graph(0)->setData(x,y, true);
