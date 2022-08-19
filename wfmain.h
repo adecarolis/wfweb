@@ -14,6 +14,8 @@
 #include <QSettings>
 #include <QShortcut>
 #include <QMetaType>
+#include <QMutex>
+#include <QMutexLocker>
 
 #include "logcategories.h"
 #include "commhandler.h"
@@ -539,6 +541,20 @@ private slots:
 
     void on_audioSystemCombo_currentIndexChanged(int value);
 
+    void on_topLevelSlider_valueChanged(int value);
+
+    void on_botLevelSlider_valueChanged(int value);
+
+    void on_underlayBufferSlider_valueChanged(int value);
+
+    void on_underlayNone_toggled(bool checked);
+
+    void on_underlayPeakHold_toggled(bool checked);
+
+    void on_underlayPeakBuffer_toggled(bool checked);
+
+    void on_underlayAverageBuffer_toggled(bool checked);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -557,6 +573,7 @@ private:
     void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
+    void computePlasma();
     void showHideSpectrum(bool show);
     void getInitialRigState();
     void setBandButtons();
@@ -647,7 +664,24 @@ private:
     quint16 wfLength;
     bool spectrumDrawLock;
 
+    enum underlay_t { underlayNone, underlayPeakHold, underlayPeakBuffer, underlayAverageBuffer };
+
+
     QByteArray spectrumPeaks;
+    QVector <double> spectrumPlasmaLine;
+    QVector <QByteArray> spectrumPlasma;
+    unsigned int spectrumPlasmaSize = 64;
+    underlay_t underlayMode = underlayNone;
+    bool drawPlasma = true;
+    QMutex plasmaMutex;
+    void resizePlasmaBuffer(int newSize);
+
+    double plotFloor = 0;
+    double plotCeiling = 160;
+    double wfFloor = 0;
+    double wfCeiling = 160;
+    double oldPlotFloor = -1;
+    double oldPlotCeiling = 999;
 
     QVector <QByteArray> wfimage;
     unsigned int wfLengthMax;
@@ -756,6 +790,8 @@ private:
         bool useDarkMode;
         bool useSystemTheme;
         bool drawPeaks;
+        underlay_t underlayMode = underlayNone;
+        int underlayBufferSize = 64;
         bool wfAntiAlias;
         bool wfInterpolate;
         QString stylesheetPath;
@@ -774,13 +810,14 @@ private:
         unsigned char localAFgain;
         unsigned int wflength;
         int wftheme;
+        int plotFloor;
+        int plotCeiling;
         bool confirmExit;
         bool confirmPowerOff;
         meterKind meter2Type;
         quint16 tcpPort;
         quint8 waterfallFormat;
         audioType audioSystem;
-        // plot scheme
     } prefs;
 
     preferences defPrefs;
