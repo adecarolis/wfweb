@@ -297,8 +297,6 @@ private slots:
 
     void on_clearPeakBtn_clicked();
 
-    void on_drawPeakChk_clicked(bool checked);
-
     void on_fullScreenChk_clicked(bool checked);
 
     void on_goFreqBtn_clicked();

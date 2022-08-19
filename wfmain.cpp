@@ -1046,9 +1046,6 @@ void wfmain::setUIToPrefs()
     ui->useSystemThemeChk->setChecked(prefs.useSystemTheme);
     on_useSystemThemeChk_clicked(prefs.useSystemTheme);
 
-    ui->drawPeakChk->setChecked(prefs.drawPeaks);
-    on_drawPeakChk_clicked(prefs.drawPeaks);
-
     underlayMode = prefs.underlayMode;
     switch(underlayMode)
     {
@@ -3903,24 +3900,6 @@ void wfmain::on_clearPeakBtn_clicked()
         spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
     }
     return;
-}
-
-void wfmain::on_drawPeakChk_clicked(bool checked)
-{
-    if(checked)
-    {
-        on_clearPeakBtn_clicked(); // clear
-
-    } else {
-
-#if QCUSTOMPLOT_VERSION >= 0x020000
-        plot->graph(1)->data()->clear();
-#else
-        plot->graph(1)->clearData();
-#endif
-
-    }
-    prefs.drawPeaks = checked;
 }
 
 void wfmain::on_fullScreenChk_clicked(bool checked)
