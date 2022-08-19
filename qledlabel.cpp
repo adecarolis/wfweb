@@ -12,6 +12,7 @@ QLedLabel::QLedLabel(QWidget* parent) :
 {
     //Set to ok by default
     setState(StateOkBlue);
+    baseColor = QColor(0, 115, 255, 255);
     setFixedSize(SIZE, SIZE);
 }
 
@@ -69,7 +70,7 @@ void QLedLabel::setColor(QColor customColor, bool applyGradient=true)
             stop:0.41206 \
             rgba(%6, %7, %8, %9), \
             stop:1 \
-            rgba(%10, %11, %12, %13));").arg(SIZE / 3)
+            rgba(%10, %11, %12, %13));").arg(SIZE / 2)
             .arg(top.red()).arg(top.green()).arg(top.blue()).arg(top.alpha())
             .arg(middle.red()).arg(middle.green()).arg(middle.blue()).arg(middle.alpha())
             .arg(bottom.red()).arg(bottom.green()).arg(bottom.blue()).arg(bottom.alpha());

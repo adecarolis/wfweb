@@ -6270,7 +6270,37 @@ void wfmain::getSetColor(QLedLabel *led, QLineEdit *line)
     setColorElement(selColor, led, line);
 }
 
+QString wfmain::setColorFromString(QString colorstr, QLedLabel *led)
+{
+    if(led==Q_NULLPTR)
+        return "ERROR";
+
+    if(!colorstr.startsWith("#"))
+    {
+        colorstr.prepend("#");
+    }
+    if(colorstr.length() != 9)
+    {
+        // TODO: Tell user about AA RR GG BB
+        return led->getColor().name(QColor::HexArgb);
+    }
+    led->setColor(colorstr, true);
+    return led->getColor().name(QColor::HexArgb);
+}
+
 void wfmain::on_colorSetBtnGrid_clicked()
 {
     getSetColor(ui->colorSwatchGrid, ui->colorLabelGrid);
+}
+
+void wfmain::on_colorSetBtnPlotBackground_clicked()
+{
+    getSetColor(ui->colorSwatchPlotBackground, ui->colorLinePlotBackground);
+}
+
+void wfmain::on_colorLinePlotBackground_editingFinished()
+{
+    QString c = ui->colorLinePlotBackground->text();
+    c = setColorFromString(c, ui->colorSwatchPlotBackground);
+    ui->colorLinePlotBackground->setText(c);
 }

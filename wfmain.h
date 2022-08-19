@@ -557,6 +557,10 @@ private slots:
 
     void on_colorSetBtnGrid_clicked();
 
+    void on_colorSetBtnPlotBackground_clicked();
+
+    void on_colorLinePlotBackground_editingFinished();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -843,6 +847,7 @@ private:
     QColor getColor(QColor initialColor);
     void getSetColor(QLedLabel *led, QLabel *label);
     void getSetColor(QLedLabel *led, QLineEdit *line);
+    QString setColorFromString(QString aarrggbb, QLedLabel *led);
 
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
     quint64 roundFrequencyWithStep(quint64 oldFreq, int steps,\

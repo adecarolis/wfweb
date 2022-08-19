@@ -3135,13 +3135,6 @@
                        </property>
                       </widget>
                      </item>
-                     <item row="1" column="1">
-                      <widget class="QLabel" name="label_44">
-                       <property name="text">
-                        <string>TextLabel</string>
-                       </property>
-                      </widget>
-                     </item>
                      <item row="3" column="1">
                       <widget class="QLabel" name="label_46">
                        <property name="text">
@@ -3164,9 +3157,9 @@
                       </widget>
                      </item>
                      <item row="1" column="0">
-                      <widget class="QPushButton" name="pushButton_5">
+                      <widget class="QPushButton" name="colorSetBtnPlotBackground">
                        <property name="text">
-                        <string>PushButton</string>
+                        <string>Plot Background...</string>
                        </property>
                       </widget>
                      </item>
@@ -3195,17 +3188,33 @@
                       <widget class="QLedLabel" name="colorSwatchGrid" native="true">
                        <property name="minimumSize">
                         <size>
-                         <width>15</width>
-                         <height>15</height>
+                         <width>0</width>
+                         <height>0</height>
                         </size>
                        </property>
                        <property name="maximumSize">
                         <size>
-                         <width>15</width>
-                         <height>15</height>
+                         <width>65535</width>
+                         <height>65535</height>
                         </size>
                        </property>
                       </widget>
+                     </item>
+                     <item row="1" column="1">
+                      <widget class="QLineEdit" name="colorLinePlotBackground">
+                       <property name="maximumSize">
+                        <size>
+                         <width>90</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
+                       <property name="text">
+                        <string>#AARRGGBB</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="2">
+                      <widget class="QLedLabel" name="colorSwatchPlotBackground" native="true"/>
                      </item>
                     </layout>
                    </widget>
