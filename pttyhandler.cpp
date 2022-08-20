@@ -13,7 +13,7 @@
 
 // Copyright 2017-2021 Elliott H. Liggett & Phil Taylor 
 
-pttyHandler::pttyHandler(QString pty)
+pttyHandler::pttyHandler(QString pty, QObject* parent) : QObject(parent)
 {
     //constructor
     if (pty == "" || pty.toLower() == "none")
@@ -214,12 +214,12 @@ void pttyHandler::receiveDataIn(int fd) {
             if (civId == 0 && inPortData.length() > lastFE + 2 && (quint8)inPortData[lastFE + 2] > (quint8)0xdf && (quint8)inPortData[lastFE + 2] < (quint8)0xef) {
                 // This is (should be) the remotes CIV id.
                 civId = (quint8)inPortData[lastFE + 2];
-                qInfo(logSerial()) << "pty detected remote CI-V:" << hex << civId;
+                qInfo(logSerial()) << "pty detected remote CI-V:" << QString("0x%1").arg(civId,0,16);
             }
             else if (civId != 0 && inPortData.length() > lastFE + 2 && (quint8)inPortData[lastFE + 2] != civId)
             {
                 civId = (quint8)inPortData[lastFE + 2];
-                qInfo(logSerial()) << "pty remote CI-V changed:" << hex << (quint8)civId;
+                qInfo(logSerial()) << "pty remote CI-V changed:" << QString("0x%1").arg((quint8)civId,0,16);
             }
             // filter C-IV transceive command before forwarding on.
             if (inPortData.contains(rigCaps.transceiveCommand))
@@ -245,14 +245,14 @@ void pttyHandler::receiveDataIn(int fd) {
 
             if (rolledBack)
             {
-                // qInfo(logSerial()) << "Rolled back and was successfull. Length: " << inPortData.length();
+                // qInfo(logSerial()) << "Rolled back and was successful. Length: " << inPortData.length();
                 //printHex(inPortData, false, true);
                 rolledBack = false;
             }
         }
         else {
             // did not receive the entire thing so roll back:
-            // qInfo(logSerial()) << "Rolling back transaction. End not detected. Lenth: " << inPortData.length();
+            // qInfo(logSerial()) << "Rolling back transaction. End not detected. Length: " << inPortData.length();
             //printHex(inPortData, false, true);
             rolledBack = true;
 #ifdef Q_OS_WIN

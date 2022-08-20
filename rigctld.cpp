@@ -199,7 +199,7 @@ void rigCtlClient::socketReadyRead()
             response.append("1"); // rigctld protocol version
             response.append(QString("%1").arg(rigCaps.rigctlModel)); 
             response.append("0"); // Print something
-            bandType lastBand;
+            bandType lastBand=(bandType)-1;
             for (bandType band : rigCaps.bands)
             {
                 if (band != lastBand)
@@ -710,7 +710,7 @@ void rigCtlClient::socketReadyRead()
                 resp.append(QString("%1").arg((float)rigState->getChar(ANTIVOXGAIN) / 255.0));
             }
             else if (command[1] == "RFPOWER") {
-                resp.append(QString("%1").arg((float)rigState->getChar(TXPOWER) / 255.0));
+                resp.append(QString("%1").arg((float)rigState->getChar(RFPOWER) / 255.0));
             }
             else if (command[1] == "PREAMP") {
                 resp.append(QString("%1").arg(rigState->getChar(PREAMP)*10));
@@ -735,6 +735,10 @@ void rigCtlClient::socketReadyRead()
             else if (command[1] == "RF") {
                 value = command[2].toFloat() * 255;
                 rigState->set(RFGAIN, value, true);
+            }
+            else if (command[1] == "RFPOWER") {
+		value = command[2].toFloat() * 255;
+		rigState->set(RFPOWER, value, true);
             }
             else if (command[1] == "SQL") {
                 value = command[2].toFloat() * 255;

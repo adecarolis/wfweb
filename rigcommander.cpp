@@ -4,7 +4,7 @@
 #include "rigidentities.h"
 #include "logcategories.h"
 
-// Copytight 2017-2020 Elliott H. Liggett
+// Copyright 2017-2020 Elliott H. Liggett
 
 // This file parses data from the radio and also forms commands to the radio.
 // The radio physical interface is handled by the commHandler() instance "comm"
@@ -20,18 +20,27 @@
 
 // Note: When sending \x00, must use QByteArray.setRawData()
 
-rigCommander::rigCommander()
+rigCommander::rigCommander(QObject* parent) : QObject(parent)
 {
-    state.set(SCOPEFUNC,true,false);
+    qInfo(logRig()) << "creating instance of rigCommander()";
+    state.set(SCOPEFUNC, true, false);
+}
+
+rigCommander::rigCommander(quint8 guid[GUIDLEN], QObject* parent) : QObject(parent)
+{
+    qInfo(logRig()) << "creating instance of rigCommander()";
+    state.set(SCOPEFUNC, true, false);
+    memcpy(this->guid, guid, GUIDLEN);
 }
 
 rigCommander::~rigCommander()
 {
+    qInfo(logRig()) << "closing instance of rigCommander()";
     closeComm();
 }
 
 
-void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp)
+void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -41,23 +50,37 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
     usingNativeLAN = false;
 
+    //qInfo(logRig()) << "Opening connection to Rig:" << QString("0x%1").arg((unsigned char)rigCivAddr,0,16) << "on serial port" << rigSerialPort << "at baud rate" << rigBaudRate;
     // ---
     setup();
     // ---
 
     this->rigSerialPort = rigSerialPort;
     this->rigBaudRate = rigBaudRate;
+    rigCaps.baudRate = rigBaudRate;
 
-    comm = new commHandler(rigSerialPort, rigBaudRate);
-    ptty = new pttyHandler(vsp);
+    comm = new commHandler(rigSerialPort, rigBaudRate,wf,this);
+    ptty = new pttyHandler(vsp,this);
+
+    if (tcpPort > 0) {
+        tcp = new tcpServer(this);
+        tcp->startServer(tcpPort);
+    }
+
 
     // data from the comm port to the program:
     connect(comm, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
 
     // data from the ptty to the rig:
     connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
+
     // data from the program to the comm port:
     connect(this, SIGNAL(dataForComm(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
+    if (tcpPort > 0) {
+        // data from the tcp port to the rig:
+        connect(tcp, SIGNAL(receiveData(QByteArray)), comm, SLOT(receiveDataFromUserToRig(QByteArray)));
+        connect(comm, SIGNAL(haveDataFromPort(QByteArray)), tcp, SLOT(sendData(QByteArray)));
+    }
     connect(this, SIGNAL(toggleRTS(bool)), comm, SLOT(setRTS(bool)));
 
     // data from the rig to the ptty:
@@ -76,7 +99,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
 
 }
 
-void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp)
+void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
@@ -85,16 +108,17 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
     // civAddr = 0x94; // address of the radio. Decimal is 148.
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
     usingNativeLAN = true;
-
-    // ---
+    // -- 
     setup();
     // ---
+
 
     if (udp == Q_NULLPTR) {
 
         udp = new udpHandler(prefs,rxSetup,txSetup);
 
         udpHandlerThread = new QThread(this);
+        udpHandlerThread->setObjectName("udpHandler()");
 
         udp->moveToThread(udpHandlerThread);
 
@@ -108,8 +132,12 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
         //this->rigSerialPort = rigSerialPort;
         //this->rigBaudRate = rigBaudRate;
 
-        ptty = new pttyHandler(vsp);
+        ptty = new pttyHandler(vsp,this);
 
+        if (tcpPort > 0) {
+            tcp = new tcpServer(this);
+            tcp->startServer(tcpPort);
+        }
         // Data from UDP to the program
         connect(udp, SIGNAL(haveDataFromPort(QByteArray)), this, SLOT(handleNewData(QByteArray)));
 
@@ -125,19 +153,28 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
         // data from the ptty to the rig:
         connect(ptty, SIGNAL(haveDataFromPort(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
 
+        if (tcpPort > 0) {
+            // data from the tcp port to the rig:
+            connect(tcp, SIGNAL(receiveData(QByteArray)), udp, SLOT(receiveDataFromUserToRig(QByteArray)));
+            connect(udp, SIGNAL(haveDataFromPort(QByteArray)), tcp, SLOT(sendData(QByteArray)));
+        }
+
         connect(this, SIGNAL(haveChangeLatency(quint16)), udp, SLOT(changeLatency(quint16)));
         connect(this, SIGNAL(haveSetVolume(unsigned char)), udp, SLOT(setVolume(unsigned char)));
         connect(udp, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
 
         // Connect for errors/alerts
         connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
-        connect(udp, SIGNAL(haveNetworkStatus(QString)), this, SLOT(handleStatusUpdate(QString)));
+        connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(handleStatusUpdate(networkStatus)));
 
         connect(ptty, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
         connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
 
         connect(this, SIGNAL(discoveredRigID(rigCapabilities)), ptty, SLOT(receiveFoundRigID(rigCapabilities)));
 
+        connect(udp, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
+        connect(udp, SIGNAL(setRadioUsage(quint8, quint8, QString, QString)), this, SLOT(radioUsage(quint8, quint8, QString, QString)));
+        connect(this, SIGNAL(selectedRadio(quint8)), udp, SLOT(setCurrentRadio(quint8)));
         emit haveAfGain(rxSetup.localAFgain);
         localVolume = rxSetup.localAFgain;
     }
@@ -203,9 +240,9 @@ void rigCommander::handleSerialPortError(const QString port, const QString error
     emit haveSerialPortError(port, errorText);
 }
 
-void rigCommander::handleStatusUpdate(const QString text)
+void rigCommander::handleStatusUpdate(const networkStatus status)
 {
-    emit haveStatusUpdate(text);
+    emit haveStatusUpdate(status);
 }
 
 bool rigCommander::usingLAN()
@@ -214,6 +251,7 @@ bool rigCommander::usingLAN()
 }
 
 void rigCommander::receiveBaudRate(quint32 baudrate) {
+    rigCaps.baudRate = baudrate;
     emit haveBaudRate(baudrate);
 }
 
@@ -1407,7 +1445,7 @@ void rigCommander::parseLevels()
             case '\x0A':
                 // TX RF level
                 emit haveTxPower(level);
-                state.set(TXPOWER, level, false);
+                state.set(RFPOWER, level, false);
                 break;
             case '\x0B':
                 // Mic Gain
@@ -1456,6 +1494,9 @@ void rigCommander::parseLevels()
     {
         switch(payloadIn[1])
         {
+            case '\x01':
+                // noise or s-meter sequelch status
+                break;
             case '\x02':
                 // S-Meter
                 emit haveMeter(meterS, level);
@@ -1465,6 +1506,9 @@ void rigCommander::parseLevels()
                 // Center (IC-R8600)
                 emit haveMeter(meterCenter, level);
                 state.set(SMETER, level, false);
+                break;
+            case '\x05':
+                // Various squelch (tone etc.)
                 break;
             case '\x11':
                 // RF-Power meter
@@ -3492,6 +3536,34 @@ void rigCommander::determineRigCaps()
                               createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
                             };
             break;
+        case model746:
+            rigCaps.modelName = QString("IC-746");
+            rigCaps.rigctlModel = 3023;
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.clear();
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
+            rigCaps.hasATU = true;
+            rigCaps.hasTBPF = true;
+            rigCaps.hasIFShift = true;
+            rigCaps.hasCTCSS = true;
+            rigCaps.hasDTCS = true;
+            rigCaps.hasAntennaSel = true;
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x20'});
+            // There are two HF and VHF ant, 12-01 adn 12-02 select the HF, the VHF is auto selected
+            // this incorrectly shows up as 2 and 3 in the drop down.
+            rigCaps.antennas = {0x01, 0x02};
+            rigCaps.bands = standardHF;
+            rigCaps.bands.push_back(band2m);
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
+            break;
+
         case model756pro:
             rigCaps.modelName = QString("IC-756 Pro");
             rigCaps.rigctlModel = 3027;
@@ -3609,6 +3681,9 @@ void rigCommander::determineRigCaps()
     }
     haveRigCaps = true;
 
+    // Copy received guid so we can recognise this radio.
+    memcpy(rigCaps.guid, this->guid, GUIDLEN);
+
     if(!usingNativeLAN)
     {
         if(useRTSforPTT_isSet)
@@ -3629,7 +3704,7 @@ void rigCommander::determineRigCaps()
         payloadPrefix.append(civAddr);
         payloadPrefix.append((char)compCivAddr);
         // if there is a compile-time error, remove the following line, the "hex" part is the issue:
-        qInfo(logRig()) << "Using incomingCIVAddr: (int): " << this->civAddr << " hex: " << hex << this->civAddr;
+        qInfo(logRig()) << "Using incomingCIVAddr: (int): " << this->civAddr << " hex: " << QString("0x%1").arg(this->civAddr,0,16);
         emit discoveredRigID(rigCaps);
     } else {
         if(!foundRig)
@@ -3730,7 +3805,7 @@ void rigCommander::parseSpectrum()
         spectrumEndFreq = fEnd.MHzDouble;
         if(scopeMode == spectModeCenter)
         {
-            // "center" mode, start is actuall center, end is bandwidth.
+            // "center" mode, start is actual center, end is bandwidth.
             spectrumStartFreq -= spectrumEndFreq;
             spectrumEndFreq = spectrumStartFreq + 2*(spectrumEndFreq);
             // emit haveSpectrumCenterSpan(span);
@@ -4029,7 +4104,7 @@ void rigCommander::getPreamp()
 
 void rigCommander::getAntenna()
 {
-    // This one might neet some thought
+    // This one might need some thought
     // as it seems each antenna has to be checked.
     // Maybe 0x12 alone will do it.
     QByteArray payload("\x12");
@@ -4273,6 +4348,19 @@ void rigCommander::sendState()
     emit stateInfo(&state);
 }
 
+void rigCommander::radioSelection(QList<radio_cap_packet> radios)
+{
+    emit requestRadioSelection(radios);
+}
+
+void rigCommander::radioUsage(quint8 radio, quint8 busy, QString user, QString ip) {
+    emit setRadioUsage(radio, busy, user, ip);
+}
+
+void rigCommander::setCurrentRadio(quint8 radio) {
+    emit selectedRadio(radio);
+}
+
 void rigCommander::stateUpdated()
 {
     // A remote process has updated the rigState
@@ -4397,9 +4485,9 @@ void rigCommander::stateUpdated()
                 }
                 getSql();
                 break;
-            case TXPOWER:
+            case RFPOWER:
                 if (i.value()._valid) {
-                    setTxPower(state.getChar(TXPOWER));
+                    setTxPower(state.getChar(RFPOWER));
                 }
                 getTxLevel();
                 break;
@@ -4539,6 +4627,7 @@ void rigCommander::stateUpdated()
                  break;
                  // All meters can only be updated from the rig end.
              case SMETER:
+             case SWRMETER:
              case POWERMETER:
              case ALCMETER:
              case COMPMETER:
@@ -4655,10 +4744,13 @@ void rigCommander::printHex(const QByteArray &pdata, bool printVert, bool printH
 
 void rigCommander::dataFromServer(QByteArray data)
 {
-    //qInfo(logRig()) << "emit dataForComm()";
+    //qInfo(logRig()) << "***************** emit dataForComm()" << data;
     emit dataForComm(data);
 }
 
+quint8* rigCommander::getGUID() {
+    return guid;
+}
 
 
 

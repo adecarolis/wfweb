@@ -11,20 +11,41 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 TARGET = wfview
 TEMPLATE = app
 
-DEFINES += WFVIEW_VERSION=\\\"1.2d\\\"
+DEFINES += WFVIEW_VERSION=\\\"1.4\\\"
+
+DEFINES += BUILD_WFVIEW
 
 CONFIG(debug, release|debug) {
-# For Debug builds only:
-QMAKE_CXXFLAGS += -faligned-new
-
+    # For Debug builds only:
+    QMAKE_CXXFLAGS += -faligned-new
+    win32:DESTDIR = wfview-release
+    win32:LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86 -lole32
 } else {
-# For Release builds only:
-linux:QMAKE_CXXFLAGS += -s
-QMAKE_CXXFLAGS += -fvisibility=hidden
-QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
-QMAKE_CXXFLAGS += -faligned-new
-linux:QMAKE_LFLAGS += -O2 -s
+    # For Release builds only:
+    linux:QMAKE_CXXFLAGS += -s
+    QMAKE_CXXFLAGS += -fvisibility=hidden
+    QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
+    QMAKE_CXXFLAGS += -faligned-new
+    linux:QMAKE_LFLAGS += -O2 -s
+    win32:DESTDIR = wfview-debug
+    win32:LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86 -lole32
 }
+
+# RTAudio defines
+win32:DEFINES += __WINDOWS_WASAPI__
+#win32:DEFINES += __WINDOWS_DS__ # Requires DirectSound libraries
+#linux:DEFINES += __LINUX_ALSA__
+#linux:DEFINES += __LINUX_OSS__
+linux:DEFINES += __LINUX_PULSE__
+macx:DEFINES += __MACOSX_CORE__
+!linux:SOURCES += ../rtaudio/RTAudio.cpp
+!linux:HEADERS += ../rtaudio/RTAUdio.h
+!linux:INCLUDEPATH += ../rtaudio
+
+linux:LIBS += -lpulse -lpulse-simple -lrtaudio -lpthread
+
+win32:INCLUDEPATH += ../portaudio/include
+!win32:LIBS += -lportaudio
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which as been marked as deprecated (the exact warnings
@@ -35,11 +56,20 @@ DEFINES += QCUSTOMPLOT_USE_LIBRARY
 
 
 # These defines are used for the resampler
-equals(QT_ARCH, i386): DEFINES += USE_SSE
-equals(QT_ARCH, i386): DEFINES += USE_SSE2
+equals(QT_ARCH, i386): win32:DEFINES += USE_SSE
+equals(QT_ARCH, i386): win32:DEFINES += USE_SSE2
+equals(QT_ARCH, x86_64): DEFINES += USE_SSE
+equals(QT_ARCH, x86_64): DEFINES += USE_SSE2
 equals(QT_ARCH, arm): DEFINES += USE_NEON
 DEFINES += OUTSIDE_SPEEX
 DEFINES += RANDOM_PREFIX=wf
+
+# These defines are used for the Eigen library
+DEFINES += EIGEN_MPL2_ONLY
+DEFINES += EIGEN_DONT_VECTORIZE #Clear vector flags
+equals(QT_ARCH, i386): win32:DEFINES += EIGEN_VECTORIZE_SSE3
+equals(QT_ARCH, x86_64): DEFINES += EIGEN_VECTORIZE_SSE3
+
 
 isEmpty(PREFIX) {
   PREFIX = /usr/local
@@ -47,36 +77,7 @@ isEmpty(PREFIX) {
 
 DEFINES += PREFIX=\\\"$$PREFIX\\\"
 
-# Choose audio system, uses QTMultimedia if both are commented out.
-# DEFINES += RTAUDIO
-# DEFINES += PORTAUDIO
-
-contains(DEFINES, RTAUDIO) {
-	# RTAudio defines
-	win32:DEFINES += __WINDOWS_WASAPI__
-	#win32:DEFINES += __WINDOWS_DS__ # Requires DirectSound libraries
-	linux:DEFINES += __LINUX_ALSA__
-	#linux:DEFINES += __LINUX_OSS__
-	#linux:DEFINES += __LINUX_PULSE__
-	macx:DEFINES += __MACOSX_CORE__
-	win32:SOURCES += ../rtaudio/RTAudio.cpp
-	win32:HEADERS += ../rtaudio/RTAUdio.h
-	!linux:INCLUDEPATH += ../rtaudio
-	linux:LIBS += -lpulse -lpulse-simple -lrtaudio -lpthread
-}
-
-contains(DEFINES, PORTAUDIO) {
-	CONFIG(debug, release|debug) {
-  		win32:LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
-
-	} else {
-  		win32:LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
-	}
-	win32:INCLUDEPATH += ../portaudio/include
-	!win32:LIBS += -lportaudio
-}
-
-macx:INCLUDEPATH += /usr/local/include /opt/local/include
+macx:INCLUDEPATH += /usr/local/include /opt/local/include 
 macx:LIBS += -L/usr/local/lib -L/opt/local/lib
 
 macx:ICON = ../wfview/resources/wfview.icns
@@ -104,9 +105,9 @@ unix:target.path = $$PREFIX/bin
 INSTALLS += target
 
 # Why doesn't this seem to do anything?
-DISTFILES += resources/wfview.png \
+unix:DISTFILES += resources/wfview.png \
     resources/install.sh
-DISTFILES += resources/wfview.desktop
+unix:DISTFILES += resources/wfview.desktop
 
 unix:applications.files = resources/wfview.desktop
 unix:applications.path = $$PREFIX/share/applications
@@ -160,6 +161,9 @@ macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 !linux:INCLUDEPATH += ../qcustomplot
 !linux:INCLUDEPATH += ../opus/include
 
+win32:INCLUDEPATH += ../eigen
+win32:INCLUDEPATH += ../r8brain-free-src
+
 INCLUDEPATH += resampler
 
 SOURCES += main.cpp\
@@ -168,9 +172,15 @@ SOURCES += main.cpp\
     rigcommander.cpp \
     freqmemory.cpp \
     rigidentities.cpp \
+    udpbase.cpp \
     udphandler.cpp \
+    udpcivdata.cpp \
+    udpaudio.cpp \
     logcategories.cpp \
+    pahandler.cpp \
+    rthandler.cpp \
     audiohandler.cpp \
+    audioconverter.cpp \
     calibrationwindow.cpp \
     satellitesetup.cpp \
     udpserver.cpp \
@@ -180,18 +190,25 @@ SOURCES += main.cpp\
     resampler/resample.c \
     repeatersetup.cpp \
     rigctld.cpp \
-    ring/ring.cpp \
     transceiveradjustments.cpp \
-    aboutbox.cpp
+    selectradio.cpp \
+    tcpserver.cpp \
+    aboutbox.cpp 
 
 HEADERS  += wfmain.h \
     commhandler.h \
     rigcommander.h \
     freqmemory.h \
     rigidentities.h \
+    udpbase.h \
     udphandler.h \
+    udpcivdata.h \
+    udpaudio.h \
     logcategories.h \
+    pahandler.h \
+    rthandler.h \
     audiohandler.h \
+    audioconverter.h \
     calibrationwindow.h \
     satellitesetup.h \
     udpserver.h \
@@ -206,15 +223,17 @@ HEADERS  += wfmain.h \
     repeaterattributes.h \
     rigctld.h \
     ulaw.h \
-    ring/ring.h \
     transceiveradjustments.h \
     audiotaper.h \
+    selectradio.h \
+    tcpserver.h \
     aboutbox.h
 
 
 FORMS    += wfmain.ui \
     calibrationwindow.ui \
     satellitesetup.ui \
+    selectradio.ui \
     repeatersetup.ui \
     transceiveradjustments.ui \
     aboutbox.ui

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>946</width>
+    <width>1002</width>
     <height>569</height>
    </rect>
   </property>
@@ -108,7 +108,7 @@
           <item>
            <widget class="QPushButton" name="toFixedBtn">
             <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;The currently-selected edge slot will be overriden.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press button to convert center mode spectrum to fixed mode, preserving the range. This allows you to tune without the spectrum moving, in the same currently-visible range that you see now. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;The currently-selected edge slot will be overridden.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
              <string>ToFixed</string>
@@ -148,7 +148,7 @@
              <string>Waterfall display color theme</string>
             </property>
             <property name="accessibleDescription">
-             <string>Selects the theme for the color waterfall dispaly</string>
+             <string>Selects the theme for the color waterfall display</string>
             </property>
            </widget>
           </item>
@@ -841,6 +841,114 @@
               </property>
               <property name="text">
                <string>Len</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="topSliderLayout">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QSlider" name="topLevelSlider">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>70</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>80</height>
+               </size>
+              </property>
+              <property name="toolTip">
+               <string>Sets the ceiling for the waterfall and spectrum displays</string>
+              </property>
+              <property name="accessibleName">
+               <string>Ceiling for waterfall and spectrum display</string>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>160</number>
+              </property>
+              <property name="value">
+               <number>160</number>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="labelTop">
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>15</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Top</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="botAdjustVertLayout">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QSlider" name="botLevelSlider">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>70</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>80</height>
+               </size>
+              </property>
+              <property name="maximum">
+               <number>160</number>
+              </property>
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="labelBot">
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>15</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Bot</string>
               </property>
              </widget>
             </item>
@@ -2066,7 +2174,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>0</number>
+             <number>1</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -2163,7 +2271,7 @@
                       </size>
                      </property>
                      <property name="toolTip">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the address in as hexidecimal, without any prefix, just as the radio presents the address in the menu. &lt;/p&gt;&lt;p&gt;Here are some common examples:&lt;/p&gt;
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the address in as hexadecimal, without any prefix, just as the radio presents the address in the menu. &lt;/p&gt;&lt;p&gt;Here are some common examples:&lt;/p&gt;
 &lt;p&gt;IC-706: 58 
 &lt;br/&gt;IC-756: 50
 &lt;br/&gt;IC-756 Pro: 5C
@@ -2633,6 +2741,32 @@
                        </property>
                       </spacer>
                      </item>
+                     <item>
+                      <widget class="QLabel" name="label_40">
+                       <property name="text">
+                        <string>Audio System</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QComboBox" name="audioSystemCombo">
+                       <item>
+                        <property name="text">
+                         <string>QT Audio</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>PortAudio</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>RT Audio</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
                     </layout>
                    </item>
                   </layout>
@@ -2760,6 +2894,114 @@
                 </item>
                 <item>
                  <spacer name="horizontalSpacer_12">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_43">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <item>
+                 <widget class="QLabel" name="underlayLabel">
+                  <property name="text">
+                   <string>Underlay Mode</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QRadioButton" name="underlayNone">
+                  <property name="text">
+                   <string>None</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                  <attribute name="buttonGroup">
+                   <string notr="true">underlayButtonGroup</string>
+                  </attribute>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QRadioButton" name="underlayPeakHold">
+                  <property name="text">
+                   <string>Peak Hold</string>
+                  </property>
+                  <attribute name="buttonGroup">
+                   <string notr="true">underlayButtonGroup</string>
+                  </attribute>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QRadioButton" name="underlayPeakBuffer">
+                  <property name="text">
+                   <string>Peak</string>
+                  </property>
+                  <attribute name="buttonGroup">
+                   <string notr="true">underlayButtonGroup</string>
+                  </attribute>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QRadioButton" name="underlayAverageBuffer">
+                  <property name="text">
+                   <string>Average</string>
+                  </property>
+                  <attribute name="buttonGroup">
+                   <string notr="true">underlayButtonGroup</string>
+                  </attribute>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_42">
+                  <property name="text">
+                   <string>Uneerlay Buffer Size:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QSlider" name="underlayBufferSlider">
+                  <property name="maximumSize">
+                   <size>
+                    <width>100</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                  <property name="minimum">
+                   <number>8</number>
+                  </property>
+                  <property name="maximum">
+                   <number>128</number>
+                  </property>
+                  <property name="value">
+                   <number>64</number>
+                  </property>
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer_27">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
                   </property>
@@ -3099,7 +3341,7 @@
                         </size>
                        </property>
                        <property name="text">
-                        <string>Contol Port</string>
+                        <string>Control Port</string>
                        </property>
                       </widget>
                      </item>
@@ -3528,6 +3770,93 @@
                </layout>
               </item>
               <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_42">
+                <item>
+                 <widget class="QLabel" name="label_26">
+                  <property name="text">
+                   <string>TCP Server Port</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLineEdit" name="tcpServerPortTxt">
+                  <property name="enabled">
+                   <bool>true</bool>
+                  </property>
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_39">
+                  <property name="text">
+                   <string>Enter port for TCP server, 0 = disabled (restart required if changed)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer_26">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_44">
+                <item>
+                 <widget class="QLabel" name="label_41">
+                  <property name="text">
+                   <string>Waterfall Format</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="waterfallFormatCombo">
+                  <item>
+                   <property name="text">
+                    <string>Default</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>Single (network)</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>Multi (serial)</string>
+                   </property>
+                  </item>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer_28">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </item>
+              <item>
                <spacer name="verticalSpacer_4">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>
@@ -3635,6 +3964,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="radioStatusBtn">
+        <property name="text">
+         <string>Radio Status</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="horizontalSpacer_9">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -3670,8 +4006,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>946</width>
-     <height>22</height>
+     <width>1002</width>
+     <height>21</height>
     </rect>
    </property>
   </widget>
@@ -3693,5 +4029,6 @@
  <connections/>
  <buttongroups>
   <buttongroup name="buttonGroup"/>
+  <buttongroup name="underlayButtonGroup"/>
  </buttongroups>
 </ui>

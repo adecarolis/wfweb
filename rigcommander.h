@@ -12,6 +12,7 @@
 #include "rigidentities.h"
 #include "repeaterattributes.h"
 #include "freqmemory.h"
+#include "tcpserver.h"
 
 #include "rigstate.h"
 
@@ -68,15 +69,18 @@ class rigCommander : public QObject
     Q_OBJECT
 
 public:
-    rigCommander();
+    explicit rigCommander(QObject* parent=nullptr);
+    explicit rigCommander(quint8 guid[GUIDLEN], QObject* parent = nullptr);
     ~rigCommander();
 
     bool usingLAN();
 
+    quint8* getGUID();
+
 public slots:
     void process();
-    void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp);
-    void commSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp);
+    void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
+    void commSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     void closeComm();
     void stateUpdated();
     void setRTSforPTT(bool enabled);
@@ -272,7 +276,10 @@ public slots:
     void sayAll();
 
     // Housekeeping:
-    void handleStatusUpdate(const QString text);
+    void handleStatusUpdate(const networkStatus status);
+    void radioSelection(QList<radio_cap_packet> radios);
+    void radioUsage(quint8 radio, quint8 busy, QString name, QString ip);
+    void setCurrentRadio(quint8 radio);
     void sendState();
     void getDebug();
 
@@ -280,7 +287,7 @@ signals:
     // Communication:
     void commReady();
     void haveSerialPortError(const QString port, const QString errorText);
-    void haveStatusUpdate(const QString text);
+    void haveStatusUpdate(const networkStatus status);
     void dataForComm(const QByteArray &outData);
     void toggleRTS(bool rtsOn);
 
@@ -365,6 +372,9 @@ signals:
     void stateInfo(rigstate* state);
 
     // Housekeeping:
+    void requestRadioSelection(QList<radio_cap_packet> radios);
+    void setRadioUsage(quint8 radio, quint8 busy, QString user, QString ip);
+    void selectedRadio(quint8 radio);
     void getMoreDebug();
     void finished();
 
@@ -416,6 +426,7 @@ private:
 
     commHandler* comm = Q_NULLPTR;
     pttyHandler* ptty = Q_NULLPTR;
+    tcpServer* tcp = Q_NULLPTR;
     udpHandler* udp=Q_NULLPTR;
     QThread* udpHandlerThread = Q_NULLPTR;
 
@@ -469,7 +480,7 @@ private:
 
     QString serialPortError;
     unsigned char localVolume=0;
-
+    quint8 guid[GUIDLEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 
 };
 

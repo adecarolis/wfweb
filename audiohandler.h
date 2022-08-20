@@ -1,23 +1,20 @@
 #ifndef AUDIOHANDLER_H
 #define AUDIOHANDLER_H
 
+/* QT Headers */
 #include <QObject>
-
 #include <QByteArray>
 #include <QMutex>
 #include <QtEndian>
 #include <QtMath>
+#include <QThread>
+#include <QTime>
+#include <QMap>
+#include <QDebug>
+#include <QTimer>
 
-#if defined(RTAUDIO)
-#ifdef Q_OS_WIN
-#include "RtAudio.h"
-#else
-#include "rtaudio/RtAudio.h"
-#endif
-#elif defined (PORTAUDIO)
-#include "portaudio.h"
-//#error "PORTAUDIO is not currently supported"
-#else
+/* QT Audio Headers */
+#include <QAudioOutput>
 #include <QAudioFormat>
 
 #if QT_VERSION < 0x060000
@@ -32,205 +29,115 @@
 #endif
 
 #include <QIODevice>
-#endif
 
-typedef signed short  MY_TYPE;
-#define FORMAT RTAUDIO_SINT16
-#define SCALE  32767.0
 
-#define LOG100 4.60517018599
+/* wfview Packet types */
+#include "packettypes.h"
 
-#include <QThread>
-#include <QTimer>
-#include <QTime>
-#include <QMap>
-
-#include "resampler/speex_resampler.h"
-#include "ring/ring.h"
-
-#ifdef Q_OS_WIN
-#include "opus.h"
-#else
-#include "opus/opus.h"
-#endif
+/* Logarithmic taper for volume control */
 #include "audiotaper.h"
 
 
-#include <QDebug>
+/* Audio converter class*/
+#include "audioconverter.h"
 
-//#define BUFFER_SIZE (32*1024)
-
-#define INTERNAL_SAMPLE_RATE 48000
 
 #define MULAW_BIAS 33
 #define MULAW_MAX 0x1fff
 
-struct audioPacket {
-    quint32 seq;
-    QTime time;
-    quint16 sent;
-    QByteArray data;
-};
-
-struct audioSetup {
-    QString name;
-    quint8 bits;
-    quint8 radioChan;
-    quint16 samplerate;
-    quint16 latency;
-    quint8 codec;
-    bool ulaw;
-    bool isinput;
-#if defined(RTAUDIO) || defined(PORTAUDIO)
-    int port;
-#else
-
-#if QT_VERSION < 0x060000
-    QAudioDeviceInfo port;
-#else
-    QAudioDevice port;
-#endif
-
-#endif
-    quint8 resampleQuality;
-    unsigned char localAFgain;
-};
 
 // For QtMultimedia, use a native QIODevice
-#if !defined(PORTAUDIO) && !defined(RTAUDIO)
-class audioHandler : public QIODevice
-#else
+//class audioHandler : public QIODevice
 class audioHandler : public QObject
-#endif
 {
     Q_OBJECT
 
 public:
-    audioHandler(QObject* parent = 0);
-    ~audioHandler();
+    audioHandler(QObject* parent = nullptr);
+    virtual ~audioHandler();
 
-    int getLatency();
+    virtual int getLatency();
 
-#if !defined (RTAUDIO) && !defined(PORTAUDIO)
+    virtual void start();
+    virtual void stop();
 
-    void start();
-    void flush();
-    void stop();
-    qint64 bytesAvailable() const;
-    bool isSequential() const;
-#endif
-
-    void getNextAudioChunk(QByteArray &data);
+    virtual quint16 getAmplitude();
 
 public slots:
-    bool init(audioSetup setup);
-    void changeLatency(const quint16 newSize);
-    void setVolume(unsigned char volume);
-    void incomingAudio(const audioPacket data);
+    virtual bool init(audioSetup setup);
+    virtual void changeLatency(const quint16 newSize);
+    virtual void setVolume(unsigned char volume);
+    virtual void incomingAudio(const audioPacket data);
+    virtual void convertedInput(audioPacket audio);
+    virtual void convertedOutput(audioPacket audio);
 
 private slots:
-#if !defined (RTAUDIO) && !defined(PORTAUDIO)
-    void notified();
-    void stateChanged(QAudio::State state);
-#endif
+    virtual void stateChanged(QAudio::State state);
+    virtual void clearUnderrun();    
+    virtual void getNextAudioChunk();
 
 signals:
     void audioMessage(QString message);
     void sendLatency(quint16 newSize);
-    void haveAudioData(const QByteArray& data);
+    void haveAudioData(const audioPacket& data);
+    void haveLevels(quint16 amplitude,quint16 latency,quint16 current,bool under,bool over);
+    void setupConverter(QAudioFormat in, QAudioFormat out, quint8 opus, quint8 resamp);
+    void sendToConverter(audioPacket audio);
 
 
 private:
 
-#if defined(RTAUDIO)
-    int readData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status);
+    //qint64 readData(char* data, qint64 nBytes);
+    //qint64 writeData(const char* data, qint64 nBytes);
 
-    static int staticRead(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status, void* userData) {
-        return static_cast<audioHandler*>(userData)->readData(outputBuffer, inputBuffer, nFrames, streamTime, status);
-    }
 
-    int writeData(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status);
-
-    static int staticWrite(void* outputBuffer, void* inputBuffer, unsigned int nFrames, double streamTime, RtAudioStreamStatus status, void* userData) {
-        return static_cast<audioHandler*>(userData)->writeData(outputBuffer, inputBuffer, nFrames, streamTime, status);
-    }
-#elif defined(PORTAUDIO)
-    int readData(const void* inputBuffer, void* outputBuffer,
-        unsigned long nFrames,
-        const PaStreamCallbackTimeInfo* streamTime,
-        PaStreamCallbackFlags status);
-    static int staticRead(const void* inputBuffer, void* outputBuffer, unsigned long nFrames, const PaStreamCallbackTimeInfo* streamTime, PaStreamCallbackFlags status, void* userData) {
-        return ((audioHandler*)userData)->readData(inputBuffer, outputBuffer, nFrames, streamTime, status);
-    }    
-    
-    int writeData(const void* inputBuffer, void* outputBuffer,
-        unsigned long nFrames,
-        const PaStreamCallbackTimeInfo* streamTime,
-        PaStreamCallbackFlags status);
-    static int staticWrite(const void* inputBuffer, void* outputBuffer, unsigned long nFrames, const PaStreamCallbackTimeInfo* streamTime, PaStreamCallbackFlags status, void* userData) {
-        return ((audioHandler*)userData)->writeData(inputBuffer, outputBuffer, nFrames, streamTime, status);
-    }
-
-#else
-    qint64 readData(char* data, qint64 nBytes);
-    qint64 writeData(const char* data, qint64 nBytes);
-#endif
-
-    void reinit();
+    bool            isUnderrun = false;
+    bool            isOverrun = false;
     bool            isInitialized=false;
     bool            isReady = false;
+    bool            audioBuffered = false;
 
-#if defined(RTAUDIO)
-    RtAudio* audio = Q_NULLPTR;
-    int audioDevice = 0;
-    RtAudio::StreamParameters aParams;
-    RtAudio::StreamOptions options;
-    RtAudio::DeviceInfo info;
-#elif defined(PORTAUDIO)
-    PaStream* audio = Q_NULLPTR;
-    PaStreamParameters aParams;
-    const PaDeviceInfo *info;
-#else
-    QAudioFormat     format;
+    QAudioOutput* audioOutput=Q_NULLPTR;
+    QAudioInput* audioInput=Q_NULLPTR;
+    QIODevice* audioDevice=Q_NULLPTR;
 
+    QAudioFormat     inFormat;
+    QAudioFormat     outFormat;
 #if QT_VERSION < 0x060000
     QAudioDeviceInfo deviceInfo;
-    QAudioOutput* audioOutput = Q_NULLPTR;
-    QAudioInput* audioInput = Q_NULLPTR;
 #else
-    QMediaDevices deviceInfo;
-    QAudioSink* audioOutput = Q_NULLPTR;
-    QAudioSource* audioInput = Q_NULLPTR;
+    QAudioDevice deviceInfo;
 #endif
 
-#endif
-    SpeexResamplerState* resampler = Q_NULLPTR;
+
+    audioConverter* converter=Q_NULLPTR;
+    QThread* converterThread = Q_NULLPTR;
+    QTime lastReceived;
+    //r8b::CFixedBuffer<double>* resampBufs;
+    //r8b::CPtrKeeper<r8b::CDSPResampler24*>* resamps;
 
     quint16         audioLatency;
-    unsigned int             chunkSize;
-    bool            chunkAvailable;
 
     quint32         lastSeq;
     quint32         lastSentSeq=0;
+    qint64          elapsedMs = 0;
         
-    quint16         nativeSampleRate=0;
-    quint8          radioSampleBits;
-    quint8          radioChannels;
-
-    QMap<quint32, audioPacket>audioBuffer;
+    int             delayedPackets=0;
 
     double resampleRatio;
-
-    wilt::Ring<audioPacket> *ringBuf=Q_NULLPTR;
 
     volatile bool ready = false;
     audioPacket tempBuf;
     quint16 currentLatency;
-    qreal volume=1.0;
-    int devChannels;
+    float amplitude=0.0;
+    qreal volume = 1.0;
+
     audioSetup setup;
-    OpusEncoder* encoder=Q_NULLPTR;
-    OpusDecoder* decoder=Q_NULLPTR;
+
+    OpusEncoder* encoder = Q_NULLPTR;
+    OpusDecoder* decoder = Q_NULLPTR;
+    QTimer* underTimer;
 };
+
 
 #endif // AUDIOHANDLER_H

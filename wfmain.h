@@ -1,3 +1,7 @@
+#ifdef BUILD_WFSERVER
+#include "servermain.h"
+#else
+
 #ifndef WFMAIN_H
 #define WFMAIN_H
 
@@ -10,6 +14,8 @@
 #include <QSettings>
 #include <QShortcut>
 #include <QMetaType>
+#include <QMutex>
+#include <QMutexLocker>
 
 #include "logcategories.h"
 #include "commhandler.h"
@@ -19,6 +25,7 @@
 #include "rigidentities.h"
 #include "repeaterattributes.h"
 
+#include "packettypes.h"
 #include "calibrationwindow.h"
 #include "repeatersetup.h"
 #include "satellitesetup.h"
@@ -27,12 +34,21 @@
 #include "qledlabel.h"
 #include "rigctld.h"
 #include "aboutbox.h"
+#include "selectradio.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
 
 #include <deque>
 #include <memory>
+
+#include <portaudio.h>
+#ifndef Q_OS_LINUX
+#include "RtAudio.h"
+#else
+#include "rtaudio/RtAudio.h"
+#endif
+
 
 namespace Ui {
 class wfmain;
@@ -158,8 +174,8 @@ signals:
     void sayFrequency();
     void sayMode();
     void sayAll();
-    void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp);
-    void sendCommSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp);
+    void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp, quint16 tcp, quint8 wf);
+    void sendCommSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     void sendCloseComm();
     void sendChangeLatency(quint16 latency);
     void initServer();
@@ -258,7 +274,7 @@ private slots:
     void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
     void receiveSerialPortError(QString port, QString errorText);
-    void receiveStatusUpdate(QString errorText);
+    void receiveStatusUpdate(networkStatus status);
     void handlePlotClick(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);
@@ -268,6 +284,7 @@ private slots:
     void sendRadioCommandLoop();
     void showStatusBarText(QString text);
     void receiveBaudRate(quint32 baudrate);
+    void radioSelection(QList<radio_cap_packet> radios);
 
     void setRadioTimeDateSend();
 
@@ -490,11 +507,13 @@ private slots:
 
     void on_meter2selectionCombo_activated(int index);
 
+    void on_waterfallFormatCombo_activated(int index);
+
     void on_enableRigctldChk_clicked(bool checked);
 
     void on_rigctldPortTxt_editingFinished();
 
-    void setAudioDevicesUI();
+    void on_tcpServerPortTxt_editingFinished();
 
     void on_moreControlsBtn_clicked();
 
@@ -518,6 +537,24 @@ private slots:
 
     void on_useRTSforPTTchk_clicked(bool checked);
 
+    void on_radioStatusBtn_clicked();
+
+    void on_audioSystemCombo_currentIndexChanged(int value);
+
+    void on_topLevelSlider_valueChanged(int value);
+
+    void on_botLevelSlider_valueChanged(int value);
+
+    void on_underlayBufferSlider_valueChanged(int value);
+
+    void on_underlayNone_toggled(bool checked);
+
+    void on_underlayPeakHold_toggled(bool checked);
+
+    void on_underlayPeakBuffer_toggled(bool checked);
+
+    void on_underlayAverageBuffer_toggled(bool checked);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -536,6 +573,7 @@ private:
     void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
+    void computePlasma();
     void showHideSpectrum(bool show);
     void getInitialRigState();
     void setBandButtons();
@@ -625,7 +663,24 @@ private:
     quint16 wfLength;
     bool spectrumDrawLock;
 
+    enum underlay_t { underlayNone, underlayPeakHold, underlayPeakBuffer, underlayAverageBuffer };
+
+
     QByteArray spectrumPeaks;
+    QVector <double> spectrumPlasmaLine;
+    QVector <QByteArray> spectrumPlasma;
+    unsigned int spectrumPlasmaSize = 64;
+    underlay_t underlayMode = underlayNone;
+    bool drawPlasma = true;
+    QMutex plasmaMutex;
+    void resizePlasmaBuffer(int newSize);
+
+    double plotFloor = 0;
+    double plotCeiling = 160;
+    double wfFloor = 0;
+    double wfCeiling = 160;
+    double oldPlotFloor = -1;
+    double oldPlotCeiling = 999;
 
     QVector <QByteArray> wfimage;
     unsigned int wfLengthMax;
@@ -734,6 +789,8 @@ private:
         bool useDarkMode;
         bool useSystemTheme;
         bool drawPeaks;
+        underlay_t underlayMode = underlayNone;
+        int underlayBufferSize = 64;
         bool wfAntiAlias;
         bool wfInterpolate;
         QString stylesheetPath;
@@ -752,10 +809,14 @@ private:
         unsigned char localAFgain;
         unsigned int wflength;
         int wftheme;
+        int plotFloor;
+        int plotCeiling;
         bool confirmExit;
         bool confirmPowerOff;
         meterKind meter2Type;
-        // plot scheme
+        quint16 tcpPort;
+        quint8 waterfallFormat;
+        audioType audioSystem;
     } prefs;
 
     preferences defPrefs;
@@ -766,8 +827,6 @@ private:
     audioSetup rxSetup;
     audioSetup txSetup;
 
-    audioSetup serverRxSetup;
-    audioSetup serverTxSetup;
 
     colors defaultColors;
 
@@ -838,7 +897,7 @@ private:
     satelliteSetup *sat;
     transceiverAdjustments *trxadj;
     aboutbox *abtBox;
-
+    selectRadio *selRad;
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
@@ -882,12 +941,16 @@ Q_DECLARE_METATYPE(struct mode_info)
 Q_DECLARE_METATYPE(struct udpPreferences)
 Q_DECLARE_METATYPE(struct audioPacket)
 Q_DECLARE_METATYPE(struct audioSetup)
+Q_DECLARE_METATYPE(struct SERVERCONFIG)
 Q_DECLARE_METATYPE(struct timekind)
 Q_DECLARE_METATYPE(struct datekind)
+Q_DECLARE_METATYPE(struct networkStatus)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
+Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 Q_DECLARE_METATYPE(rigstate*)
 
 
 #endif // WFMAIN_H
+#endif

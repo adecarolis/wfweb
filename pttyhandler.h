@@ -19,7 +19,7 @@ class pttyHandler : public QObject
     Q_OBJECT
 
 public:
-    pttyHandler(QString portName);
+    explicit pttyHandler(QString portName, QObject* parent = nullptr);
     pttyHandler(QString portName, quint32 baudRate);
     bool serialError;
 
@@ -62,7 +62,7 @@ private:
     bool rolledBack;
 
     int ptfd; // pseudo-terminal file desc.
-    int ptKeepAlive=0; // Used to keep the pty alive after client disconects.
+    int ptKeepAlive=0; // Used to keep the pty alive after client disconnects.
     bool havePt;
     QString ptDevSlave;
 

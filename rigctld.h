@@ -326,7 +326,7 @@ class rigCtlD : public QTcpServer
     Q_OBJECT
 
 public:
-    explicit rigCtlD(QObject *parent=Q_NULLPTR);
+    explicit rigCtlD(QObject *parent=nullptr);
     virtual ~rigCtlD();
 
     int startServer(qint16 port);

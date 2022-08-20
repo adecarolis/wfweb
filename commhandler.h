@@ -6,6 +6,8 @@
 #include <QMutex>
 #include <QDataStream>
 #include <QtSerialPort/QSerialPort>
+#include <QTime>
+#include <QTimer>
 
 // This class abstracts the comm port in a useful way and connects to
 // the command creator and command parser.
@@ -15,8 +17,8 @@ class commHandler : public QObject
     Q_OBJECT
 
 public:
-    commHandler();
-    commHandler(QString portName, quint32 baudRate);
+    commHandler(QObject* parent = nullptr);
+    commHandler(QString portName, quint32 baudRate, quint8 wfFormat,QObject* parent = nullptr);
     bool serialError;
     bool rtsStatus();
 
@@ -25,6 +27,8 @@ public:
 public slots:
     void setUseRTSforPTT(bool useRTS);
     void setRTS(bool rtsOn);
+    void handleError(QSerialPort::SerialPortError error);
+    void init();
 
 private slots:
     void receiveDataIn(); // from physical port
@@ -58,7 +62,7 @@ private:
     unsigned char buffer[256];
 
     QString portName;
-    QSerialPort *port;
+    QSerialPort *port=Q_NULLPTR;
     qint32 baudrate;
     unsigned char stopbits;
     bool rolledBack;
@@ -74,7 +78,15 @@ private:
     bool isConnected; // port opened
     mutable QMutex mutex;
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
-
+    bool combineWf = false;
+    QByteArray spectrumData;
+    quint8 spectrumDivisionNumber;
+    quint8 spectrumDivisionMax;
+    quint8 spectrumCenterOrFixed;
+    quint8 spectrumInformation;
+    quint8 spectrumOutOfRange;
+    quint8 lastSpectrum = 0;
+    QTime lastDataReceived;
 };
 
 #endif // COMMHANDLER_H

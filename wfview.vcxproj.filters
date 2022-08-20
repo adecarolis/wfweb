@@ -45,19 +45,15 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Distribution Files">
-      <UniqueIdentifier>{B83CAF91-C7BF-462F-B76C-EA11631F866C}</UniqueIdentifier>
-      <Extensions>*</Extensions>
-      <ParseFiles>false</ParseFiles>
-    </Filter>
-    <Filter Include="Distribution Files">
-      <UniqueIdentifier>{B83CAF91-C7BF-462F-B76C-EA11631F866C}</UniqueIdentifier>
-      <Extensions>*</Extensions>
-      <ParseFiles>false</ParseFiles>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\rtaudio\RTAudio.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="aboutbox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="audioconverter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="audiohandler.cpp">
@@ -81,7 +77,13 @@
     <ClCompile Include="meter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="pahandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="pttyhandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\qcustomplot\qcustomplot.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qledlabel.cpp">
@@ -102,13 +104,28 @@
     <ClCompile Include="rigidentities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ring\ring.cpp">
+    <ClCompile Include="rthandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="satellitesetup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="selectradio.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="tcpserver.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="transceiveradjustments.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="udpaudio.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="udpbase.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="udpcivdata.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="udphandler.cpp">
@@ -122,12 +139,18 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\rtaudio\RTAUdio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <QtMoc Include="aboutbox.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <ClInclude Include="resampler\arch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <QtMoc Include="audioconverter.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="audiohandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -152,7 +175,13 @@
     <ClInclude Include="packettypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <QtMoc Include="pahandler.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="pttyhandler.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="..\qcustomplot\qcustomplot.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="qledlabel.h">
@@ -176,16 +205,31 @@
     <ClInclude Include="rigidentities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ring\ring.h">
+    <QtMoc Include="rthandler.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
+    </QtMoc>
     <QtMoc Include="satellitesetup.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="selectradio.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <ClInclude Include="resampler\speex_resampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <QtMoc Include="tcpserver.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="transceiveradjustments.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="udpaudio.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <ClInclude Include="udpbase.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <QtMoc Include="udpcivdata.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="udphandler.h">
@@ -202,6 +246,10 @@
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
+    
+    
+    
+    
     
     
     
@@ -248,6 +296,19 @@
     
     
     
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="aboutbox.ui">
@@ -260,6 +321,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="satellitesetup.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="selectradio.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="transceiveradjustments.ui">
@@ -398,17 +462,6 @@
     </None>
     <None Include="resources\wfview.png">
       <Filter>Resource Files</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="resources\install.sh">
-      <Filter>Distribution Files</Filter>
-    </None>
-    <None Include="resources\wfview.desktop">
-      <Filter>Distribution Files</Filter>
-    </None>
-    <None Include="resources\wfview.png">
-      <Filter>Distribution Files</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

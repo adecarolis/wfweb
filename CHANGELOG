@@ -1,6 +1,44 @@
 # CHANGELOG
 
+- 20220819      
 
+		version bumped to 1.4
+		temporary squashed logs; may redo later
+                audio fixes at exit
+                introduction of peak decays at the scope
+                resizing of top and bottom scope/waterfall
+                various fixes on the spectrum display 
+                
+
+- 20220414	
+
+		this is a cherrypicked CHANGELOG add as there are loads of changes due to different 
+		audio transport ideas etc. For a full changelog exec: git log"
+
+    		About box updated to include Patreon site 
+
+    		added 500 Hz step for VFO
+
+		Added clock and UTC toggle.
+
+    		Added forced manual RTS setting
+
+    		Add RIT function and other rigctl fixes
+
+    		Adjusted window size for radios without spectrum. Thanks K5TUX.
+
+    		Allow dynamic restarting of server
+
+    		New Settings tab
+
+    		Enable High DPI Scaling
+
+    		More multi-radio support
+
+		many rigctl improvements/cmpat adds
+
+		N1MM+ TCP connection added
+    
 - 20211201
 
     		Another "minor" update for RX only rigs
@@ -94,7 +132,7 @@
     		Added an IF Shift-like control for radios with Twin PBF.
 
     		Added support for IF Shift and Twin Pass-Band Filters. Currently
-    		accessable only via the debug button.
+    		accessible only via the debug button.
 
 - 20211104
     		Added IC-736 FM mode
@@ -494,7 +532,7 @@
     
     		Just helps keep the UI in sync with changes taking place at the rig. The
     		polling is slow enough that it doesn't impact anything. But quick enough
-    		that it catches discrepencies pretty quickly.
+    		that it catches discrepancies pretty quickly.
 
 - 20210619
 
@@ -535,7 +573,7 @@
     		Changed collision detection code so that we can more easily see what
     		message was missed.
 
-    		Added collision detection for serial commands. Collisions are aparently
+    		Added collision detection for serial commands. Collisions are apparently
     		frequent for true 1-wire CI-V radios.
 
     		We now calculate polling rates immediately upon receiveCommReady for
@@ -689,7 +727,7 @@
 
 - 20210601
 
-    		Stop deleting audio after last client disconects
+    		Stop deleting audio after last client disconnects
 
     		Change udpserver packet handling to be similar to udphandler
 
@@ -807,7 +845,7 @@
 
     		Add debugging and fix silly error in audiooutput combobox
 
-    		reenable audio buffers
+    		re-enable audio buffers
 
     		Attempt to fix crash
 
@@ -830,7 +868,7 @@
 
     		Fix for stuttering audio on mac
 
-    		Fixed missing break in switchs.
+    		Fixed missing break in switches.
 
     		Typo in message about CI-V
 
@@ -866,7 +904,7 @@
     		Fixed issue where unknown rigs were identified as 0xff. All rigs are now
     		identified using rigCaps.modelID, populated with the raw response from
     		the Rig ID query. Enumerations of known rig types continue to fall into
-    		rigCaps.model, and unknwn rigs will match to rigCaps.model=modelUnknown,
+    		rigCaps.model, and unknown rigs will match to rigCaps.model=modelUnknown,
     		as before.
 
     		Serial baud rate is in the UI now. Added some enable/disable code to
@@ -1055,7 +1093,7 @@
 
     		Additional bands added, Airband, WFM
 
-    		added 630/2200m for 705; probably like the 7300 hardly useable for TX though. Also added auomatic switching to the view pane after non-BSR bands are selected
+    		added 630/2200m for 705; probably like the 7300 hardly usable for TX though. Also added auomatic switching to the view pane after non-BSR bands are selected
 
     		added 630/2200m to 7300/7610/785x
 
@@ -1131,7 +1169,7 @@
 - 20210411	Added ATU feature on 7610.
 
     		Now grabs scope state on startup. Found bug, did not fix, in the
-    		frequency parsing code. Worked aroud it by using doubles for now.
+    		frequency parsing code. Worked around it by using doubles for now.
 
 
 - 20210410	Preamp and attenuator are now queried on startup. Additionally, the
@@ -1258,7 +1296,7 @@
 
                 S-meter ballistics:
                 Turned up the speed. Once you see fast meters, there's no going back.
-		Tested at 5ms without any issues, comitting at 10ms for now. Note that
+		Tested at 5ms without any issues, committing at 10ms for now. Note that
     		50ms in the first 'fixed' meter code is the same as 25ms now due to how
     		the command queue is structured. So 10ms is only a bit faster than
     		before.
