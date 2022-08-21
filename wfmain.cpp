@@ -6288,11 +6288,6 @@ QString wfmain::setColorFromString(QString colorstr, QLedLabel *led)
     return led->getColor().name(QColor::HexArgb);
 }
 
-void wfmain::on_colorSetBtnGrid_clicked()
-{
-    getSetColor(ui->colorSwatchGrid, ui->colorEditGrid);
-}
-
 void wfmain::on_colorSetBtnPlotBackground_clicked()
 {
     getSetColor(ui->colorSwatchPlotBackground, ui->colorEditPlotBackground);
@@ -6355,6 +6350,15 @@ void wfmain::on_colorSetBtnSpecFill_clicked()
 
 }
 
+void wfmain::on_colorSetBtnGrid_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    getSetColor(ui->colorSwatchGrid, ui->colorEditGrid);
+    QColor c = ui->colorSwatchPlotBackground->getColor();
+    colorPreset[pos].gridColor = c;
+    useColorPreset(&colorPreset[pos]);
+}
+
 void wfmain::on_colorEditPlotBackground_editingFinished()
 {
     int pos = ui->colorPresetCombo->currentIndex();
@@ -6376,4 +6380,5 @@ void wfmain::on_colorPopOutBtn_clicked()
     g->addWidget(t);
     t->addTab(settingsTab, "Settings");
     settingsPop->show();
+    //connect(settingsPop, SIGNAL(destroyed(QObject*)), this, foo());
 }
