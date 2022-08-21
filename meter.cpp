@@ -48,6 +48,17 @@ meter::meter(QWidget *parent) : QWidget(parent)
 
 }
 
+void meter::setColors(QColor current, QColor peak,
+                      QColor average, QColor lowLine,
+                      QColor lowText)
+{
+    currentColor = current;
+    peakColor = peak;
+    averageColor = average;
+    lowLineColor = lowLine;
+    lowTextColor = lowText;
+}
+
 void meter::clearMeterOnPTTtoggle()
 {
     // When a meter changes type, such as the fixed S -- TxPo meter,

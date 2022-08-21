@@ -20,6 +20,9 @@ struct colorPrefsType{
     QColor meterLevel;
     QColor meterAverage;
     QColor meterPeak;
+    QColor meterLowerLine;
+    QColor meterLowText;
+
 
     QColor wfBackground;
     QColor wfGrid;

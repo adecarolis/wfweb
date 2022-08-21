@@ -30,6 +30,9 @@ public slots:
     void setMeterShortString(QString);
     QString getMeterShortString();
     meterKind getMeterType();
+    void setColors(QColor current, QColor peak,
+                   QColor average, QColor lowLine,
+                   QColor lowText);
 
 
 private:

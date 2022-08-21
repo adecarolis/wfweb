@@ -52,6 +52,7 @@
 #include "rtaudio/RtAudio.h"
 #endif
 
+#define numColorPresetsTotal (5)
 
 namespace Ui {
 class wfmain;
@@ -572,6 +573,16 @@ private slots:
 
     void on_colorPopOutBtn_clicked();
 
+    void on_colorPresetCombo_currentIndexChanged(int index);
+
+    void on_colorEditSpecLine_editingFinished();
+
+    void on_colorEditGrid_editingFinished();
+
+    void on_colorEditText_editingFinished();
+
+    void on_colorEditSpecFill_editingFinished();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -802,7 +813,7 @@ private:
 
     } colorScheme;
 
-    colorPrefsType colorPreset[5];
+    colorPrefsType colorPreset[numColorPresetsTotal];
 
     struct preferences {
         bool useFullScreen;
@@ -852,16 +863,22 @@ private:
 
     void setDefaultColors(); // populate with default values
     void useColors(); // set the plot up
-    void useColorPreset(colorPrefsType *cp);
     void setDefPrefs(); // populate default values to default prefs
     void setTuningSteps();
     void setColorElement(QColor color, QLedLabel *led, QLabel *label);
     void setColorElement(QColor color, QLedLabel *led, QLineEdit *lineText);
     void setColorElement(QColor color, QLedLabel *led, QLabel *label, QLineEdit *lineText);
-    QColor getColor(QColor initialColor);
+    QColor getColorFromPicker(QColor initialColor);
     void getSetColor(QLedLabel *led, QLabel *label);
     void getSetColor(QLedLabel *led, QLineEdit *line);
     QString setColorFromString(QString aarrggbb, QLedLabel *led);
+    void setDefaultColorPresets();
+    void loadColorPresetToUIandPlots(int presetNumber);
+    void useColorPreset(colorPrefsType *cp);
+    void useCurrentColorPreset();
+    void setEditAndLedFromColor(QColor c, QLineEdit *e, QLedLabel *d);
+    void setColorButtonOperations(QColor *colorStore, QLineEdit *e, QLedLabel *d);
+    void setColorLineEditOperations(QColor *colorStore, QLineEdit *e, QLedLabel *d);
 
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
     quint64 roundFrequencyWithStep(quint64 oldFreq, int steps,\

@@ -90,6 +90,16 @@ void QLedLabel::setColor(QString colorString, bool applyGradient=true)
     setColor(c, applyGradient);
 }
 
+void QLedLabel::setColor(QColor c)
+{
+    this->setColor(c, true);
+}
+
+void QLedLabel::setColor(QString s)
+{
+    this->setColor(s, true);
+}
+
 QColor QLedLabel::getColor()
 {
     return baseColor;

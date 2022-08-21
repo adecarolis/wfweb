@@ -25,6 +25,8 @@ public slots:
     void setState(bool state);
     void setColor(QColor customColor, bool applyGradient);
     void setColor(QString colorString, bool applyGradient);
+    void setColor(QColor c);
+    void setColor(QString s);
     QColor getColor();
 
 private:

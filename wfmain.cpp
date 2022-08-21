@@ -71,6 +71,9 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qDebug(logSystem()) << "Running setUIToPrefs()";
     setUIToPrefs();
 
+    setDefaultColorPresets();
+    loadColorPresetToUIandPlots(0);
+
     qDebug(logSystem()) << "Running setInititalTiming()";
     setInitialTiming();
 
@@ -6249,7 +6252,7 @@ void wfmain::setColorElement(QColor color, QLedLabel *led, QLineEdit *lineText)
     setColorElement(color, led, Q_NULLPTR, lineText);
 }
 
-QColor wfmain::getColor(QColor initialColor)
+QColor wfmain::getColorFromPicker(QColor initialColor)
 {
     QColorDialog::ColorDialogOptions options;
     options.setFlag(QColorDialog::ShowAlphaChannel, true);
@@ -6260,13 +6263,13 @@ QColor wfmain::getColor(QColor initialColor)
 
 void wfmain::getSetColor(QLedLabel *led, QLabel *label)
 {
-    QColor selColor = getColor(led->getColor());
+    QColor selColor = getColorFromPicker(led->getColor());
     setColorElement(selColor, led, label);
 }
 
 void wfmain::getSetColor(QLedLabel *led, QLineEdit *line)
 {
-    QColor selColor = getColor(led->getColor());
+    QColor selColor = getColorFromPicker(led->getColor());
     setColorElement(selColor, led, line);
 }
 
@@ -6288,14 +6291,15 @@ QString wfmain::setColorFromString(QString colorstr, QLedLabel *led)
     return led->getColor().name(QColor::HexArgb);
 }
 
-void wfmain::on_colorSetBtnPlotBackground_clicked()
-{
-    getSetColor(ui->colorSwatchPlotBackground, ui->colorEditPlotBackground);
-}
-
 void wfmain::on_colorLinePlotBackground_editingFinished()
 {
 
+}
+
+void wfmain::useCurrentColorPreset()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    useColorPreset(&colorPreset[pos]);
 }
 
 void wfmain::useColorPreset(colorPrefsType *cp)
@@ -6304,6 +6308,8 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     // prototyped from setPlotTheme()
     if(cp == Q_NULLPTR)
         return;
+
+    qInfo(logSystem()) << "Setting plots to color preset " << cp->presetNum;
 
     plot->setBackground(cp->plotBackground);
 
@@ -6334,39 +6340,39 @@ void wfmain::useColorPreset(colorPrefsType *cp)
 
 }
 
-
-void wfmain::on_colorSetBtnText_clicked()
+void wfmain::setColorButtonOperations(QColor *colorStore,
+                            QLineEdit *e, QLedLabel *d)
 {
+    // Call this function with a pointer into the colorPreset color you
+    // wish to edit.
 
+    if(colorStore==Q_NULLPTR)
+    {
+        qInfo(logSystem()) << "ERROR, invalid pointer to color received.";
+        return;
+    }
+    getSetColor(d, e);
+    QColor t = d->getColor();
+    colorStore->setNamedColor(t.name());
+    //colorStore->setBlue(100);
+    useCurrentColorPreset();
 }
 
-void wfmain::on_colorSetBtnSpecLine_clicked()
+void wfmain::setColorLineEditOperations(QColor *colorStore,
+                                QLineEdit *e, QLedLabel *d)
 {
+    // Call this function with a pointer into the colorPreset color you
+    // wish to edit.
+    if(colorStore==Q_NULLPTR)
+    {
+        qInfo(logSystem()) << "ERROR, invalid pointer to color received.";
+        return;
+    }
 
-}
-
-void wfmain::on_colorSetBtnSpecFill_clicked()
-{
-
-}
-
-void wfmain::on_colorSetBtnGrid_clicked()
-{
-    int pos = ui->colorPresetCombo->currentIndex();
-    getSetColor(ui->colorSwatchGrid, ui->colorEditGrid);
-    QColor c = ui->colorSwatchPlotBackground->getColor();
-    colorPreset[pos].gridColor = c;
-    useColorPreset(&colorPreset[pos]);
-}
-
-void wfmain::on_colorEditPlotBackground_editingFinished()
-{
-    int pos = ui->colorPresetCombo->currentIndex();
-    QString c = ui->colorEditPlotBackground->text();
-    c = setColorFromString(c, ui->colorSwatchPlotBackground);
-    ui->colorEditPlotBackground->setText(c);
-    colorPreset[pos].plotBackground = c;
-    useColorPreset(&colorPreset[pos]);
+    QString colorStrValidated = setColorFromString(e->text(), d);
+    e->setText(colorStrValidated);
+    colorStore->setNamedColor(colorStrValidated);
+    useCurrentColorPreset();
 }
 
 void wfmain::on_colorPopOutBtn_clicked()
@@ -6382,3 +6388,173 @@ void wfmain::on_colorPopOutBtn_clicked()
     settingsPop->show();
     //connect(settingsPop, SIGNAL(destroyed(QObject*)), this, foo());
 }
+
+// Color Helper Functions:
+void wfmain::setDefaultColorPresets()
+{
+    // Default wfview colors in each preset
+    // gets overridden after preferences are loaded
+    for(int pn=0; pn < numColorPresetsTotal; pn++)
+    {
+        qInfo(logSystem()) << "Setting default color preset " << pn;
+        colorPrefsType *p = &colorPreset[pn];
+
+        p->presetNum = pn;
+        //p->presetName = new QString("%1").arg(pn);
+
+        // Colors are "#AARRGGBB" (AA=0xff is opaque)
+        // or as (r, g, b, a)
+        // Since the UI shows ##AARRGGBB, we should use
+        // that format in the code when convenient.
+
+        p->gridColor = QColor(0,0,0,255);
+        p->textColor = QColor(Qt::white);
+        p->spectrumLine = QColor(Qt::yellow);
+        p->spectrumFill = QColor("transparent");
+        p->underlayLine = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150).lighter(200);
+        p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
+        p->plotBackground = QColor(Qt::black);
+        p->tuningLine = QColor(Qt::blue);
+
+        p->meterLevel = QColor("#148CD2").darker();
+        p->meterAverage = QColor("#3FB7CD");
+        p->meterPeak = QColor("#3CA0DB").lighter();
+        p->meterLowerLine = QColor("#eff0f1");
+        p->meterLowText = QColor("#eff0f1");
+
+        p->wfBackground = QColor(Qt::black);
+        p->wfGrid = QColor(Qt::white);
+        p->wfText = QColor(Qt::white);
+
+        qInfo(logSystem()) << "default color preset [" << pn << "] set to pn.presetNum index [" << p->presetNum << "]";
+    }
+}
+
+void wfmain::setEditAndLedFromColor(QColor c, QLineEdit *e, QLedLabel *d)
+{
+    bool blockSignals = true;
+    if(e != Q_NULLPTR)
+    {
+        e->blockSignals(blockSignals);
+        e->setText(c.name());
+        e->blockSignals(false);
+    }
+    if(d != Q_NULLPTR)
+    {
+        d->setColor(c);
+    }
+}
+
+void wfmain::loadColorPresetToUIandPlots(int presetNumber)
+{
+    if(presetNumber >= numColorPresetsTotal)
+    {
+        qDebug(logSystem()) << "WARNING: asked for preset number [" << presetNumber << "], which is out of range.";
+        return;
+    }
+
+    colorPrefsType p = colorPreset[presetNumber];
+    qInfo(logSystem()) << "color preset number [" << presetNumber << "] requested for UI load, which has internal index of [" << p.presetNum << "]";
+    setEditAndLedFromColor(p.gridColor, ui->colorEditGrid, ui->colorSwatchGrid);
+
+    setEditAndLedFromColor(p.spectrumLine, ui->colorEditSpecLine, ui->colorSwatchSpecLine);
+    setEditAndLedFromColor(p.spectrumFill, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
+    setEditAndLedFromColor(p.underlayLine, ui->colorEditOverlayLine, ui->colorSwatchOverlayLine);
+    setEditAndLedFromColor(p.underlayFill, ui->colorEditOverlayFill, ui->colorSwatchOverlayFill);
+    setEditAndLedFromColor(p.plotBackground, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
+    setEditAndLedFromColor(p.tuningLine, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+
+    setEditAndLedFromColor(p.meterLevel, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
+    setEditAndLedFromColor(p.meterAverage, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
+    setEditAndLedFromColor(p.meterPeak, ui->colorEditMeterPeak, ui->colorSwatchMeterPeak);
+    setEditAndLedFromColor(p.meterLowerLine, ui->colorEditMeterScale, ui->colorSwatchMeterScale);
+    setEditAndLedFromColor(p.meterLowText, ui->colorEditMeterText, ui->colorSwatchMeterText);
+
+    setEditAndLedFromColor(p.wfBackground, ui->colorEditWfBackground, ui->colorSwatchWfBackground);
+    setEditAndLedFromColor(p.wfGrid, ui->colorEditWfGrid, ui->colorSwatchWfGrid);
+    setEditAndLedFromColor(p.wfText, ui->colorEditWfText, ui->colorSwatchWfText);
+
+    useColorPreset(&p);
+}
+
+
+void wfmain::on_colorPresetCombo_currentIndexChanged(int index)
+{
+    qInfo(logSystem()) << "color preset combo box set to index: " << index;
+    loadColorPresetToUIandPlots(index);
+}
+
+// Color buttons and lineEdit action functions:
+
+// Grid:
+void wfmain::on_colorSetBtnGrid_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].gridColor);
+    setColorButtonOperations(c, ui->colorEditGrid, ui->colorSwatchGrid);
+}
+void wfmain::on_colorEditGrid_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].gridColor);
+    setColorLineEditOperations(c, ui->colorEditGrid, ui->colorSwatchGrid);
+}
+
+// Text:
+void wfmain::on_colorSetBtnText_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].textColor);
+    setColorButtonOperations(c, ui->colorEditText, ui->colorSwatchText);
+}
+void wfmain::on_colorEditText_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].textColor);
+    setColorLineEditOperations(c, ui->colorEditText, ui->colorSwatchText);
+}
+
+// SpecLine:
+void wfmain::on_colorEditSpecLine_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumLine);
+    setColorLineEditOperations(c, ui->colorEditSpecLine, ui->colorSwatchSpecLine);
+}
+void wfmain::on_colorSetBtnSpecLine_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumLine);
+    setColorButtonOperations(c, ui->colorEditSpecLine, ui->colorSwatchSpecLine);
+}
+
+// SpecFill:
+void wfmain::on_colorSetBtnSpecFill_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumFill);
+    setColorButtonOperations(c, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
+}
+void wfmain::on_colorEditSpecFill_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumFill);
+    setColorLineEditOperations(c, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
+}
+
+// PlotBackground:
+void wfmain::on_colorEditPlotBackground_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].plotBackground);
+    setColorLineEditOperations(c, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
+}
+void wfmain::on_colorSetBtnPlotBackground_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].plotBackground);
+    setColorButtonOperations(c, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
+}
+
+
+
