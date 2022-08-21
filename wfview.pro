@@ -176,6 +176,7 @@ SOURCES += main.cpp\
     aboutbox.cpp 
 
 HEADERS  += wfmain.h \
+    colorprefs.h \
     commhandler.h \
     rigcommander.h \
     freqmemory.h \

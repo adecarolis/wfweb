@@ -6290,17 +6290,90 @@ QString wfmain::setColorFromString(QString colorstr, QLedLabel *led)
 
 void wfmain::on_colorSetBtnGrid_clicked()
 {
-    getSetColor(ui->colorSwatchGrid, ui->colorLabelGrid);
+    getSetColor(ui->colorSwatchGrid, ui->colorEditGrid);
 }
 
 void wfmain::on_colorSetBtnPlotBackground_clicked()
 {
-    getSetColor(ui->colorSwatchPlotBackground, ui->colorLinePlotBackground);
+    getSetColor(ui->colorSwatchPlotBackground, ui->colorEditPlotBackground);
 }
 
 void wfmain::on_colorLinePlotBackground_editingFinished()
 {
-    QString c = ui->colorLinePlotBackground->text();
+
+}
+
+void wfmain::useColorPreset(colorPrefsType *cp)
+{
+    // Apply the given preset to the UI elements
+    // prototyped from setPlotTheme()
+    if(cp == Q_NULLPTR)
+        return;
+
+    plot->setBackground(cp->plotBackground);
+
+    plot->xAxis->grid()->setPen(cp->gridColor);
+    plot->yAxis->grid()->setPen(cp->gridColor);
+
+    plot->legend->setTextColor(cp->textColor);
+    plot->legend->setBorderPen(cp->gridColor);
+    plot->legend->setBrush(cp->gridColor);
+
+    plot->xAxis->setTickLabelColor(cp->gridColor);
+    plot->xAxis->setLabelColor(cp->textColor);
+    plot->yAxis->setTickLabelColor(cp->gridColor);
+    plot->yAxis->setLabelColor(cp->textColor);
+
+    plot->xAxis->setBasePen(cp->textColor);
+    plot->xAxis->setTickPen(cp->textColor);
+    plot->yAxis->setBasePen(cp->textColor);
+    plot->yAxis->setTickPen(cp->textColor);
+
+    freqIndicatorLine->setPen(QPen(cp->tuningLine));
+
+    plot->graph(0)->setPen(QPen(cp->spectrumLine));
+    plot->graph(0)->setBrush(QBrush(cp->spectrumFill));
+
+    plot->graph(1)->setPen(QPen(cp->underlayLine));
+    plot->graph(1)->setBrush(QBrush(cp->underlayFill));
+
+}
+
+
+void wfmain::on_colorSetBtnText_clicked()
+{
+
+}
+
+void wfmain::on_colorSetBtnSpecLine_clicked()
+{
+
+}
+
+void wfmain::on_colorSetBtnSpecFill_clicked()
+{
+
+}
+
+void wfmain::on_colorEditPlotBackground_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QString c = ui->colorEditPlotBackground->text();
     c = setColorFromString(c, ui->colorSwatchPlotBackground);
-    ui->colorLinePlotBackground->setText(c);
+    ui->colorEditPlotBackground->setText(c);
+    colorPreset[pos].plotBackground = c;
+    useColorPreset(&colorPreset[pos]);
+}
+
+void wfmain::on_colorPopOutBtn_clicked()
+{
+    QWidget *settingsPop = new QWidget;
+    QWidget *settingsTab = ui->tabWidget->currentWidget();
+    ui->tabWidget->removeTab(ui->tabWidget->indexOf(settingsTab));
+    QGridLayout *g = new QGridLayout;
+    QTabWidget *t = new QTabWidget;
+    settingsPop->setLayout(g);
+    g->addWidget(t);
+    t->addTab(settingsTab, "Settings");
+    settingsPop->show();
 }

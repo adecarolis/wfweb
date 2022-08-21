@@ -37,6 +37,7 @@
 #include "rigctld.h"
 #include "aboutbox.h"
 #include "selectradio.h"
+#include "colorprefs.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -561,6 +562,16 @@ private slots:
 
     void on_colorLinePlotBackground_editingFinished();
 
+    void on_colorSetBtnText_clicked();
+
+    void on_colorSetBtnSpecLine_clicked();
+
+    void on_colorSetBtnSpecFill_clicked();
+
+    void on_colorEditPlotBackground_editingFinished();
+
+    void on_colorPopOutBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -791,6 +802,8 @@ private:
 
     } colorScheme;
 
+    colorPrefsType colorPreset[5];
+
     struct preferences {
         bool useFullScreen;
         bool useDarkMode;
@@ -839,6 +852,7 @@ private:
 
     void setDefaultColors(); // populate with default values
     void useColors(); // set the plot up
+    void useColorPreset(colorPrefsType *cp);
     void setDefPrefs(); // populate default values to default prefs
     void setTuningSteps();
     void setColorElement(QColor color, QLedLabel *led, QLabel *label);
