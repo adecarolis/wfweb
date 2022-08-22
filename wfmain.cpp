@@ -53,6 +53,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     setupKeyShortcuts();
 
     setupMainUI();
+    prepareSettingsWindow();
 
     setSerialDevicesUI();
 
@@ -880,8 +881,18 @@ void wfmain::setupMainUI()
             [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetTPBFOuter, newValue);}
     );
 
+}
 
+void wfmain::prepareSettingsWindow()
+{
+    settingsTabisAttached = true;
+    // settingsTab;
+    settingsWidgetWindow = new QWidget;
+    settingsWidgetLayout = new QGridLayout;
+    settingsWidgetTab = new QTabWidget;
 
+    settingsWidgetWindow->setLayout(settingsWidgetLayout);
+    settingsWidgetLayout->addWidget(settingsWidgetTab);
 }
 
 void wfmain::updateSizes(int tabIndex)
@@ -6223,7 +6234,8 @@ void wfmain::on_debugBtn_clicked()
 
 }
 
-// Color Helper Functions:
+// ----------   color helper functions:   ---------- //
+
 void wfmain::setColorElement(QColor color,
                              QLedLabel *led,
                              QLabel *label,
@@ -6388,16 +6400,25 @@ void wfmain::setColorLineEditOperations(QColor *colorStore,
 
 void wfmain::on_colorPopOutBtn_clicked()
 {
-    QWidget *settingsPop = new QWidget;
-    QWidget *settingsTab = ui->tabWidget->currentWidget();
-    ui->tabWidget->removeTab(ui->tabWidget->indexOf(settingsTab));
-    QGridLayout *g = new QGridLayout;
-    QTabWidget *t = new QTabWidget;
-    settingsPop->setLayout(g);
-    g->addWidget(t);
-    t->addTab(settingsTab, "Settings");
-    settingsPop->show();
-    //connect(settingsPop, SIGNAL(destroyed(QObject*)), this, foo());
+
+    if(settingsTabisAttached)
+    {
+        settingsTab = ui->tabWidget->currentWidget();
+        ui->tabWidget->removeTab(ui->tabWidget->indexOf(settingsTab));
+        settingsWidgetTab->addTab(settingsTab, "Settings");
+        settingsWidgetWindow->show();
+        ui->colorPopOutBtn->setText("Re-attach");
+        settingsTabisAttached = false;
+    } else {
+        settingsTab = settingsWidgetTab->currentWidget();
+
+        settingsWidgetTab->removeTab(settingsWidgetTab->indexOf(settingsTab));
+        ui->tabWidget->addTab(settingsTab, "Settings");
+        settingsWidgetWindow->close();
+
+        ui->colorPopOutBtn->setText("Pop-Out");
+        settingsTabisAttached = true;
+    }
 }
 
 void wfmain::setDefaultColorPresets()
@@ -6496,7 +6517,9 @@ void wfmain::on_colorPresetCombo_currentIndexChanged(int index)
     loadColorPresetToUIandPlots(index);
 }
 
-// Color buttons and lineEdit action functions:
+// ---------- end color helper functions ---------- //
+
+// ----------       Color UI slots        ----------//
 
 // Grid:
 void wfmain::on_colorSetBtnGrid_clicked()
@@ -6750,3 +6773,5 @@ void wfmain::on_colorEditMeterText_editingFinished()
     QColor *c = &(colorPreset[pos].meterLowText);
     setColorLineEditOperations(c, ui->colorEditMeterText, ui->colorSwatchMeterText);
 }
+
+// ----------   End color UI slots        ----------//

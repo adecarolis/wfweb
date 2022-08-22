@@ -428,7 +428,6 @@ private slots:
 
     void on_dataModeBtn_toggled(bool checked);
 
-
     void on_transmitBtn_clicked();
 
     void on_adjRefBtn_clicked();
@@ -929,6 +928,15 @@ private:
     void setEditAndLedFromColor(QColor c, QLineEdit *e, QLedLabel *d);
     void setColorButtonOperations(QColor *colorStore, QLineEdit *e, QLedLabel *d);
     void setColorLineEditOperations(QColor *colorStore, QLineEdit *e, QLedLabel *d);
+
+    void detachSettingsTab();
+    void reattachSettingsTab();
+    void prepareSettingsWindow();
+    QWidget *settingsWidgetWindow;
+    QWidget *settingsTab;
+    QGridLayout *settingsWidgetLayout;
+    QTabWidget *settingsWidgetTab;
+    bool settingsTabisAttached = true;
 
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
     quint64 roundFrequencyWithStep(quint64 oldFreq, int steps,\
