@@ -6324,7 +6324,7 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     if(cp == Q_NULLPTR)
         return;
 
-    qInfo(logSystem()) << "Setting plots to color preset " << cp->presetNum;
+    qInfo(logSystem()) << "Setting plots to color preset number " << cp->presetNum << ", with name " << *(cp->presetName);
 
     plot->setBackground(cp->plotBackground);
 
@@ -6440,7 +6440,10 @@ void wfmain::setDefaultColorPresets()
         colorPrefsType *p = &colorPreset[pn];
 
         p->presetNum = pn;
-        //p->presetName = new QString("%1").arg(pn);
+        if(p->presetName == Q_NULLPTR)
+        {
+            p->presetName = new QString(  QString("Preset %1").arg(pn) );
+        }
 
         // Colors are "#AARRGGBB" (AA=0xff is opaque)
         // or as (r, g, b, a)
@@ -6468,7 +6471,8 @@ void wfmain::setDefaultColorPresets()
         p->wfGrid = QColor(Qt::white);
         p->wfText = QColor(Qt::white);
 
-        qInfo(logSystem()) << "default color preset [" << pn << "] set to pn.presetNum index [" << p->presetNum << "]";
+        qInfo(logSystem()) << "default color preset [" << pn << "] set to pn.presetNum index [" << p->presetNum << "]" << ", with name " << *(p->presetName);
+        ui->colorPresetCombo->setItemText(pn, *(p->presetName));
     }
 }
 
@@ -6786,3 +6790,32 @@ void wfmain::on_colorEditMeterText_editingFinished()
 }
 
 // ----------   End color UI slots        ----------//
+
+void wfmain::on_colorRenamePresetBtn_clicked()
+{
+    int p = ui->colorPresetCombo->currentIndex();
+    QString newName;
+    QMessageBox msgBox;
+
+    bool ok = false;
+    newName = QInputDialog::getText(this, tr("QInputDialog::getText()"),
+                                    tr("Preset Name (32 characters max):"), QLineEdit::Normal,
+                                    ui->colorPresetCombo->currentText(), &ok);
+    if(!ok)
+        return;
+
+    if(ok && (newName.length() < 33) && !newName.isEmpty())
+    {
+        colorPreset[p].presetName->clear();
+        colorPreset[p].presetName->append(newName);
+        ui->colorPresetCombo->setItemText(p, *(colorPreset[p].presetName));
+        qInfo(logSystem()) << "Setting color preset number " << p << " to have text " << newName << ", as read in preset data: " << *(colorPreset[p].presetName) << ", and as read from combo box: " << ui->colorPresetCombo->currentText();
+    } else {
+        if(newName.isEmpty() || (newName.length() > 32))
+        {
+            msgBox.setText("Error, name must be at least one character and not exceed 32 characters.");
+            msgBox.exec();
+        }
+    }
+
+}

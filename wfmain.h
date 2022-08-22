@@ -632,6 +632,8 @@ private slots:
 
     void on_colorEditMeterText_editingFinished();
 
+    void on_colorRenamePresetBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);

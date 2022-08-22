@@ -6,8 +6,9 @@
 
 struct colorPrefsType{
     int presetNum = -1;
-    QString presetName = QString("uninitialized");
+    QString *presetName = Q_NULLPTR;
 
+    // Spectrum line plot:
     QColor gridColor;
     QColor axisColor;
     QColor textColor;
@@ -18,17 +19,18 @@ struct colorPrefsType{
     QColor plotBackground;
     QColor tuningLine;
 
+    // Waterfall:
+    QColor wfBackground;
+    QColor wfGrid;
+    QColor wfAxis;
+    QColor wfText;
+
+    // Meters:
     QColor meterLevel;
     QColor meterAverage;
     QColor meterPeak;
     QColor meterLowerLine;
     QColor meterLowText;
-
-
-    QColor wfBackground;
-    QColor wfGrid;
-    QColor wfAxis;
-    QColor wfText;
 };
 
 
