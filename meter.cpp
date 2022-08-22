@@ -236,7 +236,7 @@ void meter::paintEvent(QPaintEvent *)
 
 void meter::drawLabel(QPainter *qp)
 {
-    qp->setPen(lowLineColor);
+    qp->setPen(lowTextColor);
     qp->drawText(0,scaleTextYstart, label );
 }
 

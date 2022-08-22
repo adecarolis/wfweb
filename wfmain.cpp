@@ -6275,7 +6275,10 @@ QColor wfmain::getColorFromPicker(QColor initialColor)
     options.setFlag(QColorDialog::ShowAlphaChannel, true);
     options.setFlag(QColorDialog::DontUseNativeDialog, true);
     QColor selColor = QColorDialog::getColor(initialColor, this, "Select Color", options);
-    return selColor;
+    if(selColor.isValid())
+        return selColor;
+    else
+        return initialColor;
 }
 
 void wfmain::getSetColor(QLedLabel *led, QLabel *label)
