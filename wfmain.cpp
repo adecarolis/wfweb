@@ -886,13 +886,17 @@ void wfmain::setupMainUI()
 void wfmain::prepareSettingsWindow()
 {
     settingsTabisAttached = true;
-    // settingsTab;
+
     settingsWidgetWindow = new QWidget;
     settingsWidgetLayout = new QGridLayout;
     settingsWidgetTab = new QTabWidget;
 
     settingsWidgetWindow->setLayout(settingsWidgetLayout);
     settingsWidgetLayout->addWidget(settingsWidgetTab);
+    settingsWidgetWindow->setWindowFlag(Qt::WindowCloseButtonHint, false);
+    //settingsWidgetWindow->setWindowFlag(Qt::WindowMinimizeButtonHint, false);
+    //settingsWidgetWindow->setWindowFlag(Qt::WindowMaximizeButtonHint, false);
+    // TODO: Capture an event when the window closes and handle accordingly.
 }
 
 void wfmain::updateSizes(int tabIndex)
@@ -6408,6 +6412,7 @@ void wfmain::on_colorPopOutBtn_clicked()
         settingsWidgetTab->addTab(settingsTab, "Settings");
         settingsWidgetWindow->show();
         ui->colorPopOutBtn->setText("Re-attach");
+        ui->tabWidget->setCurrentIndex(0);
         settingsTabisAttached = false;
     } else {
         settingsTab = settingsWidgetTab->currentWidget();
@@ -6417,6 +6422,7 @@ void wfmain::on_colorPopOutBtn_clicked()
         settingsWidgetWindow->close();
 
         ui->colorPopOutBtn->setText("Pop-Out");
+        ui->tabWidget->setCurrentIndex(3);
         settingsTabisAttached = true;
     }
 }
