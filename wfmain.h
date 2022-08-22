@@ -561,8 +561,6 @@ private slots:
 
     void on_colorSetBtnPlotBackground_clicked();
 
-    void on_colorLinePlotBackground_editingFinished();
-
     void on_colorSetBtnText_clicked();
 
     void on_colorSetBtnSpecLine_clicked();

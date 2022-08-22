@@ -6223,6 +6223,7 @@ void wfmain::on_debugBtn_clicked()
 
 }
 
+// Color Helper Functions:
 void wfmain::setColorElement(QColor color,
                              QLedLabel *led,
                              QLabel *label,
@@ -6289,11 +6290,6 @@ QString wfmain::setColorFromString(QString colorstr, QLedLabel *led)
     }
     led->setColor(colorstr, true);
     return led->getColor().name(QColor::HexArgb);
-}
-
-void wfmain::on_colorLinePlotBackground_editingFinished()
-{
-
 }
 
 void wfmain::useCurrentColorPreset()
@@ -6404,7 +6400,6 @@ void wfmain::on_colorPopOutBtn_clicked()
     //connect(settingsPop, SIGNAL(destroyed(QObject*)), this, foo());
 }
 
-// Color Helper Functions:
 void wfmain::setDefaultColorPresets()
 {
     // Default wfview colors in each preset
