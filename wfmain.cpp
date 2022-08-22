@@ -6380,7 +6380,7 @@ void wfmain::setColorButtonOperations(QColor *colorStore,
     }
     getSetColor(d, e);
     QColor t = d->getColor();
-    colorStore->setNamedColor(t.name());
+    colorStore->setNamedColor(t.name(QColor::HexArgb));
     //colorStore->setBlue(100);
     useCurrentColorPreset();
 }
@@ -6475,7 +6475,7 @@ void wfmain::setEditAndLedFromColor(QColor c, QLineEdit *e, QLedLabel *d)
     if(e != Q_NULLPTR)
     {
         e->blockSignals(blockSignals);
-        e->setText(c.name());
+        e->setText(c.name(QColor::HexArgb));
         e->blockSignals(false);
     }
     if(d != Q_NULLPTR)
