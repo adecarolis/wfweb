@@ -6498,7 +6498,7 @@ void wfmain::loadColorPresetToUIandPlots(int presetNumber)
     colorPrefsType p = colorPreset[presetNumber];
     qInfo(logSystem()) << "color preset number [" << presetNumber << "] requested for UI load, which has internal index of [" << p.presetNum << "]";
     setEditAndLedFromColor(p.gridColor, ui->colorEditGrid, ui->colorSwatchGrid);
-
+    setEditAndLedFromColor(p.textColor, ui->colorEditText, ui->colorSwatchText);
     setEditAndLedFromColor(p.spectrumLine, ui->colorEditSpecLine, ui->colorSwatchSpecLine);
     setEditAndLedFromColor(p.spectrumFill, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
     setEditAndLedFromColor(p.underlayLine, ui->colorEditUnderlayLine, ui->colorSwatchUnderlayLine);
