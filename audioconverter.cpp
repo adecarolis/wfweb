@@ -6,33 +6,41 @@ audioConverter::audioConverter(QObject* parent) : QObject(parent)
 {
 }
 
-bool audioConverter::init(QAudioFormat inFormat, QAudioFormat outFormat, quint8 opusComplexity, quint8 resampleQuality)
+bool audioConverter::init(QAudioFormat inFormat, codecType inCodec, QAudioFormat outFormat, codecType outCodec, quint8 opusComplexity, quint8 resampleQuality)
 {
 
 	this->inFormat = inFormat;
-	this->outFormat = outFormat;
-	this->opusComplexity = opusComplexity;
+    this->inCodec = inCodec;
+    this->outFormat = outFormat;
+    this->outCodec = outCodec;
+    this->opusComplexity = opusComplexity;
 	this->resampleQuality = resampleQuality;
 
-	qInfo(logAudioConverter) << "Starting audioConverter() Input:" << inFormat.channelCount() << "Channels of" << inFormat.codec() << inFormat.sampleRate() << inFormat.sampleType() << inFormat.sampleSize() <<
-		"Output:" << outFormat.channelCount() << "Channels of" << outFormat.codec() << outFormat.sampleRate() << outFormat.sampleType() << outFormat.sampleSize();
+#if QT_VERSION < 0x060000
+    qInfo(logAudioConverter) << "Starting audioConverter() Input:" << inFormat.channelCount() << "Channels of" << inCodec << inFormat.sampleRate() << inFormat.sampleType() << inFormat.sampleSize() <<
+        "Output:" << outFormat.channelCount() << "Channels of" << outCodec << outFormat.sampleRate() << outFormat.sampleType() << outFormat.sampleSize();
 
-	if (inFormat.byteOrder() != outFormat.byteOrder()) {
+    if (inFormat.byteOrder() != outFormat.byteOrder()) {
 		qInfo(logAudioConverter) << "Byteorder mismatch in:" << inFormat.byteOrder() << "out:" << outFormat.byteOrder();
 	}
+#else
+    qInfo(logAudioConverter) << "Starting audioConverter() Input:" << inFormat.channelCount() << "Channels of" << inCodec << inFormat.sampleRate() << inFormat.sampleFormat() << 
+        "Output:" << outFormat.channelCount() << "Channels of" << outCodec << outFormat.sampleRate() << outFormat.sampleFormat();
+
+#endif
 
 
-	if (inFormat.codec() == "audio/opus")
-	{
-		// Create instance of opus decoder
-		int opus_err = 0;
-		opusDecoder = opus_decoder_create(inFormat.sampleRate(), inFormat.channelCount(), &opus_err);
-		qInfo(logAudioConverter()) << "Creating opus decoder: " << opus_strerror(opus_err);
-	}
+    if (inCodec == OPUS)
+    {
+        // Create instance of opus decoder
+        int opus_err = 0;
+        opusDecoder = opus_decoder_create(inFormat.sampleRate(), inFormat.channelCount(), &opus_err);
+        qInfo(logAudioConverter()) << "Creating opus decoder: " << opus_strerror(opus_err);
+    }
 
-	if (outFormat.codec() == "audio/opus")
-	{
-		// Create instance of opus encoder
+    if (outCodec == OPUS)
+    {
+        // Create instance of opus encoder
 		int opus_err = 0;
 		opusEncoder = opus_encoder_create(outFormat.sampleRate(), outFormat.channelCount(), OPUS_APPLICATION_AUDIO, &opus_err);
 		//opus_encoder_ctl(opusEncoder, OPUS_SET_LSB_DEPTH(16));
@@ -60,8 +68,13 @@ bool audioConverter::init(QAudioFormat inFormat, QAudioFormat outFormat, quint8 
 audioConverter::~audioConverter() 
 {
 
-	qInfo(logAudioConverter) << "Closing audioConverter() Input:" << inFormat.channelCount() << "Channels of" << inFormat.codec() << inFormat.sampleRate() << inFormat.sampleType() << inFormat.sampleSize() <<
-		"Output:" << outFormat.channelCount() << "Channels of" << outFormat.codec() << outFormat.sampleRate() << outFormat.sampleType() << outFormat.sampleSize();
+#if QT_VERSION < 0x060000
+    qInfo(logAudioConverter) << "Closing audioConverter() Input:" << inFormat.channelCount() << "Channels of" << inCodec << inFormat.sampleRate() << inFormat.sampleType() << inFormat.sampleSize() <<
+        "Output:" << outFormat.channelCount() << "Channels of" << outCodec << outFormat.sampleRate() << outFormat.sampleType() << outFormat.sampleSize();
+#else
+    qInfo(logAudioConverter) << "Closing audioConverter() Input:" << inFormat.channelCount() << "Channels of" << inCodec << inFormat.sampleRate() << inFormat.sampleFormat() <<
+        "Output:" << outFormat.channelCount() << "Channels of" << outCodec << outFormat.sampleRate() << outFormat.sampleFormat();
+#endif
 
 	if (opusEncoder != Q_NULLPTR) {
 		qInfo(logAudioConverter()) << "Destroying opus encoder";
@@ -87,7 +100,7 @@ bool audioConverter::convert(audioPacket audio)
     if (audio.data.size() > 0)
 	{
 
-        if (inFormat.codec() == "audio/opus")
+        if (inCodec == OPUS)
         {
             unsigned char* in = (unsigned char*)audio.data.data();
 
@@ -110,7 +123,7 @@ bool audioConverter::convert(audioPacket audio)
             audio.data.clear();
             audio.data = outPacket; // Replace incoming data with converted.
         }
-        else if (inFormat.codec() == "audio/PCMU")
+        else if (inCodec == PCMU)
         {
             // Current packet is "technically" 8bit so need to create a new buffer that is 16bit
             QByteArray outPacket((int)audio.data.length() * 2, (char)0xff);
@@ -125,33 +138,49 @@ bool audioConverter::convert(audioPacket audio)
         }
 
         Eigen::VectorXf samplesF;
-
+#if QT_VERSION < 0x060000
         if (inFormat.sampleType() == QAudioFormat::SignedInt && inFormat.sampleSize() == 32)
+#else
+        if (inFormat.sampleFormat() == QAudioFormat::Int32)
+#endif
         {
             Eigen::Ref<VectorXint32> samplesI = Eigen::Map<VectorXint32>(reinterpret_cast<qint32*>(audio.data.data()), audio.data.size() / int(sizeof(qint32)));
             samplesF = samplesI.cast<float>() / float(std::numeric_limits<qint32>::max());
         }
+#if QT_VERSION < 0x060000
         else if (inFormat.sampleType() == QAudioFormat::SignedInt && inFormat.sampleSize() == 16)
+#else
+        else if (inFormat.sampleFormat() == QAudioFormat::Int16)
+#endif
         {
             Eigen::Ref<VectorXint16> samplesI = Eigen::Map<VectorXint16>(reinterpret_cast<qint16*>(audio.data.data()), audio.data.size() / int(sizeof(qint16)));
             samplesF = samplesI.cast<float>() / float(std::numeric_limits<qint16>::max());
         }
-        else if (inFormat.sampleType() == QAudioFormat::SignedInt && inFormat.sampleSize() == 8)
-        {
-            Eigen::Ref<VectorXint8> samplesI = Eigen::Map<VectorXint8>(reinterpret_cast<qint8*>(audio.data.data()), audio.data.size() / int(sizeof(qint8)));
-            samplesF = samplesI.cast<float>() / float(std::numeric_limits<qint8>::max());;
-        }
+#if QT_VERSION < 0x060000
         else if (inFormat.sampleType() == QAudioFormat::UnSignedInt && inFormat.sampleSize() == 8)
+#else
+        else if (inFormat.sampleFormat() == QAudioFormat::UInt8)
+#endif
         {
             Eigen::Ref<VectorXuint8> samplesI = Eigen::Map<VectorXuint8>(reinterpret_cast<quint8*>(audio.data.data()), audio.data.size() / int(sizeof(quint8)));
             samplesF = samplesI.cast<float>() / float(std::numeric_limits<quint8>::max());;
         }
-        else if (inFormat.sampleType() == QAudioFormat::Float) {
+#if QT_VERSION < 0x060000
+        else if (inFormat.sampleType() == QAudioFormat::Float) 
+#else
+        else if (inFormat.sampleFormat() == QAudioFormat::Float)
+#endif
+        { 
+
             samplesF = Eigen::Map<Eigen::VectorXf>(reinterpret_cast<float*>(audio.data.data()), audio.data.size() / int(sizeof(float)));
         }
         else
         {
-            qInfo(logAudio()) << "Unsupported Input Sample Type:" << inFormat.sampleType() << "Size:" << inFormat.sampleSize();
+#if QT_VERSION < 0x060000
+        qInfo(logAudio()) << "Unsupported Input Sample Type:" << inFormat.sampleType() << "Size:" << inFormat.sampleSize();
+#else
+        qInfo(logAudio()) << "Unsupported Input Sample Format:" << inFormat.sampleFormat();
+#endif
         }
 
         if (samplesF.size() > 0)
@@ -211,7 +240,7 @@ bool audioConverter::convert(audioPacket audio)
                 If output is Opus so encode it now, don't do any more conversion on the output of Opus.
             */
 
-            if (outFormat.codec() == "audio/opus")
+            if (outCodec == OPUS)
             {
                 float* in = (float*)samplesF.data();
                 QByteArray outPacket(1275, (char)0xff); // Preset the output buffer size to MAXIMUM possible Opus frame size
@@ -239,45 +268,58 @@ bool audioConverter::convert(audioPacket audio)
                 */
                 audio.data.clear();
 
+#if QT_VERSION < 0x060000
                 if (outFormat.sampleType() == QAudioFormat::UnSignedInt && outFormat.sampleSize() == 8)
+#else
+                if (outFormat.sampleFormat() == QAudioFormat::UInt8)
+#endif
                 {
                     Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint8>::max());                    
                     samplesITemp.array() += 127;
                     VectorXuint8 samplesI = samplesITemp.cast<quint8>();
                     audio.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(quint8)));
                 }
-                else if (outFormat.sampleType() == QAudioFormat::SignedInt && outFormat.sampleSize() == 8)
-                {
-                    Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint8>::max());
-                    VectorXint8 samplesI = samplesITemp.cast<qint8>();
-                    audio.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint8)));
-                }
+#if QT_VERSION < 0x060000
                 else if (outFormat.sampleType() == QAudioFormat::SignedInt && outFormat.sampleSize() == 16)
+#else
+                else if (outFormat.sampleFormat() == QAudioFormat::Int16)
+#endif
                 {
                     Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint16>::max());
                     VectorXint16 samplesI = samplesITemp.cast<qint16>();
                     audio.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint16)));
                 }
+#if QT_VERSION < 0x060000
                 else if (outFormat.sampleType() == QAudioFormat::SignedInt && outFormat.sampleSize() == 32)
+#else
+                else if (outFormat.sampleFormat() == QAudioFormat::Int32)
+#endif
                 {
                     Eigen::VectorXf samplesITemp = samplesF * float(std::numeric_limits<qint32>::max());
                     VectorXint32 samplesI = samplesITemp.cast<qint32>();
                     audio.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint32)));
                 }
+#if QT_VERSION < 0x060000
                 else if (outFormat.sampleType() == QAudioFormat::Float)
+#else
+                else if (outFormat.sampleFormat() == QAudioFormat::Float)
+#endif
                 {
                     audio.data = QByteArray(reinterpret_cast<char*>(samplesF.data()), int(samplesF.size()) * int(sizeof(float)));
                 }
                 else {
+#if QT_VERSION < 0x060000
                     qInfo(logAudio()) << "Unsupported Output Sample Type:" << outFormat.sampleType() << "Size:" << outFormat.sampleSize();
+#else
+                    qInfo(logAudio()) << "Unsupported Output Sample Type:" << outFormat.sampleFormat();
+#endif
                 }
 
                 /*
                     As we currently don't have a float based uLaw encoder, this must be done
                     after all other conversion has taken place.
                 */
-
-                if (outFormat.codec() == "audio/PCMU")
+                if (inCodec == PCMU)
                 {
                     QByteArray outPacket((int)audio.data.length() / 2, (char)0xff);
                     qint16* in = (qint16*)audio.data.data();

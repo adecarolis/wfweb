@@ -20,8 +20,8 @@ Q_DECLARE_LOGGING_CATEGORY(logAudioConverter)
 #endif
 
 #if QT_VERSION > 0x060000
-#define hex Qt::hex
-#define bin Qt::bin
+//#define hex Qt::hex
+//#define bin Qt::bin
 #endif
 
 #endif // LOGCATEGORIES_H

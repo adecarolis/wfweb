@@ -51,7 +51,11 @@ audioHandler::~audioHandler()
 	}
 
 	qDebug(logAudio()) << "Creating" << (setup.isinput ? "Input" : "Output") << "audio device:" << setup.name <<
+#if QT_VERSION < 0x060000
 		", bits" << inFormat.sampleSize() <<
+#else
+		", format" << inFormat.sampleFormat() <<
+#endif
 		", codec" << setup.codec <<
 		", latency" << setup.latency <<
 		", localAFGain" << setup.localAFgain <<
@@ -61,11 +65,22 @@ audioHandler::~audioHandler()
 		", uLaw" << setup.ulaw;
 
 	inFormat = toQAudioFormat(setup.codec, setup.sampleRate);
+	codecType codec = LPCM;
+	if (setup.codec == 0x01 || setup.codec == 0x20)
+		codec = PCMU;
+	else if (setup.codec == 0x40 || setup.codec == 0x40)
+		codec = OPUS;
 
 
 	outFormat = setup.port.preferredFormat();
+
+#if QT_VERSION < 0x060000
 	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Preferred Format: SampleSize" << outFormat.sampleSize() << "Channel Count" << outFormat.channelCount() <<
 		"Sample Rate" << outFormat.sampleRate() << "Codec" << outFormat.codec() << "Sample Type" << outFormat.sampleType();
+#else
+	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Preferred Format: SampleFormat" << outFormat.sampleFormat() << "Channel Count" << outFormat.channelCount() <<
+		"Sample Rate" << outFormat.sampleRate();
+#endif
 	if (outFormat.channelCount() > 2) {
 		outFormat.setChannelCount(2);
 	}
@@ -92,20 +107,30 @@ audioHandler::~audioHandler()
         }
     }
 
-    if (outFormat.sampleType() == QAudioFormat::UnSignedInt && outFormat.sampleSize()==8) {
-        outFormat.setSampleType(QAudioFormat::SignedInt);
-        outFormat.setSampleSize(16);
+#if QT_VERSION < 0x060000
 
-        if (!setup.port.isFormatSupported(outFormat)) {
-            qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Cannot request 16bit Signed samples, reverting to 8bit Unsigned";
-            outFormat.setSampleType(QAudioFormat::UnSignedInt);
-            outFormat.setSampleSize(8);
-        }
-    }
+	if (outFormat.sampleType() == QAudioFormat::UnSignedInt && outFormat.sampleSize() == 8) {
+		outFormat.setSampleType(QAudioFormat::SignedInt);
+		outFormat.setSampleSize(16);
 
+		if (!setup.port.isFormatSupported(outFormat)) {
+			qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Cannot request 16bit Signed samples, reverting to 8bit Unsigned";
+			outFormat.setSampleType(QAudioFormat::UnSignedInt);
+			outFormat.setSampleSize(8);
+		}
+	}
+#else
+	if (outFormat.sampleFormat() == QAudioFormat::UInt8) {
+		outFormat.setSampleFormat(QAudioFormat::Int16);
 
-    /*
+		if (!setup.port.isFormatSupported(outFormat)) {
+			qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Cannot request 16bit Signed samples, reverting to 8bit Unsigned";
+			outFormat.setSampleFormat(QAudioFormat::UInt8);
+		}
+	}
+#endif
 
+	/*
     if (outFormat.sampleType()==QAudioFormat::SignedInt) {
         outFormat.setSampleType(QAudioFormat::Float);
         outFormat.setSampleSize(32);
@@ -118,6 +143,8 @@ audioHandler::~audioHandler()
     }
 	*/
 
+#if QT_VERSION < 0x060000
+
 	if (outFormat.sampleSize() == 24) {
 		// We can't convert this easily so use 32 bit instead.
 		outFormat.setSampleSize(32);
@@ -126,9 +153,16 @@ audioHandler::~audioHandler()
 			outFormat.setSampleSize(16);
 		}
 	}
+	
 
 	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Selected format: SampleSize" << outFormat.sampleSize() << "Channel Count" << outFormat.channelCount() <<
-		"Sample Rate" << outFormat.sampleRate() << "Codec" << outFormat.codec() << "Sample Type" << outFormat.sampleType();
+		"Sample Rate" << outFormat.sampleRate() << "Codec" << codec << "Sample Type" << outFormat.sampleType();
+#else
+
+	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Selected format: SampleFormat" << outFormat.sampleFormat() << "Channel Count" << outFormat.channelCount() <<
+		"Sample Rate" << outFormat.sampleRate() << "Codec" << codec;
+
+#endif
 
 	// We "hopefully" now have a valid format that is supported so try connecting
 
@@ -142,7 +176,7 @@ audioHandler::~audioHandler()
 	}
 	converter->moveToThread(converterThread);
 
-	connect(this, SIGNAL(setupConverter(QAudioFormat,QAudioFormat,quint8,quint8)), converter, SLOT(init(QAudioFormat,QAudioFormat,quint8,quint8)));
+	connect(this, SIGNAL(setupConverter(QAudioFormat,codecType,QAudioFormat,codecType,quint8,quint8)), converter, SLOT(init(QAudioFormat,codecType,QAudioFormat,codecType,quint8,quint8)));
 	connect(converterThread, SIGNAL(finished()), converter, SLOT(deleteLater()));
 	connect(this, SIGNAL(sendToConverter(audioPacket)), converter, SLOT(convert(audioPacket)));
 	converterThread->start(QThread::TimeCriticalPriority);
@@ -155,7 +189,7 @@ audioHandler::~audioHandler()
 		audioInput = new QAudioSource(setup.port, outFormat, this);
 #endif
 		connect(audioInput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
-		emit setupConverter(outFormat, inFormat, 7, setup.resampleQuality);
+		emit setupConverter(outFormat, codec, inFormat, codecType::LPCM, 7, setup.resampleQuality);
 		connect(converter, SIGNAL(converted(audioPacket)), this, SLOT(convertedInput(audioPacket)));
 	}
 	else {
@@ -166,10 +200,8 @@ audioHandler::~audioHandler()
 		audioOutput = new QAudioSink(setup.port, outFormat, this);
 #endif
 
-
-
 		connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
-		emit setupConverter(inFormat, outFormat, 7, setup.resampleQuality);
+		emit setupConverter(inFormat, codec, outFormat, codecType::LPCM, 7, setup.resampleQuality);
 		connect(converter, SIGNAL(converted(audioPacket)), this, SLOT(convertedOutput(audioPacket)));
 	}
 

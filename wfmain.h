@@ -414,7 +414,7 @@ private slots:
 
     void on_audioTXCodecCombo_currentIndexChanged(int value);
 
-    void on_audioSampleRateCombo_currentIndexChanged(QString text);
+    void on_audioSampleRateCombo_currentIndexChanged(int value);
 
     void on_vspCombo_currentIndexChanged(int value);
 
@@ -453,7 +453,7 @@ private slots:
 
     void on_tuningStepCombo_currentIndexChanged(int index);
 
-    void on_serialDeviceListCombo_activated(const QString &arg1);
+    void on_serialDeviceListCombo_textActivated(const QString &arg1);
 
     void on_rptSetupBtn_clicked();
 
@@ -512,6 +512,8 @@ private slots:
     void on_enableRigctldChk_clicked(bool checked);
 
     void on_rigctldPortTxt_editingFinished();
+
+    void setAudioDevicesUI();
 
     void on_tcpServerPortTxt_editingFinished();
 

@@ -6,7 +6,17 @@
 #include <QMap>
 #include <QDebug>
 #include <QAudioFormat>
+
+#if QT_VERSION < 0x060000
 #include <QAudioDeviceInfo>
+#include <QAudioInput>
+#include <QAudioOutput>
+#else
+#include <QMediaDevices>
+#include <QAudioDevice>
+#include <QAudioSource>
+#include <QAudioSink>
+#endif
 
 /* Opus and Eigen */
 #ifdef Q_OS_WIN
@@ -17,7 +27,8 @@
 #include <eigen3/Eigen/Eigen>
 #endif
 
-enum audioType {qtAudio,portAudio,rtAudio};
+enum audioType { qtAudio, portAudio, rtAudio };
+enum codecType { LPCM, PCMU, OPUS };
 
 #include "resampler/speex_resampler.h"
 
@@ -41,7 +52,11 @@ struct audioSetup {
     bool ulaw = false;
     bool isinput;
     quint32 sampleRate;
+#if QT_VERSION < 0x060000
     QAudioDeviceInfo port;
+#else
+    QAudioDevice port;
+#endif
     int portInt;
     quint8 resampleQuality;
     unsigned char localAFgain;
@@ -58,7 +73,7 @@ public:
     ~audioConverter();
 
 public slots:
-    bool init(QAudioFormat inFormat, QAudioFormat outFormat, quint8 opusComplexity, quint8 resampleQuality);
+    bool init(QAudioFormat inFormat, codecType inCodec, QAudioFormat outFormat, codecType outCodec, quint8 opusComplexity, quint8 resampleQuality);
     bool convert(audioPacket audio);
 
 signals:
@@ -74,6 +89,8 @@ protected:
     quint8 resampleQuality = 4;
     double resampleRatio=1.0; // Default resample ratio is 1:1
     quint32 lastAudioSequence;
+    codecType       inCodec;
+    codecType       outCodec;
 };
 
 
@@ -98,21 +115,31 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
 	0x40 Opus 1ch
 	0x80 Opus 2ch
 	*/
-
+#if QT_VERSION < 0x060000
     format.setByteOrder(QAudioFormat::LittleEndian);
     format.setCodec("audio/pcm");
+#endif
+
     format.setSampleRate(sampleRate);
 
 	if (codec == 0x01 || codec == 0x20) {
 		/* Set sample to be what is expected by the encoder and the output of the decoder */
-		format.setSampleSize(16);
-		format.setSampleType(QAudioFormat::SignedInt);
-		format.setCodec("audio/PCMU");
-	}
+#if QT_VERSION < 0x060000
+        format.setSampleSize(16);
+        format.setSampleType(QAudioFormat::SignedInt);
+        format.setCodec("audio/PCMU");
+#else
+        format.setSampleFormat(QAudioFormat::Int16);
+#endif
+    }
 
     if (codec == 0x02 || codec == 0x08) {
+#if QT_VERSION < 0x060000
         format.setSampleSize(8);
         format.setSampleType(QAudioFormat::UnSignedInt);
+#else
+        format.setSampleFormat(QAudioFormat::UInt8);
+#endif
     }
 	if (codec == 0x08 || codec == 0x10 || codec == 0x20 || codec == 0x80) {
 		format.setChannelCount(2);
@@ -121,14 +148,22 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
     }
 
 	if (codec == 0x04 || codec == 0x10) {
-		format.setSampleSize(16);
-		format.setSampleType(QAudioFormat::SignedInt);
+#if QT_VERSION < 0x060000
+        format.setSampleSize(16);
+        format.setSampleType(QAudioFormat::SignedInt);
+#else
+        format.setSampleFormat(QAudioFormat::Int16);
+#endif
 	}
 
-	if (codec == 0x40 || codec == 0x80) {
-		format.setSampleSize(32);
-		format.setSampleType(QAudioFormat::Float);
-		format.setCodec("audio/opus");
+    if (codec == 0x40 || codec == 0x80) {
+#if QT_VERSION < 0x060000
+        format.setSampleSize(32);
+        format.setSampleType(QAudioFormat::Float);
+        format.setCodec("audio/opus");
+#else
+        format.setSampleFormat(QAudioFormat::Float);
+#endif
 	}
 
 	return format;

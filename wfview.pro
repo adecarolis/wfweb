@@ -15,11 +15,11 @@ DEFINES += WFVIEW_VERSION=\\\"1.4\\\"
 
 DEFINES += BUILD_WFVIEW
 
+
 CONFIG(debug, release|debug) {
     # For Debug builds only:
     QMAKE_CXXFLAGS += -faligned-new
     win32:DESTDIR = wfview-release
-    win32:LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86 -lole32
 } else {
     # For Release builds only:
     linux:QMAKE_CXXFLAGS += -s
@@ -28,8 +28,8 @@ CONFIG(debug, release|debug) {
     QMAKE_CXXFLAGS += -faligned-new
     linux:QMAKE_LFLAGS += -O2 -s
     win32:DESTDIR = wfview-debug
-    win32:LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86 -lole32
 }
+
 
 # RTAudio defines
 win32:DEFINES += __WINDOWS_WASAPI__
@@ -131,11 +131,15 @@ CONFIG(debug, release|debug) {
     contains(QMAKE_TARGET.arch, x86_64) {
       LIBS += -L../opus/win32/VS2015/x64/Debug/
       LIBS += -L../qcustomplot/x64
-      QMAKE_PRE_LINK+=copy /Y ..\qcustomplot\x64\qcustomplotd2.dll debug\
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\x64\qcustomplotd2.dll debug\$$escape_expand(\n\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll debug\$$escape_expand(\n\t))
+      win32:LIBS += -L../portaudio/msvc/X64/Debug/ -lportaudio_x64
     } else {
       LIBS += -L../opus/win32/VS2015/win32/Debug/
       LIBS += -L../qcustomplot/win32
-      QMAKE_PRE_LINK+=copy /Y ..\qcustomplot\win32\qcustomplotd2.dll debug\
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y .\qcustomplot\win32\qcustomplotd2.dll debug\$$escape_expand(\n\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll debug\$$escape_expand(\n\t))
+      win32:LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86 -lole32
     }
   }
 } else {
@@ -145,11 +149,15 @@ CONFIG(debug, release|debug) {
     contains(QMAKE_TARGET.arch, x86_64) {
       LIBS += -L../opus/win32/VS2015/x64/Release/
       LIBS += -L../qcustomplot/x64
-      QMAKE_PRE_LINK+=copy /Y ..\qcustomplot\x64\qcustomplot2.dll release\
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\x64\qcustomplot2.dll release\$$escape_expand(\n\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll release\$$escape_expand(\n\t))
+      win32:LIBS += -L../portaudio/msvc/X64/Release/ -lportaudio_x64
     } else {
       LIBS += -L../opus/win32/VS2015/win32/Release/
       LIBS += -L../qcustomplot/win32
-      QMAKE_PRE_LINK+=copy /Y ..\qcustomplot\win32\qcustomplot2.dll release\
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\win32\qcustomplot2.dll release\$$escape_expand(\n\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll release\$$escape_expand(\n\t))
+      win32:LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86 -lole32
     }
   }
 }

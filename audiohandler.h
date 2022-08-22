@@ -81,7 +81,7 @@ signals:
     void sendLatency(quint16 newSize);
     void haveAudioData(const audioPacket& data);
     void haveLevels(quint16 amplitude,quint16 latency,quint16 current,bool under,bool over);
-    void setupConverter(QAudioFormat in, QAudioFormat out, quint8 opus, quint8 resamp);
+    void setupConverter(QAudioFormat in, codecType codecIn, QAudioFormat out, codecType codecOut, quint8 opus, quint8 resamp);
     void sendToConverter(audioPacket audio);
 
 
@@ -97,18 +97,19 @@ private:
     bool            isReady = false;
     bool            audioBuffered = false;
 
-    QAudioOutput* audioOutput=Q_NULLPTR;
-    QAudioInput* audioInput=Q_NULLPTR;
     QIODevice* audioDevice=Q_NULLPTR;
 
     QAudioFormat     inFormat;
     QAudioFormat     outFormat;
 #if QT_VERSION < 0x060000
+    QAudioOutput* audioOutput = Q_NULLPTR;
+    QAudioInput* audioInput = Q_NULLPTR;
     QAudioDeviceInfo deviceInfo;
 #else
+    QAudioSink* audioOutput = Q_NULLPTR;
+    QAudioSource* audioInput = Q_NULLPTR;
     QAudioDevice deviceInfo;
 #endif
-
 
     audioConverter* converter=Q_NULLPTR;
     QThread* converterThread = Q_NULLPTR;

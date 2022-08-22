@@ -64,6 +64,11 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     setupPlots();
     loadSettings(); // Look for saved preferences
 
+#if QT_VERSION >= 0x060000
+    connect(&mediaDevices, &QMediaDevices::audioInputsChanged, this, &wfmain::setAudioDevicesUI);
+    connect(&mediaDevices, &QMediaDevices::audioOutputsChanged, this, &wfmain::setAudioDevicesUI);
+#endif
+
     setAudioDevicesUI();
 
     setTuningSteps(); // TODO: Combine into preferences
@@ -1268,7 +1273,11 @@ void wfmain::setupKeyShortcuts()
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
 
     keyDebug = new QShortcut(this);
+#if QT_VERSION < 0x060000
     keyDebug->setKey(Qt::CTRL + Qt::SHIFT + Qt::Key_D);
+#else
+    keyDebug->setKey(Qt::CTRL + Qt::Key_D);
+ #endif
     connect(keyDebug, SIGNAL(activated()), this, SLOT(on_debugBtn_clicked()));
 }
 
@@ -1617,7 +1626,7 @@ void wfmain::loadSettings()
 
     rigTemp->baudRate = prefs.serialPortBaud;
     rigTemp->civAddr = prefs.radioCIVAddr;
-    rigTemp->serialPort = prefs.serialPortBaud;
+    rigTemp->serialPort = prefs.serialPortRadio;
 
     QString guid = settings->value("GUID", "").toString();
     if (guid.isEmpty()) {
@@ -1775,7 +1784,11 @@ void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
     {
         if (prefs.audioSystem == qtAudio) {
             QVariant v = ui->serverRXAudioInputCombo->itemData(value);
+#if QT_VERSION >= 0x060000
+            serverConfig.rigs.first()->rxAudioSetup.port = v.value<QAudioDevice>();
+#else
             serverConfig.rigs.first()->rxAudioSetup.port = v.value<QAudioDeviceInfo>();
+#endif
         }
         else {
             serverConfig.rigs.first()->rxAudioSetup.portInt = ui->serverRXAudioInputCombo->itemData(value).toInt();
@@ -1794,7 +1807,11 @@ void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
     {
         if (prefs.audioSystem == qtAudio) {
             QVariant v = ui->serverTXAudioOutputCombo->itemData(value);
+#if QT_VERSION >= 0x060000
+            serverConfig.rigs.first()->txAudioSetup.port = v.value<QAudioDevice>();
+#else
             serverConfig.rigs.first()->txAudioSetup.port = v.value<QAudioDeviceInfo>();
+#endif
         }
         else {
             serverConfig.rigs.first()->txAudioSetup.portInt = ui->serverTXAudioOutputCombo->itemData(value).toInt();
@@ -4698,8 +4715,13 @@ void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
 {
 
     if (prefs.audioSystem == qtAudio) {
-        QVariant v = ui->audioOutputCombo->itemData(value);
+        QVariant v = ui->audioOutputCombo->itemData(value); 
+#if QT_VERSION >= 0x060000
+        rxSetup.port = v.value<QAudioDevice>();
+#else
         rxSetup.port = v.value<QAudioDeviceInfo>();
+#endif
+
     }
     else {
         rxSetup.portInt = ui->audioOutputCombo->itemData(value).toInt();
@@ -4714,7 +4736,11 @@ void wfmain::on_audioInputCombo_currentIndexChanged(int value)
 
     if (prefs.audioSystem == qtAudio) {
         QVariant v = ui->audioInputCombo->itemData(value);
+#if QT_VERSION >= 0x060000
+        txSetup.port = v.value<QAudioDevice>();
+#else
         txSetup.port = v.value<QAudioDeviceInfo>();
+#endif
     }
     else {
         txSetup.portInt = ui->audioInputCombo->itemData(value).toInt();
@@ -4725,12 +4751,10 @@ void wfmain::on_audioInputCombo_currentIndexChanged(int value)
     qDebug(logGui()) << "Changed audio input to:" << txSetup.name;
 }
 
-void wfmain::on_audioSampleRateCombo_currentIndexChanged(QString text)
+void wfmain::on_audioSampleRateCombo_currentIndexChanged(int value)
 {
-    //udpPrefs.audioRXSampleRate = text.toInt();
-    //udpPrefs.audioTXSampleRate = text.toInt();
-    rxSetup.sampleRate=text.toInt();
-    txSetup.sampleRate=text.toInt();
+    rxSetup.sampleRate= ui->audioSampleRateCombo->itemText(value).toInt();
+    txSetup.sampleRate= ui->audioSampleRateCombo->itemText(value).toInt();
 }
 
 void wfmain::on_audioRXCodecCombo_currentIndexChanged(int value)
@@ -5231,7 +5255,7 @@ void wfmain::on_tuneLockChk_clicked(bool checked)
     freqLock = checked;
 }
 
-void wfmain::on_serialDeviceListCombo_activated(const QString &arg1)
+void wfmain::on_serialDeviceListCombo_textActivated(const QString &arg1)
 {
     QString manualPort;
     bool ok;
@@ -5890,6 +5914,7 @@ void wfmain::setAudioDevicesUI()
         case qtAudio:
         {
             Pa_Terminate();
+#if QT_VERSION < 0x060000
             const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
             for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
 #ifdef Q_OS_WIN
@@ -5915,6 +5940,23 @@ void wfmain::setAudioDevicesUI()
                 }
 #endif
             }
+#else
+            ui->audioOutputCombo->clear();
+            const auto audioOutputs = mediaDevices.audioOutputs();
+            for (const QAudioDevice& deviceInfo : audioOutputs) {
+                ui->audioOutputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
+                ui->serverTXAudioOutputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
+                outCount++;
+            }
+            ui->audioInputCombo->clear();
+            const auto audioInputs = mediaDevices.audioInputs();
+            for (const QAudioDevice& deviceInfo : audioInputs) {
+                ui->audioInputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
+                ui->serverRXAudioInputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
+                inCount++;
+            }
+#endif
+
             break;
         }
         case portAudio:

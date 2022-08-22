@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1002</width>
+    <width>1012</width>
     <height>569</height>
    </rect>
   </property>
@@ -1749,7 +1749,6 @@
              <font>
               <family>DejaVu Sans Mono</family>
               <pointsize>14</pointsize>
-              <weight>75</weight>
               <bold>true</bold>
              </font>
             </property>
@@ -2174,7 +2173,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>1</number>
+             <number>0</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -2610,6 +2609,23 @@
                       </widget>
                      </item>
                      <item>
+                      <spacer name="horizontalSpacer_13">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_46">
+                     <item>
                       <widget class="QLabel" name="label_19">
                        <property name="text">
                         <string>RX Codec</string>
@@ -2637,23 +2653,6 @@
                        </property>
                       </widget>
                      </item>
-                     <item>
-                      <spacer name="horizontalSpacer_13">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>40</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </spacer>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_17">
                      <item>
                       <widget class="QLabel" name="label_17">
                        <property name="text">
@@ -2689,25 +2688,48 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLabel" name="label_15">
+                      <widget class="QLabel" name="label_40">
                        <property name="text">
-                        <string>Audio Output </string>
+                        <string>Audio System</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QComboBox" name="audioOutputCombo">
-                       <property name="maximumSize">
-                        <size>
-                         <width>300</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="accessibleName">
-                        <string>Audio Output Selector</string>
-                       </property>
+                      <widget class="QComboBox" name="audioSystemCombo">
+                       <item>
+                        <property name="text">
+                         <string>QT Audio</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>PortAudio</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>RT Audio</string>
+                        </property>
+                       </item>
                       </widget>
                      </item>
+                     <item>
+                      <spacer name="horizontalSpacer_30">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_17">
                      <item>
                       <widget class="QLabel" name="label_18">
                        <property name="text">
@@ -2741,31 +2763,42 @@
                        </property>
                       </spacer>
                      </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_45">
                      <item>
-                      <widget class="QLabel" name="label_40">
+                      <widget class="QLabel" name="label_15">
                        <property name="text">
-                        <string>Audio System</string>
+                        <string>Audio Output </string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QComboBox" name="audioSystemCombo">
-                       <item>
-                        <property name="text">
-                         <string>QT Audio</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>PortAudio</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>RT Audio</string>
-                        </property>
-                       </item>
+                      <widget class="QComboBox" name="audioOutputCombo">
+                       <property name="maximumSize">
+                        <size>
+                         <width>300</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
+                       <property name="accessibleName">
+                        <string>Audio Output Selector</string>
+                       </property>
                       </widget>
+                     </item>
+                     <item>
+                      <spacer name="horizontalSpacer_29">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
                      </item>
                     </layout>
                    </item>
@@ -3987,7 +4020,6 @@
        <widget class="QPushButton" name="exitBtn">
         <property name="font">
          <font>
-          <weight>50</weight>
           <bold>false</bold>
          </font>
         </property>
@@ -4006,8 +4038,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1002</width>
-     <height>21</height>
+     <width>1012</width>
+     <height>22</height>
     </rect>
    </property>
   </widget>

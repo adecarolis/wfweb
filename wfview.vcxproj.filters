@@ -83,9 +83,6 @@
     <ClCompile Include="pttyhandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\qcustomplot\qcustomplot.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="qledlabel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -181,9 +178,6 @@
     <QtMoc Include="pttyhandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="..\qcustomplot\qcustomplot.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <QtMoc Include="qledlabel.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -246,69 +240,12 @@
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="aboutbox.ui">
@@ -465,6 +402,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="C:\Users\Phil\source\repos\wfview\wfview_resource.rc" />
+    <ResourceCompile Include=".\wfview_resource.rc" />
   </ItemGroup>
 </Project>
