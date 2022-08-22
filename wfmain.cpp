@@ -63,6 +63,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     getSettingsFilePath(settingsFile);
 
     setupPlots();
+    setDefaultColorPresets();
+
     loadSettings(); // Look for saved preferences
 
     setAudioDevicesUI();
@@ -72,7 +74,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qDebug(logSystem()) << "Running setUIToPrefs()";
     setUIToPrefs();
 
-    setDefaultColorPresets();
     loadColorPresetToUIandPlots(0);
 
     qDebug(logSystem()) << "Running setInititalTiming()";
@@ -1101,6 +1102,14 @@ void wfmain::setUIToPrefs()
     plot->yAxis->setRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
     colorMap->setDataRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
 
+    colorPrefsType p;
+    for(int pn=0; pn < numColorPresetsTotal; pn++)
+    {
+        p = colorPreset[pn];
+        if(p.presetName != Q_NULLPTR)
+            ui->colorPresetCombo->setItemText(pn, *p.presetName);
+    }
+
     ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
 
@@ -1361,6 +1370,55 @@ void wfmain::loadSettings()
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
     prefs.meter2Type = static_cast<meterKind>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
     settings->endGroup();
+
+    // Load in the color presets. The default values are already loaded.
+
+    settings->beginGroup("ColorPresets");
+    settings->value("currentColorPresetNumber", prefs.currentColorPresetNumber).toInt();
+    if(prefs.currentColorPresetNumber > numColorPresetsTotal-1)
+        prefs.currentColorPresetNumber = 0;
+
+    int numPresetsInFile = settings->beginReadArray("ColorPreset");
+    // We will use the number of presets that the working copy of wfview
+    // supports, as we must never exceed the available number.
+    if(numPresetsInFile > 0)
+    {
+        colorPrefsType *p;
+        QString tempName;
+        for(int pn=0; pn < numColorPresetsTotal; pn++)
+        {
+            settings->setArrayIndex(pn);
+            p = &(colorPreset[pn]);
+            p->presetNum = settings->value("presetNum", p->presetNum).toInt();
+            tempName = settings->value("presetName", *p->presetName).toString();
+            if((!tempName.isEmpty()) && tempName.length() < 33)
+            {
+                    p->presetName->clear();
+                    p->presetName->append(tempName);
+            }
+            p->gridColor.setNamedColor(settings->value("gridColor", p->gridColor.name(QColor::HexArgb)).toString());
+            p->axisColor.setNamedColor(settings->value("axisColor", p->axisColor.name(QColor::HexArgb)).toString());
+            p->textColor.setNamedColor(settings->value("textColor", p->textColor.name(QColor::HexArgb)).toString());
+            p->spectrumLine.setNamedColor(settings->value("spectrumLine", p->spectrumLine.name(QColor::HexArgb)).toString());
+            p->spectrumFill.setNamedColor(settings->value("spectrumFill", p->spectrumFill.name(QColor::HexArgb)).toString());
+            p->underlayLine.setNamedColor(settings->value("underlayLine", p->underlayLine.name(QColor::HexArgb)).toString());
+            p->underlayFill.setNamedColor(settings->value("underlayFill", p->underlayFill.name(QColor::HexArgb)).toString());
+            p->plotBackground.setNamedColor(settings->value("plotBackground", p->plotBackground.name(QColor::HexArgb)).toString());
+            p->tuningLine.setNamedColor(settings->value("tuningLine", p->tuningLine.name(QColor::HexArgb)).toString());
+            p->wfBackground.setNamedColor(settings->value("wfBackground", p->wfBackground.name(QColor::HexArgb)).toString());
+            p->wfGrid.setNamedColor(settings->value("wfGrid", p->wfGrid.name(QColor::HexArgb)).toString());
+            p->wfAxis.setNamedColor(settings->value("wfAxis", p->wfAxis.name(QColor::HexArgb)).toString());
+            p->wfText.setNamedColor(settings->value("wfText", p->wfText.name(QColor::HexArgb)).toString());
+            p->meterLevel.setNamedColor(settings->value("meterLevel", p->meterLevel.name(QColor::HexArgb)).toString());
+            p->meterAverage.setNamedColor(settings->value("meterAverage", p->meterAverage.name(QColor::HexArgb)).toString());
+            p->meterPeak.setNamedColor(settings->value("meterPeak", p->meterPeak.name(QColor::HexArgb)).toString());
+            p->meterLowerLine.setNamedColor(settings->value("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb)).toString());
+            p->meterLowText.setNamedColor(settings->value("meterLowText", p->meterLowText.name(QColor::HexArgb)).toString());
+        }
+    }
+    settings->endArray();
+    settings->endGroup();
+
 
     // Load color schemes:
     // Per this bug: https://forum.qt.io/topic/24725/solved-qvariant-will-drop-alpha-value-when-save-qcolor/5
@@ -1935,8 +1993,40 @@ void wfmain::saveSettings()
     settings->endArray();
     settings->endGroup();
 
-    // Note: X and Y get the same colors. See setPlotTheme() function
+    // Color presets:
+    settings->beginGroup("ColorPresets");
+    settings->setValue("currentColorPresetNumber", prefs.currentColorPresetNumber);
+    settings->beginWriteArray("ColorPreset", numColorPresetsTotal);
+    colorPrefsType *p;
+    for(int pn=0; pn < numColorPresetsTotal; pn++)
+    {
+        p = &(colorPreset[pn]);
+        settings->setArrayIndex(pn);
+        settings->setValue("presetNum", p->presetNum);
+        settings->setValue("presetName", *(p->presetName));
+        settings->setValue("gridColor", p->gridColor.name(QColor::HexArgb));
+        settings->setValue("axisColor", p->axisColor.name(QColor::HexArgb));
+        settings->setValue("textColor", p->textColor.name(QColor::HexArgb));
+        settings->setValue("spectrumLine", p->spectrumLine.name(QColor::HexArgb));
+        settings->setValue("spectrumFill", p->spectrumFill.name(QColor::HexArgb));
+        settings->setValue("underlayLine", p->underlayLine.name(QColor::HexArgb));
+        settings->setValue("underlayFill", p->underlayFill.name(QColor::HexArgb));
+        settings->setValue("plotBackground", p->plotBackground.name(QColor::HexArgb));
+        settings->setValue("tuningLine", p->tuningLine.name(QColor::HexArgb));
+        settings->setValue("wfBackground", p->wfBackground.name(QColor::HexArgb));
+        settings->setValue("wfGrid", p->wfGrid.name(QColor::HexArgb));
+        settings->setValue("wfAxis", p->wfAxis.name(QColor::HexArgb));
+        settings->setValue("wfText", p->wfText.name(QColor::HexArgb));
+        settings->setValue("meterLevel", p->meterLevel.name(QColor::HexArgb));
+        settings->setValue("meterAverage", p->meterAverage.name(QColor::HexArgb));
+        settings->setValue("meterPeak", p->meterPeak.name(QColor::HexArgb));
+        settings->setValue("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb));
+        settings->setValue("meterLowText", p->meterLowText.name(QColor::HexArgb));
+    }
+    settings->endArray();
+    settings->endGroup();
 
+    // Note: X and Y get the same colors. See setPlotTheme() function
     settings->beginGroup("DarkColors");
     settings->setValue("Dark_PlotBackground", prefs.colorScheme.Dark_PlotBackground.rgba());
     settings->setValue("Dark_PlotAxisPen", prefs.colorScheme.Dark_PlotAxisPen.rgba());
@@ -6525,10 +6615,38 @@ void wfmain::loadColorPresetToUIandPlots(int presetNumber)
     useColorPreset(&p);
 }
 
+void wfmain::on_colorRenamePresetBtn_clicked()
+{
+    int p = ui->colorPresetCombo->currentIndex();
+    QString newName;
+    QMessageBox msgBox;
+
+    bool ok = false;
+    newName = QInputDialog::getText(this, tr("QInputDialog::getText()"),
+                                    tr("Preset Name (32 characters max):"), QLineEdit::Normal,
+                                    ui->colorPresetCombo->currentText(), &ok);
+    if(!ok)
+        return;
+
+    if(ok && (newName.length() < 33) && !newName.isEmpty())
+    {
+        colorPreset[p].presetName->clear();
+        colorPreset[p].presetName->append(newName);
+        ui->colorPresetCombo->setItemText(p, *(colorPreset[p].presetName));
+        qInfo(logSystem()) << "Setting color preset number " << p << " to have text " << newName << ", as read in preset data: " << *(colorPreset[p].presetName) << ", and as read from combo box: " << ui->colorPresetCombo->currentText();
+    } else {
+        if(newName.isEmpty() || (newName.length() > 32))
+        {
+            msgBox.setText("Error, name must be at least one character and not exceed 32 characters.");
+            msgBox.exec();
+        }
+    }
+}
 
 void wfmain::on_colorPresetCombo_currentIndexChanged(int index)
 {
     qInfo(logSystem()) << "color preset combo box set to index: " << index;
+    prefs.currentColorPresetNumber = index;
     loadColorPresetToUIandPlots(index);
 }
 
@@ -6791,31 +6909,3 @@ void wfmain::on_colorEditMeterText_editingFinished()
 
 // ----------   End color UI slots        ----------//
 
-void wfmain::on_colorRenamePresetBtn_clicked()
-{
-    int p = ui->colorPresetCombo->currentIndex();
-    QString newName;
-    QMessageBox msgBox;
-
-    bool ok = false;
-    newName = QInputDialog::getText(this, tr("QInputDialog::getText()"),
-                                    tr("Preset Name (32 characters max):"), QLineEdit::Normal,
-                                    ui->colorPresetCombo->currentText(), &ok);
-    if(!ok)
-        return;
-
-    if(ok && (newName.length() < 33) && !newName.isEmpty())
-    {
-        colorPreset[p].presetName->clear();
-        colorPreset[p].presetName->append(newName);
-        ui->colorPresetCombo->setItemText(p, *(colorPreset[p].presetName));
-        qInfo(logSystem()) << "Setting color preset number " << p << " to have text " << newName << ", as read in preset data: " << *(colorPreset[p].presetName) << ", and as read from combo box: " << ui->colorPresetCombo->currentText();
-    } else {
-        if(newName.isEmpty() || (newName.length() > 32))
-        {
-            msgBox.setText("Error, name must be at least one character and not exceed 32 characters.");
-            msgBox.exec();
-        }
-    }
-
-}

@@ -887,6 +887,7 @@ private:
         bool enableRigCtlD;
         quint16 rigCtlPort;
         colors colorScheme;
+        int currentColorPresetNumber = 0;
         QString virtualSerialPort;
         unsigned char localAFgain;
         unsigned int wflength;
