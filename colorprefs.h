@@ -9,6 +9,7 @@ struct colorPrefsType{
     QString presetName = QString("uninitialized");
 
     QColor gridColor;
+    QColor axisColor;
     QColor textColor;
     QColor spectrumLine;
     QColor spectrumFill;
@@ -26,6 +27,7 @@ struct colorPrefsType{
 
     QColor wfBackground;
     QColor wfGrid;
+    QColor wfAxis;
     QColor wfText;
 };
 

@@ -6320,15 +6320,15 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     plot->legend->setBorderPen(cp->gridColor);
     plot->legend->setBrush(cp->gridColor);
 
-    plot->xAxis->setTickLabelColor(cp->gridColor);
-    plot->xAxis->setLabelColor(cp->textColor);
-    plot->yAxis->setTickLabelColor(cp->gridColor);
-    plot->yAxis->setLabelColor(cp->textColor);
+    plot->xAxis->setTickLabelColor(cp->textColor);
+    plot->xAxis->setLabelColor(cp->gridColor);
+    plot->yAxis->setTickLabelColor(cp->textColor);
+    plot->yAxis->setLabelColor(cp->gridColor);
 
-    plot->xAxis->setBasePen(cp->textColor);
-    plot->xAxis->setTickPen(cp->textColor);
-    plot->yAxis->setBasePen(cp->textColor);
-    plot->yAxis->setTickPen(cp->textColor);
+    plot->xAxis->setBasePen(cp->axisColor);
+    plot->xAxis->setTickPen(cp->axisColor);
+    plot->yAxis->setBasePen(cp->axisColor);
+    plot->yAxis->setTickPen(cp->axisColor);
 
     freqIndicatorLine->setPen(QPen(cp->tuningLine));
 
@@ -6338,6 +6338,21 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     plot->graph(1)->setPen(QPen(cp->underlayLine));
     plot->graph(1)->setBrush(QBrush(cp->underlayFill));
 
+    wf->yAxis->setBasePen(cp->wfAxis);
+    wf->yAxis->setTickPen(cp->wfAxis);
+    wf->xAxis->setBasePen(cp->wfAxis);
+    wf->xAxis->setTickPen(cp->wfAxis);
+
+    wf->xAxis->setLabelColor(cp->wfGrid);
+    wf->yAxis->setLabelColor(cp->wfGrid);
+
+    wf->xAxis->setTickLabelColor(cp->wfText);
+    wf->yAxis->setTickLabelColor(cp->wfText);
+
+    wf->setBackground(cp->wfBackground);
+
+    ui->meterSPoWidget->setColors(cp->meterLevel, cp->meterPeak, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
+    ui->meter2Widget->setColors(cp->meterLevel, cp->meterPeak, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
 }
 
 void wfmain::setColorButtonOperations(QColor *colorStore,
@@ -6408,6 +6423,7 @@ void wfmain::setDefaultColorPresets()
         // that format in the code when convenient.
 
         p->gridColor = QColor(0,0,0,255);
+        p->axisColor = QColor(Qt::white);
         p->textColor = QColor(Qt::white);
         p->spectrumLine = QColor(Qt::yellow);
         p->spectrumFill = QColor("transparent");
@@ -6423,6 +6439,7 @@ void wfmain::setDefaultColorPresets()
         p->meterLowText = QColor("#eff0f1");
 
         p->wfBackground = QColor(Qt::black);
+        p->wfAxis = QColor(Qt::white);
         p->wfGrid = QColor(Qt::white);
         p->wfText = QColor(Qt::white);
 
@@ -6459,8 +6476,8 @@ void wfmain::loadColorPresetToUIandPlots(int presetNumber)
 
     setEditAndLedFromColor(p.spectrumLine, ui->colorEditSpecLine, ui->colorSwatchSpecLine);
     setEditAndLedFromColor(p.spectrumFill, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
-    setEditAndLedFromColor(p.underlayLine, ui->colorEditOverlayLine, ui->colorSwatchOverlayLine);
-    setEditAndLedFromColor(p.underlayFill, ui->colorEditOverlayFill, ui->colorSwatchOverlayFill);
+    setEditAndLedFromColor(p.underlayLine, ui->colorEditUnderlayLine, ui->colorSwatchUnderlayLine);
+    setEditAndLedFromColor(p.underlayFill, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
     setEditAndLedFromColor(p.plotBackground, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
     setEditAndLedFromColor(p.tuningLine, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
 
@@ -6498,6 +6515,20 @@ void wfmain::on_colorEditGrid_editingFinished()
     int pos = ui->colorPresetCombo->currentIndex();
     QColor *c = &(colorPreset[pos].gridColor);
     setColorLineEditOperations(c, ui->colorEditGrid, ui->colorSwatchGrid);
+}
+
+// Axis:
+void wfmain::on_colorSetBtnAxis_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].axisColor);
+    setColorButtonOperations(c, ui->colorEditAxis, ui->colorSwatchAxis);
+}
+void wfmain::on_colorEditAxis_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].axisColor);
+    setColorLineEditOperations(c, ui->colorEditAxis, ui->colorSwatchAxis);
 }
 
 // Text:
@@ -6556,5 +6587,171 @@ void wfmain::on_colorSetBtnPlotBackground_clicked()
     setColorButtonOperations(c, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
 }
 
+// Underlay Line:
+void wfmain::on_colorSetBtnUnderlayLine_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayLine);
+    setColorButtonOperations(c, ui->colorEditUnderlayLine, ui->colorSwatchUnderlayLine);
+}
 
+void wfmain::on_colorEditUnderlayLine_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayLine);
+    setColorLineEditOperations(c, ui->colorEditUnderlayLine, ui->colorSwatchUnderlayLine);
+}
 
+// Underlay Fill:
+void wfmain::on_colorSetBtnUnderlayFill_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayFill);
+    setColorButtonOperations(c, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
+}
+void wfmain::on_colorEditUnderlayFill_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayFill);
+    setColorLineEditOperations(c, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
+}
+
+// WF Background:
+void wfmain::on_colorSetBtnwfBackground_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfBackground);
+    setColorButtonOperations(c, ui->colorEditWfBackground, ui->colorSwatchWfBackground);
+}
+void wfmain::on_colorEditWfBackground_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfBackground);
+    setColorLineEditOperations(c, ui->colorEditWfBackground, ui->colorSwatchWfBackground);
+}
+
+// WF Grid:
+void wfmain::on_colorSetBtnWfGrid_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfGrid);
+    setColorButtonOperations(c, ui->colorEditWfGrid, ui->colorSwatchWfGrid);
+}
+void wfmain::on_colorEditWfGrid_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfGrid);
+    setColorLineEditOperations(c, ui->colorEditWfGrid, ui->colorSwatchWfGrid);
+}
+
+// WF Axis:
+void wfmain::on_colorSetBtnWfAxis_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfAxis);
+    setColorButtonOperations(c, ui->colorEditWfAxis, ui->colorSwatchWfAxis);
+}
+void wfmain::on_colorEditWfAxis_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfAxis);
+    setColorLineEditOperations(c, ui->colorEditWfAxis, ui->colorSwatchWfAxis);
+}
+
+// WF Text:
+void wfmain::on_colorSetBtnWfText_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfText);
+    setColorButtonOperations(c, ui->colorEditWfText, ui->colorSwatchWfText);
+}
+void wfmain::on_colorEditWfText_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfText);
+    setColorLineEditOperations(c, ui->colorEditWfText, ui->colorSwatchWfText);
+}
+
+// Tuning Line:
+void wfmain::on_colorSetBtnTuningLine_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].tuningLine);
+    setColorButtonOperations(c, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+}
+void wfmain::on_colorEditTuningLine_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].tuningLine);
+    setColorLineEditOperations(c, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+}
+
+// Meter Level:
+void wfmain::on_colorSetBtnMeterLevel_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLevel);
+    setColorButtonOperations(c, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
+}
+void wfmain::on_colorEditMeterLevel_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLevel);
+    setColorLineEditOperations(c, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
+}
+
+// Meter Average:
+void wfmain::on_colorSetBtnMeterAvg_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterAverage);
+    setColorButtonOperations(c, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
+}
+void wfmain::on_colorEditMeterAvg_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterAverage);
+    setColorLineEditOperations(c, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
+}
+
+// Meter Peak:
+void wfmain::on_colorSetBtnMeterPeak_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeak);
+    setColorButtonOperations(c, ui->colorEditMeterPeak, ui->colorSwatchMeterPeak);
+}
+void wfmain::on_colorEditMeterPeak_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeak);
+    setColorLineEditOperations(c, ui->colorEditMeterPeak, ui->colorSwatchMeterPeak);
+}
+
+// Meter Scale (line):
+void wfmain::on_colorSetBtnMeterScale_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowerLine);
+    setColorButtonOperations(c, ui->colorEditMeterScale, ui->colorSwatchMeterScale);
+}
+void wfmain::on_colorEditMeterScale_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowerLine);
+    setColorLineEditOperations(c, ui->colorEditMeterScale, ui->colorSwatchMeterScale);
+}
+
+// Meter Text:
+void wfmain::on_colorSetBtnMeterText_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowText);
+    setColorButtonOperations(c, ui->colorEditMeterText, ui->colorSwatchMeterText);
+}
+void wfmain::on_colorEditMeterText_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowText);
+    setColorLineEditOperations(c, ui->colorEditMeterText, ui->colorSwatchMeterText);
+}

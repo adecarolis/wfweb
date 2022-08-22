@@ -583,6 +583,58 @@ private slots:
 
     void on_colorEditSpecFill_editingFinished();
 
+    void on_colorSetBtnAxis_clicked();
+
+    void on_colorEditAxis_editingFinished();
+
+    void on_colorSetBtnUnderlayLine_clicked();
+
+    void on_colorEditUnderlayLine_editingFinished();
+
+    void on_colorSetBtnUnderlayFill_clicked();
+
+    void on_colorEditUnderlayFill_editingFinished();
+
+    void on_colorSetBtnwfBackground_clicked();
+
+    void on_colorEditWfBackground_editingFinished();
+
+    void on_colorSetBtnWfGrid_clicked();
+
+    void on_colorEditWfGrid_editingFinished();
+
+    void on_colorSetBtnWfAxis_clicked();
+
+    void on_colorEditWfAxis_editingFinished();
+
+    void on_colorSetBtnWfText_clicked();
+
+    void on_colorEditWfText_editingFinished();
+
+    void on_colorSetBtnTuningLine_clicked();
+
+    void on_colorEditTuningLine_editingFinished();
+
+    void on_colorSetBtnMeterLevel_clicked();
+
+    void on_colorEditMeterLevel_editingFinished();
+
+    void on_colorSetBtnMeterAvg_clicked();
+
+    void on_colorEditMeterAvg_editingFinished();
+
+    void on_colorSetBtnMeterPeak_clicked();
+
+    void on_colorEditMeterPeak_editingFinished();
+
+    void on_colorSetBtnMeterScale_clicked();
+
+    void on_colorEditMeterScale_editingFinished();
+
+    void on_colorSetBtnMeterText_clicked();
+
+    void on_colorEditMeterText_editingFinished();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
