@@ -2620,7 +2620,8 @@ void wfmain::setDefaultColors()
     pDark->gridColor = QColor("transparent");
     pDark->spectrumFill = QColor("transparent");
     pDark->spectrumLine = QColor(Qt::yellow);
-    pDark->underlayLine = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150).lighter(200);
+    //pDark->underlayLine = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150).lighter(200);
+    pDark->underlayLine = QColor("#9633ff55");
     pDark->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
     pDark->tuningLine = QColor("#ff55ffff");
 
