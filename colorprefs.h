@@ -28,7 +28,8 @@ struct colorPrefsType{
     // Meters:
     QColor meterLevel;
     QColor meterAverage;
-    QColor meterPeak;
+    QColor meterPeakLevel;
+    QColor meterPeakScale;
     QColor meterLowerLine;
     QColor meterLowText;
 };

@@ -1401,7 +1401,8 @@ void wfmain::loadSettings()
             p->wfText.setNamedColor(settings->value("wfText", p->wfText.name(QColor::HexArgb)).toString());
             p->meterLevel.setNamedColor(settings->value("meterLevel", p->meterLevel.name(QColor::HexArgb)).toString());
             p->meterAverage.setNamedColor(settings->value("meterAverage", p->meterAverage.name(QColor::HexArgb)).toString());
-            p->meterPeak.setNamedColor(settings->value("meterPeak", p->meterPeak.name(QColor::HexArgb)).toString());
+            p->meterPeakLevel.setNamedColor(settings->value("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb)).toString());
+            p->meterPeakScale.setNamedColor(settings->value("meterPeakScale", p->meterPeakScale.name(QColor::HexArgb)).toString());
             p->meterLowerLine.setNamedColor(settings->value("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb)).toString());
             p->meterLowText.setNamedColor(settings->value("meterLowText", p->meterLowText.name(QColor::HexArgb)).toString());
         }
@@ -1974,7 +1975,8 @@ void wfmain::saveSettings()
         settings->setValue("wfText", p->wfText.name(QColor::HexArgb));
         settings->setValue("meterLevel", p->meterLevel.name(QColor::HexArgb));
         settings->setValue("meterAverage", p->meterAverage.name(QColor::HexArgb));
-        settings->setValue("meterPeak", p->meterPeak.name(QColor::HexArgb));
+        settings->setValue("meterPeakScale", p->meterPeakScale.name(QColor::HexArgb));
+        settings->setValue("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb));
         settings->setValue("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb));
         settings->setValue("meterLowText", p->meterLowText.name(QColor::HexArgb));
     }
@@ -2621,7 +2623,8 @@ void wfmain::setDefaultColors()
 
     pDark->meterLevel = QColor("#148CD2").darker();
     pDark->meterAverage = QColor("#3FB7CD");
-    pDark->meterPeak = QColor("#3CA0DB").lighter();
+    pDark->meterPeakScale = QColor(Qt::red);
+    pDark->meterPeakLevel = QColor("#3CA0DB").lighter();
     pDark->meterLowerLine = QColor("#eff0f1");
     pDark->meterLowText = QColor("#eff0f1");
 
@@ -2643,7 +2646,8 @@ void wfmain::setDefaultColors()
     pLight->tuningLine = QColor(Qt::darkBlue);
 
     pLight->meterAverage = QColor("#3FB7CD");
-    pLight->meterPeak = QColor("#3CA0DB");
+    pLight->meterPeakLevel = QColor("#3CA0DB");
+    pLight->meterPeakScale = QColor(Qt::darkRed);
     pLight->meterLowerLine = QColor(Qt::black);
     pLight->meterLowText = QColor(Qt::black);
 
@@ -6338,8 +6342,8 @@ void wfmain::useColorPreset(colorPrefsType *cp)
 
     wf->setBackground(cp->wfBackground);
 
-    ui->meterSPoWidget->setColors(cp->meterLevel, cp->meterPeak, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
-    ui->meter2Widget->setColors(cp->meterLevel, cp->meterPeak, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
+    ui->meterSPoWidget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
+    ui->meter2Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
 }
 
 void wfmain::setColorButtonOperations(QColor *colorStore,
@@ -6434,7 +6438,8 @@ void wfmain::setDefaultColorPresets()
 
         p->meterLevel = QColor("#148CD2").darker();
         p->meterAverage = QColor("#3FB7CD");
-        p->meterPeak = QColor("#3CA0DB").lighter();
+        p->meterPeakLevel = QColor("#3CA0DB").lighter();
+        p->meterPeakScale = QColor(Qt::red);
         p->meterLowerLine = QColor("#eff0f1");
         p->meterLowText = QColor("#eff0f1");
 
@@ -6485,7 +6490,8 @@ void wfmain::loadColorPresetToUIandPlots(int presetNumber)
 
     setEditAndLedFromColor(p.meterLevel, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
     setEditAndLedFromColor(p.meterAverage, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
-    setEditAndLedFromColor(p.meterPeak, ui->colorEditMeterPeak, ui->colorSwatchMeterPeak);
+    setEditAndLedFromColor(p.meterPeakLevel, ui->colorEditMeterPeakLevel, ui->colorSwatchMeterPeakLevel);
+    setEditAndLedFromColor(p.meterPeakScale, ui->colorEditMeterPeakScale, ui->colorSwatchMeterPeakScale);
     setEditAndLedFromColor(p.meterLowerLine, ui->colorEditMeterScale, ui->colorSwatchMeterScale);
     setEditAndLedFromColor(p.meterLowText, ui->colorEditMeterText, ui->colorSwatchMeterText);
 
@@ -6747,18 +6753,32 @@ void wfmain::on_colorEditMeterAvg_editingFinished()
     setColorLineEditOperations(c, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
 }
 
-// Meter Peak:
-void wfmain::on_colorSetBtnMeterPeak_clicked()
+// Meter Peak Level:
+void wfmain::on_colorSetBtnMeterPeakLevel_clicked()
 {
     int pos = ui->colorPresetCombo->currentIndex();
-    QColor *c = &(colorPreset[pos].meterPeak);
-    setColorButtonOperations(c, ui->colorEditMeterPeak, ui->colorSwatchMeterPeak);
+    QColor *c = &(colorPreset[pos].meterPeakLevel);
+    setColorButtonOperations(c, ui->colorEditMeterPeakLevel, ui->colorSwatchMeterPeakLevel);
 }
-void wfmain::on_colorEditMeterPeak_editingFinished()
+void wfmain::on_colorEditMeterPeakLevel_editingFinished()
 {
     int pos = ui->colorPresetCombo->currentIndex();
-    QColor *c = &(colorPreset[pos].meterPeak);
-    setColorLineEditOperations(c, ui->colorEditMeterPeak, ui->colorSwatchMeterPeak);
+    QColor *c = &(colorPreset[pos].meterPeakLevel);
+    setColorLineEditOperations(c, ui->colorEditMeterPeakLevel, ui->colorSwatchMeterPeakLevel);
+}
+
+// Meter Peak Scale:
+void wfmain::on_colorSetBtnMeterPeakScale_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeakScale);
+    setColorButtonOperations(c, ui->colorEditMeterPeakScale, ui->colorSwatchMeterPeakScale);
+}
+void wfmain::on_colorEditMeterPeakScale_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeakScale);
+    setColorLineEditOperations(c, ui->colorEditMeterPeakScale, ui->colorSwatchMeterPeakScale);
 }
 
 // Meter Scale (line):
@@ -6799,3 +6819,6 @@ void wfmain::on_colorRevertPresetBtn_clicked()
     //int pn = ui->colorPresetCombo->currentIndex();
     //setDefaultColors();
 }
+
+
+

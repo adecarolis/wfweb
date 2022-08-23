@@ -613,10 +613,6 @@ private slots:
 
     void on_colorEditMeterAvg_editingFinished();
 
-    void on_colorSetBtnMeterPeak_clicked();
-
-    void on_colorEditMeterPeak_editingFinished();
-
     void on_colorSetBtnMeterScale_clicked();
 
     void on_colorEditMeterScale_editingFinished();
@@ -628,6 +624,14 @@ private slots:
     void on_colorRenamePresetBtn_clicked();
 
     void on_colorRevertPresetBtn_clicked();
+
+    void on_colorSetBtnMeterPeakLevel_clicked();
+
+    void on_colorEditMeterPeakLevel_editingFinished();
+
+    void on_colorSetBtnMeterPeakScale_clicked();
+
+    void on_colorEditMeterPeakScale_editingFinished();
 
 private:
     Ui::wfmain *ui;

@@ -30,7 +30,7 @@ public slots:
     void setMeterShortString(QString);
     QString getMeterShortString();
     meterKind getMeterType();
-    void setColors(QColor current, QColor peak,
+    void setColors(QColor current, QColor peakScale, QColor peakLevel,
                    QColor average, QColor lowLine,
                    QColor lowText);
 
@@ -86,6 +86,9 @@ private:
     // S9+:
     QColor highTextColor;
     QColor highLineColor;
+
+    QColor midScaleColor;
+    QColor centerTuningColor;
 
 };
 
