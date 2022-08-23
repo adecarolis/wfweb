@@ -57,6 +57,7 @@ void meter::setColors(QColor current, QColor peak,
     averageColor = average;
     lowLineColor = lowLine;
     lowTextColor = lowText;
+    this->update();
 }
 
 void meter::clearMeterOnPTTtoggle()

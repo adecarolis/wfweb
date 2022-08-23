@@ -2622,7 +2622,7 @@ void wfmain::setDefaultColors()
     pDark->spectrumLine = QColor(Qt::yellow);
     pDark->underlayLine = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150).lighter(200);
     pDark->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
-    pDark->tuningLine = QColor(Qt::cyan);
+    pDark->tuningLine = QColor("#ff55ffff");
 
     pDark->meterLevel = QColor("#148CD2").darker();
     pDark->meterAverage = QColor("#3FB7CD");
