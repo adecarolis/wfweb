@@ -2916,6 +2916,9 @@
                 </item>
                 <item>
                  <widget class="QRadioButton" name="underlayNone">
+                  <property name="toolTip">
+                   <string>No underlay graphics</string>
+                  </property>
                   <property name="text">
                    <string>None</string>
                   </property>
@@ -2929,6 +2932,9 @@
                 </item>
                 <item>
                  <widget class="QRadioButton" name="underlayPeakHold">
+                  <property name="toolTip">
+                   <string>Indefinite peak hold</string>
+                  </property>
                   <property name="text">
                    <string>Peak Hold</string>
                   </property>
@@ -2939,6 +2945,9 @@
                 </item>
                 <item>
                  <widget class="QRadioButton" name="underlayPeakBuffer">
+                  <property name="toolTip">
+                   <string>Peak value within the buffer</string>
+                  </property>
                   <property name="text">
                    <string>Peak</string>
                   </property>
@@ -2949,6 +2958,9 @@
                 </item>
                 <item>
                  <widget class="QRadioButton" name="underlayAverageBuffer">
+                  <property name="toolTip">
+                   <string>Average value within the buffer</string>
+                  </property>
                   <property name="text">
                    <string>Average</string>
                   </property>
@@ -2971,6 +2983,9 @@
                     <width>100</width>
                     <height>16777215</height>
                    </size>
+                  </property>
+                  <property name="toolTip">
+                   <string>Size of buffer for spectrum data. Shorter values are more responsive.</string>
                   </property>
                   <property name="minimum">
                    <number>8</number>
@@ -3095,7 +3110,7 @@
                     <property name="geometry">
                      <rect>
                       <x>0</x>
-                      <y>-409</y>
+                      <y>0</y>
                       <width>767</width>
                       <height>612</height>
                      </rect>
@@ -3129,6 +3144,9 @@
                          <height>16777215</height>
                         </size>
                        </property>
+                       <property name="toolTip">
+                        <string>Select a color preset here.</string>
+                       </property>
                        <item>
                         <property name="text">
                          <string>1</string>
@@ -3158,6 +3176,9 @@
                      </item>
                      <item row="1" column="6">
                       <widget class="QPushButton" name="colorRenamePresetBtn">
+                       <property name="toolTip">
+                        <string>Rename the selected color preset. Max length is 10 characters.</string>
+                       </property>
                        <property name="text">
                         <string>Rename Preset</string>
                        </property>
@@ -3208,6 +3229,9 @@
                      </item>
                      <item row="1" column="5">
                       <widget class="QPushButton" name="colorRevertPresetBtn">
+                       <property name="toolTip">
+                        <string>Revert the selected color preset to the default.</string>
+                       </property>
                        <property name="text">
                         <string>Revert</string>
                        </property>
@@ -3265,6 +3289,9 @@
                          <width>90</width>
                          <height>16777215</height>
                         </size>
+                       </property>
+                       <property name="toolTip">
+                        <string>Color text format is #AARRGGBB, where AA is the &quot;alpha&quot; channel, and value &quot;00&quot; is totally transparent, and &quot;ff&quot; is totally opaque.</string>
                        </property>
                        <property name="text">
                         <string>#AARRGGBB</string>
@@ -3481,8 +3508,11 @@
                      </item>
                      <item row="1" column="4">
                       <widget class="QPushButton" name="colorSavePresetBtn">
+                       <property name="toolTip">
+                        <string>Saves the current preset to the settings file.</string>
+                       </property>
                        <property name="text">
-                        <string>Save Presets</string>
+                        <string>Save Preset</string>
                        </property>
                       </widget>
                      </item>
@@ -3599,6 +3629,9 @@
                      </item>
                      <item row="1" column="7">
                       <widget class="QPushButton" name="colorPopOutBtn">
+                       <property name="toolTip">
+                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Pop out (or pop back in) the entire Settings tab. &lt;/p&gt;&lt;p&gt;NOTE: Press this button again to re-insert the tab when finished. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                       </property>
                        <property name="text">
                         <string>Pop-Out</string>
                        </property>
