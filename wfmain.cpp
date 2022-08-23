@@ -63,7 +63,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     setupPlots();
     setDefaultColorPresets();
-    setDefaultColors();
 
     loadSettings(); // Look for saved preferences
 
@@ -1381,7 +1380,7 @@ void wfmain::loadSettings()
             p = &(colorPreset[pn]);
             p->presetNum = settings->value("presetNum", p->presetNum).toInt();
             tempName = settings->value("presetName", *p->presetName).toString();
-            if((!tempName.isEmpty()) && tempName.length() < 33)
+            if((!tempName.isEmpty()) && tempName.length() < 11)
             {
                     p->presetName->clear();
                     p->presetName->append(tempName);
@@ -2598,63 +2597,111 @@ void wfmain::setAppTheme(bool isCustom)
     }
 }
 
-void wfmain::setDefaultColors()
+void wfmain::setDefaultColors(int presetNumber)
 {
-    // These are some intended built-in color schemes.
-    // They can be user-modified and may be restored simply
-    // by removing the relevent color preset preference file entries.
+    // These are the default color schemes
+    if(presetNumber > numColorPresetsTotal-1)
+        return;
 
-    colorPrefsType *pDark = &colorPreset[0];
-    colorPrefsType *pLight = &colorPreset[1];
+    colorPrefsType *p = &colorPreset[presetNumber];
 
-    // Dark:
-    pDark->presetName->clear();
-    pDark->presetName->append("Dark");
-    pDark->plotBackground = QColor(0,0,0,255);
-    pDark->axisColor = QColor(Qt::white);
-    pDark->textColor = QColor(255,255,255,255);
-    pDark->gridColor = QColor("transparent");
-    pDark->spectrumFill = QColor("transparent");
-    pDark->spectrumLine = QColor(Qt::yellow);
-    //pDark->underlayLine = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150).lighter(200);
-    pDark->underlayLine = QColor("#9633ff55");
-    pDark->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
-    pDark->tuningLine = QColor("#ff55ffff");
+    // Begin every parameter with these safe defaults first:
+    if(p->presetName == Q_NULLPTR)
+    {
+        p->presetName = new QString();
+    }
+    p->presetName->clear();
+    p->presetName->append(QString("%1").arg(presetNumber));
+    p->presetNum = presetNumber;
+    p->gridColor = QColor(0,0,0,255);
+    p->axisColor = QColor(Qt::white);
+    p->textColor = QColor(Qt::white);
+    p->spectrumLine = QColor(Qt::yellow);
+    p->spectrumFill = QColor("transparent");
+    p->underlayLine = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150).lighter(200);
+    p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
+    p->plotBackground = QColor(Qt::black);
+    p->tuningLine = QColor(Qt::blue);
 
-    pDark->meterLevel = QColor("#148CD2").darker();
-    pDark->meterAverage = QColor("#3FB7CD");
-    pDark->meterPeakScale = QColor(Qt::red);
-    pDark->meterPeakLevel = QColor("#3CA0DB").lighter();
-    pDark->meterLowerLine = QColor("#eff0f1");
-    pDark->meterLowText = QColor("#eff0f1");
+    p->meterLevel = QColor("#148CD2").darker();
+    p->meterAverage = QColor("#3FB7CD");
+    p->meterPeakLevel = QColor("#3CA0DB").lighter();
+    p->meterPeakScale = QColor(Qt::red);
+    p->meterLowerLine = QColor("#eff0f1");
+    p->meterLowText = QColor("#eff0f1");
 
-    pDark->wfBackground = QColor(Qt::black);
-    pDark->wfAxis = QColor(Qt::white);
-    pDark->wfGrid = QColor("transparent");
-    pDark->wfText = QColor(Qt::white);
+    p->wfBackground = QColor(Qt::black);
+    p->wfAxis = QColor(Qt::white);
+    p->wfGrid = QColor(Qt::white);
+    p->wfText = QColor(Qt::white);
 
-    // Bright:
-    pLight->presetName->clear();
-    pLight->presetName->append("Bright");
-    pLight->plotBackground = QColor(Qt::white);
-    pLight->axisColor = QColor(200,200,200,255);
-    pLight->gridColor = QColor("transparent");
-    pLight->textColor = QColor(Qt::black);
-    pLight->spectrumFill = QColor("transparent");
-    pLight->spectrumLine = QColor(Qt::black);
-    pLight->underlayLine = QColor(Qt::blue);
-    pLight->tuningLine = QColor(Qt::darkBlue);
+    //qInfo(logSystem()) << "default color preset [" << pn << "] set to pn.presetNum index [" << p->presetNum << "]" << ", with name " << *(p->presetName);
 
-    pLight->meterAverage = QColor("#3FB7CD");
-    pLight->meterPeakLevel = QColor("#3CA0DB");
-    pLight->meterPeakScale = QColor(Qt::darkRed);
-    pLight->meterLowerLine = QColor(Qt::black);
-    pLight->meterLowText = QColor(Qt::black);
+    switch (presetNumber)
+    {
+        case 0:
+        {
+            // Dark
+            p->presetName->clear();
+            p->presetName->append("Dark");
+            p->plotBackground = QColor(0,0,0,255);
+            p->axisColor = QColor(Qt::white);
+            p->textColor = QColor(255,255,255,255);
+            p->gridColor = QColor(0,0,0,255);
+            p->spectrumFill = QColor("transparent");
+            p->spectrumLine = QColor(Qt::yellow);
+            p->underlayLine = QColor("#9633ff55");
+            p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
+            p->tuningLine = QColor("#ff55ffff");
 
-    pLight->wfBackground = QColor(Qt::white);
-    pLight->wfAxis = QColor(200,200,200,255);
-    pLight->wfGrid = QColor("transparent");
-    pLight->wfText = QColor(Qt::black);
+            p->meterLevel = QColor("#148CD2").darker();
+            p->meterAverage = QColor("#3FB7CD");
+            p->meterPeakScale = QColor(Qt::red);
+            p->meterPeakLevel = QColor("#3CA0DB").lighter();
+            p->meterLowerLine = QColor("#eff0f1");
+            p->meterLowText = QColor("#eff0f1");
+
+            p->wfBackground = QColor(Qt::black);
+            p->wfAxis = QColor(Qt::white);
+            p->wfGrid = QColor("transparent");
+            p->wfText = QColor(Qt::white);
+            break;
+        }
+        case 1:
+        {
+            // Bright
+            p->presetName->clear();
+            p->presetName->append("Bright");
+            p->plotBackground = QColor(Qt::white);
+            p->axisColor = QColor(200,200,200,255);
+            p->gridColor = QColor(255,255,255,0);
+            p->textColor = QColor(Qt::black);
+            p->spectrumFill = QColor("transparent");
+            p->spectrumLine = QColor(Qt::black);
+            p->underlayLine = QColor(Qt::blue);
+            p->tuningLine = QColor(Qt::darkBlue);
+
+            p->meterAverage = QColor("#3FB7CD");
+            p->meterPeakLevel = QColor("#3CA0DB");
+            p->meterPeakScale = QColor(Qt::darkRed);
+            p->meterLowerLine = QColor(Qt::black);
+            p->meterLowText = QColor(Qt::black);
+
+            p->wfBackground = QColor(Qt::white);
+            p->wfAxis = QColor(200,200,200,255);
+            p->wfGrid = QColor("transparent");
+            p->wfText = QColor(Qt::black);
+            break;
+        }
+
+        case 2:
+        case 3:
+        case 4:
+        default:
+            break;
+
+    }
+    ui->colorPresetCombo->setItemText(presetNumber, *(p->presetName));
 }
 
 void wfmain::doCmd(commandtype cmddata)
@@ -6250,8 +6297,26 @@ QColor wfmain::getColorFromPicker(QColor initialColor)
     options.setFlag(QColorDialog::ShowAlphaChannel, true);
     options.setFlag(QColorDialog::DontUseNativeDialog, true);
     QColor selColor = QColorDialog::getColor(initialColor, this, "Select Color", options);
+    int alphaVal = 0;
+    bool ok = false;
+
     if(selColor.isValid())
+    {
+        if(selColor.alpha() == 0)
+        {
+            alphaVal = QInputDialog::getInt(this, tr("Specify Opacity"),
+                                            tr("You specified an opacity value of 0. \nDo you want to change it? (0=transparent, 255=opaque)"), 0, 0, 255, 1,
+                                            &ok);
+            if(!ok)
+            {
+                return selColor;
+            } else {
+                selColor.setAlpha(alphaVal);
+                return selColor;
+            }
+        }
         return selColor;
+    }
     else
         return initialColor;
 }
@@ -6410,44 +6475,7 @@ void wfmain::setDefaultColorPresets()
     // gets overridden after preferences are loaded
     for(int pn=0; pn < numColorPresetsTotal; pn++)
     {
-        //qInfo(logSystem()) << "Setting default color preset " << pn;
-        colorPrefsType *p = &colorPreset[pn];
-
-        p->presetNum = pn;
-        if(p->presetName == Q_NULLPTR)
-        {
-            p->presetName = new QString(  QString("Preset %1").arg(pn) );
-        }
-
-        // Colors are "#AARRGGBB" (AA=0xff is opaque)
-        // or as (r, g, b, a)
-        // Since the UI shows ##AARRGGBB, we should use
-        // that format in the code when convenient.
-
-        p->gridColor = QColor(0,0,0,255);
-        p->axisColor = QColor(Qt::white);
-        p->textColor = QColor(Qt::white);
-        p->spectrumLine = QColor(Qt::yellow);
-        p->spectrumFill = QColor("transparent");
-        p->underlayLine = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150).lighter(200);
-        p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
-        p->plotBackground = QColor(Qt::black);
-        p->tuningLine = QColor(Qt::blue);
-
-        p->meterLevel = QColor("#148CD2").darker();
-        p->meterAverage = QColor("#3FB7CD");
-        p->meterPeakLevel = QColor("#3CA0DB").lighter();
-        p->meterPeakScale = QColor(Qt::red);
-        p->meterLowerLine = QColor("#eff0f1");
-        p->meterLowText = QColor("#eff0f1");
-
-        p->wfBackground = QColor(Qt::black);
-        p->wfAxis = QColor(Qt::white);
-        p->wfGrid = QColor(Qt::white);
-        p->wfText = QColor(Qt::white);
-
-        //qInfo(logSystem()) << "default color preset [" << pn << "] set to pn.presetNum index [" << p->presetNum << "]" << ", with name " << *(p->presetName);
-        ui->colorPresetCombo->setItemText(pn, *(p->presetName));
+        setDefaultColors(pn);
     }
 }
 
@@ -6508,21 +6536,21 @@ void wfmain::on_colorRenamePresetBtn_clicked()
     QMessageBox msgBox;
 
     bool ok = false;
-    newName = QInputDialog::getText(this, tr("QInputDialog::getText()"),
-                                    tr("Preset Name (32 characters max):"), QLineEdit::Normal,
+    newName = QInputDialog::getText(this, tr("Rename Preset"),
+                                    tr("Preset Name (10 characters max):"), QLineEdit::Normal,
                                     ui->colorPresetCombo->currentText(), &ok);
     if(!ok)
         return;
 
-    if(ok && (newName.length() < 33) && !newName.isEmpty())
+    if(ok && (newName.length() < 11) && !newName.isEmpty())
     {
         colorPreset[p].presetName->clear();
         colorPreset[p].presetName->append(newName);
         ui->colorPresetCombo->setItemText(p, *(colorPreset[p].presetName));
     } else {
-        if(newName.isEmpty() || (newName.length() > 32))
+        if(newName.isEmpty() || (newName.length() > 10))
         {
-            msgBox.setText("Error, name must be at least one character and not exceed 32 characters.");
+            msgBox.setText("Error, name must be at least one character and not exceed 10 characters.");
             msgBox.exec();
         }
     }
@@ -6532,6 +6560,13 @@ void wfmain::on_colorPresetCombo_currentIndexChanged(int index)
 {
     prefs.currentColorPresetNumber = index;
     loadColorPresetToUIandPlots(index);
+}
+
+void wfmain::on_colorRevertPresetBtn_clicked()
+{
+    int pn = ui->colorPresetCombo->currentIndex();
+    setDefaultColors(pn);
+    loadColorPresetToUIandPlots(pn);
 }
 
 // ---------- end color helper functions ---------- //
@@ -6807,14 +6842,41 @@ void wfmain::on_colorEditMeterText_editingFinished()
 
 // ----------   End color UI slots        ----------//
 
-
-void wfmain::on_colorRevertPresetBtn_clicked()
+void wfmain::on_colorSavePresetBtn_clicked()
 {
-    // revert to default colors:
-    // TODO: Add arguments to setDefaultColors()
-    //int pn = ui->colorPresetCombo->currentIndex();
-    //setDefaultColors();
+    int pn = ui->colorPresetCombo->currentIndex();
+
+    settings->beginGroup("ColorPresets");
+    settings->setValue("currentColorPresetNumber", prefs.currentColorPresetNumber);
+    settings->beginWriteArray("ColorPreset", numColorPresetsTotal);
+
+    colorPrefsType *p;
+    p = &(colorPreset[pn]);
+
+    settings->setArrayIndex(pn);
+    settings->setValue("presetNum", p->presetNum);
+    settings->setValue("presetName", *(p->presetName));
+    settings->setValue("gridColor", p->gridColor.name(QColor::HexArgb));
+    settings->setValue("axisColor", p->axisColor.name(QColor::HexArgb));
+    settings->setValue("textColor", p->textColor.name(QColor::HexArgb));
+    settings->setValue("spectrumLine", p->spectrumLine.name(QColor::HexArgb));
+    settings->setValue("spectrumFill", p->spectrumFill.name(QColor::HexArgb));
+    settings->setValue("underlayLine", p->underlayLine.name(QColor::HexArgb));
+    settings->setValue("underlayFill", p->underlayFill.name(QColor::HexArgb));
+    settings->setValue("plotBackground", p->plotBackground.name(QColor::HexArgb));
+    settings->setValue("tuningLine", p->tuningLine.name(QColor::HexArgb));
+    settings->setValue("wfBackground", p->wfBackground.name(QColor::HexArgb));
+    settings->setValue("wfGrid", p->wfGrid.name(QColor::HexArgb));
+    settings->setValue("wfAxis", p->wfAxis.name(QColor::HexArgb));
+    settings->setValue("wfText", p->wfText.name(QColor::HexArgb));
+    settings->setValue("meterLevel", p->meterLevel.name(QColor::HexArgb));
+    settings->setValue("meterAverage", p->meterAverage.name(QColor::HexArgb));
+    settings->setValue("meterPeakScale", p->meterPeakScale.name(QColor::HexArgb));
+    settings->setValue("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb));
+    settings->setValue("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb));
+    settings->setValue("meterLowText", p->meterLowText.name(QColor::HexArgb));
+
+    settings->endArray();
+    settings->endGroup();
+    settings->sync();
 }
-
-
-
