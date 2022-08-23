@@ -642,10 +642,7 @@ private:
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
     QCPItemLine * freqIndicatorLine;
-    //commHandler *comm;
     void setAppTheme(bool isCustom);
-    // TODO: Remove this function
-    void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
     void preparePlasma();
@@ -836,32 +833,6 @@ private:
 
     freqMemory mem;
 
-    // TODO: Remove colorScheme in favor of colorPreset
-    struct colors {
-        QColor Dark_PlotBackground;
-        QColor Dark_PlotAxisPen;
-        QColor Dark_PlotLegendTextColor;
-        QColor Dark_PlotLegendBorderPen;
-        QColor Dark_PlotLegendBrush;
-        QColor Dark_PlotTickLabel;
-        QColor Dark_PlotBasePen;
-        QColor Dark_PlotTickPen;
-        QColor Dark_PeakPlotLine;
-        QColor Dark_TuningLine;
-
-        QColor Light_PlotBackground;
-        QColor Light_PlotAxisPen;
-        QColor Light_PlotLegendTextColor;
-        QColor Light_PlotLegendBorderPen;
-        QColor Light_PlotLegendBrush;
-        QColor Light_PlotTickLabel;
-        QColor Light_PlotBasePen;
-        QColor Light_PlotTickPen;
-        QColor Light_PeakPlotLine;
-        QColor Light_TuningLine;
-
-    } colorScheme;
-
     colorPrefsType colorPreset[numColorPresetsTotal];
 
     struct preferences {
@@ -905,9 +876,6 @@ private:
     // Configuration for audio output and input.
     audioSetup rxSetup;
     audioSetup txSetup;
-
-    // TODO: Remove
-    colors defaultColors;
 
     void setDefaultColors(); // populate with default values
     void useColors(); // set the plot up

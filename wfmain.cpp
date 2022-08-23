@@ -985,12 +985,6 @@ void wfmain::setInitialTiming()
     delayedCommand->setSingleShot(false);
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(sendRadioCommandLoop()));
 
-    // TODO: Remove this:
-//    periodicPollingTimer = new QTimer(this);
-//    periodicPollingTimer->setInterval(10);
-//    periodicPollingTimer->setSingleShot(false);
-    //connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(sendRadioCommandLoop()));
-
     pttTimer = new QTimer(this);
     pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
     pttTimer->setSingleShot(true);
@@ -2659,60 +2653,6 @@ void wfmain::setDefaultColors()
     pLight->wfText = QColor(Qt::black);
 }
 
-void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
-{
-
-    // TODO: Remove this function
-    /*
-    if(isDark)
-    {
-        plot->setBackground(prefs.colorScheme.Dark_PlotBackground);
-        //plot->setBackground(QColor(0,0,0,255));
-
-        plot->xAxis->grid()->setPen(prefs.colorScheme.Dark_PlotAxisPen);
-        plot->yAxis->grid()->setPen(prefs.colorScheme.Dark_PlotAxisPen);
-
-        plot->legend->setTextColor(prefs.colorScheme.Dark_PlotLegendTextColor);
-        plot->legend->setBorderPen(prefs.colorScheme.Dark_PlotLegendBorderPen);
-        plot->legend->setBrush(prefs.colorScheme.Dark_PlotLegendBrush);
-
-        plot->xAxis->setTickLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
-        plot->xAxis->setLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
-        plot->yAxis->setTickLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
-        plot->yAxis->setLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
-
-        plot->xAxis->setBasePen(prefs.colorScheme.Dark_PlotBasePen);
-        plot->xAxis->setTickPen(prefs.colorScheme.Dark_PlotTickPen);
-        plot->yAxis->setBasePen(prefs.colorScheme.Dark_PlotBasePen);
-        plot->yAxis->setTickPen(prefs.colorScheme.Dark_PlotTickPen);
-        plot->graph(0)->setPen(prefs.colorScheme.Dark_PeakPlotLine);
-        freqIndicatorLine->setPen(prefs.colorScheme.Dark_TuningLine);
-    } else {
-        //color = ui->groupBox->palette().color(QPalette::Button);
-
-        plot->setBackground(prefs.colorScheme.Light_PlotBackground);
-        plot->xAxis->grid()->setPen(prefs.colorScheme.Light_PlotAxisPen);
-        plot->yAxis->grid()->setPen(prefs.colorScheme.Light_PlotAxisPen);
-
-        plot->legend->setTextColor(prefs.colorScheme.Light_PlotLegendTextColor);
-        plot->legend->setBorderPen(prefs.colorScheme.Light_PlotLegendBorderPen);
-        plot->legend->setBrush(prefs.colorScheme.Light_PlotLegendBrush);
-
-        plot->xAxis->setTickLabelColor(prefs.colorScheme.Light_PlotTickLabel);
-        plot->xAxis->setLabelColor(prefs.colorScheme.Light_PlotTickLabel);
-        plot->yAxis->setTickLabelColor(prefs.colorScheme.Light_PlotTickLabel);
-        plot->yAxis->setLabelColor(prefs.colorScheme.Light_PlotTickLabel);
-
-        plot->xAxis->setBasePen(prefs.colorScheme.Light_PlotBasePen);
-        plot->xAxis->setTickPen(prefs.colorScheme.Light_PlotTickPen);
-        plot->yAxis->setBasePen(prefs.colorScheme.Light_PlotBasePen);
-        plot->yAxis->setTickPen(prefs.colorScheme.Light_PlotTickLabel);
-        plot->graph(0)->setPen(prefs.colorScheme.Light_PeakPlotLine);
-        freqIndicatorLine->setPen(prefs.colorScheme.Light_TuningLine);
-    }
-    */
-}
-
 void wfmain::doCmd(commandtype cmddata)
 {
     cmds cmd = cmddata.cmd;
@@ -2837,9 +2777,7 @@ void wfmain::doCmd(commandtype cmddata)
             doCmd(cmd);
             break;
     }
-
 }
-
 
 void wfmain::doCmd(cmds cmd)
 {
