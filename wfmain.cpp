@@ -6163,7 +6163,6 @@ void wfmain::on_underlayPeakHold_toggled(bool checked)
         prefs.underlayMode = underlayMode;
         on_clearPeakBtn_clicked();
     }
-
 }
 
 void wfmain::on_underlayPeakBuffer_toggled(bool checked)
@@ -6300,7 +6299,7 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     if(cp == Q_NULLPTR)
         return;
 
-    qInfo(logSystem()) << "Setting plots to color preset number " << cp->presetNum << ", with name " << *(cp->presetName);
+    //qInfo(logSystem()) << "Setting plots to color preset number " << cp->presetNum << ", with name " << *(cp->presetName);
 
     plot->setBackground(cp->plotBackground);
 
@@ -6360,7 +6359,6 @@ void wfmain::setColorButtonOperations(QColor *colorStore,
     getSetColor(d, e);
     QColor t = d->getColor();
     colorStore->setNamedColor(t.name(QColor::HexArgb));
-    //colorStore->setBlue(100);
     useCurrentColorPreset();
 }
 
@@ -6412,7 +6410,7 @@ void wfmain::setDefaultColorPresets()
     // gets overridden after preferences are loaded
     for(int pn=0; pn < numColorPresetsTotal; pn++)
     {
-        qInfo(logSystem()) << "Setting default color preset " << pn;
+        //qInfo(logSystem()) << "Setting default color preset " << pn;
         colorPrefsType *p = &colorPreset[pn];
 
         p->presetNum = pn;
@@ -6448,7 +6446,7 @@ void wfmain::setDefaultColorPresets()
         p->wfGrid = QColor(Qt::white);
         p->wfText = QColor(Qt::white);
 
-        qInfo(logSystem()) << "default color preset [" << pn << "] set to pn.presetNum index [" << p->presetNum << "]" << ", with name " << *(p->presetName);
+        //qInfo(logSystem()) << "default color preset [" << pn << "] set to pn.presetNum index [" << p->presetNum << "]" << ", with name " << *(p->presetName);
         ui->colorPresetCombo->setItemText(pn, *(p->presetName));
     }
 }
@@ -6477,7 +6475,7 @@ void wfmain::loadColorPresetToUIandPlots(int presetNumber)
     }
 
     colorPrefsType p = colorPreset[presetNumber];
-    qInfo(logSystem()) << "color preset number [" << presetNumber << "] requested for UI load, which has internal index of [" << p.presetNum << "]";
+    //qInfo(logSystem()) << "color preset number [" << presetNumber << "] requested for UI load, which has internal index of [" << p.presetNum << "]";
     setEditAndLedFromColor(p.gridColor, ui->colorEditGrid, ui->colorSwatchGrid);
     setEditAndLedFromColor(p.axisColor, ui->colorEditAxis, ui->colorSwatchAxis);
     setEditAndLedFromColor(p.textColor, ui->colorEditText, ui->colorSwatchText);
@@ -6521,7 +6519,6 @@ void wfmain::on_colorRenamePresetBtn_clicked()
         colorPreset[p].presetName->clear();
         colorPreset[p].presetName->append(newName);
         ui->colorPresetCombo->setItemText(p, *(colorPreset[p].presetName));
-        qInfo(logSystem()) << "Setting color preset number " << p << " to have text " << newName << ", as read in preset data: " << *(colorPreset[p].presetName) << ", and as read from combo box: " << ui->colorPresetCombo->currentText();
     } else {
         if(newName.isEmpty() || (newName.length() > 32))
         {
@@ -6533,7 +6530,6 @@ void wfmain::on_colorRenamePresetBtn_clicked()
 
 void wfmain::on_colorPresetCombo_currentIndexChanged(int index)
 {
-    qInfo(logSystem()) << "color preset combo box set to index: " << index;
     prefs.currentColorPresetNumber = index;
     loadColorPresetToUIandPlots(index);
 }
