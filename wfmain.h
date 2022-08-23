@@ -329,13 +329,7 @@ private slots:
 
     void on_scopeEdgeCombo_currentIndexChanged(int index);
 
-    // void on_modeSelectCombo_currentIndexChanged(int index);
-
-    void on_useDarkThemeChk_clicked(bool checked);
-
     void on_modeSelectCombo_activated(int index);
-
-    // void on_freqDial_actionTriggered(int action);
 
     void on_freqDial_valueChanged(int value);
 
@@ -384,7 +378,6 @@ private slots:
     void on_pttOffBtn_clicked();
 
     void on_saveSettingsBtn_clicked();
-
 
     void on_debugBtn_clicked();
 
@@ -634,6 +627,8 @@ private slots:
 
     void on_colorRenamePresetBtn_clicked();
 
+    void on_colorRevertPresetBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -649,6 +644,7 @@ private:
     QCPItemLine * freqIndicatorLine;
     //commHandler *comm;
     void setAppTheme(bool isCustom);
+    // TODO: Remove this function
     void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
@@ -839,6 +835,8 @@ private:
     datekind datesetpoint;
 
     freqMemory mem;
+
+    // TODO: Remove colorScheme in favor of colorPreset
     struct colors {
         QColor Dark_PlotBackground;
         QColor Dark_PlotAxisPen;
@@ -868,7 +866,6 @@ private:
 
     struct preferences {
         bool useFullScreen;
-        bool useDarkMode;
         bool useSystemTheme;
         bool drawPeaks;
         underlay_t underlayMode = underlayNone;
@@ -886,7 +883,6 @@ private:
         bool enableLAN;
         bool enableRigCtlD;
         quint16 rigCtlPort;
-        colors colorScheme;
         int currentColorPresetNumber = 0;
         QString virtualSerialPort;
         unsigned char localAFgain;
@@ -910,7 +906,7 @@ private:
     audioSetup rxSetup;
     audioSetup txSetup;
 
-
+    // TODO: Remove
     colors defaultColors;
 
     void setDefaultColors(); // populate with default values

@@ -57,13 +57,13 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     setSerialDevicesUI();
 
-    setDefaultColors();
     setDefPrefs();
 
     getSettingsFilePath(settingsFile);
 
     setupPlots();
     setDefaultColorPresets();
+    setDefaultColors();
 
     loadSettings(); // Look for saved preferences
 
@@ -1059,9 +1059,6 @@ void wfmain::setUIToPrefs()
     ui->fullScreenChk->setChecked(prefs.useFullScreen);
     on_fullScreenChk_clicked(prefs.useFullScreen);
 
-    ui->useDarkThemeChk->setChecked(prefs.useDarkMode);
-    on_useDarkThemeChk_clicked(prefs.useDarkMode);
-
     ui->useSystemThemeChk->setChecked(prefs.useSystemTheme);
     on_useSystemThemeChk_clicked(prefs.useSystemTheme);
 
@@ -1298,9 +1295,9 @@ void wfmain::setupKeyShortcuts()
 void wfmain::setDefPrefs()
 {
     defPrefs.useFullScreen = false;
-    defPrefs.useDarkMode = true;
     defPrefs.useSystemTheme = false;
     defPrefs.drawPeaks = true;
+    defPrefs.currentColorPresetNumber = 0;
     defPrefs.underlayMode = underlayNone;
     defPrefs.underlayBufferSize = 64;
     defPrefs.wfAntiAlias = false;
@@ -1345,7 +1342,6 @@ void wfmain::loadSettings()
     // UI: (full screen, dark theme, draw peaks, colors, etc)
     settings->beginGroup("Interface");
     prefs.useFullScreen = settings->value("UseFullScreen", defPrefs.useFullScreen).toBool();
-    prefs.useDarkMode = settings->value("UseDarkMode", defPrefs.useDarkMode).toBool();
     prefs.useSystemTheme = settings->value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
     prefs.wftheme = settings->value("WFTheme", defPrefs.wftheme).toInt();
     prefs.plotFloor = settings->value("plotFloor", defPrefs.plotFloor).toInt();
@@ -1417,40 +1413,6 @@ void wfmain::loadSettings()
         }
     }
     settings->endArray();
-    settings->endGroup();
-
-
-    // Load color schemes:
-    // Per this bug: https://forum.qt.io/topic/24725/solved-qvariant-will-drop-alpha-value-when-save-qcolor/5
-    // the alpha channel is dropped when converting raw qvariant of QColor. Therefore, we are storing as unsigned int and converting back.
-
-    settings->beginGroup("DarkColors");
-    prefs.colorScheme.Dark_PlotBackground = QColor::fromRgba(settings->value("Dark_PlotBackground", defaultColors.Dark_PlotBackground.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotAxisPen = QColor::fromRgba(settings->value("Dark_PlotAxisPen", defaultColors.Dark_PlotAxisPen.rgba()).toUInt());
-
-    prefs.colorScheme.Dark_PlotLegendTextColor = QColor::fromRgba(settings->value("Dark_PlotLegendTextColor", defaultColors.Dark_PlotLegendTextColor.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotLegendBorderPen = QColor::fromRgba(settings->value("Dark_PlotLegendBorderPen", defaultColors.Dark_PlotLegendBorderPen.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotLegendBrush = QColor::fromRgba(settings->value("Dark_PlotLegendBrush", defaultColors.Dark_PlotLegendBrush.rgba()).toUInt());
-
-    prefs.colorScheme.Dark_PlotTickLabel = QColor::fromRgba(settings->value("Dark_PlotTickLabel", defaultColors.Dark_PlotTickLabel.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotBasePen = QColor::fromRgba(settings->value("Dark_PlotBasePen", defaultColors.Dark_PlotBasePen.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotTickPen = QColor::fromRgba(settings->value("Dark_PlotTickPen", defaultColors.Dark_PlotTickPen.rgba()).toUInt());
-
-    prefs.colorScheme.Dark_PeakPlotLine = QColor::fromRgba(settings->value("Dark_PeakPlotLine", defaultColors.Dark_PeakPlotLine.rgba()).toUInt());
-    prefs.colorScheme.Dark_TuningLine = QColor::fromRgba(settings->value("Dark_TuningLine", defaultColors.Dark_TuningLine.rgba()).toUInt());
-    settings->endGroup();
-
-    settings->beginGroup("LightColors");
-    prefs.colorScheme.Light_PlotBackground = QColor::fromRgba(settings->value("Light_PlotBackground", defaultColors.Light_PlotBackground.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotAxisPen = QColor::fromRgba(settings->value("Light_PlotAxisPen", defaultColors.Light_PlotAxisPen.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotLegendTextColor = QColor::fromRgba(settings->value("Light_PlotLegendTextColo", defaultColors.Light_PlotLegendTextColor.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotLegendBorderPen = QColor::fromRgba(settings->value("Light_PlotLegendBorderPen", defaultColors.Light_PlotLegendBorderPen.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotLegendBrush = QColor::fromRgba(settings->value("Light_PlotLegendBrush", defaultColors.Light_PlotLegendBrush.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotTickLabel = QColor::fromRgba(settings->value("Light_PlotTickLabel", defaultColors.Light_PlotTickLabel.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotBasePen = QColor::fromRgba(settings->value("Light_PlotBasePen", defaultColors.Light_PlotBasePen.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotTickPen = QColor::fromRgba(settings->value("Light_PlotTickPen", defaultColors.Light_PlotTickPen.rgba()).toUInt());
-    prefs.colorScheme.Light_PeakPlotLine = QColor::fromRgba(settings->value("Light_PeakPlotLine", defaultColors.Light_PeakPlotLine.rgba()).toUInt());
-    prefs.colorScheme.Light_TuningLine = QColor::fromRgba(settings->value("Light_TuningLine", defaultColors.Light_TuningLine.rgba()).toUInt());
     settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -1911,7 +1873,6 @@ void wfmain::saveSettings()
     settings->beginGroup("Interface");
     settings->setValue("UseFullScreen", prefs.useFullScreen);
     settings->setValue("UseSystemTheme", prefs.useSystemTheme);
-    settings->setValue("UseDarkMode", prefs.useDarkMode);
     settings->setValue("DrawPeaks", prefs.drawPeaks);
     settings->setValue("underlayMode", prefs.underlayMode);
     settings->setValue("underlayBufferSize", prefs.underlayBufferSize);
@@ -2024,51 +1985,6 @@ void wfmain::saveSettings()
         settings->setValue("meterLowText", p->meterLowText.name(QColor::HexArgb));
     }
     settings->endArray();
-    settings->endGroup();
-
-    // Note: X and Y get the same colors. See setPlotTheme() function
-    settings->beginGroup("DarkColors");
-    settings->setValue("Dark_PlotBackground", prefs.colorScheme.Dark_PlotBackground.rgba());
-    settings->setValue("Dark_PlotAxisPen", prefs.colorScheme.Dark_PlotAxisPen.rgba());
-    settings->setValue("Dark_PlotLegendTextColor", prefs.colorScheme.Dark_PlotLegendTextColor.rgba());
-    settings->setValue("Dark_PlotLegendBorderPen", prefs.colorScheme.Dark_PlotLegendBorderPen.rgba());
-    settings->setValue("Dark_PlotLegendBrush", prefs.colorScheme.Dark_PlotLegendBrush.rgba());
-    settings->setValue("Dark_PlotTickLabel", prefs.colorScheme.Dark_PlotTickLabel.rgba());
-    settings->setValue("Dark_PlotBasePen", prefs.colorScheme.Dark_PlotBasePen.rgba());
-    settings->setValue("Dark_PlotTickPen", prefs.colorScheme.Dark_PlotTickPen.rgba());
-    settings->setValue("Dark_PeakPlotLine", prefs.colorScheme.Dark_PeakPlotLine.rgba());
-    settings->setValue("Dark_TuningLine", prefs.colorScheme.Dark_TuningLine.rgba());
-    settings->endGroup();
-
-    settings->beginGroup("LightColors");
-    settings->setValue("Light_PlotBackground", prefs.colorScheme.Light_PlotBackground.rgba());
-    settings->setValue("Light_PlotAxisPen", prefs.colorScheme.Light_PlotAxisPen.rgba());
-    settings->setValue("Light_PlotLegendTextColor", prefs.colorScheme.Light_PlotLegendTextColor.rgba());
-    settings->setValue("Light_PlotLegendBorderPen", prefs.colorScheme.Light_PlotLegendBorderPen.rgba());
-    settings->setValue("Light_PlotLegendBrush", prefs.colorScheme.Light_PlotLegendBrush.rgba());
-    settings->setValue("Light_PlotTickLabel", prefs.colorScheme.Light_PlotTickLabel.rgba());
-    settings->setValue("Light_PlotBasePen", prefs.colorScheme.Light_PlotBasePen.rgba());
-    settings->setValue("Light_PlotTickPen", prefs.colorScheme.Light_PlotTickPen.rgba());
-    settings->setValue("Light_PeakPlotLine", prefs.colorScheme.Light_PeakPlotLine.rgba());
-    settings->setValue("Light_TuningLine", prefs.colorScheme.Light_TuningLine.rgba());
-
-    settings->endGroup();
-
-    // This is a reference to see how the preference file is encoded.
-    settings->beginGroup("StandardColors");
-
-    settings->setValue("white", QColor(Qt::white).rgba());
-    settings->setValue("black", QColor(Qt::black).rgba());
-
-    settings->setValue("red_opaque", QColor(Qt::red).rgba());
-    settings->setValue("red_translucent", QColor(255,0,0,128).rgba());
-    settings->setValue("green_opaque", QColor(Qt::green).rgba());
-    settings->setValue("green_translucent", QColor(0,255,0,128).rgba());
-    settings->setValue("blue_opaque", QColor(Qt::blue).rgba());
-    settings->setValue("blue_translucent", QColor(0,0,255,128).rgba());
-    settings->setValue("cyan", QColor(Qt::cyan).rgba());
-    settings->setValue("magenta", QColor(Qt::magenta).rgba());
-    settings->setValue("yellow", QColor(Qt::yellow).rgba());
     settings->endGroup();
 
     settings->beginGroup("Server");
@@ -2655,14 +2571,6 @@ void wfmain::showStatusBarText(QString text)
     ui->statusBar->showMessage(text, 5000);
 }
 
-void wfmain::on_useDarkThemeChk_clicked(bool checked)
-{
-    //setAppTheme(checked);
-    setPlotTheme(wf, checked);
-    setPlotTheme(plot, checked);
-    prefs.useDarkMode = checked;
-}
-
 void wfmain::on_useSystemThemeChk_clicked(bool checked)
 {
     setAppTheme(!checked);
@@ -2696,31 +2604,65 @@ void wfmain::setAppTheme(bool isCustom)
 
 void wfmain::setDefaultColors()
 {
-    defaultColors.Dark_PlotBackground = QColor(0,0,0,255);
-    defaultColors.Dark_PlotAxisPen = QColor(75,75,75,255);
-    defaultColors.Dark_PlotLegendTextColor = QColor(255,255,255,255);
-    defaultColors.Dark_PlotLegendBorderPen = QColor(255,255,255,255);
-    defaultColors.Dark_PlotLegendBrush = QColor(0,0,0,200);
-    defaultColors.Dark_PlotTickLabel = QColor(Qt::white);
-    defaultColors.Dark_PlotBasePen = QColor(Qt::white);
-    defaultColors.Dark_PlotTickPen = QColor(Qt::white);
-    defaultColors.Dark_PeakPlotLine = QColor(Qt::yellow);
-    defaultColors.Dark_TuningLine = QColor(Qt::cyan);
+    // These are some intended built-in color schemes.
+    // They can be user-modified and may be restored simply
+    // by removing the relevent color preset preference file entries.
 
-    defaultColors.Light_PlotBackground = QColor(255,255,255,255);
-    defaultColors.Light_PlotAxisPen = QColor(200,200,200,255);
-    defaultColors.Light_PlotLegendTextColor = QColor(0,0,0,255);
-    defaultColors.Light_PlotLegendBorderPen = QColor(0,0,0,255);
-    defaultColors.Light_PlotLegendBrush = QColor(255,255,255,200);
-    defaultColors.Light_PlotTickLabel = QColor(Qt::black);
-    defaultColors.Light_PlotBasePen = QColor(Qt::black);
-    defaultColors.Light_PlotTickPen = QColor(Qt::black);
-    defaultColors.Light_PeakPlotLine = QColor(Qt::blue);
-    defaultColors.Light_TuningLine = QColor(Qt::blue);
+    colorPrefsType *pDark = &colorPreset[0];
+    colorPrefsType *pLight = &colorPreset[1];
+
+    // Dark:
+    pDark->presetName->clear();
+    pDark->presetName->append("Dark");
+    pDark->plotBackground = QColor(0,0,0,255);
+    pDark->axisColor = QColor(Qt::white);
+    pDark->textColor = QColor(255,255,255,255);
+    pDark->gridColor = QColor("transparent");
+    pDark->spectrumFill = QColor("transparent");
+    pDark->spectrumLine = QColor(Qt::yellow);
+    pDark->underlayLine = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150).lighter(200);
+    pDark->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
+    pDark->tuningLine = QColor(Qt::cyan);
+
+    pDark->meterLevel = QColor("#148CD2").darker();
+    pDark->meterAverage = QColor("#3FB7CD");
+    pDark->meterPeak = QColor("#3CA0DB").lighter();
+    pDark->meterLowerLine = QColor("#eff0f1");
+    pDark->meterLowText = QColor("#eff0f1");
+
+    pDark->wfBackground = QColor(Qt::black);
+    pDark->wfAxis = QColor(Qt::white);
+    pDark->wfGrid = QColor("transparent");
+    pDark->wfText = QColor(Qt::white);
+
+    // Bright:
+    pLight->presetName->clear();
+    pLight->presetName->append("Bright");
+    pLight->plotBackground = QColor(Qt::white);
+    pLight->axisColor = QColor(200,200,200,255);
+    pLight->gridColor = QColor("transparent");
+    pLight->textColor = QColor(Qt::black);
+    pLight->spectrumFill = QColor("transparent");
+    pLight->spectrumLine = QColor(Qt::black);
+    pLight->underlayLine = QColor(Qt::blue);
+    pLight->tuningLine = QColor(Qt::darkBlue);
+
+    pLight->meterAverage = QColor("#3FB7CD");
+    pLight->meterPeak = QColor("#3CA0DB");
+    pLight->meterLowerLine = QColor(Qt::black);
+    pLight->meterLowText = QColor(Qt::black);
+
+    pLight->wfBackground = QColor(Qt::white);
+    pLight->wfAxis = QColor(200,200,200,255);
+    pLight->wfGrid = QColor("transparent");
+    pLight->wfText = QColor(Qt::black);
 }
 
 void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
 {
+
+    // TODO: Remove this function
+    /*
     if(isDark)
     {
         plot->setBackground(prefs.colorScheme.Dark_PlotBackground);
@@ -2767,6 +2709,7 @@ void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
         plot->graph(0)->setPen(prefs.colorScheme.Light_PeakPlotLine);
         freqIndicatorLine->setPen(prefs.colorScheme.Light_TuningLine);
     }
+    */
 }
 
 void wfmain::doCmd(commandtype cmddata)
@@ -6909,3 +6852,11 @@ void wfmain::on_colorEditMeterText_editingFinished()
 
 // ----------   End color UI slots        ----------//
 
+
+void wfmain::on_colorRevertPresetBtn_clicked()
+{
+    // revert to default colors:
+    // TODO: Add arguments to setDefaultColors()
+    //int pn = ui->colorPresetCombo->currentIndex();
+    //setDefaultColors();
+}

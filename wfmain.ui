@@ -2848,13 +2848,6 @@
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_22">
                 <item>
-                 <widget class="QCheckBox" name="useDarkThemeChk">
-                  <property name="text">
-                   <string>Waterfall Dark Theme</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
                  <widget class="QCheckBox" name="wfInterpolateChk">
                   <property name="text">
                    <string>Interpolate Waterfall</string>
@@ -2865,16 +2858,16 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QCheckBox" name="useSystemThemeChk">
+                 <widget class="QCheckBox" name="wfAntiAliasChk">
                   <property name="text">
-                   <string>Use System Theme</string>
+                   <string>Anti-Alias Waterfall</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QCheckBox" name="wfAntiAliasChk">
+                 <widget class="QCheckBox" name="useSystemThemeChk">
                   <property name="text">
-                   <string>Anti-Alias Waterfall</string>
+                   <string>Use System Theme</string>
                   </property>
                  </widget>
                 </item>
