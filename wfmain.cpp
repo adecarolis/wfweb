@@ -53,15 +53,18 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     setupKeyShortcuts();
 
     setupMainUI();
+    prepareSettingsWindow();
 
     setSerialDevicesUI();
 
-    setDefaultColors();
     setDefPrefs();
 
     getSettingsFilePath(settingsFile);
 
     setupPlots();
+    setDefaultColorPresets();
+    setDefaultColors();
+
     loadSettings(); // Look for saved preferences
 
     setAudioDevicesUI();
@@ -70,6 +73,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     qDebug(logSystem()) << "Running setUIToPrefs()";
     setUIToPrefs();
+
+    loadColorPresetToUIandPlots(0);
 
     qDebug(logSystem()) << "Running setInititalTiming()";
     setInitialTiming();
@@ -877,8 +882,22 @@ void wfmain::setupMainUI()
             [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetTPBFOuter, newValue);}
     );
 
+}
 
+void wfmain::prepareSettingsWindow()
+{
+    settingsTabisAttached = true;
 
+    settingsWidgetWindow = new QWidget;
+    settingsWidgetLayout = new QGridLayout;
+    settingsWidgetTab = new QTabWidget;
+
+    settingsWidgetWindow->setLayout(settingsWidgetLayout);
+    settingsWidgetLayout->addWidget(settingsWidgetTab);
+    settingsWidgetWindow->setWindowFlag(Qt::WindowCloseButtonHint, false);
+    //settingsWidgetWindow->setWindowFlag(Qt::WindowMinimizeButtonHint, false);
+    //settingsWidgetWindow->setWindowFlag(Qt::WindowMaximizeButtonHint, false);
+    // TODO: Capture an event when the window closes and handle accordingly.
 }
 
 void wfmain::updateSizes(int tabIndex)
@@ -966,12 +985,6 @@ void wfmain::setInitialTiming()
     delayedCommand->setSingleShot(false);
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(sendRadioCommandLoop()));
 
-    // TODO: Remove this:
-//    periodicPollingTimer = new QTimer(this);
-//    periodicPollingTimer->setInterval(10);
-//    periodicPollingTimer->setSingleShot(false);
-    //connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(sendRadioCommandLoop()));
-
     pttTimer = new QTimer(this);
     pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
     pttTimer->setSingleShot(true);
@@ -1040,15 +1053,8 @@ void wfmain::setUIToPrefs()
     ui->fullScreenChk->setChecked(prefs.useFullScreen);
     on_fullScreenChk_clicked(prefs.useFullScreen);
 
-    ui->useDarkThemeChk->setChecked(prefs.useDarkMode);
-    on_useDarkThemeChk_clicked(prefs.useDarkMode);
-
     ui->useSystemThemeChk->setChecked(prefs.useSystemTheme);
     on_useSystemThemeChk_clicked(prefs.useSystemTheme);
-
-    ui->drawPeakChk->setChecked(prefs.drawPeaks);
-    on_drawPeakChk_clicked(prefs.drawPeaks);
-    drawPeaks = prefs.drawPeaks;
 
     underlayMode = prefs.underlayMode;
     switch(underlayMode)
@@ -1080,12 +1086,20 @@ void wfmain::setUIToPrefs()
 
     ui->wfLengthSlider->setValue(prefs.wflength);
     prepareWf(prefs.wflength);
-
+    preparePlasma();
     ui->topLevelSlider->setValue(prefs.plotCeiling);
     ui->botLevelSlider->setValue(prefs.plotFloor);
 
     plot->yAxis->setRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
     colorMap->setDataRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
+
+    colorPrefsType p;
+    for(int pn=0; pn < numColorPresetsTotal; pn++)
+    {
+        p = colorPreset[pn];
+        if(p.presetName != Q_NULLPTR)
+            ui->colorPresetCombo->setItemText(pn, *p.presetName);
+    }
 
     ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
@@ -1275,9 +1289,9 @@ void wfmain::setupKeyShortcuts()
 void wfmain::setDefPrefs()
 {
     defPrefs.useFullScreen = false;
-    defPrefs.useDarkMode = true;
     defPrefs.useSystemTheme = false;
     defPrefs.drawPeaks = true;
+    defPrefs.currentColorPresetNumber = 0;
     defPrefs.underlayMode = underlayNone;
     defPrefs.underlayBufferSize = 64;
     defPrefs.wfAntiAlias = false;
@@ -1322,7 +1336,6 @@ void wfmain::loadSettings()
     // UI: (full screen, dark theme, draw peaks, colors, etc)
     settings->beginGroup("Interface");
     prefs.useFullScreen = settings->value("UseFullScreen", defPrefs.useFullScreen).toBool();
-    prefs.useDarkMode = settings->value("UseDarkMode", defPrefs.useDarkMode).toBool();
     prefs.useSystemTheme = settings->value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
     prefs.wftheme = settings->value("WFTheme", defPrefs.wftheme).toInt();
     prefs.plotFloor = settings->value("plotFloor", defPrefs.plotFloor).toInt();
@@ -1348,37 +1361,53 @@ void wfmain::loadSettings()
     prefs.meter2Type = static_cast<meterKind>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
     settings->endGroup();
 
-    // Load color schemes:
-    // Per this bug: https://forum.qt.io/topic/24725/solved-qvariant-will-drop-alpha-value-when-save-qcolor/5
-    // the alpha channel is dropped when converting raw qvariant of QColor. Therefore, we are storing as unsigned int and converting back.
+    // Load in the color presets. The default values are already loaded.
 
-    settings->beginGroup("DarkColors");
-    prefs.colorScheme.Dark_PlotBackground = QColor::fromRgba(settings->value("Dark_PlotBackground", defaultColors.Dark_PlotBackground.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotAxisPen = QColor::fromRgba(settings->value("Dark_PlotAxisPen", defaultColors.Dark_PlotAxisPen.rgba()).toUInt());
+    settings->beginGroup("ColorPresets");
+    settings->value("currentColorPresetNumber", prefs.currentColorPresetNumber).toInt();
+    if(prefs.currentColorPresetNumber > numColorPresetsTotal-1)
+        prefs.currentColorPresetNumber = 0;
 
-    prefs.colorScheme.Dark_PlotLegendTextColor = QColor::fromRgba(settings->value("Dark_PlotLegendTextColor", defaultColors.Dark_PlotLegendTextColor.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotLegendBorderPen = QColor::fromRgba(settings->value("Dark_PlotLegendBorderPen", defaultColors.Dark_PlotLegendBorderPen.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotLegendBrush = QColor::fromRgba(settings->value("Dark_PlotLegendBrush", defaultColors.Dark_PlotLegendBrush.rgba()).toUInt());
-
-    prefs.colorScheme.Dark_PlotTickLabel = QColor::fromRgba(settings->value("Dark_PlotTickLabel", defaultColors.Dark_PlotTickLabel.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotBasePen = QColor::fromRgba(settings->value("Dark_PlotBasePen", defaultColors.Dark_PlotBasePen.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotTickPen = QColor::fromRgba(settings->value("Dark_PlotTickPen", defaultColors.Dark_PlotTickPen.rgba()).toUInt());
-
-    prefs.colorScheme.Dark_PeakPlotLine = QColor::fromRgba(settings->value("Dark_PeakPlotLine", defaultColors.Dark_PeakPlotLine.rgba()).toUInt());
-    prefs.colorScheme.Dark_TuningLine = QColor::fromRgba(settings->value("Dark_TuningLine", defaultColors.Dark_TuningLine.rgba()).toUInt());
-    settings->endGroup();
-
-    settings->beginGroup("LightColors");
-    prefs.colorScheme.Light_PlotBackground = QColor::fromRgba(settings->value("Light_PlotBackground", defaultColors.Light_PlotBackground.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotAxisPen = QColor::fromRgba(settings->value("Light_PlotAxisPen", defaultColors.Light_PlotAxisPen.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotLegendTextColor = QColor::fromRgba(settings->value("Light_PlotLegendTextColo", defaultColors.Light_PlotLegendTextColor.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotLegendBorderPen = QColor::fromRgba(settings->value("Light_PlotLegendBorderPen", defaultColors.Light_PlotLegendBorderPen.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotLegendBrush = QColor::fromRgba(settings->value("Light_PlotLegendBrush", defaultColors.Light_PlotLegendBrush.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotTickLabel = QColor::fromRgba(settings->value("Light_PlotTickLabel", defaultColors.Light_PlotTickLabel.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotBasePen = QColor::fromRgba(settings->value("Light_PlotBasePen", defaultColors.Light_PlotBasePen.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotTickPen = QColor::fromRgba(settings->value("Light_PlotTickPen", defaultColors.Light_PlotTickPen.rgba()).toUInt());
-    prefs.colorScheme.Light_PeakPlotLine = QColor::fromRgba(settings->value("Light_PeakPlotLine", defaultColors.Light_PeakPlotLine.rgba()).toUInt());
-    prefs.colorScheme.Light_TuningLine = QColor::fromRgba(settings->value("Light_TuningLine", defaultColors.Light_TuningLine.rgba()).toUInt());
+    int numPresetsInFile = settings->beginReadArray("ColorPreset");
+    // We will use the number of presets that the working copy of wfview
+    // supports, as we must never exceed the available number.
+    if(numPresetsInFile > 0)
+    {
+        colorPrefsType *p;
+        QString tempName;
+        for(int pn=0; pn < numColorPresetsTotal; pn++)
+        {
+            settings->setArrayIndex(pn);
+            p = &(colorPreset[pn]);
+            p->presetNum = settings->value("presetNum", p->presetNum).toInt();
+            tempName = settings->value("presetName", *p->presetName).toString();
+            if((!tempName.isEmpty()) && tempName.length() < 33)
+            {
+                    p->presetName->clear();
+                    p->presetName->append(tempName);
+            }
+            p->gridColor.setNamedColor(settings->value("gridColor", p->gridColor.name(QColor::HexArgb)).toString());
+            p->axisColor.setNamedColor(settings->value("axisColor", p->axisColor.name(QColor::HexArgb)).toString());
+            p->textColor.setNamedColor(settings->value("textColor", p->textColor.name(QColor::HexArgb)).toString());
+            p->spectrumLine.setNamedColor(settings->value("spectrumLine", p->spectrumLine.name(QColor::HexArgb)).toString());
+            p->spectrumFill.setNamedColor(settings->value("spectrumFill", p->spectrumFill.name(QColor::HexArgb)).toString());
+            p->underlayLine.setNamedColor(settings->value("underlayLine", p->underlayLine.name(QColor::HexArgb)).toString());
+            p->underlayFill.setNamedColor(settings->value("underlayFill", p->underlayFill.name(QColor::HexArgb)).toString());
+            p->plotBackground.setNamedColor(settings->value("plotBackground", p->plotBackground.name(QColor::HexArgb)).toString());
+            p->tuningLine.setNamedColor(settings->value("tuningLine", p->tuningLine.name(QColor::HexArgb)).toString());
+            p->wfBackground.setNamedColor(settings->value("wfBackground", p->wfBackground.name(QColor::HexArgb)).toString());
+            p->wfGrid.setNamedColor(settings->value("wfGrid", p->wfGrid.name(QColor::HexArgb)).toString());
+            p->wfAxis.setNamedColor(settings->value("wfAxis", p->wfAxis.name(QColor::HexArgb)).toString());
+            p->wfText.setNamedColor(settings->value("wfText", p->wfText.name(QColor::HexArgb)).toString());
+            p->meterLevel.setNamedColor(settings->value("meterLevel", p->meterLevel.name(QColor::HexArgb)).toString());
+            p->meterAverage.setNamedColor(settings->value("meterAverage", p->meterAverage.name(QColor::HexArgb)).toString());
+            p->meterPeakLevel.setNamedColor(settings->value("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb)).toString());
+            p->meterPeakScale.setNamedColor(settings->value("meterPeakScale", p->meterPeakScale.name(QColor::HexArgb)).toString());
+            p->meterLowerLine.setNamedColor(settings->value("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb)).toString());
+            p->meterLowText.setNamedColor(settings->value("meterLowText", p->meterLowText.name(QColor::HexArgb)).toString());
+        }
+    }
+    settings->endArray();
     settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -1839,7 +1868,6 @@ void wfmain::saveSettings()
     settings->beginGroup("Interface");
     settings->setValue("UseFullScreen", prefs.useFullScreen);
     settings->setValue("UseSystemTheme", prefs.useSystemTheme);
-    settings->setValue("UseDarkMode", prefs.useDarkMode);
     settings->setValue("DrawPeaks", prefs.drawPeaks);
     settings->setValue("underlayMode", prefs.underlayMode);
     settings->setValue("underlayBufferSize", prefs.underlayBufferSize);
@@ -1921,50 +1949,38 @@ void wfmain::saveSettings()
     settings->endArray();
     settings->endGroup();
 
-    // Note: X and Y get the same colors. See setPlotTheme() function
-
-    settings->beginGroup("DarkColors");
-    settings->setValue("Dark_PlotBackground", prefs.colorScheme.Dark_PlotBackground.rgba());
-    settings->setValue("Dark_PlotAxisPen", prefs.colorScheme.Dark_PlotAxisPen.rgba());
-    settings->setValue("Dark_PlotLegendTextColor", prefs.colorScheme.Dark_PlotLegendTextColor.rgba());
-    settings->setValue("Dark_PlotLegendBorderPen", prefs.colorScheme.Dark_PlotLegendBorderPen.rgba());
-    settings->setValue("Dark_PlotLegendBrush", prefs.colorScheme.Dark_PlotLegendBrush.rgba());
-    settings->setValue("Dark_PlotTickLabel", prefs.colorScheme.Dark_PlotTickLabel.rgba());
-    settings->setValue("Dark_PlotBasePen", prefs.colorScheme.Dark_PlotBasePen.rgba());
-    settings->setValue("Dark_PlotTickPen", prefs.colorScheme.Dark_PlotTickPen.rgba());
-    settings->setValue("Dark_PeakPlotLine", prefs.colorScheme.Dark_PeakPlotLine.rgba());
-    settings->setValue("Dark_TuningLine", prefs.colorScheme.Dark_TuningLine.rgba());
-    settings->endGroup();
-
-    settings->beginGroup("LightColors");
-    settings->setValue("Light_PlotBackground", prefs.colorScheme.Light_PlotBackground.rgba());
-    settings->setValue("Light_PlotAxisPen", prefs.colorScheme.Light_PlotAxisPen.rgba());
-    settings->setValue("Light_PlotLegendTextColor", prefs.colorScheme.Light_PlotLegendTextColor.rgba());
-    settings->setValue("Light_PlotLegendBorderPen", prefs.colorScheme.Light_PlotLegendBorderPen.rgba());
-    settings->setValue("Light_PlotLegendBrush", prefs.colorScheme.Light_PlotLegendBrush.rgba());
-    settings->setValue("Light_PlotTickLabel", prefs.colorScheme.Light_PlotTickLabel.rgba());
-    settings->setValue("Light_PlotBasePen", prefs.colorScheme.Light_PlotBasePen.rgba());
-    settings->setValue("Light_PlotTickPen", prefs.colorScheme.Light_PlotTickPen.rgba());
-    settings->setValue("Light_PeakPlotLine", prefs.colorScheme.Light_PeakPlotLine.rgba());
-    settings->setValue("Light_TuningLine", prefs.colorScheme.Light_TuningLine.rgba());
-
-    settings->endGroup();
-
-    // This is a reference to see how the preference file is encoded.
-    settings->beginGroup("StandardColors");
-
-    settings->setValue("white", QColor(Qt::white).rgba());
-    settings->setValue("black", QColor(Qt::black).rgba());
-
-    settings->setValue("red_opaque", QColor(Qt::red).rgba());
-    settings->setValue("red_translucent", QColor(255,0,0,128).rgba());
-    settings->setValue("green_opaque", QColor(Qt::green).rgba());
-    settings->setValue("green_translucent", QColor(0,255,0,128).rgba());
-    settings->setValue("blue_opaque", QColor(Qt::blue).rgba());
-    settings->setValue("blue_translucent", QColor(0,0,255,128).rgba());
-    settings->setValue("cyan", QColor(Qt::cyan).rgba());
-    settings->setValue("magenta", QColor(Qt::magenta).rgba());
-    settings->setValue("yellow", QColor(Qt::yellow).rgba());
+    // Color presets:
+    settings->beginGroup("ColorPresets");
+    settings->setValue("currentColorPresetNumber", prefs.currentColorPresetNumber);
+    settings->beginWriteArray("ColorPreset", numColorPresetsTotal);
+    colorPrefsType *p;
+    for(int pn=0; pn < numColorPresetsTotal; pn++)
+    {
+        p = &(colorPreset[pn]);
+        settings->setArrayIndex(pn);
+        settings->setValue("presetNum", p->presetNum);
+        settings->setValue("presetName", *(p->presetName));
+        settings->setValue("gridColor", p->gridColor.name(QColor::HexArgb));
+        settings->setValue("axisColor", p->axisColor.name(QColor::HexArgb));
+        settings->setValue("textColor", p->textColor.name(QColor::HexArgb));
+        settings->setValue("spectrumLine", p->spectrumLine.name(QColor::HexArgb));
+        settings->setValue("spectrumFill", p->spectrumFill.name(QColor::HexArgb));
+        settings->setValue("underlayLine", p->underlayLine.name(QColor::HexArgb));
+        settings->setValue("underlayFill", p->underlayFill.name(QColor::HexArgb));
+        settings->setValue("plotBackground", p->plotBackground.name(QColor::HexArgb));
+        settings->setValue("tuningLine", p->tuningLine.name(QColor::HexArgb));
+        settings->setValue("wfBackground", p->wfBackground.name(QColor::HexArgb));
+        settings->setValue("wfGrid", p->wfGrid.name(QColor::HexArgb));
+        settings->setValue("wfAxis", p->wfAxis.name(QColor::HexArgb));
+        settings->setValue("wfText", p->wfText.name(QColor::HexArgb));
+        settings->setValue("meterLevel", p->meterLevel.name(QColor::HexArgb));
+        settings->setValue("meterAverage", p->meterAverage.name(QColor::HexArgb));
+        settings->setValue("meterPeakScale", p->meterPeakScale.name(QColor::HexArgb));
+        settings->setValue("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb));
+        settings->setValue("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb));
+        settings->setValue("meterLowText", p->meterLowText.name(QColor::HexArgb));
+    }
+    settings->endArray();
     settings->endGroup();
 
     settings->beginGroup("Server");
@@ -2080,17 +2096,6 @@ void wfmain::prepareWf(unsigned int wfLength)
         QByteArray empty((int)spectWidth, '\x01');
         spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
 
-        if(spectrumPlasmaSize == 0)
-            spectrumPlasmaSize = 128;
-
-        //spectrumPlasma.resize(spectrumPlasmaSize);
-        for(unsigned int p=0; p < spectrumPlasmaSize; p++)
-        {
-            spectrumPlasma.append(empty);
-        }
-
-        //wfimage.resize(wfLengthMax);
-
         if((unsigned int)wfimage.size() < wfLengthMax)
         {
             unsigned int i=0;
@@ -2110,7 +2115,7 @@ void wfmain::prepareWf(unsigned int wfLength)
 
         colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
         colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
-        colorMap->setDataRange(QCPRange(0, rigCaps.spectAmpMax));
+        colorMap->setDataRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
         colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(ui->wfthemeCombo->currentData().toInt()));
 
         if(colorMapData == Q_NULLPTR)
@@ -2562,14 +2567,6 @@ void wfmain::showStatusBarText(QString text)
     ui->statusBar->showMessage(text, 5000);
 }
 
-void wfmain::on_useDarkThemeChk_clicked(bool checked)
-{
-    //setAppTheme(checked);
-    setPlotTheme(wf, checked);
-    setPlotTheme(plot, checked);
-    prefs.useDarkMode = checked;
-}
-
 void wfmain::on_useSystemThemeChk_clicked(bool checked)
 {
     setAppTheme(!checked);
@@ -2603,77 +2600,61 @@ void wfmain::setAppTheme(bool isCustom)
 
 void wfmain::setDefaultColors()
 {
-    defaultColors.Dark_PlotBackground = QColor(0,0,0,255);
-    defaultColors.Dark_PlotAxisPen = QColor(75,75,75,255);
-    defaultColors.Dark_PlotLegendTextColor = QColor(255,255,255,255);
-    defaultColors.Dark_PlotLegendBorderPen = QColor(255,255,255,255);
-    defaultColors.Dark_PlotLegendBrush = QColor(0,0,0,200);
-    defaultColors.Dark_PlotTickLabel = QColor(Qt::white);
-    defaultColors.Dark_PlotBasePen = QColor(Qt::white);
-    defaultColors.Dark_PlotTickPen = QColor(Qt::white);
-    defaultColors.Dark_PeakPlotLine = QColor(Qt::yellow);
-    defaultColors.Dark_TuningLine = QColor(Qt::cyan);
+    // These are some intended built-in color schemes.
+    // They can be user-modified and may be restored simply
+    // by removing the relevent color preset preference file entries.
 
-    defaultColors.Light_PlotBackground = QColor(255,255,255,255);
-    defaultColors.Light_PlotAxisPen = QColor(200,200,200,255);
-    defaultColors.Light_PlotLegendTextColor = QColor(0,0,0,255);
-    defaultColors.Light_PlotLegendBorderPen = QColor(0,0,0,255);
-    defaultColors.Light_PlotLegendBrush = QColor(255,255,255,200);
-    defaultColors.Light_PlotTickLabel = QColor(Qt::black);
-    defaultColors.Light_PlotBasePen = QColor(Qt::black);
-    defaultColors.Light_PlotTickPen = QColor(Qt::black);
-    defaultColors.Light_PeakPlotLine = QColor(Qt::blue);
-    defaultColors.Light_TuningLine = QColor(Qt::blue);
-}
+    colorPrefsType *pDark = &colorPreset[0];
+    colorPrefsType *pLight = &colorPreset[1];
 
-void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
-{
-    if(isDark)
-    {
-        plot->setBackground(prefs.colorScheme.Dark_PlotBackground);
-        //plot->setBackground(QColor(0,0,0,255));
+    // Dark:
+    pDark->presetName->clear();
+    pDark->presetName->append("Dark");
+    pDark->plotBackground = QColor(0,0,0,255);
+    pDark->axisColor = QColor(Qt::white);
+    pDark->textColor = QColor(255,255,255,255);
+    pDark->gridColor = QColor("transparent");
+    pDark->spectrumFill = QColor("transparent");
+    pDark->spectrumLine = QColor(Qt::yellow);
+    //pDark->underlayLine = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150).lighter(200);
+    pDark->underlayLine = QColor("#9633ff55");
+    pDark->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
+    pDark->tuningLine = QColor("#ff55ffff");
 
-        plot->xAxis->grid()->setPen(prefs.colorScheme.Dark_PlotAxisPen);
-        plot->yAxis->grid()->setPen(prefs.colorScheme.Dark_PlotAxisPen);
+    pDark->meterLevel = QColor("#148CD2").darker();
+    pDark->meterAverage = QColor("#3FB7CD");
+    pDark->meterPeakScale = QColor(Qt::red);
+    pDark->meterPeakLevel = QColor("#3CA0DB").lighter();
+    pDark->meterLowerLine = QColor("#eff0f1");
+    pDark->meterLowText = QColor("#eff0f1");
 
-        plot->legend->setTextColor(prefs.colorScheme.Dark_PlotLegendTextColor);
-        plot->legend->setBorderPen(prefs.colorScheme.Dark_PlotLegendBorderPen);
-        plot->legend->setBrush(prefs.colorScheme.Dark_PlotLegendBrush);
+    pDark->wfBackground = QColor(Qt::black);
+    pDark->wfAxis = QColor(Qt::white);
+    pDark->wfGrid = QColor("transparent");
+    pDark->wfText = QColor(Qt::white);
 
-        plot->xAxis->setTickLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
-        plot->xAxis->setLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
-        plot->yAxis->setTickLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
-        plot->yAxis->setLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
+    // Bright:
+    pLight->presetName->clear();
+    pLight->presetName->append("Bright");
+    pLight->plotBackground = QColor(Qt::white);
+    pLight->axisColor = QColor(200,200,200,255);
+    pLight->gridColor = QColor("transparent");
+    pLight->textColor = QColor(Qt::black);
+    pLight->spectrumFill = QColor("transparent");
+    pLight->spectrumLine = QColor(Qt::black);
+    pLight->underlayLine = QColor(Qt::blue);
+    pLight->tuningLine = QColor(Qt::darkBlue);
 
-        plot->xAxis->setBasePen(prefs.colorScheme.Dark_PlotBasePen);
-        plot->xAxis->setTickPen(prefs.colorScheme.Dark_PlotTickPen);
-        plot->yAxis->setBasePen(prefs.colorScheme.Dark_PlotBasePen);
-        plot->yAxis->setTickPen(prefs.colorScheme.Dark_PlotTickPen);
-        plot->graph(0)->setPen(prefs.colorScheme.Dark_PeakPlotLine);
-        freqIndicatorLine->setPen(prefs.colorScheme.Dark_TuningLine);
-    } else {
-        //color = ui->groupBox->palette().color(QPalette::Button);
+    pLight->meterAverage = QColor("#3FB7CD");
+    pLight->meterPeakLevel = QColor("#3CA0DB");
+    pLight->meterPeakScale = QColor(Qt::darkRed);
+    pLight->meterLowerLine = QColor(Qt::black);
+    pLight->meterLowText = QColor(Qt::black);
 
-        plot->setBackground(prefs.colorScheme.Light_PlotBackground);
-        plot->xAxis->grid()->setPen(prefs.colorScheme.Light_PlotAxisPen);
-        plot->yAxis->grid()->setPen(prefs.colorScheme.Light_PlotAxisPen);
-
-        plot->legend->setTextColor(prefs.colorScheme.Light_PlotLegendTextColor);
-        plot->legend->setBorderPen(prefs.colorScheme.Light_PlotLegendBorderPen);
-        plot->legend->setBrush(prefs.colorScheme.Light_PlotLegendBrush);
-
-        plot->xAxis->setTickLabelColor(prefs.colorScheme.Light_PlotTickLabel);
-        plot->xAxis->setLabelColor(prefs.colorScheme.Light_PlotTickLabel);
-        plot->yAxis->setTickLabelColor(prefs.colorScheme.Light_PlotTickLabel);
-        plot->yAxis->setLabelColor(prefs.colorScheme.Light_PlotTickLabel);
-
-        plot->xAxis->setBasePen(prefs.colorScheme.Light_PlotBasePen);
-        plot->xAxis->setTickPen(prefs.colorScheme.Light_PlotTickPen);
-        plot->yAxis->setBasePen(prefs.colorScheme.Light_PlotBasePen);
-        plot->yAxis->setTickPen(prefs.colorScheme.Light_PlotTickLabel);
-        plot->graph(0)->setPen(prefs.colorScheme.Light_PeakPlotLine);
-        freqIndicatorLine->setPen(prefs.colorScheme.Light_TuningLine);
-    }
+    pLight->wfBackground = QColor(Qt::white);
+    pLight->wfAxis = QColor(200,200,200,255);
+    pLight->wfGrid = QColor("transparent");
+    pLight->wfText = QColor(Qt::black);
 }
 
 void wfmain::doCmd(commandtype cmddata)
@@ -2800,9 +2781,7 @@ void wfmain::doCmd(commandtype cmddata)
             doCmd(cmd);
             break;
     }
-
 }
-
 
 void wfmain::doCmd(cmds cmd)
 {
@@ -3567,6 +3546,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
     QVector <double> x(spectWidth), y(spectWidth), y2(spectWidth);
 
+    // TODO: Keep x around unless the frequency range changes. Should save a little time.
     for(int i=0; i < spectWidth; i++)
     {
         x[i] = (i * (endFreq-startFreq)/spectWidth) + startFreq;
@@ -3591,31 +3571,48 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     //spectrumPlasma.resize(spectrumPlasmaSize);
     plasmaMutex.unlock();
 
-    // HACK DO NOT CHECK IN:
-    drawPeaks = false;
-    drawPlasma = true;
 
     if(!spectrumDrawLock)
     {
         if((plotFloor != oldPlotFloor) || (plotCeiling != oldPlotCeiling))
             updateRange = true;
 
-        //ui->qcp->addGraph();
+#if QCUSTOMPLOT_VERSION >= 0x020000
+
         plot->graph(0)->setData(x,y, true);
         if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
         {
             freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
             freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
         }
+
         if(underlayMode == underlayPeakHold)
         {
             plot->graph(1)->setData(x,y2, true); // peaks
         } else if (underlayMode != underlayNone) {
             computePlasma();
-            plot->graph(1)->setData(x,spectrumPlasmaLine);
+            plot->graph(1)->setData(x,spectrumPlasmaLine, true);
         } else {
             plot->graph(1)->setData(x,y2, true); // peaks, but probably cleared out
         }
+#else
+        plot->graph(0)->setData(x,y);
+        if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
+        {
+            freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
+            freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
+        }
+
+        if(underlayMode == underlayPeakHold)
+        {
+            plot->graph(1)->setData(x,y2); // peaks
+        } else if (underlayMode != underlayNone) {
+            computePlasma();
+            plot->graph(1)->setData(x,spectrumPlasmaLine);
+        } else {
+            plot->graph(1)->setData(x,y2); // peaks, but probably cleared out
+        }
+#endif
 
         if(updateRange)
             plot->yAxis->setRange(prefs.plotFloor, prefs.plotCeiling);
@@ -3650,6 +3647,28 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     }
 }
 
+void wfmain::preparePlasma()
+{
+    if(plasmaPrepared)
+        return;
+    QByteArray empty((int)spectWidth, '\x01');
+
+    if(spectrumPlasmaSize == 0)
+        spectrumPlasmaSize = 128;
+
+    plasmaMutex.lock();
+    spectrumPlasma.clear();
+
+    for(unsigned int p=0; p < spectrumPlasmaSize; p++)
+    {
+        spectrumPlasma.append(empty);
+    }
+
+    spectrumPlasma.squeeze();
+    plasmaMutex.unlock();
+    plasmaPrepared = true;
+}
+
 void wfmain::computePlasma()
 {
     plasmaMutex.lock();
@@ -3662,7 +3681,7 @@ void wfmain::computePlasma()
         {
             for(int pos=0; pos < specPlasmaSize; pos++)
             {
-                spectrumPlasmaLine[col] += spectrumPlasma[pos][col];
+                spectrumPlasmaLine[col] += (unsigned char)spectrumPlasma[pos][col];
             }
             spectrumPlasmaLine[col] = spectrumPlasmaLine[col] / specPlasmaSize;
         }
@@ -3672,13 +3691,12 @@ void wfmain::computePlasma()
         {
             for(int pos=0; pos < specPlasmaSize; pos++)
             {
-                if((double)(spectrumPlasma[pos][col]) > spectrumPlasmaLine[col])
-                    spectrumPlasmaLine[col] = spectrumPlasma[pos][col];
+                if((double)((unsigned char)spectrumPlasma[pos][col]) > spectrumPlasmaLine[col])
+                    spectrumPlasmaLine[col] = (unsigned char)spectrumPlasma[pos][col];
             }
         }
     }
     plasmaMutex.unlock();
-
 }
 
 void wfmain::receiveSpectrumMode(spectrumMode spectMode)
@@ -3875,26 +3893,6 @@ void wfmain::on_clearPeakBtn_clicked()
         spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
     }
     return;
-}
-
-void wfmain::on_drawPeakChk_clicked(bool checked)
-{
-    if(checked)
-    {
-        on_clearPeakBtn_clicked(); // clear
-        drawPeaks = true;
-
-    } else {
-        drawPeaks = false;
-
-#if QCUSTOMPLOT_VERSION >= 0x020000
-        plot->graph(1)->data()->clear();
-#else
-        plot->graph(1)->clearData();
-#endif
-
-    }
-    prefs.drawPeaks = checked;
 }
 
 void wfmain::on_fullScreenChk_clicked(bool checked)
@@ -6165,7 +6163,6 @@ void wfmain::on_underlayPeakHold_toggled(bool checked)
         prefs.underlayMode = underlayMode;
         on_clearPeakBtn_clicked();
     }
-
 }
 
 void wfmain::on_underlayPeakBuffer_toggled(bool checked)
@@ -6215,3 +6212,609 @@ void wfmain::on_debugBtn_clicked()
 //    adjustSize();
 
 }
+
+// ----------   color helper functions:   ---------- //
+
+void wfmain::setColorElement(QColor color,
+                             QLedLabel *led,
+                             QLabel *label,
+                             QLineEdit *lineText)
+{
+    if(led != Q_NULLPTR)
+    {
+        led->setColor(color, true);
+    }
+    if(label != Q_NULLPTR)
+    {
+        label->setText(color.name(QColor::HexArgb));
+    }
+    if(lineText != Q_NULLPTR)
+    {
+        lineText->setText(color.name(QColor::HexArgb));
+    }
+}
+
+void wfmain::setColorElement(QColor color, QLedLabel *led, QLabel *label)
+{
+    setColorElement(color, led, label, Q_NULLPTR);
+}
+
+void wfmain::setColorElement(QColor color, QLedLabel *led, QLineEdit *lineText)
+{
+    setColorElement(color, led, Q_NULLPTR, lineText);
+}
+
+QColor wfmain::getColorFromPicker(QColor initialColor)
+{
+    QColorDialog::ColorDialogOptions options;
+    options.setFlag(QColorDialog::ShowAlphaChannel, true);
+    options.setFlag(QColorDialog::DontUseNativeDialog, true);
+    QColor selColor = QColorDialog::getColor(initialColor, this, "Select Color", options);
+    if(selColor.isValid())
+        return selColor;
+    else
+        return initialColor;
+}
+
+void wfmain::getSetColor(QLedLabel *led, QLabel *label)
+{
+    QColor selColor = getColorFromPicker(led->getColor());
+    setColorElement(selColor, led, label);
+}
+
+void wfmain::getSetColor(QLedLabel *led, QLineEdit *line)
+{
+    QColor selColor = getColorFromPicker(led->getColor());
+    setColorElement(selColor, led, line);
+}
+
+QString wfmain::setColorFromString(QString colorstr, QLedLabel *led)
+{
+    if(led==Q_NULLPTR)
+        return "ERROR";
+
+    if(!colorstr.startsWith("#"))
+    {
+        colorstr.prepend("#");
+    }
+    if(colorstr.length() != 9)
+    {
+        // TODO: Tell user about AA RR GG BB
+        return led->getColor().name(QColor::HexArgb);
+    }
+    led->setColor(colorstr, true);
+    return led->getColor().name(QColor::HexArgb);
+}
+
+void wfmain::useCurrentColorPreset()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    useColorPreset(&colorPreset[pos]);
+}
+
+void wfmain::useColorPreset(colorPrefsType *cp)
+{
+    // Apply the given preset to the UI elements
+    // prototyped from setPlotTheme()
+    if(cp == Q_NULLPTR)
+        return;
+
+    //qInfo(logSystem()) << "Setting plots to color preset number " << cp->presetNum << ", with name " << *(cp->presetName);
+
+    plot->setBackground(cp->plotBackground);
+
+    plot->xAxis->grid()->setPen(cp->gridColor);
+    plot->yAxis->grid()->setPen(cp->gridColor);
+
+    plot->legend->setTextColor(cp->textColor);
+    plot->legend->setBorderPen(cp->gridColor);
+    plot->legend->setBrush(cp->gridColor);
+
+    plot->xAxis->setTickLabelColor(cp->textColor);
+    plot->xAxis->setLabelColor(cp->gridColor);
+    plot->yAxis->setTickLabelColor(cp->textColor);
+    plot->yAxis->setLabelColor(cp->gridColor);
+
+    plot->xAxis->setBasePen(cp->axisColor);
+    plot->xAxis->setTickPen(cp->axisColor);
+    plot->yAxis->setBasePen(cp->axisColor);
+    plot->yAxis->setTickPen(cp->axisColor);
+
+    freqIndicatorLine->setPen(QPen(cp->tuningLine));
+
+    plot->graph(0)->setPen(QPen(cp->spectrumLine));
+    plot->graph(0)->setBrush(QBrush(cp->spectrumFill));
+
+    plot->graph(1)->setPen(QPen(cp->underlayLine));
+    plot->graph(1)->setBrush(QBrush(cp->underlayFill));
+
+    wf->yAxis->setBasePen(cp->wfAxis);
+    wf->yAxis->setTickPen(cp->wfAxis);
+    wf->xAxis->setBasePen(cp->wfAxis);
+    wf->xAxis->setTickPen(cp->wfAxis);
+
+    wf->xAxis->setLabelColor(cp->wfGrid);
+    wf->yAxis->setLabelColor(cp->wfGrid);
+
+    wf->xAxis->setTickLabelColor(cp->wfText);
+    wf->yAxis->setTickLabelColor(cp->wfText);
+
+    wf->setBackground(cp->wfBackground);
+
+    ui->meterSPoWidget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
+    ui->meter2Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
+}
+
+void wfmain::setColorButtonOperations(QColor *colorStore,
+                            QLineEdit *e, QLedLabel *d)
+{
+    // Call this function with a pointer into the colorPreset color you
+    // wish to edit.
+
+    if(colorStore==Q_NULLPTR)
+    {
+        qInfo(logSystem()) << "ERROR, invalid pointer to color received.";
+        return;
+    }
+    getSetColor(d, e);
+    QColor t = d->getColor();
+    colorStore->setNamedColor(t.name(QColor::HexArgb));
+    useCurrentColorPreset();
+}
+
+void wfmain::setColorLineEditOperations(QColor *colorStore,
+                                QLineEdit *e, QLedLabel *d)
+{
+    // Call this function with a pointer into the colorPreset color you
+    // wish to edit.
+    if(colorStore==Q_NULLPTR)
+    {
+        qInfo(logSystem()) << "ERROR, invalid pointer to color received.";
+        return;
+    }
+
+    QString colorStrValidated = setColorFromString(e->text(), d);
+    e->setText(colorStrValidated);
+    colorStore->setNamedColor(colorStrValidated);
+    useCurrentColorPreset();
+}
+
+void wfmain::on_colorPopOutBtn_clicked()
+{
+
+    if(settingsTabisAttached)
+    {
+        settingsTab = ui->tabWidget->currentWidget();
+        ui->tabWidget->removeTab(ui->tabWidget->indexOf(settingsTab));
+        settingsWidgetTab->addTab(settingsTab, "Settings");
+        settingsWidgetWindow->show();
+        ui->colorPopOutBtn->setText("Re-attach");
+        ui->tabWidget->setCurrentIndex(0);
+        settingsTabisAttached = false;
+    } else {
+        settingsTab = settingsWidgetTab->currentWidget();
+
+        settingsWidgetTab->removeTab(settingsWidgetTab->indexOf(settingsTab));
+        ui->tabWidget->addTab(settingsTab, "Settings");
+        settingsWidgetWindow->close();
+
+        ui->colorPopOutBtn->setText("Pop-Out");
+        ui->tabWidget->setCurrentIndex(3);
+        settingsTabisAttached = true;
+    }
+}
+
+void wfmain::setDefaultColorPresets()
+{
+    // Default wfview colors in each preset
+    // gets overridden after preferences are loaded
+    for(int pn=0; pn < numColorPresetsTotal; pn++)
+    {
+        //qInfo(logSystem()) << "Setting default color preset " << pn;
+        colorPrefsType *p = &colorPreset[pn];
+
+        p->presetNum = pn;
+        if(p->presetName == Q_NULLPTR)
+        {
+            p->presetName = new QString(  QString("Preset %1").arg(pn) );
+        }
+
+        // Colors are "#AARRGGBB" (AA=0xff is opaque)
+        // or as (r, g, b, a)
+        // Since the UI shows ##AARRGGBB, we should use
+        // that format in the code when convenient.
+
+        p->gridColor = QColor(0,0,0,255);
+        p->axisColor = QColor(Qt::white);
+        p->textColor = QColor(Qt::white);
+        p->spectrumLine = QColor(Qt::yellow);
+        p->spectrumFill = QColor("transparent");
+        p->underlayLine = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150).lighter(200);
+        p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
+        p->plotBackground = QColor(Qt::black);
+        p->tuningLine = QColor(Qt::blue);
+
+        p->meterLevel = QColor("#148CD2").darker();
+        p->meterAverage = QColor("#3FB7CD");
+        p->meterPeakLevel = QColor("#3CA0DB").lighter();
+        p->meterPeakScale = QColor(Qt::red);
+        p->meterLowerLine = QColor("#eff0f1");
+        p->meterLowText = QColor("#eff0f1");
+
+        p->wfBackground = QColor(Qt::black);
+        p->wfAxis = QColor(Qt::white);
+        p->wfGrid = QColor(Qt::white);
+        p->wfText = QColor(Qt::white);
+
+        //qInfo(logSystem()) << "default color preset [" << pn << "] set to pn.presetNum index [" << p->presetNum << "]" << ", with name " << *(p->presetName);
+        ui->colorPresetCombo->setItemText(pn, *(p->presetName));
+    }
+}
+
+void wfmain::setEditAndLedFromColor(QColor c, QLineEdit *e, QLedLabel *d)
+{
+    bool blockSignals = true;
+    if(e != Q_NULLPTR)
+    {
+        e->blockSignals(blockSignals);
+        e->setText(c.name(QColor::HexArgb));
+        e->blockSignals(false);
+    }
+    if(d != Q_NULLPTR)
+    {
+        d->setColor(c);
+    }
+}
+
+void wfmain::loadColorPresetToUIandPlots(int presetNumber)
+{
+    if(presetNumber >= numColorPresetsTotal)
+    {
+        qDebug(logSystem()) << "WARNING: asked for preset number [" << presetNumber << "], which is out of range.";
+        return;
+    }
+
+    colorPrefsType p = colorPreset[presetNumber];
+    //qInfo(logSystem()) << "color preset number [" << presetNumber << "] requested for UI load, which has internal index of [" << p.presetNum << "]";
+    setEditAndLedFromColor(p.gridColor, ui->colorEditGrid, ui->colorSwatchGrid);
+    setEditAndLedFromColor(p.axisColor, ui->colorEditAxis, ui->colorSwatchAxis);
+    setEditAndLedFromColor(p.textColor, ui->colorEditText, ui->colorSwatchText);
+    setEditAndLedFromColor(p.spectrumLine, ui->colorEditSpecLine, ui->colorSwatchSpecLine);
+    setEditAndLedFromColor(p.spectrumFill, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
+    setEditAndLedFromColor(p.underlayLine, ui->colorEditUnderlayLine, ui->colorSwatchUnderlayLine);
+    setEditAndLedFromColor(p.underlayFill, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
+    setEditAndLedFromColor(p.plotBackground, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
+    setEditAndLedFromColor(p.tuningLine, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+
+    setEditAndLedFromColor(p.meterLevel, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
+    setEditAndLedFromColor(p.meterAverage, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
+    setEditAndLedFromColor(p.meterPeakLevel, ui->colorEditMeterPeakLevel, ui->colorSwatchMeterPeakLevel);
+    setEditAndLedFromColor(p.meterPeakScale, ui->colorEditMeterPeakScale, ui->colorSwatchMeterPeakScale);
+    setEditAndLedFromColor(p.meterLowerLine, ui->colorEditMeterScale, ui->colorSwatchMeterScale);
+    setEditAndLedFromColor(p.meterLowText, ui->colorEditMeterText, ui->colorSwatchMeterText);
+
+    setEditAndLedFromColor(p.wfBackground, ui->colorEditWfBackground, ui->colorSwatchWfBackground);
+    setEditAndLedFromColor(p.wfGrid, ui->colorEditWfGrid, ui->colorSwatchWfGrid);
+    setEditAndLedFromColor(p.wfAxis, ui->colorEditWfAxis, ui->colorSwatchWfAxis);
+    setEditAndLedFromColor(p.wfText, ui->colorEditWfText, ui->colorSwatchWfText);
+
+    useColorPreset(&p);
+}
+
+void wfmain::on_colorRenamePresetBtn_clicked()
+{
+    int p = ui->colorPresetCombo->currentIndex();
+    QString newName;
+    QMessageBox msgBox;
+
+    bool ok = false;
+    newName = QInputDialog::getText(this, tr("QInputDialog::getText()"),
+                                    tr("Preset Name (32 characters max):"), QLineEdit::Normal,
+                                    ui->colorPresetCombo->currentText(), &ok);
+    if(!ok)
+        return;
+
+    if(ok && (newName.length() < 33) && !newName.isEmpty())
+    {
+        colorPreset[p].presetName->clear();
+        colorPreset[p].presetName->append(newName);
+        ui->colorPresetCombo->setItemText(p, *(colorPreset[p].presetName));
+    } else {
+        if(newName.isEmpty() || (newName.length() > 32))
+        {
+            msgBox.setText("Error, name must be at least one character and not exceed 32 characters.");
+            msgBox.exec();
+        }
+    }
+}
+
+void wfmain::on_colorPresetCombo_currentIndexChanged(int index)
+{
+    prefs.currentColorPresetNumber = index;
+    loadColorPresetToUIandPlots(index);
+}
+
+// ---------- end color helper functions ---------- //
+
+// ----------       Color UI slots        ----------//
+
+// Grid:
+void wfmain::on_colorSetBtnGrid_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].gridColor);
+    setColorButtonOperations(c, ui->colorEditGrid, ui->colorSwatchGrid);
+}
+void wfmain::on_colorEditGrid_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].gridColor);
+    setColorLineEditOperations(c, ui->colorEditGrid, ui->colorSwatchGrid);
+}
+
+// Axis:
+void wfmain::on_colorSetBtnAxis_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].axisColor);
+    setColorButtonOperations(c, ui->colorEditAxis, ui->colorSwatchAxis);
+}
+void wfmain::on_colorEditAxis_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].axisColor);
+    setColorLineEditOperations(c, ui->colorEditAxis, ui->colorSwatchAxis);
+}
+
+// Text:
+void wfmain::on_colorSetBtnText_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].textColor);
+    setColorButtonOperations(c, ui->colorEditText, ui->colorSwatchText);
+}
+void wfmain::on_colorEditText_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].textColor);
+    setColorLineEditOperations(c, ui->colorEditText, ui->colorSwatchText);
+}
+
+// SpecLine:
+void wfmain::on_colorEditSpecLine_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumLine);
+    setColorLineEditOperations(c, ui->colorEditSpecLine, ui->colorSwatchSpecLine);
+}
+void wfmain::on_colorSetBtnSpecLine_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumLine);
+    setColorButtonOperations(c, ui->colorEditSpecLine, ui->colorSwatchSpecLine);
+}
+
+// SpecFill:
+void wfmain::on_colorSetBtnSpecFill_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumFill);
+    setColorButtonOperations(c, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
+}
+void wfmain::on_colorEditSpecFill_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumFill);
+    setColorLineEditOperations(c, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
+}
+
+// PlotBackground:
+void wfmain::on_colorEditPlotBackground_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].plotBackground);
+    setColorLineEditOperations(c, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
+}
+void wfmain::on_colorSetBtnPlotBackground_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].plotBackground);
+    setColorButtonOperations(c, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
+}
+
+// Underlay Line:
+void wfmain::on_colorSetBtnUnderlayLine_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayLine);
+    setColorButtonOperations(c, ui->colorEditUnderlayLine, ui->colorSwatchUnderlayLine);
+}
+
+void wfmain::on_colorEditUnderlayLine_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayLine);
+    setColorLineEditOperations(c, ui->colorEditUnderlayLine, ui->colorSwatchUnderlayLine);
+}
+
+// Underlay Fill:
+void wfmain::on_colorSetBtnUnderlayFill_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayFill);
+    setColorButtonOperations(c, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
+}
+void wfmain::on_colorEditUnderlayFill_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayFill);
+    setColorLineEditOperations(c, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
+}
+
+// WF Background:
+void wfmain::on_colorSetBtnwfBackground_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfBackground);
+    setColorButtonOperations(c, ui->colorEditWfBackground, ui->colorSwatchWfBackground);
+}
+void wfmain::on_colorEditWfBackground_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfBackground);
+    setColorLineEditOperations(c, ui->colorEditWfBackground, ui->colorSwatchWfBackground);
+}
+
+// WF Grid:
+void wfmain::on_colorSetBtnWfGrid_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfGrid);
+    setColorButtonOperations(c, ui->colorEditWfGrid, ui->colorSwatchWfGrid);
+}
+void wfmain::on_colorEditWfGrid_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfGrid);
+    setColorLineEditOperations(c, ui->colorEditWfGrid, ui->colorSwatchWfGrid);
+}
+
+// WF Axis:
+void wfmain::on_colorSetBtnWfAxis_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfAxis);
+    setColorButtonOperations(c, ui->colorEditWfAxis, ui->colorSwatchWfAxis);
+}
+void wfmain::on_colorEditWfAxis_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfAxis);
+    setColorLineEditOperations(c, ui->colorEditWfAxis, ui->colorSwatchWfAxis);
+}
+
+// WF Text:
+void wfmain::on_colorSetBtnWfText_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfText);
+    setColorButtonOperations(c, ui->colorEditWfText, ui->colorSwatchWfText);
+}
+void wfmain::on_colorEditWfText_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfText);
+    setColorLineEditOperations(c, ui->colorEditWfText, ui->colorSwatchWfText);
+}
+
+// Tuning Line:
+void wfmain::on_colorSetBtnTuningLine_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].tuningLine);
+    setColorButtonOperations(c, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+}
+void wfmain::on_colorEditTuningLine_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].tuningLine);
+    setColorLineEditOperations(c, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+}
+
+// Meter Level:
+void wfmain::on_colorSetBtnMeterLevel_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLevel);
+    setColorButtonOperations(c, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
+}
+void wfmain::on_colorEditMeterLevel_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLevel);
+    setColorLineEditOperations(c, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
+}
+
+// Meter Average:
+void wfmain::on_colorSetBtnMeterAvg_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterAverage);
+    setColorButtonOperations(c, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
+}
+void wfmain::on_colorEditMeterAvg_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterAverage);
+    setColorLineEditOperations(c, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
+}
+
+// Meter Peak Level:
+void wfmain::on_colorSetBtnMeterPeakLevel_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeakLevel);
+    setColorButtonOperations(c, ui->colorEditMeterPeakLevel, ui->colorSwatchMeterPeakLevel);
+}
+void wfmain::on_colorEditMeterPeakLevel_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeakLevel);
+    setColorLineEditOperations(c, ui->colorEditMeterPeakLevel, ui->colorSwatchMeterPeakLevel);
+}
+
+// Meter Peak Scale:
+void wfmain::on_colorSetBtnMeterPeakScale_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeakScale);
+    setColorButtonOperations(c, ui->colorEditMeterPeakScale, ui->colorSwatchMeterPeakScale);
+}
+void wfmain::on_colorEditMeterPeakScale_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeakScale);
+    setColorLineEditOperations(c, ui->colorEditMeterPeakScale, ui->colorSwatchMeterPeakScale);
+}
+
+// Meter Scale (line):
+void wfmain::on_colorSetBtnMeterScale_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowerLine);
+    setColorButtonOperations(c, ui->colorEditMeterScale, ui->colorSwatchMeterScale);
+}
+void wfmain::on_colorEditMeterScale_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowerLine);
+    setColorLineEditOperations(c, ui->colorEditMeterScale, ui->colorSwatchMeterScale);
+}
+
+// Meter Text:
+void wfmain::on_colorSetBtnMeterText_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowText);
+    setColorButtonOperations(c, ui->colorEditMeterText, ui->colorSwatchMeterText);
+}
+void wfmain::on_colorEditMeterText_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowText);
+    setColorLineEditOperations(c, ui->colorEditMeterText, ui->colorSwatchMeterText);
+}
+
+// ----------   End color UI slots        ----------//
+
+
+void wfmain::on_colorRevertPresetBtn_clicked()
+{
+    // revert to default colors:
+    // TODO: Add arguments to setDefaultColors()
+    //int pn = ui->colorPresetCombo->currentIndex();
+    //setDefaultColors();
+}
+
+
+

@@ -16,6 +16,8 @@
 #include <QMetaType>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QColorDialog>
+#include <QColor>
 
 #include "logcategories.h"
 #include "commhandler.h"
@@ -35,6 +37,7 @@
 #include "rigctld.h"
 #include "aboutbox.h"
 #include "selectradio.h"
+#include "colorprefs.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -49,6 +52,7 @@
 #include "rtaudio/RtAudio.h"
 #endif
 
+#define numColorPresetsTotal (5)
 
 namespace Ui {
 class wfmain;
@@ -297,8 +301,6 @@ private slots:
 
     void on_clearPeakBtn_clicked();
 
-    void on_drawPeakChk_clicked(bool checked);
-
     void on_fullScreenChk_clicked(bool checked);
 
     void on_goFreqBtn_clicked();
@@ -327,13 +329,7 @@ private slots:
 
     void on_scopeEdgeCombo_currentIndexChanged(int index);
 
-    // void on_modeSelectCombo_currentIndexChanged(int index);
-
-    void on_useDarkThemeChk_clicked(bool checked);
-
     void on_modeSelectCombo_activated(int index);
-
-    // void on_freqDial_actionTriggered(int action);
 
     void on_freqDial_valueChanged(int value);
 
@@ -383,7 +379,6 @@ private slots:
 
     void on_saveSettingsBtn_clicked();
 
-
     void on_debugBtn_clicked();
 
     void on_pttEnableChk_clicked(bool checked);
@@ -425,7 +420,6 @@ private slots:
     void on_modeFilterCombo_activated(int index);
 
     void on_dataModeBtn_toggled(bool checked);
-
 
     void on_transmitBtn_clicked();
 
@@ -555,6 +549,90 @@ private slots:
 
     void on_underlayAverageBuffer_toggled(bool checked);
 
+    void on_colorSetBtnGrid_clicked();
+
+    void on_colorSetBtnPlotBackground_clicked();
+
+    void on_colorSetBtnText_clicked();
+
+    void on_colorSetBtnSpecLine_clicked();
+
+    void on_colorSetBtnSpecFill_clicked();
+
+    void on_colorEditPlotBackground_editingFinished();
+
+    void on_colorPopOutBtn_clicked();
+
+    void on_colorPresetCombo_currentIndexChanged(int index);
+
+    void on_colorEditSpecLine_editingFinished();
+
+    void on_colorEditGrid_editingFinished();
+
+    void on_colorEditText_editingFinished();
+
+    void on_colorEditSpecFill_editingFinished();
+
+    void on_colorSetBtnAxis_clicked();
+
+    void on_colorEditAxis_editingFinished();
+
+    void on_colorSetBtnUnderlayLine_clicked();
+
+    void on_colorEditUnderlayLine_editingFinished();
+
+    void on_colorSetBtnUnderlayFill_clicked();
+
+    void on_colorEditUnderlayFill_editingFinished();
+
+    void on_colorSetBtnwfBackground_clicked();
+
+    void on_colorEditWfBackground_editingFinished();
+
+    void on_colorSetBtnWfGrid_clicked();
+
+    void on_colorEditWfGrid_editingFinished();
+
+    void on_colorSetBtnWfAxis_clicked();
+
+    void on_colorEditWfAxis_editingFinished();
+
+    void on_colorSetBtnWfText_clicked();
+
+    void on_colorEditWfText_editingFinished();
+
+    void on_colorSetBtnTuningLine_clicked();
+
+    void on_colorEditTuningLine_editingFinished();
+
+    void on_colorSetBtnMeterLevel_clicked();
+
+    void on_colorEditMeterLevel_editingFinished();
+
+    void on_colorSetBtnMeterAvg_clicked();
+
+    void on_colorEditMeterAvg_editingFinished();
+
+    void on_colorSetBtnMeterScale_clicked();
+
+    void on_colorEditMeterScale_editingFinished();
+
+    void on_colorSetBtnMeterText_clicked();
+
+    void on_colorEditMeterText_editingFinished();
+
+    void on_colorRenamePresetBtn_clicked();
+
+    void on_colorRevertPresetBtn_clicked();
+
+    void on_colorSetBtnMeterPeakLevel_clicked();
+
+    void on_colorEditMeterPeakLevel_editingFinished();
+
+    void on_colorSetBtnMeterPeakScale_clicked();
+
+    void on_colorEditMeterPeakScale_editingFinished();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -568,11 +646,11 @@ private:
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
     QCPItemLine * freqIndicatorLine;
-    //commHandler *comm;
     void setAppTheme(bool isCustom);
-    void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
+    void preparePlasma();
+    bool plasmaPrepared = false;
     void computePlasma();
     void showHideSpectrum(bool show);
     void getInitialRigState();
@@ -672,7 +750,6 @@ private:
     QVector <QByteArray> spectrumPlasma;
     unsigned int spectrumPlasmaSize = 64;
     underlay_t underlayMode = underlayNone;
-    bool drawPlasma = true;
     QMutex plasmaMutex;
     void resizePlasmaBuffer(int newSize);
 
@@ -687,7 +764,6 @@ private:
     unsigned int wfLengthMax;
 
     bool onFullscreen;
-    bool drawPeaks;
     bool freqTextSelected;
     void checkFreqSel();
 
@@ -760,34 +836,11 @@ private:
     datekind datesetpoint;
 
     freqMemory mem;
-    struct colors {
-        QColor Dark_PlotBackground;
-        QColor Dark_PlotAxisPen;
-        QColor Dark_PlotLegendTextColor;
-        QColor Dark_PlotLegendBorderPen;
-        QColor Dark_PlotLegendBrush;
-        QColor Dark_PlotTickLabel;
-        QColor Dark_PlotBasePen;
-        QColor Dark_PlotTickPen;
-        QColor Dark_PeakPlotLine;
-        QColor Dark_TuningLine;
 
-        QColor Light_PlotBackground;
-        QColor Light_PlotAxisPen;
-        QColor Light_PlotLegendTextColor;
-        QColor Light_PlotLegendBorderPen;
-        QColor Light_PlotLegendBrush;
-        QColor Light_PlotTickLabel;
-        QColor Light_PlotBasePen;
-        QColor Light_PlotTickPen;
-        QColor Light_PeakPlotLine;
-        QColor Light_TuningLine;
-
-    } colorScheme;
+    colorPrefsType colorPreset[numColorPresetsTotal];
 
     struct preferences {
         bool useFullScreen;
-        bool useDarkMode;
         bool useSystemTheme;
         bool drawPeaks;
         underlay_t underlayMode = underlayNone;
@@ -805,7 +858,7 @@ private:
         bool enableLAN;
         bool enableRigCtlD;
         quint16 rigCtlPort;
-        colors colorScheme;
+        int currentColorPresetNumber = 0;
         QString virtualSerialPort;
         unsigned char localAFgain;
         unsigned int wflength;
@@ -828,13 +881,33 @@ private:
     audioSetup rxSetup;
     audioSetup txSetup;
 
-
-    colors defaultColors;
-
     void setDefaultColors(); // populate with default values
     void useColors(); // set the plot up
     void setDefPrefs(); // populate default values to default prefs
     void setTuningSteps();
+    void setColorElement(QColor color, QLedLabel *led, QLabel *label);
+    void setColorElement(QColor color, QLedLabel *led, QLineEdit *lineText);
+    void setColorElement(QColor color, QLedLabel *led, QLabel *label, QLineEdit *lineText);
+    QColor getColorFromPicker(QColor initialColor);
+    void getSetColor(QLedLabel *led, QLabel *label);
+    void getSetColor(QLedLabel *led, QLineEdit *line);
+    QString setColorFromString(QString aarrggbb, QLedLabel *led);
+    void setDefaultColorPresets();
+    void loadColorPresetToUIandPlots(int presetNumber);
+    void useColorPreset(colorPrefsType *cp);
+    void useCurrentColorPreset();
+    void setEditAndLedFromColor(QColor c, QLineEdit *e, QLedLabel *d);
+    void setColorButtonOperations(QColor *colorStore, QLineEdit *e, QLedLabel *d);
+    void setColorLineEditOperations(QColor *colorStore, QLineEdit *e, QLedLabel *d);
+
+    void detachSettingsTab();
+    void reattachSettingsTab();
+    void prepareSettingsWindow();
+    QWidget *settingsWidgetWindow;
+    QWidget *settingsTab;
+    QGridLayout *settingsWidgetLayout;
+    QTabWidget *settingsWidgetTab;
+    bool settingsTabisAttached = true;
 
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
     quint64 roundFrequencyWithStep(quint64 oldFreq, int steps,\
