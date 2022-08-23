@@ -3095,7 +3095,7 @@
                     <property name="geometry">
                      <rect>
                       <x>0</x>
-                      <y>-369</y>
+                      <y>-409</y>
                       <width>767</width>
                       <height>612</height>
                      </rect>
@@ -3607,7 +3607,7 @@
                      <item row="18" column="0">
                       <widget class="QPushButton" name="colorSetBtnMeterPeakScale">
                        <property name="text">
-                        <string>Meter Peak Scale</string>
+                        <string>Meter High Scale</string>
                        </property>
                       </widget>
                      </item>
