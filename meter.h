@@ -9,6 +9,7 @@
 #include <cmath>
 
 #include "rigcommander.h" // for meter types
+#include "audiotaper.h"
 
 class meter : public QWidget
 {
@@ -68,6 +69,7 @@ private:
     void drawScaleVd(QPainter *qp);
     void drawScaleId(QPainter *qp);
     void drawScaleComp(QPainter *qp);
+    void drawScale_dBFs(QPainter *qp);
     void drawScaleRaw(QPainter *qp);
 
     void drawLabel(QPainter *qp);

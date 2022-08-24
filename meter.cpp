@@ -196,7 +196,36 @@ void meter::paintEvent(QPaintEvent *)
 
         painter.drawRect(mXstart+peak-1,mYstart,1,barHeight);
 
+    } else if ( (meterType == meterAudio) ||
+                (meterType == meterTxMod) ||
+                (meterType == meterRxAudio))
+    {
+        // Log scale but still 0-255:
+        int logCurrent = (int)((1-audiopot[255-current])*255);
+        int logAverage = (int)((1-audiopot[255-average])*255);
+        int logPeak = (int)((1-audiopot[255-peak])*255);
+
+        // X, Y, Width, Height
+        painter.drawRect(mXstart,mYstart,logCurrent,barHeight);
+
+        // Average:
+        painter.setPen(averageColor);
+        painter.setBrush(averageColor);
+        painter.drawRect(mXstart+logAverage-1,mYstart,1,barHeight); // bar is 1 pixel wide, height = meter start?
+
+        // Peak:
+        painter.setPen(peakColor);
+        painter.setBrush(peakColor);
+        if(peak > peakRedLevel)
+        {
+            painter.setBrush(Qt::red);
+            painter.setPen(Qt::red);
+        }
+
+        painter.drawRect(mXstart+logPeak-1,mYstart,2,barHeight);
+
     } else {
+
 
         // X, Y, Width, Height
         painter.drawRect(mXstart,mYstart,current,barHeight);
@@ -290,6 +319,29 @@ void meter::drawScaleRaw(QPainter *qp)
     qp->setPen(Qt::red);
     qp->drawLine(peakRedLevel+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
 
+}
+
+void meter::drawScale_dBFs(QPainter *qp)
+{
+    qp->setPen(lowTextColor);
+    //qp->setFont(QFont("Arial", fontSize));
+    peakRedLevel = 193;
+
+    qp->drawText(mXstart,scaleTextYstart, QString(""));
+    qp->drawText(20+mXstart,scaleTextYstart, QString("-15dB"));
+    qp->drawText(38+mXstart,scaleTextYstart, QString("-12dB"));
+    qp->drawText(71+mXstart,scaleTextYstart, QString("-9dB"));
+    qp->drawText(124+mXstart,scaleTextYstart, QString("-6dB"));
+    qp->drawText(193+mXstart,scaleTextYstart, QString("-3dB"));
+    qp->drawText(255+mXstart,scaleTextYstart, QString("0dB"));
+
+    // Now the lines:
+    qp->setPen(lowLineColor);
+
+    // Line: X1, Y1 -->to--> X2, Y2
+    qp->drawLine(mXstart,scaleLineYstart,peakRedLevel+mXstart,scaleLineYstart);
+    qp->setPen(Qt::red);
+    qp->drawLine(peakRedLevel+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
 }
 
 void meter::drawScaleVd(QPainter *qp)
