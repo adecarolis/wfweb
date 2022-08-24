@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -930,6 +930,9 @@
                 <width>16777215</width>
                 <height>80</height>
                </size>
+              </property>
+              <property name="toolTip">
+               <string>Sets the floor for the waterfall and spectrum displays</string>
               </property>
               <property name="maximum">
                <number>160</number>
