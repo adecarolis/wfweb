@@ -29,7 +29,8 @@ struct audioPacket {
     quint16 sent;
     QByteArray data;
     quint8 guid[GUIDLEN];
-    float amplitude;
+    float amplitudePeak;
+    float amplitudeRMS;
     qreal volume = 1.0;
 };
 

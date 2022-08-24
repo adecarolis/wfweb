@@ -331,7 +331,7 @@ void rtHandler::convertedOutput(audioPacket packet)
 	audioMutex.lock();
 	arrayBuffer.append(packet.data);
 	audioMutex.unlock();
-	amplitude = packet.amplitude;
+    amplitude = packet.amplitudePeak;
 	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * (outFormat.sampleSize() / 8) * outFormat.channelCount())/1000);
 	emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
 }
@@ -342,7 +342,7 @@ void rtHandler::convertedInput(audioPacket packet)
 {
 	if (packet.data.size() > 0) {
 		emit haveAudioData(packet);
-		amplitude = packet.amplitude;
+        amplitude = packet.amplitudePeak;
 		currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * (outFormat.sampleSize() / 8) * outFormat.channelCount())/1000);
 		emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
 	}

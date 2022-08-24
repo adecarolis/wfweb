@@ -166,6 +166,8 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
         // Connect for errors/alerts
         connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
         connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(handleStatusUpdate(networkStatus)));
+        connect(udp, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(handleNetworkAudioLevels(networkAudioLevels)));
+
 
         connect(ptty, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
         connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
@@ -243,6 +245,11 @@ void rigCommander::handleSerialPortError(const QString port, const QString error
 void rigCommander::handleStatusUpdate(const networkStatus status)
 {
     emit haveStatusUpdate(status);
+}
+
+void rigCommander::handleNetworkAudioLevels(networkAudioLevels l)
+{
+    emit haveNetworkAudioLevels(l);
 }
 
 bool rigCommander::usingLAN()

@@ -149,6 +149,17 @@ void udpHandler::getRxLevels(quint16 amplitude,quint16 latency,quint16 current, 
     status.rxCurrentLatency = current;
     status.rxUnderrun = under;
     status.rxOverrun = over;
+    audioLevelsRxPeak[(audioLevelsRxPeakPosition++)%audioLevelBufferSize] = amplitude;
+    if((audioLevelsRxPeakPosition++)%3 == 0)
+    {
+        // calculate mean and emit signal
+        unsigned char mean = findMean(audioLevelsRxPeak);
+        networkAudioLevels l;
+        l.haveRxLevels = true;
+        l.rxAudioPeak = mean;
+        //qDebug(logSystem()) << "audio  level meter being emitted from udpHandler";
+        emit haveNetworkAudioLevels(l);
+    }
 }
 
 void udpHandler::getTxLevels(quint16 amplitude,quint16 latency, quint16 current, bool under, bool over) {
@@ -157,6 +168,26 @@ void udpHandler::getTxLevels(quint16 amplitude,quint16 latency, quint16 current,
     status.txCurrentLatency = current;
     status.txUnderrun = under;
     status.txOverrun = over;
+    audioLevelsTxPeak[(audioLevelsTxPeakPosition++)%audioLevelBufferSize] = amplitude;
+    if((audioLevelsTxPeakPosition++)%3 == 0)
+    {
+        // calculate mean and emit signal
+        unsigned char mean = findMean(audioLevelsTxPeak);
+        networkAudioLevels l;
+        l.haveTxLevels = true;
+        l.txAudioPeak = mean;
+        emit haveNetworkAudioLevels(l);
+    }
+}
+
+unsigned char udpHandler::findMean(unsigned char *data)
+{
+    unsigned int sum=0;
+    for(int p=0; p < audioLevelBufferSize; p++)
+    {
+        sum += data[p];
+    }
+    return sum / audioLevelBufferSize;
 }
 
 void udpHandler::dataReceived()

@@ -270,10 +270,16 @@ void audioHandler::convertedOutput(audioPacket packet) {
         }
         */
         lastSentSeq = packet.seq;
+        amplitude = packet.amplitudePeak;
+        computeLevels();
         emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
-
-        amplitude = packet.amplitude;
     }
+}
+
+void audioHandler::computeLevels()
+{
+    if(levelMean)
+        levelMean[(levelPosition++)%levelSize] = amplitude * 255;
 }
 
 void audioHandler::getNextAudioChunk()
@@ -312,7 +318,7 @@ void audioHandler::convertedInput(audioPacket audio)
             qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize ;
         }
         lastReceived = QTime::currentTime();
-        amplitude = audio.amplitude;
+        amplitude = audio.amplitudePeak;
         emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
     }
 }

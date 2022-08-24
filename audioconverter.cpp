@@ -157,7 +157,9 @@ bool audioConverter::convert(audioPacket audio)
         if (samplesF.size() > 0)
 
         {
-            audio.amplitude = samplesF.array().abs().maxCoeff();
+            audio.amplitudePeak = samplesF.array().abs().maxCoeff();
+            audio.amplitudeRMS = samplesF.squaredNorm();
+
             // Set the volume
             samplesF *= audio.volume;
 

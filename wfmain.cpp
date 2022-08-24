@@ -47,6 +47,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType<rigstate*>();
     qRegisterMetaType<QList<radio_cap_packet>>();
     qRegisterMetaType<networkStatus>();
+    qRegisterMetaType<networkAudioLevels>();
 
     haveRigCaps = false;
 
@@ -424,6 +425,7 @@ void wfmain::makeRig()
         // Rig status and Errors:
         connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
         connect(rig, SIGNAL(haveStatusUpdate(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
+        connect(rig, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(receiveNetworkAudioLevels(networkAudioLevels)));
         connect(rig, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
         connect(rig, SIGNAL(setRadioUsage(quint8, quint8, QString, QString)), selRad, SLOT(setInUse(quint8, quint8, QString, QString)));
         connect(selRad, SIGNAL(selectedRadio(quint8)), rig, SLOT(setCurrentRadio(quint8)));
@@ -615,6 +617,22 @@ void wfmain::receiveStatusUpdate(networkStatus status)
     //qInfo(logSystem()) << "Got Status Update" << status.rxAudioLevel;
 }
 
+void wfmain::receiveNetworkAudioLevels(networkAudioLevels l)
+{
+    qInfo(logSystem()) << "audio level meter received.";
+    meterKind m = meterNone;
+    if(l.haveRxLevels)
+    {
+        m = meterRxAudio;
+        receiveMeter(m, l.rxAudioPeak);
+    }
+    if(l.haveTxLevels)
+    {
+        m = meterTxMod;
+        receiveMeter(m, l.txAudioPeak);
+    }
+}
+
 void wfmain::setupPlots()
 {
     spectrumDrawLock = true;
@@ -746,6 +764,10 @@ void wfmain::setupMainUI()
     ui->meter2selectionCombo->addItem("Voltage", meterVoltage);
     ui->meter2selectionCombo->addItem("Current", meterCurrent);
     ui->meter2selectionCombo->addItem("Center", meterCenter);
+    ui->meter2selectionCombo->addItem("TxRxAudio", meterAudio);
+    ui->meter2selectionCombo->addItem("RxAudio", meterRxAudio);
+    ui->meter2selectionCombo->addItem("TxAudio", meterTxMod);
+
     ui->meter2Widget->hide();
 
     ui->meter2selectionCombo->show();
@@ -5096,6 +5118,12 @@ void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
             if(ui->meter2Widget->getMeterType() == inMeter)
             {
                 ui->meter2Widget->setLevel(level);
+            } else if ( (ui->meter2Widget->getMeterType() == meterAudio) &&
+                        (inMeter == meterTxMod) && amTransmitting) {
+                ui->meter2Widget->setLevel(level);
+            } else if (  (ui->meter2Widget->getMeterType() == meterAudio) &&
+                         (inMeter == meterRxAudio) && !amTransmitting) {
+                ui->meter2Widget->setLevel(level);
             }
             break;
     }
@@ -5765,7 +5793,8 @@ void wfmain::on_meter2selectionCombo_activated(int index)
     } else {
         ui->meter2Widget->show();
         ui->meter2Widget->setMeterType(newMeterType);
-        insertPeriodicCommandUnique(newCmd);
+        if((newMeterType!=meterRxAudio) && (newMeterType!=meterTxMod) && (newMeterType!=meterAudio))
+            insertPeriodicCommandUnique(newCmd);
     }
     prefs.meter2Type = newMeterType;
 

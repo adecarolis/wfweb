@@ -275,6 +275,7 @@ private slots:
     void receiveFoundRigID(rigCapabilities rigCaps);
     void receiveSerialPortError(QString port, QString errorText);
     void receiveStatusUpdate(networkStatus status);
+    void receiveNetworkAudioLevels(networkAudioLevels l);
     void handlePlotClick(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);
@@ -943,6 +944,7 @@ Q_DECLARE_METATYPE(struct SERVERCONFIG)
 Q_DECLARE_METATYPE(struct timekind)
 Q_DECLARE_METATYPE(struct datekind)
 Q_DECLARE_METATYPE(struct networkStatus)
+Q_DECLARE_METATYPE(struct networkAudioLevels)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
