@@ -164,6 +164,22 @@ void meter::paintEvent(QPaintEvent *)
         case meterNone:
             return;
             break;
+        case meterAudio:
+            label = "dB";
+            peakRedLevel = 241;
+            drawScale_dBFs(&painter);
+            break;
+        case meterRxAudio:
+            label = "Rx";
+            peakRedLevel = 241;
+            drawScale_dBFs(&painter);
+            break;
+        case meterTxMod:
+            label = "Tx";
+            peakRedLevel = 241;
+            drawScale_dBFs(&painter);
+            break;
+
         default:
             label = "DN";
             peakRedLevel = 241;
@@ -327,12 +343,11 @@ void meter::drawScale_dBFs(QPainter *qp)
     //qp->setFont(QFont("Arial", fontSize));
     peakRedLevel = 193;
 
-    qp->drawText(mXstart,scaleTextYstart, QString(""));
-    qp->drawText(20+mXstart,scaleTextYstart, QString("-15dB"));
-    qp->drawText(38+mXstart,scaleTextYstart, QString("-12dB"));
-    qp->drawText(71+mXstart,scaleTextYstart, QString("-9dB"));
-    qp->drawText(124+mXstart,scaleTextYstart, QString("-6dB"));
-    qp->drawText(193+mXstart,scaleTextYstart, QString("-3dB"));
+    qp->drawText(20+mXstart,scaleTextYstart, QString("-15"));
+    qp->drawText(38+mXstart,scaleTextYstart, QString("-12"));
+    qp->drawText(71+mXstart,scaleTextYstart, QString("-9"));
+    qp->drawText(124+mXstart,scaleTextYstart, QString("-6"));
+    qp->drawText(193+mXstart,scaleTextYstart, QString("-3"));
     qp->drawText(255+mXstart,scaleTextYstart, QString("0dB"));
 
     // Now the lines:
