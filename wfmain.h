@@ -633,6 +633,8 @@ private slots:
 
     void on_colorEditMeterPeakScale_editingFinished();
 
+    void on_colorSavePresetBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -881,7 +883,8 @@ private:
     audioSetup rxSetup;
     audioSetup txSetup;
 
-    void setDefaultColors(); // populate with default values
+    void setDefaultColors(int presetNumber); // populate with default values
+
     void useColors(); // set the plot up
     void setDefPrefs(); // populate default values to default prefs
     void setTuningSteps();
