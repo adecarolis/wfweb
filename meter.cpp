@@ -320,6 +320,22 @@ void meter::setLevel(int current)
     this->update();
 }
 
+void meter::setLevels(int current, int peak)
+{
+    this->current = current;
+    this->peak = peak;
+
+    avgLevels[(avgPosition++)%averageBalisticLength] = current;
+    int sum=0;
+    for(unsigned int i=0; i < (unsigned int)std::min(avgPosition, (int)avgLevels.size()); i++)
+    {
+        sum += avgLevels.at(i);
+    }
+    this->average = sum / std::min(avgPosition, (int)avgLevels.size());
+
+    this->update();
+}
+
 void meter::setLevels(int current, int peak, int average)
 {
     this->current = current;

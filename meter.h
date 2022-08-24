@@ -24,6 +24,7 @@ public slots:
 
     void updateDrawing(int num);
     void setLevels(int current, int peak, int average);
+    void setLevels(int current, int peak); // calculate avg
     void setLevel(int current);
     void clearMeterOnPTTtoggle();
     void clearMeter();
