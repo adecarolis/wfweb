@@ -374,7 +374,7 @@ void meter::drawScale_dBFs(QPainter *qp)
 
     // Line: X1, Y1 -->to--> X2, Y2
     qp->drawLine(mXstart,scaleLineYstart,peakRedLevel+mXstart,scaleLineYstart);
-    qp->setPen(Qt::red);
+    qp->setPen(highLineColor);
     qp->drawLine(peakRedLevel+mXstart,scaleLineYstart,255+mXstart,scaleLineYstart);
 }
 
