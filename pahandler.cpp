@@ -279,7 +279,7 @@ void paHandler::convertedOutput(audioPacket packet) {
 		}
 
 		amplitude = packet.amplitudePeak;
-		emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
+        emit haveLevels(getAmplitude(), static_cast<quint16>(packet.amplitudeRMS * 255.0), setup.latency, currentLatency, isUnderrun, isOverrun);
 	}
 }
 
@@ -292,7 +292,7 @@ void paHandler::convertedInput(audioPacket packet)
 		amplitude = packet.amplitudePeak;
 		const PaStreamInfo* info = Pa_GetStreamInfo(audio);
 		currentLatency = packet.time.msecsTo(QTime::currentTime()) + (info->inputLatency * 1000);
-		emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
+        emit haveLevels(getAmplitude(), packet.amplitudeRMS, setup.latency, currentLatency, isUnderrun, isOverrun);
 	}
 }
 

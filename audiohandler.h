@@ -70,7 +70,7 @@ signals:
     void audioMessage(QString message);
     void sendLatency(quint16 newSize);
     void haveAudioData(const audioPacket& data);
-    void haveLevels(quint16 amplitude,quint16 latency,quint16 current,bool under,bool over);
+    void haveLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency,quint16 current,bool under,bool over);
     void setupConverter(QAudioFormat in, QAudioFormat out, quint8 opus, quint8 resamp);
     void sendToConverter(audioPacket audio);
 
@@ -115,12 +115,6 @@ private:
     quint16 currentLatency;
     float amplitude=0.0;
     qreal volume = 1.0;
-
-    unsigned char *levelMean = Q_NULLPTR;
-    unsigned char *levelPeak = Q_NULLPTR;
-    unsigned char levelSize = 50;
-    unsigned char levelPosition = 0;
-    void computeLevels();
 
     audioSetup setup;
 

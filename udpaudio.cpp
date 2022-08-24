@@ -159,13 +159,13 @@ void udpAudio::setVolume(unsigned char value)
     emit haveSetVolume(value);
 }
 
-void udpAudio::getRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under, bool over) {
+void udpAudio::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over) {
 
-    emit haveRxLevels(amplitude, latency, current, under, over);
+    emit haveRxLevels(amplitudePeak, amplitudeRMS, latency, current, under, over);
 }
 
-void udpAudio::getTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under, bool over) {
-    emit haveTxLevels(amplitude, latency, current, under, over);
+void udpAudio::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over) {
+    emit haveTxLevels(amplitudePeak, amplitudeRMS, latency, current, under, over);
 }
 
 void udpAudio::dataReceived()
@@ -256,7 +256,7 @@ void udpAudio::startAudio() {
     connect(this, SIGNAL(haveAudioData(audioPacket)), rxaudio, SLOT(incomingAudio(audioPacket)));
     connect(this, SIGNAL(haveChangeLatency(quint16)), rxaudio, SLOT(changeLatency(quint16)));
     connect(this, SIGNAL(haveSetVolume(unsigned char)), rxaudio, SLOT(setVolume(unsigned char)));
-    connect(rxaudio, SIGNAL(haveLevels(quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, bool, bool)));
+    connect(rxaudio, SIGNAL(haveLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
     connect(rxAudioThread, SIGNAL(finished()), rxaudio, SLOT(deleteLater()));
 
 
@@ -290,7 +290,7 @@ void udpAudio::startAudio() {
 
         connect(this, SIGNAL(setupTxAudio(audioSetup)), txaudio, SLOT(init(audioSetup)));
         connect(txaudio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
-        connect(txaudio, SIGNAL(haveLevels(quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, bool, bool)));
+        connect(txaudio, SIGNAL(haveLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, quint16, bool, bool)));
 
         connect(txAudioThread, SIGNAL(finished()), txaudio, SLOT(deleteLater()));
         emit setupTxAudio(txSetup);

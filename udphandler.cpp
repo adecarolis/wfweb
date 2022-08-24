@@ -143,41 +143,50 @@ void udpHandler::receiveDataFromUserToRig(QByteArray data)
     }
 }
 
-void udpHandler::getRxLevels(quint16 amplitude,quint16 latency,quint16 current, bool under, bool over) {
-    status.rxAudioLevel = amplitude;
+void udpHandler::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current, bool under, bool over) {
+    status.rxAudioLevel = amplitudePeak;
     status.rxLatency = latency;
     status.rxCurrentLatency = current;
     status.rxUnderrun = under;
     status.rxOverrun = over;
-    audioLevelsRxPeak[(audioLevelsRxPeakPosition++)%audioLevelBufferSize] = amplitude;
-    if((audioLevelsRxPeakPosition++)%3 == 0)
+    audioLevelsRxPeak[(audioLevelsRxPosition)%audioLevelBufferSize] = amplitudePeak;
+    audioLevelsRxRMS[(audioLevelsRxPosition)%audioLevelBufferSize] = amplitudeRMS;
+
+    if((audioLevelsRxPosition)%3 == 0)
     {
         // calculate mean and emit signal
-        unsigned char mean = findMean(audioLevelsRxPeak);
+        unsigned char meanPeak = findMax(audioLevelsRxPeak);
+        unsigned char meanRMS = findMean(audioLevelsRxRMS);
         networkAudioLevels l;
         l.haveRxLevels = true;
-        l.rxAudioPeak = mean;
-        //qDebug(logSystem()) << "audio  level meter being emitted from udpHandler";
+        l.rxAudioPeak = meanPeak;
+        l.rxAudioRMS = meanRMS;
         emit haveNetworkAudioLevels(l);
     }
+    audioLevelsRxPosition++;
 }
 
-void udpHandler::getTxLevels(quint16 amplitude,quint16 latency, quint16 current, bool under, bool over) {
-    status.txAudioLevel = amplitude;
+void udpHandler::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint16 latency, quint16 current, bool under, bool over) {
+    status.txAudioLevel = amplitudePeak;
     status.txLatency = latency;
     status.txCurrentLatency = current;
     status.txUnderrun = under;
     status.txOverrun = over;
-    audioLevelsTxPeak[(audioLevelsTxPeakPosition++)%audioLevelBufferSize] = amplitude;
-    if((audioLevelsTxPeakPosition++)%3 == 0)
+    audioLevelsTxPeak[(audioLevelsTxPosition)%audioLevelBufferSize] = amplitudePeak;
+    audioLevelsTxRMS[(audioLevelsTxPosition)%audioLevelBufferSize] = amplitudeRMS;
+
+    if((audioLevelsTxPosition)%3 == 0)
     {
         // calculate mean and emit signal
-        unsigned char mean = findMean(audioLevelsTxPeak);
+        unsigned char meanPeak = findMax(audioLevelsTxPeak);
+        unsigned char meanRMS = findMean(audioLevelsTxRMS);
         networkAudioLevels l;
         l.haveTxLevels = true;
-        l.txAudioPeak = mean;
+        l.txAudioPeak = meanPeak;
+        l.txAudioRMS = meanRMS;
         emit haveNetworkAudioLevels(l);
     }
+    audioLevelsTxPosition++;
 }
 
 unsigned char udpHandler::findMean(unsigned char *data)
@@ -188,6 +197,17 @@ unsigned char udpHandler::findMean(unsigned char *data)
         sum += data[p];
     }
     return sum / audioLevelBufferSize;
+}
+
+unsigned char udpHandler::findMax(unsigned char *data)
+{
+    unsigned int max=0;
+    for(int p=0; p < audioLevelBufferSize; p++)
+    {
+       if(data[p] > max)
+           max = data[p];
+    }
+    return max;
 }
 
 void udpHandler::dataReceived()
@@ -348,8 +368,8 @@ void udpHandler::dataReceived()
                             QObject::connect(audio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
                             QObject::connect(this, SIGNAL(haveChangeLatency(quint16)), audio, SLOT(changeLatency(quint16)));
                             QObject::connect(this, SIGNAL(haveSetVolume(unsigned char)), audio, SLOT(setVolume(unsigned char)));
-                            QObject::connect(audio, SIGNAL(haveRxLevels(quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, bool, bool)));
-                            QObject::connect(audio, SIGNAL(haveTxLevels(quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, bool, bool)));
+                            QObject::connect(audio, SIGNAL(haveRxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getRxLevels(quint16, quint16, quint16, quint16, bool, bool)));
+                            QObject::connect(audio, SIGNAL(haveTxLevels(quint16, quint16, quint16, quint16, bool, bool)), this, SLOT(getTxLevels(quint16, quint16, quint16, quint16, bool, bool)));
                         }
 
                         qInfo(logUdp()) << this->metaObject()->className() << "Got serial and audio request success, device name: " << devName;

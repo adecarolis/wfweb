@@ -56,10 +56,8 @@ public slots:
 	void setVolume(unsigned char value);
 	void init();
 	void setCurrentRadio(quint8 radio);
-    void getRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under, bool over);
-    void getTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under, bool over);
-    //void handleRxLevels(networkAudioLevels);
-    //void handleTxLevels(networkAudioLevels);
+    void getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
+    void getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
 
 signals:
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
@@ -127,9 +125,14 @@ private:
 
     unsigned char audioLevelsTxPeak[audioLevelBufferSize];
     unsigned char audioLevelsRxPeak[audioLevelBufferSize];
-    unsigned char audioLevelsTxPeakPosition = 0;
-    unsigned char audioLevelsRxPeakPosition = 0;
+
+    unsigned char audioLevelsTxRMS[audioLevelBufferSize];
+    unsigned char audioLevelsRxRMS[audioLevelBufferSize];
+
+    unsigned char audioLevelsTxPosition = 0;
+    unsigned char audioLevelsRxPosition = 0;
     unsigned char findMean(unsigned char *d);
+    unsigned char findMax(unsigned char *d);
 
 
 };

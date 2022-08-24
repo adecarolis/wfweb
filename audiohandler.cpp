@@ -271,15 +271,8 @@ void audioHandler::convertedOutput(audioPacket packet) {
         */
         lastSentSeq = packet.seq;
         amplitude = packet.amplitudePeak;
-        computeLevels();
-        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
+        emit haveLevels(getAmplitude(), static_cast<quint16>(packet.amplitudeRMS * 255.0), setup.latency, currentLatency, isUnderrun, isOverrun);
     }
-}
-
-void audioHandler::computeLevels()
-{
-    if(levelMean)
-        levelMean[(levelPosition++)%levelSize] = amplitude * 255;
 }
 
 void audioHandler::getNextAudioChunk()
@@ -319,7 +312,7 @@ void audioHandler::convertedInput(audioPacket audio)
         }
         lastReceived = QTime::currentTime();
         amplitude = audio.amplitudePeak;
-        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
+        emit haveLevels(getAmplitude(), audio.amplitudeRMS, setup.latency, currentLatency, isUnderrun, isOverrun);
     }
 }
 
