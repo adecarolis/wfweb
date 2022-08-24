@@ -623,17 +623,16 @@ void wfmain::receiveStatusUpdate(networkStatus status)
 
 void wfmain::receiveNetworkAudioLevels(networkAudioLevels l)
 {
-    qInfo(logSystem()) << "audio level meter received.";
     meterKind m = meterNone;
     if(l.haveRxLevels)
     {
         m = meterRxAudio;
-        receiveMeter(m, l.rxAudioPeak);
+        receiveMeter(m, l.rxAudioRMS);
     }
     if(l.haveTxLevels)
     {
         m = meterTxMod;
-        receiveMeter(m, l.txAudioPeak);
+        receiveMeter(m, l.txAudioRMS);
     }
 }
 
