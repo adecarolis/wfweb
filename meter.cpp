@@ -177,7 +177,7 @@ void meter::paintEvent(QPaintEvent *)
             drawScaleId(&painter);
             break;
         case meterComp:
-            label = "CMP";
+            label = "CMP(dB)";
             peakRedLevel = 100;
             drawScaleComp(&painter);
             break;
@@ -185,17 +185,17 @@ void meter::paintEvent(QPaintEvent *)
             return;
             break;
         case meterAudio:
-            label = "dB";
+            label = "dBfs";
             peakRedLevel = 241;
             drawScale_dBFs(&painter);
             break;
         case meterRxAudio:
-            label = "Rx";
+            label = "Rx(dBfs)";
             peakRedLevel = 241;
             drawScale_dBFs(&painter);
             break;
         case meterTxMod:
-            label = "Tx";
+            label = "Tx(dBfs)";
             peakRedLevel = 241;
             drawScale_dBFs(&painter);
             break;
@@ -375,7 +375,6 @@ void meter::drawScaleRaw(QPainter *qp)
 void meter::drawScale_dBFs(QPainter *qp)
 {
     qp->setPen(lowTextColor);
-    //qp->setFont(QFont("Arial", fontSize));
     peakRedLevel = 193;
 
     qp->drawText(20+mXstart-5,scaleTextYstart, QString("-15"));
@@ -580,6 +579,7 @@ void meter::drawScaleComp(QPainter *qp)
     float dBperDn = (float)(highPointdB-midPointdB) / float(highPointDn-midPointDn);
 
     int i=mXstart;
+    i+=midPointDn/4; // skip the 0 for cleaner label space
     for(; i<mXstart+midPointDn; i+=midPointDn/4)
     {
         qp->drawText(i,scaleTextYstart, QString("%1").arg( (int)((i-mXstart) * (float(midPointdB) / float(midPointDn)) )) );
