@@ -377,11 +377,12 @@ void meter::drawScale_dBFs(QPainter *qp)
     qp->setPen(lowTextColor);
     peakRedLevel = 193;
 
-    qp->drawText(20+mXstart-5,scaleTextYstart, QString("-15"));
-    qp->drawText(38+mXstart,scaleTextYstart, QString("-12"));
-    qp->drawText(71+mXstart,scaleTextYstart, QString("-9"));
-    qp->drawText(124+mXstart,scaleTextYstart, QString("-6"));
-    qp->drawText(193+mXstart,scaleTextYstart, QString("-3"));
+    if(meterType==meterAudio)
+        qp->drawText(20+mXstart,scaleTextYstart, QString("-30"));
+    qp->drawText(38+mXstart+2,scaleTextYstart, QString("-24"));
+    qp->drawText(71+mXstart,scaleTextYstart, QString("-18"));
+    qp->drawText(124+mXstart,scaleTextYstart, QString("-12"));
+    qp->drawText(193+mXstart,scaleTextYstart, QString("-6"));
     qp->drawText(255+mXstart,scaleTextYstart, QString("0"));
 
     // Low ticks:
