@@ -1,5 +1,5 @@
 
-The following highlights are in this 1.x-release:
+The following highlights are in this 1.41-release:
 
 	New major change is the audio transport mechanism. Lower latencies.
     	About box updated to include Patreon site 
@@ -16,12 +16,14 @@ The following highlights are in this 1.x-release:
         split/combine (or default). Split only makes sense for LAN and Combine for USB.
  	added radio status display with meters for audio (speaker/mic)
         selector for audio: QT, PortAudio, RealTime audio 
-+       version bumped to 1.4 -- rethinking of a new version schema that makes more sense
-+       temporary squashed logs; may redo later
-+       audio fixes at exit
-+       introduction of peak decays at the scope
-+       resizing of top and bottom scope/waterfall
-+       various fixes on the spectrum display
+        version bumped to 1.4 -- rethinking of a new version schema that makes more sense
+        temporary squashed logs; may redo later
+        audio fixes at exit
+        introduction of peak decays at the scope
+        resizing of top and bottom scope/waterfall
+        various fixes on the spectrum display
++       added color picker support for all kinds of vsual elements
+
 
 
 Notes:
