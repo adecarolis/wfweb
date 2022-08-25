@@ -378,12 +378,25 @@ void meter::drawScale_dBFs(QPainter *qp)
     //qp->setFont(QFont("Arial", fontSize));
     peakRedLevel = 193;
 
-    qp->drawText(20+mXstart,scaleTextYstart, QString("-15"));
+    qp->drawText(20+mXstart-5,scaleTextYstart, QString("-15"));
     qp->drawText(38+mXstart,scaleTextYstart, QString("-12"));
     qp->drawText(71+mXstart,scaleTextYstart, QString("-9"));
     qp->drawText(124+mXstart,scaleTextYstart, QString("-6"));
     qp->drawText(193+mXstart,scaleTextYstart, QString("-3"));
-    qp->drawText(255+mXstart,scaleTextYstart, QString("0dB"));
+    qp->drawText(255+mXstart,scaleTextYstart, QString("0"));
+
+    // Low ticks:
+    qp->setPen(lowLineColor);
+    qp->drawLine(20+mXstart,scaleTextYstart, 20+mXstart, scaleTextYstart+5);
+    qp->drawLine(38+mXstart,scaleTextYstart, 38+mXstart, scaleTextYstart+5);
+    qp->drawLine(71+mXstart,scaleTextYstart, 71+mXstart, scaleTextYstart+5);
+    qp->drawLine(124+mXstart,scaleTextYstart, 124+mXstart, scaleTextYstart+5);
+
+
+    // High ticks:
+    qp->setPen(highLineColor);
+    qp->drawLine(193+mXstart,scaleTextYstart, 193+mXstart, scaleTextYstart+5);
+    qp->drawLine(255+mXstart,scaleTextYstart, 255+mXstart, scaleTextYstart+5);
 
     // Now the lines:
     qp->setPen(lowLineColor);

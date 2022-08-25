@@ -29,7 +29,7 @@
 #include "udpcivdata.h"
 #include "udpaudio.h"
 
-#define audioLevelBufferSize (3)
+#define audioLevelBufferSize (4)
 
 // Class to handle the connection/disconnection of the radio.
 class udpHandler: public udpBase

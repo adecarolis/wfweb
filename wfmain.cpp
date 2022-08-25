@@ -623,7 +623,9 @@ void wfmain::receiveStatusUpdate(networkStatus status)
 
 void wfmain::receiveNetworkAudioLevels(networkAudioLevels l)
 {
+    /*
     meterKind m2mtr = ui->meter2Widget->getMeterType();
+
     if(m2mtr == meterAudio)
     {
         if(amTransmitting)
@@ -641,20 +643,21 @@ void wfmain::receiveNetworkAudioLevels(networkAudioLevels l)
         if(l.haveRxLevels)
             ui->meter2Widget->setLevels(l.rxAudioRMS, l.rxAudioPeak);
     }
+    */
 
-    /*
+
     meterKind m = meterNone;
     if(l.haveRxLevels)
     {
         m = meterRxAudio;
-        receiveMeter(m, l.rxAudioRMS);
+        receiveMeter(m, l.rxAudioPeak);
     }
     if(l.haveTxLevels)
     {
         m = meterTxMod;
-        receiveMeter(m, l.txAudioRMS);
+        receiveMeter(m, l.txAudioPeak);
     }
-    */
+
 }
 
 void wfmain::setupPlots()

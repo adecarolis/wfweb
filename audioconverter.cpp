@@ -158,7 +158,12 @@ bool audioConverter::convert(audioPacket audio)
 
         {
             audio.amplitudePeak = samplesF.array().abs().maxCoeff();
-            audio.amplitudeRMS = samplesF.array().abs().mean();
+            //audio.amplitudeRMS = samplesF.array().abs().mean(); // zero for tx audio
+            //audio.amplitudeRMS = samplesF.norm() / sqrt(samplesF.size()); // too high values. Zero for tx audio.
+            //audio.amplitudeRMS = samplesF.squaredNorm(); // tx not zero. Values higher than peak sometimes
+            //audio.amplitudeRMS = samplesF.norm(); // too small values. also too small on TX
+            //audio.amplitudeRMS = samplesF.blueNorm(); // scale same as norm, too small.
+
 
             // Set the volume
             samplesF *= audio.volume;

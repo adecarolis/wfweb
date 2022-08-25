@@ -152,7 +152,7 @@ void udpHandler::getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16
     audioLevelsRxPeak[(audioLevelsRxPosition)%audioLevelBufferSize] = amplitudePeak;
     audioLevelsRxRMS[(audioLevelsRxPosition)%audioLevelBufferSize] = amplitudeRMS;
 
-    if((audioLevelsRxPosition)%3 == 0)
+    if((audioLevelsRxPosition)%4 == 0)
     {
         // calculate mean and emit signal
         unsigned char meanPeak = findMax(audioLevelsRxPeak);
@@ -175,7 +175,7 @@ void udpHandler::getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS ,quint1
     audioLevelsTxPeak[(audioLevelsTxPosition)%audioLevelBufferSize] = amplitudePeak;
     audioLevelsTxRMS[(audioLevelsTxPosition)%audioLevelBufferSize] = amplitudeRMS;
 
-    if((audioLevelsTxPosition)%3 == 0)
+    if((audioLevelsTxPosition)%4 == 0)
     {
         // calculate mean and emit signal
         unsigned char meanPeak = findMax(audioLevelsTxPeak);
