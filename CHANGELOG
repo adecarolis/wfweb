@@ -1,9 +1,14 @@
 # CHANGELOG
 
 
+- 20220926	Merge branch 'audiometer'
+                This adds audiometer for the second meter TxAudio, RxAudio and TxRxAudio
+		updated to v.1.42
 - 20220824
                 Merge branch 'color'
+                This adds color picker support so that you can define several UI element colors
 		updated to v1.41
+
 - 20220819      
 
 		version bumped to 1.4

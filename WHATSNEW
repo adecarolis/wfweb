@@ -22,8 +22,8 @@ The following highlights are in this 1.41-release:
         introduction of peak decays at the scope
         resizing of top and bottom scope/waterfall
         various fixes on the spectrum display
-+       added color picker support for all kinds of vsual elements
-
++ 1.41  added color picker support for all kinds of vsual elements
++ 1.42  added three additional second meter choices. RxAudio, TxAdio, and TxRxAudio
 
 
 Notes:
