@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1032</width>
-    <height>569</height>
+    <height>582</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -2177,7 +2177,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>1</number>
+             <number>0</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -2702,7 +2702,7 @@
                       <widget class="QComboBox" name="audioOutputCombo">
                        <property name="maximumSize">
                         <size>
-                         <width>300</width>
+                         <width>120</width>
                          <height>16777215</height>
                         </size>
                        </property>
@@ -2722,7 +2722,7 @@
                       <widget class="QComboBox" name="audioInputCombo">
                        <property name="maximumSize">
                         <size>
-                         <width>300</width>
+                         <width>120</width>
                          <height>16777215</height>
                         </size>
                        </property>
@@ -4121,7 +4121,7 @@
                        </property>
                        <property name="maximumSize">
                         <size>
-                         <width>300</width>
+                         <width>100</width>
                          <height>16777215</height>
                         </size>
                        </property>
@@ -4144,7 +4144,7 @@
                        </property>
                        <property name="maximumSize">
                         <size>
-                         <width>300</width>
+                         <width>100</width>
                          <height>16777215</height>
                         </size>
                        </property>
