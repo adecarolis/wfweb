@@ -1,7 +1,21 @@
 # CHANGELOG
 
+- 20220909	
+		Merge branch resize:	
 
-- 20220926	Merge branch 'audiometer'
+    		Found an extra 10 pixels due to some layout padding I left in
+    		accidently.
+
+    		Main window may now be made smaller. Settings combo box sizes now
+    		limited.
+
+    		Fixed issue where build paths with a space in the name would cause the
+    		git hash to fail capture.
+
+		updated to v1.43
+
+- 20220826	
+		Merge branch 'audiometer'
                 This adds audiometer for the second meter TxAudio, RxAudio and TxRxAudio
 		updated to v.1.42
 - 20220824
