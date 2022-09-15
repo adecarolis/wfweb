@@ -117,11 +117,11 @@ void loggingWindow::handleLoggingHostError(QAbstractSocket::SocketError error)
     switch(error)
     {
     case QAbstractSocket::RemoteHostClosedError:
-        qInfo(logLogger()) << "Disconnected from logging host.";
+        //qInfo(logLogger()) << "Disconnected from logging host.";
         break;
 
     default:
-        qInfo(logLogger()) << "Error connecting to logging host. Check internet connection. Error code: " << error;
+        qWarning(logLogger()) << "Error connecting to logging host. Check internet connection. Error code: " << error;
         break;
     }
 }
