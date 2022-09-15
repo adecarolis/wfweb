@@ -7005,6 +7005,7 @@ void wfmain::handleLogText(QString text)
 void wfmain::setDebugLogging(bool debugModeOn)
 {
     this->debugMode = debugModeOn;
+    debugModeLogging = debugModeOn;
 }
 
 void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)

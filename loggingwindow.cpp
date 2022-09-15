@@ -27,8 +27,6 @@ loggingWindow::loggingWindow(QWidget *parent) :
     connect(socket, SIGNAL(disconnected()), this, SLOT(disconnectedFromHost()));
     connect(socket, SIGNAL(readyRead()), this, SLOT(handleDataFromLoggingHost()));
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleLoggingHostError(QAbstractSocket::SocketError)));
-
-    ui->debugBtn->setHidden(true); // this button doesn't work yet.
 }
 
 loggingWindow::~loggingWindow()
