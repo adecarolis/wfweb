@@ -39,6 +39,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     setWindowTitle(QString("wfview"));
 
+    logWindow = new loggingWindow();
     initLogging();
     qInfo(logSystem()) << version;
 
@@ -51,7 +52,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     trxadj = new transceiverAdjustments();
     abtBox = new aboutbox();
     selRad = new selectRadio();
-    logWindow = new loggingWindow();
 
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
     qRegisterMetaType<rigCapabilities>();
@@ -6975,6 +6975,8 @@ void wfmain::initLogging()
     // Set handler
     qInstallMessageHandler(messageHandler);
 
+    connect(logWindow, SIGNAL(setDebugMode(bool)), this, SLOT(setDebugLogging(bool)));
+
     // Interval timer for log window updates:
     logCheckingTimer.setInterval(100);
     connect(&logCheckingTimer, SIGNAL(timeout()), this, SLOT(logCheck()));
@@ -6998,6 +7000,11 @@ void wfmain::handleLogText(QString text)
 {
     // This function is just a pass-through
     logWindow->acceptLogText(text);
+}
+
+void wfmain::setDebugLogging(bool debugModeOn)
+{
+    this->debugMode = debugModeOn;
 }
 
 void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)

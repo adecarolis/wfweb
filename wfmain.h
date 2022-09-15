@@ -296,6 +296,7 @@ private slots:
 
     void setRadioTimeDateSend();
     void logCheck();
+    void setDebugLogging(bool debugModeOn);
 
 
     // void on_getFreqBtn_clicked();

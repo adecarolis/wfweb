@@ -45,6 +45,8 @@ private slots:
 
     void on_copyPathBtn_clicked();
 
+    void on_debugBtn_clicked(bool checked);
+
 signals:
     void setDebugMode(bool debugOn);
 

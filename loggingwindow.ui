@@ -107,6 +107,16 @@
       <number>0</number>
      </property>
      <item>
+      <widget class="QCheckBox" name="debugBtn">
+       <property name="toolTip">
+        <string>Enable or disable debug logging</string>
+       </property>
+       <property name="text">
+        <string>Debug</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="clearDisplayBtn">
        <property name="toolTip">
         <string>Clears the display. Does not clear the log file.</string>

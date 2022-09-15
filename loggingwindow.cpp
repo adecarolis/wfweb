@@ -27,6 +27,8 @@ loggingWindow::loggingWindow(QWidget *parent) :
     connect(socket, SIGNAL(disconnected()), this, SLOT(disconnectedFromHost()));
     connect(socket, SIGNAL(readyRead()), this, SLOT(handleDataFromLoggingHost()));
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleLoggingHostError(QAbstractSocket::SocketError)));
+
+    ui->debugBtn->setHidden(true); // this button doesn't work yet.
 }
 
 loggingWindow::~loggingWindow()
@@ -168,4 +170,9 @@ void loggingWindow::on_userAnnotationText_returnPressed()
 void loggingWindow::on_copyPathBtn_clicked()
 {
     clipboard->setText(logFilename);
+}
+
+void loggingWindow::on_debugBtn_clicked(bool checked)
+{
+    emit setDebugMode(checked);
 }
