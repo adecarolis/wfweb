@@ -6,6 +6,7 @@ loggingWindow::loggingWindow(QWidget *parent) :
     ui(new Ui::loggingWindow)
 {
     ui->setupUi(this);
+    this->setWindowTitle("Log");
     ui->logTextDisplay->setReadOnly(true);
     ui->userAnnotationText->setFocus();
     ui->annotateBtn->setDefault(true);
@@ -25,7 +26,6 @@ loggingWindow::loggingWindow(QWidget *parent) :
     connect(socket, SIGNAL(connected()), this, SLOT(connectedToHost()));
     connect(socket, SIGNAL(disconnected()), this, SLOT(disconnectedFromHost()));
     connect(socket, SIGNAL(readyRead()), this, SLOT(handleDataFromLoggingHost()));
-    connect(socket, SIGNAL(hostFound()), this, SLOT(handleLoggingHostError()));
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleLoggingHostError(QAbstractSocket::SocketError)));
 }
 
@@ -43,14 +43,14 @@ void loggingWindow::acceptLogText(QString text)
 
 void loggingWindow::sendToTermbin()
 {
-    qInfo(logGui()) << "Sending data to termbin.com. Standby.";
+    qInfo(logLogger()) << "Sending data to termbin.com. Standby.";
     socket->connectToHost("termbin.com", 9999);
     ui->sendToPasteBtn->setDisabled(true);
 }
 
 void loggingWindow::handleDataFromLoggingHost()
 {
-    qInfo(logGui()) << "Receiving data from logging host.";
+    qInfo(logLogger()) << "Receiving data from logging host.";
     QString URL;
     QByteArray data = socket->readAll();
     if(data.length() < 256)
@@ -59,25 +59,29 @@ void loggingWindow::handleDataFromLoggingHost()
         if(!URL.isEmpty())
         {
             clipboard->setText(URL);
-            qInfo(logGui()) << "Sent log to URL: " << URL;
+            qInfo(logLogger()) << "Sent log to URL: " << URL;
             msgBox.setText("Your log has been posted, and the URL has been copied to the clipboard.");
-            msgBox.setInformativeText(URL);
+            msgBox.setInformativeText("<b>" + URL + "</b>");
             msgBox.exec();
+            // For whatever reason, showing the message box hides this window.
+            this->show();
+            this->raise();
+            this->activateWindow();
         }
     } else {
-        qDebug(logGui()) << "Error, return from logging host too large. Received " << data.length() << " bytes.";
+        qDebug(logLogger()) << "Error, return from logging host too large. Received " << data.length() << " bytes.";
     }
 }
 
 void loggingWindow::disconnectedFromHost()
 {
-    qInfo(logGui()) << "Disconnected from logging host";
+    qInfo(logLogger()) << "Disconnected from logging host";
     ui->sendToPasteBtn->setDisabled(false);
 }
 
 void loggingWindow::connectedToHost()
 {
-    qInfo(logGui()) << "Connected to logging host";
+    qInfo(logLogger()) << "Connected to logging host";
     QMutexLocker lock(&textMutex);
     QTextStream outText(socket);
     outText << ui->logTextDisplay->toPlainText();
@@ -87,7 +91,16 @@ void loggingWindow::connectedToHost()
 
 void loggingWindow::handleLoggingHostError(QAbstractSocket::SocketError error)
 {
-    qInfo(logGui()) << "Error connecting to logging host. Check internet connection. Error code: " << error;
+    switch(error)
+    {
+    case QAbstractSocket::RemoteHostClosedError:
+        qInfo(logLogger()) << "Disconnected from logging host.";
+        break;
+
+    default:
+        qInfo(logLogger()) << "Error connecting to logging host. Check internet connection. Error code: " << error;
+        break;
+    }
 }
 
 void loggingWindow::on_clearDisplayBtn_clicked()
