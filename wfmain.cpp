@@ -6969,7 +6969,8 @@ void wfmain::initLogging()
     // Set handler
     qInstallMessageHandler(messageHandler);
 
-    logCheckingTimer.setInterval(50);
+    // Interval timer for log window updates:
+    logCheckingTimer.setInterval(100);
     connect(&logCheckingTimer, SIGNAL(timeout()), this, SLOT(logCheck()));
     logCheckingTimer.start();
 }
@@ -6996,8 +6997,6 @@ void wfmain::handleLogText(QString text)
 void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
 {
     // Open stream file writes
-
-    // TODO: Fix this parameter:
 
     if (type == QtDebugMsg && !debugModeLogging)
     {
@@ -7046,7 +7045,5 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     logTextMutex.lock();
     logStringBuffer.push_back(text);
     logTextMutex.unlock();
-    //logStringBuffer[logStringBufferPosition%logStringBufferSize] = text;
-    //logStringBufferPosition++;
 }
 
