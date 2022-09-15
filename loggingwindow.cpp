@@ -57,7 +57,10 @@ void loggingWindow::acceptLogText(QString text)
 {
     QMutexLocker lock(&textMutex);
     ui->logTextDisplay->appendPlainText(text);
-    horizLogScroll->setValue(horizLogScroll->minimum());
+    if(vertLogScroll->value() == vertLogScroll->maximum())
+    {
+        horizLogScroll->setValue(horizLogScroll->minimum());
+    }
 }
 
 void loggingWindow::sendToTermbin()
