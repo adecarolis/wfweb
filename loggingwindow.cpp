@@ -109,6 +109,7 @@ void loggingWindow::connectedToHost()
     outText << ui->logTextDisplay->toPlainText();
     outText << "\n----------\nSent from wfview version ";
     outText << WFVIEW_VERSION << "\n----------\n";
+    outText.flush();
 }
 
 void loggingWindow::handleLoggingHostError(QAbstractSocket::SocketError error)
