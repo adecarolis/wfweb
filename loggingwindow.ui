@@ -115,7 +115,7 @@
         <string>Scroll to bottom</string>
        </property>
        <property name="text">
-        <string>To Bottom</string>
+        <string>Scroll Down</string>
        </property>
       </widget>
      </item>
