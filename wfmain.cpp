@@ -30,11 +30,17 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     setWindowIcon(QIcon( QString(":resources/wfview.png")));
     this->debugMode = debugMode;
     debugModeLogging = debugMode;
+    version = QString("wfview version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
+        .arg(QString(WFVIEW_VERSION))
+        .arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
+        .arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture())
+        .arg(QT_VERSION_STR).arg(qVersion());
     ui->setupUi(this);
 
     setWindowTitle(QString("wfview"));
 
     initLogging();
+    qInfo(logSystem()) << version;
 
     this->serialPortCL = serialPortCL;
     this->hostCL = hostCL;
@@ -7043,7 +7049,7 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     text.append(": ");
     text.append(msg);
     logTextMutex.lock();
-    logStringBuffer.push_back(text);
+    logStringBuffer.push_front(text);
     logTextMutex.unlock();
 }
 

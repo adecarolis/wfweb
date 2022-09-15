@@ -646,6 +646,7 @@ private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
     bool debugMode;
+    QString version;
     QSettings *settings=Q_NULLPTR;
     void loadSettings();
     void saveSettings();

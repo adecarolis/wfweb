@@ -45,6 +45,9 @@ private slots:
 
     void on_copyPathBtn_clicked();
 
+signals:
+    void setDebugMode(bool debugOn);
+
 private:
     Ui::loggingWindow *ui;
     QClipboard *clipboard;

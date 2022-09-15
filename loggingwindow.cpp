@@ -113,6 +113,7 @@ void loggingWindow::on_clearDisplayBtn_clicked()
 void loggingWindow::on_openDirBtn_clicked()
 {
     QString cmd;
+    int rtnval = 0;
 #ifdef Q_OS_MAC
     cmd = "open " + logDirectory;
 #endif
@@ -122,12 +123,15 @@ void loggingWindow::on_openDirBtn_clicked()
 #ifdef Q_OS_WIN
     cmd = "start " + logDirectory;
 #endif
-    system(cmd.toLocal8Bit().data());
+    rtnval = system(cmd.toLocal8Bit().data());
+    if(rtnval)
+        qInfo(logLogger()) << "Error, open log directory command returned error code " << rtnval;
 }
 
 void loggingWindow::on_openLogFileBtn_clicked()
 {
     QString cmd;
+    int rtnval = 0;
 #ifdef Q_OS_MAC
     cmd = "open " + logFilename;
 #endif
@@ -137,7 +141,9 @@ void loggingWindow::on_openLogFileBtn_clicked()
 #ifdef Q_OS_WIN
     cmd = "start " + logFilename;
 #endif
-    system(cmd.toLocal8Bit().data());
+    rtnval = system(cmd.toLocal8Bit().data());
+    if(rtnval)
+        qInfo(logLogger()) << "Error, open log file command returned error code " << rtnval;
 }
 
 void loggingWindow::on_sendToPasteBtn_clicked()
