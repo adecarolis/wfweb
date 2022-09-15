@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>554</width>
+    <width>625</width>
     <height>300</height>
    </rect>
   </property>
@@ -16,11 +16,6 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QPlainTextEdit" name="logTextDisplay">
-     <property name="font">
-      <font>
-       <family>Ubuntu Mono</family>
-      </font>
-     </property>
      <property name="undoRedoEnabled">
       <bool>false</bool>
      </property>
@@ -67,10 +62,8 @@
          <height>0</height>
         </size>
        </property>
-       <property name="font">
-        <font>
-         <family>Ubuntu Mono</family>
-        </font>
+       <property name="toolTip">
+        <string>You may enter your own log notes here.</string>
        </property>
       </widget>
      </item>
@@ -109,10 +102,20 @@
      <item>
       <widget class="QCheckBox" name="debugBtn">
        <property name="toolTip">
-        <string>Enable or disable debug logging</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enable or disable debug logging. Use the &amp;quot;-d&amp;quot; or &amp;quot;--debug&amp;quot; flag to open wfview with debug logging enabled on startup. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
         <string>Debug</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="toBottomBtn">
+       <property name="toolTip">
+        <string>Scroll to bottom</string>
+       </property>
+       <property name="text">
+        <string>To Bottom</string>
        </property>
       </widget>
      </item>
@@ -122,7 +125,7 @@
         <string>Clears the display. Does not clear the log file.</string>
        </property>
        <property name="text">
-        <string>Clear Display</string>
+        <string>Clear</string>
        </property>
       </widget>
      </item>

@@ -41,6 +41,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     logWindow = new loggingWindow();
     initLogging();
+    logWindow->setInitialDebugState(debugMode);
     qInfo(logSystem()) << version;
 
     this->serialPortCL = serialPortCL;
@@ -6958,7 +6959,15 @@ void wfmain::on_colorSavePresetBtn_clicked()
 
 void wfmain::on_showLogBtn_clicked()
 {
+    if(logWindow->isMinimized())
+    {
+        logWindow->raise();
+        logWindow->activateWindow();
+        return;
+    }
     logWindow->show();
+    logWindow->raise();
+    logWindow->activateWindow();
 }
 
 void wfmain::initLogging()

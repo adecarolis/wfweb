@@ -13,6 +13,11 @@ loggingWindow::loggingWindow(QWidget *parent) :
     ui->logTextDisplay->setFocusPolicy(Qt::NoFocus);
     ui->annotateBtn->setFocusPolicy(Qt::NoFocus);
 
+    QFont font("Monospace");
+    font.setStyleHint(QFont::TypeWriter);
+    ui->logTextDisplay->setFont(font);
+    ui->userAnnotationText->setFont(font);
+
 #ifdef Q_OS_MAC
     logFilename = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/wfview.log";
     logDirectory = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0];
@@ -27,6 +32,12 @@ loggingWindow::loggingWindow(QWidget *parent) :
     connect(socket, SIGNAL(disconnected()), this, SLOT(disconnectedFromHost()));
     connect(socket, SIGNAL(readyRead()), this, SLOT(handleDataFromLoggingHost()));
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleLoggingHostError(QAbstractSocket::SocketError)));
+
+    vertLogScroll = ui->logTextDisplay->verticalScrollBar();
+    horizLogScroll = ui->logTextDisplay->horizontalScrollBar();
+
+    vertLogScroll->setValue(vertLogScroll->maximum());
+    horizLogScroll->setValue(horizLogScroll->minimum());
 }
 
 loggingWindow::~loggingWindow()
@@ -35,10 +46,18 @@ loggingWindow::~loggingWindow()
     delete ui;
 }
 
+void loggingWindow::setInitialDebugState(bool debugModeEnabled)
+{
+    ui->debugBtn->blockSignals(true);
+    ui->debugBtn->setChecked(debugModeEnabled);
+    ui->debugBtn->blockSignals(false);
+}
+
 void loggingWindow::acceptLogText(QString text)
 {
     QMutexLocker lock(&textMutex);
     ui->logTextDisplay->appendPlainText(text);
+    horizLogScroll->setValue(horizLogScroll->minimum());
 }
 
 void loggingWindow::sendToTermbin()
@@ -173,4 +192,10 @@ void loggingWindow::on_copyPathBtn_clicked()
 void loggingWindow::on_debugBtn_clicked(bool checked)
 {
     emit setDebugMode(checked);
+}
+
+void loggingWindow::on_toBottomBtn_clicked()
+{
+    vertLogScroll->setValue(vertLogScroll->maximum());
+    horizLogScroll->setValue(horizLogScroll->minimum());
 }

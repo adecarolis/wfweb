@@ -9,6 +9,7 @@
 #include <QTcpSocket>
 #include <QTextStream>
 #include <QMessageBox>
+#include <QScrollBar>
 
 #include "logcategories.h"
 
@@ -24,6 +25,9 @@ public:
     explicit loggingWindow(QWidget *parent = nullptr);
     ~loggingWindow();
     void acceptLogText(QString text);
+
+public slots:
+    void setInitialDebugState(bool debugModeEnabled);
 
 private slots:
     void connectedToHost();
@@ -47,6 +51,8 @@ private slots:
 
     void on_debugBtn_clicked(bool checked);
 
+    void on_toBottomBtn_clicked();
+
 signals:
     void setDebugMode(bool debugOn);
 
@@ -54,6 +60,8 @@ private:
     Ui::loggingWindow *ui;
     QClipboard *clipboard;
     QMessageBox msgBox;
+    QScrollBar *vertLogScroll;
+    QScrollBar *horizLogScroll;
     QMutex textMutex;
     QString logFilename;
     QString logDirectory;
