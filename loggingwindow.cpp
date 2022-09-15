@@ -79,9 +79,9 @@ void loggingWindow::handleDataFromLoggingHost()
         {
             clipboard->setText(URL);
             qInfo(logLogger()) << "Sent log to URL: " << URL;
-            msgBox.setText("Your log has been posted, and the URL has been copied to the clipboard.");
-            msgBox.setInformativeText("<b>" + URL + "</b>");
-            msgBox.exec();
+            URLmsgBox.setText("Your log has been posted, and the URL has been copied to the clipboard.");
+            URLmsgBox.setInformativeText("<b>" + URL + "</b>");
+            URLmsgBox.exec();
             // For whatever reason, showing the message box hides this window.
             this->show();
             this->raise();

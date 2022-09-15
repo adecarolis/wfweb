@@ -59,7 +59,7 @@ signals:
 private:
     Ui::loggingWindow *ui;
     QClipboard *clipboard;
-    QMessageBox msgBox;
+    QMessageBox URLmsgBox;
     QScrollBar *vertLogScroll;
     QScrollBar *horizLogScroll;
     QMutex textMutex;
