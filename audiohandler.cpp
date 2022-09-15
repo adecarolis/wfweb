@@ -230,7 +230,6 @@ void audioHandler::stop()
 void audioHandler::setVolume(unsigned char volume)
 {
     this->volume = audiopot[volume];
-	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
 }
 
 

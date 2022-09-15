@@ -214,14 +214,11 @@ bool paHandler::init(audioSetup setup)
 
 void paHandler::setVolume(unsigned char volume)
 {
-
 #ifdef Q_OS_WIN
 	this->volume = audiopot[volume] * 5;
 #else
 	this->volume = audiopot[volume];
 #endif
-
-	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
 }
 
 void paHandler::incomingAudio(audioPacket packet)

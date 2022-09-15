@@ -253,10 +253,7 @@ errorHandler:
 
 void rtHandler::setVolume(unsigned char volume)
 {
-
 	this->volume = audiopot[volume];
-
-	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
 }
 
 void rtHandler::incomingAudio(audioPacket packet)
