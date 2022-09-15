@@ -162,7 +162,7 @@ void loggingWindow::on_openLogFileBtn_clicked()
     cmd = "xdg-open " + logFilename;
 #endif
 #ifdef Q_OS_WIN
-    cmd = "start " + logFilename;
+    cmd = "notepad " + logFilename;
 #endif
     rtnval = system(cmd.toLocal8Bit().data());
     if(rtnval)
