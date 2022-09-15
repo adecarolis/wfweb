@@ -171,13 +171,12 @@ int main(int argc, char *argv[])
     m_logFile.data()->open(QFile::WriteOnly | QFile::Truncate | QFile::Text);
     // Set handler
     qInstallMessageHandler(messageHandler);
-#endif
 
     qInfo(logSystem()) << version;
     qDebug(logSystem()) << QString("SerialPortCL as set by parser: %1").arg(serialPortCL);
     qDebug(logSystem()) << QString("remote host as set by parser: %1").arg(hostCL);
     qDebug(logSystem()) << QString("CIV as set by parser: %1").arg(civCL);
-
+#endif
 #ifdef BUILD_WFSERVER
 #ifdef Q_OS_WIN
     SetConsoleCtrlHandler((PHANDLER_ROUTINE)cleanup, TRUE);
