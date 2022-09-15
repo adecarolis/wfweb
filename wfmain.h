@@ -38,6 +38,7 @@
 #include "aboutbox.h"
 #include "selectradio.h"
 #include "colorprefs.h"
+#include "loggingwindow.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -63,10 +64,12 @@ class wfmain : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, QWidget *parent = 0);
+    explicit wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, bool debugMode, QWidget *parent = 0);
     QString serialPortCL;
     QString hostCL;
     ~wfmain();
+    static void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
+    void handleLogText(QString text);
 
 signals:
     // Basic to rig:
@@ -292,6 +295,7 @@ private slots:
     void radioSelection(QList<radio_cap_packet> radios);
 
     void setRadioTimeDateSend();
+    void logCheck();
 
 
     // void on_getFreqBtn_clicked();
@@ -636,15 +640,23 @@ private slots:
 
     void on_colorSavePresetBtn_clicked();
 
+    void on_showLogBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
+    bool debugMode;
     QSettings *settings=Q_NULLPTR;
     void loadSettings();
     void saveSettings();
 
     void createSettingsListItems();
     void connectSettingsList();
+
+    void initLogging();
+    QTimer logCheckingTimer;
+    int logCheckingOldPosition = 0;
+    QString logFilename;
 
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
@@ -976,6 +988,7 @@ private:
     transceiverAdjustments *trxadj;
     aboutbox *abtBox;
     selectRadio *selRad;
+    loggingWindow *logWindow;
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
@@ -1027,6 +1040,7 @@ Q_DECLARE_METATYPE(enum spectrumMode)
 Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 Q_DECLARE_METATYPE(rigstate*)
 
+//void (*wfmain::logthistext)(QString text) = NULL;
 
 #endif // WFMAIN_H
 #endif

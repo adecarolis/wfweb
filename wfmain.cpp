@@ -5,10 +5,22 @@
 #include "rigidentities.h"
 #include "logcategories.h"
 
-// This code is copyright 2017-2020 Elliott H. Liggett
+// This code is copyright 2017-2022 Elliott H. Liggett
 // All rights reserved
 
-wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, QWidget *parent ) :
+// Log support:
+//static void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
+QScopedPointer<QFile> m_logFile;
+QMutex logMutex;
+QMutex logTextMutex;
+QVector<QString> logStringBuffer;
+#ifdef QT_DEBUG
+bool debugModeLogging = true;
+#else
+bool debugModeLogging = false;
+#endif
+
+wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, bool debugMode, QWidget *parent ) :
     QMainWindow(parent),
     ui(new Ui::wfmain)
 {
@@ -16,9 +28,13 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     QGuiApplication::setApplicationName(QString("wfview"));
 
     setWindowIcon(QIcon( QString(":resources/wfview.png")));
+    this->debugMode = debugMode;
+    debugModeLogging = debugMode;
     ui->setupUi(this);
 
     setWindowTitle(QString("wfview"));
+
+    initLogging();
 
     this->serialPortCL = serialPortCL;
     this->hostCL = hostCL;
@@ -29,6 +45,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     trxadj = new transceiverAdjustments();
     abtBox = new aboutbox();
     selRad = new selectRadio();
+    logWindow = new loggingWindow();
 
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
     qRegisterMetaType<rigCapabilities>();
@@ -6932,3 +6949,104 @@ void wfmain::on_colorSavePresetBtn_clicked()
     settings->endGroup();
     settings->sync();
 }
+
+void wfmain::on_showLogBtn_clicked()
+{
+    logWindow->show();
+}
+
+void wfmain::initLogging()
+{
+#ifdef Q_OS_MAC
+    logFilename= QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/wfview.log";
+#else
+    logFilename= QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0] + "/wfview.log";
+#endif
+    // Set the logging file before doing anything else.
+    m_logFile.reset(new QFile(logFilename));
+    // Open the file logging
+    m_logFile.data()->open(QFile::WriteOnly | QFile::Truncate | QFile::Text);
+    // Set handler
+    qInstallMessageHandler(messageHandler);
+
+    logCheckingTimer.setInterval(50);
+    connect(&logCheckingTimer, SIGNAL(timeout()), this, SLOT(logCheck()));
+    logCheckingTimer.start();
+}
+
+void wfmain::logCheck()
+{
+    // This is called by a timer to check for new log messages and copy
+    // the messages into the logWindow.
+    QMutexLocker locker(&logTextMutex);
+    int size = logStringBuffer.size();
+    for(int i=0; i < size; i++)
+    {
+        handleLogText(logStringBuffer.back());
+        logStringBuffer.pop_back();
+    }
+}
+
+void wfmain::handleLogText(QString text)
+{
+    // This function is just a pass-through
+    logWindow->acceptLogText(text);
+}
+
+void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
+{
+    // Open stream file writes
+
+    // TODO: Fix this parameter:
+
+    if (type == QtDebugMsg && !debugModeLogging)
+    {
+        return;
+    }
+
+    QMutexLocker locker(&logMutex);
+    QTextStream out(m_logFile.data());
+    QString text;
+
+    // Write the date of recording
+    out << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ");
+    text.append(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz "));
+    // By type determine to what level belongs message
+
+    switch (type)
+    {
+        case QtDebugMsg:
+            out << "DBG ";
+            text.append("DBG ");
+            break;
+        case QtInfoMsg:
+            out << "INF ";
+            text.append("INF ");
+            break;
+        case QtWarningMsg:
+            out << "WRN ";
+            text.append("WRN ");
+            break;
+        case QtCriticalMsg:
+            out << "CRT ";
+            text.append("CRT ");
+            break;
+        case QtFatalMsg:
+            out << "FTL ";
+            text.append("FLT ");
+            break;
+    }
+    // Write to the output category of the message and the message itself
+    out << context.category << ": " << msg << "\n";
+    out.flush();    // Clear the buffered data
+
+    text.append(context.category);
+    text.append(": ");
+    text.append(msg);
+    logTextMutex.lock();
+    logStringBuffer.push_back(text);
+    logTextMutex.unlock();
+    //logStringBuffer[logStringBufferPosition%logStringBufferSize] = text;
+    //logStringBufferPosition++;
+}
+

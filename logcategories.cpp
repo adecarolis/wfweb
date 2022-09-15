@@ -3,6 +3,7 @@
 Q_LOGGING_CATEGORY(logSystem, "system")
 Q_LOGGING_CATEGORY(logSerial, "serial")
 Q_LOGGING_CATEGORY(logGui, "gui")
+Q_LOGGING_CATEGORY(logUser, "user")
 Q_LOGGING_CATEGORY(logRig, "rig")
 Q_LOGGING_CATEGORY(logAudio, "audio")
 Q_LOGGING_CATEGORY(logUdp, "udp")

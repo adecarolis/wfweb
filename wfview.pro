@@ -147,6 +147,7 @@ win32:INCLUDEPATH += ../r8brain-free-src
 INCLUDEPATH += resampler
 
 SOURCES += main.cpp\
+    loggingwindow.cpp \
     wfmain.cpp \
     commhandler.cpp \
     rigcommander.cpp \
@@ -178,6 +179,7 @@ SOURCES += main.cpp\
 HEADERS  += wfmain.h \
     colorprefs.h \
     commhandler.h \
+    loggingwindow.h \
     rigcommander.h \
     freqmemory.h \
     rigidentities.h \
@@ -213,6 +215,7 @@ HEADERS  += wfmain.h \
 
 FORMS    += wfmain.ui \
     calibrationwindow.ui \
+    loggingwindow.ui \
     satellitesetup.ui \
     selectradio.ui \
     repeatersetup.ui \

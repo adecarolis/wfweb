@@ -3262,7 +3262,7 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>767</width>
+                      <width>204</width>
                       <height>582</height>
                      </rect>
                     </property>
@@ -4606,6 +4606,13 @@
        <widget class="QPushButton" name="radioStatusBtn">
         <property name="text">
          <string>Radio Status</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="showLogBtn">
+        <property name="text">
+         <string>Log</string>
         </property>
        </widget>
       </item>

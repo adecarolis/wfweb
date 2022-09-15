@@ -12,13 +12,16 @@
 
 #include <iostream>
 #include "wfmain.h"
+
+// Copyright 2017-2022 Elliott H. Liggett
 #include "logcategories.h"
 
-// Copyright 2017-2021 Elliott H. Liggett
-
+#ifdef BUILD_WFSERVER
 // Smart pointer to log file
 QScopedPointer<QFile>   m_logFile;
 QMutex logMutex;
+#endif
+
 bool debugMode=false;
 
 #ifdef BUILD_WFSERVER
@@ -42,9 +45,9 @@ bool debugMode=false;
         #endif
     }
 
-#endif
 
 void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -65,7 +68,7 @@ int main(int argc, char *argv[])
 #endif
 
 #ifdef QT_DEBUG
-    debugMode = true;
+    //debugMode = true;
 #endif
 
     QString serialPortCL;
@@ -160,12 +163,15 @@ int main(int argc, char *argv[])
 
     }
 
+#ifdef BUILD_WFSERVER
+
     // Set the logging file before doing anything else.
     m_logFile.reset(new QFile(logFilename));
     // Open the file logging
     m_logFile.data()->open(QFile::WriteOnly | QFile::Truncate | QFile::Text);
     // Set handler
     qInstallMessageHandler(messageHandler);
+#endif
 
     qInfo(logSystem()) << version;
     qDebug(logSystem()) << QString("SerialPortCL as set by parser: %1").arg(serialPortCL);
@@ -183,7 +189,7 @@ int main(int argc, char *argv[])
     w = new servermain(serialPortCL, hostCL, settingsFile);
 #else
     a.setWheelScrollLines(1); // one line per wheel click
-    wfmain w(serialPortCL, hostCL, settingsFile);
+    wfmain w(serialPortCL, hostCL, settingsFile, debugMode);
     w.show();
     
 #endif
@@ -191,6 +197,7 @@ int main(int argc, char *argv[])
 
 }
 
+#ifdef BUILD_WFSERVER
 
 void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
 {
@@ -201,6 +208,7 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
     }
     QMutexLocker locker(&logMutex);
     QTextStream out(m_logFile.data());
+    QString text;
 
     // Write the date of recording
     out << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ");
@@ -229,5 +237,8 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
 #ifdef BUILD_WFSERVER
     std::cout << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ").toLocal8Bit().toStdString() << msg.toLocal8Bit().toStdString() << "\n";
 #endif
+    text = out.readAll();
     out.flush();    // Clear the buffered data
+    //mainwindow.handleLogText(test);
 }
+#endif
