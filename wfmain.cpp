@@ -6152,6 +6152,14 @@ void wfmain::setAudioDevicesUI()
     }
     
 
+    // Make the audio comboboxes expand when clicked (only needed for Windows)
+#ifdef Q_OS_WIN
+    ui->audioInputCombo->setStyleSheet("QComboBox QAbstractItemView {min-width: 300px;}");
+    ui->audioOutputCombo->setStyleSheet("QComboBox QAbstractItemView {min-width: 300px;}");
+    ui->serverTXAudioOutputCombo->setStyleSheet("QComboBox QAbstractItemView {min-width: 300px;}");
+    ui->serverRXAudioInputCombo->setStyleSheet("QComboBox QAbstractItemView {min-width: 300px;}");
+#endif
+
     // Stop blocking signals so we can set the current values
     ui->audioInputCombo->blockSignals(false);
     ui->audioOutputCombo->blockSignals(false);
