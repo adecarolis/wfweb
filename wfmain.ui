@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -2809,7 +2809,7 @@
                       <widget class="QComboBox" name="audioSystemCombo">
                        <item>
                         <property name="text">
-                         <string>QT Audio</string>
+                         <string>Qt Audio</string>
                         </property>
                        </item>
                        <item>
@@ -4185,7 +4185,7 @@
                     </layout>
                    </item>
                    <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_33">
+                    <layout class="QHBoxLayout" name="serverAudioHorizLayout">
                      <item>
                       <widget class="QLabel" name="label_33">
                        <property name="text">
@@ -4230,6 +4230,32 @@
                          <height>16777215</height>
                         </size>
                        </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="label_44">
+                       <property name="text">
+                        <string>Audio System</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QComboBox" name="audioSystemServerCombo">
+                       <item>
+                        <property name="text">
+                         <string>Qt Audio</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>PortAudio</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>RT Audio</string>
+                        </property>
+                       </item>
                       </widget>
                      </item>
                      <item>

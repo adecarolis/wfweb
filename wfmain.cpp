@@ -949,7 +949,6 @@ void wfmain::setupMainUI()
     connect(this->trxadj, &transceiverAdjustments::setTPBFOuter,
             [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetTPBFOuter, newValue);}
     );
-
 }
 
 void wfmain::prepareSettingsWindow()
@@ -1531,7 +1530,10 @@ void wfmain::loadSettings()
 
     prefs.audioSystem = static_cast<audioType>(settings->value("AudioSystem", defPrefs.audioSystem).toInt());
     ui->audioSystemCombo->blockSignals(true);
+    ui->audioSystemServerCombo->blockSignals(true);
     ui->audioSystemCombo->setCurrentIndex(prefs.audioSystem);
+    ui->audioSystemServerCombo->setCurrentIndex(prefs.audioSystem);
+    ui->audioSystemServerCombo->blockSignals(false);
     ui->audioSystemCombo->blockSignals(false);
 
 
@@ -3473,6 +3475,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         ui->connectBtn->setText("Disconnect"); // We must be connected now.
         ui->audioSystemCombo->setEnabled(false);
+        ui->audioSystemServerCombo->setEnabled(false);
 
         prepareWf(ui->wfLengthSlider->value());
         if(usingLAN)
@@ -4892,6 +4895,7 @@ void wfmain::on_connectBtn_clicked()
         emit sendCloseComm();
         ui->connectBtn->setText("Connect");
         ui->audioSystemCombo->setEnabled(true);
+        ui->audioSystemServerCombo->setEnabled(true);
         haveRigCaps = false;
         rigName->setText("NONE");
     }
@@ -6222,6 +6226,18 @@ void wfmain::on_audioSystemCombo_currentIndexChanged(int value)
 {
     prefs.audioSystem = static_cast<audioType>(value);
     setAudioDevicesUI(); // Force all audio devices to update
+    ui->audioSystemServerCombo->blockSignals(true);
+    ui->audioSystemServerCombo->setCurrentIndex(value);
+    ui->audioSystemServerCombo->blockSignals(false);
+}
+
+void wfmain::on_audioSystemServerCombo_currentIndexChanged(int value)
+{
+    prefs.audioSystem = static_cast<audioType>(value);
+    setAudioDevicesUI(); // Force all audio devices to update
+    ui->audioSystemCombo->blockSignals(true);
+    ui->audioSystemCombo->setCurrentIndex(value);
+    ui->audioSystemCombo->blockSignals(false);
 }
 
 void wfmain::on_topLevelSlider_valueChanged(int value)
@@ -7077,4 +7093,3 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     logStringBuffer.push_front(text);
     logTextMutex.unlock();
 }
-
