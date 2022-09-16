@@ -2406,6 +2406,21 @@
                    <string>Network Connected Radios</string>
                   </property>
                   <layout class="QVBoxLayout" name="verticalLayout_22">
+                   <property name="spacing">
+                    <number>6</number>
+                   </property>
+                   <property name="leftMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
                    <item>
                     <layout class="QHBoxLayout" name="horizontalLayout_13">
                      <property name="leftMargin">
@@ -2868,6 +2883,9 @@
                <layout class="QHBoxLayout" name="horizontalLayout_22">
                 <item>
                  <widget class="QCheckBox" name="wfInterpolateChk">
+                  <property name="toolTip">
+                   <string>Enables interpolation between pixels. Note that this will increase CPU usage.</string>
+                  </property>
                   <property name="text">
                    <string>Interpolate Waterfall</string>
                   </property>
@@ -3249,6 +3267,18 @@
                  <string>User-defined Color Editor</string>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_4">
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
                  <item row="0" column="0">
                   <widget class="QScrollArea" name="scrollArea">
                    <property name="sizeAdjustPolicy">
@@ -3262,7 +3292,7 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>204</width>
+                      <width>794</width>
                       <height>582</height>
                      </rect>
                     </property>
@@ -4680,7 +4710,7 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="buttonGroup"/>
   <buttongroup name="underlayButtonGroup"/>
+  <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>
