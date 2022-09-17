@@ -34,7 +34,7 @@ private slots:
     void disconnectedFromHost();
     void handleDataFromLoggingHost();
     void handleLoggingHostError(QAbstractSocket::SocketError);
-
+    void showEvent(QShowEvent* event);
     void on_clearDisplayBtn_clicked();
 
     void on_openDirBtn_clicked();
