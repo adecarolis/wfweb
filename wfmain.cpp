@@ -195,6 +195,8 @@ void wfmain::openRig()
     //     showRigSettings(); // rig setting dialog box for network/serial, CIV, hostname, port, baud rate, serial device, etc
     // TODO: How do we know if the setting was loaded?
 
+    ui->audioSystemCombo->setEnabled(false);
+    ui->connectBtn->setText("Cancel"); // We are attempting to connect
 
     // TODO: Use these if they are found
     if(!serialPortCL.isEmpty())
@@ -3336,6 +3338,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->topLevelSlider->setMaximum(rigCaps.spectAmpMax);
 
         haveRigCaps = true;
+
         // Added so that server receives rig capabilities.
         emit sendRigCaps(rigCaps);
         rpt->setRig(rigCaps);
@@ -3471,8 +3474,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->useRTSforPTTchk->setChecked(rigCaps.useRTSforPTT);
         ui->useRTSforPTTchk->blockSignals(false);
 
-        ui->connectBtn->setText("Disconnect"); // We must be connected now.
         ui->audioSystemCombo->setEnabled(false);
+        ui->connectBtn->setText("Disconnect"); // We must be connected now.
 
         prepareWf(ui->wfLengthSlider->value());
         if(usingLAN)
@@ -4895,10 +4898,15 @@ void wfmain::on_connectBtn_clicked()
         haveRigCaps = false;
         rigName->setText("NONE");
     }
-    else
+    else 
     {
         emit sendCloseComm(); // Just in case there is a failed connection open.
-        openRig();
+        if (ui->connectBtn->text() != "Cancel") {
+            openRig();
+        }
+        else {
+            ui->connectBtn->setText("Connect");
+        }
     }
 }
 
