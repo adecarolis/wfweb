@@ -195,7 +195,9 @@ void wfmain::openRig()
     //     showRigSettings(); // rig setting dialog box for network/serial, CIV, hostname, port, baud rate, serial device, etc
     // TODO: How do we know if the setting was loaded?
 
+    ui->audioSystemServerCombo->setEnabled(false);
     ui->audioSystemCombo->setEnabled(false);
+
     ui->connectBtn->setText("Cancel"); // We are attempting to connect
 
     // TODO: Use these if they are found
@@ -3477,6 +3479,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->useRTSforPTTchk->blockSignals(false);
 
         ui->audioSystemCombo->setEnabled(false);
+        ui->audioSystemServerCombo->setEnabled(false);
 
         ui->connectBtn->setText("Disconnect"); // We must be connected now.
 
