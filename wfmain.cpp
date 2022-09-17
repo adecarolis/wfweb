@@ -951,7 +951,6 @@ void wfmain::setupMainUI()
     connect(this->trxadj, &transceiverAdjustments::setTPBFOuter,
             [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetTPBFOuter, newValue);}
     );
-
 }
 
 void wfmain::prepareSettingsWindow()
@@ -1533,7 +1532,10 @@ void wfmain::loadSettings()
 
     prefs.audioSystem = static_cast<audioType>(settings->value("AudioSystem", defPrefs.audioSystem).toInt());
     ui->audioSystemCombo->blockSignals(true);
+    ui->audioSystemServerCombo->blockSignals(true);
     ui->audioSystemCombo->setCurrentIndex(prefs.audioSystem);
+    ui->audioSystemServerCombo->setCurrentIndex(prefs.audioSystem);
+    ui->audioSystemServerCombo->blockSignals(false);
     ui->audioSystemCombo->blockSignals(false);
 
 
@@ -3475,6 +3477,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->useRTSforPTTchk->blockSignals(false);
 
         ui->audioSystemCombo->setEnabled(false);
+
         ui->connectBtn->setText("Disconnect"); // We must be connected now.
 
         prepareWf(ui->wfLengthSlider->value());
@@ -4247,19 +4250,13 @@ void wfmain::on_modeSelectCombo_activated(int index)
 
 void wfmain::on_freqDial_valueChanged(int value)
 {
-    int maxVal = ui->freqDial->maximum();
+    int fullSweep = ui->freqDial->maximum() - ui->freqDial->minimum();
 
     freqt f;
     f.Hz = 0;
     f.MHzDouble = 0;
 
     volatile int delta = 0;
-
-    int directPath = 0;
-    int crossingPath = 0;
-
-    int distToMaxNew = 0;
-    int distToMaxOld = 0;
 
     if(freqLock)
     {
@@ -4268,50 +4265,25 @@ void wfmain::on_freqDial_valueChanged(int value)
         ui->freqDial->blockSignals(false);
         return;
     }
-    
-    if(value == 0)
+
+    delta = (value - oldFreqDialVal);
+
+    if(delta > fullSweep/2)
     {
-        distToMaxNew = 0;
-    } else {
-        distToMaxNew = maxVal - value;
+        // counter-clockwise past the zero mark
+        // ie, from +3000 to 3990, old=3000, new = 3990, new-old = 990
+        // desired delta here would actually be -10
+        delta = delta - fullSweep;
+    } else if (delta < -fullSweep/2)
+    {
+        // clock-wise past the zero mark
+        // ie, from +3990 to 3000, old=3990, new = 3000, new-old = -990
+        // desired delta here would actually be +10
+        delta = fullSweep + delta;
     }
 
-    if(oldFreqDialVal != 0)
-    {
-        distToMaxOld = maxVal - oldFreqDialVal;
-    } else {
-        distToMaxOld = 0;
-    }
-    
-    directPath = abs(value - oldFreqDialVal);
-    if(value < maxVal / 2)
-    {
-        crossingPath = value + distToMaxOld;
-    } else {
-        crossingPath = distToMaxNew + oldFreqDialVal;
-    }
-    
-    if(directPath > crossingPath)
-    {
-        // use crossing path, it is shorter
-        delta = crossingPath;
-        // now calculate the direction:
-        if( value > oldFreqDialVal)
-        {
-            // CW
-            delta = delta;
-        } else {
-            // CCW
-            delta *= -1;
-        }
-
-    } else {
-        // use direct path
-        // crossing path is larger than direct path, use direct path
-        //delta = directPath;
-        // now calculate the direction
-        delta = value - oldFreqDialVal;
-    }
+    // The step size is 10, which forces the knob to not skip a step crossing zero.
+    delta = delta / ui->freqDial->singleStep();
 
     // With the number of steps and direction of steps established,
     // we can now adjust the frequency:
@@ -4321,12 +4293,8 @@ void wfmain::on_freqDial_valueChanged(int value)
     if(f.Hz > 0)
     {
         freq = f;
-
         oldFreqDialVal = value;
-
         ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
-
-        //emit setFrequency(0,f);
         issueCmdUniquePriority(cmdSetFreq, f);
     } else {
         ui->freqDial->blockSignals(true);
@@ -4895,6 +4863,7 @@ void wfmain::on_connectBtn_clicked()
         emit sendCloseComm();
         ui->connectBtn->setText("Connect");
         ui->audioSystemCombo->setEnabled(true);
+        ui->audioSystemServerCombo->setEnabled(true);
         haveRigCaps = false;
         rigName->setText("NONE");
     }
@@ -6230,6 +6199,18 @@ void wfmain::on_audioSystemCombo_currentIndexChanged(int value)
 {
     prefs.audioSystem = static_cast<audioType>(value);
     setAudioDevicesUI(); // Force all audio devices to update
+    ui->audioSystemServerCombo->blockSignals(true);
+    ui->audioSystemServerCombo->setCurrentIndex(value);
+    ui->audioSystemServerCombo->blockSignals(false);
+}
+
+void wfmain::on_audioSystemServerCombo_currentIndexChanged(int value)
+{
+    prefs.audioSystem = static_cast<audioType>(value);
+    setAudioDevicesUI(); // Force all audio devices to update
+    ui->audioSystemCombo->blockSignals(true);
+    ui->audioSystemCombo->setCurrentIndex(value);
+    ui->audioSystemCombo->blockSignals(false);
 }
 
 void wfmain::on_topLevelSlider_valueChanged(int value)
@@ -7085,4 +7066,3 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     logStringBuffer.push_front(text);
     logTextMutex.unlock();
 }
-

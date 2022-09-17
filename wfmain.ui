@@ -338,6 +338,18 @@
               <property name="accessibleName">
                <string>Tuning Dial</string>
               </property>
+              <property name="minimum">
+               <number>3000</number>
+              </property>
+              <property name="maximum">
+               <number>4000</number>
+              </property>
+              <property name="singleStep">
+               <number>10</number>
+              </property>
+              <property name="pageStep">
+               <number>100</number>
+              </property>
               <property name="wrapping">
                <bool>true</bool>
               </property>
@@ -2809,7 +2821,7 @@
                       <widget class="QComboBox" name="audioSystemCombo">
                        <item>
                         <property name="text">
-                         <string>QT Audio</string>
+                         <string>Qt Audio</string>
                         </property>
                        </item>
                        <item>
@@ -3328,7 +3340,7 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>794</width>
+                      <width>204</width>
                       <height>582</height>
                      </rect>
                     </property>
@@ -4185,7 +4197,7 @@
                     </layout>
                    </item>
                    <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_33">
+                    <layout class="QHBoxLayout" name="serverAudioHorizLayout">
                      <item>
                       <widget class="QLabel" name="label_33">
                        <property name="text">
@@ -4230,6 +4242,32 @@
                          <height>16777215</height>
                         </size>
                        </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="label_44">
+                       <property name="text">
+                        <string>Audio System</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QComboBox" name="audioSystemServerCombo">
+                       <item>
+                        <property name="text">
+                         <string>Qt Audio</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>PortAudio</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>RT Audio</string>
+                        </property>
+                       </item>
                       </widget>
                      </item>
                      <item>
@@ -4746,7 +4784,7 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="underlayButtonGroup"/>
   <buttongroup name="buttonGroup"/>
+  <buttongroup name="underlayButtonGroup"/>
  </buttongroups>
 </ui>

@@ -643,6 +643,8 @@ private slots:
 
     void on_showLogBtn_clicked();
 
+    void on_audioSystemServerCombo_currentIndexChanged(int index);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
