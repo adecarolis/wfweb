@@ -4247,19 +4247,13 @@ void wfmain::on_modeSelectCombo_activated(int index)
 
 void wfmain::on_freqDial_valueChanged(int value)
 {
-    int maxVal = ui->freqDial->maximum();
+    int fullSweep = ui->freqDial->maximum() - ui->freqDial->minimum();
 
     freqt f;
     f.Hz = 0;
     f.MHzDouble = 0;
 
     volatile int delta = 0;
-
-    int directPath = 0;
-    int crossingPath = 0;
-
-    int distToMaxNew = 0;
-    int distToMaxOld = 0;
 
     if(freqLock)
     {
@@ -4268,50 +4262,25 @@ void wfmain::on_freqDial_valueChanged(int value)
         ui->freqDial->blockSignals(false);
         return;
     }
-    
-    if(value == 0)
+
+    delta = (value - oldFreqDialVal);
+
+    if(delta > fullSweep/2)
     {
-        distToMaxNew = 0;
-    } else {
-        distToMaxNew = maxVal - value;
+        // counter-clockwise past the zero mark
+        // ie, from +3000 to 3990, old=3000, new = 3990, new-old = 990
+        // desired delta here would actually be -10
+        delta = delta - fullSweep;
+    } else if (delta < -fullSweep/2)
+    {
+        // clock-wise past the zero mark
+        // ie, from +3990 to 3000, old=3990, new = 3000, new-old = -990
+        // desired delta here would actually be +10
+        delta = fullSweep + delta;
     }
 
-    if(oldFreqDialVal != 0)
-    {
-        distToMaxOld = maxVal - oldFreqDialVal;
-    } else {
-        distToMaxOld = 0;
-    }
-    
-    directPath = abs(value - oldFreqDialVal);
-    if(value < maxVal / 2)
-    {
-        crossingPath = value + distToMaxOld;
-    } else {
-        crossingPath = distToMaxNew + oldFreqDialVal;
-    }
-    
-    if(directPath > crossingPath)
-    {
-        // use crossing path, it is shorter
-        delta = crossingPath;
-        // now calculate the direction:
-        if( value > oldFreqDialVal)
-        {
-            // CW
-            delta = delta;
-        } else {
-            // CCW
-            delta *= -1;
-        }
-
-    } else {
-        // use direct path
-        // crossing path is larger than direct path, use direct path
-        //delta = directPath;
-        // now calculate the direction
-        delta = value - oldFreqDialVal;
-    }
+    // The step size is 10, which forces the knob to not skip a step crossing zero.
+    delta = delta / ui->freqDial->singleStep();
 
     // With the number of steps and direction of steps established,
     // we can now adjust the frequency:
@@ -4321,12 +4290,8 @@ void wfmain::on_freqDial_valueChanged(int value)
     if(f.Hz > 0)
     {
         freq = f;
-
         oldFreqDialVal = value;
-
         ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
-
-        //emit setFrequency(0,f);
         issueCmdUniquePriority(cmdSetFreq, f);
     } else {
         ui->freqDial->blockSignals(true);
