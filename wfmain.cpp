@@ -4880,6 +4880,7 @@ void wfmain::on_connectBtn_clicked()
             ui->connectBtn->setText("Connect to Radio");
         }
     }
+    ui->connectBtn->clearFocus();
 }
 
 void wfmain::on_sqlSlider_valueChanged(int value)
