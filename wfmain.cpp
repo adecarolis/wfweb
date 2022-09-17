@@ -198,7 +198,7 @@ void wfmain::openRig()
     ui->audioSystemServerCombo->setEnabled(false);
     ui->audioSystemCombo->setEnabled(false);
 
-    ui->connectBtn->setText("Cancel"); // We are attempting to connect
+    ui->connectBtn->setText("Cancel connection"); // We are attempting to connect
 
     // TODO: Use these if they are found
     if(!serialPortCL.isEmpty())
@@ -3481,7 +3481,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->audioSystemCombo->setEnabled(false);
         ui->audioSystemServerCombo->setEnabled(false);
 
-        ui->connectBtn->setText("Disconnect"); // We must be connected now.
+        ui->connectBtn->setText("Disconnect from Radio"); // We must be connected now.
 
         prepareWf(ui->wfLengthSlider->value());
         if(usingLAN)
@@ -4864,7 +4864,7 @@ void wfmain::on_connectBtn_clicked()
 
     if (haveRigCaps) {
         emit sendCloseComm();
-        ui->connectBtn->setText("Connect");
+        ui->connectBtn->setText("Connect to Radio");
         ui->audioSystemCombo->setEnabled(true);
         ui->audioSystemServerCombo->setEnabled(true);
         haveRigCaps = false;
@@ -4873,11 +4873,11 @@ void wfmain::on_connectBtn_clicked()
     else 
     {
         emit sendCloseComm(); // Just in case there is a failed connection open.
-        if (ui->connectBtn->text() != "Cancel") {
+        if (ui->connectBtn->text() != "Cancel connection") {
             openRig();
         }
         else {
-            ui->connectBtn->setText("Connect");
+            ui->connectBtn->setText("Connect to Radio");
         }
     }
 }
