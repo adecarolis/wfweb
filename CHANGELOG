@@ -1,5 +1,54 @@
 # CHANGELOG
 
+
+- 20220915
+
+		Merge branch log:
+
+    		Minor edit to margins
+
+    		Removed some additional padding that was left in parts of the UI.
+
+    		Changed windows 'open log' command to launch notepad.
+
+    		Removed extra disconnect message from logging host.
+
+    		Added flush to the text stream to termbin.
+
+    		Better scrolling behavior. The log is now aware if you are not at the
+    		bottom and will not force scroll if so. Otherwise, it will bring the
+    		horizontal scroll back to the left-edge.
+
+    		Renamed URL message box in case we add an additional message box later.
+
+    		Clarified control label to Scroll Down versus To Bottom.
+
+    		Changed font for better compatibility. Added some controls for scrolling
+    		behavior.
+
+    		Debug mode can now be toggled from the logging window.
+
+    		Removed extra output on non-server builds.
+
+    		Added debug logging button, however, it doesn't propagate the debug
+    		signal through all the modules yet. So, for now, it is hidden.
+
+    		Restored version to log file, fixed reversed log entries.
+
+		updated to v.1.44
+- 20220914
+
+		Removed word wrapping from the log
+
+    		Cut log window polling rate in half for lower CPU. 100ms is plenty fast.
+
+    		Removed audio volume logging.
+
+    		Keep the logging window up after the message box. Added "log" logging
+    		category.
+
+    		Added logging window capability with termbin support.
+
 - 20220909	
 		Merge branch resize:	
 
