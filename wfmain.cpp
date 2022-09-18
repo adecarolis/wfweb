@@ -85,8 +85,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     setSerialDevicesUI();
 
-    setupUsbControllerDevice();
     setDefPrefs();
+
 
     getSettingsFilePath(settingsFile);
 
@@ -114,10 +114,13 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     rigConnections();
 
 
-
     setServerToPrefs();
 
     amTransmitting = false;
+
+    // Setup USB Controller
+    setupUsbControllerDevice();
+    emit sendUsbControllerCommands(&usbCommands);
 
     connect(ui->txPowerSlider, &QSlider::sliderMoved,
         [&](int value) {
@@ -1380,6 +1383,9 @@ void wfmain::setupUsbControllerDevice()
     connect(shut, SIGNAL(setButtonCommand(QString, BUTTON*)), this, SLOT(getButtonCommand(QString, BUTTON*)));
     usbControllerThread->start(QThread::LowestPriority);
 
+    connect(this, SIGNAL(sendUsbControllerCommands(QVector<COMMAND>*)), usbControllerDev, SLOT(receiveCommands(QVector<COMMAND>*)));    emit sendUsbControllerCommands(&usbCommands);
+
+
 }
 
 void wfmain::pttToggle(bool status)
@@ -1937,6 +1943,7 @@ void wfmain::loadSettings()
         usbCommands.append(COMMAND(31, "630m", cmdGetBandStackReg, band630m));
         usbCommands.append(COMMAND(32, "2200m", cmdGetBandStackReg, band2200m));
         usbCommands.append(COMMAND(33, "GEN", cmdGetBandStackReg, bandGen));
+
     }
 
     settings->endGroup();
@@ -7315,3 +7322,34 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     logStringBuffer.push_front(text);
     logTextMutex.unlock();
 }
+
+void wfmain::on_usbControllerBtn_clicked()
+{
+    if (shut != Q_NULLPTR) {
+        if (shut->isVisible()) {
+            shut->hide();
+        }
+        else {
+            shut->show();
+        }
+    }
+}
+
+void wfmain::getButtonCommand(QString device, BUTTON* but)
+{
+    if (device != usbDeviceName) {
+        // New or unknown device?
+        usbDeviceName = device;
+        qDebug(logUsbControl()) << "New controller:" << device;
+        usbButtons.clear();
+    }
+    qDebug(logUsbControl()) << "Adding" << "Commands for" << device << "button" << but->num << "onCommand" << but->onCommand->text << "offCommand" << but->offCommand->text;
+    usbButtons.insert(but->num, but);
+}
+
+void wfmain::updateUsbButtons()
+{
+
+}
+
+

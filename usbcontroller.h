@@ -23,7 +23,6 @@
 #endif
 
 // Include these so we have the various enums
-//#include "wfmain.h"
 #include "rigidentities.h"
 
 using namespace std;
@@ -81,6 +80,7 @@ public slots:
     void run();
     void runTimer();
     void ledControl(bool on, unsigned char num);
+    void receiveCommands(QVector<COMMAND>*);
 
 signals:
     void jogPlus();
@@ -104,7 +104,7 @@ private:
     QByteArray lastData="";
     unsigned char lastDialPos=0;
     QVector<BUTTON> buttonList;
-    QVector<COMMAND> commands;
+    QVector<COMMAND>* commands = Q_NULLPTR;
     QString product="";
     QString manufacturer="";
     QString serial="<none>";

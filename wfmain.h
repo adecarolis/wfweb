@@ -194,6 +194,7 @@ signals:
     void requestRigState();
     void stateUpdated();
     void shuttleLed(bool, unsigned char);
+    void sendUsbControllerCommands(QVector<COMMAND>* cmds);
 
 private slots:
     void updateSizes(int tabIndex);

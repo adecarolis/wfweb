@@ -74,6 +74,9 @@
     <ClCompile Include="logcategories.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="loggingwindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -169,6 +172,9 @@
     <QtMoc Include="calibrationwindow.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <ClInclude Include="colorprefs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <QtMoc Include="commhandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -178,6 +184,9 @@
     <ClInclude Include="logcategories.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <QtMoc Include="loggingwindow.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="meter.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -275,6 +284,8 @@
     
     
     
+    
+    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
@@ -329,12 +340,16 @@
     
     
     
+    
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="aboutbox.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="calibrationwindow.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="loggingwindow.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="repeatersetup.ui">
