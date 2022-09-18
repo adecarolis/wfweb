@@ -4053,6 +4053,7 @@ void wfmain::on_clearPeakBtn_clicked()
     if(haveRigCaps)
     {
         spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
+        clearPlasmaBuffer();
     }
     return;
 }
@@ -6304,6 +6305,18 @@ void wfmain::resizePlasmaBuffer(int newSize)
     }
 
     spectrumPlasma.squeeze();
+    plasmaMutex.unlock();
+}
+
+void wfmain::clearPlasmaBuffer()
+{
+    QByteArray empty((int)spectWidth, '\x01');
+    plasmaMutex.lock();
+    int pSize = spectrumPlasma.size();
+    for(int i=0; i < pSize; i++)
+    {
+        spectrumPlasma[i] = empty;
+    }
     plasmaMutex.unlock();
 }
 

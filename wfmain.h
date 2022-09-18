@@ -771,6 +771,7 @@ private:
     underlay_t underlayMode = underlayNone;
     QMutex plasmaMutex;
     void resizePlasmaBuffer(int newSize);
+    void clearPlasmaBuffer();
 
     double plotFloor = 0;
     double plotCeiling = 160;
