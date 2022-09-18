@@ -25,7 +25,12 @@ The following highlights are in this 1.41-release:
 + 1.41  added color picker support for all kinds of vsual elements
 + 1.42  added three additional second meter choices. RxAudio, TxAdio, and TxRxAudio
 + 1.43  fixed resizing issues.
-+ 1.44   added logging window. you can send the logs to termbin.com and share the link on the forum
++ 1.44  added logging window. you can send the logs to termbin.com and share the link on the forum
++ 1.45	some more log enhancements
+	moved connect button and added cancel option
+        add enable/disable audioSystemServerCombo
+        Fixed bug where the frequency dial skipped extra when crossing zero.
+
 
 Notes:
 

@@ -1,5 +1,27 @@
 # CHANGELOG
 
+- 20220918
+
+		merged bits from log branch into master
+
+		updated to v.1.45
+
+
+- 20220917
+
+    		Log will automatically scroll to bottom on show.
+
+    		Remove focus from connect button once clicked.
+
+    		Move connect button
+
+    		Update wfmain.cpp
+    
+    		Add enable/disable audioSystemServerCombo
+
+    		Add "Cancel" to connect button
+
+    		Fixed bug where the frequency dial skipped extra when crossing zero.
 
 - 20220915
 

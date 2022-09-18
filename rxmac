@@ -1,0 +1,244 @@
+mac:servermain.cpp:        if (radio->rigThread != Q_NULLPTR)
+mac:servermain.cpp:            radio->rigThread->quit();
+mac:servermain.cpp:            radio->rigThread->wait();
+mac:servermain.cpp:        if (radio->rigThread != Q_NULLPTR)
+mac:servermain.cpp:            QMetaObject::invokeMethod(radio->rig, [=]() {
+mac:servermain.cpp:                radio->rig->commSetup(radio->civAddr, radio->serialPort, radio->baudRate, QString("none"),prefs.tcpPort,radio->waterfallFormat);
+mac:servermain.cpp:        if (radio->rigThread == Q_NULLPTR)
+mac:servermain.cpp:            radio->rig = new rigCommander(radio->guid);
+mac:servermain.cpp:            radio->rigThread = new QThread(this);
+mac:servermain.cpp:            radio->rigThread->setObjectName("rigCommander()");
+mac:servermain.cpp:            radio->rig->moveToThread(radio->rigThread);
+mac:servermain.cpp:            connect(radio->rigThread, SIGNAL(started()), radio->rig, SLOT(process()));
+mac:servermain.cpp:            connect(radio->rigThread, SIGNAL(finished()), radio->rig, SLOT(deleteLater()));
+mac:servermain.cpp:            radio->rigThread->start();
+mac:servermain.cpp:            connect(radio->rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
+mac:servermain.cpp:            connect(radio->rig, SIGNAL(haveStatusUpdate(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
+mac:servermain.cpp:            connect(this, SIGNAL(setRTSforPTT(bool)), radio->rig, SLOT(setRTSforPTT(bool)));
+mac:servermain.cpp:            connect(radio->rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
+mac:servermain.cpp:            connect(this, SIGNAL(sendCloseComm()), radio->rig, SLOT(closeComm()));
+mac:servermain.cpp:            connect(this, SIGNAL(sendChangeLatency(quint16)), radio->rig, SLOT(changeLatency(quint16)));
+mac:servermain.cpp:            //connect(this, SIGNAL(getRigCIV()), radio->rig, SLOT(findRigs()));
+mac:servermain.cpp:            //connect(this, SIGNAL(setRigID(unsigned char)), radio->rig, SLOT(setRigID(unsigned char)));
+mac:servermain.cpp:            connect(radio->rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
+mac:servermain.cpp:            connect(radio->rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
+mac:servermain.cpp:            connect(this, SIGNAL(requestRigState()), radio->rig, SLOT(sendState()));
+mac:servermain.cpp:            connect(this, SIGNAL(stateUpdated()), radio->rig, SLOT(stateUpdated()));
+mac:servermain.cpp:            connect(radio->rig, SIGNAL(stateInfo(rigstate*)), this, SLOT(receiveStateInfo(rigstate*)));
+mac:servermain.cpp:            connect(this, SIGNAL(setCIVAddr(unsigned char)), radio->rig, SLOT(setCIVAddr(unsigned char)));
+mac:servermain.cpp:            connect(radio->rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
+mac:servermain.cpp:            connect(this, SIGNAL(setPTT(bool)), radio->rig, SLOT(setPTT(bool)));
+mac:servermain.cpp:            connect(this, SIGNAL(getPTT()), radio->rig, SLOT(getPTT()));
+mac:servermain.cpp:            connect(this, SIGNAL(getDebug()), radio->rig, SLOT(getDebug()));
+mac:servermain.cpp:            if (radio->rigThread->isRunning()) {
+mac:servermain.cpp:        if (radio->rigThread != Q_NULLPTR)
+mac:servermain.cpp:            radio->rigThread->disconnect();
+mac:servermain.cpp:            radio->rig->disconnect();
+mac:servermain.cpp:            delete radio->rigThread;
+mac:servermain.cpp:            delete radio->rig;
+mac:servermain.cpp:            radio->rig = Q_NULLPTR;
+mac:servermain.cpp:        if (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !memcmp(sender->getGUID(), radio->guid, GUIDLEN))
+mac:servermain.cpp:            if (radio->civAddr == 0)
+mac:servermain.cpp:                if (!radio->rigAvailable) {
+mac:servermain.cpp:                    if (radio->connectTimer == Q_NULLPTR) {
+mac:servermain.cpp:                        radio->connectTimer = new QTimer();
+mac:servermain.cpp:                        connect(radio->connectTimer, &QTimer::timeout, this, std::bind(&servermain::connectToRig, this, radio));
+mac:servermain.cpp:                    radio->connectTimer->start(500);
+mac:servermain.cpp:                qInfo(logSystem()) << "Skipping automatic CIV, using user-supplied value of " << radio->civAddr;
+mac:servermain.cpp:                QMetaObject::invokeMethod(radio->rig, [=]() {
+mac:servermain.cpp:                    radio->rig->setRigID(radio->civAddr);
+mac:servermain.cpp:        if (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !radio->rigAvailable && !memcmp(sender->getGUID(), radio->guid, GUIDLEN))
+mac:servermain.cpp:            radio->rigCaps = rigCaps;
+mac:servermain.cpp:        if (radio->rigThread != Q_NULLPTR)
+mac:servermain.cpp:            if (radio->rig != Q_NULLPTR) {
+mac:servermain.cpp:                connect(radio->rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
+mac:servermain.cpp:                connect(radio->rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
+mac:servermain.cpp:                //connect(udp, SIGNAL(haveDataFromServer(QByteArray)), radio->rig, SLOT(dataFromServer(QByteArray)));
+mac:udpserver.cpp:                    sendConnectionInfo(current, radio->guid);
+mac:udpserver.cpp:                    if (!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size() == 1)
+mac:udpserver.cpp:                        sendConnectionInfo(current, radio->guid);
+mac:udpserver.cpp:                if ((!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size()==1) && radio->txaudio == Q_NULLPTR && !config->lan)
+mac:udpserver.cpp:                    radio->txAudioSetup.codec = current->txCodec;
+mac:udpserver.cpp:                    radio->txAudioSetup.sampleRate=current->txSampleRate;
+mac:udpserver.cpp:                    radio->txAudioSetup.isinput = false;
+mac:udpserver.cpp:                    radio->txAudioSetup.latency = current->txBufferLen;
+mac:udpserver.cpp:                    if (radio->txAudioSetup.type == qtAudio) {
+mac:udpserver.cpp:                        radio->txaudio = new audioHandler();
+mac:udpserver.cpp:                    else if (radio->txAudioSetup.type == portAudio) {
+mac:udpserver.cpp:                        radio->txaudio = new paHandler();
+mac:udpserver.cpp:                    else if (radio->txAudioSetup.type == rtAudio) {
+mac:udpserver.cpp:                        radio->txaudio = new rtHandler();
+mac:udpserver.cpp:                    //radio->txaudio = new audioHandler();
+mac:udpserver.cpp:                    radio->txAudioThread = new QThread(this);
+mac:udpserver.cpp:                    radio->txAudioThread->setObjectName("txAudio()");
+mac:udpserver.cpp:                    radio->txaudio->moveToThread(radio->txAudioThread);
+mac:udpserver.cpp:                    radio->txAudioThread->start(QThread::TimeCriticalPriority);
+mac:udpserver.cpp:                    connect(this, SIGNAL(setupTxAudio(audioSetup)), radio->txaudio, SLOT(init(audioSetup)));
+mac:udpserver.cpp:                    connect(radio->txAudioThread, SIGNAL(finished()), radio->txaudio, SLOT(deleteLater()));
+mac:udpserver.cpp:                    QMetaObject::invokeMethod(radio->txaudio, [=]() {
+mac:udpserver.cpp:                        radio->txaudio->init(radio->txAudioSetup);
+mac:udpserver.cpp:                    emit setupTxAudio(radio->txAudioSetup);
+mac:udpserver.cpp:                    connect(this, SIGNAL(haveAudioData(audioPacket)), radio->txaudio, SLOT(incomingAudio(audioPacket)));
+mac:udpserver.cpp:                if ((!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size() == 1) && radio->rxaudio == Q_NULLPTR && !config->lan)
+mac:udpserver.cpp:                    radio->rxAudioSetup.codec = current->rxCodec;
+mac:udpserver.cpp:                    radio->rxAudioSetup.sampleRate=current->rxSampleRate;
+mac:udpserver.cpp:                    radio->rxAudioSetup.latency = current->txBufferLen;
+mac:udpserver.cpp:                    radio->rxAudioSetup.isinput = true;
+mac:udpserver.cpp:                    memcpy(radio->rxAudioSetup.guid, radio->guid, GUIDLEN);
+mac:udpserver.cpp:                    //radio->rxaudio = new audioHandler();
+mac:udpserver.cpp:                    if (radio->rxAudioSetup.type == qtAudio) {
+mac:udpserver.cpp:                        radio->rxaudio = new audioHandler();
+mac:udpserver.cpp:                    else if (radio->rxAudioSetup.type == portAudio) {
+mac:udpserver.cpp:                        radio->rxaudio = new paHandler();
+mac:udpserver.cpp:                    else if (radio->rxAudioSetup.type == rtAudio) {
+mac:udpserver.cpp:                        radio->rxaudio = new rtHandler();
+mac:udpserver.cpp:                    radio->rxAudioThread = new QThread(this);
+mac:udpserver.cpp:                    radio->rxAudioThread->setObjectName("rxAudio()");
+mac:udpserver.cpp:                    radio->rxaudio->moveToThread(radio->rxAudioThread);
+mac:udpserver.cpp:                    radio->rxAudioThread->start(QThread::TimeCriticalPriority);
+mac:udpserver.cpp:                    connect(radio->rxAudioThread, SIGNAL(finished()), radio->rxaudio, SLOT(deleteLater()));
+mac:udpserver.cpp:                    connect(radio->rxaudio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+mac:udpserver.cpp:                    QMetaObject::invokeMethod(radio->rxaudio, [=]() {
+mac:udpserver.cpp:                        radio->rxaudio->init(radio->rxAudioSetup);
+mac:udpserver.cpp:                    connect(this, SIGNAL(setupRxAudio(audioSetup)), radio->rxaudio, SLOT(init(audioSetup)));
+mac:udpserver.cpp:                    setupRxAudio(radio->rxAudioSetup);
+mac:udpserver.cpp:                            if (!memcmp(radio->guid, current->guid, sizeof(radio->guid)) || config->rigs.size()==1)
+mac:udpserver.cpp:                                QMetaObject::invokeMethod(radio->rig, [=]() {
+mac:udpserver.cpp:                                    radio->rig->dataFromServer(r.mid(0x15));;
+mac:udpserver.cpp:        if (!memcmp(guid, radio->guid, GUIDLEN) || config->rigs.size()==1)
+mac:udpserver.cpp:            memcpy(p.guid, radio->guid, GUIDLEN);
+mac:udpserver.cpp:            memcpy(p.name, radio->rigName.toLocal8Bit(), sizeof(p.name));
+mac:udpserver.cpp:            if (radio->rigAvailable) {
+mac:udpserver.cpp:            if (!memcmp(radio->guid, guid, GUIDLEN) || config->rigs.size() == 1)
+mac:udpserver.cpp:                if (radio->rxAudioThread != Q_NULLPTR) {
+mac:udpserver.cpp:                    radio->rxAudioThread->quit();
+mac:udpserver.cpp:                    radio->rxAudioThread->wait();
+mac:udpserver.cpp:                    radio->rxaudio = Q_NULLPTR;
+mac:udpserver.cpp:                    radio->rxAudioThread = Q_NULLPTR;
+mac:udpserver.cpp:                if (radio->txAudioThread != Q_NULLPTR) {
+mac:udpserver.cpp:                    radio->txAudioThread->quit();
+mac:udpserver.cpp:                    radio->txAudioThread->wait();
+mac:udpserver.cpp:                    radio->txaudio = Q_NULLPTR;
+mac:udpserver.cpp:                    radio->txAudioThread = Q_NULLPTR;
+servermain.cpp:        if (radio->rigThread != Q_NULLPTR)
+servermain.cpp:            radio->rigThread->quit();
+servermain.cpp:            radio->rigThread->wait();
+servermain.cpp:        if (radio->rigThread != Q_NULLPTR)
+servermain.cpp:            QMetaObject::invokeMethod(radio->rig, [=]() {
+servermain.cpp:                radio->rig->commSetup(radio->civAddr, radio->serialPort, radio->baudRate, QString("none"),prefs.tcpPort,radio->waterfallFormat);
+servermain.cpp:        if (radio->rigThread == Q_NULLPTR)
+servermain.cpp:            radio->rig = new rigCommander(radio->guid);
+servermain.cpp:            radio->rigThread = new QThread(this);
+servermain.cpp:            radio->rigThread->setObjectName("rigCommander()");
+servermain.cpp:            radio->rig->moveToThread(radio->rigThread);
+servermain.cpp:            connect(radio->rigThread, SIGNAL(started()), radio->rig, SLOT(process()));
+servermain.cpp:            connect(radio->rigThread, SIGNAL(finished()), radio->rig, SLOT(deleteLater()));
+servermain.cpp:            radio->rigThread->start();
+servermain.cpp:            connect(radio->rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
+servermain.cpp:            connect(radio->rig, SIGNAL(haveStatusUpdate(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
+servermain.cpp:            connect(this, SIGNAL(setRTSforPTT(bool)), radio->rig, SLOT(setRTSforPTT(bool)));
+servermain.cpp:            connect(radio->rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
+servermain.cpp:            connect(this, SIGNAL(sendCloseComm()), radio->rig, SLOT(closeComm()));
+servermain.cpp:            connect(this, SIGNAL(sendChangeLatency(quint16)), radio->rig, SLOT(changeLatency(quint16)));
+servermain.cpp:            //connect(this, SIGNAL(getRigCIV()), radio->rig, SLOT(findRigs()));
+servermain.cpp:            //connect(this, SIGNAL(setRigID(unsigned char)), radio->rig, SLOT(setRigID(unsigned char)));
+servermain.cpp:            connect(radio->rig, SIGNAL(discoveredRigID(rigCapabilities)), this, SLOT(receiveFoundRigID(rigCapabilities)));
+servermain.cpp:            connect(radio->rig, SIGNAL(commReady()), this, SLOT(receiveCommReady()));
+servermain.cpp:            connect(this, SIGNAL(requestRigState()), radio->rig, SLOT(sendState()));
+servermain.cpp:            connect(this, SIGNAL(stateUpdated()), radio->rig, SLOT(stateUpdated()));
+servermain.cpp:            connect(radio->rig, SIGNAL(stateInfo(rigstate*)), this, SLOT(receiveStateInfo(rigstate*)));
+servermain.cpp:            connect(this, SIGNAL(setCIVAddr(unsigned char)), radio->rig, SLOT(setCIVAddr(unsigned char)));
+servermain.cpp:            connect(radio->rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
+servermain.cpp:            connect(this, SIGNAL(setPTT(bool)), radio->rig, SLOT(setPTT(bool)));
+servermain.cpp:            connect(this, SIGNAL(getPTT()), radio->rig, SLOT(getPTT()));
+servermain.cpp:            connect(this, SIGNAL(getDebug()), radio->rig, SLOT(getDebug()));
+servermain.cpp:            if (radio->rigThread->isRunning()) {
+servermain.cpp:        if (radio->rigThread != Q_NULLPTR)
+servermain.cpp:            radio->rigThread->disconnect();
+servermain.cpp:            radio->rig->disconnect();
+servermain.cpp:            delete radio->rigThread;
+servermain.cpp:            delete radio->rig;
+servermain.cpp:            radio->rig = Q_NULLPTR;
+servermain.cpp:        if (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !memcmp(sender->getGUID(), radio->guid, GUIDLEN))
+servermain.cpp:            if (radio->civAddr == 0)
+servermain.cpp:                if (!radio->rigAvailable) {
+servermain.cpp:                    if (radio->connectTimer == Q_NULLPTR) {
+servermain.cpp:                        radio->connectTimer = new QTimer();
+servermain.cpp:                        connect(radio->connectTimer, &QTimer::timeout, this, std::bind(&servermain::connectToRig, this, radio));
+servermain.cpp:                    radio->connectTimer->start(500);
+servermain.cpp:                qInfo(logSystem()) << "Skipping automatic CIV, using user-supplied value of " << radio->civAddr;
+servermain.cpp:                QMetaObject::invokeMethod(radio->rig, [=]() {
+servermain.cpp:                    radio->rig->setRigID(radio->civAddr);
+servermain.cpp:        if (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !radio->rigAvailable && !memcmp(sender->getGUID(), radio->guid, GUIDLEN))
+servermain.cpp:            radio->rigCaps = rigCaps;
+servermain.cpp:        if (radio->rigThread != Q_NULLPTR)
+servermain.cpp:            if (radio->rig != Q_NULLPTR) {
+servermain.cpp:                connect(radio->rig, SIGNAL(haveAudioData(audioPacket)), udp, SLOT(receiveAudioData(audioPacket)));
+servermain.cpp:                connect(radio->rig, SIGNAL(haveDataForServer(QByteArray)), udp, SLOT(dataForServer(QByteArray)));
+servermain.cpp:                //connect(udp, SIGNAL(haveDataFromServer(QByteArray)), radio->rig, SLOT(dataFromServer(QByteArray)));
+udpserver.cpp:                    sendConnectionInfo(current, radio->guid);
+udpserver.cpp:                    if (!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size() == 1)
+udpserver.cpp:                        sendConnectionInfo(current, radio->guid);
+udpserver.cpp:                if ((!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size()==1) && radio->txaudio == Q_NULLPTR && !config->lan)
+udpserver.cpp:                    radio->txAudioSetup.codec = current->txCodec;
+udpserver.cpp:                    radio->txAudioSetup.sampleRate=current->txSampleRate;
+udpserver.cpp:                    radio->txAudioSetup.isinput = false;
+udpserver.cpp:                    radio->txAudioSetup.latency = current->txBufferLen;
+udpserver.cpp:                    if (radio->txAudioSetup.type == qtAudio) {
+udpserver.cpp:                        radio->txaudio = new audioHandler();
+udpserver.cpp:                    else if (radio->txAudioSetup.type == portAudio) {
+udpserver.cpp:                        radio->txaudio = new paHandler();
+udpserver.cpp:                    else if (radio->txAudioSetup.type == rtAudio) {
+udpserver.cpp:                        radio->txaudio = new rtHandler();
+udpserver.cpp:                    //radio->txaudio = new audioHandler();
+udpserver.cpp:                    radio->txAudioThread = new QThread(this);
+udpserver.cpp:                    radio->txAudioThread->setObjectName("txAudio()");
+udpserver.cpp:                    radio->txaudio->moveToThread(radio->txAudioThread);
+udpserver.cpp:                    radio->txAudioThread->start(QThread::TimeCriticalPriority);
+udpserver.cpp:                    connect(this, SIGNAL(setupTxAudio(audioSetup)), radio->txaudio, SLOT(init(audioSetup)));
+udpserver.cpp:                    connect(radio->txAudioThread, SIGNAL(finished()), radio->txaudio, SLOT(deleteLater()));
+udpserver.cpp:                    QMetaObject::invokeMethod(radio->txaudio, [=]() {
+udpserver.cpp:                        radio->txaudio->init(radio->txAudioSetup);
+udpserver.cpp:                    emit setupTxAudio(radio->txAudioSetup);
+udpserver.cpp:                    connect(this, SIGNAL(haveAudioData(audioPacket)), radio->txaudio, SLOT(incomingAudio(audioPacket)));
+udpserver.cpp:                if ((!memcmp(radio->guid, current->guid, GUIDLEN) || config->rigs.size() == 1) && radio->rxaudio == Q_NULLPTR && !config->lan)
+udpserver.cpp:                    radio->rxAudioSetup.codec = current->rxCodec;
+udpserver.cpp:                    radio->rxAudioSetup.sampleRate=current->rxSampleRate;
+udpserver.cpp:                    radio->rxAudioSetup.latency = current->txBufferLen;
+udpserver.cpp:                    radio->rxAudioSetup.isinput = true;
+udpserver.cpp:                    memcpy(radio->rxAudioSetup.guid, radio->guid, GUIDLEN);
+udpserver.cpp:                    //radio->rxaudio = new audioHandler();
+udpserver.cpp:                    if (radio->rxAudioSetup.type == qtAudio) {
+udpserver.cpp:                        radio->rxaudio = new audioHandler();
+udpserver.cpp:                    else if (radio->rxAudioSetup.type == portAudio) {
+udpserver.cpp:                        radio->rxaudio = new paHandler();
+udpserver.cpp:                    else if (radio->rxAudioSetup.type == rtAudio) {
+udpserver.cpp:                        radio->rxaudio = new rtHandler();
+udpserver.cpp:                    radio->rxAudioThread = new QThread(this);
+udpserver.cpp:                    radio->rxAudioThread->setObjectName("rxAudio()");
+udpserver.cpp:                    radio->rxaudio->moveToThread(radio->rxAudioThread);
+udpserver.cpp:                    radio->rxAudioThread->start(QThread::TimeCriticalPriority);
+udpserver.cpp:                    connect(radio->rxAudioThread, SIGNAL(finished()), radio->rxaudio, SLOT(deleteLater()));
+udpserver.cpp:                    connect(radio->rxaudio, SIGNAL(haveAudioData(audioPacket)), this, SLOT(receiveAudioData(audioPacket)));
+udpserver.cpp:                    QMetaObject::invokeMethod(radio->rxaudio, [=]() {
+udpserver.cpp:                        radio->rxaudio->init(radio->rxAudioSetup);
+udpserver.cpp:                    connect(this, SIGNAL(setupRxAudio(audioSetup)), radio->rxaudio, SLOT(init(audioSetup)));
+udpserver.cpp:                    setupRxAudio(radio->rxAudioSetup);
+udpserver.cpp:                            if (!memcmp(radio->guid, current->guid, sizeof(radio->guid)) || config->rigs.size()==1)
+udpserver.cpp:                                QMetaObject::invokeMethod(radio->rig, [=]() {
+udpserver.cpp:                                    radio->rig->dataFromServer(r.mid(0x15));;
+udpserver.cpp:        if (!memcmp(guid, radio->guid, GUIDLEN) || config->rigs.size()==1)
+udpserver.cpp:            memcpy(p.guid, radio->guid, GUIDLEN);
+udpserver.cpp:            memcpy(p.name, radio->rigName.toLocal8Bit(), sizeof(p.name));
+udpserver.cpp:            if (radio->rigAvailable) {
+udpserver.cpp:            if (!memcmp(radio->guid, guid, GUIDLEN) || config->rigs.size() == 1)
+udpserver.cpp:                if (radio->rxAudioThread != Q_NULLPTR) {
+udpserver.cpp:                    radio->rxAudioThread->quit();
+udpserver.cpp:                    radio->rxAudioThread->wait();
+udpserver.cpp:                    radio->rxaudio = Q_NULLPTR;
+udpserver.cpp:                    radio->rxAudioThread = Q_NULLPTR;
+udpserver.cpp:                if (radio->txAudioThread != Q_NULLPTR) {
+udpserver.cpp:                    radio->txAudioThread->quit();
+udpserver.cpp:                    radio->txAudioThread->wait();
+udpserver.cpp:                    radio->txaudio = Q_NULLPTR;
+udpserver.cpp:                    radio->txAudioThread = Q_NULLPTR;
