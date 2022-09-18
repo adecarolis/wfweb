@@ -645,6 +645,8 @@ private slots:
 
     void on_audioSystemServerCombo_currentIndexChanged(int index);
 
+    void on_customEdgeBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -786,6 +788,7 @@ private:
     bool onFullscreen;
     bool freqTextSelected;
     void checkFreqSel();
+    void setUISpectrumControlsToMode(spectrumMode smode);
 
     double oldLowerFreq;
     double oldUpperFreq;

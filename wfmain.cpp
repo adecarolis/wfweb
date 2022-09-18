@@ -2158,6 +2158,7 @@ void wfmain::showHideSpectrum(bool show)
     ui->wfLengthSlider->setEnabled(show);
     ui->wfthemeCombo->setVisible(show);
     ui->toFixedBtn->setVisible(show);
+    ui->customEdgeBtn->setVisible(show);
     ui->clearPeakBtn->setVisible(show);
 
     // And the labels:
@@ -3872,6 +3873,7 @@ void wfmain::receiveSpectrumMode(spectrumMode spectMode)
             ui->spectrumModeCombo->blockSignals(false);
         }
     }
+    setUISpectrumControlsToMode(spectMode);
 }
 
 
@@ -4197,7 +4199,29 @@ void wfmain::on_fCEbtn_clicked()
 
 void wfmain::on_spectrumModeCombo_currentIndexChanged(int index)
 {
-    emit setScopeMode(static_cast<spectrumMode>(ui->spectrumModeCombo->itemData(index).toInt()));
+    spectrumMode smode = static_cast<spectrumMode>(ui->spectrumModeCombo->itemData(index).toInt());
+    emit setScopeMode(smode);
+    setUISpectrumControlsToMode(smode);
+}
+
+void wfmain::setUISpectrumControlsToMode(spectrumMode smode)
+{
+    if((smode==spectModeCenter) || (smode==spectModeScrollC))
+    {
+        ui->specEdgeLabel->hide();
+        ui->scopeEdgeCombo->hide();
+        ui->customEdgeBtn->hide();
+        ui->toFixedBtn->show();
+        ui->specSpanLabel->show();
+        ui->scopeBWCombo->show();
+    } else {
+        ui->specEdgeLabel->show();
+        ui->scopeEdgeCombo->show();
+        ui->customEdgeBtn->show();
+        ui->toFixedBtn->hide();
+        ui->specSpanLabel->hide();
+        ui->scopeBWCombo->hide();
+    }
 }
 
 void wfmain::on_fEnterBtn_clicked()
@@ -7122,4 +7146,52 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     logTextMutex.lock();
     logStringBuffer.push_front(text);
     logTextMutex.unlock();
+}
+
+void wfmain::on_customEdgeBtn_clicked()
+{
+    double lowFreq = oldLowerFreq;
+    double highFreq = oldUpperFreq;
+    QString freqstring = QString("%1, %2").arg(lowFreq).arg(highFreq);
+    bool ok;
+
+    QString userFreq = QInputDialog::getText(this, "Scope Edges",
+                          "Please enter desired scope edges, in MHz, \
+with a comma between the low and high range.",
+    QLineEdit::Normal, freqstring, &ok);
+    if(!ok)
+        return;
+
+    QString clean = userFreq.trimmed().replace(" ", "");
+    QStringList freqs = clean.split(",");
+    if(freqs.length() == 2)
+    {
+        lowFreq = QString(freqs.at(0)).toDouble(&ok);
+        if(ok)
+        {
+            highFreq = QString(freqs.at(1)).toDouble(&ok);
+            if(ok)
+            {
+                qDebug(logGui()) << "setting edge to: " << lowFreq << ", " << highFreq << ", edge num: " << ui->scopeEdgeCombo->currentIndex() + 1;
+                emit setScopeFixedEdge(lowFreq, highFreq, ui->scopeEdgeCombo->currentIndex() + 1);
+                return;
+            }
+        }
+        goto errMsg;
+    } else {
+        goto errMsg;
+    }
+
+errMsg:
+    {
+        QMessageBox URLmsgBox;
+        URLmsgBox.setText("Error, could not interpret your input.\
+                          <br/>Please make sure to place a comma between the frequencies.\
+                          <br/>For example: '7.200, 7.300'");
+        URLmsgBox.exec();
+
+        return;
+    }
+
+
 }
