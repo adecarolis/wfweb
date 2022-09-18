@@ -1738,17 +1738,24 @@ void wfmain::loadSettings()
     int row = 0;
     ui->serverUsersTable->setRowCount(0);
 
-    foreach(SERVERUSER user, serverConfig.users)
+    QList<SERVERUSER>::iterator user = serverConfig.users.begin();
+
+    while (user != serverConfig.users.end())
     {
-        if (user.username != "" && user.password != "")
+        if (user->username != "" && user->password != "")
         {
-            serverAddUserLine(user.username, user.password, user.userType);
+            serverAddUserLine(user->username, user->password, user->userType);
             row++;
+            user++;
+        }
+        else {
+            user = serverConfig.users.erase(user);
         }
     }
 
     if (row == 0) {
         serverAddUserLine("", "", 0);
+        ui->serverAddUserBtn->setEnabled(false);
     }
 
     settings->endGroup();
@@ -1794,58 +1801,110 @@ void wfmain::serverAddUserLine(const QString& user, const QString& pass, const i
     ui->serverUsersTable->blockSignals(true);
 
     ui->serverUsersTable->insertRow(ui->serverUsersTable->rowCount());
-    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 0, new QTableWidgetItem(user));
+
+    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 0, new QTableWidgetItem());
     ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 1, new QTableWidgetItem());
     ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 2, new QTableWidgetItem());
+    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 3, new QTableWidgetItem());
+
+
+
+    QLineEdit* username = new QLineEdit();
+    username->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
+    username->setProperty("col", (int)0);
+    username->setText(user);
+    connect(username, SIGNAL(editingFinished()), this, SLOT(onServerUserFieldChanged()));
+    ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 0, username);
 
     QLineEdit* password = new QLineEdit();
     password->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
+    password->setProperty("col", (int)1);
     password->setEchoMode(QLineEdit::PasswordEchoOnEdit);
     password->setText(pass);
-    connect(password, SIGNAL(editingFinished()), this, SLOT(onServerPasswordChanged()));
+    connect(password, SIGNAL(editingFinished()), this, SLOT(onServerUserFieldChanged()));
     ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 1, password);
 
     QComboBox* comboBox = new QComboBox();
     comboBox->insertItems(0, { "Full User","Full with no TX","Monitor only" });
+    comboBox->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
+    comboBox->setProperty("col", (int)2);
     comboBox->setCurrentIndex(type);
+    connect(comboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onServerUserFieldChanged()));
     ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 2, comboBox);
+
+    QPushButton* button = new QPushButton();
+    button->setText("Delete");
+    button->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
+    button->setProperty("col", (int)3);
+    connect(button, SIGNAL(clicked()), this, SLOT(onServerUserFieldChanged()));
+    ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 3, button);
+
     ui->serverUsersTable->blockSignals(false);
 
 }
 
-void wfmain::onServerPasswordChanged()
+void wfmain::onServerUserFieldChanged()
 {
+
     int row = sender()->property("row").toInt();
-    QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 1);
-    QByteArray pass;
-    passcode(password->text(), pass);
-    password->setText(pass);
-    qInfo() << "password row" << row << "changed";
-    serverConfig.users.clear();
-    for (int rows = 0; rows < ui->serverUsersTable->model()->rowCount(); rows++)
+    int col = sender()->property("col").toInt();
+    qInfo() << "User field col" << col << "row" << row << "changed";
+
+    // This is a new user line so add to serverUsersTable
+    if (serverConfig.users.length() <= row)
     {
-        if (ui->serverUsersTable->item(rows, 0) != NULL)
+        qInfo() << "Something bad has happened, serverConfig.users is shorter than table!";
+    }
+    else
+    {
+        if (col == 0)
         {
-            SERVERUSER user;
-            user.username = ui->serverUsersTable->item(rows, 0)->text();
-            QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(rows, 1);
-            user.password = password->text();
-            QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(rows, 2);
-            user.userType = comboBox->currentIndex();
-            serverConfig.users.append(user);
+            QLineEdit* username = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 0);
+            if (username->text() != serverConfig.users[row].username) {
+                serverConfig.users[row].username = username->text();
+            }
         }
-        else {
-            ui->serverUsersTable->removeRow(rows);
+        else if (col == 1)
+        {
+            QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 1);
+            QByteArray pass;
+            passcode(password->text(), pass);
+            if (QString(pass) != serverConfig.users[row].password) {
+                serverConfig.users[row].password = pass;
+                qDebug() << "New Password" << password->text() << "New Password" << serverConfig.users[row].password;
+            }
         }
+        else if (col == 2)
+        {
+            QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(row, 2);
+            serverConfig.users[row].userType = comboBox->currentIndex();
+        }
+        else if (col == 3)
+        {          
+            serverConfig.users.removeAt(row);
+            ui->serverUsersTable->setRowCount(0);
+            foreach(SERVERUSER user, serverConfig.users)
+            {
+                serverAddUserLine(user.username, user.password, user.userType);
+            }
+        }
+        if (row == ui->serverUsersTable->rowCount() - 1) {
+            ui->serverAddUserBtn->setEnabled(true);
+        }
+
     }
 }
 
-void wfmain::on_serverUsersTable_cellClicked(int row, int col)
+void wfmain::on_serverAddUserBtn_clicked()
 {
-    qInfo() << "Clicked on " << row << "," << col;
-    if (row == ui->serverUsersTable->model()->rowCount() - 1 && ui->serverUsersTable->item(row, 0) != NULL) {
-        serverAddUserLine("", "", 0);
-    }
+    serverAddUserLine("", "", 0);
+    SERVERUSER user;
+    user.username = "";
+    user.password = "";
+    user.userType = 0;
+    serverConfig.users.append(user);
+
+    ui->serverAddUserBtn->setEnabled(false);
 }
 
 
@@ -1909,28 +1968,6 @@ void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
 
 }
 
-void wfmain::on_serverUsersTable_cellChanged(int row, int column)
-{
-    qInfo() << "Cell Changed:" << row << "," << column;
-
-    serverConfig.users.clear();
-    for (int rows = 0; rows < ui->serverUsersTable->model()->rowCount(); rows++)
-    {
-        if (ui->serverUsersTable->item(rows, 0) != NULL)
-        {
-            SERVERUSER user;
-            user.username = ui->serverUsersTable->item(rows, 0)->text();
-            QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(rows, 1);
-            user.password = password->text();
-            QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(rows, 2);
-            user.userType = comboBox->currentIndex();
-            serverConfig.users.append(user);
-        }
-        else {
-            ui->serverUsersTable->removeRow(rows);
-        }
-    }
-}
 
 
 void wfmain::saveSettings()

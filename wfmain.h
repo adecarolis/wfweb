@@ -526,14 +526,14 @@ private slots:
     void on_setClockBtn_clicked();
 
     void on_serverEnableCheckbox_clicked(bool checked);
-    void on_serverUsersTable_cellClicked(int row, int col);
     void on_serverControlPortText_textChanged(QString text);
     void on_serverCivPortText_textChanged(QString text);
     void on_serverAudioPortText_textChanged(QString text);
     void on_serverTXAudioOutputCombo_currentIndexChanged(int value);
     void on_serverRXAudioInputCombo_currentIndexChanged(int value);
-    void onServerPasswordChanged();
-    void on_serverUsersTable_cellChanged(int row, int column);
+    void onServerUserFieldChanged();
+
+    void on_serverAddUserBtn_clicked();
 
     void on_useRTSforPTTchk_clicked(bool checked);
 
