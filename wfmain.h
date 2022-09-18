@@ -195,6 +195,7 @@ signals:
     void stateUpdated();
     void shuttleLed(bool, unsigned char);
     void sendUsbControllerCommands(QVector<COMMAND>* cmds);
+    void sendUsbControllerButtons(QVector<BUTTON>* buts);
 
 private slots:
     void updateSizes(int tabIndex);
@@ -1056,10 +1057,9 @@ private:
     usbController *usbControllerDev = Q_NULLPTR;
     QThread *usbControllerThread = Q_NULLPTR;
 
-    QHash<quint8, BUTTON*> usbButtons;
     QString usbDeviceName;
     QVector<COMMAND> usbCommands;
-
+    QVector<BUTTON> usbButtons;
 
 };
 

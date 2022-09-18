@@ -121,6 +121,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     // Setup USB Controller
     setupUsbControllerDevice();
     emit sendUsbControllerCommands(&usbCommands);
+    emit sendUsbControllerButtons(&usbButtons);
 
     connect(ui->txPowerSlider, &QSlider::sliderMoved,
         [&](int value) {
@@ -1383,8 +1384,8 @@ void wfmain::setupUsbControllerDevice()
     connect(shut, SIGNAL(setButtonCommand(QString, BUTTON*)), this, SLOT(getButtonCommand(QString, BUTTON*)));
     usbControllerThread->start(QThread::LowestPriority);
 
-    connect(this, SIGNAL(sendUsbControllerCommands(QVector<COMMAND>*)), usbControllerDev, SLOT(receiveCommands(QVector<COMMAND>*)));    emit sendUsbControllerCommands(&usbCommands);
-
+    connect(this, SIGNAL(sendUsbControllerCommands(QVector<COMMAND>*)), usbControllerDev, SLOT(receiveCommands(QVector<COMMAND>*)));
+    connect(this, SIGNAL(sendUsbControllerButtons(QVector<BUTTON>*)), usbControllerDev, SLOT(receiveButtons(QVector<BUTTON>*)));
 
 }
 
@@ -1549,17 +1550,17 @@ void wfmain::loadSettings()
     int numPresetsInFile = settings->beginReadArray("ColorPreset");
     // We will use the number of presets that the working copy of wfview
     // supports, as we must never exceed the available number.
-    if(numPresetsInFile > 0)
+    if (numPresetsInFile > 0)
     {
-        colorPrefsType *p;
+        colorPrefsType* p;
         QString tempName;
-        for(int pn=0; pn < numColorPresetsTotal; pn++)
+        for (int pn = 0; pn < numColorPresetsTotal; pn++)
         {
             settings->setArrayIndex(pn);
             p = &(colorPreset[pn]);
             p->presetNum = settings->value("presetNum", p->presetNum).toInt();
             tempName = settings->value("presetName", *p->presetName).toString();
-            if((!tempName.isEmpty()) && tempName.length() < 11)
+            if ((!tempName.isEmpty()) && tempName.length() < 11)
             {
                     p->presetName->clear();
                     p->presetName->append(tempName);
@@ -1904,10 +1905,11 @@ void wfmain::loadSettings()
 
     /* Load USB buttons*/
     settings->beginGroup("USB");
-    size=settings->beginReadArray("Buttons");
-    if (size == 0) {
+    int numCommands = settings->beginReadArray("Commands");
+    if (numCommands == 0) {
         settings->endArray();
         // We have no buttons so create defaults
+        usbCommands.clear();
         usbCommands.append(COMMAND(0, "None", cmdNone, 0x0));
         usbCommands.append(COMMAND(1, "PTT On", cmdSetPTT, 0x1));
         usbCommands.append(COMMAND(2, "PTT Off", cmdSetPTT, 0x0));
@@ -1943,8 +1945,83 @@ void wfmain::loadSettings()
         usbCommands.append(COMMAND(31, "630m", cmdGetBandStackReg, band630m));
         usbCommands.append(COMMAND(32, "2200m", cmdGetBandStackReg, band2200m));
         usbCommands.append(COMMAND(33, "GEN", cmdGetBandStackReg, bandGen));
-
     }
+    else {
+        for (int nc = 0; nc < numCommands; nc++)
+        {
+            settings->setArrayIndex(nc);
+            COMMAND comm;
+            comm.index = settings->value("Num", 0).toInt();
+            comm.text = settings->value("Text", "").toString();
+            comm.command = settings->value("Command", 0).toInt();
+            comm.band = (bandType)settings->value("Band", 0).toInt();
+            usbCommands.append(comm);
+        }
+        settings->endArray();
+    }
+
+    int numButtons = settings->beginReadArray("Buttons");
+    if (numButtons == 0) {
+        settings->endArray();
+        // We have no buttons so create defaults
+        usbButtons.clear();
+
+        // ShuttleXpress
+        usbButtons.append(BUTTON(1, 0, QRect(60, 66, 40, 30), Qt::red));
+        usbButtons.append(BUTTON(1, 1, QRect(114, 50, 40, 30), Qt::red));
+        usbButtons.append(BUTTON(1, 2, QRect(169, 47, 40, 30), Qt::red));
+        usbButtons.append(BUTTON(1, 3, QRect(225, 59, 40, 30), Qt::red));
+        usbButtons.append(BUTTON(1, 4, QRect(41, 132, 40, 30), Qt::red));
+
+        // ShuttlePro2
+        usbButtons.append(BUTTON(2, 0, QRect(60, 66, 40, 30), Qt::red));
+        usbButtons.append(BUTTON(2, 1, QRect(114, 50, 40, 30), Qt::red));
+        usbButtons.append(BUTTON(2, 2, QRect(169, 47, 40, 30), Qt::red));
+        usbButtons.append(BUTTON(2, 3, QRect(225, 59, 40, 30), Qt::red));
+        usbButtons.append(BUTTON(2, 4, QRect(41, 132, 40, 30), Qt::red));
+        usbButtons.append(BUTTON(2, 5, QRect(91, 105, 40, 30), Qt::red));
+        usbButtons.append(BUTTON(2, 6, QRect(144, 93, 40, 30), Qt::red));
+        usbButtons.append(BUTTON(2, 7, QRect(204, 99, 40, 30), Qt::red));
+        usbButtons.append(BUTTON(2, 8, QRect(253, 124, 40, 30), Qt::red));
+        usbButtons.append(BUTTON(2, 9, QRect(50, 270, 70, 55), Qt::red));
+        usbButtons.append(BUTTON(2, 10, QRect(210, 270, 70, 55), Qt::red));
+        usbButtons.append(BUTTON(2, 11, QRect(50, 335, 70, 55), Qt::red));
+        usbButtons.append(BUTTON(2, 12, QRect(210, 335, 70, 55), Qt::red));
+        usbButtons.append(BUTTON(2, 13, QRect(30, 195, 25, 80), Qt::red));
+        usbButtons.append(BUTTON(2, 14, QRect(280, 195, 25, 80), Qt::red));
+    }
+    else {
+        usbButtons.clear();
+        for (int nb = 0; nb < numButtons; nb++)
+        {
+            settings->setArrayIndex(nb);
+            BUTTON butt;
+            butt.dev = settings->value("Dev", 0).toInt();
+            butt.num = settings->value("Num", 0).toInt();
+            butt.pos = QRect(settings->value("Left", 0).toInt(),
+                settings->value("Top", 0).toInt(),
+                settings->value("Width", 0).toInt(),
+                settings->value("Height", 0).toInt());
+            butt.textColour = QColor((settings->value("Colour", "Green").toString()));
+
+            int on = settings->value("OnCommand", 0).toInt();
+            int off = settings->value("OffCommand", 0).toInt();
+            if (on < usbCommands.size())
+                butt.onCommand = &usbCommands.at(on);
+            else
+                butt.onCommand = &usbCommands.at(0);
+
+            if (off < usbCommands.size())
+                butt.offCommand = &usbCommands.at(off);
+            else
+                butt.offCommand = &usbCommands.at(0);
+
+            usbButtons.append(butt);
+
+        }
+        settings->endArray();
+    }
+
 
     settings->endGroup();
 
@@ -2284,25 +2361,30 @@ void wfmain::saveSettings()
     settings->endGroup();
 
     settings->beginGroup("USB");
-    settings->beginGroup(usbDeviceName);
-    settings->beginWriteArray("Buttons");
 
-    QHashIterator<quint8, BUTTON*> i(usbButtons);
-    int count = 0;
-    while (i.hasNext()) {
-        i.next();
-        settings->setArrayIndex(count++);
-        settings->setValue("Number", i.value()->num);
-        settings->setValue("OnCommand", i.value()->onCommand->text);
-        settings->setValue("OffCommand", i.value()->offCommand->text);
+    // Store USB Controller
+
+
+    settings->beginWriteArray("Buttons");
+    for (int nb = 0; nb < usbButtons.count(); nb++)
+    {
+        settings->setArrayIndex(nb);
+        settings->setValue("Dev", usbButtons[nb].dev);
+        settings->setValue("Num", usbButtons[nb].num);
+        settings->setValue("Left", usbButtons[nb].pos.left());
+        settings->setValue("Top", usbButtons[nb].pos.top());
+        settings->setValue("Width", usbButtons[nb].pos.width());
+        settings->setValue("Height", usbButtons[nb].pos.height());
+        settings->setValue("Colour", usbButtons[nb].textColour.name());
+        if (usbButtons[nb].onCommand != Q_NULLPTR)
+            settings->setValue("OnCommand", usbButtons[nb].onCommand->index);
+        if (usbButtons[nb].offCommand != Q_NULLPTR)
+            settings->setValue("OffCommand", usbButtons[nb].offCommand->index);
     }
 
     settings->endArray();
 
     settings->endGroup();
-    settings->endGroup();
-
-
 
     settings->sync(); // Automatic, not needed (supposedly)
 }
@@ -7341,10 +7423,10 @@ void wfmain::getButtonCommand(QString device, BUTTON* but)
         // New or unknown device?
         usbDeviceName = device;
         qDebug(logUsbControl()) << "New controller:" << device;
-        usbButtons.clear();
+        //usbButtons.clear();
     }
     qDebug(logUsbControl()) << "Adding" << "Commands for" << device << "button" << but->num << "onCommand" << but->onCommand->text << "offCommand" << but->offCommand->text;
-    usbButtons.insert(but->num, but);
+    //usbButtons.insert(but->num, but);
 }
 
 void wfmain::updateUsbButtons()

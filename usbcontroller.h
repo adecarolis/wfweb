@@ -52,18 +52,20 @@ struct COMMAND {
 struct BUTTON {
     BUTTON() {}
 
-    BUTTON(char num, QRect pos, const QColor textColour) :
-        num(num), pos(pos), textColour(textColour) {}
+    BUTTON(quint8 dev, int num, QRect pos, const QColor textColour) :
+        dev(dev), num(num), pos(pos), textColour(textColour) {}
 
-    quint8 num;
+    quint8 dev;
+    int num;
     QRect pos;
-    const QColor textColour;
+    QColor textColour;
     int onEvent = 0;
     int offEvent = 0;
     const COMMAND* onCommand=Q_NULLPTR;
     const COMMAND* offCommand=Q_NULLPTR;
     QGraphicsTextItem* onText;
     QGraphicsTextItem* offText;
+
 };
 
 class usbController : public QObject
@@ -81,6 +83,7 @@ public slots:
     void runTimer();
     void ledControl(bool on, unsigned char num);
     void receiveCommands(QVector<COMMAND>*);
+    void receiveButtons(QVector<BUTTON>*);
 
 signals:
     void jogPlus();
@@ -103,7 +106,7 @@ private:
     QTime	lastusbController = QTime::currentTime();
     QByteArray lastData="";
     unsigned char lastDialPos=0;
-    QVector<BUTTON> buttonList;
+    QVector<BUTTON>* buttonList;
     QVector<COMMAND>* commands = Q_NULLPTR;
     QString product="";
     QString manufacturer="";

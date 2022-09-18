@@ -43,7 +43,8 @@ public slots:
     void offEventIndexChanged(int index);
 
 private:
-    enum { NONE, shuttleXpress, shuttlePro2, RC28 }usbDevice;
+    enum { NONE=0, shuttleXpress, shuttlePro2, RC28 } usbDevice;
+
     Ui::shuttleSetup* ui;
     QGraphicsScene* scene;
     QGraphicsTextItem* textItem;

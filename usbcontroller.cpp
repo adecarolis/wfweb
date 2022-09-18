@@ -14,13 +14,6 @@ usbController::~usbController()
     qInfo(logUsbControl) << "Ending usbController()";
     hid_close(handle);
     hid_exit();
-    for (BUTTON& b : buttonList)
-    {
-        if (b.onText)
-            delete b.onText;
-        if (b.offText)
-            delete b.offText;
-    }
 }
 
 void usbController::init()
@@ -31,6 +24,12 @@ void usbController::receiveCommands(QVector<COMMAND>* cmds)
 {
     qDebug(logUsbControl()) << "Receiving commands";
     commands = cmds;
+}
+
+void usbController::receiveButtons(QVector<BUTTON>* buts)
+{
+    qDebug(logUsbControl()) << "Receiving buttons";
+    buttonList = buts;
 }
 
 int usbController::hidApiWrite(unsigned char* data, unsigned char length)
@@ -85,33 +84,10 @@ void usbController::run()
         }
         else {
             usbDevice = shuttlePro2;
-            buttonList.clear();
-            buttonList.append(BUTTON(0, QRect(60, 66, 40, 30), Qt::red));
-            buttonList.append(BUTTON(1, QRect(114, 50, 40, 30), Qt::red));
-            buttonList.append(BUTTON(2, QRect(169, 47, 40, 30), Qt::red));
-            buttonList.append(BUTTON(3, QRect(225, 59, 40, 30), Qt::red));
-            buttonList.append(BUTTON(4, QRect(41, 132, 40, 30), Qt::red));
-            buttonList.append(BUTTON(5, QRect(91, 105, 40, 30), Qt::red));
-            buttonList.append(BUTTON(6, QRect(144, 93, 40, 30), Qt::red));
-            buttonList.append(BUTTON(7, QRect(204, 99, 40, 30), Qt::red));
-            buttonList.append(BUTTON(8, QRect(253, 124, 40, 30), Qt::red));
-            buttonList.append(BUTTON(9, QRect(50, 270, 70, 55), Qt::red));
-            buttonList.append(BUTTON(10, QRect(210, 270, 70, 55), Qt::red));
-            buttonList.append(BUTTON(11, QRect(50, 335, 70, 55), Qt::red));
-            buttonList.append(BUTTON(12, QRect(210, 335, 70, 55), Qt::red));
-            buttonList.append(BUTTON(13, QRect(30, 195, 25, 80), Qt::red));
-            buttonList.append(BUTTON(14, QRect(280, 195, 25, 80), Qt::red));
-
         }
     }
     else {
         usbDevice = shuttleXpress;
-        buttonList.append(BUTTON(0, QRect(60, 66, 40, 30), Qt::red));
-        buttonList.append(BUTTON(1, QRect(114, 50, 40, 30), Qt::red));
-        buttonList.append(BUTTON(2, QRect(169, 47, 40, 30), Qt::red));
-        buttonList.append(BUTTON(3, QRect(225, 59, 40, 30), Qt::red));
-        buttonList.append(BUTTON(4, QRect(41, 132, 40, 30), Qt::red));
-
     }
 
     if (handle)
@@ -141,7 +117,7 @@ void usbController::run()
 
         qInfo(logUsbControl()) << QString("Found Device: %0 from %1 S/N %2").arg(this->product).arg(this->manufacturer).arg(this->serial);
         hid_set_nonblocking(handle, 1);
-        emit newDevice(usbDevice, &buttonList, commands); // Let the UI know we have a new controller
+        emit newDevice(usbDevice, buttonList, commands); // Let the UI know we have a new controller
         QTimer::singleShot(0, this, SLOT(runTimer()));
     }
 }
@@ -155,7 +131,7 @@ void usbController::runTimer()
         if (res < 0)
         {
             qInfo(logUsbControl()) << "USB Device disconnected" << this->product;
-            emit newDevice(0,&buttonList,commands);
+            emit newDevice(0,buttonList,commands);
             this->product = "";
             this->manufacturer = "";
             this->serial = "<none>";
@@ -207,23 +183,26 @@ void usbController::runTimer()
             */
             if (buttons != tempButtons)
             {
-                //qDebug(logUsbControl()) << "BUTTON: " << qSetFieldWidth(16) << bin << tempButtons;
+
+
 
                 // Step through all buttons and emit ones that have been pressed.
                 for (unsigned char i = 0; i < 16; i++)
                 {
-                    if ((tempButtons >> i & 1) && !(buttons >> i & 1)) 
-{
-                        if (i < buttonList.size() && buttonList[i].onCommand != Q_NULLPTR && buttonList[i].onCommand->index > 0) {
-                            qDebug() << "On Button event:" << buttonList[i].onCommand->text;
-                            emit button(buttonList[i].onCommand);
-                        }
-                    }
-                    else if ((buttons >> i & 1) && !(tempButtons >> i & 1))
-                    {
-                        if (i < buttonList.size() && buttonList[i].offCommand != Q_NULLPTR && buttonList[i].offCommand->index > 0) {
-                            qDebug() << "Off Button event:" << buttonList[i].offCommand->text;
-                            emit button(buttonList[i].offCommand);
+
+                    for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
+                        if (but->dev == usbDevice && but->num == i) {
+
+                            if ((tempButtons >> i & 1) && !(buttons >> i & 1) && but->onCommand->index > 0)
+                            {
+                                qDebug() << "On Button event:" << but->onCommand->text;
+                                emit button(but->onCommand);
+                            }
+                            else if ((buttons >> i & 1) && !(tempButtons >> i & 1) && but->offCommand->index > 0)
+                            {
+                                qDebug() << "Off Button event:" << but->offCommand->text;
+                                emit button(but->offCommand);
+                            }
                         }
                     }
                 }

@@ -35,7 +35,7 @@ void shuttleSetup::mousePressed(QPoint p)
     bool found = false;
     for (BUTTON& b : *buttons)
     {
-        if (b.pos.contains(p))
+        if (b.dev == currentDevice && b.pos.contains(p))
         {
             found = true;
             currentButton = &b;
@@ -144,16 +144,18 @@ void shuttleSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVecto
     // Set button text
     for (BUTTON& b : *buttons)
     {
-        b.onCommand = &commands->at(0);
-        b.onText = new QGraphicsTextItem(b.onCommand->text);
-        b.onText->setDefaultTextColor(b.textColour);
-        scene->addItem(b.onText);
-        b.onText->setPos(b.pos.x(), b.pos.y());
+        if (b.dev == currentDevice) {
+            //b.onCommand = &commands->at(0);
+            b.onText = new QGraphicsTextItem(b.onCommand->text);
+            b.onText->setDefaultTextColor(b.textColour);
+            scene->addItem(b.onText);
+            b.onText->setPos(b.pos.x(), b.pos.y());
 
-        b.offCommand = &commands->at(0);
-        b.offText = new QGraphicsTextItem(b.offCommand->text);
-        b.offText->setDefaultTextColor(b.textColour);
-        scene->addItem(b.offText);
-        b.offText->setPos(b.pos.x(), b.pos.y()+10);
+            //b.offCommand = &commands->at(0);
+            b.offText = new QGraphicsTextItem(b.offCommand->text);
+            b.offText->setDefaultTextColor(b.textColour);
+            scene->addItem(b.offText);
+            b.offText->setPos(b.pos.x(), b.pos.y() + 10);
+        }
     }
 }
