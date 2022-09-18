@@ -1558,6 +1558,7 @@ void wfmain::loadSettings()
     // If LAN is enabled, server gets its audio straight from the LAN
     ui->serverRXAudioInputCombo->setEnabled(!prefs.enableLAN);
     ui->serverTXAudioOutputCombo->setEnabled(!prefs.enableLAN);
+    ui->audioSystemServerCombo->setEnabled(!prefs.enableLAN);
 
     ui->baudRateCombo->setEnabled(!prefs.enableLAN);
     ui->serialDeviceListCombo->setEnabled(!prefs.enableLAN);
@@ -4769,6 +4770,7 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
     ui->serialDeviceListCombo->setEnabled(checked);
     ui->serverRXAudioInputCombo->setEnabled(checked);
     ui->serverTXAudioOutputCombo->setEnabled(checked);
+
 }
 
 void wfmain::on_lanEnableBtn_clicked(bool checked)
@@ -4914,6 +4916,8 @@ void wfmain::on_connectBtn_clicked()
         }
         else {
             ui->connectBtn->setText("Connect to Radio");
+            ui->audioSystemCombo->setEnabled(true);
+            ui->audioSystemServerCombo->setEnabled(true);
         }
     }
     ui->connectBtn->clearFocus();
