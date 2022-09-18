@@ -46,6 +46,12 @@ loggingWindow::~loggingWindow()
     delete ui;
 }
 
+void loggingWindow::showEvent(QShowEvent *event)
+{
+    (void)event;
+    on_toBottomBtn_clicked();
+}
+
 void loggingWindow::setInitialDebugState(bool debugModeEnabled)
 {
     ui->debugBtn->blockSignals(true);

@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -337,6 +337,18 @@
               </property>
               <property name="accessibleName">
                <string>Tuning Dial</string>
+              </property>
+              <property name="minimum">
+               <number>3000</number>
+              </property>
+              <property name="maximum">
+               <number>4000</number>
+              </property>
+              <property name="singleStep">
+               <number>10</number>
+              </property>
+              <property name="pageStep">
+               <number>100</number>
               </property>
               <property name="wrapping">
                <bool>true</bool>
@@ -2809,7 +2821,7 @@
                       <widget class="QComboBox" name="audioSystemCombo">
                        <item>
                         <property name="text">
-                         <string>QT Audio</string>
+                         <string>Qt Audio</string>
                         </property>
                        </item>
                        <item>
@@ -2849,13 +2861,6 @@
                 <property name="topMargin">
                  <number>0</number>
                 </property>
-                <item>
-                 <widget class="QPushButton" name="connectBtn">
-                  <property name="text">
-                   <string>Connect</string>
-                  </property>
-                 </widget>
-                </item>
                 <item>
                  <spacer name="horizontalSpacer_5">
                   <property name="orientation">
@@ -3328,8 +3333,8 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>794</width>
-                      <height>582</height>
+                      <width>194</width>
+                      <height>563</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -4185,7 +4190,7 @@
                     </layout>
                    </item>
                    <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_33">
+                    <layout class="QHBoxLayout" name="serverAudioHorizLayout">
                      <item>
                       <widget class="QLabel" name="label_33">
                        <property name="text">
@@ -4230,6 +4235,32 @@
                          <height>16777215</height>
                         </size>
                        </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="label_44">
+                       <property name="text">
+                        <string>Audio System</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QComboBox" name="audioSystemServerCombo">
+                       <item>
+                        <property name="text">
+                         <string>Qt Audio</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>PortAudio</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>RT Audio</string>
+                        </property>
+                       </item>
                       </widget>
                      </item>
                      <item>
@@ -4683,6 +4714,26 @@
        </widget>
       </item>
       <item>
+       <spacer name="horizontalSpacer_32">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="connectBtn">
+        <property name="text">
+         <string>Connect to Radio</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <spacer name="horizontalSpacer_9">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -4746,7 +4797,7 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="underlayButtonGroup"/>
   <buttongroup name="buttonGroup"/>
+  <buttongroup name="underlayButtonGroup"/>
  </buttongroups>
 </ui>
