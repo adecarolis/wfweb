@@ -1,37 +1,39 @@
 
-The following highlights are in this 1.x-release:
+The following highlights are in this 1.41-release:
 
-	many changes/mods/updates/enhancements to rigctld
-	rigctld box added in the UI
-	build process changed: you  can add the install prefix (derSuessmann)
-        added "do not ask again" for switching off rig and exiting wfview
-        added opus as audio transport 
-        dual meter support
-        rigctl basic split support
-        rigctl prevents switching off civ transceive
-        added 25 kHz step
-        as a temporary measure sending multiple TX/FREQ change commands to the rig
-        when we use rigctld. 
-        people should use "fake it" in wsjtx as the split code is not reliable.
-        tidied up udp server function for better reliability
-	added some IC736 stuff
-	added portaudio (you need t change wfview.pro to select 
-        and that lowers the latency to maybe less than 50 ms
-	added PBT and IF-shift
-	several bugs fixed	
-	RTS as PTT for several radios like the 706/718/736…
-+	New major change is the audio transport mechanism. Lower latencies.
-+	Author: Daniele Forsi <dforsi@gmail.com>/Author: Daniele Forsi <dforsi@gmail.com>
-+	Author: Russ Woodman - K5TUX <k5tux@k5tux.us>
-+    	About box updated to include Patreon site 
-+    	added 500 Hz step for VFO
-+    	Added clock and UTC toggle.
-+    	Added forced manual RTS setting
-+    	Add RIT function and other rigctl fixes
-+    	Adjusted window size for radios without spectrum. Thanks K5TUX.
-+    	Allow dynamic restarting of server
-+    	New Settings tab
-+    	Enable High DPI Scaling
-+    	More multi-radio support (nearly working!)
-+       N1MM+ TCP add.    
+	New major change is the audio transport mechanism. Lower latencies.
+    	About box updated to include Patreon site 
+    	added 500 Hz step for VFO
+    	Added clock and UTC toggle.
+    	Added forced manual RTS setting
+    	Add RIT function and other rigctl fixes
+    	Adjusted window size for radios without spectrum. Thanks K5TUX.
+    	Allow dynamic restarting of server
+    	New Settings tab
+    	Enable High DPI Scaling
+    	More multi-radio support (mostly working!)
+        Split LAN waterfall data for N1MM+ Spectrum Scope support: There is a combobox that allows you to select 
+        split/combine (or default). Split only makes sense for LAN and Combine for USB.
+ 	added radio status display with meters for audio (speaker/mic)
+        selector for audio: QT, PortAudio, RealTime audio 
+        version bumped to 1.4 -- rethinking of a new version schema that makes more sense
+        temporary squashed logs; may redo later
+        audio fixes at exit
+        introduction of peak decays at the scope
+        resizing of top and bottom scope/waterfall
+        various fixes on the spectrum display
++ 1.41  added color picker support for all kinds of vsual elements
++ 1.42  added three additional second meter choices. RxAudio, TxAdio, and TxRxAudio
++ 1.43  fixed resizing issues.
++ 1.44  added logging window. you can send the logs to termbin.com and share the link on the forum
++ 1.45	some more log enhancements
+	moved connect button and added cancel option
+        add enable/disable audioSystemServerCombo
+        Fixed bug where the frequency dial skipped extra when crossing zero.
+
+
+Notes:
+
+- We know about high CPU usage on RPi.
+- try the audiostack you like the most/what works for you
 

@@ -37,6 +37,15 @@ struct udpPreferences {
 	quint8 waterfallFormat;
 };
 
+struct networkAudioLevels {
+    bool haveTxLevels = false;
+    bool haveRxLevels = false;
+    quint8 rxAudioRMS = 0;
+    quint8 txAudioRMS = 0;
+    quint8 rxAudioPeak = 0;
+    quint8 txAudioPeak = 0;
+};
+
 struct networkStatus {
 	quint8 rxAudioBufferPercent;
 	quint8 txAudioBufferPercent;

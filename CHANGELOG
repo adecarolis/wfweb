@@ -1,5 +1,109 @@
 # CHANGELOG
 
+- 20220918
+
+		merged bits from log branch into master
+
+		updated to v.1.45
+
+
+- 20220917
+
+    		Log will automatically scroll to bottom on show.
+
+    		Remove focus from connect button once clicked.
+
+    		Move connect button
+
+    		Update wfmain.cpp
+    
+    		Add enable/disable audioSystemServerCombo
+
+    		Add "Cancel" to connect button
+
+    		Fixed bug where the frequency dial skipped extra when crossing zero.
+
+- 20220915
+
+		Merge branch log:
+
+    		Minor edit to margins
+
+    		Removed some additional padding that was left in parts of the UI.
+
+    		Changed windows 'open log' command to launch notepad.
+
+    		Removed extra disconnect message from logging host.
+
+    		Added flush to the text stream to termbin.
+
+    		Better scrolling behavior. The log is now aware if you are not at the
+    		bottom and will not force scroll if so. Otherwise, it will bring the
+    		horizontal scroll back to the left-edge.
+
+    		Renamed URL message box in case we add an additional message box later.
+
+    		Clarified control label to Scroll Down versus To Bottom.
+
+    		Changed font for better compatibility. Added some controls for scrolling
+    		behavior.
+
+    		Debug mode can now be toggled from the logging window.
+
+    		Removed extra output on non-server builds.
+
+    		Added debug logging button, however, it doesn't propagate the debug
+    		signal through all the modules yet. So, for now, it is hidden.
+
+    		Restored version to log file, fixed reversed log entries.
+
+		updated to v.1.44
+- 20220914
+
+		Removed word wrapping from the log
+
+    		Cut log window polling rate in half for lower CPU. 100ms is plenty fast.
+
+    		Removed audio volume logging.
+
+    		Keep the logging window up after the message box. Added "log" logging
+    		category.
+
+    		Added logging window capability with termbin support.
+
+- 20220909	
+		Merge branch resize:	
+
+    		Found an extra 10 pixels due to some layout padding I left in
+    		accidently.
+
+    		Main window may now be made smaller. Settings combo box sizes now
+    		limited.
+
+    		Fixed issue where build paths with a space in the name would cause the
+    		git hash to fail capture.
+
+		updated to v1.43
+
+- 20220826	
+		Merge branch 'audiometer'
+                This adds audiometer for the second meter TxAudio, RxAudio and TxRxAudio
+		updated to v.1.42
+- 20220824
+                Merge branch 'color'
+                This adds color picker support so that you can define several UI element colors
+		updated to v1.41
+
+- 20220819      
+
+		version bumped to 1.4
+		temporary squashed logs; may redo later
+                audio fixes at exit
+                introduction of peak decays at the scope
+                resizing of top and bottom scope/waterfall
+                various fixes on the spectrum display 
+                
+
 - 20220414	
 
 		this is a cherrypicked CHANGELOG add as there are loads of changes due to different 

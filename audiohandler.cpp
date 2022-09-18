@@ -18,23 +18,24 @@ audioHandler::audioHandler(QObject* parent) : QObject(parent)
 audioHandler::~audioHandler()
 {
 
+	if (converterThread != Q_NULLPTR) {
+		converterThread->quit();
+		converterThread->wait();
+	}
+
 	if (isInitialized) {
 		stop();
 	}
 
 	if (audioInput != Q_NULLPTR) {
-		audioInput = Q_NULLPTR;
 		delete audioInput;
+		audioInput = Q_NULLPTR;
 	}
 	if (audioOutput != Q_NULLPTR) {
 		delete audioOutput;
 		audioOutput = Q_NULLPTR;
 	}
 
-	if (converterThread != Q_NULLPTR) {
-		converterThread->quit();
-		converterThread->wait();
-	}
 }bool audioHandler::init(audioSetup setup) 
 {
 	if (isInitialized) {
@@ -229,7 +230,6 @@ void audioHandler::stop()
 void audioHandler::setVolume(unsigned char volume)
 {
     this->volume = audiopot[volume];
-	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
 }
 
 
@@ -269,9 +269,8 @@ void audioHandler::convertedOutput(audioPacket packet) {
         }
         */
         lastSentSeq = packet.seq;
-        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
-
-        amplitude = packet.amplitude;
+        amplitude = packet.amplitudePeak;
+        emit haveLevels(getAmplitude(), static_cast<quint16>(packet.amplitudeRMS * 255.0), setup.latency, currentLatency, isUnderrun, isOverrun);
     }
 }
 
@@ -311,8 +310,8 @@ void audioHandler::convertedInput(audioPacket audio)
             qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize ;
         }
         lastReceived = QTime::currentTime();
-        amplitude = audio.amplitude;
-        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
+        amplitude = audio.amplitudePeak;
+        emit haveLevels(getAmplitude(), audio.amplitudeRMS, setup.latency, currentLatency, isUnderrun, isOverrun);
     }
 }
 

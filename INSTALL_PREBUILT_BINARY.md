@@ -22,8 +22,8 @@ Debian 11  (Debian 10 is outdated)
 Fedora 33
 Fedora 34
 mint 20.1 (and up?)
-openSUSE 15.2
-openSUSE 15.3 (see notes at the end)
+openSUSE 15.2 (outdated/deprecated) 
+openSUSE 15.3/15.4)
 openSUSE Tumbleweed(s)
 SLES 15.x
 Ubuntu 20.04.2 
@@ -86,16 +86,8 @@ sudo ln -s /lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /lib/x86_64-linux-gnu/l
 ~~~
 
 
-### openSUSE/Tumbleweed/SLES based on 15.2:
+### openSUSE/Tumbleweed/SLES based on 15.3/15.4:
 ~~~
-sudo zypper in libqcustomplot2 libQt5SerialPort5
-wfview
-~~~
-
-### openSUSE/Tumbleweed/SLES based on 15.3:
-~~~
-
-SEE THE NOTES AT THE END. You need wfview153 here
 
 sudo zypper in libqcustomplot2 libQt5SerialPort5
 wfview
@@ -119,14 +111,8 @@ sudo ln -s /lib/x86_64-linux-gnu/libqcustomplot.so.2.0.1 /lib/x86_64-linux-gnu/l
 ### notes:
 ~~~
 
-Some newer versions of mint. ubuntu, openSUSE have different kernels and such which cause wfview to segfault.
+openSUSE 15.2 is deprecated; old binary has been removed
 
-For these cases we created two binaries: one for current systems ("wfview")  and one for the new systems ("wfview153")
-
-So if you encounter a SEGFAULT at start: 
-
-go in to the dist directory, rename wfview to wfvie152; rename wfview153 to wfview and re-execute the install.sh
-script 
 
 ~~~
 

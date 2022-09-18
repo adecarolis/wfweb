@@ -6,6 +6,7 @@
 #include <objbase.h>
 #endif
 
+#define RT_EXCEPTION
 
 rtHandler::rtHandler(QObject* parent)
 {
@@ -15,21 +16,26 @@ rtHandler::rtHandler(QObject* parent)
 rtHandler::~rtHandler()
 {
 
+	if (converterThread != Q_NULLPTR) {
+		converterThread->quit();
+		converterThread->wait();
+	}
+
 	if (isInitialized) {
+
+#ifdef RT_EXCEPTION
 		try {
+#endif
 			audio->abortStream();
 			audio->closeStream();
+#ifdef RT_EXCEPTION
 		}
         catch (RtAudioError& e) {
 			qInfo(logAudio()) << "Error closing stream:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
 		}
+#endif
 		delete audio;
 
-	}
-
-	if (converterThread != Q_NULLPTR) {
-		converterThread->quit();
-		converterThread->wait();
 	}
 	
 }
@@ -87,14 +93,17 @@ bool rtHandler::init(audioSetup setup)
 	}
 	aParams.firstChannel = 0;
 
+#ifdef RT_EXCEPTION
 	try {
+#endif
 		info = audio->getDeviceInfo(aParams.deviceId);
+#ifdef RT_EXCEPTION
 	}
     catch (RtAudioError e) {
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Device exception:" << aParams.deviceId << ":" << QString::fromStdString(e.getMessage());
 		goto errorHandler;
 	}
-
+#endif
 	if (info.probed)
 	{
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << QString::fromStdString(info.name) << "(" << aParams.deviceId << ") successfully probed";
@@ -190,7 +199,9 @@ bool rtHandler::init(audioSetup setup)
 		// Per channel chunk size.
 		this->chunkSize = (outFormat.bytesForDuration(setup.blockSize * 1000) / (outFormat.sampleSize()/8) / outFormat.channelCount());
 
+#ifdef RT_EXCEPTION
 		try {
+#endif
 			if (setup.isinput) {
 				audio->openStream(NULL, &aParams, sampleFormat, outFormat.sampleRate(), &this->chunkSize, &staticWrite, this, &options);
 				emit setupConverter(outFormat, inFormat, 7, setup.resampleQuality);
@@ -205,12 +216,14 @@ bool rtHandler::init(audioSetup setup)
 			isInitialized = true;
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "device successfully opened";
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "detected latency:" << audio->getStreamLatency();
+#ifdef RT_EXCEPTION
 		}
 		catch (RtAudioError& e) {
 			qInfo(logAudio()) << "Error opening:" << QString::fromStdString(e.getMessage());
 			// Try again?
 			goto errorHandler;
 		}
+#endif
 	}
 	else
 	{
@@ -240,10 +253,7 @@ errorHandler:
 
 void rtHandler::setVolume(unsigned char volume)
 {
-
 	this->volume = audiopot[volume];
-
-	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
 }
 
 void rtHandler::incomingAudio(audioPacket packet)
@@ -318,9 +328,9 @@ void rtHandler::convertedOutput(audioPacket packet)
 	audioMutex.lock();
 	arrayBuffer.append(packet.data);
 	audioMutex.unlock();
-	amplitude = packet.amplitude;
+    amplitude = packet.amplitudePeak;
 	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * (outFormat.sampleSize() / 8) * outFormat.channelCount())/1000);
-	emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
+    emit haveLevels(getAmplitude(), packet.amplitudeRMS, setup.latency, currentLatency, isUnderrun, isOverrun);
 }
 
 
@@ -329,9 +339,9 @@ void rtHandler::convertedInput(audioPacket packet)
 {
 	if (packet.data.size() > 0) {
 		emit haveAudioData(packet);
-		amplitude = packet.amplitude;
+        amplitude = packet.amplitudePeak;
 		currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * (outFormat.sampleSize() / 8) * outFormat.channelCount())/1000);
-		emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
+        emit haveLevels(getAmplitude(), static_cast<quint16>(packet.amplitudeRMS * 255.0), setup.latency, currentLatency, isUnderrun, isOverrun);
 	}
 }
 

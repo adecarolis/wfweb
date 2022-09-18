@@ -166,6 +166,8 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
         // Connect for errors/alerts
         connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
         connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(handleStatusUpdate(networkStatus)));
+        connect(udp, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(handleNetworkAudioLevels(networkAudioLevels)));
+
 
         connect(ptty, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
         connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
@@ -243,6 +245,11 @@ void rigCommander::handleSerialPortError(const QString port, const QString error
 void rigCommander::handleStatusUpdate(const networkStatus status)
 {
     emit haveStatusUpdate(status);
+}
+
+void rigCommander::handleNetworkAudioLevels(networkAudioLevels l)
+{
+    emit haveNetworkAudioLevels(l);
 }
 
 bool rigCommander::usingLAN()
@@ -3536,6 +3543,34 @@ void rigCommander::determineRigCaps()
                               createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
                             };
             break;
+        case model746:
+            rigCaps.modelName = QString("IC-746");
+            rigCaps.rigctlModel = 3023;
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.clear();
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
+            rigCaps.hasATU = true;
+            rigCaps.hasTBPF = true;
+            rigCaps.hasIFShift = true;
+            rigCaps.hasCTCSS = true;
+            rigCaps.hasDTCS = true;
+            rigCaps.hasAntennaSel = true;
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.preamps.push_back('\x02');
+            rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x20'});
+            // There are two HF and VHF ant, 12-01 adn 12-02 select the HF, the VHF is auto selected
+            // this incorrectly shows up as 2 and 3 in the drop down.
+            rigCaps.antennas = {0x01, 0x02};
+            rigCaps.bands = standardHF;
+            rigCaps.bands.push_back(band2m);
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.modes = commonModes;
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
+            break;
+
         case model756pro:
             rigCaps.modelName = QString("IC-756 Pro");
             rigCaps.rigctlModel = 3027;

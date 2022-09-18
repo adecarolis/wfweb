@@ -15,17 +15,15 @@ paHandler::paHandler(QObject* parent)
 paHandler::~paHandler()
 {
 
-	if (isInitialized) {
-		Pa_StopStream(audio);
-		Pa_CloseStream(audio);
-	}
-
 	if (converterThread != Q_NULLPTR) {
 		converterThread->quit();
 		converterThread->wait();
 	}
 
-	//Pa_Terminate();
+	if (isInitialized) {
+		Pa_StopStream(audio);
+		Pa_CloseStream(audio);
+	}
 	
 }
 
@@ -216,14 +214,11 @@ bool paHandler::init(audioSetup setup)
 
 void paHandler::setVolume(unsigned char volume)
 {
-
 #ifdef Q_OS_WIN
 	this->volume = audiopot[volume] * 5;
 #else
 	this->volume = audiopot[volume];
 #endif
-
-	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
 }
 
 void paHandler::incomingAudio(audioPacket packet)
@@ -280,8 +275,8 @@ void paHandler::convertedOutput(audioPacket packet) {
 			currentLatency = packet.time.msecsTo(QTime::currentTime()) + (info->outputLatency * 1000);
 		}
 
-		amplitude = packet.amplitude;
-		emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
+		amplitude = packet.amplitudePeak;
+        emit haveLevels(getAmplitude(), static_cast<quint16>(packet.amplitudeRMS * 255.0), setup.latency, currentLatency, isUnderrun, isOverrun);
 	}
 }
 
@@ -291,10 +286,10 @@ void paHandler::convertedInput(audioPacket packet)
 {
 	if (packet.data.size() > 0) {
 		emit haveAudioData(packet);
-		amplitude = packet.amplitude;
+		amplitude = packet.amplitudePeak;
 		const PaStreamInfo* info = Pa_GetStreamInfo(audio);
 		currentLatency = packet.time.msecsTo(QTime::currentTime()) + (info->inputLatency * 1000);
-		emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
+        emit haveLevels(getAmplitude(), packet.amplitudeRMS, setup.latency, currentLatency, isUnderrun, isOverrun);
 	}
 }
 

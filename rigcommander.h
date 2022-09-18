@@ -36,6 +36,7 @@ enum meterKind {
     meterRxdB,
     meterTxMod,
     meterRxAudio,
+    meterAudio,
     meterLatency
 };
 
@@ -277,6 +278,7 @@ public slots:
 
     // Housekeeping:
     void handleStatusUpdate(const networkStatus status);
+    void handleNetworkAudioLevels(networkAudioLevels);
     void radioSelection(QList<radio_cap_packet> radios);
     void radioUsage(quint8 radio, quint8 busy, QString name, QString ip);
     void setCurrentRadio(quint8 radio);
@@ -288,6 +290,7 @@ signals:
     void commReady();
     void haveSerialPortError(const QString port, const QString errorText);
     void haveStatusUpdate(const networkStatus status);
+    void haveNetworkAudioLevels(const networkAudioLevels l);
     void dataForComm(const QByteArray &outData);
     void toggleRTS(bool rtsOn);
 
@@ -396,6 +399,11 @@ private:
     unsigned char convertNumberToHex(unsigned char num);
     quint16 decodeTone(QByteArray eTone);
     quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
+
+    unsigned char audioLevelRxMean[50];
+    unsigned char audioLevelRxPeak[50];
+    unsigned char audioLevelTxMean[50];
+    unsigned char audioLevelTxPeak[50];
 
     void parseMode();
     void parseSpectrum();

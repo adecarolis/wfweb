@@ -13,7 +13,8 @@ public:
         StateOk,
         StateOkBlue,
         StateWarning,
-        StateError
+        StateError,
+        StateBlank
     };
 
 
@@ -22,6 +23,14 @@ signals:
 public slots:
     void setState(State state);
     void setState(bool state);
+    void setColor(QColor customColor, bool applyGradient);
+    void setColor(QString colorString, bool applyGradient);
+    void setColor(QColor c);
+    void setColor(QString s);
+    QColor getColor();
+
+private:
+    QColor baseColor;
 };
 
 #endif // QLEDLABEL_H
