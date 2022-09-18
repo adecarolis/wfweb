@@ -1848,7 +1848,7 @@ void wfmain::onServerUserFieldChanged()
 
     int row = sender()->property("row").toInt();
     int col = sender()->property("col").toInt();
-    qInfo() << "User field col" << col << "row" << row << "changed";
+    qDebug() << "Server User field col" << col << "row" << row << "changed";
 
     // This is a new user line so add to serverUsersTable
     if (serverConfig.users.length() <= row)
@@ -1871,7 +1871,6 @@ void wfmain::onServerUserFieldChanged()
             passcode(password->text(), pass);
             if (QString(pass) != serverConfig.users[row].password) {
                 serverConfig.users[row].password = pass;
-                qDebug() << "New Password" << password->text() << "New Password" << serverConfig.users[row].password;
             }
         }
         else if (col == 2)
