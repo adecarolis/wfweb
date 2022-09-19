@@ -1912,7 +1912,7 @@ void wfmain::loadSettings()
         usbCommands.append(COMMAND(0, "None", cmdNone, 0x0));
         usbCommands.append(COMMAND(1, "PTT On", cmdSetPTT, 0x1));
         usbCommands.append(COMMAND(2, "PTT Off", cmdSetPTT, 0x0));
-        usbCommands.append(COMMAND(3, "PTT Toggle", cmdSetPTT, 0x1));
+        usbCommands.append(COMMAND(3, "PTT Toggle", cmdPTTToggle, 0x0));
         usbCommands.append(COMMAND(4, "Tune", cmdNone, 0x0));
         usbCommands.append(COMMAND(5, "Step+", cmdNone, 0x0));
         usbCommands.append(COMMAND(6, "Step-", cmdNone, 0x0));
@@ -3185,10 +3185,25 @@ void wfmain::doCmd(commandtype cmddata)
             bool pttrequest = (*std::static_pointer_cast<bool>(data));
             emit setPTT(pttrequest);
             ui->meter2Widget->clearMeterOnPTTtoggle();
-            if(pttrequest)
+            if (pttrequest)
             {
                 ui->meterSPoWidget->setMeterType(meterPower);
-            } else {
+            }
+            else {
+                ui->meterSPoWidget->setMeterType(meterS);
+            }
+            break;
+        }
+        case cmdPTTToggle:
+        {
+            bool pttrequest = !amTransmitting;
+            emit setPTT(pttrequest);
+            ui->meter2Widget->clearMeterOnPTTtoggle();
+            if (pttrequest)
+            {
+                ui->meterSPoWidget->setMeterType(meterPower);
+            }
+            else {
                 ui->meterSPoWidget->setMeterType(meterS);
             }
             break;
