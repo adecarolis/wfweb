@@ -318,8 +318,6 @@ private slots:
 
     void buttonControl(const COMMAND* cmd);
 
-    void getButtonCommand(QString dev, BUTTON* but);
-
 
     // void on_getFreqBtn_clicked();
 

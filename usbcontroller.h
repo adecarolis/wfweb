@@ -52,8 +52,8 @@ struct COMMAND {
 struct BUTTON {
     BUTTON() {}
 
-    BUTTON(quint8 dev, int num, QRect pos, const QColor textColour) :
-        dev(dev), num(num), pos(pos), textColour(textColour) {}
+    BUTTON(quint8 dev, int num, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
+        dev(dev), num(num), pos(pos), textColour(textColour), onCommand(on),offCommand(off) {}
 
     quint8 dev;
     int num;
