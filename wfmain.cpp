@@ -1430,13 +1430,19 @@ void wfmain::doShuttle(bool up, unsigned char level)
 void wfmain::buttonControl(const COMMAND* cmd)
 {
 
-    if (!cmd->bandswitch) {
+    if (cmd->type==normal) {
         //qDebug() << "Other command";
         issueCmdUniquePriority((cmds)cmd->command, cmd->suffix);
     }
-    else {
+    else if (cmd->type == bandswitch)
+    {
         //qDebug() << "Bandswitch";
-        issueCmdUniquePriority((cmds)cmd->command, (char)cmd->band);
+        issueCmd((cmds)cmd->command, cmd->band);
+    }
+    else if (cmd->type == modeswitch)
+    {
+        //qDebug() << "Bandswitch";
+        changeMode(cmd->mode);
     }
 }
 
@@ -1944,6 +1950,37 @@ void wfmain::loadSettings()
         usbCommands.append(COMMAND(31, "630m", cmdGetBandStackReg, band630m));
         usbCommands.append(COMMAND(32, "2200m", cmdGetBandStackReg, band2200m));
         usbCommands.append(COMMAND(33, "GEN", cmdGetBandStackReg, bandGen));
+        usbCommands.append(COMMAND(34, "Mode LSB", cmdSetMode, modeLSB));
+        usbCommands.append(COMMAND(34, "Mode USB", cmdSetMode, modeUSB));
+        usbCommands.append(COMMAND(34, "Mode CW", cmdSetMode, modeCW));
+        usbCommands.append(COMMAND(34, "Mode FM", cmdSetMode, modeFM));
+
+
+        /*
+            modeLSB = 0x00,
+            modeUSB = 0x01,
+            modeAM = 0x02,
+            modeCW = 0x03,
+            modeRTTY = 0x04,
+            modeFM = 0x05,
+            modeCW_R = 0x07,
+            modeRTTY_R = 0x08,
+            modeLSB_D = 0x80,
+            modeUSB_D = 0x81,
+            modeDV = 0x17,
+            modeDD = 0x27,
+            modeWFM,
+            modeS_AMD,
+            modeS_AML,
+            modeS_AMU,
+            modeP25,
+            modedPMR,
+            modeNXDN_VN,
+            modeNXDN_N,
+            modeDCR,
+            modePSK,
+            modePSK_R
+            */
     }
     else {
         for (int nc = 0; nc < numCommands; nc++)
