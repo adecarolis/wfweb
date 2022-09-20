@@ -4915,9 +4915,28 @@ void wfmain::on_vspCombo_currentIndexChanged(int value)
 
 void wfmain::on_toFixedBtn_clicked()
 {
-    emit setScopeFixedEdge(oldLowerFreq, oldUpperFreq, ui->scopeEdgeCombo->currentIndex()+1);
-    emit setScopeEdge(ui->scopeEdgeCombo->currentIndex()+1);
-    issueDelayedCommand(cmdScopeFixedMode);
+    int currentEdge = ui->scopeEdgeCombo->currentIndex();
+    bool dialogOk = false;
+    bool numOk = false;
+
+    QStringList edges;
+    edges << "1" << "2" << "3" << "4";
+
+    QString item = QInputDialog::getItem(this, "Select Edge", "Edge to replace:", edges, currentEdge, false, &dialogOk);
+
+    if(dialogOk)
+    {
+        int edge = QString(item).toInt(&numOk,10);
+        if(numOk)
+        {
+            emit setScopeFixedEdge(oldLowerFreq, oldUpperFreq, edge);
+            emit setScopeEdge(edge);
+            ui->scopeEdgeCombo->blockSignals(true);
+            ui->scopeEdgeCombo->setCurrentIndex(edge-1);
+            ui->scopeEdgeCombo->blockSignals(false);
+            issueDelayedCommand(cmdScopeFixedMode);
+        }
+    }
 }
 
 
