@@ -2450,6 +2450,7 @@ void wfmain::showHideSpectrum(bool show)
     ui->wfLengthSlider->setEnabled(show);
     ui->wfthemeCombo->setVisible(show);
     ui->toFixedBtn->setVisible(show);
+    ui->customEdgeBtn->setVisible(show);
     ui->clearPeakBtn->setVisible(show);
 
     // And the labels:
@@ -4213,6 +4214,7 @@ void wfmain::receiveSpectrumMode(spectrumMode spectMode)
             ui->spectrumModeCombo->blockSignals(false);
         }
     }
+    setUISpectrumControlsToMode(spectMode);
 }
 
 
@@ -4394,6 +4396,7 @@ void wfmain::on_clearPeakBtn_clicked()
     if(haveRigCaps)
     {
         spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
+        clearPlasmaBuffer();
     }
     return;
 }
@@ -4537,7 +4540,29 @@ void wfmain::on_fCEbtn_clicked()
 
 void wfmain::on_spectrumModeCombo_currentIndexChanged(int index)
 {
-    emit setScopeMode(static_cast<spectrumMode>(ui->spectrumModeCombo->itemData(index).toInt()));
+    spectrumMode smode = static_cast<spectrumMode>(ui->spectrumModeCombo->itemData(index).toInt());
+    emit setScopeMode(smode);
+    setUISpectrumControlsToMode(smode);
+}
+
+void wfmain::setUISpectrumControlsToMode(spectrumMode smode)
+{
+    if((smode==spectModeCenter) || (smode==spectModeScrollC))
+    {
+        ui->specEdgeLabel->hide();
+        ui->scopeEdgeCombo->hide();
+        ui->customEdgeBtn->hide();
+        ui->toFixedBtn->show();
+        ui->specSpanLabel->show();
+        ui->scopeBWCombo->show();
+    } else {
+        ui->specEdgeLabel->show();
+        ui->scopeEdgeCombo->show();
+        ui->customEdgeBtn->show();
+        ui->toFixedBtn->hide();
+        ui->specSpanLabel->hide();
+        ui->scopeBWCombo->hide();
+    }
 }
 
 void wfmain::on_fEnterBtn_clicked()
@@ -5237,9 +5262,28 @@ void wfmain::on_vspCombo_currentIndexChanged(int value)
 
 void wfmain::on_toFixedBtn_clicked()
 {
-    emit setScopeFixedEdge(oldLowerFreq, oldUpperFreq, ui->scopeEdgeCombo->currentIndex()+1);
-    emit setScopeEdge(ui->scopeEdgeCombo->currentIndex()+1);
-    issueDelayedCommand(cmdScopeFixedMode);
+    int currentEdge = ui->scopeEdgeCombo->currentIndex();
+    bool dialogOk = false;
+    bool numOk = false;
+
+    QStringList edges;
+    edges << "1" << "2" << "3" << "4";
+
+    QString item = QInputDialog::getItem(this, "Select Edge", "Edge to replace:", edges, currentEdge, false, &dialogOk);
+
+    if(dialogOk)
+    {
+        int edge = QString(item).toInt(&numOk,10);
+        if(numOk)
+        {
+            emit setScopeFixedEdge(oldLowerFreq, oldUpperFreq, edge);
+            emit setScopeEdge(edge);
+            ui->scopeEdgeCombo->blockSignals(true);
+            ui->scopeEdgeCombo->setCurrentIndex(edge-1);
+            ui->scopeEdgeCombo->blockSignals(false);
+            issueDelayedCommand(cmdScopeFixedMode);
+        }
+    }
 }
 
 
@@ -6654,6 +6698,18 @@ void wfmain::resizePlasmaBuffer(int newSize)
     plasmaMutex.unlock();
 }
 
+void wfmain::clearPlasmaBuffer()
+{
+    QByteArray empty((int)spectWidth, '\x01');
+    plasmaMutex.lock();
+    int pSize = spectrumPlasma.size();
+    for(int i=0; i < pSize; i++)
+    {
+        spectrumPlasma[i] = empty;
+    }
+    plasmaMutex.unlock();
+}
+
 void wfmain::on_underlayNone_toggled(bool checked)
 {
     ui->underlayBufferSlider->setDisabled(checked);
@@ -7456,6 +7512,54 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     logTextMutex.lock();
     logStringBuffer.push_front(text);
     logTextMutex.unlock();
+}
+
+void wfmain::on_customEdgeBtn_clicked()
+{
+    double lowFreq = oldLowerFreq;
+    double highFreq = oldUpperFreq;
+    QString freqstring = QString("%1, %2").arg(lowFreq).arg(highFreq);
+    bool ok;
+
+    QString userFreq = QInputDialog::getText(this, "Scope Edges",
+                          "Please enter desired scope edges, in MHz, \
+with a comma between the low and high range.",
+    QLineEdit::Normal, freqstring, &ok);
+    if(!ok)
+        return;
+
+    QString clean = userFreq.trimmed().replace(" ", "");
+    QStringList freqs = clean.split(",");
+    if(freqs.length() == 2)
+    {
+        lowFreq = QString(freqs.at(0)).toDouble(&ok);
+        if(ok)
+        {
+            highFreq = QString(freqs.at(1)).toDouble(&ok);
+            if(ok)
+            {
+                qDebug(logGui()) << "setting edge to: " << lowFreq << ", " << highFreq << ", edge num: " << ui->scopeEdgeCombo->currentIndex() + 1;
+                emit setScopeFixedEdge(lowFreq, highFreq, ui->scopeEdgeCombo->currentIndex() + 1);
+                return;
+            }
+        }
+        goto errMsg;
+    } else {
+        goto errMsg;
+    }
+
+errMsg:
+    {
+        QMessageBox URLmsgBox;
+        URLmsgBox.setText("Error, could not interpret your input.\
+                          <br/>Please make sure to place a comma between the frequencies.\
+                          <br/>For example: '7.200, 7.300'");
+        URLmsgBox.exec();
+
+        return;
+    }
+
+
 }
 
 void wfmain::on_usbControllerBtn_clicked()

@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -114,6 +114,16 @@
             </property>
             <property name="sizeAdjustPolicy">
              <enum>QComboBox::AdjustToContents</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="customEdgeBtn">
+            <property name="toolTip">
+             <string>Define a custom (fixed) scope edge</string>
+            </property>
+            <property name="text">
+             <string>Custom Edge</string>
             </property>
            </widget>
           </item>
@@ -3333,8 +3343,8 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>194</width>
-                      <height>563</height>
+                      <width>204</width>
+                      <height>582</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -4833,7 +4843,7 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="underlayButtonGroup"/>
   <buttongroup name="buttonGroup"/>
+  <buttongroup name="underlayButtonGroup"/>
  </buttongroups>
 </ui>

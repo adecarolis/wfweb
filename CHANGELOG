@@ -1,10 +1,31 @@
 # CHANGELOG
 
+- 20220920
+
+		Added dialog box to the toFixed button where an edge can be selected.
+
+		updated to v1.47
+
+- 20220918
+
+		Added controls for custom scope edges, hide/show scope controls
+    		depending upon the scope mode the radio reports.
+
+    		Fixed clear peaks button to work with the plasma underlay.
+
+    		Make sure both audio system button are disabled when connected to radio and enabled when not.
+
+    		Remove password from log!
+
+    		Fix server user handling
+
+		updated to v1.46
+
 - 20220918
 
 		merged bits from log branch into master
 
-		updated to v.1.45
+		updated to v1.45
 
 
 - 20220917

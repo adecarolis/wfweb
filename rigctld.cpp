@@ -313,6 +313,28 @@ void rigCtlClient::socketReadyRead()
             }
         }
 
+        else if (command[0] == "fmv") {
+            QString resp;
+
+            if (rigState->getChar(CURRENTVFO) == 0) {
+                resp.append(QString("%1").arg(rigState->getInt64(VFOAFREQ)));
+            }
+            else {
+                resp.append(QString("%1").arg(rigState->getInt64(VFOBFREQ)));
+            }
+            response.append(resp);
+            resp = "";
+            response.append(QString("%1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
+            response.append(QString("%1").arg(getFilter(rigState->getChar(MODE), rigState->getChar(FILTER))));
+            
+            if (rigState->getChar(CURRENTVFO) == 0) {
+                resp.append("VFOA");
+            }
+            else {
+                resp.append("VFOB");
+            }
+            response.append(resp);
+        }
         else if (command[0] == "f" || command[0] == "get_freq")
         {
             QString resp;

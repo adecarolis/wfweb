@@ -666,6 +666,8 @@ private slots:
 
     void on_audioSystemServerCombo_currentIndexChanged(int index);
 
+    void on_customEdgeBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -793,6 +795,7 @@ private:
     underlay_t underlayMode = underlayNone;
     QMutex plasmaMutex;
     void resizePlasmaBuffer(int newSize);
+    void clearPlasmaBuffer();
 
     double plotFloor = 0;
     double plotCeiling = 160;
@@ -807,6 +810,7 @@ private:
     bool onFullscreen;
     bool freqTextSelected;
     void checkFreqSel();
+    void setUISpectrumControlsToMode(spectrumMode smode);
 
     double oldLowerFreq;
     double oldUpperFreq;
