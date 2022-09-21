@@ -38,6 +38,7 @@ The following highlights are in this 1.41-release:
 	Fix server user handling
 + 1.47	Added dialog box to the toFixed button where an edge can be selected.
         Fix that was stopping users being created when none existed
+        compound fmv command (rigctl(d)) added
 
 
 Notes:
