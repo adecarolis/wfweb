@@ -1,5 +1,9 @@
 # CHANGELOG
 
+- 20220921
+
+    		Fix that was stopping users being created when none existed
+
 - 20220920
 
 		Added dialog box to the toFixed button where an edge can be selected.
