@@ -1756,6 +1756,12 @@ void wfmain::loadSettings()
 
     if (row == 0) {
         serverAddUserLine("", "", 0);
+        SERVERUSER user;
+        user.username = "";
+        user.password = "";
+        user.userType = 0;
+        serverConfig.users.append(user);
+
         ui->serverAddUserBtn->setEnabled(false);
     }
 
