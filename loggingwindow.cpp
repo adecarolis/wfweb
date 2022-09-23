@@ -1,7 +1,8 @@
 #include "loggingwindow.h"
 #include "ui_loggingwindow.h"
 
-loggingWindow::loggingWindow(QWidget *parent) :
+loggingWindow::loggingWindow(QString logFile, QWidget *parent) :
+    logFilename(logFile),
     QWidget(parent),
     ui(new Ui::loggingWindow)
 {
@@ -12,20 +13,15 @@ loggingWindow::loggingWindow(QWidget *parent) :
     ui->annotateBtn->setDefault(true);
     ui->logTextDisplay->setFocusPolicy(Qt::NoFocus);
     ui->annotateBtn->setFocusPolicy(Qt::NoFocus);
+    
+    QDir d = QFileInfo(logFilename).absoluteDir();
+    logDirectory = d.absolutePath();
 
     QFont font("Monospace");
     font.setStyleHint(QFont::TypeWriter);
     ui->logTextDisplay->setFont(font);
     ui->userAnnotationText->setFont(font);
 
-#ifdef Q_OS_MAC
-    logFilename = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/wfview.log";
-    logDirectory = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0];
-
-#else
-    logFilename= QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0] + "/wfview.log";
-    logDirectory = QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0];
-#endif
     clipboard = QApplication::clipboard();
     socket = new QTcpSocket(this);
     connect(socket, SIGNAL(connected()), this, SLOT(connectedToHost()));
@@ -157,7 +153,7 @@ void loggingWindow::on_openDirBtn_clicked()
 #endif
     arg += QDir::toNativeSeparators(dir.canonicalFilePath());;
     rtn = QProcess::startDetached(cmd, arg);
-    if(!rtn)
+    if(rtn)
         qInfo(logLogger()) << "Error, open log directory" << logDirectory << "command failed";
 }
 

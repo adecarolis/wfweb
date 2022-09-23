@@ -8,7 +8,7 @@
 // This code is copyright 2017-2020 Elliott H. Liggett
 // All rights reserved
 
-servermain::servermain(const QString serialPortCL, const QString hostCL, const QString settingsFile)
+servermain::servermain(const QString serialPortCL, const QString hostCL, const QString settingsFile, const QString logFile)
 {
     this->serialPortCL = serialPortCL;
     this->hostCL = hostCL;

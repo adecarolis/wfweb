@@ -74,10 +74,12 @@ int main(int argc, char *argv[])
     QString serialPortCL;
     QString hostCL;
     QString civCL;
+    QDateTime date = QDateTime::currentDateTime();
+    QString formattedTime = date.toString("dd.MM.yyyy hh:mm:ss");
 #ifdef Q_OS_MAC
-    QString logFilename= QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/wfview.log";
+    QString logFilename = (QString("%1/%2-%3.log").arg(QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0]).arg(a.applicationName()).arg(date.toString("yyyyMMddhhmmss")));
 #else
-    QString logFilename= QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0] + "/wfview.log";
+    QString logFilename = (QString("%1/%2-%3.log").arg(QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0]).arg(a.applicationName()).arg(date.toString("yyyyMMddhhmmss")));
 #endif
     QString settingsFile = NULL;
     QString currentArg;
@@ -185,10 +187,10 @@ int main(int argc, char *argv[])
     signal(SIGTERM, cleanup);
     signal(SIGKILL, cleanup);
 #endif
-    w = new servermain(serialPortCL, hostCL, settingsFile);
+    w = new servermain(serialPortCL, hostCL, logFilename, settingsFile);
 #else
     a.setWheelScrollLines(1); // one line per wheel click
-    wfmain w(serialPortCL, hostCL, settingsFile, debugMode);
+    wfmain w(serialPortCL, hostCL, settingsFile, logFilename, debugMode);
     w.show();
     
 #endif

@@ -25,7 +25,7 @@ class loggingWindow : public QWidget
     Q_OBJECT
 
 public:
-    explicit loggingWindow(QWidget *parent = nullptr);
+    explicit loggingWindow(QString logFile, QWidget *parent = NULL);
     ~loggingWindow();
     void acceptLogText(QString text);
 

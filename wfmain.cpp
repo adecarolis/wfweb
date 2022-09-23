@@ -20,7 +20,8 @@ bool debugModeLogging = true;
 bool debugModeLogging = false;
 #endif
 
-wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, bool debugMode, QWidget *parent ) :
+wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent ) :
+    logFilename(logFile),
     QMainWindow(parent),
     ui(new Ui::wfmain)
 {
@@ -39,7 +40,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
 
     setWindowTitle(QString("wfview"));
 
-    logWindow = new loggingWindow();
+    logWindow = new loggingWindow(logFile);
     initLogging();
     logWindow->setInitialDebugState(debugMode);
     qInfo(logSystem()) << version;
@@ -7091,11 +7092,6 @@ void wfmain::on_showLogBtn_clicked()
 
 void wfmain::initLogging()
 {
-#ifdef Q_OS_MAC
-    logFilename= QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/wfview.log";
-#else
-    logFilename= QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0] + "/wfview.log";
-#endif
     // Set the logging file before doing anything else.
     m_logFile.reset(new QFile(logFilename));
     // Open the file logging

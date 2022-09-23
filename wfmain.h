@@ -64,7 +64,7 @@ class wfmain : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, bool debugMode, QWidget *parent = 0);
+    explicit wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent = 0);
     QString serialPortCL;
     QString hostCL;
     ~wfmain();
