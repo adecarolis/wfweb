@@ -3,6 +3,8 @@
 
 - 20220923
 
+		Delete quit confirmation checkbox
+
     		Use date/time for log name if none specified
 
     		Fix logfile/directory opening in Windows
@@ -15,7 +17,6 @@
 
     		Hide UI elements not needed for non-spectrum radios.
 
-		
 		updated to v1.48
 
 - 20220921
