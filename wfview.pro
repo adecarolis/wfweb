@@ -11,7 +11,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 TARGET = wfview
 TEMPLATE = app
 
-DEFINES += WFVIEW_VERSION=\\\"1.48\\\"
+DEFINES += WFVIEW_VERSION=\\\"1.50\\\"
 
 DEFINES += BUILD_WFVIEW
 
