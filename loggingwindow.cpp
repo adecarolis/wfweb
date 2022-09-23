@@ -2,9 +2,9 @@
 #include "ui_loggingwindow.h"
 
 loggingWindow::loggingWindow(QString logFilename, QWidget *parent) :
-    logFilename(logFilename),
     QWidget(parent),
-    ui(new Ui::loggingWindow)
+    ui(new Ui::loggingWindow),
+    logFilename(logFilename)
 {
     ui->setupUi(this);
     this->setWindowTitle("Log");

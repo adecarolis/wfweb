@@ -21,9 +21,9 @@ bool debugModeLogging = false;
 #endif
 
 wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent ) :
-    logFilename(logFile),
     QMainWindow(parent),
-    ui(new Ui::wfmain)
+    ui(new Ui::wfmain),
+    logFilename(logFile)
 {
     QGuiApplication::setApplicationDisplayName("wfview");
     QGuiApplication::setApplicationName(QString("wfview"));
