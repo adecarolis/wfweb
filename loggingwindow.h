@@ -60,8 +60,8 @@ signals:
     void setDebugMode(bool debugOn);
 
 private:
-    Ui::loggingWindow* ui;
     QString logFilename;
+    Ui::loggingWindow* ui;
     QString logDirectory;
     QClipboard *clipboard;
     QMessageBox URLmsgBox;
