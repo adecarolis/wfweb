@@ -142,37 +142,39 @@ void loggingWindow::on_clearDisplayBtn_clicked()
 void loggingWindow::on_openDirBtn_clicked()
 {
     QString cmd;
-    int rtnval = 0;
-#ifdef Q_OS_MAC
-    cmd = "open " + logDirectory;
-#endif
+    bool rtn = false;
+    QStringList arg;
+    const QFileInfo dir(logDirectory);
+
 #ifdef Q_OS_LINUX
-    cmd = "xdg-open " + logDirectory;
+    cmd = "xdg-open";
+#elif defined(Q_OS_WIN)
+    cmd = QStandardPaths::findExecutable("explorer.exe");
+    if (!dir.isDir())
+        arg += QLatin1String("/select,");
+#else
+    cmd = "open";
 #endif
-#ifdef Q_OS_WIN
-    cmd = "start " + logDirectory;
-#endif
-    rtnval = system(cmd.toLocal8Bit().data());
-    if(rtnval)
-        qInfo(logLogger()) << "Error, open log directory command returned error code " << rtnval;
+    arg += QDir::toNativeSeparators(dir.canonicalFilePath());;
+    rtn = QProcess::startDetached(cmd, arg);
+    if(!rtn)
+        qInfo(logLogger()) << "Error, open log directory" << logDirectory << "command failed";
 }
 
 void loggingWindow::on_openLogFileBtn_clicked()
 {
     QString cmd;
-    int rtnval = 0;
-#ifdef Q_OS_MAC
-    cmd = "open " + logFilename;
-#endif
+    bool rtn = false;
 #ifdef Q_OS_LINUX
-    cmd = "xdg-open " + logFilename;
+    cmd = "xdg-open";
+#elif defined(Q_OS_WIN)
+    cmd = QStandardPaths::findExecutable("notepad.exe");
+#else
+    cmd = "open";
 #endif
-#ifdef Q_OS_WIN
-    cmd = "notepad " + logFilename;
-#endif
-    rtnval = system(cmd.toLocal8Bit().data());
-    if(rtnval)
-        qInfo(logLogger()) << "Error, open log file command returned error code " << rtnval;
+    rtn = QProcess::startDetached(cmd, { logFilename });
+    if(!rtn)
+        qInfo(logLogger()) << "Error, open log file command failed";
 }
 
 void loggingWindow::on_sendToPasteBtn_clicked()

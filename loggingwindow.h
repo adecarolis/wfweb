@@ -10,6 +10,9 @@
 #include <QTextStream>
 #include <QMessageBox>
 #include <QScrollBar>
+#include <QProcess>
+#include <QFileInfo>
+#include <QDir>
 
 #include "logcategories.h"
 
