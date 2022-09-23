@@ -45,6 +45,7 @@ The following highlights are in this 1.41-release:
         Fix that was stopping users being created when none existed
         Use date/time for log name if none specified
         Fix logfile/directory opening in Windows
+        Remove redundant CL args
 
 Notes:
 
