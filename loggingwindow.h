@@ -60,14 +60,14 @@ signals:
     void setDebugMode(bool debugOn);
 
 private:
-    Ui::loggingWindow *ui;
+    Ui::loggingWindow* ui;
+    QString logFilename;
+    QString logDirectory;
     QClipboard *clipboard;
     QMessageBox URLmsgBox;
     QScrollBar *vertLogScroll;
     QScrollBar *horizLogScroll;
     QMutex textMutex;
-    QString logFilename;
-    QString logDirectory;
     QTcpSocket *socket;
     void sendToTermbin();
 };

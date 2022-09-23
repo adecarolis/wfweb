@@ -650,6 +650,7 @@ private slots:
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
+    QString logFilename;
     bool debugMode;
     QString version;
     QSettings *settings=Q_NULLPTR;
@@ -662,7 +663,6 @@ private:
     void initLogging();
     QTimer logCheckingTimer;
     int logCheckingOldPosition = 0;
-    QString logFilename;
 
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image

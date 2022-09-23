@@ -74,13 +74,11 @@ int main(int argc, char *argv[])
     QString serialPortCL;
     QString hostCL;
     QString civCL;
+
     QDateTime date = QDateTime::currentDateTime();
     QString formattedTime = date.toString("dd.MM.yyyy hh:mm:ss");
-#ifdef Q_OS_MAC
-    QString logFilename = (QString("%1/%2-%3.log").arg(QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0]).arg(a.applicationName()).arg(date.toString("yyyyMMddhhmmss")));
-#else
     QString logFilename = (QString("%1/%2-%3.log").arg(QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0]).arg(a.applicationName()).arg(date.toString("yyyyMMddhhmmss")));
-#endif
+
     QString settingsFile = NULL;
     QString currentArg;
 
