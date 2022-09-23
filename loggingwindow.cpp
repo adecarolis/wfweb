@@ -1,8 +1,8 @@
 #include "loggingwindow.h"
 #include "ui_loggingwindow.h"
 
-loggingWindow::loggingWindow(QString logFile, QWidget *parent) :
-    logFilename(logFile),
+loggingWindow::loggingWindow(QString logFilename, QWidget *parent) :
+    logFilename(logFilename),
     QWidget(parent),
     ui(new Ui::loggingWindow)
 {

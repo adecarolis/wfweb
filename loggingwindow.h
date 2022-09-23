@@ -25,7 +25,7 @@ class loggingWindow : public QWidget
     Q_OBJECT
 
 public:
-    explicit loggingWindow(QString logFile, QWidget *parent = NULL);
+    explicit loggingWindow(QString logFilename, QWidget *parent = NULL);
     ~loggingWindow();
     void acceptLogText(QString text);
 
@@ -60,8 +60,8 @@ signals:
     void setDebugMode(bool debugOn);
 
 private:
-    QString logFilename;
     Ui::loggingWindow* ui;
+    QString logFilename;
     QString logDirectory;
     QClipboard *clipboard;
     QMessageBox URLmsgBox;
