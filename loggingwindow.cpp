@@ -153,7 +153,7 @@ void loggingWindow::on_openDirBtn_clicked()
 #endif
     arg += QDir::toNativeSeparators(dir.canonicalFilePath());;
     rtn = QProcess::startDetached(cmd, arg);
-    if(rtn)
+    if(!rtn)
         qInfo(logLogger()) << "Error, open log directory" << logDirectory << "command failed";
 }
 
