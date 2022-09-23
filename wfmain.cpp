@@ -147,6 +147,7 @@ void wfmain::closeEvent(QCloseEvent *event)
         QApplication::exit();
     }
     QCheckBox *cb = new QCheckBox("Don't ask me again");
+    cb->setToolTip("Don't ask me to confirm exit again");
     QMessageBox msgbox;
     msgbox.setText("Are you sure you wish to exit?\n");
     msgbox.setIcon(QMessageBox::Icon::Question);
@@ -174,6 +175,7 @@ void wfmain::closeEvent(QCloseEvent *event)
     } else {
         event->ignore();
     }
+    delete cb;
 }
 
 void wfmain::openRig()
