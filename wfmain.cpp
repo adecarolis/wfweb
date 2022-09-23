@@ -984,7 +984,7 @@ void wfmain::updateSizes(int tabIndex)
             if((i!=tabIndex) && tabIndex != 0)
                 ui->tabWidget->widget(i)->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored); // allows size to be any size that fits the tab bar
 
-        if(tabIndex==0 && !rigCaps.hasSpectrum)
+        if(tabIndex==0)
         {
 
             ui->tabWidget->widget(0)->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
@@ -996,12 +996,6 @@ void wfmain::updateSizes(int tabIndex)
 
             resize(minimumSize());
             adjustSize(); // main window
-        } else if(tabIndex==0 && rigCaps.hasSpectrum) {
-            // At main tab (0) and we have spectrum:
-            ui->tabWidget->widget(0)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-
-            resize(minimumSizeHint());
-            adjustSize(); // Without this call, the window retains the size of the previous tab.
         } else {
             // At some other tab, with or without spectrum:
             ui->tabWidget->widget(tabIndex)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
@@ -3383,8 +3377,29 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
         //wfCeiling = rigCaps.spectAmpMax;
         //plotCeiling = rigCaps.spectAmpMax;
-        ui->topLevelSlider->setMaximum(rigCaps.spectAmpMax);
+        if(rigCaps.hasSpectrum)
+        {
+            ui->topLevelSlider->setVisible(true);
+            ui->labelTop->setVisible(true);
+            ui->botLevelSlider->setVisible(true);
+            ui->labelBot->setVisible(true);
+            ui->scopeRefLevelSlider->setVisible(true);
+            ui->refLabel->setVisible(true);
+            ui->wfLengthSlider->setVisible(true);
+            ui->lenLabel->setVisible(true);
 
+            ui->topLevelSlider->setMaximum(rigCaps.spectAmpMax);
+            ui->botLevelSlider->setMaximum(rigCaps.spectAmpMax);
+        } else {
+            ui->scopeRefLevelSlider->setVisible(false);
+            ui->refLabel->setVisible(false);
+            ui->wfLengthSlider->setVisible(false);
+            ui->lenLabel->setVisible(false);
+            ui->topLevelSlider->setVisible(false);
+            ui->labelTop->setVisible(false);
+            ui->botLevelSlider->setVisible(false);
+            ui->labelBot->setVisible(false);
+        }
         haveRigCaps = true;
 
         // Added so that server receives rig capabilities.
