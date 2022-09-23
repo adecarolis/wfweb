@@ -1,5 +1,16 @@
 # CHANGELOG
 
+- 20220923
+
+    		Fixed glitch when tabs are changed prior to rigcaps.
+
+    		Additional resize fixes for non-spectrum rigs.
+
+    		Hide UI elements not needed for non-spectrum radios.
+
+		
+		updated to v1.48
+
 - 20220921
 
     		Fix that was stopping users being created when none existed
