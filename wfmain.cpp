@@ -980,8 +980,8 @@ void wfmain::updateSizes(int tabIndex)
     if(!rigCaps.hasSpectrum)
     {
         // Set "ignore" size policy for non-selected tabs:
-        for(int i=0;i<ui->tabWidget->count();i++)
-            if((i!=tabIndex) && tabIndex != 0)
+        for(int i=1;i<ui->tabWidget->count();i++)
+            if((i!=tabIndex))
                 ui->tabWidget->widget(i)->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored); // allows size to be any size that fits the tab bar
 
         if(tabIndex==0)
@@ -991,8 +991,8 @@ void wfmain::updateSizes(int tabIndex)
             ui->tabWidget->widget(0)->setMaximumSize(ui->tabWidget->widget(0)->minimumSizeHint());
             ui->tabWidget->widget(0)->adjustSize(); // tab
             this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-            this->setMaximumSize(QSize(1024,350));
-            this->setMinimumSize(QSize(1024,350));
+            this->setMaximumSize(QSize(940,350));
+            this->setMinimumSize(QSize(940,350));
 
             resize(minimumSize());
             adjustSize(); // main window
@@ -1002,6 +1002,7 @@ void wfmain::updateSizes(int tabIndex)
             this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
             this->setMinimumSize(QSize(1024, 600)); // not large enough for settings tab
             this->setMaximumSize(QSize(65535,65535));
+            resize(minimumSize());
             adjustSize();
         }
     } else {
@@ -3568,6 +3569,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             }
         }
     }
+    updateSizes(ui->tabWidget->currentIndex());
 }
 
 void wfmain::initPeriodicCommands()
