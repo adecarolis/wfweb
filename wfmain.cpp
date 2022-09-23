@@ -20,7 +20,7 @@ bool debugModeLogging = true;
 bool debugModeLogging = false;
 #endif
 
-wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent ) :
+wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent ) :
     QMainWindow(parent),
     ui(new Ui::wfmain),
     logFilename(logFile)
@@ -44,9 +44,6 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     initLogging();
     logWindow->setInitialDebugState(debugMode);
     qInfo(logSystem()) << version;
-
-    this->serialPortCL = serialPortCL;
-    this->hostCL = hostCL;
 
     cal = new calibrationWindow();
     rpt = new repeaterSetup();
@@ -201,20 +198,6 @@ void wfmain::openRig()
 
     ui->connectBtn->setText("Cancel connection"); // We are attempting to connect
 
-    // TODO: Use these if they are found
-    if(!serialPortCL.isEmpty())
-    {
-        qDebug(logSystem()) << "Serial port specified by user: " << serialPortCL;
-    } else {
-        qDebug(logSystem()) << "Serial port not specified. ";
-    }
-
-    if(!hostCL.isEmpty())
-    {
-        qDebug(logSystem()) << "Remote host name specified by user: " << hostCL;
-    }
-
-
     makeRig();
 
     if (prefs.enableLAN)
@@ -226,16 +209,11 @@ void wfmain::openRig()
         emit sendCommSetup(prefs.radioCIVAddr, udpPrefs, rxSetup, txSetup, prefs.virtualSerialPort, prefs.tcpPort);
     } else {
         ui->serialEnableBtn->setChecked(true);
-        if( (prefs.serialPortRadio.toLower() == QString("auto")) && (serialPortCL.isEmpty()))
+        if( (prefs.serialPortRadio.toLower() == QString("auto")))
         {
             findSerialPort();
         } else {
-            if(serialPortCL.isEmpty())
-            {
-                serialPortRig = prefs.serialPortRadio;
-            } else {
-                serialPortRig = serialPortCL;
-            }
+            serialPortRig = prefs.serialPortRadio;
         }
         usingLAN = false;
         emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort, prefs.tcpPort,prefs.waterfallFormat);

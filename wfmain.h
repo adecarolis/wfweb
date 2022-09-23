@@ -64,9 +64,7 @@ class wfmain : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent = 0);
-    QString serialPortCL;
-    QString hostCL;
+    explicit wfmain(const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent = 0);
     ~wfmain();
     static void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
     void handleLogText(QString text);

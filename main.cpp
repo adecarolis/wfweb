@@ -71,10 +71,6 @@ int main(int argc, char *argv[])
     //debugMode = true;
 #endif
 
-    QString serialPortCL;
-    QString hostCL;
-    QString civCL;
-
     QDateTime date = QDateTime::currentDateTime();
     QString formattedTime = date.toString("dd.MM.yyyy hh:mm:ss");
     QString logFilename = (QString("%1/%2-%3.log").arg(QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0]).arg(a.applicationName()).arg(date.toString("yyyyMMddhhmmss")));
@@ -83,7 +79,7 @@ int main(int argc, char *argv[])
     QString currentArg;
 
 
-    const QString helpText = QString("\nUsage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr, -l --logfile filename.log, -s --settings filename.ini, -d --debug, -v --version\n"); // TODO...
+    const QString helpText = QString("\nUsage: -l --logfile filename.log, -s --settings filename.ini, -d --debug, -v --version\n"); // TODO...
 #ifdef BUILD_WFSERVER
     const QString version = QString("wfserver version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
         .arg(QString(WFVIEW_VERSION))
@@ -102,34 +98,10 @@ int main(int argc, char *argv[])
         //qInfo() << "Argc: " << c << " argument: " << argv[c];
         currentArg = QString(argv[c]);
 
-        if ((currentArg == "-p") || (currentArg == "--port"))
-        {
-            if (argc > c)
-            {
-                serialPortCL = argv[c + 1];
-                c += 1;
-            }
-        }
-        else if ((currentArg == "-d") || (currentArg == "--debug"))
+        if ((currentArg == "-d") || (currentArg == "--debug"))
         {
             debugMode = true;
         } 
-        else if ((currentArg == "-h") || (currentArg == "--host"))
-        {
-            if(argc > c)
-            {
-                hostCL = argv[c+1];
-                c+=1;
-            }
-        }
-        else if ((currentArg == "-c") || (currentArg == "--civ"))
-        {
-            if (argc > c)
-            {
-                civCL = argv[c + 1];
-                c += 1;
-            }
-        }
         else if ((currentArg == "-l") || (currentArg == "--logfile"))
         {
             if (argc > c)
@@ -173,9 +145,7 @@ int main(int argc, char *argv[])
     qInstallMessageHandler(messageHandler);
 
     qInfo(logSystem()) << version;
-    qDebug(logSystem()) << QString("SerialPortCL as set by parser: %1").arg(serialPortCL);
-    qDebug(logSystem()) << QString("remote host as set by parser: %1").arg(hostCL);
-    qDebug(logSystem()) << QString("CIV as set by parser: %1").arg(civCL);
+
 #endif
 #ifdef BUILD_WFSERVER
 #ifdef Q_OS_WIN
@@ -185,10 +155,10 @@ int main(int argc, char *argv[])
     signal(SIGTERM, cleanup);
     signal(SIGKILL, cleanup);
 #endif
-    w = new servermain(serialPortCL, hostCL, logFilename, settingsFile);
+    w = new servermain(logFilename, settingsFile);
 #else
     a.setWheelScrollLines(1); // one line per wheel click
-    wfmain w(serialPortCL, hostCL, settingsFile, logFilename, debugMode);
+    wfmain w(settingsFile, logFilename, debugMode);
     w.show();
     
 #endif
