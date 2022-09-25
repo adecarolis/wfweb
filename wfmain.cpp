@@ -6188,7 +6188,6 @@ void wfmain::setAudioDevicesUI()
 #ifdef Q_OS_WIN
                 if (deviceInfo.realm() == "wasapi") {
 #endif
-                    qInfo(logGui()) << "Input:" << deviceInfo.deviceName() << "realm" << deviceInfo.realm();
                     ui->audioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
                     ui->serverRXAudioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
 #ifdef Q_OS_WIN
@@ -6204,7 +6203,6 @@ void wfmain::setAudioDevicesUI()
 #ifdef Q_OS_WIN
                 if (deviceInfo.realm() == "wasapi") {
 #endif
-                    qInfo(logGui()) << "Output:" << deviceInfo.deviceName() << "realm" << deviceInfo.realm();
                     ui->audioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
                     ui->serverTXAudioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
 #ifdef Q_OS_WIN
