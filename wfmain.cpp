@@ -6172,15 +6172,13 @@ void wfmain::setAudioDevicesUI()
     QString defaultAudioInputName;
     QString defaultAudioOutputName;
 
-    int inCount = 0;
-    int outCount = 0;
-
     switch (prefs.audioSystem) 
     {
         case qtAudio:
         {
             Pa_Terminate();
 
+            int inCount = 0;
             foreach(const QAudioDeviceInfo & deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioInput))
             {
                 if (inCount == 0)
@@ -6196,6 +6194,7 @@ void wfmain::setAudioDevicesUI()
                 inCount++;
             }
 
+            int outCount = 0;
             foreach(const QAudioDeviceInfo & deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
             {
                 if (outCount == 0)
@@ -6240,9 +6239,7 @@ void wfmain::setAudioDevicesUI()
                     ui->serverRXAudioInputCombo->addItem(info->name, i);
                     if (i == Pa_GetDefaultInputDevice()) {
                         defaultAudioInputName = info->name;
-                        defaultAudioInputIndex = inCount;
                     }
-                    inCount++;
                 }
                 if (info->maxOutputChannels > 0) {
                     qDebug(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Output Device  : " << info->name;
@@ -6250,9 +6247,7 @@ void wfmain::setAudioDevicesUI()
                     ui->serverTXAudioOutputCombo->addItem(info->name, i);
                     if (i == Pa_GetDefaultOutputDevice()) {
                         defaultAudioOutputName = info->name;
-                        defaultAudioOutputIndex = outCount;
                     }
-                    outCount++;
                 }
             }
             break;
@@ -6307,9 +6302,7 @@ void wfmain::setAudioDevicesUI()
                     ui->serverRXAudioInputCombo->addItem(QString::fromStdString(info.name), i);
                     if (info.isDefaultInput) {
                         defaultAudioInputName = QString::fromStdString(info.name);
-                        defaultAudioInputIndex = inCount;
                     }
-                    inCount++;
                 }
                 if (info.outputChannels > 0) {
                     qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name);
@@ -6317,9 +6310,7 @@ void wfmain::setAudioDevicesUI()
                     ui->serverTXAudioOutputCombo->addItem(QString::fromStdString(info.name), i);
                     if (info.isDefaultOutput) {
                         defaultAudioOutputName = QString::fromStdString(info.name);
-                        defaultAudioOutputIndex = outCount;
                     }
-                    outCount++;
                 }
             }
 
@@ -6364,7 +6355,6 @@ void wfmain::setAudioDevicesUI()
         }
 
     }
-    //on_audioInputCombo_currentIndexChanged(ui->audioInputCombo->currentIndex());
 
     int audioOutputIndex = ui->audioOutputCombo->findText(rxSetup.name);
     if (audioOutputIndex != -1) {
@@ -6381,7 +6371,6 @@ void wfmain::setAudioDevicesUI()
             qWarning(logGui()) << "Unable to select default output device," << defaultAudioOutputName << " help.....";
         }
     }
-    //on_audioOutputCombo_currentIndexChanged(ui->audioOutputCombo->currentIndex());
 
     if (!serverConfig.rigs.isEmpty())
 
