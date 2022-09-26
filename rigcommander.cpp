@@ -872,6 +872,35 @@ void rigCommander::getDuplexMode()
     prepDataAndSend(payload);
 }
 
+void rigCommander::getPassband()
+{
+    QByteArray payload;
+    payload.setRawData("\x1A\x03", 2);
+
+    /*
+    int cmd;
+    if (mode == modeLSB || mode == modeUSB || mode == modeLSB_D || mode == modeUSB_D)
+        cmd = 1;
+    else if (mode == modeAM)
+        cmd = 4;
+    else if (mode == modeFM)
+        cmd = 7;
+    else if (mode == modeCW || mode == modeCW_R)
+        cmd = 10;
+    else if (mode == modeRTTY || mode == modeRTTY_R)
+        cmd = 11;
+    else if (mode == modePSK || mode == modePSK_R)
+        cmd = 12;
+    else
+        cmd = 1;
+
+    payload.append(bcdEncodeInt(cmd));
+    */
+    
+    qDebug() << "Requesting Passband" << payload;
+    prepDataAndSend(payload);
+}
+
 void rigCommander::getTransmitFrequency()
 {
     QByteArray payload;
@@ -2510,6 +2539,9 @@ void rigCommander::parseRegisters1A()
         case '\x01':
             // band stacking register
             parseBandStackReg();
+            break;
+        case '\x03':
+            emit havePassband(bcdHexToUChar((quint8)payloadIn[2]));
             break;
         case '\x04':
             state.set(AGC, (quint8)payloadIn[2], false);

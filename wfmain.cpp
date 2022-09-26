@@ -61,6 +61,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<spectrumMode>();
     qRegisterMetaType<freqt>();
     qRegisterMetaType<mode_info>();
+    qRegisterMetaType<mode_kind>();
     qRegisterMetaType<audioPacket>();
     qRegisterMetaType <audioSetup>();
     qRegisterMetaType <SERVERCONFIG>();
@@ -283,6 +284,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(scopeDisplayEnable()), rig, SLOT(enableSpectrumDisplay()));
     connect(rig, SIGNAL(haveMode(unsigned char, unsigned char)), this, SLOT(receiveMode(unsigned char, unsigned char)));
     connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
+    connect(rig, SIGNAL(havePassband(quint8)), this, SLOT(receivePassband(quint8)));
 
     connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
     connect(rpt, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
@@ -302,6 +304,7 @@ void wfmain::rigConnections()
 
 
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
+    connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
     connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(this, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(this, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
@@ -676,9 +679,15 @@ void wfmain::setupPlots()
 
     wf = ui->waterfall;
 
+    passbandIndicator = new QCPItemRect(plot);
+    passbandIndicator->setAntialiased(true);
+    passbandIndicator->setPen(QPen(Qt::red));
+    passbandIndicator->setBrush(QBrush(Qt::red));
+
     freqIndicatorLine = new QCPItemLine(plot);
     freqIndicatorLine->setAntialiased(true);
     freqIndicatorLine->setPen(QPen(Qt::blue));
+
 
     ui->plot->addGraph(); // primary
     ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first.
@@ -704,8 +713,11 @@ void wfmain::setupPlots()
     plot->graph(1)->setPen(QPen(color.lighter(200)));
     plot->graph(1)->setBrush(QBrush(color));
 
-    freqIndicatorLine->start->setCoords(0.5,0);
-    freqIndicatorLine->end->setCoords(0.5,160);
+    freqIndicatorLine->start->setCoords(0.5, 0);
+    freqIndicatorLine->end->setCoords(0.5, 160);
+
+    passbandIndicator->topLeft->setCoords(0.5, 0);
+    passbandIndicator->bottomRight->setCoords(0.5, 160);
 
     // Plot user interaction
     connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
@@ -2982,6 +2994,9 @@ void wfmain::doCmd(cmds cmd)
         case cmdGetDuplexMode:
             emit getDuplexMode();
             break;
+        case cmdGetPassband:
+            emit getPassband();
+            break;
         case cmdGetTone:
             emit getTone();
             break;
@@ -3576,6 +3591,9 @@ void wfmain::initPeriodicCommands()
         insertSlowPeriodicCommand(cmdGetAntenna, 128);
     }
     insertSlowPeriodicCommand(cmdGetDuplexMode, 128);
+
+    // Get passband
+    insertPeriodicCommand(cmdGetPassband, 128);
 }
 
 void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
@@ -3750,6 +3768,20 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         {
             freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
             freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
+
+            if (currentModeIndex == modeCW || currentModeIndex == modeRTTY || currentModeIndex == modeAM) {
+                passbandIndicator->topLeft->setCoords(freq.MHzDouble - (passBand/2), 0);
+                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + (passBand/2), rigCaps.spectAmpMax);
+            }
+            else if (currentModeIndex == modeLSB) {
+                passbandIndicator->topLeft->setCoords(freq.MHzDouble - passBand - 0.0001, 0);
+                passbandIndicator->bottomRight->setCoords(freq.MHzDouble - 0.0001, rigCaps.spectAmpMax);
+            }
+            else if (currentModeIndex == modeUSB) {
+                passbandIndicator->topLeft->setCoords(freq.MHzDouble + 0.0001, 0);
+                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + 0.0001 + passBand, rigCaps.spectAmpMax);
+            }
+
         }
 
         if(underlayMode == underlayPeakHold)
@@ -5259,6 +5291,24 @@ void wfmain::receiveLANGain(unsigned char level)
     processModLevel(inputLAN, level);
 }
 
+void wfmain::receivePassband(quint8 pass)
+{
+    int calc;
+    if (currentModeIndex == modeAM) {
+        calc = 200 + (pass * 200);
+    }
+    else if (pass <= 10)
+    {
+        calc = 50 + (pass * 50);
+    }
+    else {
+        calc = 600 + ((pass - 10) * 100);
+    }
+    passBand = (double)(calc / 1000000.0);
+
+    qInfo() << "Got Passband" << passBand << "(" << pass << ")";
+}
+
 void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
 {
 
@@ -6562,6 +6612,8 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     plot->yAxis->setTickPen(cp->axisColor);
 
     freqIndicatorLine->setPen(QPen(cp->tuningLine));
+    //passbandIndicator->setPen(QPen(cp->tuningLine));
+    //passbandIndicator->setBrush(QBrush(cp->tuningLine));
 
     plot->graph(0)->setPen(QPen(cp->spectrumLine));
     plot->graph(0)->setBrush(QBrush(cp->spectrumFill));

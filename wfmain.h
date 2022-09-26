@@ -75,7 +75,7 @@ signals:
     void setRigID(unsigned char rigID);
     void setRTSforPTT(bool enabled);
 
-    // Power
+    
     void sendPowerOn();
     void sendPowerOff();
 
@@ -98,6 +98,7 @@ signals:
 
     // Repeater:
     void getDuplexMode();
+    void getPassband();
     void getTone();
     void getTSQL();
     void getDTCS();
@@ -239,7 +240,7 @@ private slots:
     void receiveRITValue(int ritValHz);
     void receiveModInput(rigInput input, bool dataOn);
     //void receiveDuplexMode(duplexMode dm);
-
+    void receivePassband(quint8 pass);
 
 
     // Levels:
@@ -665,6 +666,7 @@ private:
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
     QCPItemLine * freqIndicatorLine;
+    QCPItemRect* passbandIndicator;
     void setAppTheme(bool isCustom);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
@@ -779,6 +781,7 @@ private:
     double wfCeiling = 160;
     double oldPlotFloor = -1;
     double oldPlotCeiling = 999;
+    double passBand = 0.0;
 
     QVector <QByteArray> wfimage;
     unsigned int wfLengthMax;
@@ -800,7 +803,7 @@ private:
               cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
               cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetTPBFInner, cmdSetTPBFInner,
-              cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus,
+              cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus, cmdGetPassband, 
               cmdSetATU, cmdStartATU, cmdGetSpectrumMode,
               cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,
               cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel,
@@ -999,7 +1002,7 @@ private:
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
     QThread* serverThread = Q_NULLPTR;
-
+    
     void bandStackBtnClick();
     bool waitingForBandStackRtn;
     char bandStkBand;
@@ -1043,6 +1046,7 @@ Q_DECLARE_METATYPE(struct networkAudioLevels)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
+Q_DECLARE_METATYPE(enum mode_kind)
 Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 Q_DECLARE_METATYPE(rigstate*)
 
