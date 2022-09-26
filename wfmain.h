@@ -610,6 +610,10 @@ private slots:
 
     void on_colorEditTuningLine_editingFinished();
 
+    void on_colorSetBtnPassband_clicked();
+
+    void on_colorEditPassband_editingFinished();
+
     void on_colorSetBtnMeterLevel_clicked();
 
     void on_colorEditMeterLevel_editingFinished();

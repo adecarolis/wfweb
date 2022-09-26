@@ -1453,6 +1453,7 @@ void wfmain::loadSettings()
             p->underlayFill.setNamedColor(settings->value("underlayFill", p->underlayFill.name(QColor::HexArgb)).toString());
             p->plotBackground.setNamedColor(settings->value("plotBackground", p->plotBackground.name(QColor::HexArgb)).toString());
             p->tuningLine.setNamedColor(settings->value("tuningLine", p->tuningLine.name(QColor::HexArgb)).toString());
+            p->passband.setNamedColor(settings->value("passband", p->tuningLine.name(QColor::HexArgb)).toString());
             p->wfBackground.setNamedColor(settings->value("wfBackground", p->wfBackground.name(QColor::HexArgb)).toString());
             p->wfGrid.setNamedColor(settings->value("wfGrid", p->wfGrid.name(QColor::HexArgb)).toString());
             p->wfAxis.setNamedColor(settings->value("wfAxis", p->wfAxis.name(QColor::HexArgb)).toString());
@@ -2073,6 +2074,7 @@ void wfmain::saveSettings()
         settings->setValue("underlayFill", p->underlayFill.name(QColor::HexArgb));
         settings->setValue("plotBackground", p->plotBackground.name(QColor::HexArgb));
         settings->setValue("tuningLine", p->tuningLine.name(QColor::HexArgb));
+        settings->setValue("passband", p->passband.name(QColor::HexArgb));
         settings->setValue("wfBackground", p->wfBackground.name(QColor::HexArgb));
         settings->setValue("wfGrid", p->wfGrid.name(QColor::HexArgb));
         settings->setValue("wfAxis", p->wfAxis.name(QColor::HexArgb));
@@ -2728,6 +2730,7 @@ void wfmain::setDefaultColors(int presetNumber)
     p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
     p->plotBackground = QColor(Qt::black);
     p->tuningLine = QColor(Qt::blue);
+    p->passband = QColor(Qt::blue);
 
     p->meterLevel = QColor("#148CD2").darker();
     p->meterAverage = QColor("#3FB7CD");
@@ -2759,6 +2762,7 @@ void wfmain::setDefaultColors(int presetNumber)
             p->underlayLine = QColor("#9633ff55");
             p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
             p->tuningLine = QColor("#ff55ffff");
+            p->passband = QColor("#ff55ffcc");
 
             p->meterLevel = QColor("#148CD2").darker();
             p->meterAverage = QColor("#3FB7CD");
@@ -2786,6 +2790,7 @@ void wfmain::setDefaultColors(int presetNumber)
             p->spectrumLine = QColor(Qt::black);
             p->underlayLine = QColor(Qt::blue);
             p->tuningLine = QColor(Qt::darkBlue);
+            p->passband = QColor(Qt::blue);
 
             p->meterAverage = QColor("#3FB7CD");
             p->meterPeakLevel = QColor("#3CA0DB");
@@ -6612,8 +6617,8 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     plot->yAxis->setTickPen(cp->axisColor);
 
     freqIndicatorLine->setPen(QPen(cp->tuningLine));
-    //passbandIndicator->setPen(QPen(cp->tuningLine));
-    //passbandIndicator->setBrush(QBrush(cp->tuningLine));
+    passbandIndicator->setPen(QPen(cp->passband));
+    passbandIndicator->setBrush(QBrush(cp->passband));
 
     plot->graph(0)->setPen(QPen(cp->spectrumLine));
     plot->graph(0)->setBrush(QBrush(cp->spectrumFill));
@@ -6741,6 +6746,7 @@ void wfmain::loadColorPresetToUIandPlots(int presetNumber)
     setEditAndLedFromColor(p.underlayFill, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
     setEditAndLedFromColor(p.plotBackground, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
     setEditAndLedFromColor(p.tuningLine, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+    setEditAndLedFromColor(p.passband, ui->colorEditPassband, ui->colorSwatchPassband);
 
     setEditAndLedFromColor(p.meterLevel, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
     setEditAndLedFromColor(p.meterAverage, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
@@ -6974,14 +6980,28 @@ void wfmain::on_colorEditWfText_editingFinished()
 void wfmain::on_colorSetBtnTuningLine_clicked()
 {
     int pos = ui->colorPresetCombo->currentIndex();
-    QColor *c = &(colorPreset[pos].tuningLine);
+    QColor* c = &(colorPreset[pos].tuningLine);
     setColorButtonOperations(c, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
 }
 void wfmain::on_colorEditTuningLine_editingFinished()
 {
     int pos = ui->colorPresetCombo->currentIndex();
-    QColor *c = &(colorPreset[pos].tuningLine);
+    QColor* c = &(colorPreset[pos].tuningLine);
     setColorLineEditOperations(c, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+}
+
+// Passband:
+void wfmain::on_colorSetBtnPassband_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].passband);
+    setColorButtonOperations(c, ui->colorEditPassband, ui->colorSwatchTuningLine);
+}
+void wfmain::on_colorEditPassband_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].passband);
+    setColorLineEditOperations(c, ui->colorEditPassband, ui->colorSwatchTuningLine);
 }
 
 // Meter Level:
@@ -7093,6 +7113,7 @@ void wfmain::on_colorSavePresetBtn_clicked()
     settings->setValue("underlayFill", p->underlayFill.name(QColor::HexArgb));
     settings->setValue("plotBackground", p->plotBackground.name(QColor::HexArgb));
     settings->setValue("tuningLine", p->tuningLine.name(QColor::HexArgb));
+    settings->setValue("passband", p->passband.name(QColor::HexArgb));
     settings->setValue("wfBackground", p->wfBackground.name(QColor::HexArgb));
     settings->setValue("wfGrid", p->wfGrid.name(QColor::HexArgb));
     settings->setValue("wfAxis", p->wfAxis.name(QColor::HexArgb));
