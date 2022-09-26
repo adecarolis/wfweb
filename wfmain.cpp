@@ -3776,17 +3776,28 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
             freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
 
-            if (currentModeIndex == modeCW || currentModeIndex == modeRTTY || currentModeIndex == modeAM) {
-                passbandIndicator->topLeft->setCoords(freq.MHzDouble - (passBand/2), 0);
-                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + (passBand/2), rigCaps.spectAmpMax);
+            if (currentModeInfo.mk == modeCW || currentModeIndex == modeRTTY || currentModeIndex == modeAM) {
+                passbandIndicator->topLeft->setCoords(freq.MHzDouble - (passBand / 2), 0);
+                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + (passBand / 2), rigCaps.spectAmpMax);
             }
-            else if (currentModeIndex == modeLSB) {
+            else if (currentModeInfo.mk == modeLSB) {
                 passbandIndicator->topLeft->setCoords(freq.MHzDouble - passBand - 0.0001, 0);
                 passbandIndicator->bottomRight->setCoords(freq.MHzDouble - 0.0001, rigCaps.spectAmpMax);
             }
-            else if (currentModeIndex == modeUSB) {
+            else if (currentModeInfo.mk == modeUSB) {
                 passbandIndicator->topLeft->setCoords(freq.MHzDouble + 0.0001, 0);
                 passbandIndicator->bottomRight->setCoords(freq.MHzDouble + 0.0001 + passBand, rigCaps.spectAmpMax);
+            }
+            else if (currentModeInfo.mk == modeFM) {
+                if (currentModeInfo.filter == 1)
+                    passBand = 0.015;
+                else if (currentModeInfo.filter == 2)
+                    passBand = 0.010;
+                else
+                    passBand = 0.007;
+
+                passbandIndicator->topLeft->setCoords(freq.MHzDouble - (passBand / 2), 0);
+                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + (passBand / 2), rigCaps.spectAmpMax);
             }
 
         }
@@ -4082,6 +4093,8 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
             }
         }
         currentModeIndex = mode;
+        currentModeInfo.mk = (mode_kind)mode;
+        currentModeInfo.filter = filter;
     } else {
         qInfo(logSystem()) << __func__ << "Invalid mode " << mode << " received. ";
     }
@@ -4098,7 +4111,6 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
     }
 
     (void)filter;
-
 
     // Note: we need to know if the DATA mode is active to reach mode-D
     // some kind of queued query:
@@ -5326,7 +5338,7 @@ void wfmain::receiveLANGain(unsigned char level)
 void wfmain::receivePassband(quint8 pass)
 {
     int calc;
-    if (currentModeIndex == modeAM) {
+    if (currentModeInfo.mk == modeAM) {
         calc = 200 + (pass * 200);
     }
     else if (pass <= 10)
