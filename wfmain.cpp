@@ -3776,29 +3776,28 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
             freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
 
-            if (currentModeInfo.mk == modeCW || currentModeIndex == modeRTTY || currentModeIndex == modeAM) {
-                passbandIndicator->topLeft->setCoords(freq.MHzDouble - (passBand / 2), 0);
-                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + (passBand / 2), rigCaps.spectAmpMax);
-            }
-            else if (currentModeInfo.mk == modeLSB) {
+            if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modePSK_R) {
                 passbandIndicator->topLeft->setCoords(freq.MHzDouble - passBand - 0.0001, 0);
                 passbandIndicator->bottomRight->setCoords(freq.MHzDouble - 0.0001, rigCaps.spectAmpMax);
             }
-            else if (currentModeInfo.mk == modeUSB) {
+            else if (currentModeInfo.mk == modeUSB || currentModeInfo.mk == modePSK) {
                 passbandIndicator->topLeft->setCoords(freq.MHzDouble + 0.0001, 0);
                 passbandIndicator->bottomRight->setCoords(freq.MHzDouble + 0.0001 + passBand, rigCaps.spectAmpMax);
             }
-            else if (currentModeInfo.mk == modeFM) {
-                if (currentModeInfo.filter == 1)
-                    passBand = 0.015;
-                else if (currentModeInfo.filter == 2)
-                    passBand = 0.010;
-                else
-                    passBand = 0.007;
-
+            else
+            {
+                if (currentModeInfo.mk == modeFM) {
+                    if (currentModeInfo.filter == 1)
+                        passBand = 0.015;
+                    else if (currentModeInfo.filter == 2)
+                        passBand = 0.010;
+                    else
+                        passBand = 0.007;
+                }
                 passbandIndicator->topLeft->setCoords(freq.MHzDouble - (passBand / 2), 0);
                 passbandIndicator->bottomRight->setCoords(freq.MHzDouble + (passBand / 2), rigCaps.spectAmpMax);
             }
+
 
         }
 

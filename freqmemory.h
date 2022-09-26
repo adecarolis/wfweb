@@ -17,6 +17,8 @@ enum mode_kind {
     modeFM=0x05,
     modeCW_R=0x07,
     modeRTTY_R=0x08,
+    modePSK = 0x12,
+    modePSK_R = 0x13,
     modeLSB_D=0x80,
     modeUSB_D=0x81,
     modeDV=0x17,
@@ -29,9 +31,7 @@ enum mode_kind {
     modedPMR,
     modeNXDN_VN,
     modeNXDN_N,
-    modeDCR,
-    modePSK,
-    modePSK_R
+    modeDCR
 };
 
 struct mode_info {

@@ -876,28 +876,6 @@ void rigCommander::getPassband()
 {
     QByteArray payload;
     payload.setRawData("\x1A\x03", 2);
-
-    /*
-    int cmd;
-    if (mode == modeLSB || mode == modeUSB || mode == modeLSB_D || mode == modeUSB_D)
-        cmd = 1;
-    else if (mode == modeAM)
-        cmd = 4;
-    else if (mode == modeFM)
-        cmd = 7;
-    else if (mode == modeCW || mode == modeCW_R)
-        cmd = 10;
-    else if (mode == modeRTTY || mode == modeRTTY_R)
-        cmd = 11;
-    else if (mode == modePSK || mode == modePSK_R)
-        cmd = 12;
-    else
-        cmd = 1;
-
-    payload.append(bcdEncodeInt(cmd));
-    */
-    
-    qDebug() << "Requesting Passband" << payload;
     prepDataAndSend(payload);
 }
 
@@ -3271,8 +3249,8 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
-            rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
-                                                       createMode(modePSK_R, 0x13, "PSK-R")});
+            rigCaps.modes.insert(rigCaps.modes.end(), { createMode(modePSK, 0x12, "PSK"),
+                                                       createMode(modePSK_R, 0x13, "PSK-R") });
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x97");
             break;
         case model7610:
@@ -3305,6 +3283,8 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(band630m);
             rigCaps.bands.push_back(band2200m);
             rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), { createMode(modePSK, 0x12, "PSK"),
+                                                       createMode(modePSK_R, 0x13, "PSK-R") });
             rigCaps.hasRXAntenna = true;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x12");
             break;
