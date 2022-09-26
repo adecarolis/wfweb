@@ -283,6 +283,8 @@ private slots:
     void receiveStatusUpdate(networkStatus status);
     void receiveNetworkAudioLevels(networkAudioLevels l);
     void handlePlotClick(QMouseEvent *);
+    void handlePlotMouseRelease(QMouseEvent *);
+    void handlePlotMouseMove(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);
     void handleWFDoubleClick(QMouseEvent *);
@@ -786,6 +788,9 @@ private:
     double oldPlotFloor = -1;
     double oldPlotCeiling = 999;
     double passBand = 0.0;
+
+    double mousePressFreq = 0.0;
+    double mouseReleaseFreq = 0.0;
 
     QVector <QByteArray> wfimage;
     unsigned int wfLengthMax;

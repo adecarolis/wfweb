@@ -724,6 +724,8 @@ void wfmain::setupPlots()
     connect(wf, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handleWFDoubleClick(QMouseEvent*)));
     connect(plot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handlePlotClick(QMouseEvent*)));
     connect(wf, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handleWFClick(QMouseEvent*)));
+    connect(plot, SIGNAL(mouseRelease(QMouseEvent*)), this, SLOT(handlePlotMouseRelease(QMouseEvent*)));
+    connect(plot, SIGNAL(mouseMove(QMouseEvent*)), this, SLOT(handlePlotMouseMove(QMouseEvent *)));
     connect(wf, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handleWFScroll(QWheelEvent*)));
     connect(plot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handlePlotScroll(QWheelEvent*)));
     spectrumDrawLock = false;
@@ -3969,6 +3971,31 @@ void wfmain::handlePlotClick(QMouseEvent *me)
 {
     double x = plot->xAxis->pixelToCoord(me->pos().x());
     showStatusBarText(QString("Selected %1 MHz").arg(x));
+    this->mousePressFreq = x;
+}
+
+void wfmain::handlePlotMouseRelease(QMouseEvent *me)
+{
+    this->mouseReleaseFreq = plot->xAxis->pixelToCoord(me->pos().x());
+    double delta = mouseReleaseFreq - mousePressFreq;
+    qInfo(logGui()) << "Mouse release delta: " << delta;
+}
+
+void wfmain::handlePlotMouseMove(QMouseEvent *me)
+{
+    if(me->buttons() == Qt::LeftButton)
+    {
+        double delta = plot->xAxis->pixelToCoord(me->pos().x()) - mousePressFreq;
+        qInfo(logGui()) << "Mouse moving delta: " << delta;
+        if( (( delta < -0.0001 ) || (delta > 0.0001)) && ((delta < 0.501) && (delta > -0.501)) )
+        {
+            freqt freqGo;
+            freqGo.Hz = ( freq.MHzDouble + delta)*1E6;
+            //freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
+            freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
+            issueCmdUniquePriority(cmdSetFreq, freqGo);
+        }
+    }
 }
 
 void wfmain::handleWFClick(QMouseEvent *me)
@@ -5311,7 +5338,7 @@ void wfmain::receivePassband(quint8 pass)
     }
     passBand = (double)(calc / 1000000.0);
 
-    qInfo() << "Got Passband" << passBand << "(" << pass << ")";
+    qDebug(logGui()) << "Got Passband" << passBand << "(" << pass << ")";
 }
 
 void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
