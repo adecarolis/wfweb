@@ -3783,9 +3783,16 @@ void rigCommander::parseSpectrum()
     freqt fStart;
     freqt fEnd;
 
+    unsigned char vfo = bcdHexToUChar(payloadIn[02]);
     unsigned char sequence = bcdHexToUChar(payloadIn[03]);
+
     //unsigned char sequenceMax = bcdHexToDecimal(payloadIn[04]);
 
+    if (vfo == 1)
+    {
+        // This is for the second VFO!
+        return;
+    }
 
     // unsigned char waveInfo = payloadIn[06]; // really just one byte?
     //qInfo(logRig()) << "Spectrum Data received: " << sequence << "/" << sequenceMax << " mode: " << scopeMode << " waveInfo: " << waveInfo << " length: " << payloadIn.length();
