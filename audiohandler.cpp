@@ -46,7 +46,11 @@ audioHandler::~audioHandler()
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "audio handler starting:" << setup.name;
 	if (setup.port.isNull())
 	{
-		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "No audio device was found. You probably need to install libqt5multimedia-plugins.";
+#ifdef Q_OS_LINUX
+		qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "No audio device was found. You probably need to install libqt5multimedia-plugins.";
+#else
+		qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio device is NULL, please check device selection in settings.";
+#endif
 		return false;
 	}
 
