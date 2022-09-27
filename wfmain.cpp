@@ -6375,7 +6375,8 @@ void wfmain::setAudioDevicesUI()
     if (!serverConfig.rigs.isEmpty())
 
     {
-        qInfo(logGui()) << "Got Server Audio Input: " << serverConfig.rigs.first()->rxAudioSetup.name.toLocal8Bit();
+        if (serverConfig.enabled)
+            qInfo(logGui()) << "Got Server Audio Input: " << serverConfig.rigs.first()->rxAudioSetup.name.toLocal8Bit();
 
         serverConfig.rigs.first()->rxAudioSetup.type = prefs.audioSystem;
         serverConfig.rigs.first()->txAudioSetup.type = prefs.audioSystem;
@@ -6386,10 +6387,12 @@ void wfmain::setAudioDevicesUI()
             ui->serverRXAudioInputCombo->setCurrentIndex(serverAudioInputIndex);
         }
         else {
-            qWarning(logGui()) << "Server audio input NOT FOUND " << serverConfig.rigs.first()->rxAudioSetup.name.toLocal8Bit() << "not selecting default";
+            if (serverConfig.enabled)
+                qWarning(logGui()) << "Server audio input NOT FOUND " << serverConfig.rigs.first()->rxAudioSetup.name.toLocal8Bit() << "not selecting default";
         }
 
-        qInfo(logGui()) << "Got Server Audio Output: " << serverConfig.rigs.first()->txAudioSetup.name.toLocal8Bit();
+        if (serverConfig.enabled)
+            qInfo(logGui()) << "Got Server Audio Output: " << serverConfig.rigs.first()->txAudioSetup.name.toLocal8Bit();
 
         ui->serverTXAudioOutputCombo->setCurrentIndex(defaultAudioOutputIndex);
         int serverAudioOutputIndex = ui->serverTXAudioOutputCombo->findText(serverConfig.rigs.first()->txAudioSetup.name.toLocal8Bit());
@@ -6397,7 +6400,8 @@ void wfmain::setAudioDevicesUI()
             ui->serverTXAudioOutputCombo->setCurrentIndex(serverAudioOutputIndex);
         }
         else {
-            qWarning(logGui()) << "Server audio output NOT FOUND " << serverConfig.rigs.first()->txAudioSetup.name.toLocal8Bit() << "not selecting default";
+            if (serverConfig.enabled)
+                qWarning(logGui()) << "Server audio output NOT FOUND " << serverConfig.rigs.first()->txAudioSetup.name.toLocal8Bit() << "not selecting default";
         }
         
     }
