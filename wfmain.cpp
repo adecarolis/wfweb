@@ -6186,8 +6186,8 @@ void wfmain::setAudioDevicesUI()
 #ifdef Q_OS_WIN
                 if (deviceInfo.realm() == "wasapi") {
 #endif
-                    ui->audioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
-                    ui->serverRXAudioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
+                    ui->audioInputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
+                    ui->serverRXAudioInputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
 #ifdef Q_OS_WIN
                 }
 #endif
@@ -6202,8 +6202,8 @@ void wfmain::setAudioDevicesUI()
 #ifdef Q_OS_WIN
                 if (deviceInfo.realm() == "wasapi") {
 #endif
-                    ui->audioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
-                    ui->serverTXAudioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
+                    ui->audioOutputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
+                    ui->serverTXAudioOutputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
 #ifdef Q_OS_WIN
                 }
 #endif
@@ -6233,18 +6233,18 @@ void wfmain::setAudioDevicesUI()
             {
                 info = Pa_GetDeviceInfo(i);
                 if (info->maxInputChannels > 0) {
-                    qDebug(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Input Device : " << info->name;
+                    qDebug(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Input Device : " << QString(info->name).toLocal8Bit();
 
-                    ui->audioInputCombo->addItem(info->name, i);
-                    ui->serverRXAudioInputCombo->addItem(info->name, i);
+                    ui->audioInputCombo->addItem(QString(info->name).toLocal8Bit(), i);
+                    ui->serverRXAudioInputCombo->addItem(QString(info->name).toLocal8Bit(), i);
                     if (i == Pa_GetDefaultInputDevice()) {
                         defaultAudioInputName = info->name;
                     }
                 }
                 if (info->maxOutputChannels > 0) {
-                    qDebug(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Output Device  : " << info->name;
-                    ui->audioOutputCombo->addItem(info->name, i);
-                    ui->serverTXAudioOutputCombo->addItem(info->name, i);
+                    qDebug(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Output Device  : " << QString(info->name).toLocal8Bit();
+                    ui->audioOutputCombo->addItem(QString(info->name).toLocal8Bit(), i);
+                    ui->serverTXAudioOutputCombo->addItem(QString(info->name).toLocal8Bit(), i);
                     if (i == Pa_GetDefaultOutputDevice()) {
                         defaultAudioOutputName = info->name;
                     }
@@ -6297,19 +6297,19 @@ void wfmain::setAudioDevicesUI()
             for (unsigned int i = 1; i < devices; i++) {
                 info = audio->getDeviceInfo(i);
                 if (info.inputChannels > 0) {
-                    qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name);
-                    ui->audioInputCombo->addItem(QString::fromStdString(info.name), i);
-                    ui->serverRXAudioInputCombo->addItem(QString::fromStdString(info.name), i);
+                    qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name).toLocal8Bit();
+                    ui->audioInputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
+                    ui->serverRXAudioInputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
                     if (info.isDefaultInput) {
-                        defaultAudioInputName = QString::fromStdString(info.name);
+                        defaultAudioInputName = QString::fromStdString(info.name).toLocal8Bit();
                     }
                 }
                 if (info.outputChannels > 0) {
-                    qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name);
-                    ui->audioOutputCombo->addItem(QString::fromStdString(info.name), i);
-                    ui->serverTXAudioOutputCombo->addItem(QString::fromStdString(info.name), i);
+                    qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name).toLocal8Bit();
+                    ui->audioOutputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
+                    ui->serverTXAudioOutputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
                     if (info.isDefaultOutput) {
-                        defaultAudioOutputName = QString::fromStdString(info.name);
+                        defaultAudioOutputName = QString::fromStdString(info.name).toLocal8Bit();
                     }
                 }
             }
@@ -6356,48 +6356,48 @@ void wfmain::setAudioDevicesUI()
 
     }
 
-    int audioOutputIndex = ui->audioOutputCombo->findText(rxSetup.name);
+    int audioOutputIndex = ui->audioOutputCombo->findText(rxSetup.name.toLocal8Bit());
     if (audioOutputIndex != -1) {
-        qInfo(logGui()) << "Found Audio Output Device: " << rxSetup.name;
+        qInfo(logGui()) << "Found Audio Output Device: " << rxSetup.name.toLocal8Bit();
         ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
     }
     else {
         qWarning(logGui()) << "Audio output Device: " << rxSetup.name << "Not Found, trying to select default";
-        audioOutputIndex = ui->audioOutputCombo->findText(defaultAudioOutputName);
+        audioOutputIndex = ui->audioOutputCombo->findText(defaultAudioOutputName.toLocal8Bit());
         if (audioOutputIndex != -1) {
             ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
         }
         else {
-            qWarning(logGui()) << "Unable to select default output device," << defaultAudioOutputName << " help.....";
+            qWarning(logGui()) << "Unable to select default output device," << defaultAudioOutputName.toLocal8Bit() << " help.....";
         }
     }
 
     if (!serverConfig.rigs.isEmpty())
 
     {
-        qInfo(logGui()) << "Got Server Audio Input: " << serverConfig.rigs.first()->rxAudioSetup.name;
+        qInfo(logGui()) << "Got Server Audio Input: " << serverConfig.rigs.first()->rxAudioSetup.name.toLocal8Bit();
 
         serverConfig.rigs.first()->rxAudioSetup.type = prefs.audioSystem;
         serverConfig.rigs.first()->txAudioSetup.type = prefs.audioSystem;
 
         ui->serverRXAudioInputCombo->setCurrentIndex(defaultAudioInputIndex);
-        int serverAudioInputIndex = ui->serverRXAudioInputCombo->findText(serverConfig.rigs.first()->rxAudioSetup.name);
+        int serverAudioInputIndex = ui->serverRXAudioInputCombo->findText(serverConfig.rigs.first()->rxAudioSetup.name.toLocal8Bit());
         if (serverAudioInputIndex != -1) {
             ui->serverRXAudioInputCombo->setCurrentIndex(serverAudioInputIndex);
         }
         else {
-            qWarning(logGui()) << "Server audio input NOT FOUND " << serverConfig.rigs.first()->rxAudioSetup.name << "not selecting default";
+            qWarning(logGui()) << "Server audio input NOT FOUND " << serverConfig.rigs.first()->rxAudioSetup.name.toLocal8Bit() << "not selecting default";
         }
 
-        qInfo(logGui()) << "Got Server Audio Output: " << serverConfig.rigs.first()->txAudioSetup.name;
+        qInfo(logGui()) << "Got Server Audio Output: " << serverConfig.rigs.first()->txAudioSetup.name.toLocal8Bit();
 
         ui->serverTXAudioOutputCombo->setCurrentIndex(defaultAudioOutputIndex);
-        int serverAudioOutputIndex = ui->serverTXAudioOutputCombo->findText(serverConfig.rigs.first()->txAudioSetup.name);
+        int serverAudioOutputIndex = ui->serverTXAudioOutputCombo->findText(serverConfig.rigs.first()->txAudioSetup.name.toLocal8Bit());
         if (serverAudioOutputIndex != -1) {
             ui->serverTXAudioOutputCombo->setCurrentIndex(serverAudioOutputIndex);
         }
         else {
-            qWarning(logGui()) << "Server audio output NOT FOUND " << serverConfig.rigs.first()->txAudioSetup.name << "not selecting default";
+            qWarning(logGui()) << "Server audio output NOT FOUND " << serverConfig.rigs.first()->txAudioSetup.name.toLocal8Bit() << "not selecting default";
         }
         
     }
