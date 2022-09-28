@@ -3599,8 +3599,10 @@ void wfmain::initPeriodicCommands()
     }
     insertSlowPeriodicCommand(cmdGetDuplexMode, 128);
 
-    // Get passband
-    insertPeriodicCommand(cmdGetPassband, 128);
+    if (rigCaps.hasSpectrum) {
+        // Get passband
+        insertPeriodicCommand(cmdGetPassband, 128);
+    }
 }
 
 void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
@@ -5348,8 +5350,6 @@ void wfmain::receivePassband(quint8 pass)
         calc = 600 + ((pass - 10) * 100);
     }
     passBand = (double)(calc / 1000000.0);
-
-    qDebug(logGui()) << "Got Passband" << passBand << "(" << pass << ")";
 }
 
 void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
