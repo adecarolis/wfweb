@@ -1455,7 +1455,7 @@ void wfmain::loadSettings()
             p->underlayFill.setNamedColor(settings->value("underlayFill", p->underlayFill.name(QColor::HexArgb)).toString());
             p->plotBackground.setNamedColor(settings->value("plotBackground", p->plotBackground.name(QColor::HexArgb)).toString());
             p->tuningLine.setNamedColor(settings->value("tuningLine", p->tuningLine.name(QColor::HexArgb)).toString());
-            p->passband.setNamedColor(settings->value("passband", p->tuningLine.name(QColor::HexArgb)).toString());
+            p->passband.setNamedColor(settings->value("passband", p->passband.name(QColor::HexArgb)).toString());
             p->wfBackground.setNamedColor(settings->value("wfBackground", p->wfBackground.name(QColor::HexArgb)).toString());
             p->wfGrid.setNamedColor(settings->value("wfGrid", p->wfGrid.name(QColor::HexArgb)).toString());
             p->wfAxis.setNamedColor(settings->value("wfAxis", p->wfAxis.name(QColor::HexArgb)).toString());
@@ -2764,7 +2764,7 @@ void wfmain::setDefaultColors(int presetNumber)
             p->underlayLine = QColor("#9633ff55");
             p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
             p->tuningLine = QColor("#ff55ffff");
-            p->passband = QColor("#ff55ffcc");
+            p->passband = QColor("#2effffff");
 
             p->meterLevel = QColor("#148CD2").darker();
             p->meterAverage = QColor("#3FB7CD");
@@ -7063,13 +7063,13 @@ void wfmain::on_colorSetBtnPassband_clicked()
 {
     int pos = ui->colorPresetCombo->currentIndex();
     QColor* c = &(colorPreset[pos].passband);
-    setColorButtonOperations(c, ui->colorEditPassband, ui->colorSwatchTuningLine);
+    setColorButtonOperations(c, ui->colorEditPassband, ui->colorSwatchPassband);
 }
 void wfmain::on_colorEditPassband_editingFinished()
 {
     int pos = ui->colorPresetCombo->currentIndex();
     QColor* c = &(colorPreset[pos].passband);
-    setColorLineEditOperations(c, ui->colorEditPassband, ui->colorSwatchTuningLine);
+    setColorLineEditOperations(c, ui->colorEditPassband, ui->colorSwatchPassband);
 }
 
 // Meter Level:
