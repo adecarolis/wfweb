@@ -2764,7 +2764,7 @@ void wfmain::setDefaultColors(int presetNumber)
             p->underlayLine = QColor("#9633ff55");
             p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
             p->tuningLine = QColor("#ff55ffff");
-            p->passband = QColor("#2effffff");
+            p->passband = QColor("#32ffffff");
 
             p->meterLevel = QColor("#148CD2").darker();
             p->meterAverage = QColor("#3FB7CD");
@@ -2792,7 +2792,7 @@ void wfmain::setDefaultColors(int presetNumber)
             p->spectrumLine = QColor(Qt::black);
             p->underlayLine = QColor(Qt::blue);
             p->tuningLine = QColor(Qt::darkBlue);
-            p->passband = QColor(Qt::blue);
+            p->passband = QColor("#64000080");
 
             p->meterAverage = QColor("#3FB7CD");
             p->meterPeakLevel = QColor("#3CA0DB");
