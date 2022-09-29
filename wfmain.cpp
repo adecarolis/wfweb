@@ -7399,8 +7399,8 @@ void wfmain::addClusterSpot(spotData spot) {
     spot.text->setPositionAlignment(Qt::AlignTop | Qt::AlignHCenter);
     spot.text->setClipAxisRect(false);
     spot.text->position->setType(QCPItemPosition::ptPlotCoords);
-    bool conflict = true;
-    QCPAxisRect* rect = spot.text->position->axisRect();
+    //bool conflict = true;
+    //QCPAxisRect* rect = spot.text->position->axisRect();
     double left = spot.frequency;
     double top = rigCaps.spectAmpMax - 50.0;
     
