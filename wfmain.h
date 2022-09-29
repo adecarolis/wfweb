@@ -39,6 +39,7 @@
 #include "selectradio.h"
 #include "colorprefs.h"
 #include "loggingwindow.h"
+#include "cluster.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -188,8 +189,13 @@ signals:
     void sendRigCaps(rigCapabilities caps);
     void requestRigState();
     void stateUpdated();
+    void setClusterUdpPort(int port);
+    void setClusterEnableUdp(bool udp);
+    void setClusterEnableTcp(bool tcp);
 
 private slots:
+    void addClusterSpot(spotData spot);
+    void deleteClusterSpot(QString dxcall);
     void updateSizes(int tabIndex);
     void shortcutF1();
     void shortcutF2();
@@ -652,6 +658,8 @@ private slots:
 
     void on_customEdgeBtn_clicked();
 
+    void clusterCheck();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -1011,7 +1019,7 @@ private:
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
     QThread* serverThread = Q_NULLPTR;
-    
+
     void bandStackBtnClick();
     bool waitingForBandStackRtn;
     char bandStkBand;
@@ -1039,6 +1047,12 @@ private:
     SERVERCONFIG serverConfig;
     void serverAddUserLine(const QString& user, const QString& pass, const int& type);
 
+    dxClusterClient* cluster = Q_NULLPTR;
+    QThread* clusterThread = Q_NULLPTR;
+    QMap<QString, spotData*> clusterSpots;
+    QTimer clusterTimer;
+    QCPItemText* text=Q_NULLPTR;
+
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
@@ -1052,6 +1066,7 @@ Q_DECLARE_METATYPE(struct timekind)
 Q_DECLARE_METATYPE(struct datekind)
 Q_DECLARE_METATYPE(struct networkStatus)
 Q_DECLARE_METATYPE(struct networkAudioLevels)
+Q_DECLARE_METATYPE(struct spotData)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)

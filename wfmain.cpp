@@ -71,6 +71,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<QList<radio_cap_packet>>();
     qRegisterMetaType<networkStatus>();
     qRegisterMetaType<networkAudioLevels>();
+    qRegisterMetaType<spotData>();
 
     haveRigCaps = false;
 
@@ -109,6 +110,22 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     rigConnections();
 
 
+    cluster = new dxClusterClient();
+
+    clusterThread = new QThread(this);
+
+    cluster->moveToThread(clusterThread);
+
+
+    connect(this, SIGNAL(setClusterEnableUdp(bool)), cluster, SLOT(enableUdp(bool)));
+    connect(this, SIGNAL(setClusterUdpPort(int)), cluster, SLOT(setUdpPort(int)));
+    connect(cluster, SIGNAL(addSpot(spotData)), this, SLOT(addClusterSpot(spotData)));
+    connect(cluster, SIGNAL(deleteSpot(QString)), this, SLOT(deleteClusterSpot(QString)));
+    connect(clusterThread, SIGNAL(finished()), cluster, SLOT(deleteLater()));
+    clusterThread->start();
+
+    emit setClusterUdpPort(12060);
+    emit setClusterEnableUdp(true);
 
     setServerToPrefs();
 
@@ -127,6 +144,10 @@ wfmain::~wfmain()
     if (serverThread != Q_NULLPTR) {
         serverThread->quit();
         serverThread->wait();
+    }
+    if (clusterThread != Q_NULLPTR) {
+        clusterThread->quit();
+        clusterThread->wait();
     }
     if (rigCtl != Q_NULLPTR) {
         delete rigCtl;
@@ -235,8 +256,9 @@ void wfmain::createSettingsListItems()
     ui->settingsList->addItem("Radio Settings");   // 2
     ui->settingsList->addItem("Radio Server");     // 3
     ui->settingsList->addItem("External Control"); // 4
-    ui->settingsList->addItem("Experimental");     // 5
-    //ui->settingsList->addItem("Audio Processing"); // 6
+    ui->settingsList->addItem("DX Cluster"); // 5
+    ui->settingsList->addItem("Experimental");     // 6
+    //ui->settingsList->addItem("Audio Processing"); // 7
     ui->settingsStack->setCurrentIndex(0);
 }
 
@@ -688,6 +710,14 @@ void wfmain::setupPlots()
     freqIndicatorLine->setAntialiased(true);
     freqIndicatorLine->setPen(QPen(Qt::blue));
 
+    /*
+    text = new QCPItemText(plot);
+    text->setAntialiased(true);
+    text->setColor(QColor(Qt::red));
+    text->setText("TEST");
+    text->position->setCoords(14.195, rigCaps.spectAmpMax);
+    text->setFont(QFont(font().family(), 12));
+    */
 
     ui->plot->addGraph(); // primary
     ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first.
@@ -3775,8 +3805,8 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         plot->graph(0)->setData(x,y, true);
         if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
         {
-            freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
-            freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
+            freqIndicatorLine->start->setCoords(freq.MHzDouble, 0);
+            freqIndicatorLine->end->setCoords(freq.MHzDouble, rigCaps.spectAmpMax);
 
             if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modePSK_R) {
                 passbandIndicator->topLeft->setCoords(freq.MHzDouble - passBand - 0.0001, 0);
@@ -7352,4 +7382,60 @@ errMsg:
     }
 
 
+}
+
+
+void wfmain::clusterCheck() {
+
+}
+
+void wfmain::addClusterSpot(spotData spot) {
+
+    spot.text = new QCPItemText(plot);
+    spot.text->setAntialiased(true);
+    spot.text->setColor(QColor(Qt::red));
+    spot.text->setText(spot.dxcall);
+    spot.text->setFont(QFont(font().family(), 10));
+    spot.text->setPositionAlignment(Qt::AlignTop | Qt::AlignHCenter);
+    spot.text->setClipAxisRect(false);
+    spot.text->position->setType(QCPItemPosition::ptPlotCoords);
+    bool conflict = true;
+    QCPAxisRect* rect = spot.text->position->axisRect();
+    double left = spot.frequency;
+    double top = rigCaps.spectAmpMax - 50.0;
+    
+    /*
+    while (conflict) {
+        QCPItemText* textItem = plot->itemAt<QCPItemText>(QPointF(left,top));
+        if (textItem != Q_NULLPTR) {
+            qInfo(logGui()) << "Found conflicting spot";
+            if (top > 20.0) {
+                top = top - 20.0;
+            }
+            else {
+                top = rigCaps.spectAmpMax - 50.0;
+                left = left + 0.2;
+            }
+        }
+        else {
+            conflict = false;
+        }
+    }
+    */
+    spot.text->position->setCoords(left, top);
+
+    //QList<QGraphicsItem*> col_it = spot.text->item(Qt::IntersectsItemBoundingRect);
+    clusterSpots.insert(spot.dxcall, &spot);
+    qInfo(logGui()) << "Number of cluster spots" << clusterSpots.size();
+}
+
+void wfmain::deleteClusterSpot(QString dxcall) {
+    QMap<QString, spotData*>::iterator spot = clusterSpots.find(dxcall);
+    while (spot != clusterSpots.end() && spot.key() == dxcall) {
+        if (spot.value()->text != Q_NULLPTR)
+        {
+            plot->removeItem(spot.value()->text);
+        }
+        spot = clusterSpots.erase(spot);
+    }
 }
