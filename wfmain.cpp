@@ -7501,7 +7501,7 @@ void wfmain::addClusterSpot(spotData* s) {
     s->text->setText(s->dxcall);
     s->text->setFont(QFont(font().family(), 10));
     s->text->setPositionAlignment(Qt::AlignTop | Qt::AlignHCenter);
-    s->text->setClipAxisRect(false);
+    //s->text->setClipAxisRect(false);
     s->text->position->setType(QCPItemPosition::ptPlotCoords);
     //bool conflict = true;
     //QCPAxisRect* rect = spot.text->position->axisRect();
