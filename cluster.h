@@ -29,7 +29,7 @@ struct clusterSettings {
     QString userName;
     QString password;
     int timeout=30;
-    bool default;
+    bool isdefault;
 };
 
 class dxClusterClient : public QObject

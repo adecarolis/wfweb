@@ -140,7 +140,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     for (int f = 0; f < clusters.size(); f++)
     {
-        if (clusters[f].default)
+        if (clusters[f].isdefault)
         {
             emit setClusterServerName(clusters[f].server);
             emit setClusterTcpPort(clusters[f].port);
@@ -1867,7 +1867,7 @@ void wfmain::loadSettings()
                 c.userName = settings->value("UserName", "").toString();
                 c.password = settings->value("Password", "").toString();
                 c.timeout = settings->value("Timeout", 0).toInt();
-                c.default = settings->value("Default", false).toBool();
+                c.isdefault = settings->value("Default", false).toBool();
                 if (!c.server.isEmpty()) {
                     clusters.append(c);
                 }
@@ -1878,7 +1878,7 @@ void wfmain::loadSettings()
             for (int f = 0; f < clusters.size(); f++)
             {
                 ui->clusterServerNameCombo->addItem(clusters[f].server);
-                if (clusters[f].default) {
+                if (clusters[f].isdefault) {
                     defaultCluster = f;
                 }
             }
@@ -2254,7 +2254,7 @@ void wfmain::saveSettings()
         settings->setValue("Port", clusters[f].port);
         settings->setValue("Password", clusters[f].password);
         settings->setValue("Timeout", clusters[f].timeout);
-        settings->setValue("Default", clusters[f].default);
+        settings->setValue("Default", clusters[f].isdefault);
     }
 
     settings->endArray();
@@ -7579,9 +7579,9 @@ void wfmain::on_clusterServerNameCombo_currentIndexChanged(int index)
 
     for (int i = 0; i < clusters.size(); i++) {
         if (i == index)
-            clusters[index].default = true;
+            clusters[index].isdefault = true;
         else
-            clusters[index].default = false;
+            clusters[index].isdefault = false;
     }
 
     emit setClusterServerName(clusters[index].server);
