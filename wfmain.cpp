@@ -113,19 +113,43 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     cluster = new dxClusterClient();
 
     clusterThread = new QThread(this);
+    clusterThread->setObjectName("dxcluster()");
 
     cluster->moveToThread(clusterThread);
 
-
     connect(this, SIGNAL(setClusterEnableUdp(bool)), cluster, SLOT(enableUdp(bool)));
+    connect(this, SIGNAL(setClusterEnableTcp(bool)), cluster, SLOT(enableTcp(bool)));
     connect(this, SIGNAL(setClusterUdpPort(int)), cluster, SLOT(setUdpPort(int)));
-    connect(cluster, SIGNAL(addSpot(spotData)), this, SLOT(addClusterSpot(spotData)));
+    connect(this, SIGNAL(setClusterServerName(QString)), cluster, SLOT(setTcpServerName(QString)));
+    connect(this, SIGNAL(setClusterTcpPort(int)), cluster, SLOT(setTcpPort(int)));
+    connect(this, SIGNAL(setClusterUserName(QString)), cluster, SLOT(setTcpUserName(QString)));
+    connect(this, SIGNAL(setClusterPassword(QString)), cluster, SLOT(setTcpPassword(QString)));
+    connect(this, SIGNAL(setClusterTimeout(int)), cluster, SLOT(setTcpTimeout(int)));
+
+    connect(cluster, SIGNAL(addSpot(spotData*)), this, SLOT(addClusterSpot(spotData*)));
     connect(cluster, SIGNAL(deleteSpot(QString)), this, SLOT(deleteClusterSpot(QString)));
+    connect(cluster, SIGNAL(deleteOldSpots(int)), this, SLOT(deleteOldClusterSpots(int)));
+    connect(cluster, SIGNAL(sendOutput(QString)), this, SLOT(receiveClusterOutput(QString)));
+
     connect(clusterThread, SIGNAL(finished()), cluster, SLOT(deleteLater()));
+
     clusterThread->start();
 
-    emit setClusterUdpPort(12060);
-    emit setClusterEnableUdp(true);
+    emit setClusterUdpPort(prefs.clusterUdpPort);
+    emit setClusterEnableUdp(prefs.clusterUdpEnable);
+
+    for (int f = 0; f < clusters.size(); f++)
+    {
+        if (clusters[f].default)
+        {
+            emit setClusterServerName(clusters[f].server);
+            emit setClusterTcpPort(clusters[f].port);
+            emit setClusterUserName(clusters[f].userName);
+            emit setClusterPassword(clusters[f].password);
+            emit setClusterTimeout(clusters[f].timeout);
+        }
+    }
+    emit setClusterEnableTcp(prefs.clusterTcpEnable);
 
     setServerToPrefs();
 
@@ -1821,6 +1845,66 @@ void wfmain::loadSettings()
     settings->endArray();
     settings->endGroup();
 
+    settings->beginGroup("Cluster");
+    
+    prefs.clusterUdpEnable = settings->value("UdpEnabled", false).toBool();
+    prefs.clusterTcpEnable = settings->value("TcpEnabled", false).toBool();
+    prefs.clusterUdpPort = settings->value("UdpPort", 12060).toInt();
+    ui->clusterUdpPortLineEdit->setText(QString::number(prefs.clusterUdpPort));
+    ui->clusterUdpEnable->setChecked(prefs.clusterUdpEnable);
+    ui->clusterTcpEnable->setChecked(prefs.clusterTcpEnable);
+
+    int numClusters = settings->beginReadArray("Servers");
+    clusters.clear();
+    if (numClusters > 0) {
+        {
+            for (int f = 0; f < numClusters; f++)
+            {
+                settings->setArrayIndex(f);
+                clusterSettings c;
+                c.server = settings->value("ServerName", "").toString();
+                c.port = settings->value("Port", 7300).toInt();
+                c.userName = settings->value("UserName", "").toString();
+                c.password = settings->value("Password", "").toString();
+                c.timeout = settings->value("Timeout", 0).toInt();
+                c.default = settings->value("Default", false).toBool();
+                if (!c.server.isEmpty()) {
+                    clusters.append(c);
+                }
+            }
+            int defaultCluster = 0;
+            ui->clusterServerNameCombo->blockSignals(true);
+
+            for (int f = 0; f < clusters.size(); f++)
+            {
+                ui->clusterServerNameCombo->addItem(clusters[f].server);
+                if (clusters[f].default) {
+                    defaultCluster = f;
+                }
+            }
+            ui->clusterServerNameCombo->blockSignals(false);
+
+            if (clusters.size() > defaultCluster)
+            {
+                ui->clusterServerNameCombo->setCurrentIndex(defaultCluster);
+                ui->clusterTcpPortLineEdit->blockSignals(true);
+                ui->clusterUsernameLineEdit->blockSignals(true);
+                ui->clusterPasswordLineEdit->blockSignals(true);
+                ui->clusterTimeoutLineEdit->blockSignals(true);
+                ui->clusterTcpPortLineEdit->setText(QString::number(clusters[defaultCluster].port));
+                ui->clusterUsernameLineEdit->setText(clusters[defaultCluster].userName);
+                ui->clusterPasswordLineEdit->setText(clusters[defaultCluster].password);
+                ui->clusterTimeoutLineEdit->setText(QString::number(clusters[defaultCluster].timeout));
+                ui->clusterTcpPortLineEdit->blockSignals(false);
+                ui->clusterUsernameLineEdit->blockSignals(false);
+                ui->clusterPasswordLineEdit->blockSignals(false);
+                ui->clusterTimeoutLineEdit->blockSignals(false);
+            }
+        }
+    }
+    settings->endArray();
+
+    settings->endGroup();
 }
 
 void wfmain::serverAddUserLine(const QString& user, const QString& pass, const int& type)
@@ -2153,11 +2237,29 @@ void wfmain::saveSettings()
     }
 
     settings->endArray();
-    qInfo() << "Server config stored";
-
     settings->endGroup();
 
+    settings->beginGroup("Cluster");
+    settings->setValue("UdpEnabled", prefs.clusterUdpEnable);
+    settings->setValue("TcpEnabled", prefs.clusterTcpEnable);
+    settings->setValue("UdpPort", prefs.clusterUdpPort);
 
+    settings->beginWriteArray("Servers");
+
+    for (int f = 0; f < clusters.count(); f++)
+    {
+        settings->setArrayIndex(f);
+        settings->setValue("ServerName", clusters[f].server);
+        settings->setValue("UserName", clusters[f].userName);
+        settings->setValue("Port", clusters[f].port);
+        settings->setValue("Password", clusters[f].password);
+        settings->setValue("Timeout", clusters[f].timeout);
+        settings->setValue("Default", clusters[f].default);
+    }
+
+    settings->endArray();
+
+    settings->endGroup();
 
     settings->sync(); // Automatic, not needed (supposedly)
 }
@@ -7385,57 +7487,182 @@ errMsg:
 }
 
 
-void wfmain::clusterCheck() {
-
+void wfmain::receiveClusterOutput(QString text) {
+    ui->clusterOutputTextEdit->moveCursor(QTextCursor::End);
+    ui->clusterOutputTextEdit->insertPlainText(text);
+    ui->clusterOutputTextEdit->moveCursor(QTextCursor::End);
 }
 
-void wfmain::addClusterSpot(spotData spot) {
+void wfmain::addClusterSpot(spotData* s) {
 
-    spot.text = new QCPItemText(plot);
-    spot.text->setAntialiased(true);
-    spot.text->setColor(QColor(Qt::red));
-    spot.text->setText(spot.dxcall);
-    spot.text->setFont(QFont(font().family(), 10));
-    spot.text->setPositionAlignment(Qt::AlignTop | Qt::AlignHCenter);
-    spot.text->setClipAxisRect(false);
-    spot.text->position->setType(QCPItemPosition::ptPlotCoords);
+    s->text = new QCPItemText(plot);
+    s->text->setAntialiased(true);
+    s->text->setColor(QColor(Qt::red));
+    s->text->setText(s->dxcall);
+    s->text->setFont(QFont(font().family(), 10));
+    s->text->setPositionAlignment(Qt::AlignTop | Qt::AlignHCenter);
+    s->text->setClipAxisRect(false);
+    s->text->position->setType(QCPItemPosition::ptPlotCoords);
     //bool conflict = true;
     //QCPAxisRect* rect = spot.text->position->axisRect();
-    double left = spot.frequency;
+    double left = s->frequency;
     double top = rigCaps.spectAmpMax - 50.0;
     
-    /*
-    while (conflict) {
-        QCPItemText* textItem = plot->itemAt<QCPItemText>(QPointF(left,top));
-        if (textItem != Q_NULLPTR) {
-            qInfo(logGui()) << "Found conflicting spot";
-            if (top > 20.0) {
-                top = top - 20.0;
-            }
-            else {
-                top = rigCaps.spectAmpMax - 50.0;
-                left = left + 0.2;
-            }
-        }
-        else {
-            conflict = false;
-        }
-    }
-    */
-    spot.text->position->setCoords(left, top);
+    s->text->position->setCoords(left, top);
 
     //QList<QGraphicsItem*> col_it = spot.text->item(Qt::IntersectsItemBoundingRect);
-    clusterSpots.insert(spot.dxcall, &spot);
-    qInfo(logGui()) << "Number of cluster spots" << clusterSpots.size();
+    QMutexLocker locker(&clusterMutex);
+    clusterSpots.insert(s->dxcall, s);
+    //qInfo(logGui()) << "Number of cluster spots" << clusterSpots.size();
 }
 
 void wfmain::deleteClusterSpot(QString dxcall) {
+    QMutexLocker locker(&clusterMutex);
     QMap<QString, spotData*>::iterator spot = clusterSpots.find(dxcall);
     while (spot != clusterSpots.end() && spot.key() == dxcall) {
         if (spot.value()->text != Q_NULLPTR)
         {
             plot->removeItem(spot.value()->text);
         }
+        delete spot.value();
         spot = clusterSpots.erase(spot);
     }
+}
+
+void wfmain::on_clusterUdpEnable_clicked(bool enable)
+{
+    prefs.clusterUdpEnable = enable;
+    emit setClusterEnableUdp(enable);
+}
+
+void wfmain::on_clusterTcpEnable_clicked(bool enable)
+{
+    prefs.clusterTcpEnable = enable;
+    emit setClusterEnableTcp(enable);
+}
+
+void wfmain::on_clusterUdpPortLineEdit_editingFinished()
+{
+    prefs.clusterUdpPort = ui->clusterUdpPortLineEdit->text().toInt();
+    emit setClusterUdpPort(prefs.clusterUdpPort);
+}
+
+void wfmain::on_clusterServerNameCombo_currentIndexChanged(int index) 
+{
+    if (index < 0)
+        return;
+
+    QString text = ui->clusterServerNameCombo->currentText();
+
+    if (clusters.size() <= index)
+    {
+        qInfo(logGui) << "Adding Cluster server" << text;
+        clusterSettings c;
+        c.server = text;
+        clusters.append(c);
+    }
+    else {
+        qInfo(logGui) << "Editing Cluster server" << text;
+        clusters[index].server = text;
+    }
+    ui->clusterUsernameLineEdit->blockSignals(true);
+    ui->clusterPasswordLineEdit->blockSignals(true);
+    ui->clusterTimeoutLineEdit->blockSignals(true);
+    ui->clusterTcpPortLineEdit->setText(QString::number(clusters[index].port));
+    ui->clusterUsernameLineEdit->setText(clusters[index].userName);
+    ui->clusterPasswordLineEdit->setText(clusters[index].password);
+    ui->clusterTimeoutLineEdit->setText(QString::number(clusters[index].timeout));
+    ui->clusterUsernameLineEdit->blockSignals(false);
+    ui->clusterPasswordLineEdit->blockSignals(false);
+    ui->clusterTimeoutLineEdit->blockSignals(false);
+
+
+    for (int i = 0; i < clusters.size(); i++) {
+        if (i == index)
+            clusters[index].default = true;
+        else
+            clusters[index].default = false;
+    }
+
+    emit setClusterServerName(clusters[index].server);
+    emit setClusterTcpPort(clusters[index].port);
+    emit setClusterUserName(clusters[index].userName);
+    emit setClusterPassword(clusters[index].password);
+    emit setClusterTimeout(clusters[index].timeout);
+
+}
+
+void wfmain::on_clusterServerNameCombo_currentTextChanged(QString text)
+{
+    if (text.isEmpty()) {
+        int index = ui->clusterServerNameCombo->currentIndex();
+        ui->clusterServerNameCombo->removeItem(index);
+        clusters.removeAt(index);
+    }
+}
+
+void wfmain::on_clusterTcpPortLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].port = ui->clusterTcpPortLineEdit->displayText().toInt();
+        emit setClusterTcpPort(clusters[index].port);
+    }
+}
+
+void wfmain::on_clusterUsernameLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].userName = ui->clusterUsernameLineEdit->text();
+        emit setClusterUserName(clusters[index].userName);
+    }
+}
+
+void wfmain::on_clusterPasswordLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].password = ui->clusterPasswordLineEdit->text();
+        emit setClusterPassword(clusters[index].password);
+    }
+
+}
+
+void wfmain::on_clusterTimeoutLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].timeout = ui->clusterTimeoutLineEdit->displayText().toInt();
+        emit setClusterTimeout(clusters[index].timeout);
+    }
+}
+
+
+void wfmain::deleteOldClusterSpots(int timeout) 
+{
+    QMutexLocker locker(&clusterMutex);
+    QDateTime time=QDateTime::currentDateTimeUtc();
+    //qDebug(logGui()) << "Deleting old Cluster spots";
+    QMap<QString, spotData*>::iterator spot = clusterSpots.begin();
+    while (spot != clusterSpots.end()) {
+        if (spot.value()->timestamp.addSecs(timeout * 60) < time) {
+            if (spot.value()->text != Q_NULLPTR)
+            {
+                plot->removeItem(spot.value()->text);
+            }
+            //qDebug(logGui()) << "Deleting:" << spot.value()->dxcall << "Timestamp" << spot.value()->timestamp.addSecs(timeout * 60) << "is lower than" << time;
+            delete spot.value(); // Stop memory leak?
+            spot = clusterSpots.erase(spot);
+        }
+        else {
+            //qDebug(logGui()) << "Spot:" << spot.value()->dxcall << "Timestamp" << spot.value()->timestamp.addSecs(timeout * 60) << "not lower than" << time;
+            ++spot;
+        }
+    }
+
 }

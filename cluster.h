@@ -5,12 +5,12 @@
 #include <QDebug>
 #include <QUdpSocket>
 #include <QTcpSocket>
-#include <QXmlSimpleReader>
-#include <QXmlInputSource>
 #include <QDomDocument>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QDateTime>
+#include <QRegularExpression>
+#include <QTimer>
 #include <qcustomplot.h>
 
 struct spotData {
@@ -23,6 +23,14 @@ struct spotData {
     QCPItemText* text = Q_NULLPTR;
 };
 
+struct clusterSettings {
+    QString server;
+    int port;
+    QString userName;
+    QString password;
+    int timeout=30;
+    bool default;
+};
 
 class dxClusterClient : public QObject
 {
@@ -33,31 +41,42 @@ public:
     virtual ~dxClusterClient();
 
 signals:
-    void addSpot(spotData spot);
+    void addSpot(spotData* spot);
     void deleteSpot(QString dxcall);
     void deleteOldSpots(int minutes);
+    void sendOutput(QString text);
 
 public slots:
     void udpDataReceived();
+    void tcpDataReceived();
     void enableUdp(bool enable);
     void enableTcp(bool enable);
     void setUdpPort(int p) { udpPort = p; }
     void setTcpServerName(QString s) { tcpServerName = s; }
+    void setTcpPort(int p) { tcpPort = p; }
     void setTcpUserName(QString s) { tcpUserName = s; }
     void setTcpPassword(QString s) { tcpPassword = s; }
+    void setTcpTimeout(int p) { tcpTimeout = p; }
+    void tcpCleanup();
 
 private:
+    void sendTcpData(QString data);
+
     bool udpEnable;
     bool tcpEnable;
     QUdpSocket* udpSocket=Q_NULLPTR;
     QTcpSocket* tcpSocket=Q_NULLPTR;
     int udpPort;
     QString tcpServerName;
+    int tcpPort;
     QString tcpUserName;
     QString tcpPassword;
+    int tcpTimeout;
     QDomDocument udpSpotReader;
-    QXmlInputSource udpXmlSource;
-    QMutex udpMutex;
+    QRegularExpression tcpRegex;
+    QMutex mutex;
+    bool authenticated=false;
+    QTimer* tcpCleanupTimer=Q_NULLPTR;
 };
 
 #endif

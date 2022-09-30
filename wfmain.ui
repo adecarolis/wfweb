@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1075</width>
+    <width>1125</width>
     <height>660</height>
    </rect>
   </property>
@@ -4898,7 +4898,7 @@
                  </widget>
                 </item>
                 <item row="1" column="1">
-                 <widget class="QLineEdit" name="clusterUdpPort">
+                 <widget class="QLineEdit" name="clusterUdpPortLineEdit">
                   <property name="inputMask">
                    <string>00000</string>
                   </property>
@@ -4919,8 +4919,8 @@
                <rect>
                 <x>330</x>
                 <y>50</y>
-                <width>241</width>
-                <height>181</height>
+                <width>311</width>
+                <height>241</height>
                </rect>
               </property>
               <property name="title">
@@ -4931,8 +4931,8 @@
                 <rect>
                  <x>20</x>
                  <y>40</y>
-                 <width>201</width>
-                 <height>121</height>
+                 <width>271</width>
+                 <height>181</height>
                 </rect>
                </property>
                <layout class="QFormLayout" name="formLayout_2">
@@ -4943,28 +4943,29 @@
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="1">
-                 <widget class="QLineEdit" name="clusterServerName"/>
-                </item>
-                <item row="2" column="0">
+                <item row="3" column="0">
                  <widget class="QLabel" name="label_46">
                   <property name="text">
                    <string>Username</string>
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="1">
-                 <widget class="QLineEdit" name="clusterUsername"/>
+                <item row="3" column="1">
+                 <widget class="QLineEdit" name="clusterUsernameLineEdit"/>
                 </item>
-                <item row="3" column="0">
+                <item row="4" column="0">
                  <widget class="QLabel" name="label_47">
                   <property name="text">
                    <string>Password</string>
                   </property>
                  </widget>
                 </item>
-                <item row="3" column="1">
-                 <widget class="QLineEdit" name="clusterPassword"/>
+                <item row="4" column="1">
+                 <widget class="QLineEdit" name="clusterPasswordLineEdit">
+                  <property name="echoMode">
+                   <enum>QLineEdit::PasswordEchoOnEdit</enum>
+                  </property>
+                 </widget>
                 </item>
                 <item row="0" column="0">
                  <widget class="QCheckBox" name="clusterTcpEnable">
@@ -4973,12 +4974,70 @@
                   </property>
                  </widget>
                 </item>
+                <item row="1" column="1">
+                 <widget class="QComboBox" name="clusterServerNameCombo">
+                  <property name="editable">
+                   <bool>true</bool>
+                  </property>
+                  <property name="duplicatesEnabled">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QLabel" name="label_48">
+                  <property name="text">
+                   <string>Spot Timeout (minutes)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QLineEdit" name="clusterTimeoutLineEdit">
+                  <property name="inputMask">
+                   <string>0000</string>
+                  </property>
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLabel" name="label_49">
+                  <property name="text">
+                   <string>Server Port</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QLineEdit" name="clusterTcpPortLineEdit">
+                  <property name="inputMask">
+                   <string>00000</string>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </widget>
+             </widget>
+             <widget class="QPlainTextEdit" name="clusterOutputTextEdit">
+              <property name="geometry">
+               <rect>
+                <x>10</x>
+                <y>320</y>
+                <width>811</width>
+                <height>141</height>
+               </rect>
+              </property>
+              <property name="frameShadow">
+               <enum>QFrame::Raised</enum>
+              </property>
+              <property name="sizeAdjustPolicy">
+               <enum>QAbstractScrollArea::AdjustIgnored</enum>
+              </property>
              </widget>
              <zorder>groupBox_9</zorder>
              <zorder>horizontalLayoutWidget</zorder>
              <zorder>groupBox_10</zorder>
+             <zorder>clusterOutputTextEdit</zorder>
             </widget>
             <widget class="QWidget" name="experimental">
              <layout class="QVBoxLayout" name="verticalLayout_28">
@@ -5146,7 +5205,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1075</width>
+     <width>1125</width>
      <height>21</height>
     </rect>
    </property>
@@ -5174,7 +5233,7 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="buttonGroup"/>
   <buttongroup name="underlayButtonGroup"/>
+  <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>

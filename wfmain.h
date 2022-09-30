@@ -192,10 +192,16 @@ signals:
     void setClusterUdpPort(int port);
     void setClusterEnableUdp(bool udp);
     void setClusterEnableTcp(bool tcp);
+    void setClusterServerName(QString name);
+    void setClusterTcpPort(int port);
+    void setClusterUserName(QString name);
+    void setClusterPassword(QString pass);
+    void setClusterTimeout(int timeout);
 
 private slots:
-    void addClusterSpot(spotData spot);
+    void addClusterSpot(spotData* spot);
     void deleteClusterSpot(QString dxcall);
+    void deleteOldClusterSpots(int timeout);
     void updateSizes(int tabIndex);
     void shortcutF1();
     void shortcutF2();
@@ -658,7 +664,18 @@ private slots:
 
     void on_customEdgeBtn_clicked();
 
-    void clusterCheck();
+    void on_clusterUdpEnable_clicked(bool enable);
+    void on_clusterTcpEnable_clicked(bool enable);
+    void on_clusterUdpPortLineEdit_editingFinished();
+    void on_clusterServerNameCombo_currentTextChanged(QString text);
+    void on_clusterServerNameCombo_currentIndexChanged(int index);
+    void on_clusterTcpPortLineEdit_editingFinished();
+    void on_clusterUsernameLineEdit_editingFinished();
+    void on_clusterPasswordLineEdit_editingFinished();
+    void on_clusterTimeoutLineEdit_editingFinished();
+
+    void receiveClusterOutput(QString text);
+
 
 private:
     Ui::wfmain *ui;
@@ -912,6 +929,13 @@ private:
         quint16 tcpPort;
         quint8 waterfallFormat;
         audioType audioSystem;
+        bool clusterUdpEnable;
+        bool clusterTcpEnable;
+        int clusterUdpPort;
+        QString clusterTcpServerName;
+        QString clusterTcpUserName;
+        QString clusterTcpPassword;
+        int clusterTimeout;
     } prefs;
 
     preferences defPrefs;
@@ -1052,7 +1076,8 @@ private:
     QMap<QString, spotData*> clusterSpots;
     QTimer clusterTimer;
     QCPItemText* text=Q_NULLPTR;
-
+    QList<clusterSettings> clusters;
+    QMutex clusterMutex;
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
