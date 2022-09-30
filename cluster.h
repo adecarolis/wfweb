@@ -25,7 +25,7 @@ struct spotData {
 
 struct clusterSettings {
     QString server;
-    int port;
+    int port=7300;
     QString userName;
     QString password;
     int timeout=30;

@@ -1902,6 +1902,12 @@ void wfmain::loadSettings()
             }
         }
     }
+    else {
+        ui->clusterTcpPortLineEdit->setEnabled(false);
+        ui->clusterUsernameLineEdit->setEnabled(false);
+        ui->clusterPasswordLineEdit->setEnabled(false);
+        ui->clusterTimeoutLineEdit->setEnabled(false);
+    }
     settings->endArray();
 
     settings->endGroup();
@@ -7560,6 +7566,11 @@ void wfmain::on_clusterServerNameCombo_currentIndexChanged(int index)
         clusterSettings c;
         c.server = text;
         clusters.append(c);
+        ui->clusterTcpPortLineEdit->setEnabled(true);
+        ui->clusterUsernameLineEdit->setEnabled(true);
+        ui->clusterPasswordLineEdit->setEnabled(true);
+        ui->clusterTimeoutLineEdit->setEnabled(true);
+
     }
     else {
         qInfo(logGui) << "Editing Cluster server" << text;
@@ -7598,6 +7609,13 @@ void wfmain::on_clusterServerNameCombo_currentTextChanged(QString text)
         int index = ui->clusterServerNameCombo->currentIndex();
         ui->clusterServerNameCombo->removeItem(index);
         clusters.removeAt(index);
+        if (clusters.size() == 0)
+        {
+            ui->clusterTcpPortLineEdit->setEnabled(false);
+            ui->clusterUsernameLineEdit->setEnabled(false);
+            ui->clusterPasswordLineEdit->setEnabled(false);
+            ui->clusterTimeoutLineEdit->setEnabled(false);
+        }
     }
 }
 
