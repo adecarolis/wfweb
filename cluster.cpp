@@ -76,6 +76,7 @@ void dxClusterClient::enableTcp(bool enable)
             tcpSocket->disconnect();
             delete tcpSocket;
             tcpSocket = Q_NULLPTR;
+            emit deleteOldSpots(0);
         }
     }
 }
