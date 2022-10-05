@@ -4,7 +4,10 @@
 #
 #-------------------------------------------------
 
-QT       += core gui serialport network multimedia xml sql
+QT       += core gui serialport network multimedia xml
+
+#QT += sql
+#DEFINES += USESQL
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
