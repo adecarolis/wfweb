@@ -18,8 +18,6 @@
 #include <QMutexLocker>
 #include <QColorDialog>
 #include <QColor>
-#include <QSqlDatabase>
-#include <QSqlQuery>
 
 #include "logcategories.h"
 #include "commhandler.h"

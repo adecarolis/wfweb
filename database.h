@@ -7,7 +7,6 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <QSqlRecord>
-#include <QSqlResult>
 #include <QThread>
 #include <QStandardPaths>
 
@@ -19,7 +18,6 @@ public:
     bool open();
     void close();
     QSqlQuery query(QString query);
-    QSqlResult database::get();
 
 signals:
 
