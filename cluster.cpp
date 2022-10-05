@@ -205,7 +205,7 @@ void dxClusterClient::freqRange(double low, double high)
 void dxClusterClient::updateSpots()
 {
     // Set the required freqency range.
-    QString queryText = QString("SELECT * FROM spots WHERE frequency >= %1 AND frequency <= %2").arg(lowFreq).arg(highFreq);
+    QString queryText = QString("SELECT * FROM spots WHERE frequency > %1 AND frequency < %2").arg(lowFreq).arg(highFreq);
     //QString queryText = QString("SELECT * FROM spots");
     database db;
     auto query = db.query(queryText);
