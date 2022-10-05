@@ -7651,9 +7651,7 @@ void wfmain::receiveSpots(QList<spotData> spots)
 
         if (!found)
         {
-            spotData* sp = new spotData();
-            sp->dxcall = s.dxcall;
-            sp->frequency = s.frequency;
+            spotData* sp = new spotData(s);
 
             //qDebug(logCluster()) << "ADD:" << sp->dxcall;
             sp->current = true;

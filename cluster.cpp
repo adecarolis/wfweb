@@ -115,7 +115,6 @@ void dxClusterClient::udpDataReceived()
                 data->timestamp = QDateTime::fromString(spot.firstChildElement("timestamp").text(),"yyyy-MM-dd hh:mm:ss");
                 data->mode = spot.firstChildElement("mode").text();
                 data->comment = spot.firstChildElement("comment").text();
-                //emit addSpot(data);
 
 #ifdef USESQL
                 database db = database();
@@ -282,12 +281,8 @@ void dxClusterClient::updateSpots()
         if (spot.value()->frequency > lowFreq && spot.value()->frequency < highFreq)
         {
             spots.append(**spot);
-            ++spot;
         }
-        else
-        {
-            ++spot;
-        }
+        ++spot;
     }
 
 #endif
