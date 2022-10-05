@@ -14,7 +14,10 @@
 #include <QSqlDatabase>
 #include <QSqlQuery>
 #include <qcustomplot.h>
+
+#ifdef USESQL
 #include "database.h"
+#endif
 
 struct spotData {
     QString dxcall;
@@ -89,6 +92,7 @@ private:
     QSqlDatabase db;
     double lowFreq;
     double highFreq;
+    QMap<QString,spotData*> allSpots;
 };
 
 #endif

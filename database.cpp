@@ -1,3 +1,5 @@
+#ifdef USESQL
+
 #include "database.h"
 #include "logcategories.h"
 
@@ -101,3 +103,5 @@ bool database::check()
     }
     return false;
 }
+
+#endif

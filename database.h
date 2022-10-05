@@ -1,3 +1,5 @@
+#ifdef USESQL
+
 #ifndef DATABASE_H
 #define DATABASE_H
 
@@ -28,5 +30,7 @@ private:
     QSqlQuery qu;
 
 };
+
+#endif
 
 #endif

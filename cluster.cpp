@@ -13,8 +13,17 @@ dxClusterClient::~dxClusterClient()
     qInfo(logCluster()) << "closing dxClusterClient()";
     enableUdp(false);
     enableTcp(false);
+#ifdef USESQL
     database db;
     db.close();
+#else
+    QMap<QString, spotData*>::iterator spot = allSpots.begin();
+    while (spot != allSpots.end())
+    {
+        delete spot.value(); // Stop memory leak?
+        spot = allSpots.erase(spot);
+    }
+#endif
 }
 
 void dxClusterClient::enableUdp(bool enable)
@@ -108,22 +117,44 @@ void dxClusterClient::udpDataReceived()
                 data->comment = spot.firstChildElement("comment").text();
                 //emit addSpot(data);
 
+#ifdef USESQL
                 database db = database();
                 db.query(QString("DELETE from spots where dxcall='%1'").arg(data->dxcall));
                 QString query = QString("INSERT INTO spots(type,spottercall,frequency,dxcall,mode,comment,timestamp) VALUES('%1','%2',%3,'%4','%5','%6','%7')\n")
                     .arg("UDP").arg(data->spottercall).arg(data->frequency).arg(data->dxcall).arg(data->mode).arg(data->comment).arg(data->timestamp.toString("yyyy-MM-dd hh:mm:ss"));
                 db.query(query);
                 emit sendOutput(query);
+#else
+                bool found = false;
+                QMap<QString, spotData*>::iterator spot = allSpots.find(data->dxcall);
+                while (spot != allSpots.end() && spot.key() == data->dxcall && spot.value()->frequency == data->frequency) {
+                    found = true;
+                    ++spot;
+                }
+                if (found == false) {
+                    allSpots.insert(data->dxcall, data);
+                }
+#endif
+
             }
             else if (action == "delete")
             {
                 QString dxcall = spot.firstChildElement("dxcall").text();
                 double frequency = spot.firstChildElement("frequency").text().toDouble() / 1000.0;
-                //emit deleteSpot(dxcall);
+
+#ifdef USESQL
                 database db = database();
                 QString query=QString("DELETE from spots where dxcall='%1' AND frequency=%2").arg(dxcall).arg(frequency);
                 db.query(query);
                 qInfo(logCluster()) << query;
+#else
+                QMap<QString, spotData*>::iterator spot = allSpots.find(dxcall);
+                while (spot != allSpots.end() && spot.key() == dxcall && spot.value()->frequency == frequency) 
+                {
+                    delete spot.value(); // Stop memory leak?
+                    spot = allSpots.erase(spot);
+                }
+#endif
             }
             updateSpots();
         }
@@ -155,14 +186,26 @@ void dxClusterClient::tcpDataReceived()
             data->dxcall = match.captured(3);
             data->comment = match.captured(4).trimmed();
             data->timestamp = QDateTime::currentDateTimeUtc();
-            //data.timestamp = QDateTime::fromString(match.captured(5), "hhmmZ");
-            //emit addSpot(data);
+
+#ifdef USESQL
             database db = database();
             db.query(QString("DELETE from spots where dxcall='%1'").arg(data->dxcall));
             QString query = QString("INSERT INTO spots(type,spottercall,frequency,dxcall,comment,timestamp) VALUES('%1','%2',%3,'%4','%5','%6')\n")
                 .arg("TCP").arg(data->spottercall).arg(data->frequency).arg(data->dxcall).arg(data->comment).arg(data->timestamp.toString("yyyy-MM-dd hh:mm:ss"));
             db.query(query);
             emit sendOutput(query);
+#else
+            bool found = false;
+            QMap<QString, spotData*>::iterator spot = allSpots.find(data->dxcall);
+            while (spot != allSpots.end() && spot.key() == data->dxcall && spot.value()->frequency == data->frequency) {
+                found = true;
+                ++spot;
+            }
+            if (found == false) {
+                allSpots.insert(data->dxcall, data);
+            }
+
+#endif
         }
     }
     updateSpots();
@@ -184,9 +227,23 @@ void dxClusterClient::sendTcpData(QString data)
 
 void dxClusterClient::tcpCleanup()
 {
-    //emit deleteOldSpots(tcpTimeout);
+#ifdef USESQL
     database db = database();
     db.query(QString("DELETE FROM spots where timestamp < datetime('now', '-%1 minutes')").arg(tcpTimeout));
+#else
+    QMap<QString, spotData*>::iterator spot = allSpots.begin();;
+    while (spot != allSpots.end()) {
+        if (spot.value()->timestamp.addSecs(tcpTimeout * 60) < QDateTime::currentDateTimeUtc())
+        {
+            delete spot.value(); // Stop memory leak?
+            spot = allSpots.erase(spot);
+        } 
+        else
+        {
+            ++spot;
+        }
+    }
+#endif
 }
 
 void dxClusterClient::tcpDisconnected() {
@@ -204,13 +261,14 @@ void dxClusterClient::freqRange(double low, double high)
 
 void dxClusterClient::updateSpots()
 {
-    // Set the required freqency range.
+    QList<spotData> spots;
+#ifdef USESQL
+    // Set the required frequency range.
     QString queryText = QString("SELECT * FROM spots WHERE frequency > %1 AND frequency < %2").arg(lowFreq).arg(highFreq);
     //QString queryText = QString("SELECT * FROM spots");
     database db;
     auto query = db.query(queryText);
 
-    QList<spotData> spots;
     while (query.next()) {
         // Step through all current spots within range
         spotData s = spotData();
@@ -218,5 +276,20 @@ void dxClusterClient::updateSpots()
         s.frequency = query.value(query.record().indexOf("frequency")).toDouble();
         spots.append(s);
     }
+#else
+    QMap<QString, spotData*>::iterator spot = allSpots.begin();;
+    while (spot != allSpots.end()) {
+        if (spot.value()->frequency > lowFreq && spot.value()->frequency < highFreq)
+        {
+            spots.append(**spot);
+            ++spot;
+        }
+        else
+        {
+            ++spot;
+        }
+    }
+
+#endif
     emit sendSpots(spots);
 }

@@ -40,7 +40,6 @@
 #include "colorprefs.h"
 #include "loggingwindow.h"
 #include "cluster.h"
-#include "database.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
