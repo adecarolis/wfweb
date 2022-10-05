@@ -11,8 +11,12 @@
 #include <QDateTime>
 #include <QRegularExpression>
 #include <QTimer>
+
+#ifdef USESQL
 #include <QSqlDatabase>
 #include <QSqlQuery>
+#endif
+
 #include <qcustomplot.h>
 
 #ifdef USESQL
@@ -89,7 +93,9 @@ private:
     QMutex mutex;
     bool authenticated=false;
     QTimer* tcpCleanupTimer=Q_NULLPTR;
+#ifdef USESQL
     QSqlDatabase db;
+#endif
     double lowFreq;
     double highFreq;
     QMap<QString,spotData*> allSpots;

@@ -1076,7 +1076,6 @@ private:
     QCPItemText* text=Q_NULLPTR;
     QList<clusterSettings> clusters;
     QMutex clusterMutex;
-    QSqlDatabase db;
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
