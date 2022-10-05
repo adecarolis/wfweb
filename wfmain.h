@@ -18,6 +18,8 @@
 #include <QMutexLocker>
 #include <QColorDialog>
 #include <QColor>
+#include <QSqlDatabase>
+#include <QSqlQuery>
 
 #include "logcategories.h"
 #include "commhandler.h"
@@ -40,6 +42,7 @@
 #include "colorprefs.h"
 #include "loggingwindow.h"
 #include "cluster.h"
+#include "database.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -197,11 +200,9 @@ signals:
     void setClusterUserName(QString name);
     void setClusterPassword(QString pass);
     void setClusterTimeout(int timeout);
+    void setFrequencyRange(double low, double high);
 
 private slots:
-    void addClusterSpot(spotData* spot);
-    void deleteClusterSpot(QString dxcall);
-    void deleteOldClusterSpots(int timeout);
     void updateSizes(int tabIndex);
     void shortcutF1();
     void shortcutF2();
@@ -675,7 +676,7 @@ private slots:
     void on_clusterTimeoutLineEdit_editingFinished();
 
     void receiveClusterOutput(QString text);
-
+    void receiveSpots(QList<spotData> spots);
 
 private:
     Ui::wfmain *ui;
@@ -1078,6 +1079,7 @@ private:
     QCPItemText* text=Q_NULLPTR;
     QList<clusterSettings> clusters;
     QMutex clusterMutex;
+    QSqlDatabase db;
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
@@ -1097,6 +1099,7 @@ Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
 Q_DECLARE_METATYPE(enum mode_kind)
 Q_DECLARE_METATYPE(QList<radio_cap_packet>)
+Q_DECLARE_METATYPE(QList<spotData>)
 Q_DECLARE_METATYPE(rigstate*)
 
 //void (*wfmain::logthistext)(QString text) = NULL;

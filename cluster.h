@@ -11,7 +11,10 @@
 #include <QDateTime>
 #include <QRegularExpression>
 #include <QTimer>
+#include <QSqlDatabase>
+#include <QSqlQuery>
 #include <qcustomplot.h>
+#include "database.h"
 
 struct spotData {
     QString dxcall;
@@ -21,6 +24,7 @@ struct spotData {
     QString mode;
     QString comment;
     QCPItemText* text = Q_NULLPTR;
+    bool current = false;
 };
 
 struct clusterSettings {
@@ -45,10 +49,12 @@ signals:
     void deleteSpot(QString dxcall);
     void deleteOldSpots(int minutes);
     void sendOutput(QString text);
+    void sendSpots(QList<spotData> spots);
 
 public slots:
     void udpDataReceived();
     void tcpDataReceived();
+    void tcpDisconnected();
     void enableUdp(bool enable);
     void enableTcp(bool enable);
     void setUdpPort(int p) { udpPort = p; }
@@ -58,9 +64,12 @@ public slots:
     void setTcpPassword(QString s) { tcpPassword = s; }
     void setTcpTimeout(int p) { tcpTimeout = p; }
     void tcpCleanup();
+    void freqRange(double low, double high);
 
 private:
     void sendTcpData(QString data);
+    bool databaseOpen();
+    void updateSpots();
 
     bool udpEnable;
     bool tcpEnable;
@@ -77,6 +86,9 @@ private:
     QMutex mutex;
     bool authenticated=false;
     QTimer* tcpCleanupTimer=Q_NULLPTR;
+    QSqlDatabase db;
+    double lowFreq;
+    double highFreq;
 };
 
 #endif

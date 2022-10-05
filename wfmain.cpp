@@ -69,9 +69,10 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType <datekind>();
     qRegisterMetaType<rigstate*>();
     qRegisterMetaType<QList<radio_cap_packet>>();
+    qRegisterMetaType<QList<radio_cap_packet>>();
+    qRegisterMetaType<QList<spotData>>();
     qRegisterMetaType<networkStatus>();
     qRegisterMetaType<networkAudioLevels>();
-    qRegisterMetaType<spotData>();
 
     haveRigCaps = false;
 
@@ -125,10 +126,9 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     connect(this, SIGNAL(setClusterUserName(QString)), cluster, SLOT(setTcpUserName(QString)));
     connect(this, SIGNAL(setClusterPassword(QString)), cluster, SLOT(setTcpPassword(QString)));
     connect(this, SIGNAL(setClusterTimeout(int)), cluster, SLOT(setTcpTimeout(int)));
+    connect(this, SIGNAL(setFrequencyRange(double, double)), cluster, SLOT(freqRange(double, double)));
 
-    connect(cluster, SIGNAL(addSpot(spotData*)), this, SLOT(addClusterSpot(spotData*)));
-    connect(cluster, SIGNAL(deleteSpot(QString)), this, SLOT(deleteClusterSpot(QString)));
-    connect(cluster, SIGNAL(deleteOldSpots(int)), this, SLOT(deleteOldClusterSpots(int)));
+    connect(cluster, SIGNAL(sendSpots(QList<spotData>)), this, SLOT(receiveSpots(QList<spotData>)));
     connect(cluster, SIGNAL(sendOutput(QString)), this, SLOT(receiveClusterOutput(QString)));
 
     connect(clusterThread, SIGNAL(finished()), cluster, SLOT(deleteLater()));
@@ -3855,6 +3855,8 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             // This will break if the button is ever moved or renamed.
             on_clearPeakBtn_clicked();
         }
+        // Inform other threads (cluster) that the frequency range has changed.
+        emit setFrequencyRange(startFreq, endFreq);
         // TODO: Add clear-out for the buffer
     }
 
@@ -4117,7 +4119,7 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
     }
 }
 
-void wfmain::handlePlotClick(QMouseEvent *me)
+void wfmain::handlePlotClick(QMouseEvent* me)
 {
     double x = plot->xAxis->pixelToCoord(me->pos().x());
     showStatusBarText(QString("Selected %1 MHz").arg(x));
@@ -7499,42 +7501,6 @@ void wfmain::receiveClusterOutput(QString text) {
     ui->clusterOutputTextEdit->moveCursor(QTextCursor::End);
 }
 
-void wfmain::addClusterSpot(spotData* s) {
-
-    s->text = new QCPItemText(plot);
-    s->text->setAntialiased(true);
-    s->text->setColor(QColor(Qt::red));
-    s->text->setText(s->dxcall);
-    s->text->setFont(QFont(font().family(), 10));
-    s->text->setPositionAlignment(Qt::AlignTop | Qt::AlignHCenter);
-    //s->text->setClipAxisRect(false);
-    s->text->position->setType(QCPItemPosition::ptPlotCoords);
-    //bool conflict = true;
-    //QCPAxisRect* rect = spot.text->position->axisRect();
-    double left = s->frequency;
-    double top = rigCaps.spectAmpMax - 50.0;
-    
-    s->text->position->setCoords(left, top);
-
-    //QList<QGraphicsItem*> col_it = spot.text->item(Qt::IntersectsItemBoundingRect);
-    QMutexLocker locker(&clusterMutex);
-    clusterSpots.insert(s->dxcall, s);
-    //qInfo(logGui()) << "Number of cluster spots" << clusterSpots.size();
-}
-
-void wfmain::deleteClusterSpot(QString dxcall) {
-    QMutexLocker locker(&clusterMutex);
-    QMap<QString, spotData*>::iterator spot = clusterSpots.find(dxcall);
-    while (spot != clusterSpots.end() && spot.key() == dxcall) {
-        if (spot.value()->text != Q_NULLPTR)
-        {
-            plot->removeItem(spot.value()->text);
-        }
-        delete spot.value();
-        spot = clusterSpots.erase(spot);
-    }
-}
-
 void wfmain::on_clusterUdpEnable_clicked(bool enable)
 {
     prefs.clusterUdpEnable = enable;
@@ -7661,26 +7627,86 @@ void wfmain::on_clusterTimeoutLineEdit_editingFinished()
 }
 
 
-void wfmain::deleteOldClusterSpots(int timeout) 
+void wfmain::receiveSpots(QList<spotData> spots)
 {
-    QMutexLocker locker(&clusterMutex);
-    QDateTime time=QDateTime::currentDateTimeUtc();
-    //qDebug(logGui()) << "Deleting old Cluster spots";
-    QMap<QString, spotData*>::iterator spot = clusterSpots.begin();
-    while (spot != clusterSpots.end()) {
-        if (spot.value()->timestamp.addSecs(timeout * 60) < time) {
-            if (spot.value()->text != Q_NULLPTR)
-            {
-                plot->removeItem(spot.value()->text);
-            }
-            //qDebug(logGui()) << "Deleting:" << spot.value()->dxcall << "Timestamp" << spot.value()->timestamp.addSecs(timeout * 60) << "is lower than" << time;
-            delete spot.value(); // Stop memory leak?
-            spot = clusterSpots.erase(spot);
-        }
-        else {
-            //qDebug(logGui()) << "Spot:" << spot.value()->dxcall << "Timestamp" << spot.value()->timestamp.addSecs(timeout * 60) << "not lower than" << time;
+    QElapsedTimer timer;
+    timer.start();
+
+    QMap<QString, spotData*>::iterator spot1 = clusterSpots.begin();
+    while (spot1 != clusterSpots.end()) {
+        spot1.value()->current = false;
+        ++spot1;
+    }
+
+    foreach(spotData s, spots)
+    {
+        bool found = false;
+        QMap<QString, spotData*>::iterator spot = clusterSpots.find(s.dxcall);
+
+        while (spot != clusterSpots.end() && spot.key() == s.dxcall && spot.value()->frequency == s.frequency) {
+            spot.value()->current = true;
+            found = true;
             ++spot;
+        }
+
+        if (!found)
+        {
+            spotData* sp = new spotData();
+            sp->dxcall = s.dxcall;
+            sp->frequency = s.frequency;
+
+            //qDebug(logCluster()) << "ADD:" << sp->dxcall;
+            sp->current = true;
+            bool conflict = true;
+            double left = sp->frequency;
+            double top = rigCaps.spectAmpMax - 10;
+            sp->text = new QCPItemText(plot);
+            sp->text->setAntialiased(true);
+            sp->text->setColor(QColor(Qt::red));
+            sp->text->setText(sp->dxcall);
+            sp->text->setFont(QFont(font().family(), 10));
+            sp->text->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
+            sp->text->position->setType(QCPItemPosition::ptPlotCoords);
+            sp->text->setSelectable(true);
+            QMargins margin;
+            int width = (sp->text->right - sp->text->left) / 2;
+            margin.setLeft(width);
+            margin.setRight(width);
+            sp->text->setPadding(margin);
+            sp->text->position->setCoords(left, top);
+            sp->text->setVisible(false);
+            while (conflict) {
+                QCPItemText* textItem = plot->itemAt<QCPItemText>(sp->text->position->pixelPosition(), true);
+                if (textItem != nullptr && sp->text != textItem) {
+                    //qInfo(logGui()) << "CONFLICT:" << textItem->text() << "SAME POSITION AS" << sp->dxcall << sp->text->position->pixelPosition();
+                    top = top - 5.0;
+                }
+                else {
+                    //qInfo(logGui()) << "OK:" << sp->dxcall << sp->text->position->pixelPosition();
+                    conflict = false;
+                }
+                sp->text->position->setCoords(left, top);
+            }
+
+            sp->text->setVisible(true);
+            clusterSpots.insert(sp->dxcall, sp);
         }
     }
 
+    QMap<QString, spotData*>::iterator spot2 = clusterSpots.begin();
+    while (spot2 != clusterSpots.end()) {
+        if (spot2.value()->current == false) {
+            plot->removeItem(spot2.value()->text);
+            //qDebug(logCluster()) << "REMOVE:" << spot2.value()->dxcall;
+            delete spot2.value(); // Stop memory leak?
+            spot2 = clusterSpots.erase(spot2);
+        }
+        else {
+            ++spot2;
+        }
+
+    }
+
+    //qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
 }
+

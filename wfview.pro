@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui serialport network multimedia xml
+QT       += core gui serialport network multimedia xml sql
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
@@ -175,6 +175,7 @@ SOURCES += main.cpp\
     selectradio.cpp \
     tcpserver.cpp \
     cluster.cpp \
+    database.cpp \
     aboutbox.cpp 
 
 HEADERS  += wfmain.h \
@@ -212,6 +213,7 @@ HEADERS  += wfmain.h \
     selectradio.h \
     tcpserver.h \
     cluster.h \
+    database.h \
     aboutbox.h
 
 
