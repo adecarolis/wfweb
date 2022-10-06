@@ -4127,15 +4127,16 @@ void wfmain::handlePlotClick(QMouseEvent* me)
             qInfo(logGui()) << "Clicked on:" << textItem->text();
             QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
             if (spot != clusterSpots.end() && spot.key() == textItem->text()) {
+                /* parent and children are destroyed on close */
                 QDialog* spotDialog = new QDialog();
                 QVBoxLayout* vlayout = new QVBoxLayout;
-                spotDialog->setFixedSize(240, 120);
-                QLabel* dxcall = new QLabel(QString("DX Call:%1").arg(spot.value()->dxcall));
+                //spotDialog->setFixedSize(240, 100);
+                spotDialog->setBaseSize(1, 1);
+                spotDialog->setWindowTitle(QString("SPOT: %1").arg(spot.value()->dxcall));
                 QLabel* spotter = new QLabel(QString("Spotter:%1").arg(spot.value()->spottercall));
                 QLabel* frequency = new QLabel(QString("Frequency:%1 MHz").arg(spot.value()->frequency));
                 QLabel* comment = new QLabel(QString("Comment:%1").arg(spot.value()->comment));
                 QAbstractButton* bExit = new QPushButton("Close");
-                vlayout->addWidget(dxcall);
                 vlayout->addWidget(spotter);
                 vlayout->addWidget(frequency);
                 vlayout->addWidget(comment);
