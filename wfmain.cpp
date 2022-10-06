@@ -4132,7 +4132,7 @@ void wfmain::handlePlotClick(QMouseEvent* me)
                 QVBoxLayout* vlayout = new QVBoxLayout;
                 //spotDialog->setFixedSize(240, 100);
                 spotDialog->setBaseSize(1, 1);
-                spotDialog->setWindowTitle(QString("SPOT: %1").arg(spot.value()->dxcall));
+                spotDialog->setWindowTitle(spot.value()->dxcall);
                 QLabel* spotter = new QLabel(QString("Spotter:%1").arg(spot.value()->spottercall));
                 QLabel* frequency = new QLabel(QString("Frequency:%1 MHz").arg(spot.value()->frequency));
                 QLabel* comment = new QLabel(QString("Comment:%1").arg(spot.value()->comment));
