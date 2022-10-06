@@ -4121,16 +4121,46 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
 
 void wfmain::handlePlotClick(QMouseEvent* me)
 {
-    double x = plot->xAxis->pixelToCoord(me->pos().x());
-    showStatusBarText(QString("Selected %1 MHz").arg(x));
-    this->mousePressFreq = x;
+    if (me->button() == Qt::RightButton) {
+        QCPItemText* textItem = plot->itemAt<QCPItemText>(me->pos(), true);
+        if (textItem != nullptr) {
+            qInfo(logGui()) << "Clicked on:" << textItem->text();
+            QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
+            if (spot != clusterSpots.end() && spot.key() == textItem->text()) {
+                QDialog* spotDialog = new QDialog();
+                QVBoxLayout* vlayout = new QVBoxLayout;
+                spotDialog->setFixedSize(240, 120);
+                QLabel* dxcall = new QLabel(QString("DX Call:%1").arg(spot.value()->dxcall));
+                QLabel* spotter = new QLabel(QString("Spotter:%1").arg(spot.value()->spottercall));
+                QLabel* frequency = new QLabel(QString("Frequency:%1 MHz").arg(spot.value()->frequency));
+                QLabel* comment = new QLabel(QString("Comment:%1").arg(spot.value()->comment));
+                QAbstractButton* bExit = new QPushButton("Close");
+                vlayout->addWidget(dxcall);
+                vlayout->addWidget(spotter);
+                vlayout->addWidget(frequency);
+                vlayout->addWidget(comment);
+                vlayout->addWidget(bExit);
+                spotDialog->setLayout(vlayout);
+                spotDialog->show();
+                spotDialog->connect(bExit, SIGNAL(clicked()), spotDialog, SLOT(close()));
+            }
+        }
+    }
+    else {
+        double x = plot->xAxis->pixelToCoord(me->pos().x());
+        showStatusBarText(QString("Selected %1 MHz").arg(x));
+        this->mousePressFreq = x;
+    }
 }
 
-void wfmain::handlePlotMouseRelease(QMouseEvent *me)
+void wfmain::handlePlotMouseRelease(QMouseEvent* me)
 {
-    this->mouseReleaseFreq = plot->xAxis->pixelToCoord(me->pos().x());
-    double delta = mouseReleaseFreq - mousePressFreq;
-    qInfo(logGui()) << "Mouse release delta: " << delta;
+    if (me->button() != Qt::RightButton) {
+        this->mouseReleaseFreq = plot->xAxis->pixelToCoord(me->pos().x());
+        double delta = mouseReleaseFreq - mousePressFreq;
+        qInfo(logGui()) << "Mouse release delta: " << delta;
+
+    }
 }
 
 void wfmain::handlePlotMouseMove(QMouseEvent *me)
@@ -7705,6 +7735,6 @@ void wfmain::receiveSpots(QList<spotData> spots)
 
     }
 
-    //qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
+    qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
 }
 
