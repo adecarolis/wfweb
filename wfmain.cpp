@@ -4133,10 +4133,12 @@ void wfmain::handlePlotClick(QMouseEvent* me)
                 //spotDialog->setFixedSize(240, 100);
                 spotDialog->setBaseSize(1, 1);
                 spotDialog->setWindowTitle(spot.value()->dxcall);
+                QLabel* dxcall = new QLabel(QString("DX:%1").arg(spot.value()->dxcall));
                 QLabel* spotter = new QLabel(QString("Spotter:%1").arg(spot.value()->spottercall));
                 QLabel* frequency = new QLabel(QString("Frequency:%1 MHz").arg(spot.value()->frequency));
                 QLabel* comment = new QLabel(QString("Comment:%1").arg(spot.value()->comment));
                 QAbstractButton* bExit = new QPushButton("Close");
+                vlayout->addWidget(dxcall);
                 vlayout->addWidget(spotter);
                 vlayout->addWidget(frequency);
                 vlayout->addWidget(comment);
