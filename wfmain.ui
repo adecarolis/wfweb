@@ -2223,7 +2223,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>1</number>
+             <number>5</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -5067,10 +5067,27 @@
                <enum>QAbstractScrollArea::AdjustIgnored</enum>
               </property>
              </widget>
+             <widget class="QPushButton" name="clusterPopOutBtn">
+              <property name="geometry">
+               <rect>
+                <x>10</x>
+                <y>280</y>
+                <width>75</width>
+                <height>23</height>
+               </rect>
+              </property>
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Pop out (or pop back in) the entire Settings tab. &lt;/p&gt;&lt;p&gt;NOTE: Press this button again to re-insert the tab when finished. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="text">
+               <string>Pop-Out</string>
+              </property>
+             </widget>
              <zorder>groupBox_9</zorder>
              <zorder>horizontalLayoutWidget</zorder>
              <zorder>groupBox_10</zorder>
              <zorder>clusterOutputTextEdit</zorder>
+             <zorder>clusterPopOutBtn</zorder>
             </widget>
             <widget class="QWidget" name="experimental">
              <layout class="QVBoxLayout" name="verticalLayout_28">

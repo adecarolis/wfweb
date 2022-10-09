@@ -6939,16 +6939,18 @@ void wfmain::setColorLineEditOperations(QColor *colorStore,
 void wfmain::on_colorPopOutBtn_clicked()
 {
 
-    if(settingsTabisAttached)
+    if (settingsTabisAttached)
     {
         settingsTab = ui->tabWidget->currentWidget();
         ui->tabWidget->removeTab(ui->tabWidget->indexOf(settingsTab));
         settingsWidgetTab->addTab(settingsTab, "Settings");
         settingsWidgetWindow->show();
         ui->colorPopOutBtn->setText("Re-attach");
+        ui->clusterPopOutBtn->setText("Re-attach");
         ui->tabWidget->setCurrentIndex(0);
         settingsTabisAttached = false;
-    } else {
+    }
+    else {
         settingsTab = settingsWidgetTab->currentWidget();
 
         settingsWidgetTab->removeTab(settingsWidgetTab->indexOf(settingsTab));
@@ -6956,6 +6958,7 @@ void wfmain::on_colorPopOutBtn_clicked()
         settingsWidgetWindow->close();
 
         ui->colorPopOutBtn->setText("Pop-Out");
+        ui->clusterPopOutBtn->setText("Pop-Out");
         ui->tabWidget->setCurrentIndex(3);
         settingsTabisAttached = true;
     }
@@ -7777,3 +7780,30 @@ void wfmain::receiveSpots(QList<spotData> spots)
     qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
 }
 
+void wfmain::on_clusterPopOutBtn_clicked()
+{
+
+    if (settingsTabisAttached)
+    {
+        settingsTab = ui->tabWidget->currentWidget();
+        ui->tabWidget->removeTab(ui->tabWidget->indexOf(settingsTab));
+        settingsWidgetTab->addTab(settingsTab, "Settings");
+        settingsWidgetWindow->show();
+        ui->clusterPopOutBtn->setText("Re-attach");
+        ui->colorPopOutBtn->setText("Re-attach");
+        ui->tabWidget->setCurrentIndex(0);
+        settingsTabisAttached = false;
+    }
+    else {
+        settingsTab = settingsWidgetTab->currentWidget();
+
+        settingsWidgetTab->removeTab(settingsWidgetTab->indexOf(settingsTab));
+        ui->tabWidget->addTab(settingsTab, "Settings");
+        settingsWidgetWindow->close();
+
+        ui->clusterPopOutBtn->setText("Pop-Out");
+        ui->colorPopOutBtn->setText("Pop-Out");
+        ui->tabWidget->setCurrentIndex(3);
+        settingsTabisAttached = true;
+    }
+}

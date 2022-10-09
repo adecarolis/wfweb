@@ -675,6 +675,8 @@ private slots:
     void on_clusterUsernameLineEdit_editingFinished();
     void on_clusterPasswordLineEdit_editingFinished();
     void on_clusterTimeoutLineEdit_editingFinished();
+    void on_clusterPopOutBtn_clicked();
+
 
     void receiveClusterOutput(QString text);
     void receiveSpots(QList<spotData> spots);
