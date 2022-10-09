@@ -4127,7 +4127,8 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
 
 void wfmain::handlePlotClick(QMouseEvent* me)
 {
-    QCPItemText* textItem = plot->itemAt<QCPItemText>(me->pos(), true);
+    QCPAbstractItem* item = plot->itemAt(me->pos(), true);
+    QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
     if (me->button() == Qt::RightButton && textItem != nullptr) {
         QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
         if (spot != clusterSpots.end() && spot.key() == textItem->text()) {
@@ -4152,11 +4153,12 @@ void wfmain::handlePlotClick(QMouseEvent* me)
             spotDialog->connect(bExit, SIGNAL(clicked()), spotDialog, SLOT(close()));
         }
     }
-    else if (me->button() == Qt::LeftButton && textItem != nullptr)
+    else if (textItem != nullptr)
     {
         QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
         if (spot != clusterSpots.end() && spot.key() == textItem->text()) 
         {
+            qInfo(logGui()) << "Clicked on spot:" << textItem->text();
             freqt freqGo;
             freqGo.Hz = ( spot.value()->frequency)*1E6;
             freqGo.MHzDouble = spot.value()->frequency;
@@ -4173,7 +4175,9 @@ void wfmain::handlePlotClick(QMouseEvent* me)
 
 void wfmain::handlePlotMouseRelease(QMouseEvent* me)
 {
-    QCPItemText* textItem = plot->itemAt<QCPItemText>(me->pos(), true);
+    QCPAbstractItem* item = plot->itemAt(me->pos(), true);
+    QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+
     if (textItem == nullptr) {
         this->mouseReleaseFreq = plot->xAxis->pixelToCoord(me->pos().x());
         double delta = mouseReleaseFreq - mousePressFreq;
@@ -4184,7 +4188,9 @@ void wfmain::handlePlotMouseRelease(QMouseEvent* me)
 
 void wfmain::handlePlotMouseMove(QMouseEvent *me)
 {
-    if(me->buttons() == Qt::LeftButton)
+    QCPAbstractItem* item = plot->itemAt(me->pos(), true);
+    QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+    if(me->buttons() == Qt::LeftButton && textItem==nullptr)
     {
         double delta = plot->xAxis->pixelToCoord(me->pos().x()) - mousePressFreq;
         qInfo(logGui()) << "Mouse moving delta: " << delta;
@@ -7729,7 +7735,8 @@ void wfmain::receiveSpots(QList<spotData> spots)
             sp->current = true;
             bool conflict = true;
             double left = sp->frequency;
-            double top = rigCaps.spectAmpMax - 10;
+            QCPRange range=plot->yAxis->range();
+            double top = range.upper-15.0;
             sp->text = new QCPItemText(plot);
             sp->text->setAntialiased(true);
             sp->text->setColor(clusterColor);
@@ -7746,7 +7753,8 @@ void wfmain::receiveSpots(QList<spotData> spots)
             sp->text->position->setCoords(left, top);
             sp->text->setVisible(false);
             while (conflict) {
-                QCPItemText* textItem = plot->itemAt<QCPItemText>(sp->text->position->pixelPosition(), true);
+                QCPAbstractItem* item = plot->itemAt(sp->text->position->pixelPosition(), true);
+                QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
                 if (textItem != nullptr && sp->text != textItem) {
                     //qInfo(logGui()) << "CONFLICT:" << textItem->text() << "SAME POSITION AS" << sp->dxcall << sp->text->position->pixelPosition();
                     top = top - 5.0;
