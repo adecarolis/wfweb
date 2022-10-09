@@ -122,7 +122,6 @@ void dxClusterClient::udpDataReceived()
                 QString query = QString("INSERT INTO spots(type,spottercall,frequency,dxcall,mode,comment,timestamp) VALUES('%1','%2',%3,'%4','%5','%6','%7')\n")
                     .arg("UDP").arg(data->spottercall).arg(data->frequency).arg(data->dxcall).arg(data->mode).arg(data->comment).arg(data->timestamp.toString("yyyy-MM-dd hh:mm:ss"));
                 db.query(query);
-                emit sendOutput(query);
 #else
                 bool found = false;
                 QMap<QString, spotData*>::iterator spot = allSpots.find(data->dxcall);
@@ -134,6 +133,8 @@ void dxClusterClient::udpDataReceived()
                     allSpots.insert(data->dxcall, data);
                 }
 #endif
+                emit sendOutput(QString("<spot><action>add</action><dxcall>%1</dxcall><spottercall>%2</spottercall><frequency>%3</frequency><comment>%4</comment></spot>\n")
+                    .arg(data->dxcall).arg(data->spottercall).arg(data->frequency).arg(data->comment));
 
             }
             else if (action == "delete")
@@ -154,6 +155,8 @@ void dxClusterClient::udpDataReceived()
                     spot = allSpots.erase(spot);
                 }
 #endif
+                emit sendOutput(QString("<spot><action>delete</action><dxcall>%1</dxcall<frequency>%3</frequency></spot>\n")
+                    .arg(dxcall).arg(frequency));
             }
             updateSpots();
         }
@@ -164,7 +167,6 @@ void dxClusterClient::udpDataReceived()
 void dxClusterClient::tcpDataReceived()
 {
     QString data = QString(tcpSocket->readAll());
-    emit(sendOutput(data));
 
     if (data.contains("login:")) {
         sendTcpData(QString("%1\n").arg(tcpUserName));
@@ -192,7 +194,6 @@ void dxClusterClient::tcpDataReceived()
             QString query = QString("INSERT INTO spots(type,spottercall,frequency,dxcall,comment,timestamp) VALUES('%1','%2',%3,'%4','%5','%6')\n")
                 .arg("TCP").arg(data->spottercall).arg(data->frequency).arg(data->dxcall).arg(data->comment).arg(data->timestamp.toString("yyyy-MM-dd hh:mm:ss"));
             db.query(query);
-            emit sendOutput(query);
 #else
             bool found = false;
             QMap<QString, spotData*>::iterator spot = allSpots.find(data->dxcall);
@@ -203,7 +204,6 @@ void dxClusterClient::tcpDataReceived()
             if (found == false) {
                 allSpots.insert(data->dxcall, data);
             }
-
 #endif
         }
     }

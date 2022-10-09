@@ -642,6 +642,10 @@ private slots:
 
     void on_colorEditMeterText_editingFinished();
 
+    void on_colorSetBtnClusterSpots_clicked();
+
+    void on_colorEditClusterSpots_editingFinished();
+
     void on_colorRenamePresetBtn_clicked();
 
     void on_colorRevertPresetBtn_clicked();
@@ -1076,6 +1080,7 @@ private:
     QCPItemText* text=Q_NULLPTR;
     QList<clusterSettings> clusters;
     QMutex clusterMutex;
+    QColor clusterColor;
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)

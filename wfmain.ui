@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1125</width>
+    <width>1023</width>
     <height>660</height>
    </rect>
   </property>
@@ -2223,7 +2223,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>5</number>
+             <number>1</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -3343,8 +3343,8 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>542</width>
-                      <height>217</height>
+                      <width>801</width>
+                      <height>311</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -3990,6 +3990,39 @@
                        </item>
                        <item row="3" column="11">
                         <widget class="QLedLabel" name="colorSwatchWfGrid" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="9">
+                        <widget class="QPushButton" name="colorSetBtnClusterSpots">
+                         <property name="text">
+                          <string>Cluster Spots</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="10">
+                        <widget class="QLineEdit" name="colorEditClusterSpots">
+                         <property name="minimumSize">
+                          <size>
+                           <width>0</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="11">
+                        <widget class="QLedLabel" name="colorSwatchClusterSpots" native="true">
                          <property name="minimumSize">
                           <size>
                            <width>10</width>
@@ -5205,7 +5238,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1125</width>
+     <width>1023</width>
      <height>21</height>
     </rect>
    </property>
@@ -5226,14 +5259,14 @@
   <customwidget>
    <class>QLedLabel</class>
    <extends>QWidget</extends>
-   <header>qledlabel.h</header>
+   <header location="global">qledlabel.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="underlayButtonGroup"/>
   <buttongroup name="buttonGroup"/>
+  <buttongroup name="underlayButtonGroup"/>
  </buttongroups>
 </ui>

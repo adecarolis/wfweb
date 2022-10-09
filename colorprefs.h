@@ -33,6 +33,10 @@ struct colorPrefsType{
     QColor meterPeakScale;
     QColor meterLowerLine;
     QColor meterLowText;
+
+    // Assorted
+    QColor clusterSpots;
+
 };
 
 

@@ -1520,6 +1520,7 @@ void wfmain::loadSettings()
             p->meterPeakScale.setNamedColor(settings->value("meterPeakScale", p->meterPeakScale.name(QColor::HexArgb)).toString());
             p->meterLowerLine.setNamedColor(settings->value("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb)).toString());
             p->meterLowText.setNamedColor(settings->value("meterLowText", p->meterLowText.name(QColor::HexArgb)).toString());
+            p->clusterSpots.setNamedColor(settings->value("clusterSpots", p->clusterSpots.name(QColor::HexArgb)).toString());
         }
     }
     settings->endArray();
@@ -2207,6 +2208,7 @@ void wfmain::saveSettings()
         settings->setValue("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb));
         settings->setValue("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb));
         settings->setValue("meterLowText", p->meterLowText.name(QColor::HexArgb));
+        settings->setValue("clusterSpots", p->clusterSpots.name(QColor::HexArgb));
     }
     settings->endArray();
     settings->endGroup();
@@ -2884,6 +2886,8 @@ void wfmain::setDefaultColors(int presetNumber)
     p->wfGrid = QColor(Qt::white);
     p->wfText = QColor(Qt::white);
 
+    p->clusterSpots = QColor(Qt::red);
+
     //qInfo(logSystem()) << "default color preset [" << pn << "] set to pn.presetNum index [" << p->presetNum << "]" << ", with name " << *(p->presetName);
 
     switch (presetNumber)
@@ -2915,6 +2919,7 @@ void wfmain::setDefaultColors(int presetNumber)
             p->wfAxis = QColor(Qt::white);
             p->wfGrid = QColor("transparent");
             p->wfText = QColor(Qt::white);
+            p->clusterSpots = QColor(Qt::red);
             break;
         }
         case 1:
@@ -2942,6 +2947,7 @@ void wfmain::setDefaultColors(int presetNumber)
             p->wfAxis = QColor(200,200,200,255);
             p->wfGrid = QColor("transparent");
             p->wfText = QColor(Qt::black);
+            p->clusterSpots = QColor(Qt::red);
             break;
         }
 
@@ -6892,6 +6898,8 @@ void wfmain::useColorPreset(colorPrefsType *cp)
 
     ui->meterSPoWidget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
     ui->meter2Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
+
+    clusterColor = cp->clusterSpots;
 }
 
 void wfmain::setColorButtonOperations(QColor *colorStore,
@@ -7010,6 +7018,8 @@ void wfmain::loadColorPresetToUIandPlots(int presetNumber)
     setEditAndLedFromColor(p.wfGrid, ui->colorEditWfGrid, ui->colorSwatchWfGrid);
     setEditAndLedFromColor(p.wfAxis, ui->colorEditWfAxis, ui->colorSwatchWfAxis);
     setEditAndLedFromColor(p.wfText, ui->colorEditWfText, ui->colorSwatchWfText);
+
+    setEditAndLedFromColor(p.clusterSpots, ui->colorEditClusterSpots, ui->colorSwatchClusterSpots);
 
     useColorPreset(&p);
 }
@@ -7217,13 +7227,14 @@ void wfmain::on_colorEditWfAxis_editingFinished()
 void wfmain::on_colorSetBtnWfText_clicked()
 {
     int pos = ui->colorPresetCombo->currentIndex();
-    QColor *c = &(colorPreset[pos].wfText);
+    QColor* c = &(colorPreset[pos].wfText);
     setColorButtonOperations(c, ui->colorEditWfText, ui->colorSwatchWfText);
 }
+
 void wfmain::on_colorEditWfText_editingFinished()
 {
     int pos = ui->colorPresetCombo->currentIndex();
-    QColor *c = &(colorPreset[pos].wfText);
+    QColor* c = &(colorPreset[pos].wfText);
     setColorLineEditOperations(c, ui->colorEditWfText, ui->colorSwatchWfText);
 }
 
@@ -7339,6 +7350,20 @@ void wfmain::on_colorEditMeterText_editingFinished()
     setColorLineEditOperations(c, ui->colorEditMeterText, ui->colorSwatchMeterText);
 }
 
+// Cluster Spots:
+void wfmain::on_colorSetBtnClusterSpots_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].clusterSpots);
+    setColorButtonOperations(c, ui->colorEditClusterSpots, ui->colorSwatchClusterSpots);
+}
+void wfmain::on_colorEditClusterSpots_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].clusterSpots);
+    setColorLineEditOperations(c, ui->colorEditClusterSpots, ui->colorSwatchClusterSpots);
+}
+
 // ----------   End color UI slots        ----------//
 
 void wfmain::on_colorSavePresetBtn_clicked()
@@ -7375,6 +7400,7 @@ void wfmain::on_colorSavePresetBtn_clicked()
     settings->setValue("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb));
     settings->setValue("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb));
     settings->setValue("meterLowText", p->meterLowText.name(QColor::HexArgb));
+    settings->setValue("clusterSpots", p->clusterSpots.name(QColor::HexArgb));
 
     settings->endArray();
     settings->endGroup();
@@ -7703,7 +7729,7 @@ void wfmain::receiveSpots(QList<spotData> spots)
             double top = rigCaps.spectAmpMax - 10;
             sp->text = new QCPItemText(plot);
             sp->text->setAntialiased(true);
-            sp->text->setColor(QColor(Qt::red));
+            sp->text->setColor(clusterColor);
             sp->text->setText(sp->dxcall);
             sp->text->setFont(QFont(font().family(), 10));
             sp->text->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
