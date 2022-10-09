@@ -168,6 +168,7 @@ void dxClusterClient::tcpDataReceived()
 {
     QString data = QString(tcpSocket->readAll());
 
+    emit sendOutput(data);
     if (data.contains("login:")) {
         sendTcpData(QString("%1\n").arg(tcpUserName));
         return;
