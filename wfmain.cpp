@@ -7710,10 +7710,10 @@ void wfmain::receiveSpots(QList<spotData> spots)
     QElapsedTimer timer;
     timer.start();
 
-    QMap<QString, spotData*>::iterator spot1 = clusterSpots.begin();
-    while (spot1 != clusterSpots.end()) {
-        spot1.value()->current = false;
-        ++spot1;
+    bool current = false;
+    
+    if (clusterSpots.size() > 0) {
+        current=clusterSpots.begin().value()->current;
     }
 
     foreach(spotData s, spots)
@@ -7722,7 +7722,7 @@ void wfmain::receiveSpots(QList<spotData> spots)
         QMap<QString, spotData*>::iterator spot = clusterSpots.find(s.dxcall);
 
         while (spot != clusterSpots.end() && spot.key() == s.dxcall && spot.value()->frequency == s.frequency) {
-            spot.value()->current = true;
+            spot.value()->current = !current;
             found = true;
             ++spot;
         }
@@ -7732,7 +7732,7 @@ void wfmain::receiveSpots(QList<spotData> spots)
             spotData* sp = new spotData(s);
 
             //qDebug(logCluster()) << "ADD:" << sp->dxcall;
-            sp->current = true;
+            sp->current = !current;
             bool conflict = true;
             double left = sp->frequency;
             QCPRange range=plot->yAxis->range();
@@ -7773,7 +7773,7 @@ void wfmain::receiveSpots(QList<spotData> spots)
 
     QMap<QString, spotData*>::iterator spot2 = clusterSpots.begin();
     while (spot2 != clusterSpots.end()) {
-        if (spot2.value()->current == false) {
+        if (spot2.value()->current == current) {
             plot->removeItem(spot2.value()->text);
             //qDebug(logCluster()) << "REMOVE:" << spot2.value()->dxcall;
             delete spot2.value(); // Stop memory leak?
