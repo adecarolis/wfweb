@@ -2,9 +2,6 @@
 The following highlights are in this 1.51-release ince v1.50:
 
 + 1.51	
-
-
-
                 Fix for squished screen
                 Only request passband when there is a scope available
                 Change default passband colors.
@@ -19,6 +16,8 @@ The following highlights are in this 1.51-release ince v1.50:
                 colorpicker: Move to 3 columns
                 passband indicator
                 Remove logging of audio device realm
++ 1.52		added cluster spotting including color picker suport
+    		optional SQLITE in memory for spots (disabled)
 
 Notes:
 

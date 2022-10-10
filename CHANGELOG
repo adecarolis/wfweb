@@ -1,5 +1,56 @@
 # CHANGELOG
 
+
+- 20221010
+
+		bumped to version 1.52
+
+- 20221011
+
+    		make spots appear at the actual top of wf
+
+    		Add sendOutput() back to tcp cluster
+
+    		Add Pop-Out button for cluster screen
+
+    		Add cluster spot color picker
+
+- 20221008
+
+    		Left click on spot to change freq
+
+- 20221006
+
+    		Make spot window size to fit content.
+
+    		Add right-click on spot to popup dialog
+
+- 20221005
+
+    		Bit of tidying
+
+    		Remove calls for QSqlDatabase when USESQL is not configured
+
+    		Add optional SQL in wfview.pro
+
+    		Make SQL db optional
+
+    		Remove old code
+
+    		Update query
+
+    		Add memory sqlite db for cluster spots.
+
+- 20220930
+
+    		Delete all spots if cluster disabled
+
+    		Fix crash when adding cluster server
+
+    		Change default to isdefault!
+
+    		Add TCP spot client
+
 - 20220929
     
 		Fix for squished screen
