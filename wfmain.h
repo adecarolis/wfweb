@@ -40,6 +40,7 @@
 #include "selectradio.h"
 #include "colorprefs.h"
 #include "loggingwindow.h"
+#include "cluster.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -67,9 +68,7 @@ class wfmain : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, bool debugMode, QWidget *parent = 0);
-    QString serialPortCL;
-    QString hostCL;
+    explicit wfmain(const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent = 0);
     ~wfmain();
     static void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
     void handleLogText(QString text);
@@ -80,7 +79,7 @@ signals:
     void setRigID(unsigned char rigID);
     void setRTSforPTT(bool enabled);
 
-    // Power
+    
     void sendPowerOn();
     void sendPowerOff();
 
@@ -103,6 +102,7 @@ signals:
 
     // Repeater:
     void getDuplexMode();
+    void getPassband();
     void getTone();
     void getTSQL();
     void getDTCS();
@@ -196,7 +196,16 @@ signals:
     void shuttleLed(bool, unsigned char);
     void sendUsbControllerCommands(QVector<COMMAND>* cmds);
     void sendUsbControllerButtons(QVector<BUTTON>* buts);
-
+    void setClusterUdpPort(int port);
+    void setClusterEnableUdp(bool udp);
+    void setClusterEnableTcp(bool tcp);
+    void setClusterServerName(QString name);
+    void setClusterTcpPort(int port);
+    void setClusterUserName(QString name);
+    void setClusterPassword(QString pass);
+    void setClusterTimeout(int timeout);
+    void setFrequencyRange(double low, double high);
+	
 private slots:
     void updateSizes(int tabIndex);
     void shortcutF1();
@@ -252,7 +261,7 @@ private slots:
     void receiveRITValue(int ritValHz);
     void receiveModInput(rigInput input, bool dataOn);
     //void receiveDuplexMode(duplexMode dm);
-
+    void receivePassband(quint8 pass);
 
 
     // Levels:
@@ -295,6 +304,8 @@ private slots:
     void receiveStatusUpdate(networkStatus status);
     void receiveNetworkAudioLevels(networkAudioLevels l);
     void handlePlotClick(QMouseEvent *);
+    void handlePlotMouseRelease(QMouseEvent *);
+    void handlePlotMouseMove(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);
     void handleWFDoubleClick(QMouseEvent *);
@@ -632,6 +643,10 @@ private slots:
 
     void on_colorEditTuningLine_editingFinished();
 
+    void on_colorSetBtnPassband_clicked();
+
+    void on_colorEditPassband_editingFinished();
+
     void on_colorSetBtnMeterLevel_clicked();
 
     void on_colorEditMeterLevel_editingFinished();
@@ -647,6 +662,10 @@ private slots:
     void on_colorSetBtnMeterText_clicked();
 
     void on_colorEditMeterText_editingFinished();
+
+    void on_colorSetBtnClusterSpots_clicked();
+
+    void on_colorEditClusterSpots_editingFinished();
 
     void on_colorRenamePresetBtn_clicked();
 
@@ -668,9 +687,26 @@ private slots:
 
     void on_customEdgeBtn_clicked();
 
+    void on_clusterUdpEnable_clicked(bool enable);
+    void on_clusterTcpEnable_clicked(bool enable);
+    void on_clusterUdpPortLineEdit_editingFinished();
+    void on_clusterServerNameCombo_currentTextChanged(QString text);
+    void on_clusterServerNameCombo_currentIndexChanged(int index);
+    void on_clusterTcpPortLineEdit_editingFinished();
+    void on_clusterUsernameLineEdit_editingFinished();
+    void on_clusterPasswordLineEdit_editingFinished();
+    void on_clusterTimeoutLineEdit_editingFinished();
+    void on_clusterPopOutBtn_clicked();
+
+    void on_clickDragTuningEnableChk_clicked(bool checked);
+
+    void receiveClusterOutput(QString text);
+    void receiveSpots(QList<spotData> spots);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
+    QString logFilename;
     bool debugMode;
     QString version;
     QSettings *settings=Q_NULLPTR;
@@ -683,11 +719,11 @@ private:
     void initLogging();
     QTimer logCheckingTimer;
     int logCheckingOldPosition = 0;
-    QString logFilename;
 
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
     QCPItemLine * freqIndicatorLine;
+    QCPItemRect* passbandIndicator;
     void setAppTheme(bool isCustom);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
@@ -803,6 +839,10 @@ private:
     double wfCeiling = 160;
     double oldPlotFloor = -1;
     double oldPlotCeiling = 999;
+    double passBand = 0.0;
+
+    double mousePressFreq = 0.0;
+    double mouseReleaseFreq = 0.0;
 
     QVector <QByteArray> wfimage;
     unsigned int wfLengthMax;
@@ -825,7 +865,7 @@ private:
               cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
               cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetTPBFInner, cmdSetTPBFInner,
-              cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus,
+              cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus, cmdGetPassband, 
               cmdSetATU, cmdStartATU, cmdGetSpectrumMode,
               cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,cmdPTTToggle,
               cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel,
@@ -918,6 +958,14 @@ private:
         quint16 tcpPort;
         quint8 waterfallFormat;
         audioType audioSystem;
+        bool clusterUdpEnable;
+        bool clusterTcpEnable;
+        int clusterUdpPort;
+        QString clusterTcpServerName;
+        QString clusterTcpUserName;
+        QString clusterTcpPassword;
+        int clusterTimeout;
+        bool clickDragTuningEnable;
     } prefs;
 
     preferences defPrefs;
@@ -1063,6 +1111,14 @@ private:
     QVector<COMMAND> usbCommands;
     QVector<BUTTON> usbButtons;
 
+    dxClusterClient* cluster = Q_NULLPTR;
+    QThread* clusterThread = Q_NULLPTR;
+    QMap<QString, spotData*> clusterSpots;
+    QTimer clusterTimer;
+    QCPItemText* text=Q_NULLPTR;
+    QList<clusterSettings> clusters;
+    QMutex clusterMutex;
+    QColor clusterColor;
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
@@ -1076,10 +1132,13 @@ Q_DECLARE_METATYPE(struct timekind)
 Q_DECLARE_METATYPE(struct datekind)
 Q_DECLARE_METATYPE(struct networkStatus)
 Q_DECLARE_METATYPE(struct networkAudioLevels)
+Q_DECLARE_METATYPE(struct spotData)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
+Q_DECLARE_METATYPE(enum mode_kind)
 Q_DECLARE_METATYPE(QList<radio_cap_packet>)
+Q_DECLARE_METATYPE(QList<spotData>)
 Q_DECLARE_METATYPE(rigstate*)
 Q_DECLARE_METATYPE(QVector <BUTTON>*)
 Q_DECLARE_METATYPE(struct BUTTON*)

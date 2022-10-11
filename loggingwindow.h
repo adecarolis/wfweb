@@ -10,6 +10,9 @@
 #include <QTextStream>
 #include <QMessageBox>
 #include <QScrollBar>
+#include <QProcess>
+#include <QFileInfo>
+#include <QDir>
 
 #include "logcategories.h"
 
@@ -22,7 +25,7 @@ class loggingWindow : public QWidget
     Q_OBJECT
 
 public:
-    explicit loggingWindow(QWidget *parent = nullptr);
+    explicit loggingWindow(QString logFilename, QWidget *parent = 0);
     ~loggingWindow();
     void acceptLogText(QString text);
 
@@ -57,14 +60,14 @@ signals:
     void setDebugMode(bool debugOn);
 
 private:
-    Ui::loggingWindow *ui;
+    Ui::loggingWindow* ui;
+    QString logFilename;
+    QString logDirectory;
     QClipboard *clipboard;
     QMessageBox URLmsgBox;
     QScrollBar *vertLogScroll;
     QScrollBar *horizLogScroll;
     QMutex textMutex;
-    QString logFilename;
-    QString logDirectory;
     QTcpSocket *socket;
     void sendToTermbin();
 };

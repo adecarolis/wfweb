@@ -1,8 +1,81 @@
 # CHANGELOG
 
+- 20220929
+    
+		Fix for squished screen
+
+		bump version to 1.51
+
+
+- 20220928
+
+    		Only request passband when there is a scope available
+
+    		Change default passband colors.
+
+    		Fix passband colorswatch
+
+- 20220927
+
+    		See if this works better for color pickers?
+
+    		Ignore second VFO scope data (for now)
+
+    		Silently ignore server audio issues if server is not enabled.
+
+    		Always use 8bit encoding for audio device names
+
+    		Make multimedia-plugins message only for Linux
+
+- 20220926
+
+    		Add PSK modes to IC-7610 and to passband.
+
+    		Add passband for FM mode
+
+    		Added click-drag tuning. Needs refinement but it's a start.
+
+    		colorpicker: Move to 3 columns
+
+    		First look at a passband indicator
+
+- 20220925
+
+    		Remove obsolete code
+
+    		Remove logging of audio device realm
+
+- 20220923
+
+    		ready for v1.50
+
+- 20220923
+
+		Delete quit confirmation checkbox
+
+    		Use date/time for log name if none specified
+
+    		Fix logfile/directory opening in Windows
+	
+    		Fixed glitch when tabs are changed prior to rigcaps.
+
+    		Remove redundant CL args
+		
+		Additional resize fixes for non-spectrum rigs.
+
+    		Hide UI elements not needed for non-spectrum radios.
+
+		updated to v1.48
+
+- 20220921
+
+    		Fix that was stopping users being created when none existed
+
 - 20220920
 
 		Added dialog box to the toFixed button where an edge can be selected.
+		
+                Add quick fix for rigctld fmv issue
 
 		updated to v1.47
 

@@ -107,7 +107,7 @@ struct rigCapabilities {
 
     QVector<rigInput> inputs;
 
-    bool hasSpectrum;
+    bool hasSpectrum=true;
     quint8 spectSeqMax;
     quint16 spectAmpMax;
     quint16 spectLenMax;

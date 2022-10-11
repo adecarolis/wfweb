@@ -157,6 +157,8 @@ public slots:
     void setManualNotch(bool enabled);
     void getManualNotch();
 
+    void getPassband();
+
     // Repeater:
     void setDuplexMode(duplexMode dm);
     void getDuplexMode();
@@ -321,6 +323,7 @@ signals:
     void haveBandStackReg(freqt f, char mode, char filter, bool dataOn);
     void haveRitEnabled(bool ritEnabled);
     void haveRitFrequency(int ritHz);
+    void havePassband(quint8 pass);
 
     // Repeater:
     void haveDuplexMode(duplexMode);

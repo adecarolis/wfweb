@@ -18,6 +18,7 @@ struct colorPrefsType{
     QColor underlayFill;
     QColor plotBackground;
     QColor tuningLine;
+    QColor passband;
 
     // Waterfall:
     QColor wfBackground;
@@ -32,6 +33,10 @@ struct colorPrefsType{
     QColor meterPeakScale;
     QColor meterLowerLine;
     QColor meterLowText;
+
+    // Assorted
+    QColor clusterSpots;
+
 };
 
 

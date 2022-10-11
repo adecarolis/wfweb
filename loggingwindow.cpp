@@ -1,9 +1,10 @@
 #include "loggingwindow.h"
 #include "ui_loggingwindow.h"
 
-loggingWindow::loggingWindow(QWidget *parent) :
+loggingWindow::loggingWindow(QString logFilename, QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::loggingWindow)
+    ui(new Ui::loggingWindow),
+    logFilename(logFilename)
 {
     ui->setupUi(this);
     this->setWindowTitle("Log");
@@ -12,20 +13,15 @@ loggingWindow::loggingWindow(QWidget *parent) :
     ui->annotateBtn->setDefault(true);
     ui->logTextDisplay->setFocusPolicy(Qt::NoFocus);
     ui->annotateBtn->setFocusPolicy(Qt::NoFocus);
+    
+    QDir d = QFileInfo(logFilename).absoluteDir();
+    logDirectory = d.absolutePath();
 
     QFont font("Monospace");
     font.setStyleHint(QFont::TypeWriter);
     ui->logTextDisplay->setFont(font);
     ui->userAnnotationText->setFont(font);
 
-#ifdef Q_OS_MAC
-    logFilename = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/wfview.log";
-    logDirectory = QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0];
-
-#else
-    logFilename= QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0] + "/wfview.log";
-    logDirectory = QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0];
-#endif
     clipboard = QApplication::clipboard();
     socket = new QTcpSocket(this);
     connect(socket, SIGNAL(connected()), this, SLOT(connectedToHost()));
@@ -142,37 +138,39 @@ void loggingWindow::on_clearDisplayBtn_clicked()
 void loggingWindow::on_openDirBtn_clicked()
 {
     QString cmd;
-    int rtnval = 0;
-#ifdef Q_OS_MAC
-    cmd = "open " + logDirectory;
-#endif
+    bool rtn = false;
+    QStringList arg;
+    const QFileInfo dir(logDirectory);
+
 #ifdef Q_OS_LINUX
-    cmd = "xdg-open " + logDirectory;
+    cmd = "xdg-open";
+#elif defined(Q_OS_WIN)
+    cmd = QStandardPaths::findExecutable("explorer.exe");
+    if (!dir.isDir())
+        arg += QLatin1String("/select,");
+#else
+    cmd = "open";
 #endif
-#ifdef Q_OS_WIN
-    cmd = "start " + logDirectory;
-#endif
-    rtnval = system(cmd.toLocal8Bit().data());
-    if(rtnval)
-        qInfo(logLogger()) << "Error, open log directory command returned error code " << rtnval;
+    arg += QDir::toNativeSeparators(dir.canonicalFilePath());;
+    rtn = QProcess::startDetached(cmd, arg);
+    if(!rtn)
+        qInfo(logLogger()) << "Error, open log directory" << logDirectory << "command failed";
 }
 
 void loggingWindow::on_openLogFileBtn_clicked()
 {
     QString cmd;
-    int rtnval = 0;
-#ifdef Q_OS_MAC
-    cmd = "open " + logFilename;
-#endif
+    bool rtn = false;
 #ifdef Q_OS_LINUX
-    cmd = "xdg-open " + logFilename;
+    cmd = "xdg-open";
+#elif defined(Q_OS_WIN)
+    cmd = QStandardPaths::findExecutable("notepad.exe");
+#else
+    cmd = "open";
 #endif
-#ifdef Q_OS_WIN
-    cmd = "notepad " + logFilename;
-#endif
-    rtnval = system(cmd.toLocal8Bit().data());
-    if(rtnval)
-        qInfo(logLogger()) << "Error, open log file command returned error code " << rtnval;
+    rtn = QProcess::startDetached(cmd, { logFilename });
+    if(!rtn)
+        qInfo(logLogger()) << "Error, open log file command failed";
 }
 
 void loggingWindow::on_sendToPasteBtn_clicked()

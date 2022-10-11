@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1032</width>
-    <height>582</height>
+    <width>1023</width>
+    <height>660</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -812,7 +812,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="label_25">
+             <widget class="QLabel" name="refLabel">
               <property name="maximumSize">
                <size>
                 <width>16777215</width>
@@ -866,7 +866,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="label_35">
+             <widget class="QLabel" name="lenLabel">
               <property name="maximumSize">
                <size>
                 <width>16777215</width>
@@ -2916,6 +2916,13 @@
                  </widget>
                 </item>
                 <item>
+                 <widget class="QCheckBox" name="clickDragTuningEnableChk">
+                  <property name="text">
+                   <string>Allow tuning via click and drag (experimental)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
                  <spacer name="horizontalSpacer_10">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
@@ -3333,7 +3340,7 @@
                  <item row="0" column="0">
                   <widget class="QScrollArea" name="colorEditorScrollArea">
                    <property name="sizeAdjustPolicy">
-                    <enum>QAbstractScrollArea::AdjustToContents</enum>
+                    <enum>QAbstractScrollArea::AdjustIgnored</enum>
                    </property>
                    <property name="widgetResizable">
                     <bool>true</bool>
@@ -3343,388 +3350,12 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>204</width>
-                      <height>582</height>
+                      <width>801</width>
+                      <height>311</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
-                     <item row="19" column="2">
-                      <widget class="QLedLabel" name="colorSwatchMeterText" native="true"/>
-                     </item>
-                     <item row="7" column="1">
-                      <widget class="QLineEdit" name="colorEditUnderlayLine">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="6" column="2">
-                      <widget class="QLedLabel" name="colorSwatchSpecFill" native="true"/>
-                     </item>
-                     <item row="3" column="1">
-                      <widget class="QLineEdit" name="colorEditText">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="10" column="0">
-                      <widget class="QPushButton" name="colorSetBtnWfGrid">
-                       <property name="text">
-                        <string>Waterfall Grid</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="4" column="2">
-                      <widget class="QLedLabel" name="colorSwatchPlotBackground" native="true"/>
-                     </item>
-                     <item row="6" column="0">
-                      <widget class="QPushButton" name="colorSetBtnSpecFill">
-                       <property name="text">
-                        <string>Spectrum Fill</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="8" column="0">
-                      <widget class="QPushButton" name="colorSetBtnUnderlayFill">
-                       <property name="text">
-                        <string>Underlay Fill</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="7" column="2">
-                      <widget class="QLedLabel" name="colorSwatchUnderlayLine" native="true"/>
-                     </item>
-                     <item row="15" column="0">
-                      <widget class="QPushButton" name="colorSetBtnMeterAvg">
-                       <property name="text">
-                        <string>Meter Average</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="17" column="0">
-                      <widget class="QPushButton" name="colorSetBtnMeterPeakScale">
-                       <property name="text">
-                        <string>Meter High Scale</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="14" column="1">
-                      <widget class="QLineEdit" name="colorEditMeterLevel">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="11" column="2">
-                      <widget class="QLedLabel" name="colorSwatchWfAxis" native="true"/>
-                     </item>
-                     <item row="9" column="0">
-                      <widget class="QPushButton" name="colorSetBtnwfBackground">
-                       <property name="text">
-                        <string>Waterfall Back</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="4" column="0">
-                      <widget class="QPushButton" name="colorSetBtnPlotBackground">
-                       <property name="text">
-                        <string>Plot Background</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="1">
-                      <widget class="QLineEdit" name="colorEditGrid">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="toolTip">
-                        <string>Color text format is #AARRGGBB, where AA is the &quot;alpha&quot; channel, and value &quot;00&quot; is totally transparent, and &quot;ff&quot; is totally opaque.</string>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="9" column="1">
-                      <widget class="QLineEdit" name="colorEditWfBackground">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="6" column="1">
-                      <widget class="QLineEdit" name="colorEditSpecFill">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="12" column="0">
-                      <widget class="QPushButton" name="colorSetBtnWfText">
-                       <property name="text">
-                        <string>Waterfall Text</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="8" column="2">
-                      <widget class="QLedLabel" name="colorSwatchUnderlayFill" native="true"/>
-                     </item>
-                     <item row="2" column="0">
-                      <widget class="QPushButton" name="colorSetBtnAxis">
-                       <property name="text">
-                        <string>Axis</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="10" column="2">
-                      <widget class="QLedLabel" name="colorSwatchWfGrid" native="true"/>
-                     </item>
-                     <item row="2" column="2">
-                      <widget class="QLedLabel" name="colorSwatchAxis" native="true"/>
-                     </item>
-                     <item row="11" column="0">
-                      <widget class="QPushButton" name="colorSetBtnWfAxis">
-                       <property name="text">
-                        <string>Waterfall Axis</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="15" column="2">
-                      <widget class="QLedLabel" name="colorSwatchMeterAverage" native="true"/>
-                     </item>
-                     <item row="1" column="0">
-                      <widget class="QPushButton" name="colorSetBtnGrid">
-                       <property name="text">
-                        <string>Grid</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="3" column="2">
-                      <widget class="QLedLabel" name="colorSwatchText" native="true"/>
-                     </item>
-                     <item row="13" column="2">
-                      <widget class="QLedLabel" name="colorSwatchTuningLine" native="true"/>
-                     </item>
-                     <item row="14" column="2">
-                      <widget class="QLedLabel" name="colorSwatchMeterLevel" native="true"/>
-                     </item>
-                     <item row="13" column="0">
-                      <widget class="QPushButton" name="colorSetBtnTuningLine">
-                       <property name="text">
-                        <string>Tuning Line</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="19" column="1">
-                      <widget class="QLineEdit" name="colorEditMeterText">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="12" column="1">
-                      <widget class="QLineEdit" name="colorEditWfText">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="3" column="0">
-                      <widget class="QPushButton" name="colorSetBtnText">
-                       <property name="text">
-                        <string>Text</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="5" column="1">
-                      <widget class="QLineEdit" name="colorEditSpecLine">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="2" column="1">
-                      <widget class="QLineEdit" name="colorEditAxis">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="10" column="1">
-                      <widget class="QLineEdit" name="colorEditWfGrid">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="16" column="1">
-                      <widget class="QLineEdit" name="colorEditMeterPeakLevel">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="12" column="2">
-                      <widget class="QLedLabel" name="colorSwatchWfText" native="true"/>
-                     </item>
-                     <item row="13" column="1">
-                      <widget class="QLineEdit" name="colorEditTuningLine">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="5" column="2">
-                      <widget class="QLedLabel" name="colorSwatchSpecLine" native="true"/>
-                     </item>
-                     <item row="9" column="2">
-                      <widget class="QLedLabel" name="colorSwatchWfBackground" native="true"/>
-                     </item>
-                     <item row="15" column="1">
-                      <widget class="QLineEdit" name="colorEditMeterAvg">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="16" column="0">
-                      <widget class="QPushButton" name="colorSetBtnMeterPeakLevel">
-                       <property name="text">
-                        <string>Meter Peak Level</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="18" column="2">
-                      <widget class="QLedLabel" name="colorSwatchMeterScale" native="true"/>
-                     </item>
-                     <item row="17" column="1">
-                      <widget class="QLineEdit" name="colorEditMeterPeakScale">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="17" column="2">
-                      <widget class="QLedLabel" name="colorSwatchMeterPeakScale" native="true"/>
-                     </item>
-                     <item row="18" column="1">
-                      <widget class="QLineEdit" name="colorEditMeterScale">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="16" column="2">
-                      <widget class="QLedLabel" name="colorSwatchMeterPeakLevel" native="true"/>
-                     </item>
-                     <item row="8" column="1">
-                      <widget class="QLineEdit" name="colorEditUnderlayFill">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="3">
+                     <item row="4" column="3">
                       <spacer name="horizontalSpacer_14">
                        <property name="orientation">
                         <enum>Qt::Horizontal</enum>
@@ -3737,69 +3368,677 @@
                        </property>
                       </spacer>
                      </item>
-                     <item row="11" column="1">
-                      <widget class="QLineEdit" name="colorEditWfAxis">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
+                     <item row="4" column="0">
+                      <layout class="QGridLayout" name="gridLayout_5">
+                       <property name="rightMargin">
+                        <number>0</number>
                        </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
+                       <property name="horizontalSpacing">
+                        <number>6</number>
                        </property>
-                      </widget>
-                     </item>
-                     <item row="4" column="1">
-                      <widget class="QLineEdit" name="colorEditPlotBackground">
-                       <property name="maximumSize">
-                        <size>
-                         <width>90</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="text">
-                        <string>#AARRGGBB</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="5" column="0">
-                      <widget class="QPushButton" name="colorSetBtnSpecLine">
-                       <property name="text">
-                        <string>Spectrum Line</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="2">
-                      <widget class="QLedLabel" name="colorSwatchGrid" native="true"/>
-                     </item>
-                     <item row="19" column="0">
-                      <widget class="QPushButton" name="colorSetBtnMeterText">
-                       <property name="text">
-                        <string>Meter Text</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="7" column="0">
-                      <widget class="QPushButton" name="colorSetBtnUnderlayLine">
-                       <property name="text">
-                        <string>Underlay Line</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="18" column="0">
-                      <widget class="QPushButton" name="colorSetBtnMeterScale">
-                       <property name="text">
-                        <string>Meter Scale</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="14" column="0">
-                      <widget class="QPushButton" name="colorSetBtnMeterLevel">
-                       <property name="text">
-                        <string>Meter Level</string>
-                       </property>
-                      </widget>
+                       <item row="0" column="3">
+                        <widget class="QLedLabel" name="colorSwatchGrid" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QPushButton" name="colorSetBtnText">
+                         <property name="text">
+                          <string>Text</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="0">
+                        <widget class="QPushButton" name="colorSetBtnGrid">
+                         <property name="text">
+                          <string>Grid</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="9">
+                        <widget class="QPushButton" name="colorSetBtnWfAxis">
+                         <property name="text">
+                          <string>Waterfall Axis</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QPushButton" name="colorSetBtnAxis">
+                         <property name="text">
+                          <string>Axis</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="3">
+                        <widget class="QLedLabel" name="colorSwatchText" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="10">
+                        <widget class="QLineEdit" name="colorEditWfBackground">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="2">
+                        <widget class="QLineEdit" name="colorEditUnderlayLine">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QPushButton" name="colorSetBtnPlotBackground">
+                         <property name="text">
+                          <string>Plot Background</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="3">
+                        <widget class="QLedLabel" name="colorSwatchSpecLine" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="10">
+                        <widget class="QLineEdit" name="colorEditWfText">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="0">
+                        <widget class="QPushButton" name="colorSetBtnSpecLine">
+                         <property name="text">
+                          <string>Spectrum Line</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="3">
+                        <widget class="QLedLabel" name="colorSwatchPlotBackground" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="2">
+                        <widget class="QLineEdit" name="colorEditAxis">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="9">
+                        <widget class="QPushButton" name="colorSetBtnwfBackground">
+                         <property name="text">
+                          <string>Waterfall Back</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="10">
+                        <widget class="QLineEdit" name="colorEditWfAxis">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="3">
+                        <widget class="QLedLabel" name="colorSwatchSpecFill" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="2">
+                        <widget class="QLineEdit" name="colorEditSpecFill">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="2">
+                        <widget class="QLineEdit" name="colorEditPlotBackground">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="2">
+                        <widget class="QLineEdit" name="colorEditSpecLine">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="0">
+                        <widget class="QPushButton" name="colorSetBtnSpecFill">
+                         <property name="text">
+                          <string>Spectrum Fill</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="9">
+                        <widget class="QPushButton" name="colorSetBtnWfGrid">
+                         <property name="text">
+                          <string>Waterfall Grid</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="2">
+                        <widget class="QLineEdit" name="colorEditText">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="10">
+                        <widget class="QLineEdit" name="colorEditWfGrid">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="0">
+                        <widget class="QPushButton" name="colorSetBtnUnderlayLine">
+                         <property name="text">
+                          <string>Underlay Line</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="3">
+                        <widget class="QLedLabel" name="colorSwatchAxis" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="9">
+                        <widget class="QPushButton" name="colorSetBtnWfText">
+                         <property name="text">
+                          <string>Waterfall Text</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="2">
+                        <widget class="QLineEdit" name="colorEditGrid">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="toolTip">
+                          <string>Color text format is #AARRGGBB, where AA is the &quot;alpha&quot; channel, and value &quot;00&quot; is totally transparent, and &quot;ff&quot; is totally opaque.</string>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="3">
+                        <widget class="QLedLabel" name="colorSwatchUnderlayLine" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="8">
+                        <spacer name="horizontalSpacer_35">
+                         <property name="orientation">
+                          <enum>Qt::Horizontal</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>40</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </spacer>
+                       </item>
+                       <item row="0" column="4">
+                        <spacer name="horizontalSpacer_34">
+                         <property name="orientation">
+                          <enum>Qt::Horizontal</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>40</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </spacer>
+                       </item>
+                       <item row="2" column="11">
+                        <widget class="QLedLabel" name="colorSwatchWfBackground" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="11">
+                        <widget class="QLedLabel" name="colorSwatchWfText" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="11">
+                        <widget class="QLedLabel" name="colorSwatchMeterText" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="10">
+                        <widget class="QLineEdit" name="colorEditMeterText">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="9">
+                        <widget class="QPushButton" name="colorSetBtnMeterText">
+                         <property name="text">
+                          <string>Meter Text</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="11">
+                        <widget class="QLedLabel" name="colorSwatchMeterScale" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="10">
+                        <widget class="QLineEdit" name="colorEditMeterScale">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="9">
+                        <widget class="QPushButton" name="colorSetBtnMeterScale">
+                         <property name="text">
+                          <string>Meter Scale</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="7">
+                        <widget class="QLedLabel" name="colorSwatchMeterPeakScale" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="6">
+                        <widget class="QLineEdit" name="colorEditMeterPeakScale">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="5">
+                        <widget class="QPushButton" name="colorSetBtnMeterPeakScale">
+                         <property name="text">
+                          <string>Meter High Scale</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="5">
+                        <widget class="QPushButton" name="colorSetBtnMeterPeakLevel">
+                         <property name="text">
+                          <string>Meter Peak Level</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="6">
+                        <widget class="QLineEdit" name="colorEditMeterPeakLevel">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="7">
+                        <widget class="QLedLabel" name="colorSwatchMeterPeakLevel" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="7">
+                        <widget class="QLedLabel" name="colorSwatchMeterAverage" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="6">
+                        <widget class="QLineEdit" name="colorEditMeterAvg">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="5">
+                        <widget class="QPushButton" name="colorSetBtnMeterAvg">
+                         <property name="text">
+                          <string>Meter Average</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="5">
+                        <widget class="QPushButton" name="colorSetBtnMeterLevel">
+                         <property name="text">
+                          <string>Meter Level</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="6">
+                        <widget class="QLineEdit" name="colorEditMeterLevel">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="7">
+                        <widget class="QLedLabel" name="colorSwatchMeterLevel" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="5">
+                        <widget class="QPushButton" name="colorSetBtnPassband">
+                         <property name="text">
+                          <string>Passband</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="6">
+                        <widget class="QLineEdit" name="colorEditPassband">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="7">
+                        <widget class="QLedLabel" name="colorSwatchPassband" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="5">
+                        <widget class="QPushButton" name="colorSetBtnTuningLine">
+                         <property name="text">
+                          <string>Tuning Line</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="6">
+                        <widget class="QLineEdit" name="colorEditTuningLine">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="7">
+                        <widget class="QLedLabel" name="colorSwatchTuningLine" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="7">
+                        <widget class="QLedLabel" name="colorSwatchUnderlayFill" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="6">
+                        <widget class="QLineEdit" name="colorEditUnderlayFill">
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                         <property name="text">
+                          <string>#AARRGGBB</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="5">
+                        <widget class="QPushButton" name="colorSetBtnUnderlayFill">
+                         <property name="text">
+                          <string>Underlay Fill</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="11">
+                        <widget class="QLedLabel" name="colorSwatchWfAxis" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="11">
+                        <widget class="QLedLabel" name="colorSwatchWfGrid" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="9">
+                        <widget class="QPushButton" name="colorSetBtnClusterSpots">
+                         <property name="text">
+                          <string>Cluster Spots</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="10">
+                        <widget class="QLineEdit" name="colorEditClusterSpots">
+                         <property name="minimumSize">
+                          <size>
+                           <width>0</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                         <property name="maximumSize">
+                          <size>
+                           <width>90</width>
+                           <height>16777215</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="11">
+                        <widget class="QLedLabel" name="colorSwatchClusterSpots" native="true">
+                         <property name="minimumSize">
+                          <size>
+                           <width>10</width>
+                           <height>0</height>
+                          </size>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
                      </item>
                     </layout>
                    </widget>
@@ -4653,6 +4892,217 @@
               </item>
              </layout>
             </widget>
+            <widget class="QWidget" name="cluster">
+             <property name="enabled">
+              <bool>true</bool>
+             </property>
+             <widget class="QWidget" name="horizontalLayoutWidget">
+              <property name="geometry">
+               <rect>
+                <x>0</x>
+                <y>10</y>
+                <width>831</width>
+                <height>21</height>
+               </rect>
+              </property>
+              <layout class="QHBoxLayout" name="horizontalLayout_33">
+               <item>
+                <widget class="QLabel" name="label_25">
+                 <property name="text">
+                  <string>This page contains configuration for DX Cluster, either UDP style broadcast (from N1MM+/DXlog) or TCP connection to your favourite cluster</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+             <widget class="QGroupBox" name="groupBox_9">
+              <property name="geometry">
+               <rect>
+                <x>10</x>
+                <y>50</y>
+                <width>201</width>
+                <height>181</height>
+               </rect>
+              </property>
+              <property name="title">
+               <string>UDP Broadcast Connection</string>
+              </property>
+              <widget class="QWidget" name="formLayoutWidget">
+               <property name="geometry">
+                <rect>
+                 <x>20</x>
+                 <y>40</y>
+                 <width>161</width>
+                 <height>121</height>
+                </rect>
+               </property>
+               <layout class="QFormLayout" name="formLayout">
+                <item row="1" column="0">
+                 <widget class="QLabel" name="label_35">
+                  <property name="text">
+                   <string>UDP Port</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLineEdit" name="clusterUdpPortLineEdit">
+                  <property name="inputMask">
+                   <string>00000</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="clusterUdpEnable">
+                  <property name="text">
+                   <string>Enable</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </widget>
+             <widget class="QGroupBox" name="groupBox_10">
+              <property name="geometry">
+               <rect>
+                <x>330</x>
+                <y>50</y>
+                <width>311</width>
+                <height>241</height>
+               </rect>
+              </property>
+              <property name="title">
+               <string>TCP Cluster Connection</string>
+              </property>
+              <widget class="QWidget" name="formLayoutWidget_2">
+               <property name="geometry">
+                <rect>
+                 <x>20</x>
+                 <y>40</y>
+                 <width>271</width>
+                 <height>181</height>
+                </rect>
+               </property>
+               <layout class="QFormLayout" name="formLayout_2">
+                <item row="1" column="0">
+                 <widget class="QLabel" name="label_45">
+                  <property name="text">
+                   <string>Server Name</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QLabel" name="label_46">
+                  <property name="text">
+                   <string>Username</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QLineEdit" name="clusterUsernameLineEdit"/>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QLabel" name="label_47">
+                  <property name="text">
+                   <string>Password</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QLineEdit" name="clusterPasswordLineEdit">
+                  <property name="echoMode">
+                   <enum>QLineEdit::PasswordEchoOnEdit</enum>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="clusterTcpEnable">
+                  <property name="text">
+                   <string>Enable</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QComboBox" name="clusterServerNameCombo">
+                  <property name="editable">
+                   <bool>true</bool>
+                  </property>
+                  <property name="duplicatesEnabled">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QLabel" name="label_48">
+                  <property name="text">
+                   <string>Spot Timeout (minutes)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QLineEdit" name="clusterTimeoutLineEdit">
+                  <property name="inputMask">
+                   <string>0000</string>
+                  </property>
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QLabel" name="label_49">
+                  <property name="text">
+                   <string>Server Port</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QLineEdit" name="clusterTcpPortLineEdit">
+                  <property name="inputMask">
+                   <string>00000</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </widget>
+             <widget class="QPlainTextEdit" name="clusterOutputTextEdit">
+              <property name="geometry">
+               <rect>
+                <x>10</x>
+                <y>320</y>
+                <width>811</width>
+                <height>141</height>
+               </rect>
+              </property>
+              <property name="frameShadow">
+               <enum>QFrame::Raised</enum>
+              </property>
+              <property name="sizeAdjustPolicy">
+               <enum>QAbstractScrollArea::AdjustIgnored</enum>
+              </property>
+             </widget>
+             <widget class="QPushButton" name="clusterPopOutBtn">
+              <property name="geometry">
+               <rect>
+                <x>10</x>
+                <y>280</y>
+                <width>75</width>
+                <height>23</height>
+               </rect>
+              </property>
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Pop out (or pop back in) the entire Settings tab. &lt;/p&gt;&lt;p&gt;NOTE: Press this button again to re-insert the tab when finished. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="text">
+               <string>Pop-Out</string>
+              </property>
+             </widget>
+             <zorder>groupBox_9</zorder>
+             <zorder>horizontalLayoutWidget</zorder>
+             <zorder>groupBox_10</zorder>
+             <zorder>clusterOutputTextEdit</zorder>
+             <zorder>clusterPopOutBtn</zorder>
+            </widget>
             <widget class="QWidget" name="experimental">
              <layout class="QVBoxLayout" name="verticalLayout_28">
               <item>
@@ -4711,7 +5161,11 @@
               </item>
              </layout>
             </widget>
-            <widget class="QWidget" name="audioProcessing"/>
+            <widget class="QWidget" name="audioProcessing">
+             <property name="enabled">
+              <bool>true</bool>
+             </property>
+            </widget>
            </widget>
           </item>
          </layout>
@@ -4815,7 +5269,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1032</width>
+     <width>1023</width>
      <height>21</height>
     </rect>
    </property>
@@ -4836,14 +5290,14 @@
   <customwidget>
    <class>QLedLabel</class>
    <extends>QWidget</extends>
-   <header>qledlabel.h</header>
+   <header location="global">qledlabel.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="buttonGroup"/>
   <buttongroup name="underlayButtonGroup"/>
+  <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>

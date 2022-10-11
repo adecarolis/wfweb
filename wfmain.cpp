@@ -20,9 +20,10 @@ bool debugModeLogging = true;
 bool debugModeLogging = false;
 #endif
 
-wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, bool debugMode, QWidget *parent ) :
+wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent ) :
     QMainWindow(parent),
-    ui(new Ui::wfmain)
+    ui(new Ui::wfmain),
+    logFilename(logFile)
 {
     QGuiApplication::setApplicationDisplayName("wfview");
     QGuiApplication::setApplicationName(QString("wfview"));
@@ -38,13 +39,10 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     ui->setupUi(this);
     setWindowTitle(QString("wfview"));
 
-    logWindow = new loggingWindow();
+    logWindow = new loggingWindow(logFile);
     initLogging();
     logWindow->setInitialDebugState(debugMode);
     qInfo(logSystem()) << version;
-
-    this->serialPortCL = serialPortCL;
-    this->hostCL = hostCL;
 
     cal = new calibrationWindow();
     rpt = new repeaterSetup();
@@ -63,6 +61,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType<spectrumMode>();
     qRegisterMetaType<freqt>();
     qRegisterMetaType<mode_info>();
+    qRegisterMetaType<mode_kind>();
     qRegisterMetaType<audioPacket>();
     qRegisterMetaType <audioSetup>();
     qRegisterMetaType <SERVERCONFIG>();
@@ -73,6 +72,8 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType<QVector<BUTTON>*>();
     qRegisterMetaType<QVector<COMMAND>*>();
     qRegisterMetaType<const COMMAND*>();
+    qRegisterMetaType<QList<radio_cap_packet>>();
+    qRegisterMetaType<QList<spotData>>();
     qRegisterMetaType<networkStatus>();
     qRegisterMetaType<networkAudioLevels>();
 
@@ -114,6 +115,46 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     rigConnections();
 
 
+    cluster = new dxClusterClient();
+
+    clusterThread = new QThread(this);
+    clusterThread->setObjectName("dxcluster()");
+
+    cluster->moveToThread(clusterThread);
+
+    connect(this, SIGNAL(setClusterEnableUdp(bool)), cluster, SLOT(enableUdp(bool)));
+    connect(this, SIGNAL(setClusterEnableTcp(bool)), cluster, SLOT(enableTcp(bool)));
+    connect(this, SIGNAL(setClusterUdpPort(int)), cluster, SLOT(setUdpPort(int)));
+    connect(this, SIGNAL(setClusterServerName(QString)), cluster, SLOT(setTcpServerName(QString)));
+    connect(this, SIGNAL(setClusterTcpPort(int)), cluster, SLOT(setTcpPort(int)));
+    connect(this, SIGNAL(setClusterUserName(QString)), cluster, SLOT(setTcpUserName(QString)));
+    connect(this, SIGNAL(setClusterPassword(QString)), cluster, SLOT(setTcpPassword(QString)));
+    connect(this, SIGNAL(setClusterTimeout(int)), cluster, SLOT(setTcpTimeout(int)));
+    connect(this, SIGNAL(setFrequencyRange(double, double)), cluster, SLOT(freqRange(double, double)));
+
+    connect(cluster, SIGNAL(sendSpots(QList<spotData>)), this, SLOT(receiveSpots(QList<spotData>)));
+    connect(cluster, SIGNAL(sendOutput(QString)), this, SLOT(receiveClusterOutput(QString)));
+
+    connect(clusterThread, SIGNAL(finished()), cluster, SLOT(deleteLater()));
+
+    clusterThread->start();
+
+    emit setClusterUdpPort(prefs.clusterUdpPort);
+    emit setClusterEnableUdp(prefs.clusterUdpEnable);
+
+    for (int f = 0; f < clusters.size(); f++)
+    {
+        if (clusters[f].isdefault)
+        {
+            emit setClusterServerName(clusters[f].server);
+            emit setClusterTcpPort(clusters[f].port);
+            emit setClusterUserName(clusters[f].userName);
+            emit setClusterPassword(clusters[f].password);
+            emit setClusterTimeout(clusters[f].timeout);
+        }
+    }
+    emit setClusterEnableTcp(prefs.clusterTcpEnable);
+
     setServerToPrefs();
 
     amTransmitting = false;
@@ -136,6 +177,10 @@ wfmain::~wfmain()
     if (serverThread != Q_NULLPTR) {
         serverThread->quit();
         serverThread->wait();
+    }
+    if (clusterThread != Q_NULLPTR) {
+        clusterThread->quit();
+        clusterThread->wait();
     }
     if (rigCtl != Q_NULLPTR) {
         delete rigCtl;
@@ -160,6 +205,7 @@ void wfmain::closeEvent(QCloseEvent *event)
         QApplication::exit();
     }
     QCheckBox *cb = new QCheckBox("Don't ask me again");
+    cb->setToolTip("Don't ask me to confirm exit again");
     QMessageBox msgbox;
     msgbox.setText("Are you sure you wish to exit?\n");
     msgbox.setIcon(QMessageBox::Icon::Question);
@@ -187,6 +233,7 @@ void wfmain::closeEvent(QCloseEvent *event)
     } else {
         event->ignore();
     }
+    delete cb;
 }
 
 void wfmain::openRig()
@@ -211,20 +258,6 @@ void wfmain::openRig()
 
     ui->connectBtn->setText("Cancel connection"); // We are attempting to connect
 
-    // TODO: Use these if they are found
-    if(!serialPortCL.isEmpty())
-    {
-        qDebug(logSystem()) << "Serial port specified by user: " << serialPortCL;
-    } else {
-        qDebug(logSystem()) << "Serial port not specified. ";
-    }
-
-    if(!hostCL.isEmpty())
-    {
-        qDebug(logSystem()) << "Remote host name specified by user: " << hostCL;
-    }
-
-
     makeRig();
 
     if (prefs.enableLAN)
@@ -236,16 +269,11 @@ void wfmain::openRig()
         emit sendCommSetup(prefs.radioCIVAddr, udpPrefs, rxSetup, txSetup, prefs.virtualSerialPort, prefs.tcpPort);
     } else {
         ui->serialEnableBtn->setChecked(true);
-        if( (prefs.serialPortRadio.toLower() == QString("auto")) && (serialPortCL.isEmpty()))
+        if( (prefs.serialPortRadio.toLower() == QString("auto")))
         {
             findSerialPort();
         } else {
-            if(serialPortCL.isEmpty())
-            {
-                serialPortRig = prefs.serialPortRadio;
-            } else {
-                serialPortRig = serialPortCL;
-            }
+            serialPortRig = prefs.serialPortRadio;
         }
         usingLAN = false;
         emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort, prefs.tcpPort,prefs.waterfallFormat);
@@ -264,8 +292,9 @@ void wfmain::createSettingsListItems()
     ui->settingsList->addItem("Radio Settings");   // 2
     ui->settingsList->addItem("Radio Server");     // 3
     ui->settingsList->addItem("External Control"); // 4
-    ui->settingsList->addItem("Experimental");     // 5
-    //ui->settingsList->addItem("Audio Processing"); // 6
+    ui->settingsList->addItem("DX Cluster"); // 5
+    ui->settingsList->addItem("Experimental");     // 6
+    //ui->settingsList->addItem("Audio Processing"); // 7
     ui->settingsStack->setCurrentIndex(0);
 }
 
@@ -313,6 +342,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(scopeDisplayEnable()), rig, SLOT(enableSpectrumDisplay()));
     connect(rig, SIGNAL(haveMode(unsigned char, unsigned char)), this, SLOT(receiveMode(unsigned char, unsigned char)));
     connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
+    connect(rig, SIGNAL(havePassband(quint8)), this, SLOT(receivePassband(quint8)));
 
     connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
     connect(rpt, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
@@ -332,6 +362,7 @@ void wfmain::rigConnections()
 
 
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
+    connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
     connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(this, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(this, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
@@ -706,9 +737,23 @@ void wfmain::setupPlots()
 
     wf = ui->waterfall;
 
+    passbandIndicator = new QCPItemRect(plot);
+    passbandIndicator->setAntialiased(true);
+    passbandIndicator->setPen(QPen(Qt::red));
+    passbandIndicator->setBrush(QBrush(Qt::red));
+
     freqIndicatorLine = new QCPItemLine(plot);
     freqIndicatorLine->setAntialiased(true);
     freqIndicatorLine->setPen(QPen(Qt::blue));
+
+    /*
+    text = new QCPItemText(plot);
+    text->setAntialiased(true);
+    text->setColor(QColor(Qt::red));
+    text->setText("TEST");
+    text->position->setCoords(14.195, rigCaps.spectAmpMax);
+    text->setFont(QFont(font().family(), 12));
+    */
 
     ui->plot->addGraph(); // primary
     ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first.
@@ -734,14 +779,19 @@ void wfmain::setupPlots()
     plot->graph(1)->setPen(QPen(color.lighter(200)));
     plot->graph(1)->setBrush(QBrush(color));
 
-    freqIndicatorLine->start->setCoords(0.5,0);
-    freqIndicatorLine->end->setCoords(0.5,160);
+    freqIndicatorLine->start->setCoords(0.5, 0);
+    freqIndicatorLine->end->setCoords(0.5, 160);
+
+    passbandIndicator->topLeft->setCoords(0.5, 0);
+    passbandIndicator->bottomRight->setCoords(0.5, 160);
 
     // Plot user interaction
     connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
     connect(wf, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handleWFDoubleClick(QMouseEvent*)));
     connect(plot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handlePlotClick(QMouseEvent*)));
     connect(wf, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handleWFClick(QMouseEvent*)));
+    connect(plot, SIGNAL(mouseRelease(QMouseEvent*)), this, SLOT(handlePlotMouseRelease(QMouseEvent*)));
+    connect(plot, SIGNAL(mouseMove(QMouseEvent*)), this, SLOT(handlePlotMouseMove(QMouseEvent *)));
     connect(wf, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handleWFScroll(QWheelEvent*)));
     connect(plot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handlePlotScroll(QWheelEvent*)));
     spectrumDrawLock = false;
@@ -984,41 +1034,35 @@ void wfmain::prepareSettingsWindow()
 
 void wfmain::updateSizes(int tabIndex)
 {
-    if(!haveRigCaps)
-        return;
+
     // This function does nothing unless you are using a rig without spectrum.
     // This is a hack. It is not great, but it seems to work ok.
     if(!rigCaps.hasSpectrum)
     {
         // Set "ignore" size policy for non-selected tabs:
-        for(int i=0;i<ui->tabWidget->count();i++)
-            if((i!=tabIndex) && tabIndex != 0)
+        for(int i=1;i<ui->tabWidget->count();i++)
+            if((i!=tabIndex))
                 ui->tabWidget->widget(i)->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored); // allows size to be any size that fits the tab bar
 
-        if(tabIndex==0 && !rigCaps.hasSpectrum)
+        if(tabIndex==0)
         {
 
             ui->tabWidget->widget(0)->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
             ui->tabWidget->widget(0)->setMaximumSize(ui->tabWidget->widget(0)->minimumSizeHint());
             ui->tabWidget->widget(0)->adjustSize(); // tab
             this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-            this->setMaximumSize(QSize(1024,350));
-            this->setMinimumSize(QSize(1024,350));
+            this->setMaximumSize(QSize(940,350));
+            this->setMinimumSize(QSize(940,350));
 
             resize(minimumSize());
             adjustSize(); // main window
-        } else if(tabIndex==0 && rigCaps.hasSpectrum) {
-            // At main tab (0) and we have spectrum:
-            ui->tabWidget->widget(0)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-
-            resize(minimumSizeHint());
-            adjustSize(); // Without this call, the window retains the size of the previous tab.
         } else {
             // At some other tab, with or without spectrum:
             ui->tabWidget->widget(tabIndex)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
             this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
             this->setMinimumSize(QSize(1024, 600)); // not large enough for settings tab
             this->setMaximumSize(QSize(65535,65535));
+            resize(minimumSize());
             adjustSize();
         }
     } else {
@@ -1543,6 +1587,8 @@ void wfmain::loadSettings()
     prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
     prefs.meter2Type = static_cast<meterKind>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
+    prefs.clickDragTuningEnable = settings->value("ClickDragTuning", false).toBool();
+    ui->clickDragTuningEnableChk->setChecked(prefs.clickDragTuningEnable);
     settings->endGroup();
 
     // Load in the color presets. The default values are already loaded.
@@ -1579,6 +1625,7 @@ void wfmain::loadSettings()
             p->underlayFill.setNamedColor(settings->value("underlayFill", p->underlayFill.name(QColor::HexArgb)).toString());
             p->plotBackground.setNamedColor(settings->value("plotBackground", p->plotBackground.name(QColor::HexArgb)).toString());
             p->tuningLine.setNamedColor(settings->value("tuningLine", p->tuningLine.name(QColor::HexArgb)).toString());
+            p->passband.setNamedColor(settings->value("passband", p->passband.name(QColor::HexArgb)).toString());
             p->wfBackground.setNamedColor(settings->value("wfBackground", p->wfBackground.name(QColor::HexArgb)).toString());
             p->wfGrid.setNamedColor(settings->value("wfGrid", p->wfGrid.name(QColor::HexArgb)).toString());
             p->wfAxis.setNamedColor(settings->value("wfAxis", p->wfAxis.name(QColor::HexArgb)).toString());
@@ -1589,6 +1636,7 @@ void wfmain::loadSettings()
             p->meterPeakScale.setNamedColor(settings->value("meterPeakScale", p->meterPeakScale.name(QColor::HexArgb)).toString());
             p->meterLowerLine.setNamedColor(settings->value("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb)).toString());
             p->meterLowText.setNamedColor(settings->value("meterLowText", p->meterLowText.name(QColor::HexArgb)).toString());
+            p->clusterSpots.setNamedColor(settings->value("clusterSpots", p->clusterSpots.name(QColor::HexArgb)).toString());
         }
     }
     settings->endArray();
@@ -1765,10 +1813,10 @@ void wfmain::loadSettings()
             ui->audioTXCodecCombo->setCurrentIndex(f);
     ui->audioRXCodecCombo->blockSignals(false);
 
-    rxSetup.name = settings->value("AudioOutput", "").toString();
+    rxSetup.name = settings->value("AudioOutput", "Default Output Device").toString();
     qInfo(logGui()) << "Got Audio Output from Settings: " << rxSetup.name;
 
-    txSetup.name = settings->value("AudioInput", "").toString();
+    txSetup.name = settings->value("AudioInput", "Default Input Device").toString();
     qInfo(logGui()) << "Got Audio Input from Settings: " << txSetup.name;
 
 
@@ -1845,8 +1893,8 @@ void wfmain::loadSettings()
     memcpy(rigTemp->guid, QUuid::fromString(guid).toRfc4122().constData(), GUIDLEN);
 #endif
 
-    rigTemp->rxAudioSetup.name = settings->value("ServerAudioInput", "").toString();
-    rigTemp->txAudioSetup.name = settings->value("ServerAudioOutput", "").toString();
+    rigTemp->rxAudioSetup.name = settings->value("ServerAudioInput", "Default Input Device").toString();
+    rigTemp->txAudioSetup.name = settings->value("ServerAudioOutput", "Default Output Device").toString();
     serverConfig.rigs.append(rigTemp);
 
     int row = 0;
@@ -1869,6 +1917,12 @@ void wfmain::loadSettings()
 
     if (row == 0) {
         serverAddUserLine("", "", 0);
+        SERVERUSER user;
+        user.username = "";
+        user.password = "";
+        user.userType = 0;
+        serverConfig.users.append(user);
+
         ui->serverAddUserBtn->setEnabled(false);
     }
 
@@ -1908,6 +1962,71 @@ void wfmain::loadSettings()
     settings->endArray();
     settings->endGroup();
 
+    settings->beginGroup("Cluster");
+    
+    prefs.clusterUdpEnable = settings->value("UdpEnabled", false).toBool();
+    prefs.clusterTcpEnable = settings->value("TcpEnabled", false).toBool();
+    prefs.clusterUdpPort = settings->value("UdpPort", 12060).toInt();
+    ui->clusterUdpPortLineEdit->setText(QString::number(prefs.clusterUdpPort));
+    ui->clusterUdpEnable->setChecked(prefs.clusterUdpEnable);
+    ui->clusterTcpEnable->setChecked(prefs.clusterTcpEnable);
+
+    int numClusters = settings->beginReadArray("Servers");
+    clusters.clear();
+    if (numClusters > 0) {
+        {
+            for (int f = 0; f < numClusters; f++)
+            {
+                settings->setArrayIndex(f);
+                clusterSettings c;
+                c.server = settings->value("ServerName", "").toString();
+                c.port = settings->value("Port", 7300).toInt();
+                c.userName = settings->value("UserName", "").toString();
+                c.password = settings->value("Password", "").toString();
+                c.timeout = settings->value("Timeout", 0).toInt();
+                c.isdefault = settings->value("Default", false).toBool();
+                if (!c.server.isEmpty()) {
+                    clusters.append(c);
+                }
+            }
+            int defaultCluster = 0;
+            ui->clusterServerNameCombo->blockSignals(true);
+            for (int f = 0; f < clusters.size(); f++)
+            {
+                ui->clusterServerNameCombo->addItem(clusters[f].server);
+                if (clusters[f].isdefault) {
+                    defaultCluster = f;
+                }
+            }
+            ui->clusterServerNameCombo->blockSignals(false);
+
+            if (clusters.size() > defaultCluster)
+            {
+                ui->clusterServerNameCombo->setCurrentIndex(defaultCluster);
+                ui->clusterTcpPortLineEdit->blockSignals(true);
+                ui->clusterUsernameLineEdit->blockSignals(true);
+                ui->clusterPasswordLineEdit->blockSignals(true);
+                ui->clusterTimeoutLineEdit->blockSignals(true);
+                ui->clusterTcpPortLineEdit->setText(QString::number(clusters[defaultCluster].port));
+                ui->clusterUsernameLineEdit->setText(clusters[defaultCluster].userName);
+                ui->clusterPasswordLineEdit->setText(clusters[defaultCluster].password);
+                ui->clusterTimeoutLineEdit->setText(QString::number(clusters[defaultCluster].timeout));
+                ui->clusterTcpPortLineEdit->blockSignals(false);
+                ui->clusterUsernameLineEdit->blockSignals(false);
+                ui->clusterPasswordLineEdit->blockSignals(false);
+                ui->clusterTimeoutLineEdit->blockSignals(false);
+            }
+        }
+    }
+    else {
+        ui->clusterTcpPortLineEdit->setEnabled(false);
+        ui->clusterUsernameLineEdit->setEnabled(false);
+        ui->clusterPasswordLineEdit->setEnabled(false);
+        ui->clusterTimeoutLineEdit->setEnabled(false);
+    }
+    settings->endArray();
+
+    settings->endGroup();
     /* Load USB buttons*/
     settings->beginGroup("USB");
     int numCommands = settings->beginReadArray("Commands");
@@ -2060,9 +2179,7 @@ void wfmain::loadSettings()
         settings->endArray();
     }
 
-
-    settings->endGroup();
-
+            
 }
 
 void wfmain::serverAddUserLine(const QString& user, const QString& pass, const int& type)
@@ -2263,6 +2380,8 @@ void wfmain::saveSettings()
     settings->setValue("ConfirmExit", prefs.confirmExit);
     settings->setValue("ConfirmPowerOff", prefs.confirmPowerOff);
     settings->setValue("Meter2Type", (int)prefs.meter2Type);
+    settings->setValue("ClickDragTuning", prefs.clickDragTuningEnable);
+
     settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -2348,6 +2467,7 @@ void wfmain::saveSettings()
         settings->setValue("underlayFill", p->underlayFill.name(QColor::HexArgb));
         settings->setValue("plotBackground", p->plotBackground.name(QColor::HexArgb));
         settings->setValue("tuningLine", p->tuningLine.name(QColor::HexArgb));
+        settings->setValue("passband", p->passband.name(QColor::HexArgb));
         settings->setValue("wfBackground", p->wfBackground.name(QColor::HexArgb));
         settings->setValue("wfGrid", p->wfGrid.name(QColor::HexArgb));
         settings->setValue("wfAxis", p->wfAxis.name(QColor::HexArgb));
@@ -2358,6 +2478,7 @@ void wfmain::saveSettings()
         settings->setValue("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb));
         settings->setValue("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb));
         settings->setValue("meterLowText", p->meterLowText.name(QColor::HexArgb));
+        settings->setValue("clusterSpots", p->clusterSpots.name(QColor::HexArgb));
     }
     settings->endArray();
     settings->endGroup();
@@ -2394,14 +2515,32 @@ void wfmain::saveSettings()
     }
 
     settings->endArray();
-    qInfo() << "Server config stored";
+    settings->endGroup();
+
+    settings->beginGroup("Cluster");
+    settings->setValue("UdpEnabled", prefs.clusterUdpEnable);
+    settings->setValue("TcpEnabled", prefs.clusterTcpEnable);
+    settings->setValue("UdpPort", prefs.clusterUdpPort);
+
+    settings->beginWriteArray("Servers");
+
+    for (int f = 0; f < clusters.count(); f++)
+    {
+        settings->setArrayIndex(f);
+        settings->setValue("ServerName", clusters[f].server);
+        settings->setValue("UserName", clusters[f].userName);
+        settings->setValue("Port", clusters[f].port);
+        settings->setValue("Password", clusters[f].password);
+        settings->setValue("Timeout", clusters[f].timeout);
+        settings->setValue("Default", clusters[f].isdefault);
+    }
+
+    settings->endArray();
 
     settings->endGroup();
 
     settings->beginGroup("USB");
-
     // Store USB Controller
-
 
     settings->beginWriteArray("Buttons");
     for (int nb = 0; nb < usbButtons.count(); nb++)
@@ -3053,6 +3192,7 @@ void wfmain::setDefaultColors(int presetNumber)
     p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
     p->plotBackground = QColor(Qt::black);
     p->tuningLine = QColor(Qt::blue);
+    p->passband = QColor(Qt::blue);
 
     p->meterLevel = QColor("#148CD2").darker();
     p->meterAverage = QColor("#3FB7CD");
@@ -3065,6 +3205,8 @@ void wfmain::setDefaultColors(int presetNumber)
     p->wfAxis = QColor(Qt::white);
     p->wfGrid = QColor(Qt::white);
     p->wfText = QColor(Qt::white);
+
+    p->clusterSpots = QColor(Qt::red);
 
     //qInfo(logSystem()) << "default color preset [" << pn << "] set to pn.presetNum index [" << p->presetNum << "]" << ", with name " << *(p->presetName);
 
@@ -3084,6 +3226,7 @@ void wfmain::setDefaultColors(int presetNumber)
             p->underlayLine = QColor("#9633ff55");
             p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
             p->tuningLine = QColor("#ff55ffff");
+            p->passband = QColor("#32ffffff");
 
             p->meterLevel = QColor("#148CD2").darker();
             p->meterAverage = QColor("#3FB7CD");
@@ -3096,6 +3239,7 @@ void wfmain::setDefaultColors(int presetNumber)
             p->wfAxis = QColor(Qt::white);
             p->wfGrid = QColor("transparent");
             p->wfText = QColor(Qt::white);
+            p->clusterSpots = QColor(Qt::red);
             break;
         }
         case 1:
@@ -3111,6 +3255,7 @@ void wfmain::setDefaultColors(int presetNumber)
             p->spectrumLine = QColor(Qt::black);
             p->underlayLine = QColor(Qt::blue);
             p->tuningLine = QColor(Qt::darkBlue);
+            p->passband = QColor("#64000080");
 
             p->meterAverage = QColor("#3FB7CD");
             p->meterPeakLevel = QColor("#3CA0DB");
@@ -3122,6 +3267,7 @@ void wfmain::setDefaultColors(int presetNumber)
             p->wfAxis = QColor(200,200,200,255);
             p->wfGrid = QColor("transparent");
             p->wfText = QColor(Qt::black);
+            p->clusterSpots = QColor(Qt::red);
             break;
         }
 
@@ -3341,6 +3487,9 @@ void wfmain::doCmd(cmds cmd)
             break;
         case cmdGetDuplexMode:
             emit getDuplexMode();
+            break;
+        case cmdGetPassband:
+            emit getPassband();
             break;
         case cmdGetTone:
             emit getTone();
@@ -3718,8 +3867,29 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
         //wfCeiling = rigCaps.spectAmpMax;
         //plotCeiling = rigCaps.spectAmpMax;
-        ui->topLevelSlider->setMaximum(rigCaps.spectAmpMax);
+        if(rigCaps.hasSpectrum)
+        {
+            ui->topLevelSlider->setVisible(true);
+            ui->labelTop->setVisible(true);
+            ui->botLevelSlider->setVisible(true);
+            ui->labelBot->setVisible(true);
+            ui->scopeRefLevelSlider->setVisible(true);
+            ui->refLabel->setVisible(true);
+            ui->wfLengthSlider->setVisible(true);
+            ui->lenLabel->setVisible(true);
 
+            ui->topLevelSlider->setMaximum(rigCaps.spectAmpMax);
+            ui->botLevelSlider->setMaximum(rigCaps.spectAmpMax);
+        } else {
+            ui->scopeRefLevelSlider->setVisible(false);
+            ui->refLabel->setVisible(false);
+            ui->wfLengthSlider->setVisible(false);
+            ui->lenLabel->setVisible(false);
+            ui->topLevelSlider->setVisible(false);
+            ui->labelTop->setVisible(false);
+            ui->botLevelSlider->setVisible(false);
+            ui->labelBot->setVisible(false);
+        }
         haveRigCaps = true;
 
         // Added so that server receives rig capabilities.
@@ -3888,6 +4058,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             }
         }
     }
+    updateSizes(ui->tabWidget->currentIndex());
 }
 
 void wfmain::initPeriodicCommands()
@@ -3914,6 +4085,11 @@ void wfmain::initPeriodicCommands()
         insertSlowPeriodicCommand(cmdGetAntenna, 128);
     }
     insertSlowPeriodicCommand(cmdGetDuplexMode, 128);
+
+    if (rigCaps.hasSpectrum) {
+        // Get passband
+        insertPeriodicCommand(cmdGetPassband, 128);
+    }
 }
 
 void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
@@ -4028,6 +4204,8 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             // This will break if the button is ever moved or renamed.
             on_clearPeakBtn_clicked();
         }
+        // Inform other threads (cluster) that the frequency range has changed.
+        emit setFrequencyRange(startFreq, endFreq);
         // TODO: Add clear-out for the buffer
     }
 
@@ -4086,8 +4264,32 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         plot->graph(0)->setData(x,y, true);
         if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
         {
-            freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
-            freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
+            freqIndicatorLine->start->setCoords(freq.MHzDouble, 0);
+            freqIndicatorLine->end->setCoords(freq.MHzDouble, rigCaps.spectAmpMax);
+
+            if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modePSK_R) {
+                passbandIndicator->topLeft->setCoords(freq.MHzDouble - passBand - 0.0001, 0);
+                passbandIndicator->bottomRight->setCoords(freq.MHzDouble - 0.0001, rigCaps.spectAmpMax);
+            }
+            else if (currentModeInfo.mk == modeUSB || currentModeInfo.mk == modePSK) {
+                passbandIndicator->topLeft->setCoords(freq.MHzDouble + 0.0001, 0);
+                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + 0.0001 + passBand, rigCaps.spectAmpMax);
+            }
+            else
+            {
+                if (currentModeInfo.mk == modeFM) {
+                    if (currentModeInfo.filter == 1)
+                        passBand = 0.015;
+                    else if (currentModeInfo.filter == 2)
+                        passBand = 0.010;
+                    else
+                        passBand = 0.007;
+                }
+                passbandIndicator->topLeft->setCoords(freq.MHzDouble - (passBand / 2), 0);
+                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + (passBand / 2), rigCaps.spectAmpMax);
+            }
+
+
         }
 
         if(underlayMode == underlayPeakHold)
@@ -4266,10 +4468,84 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
     }
 }
 
-void wfmain::handlePlotClick(QMouseEvent *me)
+void wfmain::handlePlotClick(QMouseEvent* me)
 {
-    double x = plot->xAxis->pixelToCoord(me->pos().x());
-    showStatusBarText(QString("Selected %1 MHz").arg(x));
+    QCPAbstractItem* item = plot->itemAt(me->pos(), true);
+    QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+    if (me->button() == Qt::RightButton && textItem != nullptr) {
+        QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
+        if (spot != clusterSpots.end() && spot.key() == textItem->text()) {
+            /* parent and children are destroyed on close */
+            QDialog* spotDialog = new QDialog();
+            QVBoxLayout* vlayout = new QVBoxLayout;
+            //spotDialog->setFixedSize(240, 100);
+            spotDialog->setBaseSize(1, 1);
+            spotDialog->setWindowTitle(spot.value()->dxcall);
+            QLabel* dxcall = new QLabel(QString("DX:%1").arg(spot.value()->dxcall));
+            QLabel* spotter = new QLabel(QString("Spotter:%1").arg(spot.value()->spottercall));
+            QLabel* frequency = new QLabel(QString("Frequency:%1 MHz").arg(spot.value()->frequency));
+            QLabel* comment = new QLabel(QString("Comment:%1").arg(spot.value()->comment));
+            QAbstractButton* bExit = new QPushButton("Close");
+            vlayout->addWidget(dxcall);
+            vlayout->addWidget(spotter);
+            vlayout->addWidget(frequency);
+            vlayout->addWidget(comment);
+            vlayout->addWidget(bExit);
+            spotDialog->setLayout(vlayout);
+            spotDialog->show();
+            spotDialog->connect(bExit, SIGNAL(clicked()), spotDialog, SLOT(close()));
+        }
+    }
+    else if (textItem != nullptr)
+    {
+        QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
+        if (spot != clusterSpots.end() && spot.key() == textItem->text()) 
+        {
+            qInfo(logGui()) << "Clicked on spot:" << textItem->text();
+            freqt freqGo;
+            freqGo.Hz = ( spot.value()->frequency)*1E6;
+            freqGo.MHzDouble = spot.value()->frequency;
+            issueCmdUniquePriority(cmdSetFreq, freqGo);
+        }
+    }
+    else if (prefs.clickDragTuningEnable)
+    {
+        double x = plot->xAxis->pixelToCoord(me->pos().x());
+        showStatusBarText(QString("Selected %1 MHz").arg(x));
+        this->mousePressFreq = x;
+    }
+}
+
+void wfmain::handlePlotMouseRelease(QMouseEvent* me)
+{
+    QCPAbstractItem* item = plot->itemAt(me->pos(), true);
+    QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+
+    if (textItem == nullptr && prefs.clickDragTuningEnable) {
+        this->mouseReleaseFreq = plot->xAxis->pixelToCoord(me->pos().x());
+        double delta = mouseReleaseFreq - mousePressFreq;
+        qInfo(logGui()) << "Mouse release delta: " << delta;
+
+    }
+}
+
+void wfmain::handlePlotMouseMove(QMouseEvent *me)
+{
+    QCPAbstractItem* item = plot->itemAt(me->pos(), true);
+    QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+    if(me->buttons() == Qt::LeftButton && textItem==nullptr && prefs.clickDragTuningEnable)
+    {
+        double delta = plot->xAxis->pixelToCoord(me->pos().x()) - mousePressFreq;
+        qInfo(logGui()) << "Mouse moving delta: " << delta;
+        if( (( delta < -0.0001 ) || (delta > 0.0001)) && ((delta < 0.501) && (delta > -0.501)) )
+        {
+            freqt freqGo;
+            freqGo.Hz = ( freq.MHzDouble + delta)*1E6;
+            //freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
+            freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
+            issueCmdUniquePriority(cmdSetFreq, freqGo);
+        }
+    }
 }
 
 void wfmain::handleWFClick(QMouseEvent *me)
@@ -4356,6 +4632,8 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
             }
         }
         currentModeIndex = mode;
+        currentModeInfo.mk = (mode_kind)mode;
+        currentModeInfo.filter = filter;
     } else {
         qInfo(logSystem()) << __func__ << "Invalid mode " << mode << " received. ";
     }
@@ -4372,7 +4650,6 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
     }
 
     (void)filter;
-
 
     // Note: we need to know if the DATA mode is active to reach mode-D
     // some kind of queued query:
@@ -5603,6 +5880,22 @@ void wfmain::receiveLANGain(unsigned char level)
     processModLevel(inputLAN, level);
 }
 
+void wfmain::receivePassband(quint8 pass)
+{
+    int calc;
+    if (currentModeInfo.mk == modeAM) {
+        calc = 200 + (pass * 200);
+    }
+    else if (pass <= 10)
+    {
+        calc = 50 + (pass * 50);
+    }
+    else {
+        calc = 600 + ((pass - 10) * 100);
+    }
+    passBand = (double)(calc / 1000000.0);
+}
+
 void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
 {
 
@@ -6411,42 +6704,54 @@ void wfmain::setAudioDevicesUI()
     ui->serverTXAudioOutputCombo->clear();
     ui->serverRXAudioInputCombo->clear();
 
-    qDebug(logSystem()) << "Finding audio devices, output=" << rxSetup.name << "input="<<txSetup.name;
+    qDebug(logSystem()) << "Finding audio devices, output=" << rxSetup.name << "input=" << txSetup.name;
 
     int defaultAudioInputIndex = 0;
     int defaultAudioOutputIndex = 0;
-    int inCount = 0;
-    int outCount = 0;
+
+    ui->audioInputCombo->setCurrentIndex(-1);
+    ui->audioOutputCombo->setCurrentIndex(-1);
+    ui->serverRXAudioInputCombo->setCurrentIndex(-1);
+    ui->serverTXAudioOutputCombo->setCurrentIndex(-1);
+    QString defaultAudioInputName;
+    QString defaultAudioOutputName;
 
     switch (prefs.audioSystem) 
     {
         case qtAudio:
         {
             Pa_Terminate();
-            const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
-            for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
+
+            int inCount = 0;
+            foreach(const QAudioDeviceInfo & deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioInput))
+            {
+                if (inCount == 0)
+                    defaultAudioInputName = QString(deviceInfo.deviceName().toLocal8Bit());
 #ifdef Q_OS_WIN
                 if (deviceInfo.realm() == "wasapi") {
 #endif
-                    ui->audioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
-                    ui->serverRXAudioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
-                    inCount++;
+                    ui->audioInputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
+                    ui->serverRXAudioInputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
 #ifdef Q_OS_WIN
                 }
 #endif
+                inCount++;
             }
 
-            const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
-            for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
+            int outCount = 0;
+            foreach(const QAudioDeviceInfo & deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
+            {
+                if (outCount == 0)
+                    defaultAudioOutputName = QString(deviceInfo.deviceName().toLocal8Bit());
 #ifdef Q_OS_WIN
                 if (deviceInfo.realm() == "wasapi") {
 #endif
-                    ui->audioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
-                    ui->serverTXAudioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
-                    outCount++;
+                    ui->audioOutputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
+                    ui->serverTXAudioOutputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
 #ifdef Q_OS_WIN
                 }
 #endif
+                outCount++;
             }
             break;
         }
@@ -6472,23 +6777,21 @@ void wfmain::setAudioDevicesUI()
             {
                 info = Pa_GetDeviceInfo(i);
                 if (info->maxInputChannels > 0) {
-                    qDebug(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Input Device : " << info->name;
+                    qDebug(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Input Device : " << QString(info->name).toLocal8Bit();
 
-                    ui->audioInputCombo->addItem(info->name, i);
-                    ui->serverRXAudioInputCombo->addItem(info->name, i);
+                    ui->audioInputCombo->addItem(QString(info->name).toLocal8Bit(), i);
+                    ui->serverRXAudioInputCombo->addItem(QString(info->name).toLocal8Bit(), i);
                     if (i == Pa_GetDefaultInputDevice()) {
-                        defaultAudioInputIndex = inCount;
+                        defaultAudioInputName = info->name;
                     }
-                    inCount++;
                 }
                 if (info->maxOutputChannels > 0) {
-                    qDebug(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Output Device  : " << info->name;
-                    ui->audioOutputCombo->addItem(info->name, i);
-                    ui->serverTXAudioOutputCombo->addItem(info->name, i);
+                    qDebug(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Output Device  : " << QString(info->name).toLocal8Bit();
+                    ui->audioOutputCombo->addItem(QString(info->name).toLocal8Bit(), i);
+                    ui->serverTXAudioOutputCombo->addItem(QString(info->name).toLocal8Bit(), i);
                     if (i == Pa_GetDefaultOutputDevice()) {
-                        defaultAudioOutputIndex = outCount;
+                        defaultAudioOutputName = info->name;
                     }
-                    outCount++;
                 }
             }
             break;
@@ -6538,22 +6841,20 @@ void wfmain::setAudioDevicesUI()
             for (unsigned int i = 1; i < devices; i++) {
                 info = audio->getDeviceInfo(i);
                 if (info.inputChannels > 0) {
-                    qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name);
-                    ui->audioInputCombo->addItem(QString::fromStdString(info.name), i);
-                    ui->serverRXAudioInputCombo->addItem(QString::fromStdString(info.name), i);
+                    qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name).toLocal8Bit();
+                    ui->audioInputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
+                    ui->serverRXAudioInputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
                     if (info.isDefaultInput) {
-                        defaultAudioInputIndex = inCount;
+                        defaultAudioInputName = QString::fromStdString(info.name).toLocal8Bit();
                     }
-                    inCount++;
                 }
                 if (info.outputChannels > 0) {
-                    qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name);
-                    ui->audioOutputCombo->addItem(QString::fromStdString(info.name), i);
-                    ui->serverTXAudioOutputCombo->addItem(QString::fromStdString(info.name), i);
+                    qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name).toLocal8Bit();
+                    ui->audioOutputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
+                    ui->serverTXAudioOutputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
                     if (info.isDefaultOutput) {
-                        defaultAudioOutputIndex = outCount;
+                        defaultAudioOutputName = QString::fromStdString(info.name).toLocal8Bit();
                     }
-                    outCount++;
                 }
             }
 
@@ -6584,47 +6885,69 @@ void wfmain::setAudioDevicesUI()
 
     int audioInputIndex = ui->audioInputCombo->findText(txSetup.name);
     if (audioInputIndex != -1) {
+        qInfo(logGui()) << "Found Audio Input Device: " << txSetup.name;
         ui->audioInputCombo->setCurrentIndex(audioInputIndex);
     }
     else {
-        qDebug(logSystem()) << "Audio input not found";
-        ui->audioInputCombo->setCurrentIndex(defaultAudioInputIndex);
+        qWarning(logGui()) << "Audio Input Device: " << txSetup.name << "Not Found, trying to select default";
+        audioInputIndex = ui->audioInputCombo->findText(defaultAudioInputName);
+        if (audioInputIndex != -1) {
+            ui->audioInputCombo->setCurrentIndex(audioInputIndex);
+        }
+        else {
+            qWarning(logGui()) << "Unable to select default input device,"<< defaultAudioInputName << " help.....";
+        }
+
     }
 
-    int audioOutputIndex = ui->audioOutputCombo->findText(rxSetup.name);
+    int audioOutputIndex = ui->audioOutputCombo->findText(rxSetup.name.toLocal8Bit());
     if (audioOutputIndex != -1) {
+        qInfo(logGui()) << "Found Audio Output Device: " << rxSetup.name.toLocal8Bit();
         ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
     }
     else {
-        qDebug(logSystem()) << "Audio output not found";
-        ui->audioOutputCombo->setCurrentIndex(defaultAudioOutputIndex);
+        qWarning(logGui()) << "Audio output Device: " << rxSetup.name << "Not Found, trying to select default";
+        audioOutputIndex = ui->audioOutputCombo->findText(defaultAudioOutputName.toLocal8Bit());
+        if (audioOutputIndex != -1) {
+            ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
+        }
+        else {
+            qWarning(logGui()) << "Unable to select default output device," << defaultAudioOutputName.toLocal8Bit() << " help.....";
+        }
     }
 
     if (!serverConfig.rigs.isEmpty())
 
     {
-        qInfo(logGui()) << "Got Server Audio Input: " << serverConfig.rigs.first()->rxAudioSetup.name;
+        if (serverConfig.enabled)
+            qInfo(logGui()) << "Got Server Audio Input: " << serverConfig.rigs.first()->rxAudioSetup.name.toLocal8Bit();
 
         serverConfig.rigs.first()->rxAudioSetup.type = prefs.audioSystem;
         serverConfig.rigs.first()->txAudioSetup.type = prefs.audioSystem;
 
-        int serverAudioInputIndex = ui->serverRXAudioInputCombo->findText(serverConfig.rigs.first()->rxAudioSetup.name);
+        ui->serverRXAudioInputCombo->setCurrentIndex(defaultAudioInputIndex);
+        int serverAudioInputIndex = ui->serverRXAudioInputCombo->findText(serverConfig.rigs.first()->rxAudioSetup.name.toLocal8Bit());
         if (serverAudioInputIndex != -1) {
             ui->serverRXAudioInputCombo->setCurrentIndex(serverAudioInputIndex);
         }
         else {
-            // Set to default
-            ui->serverRXAudioInputCombo->setCurrentIndex(defaultAudioInputIndex);
+            if (serverConfig.enabled)
+                qWarning(logGui()) << "Server audio input NOT FOUND " << serverConfig.rigs.first()->rxAudioSetup.name.toLocal8Bit() << "not selecting default";
         }
 
-        qInfo(logGui()) << "Got Server Audio Output: " << serverConfig.rigs.first()->txAudioSetup.name;
-        int serverAudioOutputIndex = ui->serverTXAudioOutputCombo->findText(serverConfig.rigs.first()->txAudioSetup.name);
+        if (serverConfig.enabled)
+            qInfo(logGui()) << "Got Server Audio Output: " << serverConfig.rigs.first()->txAudioSetup.name.toLocal8Bit();
+
+        ui->serverTXAudioOutputCombo->setCurrentIndex(defaultAudioOutputIndex);
+        int serverAudioOutputIndex = ui->serverTXAudioOutputCombo->findText(serverConfig.rigs.first()->txAudioSetup.name.toLocal8Bit());
         if (serverAudioOutputIndex != -1) {
             ui->serverTXAudioOutputCombo->setCurrentIndex(serverAudioOutputIndex);
         }
         else {
-            ui->serverTXAudioOutputCombo->setCurrentIndex(defaultAudioOutputIndex);
+            if (serverConfig.enabled)
+                qWarning(logGui()) << "Server audio output NOT FOUND " << serverConfig.rigs.first()->txAudioSetup.name.toLocal8Bit() << "not selecting default";
         }
+        
     }
 
     qDebug(logSystem()) << "Audio devices done.";
@@ -6906,6 +7229,8 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     plot->yAxis->setTickPen(cp->axisColor);
 
     freqIndicatorLine->setPen(QPen(cp->tuningLine));
+    passbandIndicator->setPen(QPen(cp->passband));
+    passbandIndicator->setBrush(QBrush(cp->passband));
 
     plot->graph(0)->setPen(QPen(cp->spectrumLine));
     plot->graph(0)->setBrush(QBrush(cp->spectrumFill));
@@ -6928,6 +7253,8 @@ void wfmain::useColorPreset(colorPrefsType *cp)
 
     ui->meterSPoWidget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
     ui->meter2Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
+
+    clusterColor = cp->clusterSpots;
 }
 
 void wfmain::setColorButtonOperations(QColor *colorStore,
@@ -6967,16 +7294,18 @@ void wfmain::setColorLineEditOperations(QColor *colorStore,
 void wfmain::on_colorPopOutBtn_clicked()
 {
 
-    if(settingsTabisAttached)
+    if (settingsTabisAttached)
     {
         settingsTab = ui->tabWidget->currentWidget();
         ui->tabWidget->removeTab(ui->tabWidget->indexOf(settingsTab));
         settingsWidgetTab->addTab(settingsTab, "Settings");
         settingsWidgetWindow->show();
         ui->colorPopOutBtn->setText("Re-attach");
+        ui->clusterPopOutBtn->setText("Re-attach");
         ui->tabWidget->setCurrentIndex(0);
         settingsTabisAttached = false;
-    } else {
+    }
+    else {
         settingsTab = settingsWidgetTab->currentWidget();
 
         settingsWidgetTab->removeTab(settingsWidgetTab->indexOf(settingsTab));
@@ -6984,6 +7313,7 @@ void wfmain::on_colorPopOutBtn_clicked()
         settingsWidgetWindow->close();
 
         ui->colorPopOutBtn->setText("Pop-Out");
+        ui->clusterPopOutBtn->setText("Pop-Out");
         ui->tabWidget->setCurrentIndex(3);
         settingsTabisAttached = true;
     }
@@ -7033,6 +7363,7 @@ void wfmain::loadColorPresetToUIandPlots(int presetNumber)
     setEditAndLedFromColor(p.underlayFill, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
     setEditAndLedFromColor(p.plotBackground, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
     setEditAndLedFromColor(p.tuningLine, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+    setEditAndLedFromColor(p.passband, ui->colorEditPassband, ui->colorSwatchPassband);
 
     setEditAndLedFromColor(p.meterLevel, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
     setEditAndLedFromColor(p.meterAverage, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
@@ -7045,6 +7376,8 @@ void wfmain::loadColorPresetToUIandPlots(int presetNumber)
     setEditAndLedFromColor(p.wfGrid, ui->colorEditWfGrid, ui->colorSwatchWfGrid);
     setEditAndLedFromColor(p.wfAxis, ui->colorEditWfAxis, ui->colorSwatchWfAxis);
     setEditAndLedFromColor(p.wfText, ui->colorEditWfText, ui->colorSwatchWfText);
+
+    setEditAndLedFromColor(p.clusterSpots, ui->colorEditClusterSpots, ui->colorSwatchClusterSpots);
 
     useColorPreset(&p);
 }
@@ -7252,13 +7585,14 @@ void wfmain::on_colorEditWfAxis_editingFinished()
 void wfmain::on_colorSetBtnWfText_clicked()
 {
     int pos = ui->colorPresetCombo->currentIndex();
-    QColor *c = &(colorPreset[pos].wfText);
+    QColor* c = &(colorPreset[pos].wfText);
     setColorButtonOperations(c, ui->colorEditWfText, ui->colorSwatchWfText);
 }
+
 void wfmain::on_colorEditWfText_editingFinished()
 {
     int pos = ui->colorPresetCombo->currentIndex();
-    QColor *c = &(colorPreset[pos].wfText);
+    QColor* c = &(colorPreset[pos].wfText);
     setColorLineEditOperations(c, ui->colorEditWfText, ui->colorSwatchWfText);
 }
 
@@ -7266,14 +7600,28 @@ void wfmain::on_colorEditWfText_editingFinished()
 void wfmain::on_colorSetBtnTuningLine_clicked()
 {
     int pos = ui->colorPresetCombo->currentIndex();
-    QColor *c = &(colorPreset[pos].tuningLine);
+    QColor* c = &(colorPreset[pos].tuningLine);
     setColorButtonOperations(c, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
 }
 void wfmain::on_colorEditTuningLine_editingFinished()
 {
     int pos = ui->colorPresetCombo->currentIndex();
-    QColor *c = &(colorPreset[pos].tuningLine);
+    QColor* c = &(colorPreset[pos].tuningLine);
     setColorLineEditOperations(c, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+}
+
+// Passband:
+void wfmain::on_colorSetBtnPassband_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].passband);
+    setColorButtonOperations(c, ui->colorEditPassband, ui->colorSwatchPassband);
+}
+void wfmain::on_colorEditPassband_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].passband);
+    setColorLineEditOperations(c, ui->colorEditPassband, ui->colorSwatchPassband);
 }
 
 // Meter Level:
@@ -7360,6 +7708,20 @@ void wfmain::on_colorEditMeterText_editingFinished()
     setColorLineEditOperations(c, ui->colorEditMeterText, ui->colorSwatchMeterText);
 }
 
+// Cluster Spots:
+void wfmain::on_colorSetBtnClusterSpots_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].clusterSpots);
+    setColorButtonOperations(c, ui->colorEditClusterSpots, ui->colorSwatchClusterSpots);
+}
+void wfmain::on_colorEditClusterSpots_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].clusterSpots);
+    setColorLineEditOperations(c, ui->colorEditClusterSpots, ui->colorSwatchClusterSpots);
+}
+
 // ----------   End color UI slots        ----------//
 
 void wfmain::on_colorSavePresetBtn_clicked()
@@ -7385,6 +7747,7 @@ void wfmain::on_colorSavePresetBtn_clicked()
     settings->setValue("underlayFill", p->underlayFill.name(QColor::HexArgb));
     settings->setValue("plotBackground", p->plotBackground.name(QColor::HexArgb));
     settings->setValue("tuningLine", p->tuningLine.name(QColor::HexArgb));
+    settings->setValue("passband", p->passband.name(QColor::HexArgb));
     settings->setValue("wfBackground", p->wfBackground.name(QColor::HexArgb));
     settings->setValue("wfGrid", p->wfGrid.name(QColor::HexArgb));
     settings->setValue("wfAxis", p->wfAxis.name(QColor::HexArgb));
@@ -7395,6 +7758,7 @@ void wfmain::on_colorSavePresetBtn_clicked()
     settings->setValue("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb));
     settings->setValue("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb));
     settings->setValue("meterLowText", p->meterLowText.name(QColor::HexArgb));
+    settings->setValue("clusterSpots", p->clusterSpots.name(QColor::HexArgb));
 
     settings->endArray();
     settings->endGroup();
@@ -7416,11 +7780,6 @@ void wfmain::on_showLogBtn_clicked()
 
 void wfmain::initLogging()
 {
-#ifdef Q_OS_MAC
-    logFilename= QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/wfview.log";
-#else
-    logFilename= QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0] + "/wfview.log";
-#endif
     // Set the logging file before doing anything else.
     m_logFile.reset(new QFile(logFilename));
     // Open the file logging
@@ -7562,6 +7921,255 @@ errMsg:
 
 }
 
+
+void wfmain::receiveClusterOutput(QString text) {
+    ui->clusterOutputTextEdit->moveCursor(QTextCursor::End);
+    ui->clusterOutputTextEdit->insertPlainText(text);
+    ui->clusterOutputTextEdit->moveCursor(QTextCursor::End);
+}
+
+void wfmain::on_clusterUdpEnable_clicked(bool enable)
+{
+    prefs.clusterUdpEnable = enable;
+    emit setClusterEnableUdp(enable);
+}
+
+void wfmain::on_clusterTcpEnable_clicked(bool enable)
+{
+    prefs.clusterTcpEnable = enable;
+    emit setClusterEnableTcp(enable);
+}
+
+void wfmain::on_clusterUdpPortLineEdit_editingFinished()
+{
+    prefs.clusterUdpPort = ui->clusterUdpPortLineEdit->text().toInt();
+    emit setClusterUdpPort(prefs.clusterUdpPort);
+}
+
+void wfmain::on_clusterServerNameCombo_currentIndexChanged(int index) 
+{
+    if (index < 0)
+        return;
+
+    QString text = ui->clusterServerNameCombo->currentText();
+
+    if (clusters.size() <= index)
+    {
+        qInfo(logGui) << "Adding Cluster server" << text;
+        clusterSettings c;
+        c.server = text;
+        clusters.append(c);
+        ui->clusterTcpPortLineEdit->setEnabled(true);
+        ui->clusterUsernameLineEdit->setEnabled(true);
+        ui->clusterPasswordLineEdit->setEnabled(true);
+        ui->clusterTimeoutLineEdit->setEnabled(true);
+
+    }
+    else {
+        qInfo(logGui) << "Editing Cluster server" << text;
+        clusters[index].server = text;
+    }
+    ui->clusterUsernameLineEdit->blockSignals(true);
+    ui->clusterPasswordLineEdit->blockSignals(true);
+    ui->clusterTimeoutLineEdit->blockSignals(true);
+    ui->clusterTcpPortLineEdit->setText(QString::number(clusters[index].port));
+    ui->clusterUsernameLineEdit->setText(clusters[index].userName);
+    ui->clusterPasswordLineEdit->setText(clusters[index].password);
+    ui->clusterTimeoutLineEdit->setText(QString::number(clusters[index].timeout));
+    ui->clusterUsernameLineEdit->blockSignals(false);
+    ui->clusterPasswordLineEdit->blockSignals(false);
+    ui->clusterTimeoutLineEdit->blockSignals(false);
+
+
+    for (int i = 0; i < clusters.size(); i++) {
+        if (i == index)
+            clusters[index].isdefault = true;
+        else
+            clusters[index].isdefault = false;
+    }
+
+    emit setClusterServerName(clusters[index].server);
+    emit setClusterTcpPort(clusters[index].port);
+    emit setClusterUserName(clusters[index].userName);
+    emit setClusterPassword(clusters[index].password);
+    emit setClusterTimeout(clusters[index].timeout);
+
+}
+
+void wfmain::on_clusterServerNameCombo_currentTextChanged(QString text)
+{
+    if (text.isEmpty()) {
+        int index = ui->clusterServerNameCombo->currentIndex();
+        ui->clusterServerNameCombo->removeItem(index);
+        clusters.removeAt(index);
+        if (clusters.size() == 0)
+        {
+            ui->clusterTcpPortLineEdit->setEnabled(false);
+            ui->clusterUsernameLineEdit->setEnabled(false);
+            ui->clusterPasswordLineEdit->setEnabled(false);
+            ui->clusterTimeoutLineEdit->setEnabled(false);
+        }
+    }
+}
+
+void wfmain::on_clusterTcpPortLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].port = ui->clusterTcpPortLineEdit->displayText().toInt();
+        emit setClusterTcpPort(clusters[index].port);
+    }
+}
+
+void wfmain::on_clusterUsernameLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].userName = ui->clusterUsernameLineEdit->text();
+        emit setClusterUserName(clusters[index].userName);
+    }
+}
+
+void wfmain::on_clusterPasswordLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].password = ui->clusterPasswordLineEdit->text();
+        emit setClusterPassword(clusters[index].password);
+    }
+
+}
+
+void wfmain::on_clusterTimeoutLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].timeout = ui->clusterTimeoutLineEdit->displayText().toInt();
+        emit setClusterTimeout(clusters[index].timeout);
+    }
+}
+
+
+void wfmain::receiveSpots(QList<spotData> spots)
+{
+    QElapsedTimer timer;
+    timer.start();
+
+    bool current = false;
+    
+    if (clusterSpots.size() > 0) {
+        current=clusterSpots.begin().value()->current;
+    }
+
+    foreach(spotData s, spots)
+    {
+        bool found = false;
+        QMap<QString, spotData*>::iterator spot = clusterSpots.find(s.dxcall);
+
+        while (spot != clusterSpots.end() && spot.key() == s.dxcall && spot.value()->frequency == s.frequency) {
+            spot.value()->current = !current;
+            found = true;
+            ++spot;
+        }
+
+        if (!found)
+        {
+            spotData* sp = new spotData(s);
+
+            //qDebug(logCluster()) << "ADD:" << sp->dxcall;
+            sp->current = !current;
+            bool conflict = true;
+            double left = sp->frequency;
+            QCPRange range=plot->yAxis->range();
+            double top = range.upper-15.0;
+            sp->text = new QCPItemText(plot);
+            sp->text->setAntialiased(true);
+            sp->text->setColor(clusterColor);
+            sp->text->setText(sp->dxcall);
+            sp->text->setFont(QFont(font().family(), 10));
+            sp->text->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
+            sp->text->position->setType(QCPItemPosition::ptPlotCoords);
+            sp->text->setSelectable(true);
+            QMargins margin;
+            int width = (sp->text->right - sp->text->left) / 2;
+            margin.setLeft(width);
+            margin.setRight(width);
+            sp->text->setPadding(margin);
+            sp->text->position->setCoords(left, top);
+            sp->text->setVisible(false);
+            while (conflict) {
+                QCPAbstractItem* item = plot->itemAt(sp->text->position->pixelPosition(), true);
+                QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+                if (textItem != nullptr && sp->text != textItem) {
+                    //qInfo(logGui()) << "CONFLICT:" << textItem->text() << "SAME POSITION AS" << sp->dxcall << sp->text->position->pixelPosition();
+                    top = top - 5.0;
+                }
+                else {
+                    //qInfo(logGui()) << "OK:" << sp->dxcall << sp->text->position->pixelPosition();
+                    conflict = false;
+                }
+                sp->text->position->setCoords(left, top);
+            }
+
+            sp->text->setVisible(true);
+            clusterSpots.insert(sp->dxcall, sp);
+        }
+    }
+
+    QMap<QString, spotData*>::iterator spot2 = clusterSpots.begin();
+    while (spot2 != clusterSpots.end()) {
+        if (spot2.value()->current == current) {
+            plot->removeItem(spot2.value()->text);
+            //qDebug(logCluster()) << "REMOVE:" << spot2.value()->dxcall;
+            delete spot2.value(); // Stop memory leak?
+            spot2 = clusterSpots.erase(spot2);
+        }
+        else {
+            ++spot2;
+        }
+
+    }
+
+    qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
+}
+
+void wfmain::on_clusterPopOutBtn_clicked()
+{
+
+    if (settingsTabisAttached)
+    {
+        settingsTab = ui->tabWidget->currentWidget();
+        ui->tabWidget->removeTab(ui->tabWidget->indexOf(settingsTab));
+        settingsWidgetTab->addTab(settingsTab, "Settings");
+        settingsWidgetWindow->show();
+        ui->clusterPopOutBtn->setText("Re-attach");
+        ui->colorPopOutBtn->setText("Re-attach");
+        ui->tabWidget->setCurrentIndex(0);
+        settingsTabisAttached = false;
+    }
+    else {
+        settingsTab = settingsWidgetTab->currentWidget();
+
+        settingsWidgetTab->removeTab(settingsWidgetTab->indexOf(settingsTab));
+        ui->tabWidget->addTab(settingsTab, "Settings");
+        settingsWidgetWindow->close();
+
+        ui->clusterPopOutBtn->setText("Pop-Out");
+        ui->colorPopOutBtn->setText("Pop-Out");
+        ui->tabWidget->setCurrentIndex(3);
+        settingsTabisAttached = true;
+    }
+}
+
+void wfmain::on_clickDragTuningEnableChk_clicked(bool checked)
+{
+    prefs.clickDragTuningEnable = checked;
+}
+
 void wfmain::on_usbControllerBtn_clicked()
 {
     if (shut != Q_NULLPTR) {
@@ -7573,11 +8181,3 @@ void wfmain::on_usbControllerBtn_clicked()
         }
     }
 }
-
-
-void wfmain::updateUsbButtons()
-{
-
-}
-
-

@@ -1,43 +1,24 @@
 
-The following highlights are in this 1.41-release:
+The following highlights are in this 1.51-release ince v1.50:
 
-	New major change is the audio transport mechanism. Lower latencies.
-    	About box updated to include Patreon site 
-    	added 500 Hz step for VFO
-    	Added clock and UTC toggle.
-    	Added forced manual RTS setting
-    	Add RIT function and other rigctl fixes
-    	Adjusted window size for radios without spectrum. Thanks K5TUX.
-    	Allow dynamic restarting of server
-    	New Settings tab
-    	Enable High DPI Scaling
-    	More multi-radio support (mostly working!)
-        Split LAN waterfall data for N1MM+ Spectrum Scope support: There is a combobox that allows you to select 
-        split/combine (or default). Split only makes sense for LAN and Combine for USB.
- 	added radio status display with meters for audio (speaker/mic)
-        selector for audio: QT, PortAudio, RealTime audio 
-        version bumped to 1.4 -- rethinking of a new version schema that makes more sense
-        temporary squashed logs; may redo later
-        audio fixes at exit
-        introduction of peak decays at the scope
-        resizing of top and bottom scope/waterfall
-        various fixes on the spectrum display
-+ 1.41  added color picker support for all kinds of vsual elements
-+ 1.42  added three additional second meter choices. RxAudio, TxAdio, and TxRxAudio
-+ 1.43  fixed resizing issues.
-+ 1.44  added logging window. you can send the logs to termbin.com and share the link on the forum
-+ 1.45	some more log enhancements
-	moved connect button and added cancel option
-        add enable/disable audioSystemServerCombo
-        Fixed bug where the frequency dial skipped extra when crossing zero.
-+ 1.46	Added controls for custom scope edges, hide/show scope controls
-        depending upon the scope mode the radio reports.
-        Fixed clear peaks button to work with the plasma underlay.
-	both audio system button are disabled when connected to radio and enabled when not.
-	Remove password from log
-	Fix server user handling
-+ 1.47	Added dialog box to the toFixed button where an edge can be selected.
++ 1.51	
 
+
+
+                Fix for squished screen
+                Only request passband when there is a scope available
+                Change default passband colors.
+                Fix passband colorswatch
+                Ignore second VFO scope data (for now)
+                Silently ignore server audio issues if server is not enabled.
+                Always use 8bit encoding for audio device names
+                Make multimedia-plugins message only for Linux
+                Add PSK modes to IC-7610 and to passband.
+                Add passband for FM mode
+                Added click-drag tuning. Needs refinement but it's a start.
+                colorpicker: Move to 3 columns
+                passband indicator
+                Remove logging of audio device realm
 
 Notes:
 

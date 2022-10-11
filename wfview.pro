@@ -4,14 +4,17 @@
 #
 #-------------------------------------------------
 
-QT       += core gui serialport network multimedia
+QT       += core gui serialport network multimedia xml
+
+#QT += sql
+#DEFINES += USESQL
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
 TARGET = wfview
 TEMPLATE = app
 
-DEFINES += WFVIEW_VERSION=\\\"1.46\\\"
+DEFINES += WFVIEW_VERSION=\\\"1.51\\\"
 
 DEFINES += BUILD_WFVIEW
 
@@ -182,6 +185,8 @@ SOURCES += main.cpp\
     transceiveradjustments.cpp \
     selectradio.cpp \
     tcpserver.cpp \
+    cluster.cpp \
+    database.cpp \
     aboutbox.cpp 
 
 HEADERS  += wfmain.h \
@@ -220,6 +225,8 @@ HEADERS  += wfmain.h \
     audiotaper.h \
     selectradio.h \
     tcpserver.h \
+    cluster.h \
+    database.h \
     aboutbox.h
 
 FORMS    += wfmain.ui \

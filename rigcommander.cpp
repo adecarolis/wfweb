@@ -872,6 +872,13 @@ void rigCommander::getDuplexMode()
     prepDataAndSend(payload);
 }
 
+void rigCommander::getPassband()
+{
+    QByteArray payload;
+    payload.setRawData("\x1A\x03", 2);
+    prepDataAndSend(payload);
+}
+
 void rigCommander::getTransmitFrequency()
 {
     QByteArray payload;
@@ -2511,6 +2518,9 @@ void rigCommander::parseRegisters1A()
             // band stacking register
             parseBandStackReg();
             break;
+        case '\x03':
+            emit havePassband(bcdHexToUChar((quint8)payloadIn[2]));
+            break;
         case '\x04':
             state.set(AGC, (quint8)payloadIn[2], false);
             break;
@@ -3239,8 +3249,8 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(bandGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
-            rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
-                                                       createMode(modePSK_R, 0x13, "PSK-R")});
+            rigCaps.modes.insert(rigCaps.modes.end(), { createMode(modePSK, 0x12, "PSK"),
+                                                       createMode(modePSK_R, 0x13, "PSK-R") });
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x97");
             break;
         case model7610:
@@ -3273,6 +3283,8 @@ void rigCommander::determineRigCaps()
             rigCaps.bands.push_back(band630m);
             rigCaps.bands.push_back(band2200m);
             rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), { createMode(modePSK, 0x12, "PSK"),
+                                                       createMode(modePSK_R, 0x13, "PSK-R") });
             rigCaps.hasRXAntenna = true;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x12");
             break;
@@ -3771,9 +3783,16 @@ void rigCommander::parseSpectrum()
     freqt fStart;
     freqt fEnd;
 
+    unsigned char vfo = bcdHexToUChar(payloadIn[02]);
     unsigned char sequence = bcdHexToUChar(payloadIn[03]);
+
     //unsigned char sequenceMax = bcdHexToDecimal(payloadIn[04]);
 
+    if (vfo == 1)
+    {
+        // This is for the second VFO!
+        return;
+    }
 
     // unsigned char waveInfo = payloadIn[06]; // really just one byte?
     //qInfo(logRig()) << "Spectrum Data received: " << sequence << "/" << sequenceMax << " mode: " << scopeMode << " waveInfo: " << waveInfo << " length: " << payloadIn.length();
