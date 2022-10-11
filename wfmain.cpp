@@ -2179,7 +2179,8 @@ void wfmain::loadSettings()
         settings->endArray();
     }
 
-            
+    settings->endGroup();
+
 }
 
 void wfmain::serverAddUserLine(const QString& user, const QString& pass, const int& type)

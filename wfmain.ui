@@ -2223,7 +2223,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>4</number>
+             <number>6</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -4871,13 +4871,6 @@
                </layout>
               </item>
               <item>
-               <widget class="QPushButton" name="usbControllerBtn">
-                <property name="text">
-                 <string>Setup USB Controller</string>
-                </property>
-               </widget>
-              </item>
-              <item>
                <spacer name="verticalSpacer_4">
                 <property name="orientation">
                  <enum>Qt::Vertical</enum>
@@ -5133,6 +5126,30 @@
                 </item>
                 <item>
                  <spacer name="horizontalSpacer_21">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_45">
+                <item>
+                 <widget class="QPushButton" name="usbControllerBtn">
+                  <property name="text">
+                   <string>Setup USB Controller</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer_36">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
                   </property>
