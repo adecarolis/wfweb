@@ -677,6 +677,7 @@ private slots:
     void on_clusterTimeoutLineEdit_editingFinished();
     void on_clusterPopOutBtn_clicked();
 
+    void on_clickDragTuningEnableChk_clicked(bool checked);
 
     void receiveClusterOutput(QString text);
     void receiveSpots(QList<spotData> spots);
@@ -940,6 +941,7 @@ private:
         QString clusterTcpUserName;
         QString clusterTcpPassword;
         int clusterTimeout;
+        bool clickDragTuningEnable;
     } prefs;
 
     preferences defPrefs;

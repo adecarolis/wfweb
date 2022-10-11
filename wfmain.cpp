@@ -1473,6 +1473,8 @@ void wfmain::loadSettings()
     prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
     prefs.meter2Type = static_cast<meterKind>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
+    prefs.clickDragTuningEnable = settings->value("ClickDragTuning", false).toBool();
+    ui->clickDragTuningEnableChk->setChecked(prefs.clickDragTuningEnable);
     settings->endGroup();
 
     // Load in the color presets. The default values are already loaded.
@@ -2112,6 +2114,8 @@ void wfmain::saveSettings()
     settings->setValue("ConfirmExit", prefs.confirmExit);
     settings->setValue("ConfirmPowerOff", prefs.confirmPowerOff);
     settings->setValue("Meter2Type", (int)prefs.meter2Type);
+    settings->setValue("ClickDragTuning", prefs.clickDragTuningEnable);
+
     settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -4165,7 +4169,7 @@ void wfmain::handlePlotClick(QMouseEvent* me)
             issueCmdUniquePriority(cmdSetFreq, freqGo);
         }
     }
-    else 
+    else if (prefs.clickDragTuningEnable)
     {
         double x = plot->xAxis->pixelToCoord(me->pos().x());
         showStatusBarText(QString("Selected %1 MHz").arg(x));
@@ -4178,7 +4182,7 @@ void wfmain::handlePlotMouseRelease(QMouseEvent* me)
     QCPAbstractItem* item = plot->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
 
-    if (textItem == nullptr) {
+    if (textItem == nullptr && prefs.clickDragTuningEnable) {
         this->mouseReleaseFreq = plot->xAxis->pixelToCoord(me->pos().x());
         double delta = mouseReleaseFreq - mousePressFreq;
         qInfo(logGui()) << "Mouse release delta: " << delta;
@@ -4190,7 +4194,7 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
 {
     QCPAbstractItem* item = plot->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
-    if(me->buttons() == Qt::LeftButton && textItem==nullptr)
+    if(me->buttons() == Qt::LeftButton && textItem==nullptr && prefs.clickDragTuningEnable)
     {
         double delta = plot->xAxis->pixelToCoord(me->pos().x()) - mousePressFreq;
         qInfo(logGui()) << "Mouse moving delta: " << delta;
@@ -7815,3 +7819,10 @@ void wfmain::on_clusterPopOutBtn_clicked()
         settingsTabisAttached = true;
     }
 }
+
+void wfmain::on_clickDragTuningEnableChk_clicked(bool checked)
+{
+    prefs.clickDragTuningEnable = checked;
+}
+
+
