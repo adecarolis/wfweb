@@ -1473,6 +1473,8 @@ void wfmain::loadSettings()
     prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
     prefs.meter2Type = static_cast<meterKind>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
+    prefs.clickDragTuningEnable = settings->value("ClickDragTuning", false).toBool();
+    ui->clickDragTuningEnableChk->setChecked(prefs.clickDragTuningEnable);
     settings->endGroup();
 
     // Load in the color presets. The default values are already loaded.
@@ -2112,6 +2114,8 @@ void wfmain::saveSettings()
     settings->setValue("ConfirmExit", prefs.confirmExit);
     settings->setValue("ConfirmPowerOff", prefs.confirmPowerOff);
     settings->setValue("Meter2Type", (int)prefs.meter2Type);
+    settings->setValue("ClickDragTuning", prefs.clickDragTuningEnable);
+
     settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -4165,7 +4169,7 @@ void wfmain::handlePlotClick(QMouseEvent* me)
             issueCmdUniquePriority(cmdSetFreq, freqGo);
         }
     }
-    else 
+    else if (prefs.clickDragTuningEnable)
     {
         double x = plot->xAxis->pixelToCoord(me->pos().x());
         showStatusBarText(QString("Selected %1 MHz").arg(x));
@@ -4178,7 +4182,7 @@ void wfmain::handlePlotMouseRelease(QMouseEvent* me)
     QCPAbstractItem* item = plot->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
 
-    if (textItem == nullptr) {
+    if (textItem == nullptr && prefs.clickDragTuningEnable) {
         this->mouseReleaseFreq = plot->xAxis->pixelToCoord(me->pos().x());
         double delta = mouseReleaseFreq - mousePressFreq;
         qInfo(logGui()) << "Mouse release delta: " << delta;
@@ -4190,7 +4194,7 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
 {
     QCPAbstractItem* item = plot->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
-    if(me->buttons() == Qt::LeftButton && textItem==nullptr)
+    if(me->buttons() == Qt::LeftButton && textItem==nullptr && prefs.clickDragTuningEnable)
     {
         double delta = plot->xAxis->pixelToCoord(me->pos().x()) - mousePressFreq;
         qInfo(logGui()) << "Mouse moving delta: " << delta;
@@ -7710,10 +7714,10 @@ void wfmain::receiveSpots(QList<spotData> spots)
     QElapsedTimer timer;
     timer.start();
 
-    QMap<QString, spotData*>::iterator spot1 = clusterSpots.begin();
-    while (spot1 != clusterSpots.end()) {
-        spot1.value()->current = false;
-        ++spot1;
+    bool current = false;
+    
+    if (clusterSpots.size() > 0) {
+        current=clusterSpots.begin().value()->current;
     }
 
     foreach(spotData s, spots)
@@ -7722,7 +7726,7 @@ void wfmain::receiveSpots(QList<spotData> spots)
         QMap<QString, spotData*>::iterator spot = clusterSpots.find(s.dxcall);
 
         while (spot != clusterSpots.end() && spot.key() == s.dxcall && spot.value()->frequency == s.frequency) {
-            spot.value()->current = true;
+            spot.value()->current = !current;
             found = true;
             ++spot;
         }
@@ -7732,7 +7736,7 @@ void wfmain::receiveSpots(QList<spotData> spots)
             spotData* sp = new spotData(s);
 
             //qDebug(logCluster()) << "ADD:" << sp->dxcall;
-            sp->current = true;
+            sp->current = !current;
             bool conflict = true;
             double left = sp->frequency;
             QCPRange range=plot->yAxis->range();
@@ -7773,7 +7777,7 @@ void wfmain::receiveSpots(QList<spotData> spots)
 
     QMap<QString, spotData*>::iterator spot2 = clusterSpots.begin();
     while (spot2 != clusterSpots.end()) {
-        if (spot2.value()->current == false) {
+        if (spot2.value()->current == current) {
             plot->removeItem(spot2.value()->text);
             //qDebug(logCluster()) << "REMOVE:" << spot2.value()->dxcall;
             delete spot2.value(); // Stop memory leak?
@@ -7815,3 +7819,10 @@ void wfmain::on_clusterPopOutBtn_clicked()
         settingsTabisAttached = true;
     }
 }
+
+void wfmain::on_clickDragTuningEnableChk_clicked(bool checked)
+{
+    prefs.clickDragTuningEnable = checked;
+}
+
+
