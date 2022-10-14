@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -1231,7 +1231,7 @@
               <number>0</number>
              </property>
              <item>
-              <widget class="QPushButton" name="band23cmbtn">
+              <widget class="QPushButton" name="band2200mbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1245,15 +1245,12 @@
                 </size>
                </property>
                <property name="text">
-                <string>23cm</string>
-               </property>
-               <property name="shortcut">
-                <string/>
+                <string>2200m</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="band70cmbtn">
+              <widget class="QPushButton" name="band630mbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1267,15 +1264,12 @@
                 </size>
                </property>
                <property name="text">
-                <string>70cm</string>
-               </property>
-               <property name="shortcut">
-                <string>U</string>
+                <string>630m</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="band2mbtn">
+              <widget class="QPushButton" name="band160mbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1289,15 +1283,15 @@
                 </size>
                </property>
                <property name="text">
-                <string>2m</string>
+                <string>160m</string>
                </property>
                <property name="shortcut">
-                <string>V</string>
+                <string>L</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="bandAirbtn">
+              <widget class="QPushButton" name="band80mbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1311,54 +1305,10 @@
                 </size>
                </property>
                <property name="text">
-                <string>Air</string>
+                <string>80m</string>
                </property>
                <property name="shortcut">
-                <string>A</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="bandWFMbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>WFM</string>
-               </property>
-               <property name="shortcut">
-                <string>W</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="band4mbtn">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="maximumSize">
-                <size>
-                 <width>16777215</width>
-                 <height>128</height>
-                </size>
-               </property>
-               <property name="text">
-                <string>4m</string>
-               </property>
-               <property name="shortcut">
-                <string>$</string>
+                <string>8</string>
                </property>
               </widget>
              </item>
@@ -1367,7 +1317,7 @@
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_8">
              <item>
-              <widget class="QPushButton" name="band6mbtn">
+              <widget class="QPushButton" name="band60mbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1381,15 +1331,15 @@
                 </size>
                </property>
                <property name="text">
-                <string>6m</string>
+                <string>60m</string>
                </property>
                <property name="shortcut">
-                <string>6</string>
+                <string>S</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="band10mbtn">
+              <widget class="QPushButton" name="band40mbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1403,15 +1353,15 @@
                 </size>
                </property>
                <property name="text">
-                <string>10m</string>
+                <string>40m</string>
                </property>
                <property name="shortcut">
-                <string>1</string>
+                <string>4</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="band12mbtn">
+              <widget class="QPushButton" name="band30mbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1425,15 +1375,15 @@
                 </size>
                </property>
                <property name="text">
-                <string>12m</string>
+                <string>30m</string>
                </property>
                <property name="shortcut">
-                <string>T</string>
+                <string>3</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="band15mbtn">
+              <widget class="QPushButton" name="band20mbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1447,10 +1397,10 @@
                 </size>
                </property>
                <property name="text">
-                <string>15m</string>
+                <string>20m</string>
                </property>
                <property name="shortcut">
-                <string>5</string>
+                <string>2</string>
                </property>
               </widget>
              </item>
@@ -1481,7 +1431,7 @@
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="band20mbtn">
+              <widget class="QPushButton" name="band15mbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1495,15 +1445,15 @@
                 </size>
                </property>
                <property name="text">
-                <string>20m</string>
+                <string>15m</string>
                </property>
                <property name="shortcut">
-                <string>2</string>
+                <string>5</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="band30mbtn">
+              <widget class="QPushButton" name="band12mbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1517,15 +1467,15 @@
                 </size>
                </property>
                <property name="text">
-                <string>30m</string>
+                <string>12m</string>
                </property>
                <property name="shortcut">
-                <string>3</string>
+                <string>T</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="band40mbtn">
+              <widget class="QPushButton" name="band10mbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1539,10 +1489,10 @@
                 </size>
                </property>
                <property name="text">
-                <string>40m</string>
+                <string>10m</string>
                </property>
                <property name="shortcut">
-                <string>4</string>
+                <string>1</string>
                </property>
               </widget>
              </item>
@@ -1551,7 +1501,7 @@
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_10">
              <item>
-              <widget class="QPushButton" name="band60mbtn">
+              <widget class="QPushButton" name="band6mbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1565,15 +1515,15 @@
                 </size>
                </property>
                <property name="text">
-                <string>60m</string>
+                <string>6m</string>
                </property>
                <property name="shortcut">
-                <string>S</string>
+                <string>6</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="band80mbtn">
+              <widget class="QPushButton" name="band4mbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1587,15 +1537,15 @@
                 </size>
                </property>
                <property name="text">
-                <string>80m</string>
+                <string>4m</string>
                </property>
                <property name="shortcut">
-                <string>8</string>
+                <string>$</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="band160mbtn">
+              <widget class="QPushButton" name="band2mbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1609,15 +1559,15 @@
                 </size>
                </property>
                <property name="text">
-                <string>160m</string>
+                <string>2m</string>
                </property>
                <property name="shortcut">
-                <string>L</string>
+                <string>V</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QPushButton" name="band630mbtn">
+              <widget class="QPushButton" name="band70cmbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1631,7 +1581,32 @@
                 </size>
                </property>
                <property name="text">
-                <string>630m</string>
+                <string>70cm</string>
+               </property>
+               <property name="shortcut">
+                <string>U</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="band23cmbtn">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>128</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>23cm</string>
+               </property>
+               <property name="shortcut">
+                <string/>
                </property>
               </widget>
              </item>
@@ -1640,7 +1615,7 @@
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_11">
              <item>
-              <widget class="QPushButton" name="band2200mbtn">
+              <widget class="QPushButton" name="bandWFMbtn">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
                  <horstretch>0</horstretch>
@@ -1654,7 +1629,32 @@
                 </size>
                </property>
                <property name="text">
-                <string>2200m</string>
+                <string>WFM</string>
+               </property>
+               <property name="shortcut">
+                <string>W</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="bandAirbtn">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>128</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Air</string>
+               </property>
+               <property name="shortcut">
+                <string>A</string>
                </property>
               </widget>
              </item>
@@ -3350,8 +3350,8 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>801</width>
-                      <height>311</height>
+                      <width>799</width>
+                      <height>269</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -4972,7 +4972,7 @@
                  <x>20</x>
                  <y>40</y>
                  <width>271</width>
-                 <height>181</height>
+                 <height>186</height>
                 </rect>
                </property>
                <layout class="QFormLayout" name="formLayout_2">
@@ -5263,7 +5263,7 @@
      <x>0</x>
      <y>0</y>
      <width>1023</width>
-     <height>21</height>
+     <height>23</height>
     </rect>
    </property>
   </widget>
