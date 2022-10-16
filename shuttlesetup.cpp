@@ -12,6 +12,7 @@ shuttleSetup::shuttleSetup(QWidget* parent) :
     ui->graphicsView->setScene(scene);
     textItem = scene->addText("No USB controller found");
     textItem->setDefaultTextColor(Qt::gray);
+    this->resize(this->sizeHint());
 
     connect(&onEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(onEventIndexChanged(int)));
     connect(&offEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(offEventIndexChanged(int)));
@@ -92,7 +93,16 @@ void shuttleSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVecto
 {
     buttons = but;
     commands = cmd;
- 
+
+    // Remove any existing button text:
+    for (QGraphicsItem* item : scene->items())
+    {
+        QGraphicsTextItem* txt = qgraphicsitem_cast<QGraphicsTextItem*>(item);
+        if (!txt || txt==textItem)
+            continue;
+        scene->removeItem(txt);
+    }
+
     if (bgImage != Q_NULLPTR) {
         scene->removeItem(bgImage);
         delete bgImage;
@@ -119,14 +129,16 @@ void shuttleSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVecto
             break;
         default:
             textItem->show();
+            ui->graphicsView->setSceneRect(scene->itemsBoundingRect());
+            this->adjustSize();
             return;
     }
+
     textItem->hide();
     bgImage = new QGraphicsPixmapItem(QPixmap::fromImage(image));
     scene->addItem(bgImage);
 
-    ui->graphicsView->setMinimumSize(bgImage->boundingRect().width() + 100, bgImage->boundingRect().height() + 2);
-    this->resize(this->sizeHint());
+    //ui->graphicsView->setMinimumSize(bgImage->boundingRect().width() + 100, bgImage->boundingRect().height() + 2);
     currentDevice = devType;
 
     onEvent.blockSignals(true);
@@ -140,10 +152,10 @@ void shuttleSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVecto
     onEvent.blockSignals(false);
     offEvent.blockSignals(false);
 
-
     // Set button text
     for (BUTTON& b : *buttons)
     {
+
         if (b.dev == currentDevice) {
             //b.onCommand = &commands->at(0);
             b.onText = new QGraphicsTextItem(b.onCommand->text);
@@ -158,4 +170,10 @@ void shuttleSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVecto
             b.offText->setPos(b.pos.x(), b.pos.y() + 10);
         }
     }
+
+    ui->graphicsView->setSceneRect(scene->itemsBoundingRect());
+    ui->graphicsView->resize(ui->graphicsView->sizeHint());
+    //this->resize(this->sizeHint());
+    this->adjustSize();
+
 }
