@@ -133,15 +133,12 @@ void usbController::run()
             });
 
             emit newDevice(usbDevice, buttonList, commands); // Let the UI know we have a new controller
-            QTimer::singleShot(0, this, SLOT(runTimer()));
-
+            return;
         }
     }
-    else {
-        if (!gamepad->isConnected()) {
-            delete gamepad;
-            gamepad = Q_NULLPTR;
-        }
+    else if (!gamepad->isConnected()) {
+        delete gamepad;
+        gamepad = Q_NULLPTR;
     }
 
 
@@ -152,8 +149,6 @@ void usbController::run()
             handle = hid_open(0x0C26, 0x001E, NULL);
             if (!handle) {
                 usbDevice = NONE;
-                // No devices found, schedule another check in 1000ms
-                QTimer::singleShot(1000, this, SLOT(run()));
             }
             else {
                 usbDevice = RC28;
@@ -196,7 +191,11 @@ void usbController::run()
         hid_set_nonblocking(handle, 1);
         emit newDevice(usbDevice, buttonList, commands); // Let the UI know we have a new controller
         QTimer::singleShot(0, this, SLOT(runTimer()));
+        return;
     }
+
+    // No devices found, schedule another check in 1000ms
+    QTimer::singleShot(1000, this, SLOT(run()));
 
 }
 
@@ -209,7 +208,7 @@ void usbController::runTimer()
         if (res < 0)
         {
             qInfo(logUsbControl()) << "USB Device disconnected" << this->product;
-            emit newDevice(0,buttonList,commands);
+            emit newDevice(0, buttonList, commands);
             this->product = "";
             this->manufacturer = "";
             this->serial = "<none>";
@@ -220,7 +219,7 @@ void usbController::runTimer()
         else if (res == 5 && (usbDevice == shuttleXpress || usbDevice == shuttlePro2))
         {
             data.resize(res);
-            
+
             /*qDebug(logUsbControl()) << "usbController Data received " << hex << (unsigned char)data[0] << ":"
                 << hex << (unsigned char)data[1] << ":"
                 << hex << (unsigned char)data[2] << ":"
@@ -359,7 +358,7 @@ void usbController::runTimer()
                 //qDebug(logUsbControl()) << "Shuttle MINUS" << shutMult;
             }
             if (jogCounter != 0) {
-                emit sendJog(jogCounter); 
+                emit sendJog(jogCounter);
                 //qDebug(logUsbControl()) << "Change Frequency by" << jogCounter << "hz";
                 jogCounter = 0;
             }
