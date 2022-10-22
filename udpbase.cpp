@@ -199,7 +199,7 @@ void udpBase::dataReceived(QByteArray r)
         {
             if (in->seq < rxSeqBuf.firstKey() || in->seq - rxSeqBuf.lastKey() > MAX_MISSING)
             {
-                qInfo(logUdp()) << this->metaObject()->className() << "Large seq number gap detected, previous highest: " <<
+                qDebug(logUdp()) << this->metaObject()->className() << "Large seq number gap detected, previous highest: " <<
                     QString("0x%1").arg(rxSeqBuf.lastKey(), 0, 16) << " current: " << QString("0x%1").arg(in->seq, 0, 16);
                 //seqPrefix++;
                 // Looks like it has rolled over so clear buffer and start again.
@@ -218,7 +218,7 @@ void udpBase::dataReceived(QByteArray r)
                 // Add incoming packet to the received buffer and if it is in the missing buffer, remove it.
 
                 if (in->seq > rxSeqBuf.lastKey() + 1) {
-                    qInfo(logUdp()) << this->metaObject()->className() << "1 or more missing packets detected, previous: " <<
+                    qDebug(logUdp()) << this->metaObject()->className() << "1 or more missing packets detected, previous: " <<
                         QString("0x%1").arg(rxSeqBuf.lastKey(), 0, 16) << " current: " << QString("0x%1").arg(in->seq, 0, 16);
                     // We are likely missing packets then!
                     missingMutex.lock();
@@ -253,7 +253,7 @@ void udpBase::dataReceived(QByteArray r)
                 auto s = rxMissing.find(in->seq);
                 if (s != rxMissing.end())
                 {
-                    qInfo(logUdp()) << this->metaObject()->className() << ": Missing SEQ has been received! " << QString("0x%1").arg(in->seq, 0, 16);
+                    qDebug(logUdp()) << this->metaObject()->className() << ": Missing SEQ has been received! " << QString("0x%1").arg(in->seq, 0, 16);
 
                     s = rxMissing.erase(s);
                 }
