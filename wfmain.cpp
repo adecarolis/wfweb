@@ -8179,6 +8179,7 @@ void wfmain::on_usbControllerBtn_clicked()
         }
         else {
             shut->show();
+            shut->raise();
         }
     }
 }

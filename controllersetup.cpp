@@ -142,7 +142,7 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
     bgImage = new QGraphicsPixmapItem(QPixmap::fromImage(image));
     scene->addItem(bgImage);
 
-    //ui->graphicsView->setMinimumSize(bgImage->boundingRect().width() + 100, bgImage->boundingRect().height() + 2);
+    ui->graphicsView->setMinimumSize(bgImage->boundingRect().width() + 100, bgImage->boundingRect().height() + 2);
     currentDevice = devType;
 
     onEvent.blockSignals(true);
