@@ -2146,16 +2146,14 @@ void wfmain::loadSettings()
         usbButtons.append(BUTTON(2, 14, QRect(280, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
 
         // Xbox Gamepad
-        usbButtons.append(BUTTON(4, 0, QRect(302, 160, 40, 40), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(4, 1, QRect(265,245, 33, 33), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(4, 2, QRect(261, 316, 33, 33), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(4, 3, QRect(224, 280, 33, 33), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(4, 4, QRect(300, 280, 33, 33), Qt::red, &usbCommands[0], &usbCommands[0]));
-        //usbButtons.append(BUTTON(4, 5, QRect(91, 105, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        //usbButtons.append(BUTTON(4, 6, QRect(144, 93, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        //usbButtons.append(BUTTON(4, 7, QRect(204, 99, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        //usbButtons.append(BUTTON(4, 8, QRect(253, 124, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        //usbButtons.append(BUTTON(4, 9, QRect(50, 270, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+        usbButtons.append(BUTTON(4, 0, QRect(302, 160, 40, 40), Qt::red, &usbCommands[0], &usbCommands[0])); // select
+        usbButtons.append(BUTTON(4, 1, QRect(412,163, 40, 40), Qt::red, &usbCommands[0], &usbCommands[0])); // start
+        usbButtons.append(BUTTON(4, 2, QRect(534, 104, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); //y
+        usbButtons.append(BUTTON(4, 3, QRect(485, 152, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); //x
+        usbButtons.append(BUTTON(4, 4, QRect(590, 152, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); //b
+        usbButtons.append(BUTTON(4, 5, QRect(534, 202, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); //a
+        usbButtons.append(BUTTON(4, 6, QRect(123, 40, 70, 45), Qt::red, &usbCommands[0], &usbCommands[0])); //L1
+        usbButtons.append(BUTTON(4, 7, QRect(562, 40, 70, 45), Qt::red, &usbCommands[0], &usbCommands[0])); // R1
         //usbButtons.append(BUTTON(4, 10, QRect(210, 270, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
         //usbButtons.append(BUTTON(4, 11, QRect(50, 335, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
         //usbButtons.append(BUTTON(4, 12, QRect(210, 335, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
