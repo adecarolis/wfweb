@@ -128,7 +128,7 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
             deviceName = "RC28";
             break;
         case xBoxGamepad:
-            image.load(":resources/xbox.png");
+            image.load(":/resources/xbox.png");
             deviceName = "XBox";
             break;
         default:
