@@ -81,8 +81,10 @@ void usbController::run()
     if (gamepad == Q_NULLPTR) {
         auto gamepads = QGamepadManager::instance()->connectedGamepads();
         if (!gamepads.isEmpty()) {
+            qInfo(logUsbControl()) << "Found" << gamepads << "Gamepad controllers";
             // If we got here, we have detected a gamepad of some description!
             gamepad = new QGamepad(*gamepads.begin(), this);
+            qInfo(logUsbControl()) << "Gamepad 0 is " << gamepad->name();
 
             if (gamepad->name() == "Microsoft X-Box 360 pad 0")
             {
@@ -92,49 +94,49 @@ void usbController::run()
                 usbDevice = unknownGamepad;
             }
             connect(gamepad, &QGamepad::axisLeftXChanged, this, [](double value) {
-                qDebug() << "Left X" << value;
+                qInfo(logUsbControl()) << "Left X" << value;
             });
             connect(gamepad, &QGamepad::axisLeftYChanged, this, [](double value) {
-                qDebug() << "Left Y" << value;
+                qInfo(logUsbControl()) << "Left Y" << value;
             });
             connect(gamepad, &QGamepad::axisRightXChanged, this, [](double value) {
-                qDebug() << "Right X" << value;
+                qInfo(logUsbControl()) << "Right X" << value;
             });
             connect(gamepad, &QGamepad::axisRightYChanged, this, [](double value) {
-                qDebug() << "Right Y" << value;
+                qInfo(logUsbControl()) << "Right Y" << value;
             });
             connect(gamepad, &QGamepad::buttonAChanged, this, [](bool pressed) {
-                qDebug() << "Button A" << pressed;
+                qInfo(logUsbControl()) << "Button A" << pressed;
             });
             connect(gamepad, &QGamepad::buttonBChanged, this, [](bool pressed) {
-                qDebug() << "Button B" << pressed;
+                qInfo(logUsbControl()) << "Button B" << pressed;
             });
             connect(gamepad, &QGamepad::buttonXChanged, this, [](bool pressed) {
-                qDebug() << "Button X" << pressed;
+                qInfo(logUsbControl()) << "Button X" << pressed;
             });
             connect(gamepad, &QGamepad::buttonYChanged, this, [](bool pressed) {
-                qDebug() << "Button Y" << pressed;
+                qInfo(logUsbControl()) << "Button Y" << pressed;
             });
             connect(gamepad, &QGamepad::buttonL1Changed, this, [](bool pressed) {
-                qDebug() << "Button L1" << pressed;
+                qInfo(logUsbControl()) << "Button L1" << pressed;
             });
             connect(gamepad, &QGamepad::buttonR1Changed, this, [](bool pressed) {
-                qDebug() << "Button R1" << pressed;
+                qInfo(logUsbControl()) << "Button R1" << pressed;
             });
             connect(gamepad, &QGamepad::buttonL2Changed, this, [](double value) {
-                qDebug() << "Button L2: " << value;
+                qInfo(logUsbControl()) << "Button L2: " << value;
             });
             connect(gamepad, &QGamepad::buttonR2Changed, this, [](double value) {
-                qDebug() << "Button R2: " << value;
+                qInfo(logUsbControl()) << "Button R2: " << value;
             });
             connect(gamepad, &QGamepad::buttonSelectChanged, this, [](bool pressed) {
-                qDebug() << "Button Select" << pressed;
+                qInfo(logUsbControl()) << "Button Select" << pressed;
             });
             connect(gamepad, &QGamepad::buttonStartChanged, this, [](bool pressed) {
-                qDebug() << "Button Start" << pressed;
+                qInfo(logUsbControl()) << "Button Start" << pressed;
             });
             connect(gamepad, &QGamepad::buttonGuideChanged, this, [](bool pressed) {
-                qDebug() << "Button Guide" << pressed;
+                qInfo(logUsbControl()) << "Button Guide" << pressed;
             });
 
             emit newDevice(usbDevice, buttonList, commands); // Let the UI know we have a new controller
@@ -277,12 +279,12 @@ void usbController::runTimer()
 
                             if ((tempButtons >> i & 1) && !(buttons >> i & 1) && but->onCommand->index > 0)
                             {
-                                qDebug() << "On Button event:" << but->onCommand->text;
+                                qInfo(logUsbControl()) << "On Button event:" << but->onCommand->text;
                                 emit button(but->onCommand);
                             }
                             else if ((buttons >> i & 1) && !(tempButtons >> i & 1) && but->offCommand->index > 0)
                             {
-                                qDebug() << "Off Button event:" << but->offCommand->text;
+                                qInfo(logUsbControl()) << "Off Button event:" << but->offCommand->text;
                                 emit button(but->offCommand);
                             }
                         }
