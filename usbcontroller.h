@@ -116,6 +116,7 @@ private:
     QString manufacturer="";
     QString serial="<none>";
     QGamepad* gamepad=Q_NULLPTR;
+    void buttonState(char but, bool val);
 
 protected:
 };

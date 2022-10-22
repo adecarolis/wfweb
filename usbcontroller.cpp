@@ -400,3 +400,22 @@ void usbController::ledControl(bool on, unsigned char num)
         qDebug(logUsbControl()) << "write() success";
     }
 }
+
+void usbController::buttonState(char num, bool val)
+{
+    for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
+        if (but->dev == usbDevice && but->num == num) {
+
+            if (val && but->onCommand->index > 0) {
+                qInfo(logUsbControl()) << "On Button event:" << but->onCommand->text;
+                emit button(but->onCommand);
+            }
+            if (!val && but->offCommand->index > 0) {
+                qInfo(logUsbControl()) << "Off Button event:" << but->offCommand->text;
+                emit button(but->offCommand);
+            }
+        }
+    }
+
+
+}
