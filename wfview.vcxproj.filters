@@ -62,7 +62,16 @@
     <ClCompile Include="calibrationwindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="cluster.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="commhandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="controllersetup.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="database.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="freqmemory.cpp">
@@ -119,9 +128,6 @@
     <ClCompile Include="selectradio.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="shuttlesetup.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="tcpserver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -172,12 +178,21 @@
     <QtMoc Include="calibrationwindow.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="cluster.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <ClInclude Include="colorprefs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <QtMoc Include="commhandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="controllersetup.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <ClInclude Include="database.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="freqmemory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -232,9 +247,6 @@
     <QtMoc Include="selectradio.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="shuttlesetup.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <ClInclude Include="resampler\speex_resampler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -270,6 +282,10 @@
     </QtMoc>
   </ItemGroup>
   <ItemGroup>
+    
+    
+    
+    
     
     
     
@@ -339,14 +355,15 @@
     
     
     
-    
-    
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="aboutbox.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="calibrationwindow.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="controllersetup.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="loggingwindow.ui">
@@ -359,9 +376,6 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="selectradio.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
-    <QtUic Include="shuttlesetup.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="transceiveradjustments.ui">

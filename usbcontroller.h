@@ -10,6 +10,7 @@
 #include <QGraphicsTextItem>
 #include <QColor>
 #include <QVector>
+#include <QGamepad>
 
 #ifndef Q_OS_WIN
 #include "hidapi/hidapi.h"
@@ -99,7 +100,7 @@ signals:
 
 private:
     hid_device* handle;
-    enum { NONE, shuttleXpress, shuttlePro2, RC28 }usbDevice;
+    enum { NONE, shuttleXpress, shuttlePro2, RC28, xBoxGamepad, unknownGamepad }usbDevice;
     bool isOpen=false;
     unsigned int buttons=0;
     unsigned char jogpos=0;
@@ -114,6 +115,7 @@ private:
     QString product="";
     QString manufacturer="";
     QString serial="<none>";
+    QGamepad* gamepad=Q_NULLPTR;
 
 protected:
 };

@@ -45,7 +45,7 @@
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
 #include "usbcontroller.h"
-#include "shuttlesetup.h"
+#include "controllersetup.h"
 
 #include <deque>
 #include <memory>
@@ -193,7 +193,7 @@ signals:
     void openShuttle();
     void requestRigState();
     void stateUpdated();
-    void shuttleLed(bool, unsigned char);
+    void controllerLed(bool, unsigned char);
     void sendUsbControllerCommands(QVector<COMMAND>* cmds);
     void sendUsbControllerButtons(QVector<BUTTON>* buts);
     void setClusterUdpPort(int port);
@@ -1068,7 +1068,7 @@ private:
     repeaterSetup *rpt;
     satelliteSetup *sat;
     transceiverAdjustments *trxadj;
-    shuttleSetup* shut;
+    controllerSetup* shut;
     aboutbox *abtBox;
     selectRadio *selRad;
     loggingWindow *logWindow;

@@ -1,13 +1,13 @@
-#include "shuttlesetup.h"
-#include "ui_shuttlesetup.h"
+#include "controllersetup.h"
+#include "ui_controllersetup.h"
 #include "logcategories.h"
 
-shuttleSetup::shuttleSetup(QWidget* parent) :
+controllerSetup::controllerSetup(QWidget* parent) :
     QDialog(parent),
-    ui(new Ui::shuttleSetup)
+    ui(new Ui::controllerSetup)
 {
     ui->setupUi(this);
-    scene = new shuttleScene();
+    scene = new controllerScene();
     connect(scene, SIGNAL(mousePressed(QPoint)), this, SLOT(mousePressed(QPoint)));
     ui->graphicsView->setScene(scene);
     textItem = scene->addText("No USB controller found");
@@ -18,7 +18,7 @@ shuttleSetup::shuttleSetup(QWidget* parent) :
     connect(&offEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(offEventIndexChanged(int)));
 }
 
-shuttleSetup::~shuttleSetup()
+controllerSetup::~controllerSetup()
 {
     delete textItem;
     delete scene;
@@ -29,7 +29,7 @@ shuttleSetup::~shuttleSetup()
     }
 }
 
-void shuttleSetup::mousePressed(QPoint p) 
+void controllerSetup::mousePressed(QPoint p) 
 {
     // Receive mouse event from the scene
     qDebug() << "Looking for button Point x=" << p.x() << " y=" << p.y();
@@ -71,7 +71,7 @@ void shuttleSetup::mousePressed(QPoint p)
 
 }
 
-void shuttleSetup::onEventIndexChanged(int index) {
+void controllerSetup::onEventIndexChanged(int index) {
     qDebug() << "On Event for button" << currentButton->num << "Event" << index;
     if (currentButton != Q_NULLPTR && index < commands->size()) {
         currentButton->onCommand = &commands->at(index);
@@ -80,7 +80,7 @@ void shuttleSetup::onEventIndexChanged(int index) {
 }
 
 
-void shuttleSetup::offEventIndexChanged(int index) {
+void controllerSetup::offEventIndexChanged(int index) {
     qDebug() << "Off Event for button" << currentButton->num << "Event" << index;
     if (currentButton != Q_NULLPTR && index < commands->size()) {
         currentButton->offCommand = &commands->at(index);
@@ -89,7 +89,7 @@ void shuttleSetup::offEventIndexChanged(int index) {
 }
 
 
-void shuttleSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<COMMAND>* cmd)
+void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<COMMAND>* cmd)
 {
     buttons = but;
     commands = cmd;
@@ -116,16 +116,20 @@ void shuttleSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVecto
 
     switch (devType) {
         case shuttleXpress:
-            image.load(":/resources/shuttlexpress.png");
+            image.load(":/resources/controllerxpress.png");
             deviceName = "shuttleXpress";
             break;
         case shuttlePro2:
-            image.load(":/resources/shuttlepro.png");
+            image.load(":/resources/controllerpro.png");
             deviceName = "shuttlePro2";
             break;
         case RC28:
             image.load(":/resources/rc28.png");
             deviceName = "RC28";
+            break;
+        case xBoxGamepad:
+            image.load(":resources/xbox.png");
+            deviceName = "XBox";
             break;
         default:
             textItem->show();

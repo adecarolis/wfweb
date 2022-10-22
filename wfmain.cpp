@@ -48,7 +48,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     rpt = new repeaterSetup();
     sat = new satelliteSetup();
     trxadj = new transceiverAdjustments();
-    shut = new shuttleSetup();
+    shut = new controllerSetup();
     abtBox = new aboutbox();
     selRad = new selectRadio();
 
@@ -1423,7 +1423,7 @@ void wfmain::setupUsbControllerDevice()
     connect(usbControllerDev, SIGNAL(doShuttle(bool, unsigned char)), this, SLOT(doShuttle(bool, unsigned char)));
     connect(usbControllerDev, SIGNAL(button(const COMMAND*)), this, SLOT(buttonControl(const COMMAND*)));
     connect(usbControllerDev, SIGNAL(setBand(int)), this, SLOT(setBand(int)));
-    connect(this, SIGNAL(shuttleLed(bool, unsigned char)), usbControllerDev, SLOT(ledControl(bool, unsigned char)));
+    connect(this, SIGNAL(controllerLed(bool, unsigned char)), usbControllerDev, SLOT(ledControl(bool, unsigned char)));
     connect(usbControllerDev, SIGNAL(newDevice(unsigned char, QVector<BUTTON>*, QVector<COMMAND>*)), shut, SLOT(newDevice(unsigned char, QVector<BUTTON>*, QVector<COMMAND>*)));
     usbControllerThread->start(QThread::LowestPriority);
 
@@ -1443,7 +1443,7 @@ void wfmain::pttToggle(bool status)
     }
 
     emit setPTT(status);
-    emit shuttleLed(status, 1);
+    emit controllerLed(status, 1);
     // Start 3 minute timer
     if (status)
         pttTimer->start();

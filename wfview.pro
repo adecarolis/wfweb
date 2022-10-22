@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui serialport network multimedia xml
+QT       += core gui serialport network multimedia xml gamepad
 
 #QT += sql
 #DEFINES += USESQL
@@ -181,7 +181,7 @@ SOURCES += main.cpp\
     repeatersetup.cpp \
     rigctld.cpp \
     usbcontroller.cpp \
-    shuttlesetup.cpp \
+    controllersetup.cpp \
     transceiveradjustments.cpp \
     selectradio.cpp \
     tcpserver.cpp \
@@ -220,7 +220,7 @@ HEADERS  += wfmain.h \
     rigctld.h \
     ulaw.h \
     usbcontroller.h \
-    shuttlesetup.h \
+    controllersetup.h \
     transceiveradjustments.h \
     audiotaper.h \
     selectradio.h \
@@ -236,7 +236,7 @@ FORMS    += wfmain.ui \
     selectradio.ui \
     repeatersetup.ui \
     transceiveradjustments.ui \
-    shuttlesetup.ui \
+    controllersetup.ui \
     aboutbox.ui
 
 

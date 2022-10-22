@@ -1,5 +1,5 @@
-#ifndef SHUTTLESETUP_H
-#define SHUTTLESETUP_H
+#ifndef CONTROLLERSETUP_H
+#define CONTROLLERSETUP_H
 
 #include <QDialog>
 #include <QGraphicsView>
@@ -22,16 +22,16 @@
 
 
 namespace Ui {
-    class shuttleSetup;
+    class controllerSetup;
 }
 
-class shuttleSetup : public QDialog
+class controllerSetup : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit shuttleSetup(QWidget* parent = 0);
-    ~shuttleSetup();
+    explicit controllerSetup(QWidget* parent = 0);
+    ~controllerSetup();
 
 signals:
 
@@ -43,9 +43,9 @@ public slots:
     void offEventIndexChanged(int index);
 
 private:
-    enum { NONE=0, shuttleXpress, shuttlePro2, RC28 } usbDevice;
+    enum { NONE=0, shuttleXpress, shuttlePro2, RC28, xBoxGamepad, unknownGamepad } usbDevice;
 
-    Ui::shuttleSetup* ui;
+    Ui::controllerSetup* ui;
     QGraphicsScene* scene;
     QGraphicsTextItem* textItem;
     QGraphicsItem* bgImage = Q_NULLPTR;
@@ -64,7 +64,7 @@ private:
 
 
 
-class shuttleScene : public QGraphicsScene
+class controllerScene : public QGraphicsScene
 {
     Q_OBJECT
         QGraphicsLineItem* item = Q_NULLPTR;
