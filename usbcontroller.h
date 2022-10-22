@@ -100,7 +100,7 @@ signals:
 
 private:
     hid_device* handle;
-    enum { NONE, shuttleXpress, shuttlePro2, RC28, xBoxGamepad, unknownGamepad }usbDevice;
+    enum { NONE=0, shuttleXpress, shuttlePro2, RC28, xBoxGamepad, unknownGamepad }usbDevice;
     bool isOpen=false;
     unsigned int buttons=0;
     unsigned char jogpos=0;

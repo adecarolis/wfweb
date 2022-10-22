@@ -81,7 +81,7 @@ void usbController::run()
     if (gamepad == Q_NULLPTR) {
         auto gamepads = QGamepadManager::instance()->connectedGamepads();
         if (!gamepads.isEmpty()) {
-            qInfo(logUsbControl()) << "Found" << gamepads << "Gamepad controllers";
+            qInfo(logUsbControl()) << "Found" << gamepads.size() << "Gamepad controllers";
             // If we got here, we have detected a gamepad of some description!
             gamepad = new QGamepad(*gamepads.begin(), this);
             qInfo(logUsbControl()) << "Gamepad 0 is " << gamepad->name();
