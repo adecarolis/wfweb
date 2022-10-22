@@ -78,7 +78,7 @@ install wfview on suse 15.3 & up, sles 15.x or tumbleweed; this was done on a cl
 we need to add packages to be able to build the stuff.
 
 - sudo zypper in --type pattern devel_basis
-- sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel libqt5-qtmultimedia-devel lv2-devel libopus-devel eigen3-devel
+- sudo zypper in libQt5Widgets-devel libqt5-qtbase-common-devel libqt5-qtserialport-devel libQt5SerialPort5 qcustomplot-devel libqcustomplot2 libQt5PrintSupport-devel libqt5-qtmultimedia-devel lv2-devel libopus-devel eigen3-devel libQt5Xml-devel
 
 optional (mainly for development specifics): get and install qt5:
 
