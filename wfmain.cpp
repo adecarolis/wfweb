@@ -2145,6 +2145,23 @@ void wfmain::loadSettings()
         usbButtons.append(BUTTON(2, 13, QRect(30, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
         usbButtons.append(BUTTON(2, 14, QRect(280, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
 
+        // Xbox Gamepad
+        usbButtons.append(BUTTON(4, 0, QRect(302, 160, 40, 40), Qt::red, &usbCommands[0], &usbCommands[0]));
+        usbButtons.append(BUTTON(4, 1, QRect(265,245, 33, 33), Qt::red, &usbCommands[0], &usbCommands[0]));
+        usbButtons.append(BUTTON(4, 2, QRect(261, 316, 33, 33), Qt::red, &usbCommands[0], &usbCommands[0]));
+        usbButtons.append(BUTTON(4, 3, QRect(224, 280, 33, 33), Qt::red, &usbCommands[0], &usbCommands[0]));
+        usbButtons.append(BUTTON(4, 4, QRect(300, 280, 33, 33), Qt::red, &usbCommands[0], &usbCommands[0]));
+        //usbButtons.append(BUTTON(4, 5, QRect(91, 105, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
+        //usbButtons.append(BUTTON(4, 6, QRect(144, 93, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
+        //usbButtons.append(BUTTON(4, 7, QRect(204, 99, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
+        //usbButtons.append(BUTTON(4, 8, QRect(253, 124, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
+        //usbButtons.append(BUTTON(4, 9, QRect(50, 270, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+        //usbButtons.append(BUTTON(4, 10, QRect(210, 270, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+        //usbButtons.append(BUTTON(4, 11, QRect(50, 335, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+        //usbButtons.append(BUTTON(4, 12, QRect(210, 335, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+        //usbButtons.append(BUTTON(4, 13, QRect(30, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
+        //usbButtons.append(BUTTON(4, 14, QRect(280, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
+
     }
     else {
         usbButtons.clear();
