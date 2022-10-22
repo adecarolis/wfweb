@@ -1,4 +1,7 @@
+#ifdef Q_OS_WIN
 #pragma comment (lib, "Setupapi.lib")
+#endif
+
 #include "usbcontroller.h"
 #include <QDebug>
 
