@@ -93,20 +93,25 @@ void usbController::run()
             else {
                 usbDevice = unknownGamepad;
             }
-            connect(gamepad, &QGamepad::buttonDownChanged, this, [](double value) {
-                qInfo(logUsbControl()) << "Button Down" << value;
+            connect(gamepad, &QGamepad::buttonDownChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button Down" << pressed;
+                this->buttonState("DOWN", pressed);
             });
-            connect(gamepad, &QGamepad::buttonUpChanged, this, [](double value) {
-                qInfo(logUsbControl()) << "Button Up" << value;
+            connect(gamepad, &QGamepad::buttonUpChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button Up" << pressed;
+                this->buttonState("UP", pressed);
             });
-            connect(gamepad, &QGamepad::buttonLeftChanged, this, [](double value) {
-                qInfo(logUsbControl()) << "Button Right" << value;
+            connect(gamepad, &QGamepad::buttonLeftChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button Left" << pressed;
+                this->buttonState("LEFT", pressed);
             });
-            connect(gamepad, &QGamepad::buttonRightChanged, this, [](double value) {
-                qInfo(logUsbControl()) << "Button Down" << value;
+            connect(gamepad, &QGamepad::buttonRightChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button Right" << pressed;
+                this->buttonState("RIGHT", pressed);
             });
-            connect(gamepad, &QGamepad::buttonCenterChanged, this, [](double value) {
-                qInfo(logUsbControl()) << "Button Center" << value;
+            connect(gamepad, &QGamepad::buttonCenterChanged, this, [this](bool pressed) {
+                qInfo(logUsbControl()) << "Button Center" << pressed;
+                this->buttonState("CENTER", pressed);
             });
             connect(gamepad, &QGamepad::axisLeftXChanged, this, [](double value) {
                 qInfo(logUsbControl()) << "Left X" << value;
