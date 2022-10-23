@@ -57,10 +57,13 @@ struct BUTTON {
     BUTTON() {}
 
     BUTTON(quint8 dev, int num, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
-        dev(dev), num(num), pos(pos), textColour(textColour), onCommand(on),offCommand(off) {}
+        dev(dev), name(""), num(num), pos(pos), textColour(textColour), onCommand(on), offCommand(off) {}
+    BUTTON(quint8 dev, QString name, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
+        dev(dev), num(-1),name(name), pos(pos), textColour(textColour), onCommand(on), offCommand(off) {}
 
     quint8 dev;
     int num;
+    QString name;
     QRect pos;
     QColor textColour;
     int onEvent = 0;
@@ -116,7 +119,7 @@ private:
     QString manufacturer="";
     QString serial="<none>";
     QGamepad* gamepad=Q_NULLPTR;
-    void buttonState(char but, bool val);
+    void buttonState(QString but, bool val);
 
 protected:
 };
