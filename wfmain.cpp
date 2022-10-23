@@ -6363,6 +6363,8 @@ void wfmain::setAudioDevicesUI()
 
     int defaultAudioInputIndex = 0;
     int defaultAudioOutputIndex = 0;
+    int numCharsIn = 0;
+    int numCharsOut = 0;
 
     ui->audioInputCombo->setCurrentIndex(-1);
     ui->audioOutputCombo->setCurrentIndex(-1);
@@ -6387,6 +6389,8 @@ void wfmain::setAudioDevicesUI()
 #endif
                     ui->audioInputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
                     ui->serverRXAudioInputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
+                    if (deviceInfo.deviceName().size() > numCharsIn)
+                        numCharsIn = deviceInfo.deviceName().size();
 #ifdef Q_OS_WIN
                 }
 #endif
@@ -6403,6 +6407,9 @@ void wfmain::setAudioDevicesUI()
 #endif
                     ui->audioOutputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
                     ui->serverTXAudioOutputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
+                    if (deviceInfo.deviceName().size() > numCharsOut)
+                        numCharsOut = deviceInfo.deviceName().size();
+
 #ifdef Q_OS_WIN
                 }
 #endif
@@ -6436,6 +6443,9 @@ void wfmain::setAudioDevicesUI()
 
                     ui->audioInputCombo->addItem(QString(info->name).toLocal8Bit(), i);
                     ui->serverRXAudioInputCombo->addItem(QString(info->name).toLocal8Bit(), i);
+                    if (QString(info->name).size() > numCharsIn)
+                        numCharsIn = QString(info->name).size();
+
                     if (i == Pa_GetDefaultInputDevice()) {
                         defaultAudioInputName = info->name;
                     }
@@ -6444,6 +6454,8 @@ void wfmain::setAudioDevicesUI()
                     qDebug(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Output Device  : " << QString(info->name).toLocal8Bit();
                     ui->audioOutputCombo->addItem(QString(info->name).toLocal8Bit(), i);
                     ui->serverTXAudioOutputCombo->addItem(QString(info->name).toLocal8Bit(), i);
+                    if (QString(info->name).size() > numCharsOut)
+                        numCharsOut = QString(info->name).size();
                     if (i == Pa_GetDefaultOutputDevice()) {
                         defaultAudioOutputName = info->name;
                     }
@@ -6499,6 +6511,9 @@ void wfmain::setAudioDevicesUI()
                     qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name).toLocal8Bit();
                     ui->audioInputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
                     ui->serverRXAudioInputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
+                    if (QString::fromStdString(info.name).size() > numCharsIn)
+                        numCharsIn = QString::fromStdString(info.name).size();
+
                     if (info.isDefaultInput) {
                         defaultAudioInputName = QString::fromStdString(info.name).toLocal8Bit();
                     }
@@ -6507,6 +6522,8 @@ void wfmain::setAudioDevicesUI()
                     qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name).toLocal8Bit();
                     ui->audioOutputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
                     ui->serverTXAudioOutputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
+                    if (QString::fromStdString(info.name).size() > numCharsOut)
+                        numCharsOut = QString::fromStdString(info.name).size();
                     if (info.isDefaultOutput) {
                         defaultAudioOutputName = QString::fromStdString(info.name).toLocal8Bit();
                     }
@@ -6521,12 +6538,13 @@ void wfmain::setAudioDevicesUI()
     
 
     // Make the audio comboboxes expand when clicked (only needed for Windows)
-#ifdef Q_OS_WIN
-    ui->audioInputCombo->setStyleSheet("QComboBox QAbstractItemView {min-width: 300px;}");
-    ui->audioOutputCombo->setStyleSheet("QComboBox QAbstractItemView {min-width: 300px;}");
-    ui->serverTXAudioOutputCombo->setStyleSheet("QComboBox QAbstractItemView {min-width: 300px;}");
-    ui->serverRXAudioInputCombo->setStyleSheet("QComboBox QAbstractItemView {min-width: 300px;}");
-#endif
+//#ifdef Q_OS_WIN
+    ui->audioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsIn*6));
+    ui->audioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsOut*6));
+    ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsOut*6));
+    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsIn*6));
+//#endif
+
 
     // Stop blocking signals so we can set the current values
     ui->audioInputCombo->blockSignals(false);
