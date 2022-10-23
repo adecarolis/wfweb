@@ -93,6 +93,21 @@ void usbController::run()
             else {
                 usbDevice = unknownGamepad;
             }
+            connect(gamepad, &QGamepad::buttonDownChanged, this, [](double value) {
+                qInfo(logUsbControl()) << "Button Down" << value;
+            });
+            connect(gamepad, &QGamepad::buttonUpChanged, this, [](double value) {
+                qInfo(logUsbControl()) << "Button Up" << value;
+            });
+            connect(gamepad, &QGamepad::buttonLeftChanged, this, [](double value) {
+                qInfo(logUsbControl()) << "Button Right" << value;
+            });
+            connect(gamepad, &QGamepad::buttonRightChanged, this, [](double value) {
+                qInfo(logUsbControl()) << "Button Down" << value;
+            });
+            connect(gamepad, &QGamepad::buttonCenterChanged, this, [](double value) {
+                qInfo(logUsbControl()) << "Button Center" << value;
+            });
             connect(gamepad, &QGamepad::axisLeftXChanged, this, [](double value) {
                 qInfo(logUsbControl()) << "Left X" << value;
             });
@@ -415,15 +430,29 @@ void usbController::buttonState(QString name, bool val)
         if (but->dev == usbDevice && but->name == name) {
 
             if (val && but->onCommand->index > 0) {
-                qInfo(logUsbControl()) << "On Button event:" << but->onCommand->text;
+                qInfo(logUsbControl()) << "On Button" << but->name << "event:" << but->onCommand->text;
                 emit button(but->onCommand);
             }
             if (!val && but->offCommand->index > 0) {
-                qInfo(logUsbControl()) << "Off Button event:" << but->offCommand->text;
+                qInfo(logUsbControl()) << "Off Button" << but->name << "event:" << but->offCommand->text;
                 emit button(but->offCommand);
             }
         }
     }
+}
+void usbController::buttonState(QString name, double val)
+{
+    for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
+        if (but->dev == usbDevice && but->name == name) {
 
-
+            if (val && but->onCommand->index > 0) {
+                qInfo(logUsbControl()) << "On Button" << but->name << "event:" << but->onCommand->text;
+                emit button(but->onCommand);
+            }
+            if (!val && but->offCommand->index > 0) {
+                qInfo(logUsbControl()) << "Off Button" << but->name << "event:" << but->offCommand->text;
+                emit button(but->offCommand);
+            }
+        }
+    }
 }
