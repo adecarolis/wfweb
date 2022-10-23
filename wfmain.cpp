@@ -2150,14 +2150,14 @@ void wfmain::loadSettings()
         usbButtons.append(BUTTON(4, "DOWN", QRect(256, 316, 50, 50), Qt::red, &usbCommands[0], &usbCommands[0]));
         usbButtons.append(BUTTON(4, "LEFT", QRect(203, 273, 50, 50), Qt::red, &usbCommands[0], &usbCommands[0]));
         usbButtons.append(BUTTON(4, "RIGHT", QRect(303, 273, 50, 50), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(4, "SELECT", QRect(302, 160, 40, 40), Qt::red, &usbCommands[0], &usbCommands[0])); // select
-        usbButtons.append(BUTTON(4, "START", QRect(412, 163, 40, 40), Qt::red, &usbCommands[0], &usbCommands[0])); // start
-        usbButtons.append(BUTTON(4, "Y", QRect(534, 104, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); //y
-        usbButtons.append(BUTTON(4, "X", QRect(485, 152, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); //x
-        usbButtons.append(BUTTON(4, "B", QRect(590, 152, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); //b
-        usbButtons.append(BUTTON(4, "A", QRect(534, 202, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); //a
-        usbButtons.append(BUTTON(4, "L1", QRect(123, 40, 70, 45), Qt::red, &usbCommands[0], &usbCommands[0])); //L1
-        usbButtons.append(BUTTON(4, "R1", QRect(562, 40, 70, 45), Qt::red, &usbCommands[0], &usbCommands[0])); // R1
+        usbButtons.append(BUTTON(4, "SELECT", QRect(302, 160, 40, 40), Qt::red, &usbCommands[0], &usbCommands[0])); 
+        usbButtons.append(BUTTON(4, "START", QRect(412, 163, 40, 40), Qt::red, &usbCommands[0], &usbCommands[0])); 
+        usbButtons.append(BUTTON(4, "Y", QRect(534, 104, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); 
+        usbButtons.append(BUTTON(4, "X", QRect(485, 152, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); 
+        usbButtons.append(BUTTON(4, "B", QRect(590, 152, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); 
+        usbButtons.append(BUTTON(4, "A", QRect(534, 202, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); 
+        usbButtons.append(BUTTON(4, "L1", QRect(123, 40, 70, 45), Qt::red, &usbCommands[0], &usbCommands[0])); 
+        usbButtons.append(BUTTON(4, "R1", QRect(562, 40, 70, 45), Qt::red, &usbCommands[0], &usbCommands[0])); 
         usbButtons.append(BUTTON(4, "LEFTX", QRect(143, 119, 83, 35), Qt::red, &usbCommands[0], &usbCommands[0]));
         usbButtons.append(BUTTON(4, "LEFTY", QRect(162, 132, 50, 57), Qt::red, &usbCommands[0], &usbCommands[0]));
         usbButtons.append(BUTTON(4, "RIGHTX", QRect(430, 298, 83, 35), Qt::red, &usbCommands[0], &usbCommands[0]));

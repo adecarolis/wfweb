@@ -113,17 +113,21 @@ void usbController::run()
                 qInfo(logUsbControl()) << "Button Center" << pressed;
                 this->buttonState("CENTER", pressed);
             });
-            connect(gamepad, &QGamepad::axisLeftXChanged, this, [](double value) {
+            connect(gamepad, &QGamepad::axisLeftXChanged, this, [this](double value) {
                 qInfo(logUsbControl()) << "Left X" << value;
+                this->buttonState("LEFTX", value);
             });
-            connect(gamepad, &QGamepad::axisLeftYChanged, this, [](double value) {
+            connect(gamepad, &QGamepad::axisLeftYChanged, this, [this](double value) {
                 qInfo(logUsbControl()) << "Left Y" << value;
+                this->buttonState("LEFTY", value);
             });
-            connect(gamepad, &QGamepad::axisRightXChanged, this, [](double value) {
+            connect(gamepad, &QGamepad::axisRightXChanged, this, [this](double value) {
                 qInfo(logUsbControl()) << "Right X" << value;
+                this->buttonState("RIGHTX", value);
             });
-            connect(gamepad, &QGamepad::axisRightYChanged, this, [](double value) {
+            connect(gamepad, &QGamepad::axisRightYChanged, this, [this](double value) {
                 qInfo(logUsbControl()) << "Right Y" << value;
+                this->buttonState("RIGHTY", value);
             });
             connect(gamepad, &QGamepad::buttonAChanged, this, [this](bool pressed) {
                 qInfo(logUsbControl()) << "Button A" << pressed;
@@ -149,11 +153,13 @@ void usbController::run()
                 qInfo(logUsbControl()) << "Button R1" << pressed;
                 this->buttonState("R1", pressed);
             });
-            connect(gamepad, &QGamepad::buttonL2Changed, this, [](double value) {
+            connect(gamepad, &QGamepad::buttonL2Changed, this, [this](double value) {
                 qInfo(logUsbControl()) << "Button L2: " << value;
+                this->buttonState("L2", value);
             });
-            connect(gamepad, &QGamepad::buttonR2Changed, this, [](double value) {
+            connect(gamepad, &QGamepad::buttonR2Changed, this, [this](double value) {
                 qInfo(logUsbControl()) << "Button R2: " << value;
+                this->buttonState("R2", value);
             });
             connect(gamepad, &QGamepad::buttonSelectChanged, this, [this](bool pressed) {
                 qInfo(logUsbControl()) << "Button Select" << pressed;
@@ -447,6 +453,13 @@ void usbController::buttonState(QString name, bool val)
 }
 void usbController::buttonState(QString name, double val)
 {
+
+    if (name == "LEFTX")
+    {
+        int value = val * 1000000;
+        emit sendJog(value);
+    }
+    /*
     for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
         if (but->dev == usbDevice && but->name == name) {
 
@@ -460,4 +473,5 @@ void usbController::buttonState(QString name, double val)
             }
         }
     }
+    */
 }
