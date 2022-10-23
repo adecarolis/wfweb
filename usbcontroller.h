@@ -120,6 +120,7 @@ private:
     QString serial="<none>";
     QGamepad* gamepad=Q_NULLPTR;
     void buttonState(QString but, bool val);
+    void buttonState(QString but, double val);
 
 protected:
 };
