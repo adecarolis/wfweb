@@ -6365,6 +6365,7 @@ void wfmain::setAudioDevicesUI()
     int defaultAudioOutputIndex = 0;
     int numCharsIn = 0;
     int numCharsOut = 0;
+    QFontMetrics fm(ui->audioInputCombo->font());
 
     ui->audioInputCombo->setCurrentIndex(-1);
     ui->audioOutputCombo->setCurrentIndex(-1);
@@ -6389,8 +6390,8 @@ void wfmain::setAudioDevicesUI()
 #endif
                     ui->audioInputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
                     ui->serverRXAudioInputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
-                    if (deviceInfo.deviceName().size() > numCharsIn)
-                        numCharsIn = deviceInfo.deviceName().size();
+                    if (fm.boundingRect(deviceInfo.deviceName()).width() > numCharsIn)
+                        numCharsIn = fm.boundingRect(deviceInfo.deviceName()).width();
 #ifdef Q_OS_WIN
                 }
 #endif
@@ -6407,8 +6408,8 @@ void wfmain::setAudioDevicesUI()
 #endif
                     ui->audioOutputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
                     ui->serverTXAudioOutputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
-                    if (deviceInfo.deviceName().size() > numCharsOut)
-                        numCharsOut = deviceInfo.deviceName().size();
+                    if (fm.boundingRect(deviceInfo.deviceName()).width() > numCharsOut)
+                        numCharsOut = fm.boundingRect(deviceInfo.deviceName()).width();
 
 #ifdef Q_OS_WIN
                 }
@@ -6443,8 +6444,9 @@ void wfmain::setAudioDevicesUI()
 
                     ui->audioInputCombo->addItem(QString(info->name).toLocal8Bit(), i);
                     ui->serverRXAudioInputCombo->addItem(QString(info->name).toLocal8Bit(), i);
-                    if (QString(info->name).size() > numCharsIn)
-                        numCharsIn = QString(info->name).size();
+
+                    if (fm.boundingRect(QString(info->name)).width() > numCharsIn)
+                        numCharsIn = fm.boundingRect(QString(info->name)).width();
 
                     if (i == Pa_GetDefaultInputDevice()) {
                         defaultAudioInputName = info->name;
@@ -6454,8 +6456,10 @@ void wfmain::setAudioDevicesUI()
                     qDebug(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Output Device  : " << QString(info->name).toLocal8Bit();
                     ui->audioOutputCombo->addItem(QString(info->name).toLocal8Bit(), i);
                     ui->serverTXAudioOutputCombo->addItem(QString(info->name).toLocal8Bit(), i);
-                    if (QString(info->name).size() > numCharsOut)
-                        numCharsOut = QString(info->name).size();
+
+                    if (fm.boundingRect(QString(info->name)).width() > numCharsOut)
+                        numCharsOut = fm.boundingRect(QString(info->name)).width();
+
                     if (i == Pa_GetDefaultOutputDevice()) {
                         defaultAudioOutputName = info->name;
                     }
@@ -6511,8 +6515,9 @@ void wfmain::setAudioDevicesUI()
                     qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name).toLocal8Bit();
                     ui->audioInputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
                     ui->serverRXAudioInputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
-                    if (QString::fromStdString(info.name).size() > numCharsIn)
-                        numCharsIn = QString::fromStdString(info.name).size();
+
+                    if (fm.boundingRect(QString::fromStdString(info.name)).width() > numCharsIn)
+                        numCharsIn = fm.boundingRect(QString::fromStdString(info.name)).width();
 
                     if (info.isDefaultInput) {
                         defaultAudioInputName = QString::fromStdString(info.name).toLocal8Bit();
@@ -6522,8 +6527,10 @@ void wfmain::setAudioDevicesUI()
                     qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name).toLocal8Bit();
                     ui->audioOutputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
                     ui->serverTXAudioOutputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
-                    if (QString::fromStdString(info.name).size() > numCharsOut)
-                        numCharsOut = QString::fromStdString(info.name).size();
+
+                    if (fm.boundingRect(QString::fromStdString(info.name)).width() > numCharsOut)
+                        numCharsOut = fm.boundingRect(QString::fromStdString(info.name)).width();
+
                     if (info.isDefaultOutput) {
                         defaultAudioOutputName = QString::fromStdString(info.name).toLocal8Bit();
                     }
@@ -6535,14 +6542,13 @@ void wfmain::setAudioDevicesUI()
         }
 
     }
-    
-    const QFont comboFont = ui->audioInputCombo->font();
 
     // Make the audio comboboxes expand when clicked (only needed for Windows)
-    ui->audioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsIn* (comboFont.pointSize() - 2)));
-    ui->audioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsOut* (comboFont.pointSize() - 2)));
-    ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsOut* (comboFont.pointSize() - 2)));
-    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsIn* (comboFont.pointSize() - 2)));
+    qInfo() << "**** INPUT WIDTH" << numCharsIn << "OUTPUT WIDTH" << numCharsOut;
+    ui->audioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsIn+4));
+    ui->audioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsOut+4));
+    ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsOut+4));
+    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsIn+4));
 
 
     // Stop blocking signals so we can set the current values
