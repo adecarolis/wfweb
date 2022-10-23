@@ -57,9 +57,9 @@ struct BUTTON {
     BUTTON() {}
 
     BUTTON(quint8 dev, int num, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
-        dev(dev), name(""), num(num), pos(pos), textColour(textColour), onCommand(on), offCommand(off) {}
+        dev(dev), num(num), name(""), pos(pos), textColour(textColour), onCommand(on), offCommand(off) {}
     BUTTON(quint8 dev, QString name, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
-        dev(dev), num(-1),name(name), pos(pos), textColour(textColour), onCommand(on), offCommand(off) {}
+        dev(dev), num(-1), name(name), pos(pos), textColour(textColour), onCommand(on), offCommand(off) {}
 
     quint8 dev;
     int num;
