@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+- 20221025
+
+    		combobox: Stop it cutting off some devices
+    		Resize according to boundingrect
+    		Resize based on font size
+    		Try new universal resize code
+
+- 20221022
+
+    		added qt xml dev lib for suse
+
+- 20221014
+
+    		bands page reorganized
+
+
 - 20221010
 
 		bumped to version 1.52
