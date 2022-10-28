@@ -7734,8 +7734,8 @@ void wfmain::on_clusterTimeoutLineEdit_editingFinished()
 
 void wfmain::receiveSpots(QList<spotData> spots)
 {
-    QElapsedTimer timer;
-    timer.start();
+    //QElapsedTimer timer;
+    //timer.start();
 
     bool current = false;
     
@@ -7812,7 +7812,7 @@ void wfmain::receiveSpots(QList<spotData> spots)
 
     }
 
-    qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
+    //qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
 }
 
 void wfmain::on_clusterPopOutBtn_clicked()
