@@ -729,6 +729,7 @@ void wfmain::setupPlots()
     passbandIndicator->setAntialiased(true);
     passbandIndicator->setPen(QPen(Qt::red));
     passbandIndicator->setBrush(QBrush(Qt::red));
+    passbandIndicator->setSelectable(true);
 
     freqIndicatorLine = new QCPItemLine(plot);
     freqIndicatorLine->setAntialiased(true);
@@ -7660,9 +7661,9 @@ void wfmain::on_clusterServerNameCombo_currentIndexChanged(int index)
 
     for (int i = 0; i < clusters.size(); i++) {
         if (i == index)
-            clusters[index].isdefault = true;
+            clusters[i].isdefault = true;
         else
-            clusters[index].isdefault = false;
+            clusters[i].isdefault = false;
     }
 
     emit setClusterServerName(clusters[index].server);
