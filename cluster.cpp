@@ -77,6 +77,7 @@ void dxClusterClient::enableTcp(bool enable)
     else {
         if (tcpSocket != Q_NULLPTR)
         {
+            sendTcpData(QString("bye\n"));
             qInfo(logCluster()) << "Disconnecting tcpSocket() on:" << tcpPort;
             if (tcpCleanupTimer != Q_NULLPTR)
             {
@@ -87,7 +88,6 @@ void dxClusterClient::enableTcp(bool enable)
             tcpSocket->disconnect();
             delete tcpSocket;
             tcpSocket = Q_NULLPTR;
-            //emit deleteOldSpots(0);
         }
     }
 }
