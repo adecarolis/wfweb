@@ -12,7 +12,7 @@
 #include "rigidentities.h"
 
 // Meters at the end as they are ALWAYS updated from the rig!
-enum stateTypes { VFOAFREQ, VFOBFREQ, CURRENTVFO, PTT, MODE, FILTER, DUPLEX, DATAMODE, ANTENNA, RXANTENNA, CTCSS, TSQL, DTCS, CSQL,
+enum stateTypes { VFOAFREQ, VFOBFREQ, CURRENTVFO, PTT, MODE, FILTER, PASSBAND, DUPLEX, DATAMODE, ANTENNA, RXANTENNA, CTCSS, TSQL, DTCS, CSQL,
                   PREAMP, AGC, ATTENUATOR, MODINPUT, AFGAIN, RFGAIN, SQUELCH, RFPOWER, MICGAIN, COMPLEVEL, MONITORLEVEL, VOXGAIN, ANTIVOXGAIN,
                   FAGCFUNC, NBFUNC, COMPFUNC, VOXFUNC, TONEFUNC, TSQLFUNC, SBKINFUNC, FBKINFUNC, ANFFUNC, NRFUNC, AIPFUNC, APFFUNC, MONFUNC, MNFUNC,RFFUNC,
                   AROFUNC, MUTEFUNC, VSCFUNC, REVFUNC, SQLFUNC, ABMFUNC, BCFUNC, MBCFUNC, RITFUNC, AFCFUNC, SATMODEFUNC, SCOPEFUNC,
@@ -48,7 +48,7 @@ public:
         }
     }
     void set(stateTypes s, qint32 x, bool u) {
-        if ((quint64)x != map[s]._value) {
+        if (static_cast<quint64>(x) != map[s]._value) {
             _mutex.lock();
             map[s]._value = (quint64)x;
             map[s]._valid = true;
@@ -58,7 +58,7 @@ public:
         }
     }
     void set(stateTypes s, quint16 x, bool u) {
-        if ((quint64)x != map[s]._value) {
+        if (static_cast<quint64>(x) != map[s]._value) {
             _mutex.lock();
             map[s]._value = (quint64)x;
             map[s]._valid = true;
@@ -68,7 +68,7 @@ public:
         }
     }
     void set(stateTypes s, quint8 x, bool u) {
-        if ((quint64)x != map[s]._value) {
+        if (static_cast<quint64>(x) != map[s]._value) {
             _mutex.lock();
             map[s]._value = (quint64)x;
             map[s]._valid = true;
@@ -78,7 +78,7 @@ public:
         }
     }
     void set(stateTypes s, bool x, bool u) {
-        if ((quint64)x != map[s]._value) {
+        if (static_cast<quint64>(x) != map[s]._value) {
             _mutex.lock();
             map[s]._value = (quint64)x;
             map[s]._valid = true;
@@ -88,7 +88,7 @@ public:
         }
     }
     void set(stateTypes s, duplexMode x, bool u) {
-        if ((quint64)x != map[s]._value) {
+        if (static_cast<quint64>(x) != map[s]._value) {
             _mutex.lock();
             map[s]._value = (quint64)x;
             map[s]._valid = true;
@@ -99,7 +99,7 @@ public:
     }
 
     void set(stateTypes s, rigInput x, bool u) {
-        if ((quint64)x != map[s]._value) {
+        if (static_cast<quint64>(x) != map[s]._value) {
             _mutex.lock();
             map[s]._value = (quint64)x;
             map[s]._valid = true;
@@ -110,12 +110,14 @@ public:
     }
 
     bool getBool(stateTypes s) { return map[s]._value != 0; }
-    quint8 getChar(stateTypes s) { return (quint8)map[s]._value; }
-    quint16 getInt16(stateTypes s) { return (qint16)map[s]._value; }
-    qint32 getInt32(stateTypes s) { return (qint32)map[s]._value; }
+    quint8 getChar(stateTypes s) { return static_cast<quint8>(map[s]._value); }
+    quint16 getInt16(stateTypes s) { return static_cast<qint16>(map[s]._value); }
+    quint16 getUInt16(stateTypes s) { return static_cast<quint16>(map[s]._value); }
+    qint32 getInt32(stateTypes s) { return static_cast<qint32>(map[s]._value); }
+    quint32 getUInt32(stateTypes s) { return static_cast<quint32>(map[s]._value); }
     quint64 getInt64(stateTypes s) { return map[s]._value; }
-    duplexMode getDuplex(stateTypes s) { return(duplexMode)map[s]._value; }
-    rigInput getInput(stateTypes s) { return(rigInput)map[s]._value; }
+    duplexMode getDuplex(stateTypes s) { return static_cast<duplexMode>(map[s]._value); }
+    rigInput getInput(stateTypes s) { return static_cast<rigInput>(map[s]._value); }
     QMap<stateTypes, value> map;
 
 

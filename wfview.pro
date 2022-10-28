@@ -210,6 +210,7 @@ HEADERS  += wfmain.h \
     repeatersetup.h \
     repeaterattributes.h \
     rigctld.h \
+    rigstate.h \
     ulaw.h \
     transceiveradjustments.h \
     audiotaper.h \

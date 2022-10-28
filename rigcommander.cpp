@@ -760,11 +760,11 @@ void rigCommander::setMode(mode_info m)
 {
     QByteArray payload;
 
-    if(rigCaps.model==model706)
+    if (rigCaps.model == model706)
     {
         m.filter = '\x01';
     }
-    if(m.mk == modeWFM)
+    if (m.mk == modeWFM)
     {
         m.filter = '\x01';
     }
@@ -869,6 +869,42 @@ void rigCommander::getDuplexMode()
 
     // Auto Repeater Mode:
     payload.setRawData("\x1A\x05\x00\x46", 4);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setPassband(quint16 pass)
+{
+    QByteArray payload;
+    payload.setRawData("\x1A\x03", 2);
+
+    unsigned char calc;
+    /*
+        Mode                Data        Steps
+        SSB/CW/RTTY/PSK     0 to 9      50 ~ 500 Hz (50 Hz)
+        SSB/CW/PSK          10 to 40    600 Hz ~ 3.6 kHz (100 Hz)
+        RTTY                10 to 31    600 ~ 2.7 kHz (100 Hz)
+        AM                  0 to 49     200 Hz ~ 10.0 kHz (200 Hz)    
+    */
+    if (state.getChar(MODE) == modeAM) { // AM 0-49
+
+        calc = quint16((pass / 200) - 1);
+    }
+    else if (pass >= 600 || pass <=3600) // SSB/CW/PSK 10-40 (10-31 for RTTY)
+    {
+        calc = quint16((pass / 100) + 4);
+    }
+    else {  // SSB etc 0-9
+        calc = quint16((pass / 50) - 1);
+    }
+
+    qDebug() << "Setting rig passband" << pass << "Sending" << calc;
+
+    char tens = (calc  / 10);
+    char units = (calc - (10 * tens));
+
+    char b1 = (units) | (tens << 4);
+
+    payload.append(b1);
     prepDataAndSend(payload);
 }
 
@@ -2512,19 +2548,41 @@ void rigCommander::parseRegisters1A()
     switch(payloadIn[01])
     {
         case '\x00':
+        {
             // Memory contents
             break;
+        }
         case '\x01':
+        {
             // band stacking register
             parseBandStackReg();
             break;
+        }
         case '\x03':
-            emit havePassband(bcdHexToUChar((quint8)payloadIn[2]));
+        {
+            quint16 calc;
+            quint8 pass = bcdHexToUChar((quint8)payloadIn[2]);
+            if (state.getChar(MODE) == modeAM) {
+                calc = 200 + (pass * 200);
+            }
+            else if (pass <= 10)
+            {
+                calc = 50 + (pass * 50);
+            }
+            else {
+                calc = 600 + ((pass - 10) * 100);
+            }
+            emit havePassband(calc);
+            state.set(PASSBAND, calc, false);
             break;
+        }
         case '\x04':
+        {
             state.set(AGC, (quint8)payloadIn[2], false);
             break;
+        }
         case '\x06':
+        {
             // data mode
             // emit havedataMode( (bool) payloadIn[somebit])
             // index
@@ -2536,13 +2594,20 @@ void rigCommander::parseRegisters1A()
             emit haveDataMode((bool)payloadIn[03]);
             state.set(DATAMODE, (quint8)payloadIn[3], false);
             break;
+        }
         case '\x07':
+        {
             // IP+ status
             break;
+        }
         case '\x09':
+        {
             state.set(MUTEFUNC, (quint8)payloadIn[2], false);
+        }
         default:
+        {
             break;
+        }
     }
 }
 
@@ -4084,9 +4149,73 @@ void rigCommander::parseMode()
     } else {
         filter = 0;
     }
-    emit haveMode((unsigned char)payloadIn[01], filter);
-    state.set(MODE,(unsigned char)payloadIn[01],false);
-    state.set(FILTER,filter,false);
+    unsigned char mode = (unsigned char)payloadIn[01];
+    emit haveMode(mode, filter);
+    state.set(MODE,mode,false);
+    state.set(FILTER, filter, false);
+    quint16 pass = 0;
+
+    if (!state.isValid(PASSBAND)) {
+ 
+        /*  We haven't got a valid passband from the rig so we 
+            need to create a 'fake' one from default values
+            This will be replaced with a valid one if we get it */
+
+        if (mode == 3 || mode == 7 || mode == 12 || mode == 17) {
+            switch (filter) {
+            case 1:
+                pass=1200;
+            case 2:
+                pass=500;
+            case 3:
+                pass=250;
+            }
+        }
+        else if (mode == 4 || mode == 8)
+        {
+            switch (filter) {
+            case 1:
+                pass=2400;
+            case 2:
+                pass=500;
+            case 3:
+                pass=250;
+            }
+        }
+        else if (mode == 2)
+        {
+            switch (filter) {
+            case 1:
+                pass=9000;
+            case 2:
+                pass=6000;
+            case 3:
+                pass=3000;
+            }
+        }
+        else if (mode == 5)
+        {
+            switch (filter) {
+            case 1:
+                pass=15000;
+            case 2:
+                pass=10000;
+            case 3:
+                pass=7000;
+            }
+        }
+        else { // SSB or unknown mode
+            switch (filter) {
+            case 1:
+                pass=3000;
+            case 2:
+                pass=2400;
+            case 3:
+                pass=1800;
+            }
+        }
+    }
+    state.set(PASSBAND, pass, false);
 }
 
 
@@ -4433,10 +4562,16 @@ void rigCommander::stateUpdated()
                 break;
             case MODE:
             case FILTER:
-                if (i.value()._valid) {
+                if (state.isValid(MODE) && state.isValid(FILTER)) {
                     setMode(state.getChar(MODE), state.getChar(FILTER));
                 }
                 getMode();
+                break;
+            case PASSBAND:
+                if (i.value()._valid && state.isValid(MODE)) {
+                    setPassband(state.getUInt16(PASSBAND));
+                }
+                getPassband();
                 break;
             case DUPLEX:
                 if (i.value()._valid) {

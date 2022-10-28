@@ -325,8 +325,8 @@ void rigCtlClient::socketReadyRead()
             response.append(resp);
             resp = "";
             response.append(QString("%1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
-            response.append(QString("%1").arg(getFilter(rigState->getChar(MODE), rigState->getChar(FILTER))));
-            
+            response.append(QString("%1").arg(rigState->getUInt16(PASSBAND)));
+
             if (rigState->getChar(CURRENTVFO) == 0) {
                 resp.append("VFOA");
             }
@@ -438,8 +438,11 @@ void rigCtlClient::socketReadyRead()
             if (rigState->getChar(CURRENTVFO) == 0) {
                 resp.append("VFOA");
             }
-            else {
+            else if (rigState->getChar(CURRENTVFO) == 1) {
                 resp.append("VFOB");
+            }
+            else if (rigState->getChar(CURRENTVFO) == 2) {
+                resp.append("MEM");
             }
             
             response.append(resp);
@@ -455,11 +458,17 @@ void rigCtlClient::socketReadyRead()
                 response.append("Main");
                 response.append("MEM");
             }
-            else if (command[1] == "VFOB" || command[1] == "Sub") {
+            else if (command[1] == "VFOA" || command[1] == "Main")
+            {
+                rigState->set(CURRENTVFO, (quint8)0, true);
+            }
+            else if (command[1] == "VFOB" || command[1] == "Sub")
+            {
                 rigState->set(CURRENTVFO, (quint8)1, true);
             }
-            else {
-                rigState->set(CURRENTVFO, (quint8)0, true);
+            else if (command[1] == "MEM")
+            {
+                rigState->set(CURRENTVFO, (quint8)2, true);
             }
         }
         else if (command[0] == "s" || command[0] == "get_split_vfo")
@@ -519,7 +528,8 @@ void rigCtlClient::socketReadyRead()
                     response.append(QString("Freq: %1").arg(rigState->getInt64(VFOAFREQ)));
                 }
                 response.append(QString("Mode: %1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
-                response.append(QString("Width: %1").arg(getFilter(rigState->getChar(MODE), rigState->getChar(FILTER))));
+                response.append(QString("Width: %1").arg(rigState->getUInt16(PASSBAND)));
+
                 response.append(QString("Split: %1").arg(rigState->getDuplex(DUPLEX)));
                 response.append(QString("SatMode: %1").arg(0)); // Need to get satmode 
             }
@@ -531,7 +541,8 @@ void rigCtlClient::socketReadyRead()
                     response.append(QString("%1").arg(rigState->getInt64(VFOAFREQ)));
                 }
                 response.append(QString("%1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
-                response.append(QString("%1").arg(getFilter(rigState->getChar(MODE), rigState->getChar(FILTER))));
+                response.append(QString("%1").arg(rigState->getUInt16(PASSBAND)));
+
             }
         }
         else if (command[0] == "i" || command[0] == "get_split_freq")
@@ -570,11 +581,11 @@ void rigCtlClient::socketReadyRead()
         {
         if (longReply) {
             response.append(QString("TX Mode: %1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
-            response.append(QString("TX Passband: %1").arg(getFilter(rigState->getChar(MODE), rigState->getChar(FILTER))));
+            response.append(QString("TX Passband: %1").arg(rigState->getUInt16(PASSBAND)));
         }
         else {
             response.append(QString("%1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
-            response.append(QString("%1").arg(getFilter(rigState->getChar(MODE), rigState->getChar(FILTER))));
+            response.append(QString("%1").arg(rigState->getUInt16(PASSBAND)));
         }
         }
 
@@ -582,45 +593,60 @@ void rigCtlClient::socketReadyRead()
         {
             if (longReply) {
                 response.append(QString("TX Mode: %1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
-                response.append(QString("TX Passband: %1").arg(getFilter(rigState->getChar(MODE), rigState->getChar(FILTER))));
+                response.append(QString("TX Passband: %1").arg(rigState->getUInt16(PASSBAND)));
             }
             else {
                 response.append(QString("%1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
-                response.append(QString("%1").arg(getFilter(rigState->getChar(MODE), rigState->getChar(FILTER))));
+                response.append(QString("%1").arg(rigState->getUInt16(PASSBAND)));
             }
+            qDebug(logRigCtlD()) << QString("get_mode: %1 passband: %2").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))).arg(rigState->getUInt16(PASSBAND));
         }
         else if (command[0] == "M" || command[0] == "set_mode")
         {
             // Set mode
             setCommand = true;
-            int width = -1;
+            quint8 width = 0;
+            quint16 passband = 0;
             QString vfo = "VFOA";
             QString mode = "USB";
             if (command.length() == 3) {
-                width = command[2].toInt();
+                passband = command[2].toInt();
                 mode = command[1];
             }
             else if (command.length() == 4) {
-                width = command[3].toInt();
+                passband = command[3].toInt();
                 mode = command[2];
                 vfo = command[1];
             }
-            qDebug(logRigCtlD()) << "setting mode: VFO:" << vfo << getMode(mode) << mode << "width" << width;
+            qDebug(logRigCtlD()) << "setting mode: VFO:" << vfo << getMode(mode) << mode << "passband" << passband << "command:" << commands;
 
-            if (width != -1 && width <= 1800)
-                width = 2;
-            else
-                width = 1;
-            
-            rigState->set(MODE,getMode(mode),true);
-            rigState->set(FILTER,(quint8)width, true);
-            if (mode.mid(0, 3) == "PKT") {
-                rigState->set(DATAMODE, true, true);
+            if (!mode.isEmpty())
+            {
+                rigState->set(MODE, getMode(mode), true);
+                if (mode.mid(0, 3) == "PKT") {
+                    rigState->set(DATAMODE, true, true);
+                }
+                else {
+                    rigState->set(DATAMODE, false, true);
+                }
             }
-            else {
-                rigState->set(DATAMODE, false, true);
-            }
-            
+
+            if (passband > 0)
+            {
+                if (passband > 1800 && passband < 2700) {
+                    width = 1;
+                }
+                else if (passband <= 1800)
+                {
+                    width = 2;
+                }
+                else if (passband >= 2700)
+                {
+                    width = 0;
+                }
+                rigState->set(FILTER, width, true);
+                rigState->set(PASSBAND, passband, true);
+            }            
         }
         else if (command[0] == "s" || command[0] == "get_split_vfo")
         {
@@ -631,7 +657,7 @@ void rigCtlClient::socketReadyRead()
             else
             {
                 response.append("1");
-                response.append("VFOb");
+                response.append("VFOB");
             }
 
         }
@@ -1164,7 +1190,6 @@ void rigCtlClient::sendData(QString data)
     }
 }
 
-
 QString rigCtlClient::getFilter(unsigned char mode, unsigned char filter) {
     
     if (mode == 3 || mode == 7 || mode == 12 || mode == 17) {
@@ -1227,47 +1252,48 @@ QString rigCtlClient::getMode(unsigned char mode, bool datamode) {
 
     QString ret;
 
+
     switch (mode) {
-    case 0:
+    case modeLSB:
         if (datamode) { ret = "PKT"; }
         ret.append("LSB");
         break;
-    case 1:
+    case modeUSB:
         if (datamode) { ret = "PKT"; }
         ret.append("USB");
         break;
-    case 2:
+    case modeAM:
         if (datamode) { ret = "PKT"; }
         ret.append("AM");
         break;
-    case 3:
+    case modeCW:
         ret.append("CW");
         break;
-    case 4:
+    case modeRTTY:
         ret.append("RTTY");
         break;
-    case 5:
+    case modeFM:
         if (datamode) { ret = "PKT"; }
         ret.append("FM");
         break;
-    case 6:
+    case modeWFM:
         ret.append("WFM");
         break;
-    case 7:
+    case modeCW_R:
         ret.append("CWR");
         break;
-    case 8:
+    case modeRTTY_R:
         ret.append("RTTYR");
         break;
-    case 12:
+    case modePSK:
         if (datamode) { ret = "PKT"; }
         ret.append("USB");
         break;
-    case 17:
+    case modeDV:
         if (datamode) { ret = "PKT"; }
         ret.append("LSB");
         break;
-    case 22:
+    case 22: // We don't seem to have a mode for this?
         if (datamode) { ret = "PKT"; }
         ret.append("FM");
         break;

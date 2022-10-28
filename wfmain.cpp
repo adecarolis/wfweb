@@ -330,7 +330,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(scopeDisplayEnable()), rig, SLOT(enableSpectrumDisplay()));
     connect(rig, SIGNAL(haveMode(unsigned char, unsigned char)), this, SLOT(receiveMode(unsigned char, unsigned char)));
     connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
-    connect(rig, SIGNAL(havePassband(quint8)), this, SLOT(receivePassband(quint8)));
+    connect(rig, SIGNAL(havePassband(quint16)), this, SLOT(receivePassband(quint16)));
 
     connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
     connect(rpt, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
@@ -5535,9 +5535,9 @@ void wfmain::receiveLANGain(unsigned char level)
     processModLevel(inputLAN, level);
 }
 
-void wfmain::receivePassband(quint8 pass)
+void wfmain::receivePassband(quint16 pass)
 {
-    int calc;
+/* int calc;
     if (currentModeInfo.mk == modeAM) {
         calc = 200 + (pass * 200);
     }
@@ -5547,8 +5547,8 @@ void wfmain::receivePassband(quint8 pass)
     }
     else {
         calc = 600 + ((pass - 10) * 100);
-    }
-    passBand = (double)(calc / 1000000.0);
+    } */
+    passBand = (double)(pass / 1000000.0);
 }
 
 void wfmain::receiveMeter(meterKind inMeter, unsigned char level)

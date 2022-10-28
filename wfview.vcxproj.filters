@@ -68,6 +68,9 @@
     <ClCompile Include="commhandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="database.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="freqmemory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -175,6 +178,9 @@
     <QtMoc Include="commhandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <ClInclude Include="database.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="freqmemory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -259,6 +265,9 @@
     <QtMoc Include="wfmain.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <ClInclude Include="rigstate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="debug\moc_predefs.h.cbt">

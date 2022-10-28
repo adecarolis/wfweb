@@ -250,7 +250,7 @@ private slots:
     void receiveRITValue(int ritValHz);
     void receiveModInput(rigInput input, bool dataOn);
     //void receiveDuplexMode(duplexMode dm);
-    void receivePassband(quint8 pass);
+    void receivePassband(quint16 pass);
 
 
     // Levels:

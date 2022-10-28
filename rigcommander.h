@@ -123,6 +123,7 @@ public slots:
     void getRitValue();
     void setRitValue(int ritValue);
     void setRitEnable(bool ritEnabled);
+    void setPassband(quint16 pass);
 
     // PTT, ATU, ATT, Antenna, and Preamp:
     void getPTT();
@@ -323,7 +324,7 @@ signals:
     void haveBandStackReg(freqt f, char mode, char filter, bool dataOn);
     void haveRitEnabled(bool ritEnabled);
     void haveRitFrequency(int ritHz);
-    void havePassband(quint8 pass);
+    void havePassband(quint16 pass);
 
     // Repeater:
     void haveDuplexMode(duplexMode);
