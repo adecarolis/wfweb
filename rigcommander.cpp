@@ -3088,12 +3088,35 @@ void rigCommander::determineRigCaps()
     std::vector <bandType> standardHF;
     std::vector <bandType> standardVU;
 
-    // Most commonly supported "HF" bands:
-    standardHF = {band6m, band10m, band10m, band12m,
-                 band15m, band17m, band20m, band30m,
-                 band40m, band60m, band80m, band160m};
+    bandType bandDef6m = bandType(band6m, 50000000, 54000000, modeUSB);
+    bandType bandDef10m = bandType(band10m, 28000000, 29700000, modeUSB);
+    bandType bandDef12m = bandType(band12m, 24890000, 24990000, modeUSB);
+    bandType bandDef15m = bandType(band15m, 21000000, 21450000, modeUSB);
+    bandType bandDef17m = bandType(band17m, 18068000, 18168000, modeUSB);
+    bandType bandDef20m = bandType(band20m, 14000000, 14350000, modeUSB);
+    bandType bandDef30m = bandType(band30m, 10100000, 10150000, modeLSB);
+    bandType bandDef40m = bandType(band40m, 7000000, 7300000, modeLSB);
+    bandType bandDef60m = bandType(band60m, 5250000, 5450000, modeLSB);
+    bandType bandDef80m = bandType(band80m, 3500000, 4000000, modeLSB);
+    bandType bandDef160m = bandType(band160m, 1800000, 2000000, modeLSB);
+    bandType bandDef630m = bandType(band630m, 493000, 595000, modeLSB);
+    bandType bandDef2200m = bandType(band2200m, 135000, 138000, modeLSB);
+    bandType bandDef2m = bandType(band2m, 144000000, 148000000, modeUSB);
+    bandType bandDef4m = bandType(band4m, 70000000, 70500000, modeUSB);
+    bandType bandDef70cm = bandType(band70cm, 420000000, 450000000, modeUSB);
+    bandType bandDef23cm = bandType(band23cm, 1240000000, 1400000000, modeUSB);
 
-    standardVU = {band70cm, band2m};
+    bandType bandDefAir(bandAir, 108000000, 137000000, modeAM);
+    bandType bandDefWFM(bandWFM, 88000000, 108000000, modeWFM);
+    bandType bandDefGen(bandGen, 10000, 30000000, modeAM);
+
+
+    standardHF = { bandDef6m, bandDef10m, bandDef12m, bandDef15m, bandDef17m,
+        bandDef20m, bandDef30m, bandDef40m, bandDef60m, bandDef80m, bandDef80m};
+
+    standardVU = { bandDef2m, bandDef70cm };
+
+
 
     std::vector <mode_info> commonModes;
     commonModes = { createMode(modeLSB, 0x00, "LSB"), createMode(modeUSB, 0x01, "USB"),
@@ -3194,10 +3217,7 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.bands = standardHF;
-            rigCaps.bands.push_back(band4m);
-            rigCaps.bands.push_back(bandGen);
-            rigCaps.bands.push_back(band630m);
-            rigCaps.bands.push_back(band2200m);
+            rigCaps.bands.insert(rigCaps.bands.end(), { bandDef4m, bandDef630m, bandDef2200m, bandDefGen });
             rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x71");
 
@@ -3228,7 +3248,7 @@ void rigCommander::determineRigCaps()
             rigCaps.antennas = {0x00, 0x01, 0x02};
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
-            rigCaps.bands.insert(rigCaps.bands.end(), {band23cm, band4m, band630m, band2200m, bandGen});
+            rigCaps.bands.insert(rigCaps.bands.end(), { bandDef23cm, bandDef4m, bandDef630m, bandDef2200m, bandDefGen });
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {
                                      createMode(modeWFM, 0x06, "WFM"), createMode(modeS_AMD, 0x11, "S-AM (D)"),
@@ -3260,7 +3280,7 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.push_back('\x10');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardVU;
-            rigCaps.bands.push_back(band23cm);
+            rigCaps.bands.push_back(bandDef23cm);
             rigCaps.bsr[band23cm] = 0x03;
             rigCaps.bsr[band70cm] = 0x02;
             rigCaps.bsr[band2m] = 0x01;
@@ -3285,7 +3305,7 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x10' , '\x20', '\x30'});
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardVU;
-            rigCaps.bands.push_back(band23cm);
+            rigCaps.bands.push_back(bandDef23cm);
             rigCaps.bsr[band23cm] = 0x03;
             rigCaps.bsr[band70cm] = 0x02;
             rigCaps.bsr[band2m] = 0x01;
@@ -3311,7 +3331,7 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x02');
             rigCaps.antennas = {0x00, 0x01};
             rigCaps.bands = standardHF;
-            rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), { createMode(modePSK, 0x12, "PSK"),
@@ -3344,9 +3364,7 @@ void rigCommander::determineRigCaps()
             rigCaps.antennas = {0x00, 0x01};
             rigCaps.hasATU = true;
             rigCaps.bands = standardHF;
-            rigCaps.bands.push_back(bandGen);
-            rigCaps.bands.push_back(band630m);
-            rigCaps.bands.push_back(band2200m);
+            rigCaps.bands.insert(rigCaps.bands.end(), { bandDef630m, bandDef2200m, bandDefGen });
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), { createMode(modePSK, 0x12, "PSK"),
                                                        createMode(modePSK_R, 0x13, "PSK-R") });
@@ -3378,9 +3396,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasAntennaSel = true;
             rigCaps.antennas = {0x00, 0x01, 0x02, 0x03};
             rigCaps.bands = standardHF;
-            rigCaps.bands.push_back(bandGen);
-            rigCaps.bands.push_back(band630m);
-            rigCaps.bands.push_back(band2200m);
+            rigCaps.bands.insert(rigCaps.bands.end(), { bandDef630m, bandDef2200m, bandDefGen });
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
                                                        createMode(modePSK_R, 0x13, "PSK-R")});
@@ -3410,16 +3426,12 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x02');
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
-            rigCaps.bands.push_back(bandGen);
-            rigCaps.bands.push_back(bandAir);
-            rigCaps.bands.push_back(bandWFM);
+            rigCaps.bands.insert(rigCaps.bands.end(), { bandDefAir, bandDefGen, bandDefWFM, bandDef630m, bandDef2200m });
             rigCaps.bsr[band70cm] = 0x14;
             rigCaps.bsr[band2m] = 0x13;
             rigCaps.bsr[bandAir] = 0x12;
             rigCaps.bsr[bandWFM] = 0x11;
             rigCaps.bsr[bandGen] = 0x15;
-            rigCaps.bands.push_back(band630m);
-            rigCaps.bands.push_back(band2200m);
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeWFM, 0x06, "WFM"),
                                                        createMode(modeDV, 0x17, "DV")});
@@ -3442,7 +3454,7 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
-            rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[band2m] = 0x11;
             rigCaps.bsr[band70cm] = 0x12;
             rigCaps.bsr[bandGen] = 0x13;
@@ -3467,7 +3479,7 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x02');
             rigCaps.antennas = {0x00, 0x01};
             rigCaps.bands = standardHF;
-            rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x40");
@@ -3491,8 +3503,7 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x02');
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
-            rigCaps.bands.push_back(band4m);
-            rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.insert(rigCaps.bands.end(), { bandDef4m, bandDefGen});
             rigCaps.bsr[band2m] = 0x11;
             rigCaps.bsr[band70cm] = 0x12;
             rigCaps.bsr[bandGen] = 0x13;
@@ -3518,7 +3529,7 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardHF;
-            rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x03\x48");
@@ -3543,9 +3554,7 @@ void rigCommander::determineRigCaps()
             rigCaps.antennas = {0x00, 0x01, 0x02, 0x03}; // not sure if 0x03 works
             rigCaps.hasATU = true;
             rigCaps.bands = standardHF;
-            rigCaps.bands.push_back(bandGen);
-            rigCaps.bands.push_back(band630m);
-            rigCaps.bands.push_back(band2200m);
+            rigCaps.bands.insert(rigCaps.bands.end(), { bandDefGen, bandDef630m, bandDef2200m });
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
                                                        createMode(modePSK_R, 0x13, "PSK-R")});
@@ -3567,7 +3576,7 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.push_back('\x20');
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
-            rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(bandDefGen);
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), createMode(modeWFM, 0x06, "WFM"));
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
@@ -3588,9 +3597,9 @@ void rigCommander::determineRigCaps()
             rigCaps.hasDataModes = false;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
-            rigCaps.bands =   {band10m, band10m, band12m,
-                               band15m, band17m, band20m, band30m,
-                               band40m, band60m, band80m, band160m, bandGen};
+            rigCaps.bands =   {bandDef10m, bandDef10m, bandDef12m,
+                               bandDef15m, bandDef17m, bandDef20m, bandDef30m,
+                               bandDef40m, bandDef60m, bandDef80m, bandDef160m, bandDefGen};
             rigCaps.modes = { createMode(modeLSB, 0x00, "LSB"), createMode(modeUSB, 0x01, "USB"),
                               createMode(modeAM, 0x02, "AM"),
                               createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
@@ -3642,8 +3651,8 @@ void rigCommander::determineRigCaps()
             // this incorrectly shows up as 2 and 3 in the drop down.
             rigCaps.antennas = {0x01, 0x02};
             rigCaps.bands = standardHF;
-            rigCaps.bands.push_back(band2m);
-            rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(bandDef2m);
+            rigCaps.bands.push_back(bandDefGen);
             rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             break;
@@ -3664,7 +3673,7 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
             rigCaps.antennas = {0x00, 0x01};
             rigCaps.bands = standardHF;
-            rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
@@ -3685,7 +3694,7 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
             rigCaps.antennas = {0x00, 0x01};
             rigCaps.bands = standardHF;
-            rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
@@ -3706,7 +3715,7 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
             rigCaps.antennas = {0x00, 0x01};
             rigCaps.bands = standardHF;
-            rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
@@ -3730,8 +3739,8 @@ void rigCommander::determineRigCaps()
             rigCaps.antennas = {0x00, 0x01};
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
-            rigCaps.bands.push_back(band23cm);
-            rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(bandDef23cm);
+            rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[band2m] = 0x11;
             rigCaps.bsr[band70cm] = 0x12;
             rigCaps.bsr[band23cm] = 0x13;
@@ -3757,7 +3766,7 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.push_back('\x20');
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
-            rigCaps.bands.insert(rigCaps.bands.end(), {band23cm, band4m, band630m, band2200m, bandGen});
+            rigCaps.bands.insert(rigCaps.bands.end(), {bandDef23cm, bandDef4m, bandDef630m, bandDef2200m, bandDefGen});
             rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             qInfo(logRig()) << "Found unknown rig: 0x" << QString("%1").arg(rigCaps.modelID, 2, 16);

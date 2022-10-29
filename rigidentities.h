@@ -50,7 +50,7 @@ enum rigInput{ inputMic=0,
                inputUnknown=0xff
 };
 
-enum bandType { band23cm=0,
+enum availableBands { band23cm=0,
                 band70cm,
                 band2m,
                 bandAir,
@@ -88,6 +88,18 @@ enum centerSpansType {
 struct centerSpanData {
     centerSpansType cstype;
     QString name;
+};
+
+struct bandType {
+    bandType(availableBands band, quint32 lowFreq, quint32 highFreq, mode_kind defaultMode) :
+        band(band), lowFreq(lowFreq), highFreq(highFreq), defaultMode(defaultMode) {}
+
+    bandType() {}
+
+    availableBands band;
+    quint32 lowFreq;
+    quint32 highFreq;
+    mode_kind defaultMode;
 };
 
 model_kind determineRadioModel(unsigned char rigID);

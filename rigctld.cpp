@@ -133,7 +133,7 @@ void rigCtlClient::socketReadyRead()
         char responseCode = 0;
         QStringList response;
         bool setCommand = false;
-        //commands.chop(1); // Remove \n character
+        //commands.chop(1); // Remove \n 
         if (commands.endsWith('\r'))
         {
             commands.chop(1); // Remove \n character
@@ -144,7 +144,7 @@ void rigCtlClient::socketReadyRead()
             continue;
         }
 
-        //qDebug(logRigCtlD()) << sessionId << "command received" << commands;
+        qDebug(logRigCtlD()) << sessionId << "RX:" << commands;
 
         // We have a full line so process command.
 
@@ -195,24 +195,32 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command[0] == "dump_state")
         {
-            // Currently send "fake" state information until I can work out what is required!
-            response.append("1"); // rigctld protocol version
+            // rigctld protocol version
+            response.append("1"); 
+            // Radio model
             response.append(QString("%1").arg(rigCaps.rigctlModel)); 
-            response.append("0"); // Print something
-            bandType lastBand=(bandType)-1;
+            // Print something (used to be ITU region)
+            response.append("0"); 
+            // Supported RX bands (startf,endf,modes,low_power,high_power,vfo,ant)
+            quint32 lowFreq = 0;
+            quint32 highFreq = 0;
             for (bandType band : rigCaps.bands)
             {
-                if (band != lastBand)
-                    response.append(generateFreqRange(band));
-                lastBand = band;
+                if (lowFreq == 0 || band.lowFreq < lowFreq)
+                    lowFreq = band.lowFreq;
+                if (band.highFreq > highFreq)
+                    highFreq = band.highFreq;
             }
+            response.append(QString("%1.000000 %2.000000 0x%3 %4 %5 0x%6 0x%7").arg(lowFreq).arg(highFreq)
+                .arg(getRadioModes(), 0, 16).arg(-1).arg(-1).arg(0x16000000, 0, 16).arg(getAntennas(), 0, 16));
             response.append("0 0 0 0 0 0 0");
+
             if (rigCaps.hasTransmit) {
+                // Supported TX bands (startf,endf,modes,low_power,high_power,vfo,ant)
                 for (bandType band : rigCaps.bands)
                 {   
-                    if (band != lastBand)
-                        response.append(generateFreqRange(band));
-                    lastBand = band;
+                    response.append(QString("%1.000000 %2.000000 0x%3 %4 %5 0x%6 0x%7").arg(band.lowFreq).arg(band.highFreq)
+                        .arg(getRadioModes(), 0, 16).arg(2000).arg(100000).arg(0x16000000, 0, 16).arg(getAntennas(), 0, 16));
                 }
             }
             response.append("0 0 0 0 0 0 0");
@@ -1179,7 +1187,7 @@ void rigCtlClient::closeSocket()
 
 void rigCtlClient::sendData(QString data)
 {
-    //qDebug(logRigCtlD()) << "Sending:" << data;
+    qDebug(logRigCtlD()) << sessionId << "TX:" << data;
     if (socket != Q_NULLPTR && socket->isValid() && socket->isOpen())
     {
         socket->write(data.toLatin1());
@@ -1345,99 +1353,6 @@ unsigned char rigCtlClient::getMode(QString modeString) {
     return 0;
 }
 
-QString rigCtlClient::generateFreqRange(bandType band)
-{
-    unsigned int lowFreq = 0;
-    unsigned int highFreq = 0;
-    switch (band) {
-    case band2200m:
-        lowFreq = 135000;
-        highFreq = 138000;
-        break;
-    case band630m:
-        lowFreq = 493000;
-        highFreq = 595000;
-        break;
-    case band160m:
-        lowFreq = 1800000;
-        highFreq = 2000000;
-        break;
-    case band80m:
-        lowFreq = 3500000;
-        highFreq = 4000000;
-        break;
-    case band60m:
-        lowFreq = 5250000;
-        highFreq = 5450000;
-        break;
-    case band40m:
-        lowFreq = 7000000;
-        highFreq = 7300000;
-        break;
-    case band30m:
-        lowFreq = 10100000;
-        highFreq = 10150000;
-        break;
-    case band20m:
-        lowFreq = 14000000;
-        highFreq = 14350000;
-        break;
-    case band17m:
-        lowFreq = 18068000;
-        highFreq = 18168000;
-        break;
-    case band15m:
-        lowFreq = 21000000;
-        highFreq = 21450000;
-        break;
-    case band12m:
-        lowFreq = 24890000;
-        highFreq = 24990000;
-        break;
-    case band10m:
-        lowFreq = 28000000;
-        highFreq = 29700000;
-        break;
-    case band6m:
-        lowFreq = 50000000;
-        highFreq = 54000000;
-        break;
-    case band4m:
-        lowFreq = 70000000;
-        highFreq = 70500000;
-        break;
-    case band2m:
-        lowFreq = 144000000;
-        highFreq = 148000000;
-        break;
-    case band70cm:
-        lowFreq = 420000000;
-        highFreq = 450000000;
-        break;
-    case band23cm:
-        lowFreq = 1240000000;
-        highFreq = 1400000000;
-        break;
-    case bandAir:
-        lowFreq = 108000000;
-        highFreq = 137000000;
-        break;
-    case bandWFM:
-        lowFreq = 88000000;
-        highFreq = 108000000;
-        break;
-    case bandGen:
-        lowFreq = 10000;
-        highFreq = 30000000;
-        break;
-    }
-    QString ret = "";
-
-    if (lowFreq > 0 && highFreq > 0) {
-        ret = QString("%1.000000 %2.000000 0x%3 %4 %5 0x%6 0x%7").arg(lowFreq).arg(highFreq).arg(getRadioModes(),0,16).arg(-1).arg(-1).arg(0x16000003,0,16).arg(getAntennas(),0,16);
-    }
-    return ret;
-}
 
 unsigned char rigCtlClient::getAntennas()
 {
@@ -1498,19 +1413,19 @@ QString rigCtlClient::getAntName(unsigned char ant)
 unsigned char rigCtlClient::antFromName(QString name) {
     unsigned char ret;
 
-    if (name == "ANT1")
+    if (name.toUpper() == "ANT1")
         ret = 0;
-    else if (name == "ANT2")
+    else if (name.toUpper() == "ANT2")
         ret = 1;
-    else if (name == "ANT3")
+    else if (name.toUpper() == "ANT3")
         ret = 2;
-    else if (name == "ANT4")
+    else if (name.toUpper() == "ANT4")
         ret = 3;
-    else if (name == "ANT5")
+    else if (name.toUpper() == "ANT5")
         ret = 4;
-    else if (name == "ANT_UNKNOWN")
+    else if (name.toUpper() == "ANT_UNKNOWN")
         ret = 30;
-    else if (name == "ANT_CURR")
+    else if (name.toUpper() == "ANT_CURR")
         ret = 31;
     else  
         ret = 99;

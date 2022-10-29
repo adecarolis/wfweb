@@ -6031,7 +6031,7 @@ void wfmain::setBandButtons()
     for(unsigned int i=0; i < rigCaps.bands.size(); i++)
     {
         bandSel = rigCaps.bands.at(i);
-        switch(bandSel)
+        switch(bandSel.band)
         {
             case(band23cm):
                 showButton(ui->band23cmbtn);
