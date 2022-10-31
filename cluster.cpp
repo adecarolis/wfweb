@@ -72,6 +72,7 @@ void dxClusterClient::enableTcp(bool enable)
             tcpCleanupTimer->setInterval(1000 * 10); // Run once a minute
             connect(tcpCleanupTimer, SIGNAL(timeout()), this, SLOT(tcpCleanup()));
             tcpCleanupTimer->start();
+            authenticated = false;
         }
     }
     else {
@@ -169,46 +170,52 @@ void dxClusterClient::tcpDataReceived()
     QString data = QString(tcpSocket->readAll());
 
     emit sendOutput(data);
-    if (data.contains("login:")) {
-        sendTcpData(QString("%1\n").arg(tcpUserName));
-        return;
-    }
-    if (data.contains("password:")) {
-        sendTcpData(QString("%1\n").arg(tcpPassword));
-        return;
-    }
-
-    QRegularExpressionMatchIterator i = tcpRegex.globalMatch(data);
-    while (i.hasNext()) {
-        QRegularExpressionMatch match = i.next();
-        if (match.hasMatch()) {
-            spotData* data = new spotData();
-            data->spottercall = match.captured(1);
-            data->frequency = match.captured(2).toDouble() / 1000.0;
-            data->dxcall = match.captured(3);
-            data->comment = match.captured(4).trimmed();
-            data->timestamp = QDateTime::currentDateTimeUtc();
-
-#ifdef USESQL
-            database db = database();
-            db.query(QString("DELETE from spots where dxcall='%1'").arg(data->dxcall));
-            QString query = QString("INSERT INTO spots(type,spottercall,frequency,dxcall,comment,timestamp) VALUES('%1','%2',%3,'%4','%5','%6')\n")
-                .arg("TCP").arg(data->spottercall).arg(data->frequency).arg(data->dxcall).arg(data->comment).arg(data->timestamp.toString("yyyy-MM-dd hh:mm:ss"));
-            db.query(query);
-#else
-            bool found = false;
-            QMap<QString, spotData*>::iterator spot = allSpots.find(data->dxcall);
-            while (spot != allSpots.end() && spot.key() == data->dxcall && spot.value()->frequency == data->frequency) {
-                found = true;
-                ++spot;
-            }
-            if (found == false) {
-                allSpots.insert(data->dxcall, data);
-            }
-#endif
+    if (!authenticated) {
+        if (data.contains("login:") || data.contains("call:") || data.contains("callsign:")) {
+            sendTcpData(QString("%1\n").arg(tcpUserName));
+            return;
+        }
+        if (data.contains("password:")) {
+            sendTcpData(QString("%1\n").arg(tcpPassword));
+            return;
+        }
+        if (data.contains("Hello")) {
+            authenticated = true;
         }
     }
-    updateSpots();
+    else {
+        QRegularExpressionMatchIterator i = tcpRegex.globalMatch(data);
+        while (i.hasNext()) {
+            QRegularExpressionMatch match = i.next();
+            if (match.hasMatch()) {
+                spotData* data = new spotData();
+                data->spottercall = match.captured(1);
+                data->frequency = match.captured(2).toDouble() / 1000.0;
+                data->dxcall = match.captured(3);
+                data->comment = match.captured(4).trimmed();
+                data->timestamp = QDateTime::currentDateTimeUtc();
+
+#ifdef USESQL
+                database db = database();
+                db.query(QString("DELETE from spots where dxcall='%1'").arg(data->dxcall));
+                QString query = QString("INSERT INTO spots(type,spottercall,frequency,dxcall,comment,timestamp) VALUES('%1','%2',%3,'%4','%5','%6')\n")
+                    .arg("TCP").arg(data->spottercall).arg(data->frequency).arg(data->dxcall).arg(data->comment).arg(data->timestamp.toString("yyyy-MM-dd hh:mm:ss"));
+                db.query(query);
+#else
+                bool found = false;
+                QMap<QString, spotData*>::iterator spot = allSpots.find(data->dxcall);
+                while (spot != allSpots.end() && spot.key() == data->dxcall && spot.value()->frequency == data->frequency) {
+                    found = true;
+                    ++spot;
+                }
+                if (found == false) {
+                    allSpots.insert(data->dxcall, data);
+                }
+#endif
+            }
+        }
+        updateSpots();
+    }
 }
 
 

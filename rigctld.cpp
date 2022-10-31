@@ -816,6 +816,9 @@ void rigCtlClient::socketReadyRead()
             else if (command[1] == "BAL") {
                 resp.append(QString("%1").arg((float)rigState->getChar(BAL) / 255.0));
             }
+            else if (command[1] == "KEYSPD") {
+                resp.append(QString("%1").arg(rigState->getChar(KEYSPD)));
+            }
             else {
                 resp.append(QString("%1").arg(value));
             }
@@ -905,6 +908,10 @@ void rigCtlClient::socketReadyRead()
             else if (command[1] == "BAL") {
                 value = command[2].toFloat() * 255;
                 rigState->set(BAL, quint8(value), true);
+            }
+            else if (command[1] == "KEYSPD") {
+                value = command[2].toInt();
+                rigState->set(IF, quint8(value), true);
             }
 
             qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2] << value;
