@@ -57,7 +57,7 @@ void dxClusterClient::enableTcp(bool enable)
     tcpEnable = enable;
     if (enable)
     {
-        tcpRegex = QRegularExpression("^DX de ([a-z|A-Z|0-9|/]+):\\s+([0-9|.]+)\\s+([a-z|A-Z|0-9|/]+)+\\s+(.*)\\s+(\\d{4}Z)");
+        tcpRegex = QRegularExpression("^DX de ([a-z-|A-Z|0-9|#|/]+):\\s+([0-9|.]+)\\s+([a-z|A-Z|0-9|/]+)+\\s+(.*)\\s+(\\d{4}Z)");
 
         if (tcpSocket == Q_NULLPTR)
         {
@@ -181,6 +181,7 @@ void dxClusterClient::tcpDataReceived()
         }
         if (data.contains("Hello")) {
             authenticated = true;
+            enableSkimmerSpots(skimmerSpots);
         }
     }
     else {
@@ -295,4 +296,19 @@ void dxClusterClient::updateSpots()
 
 #endif
     emit sendSpots(spots);
+}
+
+void dxClusterClient::enableSkimmerSpots(bool enable)
+{
+    skimmerSpots = enable;
+    if (authenticated) {
+        if (skimmerSpots) {
+            sendTcpData(QString("Set Dx Filter Skimmer\n"));
+        }
+        else
+        { 
+            sendTcpData(QString("Set Dx Filter Not Skimmer\n"));
+        }
+        
+    }
 }

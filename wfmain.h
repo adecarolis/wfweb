@@ -197,6 +197,7 @@ signals:
     void setClusterUserName(QString name);
     void setClusterPassword(QString pass);
     void setClusterTimeout(int timeout);
+    void setClusterSkimmerSpots(bool enable);
     void setFrequencyRange(double low, double high);
 
 private slots:
@@ -676,6 +677,7 @@ private slots:
     void on_clusterPasswordLineEdit_editingFinished();
     void on_clusterTimeoutLineEdit_editingFinished();
     void on_clusterPopOutBtn_clicked();
+    void on_clusterSkimmerSpotsEnable_clicked(bool enable);
 
     void on_clickDragTuningEnableChk_clicked(bool checked);
 
@@ -941,6 +943,7 @@ private:
         QString clusterTcpUserName;
         QString clusterTcpPassword;
         int clusterTimeout;
+        bool clusterSkimmerSpotsEnable;
         bool clickDragTuningEnable;
     } prefs;
 

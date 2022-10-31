@@ -127,6 +127,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     connect(this, SIGNAL(setClusterPassword(QString)), cluster, SLOT(setTcpPassword(QString)));
     connect(this, SIGNAL(setClusterTimeout(int)), cluster, SLOT(setTcpTimeout(int)));
     connect(this, SIGNAL(setFrequencyRange(double, double)), cluster, SLOT(freqRange(double, double)));
+    connect(this, SIGNAL(setClusterSkimmerSpots(bool)), cluster, SLOT(enableSkimmerSpots(bool)));
 
     connect(cluster, SIGNAL(sendSpots(QList<spotData>)), this, SLOT(receiveSpots(QList<spotData>)));
     connect(cluster, SIGNAL(sendOutput(QString)), this, SLOT(receiveClusterOutput(QString)));
@@ -7841,6 +7842,12 @@ void wfmain::on_clusterPopOutBtn_clicked()
         ui->tabWidget->setCurrentIndex(3);
         settingsTabisAttached = true;
     }
+}
+
+void wfmain::on_clusterSkimmerSpotsEnable_clicked(bool enable)
+{
+    prefs.clusterSkimmerSpotsEnable = enable;
+    emit setClusterSkimmerSpots(enable);
 }
 
 void wfmain::on_clickDragTuningEnableChk_clicked(bool checked)
