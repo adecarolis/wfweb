@@ -1484,13 +1484,16 @@ void rigCommander::parseLevels()
                     emit haveTPBFInner(level);
                 else
                     emit haveIFShift(level);
+                state.set(PBTIN, level, false);
                 break;
             case '\x08':
                 // Twin BPF Outer
                 emit haveTPBFOuter(level);
+                state.set(PBTOUT, level, false);
                 break;
             case '\x09':
                 // CW Pitch - ignore for now
+                state.set(CWPITCH, level, false);
                 break;
             case '\x0A':
                 // TX RF level
@@ -1507,6 +1510,7 @@ void rigCommander::parseLevels()
                 break;
             case '\x0D':
                 // Notch filder setting - ignore for now
+                state.set(NOTCHF, level, false);
                 break;
             case '\x0E':
                 // compressor level
@@ -1515,6 +1519,7 @@ void rigCommander::parseLevels()
                 break;
             case '\x12':
                 // NB level - ignore for now
+                state.set(NB, level, false);
                 break;
             case '\x15':
                 // monitor level
@@ -4840,13 +4845,62 @@ void rigCommander::stateUpdated()
                  break;
              case SATMODEFUNC:
                  break;
-             case NBLEVEL:
-                 break;
              case NBDEPTH:
                  break;
              case NBWIDTH:
                  break;
-             case NRLEVEL:
+             case NB:
+                 break;
+             case NR: {
+                 if (i.value()._valid) {
+                     QByteArray payload("\x14\x06");
+                     payload.append(bcdEncodeInt(state.getChar(NR)));
+                     prepDataAndSend(payload);
+                 }
+                 break;
+             }
+             case CWPITCH: {
+                 if (i.value()._valid) {
+                     QByteArray payload("\x14\x09");
+                     payload.append(bcdEncodeInt(state.getChar(CWPITCH)));
+                     prepDataAndSend(payload);
+                 }
+                 break;
+             }
+             case NOTCHF: {
+                 if (i.value()._valid) {
+                     QByteArray payload("\x14\x0d");
+                     payload.append(bcdEncodeInt(state.getChar(NOTCHF)));
+                     prepDataAndSend(payload);
+                 }
+                 break;
+             }
+             case IF: {
+                 if (i.value()._valid) {
+                     setIFShift(state.getChar(IF));
+                 }
+                 getIFShift();
+                 break;
+             }
+             case PBTIN: {
+                 if (i.value()._valid) {
+                     QByteArray payload("\x14\x07");
+                     payload.append(bcdEncodeInt(state.getChar(PBTIN)));
+                     prepDataAndSend(payload);
+                 }
+                 break;
+             }
+             case PBTOUT: {
+                 if (i.value()._valid) {
+                     QByteArray payload("\x14\x08");
+                     payload.append(bcdEncodeInt(state.getChar(PBTOUT)));
+                     prepDataAndSend(payload);
+                 }
+                 break;
+             }
+             case APF:
+                 break;
+             case BAL:
                  break;
              case RESUMEFUNC:
                  break;

@@ -144,7 +144,7 @@ void rigCtlClient::socketReadyRead()
             continue;
         }
 
-        qDebug(logRigCtlD()) << sessionId << "RX:" << commands;
+        //qDebug(logRigCtlD()) << sessionId << "RX:" << commands;
 
         // We have a full line so process command.
 
@@ -195,6 +195,8 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command[0] == "dump_state")
         {
+            quint64 modes = getRadioModes();
+
             // rigctld protocol version
             response.append("1"); 
             // Radio model
@@ -212,7 +214,7 @@ void rigCtlClient::socketReadyRead()
                     highFreq = band.highFreq;
             }
             response.append(QString("%1.000000 %2.000000 0x%3 %4 %5 0x%6 0x%7").arg(lowFreq).arg(highFreq)
-                .arg(getRadioModes(), 0, 16).arg(-1).arg(-1).arg(0x16000000, 0, 16).arg(getAntennas(), 0, 16));
+                .arg(modes, 0, 16).arg(-1).arg(-1).arg(0x16000000, 0, 16).arg(getAntennas(), 0, 16));
             response.append("0 0 0 0 0 0 0");
 
             if (rigCaps.hasTransmit) {
@@ -220,29 +222,63 @@ void rigCtlClient::socketReadyRead()
                 for (bandType band : rigCaps.bands)
                 {   
                     response.append(QString("%1.000000 %2.000000 0x%3 %4 %5 0x%6 0x%7").arg(band.lowFreq).arg(band.highFreq)
-                        .arg(getRadioModes(), 0, 16).arg(2000).arg(100000).arg(0x16000000, 0, 16).arg(getAntennas(), 0, 16));
+                        .arg(modes, 0, 16).arg(2000).arg(100000).arg(0x16000000, 0, 16).arg(getAntennas(), 0, 16));
                 }
             }
             response.append("0 0 0 0 0 0 0");
 
-            response.append(QString("0x%1 1").arg(getRadioModes(), 0, 16));
-            response.append(QString("0x%1 10").arg(getRadioModes(), 0, 16));
-            response.append(QString("0x%1 100").arg(getRadioModes(), 0, 16));
-            response.append(QString("0x%1 1000").arg(getRadioModes(), 0, 16));
-            response.append(QString("0x%1 2500").arg(getRadioModes(), 0, 16));
-            response.append(QString("0x%1 5000").arg(getRadioModes(), 0, 16));
-            response.append(QString("0x%1 6125").arg(getRadioModes(), 0, 16));
-            response.append(QString("0x%1 8333").arg(getRadioModes(), 0, 16));
-            response.append(QString("0x%1 10000").arg(getRadioModes(), 0, 16));
-            response.append(QString("0x%1 12500").arg(getRadioModes(), 0, 16));
-            response.append(QString("0x%1 25000").arg(getRadioModes(), 0, 16));
-            response.append(QString("0x%1 100000").arg(getRadioModes(), 0, 16));
-            response.append(QString("0x%1 250000").arg(getRadioModes(), 0, 16));
-            response.append(QString("0x%1 1000000").arg(getRadioModes(), 0, 16));
+            response.append(QString("0x%1 1").arg(modes, 0, 16));
+            response.append(QString("0x%1 10").arg(modes, 0, 16));
+            response.append(QString("0x%1 100").arg(modes, 0, 16));
+            response.append(QString("0x%1 1000").arg(modes, 0, 16));
+            response.append(QString("0x%1 2500").arg(modes, 0, 16));
+            response.append(QString("0x%1 5000").arg(modes, 0, 16));
+            response.append(QString("0x%1 6125").arg(modes, 0, 16));
+            response.append(QString("0x%1 8333").arg(modes, 0, 16));
+            response.append(QString("0x%1 10000").arg(modes, 0, 16));
+            response.append(QString("0x%1 12500").arg(modes, 0, 16));
+            response.append(QString("0x%1 25000").arg(modes, 0, 16));
+            response.append(QString("0x%1 100000").arg(modes, 0, 16));
+            response.append(QString("0x%1 250000").arg(modes, 0, 16));
+            response.append(QString("0x%1 1000000").arg(modes, 0, 16));
             response.append("0 0");
-            response.append(QString("0x%1 1200").arg(getRadioModes(), 0, 16));
-            response.append(QString("0x%1 2400").arg(getRadioModes(), 0, 16));
-            response.append(QString("0x%1 3000").arg(getRadioModes(), 0, 16));
+
+            modes = getRadioModes("SB");
+            if (modes) {
+                response.append(QString("0x%1 3000").arg(modes, 0, 16));
+                response.append(QString("0x%1 2400").arg(modes, 0, 16));
+                response.append(QString("0x%1 1800").arg(modes, 0, 16));
+            }
+            modes = getRadioModes("AM");
+            if (modes) {
+                response.append(QString("0x%1 9000").arg(modes, 0, 16));
+                response.append(QString("0x%1 6000").arg(modes, 0, 16));
+                response.append(QString("0x%1 3000").arg(modes, 0, 16));
+            }
+            modes = getRadioModes("CW");
+            if (modes) {
+                response.append(QString("0x%1 1200").arg(modes, 0, 16));
+                response.append(QString("0x%1 500").arg(modes, 0, 16));
+                response.append(QString("0x%1 200").arg(modes, 0, 16));
+            }
+            modes = getRadioModes("FM");
+            if (modes) {
+                response.append(QString("0x%1 15000").arg(modes, 0, 16));
+                response.append(QString("0x%1 10000").arg(modes, 0, 16));
+                response.append(QString("0x%1 7000").arg(modes, 0, 16));
+            }
+            modes = getRadioModes("RTTY");
+            if (modes) {
+                response.append(QString("0x%1 2400").arg(modes, 0, 16));
+                response.append(QString("0x%1 500").arg(modes, 0, 16));
+                response.append(QString("0x%1 250").arg(modes, 0, 16));
+            }
+            modes = getRadioModes("PSK");
+            if (modes) {
+                response.append(QString("0x%1 1200").arg(modes, 0, 16));
+                response.append(QString("0x%1 500").arg(modes, 0, 16));
+                response.append(QString("0x%1 250").arg(modes, 0, 16));
+            }
             response.append("0 0");
             response.append("9900");
             response.append("9900");
@@ -250,7 +286,7 @@ void rigCtlClient::socketReadyRead()
             response.append("0");
             QString preamps="";
             if (rigCaps.hasPreamp) {
-                for (unsigned char pre : rigCaps.preamps)
+                for (quint8 pre : rigCaps.preamps)
                 {
                     if (pre == 0)
                         continue;
@@ -266,7 +302,7 @@ void rigCtlClient::socketReadyRead()
 
             QString attens = "";
             if (rigCaps.hasAttenuator) {
-                for (unsigned char att : rigCaps.attenuators)
+                for (quint8 att : rigCaps.attenuators)
                 {
                     if (att == 0)
                         continue;
@@ -280,7 +316,6 @@ void rigCtlClient::socketReadyRead()
             }
             response.append(attens);
 
-
             response.append("0xffffffffffffffff");
             response.append("0xffffffffffffffff");
             response.append("0xffffffffffffffff");
@@ -288,23 +323,6 @@ void rigCtlClient::socketReadyRead()
             response.append("0xffffffffffffffff");
             response.append("0xffffffffffffffff");
 
-            /*
-            response.append("0xffffffffffffffff");
-            response.append("0xffffffffffffffff");
-            response.append("0xfffffffff7ffffff");
-            response.append("0xfffffff083ffffff");
-            response.append("0xffffffffffffffff");
-            response.append("0xffffffffffffffbf");
-            */
-
-            /*
-            response.append("0x3effffff");
-            response.append("0x3effffff");
-            response.append("0x7fffffff");
-            response.append("0x7fffffff");
-            response.append("0x7fffffff");
-            response.append("0x7fffffff");
-            */
             if (chkVfoEecuted) {
                 response.append(QString("vfo_ops=0x%1").arg(255, 0, 16));
                 response.append(QString("ptt_type=0x%1").arg(rigCaps.hasTransmit, 0, 16));
@@ -365,7 +383,7 @@ void rigCtlClient::socketReadyRead()
             freqt freq;
             bool ok=false;
             double newFreq=0.0f;
-            unsigned char vfo=0;
+            quint8 vfo=0;
             if (command.length() == 2)
             {
                 newFreq = command[1].toDouble(&ok);
@@ -383,10 +401,10 @@ void rigCtlClient::socketReadyRead()
                 freq.Hz = static_cast<int>(newFreq);
                 qDebug(logRigCtlD()) << QString("Set frequency: %1 (%2)").arg(freq.Hz).arg(command[1]);
                 if (vfo == 0) {
-                    rigState->set(VFOAFREQ, freq.Hz,true);
+                    rigState->set(VFOAFREQ, (quint64)freq.Hz,true);
                 }
                 else {
-                    rigState->set(VFOBFREQ, freq.Hz,true);
+                    rigState->set(VFOBFREQ, (quint64)freq.Hz,true);
                 }
             }
         }
@@ -689,13 +707,13 @@ void rigCtlClient::socketReadyRead()
 
             if (command.length() > 1) {
                 if (longReply) {
-                    response.append(QString("AntCurr: %1").arg(getAntName((unsigned char)command[1].toInt())));
+                    response.append(QString("AntCurr: %1").arg(getAntName((quint8)command[1].toInt())));
                     response.append(QString("Option: %1").arg(0));
                     response.append(QString("AntTx: %1").arg(getAntName(rigState->getChar(ANTENNA))));
                     response.append(QString("AntRx: %1").arg(getAntName(rigState->getChar(ANTENNA))));
                 }
                 else {
-                    response.append(QString("%1").arg(getAntName((unsigned char)command[1].toInt())));
+                    response.append(QString("%1").arg(getAntName((quint8)command[1].toInt())));
                     response.append(QString("%1").arg(0));
                     response.append(QString("%1").arg(getAntName(rigState->getChar(ANTENNA))));
                     response.append(QString("%1").arg(getAntName(rigState->getChar(ANTENNA))));
@@ -774,6 +792,30 @@ void rigCtlClient::socketReadyRead()
             else if (command[1] == "ATT") {
                 resp.append(QString("%1").arg(rigState->getChar(ATTENUATOR)));
             }
+            else if (command[1] == "CWPITCH") {
+                resp.append(QString("%1").arg(rigState->getInt16(CWPITCH)));
+            }
+            else if (command[1] == "NOTCHF") {
+                resp.append(QString("%1").arg(rigState->getInt16(NOTCHF)));
+            }
+            else if (command[1] == "IF") {
+                resp.append(QString("%1").arg(rigState->getInt16(IF)));
+            }
+            else if (command[1] == "PBT_IN") {
+                resp.append(QString("%1").arg((float)rigState->getChar(PBTIN) / 255.0));
+            }
+            else if (command[1] == "PBT_OUT") {
+                resp.append(QString("%1").arg((float)rigState->getChar(PBTOUT) / 255.0));
+            }
+            else if (command[1] == "APF") {
+                resp.append(QString("%1").arg((float)rigState->getChar(APF) / 255.0));
+            }
+            else if (command[1] == "NR") {
+                resp.append(QString("%1").arg((float)rigState->getChar(NR) / 255.0));
+            }
+            else if (command[1] == "BAL") {
+                resp.append(QString("%1").arg((float)rigState->getChar(BAL) / 255.0));
+            }
             else {
                 resp.append(QString("%1").arg(value));
             }
@@ -782,55 +824,87 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command.length() > 2 && (command[0] == "L" || command[0] == "set_level"))
         {
-            unsigned char value=0;
+            int value=0;
             setCommand = true;
             if (command[1] == "AF") {
                 value = command[2].toFloat() * 255;
-                rigState->set(AFGAIN, value, true);
+                rigState->set(AFGAIN, quint8(value), true);
             }
             else if (command[1] == "RF") {
                 value = command[2].toFloat() * 255;
-                rigState->set(RFGAIN, value, true);
+                rigState->set(RFGAIN, quint8(value), true);
             }
             else if (command[1] == "RFPOWER") {
-		value = command[2].toFloat() * 255;
-		rigState->set(RFPOWER, value, true);
+		        value = command[2].toFloat() * 255;
+		        rigState->set(RFPOWER, quint8(value), true);
             }
             else if (command[1] == "SQL") {
                 value = command[2].toFloat() * 255;
-                rigState->set(SQUELCH, value, true);
+                rigState->set(SQUELCH, quint8(value), true);
             }
             else if (command[1] == "COMP") {
                 value = command[2].toFloat() * 255;
-                rigState->set(COMPLEVEL, value, true);
+                rigState->set(COMPLEVEL, quint8(value), true);
             }
             else if (command[1] == "MICGAIN") {
                 value = command[2].toFloat() * 255;
-                rigState->set(MICGAIN, value, true);
+                rigState->set(MICGAIN, quint8(value), true);
             }
             else if (command[1] == "MON") {
                 value = command[2].toFloat() * 255;
-                rigState->set(MONITORLEVEL, value, true);
+                rigState->set(MONITORLEVEL, quint8(value), true);
             }
             else if (command[1] == "VOXGAIN") {
                 value = command[2].toFloat() * 255;
-                rigState->set(VOXGAIN, value, true);
+                rigState->set(VOXGAIN, quint8(value), true);
             }
             else if (command[1] == "ANTIVOX") {
                 value = command[2].toFloat() * 255;
-                rigState->set(ANTIVOXGAIN, value, true);
+                rigState->set(ANTIVOXGAIN, quint8(value), true);
             }
             else if (command[1] == "ATT") {
                 value = command[2].toInt();
-                rigState->set(ATTENUATOR, value, true);
+                rigState->set(ATTENUATOR, quint8(value), true);
             }
             else if (command[1] == "PREAMP") {
                 value = command[2].toFloat() / 10;
-                rigState->set(PREAMP, value, true);
+                rigState->set(PREAMP, quint8(value), true);
             }
             else if (command[1] == "AGC") {
-                value = command[2].toInt();;
-                rigState->set(AGC, value, true);
+                value = command[2].toFloat() * 255;
+                rigState->set(AGC, quint8(value), true);
+            }
+            else if (command[1] == "CWPITCH") {
+                value = command[2].toInt();
+                rigState->set(CWPITCH, value, true);
+            }
+            else if (command[1] == "NOTCHF") {
+                value = command[2].toInt();
+                rigState->set(NOTCHF, value, true);
+            }
+            else if (command[1] == "IF") {
+                value = command[2].toInt();
+                rigState->set(IF, qint16(value), true);
+            }
+            else if (command[1] == "PBT_IN") {
+                value = command[2].toFloat() * 255;
+                rigState->set(PBTIN, quint8(value), true);
+            }
+            else if (command[1] == "PBT_OUT") {
+                value = command[2].toFloat() * 255;
+                rigState->set(PBTOUT, quint8(value), true);
+            }
+            else if (command[1] == "APF") {
+                value = command[2].toFloat() * 255;
+                rigState->set(APF, quint8(value), true);
+            }
+            else if (command[1] == "NR") {
+                value = command[2].toFloat() * 255;
+                rigState->set(NR, quint8(value), true);
+            }
+            else if (command[1] == "BAL") {
+                value = command[2].toFloat() * 255;
+                rigState->set(BAL, quint8(value), true);
             }
 
             qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2] << value;
@@ -1187,7 +1261,7 @@ void rigCtlClient::closeSocket()
 
 void rigCtlClient::sendData(QString data)
 {
-    qDebug(logRigCtlD()) << sessionId << "TX:" << data;
+    //qDebug(logRigCtlD()) << sessionId << "TX:" << data;
     if (socket != Q_NULLPTR && socket->isValid() && socket->isOpen())
     {
         socket->write(data.toLatin1());
@@ -1198,7 +1272,7 @@ void rigCtlClient::sendData(QString data)
     }
 }
 
-QString rigCtlClient::getFilter(unsigned char mode, unsigned char filter) {
+QString rigCtlClient::getFilter(quint8 mode, quint8 filter) {
     
     if (mode == 3 || mode == 7 || mode == 12 || mode == 17) {
         switch (filter) {
@@ -1256,7 +1330,7 @@ QString rigCtlClient::getFilter(unsigned char mode, unsigned char filter) {
     return QString("");
 }
 
-QString rigCtlClient::getMode(unsigned char mode, bool datamode) {
+QString rigCtlClient::getMode(quint8 mode, bool datamode) {
 
     QString ret;
 
@@ -1309,7 +1383,7 @@ QString rigCtlClient::getMode(unsigned char mode, bool datamode) {
     return ret;
 }
 
-unsigned char rigCtlClient::getMode(QString modeString) {
+quint8 rigCtlClient::getMode(QString modeString) {
 
     if (modeString == QString("LSB")) {
         return 0;
@@ -1354,46 +1428,47 @@ unsigned char rigCtlClient::getMode(QString modeString) {
 }
 
 
-unsigned char rigCtlClient::getAntennas()
+quint8 rigCtlClient::getAntennas()
 {
-    unsigned char ant=0;
-    for (unsigned char i : rigCaps.antennas)
+    quint8 ant=0;
+    for (quint8 i : rigCaps.antennas)
     {
         ant |= 1<<i;
     }
     return ant;
 }
 
-quint64 rigCtlClient::getRadioModes() 
+quint64 rigCtlClient::getRadioModes(QString md) 
 {
     quint64 modes = 0;
     for (mode_info mode : rigCaps.modes)
     {
         for (int i = 0; mode_str[i].str[0] != '\0'; i++)
         {
-            QString curMode = mode.name;
-            if (!strcmp(curMode.toLocal8Bit(), mode_str[i].str))
-            {
-                //qDebug(logRigCtlD()) << "Found mode:" << mode.name << mode_str[i].mode;
-                modes |= mode_str[i].mode;
-            }
+            QString mstr = QString(mode_str[i].str);
             if (rigCaps.hasDataModes) {
-                curMode = "PKT" + mode.name;
-                if (!strcmp(curMode.toLocal8Bit(), mode_str[i].str))
+                if (mstr.contains(mode.name))
                 {
-                    if (mode.name == "LSB" || mode.name == "USB" || mode.name == "FM" || mode.name == "AM")
-                    {
-                       // qDebug(logRigCtlD()) << "Found data mode:" << mode.name << mode_str[i].mode;
+                    // qDebug(logRigCtlD()) << "Found data mode:" << mode.name << mode_str[i].mode;
+                    if (md.isEmpty() || mstr.contains(md)) {
                         modes |= mode_str[i].mode;
                     }
                 }
+            }
+            else if (mode.name==mstr)
+            {
+                //qDebug(logRigCtlD()) << "Found mode:" << mode.name << mode_str[i].mode;
+                if (md.isEmpty() || mstr==md) 
+                {
+                    modes |= mode_str[i].mode;
+                } 
             }
         }
     }
     return modes;
 }
 
-QString rigCtlClient::getAntName(unsigned char ant)
+QString rigCtlClient::getAntName(quint8 ant)
 {
     QString ret;
     switch (ant)
@@ -1410,8 +1485,8 @@ QString rigCtlClient::getAntName(unsigned char ant)
     return ret;
 }
 
-unsigned char rigCtlClient::antFromName(QString name) {
-    unsigned char ret;
+quint8 rigCtlClient::antFromName(QString name) {
+    quint8 ret;
 
     if (name.toUpper() == "ANT1")
         ret = 0;
@@ -1432,7 +1507,7 @@ unsigned char rigCtlClient::antFromName(QString name) {
     return ret;
 }
 
-int rigCtlClient::getCalibratedValue(unsigned char meter,cal_table_t cal) {
+int rigCtlClient::getCalibratedValue(quint8 meter,cal_table_t cal) {
     
     int interp;
 
