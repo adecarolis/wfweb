@@ -4179,10 +4179,13 @@ void rigCommander::parseMode()
             switch (filter) {
             case 1:
                 pass=1200;
+                break;
             case 2:
                 pass=500;
+                break;
             case 3:
                 pass=250;
+                break;
             }
         }
         else if (mode == 4 || mode == 8)
@@ -4190,10 +4193,13 @@ void rigCommander::parseMode()
             switch (filter) {
             case 1:
                 pass=2400;
+                break;
             case 2:
                 pass=500;
+                break;
             case 3:
                 pass=250;
+                break;
             }
         }
         else if (mode == 2)
@@ -4201,10 +4207,13 @@ void rigCommander::parseMode()
             switch (filter) {
             case 1:
                 pass=9000;
+                break;
             case 2:
                 pass=6000;
+                break;
             case 3:
                 pass=3000;
+                break;
             }
         }
         else if (mode == 5)
@@ -4212,20 +4221,26 @@ void rigCommander::parseMode()
             switch (filter) {
             case 1:
                 pass=15000;
+                break;
             case 2:
                 pass=10000;
+                break;
             case 3:
                 pass=7000;
+                break;
             }
         }
         else { // SSB or unknown mode
             switch (filter) {
             case 1:
                 pass=3000;
+                break;
             case 2:
                 pass=2400;
+                break;
             case 3:
                 pass=1800;
+                break;
             }
         }
     }
