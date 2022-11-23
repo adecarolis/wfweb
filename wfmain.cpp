@@ -99,8 +99,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qDebug(logSystem()) << "Running setUIToPrefs()";
     setUIToPrefs();
 
-    loadColorPresetToUIandPlots(0);
-
     qDebug(logSystem()) << "Running setInititalTiming()";
     setInitialTiming();
 
@@ -1215,6 +1213,8 @@ void wfmain::setUIToPrefs()
             ui->colorPresetCombo->setItemText(pn, *p.presetName);
     }
 
+    ui->colorPresetCombo->setCurrentIndex(prefs.currentColorPresetNumber);
+
     ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
 
@@ -1480,7 +1480,7 @@ void wfmain::loadSettings()
     // Load in the color presets. The default values are already loaded.
 
     settings->beginGroup("ColorPresets");
-    settings->value("currentColorPresetNumber", prefs.currentColorPresetNumber).toInt();
+    prefs.currentColorPresetNumber = settings->value("currentColorPresetNumber", defPrefs.currentColorPresetNumber).toInt();
     if(prefs.currentColorPresetNumber > numColorPresetsTotal-1)
         prefs.currentColorPresetNumber = 0;
 
