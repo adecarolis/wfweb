@@ -1217,6 +1217,7 @@ void wfmain::setUIToPrefs()
     }
 
     ui->colorPresetCombo->setCurrentIndex(prefs.currentColorPresetNumber);
+    loadColorPresetToUIandPlots(prefs.currentColorPresetNumber);
 
     ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
