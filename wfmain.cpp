@@ -3680,13 +3680,10 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         setBandButtons();
 
-
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
 
-        ui->useRTSforPTTchk->blockSignals(true);
-        ui->useRTSforPTTchk->setChecked(rigCaps.useRTSforPTT);
-        ui->useRTSforPTTchk->blockSignals(false);
+        ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
 
         ui->audioSystemCombo->setEnabled(false);
         ui->audioSystemServerCombo->setEnabled(false);

@@ -8,6 +8,9 @@ model_kind determineRadioModel(unsigned char rigID)
 
     model_kind rig;
 
+    rig = (model_kind)rigID;
+
+    /*
     switch(rigID)
     {
         case model7100:
@@ -80,6 +83,8 @@ model_kind determineRadioModel(unsigned char rigID)
             rig = modelUnknown;
             break;
     }
+
+    */
 
     return rig;
 }
