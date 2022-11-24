@@ -3486,27 +3486,27 @@ void rigCommander::determineRigCaps()
                                                        createMode(modePSK_R, 0x13, "PSK-R")});
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x95");
             break;
-    case model703:
-        rigCaps.modelName = QString("IC-703");
-        rigCaps.rigctlModel = 3055;
-        rigCaps.hasSpectrum = false;
-        rigCaps.inputs.clear();
-        rigCaps.hasLan = false;
-        rigCaps.hasEthernet = false;
-        rigCaps.hasWiFi = false;
-        rigCaps.hasFDcomms = false;
-        rigCaps.hasATU = true;
-        rigCaps.hasPTTCommand = false;
-        rigCaps.useRTSforPTT = true;
-        rigCaps.hasDataModes = false;
-        rigCaps.attenuators.push_back('\x20');
-        rigCaps.bands = standardHF;
-        rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
-        rigCaps.bands.push_back(bandGen);
-        rigCaps.modes = commonModes;
-        rigCaps.modes.insert(rigCaps.modes.end(), createMode(modeWFM, 0x06, "WFM"));
-        rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
-        break;
+        case model703:
+            rigCaps.modelName = QString("IC-703");
+            rigCaps.rigctlModel = 3055;
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.clear();
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
+            rigCaps.hasATU = true;
+            rigCaps.hasPTTCommand = false;
+            rigCaps.useRTSforPTT = true;
+            rigCaps.hasDataModes = false;
+            rigCaps.attenuators.push_back('\x20');
+            rigCaps.bands = standardHF;
+            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+            rigCaps.bands.push_back(bandGen);
+            rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), createMode(modeWFM, 0x06, "WFM"));
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
+            break;
         case model706:
             rigCaps.modelName = QString("IC-706");
             rigCaps.rigctlModel = 3009;
@@ -3567,7 +3567,6 @@ void rigCommander::determineRigCaps()
             rigCaps.hasPTTCommand = false;
             rigCaps.useRTSforPTT = true;
             rigCaps.hasDataModes = false;
-            rigCaps.hasIFShift = true; // untested
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardHF;
@@ -3576,28 +3575,27 @@ void rigCommander::determineRigCaps()
                               createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
                             };
             break;
-    case model737:
-        rigCaps.modelName = QString("IC-737");
-        rigCaps.rigctlModel = 3021;
-        rigCaps.hasSpectrum = false;
-        rigCaps.inputs.clear();
-        rigCaps.hasLan = false;
-        rigCaps.hasEthernet = false;
-        rigCaps.hasWiFi = false;
-        rigCaps.hasFDcomms = false;
-        rigCaps.hasATU = false;
-        rigCaps.hasPTTCommand = false;
-        rigCaps.useRTSforPTT = true;
-        rigCaps.hasDataModes = false;
-        rigCaps.hasIFShift = true; // untested
-        rigCaps.attenuators.push_back('\x20');
-        rigCaps.preamps.push_back('\x01');
-        rigCaps.bands = standardHF;
-        rigCaps.modes = { createMode(modeLSB, 0x00, "LSB"), createMode(modeUSB, 0x01, "USB"),
-                          createMode(modeAM, 0x02, "AM"), createMode(modeFM, 0x05, "FM"),
-                          createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
-                        };
-        break;
+        case model737:
+            rigCaps.modelName = QString("IC-737");
+            rigCaps.rigctlModel = 3021;
+            rigCaps.hasSpectrum = false;
+            rigCaps.inputs.clear();
+            rigCaps.hasLan = false;
+            rigCaps.hasEthernet = false;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasFDcomms = false;
+            rigCaps.hasATU = false;
+            rigCaps.hasPTTCommand = false;
+            rigCaps.useRTSforPTT = true;
+            rigCaps.hasDataModes = false;
+            rigCaps.attenuators.push_back('\x20');
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.bands = standardHF;
+            rigCaps.modes = { createMode(modeLSB, 0x00, "LSB"), createMode(modeUSB, 0x01, "USB"),
+                              createMode(modeAM, 0x02, "AM"), createMode(modeFM, 0x05, "FM"),
+                              createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
+                            };
+            break;
         case model738:
             rigCaps.modelName = QString("IC-738");
             rigCaps.rigctlModel = 3022;
@@ -3611,7 +3609,6 @@ void rigCommander::determineRigCaps()
             rigCaps.hasPTTCommand = false;
             rigCaps.useRTSforPTT = true;
             rigCaps.hasDataModes = false;
-            rigCaps.hasIFShift = true; // untested
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.bands = standardHF;
