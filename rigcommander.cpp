@@ -4394,7 +4394,7 @@ void rigCommander::setRigID(unsigned char rigID)
     // It can be used for radios without Rig ID commands,
     // or to force a specific radio model
 
-    qInfo(logRig()) << "Sending rig ID to: (int)" << (int)rigID;
+    qInfo(logRig()) << "Setting rig ID to: (int)" << (int)rigID;
 
 
     lookingForRig = true;
