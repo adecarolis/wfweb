@@ -632,10 +632,13 @@ void wfmain::receiveCommReady()
         if(prefs.CIVisRadioModel)
         {
             qInfo(logSystem()) << "Skipping Rig ID query, using user-supplied model from CI-V address: " << prefs.radioCIVAddr;
+            emit setCIVAddr(prefs.radioCIVAddr);
             emit setRigID(prefs.radioCIVAddr);
         } else {
+            emit setCIVAddr(prefs.radioCIVAddr);
             emit getRigID();
-            getInitialRigState();
+            issueDelayedCommand(cmdGetRigID);
+            delayedCommand->start();
         }
     }
 }
@@ -3100,8 +3103,12 @@ void wfmain::doCmd(cmds cmd)
             //qInfo(logSystem()) << "NOOP";
             break;
         case cmdGetRigID:
-            emit getRigID();
-            break;
+            if(!haveRigCaps)
+            {
+                emit getRigID();
+                issueDelayedCommand(cmdGetRigID);
+            }
+        break;
         case cmdGetRigCIV:
             // if(!know rig civ already)
             if(!haveRigCaps)
@@ -6753,28 +6760,7 @@ void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    // issueDelayedCommand(cmdGetRigID);
-    //emit getRigCIV();
-    //trxadj->show();
-    //setRadioTimeDatePrep();
-    //wf->setInteraction(QCP::iRangeZoom, true);
-    //wf->setInteraction(QCP::iRangeDrag, true);
-    plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
-    colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
-
-//    bool ok;
-//    int height = QInputDialog::getInt(this, "wfview window fixed height", "number: ", 350, 1, 500, 1, &ok );
-
-//    this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-//    this->setMaximumSize(QSize(1025,height));
-//    this->setMinimumSize(QSize(1025,height));
-//    //this->setMaximumSize(QSize(929, 270));
-//    //this->setMinimumSize(QSize(929, 270));
-
-//    resize(minimumSize());
-//    adjustSize(); // main window
-//    adjustSize();
-
+    emit getRigID();
 }
 
 // ----------   color helper functions:   ---------- //
