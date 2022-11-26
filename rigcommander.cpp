@@ -3582,7 +3582,7 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.push_back('\x20');
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
-            rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(bandDefGen);
             rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), createMode(modeWFM, 0x06, "WFM"));
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
@@ -3740,7 +3740,7 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x06' , '\x12', '\x18'});
             rigCaps.antennas = {0x00, 0x01};
             rigCaps.bands = standardHF;
-            rigCaps.bands.push_back(bandGen);
+            rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[bandGen] = 0x11;
             rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
