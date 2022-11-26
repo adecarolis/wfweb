@@ -144,7 +144,7 @@ void rigCtlClient::socketReadyRead()
             continue;
         }
 
-        //qDebug(logRigCtlD()) << sessionId << "RX:" << commands;
+        qDebug(logRigCtlD()) << sessionId << "RX:" << commands;
 
         // We have a full line so process command.
 
@@ -456,7 +456,7 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command[0] == "v" || command[0] == "v\nv" || command[0] == "get_vfo")
         {
-            QString resp;
+        QString resp;
             if (longReply) {
                 resp.append("VFO: ");
             }
@@ -475,7 +475,7 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command.length() > 1 && (command[0] == "V" || command[0] == "set_vfo"))
         {
-            setCommand = true;
+        setCommand = true;
             if (command[1] == "?") {
                 response.append("set_vfo: ?");
                 response.append("VFOA");
@@ -499,7 +499,7 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command[0] == "s" || command[0] == "get_split_vfo")
         {
-        
+
             if (longReply) {
                 response.append(QString("Split: %1").arg(rigState->getChar(DUPLEX)));
             }
@@ -625,7 +625,7 @@ void rigCtlClient::socketReadyRead()
                 response.append(QString("%1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
                 response.append(QString("%1").arg(rigState->getUInt16(PASSBAND)));
             }
-            qDebug(logRigCtlD()) << QString("get_mode: %1 passband: %2").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))).arg(rigState->getUInt16(PASSBAND));
+            //qDebug(logRigCtlD()) << QString("get_mode: %1 passband: %2").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))).arg(rigState->getUInt16(PASSBAND));
         }
         else if (command[0] == "M" || command[0] == "set_mode")
         {
@@ -673,19 +673,6 @@ void rigCtlClient::socketReadyRead()
                 rigState->set(FILTER, width, true);
                 rigState->set(PASSBAND, passband, true);
             }            
-        }
-        else if (command[0] == "s" || command[0] == "get_split_vfo")
-        {
-            if (longReply) {
-                response.append(QString("Split: 1"));
-                response.append(QString("TX VFO: VFOB"));
-            } 
-            else
-            {
-                response.append("1");
-                response.append("VFOB");
-            }
-
         }
         else if (command[0] == "j" || command[0] == "get_rit")
         {
@@ -817,7 +804,7 @@ void rigCtlClient::socketReadyRead()
                 resp.append(QString("%1").arg((float)rigState->getChar(BAL) / 255.0));
             }
             else if (command[1] == "KEYSPD") {
-                resp.append(QString("%1").arg(rigState->getChar(KEYSPD)));
+                resp.append(QString("%1").arg(rigState->getChar(KEYSPD)/5.1));
             }
             else {
                 resp.append(QString("%1").arg(value));
@@ -910,8 +897,8 @@ void rigCtlClient::socketReadyRead()
                 rigState->set(BAL, quint8(value), true);
             }
             else if (command[1] == "KEYSPD") {
-                value = command[2].toInt();
-                rigState->set(IF, quint8(value), true);
+                value = command[2].toInt() * 5.1;
+                rigState->set(KEYSPD, quint8(value), true);
             }
 
             qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2] << value;

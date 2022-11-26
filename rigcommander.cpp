@@ -1507,6 +1507,7 @@ void rigCommander::parseLevels()
                 break;
             case '\x0C':
                 // CW Keying Speed - ignore for now
+                state.set(KEYSPD, level, false);
                 break;
             case '\x0D':
                 // Notch filder setting - ignore for now
@@ -4874,10 +4875,34 @@ void rigCommander::stateUpdated()
                  }
                  break;
              }
+             case PBTIN: {
+                 if (i.value()._valid) {
+                     QByteArray payload("\x14\x07");
+                     payload.append(bcdEncodeInt(state.getChar(PBTIN)));
+                     prepDataAndSend(payload);
+                 }
+                 break;
+             }
+             case PBTOUT: {
+                 if (i.value()._valid) {
+                     QByteArray payload("\x14\x08");
+                     payload.append(bcdEncodeInt(state.getChar(PBTOUT)));
+                     prepDataAndSend(payload);
+                 }
+                 break;
+             }
              case CWPITCH: {
                  if (i.value()._valid) {
                      QByteArray payload("\x14\x09");
                      payload.append(bcdEncodeInt(state.getChar(CWPITCH)));
+                     prepDataAndSend(payload);
+                 }
+                 break;
+             }
+             case KEYSPD: {
+                 if (i.value()._valid) {
+                     QByteArray payload("\x14\x0c");
+                     payload.append(bcdEncodeInt(state.getChar(KEYSPD)));
                      prepDataAndSend(payload);
                  }
                  break;
@@ -4895,22 +4920,6 @@ void rigCommander::stateUpdated()
                      setIFShift(state.getChar(IF));
                  }
                  getIFShift();
-                 break;
-             }
-             case PBTIN: {
-                 if (i.value()._valid) {
-                     QByteArray payload("\x14\x07");
-                     payload.append(bcdEncodeInt(state.getChar(PBTIN)));
-                     prepDataAndSend(payload);
-                 }
-                 break;
-             }
-             case PBTOUT: {
-                 if (i.value()._valid) {
-                     QByteArray payload("\x14\x08");
-                     payload.append(bcdEncodeInt(state.getChar(PBTOUT)));
-                     prepDataAndSend(payload);
-                 }
                  break;
              }
              case APF:
