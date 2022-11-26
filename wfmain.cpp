@@ -99,8 +99,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qDebug(logSystem()) << "Running setUIToPrefs()";
     setUIToPrefs();
 
-    loadColorPresetToUIandPlots(0);
-
     qDebug(logSystem()) << "Running setInititalTiming()";
     setInitialTiming();
 
@@ -635,10 +633,13 @@ void wfmain::receiveCommReady()
         if(prefs.CIVisRadioModel)
         {
             qInfo(logSystem()) << "Skipping Rig ID query, using user-supplied model from CI-V address: " << prefs.radioCIVAddr;
+            emit setCIVAddr(prefs.radioCIVAddr);
             emit setRigID(prefs.radioCIVAddr);
         } else {
+            emit setCIVAddr(prefs.radioCIVAddr);
             emit getRigID();
-            getInitialRigState();
+            issueDelayedCommand(cmdGetRigID);
+            delayedCommand->start();
         }
     }
 }
@@ -1217,6 +1218,9 @@ void wfmain::setUIToPrefs()
             ui->colorPresetCombo->setItemText(pn, *p.presetName);
     }
 
+    ui->colorPresetCombo->setCurrentIndex(prefs.currentColorPresetNumber);
+    loadColorPresetToUIandPlots(prefs.currentColorPresetNumber);
+
     ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
 
@@ -1482,7 +1486,7 @@ void wfmain::loadSettings()
     // Load in the color presets. The default values are already loaded.
 
     settings->beginGroup("ColorPresets");
-    settings->value("currentColorPresetNumber", prefs.currentColorPresetNumber).toInt();
+    prefs.currentColorPresetNumber = settings->value("currentColorPresetNumber", defPrefs.currentColorPresetNumber).toInt();
     if(prefs.currentColorPresetNumber > numColorPresetsTotal-1)
         prefs.currentColorPresetNumber = 0;
 
@@ -3102,8 +3106,12 @@ void wfmain::doCmd(cmds cmd)
             //qInfo(logSystem()) << "NOOP";
             break;
         case cmdGetRigID:
-            emit getRigID();
-            break;
+            if(!haveRigCaps)
+            {
+                emit getRigID();
+                issueDelayedCommand(cmdGetRigID);
+            }
+        break;
         case cmdGetRigCIV:
             // if(!know rig civ already)
             if(!haveRigCaps)
@@ -3682,13 +3690,10 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         setBandButtons();
 
-
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
 
-        ui->useRTSforPTTchk->blockSignals(true);
-        ui->useRTSforPTTchk->setChecked(rigCaps.useRTSforPTT);
-        ui->useRTSforPTTchk->blockSignals(false);
+        ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
 
         ui->audioSystemCombo->setEnabled(false);
         ui->audioSystemServerCombo->setEnabled(false);
@@ -6758,28 +6763,7 @@ void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    // issueDelayedCommand(cmdGetRigID);
-    //emit getRigCIV();
-    //trxadj->show();
-    //setRadioTimeDatePrep();
-    //wf->setInteraction(QCP::iRangeZoom, true);
-    //wf->setInteraction(QCP::iRangeDrag, true);
-    plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
-    colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
-
-//    bool ok;
-//    int height = QInputDialog::getInt(this, "wfview window fixed height", "number: ", 350, 1, 500, 1, &ok );
-
-//    this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-//    this->setMaximumSize(QSize(1025,height));
-//    this->setMinimumSize(QSize(1025,height));
-//    //this->setMaximumSize(QSize(929, 270));
-//    //this->setMinimumSize(QSize(929, 270));
-
-//    resize(minimumSize());
-//    adjustSize(); // main window
-//    adjustSize();
-
+    emit getRigID();
 }
 
 // ----------   color helper functions:   ---------- //
