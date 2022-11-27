@@ -20,6 +20,7 @@ struct preferences {
     bool forceRTSasPTT;
     QString serialPortRadio;
     quint32 serialPortBaud;
+    int polling_ms;
     bool enablePTT;
     bool niceTS;
     bool enableLAN;

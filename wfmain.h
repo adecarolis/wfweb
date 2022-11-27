@@ -512,8 +512,6 @@ private slots:
 
     void on_wfLengthSlider_valueChanged(int value);
 
-    void on_pollingBtn_clicked();
-
     void on_wfAntiAliasChk_clicked(bool checked);
 
     void on_wfInterpolateChk_clicked(bool checked);
@@ -683,6 +681,12 @@ private slots:
 
     void receiveClusterOutput(QString text);
     void receiveSpots(QList<spotData> spots);
+
+    void on_autoPollBtn_clicked(bool checked);
+
+    void on_manualPollBtn_clicked(bool checked);
+
+    void on_pollTimeMsSpin_valueChanged(int arg1);
 
 private:
     Ui::wfmain *ui;
@@ -972,6 +976,7 @@ private:
 
     void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
     void calculateTimingParameters();
+    void changePollTiming(int timing_ms, bool setUI=false);
 
     void changeMode(mode_kind mode);
     void changeMode(mode_kind mode, bool dataOn);
