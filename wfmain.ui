@@ -3148,6 +3148,9 @@
                 </item>
                 <item>
                  <widget class="QRadioButton" name="autoPollBtn">
+                  <property name="toolTip">
+                   <string>wfview will automatically calculate command polling. Recommended.</string>
+                  </property>
                   <property name="text">
                    <string>AutoPolling</string>
                   </property>
@@ -3161,6 +3164,9 @@
                 </item>
                 <item>
                  <widget class="QRadioButton" name="manualPollBtn">
+                  <property name="toolTip">
+                   <string>Manual (user-defined) command polling</string>
+                  </property>
                   <property name="text">
                    <string>Manual Polling Inteval:</string>
                   </property>
@@ -3172,7 +3178,7 @@
                 <item>
                  <widget class="QSpinBox" name="pollTimeMsSpin">
                   <property name="toolTip">
-                   <string>Sets the polling interval, in ms.</string>
+                   <string>Sets the polling interval, in ms. Automatic polling is recommended. Serial port and USB port radios should not poll quicker than about 75ms.</string>
                   </property>
                   <property name="minimum">
                    <number>1</number>
