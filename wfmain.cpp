@@ -2098,6 +2098,10 @@ void wfmain::saveSettings()
     qInfo(logSystem()) << "Saving settings to " << settings->fileName();
     // Basic things to load:
 
+    settings->beginGroup("Program");
+    settings->setValue("version", QString(WFVIEW_VERSION));
+    settings->endGroup();
+
     // UI: (full screen, dark theme, draw peaks, colors, etc)
     settings->beginGroup("Interface");
     settings->setValue("UseFullScreen", prefs.useFullScreen);

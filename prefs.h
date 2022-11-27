@@ -6,6 +6,7 @@
 #include "wfviewtypes.h"
 
 struct preferences {
+    QString version;
     bool useFullScreen;
     bool useSystemTheme;
     bool drawPeaks;
