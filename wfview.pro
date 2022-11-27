@@ -185,6 +185,7 @@ HEADERS  += wfmain.h \
     colorprefs.h \
     commhandler.h \
     loggingwindow.h \
+    prefs.h \
     rigcommander.h \
     freqmemory.h \
     rigidentities.h \
@@ -217,7 +218,8 @@ HEADERS  += wfmain.h \
     tcpserver.h \
     cluster.h \
     database.h \
-    aboutbox.h
+    aboutbox.h \
+    wfviewtypes.h
 
 
 FORMS    += wfmain.ui \
