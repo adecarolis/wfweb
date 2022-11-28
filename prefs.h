@@ -47,6 +47,7 @@ struct preferences {
     QString clusterTcpPassword;
     int clusterTimeout;
     bool clickDragTuningEnable;
+    bool clusterSkimmerSpotsEnable;
 };
 
 #endif // PREFS_H
