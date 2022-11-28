@@ -20,6 +20,8 @@
 #include <QColor>
 
 #include "logcategories.h"
+#include "wfviewtypes.h"
+#include "prefs.h"
 #include "commhandler.h"
 #include "rigcommander.h"
 #include "rigstate.h"
@@ -511,8 +513,6 @@ private slots:
 
     void on_wfLengthSlider_valueChanged(int value);
 
-    void on_pollingBtn_clicked();
-
     void on_wfAntiAliasChk_clicked(bool checked);
 
     void on_wfInterpolateChk_clicked(bool checked);
@@ -684,6 +684,12 @@ private slots:
     void receiveClusterOutput(QString text);
     void receiveSpots(QList<spotData> spots);
 
+    void on_autoPollBtn_clicked(bool checked);
+
+    void on_manualPollBtn_clicked(bool checked);
+
+    void on_pollTimeMsSpin_valueChanged(int arg1);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -801,9 +807,6 @@ private:
     quint16 wfLength;
     bool spectrumDrawLock;
 
-    enum underlay_t { underlayNone, underlayPeakHold, underlayPeakBuffer, underlayAverageBuffer };
-
-
     QByteArray spectrumPeaks;
     QVector <double> spectrumPlasmaLine;
     QVector <QByteArray> spectrumPlasma;
@@ -904,49 +907,7 @@ private:
 
     colorPrefsType colorPreset[numColorPresetsTotal];
 
-    struct preferences {
-        bool useFullScreen;
-        bool useSystemTheme;
-        bool drawPeaks;
-        underlay_t underlayMode = underlayNone;
-        int underlayBufferSize = 64;
-        bool wfAntiAlias;
-        bool wfInterpolate;
-        QString stylesheetPath;
-        unsigned char radioCIVAddr;
-        bool CIVisRadioModel;
-        bool forceRTSasPTT;
-        QString serialPortRadio;
-        quint32 serialPortBaud;
-        bool enablePTT;
-        bool niceTS;
-        bool enableLAN;
-        bool enableRigCtlD;
-        quint16 rigCtlPort;
-        int currentColorPresetNumber = 0;
-        QString virtualSerialPort;
-        unsigned char localAFgain;
-        unsigned int wflength;
-        int wftheme;
-        int plotFloor;
-        int plotCeiling;
-        bool confirmExit;
-        bool confirmPowerOff;
-        meterKind meter2Type;
-        quint16 tcpPort;
-        quint8 waterfallFormat;
-        audioType audioSystem;
-        bool clusterUdpEnable;
-        bool clusterTcpEnable;
-        int clusterUdpPort;
-        QString clusterTcpServerName;
-        QString clusterTcpUserName;
-        QString clusterTcpPassword;
-        int clusterTimeout;
-        bool clusterSkimmerSpotsEnable;
-        bool clickDragTuningEnable;
-    } prefs;
-
+    preferences prefs;
     preferences defPrefs;
     udpPreferences udpPrefs;
     udpPreferences udpDefPrefs;
@@ -1016,6 +977,7 @@ private:
 
     void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
     void calculateTimingParameters();
+    void changePollTiming(int timing_ms, bool setUI=false);
 
     void changeMode(mode_kind mode);
     void changeMode(mode_kind mode, bool dataOn);

@@ -1422,6 +1422,7 @@ void wfmain::setDefPrefs()
     defPrefs.forceRTSasPTT = false;
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.serialPortBaud = 115200;
+    defPrefs.polling_ms = 0; // 0 = Automatic
     defPrefs.enablePTT = false;
     defPrefs.niceTS = true;
     defPrefs.enableRigCtlD = false;
@@ -1568,6 +1569,27 @@ void wfmain::loadSettings()
     if (prefs.serialPortBaud > 0)
     {
         serverConfig.baudRate = prefs.serialPortBaud;
+    }
+
+    prefs.polling_ms = settings->value("polling_ms", defPrefs.polling_ms).toInt();
+    if(prefs.polling_ms == 0)
+    {
+        // Automatic
+        ui->pollingButtonGroup->blockSignals(true);
+        ui->autoPollBtn->setChecked(true);
+        ui->manualPollBtn->setChecked(false);
+        ui->pollingButtonGroup->blockSignals(false);
+        ui->pollTimeMsSpin->setEnabled(false);
+    } else {
+        // Manual
+        ui->pollingButtonGroup->blockSignals(true);
+        ui->autoPollBtn->setChecked(false);
+        ui->manualPollBtn->setChecked(true);
+        ui->pollingButtonGroup->blockSignals(false);
+        ui->pollTimeMsSpin->blockSignals(true);
+        ui->pollTimeMsSpin->setValue(prefs.polling_ms);
+        ui->pollTimeMsSpin->blockSignals(false);
+        ui->pollTimeMsSpin->setEnabled(true);
     }
 
     prefs.virtualSerialPort = settings->value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
@@ -2100,6 +2122,10 @@ void wfmain::saveSettings()
     qInfo(logSystem()) << "Saving settings to " << settings->fileName();
     // Basic things to load:
 
+    settings->beginGroup("Program");
+    settings->setValue("version", QString(WFVIEW_VERSION));
+    settings->endGroup();
+
     // UI: (full screen, dark theme, draw peaks, colors, etc)
     settings->beginGroup("Interface");
     settings->setValue("UseFullScreen", prefs.useFullScreen);
@@ -2129,6 +2155,7 @@ void wfmain::saveSettings()
     settings->setValue("RigCIVuInt", prefs.radioCIVAddr);
     settings->setValue("CIVisRadioModel", prefs.CIVisRadioModel);
     settings->setValue("ForceRTSasPTT", prefs.forceRTSasPTT);
+    settings->setValue("polling_ms", prefs.polling_ms); // 0 = automatic
     settings->setValue("SerialPortRadio", prefs.serialPortRadio);
     settings->setValue("SerialPortBaud", prefs.serialPortBaud);
     settings->setValue("VirtualSerialPort", prefs.virtualSerialPort);
@@ -3711,7 +3738,12 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         issueDelayedCommand(cmdGetFreq);
         issueDelayedCommand(cmdGetMode);
         // recalculate command timing now that we know the rig better:
-        calculateTimingParameters();
+        if(prefs.polling_ms != 0)
+        {
+            changePollTiming(prefs.polling_ms, true);
+        } else {
+            calculateTimingParameters();
+        }
         initPeriodicCommands();
         
         // Set the second meter here as I suspect we need to be connected for it to work?
@@ -5883,6 +5915,10 @@ void wfmain::calculateTimingParameters()
 
     qInfo(logSystem()) << "Delay command interval timing: " << delayedCommand->interval() << "ms";
 
+    ui->pollTimeMsSpin->blockSignals(true);
+    ui->pollTimeMsSpin->setValue(delayedCommand->interval());
+    ui->pollTimeMsSpin->blockSignals(false);
+
     // Normal:
     delayedCmdIntervalLAN_ms =  delayedCommand->interval();
     delayedCmdIntervalSerial_ms = delayedCommand->interval();
@@ -6162,20 +6198,6 @@ void wfmain::on_wfLengthSlider_valueChanged(int value)
 {
     prefs.wflength = (unsigned int)(value);
     prepareWf(value);
-}
-
-void wfmain::on_pollingBtn_clicked()
-{
-    bool ok;
-    int timing = 0;
-    timing = QInputDialog::getInt(this, "wfview Radio Polling Setup", "Poll Timing Interval (ms)", delayedCommand->interval(), 1, 200, 1, &ok );
-
-    if(ok && timing)
-    {
-        delayedCommand->setInterval( timing );
-        qInfo(logSystem()) << "User changed radio polling interval to " << timing << "ms.";
-        showStatusBarText("User changed radio polling interval to " + QString("%1").arg(timing) + "ms.");
-    }
 }
 
 void wfmain::on_wfAntiAliasChk_clicked(bool checked)
@@ -7840,3 +7862,46 @@ void wfmain::on_clickDragTuningEnableChk_clicked(bool checked)
 }
 
 
+
+void wfmain::on_autoPollBtn_clicked(bool checked)
+{
+    ui->pollTimeMsSpin->setEnabled(!checked);
+    if(checked)
+    {
+        prefs.polling_ms = 0;
+        qInfo(logSystem()) << "User set radio polling interval to automatic.";
+        calculateTimingParameters();
+    }
+}
+
+void wfmain::on_manualPollBtn_clicked(bool checked)
+{
+    ui->pollTimeMsSpin->setEnabled(checked);
+    if(checked)
+    {
+        prefs.polling_ms = ui->pollTimeMsSpin->value();
+        changePollTiming(prefs.polling_ms);
+    }
+}
+
+void wfmain::on_pollTimeMsSpin_valueChanged(int timing_ms)
+{
+    if(ui->manualPollBtn->isChecked())
+    {
+        changePollTiming(timing_ms);
+    }
+}
+
+void wfmain::changePollTiming(int timing_ms, bool setUI)
+{
+    delayedCommand->setInterval(timing_ms);
+    qInfo(logSystem()) << "User changed radio polling interval to " << timing_ms << "ms.";
+    showStatusBarText("User changed radio polling interval to " + QString("%1").arg(timing_ms) + "ms.");
+    prefs.polling_ms = timing_ms;
+    if(setUI)
+    {
+        ui->pollTimeMsSpin->blockSignals(true);
+        ui->pollTimeMsSpin->setValue(timing_ms);
+        ui->pollTimeMsSpin->blockSignals(false);
+    }
+}
