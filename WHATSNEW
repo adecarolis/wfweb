@@ -18,10 +18,8 @@ The following highlights are in this 1.51-release ince v1.50:
                 Remove logging of audio device realm
 + 1.52		added cluster spotting including color picker suport
     		optional SQLITE in memory for spots (disabled)
-
 + 1.53          modified band buttons to look more alike the layout on the rigs
 		audio selction combobox shows full devicenames
-
     		Fixed color preset zero issue.
     		Fixed unusual set of conditions in which manual CI-V address would fail
     		to identify the connected radio. 
