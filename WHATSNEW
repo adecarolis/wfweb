@@ -19,7 +19,7 @@ The following highlights are in this 1.51-release ince v1.50:
 + 1.52		added cluster spotting including color picker suport
     		optional SQLITE in memory for spots (disabled)
 
-+ 1.xx          modified band buttons to look more alike the layut on the rigs
++ 1.53          modified band buttons to look more alike the layout on the rigs
 		audio selction combobox shows full devicenames
 
 
