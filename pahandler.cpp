@@ -224,7 +224,13 @@ void paHandler::setVolume(unsigned char volume)
 void paHandler::incomingAudio(audioPacket packet)
 {
 	packet.volume = volume;
-	emit sendToConverter(packet);
+	if (Pa_IsStreamActive(audio) == 1) {
+		emit sendToConverter(packet);
+	}
+	else
+	{
+		Pa_StartStream(audio);
+	}
 	return;
 }
 
@@ -266,7 +272,7 @@ void paHandler::convertedOutput(audioPacket packet) {
 	if (packet.data.size() > 0) {
 
 		if (Pa_IsStreamActive(audio) == 1) {
-			if (currentLatency < (setup.latency)) {
+			if (currentLatency < (setup.latency+latencyAllowance)) {
 				PaError err = Pa_WriteStream(audio, (char*)packet.data.data(), packet.data.size() / sizeof(float) / outFormat.channelCount());
 
 				if (err != paNoError) {
@@ -275,7 +281,8 @@ void paHandler::convertedOutput(audioPacket packet) {
 			}
 			else {
 				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Disgarding audio data as current latency" << currentLatency << "exceeds setup latency" << setup.latency;
-				setup.latency++;
+				Pa_StopStream(audio);
+				latencyAllowance++;
 			}
 			const PaStreamInfo* info = Pa_GetStreamInfo(audio);
 			currentLatency = packet.time.msecsTo(QTime::currentTime()) + (info->outputLatency * 1000);
