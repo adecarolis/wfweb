@@ -91,6 +91,7 @@ private:
     QThread* converterThread = Q_NULLPTR;
     bool            isUnderrun = false;
     bool            isOverrun = false;
+    int latencyAllowance = 0;
 };
 
 #endif // PAHANDLER_H
