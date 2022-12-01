@@ -169,4 +169,5 @@ HEADERS  += servermain.h \
     ulaw.h \
     tcpserver.h \
     audiotaper.h \
-    keyboard.h
+    keyboard.h \
+    wfviewtypes.h
