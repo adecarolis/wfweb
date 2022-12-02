@@ -4061,7 +4061,6 @@ void wfmain::preparePlasma()
 {
     if(plasmaPrepared)
         return;
-    QByteArray empty((int)spectWidth, '\x01');
 
     if(spectrumPlasmaSize == 0)
         spectrumPlasmaSize = 128;
@@ -4069,13 +4068,6 @@ void wfmain::preparePlasma()
     plasmaMutex.lock();
     spectrumPlasma.clear();
 
-//    spectrumPlasma.append(empty);
-
-//    It may be possible to skip this.
-//    for(unsigned int p=0; p < spectrumPlasmaSize; p++)
-//    {
-//        spectrumPlasma.append(empty);
-//    }
 
     spectrumPlasma.squeeze();
     plasmaMutex.unlock();
