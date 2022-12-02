@@ -6698,6 +6698,7 @@ void wfmain::on_underlayBufferSlider_valueChanged(int value)
 {
     resizePlasmaBuffer(value);
     prefs.underlayBufferSize = value;
+    spectrumPlasmaSize = value;
 }
 
 void wfmain::resizePlasmaBuffer(int newSize)
