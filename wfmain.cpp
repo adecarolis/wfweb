@@ -3903,10 +3903,12 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             // TODO: create non-button function to do this
             // This will break if the button is ever moved or renamed.
             on_clearPeakBtn_clicked();
+        } else {
+            plasmaPrepared = false;
+            preparePlasma();
         }
         // Inform other threads (cluster) that the frequency range has changed.
         emit setFrequencyRange(startFreq, endFreq);
-        // TODO: Add clear-out for the buffer
     }
 
     oldLowerFreq = startFreq;
@@ -3949,8 +3951,10 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     }
     plasmaMutex.lock();
     spectrumPlasma.push_front(spectrum);
-    spectrumPlasma.pop_back();
-    //spectrumPlasma.resize(spectrumPlasmaSize);
+    if(spectrumPlasma.size() > (int)spectrumPlasmaSize)
+    {
+        spectrumPlasma.pop_back();
+    }
     plasmaMutex.unlock();
 
 
@@ -4057,7 +4061,6 @@ void wfmain::preparePlasma()
 {
     if(plasmaPrepared)
         return;
-    QByteArray empty((int)spectWidth, '\x01');
 
     if(spectrumPlasmaSize == 0)
         spectrumPlasmaSize = 128;
@@ -4065,10 +4068,6 @@ void wfmain::preparePlasma()
     plasmaMutex.lock();
     spectrumPlasma.clear();
 
-    for(unsigned int p=0; p < spectrumPlasmaSize; p++)
-    {
-        spectrumPlasma.append(empty);
-    }
 
     spectrumPlasma.squeeze();
     plasmaMutex.unlock();
@@ -6699,6 +6698,7 @@ void wfmain::on_underlayBufferSlider_valueChanged(int value)
 {
     resizePlasmaBuffer(value);
     prefs.underlayBufferSize = value;
+    spectrumPlasmaSize = value;
 }
 
 void wfmain::resizePlasmaBuffer(int newSize)
