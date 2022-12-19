@@ -87,7 +87,7 @@ void servermain::openRig()
         {
             //qInfo(logSystem()) << "Got rig";
             QMetaObject::invokeMethod(radio->rig, [=]() {
-                radio->rig->commSetup(radio->civAddr, radio->serialPort, radio->baudRate, QString("none"),prefs.tcpPort,radio->waterfallFormat);
+                radio->rig->commSetup(radio->civAddr, radio->serialPort, radio->baudRate, QString("none"),0 ,radio->waterfallFormat);
             }, Qt::QueuedConnection);
         }
     }
@@ -485,7 +485,7 @@ void servermain::loadSettings()
 
     numRadios = settings->beginReadArray("Radios");
     int tempNum = numRadios;
-
+    
     for (int i = 0; i < numRadios; i++) {
         settings->setArrayIndex(i);
         RIGCONFIG* tempPrefs = new RIGCONFIG();
