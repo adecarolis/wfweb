@@ -500,23 +500,16 @@ void servermain::loadSettings()
         tempPrefs->rxAudioSetup.type = prefs.audioSystem;
         tempPrefs->txAudioSetup.type = prefs.audioSystem;
 
-        QString tempPort = "auto";
-        if (tempPrefs->rigName=="<NONE>")
-        {
+        if (tempPrefs->serialPort == "auto") {
             foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
             {
                 qDebug(logSystem()) << "Serial Port found: " << serialPortInfo.portName() << "Manufacturer:" << serialPortInfo.manufacturer() << "Product ID" << serialPortInfo.description() << "S/N" << serialPortInfo.serialNumber();
-                if ((serialPortInfo.portName() == tempPrefs->serialPort || tempPrefs->serialPort == "auto") && !serialPortInfo.serialNumber().isEmpty())
-                {
-                    if (serialPortInfo.serialNumber().startsWith("IC-")) {
-                        tempPrefs->rigName = serialPortInfo.serialNumber();
-                        tempPort = serialPortInfo.portName();
-                    }
+                if (serialPortInfo.serialNumber().startsWith("IC-") && tempPrefs->serialPort == "auto") {
+                    tempPrefs->rigName = serialPortInfo.serialNumber();
+                    tempPrefs->serialPort = serialPortInfo.portName();
                 }
             }
         }
-        tempPrefs->serialPort = tempPort;
-
         QString guid = settings->value("GUID", "").toString();
         if (guid.isEmpty()) {
             guid = QUuid::createUuid().toString();
