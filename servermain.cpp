@@ -87,7 +87,7 @@ void servermain::openRig()
         {
             //qInfo(logSystem()) << "Got rig";
             QMetaObject::invokeMethod(radio->rig, [=]() {
-                radio->rig->commSetup(radio->civAddr, radio->serialPort, radio->baudRate, QString("none"),prefs.tcpPort,radio->waterfallFormat);
+                radio->rig->commSetup(radio->civAddr, radio->serialPort, radio->baudRate, QString("none"),0 ,radio->waterfallFormat);
             }, Qt::QueuedConnection);
         }
     }
@@ -485,7 +485,7 @@ void servermain::loadSettings()
 
     numRadios = settings->beginReadArray("Radios");
     int tempNum = numRadios;
-
+    
     for (int i = 0; i < numRadios; i++) {
         settings->setArrayIndex(i);
         RIGCONFIG* tempPrefs = new RIGCONFIG();
@@ -500,23 +500,16 @@ void servermain::loadSettings()
         tempPrefs->rxAudioSetup.type = prefs.audioSystem;
         tempPrefs->txAudioSetup.type = prefs.audioSystem;
 
-        QString tempPort = "auto";
-        if (tempPrefs->rigName=="<NONE>")
-        {
+        if (tempPrefs->serialPort == "auto") {
             foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
             {
                 qDebug(logSystem()) << "Serial Port found: " << serialPortInfo.portName() << "Manufacturer:" << serialPortInfo.manufacturer() << "Product ID" << serialPortInfo.description() << "S/N" << serialPortInfo.serialNumber();
-                if ((serialPortInfo.portName() == tempPrefs->serialPort || tempPrefs->serialPort == "auto") && !serialPortInfo.serialNumber().isEmpty())
-                {
-                    if (serialPortInfo.serialNumber().startsWith("IC-")) {
-                        tempPrefs->rigName = serialPortInfo.serialNumber();
-                        tempPort = serialPortInfo.portName();
-                    }
+                if (serialPortInfo.serialNumber().startsWith("IC-") && tempPrefs->serialPort == "auto") {
+                    tempPrefs->rigName = serialPortInfo.serialNumber();
+                    tempPrefs->serialPort = serialPortInfo.portName();
                 }
             }
         }
-        tempPrefs->serialPort = tempPort;
-
         QString guid = settings->value("GUID", "").toString();
         if (guid.isEmpty()) {
             guid = QUuid::createUuid().toString();
