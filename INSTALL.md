@@ -17,6 +17,7 @@ sudo apt-get install libopus-dev
 sudo apt-get install libeigen3-dev
 sudo apt-get install portaudio19-dev
 sudo apt-get install librtaudio-dev
+sudo apt-get install libhidapi-dev libqt5gamepad5-dev
 ~~~
 Now you need to install qcustomplot. There are two versions that are commonly found in linux distros: 1.3 and 2.0. Either will work fine. If you are not sure which version your linux install comes with, simply run both commands. One will work and the other will fail, and that's fine!
 
@@ -127,4 +128,12 @@ When done, create a build area, clone the repo, build and install:
 
 wfview is now installed in /usr/local/bin
 
+# How to configure your RC-28 knob under Linux
+
+To use RC-28 knob you need to add udev rules, please execute as root:
+
+~~~
+echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="0c26", ATTRS{idProduct}=="001e", MODE="0666"' >> /etc/udev/rules.d/99-ham-wfview.rules
+udevadm control --reload-rules && udevadm trigger
+~~~
 ---
