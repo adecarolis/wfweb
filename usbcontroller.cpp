@@ -187,7 +187,7 @@ void usbController::run()
     if (!handle) {
         handle = hid_open(0x0b33, 0x0030, NULL);
         if (!handle) {
-            handle = hid_open(0x0C26, 0x001E, NULL);
+            handle = hid_open(0x0c26, 0x001e, NULL);
             if (!handle) {
                 usbDevice = NONE;
             }
@@ -243,6 +243,7 @@ void usbController::run()
 void usbController::runTimer()
 {
     int res=1;
+    int changeVFO=0;
     while (res > 0) {
         QByteArray data(HIDDATALENGTH, 0x0);
         res = hid_read(handle, (unsigned char*)data.data(), HIDDATALENGTH);
@@ -331,7 +332,7 @@ void usbController::runTimer()
             shutpos = tempShutpos;
 
         }
-        else if (res == 64 && usbDevice == RC28)
+        else if (res == 32 && usbDevice == RC28)
         {
             // This is a response from the Icom RC28
             data.resize(8); // Might as well get rid of the unused data.
@@ -342,41 +343,62 @@ void usbController::runTimer()
 
             if (((unsigned char)data[5] == 0x06) && ((unsigned char)lastData[5] != 0x06))
             {
+		// TRANSMIT key down only (no other keys down)
                 //emit button(true, 6);
+                qDebug(logUsbControl()) << "PTT key down";
             }
             else if (((unsigned char)data[5] != 0x06) && ((unsigned char)lastData[5] == 0x06))
             {
+		// TRANSMIT key up only (no other keys down)
                 //emit button(false, 6);
+                qDebug(logUsbControl()) << "PTT key up";
             }
             else if (((unsigned char)data[5] == 0x03) && ((unsigned char)lastData[5] != 0x03))
             {
+		// F-2 key up only (no other keys down)
                 //emit button(true, 7);
+                qDebug(logUsbControl()) << "F-2 key up";
             }
             else if (((unsigned char)data[5] != 0x03) && ((unsigned char)lastData[5] == 0x03))
             {
+		// F-2 key down only (no other keys down)
                 //emit button(false, 7);
+                qDebug(logUsbControl()) << "F-2 key down";
             }
-            else if (((unsigned char)data[5] == 0x7d) && ((unsigned char)lastData[5] != 0x7d))
+            else if (((unsigned char)data[5] == 0x05) && ((unsigned char)lastData[5] != 0x05))
             {
+		// F-1 key up only (no other keys down)
                 //emit button(true, 5);
+                qDebug(logUsbControl()) << "F-1 key up";
             }
-            else if (((unsigned char)data[5] != 0x7d) && ((unsigned char)lastData[5] == 0x7d))
+            else if (((unsigned char)data[5] != 0x05) && ((unsigned char)lastData[5] == 0x05))
             {
+		// F-1 key down only (no other keys down)
                 //emit button(false, 5);
+                qDebug(logUsbControl()) << "F-1 key down";
             }
 
             if ((unsigned char)data[5] == 0x07)
             {
+		// TODO: change of frequency should be multiplied by data[1] or data[4]
+		// data[1] max value depend on rotation speed I was able to detect was 150 decimal
+		// data[4] can have 3 values 0 1 or 2 it depends on rotation speed
+                if ((unsigned char)data[4] > 0x00) {
+		    changeVFO = data[4] * data[1];
+		} else {
+		    changeVFO = data[1];
+		}
                 if ((unsigned char)data[3] == 0x01)
                 {
-                    //qDebug(logUsbControl()) << "Frequency UP";
-                    jogCounter++;
-                    //emit jogPlus();
+                    qDebug(logUsbControl()) << "Frequency UP";
+                    emit jogPlus();
+                    jogCounter = jogCounter + changeVFO;
                 }
                 else if ((unsigned char)data[3] == 0x02)
                 {
-                    //qDebug(logUsbControl()) << "Frequency DOWN";
+                    qDebug(logUsbControl()) << "Frequency DOWN";
                     emit jogMinus();
+                    jogCounter = jogCounter - changeVFO;
                     jogCounter--;
                 }
             }
