@@ -28,7 +28,9 @@ The following highlights are in this 1.51-release ince v1.50:
     		added libs for suse builds; it also builds on leap 15.5
     		Add skimmer support (setting not saved)
     		Add AR Cluster support
-
++1.54		Various wfserver fixes
+		logging using termbin edge case fix
+		
 Notes:
 
 - We know about high CPU usage on RPi.
