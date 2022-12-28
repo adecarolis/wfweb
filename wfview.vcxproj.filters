@@ -211,6 +211,9 @@
     <QtMoc Include="pahandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <ClInclude Include="prefs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <QtMoc Include="pttyhandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -236,6 +239,9 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <ClInclude Include="rigidentities.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rigstate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <QtMoc Include="rthandler.h">
@@ -280,14 +286,84 @@
     <QtMoc Include="wfmain.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <ClInclude Include="wfviewtypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="aboutbox.ui">
@@ -457,13 +533,11 @@
     <None Include="resources\wfview.png">
       <Filter>Resource Files</Filter>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include=".\wfview_resource.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="resources\xbox.png">
+    <None Include="resources\xbox.png">
       <Filter>Resource Files</Filter>
-    </Image>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="C:\Users\Phil\source\repos\wfview\wfview_resource.rc" />
   </ItemGroup>
 </Project>

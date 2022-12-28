@@ -1487,7 +1487,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
     else if (cmd->type == bandswitch)
     {
         //qDebug() << "Bandswitch";
-        issueCmd((cmds)cmd->command, cmd->band);
+        //issueCmd((cmds)cmd->command, cmd->band); // Needs fixing!
     }
     else if (cmd->type == modeswitch)
     {
@@ -2137,7 +2137,7 @@ void wfmain::loadSettings()
             comm.index = settings->value("Num", 0).toInt();
             comm.text = settings->value("Text", "").toString();
             comm.command = settings->value("Command", 0).toInt();
-            comm.band = (bandType)settings->value("Band", 0).toInt();
+            //comm.band = (bandType)settings->value("Band", 0).toInt(); // Needs fixing!
             usbCommands.append(comm);
         }
         settings->endArray();
@@ -3474,7 +3474,7 @@ void wfmain::doCmd(commandtype cmddata)
         case cmdGetBandStackReg:
         {
             char band = (*std::static_pointer_cast<char>(data));
-            bandStkBand = rigCaps.bsr[(bandType)band]; // 23cm
+            //bandStkBand = rigCaps.bsr[(bandType)band]; // 23cm Needs fixing
             bandStkRegCode = ui->bandStkPopdown->currentIndex() + 1;
             emit getBandStackReg(bandStkBand, bandStkRegCode);
             break;
@@ -8238,7 +8238,8 @@ void wfmain::on_usbControllerBtn_clicked()
             shut->show();
             shut->raise();
         }
-
+    }
+}
 
 void wfmain::on_autoPollBtn_clicked(bool checked)
 {

@@ -7,9 +7,9 @@
     <LocalDebuggerEnvironment>PATH=$(QTDIR)\bin%3bC:\QT\5.15.2\MSVC2019\bin%3b$(QTDIR)\bin%3bC:\QT\5.15.2\MSVC2019\bin%3b$(PATH)</LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <QtLastBackgroundBuild>2022-09-18T15:37:45.3534446Z</QtLastBackgroundBuild>
+    <QtLastBackgroundBuild>2022-12-28T10:08:37.8704645Z</QtLastBackgroundBuild>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <QtLastBackgroundBuild>2022-09-18T15:37:45.5131382Z</QtLastBackgroundBuild>
+    <QtLastBackgroundBuild>2022-12-28T10:08:38.7333469Z</QtLastBackgroundBuild>
   </PropertyGroup>
 </Project>
