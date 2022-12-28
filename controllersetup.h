@@ -13,6 +13,7 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QGraphicsProxyWidget>
+#include <QAbstractItemView>
 
 #include <QDebug>
 #include <QObject>

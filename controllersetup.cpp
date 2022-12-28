@@ -147,6 +147,11 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
 
     onEvent.blockSignals(true);
     offEvent.blockSignals(true);
+    onEvent.setMaxVisibleItems(5);
+    offEvent.setMaxVisibleItems(5);
+    onEvent.view()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    offEvent.view()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+
     onEvent.clear();
     offEvent.clear();
     for (COMMAND &c : *commands) {
