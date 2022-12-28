@@ -3428,6 +3428,8 @@ void wfmain::doCmd(commandtype cmddata)
         {
             bool pttrequest = (*std::static_pointer_cast<bool>(data));
             emit setPTT(pttrequest);
+            emit controllerLed(pttrequest, 1);
+
             ui->meter2Widget->clearMeterOnPTTtoggle();
             if (pttrequest)
             {
@@ -3442,6 +3444,7 @@ void wfmain::doCmd(commandtype cmddata)
         {
             bool pttrequest = !amTransmitting;
             emit setPTT(pttrequest);
+            emit controllerLed(pttrequest, 1);
             ui->meter2Widget->clearMeterOnPTTtoggle();
             if (pttrequest)
             {
@@ -4230,6 +4233,7 @@ void wfmain::receivePTTstatus(bool pttOn)
     if (pttOn && !amTransmitting)
     {
         pttLed->setState(QLedLabel::State::StateError);
+
     }
     else if (!pttOn && amTransmitting)
     {
@@ -5393,6 +5397,7 @@ void wfmain::on_pttOnBtn_clicked()
     // Are we already PTT? Not a big deal, just send again anyway.
     showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
     issueCmdUniquePriority(cmdSetPTT, true);
+
     // send PTT
     // Start 3 minute timer
     pttTimer->start();
@@ -5414,7 +5419,6 @@ void wfmain::handlePttLimit()
 {
     // transmission time exceeded!
     showStatusBarText("Transmit timeout at 3 minutes. Sending PTT OFF command now.");
-    issueCmdUniquePriority(cmdSetPTT, false);
     issueDelayedCommand(cmdGetPTT);
 }
 
