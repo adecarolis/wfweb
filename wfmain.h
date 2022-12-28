@@ -42,6 +42,7 @@
 #include "colorprefs.h"
 #include "loggingwindow.h"
 #include "cluster.h"
+#include "audiodevices.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -1050,6 +1051,7 @@ private:
     QList<clusterSettings> clusters;
     QMutex clusterMutex;
     QColor clusterColor;
+    audioDevices* audioDev = Q_NULLPTR;
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)

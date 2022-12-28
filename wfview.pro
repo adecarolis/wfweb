@@ -179,7 +179,8 @@ SOURCES += main.cpp\
     tcpserver.cpp \
     cluster.cpp \
     database.cpp \
-    aboutbox.cpp 
+    aboutbox.cpp \
+    audiodevices.cpp
 
 HEADERS  += wfmain.h \
     colorprefs.h \
@@ -220,7 +221,8 @@ HEADERS  += wfmain.h \
     cluster.h \
     database.h \
     aboutbox.h \
-    wfviewtypes.h
+    wfviewtypes.h \
+    audiodevices.h
 
 
 FORMS    += wfmain.ui \

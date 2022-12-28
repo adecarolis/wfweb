@@ -56,6 +56,9 @@
     <ClCompile Include="audioconverter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="audiodevices.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="audiohandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -160,6 +163,9 @@
     <QtMoc Include="audioconverter.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="audiodevices.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="audiohandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -199,6 +205,9 @@
     <QtMoc Include="pahandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <ClInclude Include="prefs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <QtMoc Include="pttyhandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -224,6 +233,9 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <ClInclude Include="rigidentities.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="rigstate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <QtMoc Include="rthandler.h">
@@ -265,17 +277,81 @@
     <QtMoc Include="wfmain.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <ClInclude Include="rigstate.h">
+    <ClInclude Include="wfviewtypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="aboutbox.ui">
@@ -435,6 +511,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include=".\wfview_resource.rc" />
+    <ResourceCompile Include="C:\Users\Phil\source\repos\wfview\wfview_resource.rc" />
   </ItemGroup>
 </Project>
