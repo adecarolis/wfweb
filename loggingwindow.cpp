@@ -84,10 +84,11 @@ void loggingWindow::handleDataFromLoggingHost()
         {
             clipboard->setText(URL);
             qInfo(logLogger()) << "Sent log to URL: " << URL;
+            qInfo(logLogger()) << "This address already copied to the clipboard. Please paste this URL in to your support questions.";
             URLmsgBox.setText("Your log has been posted, and the URL has been copied to the clipboard.");
             URLmsgBox.setInformativeText("<b>" + URL + "</b>");
             URLmsgBox.exec();
-            // For whatever reason, showing the message box hides this window.
+            // For whatever reason, showing the message box hides https://termbin.com/ypxbthis window.
             this->show();
             this->raise();
             this->activateWindow();
@@ -124,6 +125,7 @@ void loggingWindow::handleLoggingHostError(QAbstractSocket::SocketError error)
 
     default:
         qWarning(logLogger()) << "Error connecting to logging host. Check internet connection. Error code: " << error;
+        ui->sendToPasteBtn->setDisabled(false);
         break;
     }
 }
