@@ -13,7 +13,7 @@ TEMPLATE = app
 
 CONFIG += console
 
-DEFINES += WFVIEW_VERSION=\\\"1.52\\\"
+DEFINES += WFVIEW_VERSION=\\\"1.54\\\"
 
 DEFINES += BUILD_WFSERVER
 
@@ -169,4 +169,5 @@ HEADERS  += servermain.h \
     ulaw.h \
     tcpserver.h \
     audiotaper.h \
-    keyboard.h
+    keyboard.h \
+    wfviewtypes.h

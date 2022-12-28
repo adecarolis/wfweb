@@ -72,6 +72,7 @@ public slots:
     void setTcpTimeout(int p) { tcpTimeout = p; }
     void tcpCleanup();
     void freqRange(double low, double high);
+    void enableSkimmerSpots(bool enable);
 
 private:
     void sendTcpData(QString data);
@@ -99,6 +100,7 @@ private:
     double lowFreq;
     double highFreq;
     QMap<QString,spotData*> allSpots;
+    bool skimmerSpots = false;
 };
 
 #endif

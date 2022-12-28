@@ -31,7 +31,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     setWindowIcon(QIcon( QString(":resources/wfview.png")));
     this->debugMode = debugMode;
     debugModeLogging = debugMode;
-    version = QString("wfview version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
+    version = QString("wfview version: %1 (Git:%2 on %3 at %4 by %5@%6). Operating System: %7 (%8). Build Qt Version %9. Current Qt Version: %10")
         .arg(QString(WFVIEW_VERSION))
         .arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
         .arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture())
@@ -103,8 +103,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qDebug(logSystem()) << "Running setUIToPrefs()";
     setUIToPrefs();
 
-    loadColorPresetToUIandPlots(0);
-
     qDebug(logSystem()) << "Running setInititalTiming()";
     setInitialTiming();
 
@@ -131,6 +129,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     connect(this, SIGNAL(setClusterPassword(QString)), cluster, SLOT(setTcpPassword(QString)));
     connect(this, SIGNAL(setClusterTimeout(int)), cluster, SLOT(setTcpTimeout(int)));
     connect(this, SIGNAL(setFrequencyRange(double, double)), cluster, SLOT(freqRange(double, double)));
+    connect(this, SIGNAL(setClusterSkimmerSpots(bool)), cluster, SLOT(enableSkimmerSpots(bool)));
 
     connect(cluster, SIGNAL(sendSpots(QList<spotData>)), this, SLOT(receiveSpots(QList<spotData>)));
     connect(cluster, SIGNAL(sendOutput(QString)), this, SLOT(receiveClusterOutput(QString)));
@@ -342,7 +341,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(scopeDisplayEnable()), rig, SLOT(enableSpectrumDisplay()));
     connect(rig, SIGNAL(haveMode(unsigned char, unsigned char)), this, SLOT(receiveMode(unsigned char, unsigned char)));
     connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
-    connect(rig, SIGNAL(havePassband(quint8)), this, SLOT(receivePassband(quint8)));
+    connect(rig, SIGNAL(havePassband(quint16)), this, SLOT(receivePassband(quint16)));
 
     connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
     connect(rpt, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
@@ -646,10 +645,13 @@ void wfmain::receiveCommReady()
         if(prefs.CIVisRadioModel)
         {
             qInfo(logSystem()) << "Skipping Rig ID query, using user-supplied model from CI-V address: " << prefs.radioCIVAddr;
+            emit setCIVAddr(prefs.radioCIVAddr);
             emit setRigID(prefs.radioCIVAddr);
         } else {
+            emit setCIVAddr(prefs.radioCIVAddr);
             emit getRigID();
-            getInitialRigState();
+            issueDelayedCommand(cmdGetRigID);
+            delayedCommand->start();
         }
     }
 }
@@ -741,6 +743,7 @@ void wfmain::setupPlots()
     passbandIndicator->setAntialiased(true);
     passbandIndicator->setPen(QPen(Qt::red));
     passbandIndicator->setBrush(QBrush(Qt::red));
+    passbandIndicator->setSelectable(true);
 
     freqIndicatorLine = new QCPItemLine(plot);
     freqIndicatorLine->setAntialiased(true);
@@ -1227,6 +1230,9 @@ void wfmain::setUIToPrefs()
             ui->colorPresetCombo->setItemText(pn, *p.presetName);
     }
 
+    ui->colorPresetCombo->setCurrentIndex(prefs.currentColorPresetNumber);
+    loadColorPresetToUIandPlots(prefs.currentColorPresetNumber);
+
     ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
 
@@ -1530,6 +1536,7 @@ void wfmain::setDefPrefs()
     defPrefs.forceRTSasPTT = false;
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.serialPortBaud = 115200;
+    defPrefs.polling_ms = 0; // 0 = Automatic
     defPrefs.enablePTT = false;
     defPrefs.niceTS = true;
     defPrefs.enableRigCtlD = false;
@@ -1594,7 +1601,7 @@ void wfmain::loadSettings()
     // Load in the color presets. The default values are already loaded.
 
     settings->beginGroup("ColorPresets");
-    settings->value("currentColorPresetNumber", prefs.currentColorPresetNumber).toInt();
+    prefs.currentColorPresetNumber = settings->value("currentColorPresetNumber", defPrefs.currentColorPresetNumber).toInt();
     if(prefs.currentColorPresetNumber > numColorPresetsTotal-1)
         prefs.currentColorPresetNumber = 0;
 
@@ -1676,6 +1683,27 @@ void wfmain::loadSettings()
     if (prefs.serialPortBaud > 0)
     {
         serverConfig.baudRate = prefs.serialPortBaud;
+    }
+
+    prefs.polling_ms = settings->value("polling_ms", defPrefs.polling_ms).toInt();
+    if(prefs.polling_ms == 0)
+    {
+        // Automatic
+        ui->pollingButtonGroup->blockSignals(true);
+        ui->autoPollBtn->setChecked(true);
+        ui->manualPollBtn->setChecked(false);
+        ui->pollingButtonGroup->blockSignals(false);
+        ui->pollTimeMsSpin->setEnabled(false);
+    } else {
+        // Manual
+        ui->pollingButtonGroup->blockSignals(true);
+        ui->autoPollBtn->setChecked(false);
+        ui->manualPollBtn->setChecked(true);
+        ui->pollingButtonGroup->blockSignals(false);
+        ui->pollTimeMsSpin->blockSignals(true);
+        ui->pollTimeMsSpin->setValue(prefs.polling_ms);
+        ui->pollTimeMsSpin->blockSignals(false);
+        ui->pollTimeMsSpin->setEnabled(true);
     }
 
     prefs.virtualSerialPort = settings->value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
@@ -2381,6 +2409,10 @@ void wfmain::saveSettings()
     qInfo(logSystem()) << "Saving settings to " << settings->fileName();
     // Basic things to load:
 
+    settings->beginGroup("Program");
+    settings->setValue("version", QString(WFVIEW_VERSION));
+    settings->endGroup();
+
     // UI: (full screen, dark theme, draw peaks, colors, etc)
     settings->beginGroup("Interface");
     settings->setValue("UseFullScreen", prefs.useFullScreen);
@@ -2410,6 +2442,7 @@ void wfmain::saveSettings()
     settings->setValue("RigCIVuInt", prefs.radioCIVAddr);
     settings->setValue("CIVisRadioModel", prefs.CIVisRadioModel);
     settings->setValue("ForceRTSasPTT", prefs.forceRTSasPTT);
+    settings->setValue("polling_ms", prefs.polling_ms); // 0 = automatic
     settings->setValue("SerialPortRadio", prefs.serialPortRadio);
     settings->setValue("SerialPortBaud", prefs.serialPortBaud);
     settings->setValue("VirtualSerialPort", prefs.virtualSerialPort);
@@ -3461,8 +3494,12 @@ void wfmain::doCmd(cmds cmd)
             //qInfo(logSystem()) << "NOOP";
             break;
         case cmdGetRigID:
-            emit getRigID();
-            break;
+            if(!haveRigCaps)
+            {
+                emit getRigID();
+                issueDelayedCommand(cmdGetRigID);
+            }
+        break;
         case cmdGetRigCIV:
             // if(!know rig civ already)
             if(!haveRigCaps)
@@ -4041,13 +4078,10 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         setBandButtons();
 
-
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
 
-        ui->useRTSforPTTchk->blockSignals(true);
-        ui->useRTSforPTTchk->setChecked(rigCaps.useRTSforPTT);
-        ui->useRTSforPTTchk->blockSignals(false);
+        ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
 
         ui->audioSystemCombo->setEnabled(false);
         ui->audioSystemServerCombo->setEnabled(false);
@@ -4065,7 +4099,12 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         issueDelayedCommand(cmdGetFreq);
         issueDelayedCommand(cmdGetMode);
         // recalculate command timing now that we know the rig better:
-        calculateTimingParameters();
+        if(prefs.polling_ms != 0)
+        {
+            changePollTiming(prefs.polling_ms, true);
+        } else {
+            calculateTimingParameters();
+        }
         initPeriodicCommands();
         
         // Set the second meter here as I suspect we need to be connected for it to work?
@@ -4225,10 +4264,12 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             // TODO: create non-button function to do this
             // This will break if the button is ever moved or renamed.
             on_clearPeakBtn_clicked();
+        } else {
+            plasmaPrepared = false;
+            preparePlasma();
         }
         // Inform other threads (cluster) that the frequency range has changed.
         emit setFrequencyRange(startFreq, endFreq);
-        // TODO: Add clear-out for the buffer
     }
 
     oldLowerFreq = startFreq;
@@ -4271,8 +4312,10 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     }
     plasmaMutex.lock();
     spectrumPlasma.push_front(spectrum);
-    spectrumPlasma.pop_back();
-    //spectrumPlasma.resize(spectrumPlasmaSize);
+    if(spectrumPlasma.size() > (int)spectrumPlasmaSize)
+    {
+        spectrumPlasma.pop_back();
+    }
     plasmaMutex.unlock();
 
 
@@ -4379,7 +4422,6 @@ void wfmain::preparePlasma()
 {
     if(plasmaPrepared)
         return;
-    QByteArray empty((int)spectWidth, '\x01');
 
     if(spectrumPlasmaSize == 0)
         spectrumPlasmaSize = 128;
@@ -4387,10 +4429,6 @@ void wfmain::preparePlasma()
     plasmaMutex.lock();
     spectrumPlasma.clear();
 
-    for(unsigned int p=0; p < spectrumPlasmaSize; p++)
-    {
-        spectrumPlasma.append(empty);
-    }
 
     spectrumPlasma.squeeze();
     plasmaMutex.unlock();
@@ -5902,9 +5940,9 @@ void wfmain::receiveLANGain(unsigned char level)
     processModLevel(inputLAN, level);
 }
 
-void wfmain::receivePassband(quint8 pass)
+void wfmain::receivePassband(quint16 pass)
 {
-    int calc;
+/* int calc;
     if (currentModeInfo.mk == modeAM) {
         calc = 200 + (pass * 200);
     }
@@ -5914,8 +5952,8 @@ void wfmain::receivePassband(quint8 pass)
     }
     else {
         calc = 600 + ((pass - 10) * 100);
-    }
-    passBand = (double)(calc / 1000000.0);
+    } */
+    passBand = (double)(pass / 1000000.0);
 }
 
 void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
@@ -6243,6 +6281,10 @@ void wfmain::calculateTimingParameters()
 
     qInfo(logSystem()) << "Delay command interval timing: " << delayedCommand->interval() << "ms";
 
+    ui->pollTimeMsSpin->blockSignals(true);
+    ui->pollTimeMsSpin->setValue(delayedCommand->interval());
+    ui->pollTimeMsSpin->blockSignals(false);
+
     // Normal:
     delayedCmdIntervalLAN_ms =  delayedCommand->interval();
     delayedCmdIntervalSerial_ms = delayedCommand->interval();
@@ -6397,7 +6439,7 @@ void wfmain::setBandButtons()
     for(unsigned int i=0; i < rigCaps.bands.size(); i++)
     {
         bandSel = rigCaps.bands.at(i);
-        switch(bandSel)
+        switch(bandSel.band)
         {
             case(band23cm):
                 showButton(ui->band23cmbtn);
@@ -6522,20 +6564,6 @@ void wfmain::on_wfLengthSlider_valueChanged(int value)
 {
     prefs.wflength = (unsigned int)(value);
     prepareWf(value);
-}
-
-void wfmain::on_pollingBtn_clicked()
-{
-    bool ok;
-    int timing = 0;
-    timing = QInputDialog::getInt(this, "wfview Radio Polling Setup", "Poll Timing Interval (ms)", delayedCommand->interval(), 1, 200, 1, &ok );
-
-    if(ok && timing)
-    {
-        delayedCommand->setInterval( timing );
-        qInfo(logSystem()) << "User changed radio polling interval to " << timing << "ms.";
-        showStatusBarText("User changed radio polling interval to " + QString("%1").arg(timing) + "ms.");
-    }
 }
 
 void wfmain::on_wfAntiAliasChk_clicked(bool checked)
@@ -7037,6 +7065,7 @@ void wfmain::on_underlayBufferSlider_valueChanged(int value)
 {
     resizePlasmaBuffer(value);
     prefs.underlayBufferSize = value;
+    spectrumPlasmaSize = value;
 }
 
 void wfmain::resizePlasmaBuffer(int newSize)
@@ -7123,28 +7152,7 @@ void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    // issueDelayedCommand(cmdGetRigID);
-    //emit getRigCIV();
-    //trxadj->show();
-    //setRadioTimeDatePrep();
-    //wf->setInteraction(QCP::iRangeZoom, true);
-    //wf->setInteraction(QCP::iRangeDrag, true);
-    plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
-    colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
-
-//    bool ok;
-//    int height = QInputDialog::getInt(this, "wfview window fixed height", "number: ", 350, 1, 500, 1, &ok );
-
-//    this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-//    this->setMaximumSize(QSize(1025,height));
-//    this->setMinimumSize(QSize(1025,height));
-//    //this->setMaximumSize(QSize(929, 270));
-//    //this->setMinimumSize(QSize(929, 270));
-
-//    resize(minimumSize());
-//    adjustSize(); // main window
-//    adjustSize();
-
+    emit getRigID();
 }
 
 // ----------   color helper functions:   ---------- //
@@ -8027,9 +8035,9 @@ void wfmain::on_clusterServerNameCombo_currentIndexChanged(int index)
 
     for (int i = 0; i < clusters.size(); i++) {
         if (i == index)
-            clusters[index].isdefault = true;
+            clusters[i].isdefault = true;
         else
-            clusters[index].isdefault = false;
+            clusters[i].isdefault = false;
     }
 
     emit setClusterServerName(clusters[index].server);
@@ -8100,8 +8108,8 @@ void wfmain::on_clusterTimeoutLineEdit_editingFinished()
 
 void wfmain::receiveSpots(QList<spotData> spots)
 {
-    QElapsedTimer timer;
-    timer.start();
+    //QElapsedTimer timer;
+    //timer.start();
 
     bool current = false;
     
@@ -8178,7 +8186,7 @@ void wfmain::receiveSpots(QList<spotData> spots)
 
     }
 
-    qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
+    //qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
 }
 
 void wfmain::on_clusterPopOutBtn_clicked()
@@ -8209,6 +8217,12 @@ void wfmain::on_clusterPopOutBtn_clicked()
     }
 }
 
+void wfmain::on_clusterSkimmerSpotsEnable_clicked(bool enable)
+{
+    prefs.clusterSkimmerSpotsEnable = enable;
+    emit setClusterSkimmerSpots(enable);
+}
+
 void wfmain::on_clickDragTuningEnableChk_clicked(bool checked)
 {
     prefs.clickDragTuningEnable = checked;
@@ -8224,5 +8238,47 @@ void wfmain::on_usbControllerBtn_clicked()
             shut->show();
             shut->raise();
         }
+
+
+void wfmain::on_autoPollBtn_clicked(bool checked)
+{
+    ui->pollTimeMsSpin->setEnabled(!checked);
+    if(checked)
+    {
+        prefs.polling_ms = 0;
+        qInfo(logSystem()) << "User set radio polling interval to automatic.";
+        calculateTimingParameters();
+    }
+}
+
+void wfmain::on_manualPollBtn_clicked(bool checked)
+{
+    ui->pollTimeMsSpin->setEnabled(checked);
+    if(checked)
+    {
+        prefs.polling_ms = ui->pollTimeMsSpin->value();
+        changePollTiming(prefs.polling_ms);
+    }
+}
+
+void wfmain::on_pollTimeMsSpin_valueChanged(int timing_ms)
+{
+    if(ui->manualPollBtn->isChecked())
+    {
+        changePollTiming(timing_ms);
+    }
+}
+
+void wfmain::changePollTiming(int timing_ms, bool setUI)
+{
+    delayedCommand->setInterval(timing_ms);
+    qInfo(logSystem()) << "User changed radio polling interval to " << timing_ms << "ms.";
+    showStatusBarText("User changed radio polling interval to " + QString("%1").arg(timing_ms) + "ms.");
+    prefs.polling_ms = timing_ms;
+    if(setUI)
+    {
+        ui->pollTimeMsSpin->blockSignals(true);
+        ui->pollTimeMsSpin->setValue(timing_ms);
+        ui->pollTimeMsSpin->blockSignals(false);
     }
 }

@@ -337,12 +337,12 @@ signals:
     void onStarted();
     void onStopped();
     void sendData(QString data);
-    void setFrequency(unsigned char vfo, freqt freq);
+    void setFrequency(quint8 vfo, freqt freq);
     void setPTT(bool state);
-    void setMode(unsigned char mode, unsigned char modeFilter);
-    void setDataMode(bool dataOn, unsigned char modeFilter);
-    void setVFO(unsigned char vfo);
-    void setSplit(unsigned char split);
+    void setMode(quint8 mode, quint8 modeFilter);
+    void setDataMode(bool dataOn, quint8 modeFilter);
+    void setVFO(quint8 vfo);
+    void setSplit(quint8 split);
     void setDuplexMode(duplexMode dm);
     void stateUpdated();
     // Power
@@ -350,19 +350,19 @@ signals:
     void sendPowerOff();
 
     // Att/preamp
-    void setAttenuator(unsigned char att);
-    void setPreamp(unsigned char pre);
+    void setAttenuator(quint8 att);
+    void setPreamp(quint8 pre);
 
     //Level set
-    void setRfGain(unsigned char level);
-    void setAfGain(unsigned char level);
-    void setSql(unsigned char level);
-    void setMicGain(unsigned char);
-    void setCompLevel(unsigned char);
-    void setTxPower(unsigned char);
-    void setMonitorLevel(unsigned char);
-    void setVoxGain(unsigned char);
-    void setAntiVoxGain(unsigned char);
+    void setRfGain(quint8 level);
+    void setAfGain(quint8 level);
+    void setSql(quint8 level);
+    void setMicGain(quint8);
+    void setCompLevel(quint8);
+    void setTxPower(quint8);
+    void setMonitorLevel(quint8);
+    void setVoxGain(quint8);
+    void setAntiVoxGain(quint8);
     void setSpectrumRefLevel(int);
 
 
@@ -403,15 +403,14 @@ private:
     rigstate* rigState = Q_NULLPTR;
     rigCtlD* parent;
     bool chkVfoEecuted=false;
-    QString getMode(unsigned char mode, bool datamode);
-    unsigned char getMode(QString modeString);
-    QString getFilter(unsigned char mode, unsigned char filter);
-    QString generateFreqRange(bandType band);
-    unsigned char getAntennas();
-    quint64 getRadioModes();
-    QString getAntName(unsigned char ant);
-    unsigned char antFromName(QString name);
-    int getCalibratedValue(unsigned char meter,cal_table_t cal);
+    QString getMode(quint8 mode, bool datamode);
+    quint8 getMode(QString modeString);
+    QString getFilter(quint8 mode, quint8 filter);
+    quint8 getAntennas();
+    quint64 getRadioModes(QString mode = "");
+    QString getAntName(quint8 ant);
+    quint8 antFromName(QString name);
+    int getCalibratedValue(quint8 meter,cal_table_t cal);
 };
 
 

@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
     signal(SIGTERM, cleanup);
     signal(SIGKILL, cleanup);
 #endif
-    w = new servermain(logFilename, settingsFile);
+    w = new servermain(settingsFile, logFilename);
 #else
     a.setWheelScrollLines(1); // one line per wheel click
     wfmain w(settingsFile, logFilename, debugMode);
@@ -203,11 +203,7 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
     } 
     // Write to the output category of the message and the message itself
     out << context.category << ": " << msg << "\n";
-#ifdef BUILD_WFSERVER
     std::cout << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ").toLocal8Bit().toStdString() << msg.toLocal8Bit().toStdString() << "\n";
-#endif
-    text = out.readAll();
     out.flush();    // Clear the buffered data
-    //mainwindow.handleLogText(test);
 }
 #endif

@@ -5,7 +5,7 @@
 #include <QMutexLocker>
 #include <QDebug>
 
-
+#include "wfviewtypes.h"
 #include "commhandler.h"
 #include "pttyhandler.h"
 #include "udphandler.h"
@@ -22,48 +22,6 @@
 // 0xE1 is new default, 0xE0 was before.
 // note: using a define because switch case doesn't even work with const unsigned char. Surprised me.
 #define compCivAddr 0xE1
-
-enum meterKind {
-    meterNone=0,
-    meterS,
-    meterCenter,
-    meterSWR,
-    meterPower,
-    meterALC,
-    meterComp,
-    meterVoltage,
-    meterCurrent,
-    meterRxdB,
-    meterTxMod,
-    meterRxAudio,
-    meterAudio,
-    meterLatency
-};
-
-enum spectrumMode {
-    spectModeCenter=0x00,
-    spectModeFixed=0x01,
-    spectModeScrollC=0x02,
-    spectModeScrollF=0x03,
-    spectModeUnknown=0xff
-};
-
-struct freqt {
-    quint64 Hz;
-    double MHzDouble;
-};
-
-struct datekind {
-    uint16_t year;
-    unsigned char month;
-    unsigned char day;
-};
-
-struct timekind {
-    unsigned char hours;
-    unsigned char minutes;
-    bool isMinus;
-};
 
 class rigCommander : public QObject
 {
@@ -123,6 +81,7 @@ public slots:
     void getRitValue();
     void setRitValue(int ritValue);
     void setRitEnable(bool ritEnabled);
+    void setPassband(quint16 pass);
 
     // PTT, ATU, ATT, Antenna, and Preamp:
     void getPTT();
@@ -323,7 +282,7 @@ signals:
     void haveBandStackReg(freqt f, char mode, char filter, bool dataOn);
     void haveRitEnabled(bool ritEnabled);
     void haveRitFrequency(int ritHz);
-    void havePassband(quint8 pass);
+    void havePassband(quint16 pass);
 
     // Repeater:
     void haveDuplexMode(duplexMode);

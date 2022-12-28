@@ -17,7 +17,7 @@
 #include <eigen3/Eigen/Eigen>
 #endif
 
-enum audioType {qtAudio,portAudio,rtAudio};
+#include "wfviewtypes.h"
 
 #include "resampler/speex_resampler.h"
 

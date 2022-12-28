@@ -14,7 +14,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 TARGET = wfview
 TEMPLATE = app
 
-DEFINES += WFVIEW_VERSION=\\\"1.52\\\"
+DEFINES += WFVIEW_VERSION=\\\"1.54\\\"
 
 DEFINES += BUILD_WFVIEW
 
@@ -193,6 +193,7 @@ HEADERS  += wfmain.h \
     colorprefs.h \
     commhandler.h \
     loggingwindow.h \
+    prefs.h \
     rigcommander.h \
     freqmemory.h \
     rigidentities.h \
@@ -218,6 +219,7 @@ HEADERS  += wfmain.h \
     repeatersetup.h \
     repeaterattributes.h \
     rigctld.h \
+    rigstate.h \
     ulaw.h \
     usbcontroller.h \
     controllersetup.h \
@@ -227,7 +229,8 @@ HEADERS  += wfmain.h \
     tcpserver.h \
     cluster.h \
     database.h \
-    aboutbox.h
+    aboutbox.h \
+    wfviewtypes.h
 
 FORMS    += wfmain.ui \
     calibrationwindow.ui \

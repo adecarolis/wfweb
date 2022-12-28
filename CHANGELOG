@@ -1,5 +1,86 @@
 # CHANGELOG
 
+- 20221129
+    
+		bumped 1.53
+
+- 20221128
+    
+		Add missing prefs
+    		Merge remote-tracking branch 'origin/pollprefs' into various-fixes
+    		Added some tooltips that nobody will notice.
+    		Added polling preferences and changed UI elements to radio buttons with
+    		spin box.
+    		Added program version number to the settings file. Currently it is merely
+    		written to and not used.
+    		Moved preferences to prefs.h, which should make it easier to add new
+    		preferences. Moved custom types (as it seemed useful here and there) to
+    		wfviewtypes.h. Let's use the wfviewtypes.h file for any kind of datatype
+    		which more than one module can make use of.
+    		Update some rig definitions to work with new band struct.
+
+- 20221126
+
+    		Merge branch 'master' into various-fixes
+    		Add some more commands
+
+- 20221124
+
+    		Fixed color preset zero issue.
+    		Fixed unusual set of conditions in which manual CI-V address would fail
+    		to identify the connected radio. The fix is to continually poll the RigID
+    		until one is received. Radios that don't support RigID will need to
+    		check both boxes in wfview (use rig as model number) to manually ID the
+    		radio.
+    		Fixed minor typo in debug text.
+    		Cleaned up rigidentities
+    		Fixed annoying indentation issue.
+    		Fixed broken RTS preference. Added preliminary (and untested) support
+    		for the IC-703, 737, 738, and 756.
+    		Fixed issue causing the current color preset to not be load (previously
+    		preset zero was always used).
+
+- 20221101
+
+    		added libs for suse builds; it also builds on leap 15.5
+
+- 20221031
+
+    		Fix passband warnings
+    		Add skimmer support (setting not saved)
+    		Key KEYSPD
+    		Add AR Cluster support
+    		Add more commands to rigctld
+
+-  20221029
+
+    		Make bandType a struct containing frequency and default SSB mode
+    		Remove spot display processing timer
+    		Silly error in setting default cluster
+
+- 20221028
+
+    		Send bye when disconnecting from cluster
+    		Add passband to rigctld and allow setting
+
+- 20221025
+
+    		combobox resizing fix
+
+- 20221024
+
+    		Stop it cutting off some devices
+
+- 20221023
+
+    		Resize according to boundingrect
+		Resize based on font size
+    		Try new universal resize code
+
+- 20221022
+
+    		added qt xml dev lib for suse
+
 
 - 20221025
 
