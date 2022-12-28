@@ -2173,6 +2173,11 @@ void wfmain::loadSettings()
         usbButtons.append(BUTTON(2, 13, QRect(30, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
         usbButtons.append(BUTTON(2, 14, QRect(280, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
 
+        // RC28 
+        usbButtons.append(BUTTON(3, 0, QRect(52, 445, 238, 64), Qt::red, &usbCommands[0], &usbCommands[0]));
+        usbButtons.append(BUTTON(3, 1, QRect(52, 373, 98, 46), Qt::red, &usbCommands[0], &usbCommands[0]));
+        usbButtons.append(BUTTON(3, 2, QRect(193, 373, 98, 46), Qt::red, &usbCommands[0], &usbCommands[0]));
+
         // Xbox Gamepad
         usbButtons.append(BUTTON(4, "UP", QRect(256, 229, 50, 50), Qt::red, &usbCommands[0], &usbCommands[0]));
         usbButtons.append(BUTTON(4, "DOWN", QRect(256, 316, 50, 50), Qt::red, &usbCommands[0], &usbCommands[0]));

@@ -332,10 +332,36 @@ void usbController::runTimer()
             shutpos = tempShutpos;
 
         }
-        else if (res == 32 && usbDevice == RC28)
+        else if ((res > 31) && usbDevice == RC28)
         {
             // This is a response from the Icom RC28
             data.resize(8); // Might as well get rid of the unused data.
+
+
+            // Buttons
+
+            BUTTON* butptt;
+            BUTTON* butf1;
+            BUTTON* butf2;
+
+            for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
+                if (but->dev == usbDevice) {
+
+                    if (but->num == 0)
+                    {
+                        butptt = but;
+                    }
+                    else if (but->num == 1)
+                    {
+                        butf1 = but;
+                    }
+                    else if (but->num == 2)
+                    {
+                        butf2 = but;
+                    }
+                }
+            }
+
 
             if (lastData.size() != 8) {
                 lastData = data;
@@ -343,61 +369,73 @@ void usbController::runTimer()
 
             if (((unsigned char)data[5] == 0x06) && ((unsigned char)lastData[5] != 0x06))
             {
-		// TRANSMIT key down only (no other keys down)
-                //emit button(true, 6);
+        		// TRANSMIT key down only (no other keys down)
                 qDebug(logUsbControl()) << "PTT key down";
+                qInfo(logUsbControl()) << "On Button event:" << butptt->onCommand->text;
+                emit button(butptt->onCommand);
+
             }
             else if (((unsigned char)data[5] != 0x06) && ((unsigned char)lastData[5] == 0x06))
             {
-		// TRANSMIT key up only (no other keys down)
+		        // TRANSMIT key up only (no other keys down)
                 //emit button(false, 6);
                 qDebug(logUsbControl()) << "PTT key up";
+                qInfo(logUsbControl()) << "Off Button event:" << butptt->offCommand->text;
+                emit button(butptt->offCommand);
             }
             else if (((unsigned char)data[5] == 0x03) && ((unsigned char)lastData[5] != 0x03))
             {
-		// F-2 key up only (no other keys down)
+		        // F-2 key up only (no other keys down)
                 //emit button(true, 7);
                 qDebug(logUsbControl()) << "F-2 key up";
+                qInfo(logUsbControl()) << "On Button event:" << butf2->onCommand->text;
+                emit button(butf2->onCommand);
             }
             else if (((unsigned char)data[5] != 0x03) && ((unsigned char)lastData[5] == 0x03))
             {
-		// F-2 key down only (no other keys down)
+		        // F-2 key down only (no other keys down)
                 //emit button(false, 7);
                 qDebug(logUsbControl()) << "F-2 key down";
+                qInfo(logUsbControl()) << "Off Button event:" << butf2->offCommand->text;
+                emit button(butf2->offCommand);
             }
             else if (((unsigned char)data[5] == 0x05) && ((unsigned char)lastData[5] != 0x05))
             {
-		// F-1 key up only (no other keys down)
+        		// F-1 key up only (no other keys down)
                 //emit button(true, 5);
                 qDebug(logUsbControl()) << "F-1 key up";
+                qInfo(logUsbControl()) << "On Button event:" << butf1->onCommand->text;
+                emit button(butf1->onCommand);
             }
             else if (((unsigned char)data[5] != 0x05) && ((unsigned char)lastData[5] == 0x05))
             {
-		// F-1 key down only (no other keys down)
+		        // F-1 key down only (no other keys down)
                 //emit button(false, 5);
                 qDebug(logUsbControl()) << "F-1 key down";
+                qInfo(logUsbControl()) << "Off Button event:" << butf1->offCommand->text;
+                emit button(butf1->offCommand);
             }
 
             if ((unsigned char)data[5] == 0x07)
             {
-		// TODO: change of frequency should be multiplied by data[1] or data[4]
-		// data[1] max value depend on rotation speed I was able to detect was 150 decimal
-		// data[4] can have 3 values 0 1 or 2 it depends on rotation speed
+		        // TODO: change of frequency should be multiplied by data[1] or data[4]
+		        // data[1] max value depend on rotation speed I was able to detect was 150 decimal
+		        // data[4] can have 3 values 0 1 or 2 it depends on rotation speed
                 if ((unsigned char)data[4] > 0x00) {
-		    changeVFO = data[4] * data[1];
-		} else {
-		    changeVFO = data[1];
-		}
+		            changeVFO = data[4] * data[1];
+		        } else {
+		            changeVFO = data[1];
+		        }
                 if ((unsigned char)data[3] == 0x01)
                 {
                     qDebug(logUsbControl()) << "Frequency UP";
-                    emit jogPlus();
+                    //emit jogPlus();
                     jogCounter = jogCounter + changeVFO;
                 }
                 else if ((unsigned char)data[3] == 0x02)
                 {
                     qDebug(logUsbControl()) << "Frequency DOWN";
-                    emit jogMinus();
+                    //emit jogMinus();
                     jogCounter = jogCounter - changeVFO;
                     jogCounter--;
                 }
@@ -408,17 +446,20 @@ void usbController::runTimer()
 
         if (lastusbController.msecsTo(QTime::currentTime()) >= 500 || lastusbController > QTime::currentTime())
         {
-            if (shutpos < 0x08)
+            if (usbDevice == shuttleXpress || usbDevice == shuttlePro2)
             {
-                shutMult = shutpos;
-                emit doShuttle(true, shutMult);
-                //qDebug(logUsbControl()) << "Shuttle PLUS" << shutMult;
+                if (shutpos < 0x08)
+                {
+                    shutMult = shutpos;
+                    emit doShuttle(true, shutMult);
+                    //qDebug(logUsbControl()) << "Shuttle PLUS" << shutMult;
 
-            }
-            else if (shutpos > 0xEF) {
-                shutMult = abs(shutpos - 0xff) + 1;
-                emit doShuttle(false, shutMult);
-                //qDebug(logUsbControl()) << "Shuttle MINUS" << shutMult;
+                }
+                else if (shutpos > 0xEF) {
+                    shutMult = abs(shutpos - 0xff) + 1;
+                    emit doShuttle(false, shutMult);
+                    //qDebug(logUsbControl()) << "Shuttle MINUS" << shutMult;
+                }
             }
             if (jogCounter != 0) {
                 emit sendJog(jogCounter);
