@@ -147,13 +147,16 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
 
     onEvent.blockSignals(true);
     offEvent.blockSignals(true);
+    onEvent.clear();
+    offEvent.clear();
+
     onEvent.setMaxVisibleItems(5);
     offEvent.setMaxVisibleItems(5);
     onEvent.view()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     offEvent.view()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    onEvent.setStyleSheet("combobox-popup: 0;");
+    offEvent.setStyleSheet("combobox-popup: 0;");
 
-    onEvent.clear();
-    offEvent.clear();
     for (COMMAND &c : *commands) {
         onEvent.addItem(c.text);
         offEvent.addItem(c.text);
