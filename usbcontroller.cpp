@@ -452,18 +452,18 @@ void usbController::runTimer()
                 {
                     shutMult = shutpos;
                     emit doShuttle(true, shutMult);
-                    //qDebug(logUsbControl()) << "Shuttle PLUS" << shutMult;
+                    qDebug(logUsbControl()) << "Shuttle PLUS" << shutMult;
 
                 }
                 else if (shutpos > 0xEF) {
                     shutMult = abs(shutpos - 0xff) + 1;
                     emit doShuttle(false, shutMult);
-                    //qDebug(logUsbControl()) << "Shuttle MINUS" << shutMult;
+                    qDebug(logUsbControl()) << "Shuttle MINUS" << shutMult;
                 }
             }
             if (jogCounter != 0) {
                 emit sendJog(jogCounter);
-                //qDebug(logUsbControl()) << "Change Frequency by" << jogCounter << "hz";
+                qDebug(logUsbControl()) << "Change Frequency by" << jogCounter << "hz";
                 jogCounter = 0;
             }
 
