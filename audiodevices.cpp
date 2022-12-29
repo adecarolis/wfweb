@@ -9,9 +9,9 @@
 #include "logcategories.h"
 
 audioDevices::audioDevices(audioType type, QFontMetrics fm, QObject* parent) :
+    QObject(parent),
     system(type),
-    fm(fm),
-	QObject(parent)
+    fm(fm)
 {
     
 }
@@ -44,7 +44,11 @@ void audioDevices::enumerate()
                     if (deviceInfo.deviceName() == defaultInputDeviceName) {
                         isDefault = true;
                     }
-                    inputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, deviceInfo.realm(),isDefault ));
+#if (QT_VERSION >= QT_VERSION_CHECK(5,15,0))
+                    inputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, deviceInfo.realm(), isDefault));
+#else
+                    inputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
+#endif
 
                     if (fm.boundingRect(deviceInfo.deviceName()).width() > numCharsIn)
                         numCharsIn = fm.boundingRect(deviceInfo.deviceName()).width();
@@ -69,7 +73,11 @@ void audioDevices::enumerate()
                     if (deviceInfo.deviceName() == defaultOutputDeviceName) {
                         isDefault = true;
                     }
-                    outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, deviceInfo.realm(),isDefault));
+#if (QT_VERSION >= QT_VERSION_CHECK(5,15,0))
+                    outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, deviceInfo.realm(), isDefault));
+#else
+                    outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
+#endif
                     if (fm.boundingRect(deviceInfo.deviceName()).width() > numCharsOut)
                         numCharsOut = fm.boundingRect(deviceInfo.deviceName()).width();
 

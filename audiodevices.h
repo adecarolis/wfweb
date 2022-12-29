@@ -58,14 +58,14 @@ signals:
     void updated();
 protected:
 private:
+    audioType system;
+    QFontMetrics fm;
     QString defaultInputDeviceName;
     QString defaultOutputDeviceName;
     int numInputDevices;
     int numOutputDevices;
-    audioType system;
     QList<audioDevice> inputs;
     QList<audioDevice> outputs;
-    QFontMetrics fm;
     int numCharsIn = 0;
     int numCharsOut = 0;
 };
