@@ -1798,6 +1798,7 @@
              <font>
               <family>DejaVu Sans Mono</family>
               <pointsize>14</pointsize>
+              <weight>75</weight>
               <bold>true</bold>
              </font>
             </property>
@@ -2685,23 +2686,6 @@
                       </widget>
                      </item>
                      <item>
-                      <spacer name="horizontalSpacer_13">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>40</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </spacer>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_46">
-                     <item>
                       <widget class="QLabel" name="label_19">
                        <property name="text">
                         <string>RX Codec</string>
@@ -2729,6 +2713,23 @@
                        </property>
                       </widget>
                      </item>
+                     <item>
+                      <spacer name="horizontalSpacer_13">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_17">
                      <item>
                       <widget class="QLabel" name="label_17">
                        <property name="text">
@@ -2764,48 +2765,25 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLabel" name="label_40">
+                      <widget class="QLabel" name="label_15">
                        <property name="text">
-                        <string>Audio System</string>
+                        <string>Audio Output </string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QComboBox" name="audioSystemCombo">
-                       <item>
-                        <property name="text">
-                         <string>QT Audio</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>PortAudio</string>
-                        </property>
-                       </item>
-                       <item>
-                        <property name="text">
-                         <string>RT Audio</string>
-                        </property>
-                       </item>
-                      </widget>
-                     </item>
-                     <item>
-                      <spacer name="horizontalSpacer_30">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
+                      <widget class="QComboBox" name="audioOutputCombo">
+                       <property name="maximumSize">
                         <size>
                          <width>120</width>
                          <height>16777215</height>
                         </size>
                        </property>
-                      </spacer>
+                       <property name="accessibleName">
+                        <string>Audio Output Selector</string>
+                       </property>
+                      </widget>
                      </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_17">
                      <item>
                       <widget class="QLabel" name="label_18">
                        <property name="text">
@@ -2842,14 +2820,10 @@
                        </property>
                       </spacer>
                      </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_45">
                      <item>
-                      <widget class="QLabel" name="label_15">
+                      <widget class="QLabel" name="label_40">
                        <property name="text">
-                        <string>Audio Output </string>
+                        <string>Audio System</string>
                        </property>
                       </widget>
                      </item>
@@ -5335,6 +5309,7 @@
        <widget class="QPushButton" name="exitBtn">
         <property name="font">
          <font>
+          <weight>50</weight>
           <bold>false</bold>
          </font>
         </property>

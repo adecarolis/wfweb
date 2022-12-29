@@ -7,6 +7,7 @@
 #else
 #include <QMediaDevices>
 #include <QAudioDevice>
+#include <QString>
 #endif
 
 #include <QFontMetrics>
@@ -20,22 +21,25 @@
 
 #include "wfviewtypes.h"
 
+
 struct audioDevice {
     audioDevice(QString name, int deviceInt, bool isDefault) : name(name), deviceInt(deviceInt), isDefault(isDefault) {};
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     audioDevice(QString name, const QAudioDeviceInfo deviceInfo, QString realm, bool isDefault) : name(name), deviceInfo(deviceInfo), realm(realm), isDefault(isDefault) {};
 #else
-    audioDevice(QString name, const QAudioDevice deviceInfo, QString realm, bool isDefault) : name(name), deviceInfo(deviceInfo), realm(realm), isDefault(isDefault) {};
+    audioDevice(QString name, QAudioDevice deviceInfo, QString realm, bool isDefault) : name(name), deviceInfo(deviceInfo), realm(realm), isDefault(isDefault) {};
 #endif
 
     QString name;
     int deviceInt;
+
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     const QAudioDeviceInfo deviceInfo;
 #else
-    const QAudioDevice deviceInfo;
+    QAudioDevice deviceInfo;
 #endif
+
     QString realm;
     bool isDefault;
 };
@@ -84,6 +88,8 @@ signals:
     void updated();
 protected:
 private:
+
+
     audioType system;
     QFontMetrics fm;
     QString defaultInputDeviceName;
@@ -94,6 +100,9 @@ private:
     QList<audioDevice> outputs;
     int numCharsIn = 0;
     int numCharsOut = 0;
+
+
+
 };
 
 #endif

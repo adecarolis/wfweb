@@ -137,6 +137,12 @@
     <ClCompile Include="audiodevices.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="loggingwindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cluster.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\rtaudio\RTAUdio.h">
@@ -270,6 +276,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="wfmain.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="loggingwindow.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
@@ -409,6 +418,12 @@
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="audiodevices.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="loggingwindow.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="cluster.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>

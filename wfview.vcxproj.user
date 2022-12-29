@@ -18,7 +18,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerDebuggerType>NativeOnly</LocalDebuggerDebuggerType>
-    <LocalDebuggerAmpDefaultAccelerator> </LocalDebuggerAmpDefaultAccelerator>
+    <LocalDebuggerAmpDefaultAccelerator>
+    </LocalDebuggerAmpDefaultAccelerator>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <QtLastBackgroundBuild>2022-08-22T10:47:36.6935363Z</QtLastBackgroundBuild>
@@ -27,7 +28,7 @@
     <QtLastBackgroundBuild>2022-08-21T18:58:23.4329764Z</QtLastBackgroundBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="QtSettings">
-    <QtLastBackgroundBuild>2022-08-22T19:43:39.8544189Z</QtLastBackgroundBuild>
+    <QtLastBackgroundBuild>2022-12-29T15:52:43.8635901Z</QtLastBackgroundBuild>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <QtLastBackgroundBuild>2022-08-22T10:47:49.1255783Z</QtLastBackgroundBuild>
@@ -36,6 +37,6 @@
     <QtLastBackgroundBuild>2022-08-20T19:06:43.4553894Z</QtLastBackgroundBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="QtSettings">
-    <QtLastBackgroundBuild>2022-08-22T19:43:40.1498727Z</QtLastBackgroundBuild>
+    <QtLastBackgroundBuild>2022-12-29T15:52:44.2967804Z</QtLastBackgroundBuild>
   </PropertyGroup>
 </Project>

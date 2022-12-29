@@ -142,8 +142,8 @@
       <QtUicFileName>ui_%(Filename).h</QtUicFileName>
     </QtUic>
     <PostBuildEvent>
-      <Command>cmd /c copy /y ..\qcustomplot\x64\qcustomplot2.dll release\
-cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll release\</Command>
+      <Command>cmd /c copy /y ..\qcustomplot\x64\qcustomplot2.dll wfview-release\
+cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfview-release\</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy DLL Files</Message>
@@ -191,8 +191,8 @@ cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll release\</Command
       <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION=\"1.4\";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX=\"/usr/local\";GITSHORT=\"4574e2b\";HOST=\"wfview.org\";UNAME=\"build\";QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>cmd /c copy /y ..\qcustomplot\x64\qcustomplotd2.dll debug
-cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll debug</Command>
+      <Command>cmd /c copy /y ..\qcustomplot\x64\qcustomplotd2.dll wfview-debug
+cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfview-debug</Command>
       <Message>Copy DLL files</Message>
     </PostBuildEvent>
     <QtMoc>
@@ -222,9 +222,11 @@ cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll debug</Command>
     <ClCompile Include="audiodevices.cpp" />
     <ClCompile Include="audiohandler.cpp" />
     <ClCompile Include="calibrationwindow.cpp" />
+    <ClCompile Include="cluster.cpp" />
     <ClCompile Include="commhandler.cpp" />
     <ClCompile Include="freqmemory.cpp" />
     <ClCompile Include="logcategories.cpp" />
+    <ClCompile Include="loggingwindow.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="meter.cpp" />
     <ClCompile Include="pahandler.cpp" />
@@ -252,6 +254,8 @@ cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll debug</Command>
     <QtMoc Include="aboutbox.h">
     </QtMoc>
     <QtMoc Include="audiodevices.h" />
+    <QtMoc Include="loggingwindow.h" />
+    <QtMoc Include="cluster.h" />
     <ClInclude Include="resampler\arch.h" />
     <QtMoc Include="audioconverter.h">
     </QtMoc>
@@ -329,6 +333,7 @@ cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll debug</Command>
     </QtUic>
     <QtUic Include="calibrationwindow.ui">
     </QtUic>
+    <QtUic Include="loggingwindow.ui" />
     <QtUic Include="repeatersetup.ui">
     </QtUic>
     <QtUic Include="satellitesetup.ui">

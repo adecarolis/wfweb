@@ -37,13 +37,14 @@ void audioDevices::enumerate()
         {
             Pa_Terminate();
 
+
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
             foreach(const QAudioDeviceInfo & deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioInput))
 #else
             const auto audioInputs = mediaDevices.audioInputs();
             for (const QAudioDevice& deviceInfo : audioInputs)
 #endif
-                {
+            {
                 bool isDefault = false;
                 if (numInputDevices == 0) {
 
@@ -81,7 +82,7 @@ void audioDevices::enumerate()
 #endif
 
 #if (defined(Q_OS_WIN) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
-                }
+                    }
 #endif
                 numInputDevices++;
             }
@@ -136,7 +137,7 @@ void audioDevices::enumerate()
 #endif
 
 #if (defined(Q_OS_WIN) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
-                }
+                    }
 #endif
                 numOutputDevices++;
             }
