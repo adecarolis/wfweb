@@ -4,14 +4,17 @@
 #
 #-------------------------------------------------
 
-QT       += core gui serialport network multimedia
+QT       += core gui serialport network multimedia xml
+
+#QT += sql
+#DEFINES += USESQL
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
 TARGET = wfview
 TEMPLATE = app
 
-DEFINES += WFVIEW_VERSION=\\\"1.4\\\"
+DEFINES += WFVIEW_VERSION=\\\"1.54\\\"
 
 DEFINES += BUILD_WFVIEW
 
@@ -91,7 +94,7 @@ QMAKE_INFO_PLIST = ../wfview/resources/Info.plist
 
 !win32:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
 
-!win32:DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""
+!win32:DEFINES += GITSHORT="\\\"$(shell git -C \"$$PWD\" rev-parse --short HEAD)\\\""
 win32:DEFINES += GITSHORT=\\\"$$system(git -C $$PWD rev-parse --short HEAD)\\\"
 
 win32:DEFINES += HOST=\\\"wfview.org\\\"
@@ -175,6 +178,7 @@ win32:INCLUDEPATH += ../r8brain-free-src
 INCLUDEPATH += resampler
 
 SOURCES += main.cpp\
+    loggingwindow.cpp \
     wfmain.cpp \
     commhandler.cpp \
     rigcommander.cpp \
@@ -201,10 +205,16 @@ SOURCES += main.cpp\
     transceiveradjustments.cpp \
     selectradio.cpp \
     tcpserver.cpp \
-    aboutbox.cpp 
+    cluster.cpp \
+    database.cpp \
+    aboutbox.cpp \
+    audiodevices.cpp
 
 HEADERS  += wfmain.h \
+    colorprefs.h \
     commhandler.h \
+    loggingwindow.h \
+    prefs.h \
     rigcommander.h \
     freqmemory.h \
     rigidentities.h \
@@ -230,16 +240,22 @@ HEADERS  += wfmain.h \
     repeatersetup.h \
     repeaterattributes.h \
     rigctld.h \
+    rigstate.h \
     ulaw.h \
     transceiveradjustments.h \
     audiotaper.h \
     selectradio.h \
     tcpserver.h \
-    aboutbox.h
+    cluster.h \
+    database.h \
+    aboutbox.h \
+    wfviewtypes.h \
+    audiodevices.h
 
 
 FORMS    += wfmain.ui \
     calibrationwindow.ui \
+    loggingwindow.ui \
     satellitesetup.ui \
     selectradio.ui \
     repeatersetup.ui \

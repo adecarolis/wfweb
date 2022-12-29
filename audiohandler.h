@@ -80,7 +80,7 @@ signals:
     void audioMessage(QString message);
     void sendLatency(quint16 newSize);
     void haveAudioData(const audioPacket& data);
-    void haveLevels(quint16 amplitude,quint16 latency,quint16 current,bool under,bool over);
+    void haveLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current,bool under,bool over);
     void setupConverter(QAudioFormat in, codecType codecIn, QAudioFormat out, codecType codecOut, quint8 opus, quint8 resamp);
     void sendToConverter(audioPacket audio);
 

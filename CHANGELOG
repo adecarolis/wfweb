@@ -1,5 +1,341 @@
 # CHANGELOG
 
+- 20221129
+    
+		bumped 1.53
+
+- 20221128
+    
+		Add missing prefs
+    		Merge remote-tracking branch 'origin/pollprefs' into various-fixes
+    		Added some tooltips that nobody will notice.
+    		Added polling preferences and changed UI elements to radio buttons with
+    		spin box.
+    		Added program version number to the settings file. Currently it is merely
+    		written to and not used.
+    		Moved preferences to prefs.h, which should make it easier to add new
+    		preferences. Moved custom types (as it seemed useful here and there) to
+    		wfviewtypes.h. Let's use the wfviewtypes.h file for any kind of datatype
+    		which more than one module can make use of.
+    		Update some rig definitions to work with new band struct.
+
+- 20221126
+
+    		Merge branch 'master' into various-fixes
+    		Add some more commands
+
+- 20221124
+
+    		Fixed color preset zero issue.
+    		Fixed unusual set of conditions in which manual CI-V address would fail
+    		to identify the connected radio. The fix is to continually poll the RigID
+    		until one is received. Radios that don't support RigID will need to
+    		check both boxes in wfview (use rig as model number) to manually ID the
+    		radio.
+    		Fixed minor typo in debug text.
+    		Cleaned up rigidentities
+    		Fixed annoying indentation issue.
+    		Fixed broken RTS preference. Added preliminary (and untested) support
+    		for the IC-703, 737, 738, and 756.
+    		Fixed issue causing the current color preset to not be load (previously
+    		preset zero was always used).
+
+- 20221101
+
+    		added libs for suse builds; it also builds on leap 15.5
+
+- 20221031
+
+    		Fix passband warnings
+    		Add skimmer support (setting not saved)
+    		Key KEYSPD
+    		Add AR Cluster support
+    		Add more commands to rigctld
+
+-  20221029
+
+    		Make bandType a struct containing frequency and default SSB mode
+    		Remove spot display processing timer
+    		Silly error in setting default cluster
+
+- 20221028
+
+    		Send bye when disconnecting from cluster
+    		Add passband to rigctld and allow setting
+
+- 20221025
+
+    		combobox resizing fix
+
+- 20221024
+
+    		Stop it cutting off some devices
+
+- 20221023
+
+    		Resize according to boundingrect
+		Resize based on font size
+    		Try new universal resize code
+
+- 20221022
+
+    		added qt xml dev lib for suse
+
+
+- 20221025
+
+    		combobox: Stop it cutting off some devices
+    		Resize according to boundingrect
+    		Resize based on font size
+    		Try new universal resize code
+
+- 20221022
+
+    		added qt xml dev lib for suse
+
+- 20221014
+
+    		bands page reorganized
+
+
+- 20221010
+
+		bumped to version 1.52
+
+- 20221011
+
+    		make spots appear at the actual top of wf
+
+    		Add sendOutput() back to tcp cluster
+
+    		Add Pop-Out button for cluster screen
+
+    		Add cluster spot color picker
+
+- 20221008
+
+    		Left click on spot to change freq
+
+- 20221006
+
+    		Make spot window size to fit content.
+
+    		Add right-click on spot to popup dialog
+
+- 20221005
+
+    		Bit of tidying
+
+    		Remove calls for QSqlDatabase when USESQL is not configured
+
+    		Add optional SQL in wfview.pro
+
+    		Make SQL db optional
+
+    		Remove old code
+
+    		Update query
+
+    		Add memory sqlite db for cluster spots.
+
+- 20220930
+
+    		Delete all spots if cluster disabled
+
+    		Fix crash when adding cluster server
+
+    		Change default to isdefault!
+
+    		Add TCP spot client
+
+- 20220929
+    
+		Fix for squished screen
+
+		bump version to 1.51
+
+
+- 20220928
+
+    		Only request passband when there is a scope available
+
+    		Change default passband colors.
+
+    		Fix passband colorswatch
+
+- 20220927
+
+    		See if this works better for color pickers?
+
+    		Ignore second VFO scope data (for now)
+
+    		Silently ignore server audio issues if server is not enabled.
+
+    		Always use 8bit encoding for audio device names
+
+    		Make multimedia-plugins message only for Linux
+
+- 20220926
+
+    		Add PSK modes to IC-7610 and to passband.
+
+    		Add passband for FM mode
+
+    		Added click-drag tuning. Needs refinement but it's a start.
+
+    		colorpicker: Move to 3 columns
+
+    		First look at a passband indicator
+
+- 20220925
+
+    		Remove obsolete code
+
+    		Remove logging of audio device realm
+
+- 20220923
+
+    		ready for v1.50
+
+- 20220923
+
+		Delete quit confirmation checkbox
+
+    		Use date/time for log name if none specified
+
+    		Fix logfile/directory opening in Windows
+	
+    		Fixed glitch when tabs are changed prior to rigcaps.
+
+    		Remove redundant CL args
+		
+		Additional resize fixes for non-spectrum rigs.
+
+    		Hide UI elements not needed for non-spectrum radios.
+
+		updated to v1.48
+
+- 20220921
+
+    		Fix that was stopping users being created when none existed
+
+- 20220920
+
+		Added dialog box to the toFixed button where an edge can be selected.
+		
+                Add quick fix for rigctld fmv issue
+
+		updated to v1.47
+
+- 20220918
+
+		Added controls for custom scope edges, hide/show scope controls
+    		depending upon the scope mode the radio reports.
+
+    		Fixed clear peaks button to work with the plasma underlay.
+
+    		Make sure both audio system button are disabled when connected to radio and enabled when not.
+
+    		Remove password from log!
+
+    		Fix server user handling
+
+		updated to v1.46
+
+- 20220918
+
+		merged bits from log branch into master
+
+		updated to v1.45
+
+
+- 20220917
+
+    		Log will automatically scroll to bottom on show.
+
+    		Remove focus from connect button once clicked.
+
+    		Move connect button
+
+    		Update wfmain.cpp
+    
+    		Add enable/disable audioSystemServerCombo
+
+    		Add "Cancel" to connect button
+
+    		Fixed bug where the frequency dial skipped extra when crossing zero.
+
+- 20220915
+
+		Merge branch log:
+
+    		Minor edit to margins
+
+    		Removed some additional padding that was left in parts of the UI.
+
+    		Changed windows 'open log' command to launch notepad.
+
+    		Removed extra disconnect message from logging host.
+
+    		Added flush to the text stream to termbin.
+
+    		Better scrolling behavior. The log is now aware if you are not at the
+    		bottom and will not force scroll if so. Otherwise, it will bring the
+    		horizontal scroll back to the left-edge.
+
+    		Renamed URL message box in case we add an additional message box later.
+
+    		Clarified control label to Scroll Down versus To Bottom.
+
+    		Changed font for better compatibility. Added some controls for scrolling
+    		behavior.
+
+    		Debug mode can now be toggled from the logging window.
+
+    		Removed extra output on non-server builds.
+
+    		Added debug logging button, however, it doesn't propagate the debug
+    		signal through all the modules yet. So, for now, it is hidden.
+
+    		Restored version to log file, fixed reversed log entries.
+
+		updated to v.1.44
+- 20220914
+
+		Removed word wrapping from the log
+
+    		Cut log window polling rate in half for lower CPU. 100ms is plenty fast.
+
+    		Removed audio volume logging.
+
+    		Keep the logging window up after the message box. Added "log" logging
+    		category.
+
+    		Added logging window capability with termbin support.
+
+- 20220909	
+		Merge branch resize:	
+
+    		Found an extra 10 pixels due to some layout padding I left in
+    		accidently.
+
+    		Main window may now be made smaller. Settings combo box sizes now
+    		limited.
+
+    		Fixed issue where build paths with a space in the name would cause the
+    		git hash to fail capture.
+
+		updated to v1.43
+
+- 20220826	
+		Merge branch 'audiometer'
+                This adds audiometer for the second meter TxAudio, RxAudio and TxRxAudio
+		updated to v.1.42
+- 20220824
+                Merge branch 'color'
+                This adds color picker support so that you can define several UI element colors
+		updated to v1.41
+
 - 20220819      
 
 		version bumped to 1.4

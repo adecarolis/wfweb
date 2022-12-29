@@ -12,12 +12,12 @@
 #include "rigidentities.h"
 
 // Meters at the end as they are ALWAYS updated from the rig!
-enum stateTypes { VFOAFREQ, VFOBFREQ, CURRENTVFO, PTT, MODE, FILTER, DUPLEX, DATAMODE, ANTENNA, RXANTENNA, CTCSS, TSQL, DTCS, CSQL,
-                  PREAMP, AGC, ATTENUATOR, MODINPUT, AFGAIN, RFGAIN, SQUELCH, RFPOWER, MICGAIN, COMPLEVEL, MONITORLEVEL, VOXGAIN, ANTIVOXGAIN,
+enum stateTypes { VFOAFREQ, VFOBFREQ, CURRENTVFO, PTT, MODE, FILTER, PASSBAND, DUPLEX, DATAMODE, ANTENNA, RXANTENNA, CTCSS, TSQL, DTCS, CSQL,
+                  PREAMP, AGC, ATTENUATOR, MODINPUT, AFGAIN, RFGAIN, SQUELCH, RFPOWER, MICGAIN, COMPLEVEL, MONITORLEVEL, BAL, KEYSPD,
+                  VOXGAIN, ANTIVOXGAIN, CWPITCH, NOTCHF, IF, PBTIN, PBTOUT, APF, NR, NB, NBDEPTH, NBWIDTH, RIGINPUT, POWERONOFF, RITVALUE,
                   FAGCFUNC, NBFUNC, COMPFUNC, VOXFUNC, TONEFUNC, TSQLFUNC, SBKINFUNC, FBKINFUNC, ANFFUNC, NRFUNC, AIPFUNC, APFFUNC, MONFUNC, MNFUNC,RFFUNC,
-                  AROFUNC, MUTEFUNC, VSCFUNC, REVFUNC, SQLFUNC, ABMFUNC, BCFUNC, MBCFUNC, RITFUNC, AFCFUNC, SATMODEFUNC, SCOPEFUNC,
-                  NBLEVEL, NBDEPTH, NBWIDTH, NRLEVEL, RIGINPUT, POWERONOFF, RITVALUE, 
-                  RESUMEFUNC, TBURSTFUNC, TUNERFUNC, LOCKFUNC, SMETER, POWERMETER, SWRMETER, ALCMETER, COMPMETER, VOLTAGEMETER, CURRENTMETER
+                  AROFUNC, MUTEFUNC, VSCFUNC, REVFUNC, SQLFUNC, ABMFUNC, BCFUNC, MBCFUNC, RITFUNC, AFCFUNC, SATMODEFUNC, SCOPEFUNC,                  
+                  RESUMEFUNC, TBURSTFUNC, TUNERFUNC, LOCKFUNC, SMETER, POWERMETER, SWRMETER, ALCMETER, COMPMETER, VOLTAGEMETER, CURRENTMETER,
 };
 
 struct value {
@@ -40,7 +40,7 @@ public:
     void set(stateTypes s, quint64 x, bool u) {
         if (x != map[s]._value) {
             _mutex.lock();
-            map[s]._value = (quint64)x;
+            map[s]._value = quint64(x);
             map[s]._valid = true;
             map[s]._updated = u;
             map[s]._dateUpdated = QDateTime::currentDateTime();
@@ -48,9 +48,19 @@ public:
         }
     }
     void set(stateTypes s, qint32 x, bool u) {
-        if ((quint64)x != map[s]._value) {
+        if (quint64(x) != map[s]._value) {
             _mutex.lock();
-            map[s]._value = (quint64)x;
+            map[s]._value = quint64(x);
+            map[s]._valid = true;
+            map[s]._updated = u;
+            map[s]._dateUpdated = QDateTime::currentDateTime();
+            _mutex.unlock();
+        }
+    }
+    void set(stateTypes s, qint16 x, bool u) {
+        if (quint64(x) != map[s]._value) {
+            _mutex.lock();
+            map[s]._value = quint64(x);
             map[s]._valid = true;
             map[s]._updated = u;
             map[s]._dateUpdated = QDateTime::currentDateTime();
@@ -58,9 +68,9 @@ public:
         }
     }
     void set(stateTypes s, quint16 x, bool u) {
-        if ((quint64)x != map[s]._value) {
+        if (quint64(x) != map[s]._value) {
             _mutex.lock();
-            map[s]._value = (quint64)x;
+            map[s]._value = quint64(x);
             map[s]._valid = true;
             map[s]._updated = u;
             map[s]._dateUpdated = QDateTime::currentDateTime();
@@ -68,9 +78,9 @@ public:
         }
     }
     void set(stateTypes s, quint8 x, bool u) {
-        if ((quint64)x != map[s]._value) {
+        if (quint64(x) != map[s]._value) {
             _mutex.lock();
-            map[s]._value = (quint64)x;
+            map[s]._value = quint64(x);
             map[s]._valid = true;
             map[s]._updated = u;
             map[s]._dateUpdated = QDateTime::currentDateTime();
@@ -78,9 +88,9 @@ public:
         }
     }
     void set(stateTypes s, bool x, bool u) {
-        if ((quint64)x != map[s]._value) {
+        if (quint64(x) != map[s]._value) {
             _mutex.lock();
-            map[s]._value = (quint64)x;
+            map[s]._value = quint64(x);
             map[s]._valid = true;
             map[s]._updated = u;
             map[s]._dateUpdated = QDateTime::currentDateTime();
@@ -88,9 +98,9 @@ public:
         }
     }
     void set(stateTypes s, duplexMode x, bool u) {
-        if ((quint64)x != map[s]._value) {
+        if (quint64(x) != map[s]._value) {
             _mutex.lock();
-            map[s]._value = (quint64)x;
+            map[s]._value = quint64(x);
             map[s]._valid = true;
             map[s]._updated = u;
             map[s]._dateUpdated = QDateTime::currentDateTime();
@@ -99,9 +109,9 @@ public:
     }
 
     void set(stateTypes s, rigInput x, bool u) {
-        if ((quint64)x != map[s]._value) {
+        if (quint64(x) != map[s]._value) {
             _mutex.lock();
-            map[s]._value = (quint64)x;
+            map[s]._value = quint64(x);
             map[s]._valid = true;
             map[s]._updated = u;
             map[s]._dateUpdated = QDateTime::currentDateTime();
@@ -110,12 +120,14 @@ public:
     }
 
     bool getBool(stateTypes s) { return map[s]._value != 0; }
-    quint8 getChar(stateTypes s) { return (quint8)map[s]._value; }
-    quint16 getInt16(stateTypes s) { return (qint16)map[s]._value; }
-    qint32 getInt32(stateTypes s) { return (qint32)map[s]._value; }
+    quint8 getChar(stateTypes s) { return quint8(map[s]._value); }
+    qint16 getInt16(stateTypes s) { return qint16(map[s]._value); }
+    quint16 getUInt16(stateTypes s) { return quint16(map[s]._value); }
+    qint32 getInt32(stateTypes s) { return qint32(map[s]._value); }
+    quint32 getUInt32(stateTypes s) { return quint32(map[s]._value); }
     quint64 getInt64(stateTypes s) { return map[s]._value; }
-    duplexMode getDuplex(stateTypes s) { return(duplexMode)map[s]._value; }
-    rigInput getInput(stateTypes s) { return(rigInput)map[s]._value; }
+    duplexMode getDuplex(stateTypes s) { return duplexMode(map[s]._value); }
+    rigInput getInput(stateTypes s) { return rigInput(map[s]._value); }
     QMap<stateTypes, value> map;
 
 

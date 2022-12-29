@@ -5,23 +5,45 @@
 #include "rigidentities.h"
 #include "logcategories.h"
 
-// This code is copyright 2017-2020 Elliott H. Liggett
+// This code is copyright 2017-2022 Elliott H. Liggett
 // All rights reserved
 
-wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, QWidget *parent ) :
+// Log support:
+//static void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
+QScopedPointer<QFile> m_logFile;
+QMutex logMutex;
+QMutex logTextMutex;
+QVector<QString> logStringBuffer;
+#ifdef QT_DEBUG
+bool debugModeLogging = true;
+#else
+bool debugModeLogging = false;
+#endif
+
+wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent ) :
     QMainWindow(parent),
-    ui(new Ui::wfmain)
+    ui(new Ui::wfmain),
+    logFilename(logFile)
 {
     QGuiApplication::setApplicationDisplayName("wfview");
     QGuiApplication::setApplicationName(QString("wfview"));
 
     setWindowIcon(QIcon( QString(":resources/wfview.png")));
+    this->debugMode = debugMode;
+    debugModeLogging = debugMode;
+    version = QString("wfview version: %1 (Git:%2 on %3 at %4 by %5@%6). Operating System: %7 (%8). Build Qt Version %9. Current Qt Version: %10")
+        .arg(QString(WFVIEW_VERSION))
+        .arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
+        .arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture())
+        .arg(QT_VERSION_STR).arg(qVersion());
     ui->setupUi(this);
 
     setWindowTitle(QString("wfview"));
 
-    this->serialPortCL = serialPortCL;
-    this->hostCL = hostCL;
+    logWindow = new loggingWindow(logFile);
+    initLogging();
+    logWindow->setInitialDebugState(debugMode);
+    qInfo(logSystem()) << version;
 
     cal = new calibrationWindow();
     rpt = new repeaterSetup();
@@ -39,6 +61,7 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType<spectrumMode>();
     qRegisterMetaType<freqt>();
     qRegisterMetaType<mode_info>();
+    qRegisterMetaType<mode_kind>();
     qRegisterMetaType<audioPacket>();
     qRegisterMetaType <audioSetup>();
     qRegisterMetaType <SERVERCONFIG>();
@@ -46,22 +69,27 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     qRegisterMetaType <datekind>();
     qRegisterMetaType<rigstate*>();
     qRegisterMetaType<QList<radio_cap_packet>>();
+    qRegisterMetaType<QList<radio_cap_packet>>();
+    qRegisterMetaType<QList<spotData>>();
     qRegisterMetaType<networkStatus>();
+    qRegisterMetaType<networkAudioLevels>();
 
     haveRigCaps = false;
 
     setupKeyShortcuts();
 
     setupMainUI();
+    prepareSettingsWindow();
 
     setSerialDevicesUI();
 
-    setDefaultColors();
     setDefPrefs();
 
     getSettingsFilePath(settingsFile);
 
     setupPlots();
+    setDefaultColorPresets();
+
     loadSettings(); // Look for saved preferences
 
 #if QT_VERSION >= 0x060000
@@ -86,6 +114,46 @@ wfmain::wfmain(const QString serialPortCL, const QString hostCL, const QString s
     rigConnections();
 
 
+    cluster = new dxClusterClient();
+
+    clusterThread = new QThread(this);
+    clusterThread->setObjectName("dxcluster()");
+
+    cluster->moveToThread(clusterThread);
+
+    connect(this, SIGNAL(setClusterEnableUdp(bool)), cluster, SLOT(enableUdp(bool)));
+    connect(this, SIGNAL(setClusterEnableTcp(bool)), cluster, SLOT(enableTcp(bool)));
+    connect(this, SIGNAL(setClusterUdpPort(int)), cluster, SLOT(setUdpPort(int)));
+    connect(this, SIGNAL(setClusterServerName(QString)), cluster, SLOT(setTcpServerName(QString)));
+    connect(this, SIGNAL(setClusterTcpPort(int)), cluster, SLOT(setTcpPort(int)));
+    connect(this, SIGNAL(setClusterUserName(QString)), cluster, SLOT(setTcpUserName(QString)));
+    connect(this, SIGNAL(setClusterPassword(QString)), cluster, SLOT(setTcpPassword(QString)));
+    connect(this, SIGNAL(setClusterTimeout(int)), cluster, SLOT(setTcpTimeout(int)));
+    connect(this, SIGNAL(setFrequencyRange(double, double)), cluster, SLOT(freqRange(double, double)));
+    connect(this, SIGNAL(setClusterSkimmerSpots(bool)), cluster, SLOT(enableSkimmerSpots(bool)));
+
+    connect(cluster, SIGNAL(sendSpots(QList<spotData>)), this, SLOT(receiveSpots(QList<spotData>)));
+    connect(cluster, SIGNAL(sendOutput(QString)), this, SLOT(receiveClusterOutput(QString)));
+
+    connect(clusterThread, SIGNAL(finished()), cluster, SLOT(deleteLater()));
+
+    clusterThread->start();
+
+    emit setClusterUdpPort(prefs.clusterUdpPort);
+    emit setClusterEnableUdp(prefs.clusterUdpEnable);
+
+    for (int f = 0; f < clusters.size(); f++)
+    {
+        if (clusters[f].isdefault)
+        {
+            emit setClusterServerName(clusters[f].server);
+            emit setClusterTcpPort(clusters[f].port);
+            emit setClusterUserName(clusters[f].userName);
+            emit setClusterPassword(clusters[f].password);
+            emit setClusterTimeout(clusters[f].timeout);
+        }
+    }
+    emit setClusterEnableTcp(prefs.clusterTcpEnable);
 
     setServerToPrefs();
 
@@ -104,6 +172,10 @@ wfmain::~wfmain()
     if (serverThread != Q_NULLPTR) {
         serverThread->quit();
         serverThread->wait();
+    }
+    if (clusterThread != Q_NULLPTR) {
+        clusterThread->quit();
+        clusterThread->wait();
     }
     if (rigCtl != Q_NULLPTR) {
         delete rigCtl;
@@ -125,6 +197,7 @@ void wfmain::closeEvent(QCloseEvent *event)
         QApplication::exit();
     }
     QCheckBox *cb = new QCheckBox("Don't ask me again");
+    cb->setToolTip("Don't ask me to confirm exit again");
     QMessageBox msgbox;
     msgbox.setText("Are you sure you wish to exit?\n");
     msgbox.setIcon(QMessageBox::Icon::Question);
@@ -152,6 +225,7 @@ void wfmain::closeEvent(QCloseEvent *event)
     } else {
         event->ignore();
     }
+    delete cb;
 }
 
 void wfmain::openRig()
@@ -171,20 +245,10 @@ void wfmain::openRig()
     //     showRigSettings(); // rig setting dialog box for network/serial, CIV, hostname, port, baud rate, serial device, etc
     // TODO: How do we know if the setting was loaded?
 
+    ui->audioSystemServerCombo->setEnabled(false);
+    ui->audioSystemCombo->setEnabled(false);
 
-    // TODO: Use these if they are found
-    if(!serialPortCL.isEmpty())
-    {
-        qDebug(logSystem()) << "Serial port specified by user: " << serialPortCL;
-    } else {
-        qDebug(logSystem()) << "Serial port not specified. ";
-    }
-
-    if(!hostCL.isEmpty())
-    {
-        qDebug(logSystem()) << "Remote host name specified by user: " << hostCL;
-    }
-
+    ui->connectBtn->setText("Cancel connection"); // We are attempting to connect
 
     makeRig();
 
@@ -197,16 +261,11 @@ void wfmain::openRig()
         emit sendCommSetup(prefs.radioCIVAddr, udpPrefs, rxSetup, txSetup, prefs.virtualSerialPort, prefs.tcpPort);
     } else {
         ui->serialEnableBtn->setChecked(true);
-        if( (prefs.serialPortRadio.toLower() == QString("auto")) && (serialPortCL.isEmpty()))
+        if( (prefs.serialPortRadio.toLower() == QString("auto")))
         {
             findSerialPort();
         } else {
-            if(serialPortCL.isEmpty())
-            {
-                serialPortRig = prefs.serialPortRadio;
-            } else {
-                serialPortRig = serialPortCL;
-            }
+            serialPortRig = prefs.serialPortRadio;
         }
         usingLAN = false;
         emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort, prefs.tcpPort,prefs.waterfallFormat);
@@ -225,8 +284,9 @@ void wfmain::createSettingsListItems()
     ui->settingsList->addItem("Radio Settings");   // 2
     ui->settingsList->addItem("Radio Server");     // 3
     ui->settingsList->addItem("External Control"); // 4
-    ui->settingsList->addItem("Experimental");     // 5
-    //ui->settingsList->addItem("Audio Processing"); // 6
+    ui->settingsList->addItem("DX Cluster"); // 5
+    ui->settingsList->addItem("Experimental");     // 6
+    //ui->settingsList->addItem("Audio Processing"); // 7
     ui->settingsStack->setCurrentIndex(0);
 }
 
@@ -274,6 +334,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(scopeDisplayEnable()), rig, SLOT(enableSpectrumDisplay()));
     connect(rig, SIGNAL(haveMode(unsigned char, unsigned char)), this, SLOT(receiveMode(unsigned char, unsigned char)));
     connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
+    connect(rig, SIGNAL(havePassband(quint16)), this, SLOT(receivePassband(quint16)));
 
     connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
     connect(rpt, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
@@ -293,6 +354,7 @@ void wfmain::rigConnections()
 
 
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
+    connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
     connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(this, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(this, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
@@ -429,6 +491,7 @@ void wfmain::makeRig()
         // Rig status and Errors:
         connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
         connect(rig, SIGNAL(haveStatusUpdate(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
+        connect(rig, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(receiveNetworkAudioLevels(networkAudioLevels)));
         connect(rig, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
         connect(rig, SIGNAL(setRadioUsage(quint8, quint8, QString, QString)), selRad, SLOT(setInUse(quint8, quint8, QString, QString)));
         connect(selRad, SIGNAL(selectedRadio(quint8)), rig, SLOT(setCurrentRadio(quint8)));
@@ -575,10 +638,13 @@ void wfmain::receiveCommReady()
         if(prefs.CIVisRadioModel)
         {
             qInfo(logSystem()) << "Skipping Rig ID query, using user-supplied model from CI-V address: " << prefs.radioCIVAddr;
+            emit setCIVAddr(prefs.radioCIVAddr);
             emit setRigID(prefs.radioCIVAddr);
         } else {
+            emit setCIVAddr(prefs.radioCIVAddr);
             emit getRigID();
-            getInitialRigState();
+            issueDelayedCommand(cmdGetRigID);
+            delayedCommand->start();
         }
     }
 }
@@ -620,6 +686,45 @@ void wfmain::receiveStatusUpdate(networkStatus status)
     //qInfo(logSystem()) << "Got Status Update" << status.rxAudioLevel;
 }
 
+void wfmain::receiveNetworkAudioLevels(networkAudioLevels l)
+{
+    /*
+    meterKind m2mtr = ui->meter2Widget->getMeterType();
+
+    if(m2mtr == meterAudio)
+    {
+        if(amTransmitting)
+        {
+            if(l.haveTxLevels)
+                ui->meter2Widget->setLevels(l.txAudioRMS, l.txAudioPeak);
+        } else {
+            if(l.haveRxLevels)
+                ui->meter2Widget->setLevels(l.rxAudioRMS, l.rxAudioPeak);
+        }
+    } else if (m2mtr == meterTxMod) {
+        if(l.haveTxLevels)
+            ui->meter2Widget->setLevels(l.txAudioRMS, l.txAudioPeak);
+    } else if (m2mtr == meterRxAudio) {
+        if(l.haveRxLevels)
+            ui->meter2Widget->setLevels(l.rxAudioRMS, l.rxAudioPeak);
+    }
+    */
+
+
+    meterKind m = meterNone;
+    if(l.haveRxLevels)
+    {
+        m = meterRxAudio;
+        receiveMeter(m, l.rxAudioPeak);
+    }
+    if(l.haveTxLevels)
+    {
+        m = meterTxMod;
+        receiveMeter(m, l.txAudioPeak);
+    }
+
+}
+
 void wfmain::setupPlots()
 {
     spectrumDrawLock = true;
@@ -627,9 +732,24 @@ void wfmain::setupPlots()
 
     wf = ui->waterfall;
 
+    passbandIndicator = new QCPItemRect(plot);
+    passbandIndicator->setAntialiased(true);
+    passbandIndicator->setPen(QPen(Qt::red));
+    passbandIndicator->setBrush(QBrush(Qt::red));
+    passbandIndicator->setSelectable(true);
+
     freqIndicatorLine = new QCPItemLine(plot);
     freqIndicatorLine->setAntialiased(true);
     freqIndicatorLine->setPen(QPen(Qt::blue));
+
+    /*
+    text = new QCPItemText(plot);
+    text->setAntialiased(true);
+    text->setColor(QColor(Qt::red));
+    text->setText("TEST");
+    text->position->setCoords(14.195, rigCaps.spectAmpMax);
+    text->setFont(QFont(font().family(), 12));
+    */
 
     ui->plot->addGraph(); // primary
     ui->plot->addGraph(0, 0); // secondary, peaks, same axis as first.
@@ -655,14 +775,19 @@ void wfmain::setupPlots()
     plot->graph(1)->setPen(QPen(color.lighter(200)));
     plot->graph(1)->setBrush(QBrush(color));
 
-    freqIndicatorLine->start->setCoords(0.5,0);
-    freqIndicatorLine->end->setCoords(0.5,160);
+    freqIndicatorLine->start->setCoords(0.5, 0);
+    freqIndicatorLine->end->setCoords(0.5, 160);
+
+    passbandIndicator->topLeft->setCoords(0.5, 0);
+    passbandIndicator->bottomRight->setCoords(0.5, 160);
 
     // Plot user interaction
     connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
     connect(wf, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handleWFDoubleClick(QMouseEvent*)));
     connect(plot, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handlePlotClick(QMouseEvent*)));
     connect(wf, SIGNAL(mousePress(QMouseEvent*)), this, SLOT(handleWFClick(QMouseEvent*)));
+    connect(plot, SIGNAL(mouseRelease(QMouseEvent*)), this, SLOT(handlePlotMouseRelease(QMouseEvent*)));
+    connect(plot, SIGNAL(mouseMove(QMouseEvent*)), this, SLOT(handlePlotMouseMove(QMouseEvent *)));
     connect(wf, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handleWFScroll(QWheelEvent*)));
     connect(plot, SIGNAL(mouseWheel(QWheelEvent*)), this, SLOT(handlePlotScroll(QWheelEvent*)));
     spectrumDrawLock = false;
@@ -751,6 +876,10 @@ void wfmain::setupMainUI()
     ui->meter2selectionCombo->addItem("Voltage", meterVoltage);
     ui->meter2selectionCombo->addItem("Current", meterCurrent);
     ui->meter2selectionCombo->addItem("Center", meterCenter);
+    ui->meter2selectionCombo->addItem("TxRxAudio", meterAudio);
+    ui->meter2selectionCombo->addItem("RxAudio", meterRxAudio);
+    ui->meter2selectionCombo->addItem("TxAudio", meterTxMod);
+
     ui->meter2Widget->hide();
 
     ui->meter2selectionCombo->show();
@@ -881,48 +1010,55 @@ void wfmain::setupMainUI()
     connect(this->trxadj, &transceiverAdjustments::setTPBFOuter,
             [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetTPBFOuter, newValue);}
     );
+}
 
+void wfmain::prepareSettingsWindow()
+{
+    settingsTabisAttached = true;
 
+    settingsWidgetWindow = new QWidget;
+    settingsWidgetLayout = new QGridLayout;
+    settingsWidgetTab = new QTabWidget;
 
+    settingsWidgetWindow->setLayout(settingsWidgetLayout);
+    settingsWidgetLayout->addWidget(settingsWidgetTab);
+    settingsWidgetWindow->setWindowFlag(Qt::WindowCloseButtonHint, false);
+    //settingsWidgetWindow->setWindowFlag(Qt::WindowMinimizeButtonHint, false);
+    //settingsWidgetWindow->setWindowFlag(Qt::WindowMaximizeButtonHint, false);
+    // TODO: Capture an event when the window closes and handle accordingly.
 }
 
 void wfmain::updateSizes(int tabIndex)
 {
-    if(!haveRigCaps)
-        return;
+
     // This function does nothing unless you are using a rig without spectrum.
     // This is a hack. It is not great, but it seems to work ok.
     if(!rigCaps.hasSpectrum)
     {
         // Set "ignore" size policy for non-selected tabs:
-        for(int i=0;i<ui->tabWidget->count();i++)
-            if((i!=tabIndex) && tabIndex != 0)
+        for(int i=1;i<ui->tabWidget->count();i++)
+            if((i!=tabIndex))
                 ui->tabWidget->widget(i)->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored); // allows size to be any size that fits the tab bar
 
-        if(tabIndex==0 && !rigCaps.hasSpectrum)
+        if(tabIndex==0)
         {
 
             ui->tabWidget->widget(0)->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
             ui->tabWidget->widget(0)->setMaximumSize(ui->tabWidget->widget(0)->minimumSizeHint());
             ui->tabWidget->widget(0)->adjustSize(); // tab
             this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-            this->setMaximumSize(QSize(1024,350));
-            this->setMinimumSize(QSize(1024,350));
+            this->setMaximumSize(QSize(940,350));
+            this->setMinimumSize(QSize(940,350));
 
             resize(minimumSize());
             adjustSize(); // main window
-        } else if(tabIndex==0 && rigCaps.hasSpectrum) {
-            // At main tab (0) and we have spectrum:
-            ui->tabWidget->widget(0)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
-
-            resize(minimumSizeHint());
-            adjustSize(); // Without this call, the window retains the size of the previous tab.
         } else {
             // At some other tab, with or without spectrum:
             ui->tabWidget->widget(tabIndex)->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
             this->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
             this->setMinimumSize(QSize(1024, 600)); // not large enough for settings tab
             this->setMaximumSize(QSize(65535,65535));
+            resize(minimumSize());
             adjustSize();
         }
     } else {
@@ -970,12 +1106,6 @@ void wfmain::setInitialTiming()
     delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
     delayedCommand->setSingleShot(false);
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(sendRadioCommandLoop()));
-
-    // TODO: Remove this:
-//    periodicPollingTimer = new QTimer(this);
-//    periodicPollingTimer->setInterval(10);
-//    periodicPollingTimer->setSingleShot(false);
-    //connect(periodicPollingTimer, SIGNAL(timeout()), this, SLOT(sendRadioCommandLoop()));
 
     pttTimer = new QTimer(this);
     pttTimer->setInterval(180*1000); // 3 minute max transmit time in ms
@@ -1045,15 +1175,8 @@ void wfmain::setUIToPrefs()
     ui->fullScreenChk->setChecked(prefs.useFullScreen);
     on_fullScreenChk_clicked(prefs.useFullScreen);
 
-    ui->useDarkThemeChk->setChecked(prefs.useDarkMode);
-    on_useDarkThemeChk_clicked(prefs.useDarkMode);
-
     ui->useSystemThemeChk->setChecked(prefs.useSystemTheme);
     on_useSystemThemeChk_clicked(prefs.useSystemTheme);
-
-    ui->drawPeakChk->setChecked(prefs.drawPeaks);
-    on_drawPeakChk_clicked(prefs.drawPeaks);
-    drawPeaks = prefs.drawPeaks;
 
     underlayMode = prefs.underlayMode;
     switch(underlayMode)
@@ -1085,12 +1208,23 @@ void wfmain::setUIToPrefs()
 
     ui->wfLengthSlider->setValue(prefs.wflength);
     prepareWf(prefs.wflength);
-
+    preparePlasma();
     ui->topLevelSlider->setValue(prefs.plotCeiling);
     ui->botLevelSlider->setValue(prefs.plotFloor);
 
     plot->yAxis->setRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
     colorMap->setDataRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
+
+    colorPrefsType p;
+    for(int pn=0; pn < numColorPresetsTotal; pn++)
+    {
+        p = colorPreset[pn];
+        if(p.presetName != Q_NULLPTR)
+            ui->colorPresetCombo->setItemText(pn, *p.presetName);
+    }
+
+    ui->colorPresetCombo->setCurrentIndex(prefs.currentColorPresetNumber);
+    loadColorPresetToUIandPlots(prefs.currentColorPresetNumber);
 
     ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
@@ -1284,9 +1418,9 @@ void wfmain::setupKeyShortcuts()
 void wfmain::setDefPrefs()
 {
     defPrefs.useFullScreen = false;
-    defPrefs.useDarkMode = true;
     defPrefs.useSystemTheme = false;
     defPrefs.drawPeaks = true;
+    defPrefs.currentColorPresetNumber = 0;
     defPrefs.underlayMode = underlayNone;
     defPrefs.underlayBufferSize = 64;
     defPrefs.wfAntiAlias = false;
@@ -1297,6 +1431,7 @@ void wfmain::setDefPrefs()
     defPrefs.forceRTSasPTT = false;
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.serialPortBaud = 115200;
+    defPrefs.polling_ms = 0; // 0 = Automatic
     defPrefs.enablePTT = false;
     defPrefs.niceTS = true;
     defPrefs.enableRigCtlD = false;
@@ -1331,7 +1466,6 @@ void wfmain::loadSettings()
     // UI: (full screen, dark theme, draw peaks, colors, etc)
     settings->beginGroup("Interface");
     prefs.useFullScreen = settings->value("UseFullScreen", defPrefs.useFullScreen).toBool();
-    prefs.useDarkMode = settings->value("UseDarkMode", defPrefs.useDarkMode).toBool();
     prefs.useSystemTheme = settings->value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
     prefs.wftheme = settings->value("WFTheme", defPrefs.wftheme).toInt();
     prefs.plotFloor = settings->value("plotFloor", defPrefs.plotFloor).toInt();
@@ -1355,39 +1489,59 @@ void wfmain::loadSettings()
     prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
     prefs.meter2Type = static_cast<meterKind>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
+    prefs.clickDragTuningEnable = settings->value("ClickDragTuning", false).toBool();
+    ui->clickDragTuningEnableChk->setChecked(prefs.clickDragTuningEnable);
     settings->endGroup();
 
-    // Load color schemes:
-    // Per this bug: https://forum.qt.io/topic/24725/solved-qvariant-will-drop-alpha-value-when-save-qcolor/5
-    // the alpha channel is dropped when converting raw qvariant of QColor. Therefore, we are storing as unsigned int and converting back.
+    // Load in the color presets. The default values are already loaded.
 
-    settings->beginGroup("DarkColors");
-    prefs.colorScheme.Dark_PlotBackground = QColor::fromRgba(settings->value("Dark_PlotBackground", defaultColors.Dark_PlotBackground.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotAxisPen = QColor::fromRgba(settings->value("Dark_PlotAxisPen", defaultColors.Dark_PlotAxisPen.rgba()).toUInt());
+    settings->beginGroup("ColorPresets");
+    prefs.currentColorPresetNumber = settings->value("currentColorPresetNumber", defPrefs.currentColorPresetNumber).toInt();
+    if(prefs.currentColorPresetNumber > numColorPresetsTotal-1)
+        prefs.currentColorPresetNumber = 0;
 
-    prefs.colorScheme.Dark_PlotLegendTextColor = QColor::fromRgba(settings->value("Dark_PlotLegendTextColor", defaultColors.Dark_PlotLegendTextColor.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotLegendBorderPen = QColor::fromRgba(settings->value("Dark_PlotLegendBorderPen", defaultColors.Dark_PlotLegendBorderPen.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotLegendBrush = QColor::fromRgba(settings->value("Dark_PlotLegendBrush", defaultColors.Dark_PlotLegendBrush.rgba()).toUInt());
-
-    prefs.colorScheme.Dark_PlotTickLabel = QColor::fromRgba(settings->value("Dark_PlotTickLabel", defaultColors.Dark_PlotTickLabel.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotBasePen = QColor::fromRgba(settings->value("Dark_PlotBasePen", defaultColors.Dark_PlotBasePen.rgba()).toUInt());
-    prefs.colorScheme.Dark_PlotTickPen = QColor::fromRgba(settings->value("Dark_PlotTickPen", defaultColors.Dark_PlotTickPen.rgba()).toUInt());
-
-    prefs.colorScheme.Dark_PeakPlotLine = QColor::fromRgba(settings->value("Dark_PeakPlotLine", defaultColors.Dark_PeakPlotLine.rgba()).toUInt());
-    prefs.colorScheme.Dark_TuningLine = QColor::fromRgba(settings->value("Dark_TuningLine", defaultColors.Dark_TuningLine.rgba()).toUInt());
-    settings->endGroup();
-
-    settings->beginGroup("LightColors");
-    prefs.colorScheme.Light_PlotBackground = QColor::fromRgba(settings->value("Light_PlotBackground", defaultColors.Light_PlotBackground.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotAxisPen = QColor::fromRgba(settings->value("Light_PlotAxisPen", defaultColors.Light_PlotAxisPen.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotLegendTextColor = QColor::fromRgba(settings->value("Light_PlotLegendTextColo", defaultColors.Light_PlotLegendTextColor.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotLegendBorderPen = QColor::fromRgba(settings->value("Light_PlotLegendBorderPen", defaultColors.Light_PlotLegendBorderPen.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotLegendBrush = QColor::fromRgba(settings->value("Light_PlotLegendBrush", defaultColors.Light_PlotLegendBrush.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotTickLabel = QColor::fromRgba(settings->value("Light_PlotTickLabel", defaultColors.Light_PlotTickLabel.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotBasePen = QColor::fromRgba(settings->value("Light_PlotBasePen", defaultColors.Light_PlotBasePen.rgba()).toUInt());
-    prefs.colorScheme.Light_PlotTickPen = QColor::fromRgba(settings->value("Light_PlotTickPen", defaultColors.Light_PlotTickPen.rgba()).toUInt());
-    prefs.colorScheme.Light_PeakPlotLine = QColor::fromRgba(settings->value("Light_PeakPlotLine", defaultColors.Light_PeakPlotLine.rgba()).toUInt());
-    prefs.colorScheme.Light_TuningLine = QColor::fromRgba(settings->value("Light_TuningLine", defaultColors.Light_TuningLine.rgba()).toUInt());
+    int numPresetsInFile = settings->beginReadArray("ColorPreset");
+    // We will use the number of presets that the working copy of wfview
+    // supports, as we must never exceed the available number.
+    if(numPresetsInFile > 0)
+    {
+        colorPrefsType *p;
+        QString tempName;
+        for(int pn=0; pn < numColorPresetsTotal; pn++)
+        {
+            settings->setArrayIndex(pn);
+            p = &(colorPreset[pn]);
+            p->presetNum = settings->value("presetNum", p->presetNum).toInt();
+            tempName = settings->value("presetName", *p->presetName).toString();
+            if((!tempName.isEmpty()) && tempName.length() < 11)
+            {
+                    p->presetName->clear();
+                    p->presetName->append(tempName);
+            }
+            p->gridColor.setNamedColor(settings->value("gridColor", p->gridColor.name(QColor::HexArgb)).toString());
+            p->axisColor.setNamedColor(settings->value("axisColor", p->axisColor.name(QColor::HexArgb)).toString());
+            p->textColor.setNamedColor(settings->value("textColor", p->textColor.name(QColor::HexArgb)).toString());
+            p->spectrumLine.setNamedColor(settings->value("spectrumLine", p->spectrumLine.name(QColor::HexArgb)).toString());
+            p->spectrumFill.setNamedColor(settings->value("spectrumFill", p->spectrumFill.name(QColor::HexArgb)).toString());
+            p->underlayLine.setNamedColor(settings->value("underlayLine", p->underlayLine.name(QColor::HexArgb)).toString());
+            p->underlayFill.setNamedColor(settings->value("underlayFill", p->underlayFill.name(QColor::HexArgb)).toString());
+            p->plotBackground.setNamedColor(settings->value("plotBackground", p->plotBackground.name(QColor::HexArgb)).toString());
+            p->tuningLine.setNamedColor(settings->value("tuningLine", p->tuningLine.name(QColor::HexArgb)).toString());
+            p->passband.setNamedColor(settings->value("passband", p->passband.name(QColor::HexArgb)).toString());
+            p->wfBackground.setNamedColor(settings->value("wfBackground", p->wfBackground.name(QColor::HexArgb)).toString());
+            p->wfGrid.setNamedColor(settings->value("wfGrid", p->wfGrid.name(QColor::HexArgb)).toString());
+            p->wfAxis.setNamedColor(settings->value("wfAxis", p->wfAxis.name(QColor::HexArgb)).toString());
+            p->wfText.setNamedColor(settings->value("wfText", p->wfText.name(QColor::HexArgb)).toString());
+            p->meterLevel.setNamedColor(settings->value("meterLevel", p->meterLevel.name(QColor::HexArgb)).toString());
+            p->meterAverage.setNamedColor(settings->value("meterAverage", p->meterAverage.name(QColor::HexArgb)).toString());
+            p->meterPeakLevel.setNamedColor(settings->value("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb)).toString());
+            p->meterPeakScale.setNamedColor(settings->value("meterPeakScale", p->meterPeakScale.name(QColor::HexArgb)).toString());
+            p->meterLowerLine.setNamedColor(settings->value("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb)).toString());
+            p->meterLowText.setNamedColor(settings->value("meterLowText", p->meterLowText.name(QColor::HexArgb)).toString());
+            p->clusterSpots.setNamedColor(settings->value("clusterSpots", p->clusterSpots.name(QColor::HexArgb)).toString());
+        }
+    }
+    settings->endArray();
     settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -1426,6 +1580,27 @@ void wfmain::loadSettings()
         serverConfig.baudRate = prefs.serialPortBaud;
     }
 
+    prefs.polling_ms = settings->value("polling_ms", defPrefs.polling_ms).toInt();
+    if(prefs.polling_ms == 0)
+    {
+        // Automatic
+        ui->pollingButtonGroup->blockSignals(true);
+        ui->autoPollBtn->setChecked(true);
+        ui->manualPollBtn->setChecked(false);
+        ui->pollingButtonGroup->blockSignals(false);
+        ui->pollTimeMsSpin->setEnabled(false);
+    } else {
+        // Manual
+        ui->pollingButtonGroup->blockSignals(true);
+        ui->autoPollBtn->setChecked(false);
+        ui->manualPollBtn->setChecked(true);
+        ui->pollingButtonGroup->blockSignals(false);
+        ui->pollTimeMsSpin->blockSignals(true);
+        ui->pollTimeMsSpin->setValue(prefs.polling_ms);
+        ui->pollTimeMsSpin->blockSignals(false);
+        ui->pollTimeMsSpin->setEnabled(true);
+    }
+
     prefs.virtualSerialPort = settings->value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
     int vspIndex = ui->vspCombo->findText(prefs.virtualSerialPort);
     if (vspIndex != -1) {
@@ -1443,7 +1618,10 @@ void wfmain::loadSettings()
 
     prefs.audioSystem = static_cast<audioType>(settings->value("AudioSystem", defPrefs.audioSystem).toInt());
     ui->audioSystemCombo->blockSignals(true);
+    ui->audioSystemServerCombo->blockSignals(true);
     ui->audioSystemCombo->setCurrentIndex(prefs.audioSystem);
+    ui->audioSystemServerCombo->setCurrentIndex(prefs.audioSystem);
+    ui->audioSystemServerCombo->blockSignals(false);
     ui->audioSystemCombo->blockSignals(false);
 
 
@@ -1464,6 +1642,7 @@ void wfmain::loadSettings()
     // If LAN is enabled, server gets its audio straight from the LAN
     ui->serverRXAudioInputCombo->setEnabled(!prefs.enableLAN);
     ui->serverTXAudioOutputCombo->setEnabled(!prefs.enableLAN);
+    ui->audioSystemServerCombo->setEnabled(!prefs.enableLAN);
 
     ui->baudRateCombo->setEnabled(!prefs.enableLAN);
     ui->serialDeviceListCombo->setEnabled(!prefs.enableLAN);
@@ -1557,10 +1736,10 @@ void wfmain::loadSettings()
             ui->audioTXCodecCombo->setCurrentIndex(f);
     ui->audioRXCodecCombo->blockSignals(false);
 
-    rxSetup.name = settings->value("AudioOutput", "").toString();
+    rxSetup.name = settings->value("AudioOutput", "Default Output Device").toString();
     qInfo(logGui()) << "Got Audio Output from Settings: " << rxSetup.name;
 
-    txSetup.name = settings->value("AudioInput", "").toString();
+    txSetup.name = settings->value("AudioInput", "Default Input Device").toString();
     qInfo(logGui()) << "Got Audio Input from Settings: " << txSetup.name;
 
 
@@ -1637,24 +1816,37 @@ void wfmain::loadSettings()
     memcpy(rigTemp->guid, QUuid::fromString(guid).toRfc4122().constData(), GUIDLEN);
 #endif
 
-    rigTemp->rxAudioSetup.name = settings->value("ServerAudioInput", "").toString();
-    rigTemp->txAudioSetup.name = settings->value("ServerAudioOutput", "").toString();
+    rigTemp->rxAudioSetup.name = settings->value("ServerAudioInput", "Default Input Device").toString();
+    rigTemp->txAudioSetup.name = settings->value("ServerAudioOutput", "Default Output Device").toString();
     serverConfig.rigs.append(rigTemp);
 
     int row = 0;
     ui->serverUsersTable->setRowCount(0);
 
-    foreach(SERVERUSER user, serverConfig.users)
+    QList<SERVERUSER>::iterator user = serverConfig.users.begin();
+
+    while (user != serverConfig.users.end())
     {
-        if (user.username != "" && user.password != "")
+        if (user->username != "" && user->password != "")
         {
-            serverAddUserLine(user.username, user.password, user.userType);
+            serverAddUserLine(user->username, user->password, user->userType);
             row++;
+            user++;
+        }
+        else {
+            user = serverConfig.users.erase(user);
         }
     }
 
     if (row == 0) {
         serverAddUserLine("", "", 0);
+        SERVERUSER user;
+        user.username = "";
+        user.password = "";
+        user.userType = 0;
+        serverConfig.users.append(user);
+
+        ui->serverAddUserBtn->setEnabled(false);
     }
 
     settings->endGroup();
@@ -1693,6 +1885,72 @@ void wfmain::loadSettings()
     settings->endArray();
     settings->endGroup();
 
+    settings->beginGroup("Cluster");
+    
+    prefs.clusterUdpEnable = settings->value("UdpEnabled", false).toBool();
+    prefs.clusterTcpEnable = settings->value("TcpEnabled", false).toBool();
+    prefs.clusterUdpPort = settings->value("UdpPort", 12060).toInt();
+    ui->clusterUdpPortLineEdit->setText(QString::number(prefs.clusterUdpPort));
+    ui->clusterUdpEnable->setChecked(prefs.clusterUdpEnable);
+    ui->clusterTcpEnable->setChecked(prefs.clusterTcpEnable);
+
+    int numClusters = settings->beginReadArray("Servers");
+    clusters.clear();
+    if (numClusters > 0) {
+        {
+            for (int f = 0; f < numClusters; f++)
+            {
+                settings->setArrayIndex(f);
+                clusterSettings c;
+                c.server = settings->value("ServerName", "").toString();
+                c.port = settings->value("Port", 7300).toInt();
+                c.userName = settings->value("UserName", "").toString();
+                c.password = settings->value("Password", "").toString();
+                c.timeout = settings->value("Timeout", 0).toInt();
+                c.isdefault = settings->value("Default", false).toBool();
+                if (!c.server.isEmpty()) {
+                    clusters.append(c);
+                }
+            }
+            int defaultCluster = 0;
+            ui->clusterServerNameCombo->blockSignals(true);
+
+            for (int f = 0; f < clusters.size(); f++)
+            {
+                ui->clusterServerNameCombo->addItem(clusters[f].server);
+                if (clusters[f].isdefault) {
+                    defaultCluster = f;
+                }
+            }
+            ui->clusterServerNameCombo->blockSignals(false);
+
+            if (clusters.size() > defaultCluster)
+            {
+                ui->clusterServerNameCombo->setCurrentIndex(defaultCluster);
+                ui->clusterTcpPortLineEdit->blockSignals(true);
+                ui->clusterUsernameLineEdit->blockSignals(true);
+                ui->clusterPasswordLineEdit->blockSignals(true);
+                ui->clusterTimeoutLineEdit->blockSignals(true);
+                ui->clusterTcpPortLineEdit->setText(QString::number(clusters[defaultCluster].port));
+                ui->clusterUsernameLineEdit->setText(clusters[defaultCluster].userName);
+                ui->clusterPasswordLineEdit->setText(clusters[defaultCluster].password);
+                ui->clusterTimeoutLineEdit->setText(QString::number(clusters[defaultCluster].timeout));
+                ui->clusterTcpPortLineEdit->blockSignals(false);
+                ui->clusterUsernameLineEdit->blockSignals(false);
+                ui->clusterPasswordLineEdit->blockSignals(false);
+                ui->clusterTimeoutLineEdit->blockSignals(false);
+            }
+        }
+    }
+    else {
+        ui->clusterTcpPortLineEdit->setEnabled(false);
+        ui->clusterUsernameLineEdit->setEnabled(false);
+        ui->clusterPasswordLineEdit->setEnabled(false);
+        ui->clusterTimeoutLineEdit->setEnabled(false);
+    }
+    settings->endArray();
+
+    settings->endGroup();
 }
 
 void wfmain::serverAddUserLine(const QString& user, const QString& pass, const int& type)
@@ -1700,58 +1958,109 @@ void wfmain::serverAddUserLine(const QString& user, const QString& pass, const i
     ui->serverUsersTable->blockSignals(true);
 
     ui->serverUsersTable->insertRow(ui->serverUsersTable->rowCount());
-    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 0, new QTableWidgetItem(user));
+
+    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 0, new QTableWidgetItem());
     ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 1, new QTableWidgetItem());
     ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 2, new QTableWidgetItem());
+    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 3, new QTableWidgetItem());
+
+
+
+    QLineEdit* username = new QLineEdit();
+    username->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
+    username->setProperty("col", (int)0);
+    username->setText(user);
+    connect(username, SIGNAL(editingFinished()), this, SLOT(onServerUserFieldChanged()));
+    ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 0, username);
 
     QLineEdit* password = new QLineEdit();
     password->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
+    password->setProperty("col", (int)1);
     password->setEchoMode(QLineEdit::PasswordEchoOnEdit);
     password->setText(pass);
-    connect(password, SIGNAL(editingFinished()), this, SLOT(onServerPasswordChanged()));
+    connect(password, SIGNAL(editingFinished()), this, SLOT(onServerUserFieldChanged()));
     ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 1, password);
 
     QComboBox* comboBox = new QComboBox();
     comboBox->insertItems(0, { "Full User","Full with no TX","Monitor only" });
+    comboBox->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
+    comboBox->setProperty("col", (int)2);
     comboBox->setCurrentIndex(type);
+    connect(comboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onServerUserFieldChanged()));
     ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 2, comboBox);
+
+    QPushButton* button = new QPushButton();
+    button->setText("Delete");
+    button->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
+    button->setProperty("col", (int)3);
+    connect(button, SIGNAL(clicked()), this, SLOT(onServerUserFieldChanged()));
+    ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 3, button);
+
     ui->serverUsersTable->blockSignals(false);
 
 }
 
-void wfmain::onServerPasswordChanged()
+void wfmain::onServerUserFieldChanged()
 {
+
     int row = sender()->property("row").toInt();
-    QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 1);
-    QByteArray pass;
-    passcode(password->text(), pass);
-    password->setText(pass);
-    qInfo() << "password row" << row << "changed";
-    serverConfig.users.clear();
-    for (int rows = 0; rows < ui->serverUsersTable->model()->rowCount(); rows++)
+    int col = sender()->property("col").toInt();
+    qDebug() << "Server User field col" << col << "row" << row << "changed";
+
+    // This is a new user line so add to serverUsersTable
+    if (serverConfig.users.length() <= row)
     {
-        if (ui->serverUsersTable->item(rows, 0) != NULL)
+        qInfo() << "Something bad has happened, serverConfig.users is shorter than table!";
+    }
+    else
+    {
+        if (col == 0)
         {
-            SERVERUSER user;
-            user.username = ui->serverUsersTable->item(rows, 0)->text();
-            QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(rows, 1);
-            user.password = password->text();
-            QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(rows, 2);
-            user.userType = comboBox->currentIndex();
-            serverConfig.users.append(user);
+            QLineEdit* username = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 0);
+            if (username->text() != serverConfig.users[row].username) {
+                serverConfig.users[row].username = username->text();
+            }
         }
-        else {
-            ui->serverUsersTable->removeRow(rows);
+        else if (col == 1)
+        {
+            QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 1);
+            QByteArray pass;
+            passcode(password->text(), pass);
+            if (QString(pass) != serverConfig.users[row].password) {
+                serverConfig.users[row].password = pass;
+            }
         }
+        else if (col == 2)
+        {
+            QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(row, 2);
+            serverConfig.users[row].userType = comboBox->currentIndex();
+        }
+        else if (col == 3)
+        {          
+            serverConfig.users.removeAt(row);
+            ui->serverUsersTable->setRowCount(0);
+            foreach(SERVERUSER user, serverConfig.users)
+            {
+                serverAddUserLine(user.username, user.password, user.userType);
+            }
+        }
+        if (row == ui->serverUsersTable->rowCount() - 1) {
+            ui->serverAddUserBtn->setEnabled(true);
+        }
+
     }
 }
 
-void wfmain::on_serverUsersTable_cellClicked(int row, int col)
+void wfmain::on_serverAddUserBtn_clicked()
 {
-    qInfo() << "Clicked on " << row << "," << col;
-    if (row == ui->serverUsersTable->model()->rowCount() - 1 && ui->serverUsersTable->item(row, 0) != NULL) {
-        serverAddUserLine("", "", 0);
-    }
+    serverAddUserLine("", "", 0);
+    SERVERUSER user;
+    user.username = "";
+    user.password = "";
+    user.userType = 0;
+    serverConfig.users.append(user);
+
+    ui->serverAddUserBtn->setEnabled(false);
 }
 
 
@@ -1783,20 +2092,14 @@ void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
     if (!serverConfig.rigs.isEmpty())
     {
         if (prefs.audioSystem == qtAudio) {
-            QVariant v = ui->serverRXAudioInputCombo->itemData(value);
-#if QT_VERSION >= 0x060000
-            serverConfig.rigs.first()->rxAudioSetup.port = v.value<QAudioDevice>();
-#else
-            serverConfig.rigs.first()->rxAudioSetup.port = v.value<QAudioDeviceInfo>();
-#endif
+            serverConfig.rigs.first()->rxAudioSetup.port = audioDev->getInputDeviceInfo(value);
         }
         else {
-            serverConfig.rigs.first()->rxAudioSetup.portInt = ui->serverRXAudioInputCombo->itemData(value).toInt();
+            serverConfig.rigs.first()->rxAudioSetup.portInt = audioDev->getInputDeviceInt(value);
         }
 
-        serverConfig.rigs.first()->rxAudioSetup.name = ui->serverRXAudioInputCombo->itemText(value);
+        serverConfig.rigs.first()->rxAudioSetup.name = audioDev->getInputName(value);
     }
-
 
 }
 
@@ -1806,45 +2109,18 @@ void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
     if (!serverConfig.rigs.isEmpty())
     {
         if (prefs.audioSystem == qtAudio) {
-            QVariant v = ui->serverTXAudioOutputCombo->itemData(value);
-#if QT_VERSION >= 0x060000
-            serverConfig.rigs.first()->txAudioSetup.port = v.value<QAudioDevice>();
-#else
-            serverConfig.rigs.first()->txAudioSetup.port = v.value<QAudioDeviceInfo>();
-#endif
+            serverConfig.rigs.first()->txAudioSetup.port = audioDev->getOutputDeviceInfo(value);
         }
         else {
-            serverConfig.rigs.first()->txAudioSetup.portInt = ui->serverTXAudioOutputCombo->itemData(value).toInt();
+            serverConfig.rigs.first()->txAudioSetup.portInt = audioDev->getOutputDeviceInt(value);
         }
 
-        serverConfig.rigs.first()->txAudioSetup.name = ui->serverTXAudioOutputCombo->itemText(value);
+        serverConfig.rigs.first()->txAudioSetup.name = audioDev->getOutputName(value);
     }
 
 
 }
 
-void wfmain::on_serverUsersTable_cellChanged(int row, int column)
-{
-    qInfo() << "Cell Changed:" << row << "," << column;
-
-    serverConfig.users.clear();
-    for (int rows = 0; rows < ui->serverUsersTable->model()->rowCount(); rows++)
-    {
-        if (ui->serverUsersTable->item(rows, 0) != NULL)
-        {
-            SERVERUSER user;
-            user.username = ui->serverUsersTable->item(rows, 0)->text();
-            QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(rows, 1);
-            user.password = password->text();
-            QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(rows, 2);
-            user.userType = comboBox->currentIndex();
-            serverConfig.users.append(user);
-        }
-        else {
-            ui->serverUsersTable->removeRow(rows);
-        }
-    }
-}
 
 
 void wfmain::saveSettings()
@@ -1852,11 +2128,14 @@ void wfmain::saveSettings()
     qInfo(logSystem()) << "Saving settings to " << settings->fileName();
     // Basic things to load:
 
+    settings->beginGroup("Program");
+    settings->setValue("version", QString(WFVIEW_VERSION));
+    settings->endGroup();
+
     // UI: (full screen, dark theme, draw peaks, colors, etc)
     settings->beginGroup("Interface");
     settings->setValue("UseFullScreen", prefs.useFullScreen);
     settings->setValue("UseSystemTheme", prefs.useSystemTheme);
-    settings->setValue("UseDarkMode", prefs.useDarkMode);
     settings->setValue("DrawPeaks", prefs.drawPeaks);
     settings->setValue("underlayMode", prefs.underlayMode);
     settings->setValue("underlayBufferSize", prefs.underlayBufferSize);
@@ -1873,6 +2152,8 @@ void wfmain::saveSettings()
     settings->setValue("ConfirmExit", prefs.confirmExit);
     settings->setValue("ConfirmPowerOff", prefs.confirmPowerOff);
     settings->setValue("Meter2Type", (int)prefs.meter2Type);
+    settings->setValue("ClickDragTuning", prefs.clickDragTuningEnable);
+
     settings->endGroup();
 
     // Radio and Comms: C-IV addr, port to use
@@ -1880,6 +2161,7 @@ void wfmain::saveSettings()
     settings->setValue("RigCIVuInt", prefs.radioCIVAddr);
     settings->setValue("CIVisRadioModel", prefs.CIVisRadioModel);
     settings->setValue("ForceRTSasPTT", prefs.forceRTSasPTT);
+    settings->setValue("polling_ms", prefs.polling_ms); // 0 = automatic
     settings->setValue("SerialPortRadio", prefs.serialPortRadio);
     settings->setValue("SerialPortBaud", prefs.serialPortBaud);
     settings->setValue("VirtualSerialPort", prefs.virtualSerialPort);
@@ -1938,50 +2220,40 @@ void wfmain::saveSettings()
     settings->endArray();
     settings->endGroup();
 
-    // Note: X and Y get the same colors. See setPlotTheme() function
-
-    settings->beginGroup("DarkColors");
-    settings->setValue("Dark_PlotBackground", prefs.colorScheme.Dark_PlotBackground.rgba());
-    settings->setValue("Dark_PlotAxisPen", prefs.colorScheme.Dark_PlotAxisPen.rgba());
-    settings->setValue("Dark_PlotLegendTextColor", prefs.colorScheme.Dark_PlotLegendTextColor.rgba());
-    settings->setValue("Dark_PlotLegendBorderPen", prefs.colorScheme.Dark_PlotLegendBorderPen.rgba());
-    settings->setValue("Dark_PlotLegendBrush", prefs.colorScheme.Dark_PlotLegendBrush.rgba());
-    settings->setValue("Dark_PlotTickLabel", prefs.colorScheme.Dark_PlotTickLabel.rgba());
-    settings->setValue("Dark_PlotBasePen", prefs.colorScheme.Dark_PlotBasePen.rgba());
-    settings->setValue("Dark_PlotTickPen", prefs.colorScheme.Dark_PlotTickPen.rgba());
-    settings->setValue("Dark_PeakPlotLine", prefs.colorScheme.Dark_PeakPlotLine.rgba());
-    settings->setValue("Dark_TuningLine", prefs.colorScheme.Dark_TuningLine.rgba());
-    settings->endGroup();
-
-    settings->beginGroup("LightColors");
-    settings->setValue("Light_PlotBackground", prefs.colorScheme.Light_PlotBackground.rgba());
-    settings->setValue("Light_PlotAxisPen", prefs.colorScheme.Light_PlotAxisPen.rgba());
-    settings->setValue("Light_PlotLegendTextColor", prefs.colorScheme.Light_PlotLegendTextColor.rgba());
-    settings->setValue("Light_PlotLegendBorderPen", prefs.colorScheme.Light_PlotLegendBorderPen.rgba());
-    settings->setValue("Light_PlotLegendBrush", prefs.colorScheme.Light_PlotLegendBrush.rgba());
-    settings->setValue("Light_PlotTickLabel", prefs.colorScheme.Light_PlotTickLabel.rgba());
-    settings->setValue("Light_PlotBasePen", prefs.colorScheme.Light_PlotBasePen.rgba());
-    settings->setValue("Light_PlotTickPen", prefs.colorScheme.Light_PlotTickPen.rgba());
-    settings->setValue("Light_PeakPlotLine", prefs.colorScheme.Light_PeakPlotLine.rgba());
-    settings->setValue("Light_TuningLine", prefs.colorScheme.Light_TuningLine.rgba());
-
-    settings->endGroup();
-
-    // This is a reference to see how the preference file is encoded.
-    settings->beginGroup("StandardColors");
-
-    settings->setValue("white", QColor(Qt::white).rgba());
-    settings->setValue("black", QColor(Qt::black).rgba());
-
-    settings->setValue("red_opaque", QColor(Qt::red).rgba());
-    settings->setValue("red_translucent", QColor(255,0,0,128).rgba());
-    settings->setValue("green_opaque", QColor(Qt::green).rgba());
-    settings->setValue("green_translucent", QColor(0,255,0,128).rgba());
-    settings->setValue("blue_opaque", QColor(Qt::blue).rgba());
-    settings->setValue("blue_translucent", QColor(0,0,255,128).rgba());
-    settings->setValue("cyan", QColor(Qt::cyan).rgba());
-    settings->setValue("magenta", QColor(Qt::magenta).rgba());
-    settings->setValue("yellow", QColor(Qt::yellow).rgba());
+    // Color presets:
+    settings->beginGroup("ColorPresets");
+    settings->setValue("currentColorPresetNumber", prefs.currentColorPresetNumber);
+    settings->beginWriteArray("ColorPreset", numColorPresetsTotal);
+    colorPrefsType *p;
+    for(int pn=0; pn < numColorPresetsTotal; pn++)
+    {
+        p = &(colorPreset[pn]);
+        settings->setArrayIndex(pn);
+        settings->setValue("presetNum", p->presetNum);
+        settings->setValue("presetName", *(p->presetName));
+        settings->setValue("gridColor", p->gridColor.name(QColor::HexArgb));
+        settings->setValue("axisColor", p->axisColor.name(QColor::HexArgb));
+        settings->setValue("textColor", p->textColor.name(QColor::HexArgb));
+        settings->setValue("spectrumLine", p->spectrumLine.name(QColor::HexArgb));
+        settings->setValue("spectrumFill", p->spectrumFill.name(QColor::HexArgb));
+        settings->setValue("underlayLine", p->underlayLine.name(QColor::HexArgb));
+        settings->setValue("underlayFill", p->underlayFill.name(QColor::HexArgb));
+        settings->setValue("plotBackground", p->plotBackground.name(QColor::HexArgb));
+        settings->setValue("tuningLine", p->tuningLine.name(QColor::HexArgb));
+        settings->setValue("passband", p->passband.name(QColor::HexArgb));
+        settings->setValue("wfBackground", p->wfBackground.name(QColor::HexArgb));
+        settings->setValue("wfGrid", p->wfGrid.name(QColor::HexArgb));
+        settings->setValue("wfAxis", p->wfAxis.name(QColor::HexArgb));
+        settings->setValue("wfText", p->wfText.name(QColor::HexArgb));
+        settings->setValue("meterLevel", p->meterLevel.name(QColor::HexArgb));
+        settings->setValue("meterAverage", p->meterAverage.name(QColor::HexArgb));
+        settings->setValue("meterPeakScale", p->meterPeakScale.name(QColor::HexArgb));
+        settings->setValue("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb));
+        settings->setValue("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb));
+        settings->setValue("meterLowText", p->meterLowText.name(QColor::HexArgb));
+        settings->setValue("clusterSpots", p->clusterSpots.name(QColor::HexArgb));
+    }
+    settings->endArray();
     settings->endGroup();
 
     settings->beginGroup("Server");
@@ -2016,11 +2288,29 @@ void wfmain::saveSettings()
     }
 
     settings->endArray();
-    qInfo() << "Server config stored";
-
     settings->endGroup();
 
+    settings->beginGroup("Cluster");
+    settings->setValue("UdpEnabled", prefs.clusterUdpEnable);
+    settings->setValue("TcpEnabled", prefs.clusterTcpEnable);
+    settings->setValue("UdpPort", prefs.clusterUdpPort);
 
+    settings->beginWriteArray("Servers");
+
+    for (int f = 0; f < clusters.count(); f++)
+    {
+        settings->setArrayIndex(f);
+        settings->setValue("ServerName", clusters[f].server);
+        settings->setValue("UserName", clusters[f].userName);
+        settings->setValue("Port", clusters[f].port);
+        settings->setValue("Password", clusters[f].password);
+        settings->setValue("Timeout", clusters[f].timeout);
+        settings->setValue("Default", clusters[f].isdefault);
+    }
+
+    settings->endArray();
+
+    settings->endGroup();
 
     settings->sync(); // Automatic, not needed (supposedly)
 }
@@ -2048,6 +2338,7 @@ void wfmain::showHideSpectrum(bool show)
     ui->wfLengthSlider->setEnabled(show);
     ui->wfthemeCombo->setVisible(show);
     ui->toFixedBtn->setVisible(show);
+    ui->customEdgeBtn->setVisible(show);
     ui->clearPeakBtn->setVisible(show);
 
     // And the labels:
@@ -2097,17 +2388,6 @@ void wfmain::prepareWf(unsigned int wfLength)
         QByteArray empty((int)spectWidth, '\x01');
         spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
 
-        if(spectrumPlasmaSize == 0)
-            spectrumPlasmaSize = 128;
-
-        //spectrumPlasma.resize(spectrumPlasmaSize);
-        for(unsigned int p=0; p < spectrumPlasmaSize; p++)
-        {
-            spectrumPlasma.append(empty);
-        }
-
-        //wfimage.resize(wfLengthMax);
-
         if((unsigned int)wfimage.size() < wfLengthMax)
         {
             unsigned int i=0;
@@ -2127,7 +2407,7 @@ void wfmain::prepareWf(unsigned int wfLength)
 
         colorMap->data()->setValueRange(QCPRange(0, wfLength-1));
         colorMap->data()->setKeyRange(QCPRange(0, spectWidth-1));
-        colorMap->setDataRange(QCPRange(0, rigCaps.spectAmpMax));
+        colorMap->setDataRange(QCPRange(prefs.plotFloor, prefs.plotCeiling));
         colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(ui->wfthemeCombo->currentData().toInt()));
 
         if(colorMapData == Q_NULLPTR)
@@ -2579,14 +2859,6 @@ void wfmain::showStatusBarText(QString text)
     ui->statusBar->showMessage(text, 5000);
 }
 
-void wfmain::on_useDarkThemeChk_clicked(bool checked)
-{
-    //setAppTheme(checked);
-    setPlotTheme(wf, checked);
-    setPlotTheme(plot, checked);
-    prefs.useDarkMode = checked;
-}
-
 void wfmain::on_useSystemThemeChk_clicked(bool checked)
 {
     setAppTheme(!checked);
@@ -2618,79 +2890,118 @@ void wfmain::setAppTheme(bool isCustom)
     }
 }
 
-void wfmain::setDefaultColors()
+void wfmain::setDefaultColors(int presetNumber)
 {
-    defaultColors.Dark_PlotBackground = QColor(0,0,0,255);
-    defaultColors.Dark_PlotAxisPen = QColor(75,75,75,255);
-    defaultColors.Dark_PlotLegendTextColor = QColor(255,255,255,255);
-    defaultColors.Dark_PlotLegendBorderPen = QColor(255,255,255,255);
-    defaultColors.Dark_PlotLegendBrush = QColor(0,0,0,200);
-    defaultColors.Dark_PlotTickLabel = QColor(Qt::white);
-    defaultColors.Dark_PlotBasePen = QColor(Qt::white);
-    defaultColors.Dark_PlotTickPen = QColor(Qt::white);
-    defaultColors.Dark_PeakPlotLine = QColor(Qt::yellow);
-    defaultColors.Dark_TuningLine = QColor(Qt::cyan);
+    // These are the default color schemes
+    if(presetNumber > numColorPresetsTotal-1)
+        return;
 
-    defaultColors.Light_PlotBackground = QColor(255,255,255,255);
-    defaultColors.Light_PlotAxisPen = QColor(200,200,200,255);
-    defaultColors.Light_PlotLegendTextColor = QColor(0,0,0,255);
-    defaultColors.Light_PlotLegendBorderPen = QColor(0,0,0,255);
-    defaultColors.Light_PlotLegendBrush = QColor(255,255,255,200);
-    defaultColors.Light_PlotTickLabel = QColor(Qt::black);
-    defaultColors.Light_PlotBasePen = QColor(Qt::black);
-    defaultColors.Light_PlotTickPen = QColor(Qt::black);
-    defaultColors.Light_PeakPlotLine = QColor(Qt::blue);
-    defaultColors.Light_TuningLine = QColor(Qt::blue);
-}
+    colorPrefsType *p = &colorPreset[presetNumber];
 
-void wfmain::setPlotTheme(QCustomPlot *plot, bool isDark)
-{
-    if(isDark)
+    // Begin every parameter with these safe defaults first:
+    if(p->presetName == Q_NULLPTR)
     {
-        plot->setBackground(prefs.colorScheme.Dark_PlotBackground);
-        //plot->setBackground(QColor(0,0,0,255));
-
-        plot->xAxis->grid()->setPen(prefs.colorScheme.Dark_PlotAxisPen);
-        plot->yAxis->grid()->setPen(prefs.colorScheme.Dark_PlotAxisPen);
-
-        plot->legend->setTextColor(prefs.colorScheme.Dark_PlotLegendTextColor);
-        plot->legend->setBorderPen(prefs.colorScheme.Dark_PlotLegendBorderPen);
-        plot->legend->setBrush(prefs.colorScheme.Dark_PlotLegendBrush);
-
-        plot->xAxis->setTickLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
-        plot->xAxis->setLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
-        plot->yAxis->setTickLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
-        plot->yAxis->setLabelColor(prefs.colorScheme.Dark_PlotTickLabel);
-
-        plot->xAxis->setBasePen(prefs.colorScheme.Dark_PlotBasePen);
-        plot->xAxis->setTickPen(prefs.colorScheme.Dark_PlotTickPen);
-        plot->yAxis->setBasePen(prefs.colorScheme.Dark_PlotBasePen);
-        plot->yAxis->setTickPen(prefs.colorScheme.Dark_PlotTickPen);
-        plot->graph(0)->setPen(prefs.colorScheme.Dark_PeakPlotLine);
-        freqIndicatorLine->setPen(prefs.colorScheme.Dark_TuningLine);
-    } else {
-        //color = ui->groupBox->palette().color(QPalette::Button);
-
-        plot->setBackground(prefs.colorScheme.Light_PlotBackground);
-        plot->xAxis->grid()->setPen(prefs.colorScheme.Light_PlotAxisPen);
-        plot->yAxis->grid()->setPen(prefs.colorScheme.Light_PlotAxisPen);
-
-        plot->legend->setTextColor(prefs.colorScheme.Light_PlotLegendTextColor);
-        plot->legend->setBorderPen(prefs.colorScheme.Light_PlotLegendBorderPen);
-        plot->legend->setBrush(prefs.colorScheme.Light_PlotLegendBrush);
-
-        plot->xAxis->setTickLabelColor(prefs.colorScheme.Light_PlotTickLabel);
-        plot->xAxis->setLabelColor(prefs.colorScheme.Light_PlotTickLabel);
-        plot->yAxis->setTickLabelColor(prefs.colorScheme.Light_PlotTickLabel);
-        plot->yAxis->setLabelColor(prefs.colorScheme.Light_PlotTickLabel);
-
-        plot->xAxis->setBasePen(prefs.colorScheme.Light_PlotBasePen);
-        plot->xAxis->setTickPen(prefs.colorScheme.Light_PlotTickPen);
-        plot->yAxis->setBasePen(prefs.colorScheme.Light_PlotBasePen);
-        plot->yAxis->setTickPen(prefs.colorScheme.Light_PlotTickLabel);
-        plot->graph(0)->setPen(prefs.colorScheme.Light_PeakPlotLine);
-        freqIndicatorLine->setPen(prefs.colorScheme.Light_TuningLine);
+        p->presetName = new QString();
     }
+    p->presetName->clear();
+    p->presetName->append(QString("%1").arg(presetNumber));
+    p->presetNum = presetNumber;
+    p->gridColor = QColor(0,0,0,255);
+    p->axisColor = QColor(Qt::white);
+    p->textColor = QColor(Qt::white);
+    p->spectrumLine = QColor(Qt::yellow);
+    p->spectrumFill = QColor("transparent");
+    p->underlayLine = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150).lighter(200);
+    p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
+    p->plotBackground = QColor(Qt::black);
+    p->tuningLine = QColor(Qt::blue);
+    p->passband = QColor(Qt::blue);
+
+    p->meterLevel = QColor("#148CD2").darker();
+    p->meterAverage = QColor("#3FB7CD");
+    p->meterPeakLevel = QColor("#3CA0DB").lighter();
+    p->meterPeakScale = QColor(Qt::red);
+    p->meterLowerLine = QColor("#eff0f1");
+    p->meterLowText = QColor("#eff0f1");
+
+    p->wfBackground = QColor(Qt::black);
+    p->wfAxis = QColor(Qt::white);
+    p->wfGrid = QColor(Qt::white);
+    p->wfText = QColor(Qt::white);
+
+    p->clusterSpots = QColor(Qt::red);
+
+    //qInfo(logSystem()) << "default color preset [" << pn << "] set to pn.presetNum index [" << p->presetNum << "]" << ", with name " << *(p->presetName);
+
+    switch (presetNumber)
+    {
+        case 0:
+        {
+            // Dark
+            p->presetName->clear();
+            p->presetName->append("Dark");
+            p->plotBackground = QColor(0,0,0,255);
+            p->axisColor = QColor(Qt::white);
+            p->textColor = QColor(255,255,255,255);
+            p->gridColor = QColor(0,0,0,255);
+            p->spectrumFill = QColor("transparent");
+            p->spectrumLine = QColor(Qt::yellow);
+            p->underlayLine = QColor("#9633ff55");
+            p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
+            p->tuningLine = QColor("#ff55ffff");
+            p->passband = QColor("#32ffffff");
+
+            p->meterLevel = QColor("#148CD2").darker();
+            p->meterAverage = QColor("#3FB7CD");
+            p->meterPeakScale = QColor(Qt::red);
+            p->meterPeakLevel = QColor("#3CA0DB").lighter();
+            p->meterLowerLine = QColor("#eff0f1");
+            p->meterLowText = QColor("#eff0f1");
+
+            p->wfBackground = QColor(Qt::black);
+            p->wfAxis = QColor(Qt::white);
+            p->wfGrid = QColor("transparent");
+            p->wfText = QColor(Qt::white);
+            p->clusterSpots = QColor(Qt::red);
+            break;
+        }
+        case 1:
+        {
+            // Bright
+            p->presetName->clear();
+            p->presetName->append("Bright");
+            p->plotBackground = QColor(Qt::white);
+            p->axisColor = QColor(200,200,200,255);
+            p->gridColor = QColor(255,255,255,0);
+            p->textColor = QColor(Qt::black);
+            p->spectrumFill = QColor("transparent");
+            p->spectrumLine = QColor(Qt::black);
+            p->underlayLine = QColor(Qt::blue);
+            p->tuningLine = QColor(Qt::darkBlue);
+            p->passband = QColor("#64000080");
+
+            p->meterAverage = QColor("#3FB7CD");
+            p->meterPeakLevel = QColor("#3CA0DB");
+            p->meterPeakScale = QColor(Qt::darkRed);
+            p->meterLowerLine = QColor(Qt::black);
+            p->meterLowText = QColor(Qt::black);
+
+            p->wfBackground = QColor(Qt::white);
+            p->wfAxis = QColor(200,200,200,255);
+            p->wfGrid = QColor("transparent");
+            p->wfText = QColor(Qt::black);
+            p->clusterSpots = QColor(Qt::red);
+            break;
+        }
+
+        case 2:
+        case 3:
+        case 4:
+        default:
+            break;
+
+    }
+    ui->colorPresetCombo->setItemText(presetNumber, *(p->presetName));
 }
 
 void wfmain::doCmd(commandtype cmddata)
@@ -2817,9 +3128,7 @@ void wfmain::doCmd(commandtype cmddata)
             doCmd(cmd);
             break;
     }
-
 }
-
 
 void wfmain::doCmd(cmds cmd)
 {
@@ -2830,8 +3139,12 @@ void wfmain::doCmd(cmds cmd)
             //qInfo(logSystem()) << "NOOP";
             break;
         case cmdGetRigID:
-            emit getRigID();
-            break;
+            if(!haveRigCaps)
+            {
+                emit getRigID();
+                issueDelayedCommand(cmdGetRigID);
+            }
+        break;
         case cmdGetRigCIV:
             // if(!know rig civ already)
             if(!haveRigCaps)
@@ -2878,6 +3191,9 @@ void wfmain::doCmd(cmds cmd)
             break;
         case cmdGetDuplexMode:
             emit getDuplexMode();
+            break;
+        case cmdGetPassband:
+            emit getPassband();
             break;
         case cmdGetTone:
             emit getTone();
@@ -3255,9 +3571,31 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         this->spectWidth = rigCaps.spectLenMax; // used once haveRigCaps is true.
         //wfCeiling = rigCaps.spectAmpMax;
         //plotCeiling = rigCaps.spectAmpMax;
-        ui->topLevelSlider->setMaximum(rigCaps.spectAmpMax);
+        if(rigCaps.hasSpectrum)
+        {
+            ui->topLevelSlider->setVisible(true);
+            ui->labelTop->setVisible(true);
+            ui->botLevelSlider->setVisible(true);
+            ui->labelBot->setVisible(true);
+            ui->scopeRefLevelSlider->setVisible(true);
+            ui->refLabel->setVisible(true);
+            ui->wfLengthSlider->setVisible(true);
+            ui->lenLabel->setVisible(true);
 
+            ui->topLevelSlider->setMaximum(rigCaps.spectAmpMax);
+            ui->botLevelSlider->setMaximum(rigCaps.spectAmpMax);
+        } else {
+            ui->scopeRefLevelSlider->setVisible(false);
+            ui->refLabel->setVisible(false);
+            ui->wfLengthSlider->setVisible(false);
+            ui->lenLabel->setVisible(false);
+            ui->topLevelSlider->setVisible(false);
+            ui->labelTop->setVisible(false);
+            ui->botLevelSlider->setVisible(false);
+            ui->labelBot->setVisible(false);
+        }
         haveRigCaps = true;
+
         // Added so that server receives rig capabilities.
         emit sendRigCaps(rigCaps);
         rpt->setRig(rigCaps);
@@ -3385,16 +3723,15 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         setBandButtons();
 
-
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
 
-        ui->useRTSforPTTchk->blockSignals(true);
-        ui->useRTSforPTTchk->setChecked(rigCaps.useRTSforPTT);
-        ui->useRTSforPTTchk->blockSignals(false);
+        ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
 
-        ui->connectBtn->setText("Disconnect"); // We must be connected now.
         ui->audioSystemCombo->setEnabled(false);
+        ui->audioSystemServerCombo->setEnabled(false);
+
+        ui->connectBtn->setText("Disconnect from Radio"); // We must be connected now.
 
         prepareWf(ui->wfLengthSlider->value());
         if(usingLAN)
@@ -3407,7 +3744,12 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         issueDelayedCommand(cmdGetFreq);
         issueDelayedCommand(cmdGetMode);
         // recalculate command timing now that we know the rig better:
-        calculateTimingParameters();
+        if(prefs.polling_ms != 0)
+        {
+            changePollTiming(prefs.polling_ms, true);
+        } else {
+            calculateTimingParameters();
+        }
         initPeriodicCommands();
         
         // Set the second meter here as I suspect we need to be connected for it to work?
@@ -3422,6 +3764,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             }
         }
     }
+    updateSizes(ui->tabWidget->currentIndex());
 }
 
 void wfmain::initPeriodicCommands()
@@ -3448,6 +3791,11 @@ void wfmain::initPeriodicCommands()
         insertSlowPeriodicCommand(cmdGetAntenna, 128);
     }
     insertSlowPeriodicCommand(cmdGetDuplexMode, 128);
+
+    if (rigCaps.hasSpectrum) {
+        // Get passband
+        insertPeriodicCommand(cmdGetPassband, 128);
+    }
 }
 
 void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
@@ -3561,8 +3909,12 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             // TODO: create non-button function to do this
             // This will break if the button is ever moved or renamed.
             on_clearPeakBtn_clicked();
+        } else {
+            plasmaPrepared = false;
+            preparePlasma();
         }
-        // TODO: Add clear-out for the buffer
+        // Inform other threads (cluster) that the frequency range has changed.
+        emit setFrequencyRange(startFreq, endFreq);
     }
 
     oldLowerFreq = startFreq;
@@ -3584,6 +3936,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
     QVector <double> x(spectWidth), y(spectWidth), y2(spectWidth);
 
+    // TODO: Keep x around unless the frequency range changes. Should save a little time.
     for(int i=0; i < spectWidth; i++)
     {
         x[i] = (i * (endFreq-startFreq)/spectWidth) + startFreq;
@@ -3604,35 +3957,78 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     }
     plasmaMutex.lock();
     spectrumPlasma.push_front(spectrum);
-    spectrumPlasma.pop_back();
-    //spectrumPlasma.resize(spectrumPlasmaSize);
+    if(spectrumPlasma.size() > (int)spectrumPlasmaSize)
+    {
+        spectrumPlasma.pop_back();
+    }
     plasmaMutex.unlock();
 
-    // HACK DO NOT CHECK IN:
-    drawPeaks = false;
-    drawPlasma = true;
 
     if(!spectrumDrawLock)
     {
         if((plotFloor != oldPlotFloor) || (plotCeiling != oldPlotCeiling))
             updateRange = true;
 
-        //ui->qcp->addGraph();
+#if QCUSTOMPLOT_VERSION >= 0x020000
+
         plot->graph(0)->setData(x,y, true);
         if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
         {
-            freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
-            freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
+            freqIndicatorLine->start->setCoords(freq.MHzDouble, 0);
+            freqIndicatorLine->end->setCoords(freq.MHzDouble, rigCaps.spectAmpMax);
+
+            if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modePSK_R) {
+                passbandIndicator->topLeft->setCoords(freq.MHzDouble - passBand - 0.0001, 0);
+                passbandIndicator->bottomRight->setCoords(freq.MHzDouble - 0.0001, rigCaps.spectAmpMax);
+            }
+            else if (currentModeInfo.mk == modeUSB || currentModeInfo.mk == modePSK) {
+                passbandIndicator->topLeft->setCoords(freq.MHzDouble + 0.0001, 0);
+                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + 0.0001 + passBand, rigCaps.spectAmpMax);
+            }
+            else
+            {
+                if (currentModeInfo.mk == modeFM) {
+                    if (currentModeInfo.filter == 1)
+                        passBand = 0.015;
+                    else if (currentModeInfo.filter == 2)
+                        passBand = 0.010;
+                    else
+                        passBand = 0.007;
+                }
+                passbandIndicator->topLeft->setCoords(freq.MHzDouble - (passBand / 2), 0);
+                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + (passBand / 2), rigCaps.spectAmpMax);
+            }
+
+
         }
+
         if(underlayMode == underlayPeakHold)
         {
             plot->graph(1)->setData(x,y2, true); // peaks
         } else if (underlayMode != underlayNone) {
             computePlasma();
-            plot->graph(1)->setData(x,spectrumPlasmaLine);
+            plot->graph(1)->setData(x,spectrumPlasmaLine, true);
         } else {
             plot->graph(1)->setData(x,y2, true); // peaks, but probably cleared out
         }
+#else
+        plot->graph(0)->setData(x,y);
+        if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
+        {
+            freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
+            freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
+        }
+
+        if(underlayMode == underlayPeakHold)
+        {
+            plot->graph(1)->setData(x,y2); // peaks
+        } else if (underlayMode != underlayNone) {
+            computePlasma();
+            plot->graph(1)->setData(x,spectrumPlasmaLine);
+        } else {
+            plot->graph(1)->setData(x,y2); // peaks, but probably cleared out
+        }
+#endif
 
         if(updateRange)
             plot->yAxis->setRange(prefs.plotFloor, prefs.plotCeiling);
@@ -3667,6 +4063,23 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     }
 }
 
+void wfmain::preparePlasma()
+{
+    if(plasmaPrepared)
+        return;
+
+    if(spectrumPlasmaSize == 0)
+        spectrumPlasmaSize = 128;
+
+    plasmaMutex.lock();
+    spectrumPlasma.clear();
+
+
+    spectrumPlasma.squeeze();
+    plasmaMutex.unlock();
+    plasmaPrepared = true;
+}
+
 void wfmain::computePlasma()
 {
     plasmaMutex.lock();
@@ -3679,7 +4092,7 @@ void wfmain::computePlasma()
         {
             for(int pos=0; pos < specPlasmaSize; pos++)
             {
-                spectrumPlasmaLine[col] += spectrumPlasma[pos][col];
+                spectrumPlasmaLine[col] += (unsigned char)spectrumPlasma[pos][col];
             }
             spectrumPlasmaLine[col] = spectrumPlasmaLine[col] / specPlasmaSize;
         }
@@ -3689,13 +4102,12 @@ void wfmain::computePlasma()
         {
             for(int pos=0; pos < specPlasmaSize; pos++)
             {
-                if((double)(spectrumPlasma[pos][col]) > spectrumPlasmaLine[col])
-                    spectrumPlasmaLine[col] = spectrumPlasma[pos][col];
+                if((double)((unsigned char)spectrumPlasma[pos][col]) > spectrumPlasmaLine[col])
+                    spectrumPlasmaLine[col] = (unsigned char)spectrumPlasma[pos][col];
             }
         }
     }
     plasmaMutex.unlock();
-
 }
 
 void wfmain::receiveSpectrumMode(spectrumMode spectMode)
@@ -3709,6 +4121,7 @@ void wfmain::receiveSpectrumMode(spectrumMode spectMode)
             ui->spectrumModeCombo->blockSignals(false);
         }
     }
+    setUISpectrumControlsToMode(spectMode);
 }
 
 
@@ -3760,10 +4173,84 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
     }
 }
 
-void wfmain::handlePlotClick(QMouseEvent *me)
+void wfmain::handlePlotClick(QMouseEvent* me)
 {
-    double x = plot->xAxis->pixelToCoord(me->pos().x());
-    showStatusBarText(QString("Selected %1 MHz").arg(x));
+    QCPAbstractItem* item = plot->itemAt(me->pos(), true);
+    QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+    if (me->button() == Qt::RightButton && textItem != nullptr) {
+        QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
+        if (spot != clusterSpots.end() && spot.key() == textItem->text()) {
+            /* parent and children are destroyed on close */
+            QDialog* spotDialog = new QDialog();
+            QVBoxLayout* vlayout = new QVBoxLayout;
+            //spotDialog->setFixedSize(240, 100);
+            spotDialog->setBaseSize(1, 1);
+            spotDialog->setWindowTitle(spot.value()->dxcall);
+            QLabel* dxcall = new QLabel(QString("DX:%1").arg(spot.value()->dxcall));
+            QLabel* spotter = new QLabel(QString("Spotter:%1").arg(spot.value()->spottercall));
+            QLabel* frequency = new QLabel(QString("Frequency:%1 MHz").arg(spot.value()->frequency));
+            QLabel* comment = new QLabel(QString("Comment:%1").arg(spot.value()->comment));
+            QAbstractButton* bExit = new QPushButton("Close");
+            vlayout->addWidget(dxcall);
+            vlayout->addWidget(spotter);
+            vlayout->addWidget(frequency);
+            vlayout->addWidget(comment);
+            vlayout->addWidget(bExit);
+            spotDialog->setLayout(vlayout);
+            spotDialog->show();
+            spotDialog->connect(bExit, SIGNAL(clicked()), spotDialog, SLOT(close()));
+        }
+    }
+    else if (textItem != nullptr)
+    {
+        QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
+        if (spot != clusterSpots.end() && spot.key() == textItem->text()) 
+        {
+            qInfo(logGui()) << "Clicked on spot:" << textItem->text();
+            freqt freqGo;
+            freqGo.Hz = ( spot.value()->frequency)*1E6;
+            freqGo.MHzDouble = spot.value()->frequency;
+            issueCmdUniquePriority(cmdSetFreq, freqGo);
+        }
+    }
+    else if (prefs.clickDragTuningEnable)
+    {
+        double x = plot->xAxis->pixelToCoord(me->pos().x());
+        showStatusBarText(QString("Selected %1 MHz").arg(x));
+        this->mousePressFreq = x;
+    }
+}
+
+void wfmain::handlePlotMouseRelease(QMouseEvent* me)
+{
+    QCPAbstractItem* item = plot->itemAt(me->pos(), true);
+    QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+
+    if (textItem == nullptr && prefs.clickDragTuningEnable) {
+        this->mouseReleaseFreq = plot->xAxis->pixelToCoord(me->pos().x());
+        double delta = mouseReleaseFreq - mousePressFreq;
+        qInfo(logGui()) << "Mouse release delta: " << delta;
+
+    }
+}
+
+void wfmain::handlePlotMouseMove(QMouseEvent *me)
+{
+    QCPAbstractItem* item = plot->itemAt(me->pos(), true);
+    QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+    if(me->buttons() == Qt::LeftButton && textItem==nullptr && prefs.clickDragTuningEnable)
+    {
+        double delta = plot->xAxis->pixelToCoord(me->pos().x()) - mousePressFreq;
+        qInfo(logGui()) << "Mouse moving delta: " << delta;
+        if( (( delta < -0.0001 ) || (delta > 0.0001)) && ((delta < 0.501) && (delta > -0.501)) )
+        {
+            freqt freqGo;
+            freqGo.Hz = ( freq.MHzDouble + delta)*1E6;
+            //freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
+            freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
+            issueCmdUniquePriority(cmdSetFreq, freqGo);
+        }
+    }
 }
 
 void wfmain::handleWFClick(QMouseEvent *me)
@@ -3850,6 +4337,8 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
             }
         }
         currentModeIndex = mode;
+        currentModeInfo.mk = (mode_kind)mode;
+        currentModeInfo.filter = filter;
     } else {
         qInfo(logSystem()) << __func__ << "Invalid mode " << mode << " received. ";
     }
@@ -3866,7 +4355,6 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
     }
 
     (void)filter;
-
 
     // Note: we need to know if the DATA mode is active to reach mode-D
     // some kind of queued query:
@@ -3890,28 +4378,9 @@ void wfmain::on_clearPeakBtn_clicked()
     if(haveRigCaps)
     {
         spectrumPeaks = QByteArray( (int)spectWidth, '\x01' );
+        clearPlasmaBuffer();
     }
     return;
-}
-
-void wfmain::on_drawPeakChk_clicked(bool checked)
-{
-    if(checked)
-    {
-        on_clearPeakBtn_clicked(); // clear
-        drawPeaks = true;
-
-    } else {
-        drawPeaks = false;
-
-#if QCUSTOMPLOT_VERSION >= 0x020000
-        plot->graph(1)->data()->clear();
-#else
-        plot->graph(1)->clearData();
-#endif
-
-    }
-    prefs.drawPeaks = checked;
 }
 
 void wfmain::on_fullScreenChk_clicked(bool checked)
@@ -4053,7 +4522,29 @@ void wfmain::on_fCEbtn_clicked()
 
 void wfmain::on_spectrumModeCombo_currentIndexChanged(int index)
 {
-    emit setScopeMode(static_cast<spectrumMode>(ui->spectrumModeCombo->itemData(index).toInt()));
+    spectrumMode smode = static_cast<spectrumMode>(ui->spectrumModeCombo->itemData(index).toInt());
+    emit setScopeMode(smode);
+    setUISpectrumControlsToMode(smode);
+}
+
+void wfmain::setUISpectrumControlsToMode(spectrumMode smode)
+{
+    if((smode==spectModeCenter) || (smode==spectModeScrollC))
+    {
+        ui->specEdgeLabel->hide();
+        ui->scopeEdgeCombo->hide();
+        ui->customEdgeBtn->hide();
+        ui->toFixedBtn->show();
+        ui->specSpanLabel->show();
+        ui->scopeBWCombo->show();
+    } else {
+        ui->specEdgeLabel->show();
+        ui->scopeEdgeCombo->show();
+        ui->customEdgeBtn->show();
+        ui->toFixedBtn->hide();
+        ui->specSpanLabel->hide();
+        ui->scopeBWCombo->hide();
+    }
 }
 
 void wfmain::on_fEnterBtn_clicked()
@@ -4147,19 +4638,13 @@ void wfmain::on_modeSelectCombo_activated(int index)
 
 void wfmain::on_freqDial_valueChanged(int value)
 {
-    int maxVal = ui->freqDial->maximum();
+    int fullSweep = ui->freqDial->maximum() - ui->freqDial->minimum();
 
     freqt f;
     f.Hz = 0;
     f.MHzDouble = 0;
 
     volatile int delta = 0;
-
-    int directPath = 0;
-    int crossingPath = 0;
-
-    int distToMaxNew = 0;
-    int distToMaxOld = 0;
 
     if(freqLock)
     {
@@ -4168,50 +4653,25 @@ void wfmain::on_freqDial_valueChanged(int value)
         ui->freqDial->blockSignals(false);
         return;
     }
-    
-    if(value == 0)
+
+    delta = (value - oldFreqDialVal);
+
+    if(delta > fullSweep/2)
     {
-        distToMaxNew = 0;
-    } else {
-        distToMaxNew = maxVal - value;
+        // counter-clockwise past the zero mark
+        // ie, from +3000 to 3990, old=3000, new = 3990, new-old = 990
+        // desired delta here would actually be -10
+        delta = delta - fullSweep;
+    } else if (delta < -fullSweep/2)
+    {
+        // clock-wise past the zero mark
+        // ie, from +3990 to 3000, old=3990, new = 3000, new-old = -990
+        // desired delta here would actually be +10
+        delta = fullSweep + delta;
     }
 
-    if(oldFreqDialVal != 0)
-    {
-        distToMaxOld = maxVal - oldFreqDialVal;
-    } else {
-        distToMaxOld = 0;
-    }
-    
-    directPath = abs(value - oldFreqDialVal);
-    if(value < maxVal / 2)
-    {
-        crossingPath = value + distToMaxOld;
-    } else {
-        crossingPath = distToMaxNew + oldFreqDialVal;
-    }
-    
-    if(directPath > crossingPath)
-    {
-        // use crossing path, it is shorter
-        delta = crossingPath;
-        // now calculate the direction:
-        if( value > oldFreqDialVal)
-        {
-            // CW
-            delta = delta;
-        } else {
-            // CCW
-            delta *= -1;
-        }
-
-    } else {
-        // use direct path
-        // crossing path is larger than direct path, use direct path
-        //delta = directPath;
-        // now calculate the direction
-        delta = value - oldFreqDialVal;
-    }
+    // The step size is 10, which forces the knob to not skip a step crossing zero.
+    delta = delta / ui->freqDial->singleStep();
 
     // With the number of steps and direction of steps established,
     // we can now adjust the frequency:
@@ -4221,12 +4681,8 @@ void wfmain::on_freqDial_valueChanged(int value)
     if(f.Hz > 0)
     {
         freq = f;
-
         oldFreqDialVal = value;
-
         ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
-
-        //emit setFrequency(0,f);
         issueCmdUniquePriority(cmdSetFreq, f);
     } else {
         ui->freqDial->blockSignals(true);
@@ -4662,6 +5118,7 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
     ui->serialDeviceListCombo->setEnabled(checked);
     ui->serverRXAudioInputCombo->setEnabled(checked);
     ui->serverTXAudioOutputCombo->setEnabled(checked);
+
 }
 
 void wfmain::on_lanEnableBtn_clicked(bool checked)
@@ -4715,19 +5172,13 @@ void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
 {
 
     if (prefs.audioSystem == qtAudio) {
-        QVariant v = ui->audioOutputCombo->itemData(value); 
-#if QT_VERSION >= 0x060000
-        rxSetup.port = v.value<QAudioDevice>();
-#else
-        rxSetup.port = v.value<QAudioDeviceInfo>();
-#endif
-
+        rxSetup.port = audioDev->getOutputDeviceInfo(value);
     }
     else {
-        rxSetup.portInt = ui->audioOutputCombo->itemData(value).toInt();
+        rxSetup.portInt = audioDev->getOutputDeviceInt(value);
     }
 
-    rxSetup.name = ui->audioOutputCombo->itemText(value);
+    rxSetup.name = audioDev->getOutputName(value);
     qDebug(logGui()) << "Changed audio output to:" << rxSetup.name;
 }
 
@@ -4735,18 +5186,13 @@ void wfmain::on_audioInputCombo_currentIndexChanged(int value)
 {
 
     if (prefs.audioSystem == qtAudio) {
-        QVariant v = ui->audioInputCombo->itemData(value);
-#if QT_VERSION >= 0x060000
-        txSetup.port = v.value<QAudioDevice>();
-#else
-        txSetup.port = v.value<QAudioDeviceInfo>();
-#endif
+        txSetup.port = audioDev->getInputDeviceInfo(value);
     }
     else {
-        txSetup.portInt = ui->audioInputCombo->itemData(value).toInt();
+        txSetup.portInt = audioDev->getInputDeviceInt(value);
     }
 
-    txSetup.name = ui->audioInputCombo->itemText(value);
+    txSetup.name = audioDev->getInputName(value);
 
     qDebug(logGui()) << "Changed audio input to:" << txSetup.name;
 }
@@ -4788,9 +5234,28 @@ void wfmain::on_vspCombo_currentIndexChanged(int value)
 
 void wfmain::on_toFixedBtn_clicked()
 {
-    emit setScopeFixedEdge(oldLowerFreq, oldUpperFreq, ui->scopeEdgeCombo->currentIndex()+1);
-    emit setScopeEdge(ui->scopeEdgeCombo->currentIndex()+1);
-    issueDelayedCommand(cmdScopeFixedMode);
+    int currentEdge = ui->scopeEdgeCombo->currentIndex();
+    bool dialogOk = false;
+    bool numOk = false;
+
+    QStringList edges;
+    edges << "1" << "2" << "3" << "4";
+
+    QString item = QInputDialog::getItem(this, "Select Edge", "Edge to replace:", edges, currentEdge, false, &dialogOk);
+
+    if(dialogOk)
+    {
+        int edge = QString(item).toInt(&numOk,10);
+        if(numOk)
+        {
+            emit setScopeFixedEdge(oldLowerFreq, oldUpperFreq, edge);
+            emit setScopeEdge(edge);
+            ui->scopeEdgeCombo->blockSignals(true);
+            ui->scopeEdgeCombo->setCurrentIndex(edge-1);
+            ui->scopeEdgeCombo->blockSignals(false);
+            issueDelayedCommand(cmdScopeFixedMode);
+        }
+    }
 }
 
 
@@ -4800,16 +5265,25 @@ void wfmain::on_connectBtn_clicked()
 
     if (haveRigCaps) {
         emit sendCloseComm();
-        ui->connectBtn->setText("Connect");
+        ui->connectBtn->setText("Connect to Radio");
         ui->audioSystemCombo->setEnabled(true);
+        ui->audioSystemServerCombo->setEnabled(true);
         haveRigCaps = false;
         rigName->setText("NONE");
     }
-    else
+    else 
     {
         emit sendCloseComm(); // Just in case there is a failed connection open.
-        openRig();
+        if (ui->connectBtn->text() != "Cancel connection") {
+            openRig();
+        }
+        else {
+            ui->connectBtn->setText("Connect to Radio");
+            ui->audioSystemCombo->setEnabled(true);
+            ui->audioSystemServerCombo->setEnabled(true);
+        }
     }
+    ui->connectBtn->clearFocus();
 }
 
 void wfmain::on_sqlSlider_valueChanged(int value)
@@ -5101,6 +5575,22 @@ void wfmain::receiveLANGain(unsigned char level)
     processModLevel(inputLAN, level);
 }
 
+void wfmain::receivePassband(quint16 pass)
+{
+/* int calc;
+    if (currentModeInfo.mk == modeAM) {
+        calc = 200 + (pass * 200);
+    }
+    else if (pass <= 10)
+    {
+        calc = 50 + (pass * 50);
+    }
+    else {
+        calc = 600 + ((pass - 10) * 100);
+    } */
+    passBand = (double)(pass / 1000000.0);
+}
+
 void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
 {
 
@@ -5119,6 +5609,12 @@ void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
         default:
             if(ui->meter2Widget->getMeterType() == inMeter)
             {
+                ui->meter2Widget->setLevel(level);
+            } else if ( (ui->meter2Widget->getMeterType() == meterAudio) &&
+                        (inMeter == meterTxMod) && amTransmitting) {
+                ui->meter2Widget->setLevel(level);
+            } else if (  (ui->meter2Widget->getMeterType() == meterAudio) &&
+                         (inMeter == meterRxAudio) && !amTransmitting) {
                 ui->meter2Widget->setLevel(level);
             }
             break;
@@ -5420,6 +5916,10 @@ void wfmain::calculateTimingParameters()
 
     qInfo(logSystem()) << "Delay command interval timing: " << delayedCommand->interval() << "ms";
 
+    ui->pollTimeMsSpin->blockSignals(true);
+    ui->pollTimeMsSpin->setValue(delayedCommand->interval());
+    ui->pollTimeMsSpin->blockSignals(false);
+
     // Normal:
     delayedCmdIntervalLAN_ms =  delayedCommand->interval();
     delayedCmdIntervalSerial_ms = delayedCommand->interval();
@@ -5574,7 +6074,7 @@ void wfmain::setBandButtons()
     for(unsigned int i=0; i < rigCaps.bands.size(); i++)
     {
         bandSel = rigCaps.bands.at(i);
-        switch(bandSel)
+        switch(bandSel.band)
         {
             case(band23cm):
                 showButton(ui->band23cmbtn);
@@ -5701,20 +6201,6 @@ void wfmain::on_wfLengthSlider_valueChanged(int value)
     prepareWf(value);
 }
 
-void wfmain::on_pollingBtn_clicked()
-{
-    bool ok;
-    int timing = 0;
-    timing = QInputDialog::getInt(this, "wfview Radio Polling Setup", "Poll Timing Interval (ms)", delayedCommand->interval(), 1, 200, 1, &ok );
-
-    if(ok && timing)
-    {
-        delayedCommand->setInterval( timing );
-        qInfo(logSystem()) << "User changed radio polling interval to " << timing << "ms.";
-        showStatusBarText("User changed radio polling interval to " + QString("%1").arg(timing) + "ms.");
-    }
-}
-
 void wfmain::on_wfAntiAliasChk_clicked(bool checked)
 {
     colorMap->setAntialiased(checked);
@@ -5789,7 +6275,8 @@ void wfmain::on_meter2selectionCombo_activated(int index)
     } else {
         ui->meter2Widget->show();
         ui->meter2Widget->setMeterType(newMeterType);
-        insertPeriodicCommandUnique(newCmd);
+        if((newMeterType!=meterRxAudio) && (newMeterType!=meterTxMod) && (newMeterType!=meterAudio))
+            insertPeriodicCommandUnique(newCmd);
     }
     prefs.meter2Type = newMeterType;
 
@@ -5890,243 +6377,55 @@ void wfmain::on_radioStatusBtn_clicked()
 void wfmain::setAudioDevicesUI()
 {
 
-    // Enumerate audio devices, need to do before settings are loaded, 
-    // First clear all existing entries
-    ui->audioInputCombo->blockSignals(true);
-    ui->audioOutputCombo->blockSignals(true);
-    ui->serverTXAudioOutputCombo->blockSignals(true);
-    ui->serverRXAudioInputCombo->blockSignals(true);
-
-    ui->audioInputCombo->clear();
-    ui->audioOutputCombo->clear();
-    ui->serverTXAudioOutputCombo->clear();
-    ui->serverRXAudioInputCombo->clear();
-
-    qDebug(logSystem()) << "Finding audio devices, output=" << rxSetup.name << "input="<<txSetup.name;
-
-    int defaultAudioInputIndex = 0;
-    int defaultAudioOutputIndex = 0;
-    int inCount = 0;
-    int outCount = 0;
-
-    switch (prefs.audioSystem) 
-    {
-        case qtAudio:
-        {
-            Pa_Terminate();
-#if QT_VERSION < 0x060000
-            const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
-            for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
-#ifdef Q_OS_WIN
-                if (deviceInfo.realm() == "wasapi") {
-#endif
-                    ui->audioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
-                    ui->serverRXAudioInputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
-                    inCount++;
-#ifdef Q_OS_WIN
-                }
-#endif
-            }
-
-            const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
-            for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
-#ifdef Q_OS_WIN
-                if (deviceInfo.realm() == "wasapi") {
-#endif
-                    ui->audioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
-                    ui->serverTXAudioOutputCombo->addItem(deviceInfo.deviceName(), QVariant::fromValue(deviceInfo));
-                    outCount++;
-#ifdef Q_OS_WIN
-                }
-#endif
-            }
-#else
-            ui->audioOutputCombo->clear();
-            const auto audioOutputs = mediaDevices.audioOutputs();
-            for (const QAudioDevice& deviceInfo : audioOutputs) {
-                ui->audioOutputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
-                ui->serverTXAudioOutputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
-                outCount++;
-            }
-            ui->audioInputCombo->clear();
-            const auto audioInputs = mediaDevices.audioInputs();
-            for (const QAudioDevice& deviceInfo : audioInputs) {
-                ui->audioInputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
-                ui->serverRXAudioInputCombo->addItem(deviceInfo.description(), QVariant::fromValue(deviceInfo));
-                inCount++;
-            }
-#endif
-
-            break;
-        }
-        case portAudio:
-        {
-            PaError err;
-
-            err = Pa_Initialize();
-
-            if (err != paNoError)
-            {
-                qInfo(logAudio()) << "ERROR: Cannot initialize Portaudio";
-                return;
-            }
-
-            qInfo(logAudio()) << "PortAudio version: " << Pa_GetVersionInfo()->versionText;
-
-            int numDevices = Pa_GetDeviceCount();
-            qInfo(logAudio()) << "Pa_CountDevices returned" << numDevices;
-
-            const PaDeviceInfo* info;
-            for (int i = 0; i < numDevices; i++)
-            {
-                info = Pa_GetDeviceInfo(i);
-                if (info->maxInputChannels > 0) {
-                    qDebug(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Input Device : " << info->name;
-
-                    ui->audioInputCombo->addItem(info->name, i);
-                    ui->serverRXAudioInputCombo->addItem(info->name, i);
-                    if (i == Pa_GetDefaultInputDevice()) {
-                        defaultAudioInputIndex = inCount;
-                    }
-                    inCount++;
-                }
-                if (info->maxOutputChannels > 0) {
-                    qDebug(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Output Device  : " << info->name;
-                    ui->audioOutputCombo->addItem(info->name, i);
-                    ui->serverTXAudioOutputCombo->addItem(info->name, i);
-                    if (i == Pa_GetDefaultOutputDevice()) {
-                        defaultAudioOutputIndex = outCount;
-                    }
-                    outCount++;
-                }
-            }
-            break;
-        }
-        case rtAudio:
-        {
-            Pa_Terminate();
-
-#if defined(Q_OS_LINUX)
-            RtAudio* audio = new RtAudio(RtAudio::Api::LINUX_ALSA);
-#elif defined(Q_OS_WIN)
-            RtAudio* audio = new RtAudio(RtAudio::Api::WINDOWS_WASAPI);
-#elif defined(Q_OS_MACX)
-            RtAudio* audio = new RtAudio(RtAudio::Api::MACOSX_CORE);
-#endif
-
-
-            // Enumerate audio devices, need to do before settings are loaded.
-            std::map<int, std::string> apiMap;
-            apiMap[RtAudio::MACOSX_CORE] = "OS-X Core Audio";
-            apiMap[RtAudio::WINDOWS_ASIO] = "Windows ASIO";
-            apiMap[RtAudio::WINDOWS_DS] = "Windows DirectSound";
-            apiMap[RtAudio::WINDOWS_WASAPI] = "Windows WASAPI";
-            apiMap[RtAudio::UNIX_JACK] = "Jack Client";
-            apiMap[RtAudio::LINUX_ALSA] = "Linux ALSA";
-            apiMap[RtAudio::LINUX_PULSE] = "Linux PulseAudio";
-            apiMap[RtAudio::LINUX_OSS] = "Linux OSS";
-            apiMap[RtAudio::RTAUDIO_DUMMY] = "RtAudio Dummy";
-
-            std::vector< RtAudio::Api > apis;
-            RtAudio::getCompiledApi(apis);
-
-            qInfo(logAudio()) << "RtAudio Version " << QString::fromStdString(RtAudio::getVersion());
-
-            qInfo(logAudio()) << "Compiled APIs:";
-            for (unsigned int i = 0; i < apis.size(); i++) {
-                qInfo(logAudio()) << "  " << QString::fromStdString(apiMap[apis[i]]);
-            }
-
-            RtAudio::DeviceInfo info;
-
-            qInfo(logAudio()) << "Current API: " << QString::fromStdString(apiMap[audio->getCurrentApi()]);
-
-            unsigned int devices = audio->getDeviceCount();
-            qInfo(logAudio()) << "Found " << devices << " audio device(s) *=default";
-
-            for (unsigned int i = 1; i < devices; i++) {
-                info = audio->getDeviceInfo(i);
-                if (info.inputChannels > 0) {
-                    qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name);
-                    ui->audioInputCombo->addItem(QString::fromStdString(info.name), i);
-                    ui->serverRXAudioInputCombo->addItem(QString::fromStdString(info.name), i);
-                    if (info.isDefaultInput) {
-                        defaultAudioInputIndex = inCount;
-                    }
-                    inCount++;
-                }
-                if (info.outputChannels > 0) {
-                    qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name);
-                    ui->audioOutputCombo->addItem(QString::fromStdString(info.name), i);
-                    ui->serverTXAudioOutputCombo->addItem(QString::fromStdString(info.name), i);
-                    if (info.isDefaultOutput) {
-                        defaultAudioOutputIndex = outCount;
-                    }
-                    outCount++;
-                }
-            }
-
-            delete audio;
-            break;
-        }
-
+    if (audioDev == Q_NULLPTR) {
+        audioDev = new audioDevices(prefs.audioSystem, QFontMetrics(ui->audioInputCombo->font()));
     }
-    
 
-    // Stop blocking signals so we can set the current values
+    audioDev->setAudioType(prefs.audioSystem);
+    audioDev->enumerate();
+
+    ui->audioInputCombo->blockSignals(true);
+    ui->audioInputCombo->clear();
+    ui->audioInputCombo->addItems(audioDev->getInputs());
+    ui->audioInputCombo->setCurrentIndex(-1);
+    ui->audioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn() + 30));
     ui->audioInputCombo->blockSignals(false);
-    ui->audioOutputCombo->blockSignals(false);
-    ui->serverTXAudioOutputCombo->blockSignals(false);
-    ui->serverRXAudioInputCombo->blockSignals(false);
+    ui->audioInputCombo->setCurrentIndex(audioDev->findInput("Client", txSetup.name));
 
+    ui->audioOutputCombo->blockSignals(true);
+    ui->audioOutputCombo->clear();
+    ui->audioOutputCombo->addItems(audioDev->getOutputs());
+    ui->audioOutputCombo->setCurrentIndex(-1);
+    ui->audioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
+    ui->audioOutputCombo->blockSignals(false);
+    ui->audioOutputCombo->setCurrentIndex(audioDev->findOutput("Client", rxSetup.name));
+
+    ui->serverTXAudioOutputCombo->blockSignals(true);
+    ui->serverTXAudioOutputCombo->clear();
+    ui->serverTXAudioOutputCombo->addItems(audioDev->getOutputs());
+    ui->serverTXAudioOutputCombo->setCurrentIndex(-1);
+    ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
+    ui->serverTXAudioOutputCombo->blockSignals(false);
+
+    ui->serverRXAudioInputCombo->blockSignals(true);
+    ui->serverRXAudioInputCombo->clear();
+    ui->serverRXAudioInputCombo->addItems(audioDev->getInputs());
+    ui->serverRXAudioInputCombo->setCurrentIndex(-1);
+    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn()+30));
+    ui->serverRXAudioInputCombo->blockSignals(false);
 
     rxSetup.type = prefs.audioSystem;
     txSetup.type = prefs.audioSystem;
 
-    int audioInputIndex = ui->audioInputCombo->findText(txSetup.name);
-    if (audioInputIndex != -1) {
-        ui->audioInputCombo->setCurrentIndex(audioInputIndex);
-    }
-    else {
-        qDebug(logSystem()) << "Audio input not found";
-        ui->audioInputCombo->setCurrentIndex(defaultAudioInputIndex);
-    }
-
-    int audioOutputIndex = ui->audioOutputCombo->findText(rxSetup.name);
-    if (audioOutputIndex != -1) {
-        ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
-    }
-    else {
-        qDebug(logSystem()) << "Audio output not found";
-        ui->audioOutputCombo->setCurrentIndex(defaultAudioOutputIndex);
-    }
-
     if (!serverConfig.rigs.isEmpty())
-
     {
-        qInfo(logGui()) << "Got Server Audio Input: " << serverConfig.rigs.first()->rxAudioSetup.name;
-
         serverConfig.rigs.first()->rxAudioSetup.type = prefs.audioSystem;
         serverConfig.rigs.first()->txAudioSetup.type = prefs.audioSystem;
 
-        int serverAudioInputIndex = ui->serverRXAudioInputCombo->findText(serverConfig.rigs.first()->rxAudioSetup.name);
-        if (serverAudioInputIndex != -1) {
-            ui->serverRXAudioInputCombo->setCurrentIndex(serverAudioInputIndex);
-        }
-        else {
-            // Set to default
-            ui->serverRXAudioInputCombo->setCurrentIndex(defaultAudioInputIndex);
-        }
-
-        qInfo(logGui()) << "Got Server Audio Output: " << serverConfig.rigs.first()->txAudioSetup.name;
-        int serverAudioOutputIndex = ui->serverTXAudioOutputCombo->findText(serverConfig.rigs.first()->txAudioSetup.name);
-        if (serverAudioOutputIndex != -1) {
-            ui->serverTXAudioOutputCombo->setCurrentIndex(serverAudioOutputIndex);
-        }
-        else {
-            ui->serverTXAudioOutputCombo->setCurrentIndex(defaultAudioOutputIndex);
-        }
+        ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig.rigs.first()->rxAudioSetup.name));
+        ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig.rigs.first()->txAudioSetup.name));
     }
+
 
     qDebug(logSystem()) << "Audio devices done.";
 }
@@ -6135,6 +6434,18 @@ void wfmain::on_audioSystemCombo_currentIndexChanged(int value)
 {
     prefs.audioSystem = static_cast<audioType>(value);
     setAudioDevicesUI(); // Force all audio devices to update
+    ui->audioSystemServerCombo->blockSignals(true);
+    ui->audioSystemServerCombo->setCurrentIndex(value);
+    ui->audioSystemServerCombo->blockSignals(false);
+}
+
+void wfmain::on_audioSystemServerCombo_currentIndexChanged(int value)
+{
+    prefs.audioSystem = static_cast<audioType>(value);
+    setAudioDevicesUI(); // Force all audio devices to update
+    ui->audioSystemCombo->blockSignals(true);
+    ui->audioSystemCombo->setCurrentIndex(value);
+    ui->audioSystemCombo->blockSignals(false);
 }
 
 void wfmain::on_topLevelSlider_valueChanged(int value)
@@ -6159,6 +6470,7 @@ void wfmain::on_underlayBufferSlider_valueChanged(int value)
 {
     resizePlasmaBuffer(value);
     prefs.underlayBufferSize = value;
+    spectrumPlasmaSize = value;
 }
 
 void wfmain::resizePlasmaBuffer(int newSize)
@@ -6187,6 +6499,18 @@ void wfmain::resizePlasmaBuffer(int newSize)
     plasmaMutex.unlock();
 }
 
+void wfmain::clearPlasmaBuffer()
+{
+    QByteArray empty((int)spectWidth, '\x01');
+    plasmaMutex.lock();
+    int pSize = spectrumPlasma.size();
+    for(int i=0; i < pSize; i++)
+    {
+        spectrumPlasma[i] = empty;
+    }
+    plasmaMutex.unlock();
+}
+
 void wfmain::on_underlayNone_toggled(bool checked)
 {
     ui->underlayBufferSlider->setDisabled(checked);
@@ -6207,7 +6531,6 @@ void wfmain::on_underlayPeakHold_toggled(bool checked)
         prefs.underlayMode = underlayMode;
         on_clearPeakBtn_clicked();
     }
-
 }
 
 void wfmain::on_underlayPeakBuffer_toggled(bool checked)
@@ -6234,26 +6557,1123 @@ void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    // issueDelayedCommand(cmdGetRigID);
-    //emit getRigCIV();
-    //trxadj->show();
-    //setRadioTimeDatePrep();
-    //wf->setInteraction(QCP::iRangeZoom, true);
-    //wf->setInteraction(QCP::iRangeDrag, true);
-    plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
-    colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+    emit getRigID();
+}
 
-//    bool ok;
-//    int height = QInputDialog::getInt(this, "wfview window fixed height", "number: ", 350, 1, 500, 1, &ok );
+// ----------   color helper functions:   ---------- //
 
-//    this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-//    this->setMaximumSize(QSize(1025,height));
-//    this->setMinimumSize(QSize(1025,height));
-//    //this->setMaximumSize(QSize(929, 270));
-//    //this->setMinimumSize(QSize(929, 270));
+void wfmain::setColorElement(QColor color,
+                             QLedLabel *led,
+                             QLabel *label,
+                             QLineEdit *lineText)
+{
+    if(led != Q_NULLPTR)
+    {
+        led->setColor(color, true);
+    }
+    if(label != Q_NULLPTR)
+    {
+        label->setText(color.name(QColor::HexArgb));
+    }
+    if(lineText != Q_NULLPTR)
+    {
+        lineText->setText(color.name(QColor::HexArgb));
+    }
+}
 
-//    resize(minimumSize());
-//    adjustSize(); // main window
-//    adjustSize();
+void wfmain::setColorElement(QColor color, QLedLabel *led, QLabel *label)
+{
+    setColorElement(color, led, label, Q_NULLPTR);
+}
 
+void wfmain::setColorElement(QColor color, QLedLabel *led, QLineEdit *lineText)
+{
+    setColorElement(color, led, Q_NULLPTR, lineText);
+}
+
+QColor wfmain::getColorFromPicker(QColor initialColor)
+{
+    QColorDialog::ColorDialogOptions options;
+    options.setFlag(QColorDialog::ShowAlphaChannel, true);
+    options.setFlag(QColorDialog::DontUseNativeDialog, true);
+    QColor selColor = QColorDialog::getColor(initialColor, this, "Select Color", options);
+    int alphaVal = 0;
+    bool ok = false;
+
+    if(selColor.isValid())
+    {
+        if(selColor.alpha() == 0)
+        {
+            alphaVal = QInputDialog::getInt(this, tr("Specify Opacity"),
+                                            tr("You specified an opacity value of 0. \nDo you want to change it? (0=transparent, 255=opaque)"), 0, 0, 255, 1,
+                                            &ok);
+            if(!ok)
+            {
+                return selColor;
+            } else {
+                selColor.setAlpha(alphaVal);
+                return selColor;
+            }
+        }
+        return selColor;
+    }
+    else
+        return initialColor;
+}
+
+void wfmain::getSetColor(QLedLabel *led, QLabel *label)
+{
+    QColor selColor = getColorFromPicker(led->getColor());
+    setColorElement(selColor, led, label);
+}
+
+void wfmain::getSetColor(QLedLabel *led, QLineEdit *line)
+{
+    QColor selColor = getColorFromPicker(led->getColor());
+    setColorElement(selColor, led, line);
+}
+
+QString wfmain::setColorFromString(QString colorstr, QLedLabel *led)
+{
+    if(led==Q_NULLPTR)
+        return "ERROR";
+
+    if(!colorstr.startsWith("#"))
+    {
+        colorstr.prepend("#");
+    }
+    if(colorstr.length() != 9)
+    {
+        // TODO: Tell user about AA RR GG BB
+        return led->getColor().name(QColor::HexArgb);
+    }
+    led->setColor(colorstr, true);
+    return led->getColor().name(QColor::HexArgb);
+}
+
+void wfmain::useCurrentColorPreset()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    useColorPreset(&colorPreset[pos]);
+}
+
+void wfmain::useColorPreset(colorPrefsType *cp)
+{
+    // Apply the given preset to the UI elements
+    // prototyped from setPlotTheme()
+    if(cp == Q_NULLPTR)
+        return;
+
+    //qInfo(logSystem()) << "Setting plots to color preset number " << cp->presetNum << ", with name " << *(cp->presetName);
+
+    plot->setBackground(cp->plotBackground);
+
+    plot->xAxis->grid()->setPen(cp->gridColor);
+    plot->yAxis->grid()->setPen(cp->gridColor);
+
+    plot->legend->setTextColor(cp->textColor);
+    plot->legend->setBorderPen(cp->gridColor);
+    plot->legend->setBrush(cp->gridColor);
+
+    plot->xAxis->setTickLabelColor(cp->textColor);
+    plot->xAxis->setLabelColor(cp->gridColor);
+    plot->yAxis->setTickLabelColor(cp->textColor);
+    plot->yAxis->setLabelColor(cp->gridColor);
+
+    plot->xAxis->setBasePen(cp->axisColor);
+    plot->xAxis->setTickPen(cp->axisColor);
+    plot->yAxis->setBasePen(cp->axisColor);
+    plot->yAxis->setTickPen(cp->axisColor);
+
+    freqIndicatorLine->setPen(QPen(cp->tuningLine));
+    passbandIndicator->setPen(QPen(cp->passband));
+    passbandIndicator->setBrush(QBrush(cp->passband));
+
+    plot->graph(0)->setPen(QPen(cp->spectrumLine));
+    plot->graph(0)->setBrush(QBrush(cp->spectrumFill));
+
+    plot->graph(1)->setPen(QPen(cp->underlayLine));
+    plot->graph(1)->setBrush(QBrush(cp->underlayFill));
+
+    wf->yAxis->setBasePen(cp->wfAxis);
+    wf->yAxis->setTickPen(cp->wfAxis);
+    wf->xAxis->setBasePen(cp->wfAxis);
+    wf->xAxis->setTickPen(cp->wfAxis);
+
+    wf->xAxis->setLabelColor(cp->wfGrid);
+    wf->yAxis->setLabelColor(cp->wfGrid);
+
+    wf->xAxis->setTickLabelColor(cp->wfText);
+    wf->yAxis->setTickLabelColor(cp->wfText);
+
+    wf->setBackground(cp->wfBackground);
+
+    ui->meterSPoWidget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
+    ui->meter2Widget->setColors(cp->meterLevel, cp->meterPeakScale, cp->meterPeakLevel, cp->meterAverage, cp->meterLowerLine, cp->meterLowText);
+
+    clusterColor = cp->clusterSpots;
+}
+
+void wfmain::setColorButtonOperations(QColor *colorStore,
+                            QLineEdit *e, QLedLabel *d)
+{
+    // Call this function with a pointer into the colorPreset color you
+    // wish to edit.
+
+    if(colorStore==Q_NULLPTR)
+    {
+        qInfo(logSystem()) << "ERROR, invalid pointer to color received.";
+        return;
+    }
+    getSetColor(d, e);
+    QColor t = d->getColor();
+    colorStore->setNamedColor(t.name(QColor::HexArgb));
+    useCurrentColorPreset();
+}
+
+void wfmain::setColorLineEditOperations(QColor *colorStore,
+                                QLineEdit *e, QLedLabel *d)
+{
+    // Call this function with a pointer into the colorPreset color you
+    // wish to edit.
+    if(colorStore==Q_NULLPTR)
+    {
+        qInfo(logSystem()) << "ERROR, invalid pointer to color received.";
+        return;
+    }
+
+    QString colorStrValidated = setColorFromString(e->text(), d);
+    e->setText(colorStrValidated);
+    colorStore->setNamedColor(colorStrValidated);
+    useCurrentColorPreset();
+}
+
+void wfmain::on_colorPopOutBtn_clicked()
+{
+
+    if (settingsTabisAttached)
+    {
+        settingsTab = ui->tabWidget->currentWidget();
+        ui->tabWidget->removeTab(ui->tabWidget->indexOf(settingsTab));
+        settingsWidgetTab->addTab(settingsTab, "Settings");
+        settingsWidgetWindow->show();
+        ui->colorPopOutBtn->setText("Re-attach");
+        ui->clusterPopOutBtn->setText("Re-attach");
+        ui->tabWidget->setCurrentIndex(0);
+        settingsTabisAttached = false;
+    }
+    else {
+        settingsTab = settingsWidgetTab->currentWidget();
+
+        settingsWidgetTab->removeTab(settingsWidgetTab->indexOf(settingsTab));
+        ui->tabWidget->addTab(settingsTab, "Settings");
+        settingsWidgetWindow->close();
+
+        ui->colorPopOutBtn->setText("Pop-Out");
+        ui->clusterPopOutBtn->setText("Pop-Out");
+        ui->tabWidget->setCurrentIndex(3);
+        settingsTabisAttached = true;
+    }
+}
+
+void wfmain::setDefaultColorPresets()
+{
+    // Default wfview colors in each preset
+    // gets overridden after preferences are loaded
+    for(int pn=0; pn < numColorPresetsTotal; pn++)
+    {
+        setDefaultColors(pn);
+    }
+}
+
+void wfmain::setEditAndLedFromColor(QColor c, QLineEdit *e, QLedLabel *d)
+{
+    bool blockSignals = true;
+    if(e != Q_NULLPTR)
+    {
+        e->blockSignals(blockSignals);
+        e->setText(c.name(QColor::HexArgb));
+        e->blockSignals(false);
+    }
+    if(d != Q_NULLPTR)
+    {
+        d->setColor(c);
+    }
+}
+
+void wfmain::loadColorPresetToUIandPlots(int presetNumber)
+{
+    if(presetNumber >= numColorPresetsTotal)
+    {
+        qDebug(logSystem()) << "WARNING: asked for preset number [" << presetNumber << "], which is out of range.";
+        return;
+    }
+
+    colorPrefsType p = colorPreset[presetNumber];
+    //qInfo(logSystem()) << "color preset number [" << presetNumber << "] requested for UI load, which has internal index of [" << p.presetNum << "]";
+    setEditAndLedFromColor(p.gridColor, ui->colorEditGrid, ui->colorSwatchGrid);
+    setEditAndLedFromColor(p.axisColor, ui->colorEditAxis, ui->colorSwatchAxis);
+    setEditAndLedFromColor(p.textColor, ui->colorEditText, ui->colorSwatchText);
+    setEditAndLedFromColor(p.spectrumLine, ui->colorEditSpecLine, ui->colorSwatchSpecLine);
+    setEditAndLedFromColor(p.spectrumFill, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
+    setEditAndLedFromColor(p.underlayLine, ui->colorEditUnderlayLine, ui->colorSwatchUnderlayLine);
+    setEditAndLedFromColor(p.underlayFill, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
+    setEditAndLedFromColor(p.plotBackground, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
+    setEditAndLedFromColor(p.tuningLine, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+    setEditAndLedFromColor(p.passband, ui->colorEditPassband, ui->colorSwatchPassband);
+
+    setEditAndLedFromColor(p.meterLevel, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
+    setEditAndLedFromColor(p.meterAverage, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
+    setEditAndLedFromColor(p.meterPeakLevel, ui->colorEditMeterPeakLevel, ui->colorSwatchMeterPeakLevel);
+    setEditAndLedFromColor(p.meterPeakScale, ui->colorEditMeterPeakScale, ui->colorSwatchMeterPeakScale);
+    setEditAndLedFromColor(p.meterLowerLine, ui->colorEditMeterScale, ui->colorSwatchMeterScale);
+    setEditAndLedFromColor(p.meterLowText, ui->colorEditMeterText, ui->colorSwatchMeterText);
+
+    setEditAndLedFromColor(p.wfBackground, ui->colorEditWfBackground, ui->colorSwatchWfBackground);
+    setEditAndLedFromColor(p.wfGrid, ui->colorEditWfGrid, ui->colorSwatchWfGrid);
+    setEditAndLedFromColor(p.wfAxis, ui->colorEditWfAxis, ui->colorSwatchWfAxis);
+    setEditAndLedFromColor(p.wfText, ui->colorEditWfText, ui->colorSwatchWfText);
+
+    setEditAndLedFromColor(p.clusterSpots, ui->colorEditClusterSpots, ui->colorSwatchClusterSpots);
+
+    useColorPreset(&p);
+}
+
+void wfmain::on_colorRenamePresetBtn_clicked()
+{
+    int p = ui->colorPresetCombo->currentIndex();
+    QString newName;
+    QMessageBox msgBox;
+
+    bool ok = false;
+    newName = QInputDialog::getText(this, tr("Rename Preset"),
+                                    tr("Preset Name (10 characters max):"), QLineEdit::Normal,
+                                    ui->colorPresetCombo->currentText(), &ok);
+    if(!ok)
+        return;
+
+    if(ok && (newName.length() < 11) && !newName.isEmpty())
+    {
+        colorPreset[p].presetName->clear();
+        colorPreset[p].presetName->append(newName);
+        ui->colorPresetCombo->setItemText(p, *(colorPreset[p].presetName));
+    } else {
+        if(newName.isEmpty() || (newName.length() > 10))
+        {
+            msgBox.setText("Error, name must be at least one character and not exceed 10 characters.");
+            msgBox.exec();
+        }
+    }
+}
+
+void wfmain::on_colorPresetCombo_currentIndexChanged(int index)
+{
+    prefs.currentColorPresetNumber = index;
+    loadColorPresetToUIandPlots(index);
+}
+
+void wfmain::on_colorRevertPresetBtn_clicked()
+{
+    int pn = ui->colorPresetCombo->currentIndex();
+    setDefaultColors(pn);
+    loadColorPresetToUIandPlots(pn);
+}
+
+// ---------- end color helper functions ---------- //
+
+// ----------       Color UI slots        ----------//
+
+// Grid:
+void wfmain::on_colorSetBtnGrid_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].gridColor);
+    setColorButtonOperations(c, ui->colorEditGrid, ui->colorSwatchGrid);
+}
+void wfmain::on_colorEditGrid_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].gridColor);
+    setColorLineEditOperations(c, ui->colorEditGrid, ui->colorSwatchGrid);
+}
+
+// Axis:
+void wfmain::on_colorSetBtnAxis_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].axisColor);
+    setColorButtonOperations(c, ui->colorEditAxis, ui->colorSwatchAxis);
+}
+void wfmain::on_colorEditAxis_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].axisColor);
+    setColorLineEditOperations(c, ui->colorEditAxis, ui->colorSwatchAxis);
+}
+
+// Text:
+void wfmain::on_colorSetBtnText_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].textColor);
+    setColorButtonOperations(c, ui->colorEditText, ui->colorSwatchText);
+}
+void wfmain::on_colorEditText_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].textColor);
+    setColorLineEditOperations(c, ui->colorEditText, ui->colorSwatchText);
+}
+
+// SpecLine:
+void wfmain::on_colorEditSpecLine_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumLine);
+    setColorLineEditOperations(c, ui->colorEditSpecLine, ui->colorSwatchSpecLine);
+}
+void wfmain::on_colorSetBtnSpecLine_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumLine);
+    setColorButtonOperations(c, ui->colorEditSpecLine, ui->colorSwatchSpecLine);
+}
+
+// SpecFill:
+void wfmain::on_colorSetBtnSpecFill_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumFill);
+    setColorButtonOperations(c, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
+}
+void wfmain::on_colorEditSpecFill_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].spectrumFill);
+    setColorLineEditOperations(c, ui->colorEditSpecFill, ui->colorSwatchSpecFill);
+}
+
+// PlotBackground:
+void wfmain::on_colorEditPlotBackground_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].plotBackground);
+    setColorLineEditOperations(c, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
+}
+void wfmain::on_colorSetBtnPlotBackground_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].plotBackground);
+    setColorButtonOperations(c, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
+}
+
+// Underlay Line:
+void wfmain::on_colorSetBtnUnderlayLine_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayLine);
+    setColorButtonOperations(c, ui->colorEditUnderlayLine, ui->colorSwatchUnderlayLine);
+}
+
+void wfmain::on_colorEditUnderlayLine_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayLine);
+    setColorLineEditOperations(c, ui->colorEditUnderlayLine, ui->colorSwatchUnderlayLine);
+}
+
+// Underlay Fill:
+void wfmain::on_colorSetBtnUnderlayFill_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayFill);
+    setColorButtonOperations(c, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
+}
+void wfmain::on_colorEditUnderlayFill_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].underlayFill);
+    setColorLineEditOperations(c, ui->colorEditUnderlayFill, ui->colorSwatchUnderlayFill);
+}
+
+// WF Background:
+void wfmain::on_colorSetBtnwfBackground_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfBackground);
+    setColorButtonOperations(c, ui->colorEditWfBackground, ui->colorSwatchWfBackground);
+}
+void wfmain::on_colorEditWfBackground_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfBackground);
+    setColorLineEditOperations(c, ui->colorEditWfBackground, ui->colorSwatchWfBackground);
+}
+
+// WF Grid:
+void wfmain::on_colorSetBtnWfGrid_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfGrid);
+    setColorButtonOperations(c, ui->colorEditWfGrid, ui->colorSwatchWfGrid);
+}
+void wfmain::on_colorEditWfGrid_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfGrid);
+    setColorLineEditOperations(c, ui->colorEditWfGrid, ui->colorSwatchWfGrid);
+}
+
+// WF Axis:
+void wfmain::on_colorSetBtnWfAxis_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfAxis);
+    setColorButtonOperations(c, ui->colorEditWfAxis, ui->colorSwatchWfAxis);
+}
+void wfmain::on_colorEditWfAxis_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].wfAxis);
+    setColorLineEditOperations(c, ui->colorEditWfAxis, ui->colorSwatchWfAxis);
+}
+
+// WF Text:
+void wfmain::on_colorSetBtnWfText_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].wfText);
+    setColorButtonOperations(c, ui->colorEditWfText, ui->colorSwatchWfText);
+}
+
+void wfmain::on_colorEditWfText_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].wfText);
+    setColorLineEditOperations(c, ui->colorEditWfText, ui->colorSwatchWfText);
+}
+
+// Tuning Line:
+void wfmain::on_colorSetBtnTuningLine_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].tuningLine);
+    setColorButtonOperations(c, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+}
+void wfmain::on_colorEditTuningLine_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].tuningLine);
+    setColorLineEditOperations(c, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
+}
+
+// Passband:
+void wfmain::on_colorSetBtnPassband_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].passband);
+    setColorButtonOperations(c, ui->colorEditPassband, ui->colorSwatchPassband);
+}
+void wfmain::on_colorEditPassband_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].passband);
+    setColorLineEditOperations(c, ui->colorEditPassband, ui->colorSwatchPassband);
+}
+
+// Meter Level:
+void wfmain::on_colorSetBtnMeterLevel_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLevel);
+    setColorButtonOperations(c, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
+}
+void wfmain::on_colorEditMeterLevel_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLevel);
+    setColorLineEditOperations(c, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
+}
+
+// Meter Average:
+void wfmain::on_colorSetBtnMeterAvg_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterAverage);
+    setColorButtonOperations(c, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
+}
+void wfmain::on_colorEditMeterAvg_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterAverage);
+    setColorLineEditOperations(c, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
+}
+
+// Meter Peak Level:
+void wfmain::on_colorSetBtnMeterPeakLevel_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeakLevel);
+    setColorButtonOperations(c, ui->colorEditMeterPeakLevel, ui->colorSwatchMeterPeakLevel);
+}
+void wfmain::on_colorEditMeterPeakLevel_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeakLevel);
+    setColorLineEditOperations(c, ui->colorEditMeterPeakLevel, ui->colorSwatchMeterPeakLevel);
+}
+
+// Meter Peak Scale:
+void wfmain::on_colorSetBtnMeterPeakScale_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeakScale);
+    setColorButtonOperations(c, ui->colorEditMeterPeakScale, ui->colorSwatchMeterPeakScale);
+}
+void wfmain::on_colorEditMeterPeakScale_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterPeakScale);
+    setColorLineEditOperations(c, ui->colorEditMeterPeakScale, ui->colorSwatchMeterPeakScale);
+}
+
+// Meter Scale (line):
+void wfmain::on_colorSetBtnMeterScale_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowerLine);
+    setColorButtonOperations(c, ui->colorEditMeterScale, ui->colorSwatchMeterScale);
+}
+void wfmain::on_colorEditMeterScale_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowerLine);
+    setColorLineEditOperations(c, ui->colorEditMeterScale, ui->colorSwatchMeterScale);
+}
+
+// Meter Text:
+void wfmain::on_colorSetBtnMeterText_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowText);
+    setColorButtonOperations(c, ui->colorEditMeterText, ui->colorSwatchMeterText);
+}
+void wfmain::on_colorEditMeterText_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor *c = &(colorPreset[pos].meterLowText);
+    setColorLineEditOperations(c, ui->colorEditMeterText, ui->colorSwatchMeterText);
+}
+
+// Cluster Spots:
+void wfmain::on_colorSetBtnClusterSpots_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].clusterSpots);
+    setColorButtonOperations(c, ui->colorEditClusterSpots, ui->colorSwatchClusterSpots);
+}
+void wfmain::on_colorEditClusterSpots_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].clusterSpots);
+    setColorLineEditOperations(c, ui->colorEditClusterSpots, ui->colorSwatchClusterSpots);
+}
+
+// ----------   End color UI slots        ----------//
+
+void wfmain::on_colorSavePresetBtn_clicked()
+{
+    int pn = ui->colorPresetCombo->currentIndex();
+
+    settings->beginGroup("ColorPresets");
+    settings->setValue("currentColorPresetNumber", prefs.currentColorPresetNumber);
+    settings->beginWriteArray("ColorPreset", numColorPresetsTotal);
+
+    colorPrefsType *p;
+    p = &(colorPreset[pn]);
+
+    settings->setArrayIndex(pn);
+    settings->setValue("presetNum", p->presetNum);
+    settings->setValue("presetName", *(p->presetName));
+    settings->setValue("gridColor", p->gridColor.name(QColor::HexArgb));
+    settings->setValue("axisColor", p->axisColor.name(QColor::HexArgb));
+    settings->setValue("textColor", p->textColor.name(QColor::HexArgb));
+    settings->setValue("spectrumLine", p->spectrumLine.name(QColor::HexArgb));
+    settings->setValue("spectrumFill", p->spectrumFill.name(QColor::HexArgb));
+    settings->setValue("underlayLine", p->underlayLine.name(QColor::HexArgb));
+    settings->setValue("underlayFill", p->underlayFill.name(QColor::HexArgb));
+    settings->setValue("plotBackground", p->plotBackground.name(QColor::HexArgb));
+    settings->setValue("tuningLine", p->tuningLine.name(QColor::HexArgb));
+    settings->setValue("passband", p->passband.name(QColor::HexArgb));
+    settings->setValue("wfBackground", p->wfBackground.name(QColor::HexArgb));
+    settings->setValue("wfGrid", p->wfGrid.name(QColor::HexArgb));
+    settings->setValue("wfAxis", p->wfAxis.name(QColor::HexArgb));
+    settings->setValue("wfText", p->wfText.name(QColor::HexArgb));
+    settings->setValue("meterLevel", p->meterLevel.name(QColor::HexArgb));
+    settings->setValue("meterAverage", p->meterAverage.name(QColor::HexArgb));
+    settings->setValue("meterPeakScale", p->meterPeakScale.name(QColor::HexArgb));
+    settings->setValue("meterPeakLevel", p->meterPeakLevel.name(QColor::HexArgb));
+    settings->setValue("meterLowerLine", p->meterLowerLine.name(QColor::HexArgb));
+    settings->setValue("meterLowText", p->meterLowText.name(QColor::HexArgb));
+    settings->setValue("clusterSpots", p->clusterSpots.name(QColor::HexArgb));
+
+    settings->endArray();
+    settings->endGroup();
+    settings->sync();
+}
+
+void wfmain::on_showLogBtn_clicked()
+{
+    if(logWindow->isMinimized())
+    {
+        logWindow->raise();
+        logWindow->activateWindow();
+        return;
+    }
+    logWindow->show();
+    logWindow->raise();
+    logWindow->activateWindow();
+}
+
+void wfmain::initLogging()
+{
+    // Set the logging file before doing anything else.
+    m_logFile.reset(new QFile(logFilename));
+    // Open the file logging
+    m_logFile.data()->open(QFile::WriteOnly | QFile::Truncate | QFile::Text);
+    // Set handler
+    qInstallMessageHandler(messageHandler);
+
+    connect(logWindow, SIGNAL(setDebugMode(bool)), this, SLOT(setDebugLogging(bool)));
+
+    // Interval timer for log window updates:
+    logCheckingTimer.setInterval(100);
+    connect(&logCheckingTimer, SIGNAL(timeout()), this, SLOT(logCheck()));
+    logCheckingTimer.start();
+}
+
+void wfmain::logCheck()
+{
+    // This is called by a timer to check for new log messages and copy
+    // the messages into the logWindow.
+    QMutexLocker locker(&logTextMutex);
+    int size = logStringBuffer.size();
+    for(int i=0; i < size; i++)
+    {
+        handleLogText(logStringBuffer.back());
+        logStringBuffer.pop_back();
+    }
+}
+
+void wfmain::handleLogText(QString text)
+{
+    // This function is just a pass-through
+    logWindow->acceptLogText(text);
+}
+
+void wfmain::setDebugLogging(bool debugModeOn)
+{
+    this->debugMode = debugModeOn;
+    debugModeLogging = debugModeOn;
+}
+
+void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
+{
+    // Open stream file writes
+
+    if (type == QtDebugMsg && !debugModeLogging)
+    {
+        return;
+    }
+
+    QMutexLocker locker(&logMutex);
+    QTextStream out(m_logFile.data());
+    QString text;
+
+    // Write the date of recording
+    out << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ");
+    text.append(QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz "));
+    // By type determine to what level belongs message
+
+    switch (type)
+    {
+        case QtDebugMsg:
+            out << "DBG ";
+            text.append("DBG ");
+            break;
+        case QtInfoMsg:
+            out << "INF ";
+            text.append("INF ");
+            break;
+        case QtWarningMsg:
+            out << "WRN ";
+            text.append("WRN ");
+            break;
+        case QtCriticalMsg:
+            out << "CRT ";
+            text.append("CRT ");
+            break;
+        case QtFatalMsg:
+            out << "FTL ";
+            text.append("FLT ");
+            break;
+    }
+    // Write to the output category of the message and the message itself
+    out << context.category << ": " << msg << "\n";
+    out.flush();    // Clear the buffered data
+
+    text.append(context.category);
+    text.append(": ");
+    text.append(msg);
+    logTextMutex.lock();
+    logStringBuffer.push_front(text);
+    logTextMutex.unlock();
+}
+
+void wfmain::on_customEdgeBtn_clicked()
+{
+    double lowFreq = oldLowerFreq;
+    double highFreq = oldUpperFreq;
+    QString freqstring = QString("%1, %2").arg(lowFreq).arg(highFreq);
+    bool ok;
+
+    QString userFreq = QInputDialog::getText(this, "Scope Edges",
+                          "Please enter desired scope edges, in MHz, \
+with a comma between the low and high range.",
+    QLineEdit::Normal, freqstring, &ok);
+    if(!ok)
+        return;
+
+    QString clean = userFreq.trimmed().replace(" ", "");
+    QStringList freqs = clean.split(",");
+    if(freqs.length() == 2)
+    {
+        lowFreq = QString(freqs.at(0)).toDouble(&ok);
+        if(ok)
+        {
+            highFreq = QString(freqs.at(1)).toDouble(&ok);
+            if(ok)
+            {
+                qDebug(logGui()) << "setting edge to: " << lowFreq << ", " << highFreq << ", edge num: " << ui->scopeEdgeCombo->currentIndex() + 1;
+                emit setScopeFixedEdge(lowFreq, highFreq, ui->scopeEdgeCombo->currentIndex() + 1);
+                return;
+            }
+        }
+        goto errMsg;
+    } else {
+        goto errMsg;
+    }
+
+errMsg:
+    {
+        QMessageBox URLmsgBox;
+        URLmsgBox.setText("Error, could not interpret your input.\
+                          <br/>Please make sure to place a comma between the frequencies.\
+                          <br/>For example: '7.200, 7.300'");
+        URLmsgBox.exec();
+
+        return;
+    }
+
+
+}
+
+
+void wfmain::receiveClusterOutput(QString text) {
+    ui->clusterOutputTextEdit->moveCursor(QTextCursor::End);
+    ui->clusterOutputTextEdit->insertPlainText(text);
+    ui->clusterOutputTextEdit->moveCursor(QTextCursor::End);
+}
+
+void wfmain::on_clusterUdpEnable_clicked(bool enable)
+{
+    prefs.clusterUdpEnable = enable;
+    emit setClusterEnableUdp(enable);
+}
+
+void wfmain::on_clusterTcpEnable_clicked(bool enable)
+{
+    prefs.clusterTcpEnable = enable;
+    emit setClusterEnableTcp(enable);
+}
+
+void wfmain::on_clusterUdpPortLineEdit_editingFinished()
+{
+    prefs.clusterUdpPort = ui->clusterUdpPortLineEdit->text().toInt();
+    emit setClusterUdpPort(prefs.clusterUdpPort);
+}
+
+void wfmain::on_clusterServerNameCombo_currentIndexChanged(int index) 
+{
+    if (index < 0)
+        return;
+
+    QString text = ui->clusterServerNameCombo->currentText();
+
+    if (clusters.size() <= index)
+    {
+        qInfo(logGui) << "Adding Cluster server" << text;
+        clusterSettings c;
+        c.server = text;
+        clusters.append(c);
+        ui->clusterTcpPortLineEdit->setEnabled(true);
+        ui->clusterUsernameLineEdit->setEnabled(true);
+        ui->clusterPasswordLineEdit->setEnabled(true);
+        ui->clusterTimeoutLineEdit->setEnabled(true);
+
+    }
+    else {
+        qInfo(logGui) << "Editing Cluster server" << text;
+        clusters[index].server = text;
+    }
+    ui->clusterUsernameLineEdit->blockSignals(true);
+    ui->clusterPasswordLineEdit->blockSignals(true);
+    ui->clusterTimeoutLineEdit->blockSignals(true);
+    ui->clusterTcpPortLineEdit->setText(QString::number(clusters[index].port));
+    ui->clusterUsernameLineEdit->setText(clusters[index].userName);
+    ui->clusterPasswordLineEdit->setText(clusters[index].password);
+    ui->clusterTimeoutLineEdit->setText(QString::number(clusters[index].timeout));
+    ui->clusterUsernameLineEdit->blockSignals(false);
+    ui->clusterPasswordLineEdit->blockSignals(false);
+    ui->clusterTimeoutLineEdit->blockSignals(false);
+
+
+    for (int i = 0; i < clusters.size(); i++) {
+        if (i == index)
+            clusters[i].isdefault = true;
+        else
+            clusters[i].isdefault = false;
+    }
+
+    emit setClusterServerName(clusters[index].server);
+    emit setClusterTcpPort(clusters[index].port);
+    emit setClusterUserName(clusters[index].userName);
+    emit setClusterPassword(clusters[index].password);
+    emit setClusterTimeout(clusters[index].timeout);
+
+}
+
+void wfmain::on_clusterServerNameCombo_currentTextChanged(QString text)
+{
+    if (text.isEmpty()) {
+        int index = ui->clusterServerNameCombo->currentIndex();
+        ui->clusterServerNameCombo->removeItem(index);
+        clusters.removeAt(index);
+        if (clusters.size() == 0)
+        {
+            ui->clusterTcpPortLineEdit->setEnabled(false);
+            ui->clusterUsernameLineEdit->setEnabled(false);
+            ui->clusterPasswordLineEdit->setEnabled(false);
+            ui->clusterTimeoutLineEdit->setEnabled(false);
+        }
+    }
+}
+
+void wfmain::on_clusterTcpPortLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].port = ui->clusterTcpPortLineEdit->displayText().toInt();
+        emit setClusterTcpPort(clusters[index].port);
+    }
+}
+
+void wfmain::on_clusterUsernameLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].userName = ui->clusterUsernameLineEdit->text();
+        emit setClusterUserName(clusters[index].userName);
+    }
+}
+
+void wfmain::on_clusterPasswordLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].password = ui->clusterPasswordLineEdit->text();
+        emit setClusterPassword(clusters[index].password);
+    }
+
+}
+
+void wfmain::on_clusterTimeoutLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].timeout = ui->clusterTimeoutLineEdit->displayText().toInt();
+        emit setClusterTimeout(clusters[index].timeout);
+    }
+}
+
+
+void wfmain::receiveSpots(QList<spotData> spots)
+{
+    //QElapsedTimer timer;
+    //timer.start();
+
+    bool current = false;
+    
+    if (clusterSpots.size() > 0) {
+        current=clusterSpots.begin().value()->current;
+    }
+
+    foreach(spotData s, spots)
+    {
+        bool found = false;
+        QMap<QString, spotData*>::iterator spot = clusterSpots.find(s.dxcall);
+
+        while (spot != clusterSpots.end() && spot.key() == s.dxcall && spot.value()->frequency == s.frequency) {
+            spot.value()->current = !current;
+            found = true;
+            ++spot;
+        }
+
+        if (!found)
+        {
+            spotData* sp = new spotData(s);
+
+            //qDebug(logCluster()) << "ADD:" << sp->dxcall;
+            sp->current = !current;
+            bool conflict = true;
+            double left = sp->frequency;
+            QCPRange range=plot->yAxis->range();
+            double top = range.upper-15.0;
+            sp->text = new QCPItemText(plot);
+            sp->text->setAntialiased(true);
+            sp->text->setColor(clusterColor);
+            sp->text->setText(sp->dxcall);
+            sp->text->setFont(QFont(font().family(), 10));
+            sp->text->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
+            sp->text->position->setType(QCPItemPosition::ptPlotCoords);
+            sp->text->setSelectable(true);
+            QMargins margin;
+            int width = (sp->text->right - sp->text->left) / 2;
+            margin.setLeft(width);
+            margin.setRight(width);
+            sp->text->setPadding(margin);
+            sp->text->position->setCoords(left, top);
+            sp->text->setVisible(false);
+            while (conflict) {
+                QCPAbstractItem* item = plot->itemAt(sp->text->position->pixelPosition(), true);
+                QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+                if (textItem != nullptr && sp->text != textItem) {
+                    //qInfo(logGui()) << "CONFLICT:" << textItem->text() << "SAME POSITION AS" << sp->dxcall << sp->text->position->pixelPosition();
+                    top = top - 5.0;
+                }
+                else {
+                    //qInfo(logGui()) << "OK:" << sp->dxcall << sp->text->position->pixelPosition();
+                    conflict = false;
+                }
+                sp->text->position->setCoords(left, top);
+            }
+
+            sp->text->setVisible(true);
+            clusterSpots.insert(sp->dxcall, sp);
+        }
+    }
+
+    QMap<QString, spotData*>::iterator spot2 = clusterSpots.begin();
+    while (spot2 != clusterSpots.end()) {
+        if (spot2.value()->current == current) {
+            plot->removeItem(spot2.value()->text);
+            //qDebug(logCluster()) << "REMOVE:" << spot2.value()->dxcall;
+            delete spot2.value(); // Stop memory leak?
+            spot2 = clusterSpots.erase(spot2);
+        }
+        else {
+            ++spot2;
+        }
+
+    }
+
+    //qDebug(logCluster()) << "Processing took" << timer.nsecsElapsed() / 1000 << "us";
+}
+
+void wfmain::on_clusterPopOutBtn_clicked()
+{
+
+    if (settingsTabisAttached)
+    {
+        settingsTab = ui->tabWidget->currentWidget();
+        ui->tabWidget->removeTab(ui->tabWidget->indexOf(settingsTab));
+        settingsWidgetTab->addTab(settingsTab, "Settings");
+        settingsWidgetWindow->show();
+        ui->clusterPopOutBtn->setText("Re-attach");
+        ui->colorPopOutBtn->setText("Re-attach");
+        ui->tabWidget->setCurrentIndex(0);
+        settingsTabisAttached = false;
+    }
+    else {
+        settingsTab = settingsWidgetTab->currentWidget();
+
+        settingsWidgetTab->removeTab(settingsWidgetTab->indexOf(settingsTab));
+        ui->tabWidget->addTab(settingsTab, "Settings");
+        settingsWidgetWindow->close();
+
+        ui->clusterPopOutBtn->setText("Pop-Out");
+        ui->colorPopOutBtn->setText("Pop-Out");
+        ui->tabWidget->setCurrentIndex(3);
+        settingsTabisAttached = true;
+    }
+}
+
+void wfmain::on_clusterSkimmerSpotsEnable_clicked(bool enable)
+{
+    prefs.clusterSkimmerSpotsEnable = enable;
+    emit setClusterSkimmerSpots(enable);
+}
+
+void wfmain::on_clickDragTuningEnableChk_clicked(bool checked)
+{
+    prefs.clickDragTuningEnable = checked;
+}
+
+
+
+void wfmain::on_autoPollBtn_clicked(bool checked)
+{
+    ui->pollTimeMsSpin->setEnabled(!checked);
+    if(checked)
+    {
+        prefs.polling_ms = 0;
+        qInfo(logSystem()) << "User set radio polling interval to automatic.";
+        calculateTimingParameters();
+    }
+}
+
+void wfmain::on_manualPollBtn_clicked(bool checked)
+{
+    ui->pollTimeMsSpin->setEnabled(checked);
+    if(checked)
+    {
+        prefs.polling_ms = ui->pollTimeMsSpin->value();
+        changePollTiming(prefs.polling_ms);
+    }
+}
+
+void wfmain::on_pollTimeMsSpin_valueChanged(int timing_ms)
+{
+    if(ui->manualPollBtn->isChecked())
+    {
+        changePollTiming(timing_ms);
+    }
+}
+
+void wfmain::changePollTiming(int timing_ms, bool setUI)
+{
+    delayedCommand->setInterval(timing_ms);
+    qInfo(logSystem()) << "User changed radio polling interval to " << timing_ms << "ms.";
+    showStatusBarText("User changed radio polling interval to " + QString("%1").arg(timing_ms) + "ms.");
+    prefs.polling_ms = timing_ms;
+    if(setUI)
+    {
+        ui->pollTimeMsSpin->blockSignals(true);
+        ui->pollTimeMsSpin->setValue(timing_ms);
+        ui->pollTimeMsSpin->blockSignals(false);
+    }
 }

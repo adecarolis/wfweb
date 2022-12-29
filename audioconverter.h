@@ -27,8 +27,7 @@
 #include <eigen3/Eigen/Eigen>
 #endif
 
-enum audioType { qtAudio, portAudio, rtAudio };
-enum codecType { LPCM, PCMU, OPUS };
+#include "wfviewtypes.h"
 
 #include "resampler/speex_resampler.h"
 
@@ -40,7 +39,8 @@ struct audioPacket {
     quint16 sent;
     QByteArray data;
     quint8 guid[GUIDLEN];
-    float amplitude;
+    float amplitudePeak;
+    float amplitudeRMS;
     qreal volume = 1.0;
 };
 

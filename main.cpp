@@ -12,13 +12,16 @@
 
 #include <iostream>
 #include "wfmain.h"
+
+// Copyright 2017-2022 Elliott H. Liggett
 #include "logcategories.h"
 
-// Copyright 2017-2021 Elliott H. Liggett
-
+#ifdef BUILD_WFSERVER
 // Smart pointer to log file
 QScopedPointer<QFile>   m_logFile;
 QMutex logMutex;
+#endif
+
 bool debugMode=false;
 
 #ifdef BUILD_WFSERVER
@@ -42,9 +45,9 @@ bool debugMode=false;
         #endif
     }
 
-#endif
 
 void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -65,22 +68,18 @@ int main(int argc, char *argv[])
 #endif
 
 #ifdef QT_DEBUG
-    debugMode = true;
+    //debugMode = true;
 #endif
 
-    QString serialPortCL;
-    QString hostCL;
-    QString civCL;
-#ifdef Q_OS_MAC
-    QString logFilename= QStandardPaths::standardLocations(QStandardPaths::DownloadLocation)[0] + "/wfview.log";
-#else
-    QString logFilename= QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0] + "/wfview.log";
-#endif
+    QDateTime date = QDateTime::currentDateTime();
+    QString formattedTime = date.toString("dd.MM.yyyy hh:mm:ss");
+    QString logFilename = (QString("%1/%2-%3.log").arg(QStandardPaths::standardLocations(QStandardPaths::TempLocation)[0]).arg(a.applicationName()).arg(date.toString("yyyyMMddhhmmss")));
+
     QString settingsFile = NULL;
     QString currentArg;
 
 
-    const QString helpText = QString("\nUsage: -p --port /dev/port, -h --host remotehostname, -c --civ 0xAddr, -l --logfile filename.log, -s --settings filename.ini, -d --debug, -v --version\n"); // TODO...
+    const QString helpText = QString("\nUsage: -l --logfile filename.log, -s --settings filename.ini, -d --debug, -v --version\n"); // TODO...
 #ifdef BUILD_WFSERVER
     const QString version = QString("wfserver version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
         .arg(QString(WFVIEW_VERSION))
@@ -99,34 +98,10 @@ int main(int argc, char *argv[])
         //qInfo() << "Argc: " << c << " argument: " << argv[c];
         currentArg = QString(argv[c]);
 
-        if ((currentArg == "-p") || (currentArg == "--port"))
-        {
-            if (argc > c)
-            {
-                serialPortCL = argv[c + 1];
-                c += 1;
-            }
-        }
-        else if ((currentArg == "-d") || (currentArg == "--debug"))
+        if ((currentArg == "-d") || (currentArg == "--debug"))
         {
             debugMode = true;
         } 
-        else if ((currentArg == "-h") || (currentArg == "--host"))
-        {
-            if(argc > c)
-            {
-                hostCL = argv[c+1];
-                c+=1;
-            }
-        }
-        else if ((currentArg == "-c") || (currentArg == "--civ"))
-        {
-            if (argc > c)
-            {
-                civCL = argv[c + 1];
-                c += 1;
-            }
-        }
         else if ((currentArg == "-l") || (currentArg == "--logfile"))
         {
             if (argc > c)
@@ -160,6 +135,8 @@ int main(int argc, char *argv[])
 
     }
 
+#ifdef BUILD_WFSERVER
+
     // Set the logging file before doing anything else.
     m_logFile.reset(new QFile(logFilename));
     // Open the file logging
@@ -168,10 +145,8 @@ int main(int argc, char *argv[])
     qInstallMessageHandler(messageHandler);
 
     qInfo(logSystem()) << version;
-    qDebug(logSystem()) << QString("SerialPortCL as set by parser: %1").arg(serialPortCL);
-    qDebug(logSystem()) << QString("remote host as set by parser: %1").arg(hostCL);
-    qDebug(logSystem()) << QString("CIV as set by parser: %1").arg(civCL);
 
+#endif
 #ifdef BUILD_WFSERVER
 #ifdef Q_OS_WIN
     SetConsoleCtrlHandler((PHANDLER_ROUTINE)cleanup, TRUE);
@@ -180,10 +155,10 @@ int main(int argc, char *argv[])
     signal(SIGTERM, cleanup);
     signal(SIGKILL, cleanup);
 #endif
-    w = new servermain(serialPortCL, hostCL, settingsFile);
+    w = new servermain(settingsFile, logFilename);
 #else
     a.setWheelScrollLines(1); // one line per wheel click
-    wfmain w(serialPortCL, hostCL, settingsFile);
+    wfmain w(settingsFile, logFilename, debugMode);
     w.show();
     
 #endif
@@ -191,6 +166,7 @@ int main(int argc, char *argv[])
 
 }
 
+#ifdef BUILD_WFSERVER
 
 void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
 {
@@ -201,6 +177,7 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
     }
     QMutexLocker locker(&logMutex);
     QTextStream out(m_logFile.data());
+    QString text;
 
     // Write the date of recording
     out << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ");
@@ -226,8 +203,7 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
     } 
     // Write to the output category of the message and the message itself
     out << context.category << ": " << msg << "\n";
-#ifdef BUILD_WFSERVER
     std::cout << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ").toLocal8Bit().toStdString() << msg.toLocal8Bit().toStdString() << "\n";
-#endif
     out.flush();    // Clear the buffered data
 }
+#endif

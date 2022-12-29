@@ -15,9 +15,12 @@ aboutbox::aboutbox(QWidget *parent) :
     ui->topText->setText("wfview version " + QString(WFVIEW_VERSION));
 
     QString head = QString("<html><head></head><body>");
-    QString copyright = QString("Copyright 2017-2021 Elliott H. Liggett, W6EL. All rights reserved. wfview source code is <a href=\"https://gitlab.com/eliggett/wfview/-/blob/master/LICENSE\">licensed</a> under the GNU GPLv3.");
+    QString copyright = QString("Copyright 2017-2022 Elliott H. Liggett, W6EL. All rights reserved.<br/>wfview source code is <a href=\"https://gitlab.com/eliggett/wfview/-/blob/master/LICENSE\">licensed</a> under the GNU GPLv3.");
     QString nacode = QString("<br/><br/>Networking, audio, rigctl server, and much more written by Phil Taylor, M0VSE");
-    QString doctest = QString("<br/><br/>Testing, documentation, bug fixes, and development mentorship from<br/>Roeland Jansen, PA3MET, and Jim Nijkamp, PA8E.");
+    QString scm = QString("<br/><br/>Source code and issues managed by Roeland Jansen, PA3MET");
+    QString doctest = QString("<br/><br/>Testing and development mentorship from Jim Nijkamp, PA8E.");
+
+    QString dedication = QString("<br/><br/>This version of wfview is dedicated to the ones we lost.");
 
 #if defined(Q_OS_LINUX)
     QString ssCredit = QString("<br/><br/>Stylesheet <a href=\"https://github.com/ColinDuquesnoy/QDarkStyleSheet/tree/master/qdarkstyle\"  style=\"color: cyan;\">qdarkstyle</a> used under MIT license, stored in /usr/share/wfview/stylesheets/.");
@@ -33,7 +36,7 @@ aboutbox::aboutbox(QWidget *parent) :
     QString support = QString("<br/><br/>For support, please visit <a href=\"https://forum.wfview.org/\">the official wfview support forum</a>.");
     QString gitcodelink = QString("<a href=\"https://gitlab.com/eliggett/wfview/-/tree/%1\"  style=\"color: cyan;\">").arg(GITSHORT);
 
-    QString contact = QString("<br/>email W6EL: kilocharlie8@gmail.com");
+    QString contact = QString("<br/>email W6EL: kilocharlie8 at gmail.com");
 
     QString buildInfo = QString("<br/><br/>Build " + gitcodelink + QString(GITSHORT) + "</a> on " + QString(__DATE__) + " at " + __TIME__ + " by " + UNAME + "@" + HOST);
     QString end = QString("</body></html>");
@@ -83,7 +86,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
 
     // String it all together:
 
-    QString aboutText = head + copyright + "\n" + nacode + "\n" + doctest + wfviewcommunityack;
+    QString aboutText = head + copyright + "\n" + nacode + "\n" + scm + "\n" + doctest + dedication + wfviewcommunityack;
     aboutText.append(website + "\n" + donate + "\n"+ docs + support + contact +"\n");
     aboutText.append("\n" + ssCredit + "\n" + rsCredit + "\n");
 

@@ -46,7 +46,11 @@ audioHandler::~audioHandler()
 	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "audio handler starting:" << setup.name;
 	if (setup.port.isNull())
 	{
-		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "No audio device was found. You probably need to install libqt5multimedia-plugins.";
+#ifdef Q_OS_LINUX
+		qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "No audio device was found. You probably need to install libqt5multimedia-plugins.";
+#else
+		qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Audio device is NULL, please check device selection in settings.";
+#endif
 		return false;
 	}
 
@@ -275,7 +279,6 @@ void audioHandler::stop()
 void audioHandler::setVolume(unsigned char volume)
 {
     this->volume = audiopot[volume];
-	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
 }
 
 
@@ -315,9 +318,8 @@ void audioHandler::convertedOutput(audioPacket packet) {
         }
         */
         lastSentSeq = packet.seq;
-        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
-
-        amplitude = packet.amplitude;
+        amplitude = packet.amplitudePeak;
+        emit haveLevels(getAmplitude(), static_cast<quint16>(packet.amplitudeRMS * 255.0), setup.latency, currentLatency, isUnderrun, isOverrun);
     }
 }
 
@@ -357,8 +359,8 @@ void audioHandler::convertedInput(audioPacket audio)
             qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Time since last audio packet" << lastReceived.msecsTo(QTime::currentTime()) << "Expected around" << setup.blockSize ;
         }
         lastReceived = QTime::currentTime();
-        amplitude = audio.amplitude;
-        emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
+        amplitude = audio.amplitudePeak;
+        emit haveLevels(getAmplitude(), audio.amplitudeRMS, setup.latency, currentLatency, isUnderrun, isOverrun);
     }
 }
 

@@ -5,7 +5,7 @@
 #include <QMutexLocker>
 #include <QDebug>
 
-
+#include "wfviewtypes.h"
 #include "commhandler.h"
 #include "pttyhandler.h"
 #include "udphandler.h"
@@ -22,47 +22,6 @@
 // 0xE1 is new default, 0xE0 was before.
 // note: using a define because switch case doesn't even work with const unsigned char. Surprised me.
 #define compCivAddr 0xE1
-
-enum meterKind {
-    meterNone=0,
-    meterS,
-    meterCenter,
-    meterSWR,
-    meterPower,
-    meterALC,
-    meterComp,
-    meterVoltage,
-    meterCurrent,
-    meterRxdB,
-    meterTxMod,
-    meterRxAudio,
-    meterLatency
-};
-
-enum spectrumMode {
-    spectModeCenter=0x00,
-    spectModeFixed=0x01,
-    spectModeScrollC=0x02,
-    spectModeScrollF=0x03,
-    spectModeUnknown=0xff
-};
-
-struct freqt {
-    quint64 Hz;
-    double MHzDouble;
-};
-
-struct datekind {
-    uint16_t year;
-    unsigned char month;
-    unsigned char day;
-};
-
-struct timekind {
-    unsigned char hours;
-    unsigned char minutes;
-    bool isMinus;
-};
 
 class rigCommander : public QObject
 {
@@ -122,6 +81,7 @@ public slots:
     void getRitValue();
     void setRitValue(int ritValue);
     void setRitEnable(bool ritEnabled);
+    void setPassband(quint16 pass);
 
     // PTT, ATU, ATT, Antenna, and Preamp:
     void getPTT();
@@ -155,6 +115,8 @@ public slots:
     void getBreakIn();
     void setManualNotch(bool enabled);
     void getManualNotch();
+
+    void getPassband();
 
     // Repeater:
     void setDuplexMode(duplexMode dm);
@@ -277,6 +239,7 @@ public slots:
 
     // Housekeeping:
     void handleStatusUpdate(const networkStatus status);
+    void handleNetworkAudioLevels(networkAudioLevels);
     void radioSelection(QList<radio_cap_packet> radios);
     void radioUsage(quint8 radio, quint8 busy, QString name, QString ip);
     void setCurrentRadio(quint8 radio);
@@ -288,6 +251,7 @@ signals:
     void commReady();
     void haveSerialPortError(const QString port, const QString errorText);
     void haveStatusUpdate(const networkStatus status);
+    void haveNetworkAudioLevels(const networkAudioLevels l);
     void dataForComm(const QByteArray &outData);
     void toggleRTS(bool rtsOn);
 
@@ -318,6 +282,7 @@ signals:
     void haveBandStackReg(freqt f, char mode, char filter, bool dataOn);
     void haveRitEnabled(bool ritEnabled);
     void haveRitFrequency(int ritHz);
+    void havePassband(quint16 pass);
 
     // Repeater:
     void haveDuplexMode(duplexMode);
@@ -396,6 +361,11 @@ private:
     unsigned char convertNumberToHex(unsigned char num);
     quint16 decodeTone(QByteArray eTone);
     quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
+
+    unsigned char audioLevelRxMean[50];
+    unsigned char audioLevelRxPeak[50];
+    unsigned char audioLevelTxMean[50];
+    unsigned char audioLevelTxPeak[50];
 
     void parseMode();
     void parseSpectrum();

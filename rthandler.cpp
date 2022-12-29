@@ -286,10 +286,7 @@ errorHandler:
 
 void rtHandler::setVolume(unsigned char volume)
 {
-
 	this->volume = audiopot[volume];
-
-	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "setVolume: " << volume << "(" << this->volume << ")";
 }
 
 void rtHandler::incomingAudio(audioPacket packet)
@@ -371,13 +368,13 @@ void rtHandler::convertedOutput(audioPacket packet)
 	audioMutex.lock();
 	arrayBuffer.append(packet.data);
 	audioMutex.unlock();
-	amplitude = packet.amplitude;
+	amplitude = packet.amplitudePeak;
 #if QT_VERSION < 0x060000
 	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * (outFormat.sampleSize() / 8) * outFormat.channelCount()) / 1000);
 #else
 	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * sizeof(outFormat.sampleFormat()) * outFormat.channelCount()) / 1000);
 #endif
-	emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
+	emit haveLevels(getAmplitude(), packet.amplitudeRMS, setup.latency, currentLatency, isUnderrun, isOverrun);
 }
 
 
@@ -386,13 +383,13 @@ void rtHandler::convertedInput(audioPacket packet)
 {
 	if (packet.data.size() > 0) {
 		emit haveAudioData(packet);
-		amplitude = packet.amplitude;
+		amplitude = packet.amplitudePeak;
 #if QT_VERSION < 0x060000
 		currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * (outFormat.sampleSize() / 8) * outFormat.channelCount()) / 1000);
 #else
 		currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * sizeof(outFormat.sampleFormat()) * outFormat.channelCount()) / 1000);
 #endif
-		emit haveLevels(getAmplitude(), setup.latency, currentLatency, isUnderrun, isOverrun);
+		emit haveLevels(getAmplitude(), static_cast<quint16>(packet.amplitudeRMS * 255.0), setup.latency, currentLatency, isUnderrun, isOverrun);
 	}
 }
 

@@ -29,7 +29,7 @@
 #include "udpcivdata.h"
 #include "udpaudio.h"
 
-
+#define audioLevelBufferSize (4)
 
 // Class to handle the connection/disconnection of the radio.
 class udpHandler: public udpBase
@@ -56,9 +56,8 @@ public slots:
 	void setVolume(unsigned char value);
 	void init();
 	void setCurrentRadio(quint8 radio);
-    void getRxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under, bool over);
-    void getTxLevels(quint16 amplitude, quint16 latency, quint16 current, bool under, bool over);
-
+    void getRxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
+    void getTxLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
 
 signals:
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
@@ -67,6 +66,7 @@ signals:
 	void haveChangeLatency(quint16 value);
 	void haveSetVolume(unsigned char value);
 	void haveNetworkStatus(networkStatus);
+    void haveNetworkAudioLevels(networkAudioLevels);
 	void haveBaudRate(quint32 baudrate);
 	void requestRadioSelection(QList<radio_cap_packet> radios);
 	void setRadioUsage(quint8, quint8 busy, QString name, QString mac);
@@ -122,6 +122,19 @@ private:
 	quint16 txSampleRates = 0;
 	networkStatus status;
 	bool splitWf = false;
+
+    unsigned char audioLevelsTxPeak[audioLevelBufferSize];
+    unsigned char audioLevelsRxPeak[audioLevelBufferSize];
+
+    unsigned char audioLevelsTxRMS[audioLevelBufferSize];
+    unsigned char audioLevelsRxRMS[audioLevelBufferSize];
+
+    unsigned char audioLevelsTxPosition = 0;
+    unsigned char audioLevelsRxPosition = 0;
+    unsigned char findMean(unsigned char *d);
+    unsigned char findMax(unsigned char *d);
+
+
 };
 
 

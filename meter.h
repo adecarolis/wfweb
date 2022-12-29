@@ -9,6 +9,7 @@
 #include <cmath>
 
 #include "rigcommander.h" // for meter types
+#include "audiotaper.h"
 
 class meter : public QWidget
 {
@@ -23,6 +24,7 @@ public slots:
 
     void updateDrawing(int num);
     void setLevels(int current, int peak, int average);
+    void setLevels(int current, int peak); // calculate avg
     void setLevel(int current);
     void clearMeterOnPTTtoggle();
     void clearMeter();
@@ -30,6 +32,9 @@ public slots:
     void setMeterShortString(QString);
     QString getMeterShortString();
     meterKind getMeterType();
+    void setColors(QColor current, QColor peakScale, QColor peakLevel,
+                   QColor average, QColor lowLine,
+                   QColor lowText);
 
 
 private:
@@ -68,6 +73,7 @@ private:
     void drawScaleVd(QPainter *qp);
     void drawScaleId(QPainter *qp);
     void drawScaleComp(QPainter *qp);
+    void drawScale_dBFs(QPainter *qp);
     void drawScaleRaw(QPainter *qp);
 
     void drawLabel(QPainter *qp);
@@ -83,6 +89,9 @@ private:
     // S9+:
     QColor highTextColor;
     QColor highLineColor;
+
+    QColor midScaleColor;
+    QColor centerTuningColor;
 
 };
 

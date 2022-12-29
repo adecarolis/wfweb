@@ -16,8 +16,12 @@
 #include <QMetaType>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QColorDialog>
+#include <QColor>
 
 #include "logcategories.h"
+#include "wfviewtypes.h"
+#include "prefs.h"
 #include "commhandler.h"
 #include "rigcommander.h"
 #include "rigstate.h"
@@ -35,6 +39,10 @@
 #include "rigctld.h"
 #include "aboutbox.h"
 #include "selectradio.h"
+#include "colorprefs.h"
+#include "loggingwindow.h"
+#include "cluster.h"
+#include "audiodevices.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -49,6 +57,7 @@
 #include "rtaudio/RtAudio.h"
 #endif
 
+#define numColorPresetsTotal (5)
 
 namespace Ui {
 class wfmain;
@@ -59,10 +68,10 @@ class wfmain : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit wfmain(const QString serialPortCL, const QString hostCL, const QString settingsFile, QWidget *parent = 0);
-    QString serialPortCL;
-    QString hostCL;
+    explicit wfmain(const QString settingsFile, const QString logFile, bool debugMode, QWidget *parent = 0);
     ~wfmain();
+    static void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
+    void handleLogText(QString text);
 
 signals:
     // Basic to rig:
@@ -70,7 +79,7 @@ signals:
     void setRigID(unsigned char rigID);
     void setRTSforPTT(bool enabled);
 
-    // Power
+    
     void sendPowerOn();
     void sendPowerOff();
 
@@ -93,6 +102,7 @@ signals:
 
     // Repeater:
     void getDuplexMode();
+    void getPassband();
     void getTone();
     void getTSQL();
     void getDTCS();
@@ -182,6 +192,16 @@ signals:
     void sendRigCaps(rigCapabilities caps);
     void requestRigState();
     void stateUpdated();
+    void setClusterUdpPort(int port);
+    void setClusterEnableUdp(bool udp);
+    void setClusterEnableTcp(bool tcp);
+    void setClusterServerName(QString name);
+    void setClusterTcpPort(int port);
+    void setClusterUserName(QString name);
+    void setClusterPassword(QString pass);
+    void setClusterTimeout(int timeout);
+    void setClusterSkimmerSpots(bool enable);
+    void setFrequencyRange(double low, double high);
 
 private slots:
     void updateSizes(int tabIndex);
@@ -234,7 +254,7 @@ private slots:
     void receiveRITValue(int ritValHz);
     void receiveModInput(rigInput input, bool dataOn);
     //void receiveDuplexMode(duplexMode dm);
-
+    void receivePassband(quint16 pass);
 
 
     // Levels:
@@ -275,7 +295,10 @@ private slots:
     void receiveFoundRigID(rigCapabilities rigCaps);
     void receiveSerialPortError(QString port, QString errorText);
     void receiveStatusUpdate(networkStatus status);
+    void receiveNetworkAudioLevels(networkAudioLevels l);
     void handlePlotClick(QMouseEvent *);
+    void handlePlotMouseRelease(QMouseEvent *);
+    void handlePlotMouseMove(QMouseEvent *);
     void handlePlotDoubleClick(QMouseEvent *);
     void handleWFClick(QMouseEvent *);
     void handleWFDoubleClick(QMouseEvent *);
@@ -287,6 +310,8 @@ private slots:
     void radioSelection(QList<radio_cap_packet> radios);
 
     void setRadioTimeDateSend();
+    void logCheck();
+    void setDebugLogging(bool debugModeOn);
 
 
     // void on_getFreqBtn_clicked();
@@ -296,8 +321,6 @@ private slots:
     // void on_debugBtn_clicked();
 
     void on_clearPeakBtn_clicked();
-
-    void on_drawPeakChk_clicked(bool checked);
 
     void on_fullScreenChk_clicked(bool checked);
 
@@ -327,13 +350,7 @@ private slots:
 
     void on_scopeEdgeCombo_currentIndexChanged(int index);
 
-    // void on_modeSelectCombo_currentIndexChanged(int index);
-
-    void on_useDarkThemeChk_clicked(bool checked);
-
     void on_modeSelectCombo_activated(int index);
-
-    // void on_freqDial_actionTriggered(int action);
 
     void on_freqDial_valueChanged(int value);
 
@@ -383,7 +400,6 @@ private slots:
 
     void on_saveSettingsBtn_clicked();
 
-
     void on_debugBtn_clicked();
 
     void on_pttEnableChk_clicked(bool checked);
@@ -425,7 +441,6 @@ private slots:
     void on_modeFilterCombo_activated(int index);
 
     void on_dataModeBtn_toggled(bool checked);
-
 
     void on_transmitBtn_clicked();
 
@@ -499,8 +514,6 @@ private slots:
 
     void on_wfLengthSlider_valueChanged(int value);
 
-    void on_pollingBtn_clicked();
-
     void on_wfAntiAliasChk_clicked(bool checked);
 
     void on_wfInterpolateChk_clicked(bool checked);
@@ -528,14 +541,14 @@ private slots:
     void on_setClockBtn_clicked();
 
     void on_serverEnableCheckbox_clicked(bool checked);
-    void on_serverUsersTable_cellClicked(int row, int col);
     void on_serverControlPortText_textChanged(QString text);
     void on_serverCivPortText_textChanged(QString text);
     void on_serverAudioPortText_textChanged(QString text);
     void on_serverTXAudioOutputCombo_currentIndexChanged(int value);
     void on_serverRXAudioInputCombo_currentIndexChanged(int value);
-    void onServerPasswordChanged();
-    void on_serverUsersTable_cellChanged(int row, int column);
+    void onServerUserFieldChanged();
+
+    void on_serverAddUserBtn_clicked();
 
     void on_useRTSforPTTchk_clicked(bool checked);
 
@@ -557,9 +570,135 @@ private slots:
 
     void on_underlayAverageBuffer_toggled(bool checked);
 
+    void on_colorSetBtnGrid_clicked();
+
+    void on_colorSetBtnPlotBackground_clicked();
+
+    void on_colorSetBtnText_clicked();
+
+    void on_colorSetBtnSpecLine_clicked();
+
+    void on_colorSetBtnSpecFill_clicked();
+
+    void on_colorEditPlotBackground_editingFinished();
+
+    void on_colorPopOutBtn_clicked();
+
+    void on_colorPresetCombo_currentIndexChanged(int index);
+
+    void on_colorEditSpecLine_editingFinished();
+
+    void on_colorEditGrid_editingFinished();
+
+    void on_colorEditText_editingFinished();
+
+    void on_colorEditSpecFill_editingFinished();
+
+    void on_colorSetBtnAxis_clicked();
+
+    void on_colorEditAxis_editingFinished();
+
+    void on_colorSetBtnUnderlayLine_clicked();
+
+    void on_colorEditUnderlayLine_editingFinished();
+
+    void on_colorSetBtnUnderlayFill_clicked();
+
+    void on_colorEditUnderlayFill_editingFinished();
+
+    void on_colorSetBtnwfBackground_clicked();
+
+    void on_colorEditWfBackground_editingFinished();
+
+    void on_colorSetBtnWfGrid_clicked();
+
+    void on_colorEditWfGrid_editingFinished();
+
+    void on_colorSetBtnWfAxis_clicked();
+
+    void on_colorEditWfAxis_editingFinished();
+
+    void on_colorSetBtnWfText_clicked();
+
+    void on_colorEditWfText_editingFinished();
+
+    void on_colorSetBtnTuningLine_clicked();
+
+    void on_colorEditTuningLine_editingFinished();
+
+    void on_colorSetBtnPassband_clicked();
+
+    void on_colorEditPassband_editingFinished();
+
+    void on_colorSetBtnMeterLevel_clicked();
+
+    void on_colorEditMeterLevel_editingFinished();
+
+    void on_colorSetBtnMeterAvg_clicked();
+
+    void on_colorEditMeterAvg_editingFinished();
+
+    void on_colorSetBtnMeterScale_clicked();
+
+    void on_colorEditMeterScale_editingFinished();
+
+    void on_colorSetBtnMeterText_clicked();
+
+    void on_colorEditMeterText_editingFinished();
+
+    void on_colorSetBtnClusterSpots_clicked();
+
+    void on_colorEditClusterSpots_editingFinished();
+
+    void on_colorRenamePresetBtn_clicked();
+
+    void on_colorRevertPresetBtn_clicked();
+
+    void on_colorSetBtnMeterPeakLevel_clicked();
+
+    void on_colorEditMeterPeakLevel_editingFinished();
+
+    void on_colorSetBtnMeterPeakScale_clicked();
+
+    void on_colorEditMeterPeakScale_editingFinished();
+
+    void on_colorSavePresetBtn_clicked();
+
+    void on_showLogBtn_clicked();
+
+    void on_audioSystemServerCombo_currentIndexChanged(int index);
+
+    void on_customEdgeBtn_clicked();
+
+    void on_clusterUdpEnable_clicked(bool enable);
+    void on_clusterTcpEnable_clicked(bool enable);
+    void on_clusterUdpPortLineEdit_editingFinished();
+    void on_clusterServerNameCombo_currentTextChanged(QString text);
+    void on_clusterServerNameCombo_currentIndexChanged(int index);
+    void on_clusterTcpPortLineEdit_editingFinished();
+    void on_clusterUsernameLineEdit_editingFinished();
+    void on_clusterPasswordLineEdit_editingFinished();
+    void on_clusterTimeoutLineEdit_editingFinished();
+    void on_clusterPopOutBtn_clicked();
+    void on_clusterSkimmerSpotsEnable_clicked(bool enable);
+
+    void on_clickDragTuningEnableChk_clicked(bool checked);
+
+    void receiveClusterOutput(QString text);
+    void receiveSpots(QList<spotData> spots);
+
+    void on_autoPollBtn_clicked(bool checked);
+
+    void on_manualPollBtn_clicked(bool checked);
+
+    void on_pollTimeMsSpin_valueChanged(int arg1);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
+    QString logFilename;
+    bool debugMode;
+    QString version;
     QSettings *settings=Q_NULLPTR;
     void loadSettings();
     void saveSettings();
@@ -567,14 +706,19 @@ private:
     void createSettingsListItems();
     void connectSettingsList();
 
+    void initLogging();
+    QTimer logCheckingTimer;
+    int logCheckingOldPosition = 0;
+
     QCustomPlot *plot; // line plot
     QCustomPlot *wf; // waterfall image
     QCPItemLine * freqIndicatorLine;
-    //commHandler *comm;
+    QCPItemRect* passbandIndicator;
     void setAppTheme(bool isCustom);
-    void setPlotTheme(QCustomPlot *plot, bool isDark);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
+    void preparePlasma();
+    bool plasmaPrepared = false;
     void computePlasma();
     void showHideSpectrum(bool show);
     void getInitialRigState();
@@ -665,17 +809,14 @@ private:
     quint16 wfLength;
     bool spectrumDrawLock;
 
-    enum underlay_t { underlayNone, underlayPeakHold, underlayPeakBuffer, underlayAverageBuffer };
-
-
     QByteArray spectrumPeaks;
     QVector <double> spectrumPlasmaLine;
     QVector <QByteArray> spectrumPlasma;
     unsigned int spectrumPlasmaSize = 64;
     underlay_t underlayMode = underlayNone;
-    bool drawPlasma = true;
     QMutex plasmaMutex;
     void resizePlasmaBuffer(int newSize);
+    void clearPlasmaBuffer();
 
     double plotFloor = 0;
     double plotCeiling = 160;
@@ -683,14 +824,18 @@ private:
     double wfCeiling = 160;
     double oldPlotFloor = -1;
     double oldPlotCeiling = 999;
+    double passBand = 0.0;
+
+    double mousePressFreq = 0.0;
+    double mouseReleaseFreq = 0.0;
 
     QVector <QByteArray> wfimage;
     unsigned int wfLengthMax;
 
     bool onFullscreen;
-    bool drawPeaks;
     bool freqTextSelected;
     void checkFreqSel();
+    void setUISpectrumControlsToMode(spectrumMode smode);
 
     double oldLowerFreq;
     double oldUpperFreq;
@@ -704,7 +849,7 @@ private:
               cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
               cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetTPBFInner, cmdSetTPBFInner,
-              cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus,
+              cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus, cmdGetPassband, 
               cmdSetATU, cmdStartATU, cmdGetSpectrumMode,
               cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,
               cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel,
@@ -761,66 +906,10 @@ private:
     datekind datesetpoint;
 
     freqMemory mem;
-    struct colors {
-        QColor Dark_PlotBackground;
-        QColor Dark_PlotAxisPen;
-        QColor Dark_PlotLegendTextColor;
-        QColor Dark_PlotLegendBorderPen;
-        QColor Dark_PlotLegendBrush;
-        QColor Dark_PlotTickLabel;
-        QColor Dark_PlotBasePen;
-        QColor Dark_PlotTickPen;
-        QColor Dark_PeakPlotLine;
-        QColor Dark_TuningLine;
 
-        QColor Light_PlotBackground;
-        QColor Light_PlotAxisPen;
-        QColor Light_PlotLegendTextColor;
-        QColor Light_PlotLegendBorderPen;
-        QColor Light_PlotLegendBrush;
-        QColor Light_PlotTickLabel;
-        QColor Light_PlotBasePen;
-        QColor Light_PlotTickPen;
-        QColor Light_PeakPlotLine;
-        QColor Light_TuningLine;
+    colorPrefsType colorPreset[numColorPresetsTotal];
 
-    } colorScheme;
-
-    struct preferences {
-        bool useFullScreen;
-        bool useDarkMode;
-        bool useSystemTheme;
-        bool drawPeaks;
-        underlay_t underlayMode = underlayNone;
-        int underlayBufferSize = 64;
-        bool wfAntiAlias;
-        bool wfInterpolate;
-        QString stylesheetPath;
-        unsigned char radioCIVAddr;
-        bool CIVisRadioModel;
-        bool forceRTSasPTT;
-        QString serialPortRadio;
-        quint32 serialPortBaud;
-        bool enablePTT;
-        bool niceTS;
-        bool enableLAN;
-        bool enableRigCtlD;
-        quint16 rigCtlPort;
-        colors colorScheme;
-        QString virtualSerialPort;
-        unsigned char localAFgain;
-        unsigned int wflength;
-        int wftheme;
-        int plotFloor;
-        int plotCeiling;
-        bool confirmExit;
-        bool confirmPowerOff;
-        meterKind meter2Type;
-        quint16 tcpPort;
-        quint8 waterfallFormat;
-        audioType audioSystem;
-    } prefs;
-
+    preferences prefs;
     preferences defPrefs;
     udpPreferences udpPrefs;
     udpPreferences udpDefPrefs;
@@ -829,13 +918,34 @@ private:
     audioSetup rxSetup;
     audioSetup txSetup;
 
+    void setDefaultColors(int presetNumber); // populate with default values
 
-    colors defaultColors;
-
-    void setDefaultColors(); // populate with default values
     void useColors(); // set the plot up
     void setDefPrefs(); // populate default values to default prefs
     void setTuningSteps();
+    void setColorElement(QColor color, QLedLabel *led, QLabel *label);
+    void setColorElement(QColor color, QLedLabel *led, QLineEdit *lineText);
+    void setColorElement(QColor color, QLedLabel *led, QLabel *label, QLineEdit *lineText);
+    QColor getColorFromPicker(QColor initialColor);
+    void getSetColor(QLedLabel *led, QLabel *label);
+    void getSetColor(QLedLabel *led, QLineEdit *line);
+    QString setColorFromString(QString aarrggbb, QLedLabel *led);
+    void setDefaultColorPresets();
+    void loadColorPresetToUIandPlots(int presetNumber);
+    void useColorPreset(colorPrefsType *cp);
+    void useCurrentColorPreset();
+    void setEditAndLedFromColor(QColor c, QLineEdit *e, QLedLabel *d);
+    void setColorButtonOperations(QColor *colorStore, QLineEdit *e, QLedLabel *d);
+    void setColorLineEditOperations(QColor *colorStore, QLineEdit *e, QLedLabel *d);
+
+    void detachSettingsTab();
+    void reattachSettingsTab();
+    void prepareSettingsWindow();
+    QWidget *settingsWidgetWindow;
+    QWidget *settingsTab;
+    QGridLayout *settingsWidgetLayout;
+    QTabWidget *settingsWidgetTab;
+    bool settingsTabisAttached = true;
 
     quint64 roundFrequency(quint64 frequency, unsigned int tsHz);
     quint64 roundFrequencyWithStep(quint64 oldFreq, int steps,\
@@ -869,6 +979,7 @@ private:
 
     void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
     void calculateTimingParameters();
+    void changePollTiming(int timing_ms, bool setUI=false);
 
     void changeMode(mode_kind mode);
     void changeMode(mode_kind mode, bool dataOn);
@@ -900,6 +1011,7 @@ private:
     transceiverAdjustments *trxadj;
     aboutbox *abtBox;
     selectRadio *selRad;
+    loggingWindow *logWindow;
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
@@ -935,6 +1047,15 @@ private:
     SERVERCONFIG serverConfig;
     void serverAddUserLine(const QString& user, const QString& pass, const int& type);
 
+    dxClusterClient* cluster = Q_NULLPTR;
+    QThread* clusterThread = Q_NULLPTR;
+    QMap<QString, spotData*> clusterSpots;
+    QTimer clusterTimer;
+    QCPItemText* text=Q_NULLPTR;
+    QList<clusterSettings> clusters;
+    QMutex clusterMutex;
+    QColor clusterColor;
+    audioDevices* audioDev = Q_NULLPTR;
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
@@ -947,12 +1068,17 @@ Q_DECLARE_METATYPE(struct SERVERCONFIG)
 Q_DECLARE_METATYPE(struct timekind)
 Q_DECLARE_METATYPE(struct datekind)
 Q_DECLARE_METATYPE(struct networkStatus)
+Q_DECLARE_METATYPE(struct networkAudioLevels)
+Q_DECLARE_METATYPE(struct spotData)
 Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
+Q_DECLARE_METATYPE(enum mode_kind)
 Q_DECLARE_METATYPE(QList<radio_cap_packet>)
+Q_DECLARE_METATYPE(QList<spotData>)
 Q_DECLARE_METATYPE(rigstate*)
 
+//void (*wfmain::logthistext)(QString text) = NULL;
 
 #endif // WFMAIN_H
 #endif

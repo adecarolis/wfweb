@@ -46,9 +46,7 @@ class servermain : public QObject
     Q_OBJECT
 
 public:
-    servermain(const QString serialPortCL, const QString hostCL, const QString settingsFile);
-    QString serialPortCL;
-    QString hostCL;
+    servermain(const QString logFile, const QString settingsFile);
     ~servermain();
 
 signals:
