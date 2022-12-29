@@ -428,13 +428,13 @@ void usbController::runTimer()
 		        }
                 if ((unsigned char)data[3] == 0x01)
                 {
-                    qDebug(logUsbControl()) << "Frequency UP";
+                    //qDebug(logUsbControl()) << "Frequency UP";
                     //emit jogPlus();
                     jogCounter = jogCounter + changeVFO;
                 }
                 else if ((unsigned char)data[3] == 0x02)
                 {
-                    qDebug(logUsbControl()) << "Frequency DOWN";
+                    //qDebug(logUsbControl()) << "Frequency DOWN";
                     //emit jogMinus();
                     jogCounter = jogCounter - changeVFO;
                     jogCounter--;
@@ -444,7 +444,7 @@ void usbController::runTimer()
             lastData = data;
         }
 
-        if (lastusbController.msecsTo(QTime::currentTime()) >= 500 || lastusbController > QTime::currentTime())
+        if (lastusbController.msecsTo(QTime::currentTime()) >= 200 || lastusbController > QTime::currentTime())
         {
             if (usbDevice == shuttleXpress || usbDevice == shuttlePro2)
             {
