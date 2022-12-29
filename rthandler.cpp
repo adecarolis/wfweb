@@ -58,7 +58,7 @@ bool rtHandler::init(audioSetup setup)
 	inFormat = toQAudioFormat(setup.codec, setup.sampleRate);
 
 	qDebug(logAudio()) << "Creating" << (setup.isinput ? "Input" : "Output") << "audio device:" << setup.name <<
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 		", bits" << inFormat.sampleSize() <<
 #else
 		", format" << inFormat.sampleFormat() <<
@@ -120,7 +120,7 @@ bool rtHandler::init(audioSetup setup)
 
 		RtAudioFormat sampleFormat;
 
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 		outFormat.setByteOrder(QAudioFormat::LittleEndian);
 		outFormat.setCodec("audio/pcm");
 #endif
@@ -168,7 +168,7 @@ bool rtHandler::init(audioSetup setup)
 			}
 
 			if (info.nativeFormats & RTAUDIO_FLOAT32) {
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 				outFormat.setSampleType(QAudioFormat::Float);
 				outFormat.setSampleSize(32);
 #else
@@ -177,7 +177,7 @@ bool rtHandler::init(audioSetup setup)
 				sampleFormat = RTAUDIO_FLOAT32;
 			}
 			else if (info.nativeFormats & RTAUDIO_SINT32) {
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 				outFormat.setSampleType(QAudioFormat::SignedInt);
 				outFormat.setSampleSize(32);
 #else
@@ -186,7 +186,7 @@ bool rtHandler::init(audioSetup setup)
 				sampleFormat = RTAUDIO_SINT32;
 			}
 			else if (info.nativeFormats & RTAUDIO_SINT16) {
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 				outFormat.setSampleType(QAudioFormat::SignedInt);
 				outFormat.setSampleSize(16);
 #else
@@ -200,7 +200,7 @@ bool rtHandler::init(audioSetup setup)
 			}
 		}
 
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Selected format: SampleSize" << outFormat.sampleSize() << "Channel Count" << outFormat.channelCount() <<
 			"Sample Rate" << outFormat.sampleRate() << "Codec" << outFormat.codec() << "Sample Type" << outFormat.sampleType();
 #else
@@ -226,7 +226,7 @@ bool rtHandler::init(audioSetup setup)
 
 
 		// Per channel chunk size.
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 		this->chunkSize = (outFormat.bytesForDuration(setup.blockSize * 1000) / (outFormat.sampleSize() / 8) / outFormat.channelCount());
 #else
 		this->chunkSize = (outFormat.bytesForDuration(setup.blockSize * 1000) / sizeof(outFormat.sampleFormat()) / outFormat.channelCount());
@@ -301,7 +301,7 @@ int rtHandler::readData(void* outputBuffer, void* inputBuffer,
 {
 	Q_UNUSED(inputBuffer);
 	Q_UNUSED(streamTime);
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 	int nBytes = nFrames * outFormat.channelCount() * (outFormat.sampleSize() / 8));
 #else
 	int nBytes = nFrames * outFormat.channelCount() * sizeof(outFormat.sampleFormat());
@@ -341,7 +341,7 @@ int rtHandler::writeData(void* outputBuffer, void* inputBuffer,
 	packet.sent = 0;
 	packet.volume = volume;
 	memcpy(&packet.guid, setup.guid, GUIDLEN);
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 	packet.data.append((char*)inputBuffer, nFrames * outFormat.channelCount() * (outFormat.sampleSize() / 8));
 #else
 	packet.data.append((char*)inputBuffer, nFrames * outFormat.channelCount() * sizeof(outFormat.sampleFormat()));
@@ -369,7 +369,7 @@ void rtHandler::convertedOutput(audioPacket packet)
 	arrayBuffer.append(packet.data);
 	audioMutex.unlock();
 	amplitude = packet.amplitudePeak;
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * (outFormat.sampleSize() / 8) * outFormat.channelCount()) / 1000);
 #else
 	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * sizeof(outFormat.sampleFormat()) * outFormat.channelCount()) / 1000);
@@ -384,7 +384,7 @@ void rtHandler::convertedInput(audioPacket packet)
 	if (packet.data.size() > 0) {
 		emit haveAudioData(packet);
 		amplitude = packet.amplitudePeak;
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 		currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * (outFormat.sampleSize() / 8) * outFormat.channelCount()) / 1000);
 #else
 		currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * sizeof(outFormat.sampleFormat()) * outFormat.channelCount()) / 1000);

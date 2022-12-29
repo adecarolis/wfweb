@@ -46,6 +46,7 @@ struct timekind {
 };
 
 enum audioType {qtAudio,portAudio,rtAudio};
+enum codecType { LPCM, PCMU, OPUS };
 
 
 #endif // WFVIEWTYPES_H

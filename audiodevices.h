@@ -1,7 +1,14 @@
 #ifndef AUDIODEVICES_H
 #define AUDIODEVICES_H
 #include <QObject>
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 #include <QAudioDeviceInfo>
+#else
+#include <QMediaDevices>
+#include <QAudioDevice>
+#endif
+
 #include <QFontMetrics>
 
 #include <portaudio.h>
@@ -15,11 +22,20 @@
 
 struct audioDevice {
     audioDevice(QString name, int deviceInt, bool isDefault) : name(name), deviceInt(deviceInt), isDefault(isDefault) {};
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     audioDevice(QString name, const QAudioDeviceInfo deviceInfo, QString realm, bool isDefault) : name(name), deviceInfo(deviceInfo), realm(realm), isDefault(isDefault) {};
+#else
+    audioDevice(QString name, const QAudioDevice deviceInfo, QString realm, bool isDefault) : name(name), deviceInfo(deviceInfo), realm(realm), isDefault(isDefault) {};
+#endif
 
     QString name;
     int deviceInt;
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     const QAudioDeviceInfo deviceInfo;
+#else
+    const QAudioDevice deviceInfo;
+#endif
     QString realm;
     bool isDefault;
 };
@@ -41,8 +57,14 @@ public:
 
     int getInputDeviceInt(int num) { return inputs[num].deviceInt; };
     int getOutputDeviceInt(int num) { return outputs[num].deviceInt; };
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     const QAudioDeviceInfo getInputDeviceInfo(int num) { return inputs[num].deviceInfo; };
     const QAudioDeviceInfo getOutputDeviceInfo(int num) { return outputs[num].deviceInfo; };
+#else
+    const QAudioDevice getInputDeviceInfo(int num) { return inputs[num].deviceInfo; };
+    const QAudioDevice getOutputDeviceInfo(int num) { return outputs[num].deviceInfo; };
+#endif
 
     void enumerate();
 
@@ -51,6 +73,10 @@ public:
 
     int findInput(QString type, QString name);
     int findOutput(QString type, QString name);
+
+#if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
+    QMediaDevices mediaDevices;
+#endif
 
 public slots:
 

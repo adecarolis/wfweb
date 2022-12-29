@@ -1040,9 +1040,6 @@ private:
     unsigned int tsKnobHz;
 
     rigstate* rigState = Q_NULLPTR;
-#if QT_VERSION >= 0x060000
-    QMediaDevices mediaDevices;
-#endif
 
     SERVERCONFIG serverConfig;
     void serverAddUserLine(const QString& user, const QString& pass, const int& type);

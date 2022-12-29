@@ -13,7 +13,12 @@ audioDevices::audioDevices(audioType type, QFontMetrics fm, QObject* parent) :
     system(type),
     fm(fm)
 {
-    
+
+#if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
+    connect(&mediaDevices, &QMediaDevices::audioInputsChanged, this, &audioDevices::enumerate);
+    connect(&mediaDevices, &QMediaDevices::audioOutputsChanged, this, &audioDevices::enumerate);
+#endif
+
 }
 
 
@@ -25,63 +30,112 @@ void audioDevices::enumerate()
     numCharsOut = 0;
     inputs.clear();
     outputs.clear();
+
     switch (system)
     {
         case qtAudio:
         {
             Pa_Terminate();
 
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
             foreach(const QAudioDeviceInfo & deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioInput))
-            {
+#else
+            const auto audioInputs = mediaDevices.audioInputs();
+            for (const QAudioDevice& deviceInfo : audioInputs)
+#endif
+                {
                 bool isDefault = false;
                 if (numInputDevices == 0) {
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
                     defaultInputDeviceName = QString(deviceInfo.deviceName());
+#else
+                    defaultInputDeviceName = QString(deviceInfo.description());
+#endif
                 }
-#ifdef Q_OS_WIN
+#if (defined(Q_OS_WIN) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
                 if (deviceInfo.realm() == "wasapi") {
 #endif
                     /* Append Input Device Here */
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
                     if (deviceInfo.deviceName() == defaultInputDeviceName) {
+#else
+                    if (deviceInfo.description() == defaultInputDeviceName) {
+#endif
                         isDefault = true;
                     }
-#if (QT_VERSION >= QT_VERSION_CHECK(5,15,0))
+#if ((QT_VERSION >= QT_VERSION_CHECK(5,15,0)) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
                     inputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, deviceInfo.realm(), isDefault));
-#else
+#elif (QT_VERSION < QT_VERSION_CHECK(5,15,0))
                     inputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
+#else
+                    inputs.append(audioDevice(deviceInfo.description(), deviceInfo, "", isDefault));
 #endif
 
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
                     if (fm.boundingRect(deviceInfo.deviceName()).width() > numCharsIn)
                         numCharsIn = fm.boundingRect(deviceInfo.deviceName()).width();
+#else
+                    if (fm.boundingRect(deviceInfo.description()).width() > numCharsIn)
+                        numCharsIn = fm.boundingRect(deviceInfo.description()).width();
+#endif
 
-#ifdef Q_OS_WIN
+#if (defined(Q_OS_WIN) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
                 }
 #endif
                 numInputDevices++;
             }
 
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
             foreach(const QAudioDeviceInfo & deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
+#else
+            const auto audioOutputs = mediaDevices.audioOutputs();
+            for (const QAudioDevice& deviceInfo : audioOutputs)
+#endif
             {
                 bool isDefault = false;
                 if (numOutputDevices == 0)
                 {
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
                     defaultOutputDeviceName = QString(deviceInfo.deviceName());
+#else
+                    defaultOutputDeviceName = QString(deviceInfo.description());
+#endif
                 }
-#ifdef Q_OS_WIN
+
+#if (defined(Q_OS_WIN) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
                 if (deviceInfo.realm() == "wasapi") {
 #endif
                     /* Append Output Device Here */
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
                     if (deviceInfo.deviceName() == defaultOutputDeviceName) {
+#else
+                    if (deviceInfo.description() == defaultOutputDeviceName) {
+#endif
                         isDefault = true;
                     }
 #if (QT_VERSION >= QT_VERSION_CHECK(5,15,0))
-                    outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, deviceInfo.realm(), isDefault));
 #else
                     outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
 #endif
+
+#if ((QT_VERSION >= QT_VERSION_CHECK(5,15,0)) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
+                    outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, deviceInfo.realm(), isDefault));
+#elif (QT_VERSION < QT_VERSION_CHECK(5,15,0))
+                    outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
+#else
+                    outputs.append(audioDevice(deviceInfo.description(), deviceInfo, "", isDefault));
+#endif
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
                     if (fm.boundingRect(deviceInfo.deviceName()).width() > numCharsOut)
                         numCharsOut = fm.boundingRect(deviceInfo.deviceName()).width();
+#else
+                    if (fm.boundingRect(deviceInfo.description()).width() > numCharsOut)
+                        numCharsOut = fm.boundingRect(deviceInfo.description()).width();
+#endif
 
-#ifdef Q_OS_WIN
+#if (defined(Q_OS_WIN) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
                 }
 #endif
                 numOutputDevices++;

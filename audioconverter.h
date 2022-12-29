@@ -7,7 +7,7 @@
 #include <QDebug>
 #include <QAudioFormat>
 
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 #include <QAudioDeviceInfo>
 #include <QAudioInput>
 #include <QAudioOutput>
@@ -52,7 +52,7 @@ struct audioSetup {
     bool ulaw = false;
     bool isinput;
     quint32 sampleRate;
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QAudioDeviceInfo port;
 #else
     QAudioDevice port;
@@ -115,7 +115,7 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
 	0x40 Opus 1ch
 	0x80 Opus 2ch
 	*/
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     format.setByteOrder(QAudioFormat::LittleEndian);
     format.setCodec("audio/pcm");
 #endif
@@ -124,7 +124,7 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
 
 	if (codec == 0x01 || codec == 0x20) {
 		/* Set sample to be what is expected by the encoder and the output of the decoder */
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         format.setSampleSize(16);
         format.setSampleType(QAudioFormat::SignedInt);
         format.setCodec("audio/PCMU");
@@ -134,7 +134,7 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
     }
 
     if (codec == 0x02 || codec == 0x08) {
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         format.setSampleSize(8);
         format.setSampleType(QAudioFormat::UnSignedInt);
 #else
@@ -148,7 +148,7 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
     }
 
 	if (codec == 0x04 || codec == 0x10) {
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         format.setSampleSize(16);
         format.setSampleType(QAudioFormat::SignedInt);
 #else
@@ -157,7 +157,7 @@ static inline QAudioFormat toQAudioFormat(quint8 codec, quint32 sampleRate)
 	}
 
     if (codec == 0x40 || codec == 0x80) {
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         format.setSampleSize(32);
         format.setSampleType(QAudioFormat::Float);
         format.setCodec("audio/opus");

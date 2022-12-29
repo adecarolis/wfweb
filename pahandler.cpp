@@ -45,7 +45,7 @@ bool paHandler::init(audioSetup setup)
 	inFormat = toQAudioFormat(setup.codec, setup.sampleRate);
 
 	qDebug(logAudio()) << "Creating" << (setup.isinput ? "Input" : "Output") << "audio device:" << setup.name <<
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 		", bits" << inFormat.sampleSize() <<
 #else
 		", format" << inFormat.sampleFormat() <<
@@ -94,7 +94,7 @@ bool paHandler::init(audioSetup setup)
 	outFormat.setSampleRate(info->defaultSampleRate);
 	aParams.sampleFormat = paFloat32;
 
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 	outFormat.setSampleSize(32);
 	outFormat.setSampleType(QAudioFormat::Float);
 	outFormat.setByteOrder(QAudioFormat::LittleEndian);
@@ -123,8 +123,7 @@ bool paHandler::init(audioSetup setup)
 	}
 
 
-
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Selected format: SampleSize" << outFormat.sampleSize() << "Channel Count" << outFormat.channelCount() <<
 		"Sample Rate" << outFormat.sampleRate() << "Codec" << codec << "Sample Type" << outFormat.sampleType();
 #else
@@ -186,7 +185,7 @@ bool paHandler::init(audioSetup setup)
 		else if (err == paSampleFormatNotSupported)
 		{
 			aParams.sampleFormat = paInt16;
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 			outFormat.setSampleType(QAudioFormat::SignedInt);
 			outFormat.setSampleSize(16);
 #else

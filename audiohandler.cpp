@@ -55,7 +55,7 @@ audioHandler::~audioHandler()
 	}
 
 	qDebug(logAudio()) << "Creating" << (setup.isinput ? "Input" : "Output") << "audio device:" << setup.name <<
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 		", bits" << inFormat.sampleSize() <<
 #else
 		", format" << inFormat.sampleFormat() <<
@@ -78,7 +78,7 @@ audioHandler::~audioHandler()
 
 	outFormat = setup.port.preferredFormat();
 
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Preferred Format: SampleSize" << outFormat.sampleSize() << "Channel Count" << outFormat.channelCount() <<
 		"Sample Rate" << outFormat.sampleRate() << "Codec" << outFormat.codec() << "Sample Type" << outFormat.sampleType();
 #else
@@ -111,7 +111,7 @@ audioHandler::~audioHandler()
         }
     }
 
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 
 	if (outFormat.sampleType() == QAudioFormat::UnSignedInt && outFormat.sampleSize() == 8) {
 		outFormat.setSampleType(QAudioFormat::SignedInt);
@@ -147,7 +147,7 @@ audioHandler::~audioHandler()
     }
 	*/
 
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 
 	if (outFormat.sampleSize() == 24) {
 		// We can't convert this easily so use 32 bit instead.
@@ -187,7 +187,7 @@ audioHandler::~audioHandler()
 
 	if (setup.isinput) {
 
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 		audioInput = new QAudioInput(setup.port, outFormat, this);
 #else
 		audioInput = new QAudioSource(setup.port, outFormat, this);
@@ -198,7 +198,7 @@ audioHandler::~audioHandler()
 	}
 	else {
 
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 		audioOutput = new QAudioOutput(setup.port, outFormat, this);
 #else
 		audioOutput = new QAudioSink(setup.port, outFormat, this);

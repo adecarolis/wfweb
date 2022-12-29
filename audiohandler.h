@@ -17,7 +17,7 @@
 #include <QAudioOutput>
 #include <QAudioFormat>
 
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 #include <QAudioDeviceInfo>
 #include <QAudioInput>
 #include <QAudioOutput>
@@ -101,7 +101,7 @@ private:
 
     QAudioFormat     inFormat;
     QAudioFormat     outFormat;
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QAudioOutput* audioOutput = Q_NULLPTR;
     QAudioInput* audioInput = Q_NULLPTR;
     QAudioDeviceInfo deviceInfo;

@@ -92,11 +92,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     loadSettings(); // Look for saved preferences
 
-#if QT_VERSION >= 0x060000
-    connect(&mediaDevices, &QMediaDevices::audioInputsChanged, this, &wfmain::setAudioDevicesUI);
-    connect(&mediaDevices, &QMediaDevices::audioOutputsChanged, this, &wfmain::setAudioDevicesUI);
-#endif
-
     setAudioDevicesUI();
 
     setTuningSteps(); // TODO: Combine into preferences
@@ -1407,7 +1402,7 @@ void wfmain::setupKeyShortcuts()
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
 
     keyDebug = new QShortcut(this);
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     keyDebug->setKey(Qt::CTRL + Qt::SHIFT + Qt::Key_D);
 #else
     keyDebug->setKey(Qt::CTRL + Qt::Key_D);

@@ -16,7 +16,7 @@ bool audioConverter::init(QAudioFormat inFormat, codecType inCodec, QAudioFormat
     this->opusComplexity = opusComplexity;
 	this->resampleQuality = resampleQuality;
 
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     qInfo(logAudioConverter) << "Starting audioConverter() Input:" << inFormat.channelCount() << "Channels of" << inCodec << inFormat.sampleRate() << inFormat.sampleType() << inFormat.sampleSize() <<
         "Output:" << outFormat.channelCount() << "Channels of" << outCodec << outFormat.sampleRate() << outFormat.sampleType() << outFormat.sampleSize();
 
@@ -68,7 +68,7 @@ bool audioConverter::init(QAudioFormat inFormat, codecType inCodec, QAudioFormat
 audioConverter::~audioConverter() 
 {
 
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     qInfo(logAudioConverter) << "Closing audioConverter() Input:" << inFormat.channelCount() << "Channels of" << inCodec << inFormat.sampleRate() << inFormat.sampleType() << inFormat.sampleSize() <<
         "Output:" << outFormat.channelCount() << "Channels of" << outCodec << outFormat.sampleRate() << outFormat.sampleType() << outFormat.sampleSize();
 #else
@@ -138,7 +138,7 @@ bool audioConverter::convert(audioPacket audio)
         }
 
         Eigen::VectorXf samplesF;
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         if (inFormat.sampleType() == QAudioFormat::SignedInt && inFormat.sampleSize() == 32)
 #else
         if (inFormat.sampleFormat() == QAudioFormat::Int32)
@@ -147,7 +147,7 @@ bool audioConverter::convert(audioPacket audio)
             Eigen::Ref<VectorXint32> samplesI = Eigen::Map<VectorXint32>(reinterpret_cast<qint32*>(audio.data.data()), audio.data.size() / int(sizeof(qint32)));
             samplesF = samplesI.cast<float>() / float(std::numeric_limits<qint32>::max());
         }
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         else if (inFormat.sampleType() == QAudioFormat::SignedInt && inFormat.sampleSize() == 16)
 #else
         else if (inFormat.sampleFormat() == QAudioFormat::Int16)
@@ -156,7 +156,7 @@ bool audioConverter::convert(audioPacket audio)
             Eigen::Ref<VectorXint16> samplesI = Eigen::Map<VectorXint16>(reinterpret_cast<qint16*>(audio.data.data()), audio.data.size() / int(sizeof(qint16)));
             samplesF = samplesI.cast<float>() / float(std::numeric_limits<qint16>::max());
         }
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         else if (inFormat.sampleType() == QAudioFormat::UnSignedInt && inFormat.sampleSize() == 8)
 #else
         else if (inFormat.sampleFormat() == QAudioFormat::UInt8)
@@ -165,7 +165,7 @@ bool audioConverter::convert(audioPacket audio)
             Eigen::Ref<VectorXuint8> samplesI = Eigen::Map<VectorXuint8>(reinterpret_cast<quint8*>(audio.data.data()), audio.data.size() / int(sizeof(quint8)));
             samplesF = samplesI.cast<float>() / float(std::numeric_limits<quint8>::max());;
         }
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         else if (inFormat.sampleType() == QAudioFormat::Float) 
 #else
         else if (inFormat.sampleFormat() == QAudioFormat::Float)
@@ -176,7 +176,7 @@ bool audioConverter::convert(audioPacket audio)
         }
         else
         {
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         qInfo(logAudio()) << "Unsupported Input Sample Type:" << inFormat.sampleType() << "Size:" << inFormat.sampleSize();
 #else
         qInfo(logAudio()) << "Unsupported Input Sample Format:" << inFormat.sampleFormat();
@@ -275,7 +275,7 @@ bool audioConverter::convert(audioPacket audio)
                 */
                 audio.data.clear();
 
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
                 if (outFormat.sampleType() == QAudioFormat::UnSignedInt && outFormat.sampleSize() == 8)
 #else
                 if (outFormat.sampleFormat() == QAudioFormat::UInt8)
@@ -286,7 +286,7 @@ bool audioConverter::convert(audioPacket audio)
                     VectorXuint8 samplesI = samplesITemp.cast<quint8>();
                     audio.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(quint8)));
                 }
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
                 else if (outFormat.sampleType() == QAudioFormat::SignedInt && outFormat.sampleSize() == 16)
 #else
                 else if (outFormat.sampleFormat() == QAudioFormat::Int16)
@@ -296,7 +296,7 @@ bool audioConverter::convert(audioPacket audio)
                     VectorXint16 samplesI = samplesITemp.cast<qint16>();
                     audio.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint16)));
                 }
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
                 else if (outFormat.sampleType() == QAudioFormat::SignedInt && outFormat.sampleSize() == 32)
 #else
                 else if (outFormat.sampleFormat() == QAudioFormat::Int32)
@@ -306,7 +306,7 @@ bool audioConverter::convert(audioPacket audio)
                     VectorXint32 samplesI = samplesITemp.cast<qint32>();
                     audio.data = QByteArray(reinterpret_cast<char*>(samplesI.data()), int(samplesI.size()) * int(sizeof(qint32)));
                 }
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
                 else if (outFormat.sampleType() == QAudioFormat::Float)
 #else
                 else if (outFormat.sampleFormat() == QAudioFormat::Float)
@@ -315,7 +315,7 @@ bool audioConverter::convert(audioPacket audio)
                     audio.data = QByteArray(reinterpret_cast<char*>(samplesF.data()), int(samplesF.size()) * int(sizeof(float)));
                 }
                 else {
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
                     qInfo(logAudio()) << "Unsupported Output Sample Type:" << outFormat.sampleType() << "Size:" << outFormat.sampleSize();
 #else
                     qInfo(logAudio()) << "Unsupported Output Sample Type:" << outFormat.sampleFormat();

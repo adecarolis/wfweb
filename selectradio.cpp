@@ -60,7 +60,7 @@ void selectRadio::setInUse(quint8 radio, quint8 busy, QString user, QString ip)
 
 void selectRadio::on_table_cellClicked(int row, int col) {
     qInfo() << "Clicked on " << row << "," << col;
-#if QT_VERSION < 0x060000
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     if (ui->table->item(row, col)->backgroundColor() != Qt::darkGreen) {
 #else
     if (ui->table->item(row, col)->background() != Qt::darkGreen) {
