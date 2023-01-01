@@ -6,7 +6,7 @@
 #include <objbase.h>
 #endif
 
-#define RT_EXCEPTION
+#undef RT_EXCEPTION
 
 rtHandler::rtHandler(QObject* parent)
 {
@@ -114,8 +114,10 @@ bool rtHandler::init(audioSetup setup)
 		goto errorHandler;
 	}
 #endif
+#ifdef RT_EXCEPTION
 	if (info.probed)
 	{
+#endif
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << QString::fromStdString(info.name) << "(" << aParams.deviceId << ") successfully probed";
 
 		RtAudioFormat sampleFormat;
@@ -257,13 +259,15 @@ bool rtHandler::init(audioSetup setup)
 			goto errorHandler;
 		}
 #endif
+
+#ifdef RT_EXCEPTION
 	}
 	else
 	{
 		qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << QString::fromStdString(info.name) << "(" << aParams.deviceId << ") could not be probed, check audio configuration!";
 		goto errorHandler;
 	}
-
+#endif
 	this->setVolume(setup.localAFgain);
 
 	
