@@ -46,7 +46,7 @@ class servermain : public QObject
     Q_OBJECT
 
 public:
-    servermain(const QString logFile, const QString settingsFile);
+    servermain(const QString logFile);
     ~servermain();
 
 signals:

@@ -8,7 +8,7 @@
 // This code is copyright 2017-2020 Elliott H. Liggett
 // All rights reserved
 
-servermain::servermain(const QString settingsFile, const QString logFile)
+servermain::servermain(const QString settingsFile)
 {
 
     qRegisterMetaType <udpPreferences>(); // Needs to be registered early.
