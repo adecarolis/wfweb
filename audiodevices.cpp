@@ -31,12 +31,14 @@ void audioDevices::enumerate()
     inputs.clear();
     outputs.clear();
 
+
     switch (system)
     {
         case qtAudio:
         {
             Pa_Terminate();
 
+            qInfo(logAudio()) << "Audio device(s) found (*=default)";
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
             foreach(const QAudioDeviceInfo & deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioInput))
@@ -55,7 +57,7 @@ void audioDevices::enumerate()
 #endif
                 }
 #if (defined(Q_OS_WIN) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
-                if (deviceInfo.realm() == "wasapi") {
+                if (deviceInfo.realm() == audioApi || audioApi == "") {
 #endif
                     /* Append Input Device Here */
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
@@ -65,12 +67,16 @@ void audioDevices::enumerate()
 #endif
                         isDefault = true;
                     }
+
 #if ((QT_VERSION >= QT_VERSION_CHECK(5,15,0)) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
                     inputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, deviceInfo.realm(), isDefault));
+                    qInfo(logAudio()) << (deviceInfo.deviceName() == defaultInputDeviceName ? "*" : " ") << "(" << numInputDevices << ") Input Device : " << deviceInfo.deviceName();
 #elif (QT_VERSION < QT_VERSION_CHECK(5,15,0))
                     inputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
+                    qInfo(logAudio()) << (deviceInfo.deviceName() == defaultInputDeviceName ? "*" : " ") << "(" << numInputDevices << ") Input Device : " << deviceInfo.deviceName();
 #else
                     inputs.append(audioDevice(deviceInfo.description(), deviceInfo, "", isDefault));
+                    qInfo(logAudio()) << (deviceInfo.description() == defaultInputDeviceName ? "*" : " ") << "(" << numInputDevices << ") Input Device : " << deviceInfo.description();
 #endif
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
@@ -115,17 +121,16 @@ void audioDevices::enumerate()
 #endif
                         isDefault = true;
                     }
-#if (QT_VERSION >= QT_VERSION_CHECK(5,15,0))
-#else
-                    outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
-#endif
 
 #if ((QT_VERSION >= QT_VERSION_CHECK(5,15,0)) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
-                    outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, deviceInfo.realm(), isDefault));
+                    outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
+                    qInfo(logAudio()) << (deviceInfo.deviceName() == defaultOutputDeviceName ? "*" : " ") << "(" << numOutputDevices << ") Output Device : " << deviceInfo.deviceName();
 #elif (QT_VERSION < QT_VERSION_CHECK(5,15,0))
                     outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
+                    qInfo(logAudio()) << (deviceInfo.deviceName() == defaultOutputDeviceName ? "*" : " ") << "(" << numOutputDevices << ") Output Device : " << deviceInfo.deviceName();
 #else
                     outputs.append(audioDevice(deviceInfo.description(), deviceInfo, "", isDefault));
+                    qInfo(logAudio()) << (deviceInfo.description() == defaultOutputDeviceName ? "*" : " ") << "(" << numOutputDevices << ") Output Device : " << deviceInfo.description();
 #endif
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
@@ -158,7 +163,8 @@ void audioDevices::enumerate()
             qInfo(logAudio()) << "PortAudio version: " << Pa_GetVersionInfo()->versionText;
 
             int numDevices = Pa_GetDeviceCount();
-            qInfo(logAudio()) << "Pa_CountDevices returned" << numDevices;
+            qInfo(logAudio()) << "Pa_CountDevices returned" << numDevices << "audio device(s) (*=default)";
+
 
             const PaDeviceInfo* info;
             for (int i = 0; i < numDevices; i++)
@@ -167,7 +173,7 @@ void audioDevices::enumerate()
                 if (info->maxInputChannels > 0) {
                     bool isDefault = false;
                     numInputDevices++;
-                    qDebug(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Input Device : " << QString(info->name);
+                    qInfo(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Input Device : " << QString(info->name);
                     if (i == Pa_GetDefaultInputDevice()) {
                         defaultInputDeviceName = info->name;
                         isDefault = true;
@@ -180,7 +186,7 @@ void audioDevices::enumerate()
                 if (info->maxOutputChannels > 0) {
                     bool isDefault = false;
                     numOutputDevices++;
-                    qDebug(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Output Device  : " << QString(info->name);
+                    qInfo(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Output Device  : " << QString(info->name);
                     if (i == Pa_GetDefaultOutputDevice()) {
                         defaultOutputDeviceName = info->name;
                         isDefault = true;
@@ -232,7 +238,7 @@ void audioDevices::enumerate()
             qInfo(logAudio()) << "Current API: " << QString::fromStdString(apiMap[audio->getCurrentApi()]);
 
             unsigned int devices = audio->getDeviceCount();
-            qInfo(logAudio()) << "Found " << devices << " audio device(s) *=default";
+            qInfo(logAudio()) << "Found:" << devices << " audio device(s) (*=default)";
 
             for (unsigned int i = 1; i < devices; i++) {
                 info = audio->getDeviceInfo(i);

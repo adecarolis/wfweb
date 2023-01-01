@@ -100,8 +100,7 @@ private:
     QList<audioDevice> outputs;
     int numCharsIn = 0;
     int numCharsOut = 0;
-
-
+    QString audioApi = "wasapi";
 
 };
 
