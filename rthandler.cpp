@@ -302,7 +302,7 @@ int rtHandler::readData(void* outputBuffer, void* inputBuffer,
 	Q_UNUSED(inputBuffer);
 	Q_UNUSED(streamTime);
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-	int nBytes = nFrames * outFormat.channelCount() * (outFormat.sampleSize() / 8));
+	int nBytes = nFrames * outFormat.channelCount() * (outFormat.sampleSize() / 8);
 #else
 	int nBytes = nFrames * outFormat.channelCount() * sizeof(outFormat.sampleFormat());
 #endif

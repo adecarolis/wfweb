@@ -9,16 +9,24 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wfserver", "wfserver.vcxpro
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
 		Debug|x64 = Debug|x64
+		Release|Win32 = Release|Win32
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{326108AD-FA9D-3AAF-8D3E-062C4DDC34E2}.Debug|Win32.ActiveCfg = Debug|Win32
 		{326108AD-FA9D-3AAF-8D3E-062C4DDC34E2}.Debug|x64.ActiveCfg = Debug|x64
 		{326108AD-FA9D-3AAF-8D3E-062C4DDC34E2}.Debug|x64.Build.0 = Debug|x64
+		{326108AD-FA9D-3AAF-8D3E-062C4DDC34E2}.Release|Win32.ActiveCfg = Release|Win32
+		{326108AD-FA9D-3AAF-8D3E-062C4DDC34E2}.Release|Win32.Build.0 = Release|Win32
 		{326108AD-FA9D-3AAF-8D3E-062C4DDC34E2}.Release|x64.ActiveCfg = Release|x64
 		{326108AD-FA9D-3AAF-8D3E-062C4DDC34E2}.Release|x64.Build.0 = Release|x64
+		{00E054F8-A1D4-3ECA-A8D6-DFC8A68AFD56}.Debug|Win32.ActiveCfg = Debug|Win32
+		{00E054F8-A1D4-3ECA-A8D6-DFC8A68AFD56}.Debug|Win32.Build.0 = Debug|Win32
 		{00E054F8-A1D4-3ECA-A8D6-DFC8A68AFD56}.Debug|x64.ActiveCfg = Debug|x64
 		{00E054F8-A1D4-3ECA-A8D6-DFC8A68AFD56}.Debug|x64.Build.0 = Debug|x64
+		{00E054F8-A1D4-3ECA-A8D6-DFC8A68AFD56}.Release|Win32.ActiveCfg = Release|Win32
 		{00E054F8-A1D4-3ECA-A8D6-DFC8A68AFD56}.Release|x64.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution

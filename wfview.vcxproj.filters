@@ -56,10 +56,16 @@
     <ClCompile Include="audioconverter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="audiodevices.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="audiohandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="calibrationwindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cluster.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="commhandler.cpp">
@@ -69,6 +75,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="logcategories.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="loggingwindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
@@ -134,15 +143,6 @@
     <ClCompile Include="wfmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="audiodevices.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="loggingwindow.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="cluster.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\rtaudio\RTAUdio.h">
@@ -157,6 +157,9 @@
     <QtMoc Include="audioconverter.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="audiodevices.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="audiohandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -164,6 +167,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <QtMoc Include="calibrationwindow.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="cluster.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="commhandler.h">
@@ -175,6 +181,9 @@
     <ClInclude Include="logcategories.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <QtMoc Include="loggingwindow.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="meter.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -263,6 +272,9 @@
     <QtUic Include="calibrationwindow.ui">
       <Filter>Form Files</Filter>
     </QtUic>
+    <QtUic Include="loggingwindow.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
     <QtUic Include="repeatersetup.ui">
       <Filter>Form Files</Filter>
     </QtUic>
@@ -276,9 +288,6 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="wfmain.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
-    <QtUic Include="loggingwindow.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
@@ -415,16 +424,5 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include=".\wfview_resource.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <QtMoc Include="audiodevices.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="loggingwindow.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="cluster.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
   </ItemGroup>
 </Project>

@@ -73,6 +73,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<QList<spotData>>();
     qRegisterMetaType<networkStatus>();
     qRegisterMetaType<networkAudioLevels>();
+    qRegisterMetaType<codecType>();
 
     haveRigCaps = false;
 

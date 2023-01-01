@@ -1074,6 +1074,7 @@ Q_DECLARE_METATYPE(enum mode_kind)
 Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 Q_DECLARE_METATYPE(QList<spotData>)
 Q_DECLARE_METATYPE(rigstate*)
+Q_DECLARE_METATYPE(codecType)
 
 //void (*wfmain::logthistext)(QString text) = NULL;
 
