@@ -70,13 +70,17 @@ void audioDevices::enumerate()
 
 #if ((QT_VERSION >= QT_VERSION_CHECK(5,15,0)) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
                     inputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, deviceInfo.realm(), isDefault));
-                    qInfo(logAudio()) << (deviceInfo.deviceName() == defaultInputDeviceName ? "*" : " ") << "(" << numInputDevices << ") Input Device : " << deviceInfo.deviceName();
+                    qInfo(logAudio()) << (deviceInfo.deviceName() == defaultInputDeviceName ? "*" : " ") <<
+                        "(" << numInputDevices <<" " << deviceInfo.realm() << ") Input Device : " << 
+                        deviceInfo.deviceName();
 #elif (QT_VERSION < QT_VERSION_CHECK(5,15,0))
                     inputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
-                    qInfo(logAudio()) << (deviceInfo.deviceName() == defaultInputDeviceName ? "*" : " ") << "(" << numInputDevices << ") Input Device : " << deviceInfo.deviceName();
+                    qInfo(logAudio()) << (deviceInfo.deviceName() == defaultInputDeviceName ? "*" : " ") << 
+                        "(" << numInputDevices << ") Input Device : " << deviceInfo.deviceName();
 #else
                     inputs.append(audioDevice(deviceInfo.description(), deviceInfo, "", isDefault));
-                    qInfo(logAudio()) << (deviceInfo.description() == defaultInputDeviceName ? "*" : " ") << "(" << numInputDevices << ") Input Device : " << deviceInfo.description();
+                    qInfo(logAudio()) << (deviceInfo.description() == defaultInputDeviceName ? "*" : " ") << 
+                        "(" << numInputDevices << ") Input Device : " << deviceInfo.description();
 #endif
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
@@ -123,14 +127,18 @@ void audioDevices::enumerate()
                     }
 
 #if ((QT_VERSION >= QT_VERSION_CHECK(5,15,0)) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
-                    outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
-                    qInfo(logAudio()) << (deviceInfo.deviceName() == defaultOutputDeviceName ? "*" : " ") << "(" << numOutputDevices << ") Output Device : " << deviceInfo.deviceName();
+                    outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, deviceInfo.realm() , isDefault));
+                    qInfo(logAudio()) << (deviceInfo.deviceName() == defaultOutputDeviceName ? "*" : " ") << 
+                        "(" << numOutputDevices << " " << deviceInfo.realm() << ") Output Device : " << 
+                        deviceInfo.deviceName();
 #elif (QT_VERSION < QT_VERSION_CHECK(5,15,0))
                     outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
-                    qInfo(logAudio()) << (deviceInfo.deviceName() == defaultOutputDeviceName ? "*" : " ") << "(" << numOutputDevices << ") Output Device : " << deviceInfo.deviceName();
+                    qInfo(logAudio()) << (deviceInfo.deviceName() == defaultOutputDeviceName ? "*" : " ") << 
+                        "(" << numOutputDevices << ") Output Device : " << deviceInfo.deviceName();
 #else
                     outputs.append(audioDevice(deviceInfo.description(), deviceInfo, "", isDefault));
-                    qInfo(logAudio()) << (deviceInfo.description() == defaultOutputDeviceName ? "*" : " ") << "(" << numOutputDevices << ") Output Device : " << deviceInfo.description();
+                    qInfo(logAudio()) << (deviceInfo.description() == defaultOutputDeviceName ? "*" : " ") << 
+                        "(" << numOutputDevices << ") Output Device : " << deviceInfo.description();
 #endif
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
