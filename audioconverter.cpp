@@ -326,7 +326,7 @@ bool audioConverter::convert(audioPacket audio)
                     As we currently don't have a float based uLaw encoder, this must be done
                     after all other conversion has taken place.
                 */
-                if (inCodec == PCMU)
+                if (outCodec == PCMU)
                 {
                     QByteArray outPacket((int)audio.data.length() / 2, (char)0xff);
                     qint16* in = (qint16*)audio.data.data();

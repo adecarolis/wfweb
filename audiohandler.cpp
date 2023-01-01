@@ -69,7 +69,7 @@ audioHandler::~audioHandler()
 		", uLaw" << setup.ulaw;
 
 	inFormat = toQAudioFormat(setup.codec, setup.sampleRate);
-	codecType codec = LPCM;
+	codec = LPCM;
 	if (setup.codec == 0x01 || setup.codec == 0x20)
 		codec = PCMU;
 	else if (setup.codec == 0x40 || setup.codec == 0x40)
@@ -80,7 +80,7 @@ audioHandler::~audioHandler()
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Preferred Format: SampleSize" << outFormat.sampleSize() << "Channel Count" << outFormat.channelCount() <<
-		"Sample Rate" << outFormat.sampleRate() << "Codec" << outFormat.codec() << "Sample Type" << outFormat.sampleType();
+		"Sample Rate" << outFormat.sampleRate() << "Codec" << codec << "Sample Type" << outFormat.sampleType();
 #else
 	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Preferred Format: SampleFormat" << outFormat.sampleFormat() << "Channel Count" << outFormat.channelCount() <<
 		"Sample Rate" << outFormat.sampleRate();
