@@ -18,11 +18,11 @@ DEFINES += WFVIEW_VERSION=\\\"1.54\\\"
 
 DEFINES += BUILD_WFVIEW
 
+
 CONFIG(debug, release|debug) {
     # For Debug builds only:
     QMAKE_CXXFLAGS += -faligned-new
     win32:DESTDIR = wfview-release
-    win32:LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86 -lole32
 } else {
     # For Release builds only:
     linux:QMAKE_CXXFLAGS += -s
@@ -31,8 +31,8 @@ CONFIG(debug, release|debug) {
     QMAKE_CXXFLAGS += -faligned-new
     linux:QMAKE_LFLAGS += -O2 -s
     win32:DESTDIR = wfview-debug
-    win32:LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86 -lole32
 }
+
 
 # RTAudio defines
 win32:DEFINES += __WINDOWS_WASAPI__
@@ -55,7 +55,7 @@ win32:INCLUDEPATH += ../portaudio/include
 # depend on your compiler). Please consult the documentation of the
 # deprecated API in order to know how to port your code away from it.
 DEFINES += QT_DEPRECATED_WARNINGS
-DEFINES += QCUSTOMPLOT_COMPILE_LIBRARY
+DEFINES += QCUSTOMPLOT_USE_LIBRARY
 
 
 # These defines are used for the resampler
@@ -129,19 +129,47 @@ INSTALLS += stylesheets
 
 CONFIG(debug, release|debug) {
   linux: QCPLIB = qcustomplotd
-  win32:LIBS += -L../opus/win32/VS2015/Win32/Debug/ -lopus
+  !linux: QCPLIB = qcustomplotd2
+  win32 {
+    contains(QMAKE_TARGET.arch, x86_64) {
+      LIBS += -L../opus/win32/VS2015/x64/Debug/
+      LIBS += -L../qcustomplot/x64
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\x64\qcustomplotd2.dll debug\$$escape_expand(\n\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll debug\$$escape_expand(\n\t))
+      win32:LIBS += -L../portaudio/msvc/X64/Debug/ -lportaudio_x64
+    } else {
+      LIBS += -L../opus/win32/VS2015/win32/Debug/
+      LIBS += -L../qcustomplot/win32
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y .\qcustomplot\win32\qcustomplotd2.dll debug\$$escape_expand(\n\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll debug\$$escape_expand(\n\t))
+      win32:LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86 -lole32
+    }
+  }
 } else {
   linux: QCPLIB = qcustomplot
-  win32:LIBS += -L../opus/win32/VS2015/Win32/Release/ -lopus
+  !linux: QCPLIB = qcustomplot2
+  win32 {
+    contains(QMAKE_TARGET.arch, x86_64) {
+      LIBS += -L../opus/win32/VS2015/x64/Release/
+      LIBS += -L../qcustomplot/x64
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\x64\qcustomplot2.dll release\$$escape_expand(\n\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll release\$$escape_expand(\n\t))
+      win32:LIBS += -L../portaudio/msvc/X64/Release/ -lportaudio_x64
+    } else {
+      LIBS += -L../opus/win32/VS2015/win32/Release/
+      LIBS += -L../qcustomplot/win32
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\win32\qcustomplot2.dll release\$$escape_expand(\n\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll release\$$escape_expand(\n\t))
+      win32:LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86 -lole32
+    }
+  }
 }
 
 linux:LIBS += -L./ -l$$QCPLIB -lopus
+!linux:LIBS += -l$$QCPLIB -lopus
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus 
 
-!linux:SOURCES += ../qcustomplot/qcustomplot.cpp 
-!linux:HEADERS += ../qcustomplot/qcustomplot.h
 !linux:INCLUDEPATH += ../qcustomplot
-
 !linux:INCLUDEPATH += ../opus/include
 
 win32:INCLUDEPATH += ../eigen
@@ -179,7 +207,8 @@ SOURCES += main.cpp\
     tcpserver.cpp \
     cluster.cpp \
     database.cpp \
-    aboutbox.cpp 
+    aboutbox.cpp \
+    audiodevices.cpp
 
 HEADERS  += wfmain.h \
     colorprefs.h \
@@ -220,7 +249,8 @@ HEADERS  += wfmain.h \
     cluster.h \
     database.h \
     aboutbox.h \
-    wfviewtypes.h
+    wfviewtypes.h \
+    audiodevices.h
 
 
 FORMS    += wfmain.ui \

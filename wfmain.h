@@ -42,6 +42,7 @@
 #include "colorprefs.h"
 #include "loggingwindow.h"
 #include "cluster.h"
+#include "audiodevices.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -201,6 +202,9 @@ signals:
     void setClusterTimeout(int timeout);
     void setClusterSkimmerSpots(bool enable);
     void setFrequencyRange(double low, double high);
+
+public slots:
+    void setAudioDevicesUI();
 
 private slots:
     void updateSizes(int tabIndex);
@@ -429,7 +433,7 @@ private slots:
 
     void on_audioTXCodecCombo_currentIndexChanged(int value);
 
-    void on_audioSampleRateCombo_currentIndexChanged(QString text);
+    void on_audioSampleRateCombo_currentIndexChanged(int value);
 
     void on_vspCombo_currentIndexChanged(int value);
 
@@ -467,7 +471,7 @@ private slots:
 
     void on_tuningStepCombo_currentIndexChanged(int index);
 
-    void on_serialDeviceListCombo_activated(const QString &arg1);
+    void on_serialDeviceListCombo_textActivated(const QString &arg1);
 
     void on_rptSetupBtn_clicked();
 
@@ -788,7 +792,6 @@ private:
     void setupMainUI();
     void setUIToPrefs();
     void setSerialDevicesUI();
-    void setAudioDevicesUI();
     void setServerToPrefs();
     void setInitialTiming();
     void getSettingsFilePath(QString settingsFile);
@@ -1050,6 +1053,7 @@ private:
     QList<clusterSettings> clusters;
     QMutex clusterMutex;
     QColor clusterColor;
+    audioDevices* audioDev = Q_NULLPTR;
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
@@ -1071,6 +1075,7 @@ Q_DECLARE_METATYPE(enum mode_kind)
 Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 Q_DECLARE_METATYPE(QList<spotData>)
 Q_DECLARE_METATYPE(rigstate*)
+Q_DECLARE_METATYPE(codecType)
 
 //void (*wfmain::logthistext)(QString text) = NULL;
 

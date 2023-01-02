@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
     signal(SIGTERM, cleanup);
     signal(SIGKILL, cleanup);
 #endif
-    w = new servermain(settingsFile, logFilename);
+    w = new servermain(settingsFile);
 #else
     a.setWheelScrollLines(1); // one line per wheel click
     wfmain w(settingsFile, logFilename, debugMode);

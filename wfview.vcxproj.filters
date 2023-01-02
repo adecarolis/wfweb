@@ -56,6 +56,9 @@
     <ClCompile Include="audioconverter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="audiodevices.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="audiohandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -66,9 +69,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="commhandler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="database.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="freqmemory.cpp">
@@ -90,9 +90,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pttyhandler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\qcustomplot\qcustomplot.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qledlabel.cpp">
@@ -160,6 +157,9 @@
     <QtMoc Include="audioconverter.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="audiodevices.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="audiohandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -172,15 +172,9 @@
     <QtMoc Include="cluster.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <ClInclude Include="colorprefs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <QtMoc Include="commhandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <ClInclude Include="database.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="freqmemory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -200,9 +194,6 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="pttyhandler.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="..\qcustomplot\qcustomplot.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="qledlabel.h">
@@ -265,9 +256,6 @@
     <QtMoc Include="wfmain.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <ClInclude Include="rigstate.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="debug\moc_predefs.h.cbt">

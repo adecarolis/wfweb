@@ -16,8 +16,18 @@
 /* QT Audio Headers */
 #include <QAudioOutput>
 #include <QAudioFormat>
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 #include <QAudioDeviceInfo>
 #include <QAudioInput>
+#include <QAudioOutput>
+#else
+#include <QMediaDevices>
+#include <QAudioDevice>
+#include <QAudioSource>
+#include <QAudioSink>
+#endif
+
 #include <QIODevice>
 
 
@@ -70,8 +80,8 @@ signals:
     void audioMessage(QString message);
     void sendLatency(quint16 newSize);
     void haveAudioData(const audioPacket& data);
-    void haveLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency,quint16 current,bool under,bool over);
-    void setupConverter(QAudioFormat in, QAudioFormat out, quint8 opus, quint8 resamp);
+    void haveLevels(quint16 amplitudePeak, quint16 amplitudeRMS,quint16 latency,quint16 current,bool under,bool over);
+    void setupConverter(QAudioFormat in, codecType codecIn, QAudioFormat out, codecType codecOut, quint8 opus, quint8 resamp);
     void sendToConverter(audioPacket audio);
 
 
@@ -87,12 +97,19 @@ private:
     bool            isReady = false;
     bool            audioBuffered = false;
 
-    QAudioOutput* audioOutput=Q_NULLPTR;
-    QAudioInput* audioInput=Q_NULLPTR;
     QIODevice* audioDevice=Q_NULLPTR;
+
     QAudioFormat     inFormat;
     QAudioFormat     outFormat;
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+    QAudioOutput* audioOutput = Q_NULLPTR;
+    QAudioInput* audioInput = Q_NULLPTR;
     QAudioDeviceInfo deviceInfo;
+#else
+    QAudioSink* audioOutput = Q_NULLPTR;
+    QAudioSource* audioInput = Q_NULLPTR;
+    QAudioDevice deviceInfo;
+#endif
 
     audioConverter* converter=Q_NULLPTR;
     QThread* converterThread = Q_NULLPTR;
@@ -121,6 +138,7 @@ private:
     OpusEncoder* encoder = Q_NULLPTR;
     OpusDecoder* decoder = Q_NULLPTR;
     QTimer* underTimer;
+    codecType codec;
 };
 
 

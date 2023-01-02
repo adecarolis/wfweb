@@ -45,7 +45,11 @@ bool paHandler::init(audioSetup setup)
 	inFormat = toQAudioFormat(setup.codec, setup.sampleRate);
 
 	qDebug(logAudio()) << "Creating" << (setup.isinput ? "Input" : "Output") << "audio device:" << setup.name <<
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 		", bits" << inFormat.sampleSize() <<
+#else
+		", format" << inFormat.sampleFormat() <<
+#endif
 		", codec" << setup.codec <<
 		", latency" << setup.latency <<
 		", localAFGain" << setup.localAFgain <<
@@ -65,6 +69,12 @@ bool paHandler::init(audioSetup setup)
 	//	qDebug(logAudio()) << "Portaudio initialized";
 	//}
 
+	codecType codec = LPCM;
+	if (setup.codec == 0x01 || setup.codec == 0x20)
+		codec = PCMU;
+	else if (setup.codec == 0x40 || setup.codec == 0x40)
+		codec = OPUS;
+
 	memset(&aParams, 0, sizeof(PaStreamParameters));
 
 	aParams.device = setup.portInt;
@@ -83,11 +93,15 @@ bool paHandler::init(audioSetup setup)
 	aParams.suggestedLatency = (float)setup.latency / 1000.0f;
 	outFormat.setSampleRate(info->defaultSampleRate);
 	aParams.sampleFormat = paFloat32;
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 	outFormat.setSampleSize(32);
 	outFormat.setSampleType(QAudioFormat::Float);
 	outFormat.setByteOrder(QAudioFormat::LittleEndian);
 	outFormat.setCodec("audio/pcm");
-
+#else
+	outFormat.setSampleFormat(QAudioFormat::Float);
+#endif
 
 	if (outFormat.channelCount() > 2) {
 		outFormat.setChannelCount(2);
@@ -109,8 +123,13 @@ bool paHandler::init(audioSetup setup)
 	}
 
 
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Selected format: SampleSize" << outFormat.sampleSize() << "Channel Count" << outFormat.channelCount() <<
-		"Sample Rate" << outFormat.sampleRate() << "Codec" << outFormat.codec() << "Sample Type" << outFormat.sampleType();
+		"Sample Rate" << outFormat.sampleRate() << "Codec" << codec << "Sample Type" << outFormat.sampleType();
+#else
+	qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Selected format: SampleFormat" << outFormat.sampleFormat() << "Channel Count" << outFormat.channelCount() <<
+		"Sample Rate" << outFormat.sampleRate() << "Codec" << codec;
+#endif
 
 	// We "hopefully" now have a valid format that is supported so try connecting
 
@@ -124,7 +143,7 @@ bool paHandler::init(audioSetup setup)
 	}
 	converter->moveToThread(converterThread);
 
-	connect(this, SIGNAL(setupConverter(QAudioFormat, QAudioFormat, quint8, quint8)), converter, SLOT(init(QAudioFormat, QAudioFormat, quint8, quint8)));
+	connect(this, SIGNAL(setupConverter(QAudioFormat, codecType, QAudioFormat, codecType, quint8, quint8)), converter, SLOT(init(QAudioFormat, codecType, QAudioFormat, codecType, quint8, quint8)));
 	connect(converterThread, SIGNAL(finished()), converter, SLOT(deleteLater()));
 	connect(this, SIGNAL(sendToConverter(audioPacket)), converter, SLOT(convert(audioPacket)));
 	converterThread->start(QThread::TimeCriticalPriority);
@@ -166,8 +185,12 @@ bool paHandler::init(audioSetup setup)
 		else if (err == paSampleFormatNotSupported)
 		{
 			aParams.sampleFormat = paInt16;
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 			outFormat.setSampleType(QAudioFormat::SignedInt);
 			outFormat.setSampleSize(16);
+#else
+			outFormat.setSampleFormat(QAudioFormat::Int16);
+#endif
 		}
 
 		if (setup.isinput) {
@@ -186,12 +209,12 @@ bool paHandler::init(audioSetup setup)
 	if (setup.isinput) {
 
 		err = Pa_OpenStream(&audio, &aParams, 0, outFormat.sampleRate(), this->chunkSize, paNoFlag, &paHandler::staticWrite, (void*)this);
-		emit setupConverter(outFormat, inFormat, 7, setup.resampleQuality);
+		emit setupConverter(outFormat, codec, inFormat, codecType::LPCM, 7, setup.resampleQuality);
 		connect(converter, SIGNAL(converted(audioPacket)), this, SLOT(convertedInput(audioPacket)));
 	}
 	else {
 		err = Pa_OpenStream(&audio, 0, &aParams, outFormat.sampleRate(), this->chunkSize, paNoFlag, NULL, NULL);
-		emit setupConverter(inFormat, outFormat, 7, setup.resampleQuality);
+		emit setupConverter(inFormat, codec, outFormat, codecType::LPCM, 7, setup.resampleQuality);
 		connect(converter, SIGNAL(converted(audioPacket)), this, SLOT(convertedOutput(audioPacket)));
 	}
 

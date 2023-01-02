@@ -294,7 +294,7 @@ static spx_word16_t sinc(float cutoff, float x, int N, const struct FuncDef* win
     else if (fabs(x) > .5 * N)
         return 0;
     /*FIXME: Can it really be any slower than this? */
-    return cutoff * sin(M_PI * xx) / (M_PI * xx) * compute_func(fabs(2. * x / N), window_func);
+    return (spx_word16_t)(cutoff * (float)(sin(M_PI * xx) / (M_PI * xx) * compute_func((float)fabs(2. * x / N), window_func)));
 }
 #endif
 
@@ -324,7 +324,7 @@ static void cubic_coef(spx_word16_t frac, spx_word16_t interp[4])
     /*interp[2] = 1.f - 0.5f*frac - frac*frac + 0.5f*frac*frac*frac;*/
     interp[3] = -0.33333f * frac + 0.5f * frac * frac - 0.16667f * frac * frac * frac;
     /* Just to make sure we don't have rounding problems */
-    interp[2] = 1. - interp[0] - interp[1] - interp[3];
+    interp[2] = (spx_word16_t) (1. - interp[0] - interp[1] - interp[3]);
 }
 #endif
 
@@ -419,7 +419,7 @@ static int resampler_basic_direct_double(SpeexResamplerState* st, spx_uint32_t c
         sum = inner_product_double(sinct, iptr, N);
 #endif
 
-        out[out_stride * out_sample++] = PSHR32(sum, 15);
+        out[out_stride * out_sample++] = (spx_word16_t)PSHR32(sum, 15);
         last_sample += int_advance;
         samp_frac_num += frac_advance;
         if (samp_frac_num >= den_rate)
@@ -539,7 +539,7 @@ static int resampler_basic_interpolate_double(SpeexResamplerState* st, spx_uint3
         sum = MULT16_32_Q15(interp[0], accum[0]) + MULT16_32_Q15(interp[1], accum[1]) + MULT16_32_Q15(interp[2], accum[2]) + MULT16_32_Q15(interp[3], accum[3]);
 #else
         cubic_coef(frac, interp);
-        sum = interpolate_product_double(iptr, st->sinc_table + st->oversample + 4 - offset - 2, N, st->oversample, interp);
+        sum = (spx_word16_t)interpolate_product_double(iptr, st->sinc_table + st->oversample + 4 - offset - 2, N, st->oversample, interp);
 #endif
 
         out[out_stride * out_sample++] = PSHR32(sum, 15);
@@ -673,7 +673,7 @@ static int update_filter(SpeexResamplerState* st)
         for (i = 0; i < st->den_rate; i++)
         {
             spx_int32_t j;
-            for (j = 0; j < st->filt_len; j++)
+            for (j = 0; j < (spx_int32_t)st->filt_len; j++)
             {
                 st->sinc_table[i * st->filt_len + j] = sinc(st->cutoff, ((j - (spx_int32_t)st->filt_len / 2 + 1) - ((float)i) / st->den_rate), st->filt_len, quality_map[st->quality].window_func);
             }
@@ -934,7 +934,7 @@ EXPORT int speex_resampler_process_int(SpeexResamplerState* st, spx_uint32_t cha
 EXPORT int speex_resampler_process_float(SpeexResamplerState* st, spx_uint32_t channel_index, const float* in, spx_uint32_t* in_len, float* out, spx_uint32_t* out_len)
 #endif
 {
-    int j;
+    spx_uint32_t j;
     spx_uint32_t ilen = *in_len;
     spx_uint32_t olen = *out_len;
     spx_word16_t* x = st->mem + channel_index * st->mem_alloc_size;
@@ -976,7 +976,7 @@ EXPORT int speex_resampler_process_float(SpeexResamplerState* st, spx_uint32_t c
 EXPORT int speex_resampler_process_int(SpeexResamplerState* st, spx_uint32_t channel_index, const spx_int16_t* in, spx_uint32_t* in_len, spx_int16_t* out, spx_uint32_t* out_len)
 #endif
 {
-    int j;
+    spx_uint32_t j;
     const int istride_save = st->in_stride;
     const int ostride_save = st->out_stride;
     spx_uint32_t ilen = *in_len;

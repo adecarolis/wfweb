@@ -8,7 +8,7 @@
 // This code is copyright 2017-2020 Elliott H. Liggett
 // All rights reserved
 
-servermain::servermain(const QString settingsFile, const QString logFile)
+servermain::servermain(const QString settingsFile)
 {
 
     qRegisterMetaType <udpPreferences>(); // Needs to be registered early.
@@ -28,12 +28,17 @@ servermain::servermain(const QString settingsFile, const QString logFile)
     qRegisterMetaType<rigstate*>();
     qRegisterMetaType<QList<radio_cap_packet>>();
     qRegisterMetaType<networkStatus>();
+    qRegisterMetaType<codecType>();
 
     setDefPrefs();
 
     getSettingsFilePath(settingsFile);
 
     loadSettings(); // Look for saved preferences
+
+    audioDev = new audioDevices(prefs.audioSystem, QFontMetrics(QFont()));
+    connect(audioDev, SIGNAL(updated()), this, SLOT(updateAudioDevices()));
+    audioDev->enumerate();
 
     setInitialTiming();
 
@@ -60,6 +65,10 @@ servermain::~servermain()
     if (serverThread != Q_NULLPTR) {
         serverThread->quit();
         serverThread->wait();
+    }
+
+    if (audioDev != Q_NULLPTR) {
+        delete audioDev;
     }
 
     delete settings;
@@ -527,6 +536,7 @@ void servermain::loadSettings()
 
         tempPrefs->rig = Q_NULLPTR;
         tempPrefs->rigThread = Q_NULLPTR;
+
         serverConfig.rigs.append(tempPrefs);
         if (tempNum == 0) {
             settings->endGroup();
@@ -535,167 +545,6 @@ void servermain::loadSettings()
     if (tempNum > 0) {
         settings->endArray();
     }
-
-
-    /*
-        Now we have an array of rig objects, we need to match the configured audio devices with physical devices
-    */
-    switch (prefs.audioSystem)
-    {
-        case rtAudio:
-        {
-#if defined(Q_OS_LINUX)
-            RtAudio* audio = new RtAudio(RtAudio::Api::LINUX_ALSA);
-//            RtAudio* audio = new RtAudio(RtAudio::Api::LINUX_PULSE);
-#elif defined(Q_OS_WIN)
-            RtAudio* audio = new RtAudio(RtAudio::Api::WINDOWS_WASAPI);
-#elif defined(Q_OS_MACX)
-            RtAudio* audio = new RtAudio(RtAudio::Api::MACOSX_CORE);
-#endif
-
-            // Enumerate audio devices, need to do before settings are loaded.
-            std::map<int, std::string> apiMap;
-            apiMap[RtAudio::MACOSX_CORE] = "OS-X Core Audio";
-            apiMap[RtAudio::WINDOWS_ASIO] = "Windows ASIO";
-            apiMap[RtAudio::WINDOWS_DS] = "Windows DirectSound";
-            apiMap[RtAudio::WINDOWS_WASAPI] = "Windows WASAPI";
-            apiMap[RtAudio::UNIX_JACK] = "Jack Client";
-            apiMap[RtAudio::LINUX_ALSA] = "Linux ALSA";
-            apiMap[RtAudio::LINUX_PULSE] = "Linux PulseAudio";
-            apiMap[RtAudio::LINUX_OSS] = "Linux OSS";
-            apiMap[RtAudio::RTAUDIO_DUMMY] = "RtAudio Dummy";
-
-            std::vector< RtAudio::Api > apis;
-            RtAudio::getCompiledApi(apis);
-
-            qInfo(logAudio()) << "RtAudio Version " << QString::fromStdString(RtAudio::getVersion());
-
-            qInfo(logAudio()) << "Compiled APIs:";
-            for (unsigned int i = 0; i < apis.size(); i++) {
-                qInfo(logAudio()) << "  " << QString::fromStdString(apiMap[apis[i]]);
-            }
-
-            RtAudio::DeviceInfo info;
-
-            qInfo(logAudio()) << "Current API: " << QString::fromStdString(apiMap[audio->getCurrentApi()]);
-
-            unsigned int devices = audio->getDeviceCount();
-            qInfo(logAudio()) << "Found " << devices << " audio device(s) *=default";
-
-            for (unsigned int i = 1; i < devices; i++) {
-                info = audio->getDeviceInfo(i);
-                for (RIGCONFIG* rig : serverConfig.rigs)
-                {
-                    qDebug(logAudio()) << "Rig" << rig->rigName << "rxAudio device:" << rig->rxAudioSetup.name;
-                    qDebug(logAudio()) << "Rig" << rig->rigName << "txAudio device:" << rig->txAudioSetup.name;
-                    if (info.outputChannels > 0)
-                    {
-                        qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name);
-                        if (rig->txAudioSetup.name.toStdString() == info.name) {
-                            rig->txAudioSetup.portInt = i;
-                            qDebug(logAudio()) << "Rig" << rig->rigName << "Selected txAudio device:" << QString(info.name.c_str());
-                        }
-                    }
-                    if (info.inputChannels > 0)
-                    {
-                        qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name);
-                        if (rig->rxAudioSetup.name.toStdString() == info.name) {
-                            rig->rxAudioSetup.portInt = i;
-                            qDebug(logAudio()) << "Rig" << rig->rigName << "Selected rxAudio device:" << QString(info.name.c_str());
-                        }
-                    }
-                }
-            }
-            break;
-        }
-        case portAudio:
-        {
-            // Use PortAudio device enumeration
-
-            PaError err;
-
-            err = Pa_Initialize();
-
-            if (err != paNoError)
-            {
-                qInfo(logAudio()) << "ERROR: Cannot initialize Portaudio";
-            }
-
-            qInfo(logAudio()) << "PortAudio version: " << Pa_GetVersionInfo()->versionText;
-
-            int numDevices;
-            numDevices = Pa_GetDeviceCount();
-            qInfo(logAudio()) << "Pa_CountDevices returned" << numDevices;
-
-            const   PaDeviceInfo* info;
-            for (int i = 0; i < numDevices; i++)
-            {
-                info = Pa_GetDeviceInfo(i);
-                for (RIGCONFIG* rig : serverConfig.rigs)
-                {
-                    qDebug(logAudio()) << "Rig" << rig->rigName << "rxAudio device:" << rig->rxAudioSetup.name;
-                    qDebug(logAudio()) << "Rig" << rig->rigName << "txAudio device:" << rig->txAudioSetup.name;
-                    if (info->maxInputChannels > 0) {
-                        qDebug(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Input Device : " << info->name;
-
-                        if (rig->rxAudioSetup.name == info->name) {
-                            qDebug(logAudio()) << "Rig" << rig->rigName << "Selected rxAudio device:" << QString(info->name);
-                            rig->rxAudioSetup.portInt = i;
-                        }
-                    }
-                    if (info->maxOutputChannels > 0) {
-                        if (rig->txAudioSetup.name == info->name) {
-                            qDebug(logAudio()) << "Rig" << rig->rigName << "Selected txAudio device:" << QString(info->name);
-                            rig->txAudioSetup.portInt = i;
-                        }
-                    }
-                }
-            }
-            break;
-        }
-        case qtAudio:
-        {
-            const auto audioOutputs = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
-            const auto audioInputs = QAudioDeviceInfo::availableDevices(QAudio::AudioInput);
-            //qInfo(logAudio()) << "Looking for audio input devices";
-            for (const QAudioDeviceInfo& deviceInfo : audioInputs) {
-                qDebug(logSystem()) << "Found Audio input: " << deviceInfo.deviceName();
-                for (RIGCONFIG* rig : serverConfig.rigs)
-                {
-                    qDebug(logAudio()) << "Rig" << rig->rigName << "rxAudio device:" << rig->rxAudioSetup.name;
-                    qDebug(logAudio()) << "Rig" << rig->rigName << "txAudio device:" << rig->txAudioSetup.name;
-                    if (deviceInfo.deviceName() == rig->rxAudioSetup.name
-#ifdef Q_OS_WIN
-                        && deviceInfo.realm() == "wasapi"
-#endif
-                        )
-                    {
-                        qDebug(logAudio()) << "Rig" << rig->rigName << "Selected rxAudio device:" << deviceInfo.deviceName();
-                        rig->rxAudioSetup.port = deviceInfo;
-                    }
-                }
-            }
-
-            //qInfo(logAudio()) << "Looking for audio output devices";
-            for (const QAudioDeviceInfo& deviceInfo : audioOutputs) {
-                qDebug(logSystem()) << "Found Audio output: " << deviceInfo.deviceName();
-                for (RIGCONFIG* rig : serverConfig.rigs)
-                {
-                    if (deviceInfo.deviceName() == rig->txAudioSetup.name
-#ifdef Q_OS_WIN
-                        && deviceInfo.realm() == "wasapi"
-#endif
-                        ) 
-                    {
-                        qDebug(logAudio()) << "Rig" << rig->rigName << "Selected txAudio device:" << deviceInfo.deviceName();
-                        rig->txAudioSetup.port = deviceInfo;
-                    }
-                }
-            }
-            break;
-        }
-    }
-
 
 
     settings->beginGroup("Server");
@@ -731,6 +580,30 @@ void servermain::loadSettings()
 
 }
 
+void servermain::updateAudioDevices()
+{
+
+    for (RIGCONFIG* rig : serverConfig.rigs)
+    {
+        qDebug(logAudio()) << "Rig" << rig->rigName << "configured rxAudio device:" << rig->rxAudioSetup.name;
+        qDebug(logAudio()) << "Rig" << rig->rigName << "configured txAudio device:" << rig->txAudioSetup.name;
+
+        int inputNum = audioDev->findInput(rig->rigName, rig->rxAudioSetup.name);
+        int outputNum = audioDev->findOutput(rig->rigName, rig->txAudioSetup.name);
+
+        if (prefs.audioSystem == qtAudio) {
+            rig->rxAudioSetup.port = audioDev->getInputDeviceInfo(inputNum);
+            rig->txAudioSetup.port = audioDev->getOutputDeviceInfo(outputNum);
+        }
+        else {
+            rig->rxAudioSetup.portInt = audioDev->getInputDeviceInt(inputNum);
+            rig->txAudioSetup.portInt = audioDev->getOutputDeviceInt(outputNum);
+        }
+        rig->rxAudioSetup.name = audioDev->getInputName(inputNum);
+        rig->txAudioSetup.name = audioDev->getOutputName(outputNum);
+    }
+
+}
 
 void servermain::receivePTTstatus(bool pttOn)
 {
