@@ -181,6 +181,10 @@ wfmain::~wfmain()
         delete rigCtl;
     }
 
+    if (audioDev != Q_NULLPTR) {
+        delete audioDev;
+    }
+
     if (prefs.audioSystem == portAudio) {
         Pa_Terminate();
     }
