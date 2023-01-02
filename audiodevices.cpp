@@ -252,11 +252,20 @@ void audioDevices::enumerate()
 
             qInfo(logAudio()) << "Current API: " << QString::fromStdString(apiMap[audio->getCurrentApi()]);
 
-            unsigned int devices = audio->getDeviceCount();
-            qInfo(logAudio()) << "Found:" << devices << " audio device(s) (*=default)";
+            unsigned int devicecount = audio->getDeviceCount();
 
-            for (unsigned int i = 1; i < devices; i++) {
+#if (RTAUDIO_VERSION_MAJOR > 5)
+            std::vector<unsigned int> devices = audio->getDeviceIds();
+#endif
+            qInfo(logAudio()) << "Found:" << devicecount << " audio device(s) (*=default)";
+
+            for (unsigned int i = 1; i < devicecount; i++) {
+
+#if (RTAUDIO_VERSION_MAJOR > 5)
+                info = audio->getDeviceInfo(devices[i]);
+#else
                 info = audio->getDeviceInfo(i);
+#endif
                 if (info.inputChannels > 0) {
                     bool isDefault = false;
                     qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name);
@@ -267,7 +276,12 @@ void audioDevices::enumerate()
                         isDefault = true;
                     }
 
+#if (RTAUDIO_VERSION_MAJOR > 5)
+                    inputs.append(audioDevice(QString::fromStdString(info.name), devices[i], isDefault));
+#else
                     inputs.append(audioDevice(QString::fromStdString(info.name), i, isDefault));
+#endif
+
 #ifndef BUILD_WFSERVER
                     if (fm.boundingRect(QString::fromStdString(info.name)).width() > numCharsIn)
                         numCharsIn = fm.boundingRect(QString::fromStdString(info.name)).width();
@@ -284,7 +298,12 @@ void audioDevices::enumerate()
                         isDefault = true;
                     }
 
+#if (RTAUDIO_VERSION_MAJOR > 5)
+                    outputs.append(audioDevice(QString::fromStdString(info.name), devices[i], isDefault));
+#else
                     outputs.append(audioDevice(QString::fromStdString(info.name), i, isDefault));
+#endif
+
 #ifndef BUILD_WFSERVER
                     if (fm.boundingRect(QString::fromStdString(info.name)).width() > numCharsOut)
                         numCharsOut = fm.boundingRect(QString::fromStdString(info.name)).width();
@@ -330,6 +349,7 @@ int audioDevices::findInput(QString type, QString name)
 {
     int ret = -1;
     int def = -1;
+    int usb = -1;
     QString msg;
     QTextStream s(&msg);
     for (int f = 0; f < inputs.size(); f++)
@@ -343,6 +363,10 @@ int audioDevices::findInput(QString type, QString name)
         {
             def = f;
         }
+        if (inputs[f].name.toUpper().contains("USB")) {
+            // This is a USB device...
+            usb = f;
+        }
     }
  
     if (ret == -1)
@@ -352,6 +376,11 @@ int audioDevices::findInput(QString type, QString name)
         if (inputs.size() == 1) {
             s << "Selecting first device " << inputs[0].name;
             ret = 0;
+        }
+        else if (usb > -1 && type != "Client")
+        {
+            s << " Selecting found USB device " << inputs[usb].name;
+            ret = usb;
         }
         else if (def > -1)
         {
@@ -371,6 +400,7 @@ int audioDevices::findOutput(QString type, QString name)
 {
     int ret = -1;
     int def = -1;
+    int usb = -1;
     QString msg;
     QTextStream s(&msg);
     for (int f = 0; f < outputs.size(); f++)
@@ -384,6 +414,11 @@ int audioDevices::findOutput(QString type, QString name)
         {
             def = f;
         }
+        if (outputs[f].name.toUpper().contains("USB")) {
+            // This is a USB device...
+            usb = f;
+        }
+
     }
 
     if (ret == -1)
@@ -393,6 +428,11 @@ int audioDevices::findOutput(QString type, QString name)
         if (outputs.size() == 1) {
             s << " Selecting first device " << outputs[0].name;
             ret = 0;
+        }
+        else if (usb > -1 && type != "Client")
+        {
+            s << " Selecting found USB device " << outputs[usb].name;
+            ret = usb;
         }
         else if (def > -1)
         {

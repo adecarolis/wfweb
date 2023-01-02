@@ -303,7 +303,7 @@ void paHandler::convertedOutput(audioPacket packet) {
 				}
 			}
 			else {
-				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Disgarding audio data as current latency" << currentLatency << "exceeds setup latency" << setup.latency;
+				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Discarding audio data as current latency" << currentLatency << "exceeds setup latency" << setup.latency;
 				Pa_StopStream(audio);
 				latencyAllowance++;
 			}

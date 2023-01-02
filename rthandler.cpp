@@ -160,6 +160,10 @@ bool rtHandler::init(audioSetup setup)
 				goto errorHandler;
 			}
 
+			if (outFormat.channelCount() == 1 && inFormat.channelCount() == 2) {
+				outFormat.setChannelCount(2);
+			}
+
 			aParams.nChannels = outFormat.channelCount();
 
 
@@ -228,11 +232,7 @@ bool rtHandler::init(audioSetup setup)
 
 
 		// Per channel chunk size.
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-		this->chunkSize = (outFormat.bytesForDuration(setup.blockSize * 1000) / (outFormat.sampleSize() / 8) / outFormat.channelCount());
-#else
-		this->chunkSize = (outFormat.bytesForDuration(setup.blockSize * 1000) / sizeof(outFormat.sampleFormat()) / outFormat.channelCount());
-#endif
+		this->chunkSize = (outFormat.bytesForDuration(setup.blockSize * 1000) / outFormat.bytesPerFrame());
 
 #ifdef RT_EXCEPTION
 		try {
@@ -305,11 +305,7 @@ int rtHandler::readData(void* outputBuffer, void* inputBuffer,
 {
 	Q_UNUSED(inputBuffer);
 	Q_UNUSED(streamTime);
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-	int nBytes = nFrames * outFormat.channelCount() * (outFormat.sampleSize() / 8);
-#else
-	int nBytes = nFrames * outFormat.channelCount() * sizeof(outFormat.sampleFormat());
-#endif
+	int nBytes = nFrames * outFormat.bytesPerFrame();
 	//lastSentSeq = packet.seq;
 	if (arrayBuffer.length() >= nBytes) {
 		if (audioMutex.tryLock(0)) {
@@ -345,11 +341,8 @@ int rtHandler::writeData(void* outputBuffer, void* inputBuffer,
 	packet.sent = 0;
 	packet.volume = volume;
 	memcpy(&packet.guid, setup.guid, GUIDLEN);
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-	packet.data.append((char*)inputBuffer, nFrames * outFormat.channelCount() * (outFormat.sampleSize() / 8));
-#else
-	packet.data.append((char*)inputBuffer, nFrames * outFormat.channelCount() * sizeof(outFormat.sampleFormat()));
-#endif
+	packet.data.append((char*)inputBuffer, nFrames * outFormat.bytesPerFrame());
+
 	emit sendToConverter(packet);
 	if (status == RTAUDIO_INPUT_OVERFLOW) {
 		isUnderrun = true;
@@ -373,11 +366,7 @@ void rtHandler::convertedOutput(audioPacket packet)
 	arrayBuffer.append(packet.data);
 	audioMutex.unlock();
 	amplitude = packet.amplitudePeak;
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * (outFormat.sampleSize() / 8) * outFormat.channelCount()) / 1000);
-#else
-	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * sizeof(outFormat.sampleFormat()) * outFormat.channelCount()) / 1000);
-#endif
+	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * outFormat.bytesPerFrame()) / 1000);
 	emit haveLevels(getAmplitude(), packet.amplitudeRMS, setup.latency, currentLatency, isUnderrun, isOverrun);
 }
 
@@ -388,11 +377,7 @@ void rtHandler::convertedInput(audioPacket packet)
 	if (packet.data.size() > 0) {
 		emit haveAudioData(packet);
 		amplitude = packet.amplitudePeak;
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-		currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * (outFormat.sampleSize() / 8) * outFormat.channelCount()) / 1000);
-#else
-		currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * sizeof(outFormat.sampleFormat()) * outFormat.channelCount()) / 1000);
-#endif
+		currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * outFormat.bytesPerFrame()) / 1000);
 		emit haveLevels(getAmplitude(), static_cast<quint16>(packet.amplitudeRMS * 255.0), setup.latency, currentLatency, isUnderrun, isOverrun);
 	}
 }
