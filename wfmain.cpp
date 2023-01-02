@@ -93,7 +93,10 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     loadSettings(); // Look for saved preferences
 
-    setAudioDevicesUI();
+    audioDev = new audioDevices(prefs.audioSystem, QFontMetrics(ui->audioInputCombo->font()));
+    connect(audioDev, SIGNAL(updated()), this, SLOT(setAudioDevicesUI()));
+    audioDev->enumerate();
+    //setAudioDevicesUI(); // no need to call this as it will be called by the updated() signal
 
     setTuningSteps(); // TODO: Combine into preferences
 
@@ -159,6 +162,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         [&](int value) {
           QToolTip::showText(QCursor::pos(), QString("%1").arg(value*100/255), nullptr);
         });
+
 }
 
 wfmain::~wfmain()
@@ -6372,14 +6376,6 @@ void wfmain::on_radioStatusBtn_clicked()
 
 void wfmain::setAudioDevicesUI()
 {
-
-    if (audioDev == Q_NULLPTR) {
-        audioDev = new audioDevices(prefs.audioSystem, QFontMetrics(ui->audioInputCombo->font()));
-    }
-
-    audioDev->setAudioType(prefs.audioSystem);
-    audioDev->enumerate();
-
     ui->audioInputCombo->blockSignals(true);
     ui->audioInputCombo->clear();
     ui->audioInputCombo->addItems(audioDev->getInputs());
@@ -6429,7 +6425,8 @@ void wfmain::setAudioDevicesUI()
 void wfmain::on_audioSystemCombo_currentIndexChanged(int value) 
 {
     prefs.audioSystem = static_cast<audioType>(value);
-    setAudioDevicesUI(); // Force all audio devices to update
+    audioDev->setAudioType(prefs.audioSystem);
+    audioDev->enumerate();
     ui->audioSystemServerCombo->blockSignals(true);
     ui->audioSystemServerCombo->setCurrentIndex(value);
     ui->audioSystemServerCombo->blockSignals(false);
@@ -6438,7 +6435,8 @@ void wfmain::on_audioSystemCombo_currentIndexChanged(int value)
 void wfmain::on_audioSystemServerCombo_currentIndexChanged(int value)
 {
     prefs.audioSystem = static_cast<audioType>(value);
-    setAudioDevicesUI(); // Force all audio devices to update
+    audioDev->setAudioType(prefs.audioSystem);
+    audioDev->enumerate();
     ui->audioSystemCombo->blockSignals(true);
     ui->audioSystemCombo->setCurrentIndex(value);
     ui->audioSystemCombo->blockSignals(false);

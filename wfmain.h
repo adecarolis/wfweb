@@ -203,6 +203,9 @@ signals:
     void setClusterSkimmerSpots(bool enable);
     void setFrequencyRange(double low, double high);
 
+public slots:
+    void setAudioDevicesUI();
+
 private slots:
     void updateSizes(int tabIndex);
     void shortcutF1();
@@ -525,8 +528,6 @@ private slots:
     void on_enableRigctldChk_clicked(bool checked);
 
     void on_rigctldPortTxt_editingFinished();
-
-    void setAudioDevicesUI();
 
     void on_tcpServerPortTxt_editingFinished();
 

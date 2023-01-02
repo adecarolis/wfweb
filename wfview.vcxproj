@@ -95,6 +95,7 @@
     <TargetName>wfview</TargetName>
     <IgnoreImportLibrary>true</IgnoreImportLibrary>
     <PostBuildEventUseInBuild>true</PostBuildEventUseInBuild>
+    <OutDir>$(SolutionDir)wfview-debug\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>wfview-release\</OutDir>
@@ -107,7 +108,7 @@
     <TargetName>wfview</TargetName>
     <IgnoreImportLibrary>true</IgnoreImportLibrary>
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)wfview-release</OutDir>
+    <OutDir>$(SolutionDir)wfview-release\</OutDir>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <QtInstall>msvc2019</QtInstall>
@@ -360,8 +361,8 @@ cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfview-debug</Comma
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>..\portaudio\msvc\X64\Debug\portaudio_x64.lib;..\qcustomplot\x64\qcustomplotd2.lib;..\opus\win32\VS2015\x64\Debug\opus.lib;$(QTDIR)\lib\Qt6Multimediad.lib;$(QTDIR)\lib\Qt6PrintSupportd.lib;$(QTDIR)\lib\Qt6Widgetsd.lib;$(QTDIR)\lib\Qt6Guid.lib;$(QTDIR)\lib\Qt6SerialPortd.lib;$(QTDIR)\lib\Qt6Networkd.lib;$(QTDIR)\lib\Qt6Cored.lib;$(QTDIR)\lib\Qt6EntryPointd.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\opus\win32\VS2015\x64\Debug;..\qcustomplot\x64;..\portaudio\msvc\X64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>..\portaudio\msvc\Win32\Debug\portaudio_x86.lib;..\qcustomplot\Win32\qcustomplotd2.lib;..\opus\win32\VS2015\Win32\Debug\opus.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\opus\win32\VS2015\Win32\Debug;..\qcustomplot\Win32;..\portaudio\msvc\Win32\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>"/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' publicKeyToken='6595b64144ccf1df' language='*' processorArchitecture='*'" %(AdditionalOptions)</AdditionalOptions>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -380,8 +381,8 @@ cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfview-debug</Comma
       <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION=\"1.54\";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX=\"/usr/local\";GITSHORT=\"4574e2b\";HOST=\"wfview.org\";UNAME=\"build\";QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>cmd /c copy /y ..\qcustomplot\x64\qcustomplotd2.dll wfview-debug
-cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfview-debug</Command>
+      <Command>cmd /c copy /y ..\qcustomplot\Win32\qcustomplotd2.dll wfview-debug
+cmd /c copy /y ..\portaudio\msvc\Win32\Debug\portaudio_x86.dll wfview-debug</Command>
       <Message>Copy DLL files</Message>
     </PostBuildEvent>
     <QtMoc>

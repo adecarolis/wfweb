@@ -89,7 +89,6 @@ signals:
 protected:
 private:
 
-
     audioType system;
     QFontMetrics fm;
     QString defaultInputDeviceName;

@@ -31,7 +31,6 @@ void audioDevices::enumerate()
     inputs.clear();
     outputs.clear();
 
-
     switch (system)
     {
         case qtAudio:
