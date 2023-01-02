@@ -82,12 +82,14 @@ void audioDevices::enumerate()
                         "(" << numInputDevices << ") Input Device : " << deviceInfo.description();
 #endif
 
+#ifndef BUILD_WFSERVER
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
                     if (fm.boundingRect(deviceInfo.deviceName()).width() > numCharsIn)
                         numCharsIn = fm.boundingRect(deviceInfo.deviceName()).width();
 #else
                     if (fm.boundingRect(deviceInfo.description()).width() > numCharsIn)
                         numCharsIn = fm.boundingRect(deviceInfo.description()).width();
+#endif
 #endif
 
 #if (defined(Q_OS_WIN) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
@@ -140,12 +142,14 @@ void audioDevices::enumerate()
                         "(" << numOutputDevices << ") Output Device : " << deviceInfo.description();
 #endif
 
+#ifndef BUILD_WFSERVER
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
                     if (fm.boundingRect(deviceInfo.deviceName()).width() > numCharsOut)
                         numCharsOut = fm.boundingRect(deviceInfo.deviceName()).width();
 #else
                     if (fm.boundingRect(deviceInfo.description()).width() > numCharsOut)
                         numCharsOut = fm.boundingRect(deviceInfo.description()).width();
+#endif
 #endif
 
 #if (defined(Q_OS_WIN) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
@@ -186,8 +190,10 @@ void audioDevices::enumerate()
                         isDefault = true;
                     }
                     inputs.append(audioDevice(QString(info->name), i,isDefault));
+#ifndef BUILD_WFSERVER
                     if (fm.boundingRect(QString(info->name)).width() > numCharsIn)
                         numCharsIn = fm.boundingRect(QString(info->name)).width();
+#endif
 
                 }
                 if (info->maxOutputChannels > 0) {
@@ -199,8 +205,10 @@ void audioDevices::enumerate()
                         isDefault = true;
                     }
                     outputs.append(audioDevice(QString(info->name), i,isDefault));
+#ifndef BUILD_WFSERVER
                     if (fm.boundingRect(QString(info->name)).width() > numCharsOut)
                         numCharsOut = fm.boundingRect(QString(info->name)).width();
+#endif
                 }
             }
             break;
@@ -260,9 +268,10 @@ void audioDevices::enumerate()
                     }
 
                     inputs.append(audioDevice(QString::fromStdString(info.name), i, isDefault));
-
+#ifndef BUILD_WFSERVER
                     if (fm.boundingRect(QString::fromStdString(info.name)).width() > numCharsIn)
                         numCharsIn = fm.boundingRect(QString::fromStdString(info.name)).width();
+#endif
 
                 }
                 if (info.outputChannels > 0) {
@@ -276,9 +285,10 @@ void audioDevices::enumerate()
                     }
 
                     outputs.append(audioDevice(QString::fromStdString(info.name), i, isDefault));
-
+#ifndef BUILD_WFSERVER
                     if (fm.boundingRect(QString::fromStdString(info.name)).width() > numCharsOut)
                         numCharsOut = fm.boundingRect(QString::fromStdString(info.name)).width();
+#endif
                 }
             }
 

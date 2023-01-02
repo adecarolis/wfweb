@@ -352,6 +352,7 @@
   <ItemGroup>
     <ClCompile Include="..\rtaudio\RTAudio.cpp" />
     <ClCompile Include="audioconverter.cpp" />
+    <ClCompile Include="audiodevices.cpp" />
     <ClCompile Include="audiohandler.cpp" />
     <ClCompile Include="commhandler.cpp" />
     <ClCompile Include="freqmemory.cpp" />
@@ -375,6 +376,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\rtaudio\RTAUdio.h" />
+    <QtMoc Include="audiodevices.h" />
     <ClInclude Include="resampler\arch.h" />
     <QtMoc Include="audioconverter.h">
     </QtMoc>

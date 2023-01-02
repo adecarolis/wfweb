@@ -242,7 +242,7 @@ void wfmain::openRig()
     //TODO: if(hasRunPreviously)
 
     //TODO: if(useNetwork){...
-
+    
     // } else {
 
     // if (prefs.fileWasNotFound) {

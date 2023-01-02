@@ -20,6 +20,7 @@
 #include "freqmemory.h"
 #include "rigidentities.h"
 #include "repeaterattributes.h"
+#include "audiodevices.h"
 
 #include "udpserver.h"
 #include "rigctld.h"
@@ -181,6 +182,7 @@ private slots:
     void receiveStatusUpdate(networkStatus status);
     void receiveStateInfo(rigstate* state);
     void connectToRig(RIGCONFIG* rig);
+    void updateAudioDevices();
 
 private:
     QSettings *settings=Q_NULLPTR;
@@ -282,6 +284,8 @@ private:
 
     rigstate* rigState = Q_NULLPTR;
 
+    audioDevices* audioDev = Q_NULLPTR;
+
     SERVERCONFIG serverConfig;
 };
 
@@ -300,6 +304,7 @@ Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
 Q_DECLARE_METATYPE(rigstate*)
+Q_DECLARE_METATYPE(codecType)
 
 
 #endif // WFMAIN_H

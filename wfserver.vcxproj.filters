@@ -103,6 +103,9 @@
     <ClCompile Include="udpserver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="audiodevices.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\rtaudio\RTAUdio.h">
@@ -328,5 +331,10 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include=".\wfserver_resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="audiodevices.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
 </Project>
