@@ -30,7 +30,19 @@ The following highlights are in this 1.51-release ince v1.50:
     		Add AR Cluster support
 +1.54		Various wfserver fixes
 		logging using termbin edge case fix
-		
++1.55	  	Compiles with QT5 and 6 now
+    		Many audio-fixe
+s    		Fix wfserver device detection
+    		Prevent memory leak on exit
+    		Dawid Szymanski - SQ6EMM/SN6M 'standardHFfix'; fixed missing 160m band
+    		Support hotplug audio on QT6+
+    		Remove Exception from RT audio as it doesn't exist in newer versions of RTAudio
+    		Tidy-up device enumeration for Qt audio
+    		Log enumeration of audio devices
+    		Fix codec selection issue in both QT5 and 6
+    		Make sure compilation with QT5 still works
+	
+	
 Notes:
 
 - We know about high CPU usage on RPi.
