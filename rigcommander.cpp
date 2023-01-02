@@ -3118,7 +3118,7 @@ void rigCommander::determineRigCaps()
 
 
     standardHF = { bandDef6m, bandDef10m, bandDef12m, bandDef15m, bandDef17m,
-        bandDef20m, bandDef30m, bandDef40m, bandDef60m, bandDef80m, bandDef80m};
+        bandDef20m, bandDef30m, bandDef40m, bandDef60m, bandDef80m, bandDef160m};
 
     standardVU = { bandDef2m, bandDef70cm };
 
