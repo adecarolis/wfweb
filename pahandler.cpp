@@ -112,8 +112,8 @@ bool paHandler::init(audioSetup setup)
 		return false;
 	}
 
-	if (inFormat.channelCount() < outFormat.channelCount()) {
-		outFormat.setChannelCount(inFormat.channelCount());
+	if (outFormat.channelCount() == 1 && inFormat.channelCount() == 2) {
+		outFormat.setChannelCount(2);
 	}
 
 	aParams.channelCount = outFormat.channelCount();
