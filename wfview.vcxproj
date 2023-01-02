@@ -119,7 +119,7 @@
     <QtModules>core;gui;network;widgets;multimedia;printsupport;serialport;xml</QtModules>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <QtInstall>msvc2019</QtInstall>
+    <QtInstall>msvc2019_64_v62</QtInstall>
     <QtModules>core;gui;network;widgets;multimedia;printsupport;serialport;xml</QtModules>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="QtSettings">
@@ -141,7 +141,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ObjectFileName>release\</ObjectFileName>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION="1.54";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX="/usr/local";GITSHORT="4574e2b";HOST="wfview.org";UNAME="build";NDEBUG;QT_NO_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION="1.55";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX="/usr/local";GITSHORT="4574e2b";HOST="wfview.org";UNAME="build";NDEBUG;QT_NO_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <ProgramDataBaseFileName>
       </ProgramDataBaseFileName>
@@ -172,7 +172,7 @@
       <WarningLevel>0</WarningLevel>
     </Midl>
     <ResourceCompile>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION=\"1.54\";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX=\"/usr/local\";GITSHORT=\"4574e2b\";HOST=\"wfview.org\";UNAME=\"build\";NDEBUG;QT_NO_DEBUG;QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION=\"1.55\";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX=\"/usr/local\";GITSHORT=\"4574e2b\";HOST=\"wfview.org\";UNAME=\"build\";NDEBUG;QT_NO_DEBUG;QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
     <QtMoc>
       <CompilerFlavor>msvc</CompilerFlavor>
@@ -213,7 +213,7 @@ cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfview-release\</
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ObjectFileName>release\</ObjectFileName>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION="1.54";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX="/usr/local";GITSHORT="4574e2b";HOST="wfview.org";UNAME="build";NDEBUG;QT_NO_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WFVIEW_VERSION="1.55";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX="/usr/local";GITSHORT="4574e2b";HOST="wfview.org";UNAME="build";NDEBUG;QT_NO_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <ProgramDataBaseFileName>
       </ProgramDataBaseFileName>
@@ -244,7 +244,7 @@ cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfview-release\</
       <WarningLevel>0</WarningLevel>
     </Midl>
     <ResourceCompile>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION=\"1.54\";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX=\"/usr/local\";GITSHORT=\"4574e2b\";HOST=\"wfview.org\";UNAME=\"build\";NDEBUG;QT_NO_DEBUG;QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION=\"1.55\";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX=\"/usr/local\";GITSHORT=\"4574e2b\";HOST=\"wfview.org\";UNAME=\"build\";NDEBUG;QT_NO_DEBUG;QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
     <QtMoc>
       <CompilerFlavor>msvc</CompilerFlavor>
@@ -285,7 +285,7 @@ cmd /c copy /y ..\portaudio\msvc\Win32\Release\portaudio_x86.dll wfview-release\
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ObjectFileName>debug\</ObjectFileName>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION="1.54";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX="/usr/local";GITSHORT="4574e2b";HOST="wfview.org";UNAME="build";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION="1.55";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX="/usr/local";GITSHORT="4574e2b";HOST="wfview.org";UNAME="build";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -312,7 +312,7 @@ cmd /c copy /y ..\portaudio\msvc\Win32\Release\portaudio_x86.dll wfview-release\
       <WarningLevel>0</WarningLevel>
     </Midl>
     <ResourceCompile>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION=\"1.54\";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX=\"/usr/local\";GITSHORT=\"4574e2b\";HOST=\"wfview.org\";UNAME=\"build\";QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION=\"1.55\";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX=\"/usr/local\";GITSHORT=\"4574e2b\";HOST=\"wfview.org\";UNAME=\"build\";QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
     <PostBuildEvent>
       <Command>cmd /c copy /y ..\qcustomplot\x64\qcustomplotd2.dll wfview-debug
@@ -351,7 +351,7 @@ cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfview-debug</Comma
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ObjectFileName>debug\</ObjectFileName>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION="1.54";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX="/usr/local";GITSHORT="4574e2b";HOST="wfview.org";UNAME="build";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION="1.55";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX="/usr/local";GITSHORT="4574e2b";HOST="wfview.org";UNAME="build";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -378,7 +378,7 @@ cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfview-debug</Comma
       <WarningLevel>0</WarningLevel>
     </Midl>
     <ResourceCompile>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION=\"1.54\";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX=\"/usr/local\";GITSHORT=\"4574e2b\";HOST=\"wfview.org\";UNAME=\"build\";QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION=\"1.55\";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX=\"/usr/local\";GITSHORT=\"4574e2b\";HOST=\"wfview.org\";UNAME=\"build\";QT_MULTIMEDIA_LIB;QT_PRINTSUPPORT_LIB;QT_WIDGETS_LIB;QT_GUI_LIB;QT_SERIALPORT_LIB;QT_NETWORK_LIB;QT_CORE_LIB;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
     <PostBuildEvent>
       <Command>cmd /c copy /y ..\qcustomplot\Win32\qcustomplotd2.dll wfview-debug

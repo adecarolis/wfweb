@@ -231,7 +231,7 @@ void audioHandler::start()
 	if (setup.isinput) {
 		//this->open(QIODevice::WriteOnly);
 		//audioInput->start(this);
-#ifdef Q_OS_WIN
+#if (defined(Q_OS_WIN) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
 		audioInput->setBufferSize(inFormat.bytesForDuration(setup.latency * 100));
 #else
 		audioInput->setBufferSize(inFormat.bytesForDuration(setup.latency * 1000));
@@ -244,7 +244,7 @@ void audioHandler::start()
 	}
 	else {
 		// Buffer size must be set before audio is started.
-#ifdef Q_OS_WIN
+#if (defined(Q_OS_WIN) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
 		audioOutput->setBufferSize(outFormat.bytesForDuration(setup.latency * 100));
 #else
 		audioOutput->setBufferSize(outFormat.bytesForDuration(setup.latency * 1000));
