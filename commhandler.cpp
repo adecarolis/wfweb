@@ -59,7 +59,11 @@ void commHandler::init()
     //qInfo(logSerial()) << "Serial buffer size: " << port->readBufferSize();
 
     connect(port, SIGNAL(readyRead()), this, SLOT(receiveDataIn()));
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     connect(port, SIGNAL(error(QSerialPort::SerialPortError)), this, SLOT(handleError(QSerialPort::SerialPortError)));
+#else
+    connect(port, SIGNAL(errorOccurred(QSerialPort::SerialPortError)), this, SLOT(handleError(QSerialPort::SerialPortError)));
+#endif
     lastDataReceived = QTime::currentTime();
 }
 
