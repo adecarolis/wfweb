@@ -296,7 +296,7 @@ private slots:
     void receiveAntennaSel(unsigned char ant, bool rx);
     void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
-    void receiveSerialPortError(QString port, QString errorText);
+    void receivePortError(errorType err);
     void receiveStatusUpdate(networkStatus status);
     void receiveNetworkAudioLevels(networkAudioLevels l);
     void handlePlotClick(QMouseEvent *);
@@ -1076,6 +1076,7 @@ Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 Q_DECLARE_METATYPE(QList<spotData>)
 Q_DECLARE_METATYPE(rigstate*)
 Q_DECLARE_METATYPE(codecType)
+Q_DECLARE_METATYPE(errorType)
 
 //void (*wfmain::logthistext)(QString text) = NULL;
 

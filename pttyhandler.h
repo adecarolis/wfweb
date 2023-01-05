@@ -10,6 +10,7 @@
 #include <QtSerialPort/QSerialPort>
 
 #include "rigidentities.h"
+#include "wfviewtypes.h"
 
 // This class abstracts the comm port in a useful way and connects to
 // the command creator and command parser.
@@ -34,7 +35,7 @@ private slots:
 signals:
     void haveTextMessage(QString message); // status, debug only
     void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
-    void haveSerialPortError(const QString port, const QString error);
+    void havePortError(errorType err);
     void haveStatusUpdate(const QString text);
 
 private:

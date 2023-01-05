@@ -29,6 +29,7 @@ servermain::servermain(const QString settingsFile)
     qRegisterMetaType<QList<radio_cap_packet>>();
     qRegisterMetaType<networkStatus>();
     qRegisterMetaType<codecType>();
+    qRegisterMetaType<errorType>();
 
     setDefPrefs();
 
@@ -119,7 +120,7 @@ void servermain::makeRig()
             connect(radio->rigThread, SIGNAL(finished()), radio->rig, SLOT(deleteLater()));
             radio->rigThread->start();
             // Rig status and Errors:
-            connect(radio->rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
+            connect(radio->rig, SIGNAL(havePortError(errorType)), this, SLOT(receivePortError(errorType)));
             connect(radio->rig, SIGNAL(haveStatusUpdate(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
 
             // Rig comm setup:
@@ -328,7 +329,7 @@ void servermain::receiveFoundRigID(rigCapabilities rigCaps)
     return;
 }
 
-void servermain::receiveSerialPortError(QString port, QString errorText)
+void servermain::receivePortError(errorType err)
 {
     qInfo(logSystem()) << "servermain: received serial port error for port: " << port << " with message: " << errorText;
 

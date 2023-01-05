@@ -45,6 +45,17 @@ struct timekind {
     bool isMinus;
 };
 
+struct errorType {
+    errorType(bool alert, QString message) : alert(alert), message(message) {};
+    errorType(bool alert, QString device, QString message) : alert(alert), device(device), message(message) {};
+    errorType(QString device, QString message) : alert(false), device(device), message(message) {};
+    errorType(QString message) : alert(false), message(message) {};
+
+    bool alert;
+    QString device;
+    QString message;
+};
+
 enum audioType {qtAudio,portAudio,rtAudio};
 enum codecType { LPCM, PCMU, OPUS };
 

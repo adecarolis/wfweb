@@ -320,7 +320,7 @@ void commHandler::openPort()
         qInfo(logSerial()) << "Could not open serial port " << portName << " , please restart.";
         isConnected = false;
         serialError = true;
-        emit haveSerialPortError(portName, "Could not open port. Please restart.");
+        emit havePortError(errorType(portName, "Could not open port. Please restart."));
         return;
     }
 }

@@ -74,6 +74,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<networkStatus>();
     qRegisterMetaType<networkAudioLevels>();
     qRegisterMetaType<codecType>();
+    qRegisterMetaType<errorType>();
 
     haveRigCaps = false;
 
@@ -493,7 +494,7 @@ void wfmain::makeRig()
         rigThread->start();
 
         // Rig status and Errors:
-        connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
+        connect(rig, SIGNAL(havePortError(errorType)), this, SLOT(receivePortError(errorType)));
         connect(rig, SIGNAL(haveStatusUpdate(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
         connect(rig, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(receiveNetworkAudioLevels(networkAudioLevels)));
         connect(rig, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
@@ -673,11 +674,16 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     return;
 }
 
-void wfmain::receiveSerialPortError(QString port, QString errorText)
+void wfmain::receivePortError(errorType err)
 {
-    qInfo(logSystem()) << "wfmain: received serial port error for port: " << port << " with message: " << errorText;
-    ui->statusBar->showMessage(QString("ERROR: using port ").append(port).append(": ").append(errorText), 10000);
-
+    if (err.alert) {
+        QMessageBox::critical(this, err.device, err.message, QMessageBox::Ok);
+    }
+    else 
+    {
+        qInfo(logSystem()) << "wfmain: received error for device: " << err.device << " with message: " << err.message;
+        ui->statusBar->showMessage(QString("ERROR: using device ").append(err.device).append(": ").append(err.message), 10000);
+    }
     // TODO: Dialog box, exit, etc
 }
 

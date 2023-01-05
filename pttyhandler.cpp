@@ -90,7 +90,7 @@ void pttyHandler::openPort()
         qInfo(logSerial()) << "Could not open pseudo terminal port, please restart.";
         isConnected = false;
         serialError = true;
-        emit haveSerialPortError(portName, "Could not open pseudo terminal port. Please restart.");
+        emit havePortError(errorType(portName, "Could not open pseudo terminal port. Please restart."));
         return;
     }
 

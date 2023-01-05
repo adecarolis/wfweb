@@ -62,7 +62,7 @@ public slots:
 signals:
 	void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
 	void haveAudioData(audioPacket data); // emit this when we have data, connect to rigcommander
-	void haveNetworkError(QString, QString);
+	void haveNetworkError(errorType);
 	void haveChangeLatency(quint16 value);
 	void haveSetVolume(unsigned char value);
 	void haveNetworkStatus(networkStatus);

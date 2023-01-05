@@ -227,7 +227,7 @@ public slots:
     // UDP:
     void handleNewData(const QByteArray& data);
     void receiveAudioData(const audioPacket& data);
-    void handleSerialPortError(const QString port, const QString errorText);
+    void handlePortError(errorType err);
     void changeLatency(const quint16 value);
     void dataFromServer(QByteArray data);
     void receiveBaudRate(quint32 baudrate);
@@ -249,7 +249,7 @@ public slots:
 signals:
     // Communication:
     void commReady();
-    void haveSerialPortError(const QString port, const QString errorText);
+    void havePortError(errorType err);
     void haveStatusUpdate(const networkStatus status);
     void haveNetworkAudioLevels(const networkAudioLevels l);
     void dataForComm(const QByteArray &outData);
