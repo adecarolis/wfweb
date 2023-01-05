@@ -677,6 +677,7 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
 void wfmain::receivePortError(errorType err)
 {
     if (err.alert) {
+        connectionHandler(false); // Force disconnect
         QMessageBox::critical(this, err.device, err.message, QMessageBox::Ok);
     }
     else 
@@ -5273,26 +5274,14 @@ void wfmain::on_connectBtn_clicked()
 {
     this->rigStatus->setText(""); // Clear status
 
-    if (haveRigCaps) {
-        emit sendCloseComm();
-        ui->connectBtn->setText("Connect to Radio");
-        ui->audioSystemCombo->setEnabled(true);
-        ui->audioSystemServerCombo->setEnabled(true);
-        haveRigCaps = false;
-        rigName->setText("NONE");
+    if (ui->connectBtn->text() == "Connect to Radio") {
+        connectionHandler(true);
     }
-    else 
+    else
     {
-        emit sendCloseComm(); // Just in case there is a failed connection open.
-        if (ui->connectBtn->text() != "Cancel connection") {
-            openRig();
-        }
-        else {
-            ui->connectBtn->setText("Connect to Radio");
-            ui->audioSystemCombo->setEnabled(true);
-            ui->audioSystemServerCombo->setEnabled(true);
-        }
+        connectionHandler(false);
     }
+
     ui->connectBtn->clearFocus();
 }
 
@@ -7679,5 +7668,30 @@ void wfmain::changePollTiming(int timing_ms, bool setUI)
         ui->pollTimeMsSpin->blockSignals(true);
         ui->pollTimeMsSpin->setValue(timing_ms);
         ui->pollTimeMsSpin->blockSignals(false);
+    }
+}
+
+void wfmain::connectionHandler(bool connect) 
+{
+
+    if (!connect) {
+        emit sendCloseComm();
+        ui->connectBtn->setText("Connect to Radio");
+        ui->audioSystemCombo->setEnabled(true);
+        ui->audioSystemServerCombo->setEnabled(true);
+        haveRigCaps = false;
+        rigName->setText("NONE");
+    }
+    else
+    {
+        emit sendCloseComm(); // Just in case there is a failed connection open.
+        if (ui->connectBtn->text() != "Cancel connection") {
+            openRig();
+        }
+        else {
+            ui->connectBtn->setText("Connect to Radio");
+            ui->audioSystemCombo->setEnabled(true);
+            ui->audioSystemServerCombo->setEnabled(true);
+        }
     }
 }

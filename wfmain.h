@@ -985,6 +985,8 @@ private:
     void changeMode(mode_kind mode);
     void changeMode(mode_kind mode, bool dataOn);
 
+    void connectionHandler(bool connect);
+
     cmds meterKindToMeterCommand(meterKind m);
 
     int oldFreqDialVal;
