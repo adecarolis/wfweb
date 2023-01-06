@@ -46,6 +46,7 @@ struct timekind {
 };
 
 struct errorType {
+    errorType() : alert(false) {};
     errorType(bool alert, QString message) : alert(alert), message(message) {};
     errorType(bool alert, QString device, QString message) : alert(alert), device(device), message(message) {};
     errorType(QString device, QString message) : alert(false), device(device), message(message) {};
