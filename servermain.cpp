@@ -331,9 +331,7 @@ void servermain::receiveFoundRigID(rigCapabilities rigCaps)
 
 void servermain::receivePortError(errorType err)
 {
-    qInfo(logSystem()) << "servermain: received serial port error for port: " << port << " with message: " << errorText;
-
-    // TODO: Dialog box, exit, etc
+    qInfo(logSystem()) << "servermain: received error for device: " << err.device << " with message: " << err.message;
 }
 
 
