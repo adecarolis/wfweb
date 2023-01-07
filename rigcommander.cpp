@@ -87,7 +87,7 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
     connect(comm, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
 
     connect(comm, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
-    connect(ptty, SIGNAL(havePortError(errotType)), this, SLOT(handlePortError(errorType)));
+    connect(ptty, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
 
     connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
     connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
