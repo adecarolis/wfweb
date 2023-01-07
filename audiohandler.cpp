@@ -193,7 +193,7 @@ audioHandler::~audioHandler()
 		audioInput = new QAudioSource(setup.port, outFormat, this);
 #endif
 		connect(audioInput, SIGNAL(stateChanged(QAudio::State)), SLOT(stateChanged(QAudio::State)));
-		emit setupConverter(outFormat, codec, inFormat, codecType::LPCM, 7, setup.resampleQuality);
+		emit setupConverter(outFormat, codecType::LPCM, inFormat, codec, 7, setup.resampleQuality);
 		connect(converter, SIGNAL(converted(audioPacket)), this, SLOT(convertedInput(audioPacket)));
 	}
 	else {

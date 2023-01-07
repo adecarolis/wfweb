@@ -1283,7 +1283,7 @@ void udpServer::sendCapabilities(CLIENT* c)
         s.data.append(QByteArray::fromRawData((const char*)r.packet, sizeof(r)));
     }
 
-    p.len = sizeof(p)+s.data.length();
+    p.len = (quint32)sizeof(p)+s.data.length();
     p.payloadsize = qToBigEndian((quint16)(sizeof(p) + s.data.length() - 0x10));
 
     s.data.insert(0,QByteArray::fromRawData((const char*)p.packet, sizeof(p)));
@@ -1688,7 +1688,7 @@ void udpServer::receiveAudioData(const audioPacket& d)
             if (client != Q_NULLPTR && client->connected && (!memcmp(client->guid, guid, GUIDLEN) || config->rigs.size()== 1)) {
                 audio_packet p;
                 memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
-                p.len = sizeof(p) + partial.length();
+                p.len = (quint32)sizeof(p) + partial.length();
                 p.sentid = client->myId;
                 p.rcvdid = client->remoteId;
                 p.ident = 0x0080; // audio is always this?
@@ -1823,7 +1823,7 @@ void udpServer::sendRetransmitRequest(CLIENT* c)
             {
                 qInfo(logUdp()) << this->metaObject()->className() << ": sending request for multiple missing packets : " << missingSeqs.toHex();
 
-                p.len = sizeof(p) + missingSeqs.size();
+                p.len = (quint32)sizeof(p) + missingSeqs.size();
                 missingSeqs.insert(0, p.packet, sizeof(p));
 
                 if (udpMutex.try_lock_for(std::chrono::milliseconds(LOCK_PERIOD)))

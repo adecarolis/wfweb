@@ -3364,7 +3364,7 @@ void wfmain::sendRadioCommandLoop()
             if(haveRigCaps && !slowPollCmdQueue.empty())
             {
 
-                int nCmds = slowPollCmdQueue.size();
+                int nCmds = (int)slowPollCmdQueue.size();
                 cmds sCmd = slowPollCmdQueue[(slowCmdNum++)%nCmds];
                 doCmd(sCmd);
             }
@@ -3374,7 +3374,7 @@ void wfmain::sendRadioCommandLoop()
         // s-meter or other metering
         if(haveRigCaps && !periodicCmdQueue.empty())
         {
-            int nCmds = periodicCmdQueue.size();
+            int nCmds = (int)periodicCmdQueue.size();
             cmds pcmd = periodicCmdQueue[ (pCmdNum++)%nCmds ];
             doCmd(pcmd);
         }

@@ -127,7 +127,7 @@ void udpAudio::receiveAudioData(audioPacket audio) {
             QByteArray partial = audio.data.mid(len, 1364);
             audio_packet p;
             memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
-            p.len = sizeof(p) + partial.length();
+            p.len = (quint32)sizeof(p) + partial.length();
             p.sentid = myId;
             p.rcvdid = remoteId;
             if (partial.length() == 0xa0) {

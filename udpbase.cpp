@@ -337,7 +337,7 @@ void udpBase::sendRetransmitRequest()
         {
             qInfo(logUdp()) << this->metaObject()->className() << ": sending request for multiple missing packets : " << missingSeqs.toHex(':');
             missingMutex.lock();
-            p.len = sizeof(p) + missingSeqs.size();
+            p.len = (quint32)sizeof(p) + missingSeqs.size();
             missingSeqs.insert(0, p.packet, sizeof(p));
             missingMutex.unlock();
 

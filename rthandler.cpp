@@ -232,19 +232,19 @@ bool rtHandler::init(audioSetup setup)
 
 
 		// Per channel chunk size.
-		this->chunkSize = (outFormat.bytesForDuration(setup.blockSize * 1000) / outFormat.bytesPerFrame());
+		this->chunkSize = outFormat.framesForDuration(setup.blockSize * 1000);
 
 #ifdef RT_EXCEPTION
 		try {
 #endif
 			if (setup.isinput) {
 				audio->openStream(NULL, &aParams, sampleFormat, outFormat.sampleRate(), &this->chunkSize, &staticWrite, this, &options);
-				emit setupConverter(outFormat, codec, inFormat, codecType::LPCM, 7, setup.resampleQuality);
+				emit setupConverter(outFormat, codecType::LPCM, inFormat, codec, 7, setup.resampleQuality);
 				connect(converter, SIGNAL(converted(audioPacket)), this, SLOT(convertedInput(audioPacket)));
 			}
 			else {
 				audio->openStream(&aParams, NULL, sampleFormat, outFormat.sampleRate(), &this->chunkSize, &staticRead, this , &options);
-				emit setupConverter(inFormat, codecType::LPCM, outFormat, codec, 7, setup.resampleQuality);
+				emit setupConverter(inFormat, codec, outFormat, codecType::LPCM, 7, setup.resampleQuality);
 				connect(converter, SIGNAL(converted(audioPacket)), this, SLOT(convertedOutput(audioPacket)));
 			}
 			audio->startStream();
@@ -342,8 +342,8 @@ int rtHandler::writeData(void* outputBuffer, void* inputBuffer,
 	packet.volume = volume;
 	memcpy(&packet.guid, setup.guid, GUIDLEN);
 	packet.data.append((char*)inputBuffer, nFrames * outFormat.bytesPerFrame());
-
 	emit sendToConverter(packet);
+
 	if (status == RTAUDIO_INPUT_OVERFLOW) {
 		isUnderrun = true;
 	}

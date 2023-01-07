@@ -69,6 +69,7 @@ bool paHandler::init(audioSetup setup)
 	//	qDebug(logAudio()) << "Portaudio initialized";
 	//}
 
+
 	codecType codec = LPCM;
 	if (setup.codec == 0x01 || setup.codec == 0x20)
 		codec = PCMU;
@@ -151,20 +152,23 @@ bool paHandler::init(audioSetup setup)
 	aParams.hostApiSpecificStreamInfo = NULL;
 
 	// Per channel chunk size.
-	this->chunkSize = (outFormat.bytesForDuration(setup.blockSize * 1000) / sizeof(float)) * outFormat.channelCount();
+	this->chunkSize = outFormat.framesForDuration(setup.blockSize * 1000);
 
+	qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Chunk size" << this->chunkSize;
 	// Check the format is supported
 
 
-	if (setup.isinput) {
-		err = Pa_IsFormatSupported(&aParams, NULL, outFormat.sampleRate());
-	}
-	else
-	{
-		err = Pa_IsFormatSupported(NULL,&aParams, outFormat.sampleRate());
-	}
 
-	if (err != paNoError) {
+	err = -1;
+	int errCount = 0;
+	while (err != paNoError) {
+		if (setup.isinput) {
+			err = Pa_IsFormatSupported(&aParams, NULL, outFormat.sampleRate());
+		}
+		else
+		{
+			err = Pa_IsFormatSupported(NULL, &aParams, outFormat.sampleRate());
+		}
 		if (err == paInvalidChannelCount)
 		{
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported channel count" << aParams.channelCount;
@@ -177,30 +181,26 @@ bool paHandler::init(audioSetup setup)
 				outFormat.setChannelCount(2);
 			}
 		}
-		else if (err == paInvalidSampleRate)
+		if (err == paInvalidSampleRate)
 		{
 			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported sample rate" << outFormat.sampleRate();
 			outFormat.setSampleRate(44100);
 		}
-		else if (err == paSampleFormatNotSupported)
+		if (err == paSampleFormatNotSupported)
 		{
 			aParams.sampleFormat = paInt16;
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported sample Format" << outFormat.sampleType();
 			outFormat.setSampleType(QAudioFormat::SignedInt);
 			outFormat.setSampleSize(16);
 #else
+			qInfo(logAudio()) << (setup.isinput ? "Input" : "Output") << "Unsupported sample Format" << outFormat.sampleFormat();
 			outFormat.setSampleFormat(QAudioFormat::Int16);
 #endif
 		}
 
-		if (setup.isinput) {
-			err = Pa_IsFormatSupported(&aParams, NULL, outFormat.sampleRate());
-		}
-		else
-		{
-			err = Pa_IsFormatSupported(NULL, &aParams, outFormat.sampleRate());
-		}
-		if (err != paNoError) {
+		errCount++;
+		if (errCount > 5) {
 			qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "Cannot find suitable format, aborting:" << Pa_GetErrorText(err);
 			return false;
 		}
@@ -209,7 +209,7 @@ bool paHandler::init(audioSetup setup)
 	if (setup.isinput) {
 
 		err = Pa_OpenStream(&audio, &aParams, 0, outFormat.sampleRate(), this->chunkSize, paNoFlag, &paHandler::staticWrite, (void*)this);
-		emit setupConverter(outFormat, codec, inFormat, codecType::LPCM, 7, setup.resampleQuality);
+		emit setupConverter(outFormat, codecType::LPCM, inFormat, codec, 7, setup.resampleQuality);
 		connect(converter, SIGNAL(converted(audioPacket)), this, SLOT(convertedInput(audioPacket)));
 	}
 	else {
@@ -271,7 +271,7 @@ int paHandler::writeData(const void* inputBuffer, void* outputBuffer,
 	packet.sent = 0;
 	packet.volume = volume;
 	memcpy(&packet.guid, setup.guid, GUIDLEN);
-	packet.data.append((char*)inputBuffer, nFrames*inFormat.channelCount()*sizeof(float));
+	packet.data.append((char*)inputBuffer, nFrames*outFormat.bytesPerFrame());
 	emit sendToConverter(packet);
 
 	if (status == paInputUnderflow) {
@@ -296,7 +296,7 @@ void paHandler::convertedOutput(audioPacket packet) {
 
 		if (Pa_IsStreamActive(audio) == 1) {
 			if (currentLatency < (setup.latency+latencyAllowance)) {
-				PaError err = Pa_WriteStream(audio, (char*)packet.data.data(), packet.data.size() / sizeof(float) / outFormat.channelCount());
+				PaError err = Pa_WriteStream(audio, (char*)packet.data.data(), packet.data.size() / outFormat.bytesPerFrame());
 
 				if (err != paNoError) {
 					qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Error writing audio!";
