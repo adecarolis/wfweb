@@ -55,20 +55,20 @@ bool rtHandler::init(audioSetup setup)
 		return false;
 	}
 
-	inFormat = toQAudioFormat(setup.codec, setup.sampleRate);
+	radioFormat = toQAudioFormat(setup.codec, setup.sampleRate);
 
 	qDebug(logAudio()) << "Creating" << (setup.isinput ? "Input" : "Output") << "audio device:" << setup.name <<
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-		", bits" << inFormat.sampleSize() <<
+		", bits" << radioFormat.sampleSize() <<
 #else
-		", format" << inFormat.sampleFormat() <<
+		", format" << radioFormat.sampleFormat() <<
 #endif
 		", codec" << setup.codec <<
 		", latency" << setup.latency <<
 		", localAFGain" << setup.localAFgain <<
-		", radioChan" << inFormat.channelCount() <<
+		", radioChan" << radioFormat.channelCount() <<
 		", resampleQuality" << setup.resampleQuality <<
-		", samplerate" << inFormat.sampleRate() <<
+		", samplerate" << radioFormat.sampleRate() <<
 		", uLaw" << setup.ulaw;
 
 #if !defined(Q_OS_MACX)
@@ -123,8 +123,8 @@ bool rtHandler::init(audioSetup setup)
 		RtAudioFormat sampleFormat;
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-		outFormat.setByteOrder(QAudioFormat::LittleEndian);
-		outFormat.setCodec("audio/pcm");
+		nativeFormat.setByteOrder(QAudioFormat::LittleEndian);
+		nativeFormat.setCodec("audio/pcm");
 #endif
 
 		if (info.nativeFormats == 0)
@@ -143,60 +143,60 @@ bool rtHandler::init(audioSetup setup)
 
 			qInfo(logAudio()) << "		Preferred sample rate:" << info.preferredSampleRate;
 			if (setup.isinput) {
-				outFormat.setChannelCount(info.inputChannels);
+				nativeFormat.setChannelCount(info.inputChannels);
 			}
 			else {
-				outFormat.setChannelCount(info.outputChannels);
+				nativeFormat.setChannelCount(info.outputChannels);
 			}
 			
-			qInfo(logAudio()) << "		Channels:" << outFormat.channelCount();
+			qInfo(logAudio()) << "		Channels:" << nativeFormat.channelCount();
 			
-			if (outFormat.channelCount() > 2) {
-				outFormat.setChannelCount(2);
+			if (nativeFormat.channelCount() > 2) {
+				nativeFormat.setChannelCount(2);
 			}
-			else if (outFormat.channelCount() < 1)
+			else if (nativeFormat.channelCount() < 1)
 			{
 				qCritical(logAudio()) << (setup.isinput ? "Input" : "Output") << "No channels found, aborting setup.";
 				goto errorHandler;
 			}
 
-			if (outFormat.channelCount() == 1 && inFormat.channelCount() == 2) {
-				outFormat.setChannelCount(2);
+			if (nativeFormat.channelCount() == 1 && radioFormat.channelCount() == 2) {
+				nativeFormat.setChannelCount(2);
 			}
 
-			aParams.nChannels = outFormat.channelCount();
+			aParams.nChannels = nativeFormat.channelCount();
 
 
-			outFormat.setSampleRate(info.preferredSampleRate);
+			nativeFormat.setSampleRate(info.preferredSampleRate);
 
-			if (outFormat.sampleRate() < 44100) {
-				outFormat.setSampleRate(48000);				
+			if (nativeFormat.sampleRate() < 44100) {
+				nativeFormat.setSampleRate(48000);				
 			}
 
 			if (info.nativeFormats & RTAUDIO_FLOAT32) {
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-				outFormat.setSampleType(QAudioFormat::Float);
-				outFormat.setSampleSize(32);
+				nativeFormat.setSampleType(QAudioFormat::Float);
+				nativeFormat.setSampleSize(32);
 #else
-				outFormat.setSampleFormat(QAudioFormat::Float);
+				nativeFormat.setSampleFormat(QAudioFormat::Float);
 #endif
 				sampleFormat = RTAUDIO_FLOAT32;
 			}
 			else if (info.nativeFormats & RTAUDIO_SINT32) {
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-				outFormat.setSampleType(QAudioFormat::SignedInt);
-				outFormat.setSampleSize(32);
+				nativeFormat.setSampleType(QAudioFormat::SignedInt);
+				nativeFormat.setSampleSize(32);
 #else
-				outFormat.setSampleFormat(QAudioFormat::Int32);
+				nativeFormat.setSampleFormat(QAudioFormat::Int32);
 #endif
 				sampleFormat = RTAUDIO_SINT32;
 			}
 			else if (info.nativeFormats & RTAUDIO_SINT16) {
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-				outFormat.setSampleType(QAudioFormat::SignedInt);
-				outFormat.setSampleSize(16);
+				nativeFormat.setSampleType(QAudioFormat::SignedInt);
+				nativeFormat.setSampleSize(16);
 #else
-				outFormat.setSampleFormat(QAudioFormat::Int16);
+				nativeFormat.setSampleFormat(QAudioFormat::Int16);
 #endif
 				sampleFormat = RTAUDIO_SINT16;
 			}
@@ -207,11 +207,11 @@ bool rtHandler::init(audioSetup setup)
 		}
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Selected format: SampleSize" << outFormat.sampleSize() << "Channel Count" << outFormat.channelCount() <<
-			"Sample Rate" << outFormat.sampleRate() << "Codec" << outFormat.codec() << "Sample Type" << outFormat.sampleType();
+		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Selected format: SampleSize" << nativeFormat.sampleSize() << "Channel Count" << nativeFormat.channelCount() <<
+			"Sample Rate" << nativeFormat.sampleRate() << "Codec" << nativeFormat.codec() << "Sample Type" << nativeFormat.sampleType();
 #else
-		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Selected format: SampleFormat" << outFormat.sampleFormat() << "Channel Count" << outFormat.channelCount() <<
-			"Sample Rate" << outFormat.sampleRate() << "Codec" << codec;
+		qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Selected format: SampleFormat" << nativeFormat.sampleFormat() << "Channel Count" << nativeFormat.channelCount() <<
+			"Sample Rate" << nativeFormat.sampleRate() << "Codec" << codec;
 #endif
 
 		// We "hopefully" now have a valid format that is supported so try connecting
@@ -232,19 +232,19 @@ bool rtHandler::init(audioSetup setup)
 
 
 		// Per channel chunk size.
-		this->chunkSize = outFormat.framesForDuration(setup.blockSize * 1000);
+		this->chunkSize = nativeFormat.framesForDuration(setup.blockSize * 1000);
 
 #ifdef RT_EXCEPTION
 		try {
 #endif
 			if (setup.isinput) {
-				audio->openStream(NULL, &aParams, sampleFormat, outFormat.sampleRate(), &this->chunkSize, &staticWrite, this, &options);
-				emit setupConverter(outFormat, codecType::LPCM, inFormat, codec, 7, setup.resampleQuality);
+				audio->openStream(NULL, &aParams, sampleFormat, nativeFormat.sampleRate(), &this->chunkSize, &staticWrite, this, &options);
+				emit setupConverter(nativeFormat, codecType::LPCM, radioFormat, codec, 7, setup.resampleQuality);
 				connect(converter, SIGNAL(converted(audioPacket)), this, SLOT(convertedInput(audioPacket)));
 			}
 			else {
-				audio->openStream(&aParams, NULL, sampleFormat, outFormat.sampleRate(), &this->chunkSize, &staticRead, this , &options);
-				emit setupConverter(inFormat, codec, outFormat, codecType::LPCM, 7, setup.resampleQuality);
+				audio->openStream(&aParams, NULL, sampleFormat, nativeFormat.sampleRate(), &this->chunkSize, &staticRead, this , &options);
+				emit setupConverter(radioFormat, codec, nativeFormat, codecType::LPCM, 7, setup.resampleQuality);
 				connect(converter, SIGNAL(converted(audioPacket)), this, SLOT(convertedOutput(audioPacket)));
 			}
 			audio->startStream();
@@ -305,7 +305,7 @@ int rtHandler::readData(void* outputBuffer, void* inputBuffer,
 {
 	Q_UNUSED(inputBuffer);
 	Q_UNUSED(streamTime);
-	int nBytes = nFrames * outFormat.bytesPerFrame();
+	int nBytes = nFrames * nativeFormat.bytesPerFrame();
 	//lastSentSeq = packet.seq;
 	if (arrayBuffer.length() >= nBytes) {
 		if (audioMutex.tryLock(0)) {
@@ -341,7 +341,7 @@ int rtHandler::writeData(void* outputBuffer, void* inputBuffer,
 	packet.sent = 0;
 	packet.volume = volume;
 	memcpy(&packet.guid, setup.guid, GUIDLEN);
-	packet.data.append((char*)inputBuffer, nFrames * outFormat.bytesPerFrame());
+	packet.data.append((char*)inputBuffer, nFrames * nativeFormat.bytesPerFrame());
 	emit sendToConverter(packet);
 
 	if (status == RTAUDIO_INPUT_OVERFLOW) {
@@ -366,7 +366,7 @@ void rtHandler::convertedOutput(audioPacket packet)
 	arrayBuffer.append(packet.data);
 	audioMutex.unlock();
 	amplitude = packet.amplitudePeak;
-	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * outFormat.bytesPerFrame()) / 1000);
+	currentLatency = packet.time.msecsTo(QTime::currentTime()) + (nativeFormat.durationForBytes(audio->getStreamLatency() * nativeFormat.bytesPerFrame()) / 1000);
 	emit haveLevels(getAmplitude(), packet.amplitudeRMS, setup.latency, currentLatency, isUnderrun, isOverrun);
 }
 
@@ -377,7 +377,7 @@ void rtHandler::convertedInput(audioPacket packet)
 	if (packet.data.size() > 0) {
 		emit haveAudioData(packet);
 		amplitude = packet.amplitudePeak;
-		currentLatency = packet.time.msecsTo(QTime::currentTime()) + (outFormat.durationForBytes(audio->getStreamLatency() * outFormat.bytesPerFrame()) / 1000);
+		currentLatency = packet.time.msecsTo(QTime::currentTime()) + (nativeFormat.durationForBytes(audio->getStreamLatency() * nativeFormat.bytesPerFrame()) / 1000);
 		emit haveLevels(getAmplitude(), static_cast<quint16>(packet.amplitudeRMS * 255.0), setup.latency, currentLatency, isUnderrun, isOverrun);
 	}
 }

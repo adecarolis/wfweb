@@ -85,8 +85,8 @@ private:
     qreal volume = 1.0;
 
     audioSetup setup;
-    QAudioFormat     inFormat;
-    QAudioFormat     outFormat;
+    QAudioFormat     radioFormat;
+    QAudioFormat     nativeFormat;
     audioConverter* converter = Q_NULLPTR;
     QThread* converterThread = Q_NULLPTR;
     bool            isUnderrun = false;
