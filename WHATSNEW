@@ -31,8 +31,8 @@ The following highlights are in this 1.51-release ince v1.50:
 +1.54		Various wfserver fixes
 		logging using termbin edge case fix
 +1.55	  	Compiles with QT5 and 6 now
-    		Many audio-fixe
-s    		Fix wfserver device detection
+    		Many audio-fixes
+    		Fix wfserver device detection
     		Prevent memory leak on exit
     		Dawid Szymanski - SQ6EMM/SN6M 'standardHFfix'; fixed missing 160m band
     		Support hotplug audio on QT6+
@@ -41,7 +41,19 @@ s    		Fix wfserver device detection
     		Log enumeration of audio devices
     		Fix codec selection issue in both QT5 and 6
     		Make sure compilation with QT5 still works
++1.56	   	Rename in/out Formats to avoid confusion
+    		Fix all audio formats and some compile warnings!
+    		Add function to handle connect/disconnect
+    		Add option of popup alert
+    		Change serial port signal for QT6.
+    		Various audio fixes (needs checking with Qt5)
+    		Fix portaudio
+    		Fix for QTAudio when using QT6 and above.
 	
+
+
+
+
 	
 Notes:
 

@@ -806,7 +806,7 @@ void udpServer::commonReceived(QList<CLIENT*>* l, CLIENT* current, QByteArray r)
     {
         control_packet_t in = (control_packet_t)r.constData();
         if (in->type == 0x03) {
-            qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'are you there'";
+            qInfo(logUdpServer()) << current->ipAddress.toString() << "(" << current->type << "): Received 'Are you there'";
             current->remoteId = in->sentid;
             sendControl(current, 0x04, in->seq);
         } // This is This is "Are you ready" in response to "I am here".
