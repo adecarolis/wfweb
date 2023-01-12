@@ -635,7 +635,10 @@ void rigCtlClient::socketReadyRead()
             quint16 passband = 0;
             QString vfo = "VFOA";
             QString mode = "USB";
-            if (command.length() == 3) {
+            if (command.length() == 2) {
+                mode = command[1];
+            }
+            else if (command.length() == 3) {
                 passband = command[2].toInt();
                 mode = command[1];
             }
@@ -644,6 +647,7 @@ void rigCtlClient::socketReadyRead()
                 mode = command[2];
                 vfo = command[1];
             }
+
             qDebug(logRigCtlD()) << "setting mode: VFO:" << vfo << getMode(mode) << mode << "passband" << passband << "command:" << commands;
 
             if (!mode.isEmpty())
