@@ -1798,7 +1798,6 @@
              <font>
               <family>DejaVu Sans Mono</family>
               <pointsize>14</pointsize>
-              <weight>75</weight>
               <bold>true</bold>
              </font>
             </property>
@@ -3383,8 +3382,8 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>858</width>
-                      <height>287</height>
+                      <width>579</width>
+                      <height>224</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -5333,7 +5332,6 @@
        <widget class="QPushButton" name="exitBtn">
         <property name="font">
          <font>
-          <weight>50</weight>
           <bold>false</bold>
          </font>
         </property>
@@ -5353,7 +5351,7 @@
      <x>0</x>
      <y>0</y>
      <width>1082</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>

@@ -163,10 +163,14 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     amTransmitting = false;
 
+#if defined(USB_CONTROLLER)
     // Setup USB Controller
     setupUsbControllerDevice();
     emit sendUsbControllerCommands(&usbCommands);
     emit sendUsbControllerButtons(&usbButtons);
+#else
+    ui->usbControllerBtn->setVisible(false);
+#endif
 
     connect(ui->txPowerSlider, &QSlider::sliderMoved,
         [&](int value) {
@@ -201,10 +205,12 @@ wfmain::~wfmain()
     delete rpt;
     delete ui;
     delete settings;
+#if defined(USB_CONTROLLER)
     if (usbControllerThread != Q_NULLPTR) {
         usbControllerThread->quit();
         usbControllerThread->wait();
     }
+#endif
 }
 
 void wfmain::closeEvent(QCloseEvent *event)
@@ -1440,6 +1446,7 @@ void wfmain::setupKeyShortcuts()
 
 void wfmain::setupUsbControllerDevice()
 {
+#if defined (USB_CONTROLLER)
     usbControllerDev = new usbController();
     usbControllerThread = new QThread(this);
     usbControllerDev->moveToThread(usbControllerThread);
@@ -1455,7 +1462,7 @@ void wfmain::setupUsbControllerDevice()
 
     connect(this, SIGNAL(sendUsbControllerCommands(QVector<COMMAND>*)), usbControllerDev, SLOT(receiveCommands(QVector<COMMAND>*)));
     connect(this, SIGNAL(sendUsbControllerButtons(QVector<BUTTON>*)), usbControllerDev, SLOT(receiveButtons(QVector<BUTTON>*)));
-
+#endif
 }
 
 void wfmain::pttToggle(bool status)
@@ -2075,6 +2082,7 @@ void wfmain::loadSettings()
     settings->endArray();
 
     settings->endGroup();
+#if defined (USB_CONTROLLER)
     /* Load USB buttons*/
     settings->beginGroup("USB");
     int numCommands = settings->beginReadArray("Commands");
@@ -2253,7 +2261,7 @@ void wfmain::loadSettings()
     }
 
     settings->endGroup();
-
+#endif
 }
 
 void wfmain::serverAddUserLine(const QString& user, const QString& pass, const int& type)
@@ -2615,6 +2623,7 @@ void wfmain::saveSettings()
 
     settings->endGroup();
 
+#if defined(USB_CONTROLLER)
     settings->beginGroup("USB");
     // Store USB Controller
 
@@ -2639,6 +2648,7 @@ void wfmain::saveSettings()
     settings->endArray();
 
     settings->endGroup();
+#endif
 
     settings->sync(); // Automatic, not needed (supposedly)
 }
@@ -3499,7 +3509,7 @@ void wfmain::doCmd(commandtype cmddata)
         case cmdGetBandStackReg:
         {
             char band = (*std::static_pointer_cast<char>(data));
-            //bandStkBand = rigCaps.bsr[(bandType)band]; // 23cm Needs fixing
+            bandStkBand = rigCaps.bsr[band]; // 23cm Needs fixing
             bandStkRegCode = ui->bandStkPopdown->currentIndex() + 1;
             emit getBandStackReg(bandStkBand, bandStkRegCode);
             break;

@@ -1,4 +1,5 @@
 
+#if defined(USB_CONTROLLER)
 #include "usbcontroller.h"
 
 #ifdef Q_OS_WIN
@@ -538,3 +539,4 @@ void usbController::buttonState(QString name, double val)
     }
     */
 }
+#endif

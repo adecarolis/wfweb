@@ -10,6 +10,8 @@
 #include <QGraphicsTextItem>
 #include <QColor>
 #include <QVector>
+
+#if defined(USB_CONTROLLER)
 #include <QGamepad>
 
 #ifndef Q_OS_WIN
@@ -21,6 +23,7 @@
 #ifndef Q_OS_WIN
 //Headers needed for sleeping.
 #include <unistd.h>
+#endif
 #endif
 
 // Include these so we have the various enums
@@ -75,6 +78,7 @@ struct BUTTON {
 
 };
 
+#if defined(USB_CONTROLLER)
 class usbController : public QObject
 {
     Q_OBJECT
@@ -125,5 +129,6 @@ private:
 protected:
 };
 
+#endif
 
 #endif

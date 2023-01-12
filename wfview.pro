@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui serialport network multimedia xml gamepad
+QT       += core gui serialport network multimedia xml
 
 #QT += sql
 #DEFINES += USESQL
@@ -18,13 +18,13 @@ DEFINES += WFVIEW_VERSION=\\\"1.56\\\"
 
 DEFINES += BUILD_WFVIEW
 
-#Uncomment The following 5 lines enable USB controllers (Shuttle/RC-28 etc.)
+#Uncomment The following 6 lines to enable USB controllers (Shuttle/RC-28 etc.)
 #DEFINES += USB_CONTROLLERS
 #linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb
 #macx:LIBS += -framework CoreAudio -framework CoreFoundation -lhidapi
 #win32:INCLUDEPATH += ../hidapi/hidapi
 #win32:SOURCES += ../hidapi/windows/hid.c
-
+#QT += gamepad
 
 CONFIG(debug, release|debug) {
     # For Debug builds only:

@@ -1072,12 +1072,13 @@ private:
     SERVERCONFIG serverConfig;
     void serverAddUserLine(const QString& user, const QString& pass, const int& type);
 
+#if defined (USB_CONTROLLER)
     usbController *usbControllerDev = Q_NULLPTR;
     QThread *usbControllerThread = Q_NULLPTR;
-
     QString usbDeviceName;
     QVector<COMMAND> usbCommands;
     QVector<BUTTON> usbButtons;
+#endif
 
     dxClusterClient* cluster = Q_NULLPTR;
     QThread* clusterThread = Q_NULLPTR;

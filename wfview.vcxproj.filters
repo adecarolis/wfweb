@@ -143,6 +143,12 @@
     <ClCompile Include="wfmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="usbcontroller.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="controllersetup.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\rtaudio\RTAUdio.h">
@@ -270,6 +276,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="calibrationwindow.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="controllersetup.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="loggingwindow.ui">
@@ -424,5 +433,13 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include=".\wfview_resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="usbcontroller.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="controllersetup.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
   </ItemGroup>
 </Project>

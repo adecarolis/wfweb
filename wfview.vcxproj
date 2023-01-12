@@ -111,11 +111,11 @@
     <OutDir>$(SolutionDir)wfview-release\</OutDir>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <QtInstall>msvc2019</QtInstall>
+    <QtInstall>msvc2019_64_v62</QtInstall>
     <QtModules>core;gui;network;widgets;multimedia;printsupport;serialport;xml</QtModules>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="QtSettings">
-    <QtInstall>msvc2019</QtInstall>
+    <QtInstall>msvc2019_64_v62</QtInstall>
     <QtModules>core;gui;network;widgets;multimedia;printsupport;serialport;xml</QtModules>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -123,7 +123,7 @@
     <QtModules>core;gui;network;widgets;multimedia;printsupport;serialport;xml</QtModules>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="QtSettings">
-    <QtInstall>msvc2019</QtInstall>
+    <QtInstall>msvc2019_64_v62</QtInstall>
     <QtModules>core;gui;network;widgets;multimedia;printsupport;serialport;xml</QtModules>
   </PropertyGroup>
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.props')">
@@ -414,6 +414,7 @@ cmd /c copy /y ..\portaudio\msvc\Win32\Debug\portaudio_x86.dll wfview-debug</Com
     <ClCompile Include="calibrationwindow.cpp" />
     <ClCompile Include="cluster.cpp" />
     <ClCompile Include="commhandler.cpp" />
+    <ClCompile Include="controllersetup.cpp" />
     <ClCompile Include="freqmemory.cpp" />
     <ClCompile Include="logcategories.cpp" />
     <ClCompile Include="loggingwindow.cpp" />
@@ -437,15 +438,18 @@ cmd /c copy /y ..\portaudio\msvc\Win32\Debug\portaudio_x86.dll wfview-debug</Com
     <ClCompile Include="udpcivdata.cpp" />
     <ClCompile Include="udphandler.cpp" />
     <ClCompile Include="udpserver.cpp" />
+    <ClCompile Include="usbcontroller.cpp" />
     <ClCompile Include="wfmain.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\rtaudio\RTAUdio.h" />
+    <QtMoc Include="usbcontroller.h" />
     <QtMoc Include="aboutbox.h">
     </QtMoc>
     <QtMoc Include="audiodevices.h" />
     <QtMoc Include="loggingwindow.h" />
     <QtMoc Include="cluster.h" />
+    <QtMoc Include="controllersetup.h" />
     <ClInclude Include="resampler\arch.h" />
     <QtMoc Include="audioconverter.h">
     </QtMoc>
@@ -533,6 +537,7 @@ cmd /c copy /y ..\portaudio\msvc\Win32\Debug\portaudio_x86.dll wfview-debug</Com
     </QtUic>
     <QtUic Include="calibrationwindow.ui">
     </QtUic>
+    <QtUic Include="controllersetup.ui" />
     <QtUic Include="loggingwindow.ui" />
     <QtUic Include="repeatersetup.ui">
     </QtUic>
