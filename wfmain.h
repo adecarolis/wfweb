@@ -43,6 +43,7 @@
 #include "colorprefs.h"
 #include "loggingwindow.h"
 #include "cluster.h"
+#include "audiodevices.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -208,8 +209,9 @@ signals:
     void setClusterTimeout(int timeout);
     void setClusterSkimmerSpots(bool enable);
     void setFrequencyRange(double low, double high);
-	
+
 private slots:
+    void setAudioDevicesUI();
     void updateSizes(int tabIndex);
     void shortcutF1();
     void shortcutF2();
@@ -303,7 +305,7 @@ private slots:
     void receiveAntennaSel(unsigned char ant, bool rx);
     void receiveRigID(rigCapabilities rigCaps);
     void receiveFoundRigID(rigCapabilities rigCaps);
-    void receiveSerialPortError(QString port, QString errorText);
+    void receivePortError(errorType err);
     void receiveStatusUpdate(networkStatus status);
     void receiveNetworkAudioLevels(networkAudioLevels l);
     void handlePlotClick(QMouseEvent *);
@@ -450,7 +452,7 @@ private slots:
 
     void on_audioTXCodecCombo_currentIndexChanged(int value);
 
-    void on_audioSampleRateCombo_currentIndexChanged(QString text);
+    void on_audioSampleRateCombo_currentIndexChanged(int value);
 
     void on_vspCombo_currentIndexChanged(int value);
 
@@ -488,7 +490,7 @@ private slots:
 
     void on_tuningStepCombo_currentIndexChanged(int index);
 
-    void on_serialDeviceListCombo_activated(const QString &arg1);
+    void on_serialDeviceListCombo_textActivated(const QString &arg1);
 
     void on_rptSetupBtn_clicked();
 
@@ -809,7 +811,6 @@ private:
     void setupMainUI();
     void setUIToPrefs();
     void setSerialDevicesUI();
-    void setAudioDevicesUI();
     void setServerToPrefs();
     void setupUsbControllerDevice();
     void setInitialTiming();
@@ -1006,6 +1007,8 @@ private:
     void changeMode(mode_kind mode);
     void changeMode(mode_kind mode, bool dataOn);
 
+    void connectionHandler(bool connect);
+
     cmds meterKindToMeterCommand(meterKind m);
 
     void updateUsbButtons();
@@ -1084,6 +1087,7 @@ private:
     QList<clusterSettings> clusters;
     QMutex clusterMutex;
     QColor clusterColor;
+    audioDevices* audioDev = Q_NULLPTR;
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
@@ -1109,6 +1113,10 @@ Q_DECLARE_METATYPE(QVector <BUTTON>*)
 Q_DECLARE_METATYPE(struct BUTTON*)
 Q_DECLARE_METATYPE(QVector <COMMAND>*)
 Q_DECLARE_METATYPE(const COMMAND*)
+Q_DECLARE_METATYPE(codecType)
+Q_DECLARE_METATYPE(errorType)
+
+//void (*wfmain::logthistext)(QString text) = NULL;
 
 #endif // WFMAIN_H
 #endif

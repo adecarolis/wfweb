@@ -86,8 +86,8 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
     // data from the rig to the ptty:
     connect(comm, SIGNAL(haveDataFromPort(QByteArray)), ptty, SLOT(receiveDataFromRigToPtty(QByteArray)));
 
-    connect(comm, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
-    connect(ptty, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
+    connect(comm, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
+    connect(ptty, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
 
     connect(this, SIGNAL(getMoreDebug()), comm, SLOT(debugThis()));
     connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
@@ -164,12 +164,12 @@ void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, aud
         connect(udp, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
 
         // Connect for errors/alerts
-        connect(udp, SIGNAL(haveNetworkError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
+        connect(udp, SIGNAL(haveNetworkError(errorType)), this, SLOT(handlePortError(errorType)));
         connect(udp, SIGNAL(haveNetworkStatus(networkStatus)), this, SLOT(handleStatusUpdate(networkStatus)));
         connect(udp, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(handleNetworkAudioLevels(networkAudioLevels)));
 
 
-        connect(ptty, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(handleSerialPortError(QString, QString)));
+        connect(ptty, SIGNAL(havePortError(errorType)), this, SLOT(handlePortError(errorType)));
         connect(this, SIGNAL(getMoreDebug()), ptty, SLOT(debugThis()));
 
         connect(this, SIGNAL(discoveredRigID(rigCapabilities)), ptty, SLOT(receiveFoundRigID(rigCapabilities)));
@@ -232,14 +232,14 @@ void rigCommander::process()
     // new thread enters here. Do nothing but do check for errors.
     if(comm!=Q_NULLPTR && comm->serialError)
     {
-        emit haveSerialPortError(rigSerialPort, QString("Error from commhandler. Check serial port."));
+        emit havePortError(errorType(rigSerialPort, QString("Error from commhandler. Check serial port.")));
     }
 }
 
-void rigCommander::handleSerialPortError(const QString port, const QString errorText)
+void rigCommander::handlePortError(errorType err)
 {
-    qInfo(logRig()) << "Error using port " << port << " message: " << errorText;
-    emit haveSerialPortError(port, errorText);
+    qInfo(logRig()) << "Error using port " << err.device << " message: " << err.message;
+    emit havePortError(err);
 }
 
 void rigCommander::handleStatusUpdate(const networkStatus status)
@@ -3118,7 +3118,7 @@ void rigCommander::determineRigCaps()
 
 
     standardHF = { bandDef6m, bandDef10m, bandDef12m, bandDef15m, bandDef17m,
-        bandDef20m, bandDef30m, bandDef40m, bandDef60m, bandDef80m, bandDef80m};
+        bandDef20m, bandDef30m, bandDef40m, bandDef60m, bandDef80m, bandDef160m};
 
     standardVU = { bandDef2m, bandDef70cm };
 

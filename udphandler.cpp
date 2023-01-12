@@ -325,12 +325,12 @@ void udpHandler::dataReceived()
                 if (in->type != 0x01) {
                     if (in->error == 0xffffffff && !streamOpened)
                     {
-                        emit haveNetworkError(radioIP.toString(), "Connection failed, wait a few minutes or reboot the radio.");
+                        emit haveNetworkError(errorType(true, radioIP.toString(), "Connection failed\ntry rebooting the radio."));
                         qInfo(logUdp()) << this->metaObject()->className() << ": Connection failed, wait a few minutes or reboot the radio.";
                     }
                     else if (in->error == 0x00000000 && in->disc == 0x01)
                     {
-                        emit haveNetworkError(radioIP.toString(), "Got radio disconnected.");
+                        emit haveNetworkError(errorType(radioIP.toString(), "Got radio disconnected."));
                         qInfo(logUdp()) << this->metaObject()->className() << ": Got radio disconnected.";
                         if (streamOpened) {
                             // Close stream connections but keep connection open to the radio.
@@ -395,7 +395,7 @@ void udpHandler::dataReceived()
                     {
                         if (rxSetup.codec >= 0x40 || txSetup.codec >= 0x40)
                         {
-                            emit haveNetworkError(QString("UDP"), QString("Opus codec not supported, forcing LPCM16"));
+                            emit haveNetworkError(errorType(QString("UDP"), QString("Opus codec not supported, forcing LPCM16")));
                             if (rxSetup.codec >= 0x40)
                                 rxSetup.codec = 0x04;
                             if (txSetup.codec >= 0x40)
@@ -406,7 +406,7 @@ void udpHandler::dataReceived()
 
                     if (in->error == 0xfeffffff)
                     {
-                        status.message = "Invalid Username/Password";
+                        emit haveNetworkError(errorType(true, radioIP.toString(), "Invalid Username/Password"));
                         qInfo(logUdp()) << this->metaObject()->className() << ": Invalid Username/Password";
                     }
                     else if (!isAuthenticated)

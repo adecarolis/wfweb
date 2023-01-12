@@ -23,4 +23,9 @@ Q_DECLARE_LOGGING_CATEGORY(logCluster)
 #define __PRETTY_FUNCTION__ __FUNCSIG__
 #endif
 
+#if QT_VERSION > 0x060000
+//#define hex Qt::hex
+//#define bin Qt::bin
+#endif
+
 #endif // LOGCATEGORIES_H

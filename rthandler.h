@@ -62,7 +62,7 @@ signals:
     void sendLatency(quint16 newSize);
     void haveAudioData(const audioPacket& data);
     void haveLevels(quint16 amplitudePeak, quint16 amplitudeRMS, quint16 latency, quint16 current, bool under, bool over);
-    void setupConverter(QAudioFormat in, QAudioFormat out, quint8 opus, quint8 resamp);
+    void setupConverter(QAudioFormat in, codecType codecIn, QAudioFormat out, codecType codecOut, quint8 opus, quint8 resamp);
     void sendToConverter(audioPacket audio);
 
 private:
@@ -101,8 +101,8 @@ private:
     qreal volume = 1.0;
 
     audioSetup setup;
-    QAudioFormat     inFormat;
-    QAudioFormat     outFormat;
+    QAudioFormat     radioFormat;
+    QAudioFormat     nativeFormat;
     audioConverter* converter = Q_NULLPTR;
     QThread* converterThread = Q_NULLPTR;
     QByteArray arrayBuffer;    

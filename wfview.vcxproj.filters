@@ -56,6 +56,9 @@
     <ClCompile Include="audioconverter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="audiodevices.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="audiohandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -68,16 +71,7 @@
     <ClCompile Include="commhandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="controllersetup.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="database.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="freqmemory.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\hidapi\windows\hid.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="logcategories.cpp">
@@ -96,9 +90,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pttyhandler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\qcustomplot\qcustomplot.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="qledlabel.cpp">
@@ -149,9 +140,6 @@
     <ClCompile Include="udpserver.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="usbcontroller.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="wfmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -169,6 +157,9 @@
     <QtMoc Include="audioconverter.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <QtMoc Include="audiodevices.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
     <QtMoc Include="audiohandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
@@ -181,18 +172,9 @@
     <QtMoc Include="cluster.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <ClInclude Include="colorprefs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <QtMoc Include="commhandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <QtMoc Include="controllersetup.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <ClInclude Include="database.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="freqmemory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -211,13 +193,7 @@
     <QtMoc Include="pahandler.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <ClInclude Include="prefs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <QtMoc Include="pttyhandler.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
-    <QtMoc Include="..\qcustomplot\qcustomplot.h">
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="qledlabel.h">
@@ -239,9 +215,6 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <ClInclude Include="rigidentities.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="rigstate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <QtMoc Include="rthandler.h">
@@ -280,99 +253,23 @@
     <ClInclude Include="ulaw.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <QtMoc Include="usbcontroller.h">
-      <Filter>Header Files</Filter>
-    </QtMoc>
     <QtMoc Include="wfmain.h">
       <Filter>Header Files</Filter>
     </QtMoc>
-    <ClInclude Include="wfviewtypes.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     <CustomBuild Include="debug\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
     <CustomBuild Include="release\moc_predefs.h.cbt">
       <Filter>Generated Files</Filter>
     </CustomBuild>
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
   </ItemGroup>
   <ItemGroup>
     <QtUic Include="aboutbox.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="calibrationwindow.ui">
-      <Filter>Form Files</Filter>
-    </QtUic>
-    <QtUic Include="controllersetup.ui">
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="loggingwindow.ui">
@@ -482,9 +379,6 @@
     <None Include="qdarkstyle\rc\radio_unchecked_focus.png">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="resources\rc28.png">
-      <Filter>Resource Files</Filter>
-    </None>
     <QtRcc Include="resources\resources.qrc">
       <Filter>Resource Files</Filter>
     </QtRcc>
@@ -492,12 +386,6 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="qdarkstyle\rc\right_arrow_disabled.png">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="resources\shuttlepro.png">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="resources\shuttlexpress.png">
       <Filter>Resource Files</Filter>
     </None>
     <None Include="qdarkstyle\rc\sizegrip.png">
@@ -533,11 +421,8 @@
     <None Include="resources\wfview.png">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="resources\xbox.png">
-      <Filter>Resource Files</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="C:\Users\Phil\source\repos\wfview\wfview_resource.rc" />
+    <ResourceCompile Include=".\wfview_resource.rc" />
   </ItemGroup>
 </Project>

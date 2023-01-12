@@ -76,6 +76,8 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<QList<spotData>>();
     qRegisterMetaType<networkStatus>();
     qRegisterMetaType<networkAudioLevels>();
+    qRegisterMetaType<codecType>();
+    qRegisterMetaType<errorType>();
 
     haveRigCaps = false;
 
@@ -96,7 +98,10 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     loadSettings(); // Look for saved preferences
 
-    setAudioDevicesUI();
+    audioDev = new audioDevices(prefs.audioSystem, QFontMetrics(ui->audioInputCombo->font()));
+    connect(audioDev, SIGNAL(updated()), this, SLOT(setAudioDevicesUI()));
+    audioDev->enumerate();
+    //setAudioDevicesUI(); // no need to call this as it will be called by the updated() signal
 
     setTuningSteps(); // TODO: Combine into preferences
 
@@ -167,6 +172,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         [&](int value) {
           QToolTip::showText(QCursor::pos(), QString("%1").arg(value*100/255), nullptr);
         });
+
 }
 
 wfmain::~wfmain()
@@ -183,6 +189,10 @@ wfmain::~wfmain()
     }
     if (rigCtl != Q_NULLPTR) {
         delete rigCtl;
+    }
+
+    if (audioDev != Q_NULLPTR) {
+        delete audioDev;
     }
 
     if (prefs.audioSystem == portAudio) {
@@ -245,7 +255,7 @@ void wfmain::openRig()
     //TODO: if(hasRunPreviously)
 
     //TODO: if(useNetwork){...
-
+    
     // } else {
 
     // if (prefs.fileWasNotFound) {
@@ -496,7 +506,7 @@ void wfmain::makeRig()
         rigThread->start();
 
         // Rig status and Errors:
-        connect(rig, SIGNAL(haveSerialPortError(QString, QString)), this, SLOT(receiveSerialPortError(QString, QString)));
+        connect(rig, SIGNAL(havePortError(errorType)), this, SLOT(receivePortError(errorType)));
         connect(rig, SIGNAL(haveStatusUpdate(networkStatus)), this, SLOT(receiveStatusUpdate(networkStatus)));
         connect(rig, SIGNAL(haveNetworkAudioLevels(networkAudioLevels)), this, SLOT(receiveNetworkAudioLevels(networkAudioLevels)));
         connect(rig, SIGNAL(requestRadioSelection(QList<radio_cap_packet>)), this, SLOT(radioSelection(QList<radio_cap_packet>)));
@@ -676,11 +686,17 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     return;
 }
 
-void wfmain::receiveSerialPortError(QString port, QString errorText)
+void wfmain::receivePortError(errorType err)
 {
-    qInfo(logSystem()) << "wfmain: received serial port error for port: " << port << " with message: " << errorText;
-    ui->statusBar->showMessage(QString("ERROR: using port ").append(port).append(": ").append(errorText), 10000);
-
+    if (err.alert) {
+        connectionHandler(false); // Force disconnect
+        QMessageBox::critical(this, err.device, err.message, QMessageBox::Ok);
+    }
+    else 
+    {
+        qInfo(logSystem()) << "wfmain: received error for device: " << err.device << " with message: " << err.message;
+        ui->statusBar->showMessage(QString("ERROR: using device ").append(err.device).append(": ").append(err.message), 10000);
+    }
     // TODO: Dialog box, exit, etc
 }
 
@@ -1414,7 +1430,11 @@ void wfmain::setupKeyShortcuts()
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
 
     keyDebug = new QShortcut(this);
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     keyDebug->setKey(Qt::CTRL + Qt::SHIFT + Qt::Key_D);
+#else
+    keyDebug->setKey(Qt::CTRL + Qt::Key_D);
+ #endif
     connect(keyDebug, SIGNAL(activated()), this, SLOT(on_debugBtn_clicked()));
 }
 
@@ -1910,7 +1930,7 @@ void wfmain::loadSettings()
 
     rigTemp->baudRate = prefs.serialPortBaud;
     rigTemp->civAddr = prefs.radioCIVAddr;
-    rigTemp->serialPort = prefs.serialPortBaud;
+    rigTemp->serialPort = prefs.serialPortRadio;
 
     QString guid = settings->value("GUID", "").toString();
     if (guid.isEmpty()) {
@@ -2375,16 +2395,14 @@ void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
     if (!serverConfig.rigs.isEmpty())
     {
         if (prefs.audioSystem == qtAudio) {
-            QVariant v = ui->serverRXAudioInputCombo->itemData(value);
-            serverConfig.rigs.first()->rxAudioSetup.port = v.value<QAudioDeviceInfo>();
+            serverConfig.rigs.first()->rxAudioSetup.port = audioDev->getInputDeviceInfo(value);
         }
         else {
-            serverConfig.rigs.first()->rxAudioSetup.portInt = ui->serverRXAudioInputCombo->itemData(value).toInt();
+            serverConfig.rigs.first()->rxAudioSetup.portInt = audioDev->getInputDeviceInt(value);
         }
 
-        serverConfig.rigs.first()->rxAudioSetup.name = ui->serverRXAudioInputCombo->itemText(value);
+        serverConfig.rigs.first()->rxAudioSetup.name = audioDev->getInputName(value);
     }
-
 
 }
 
@@ -2394,14 +2412,13 @@ void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
     if (!serverConfig.rigs.isEmpty())
     {
         if (prefs.audioSystem == qtAudio) {
-            QVariant v = ui->serverTXAudioOutputCombo->itemData(value);
-            serverConfig.rigs.first()->txAudioSetup.port = v.value<QAudioDeviceInfo>();
+            serverConfig.rigs.first()->txAudioSetup.port = audioDev->getOutputDeviceInfo(value);
         }
         else {
-            serverConfig.rigs.first()->txAudioSetup.portInt = ui->serverTXAudioOutputCombo->itemData(value).toInt();
+            serverConfig.rigs.first()->txAudioSetup.portInt = audioDev->getOutputDeviceInt(value);
         }
 
-        serverConfig.rigs.first()->txAudioSetup.name = ui->serverTXAudioOutputCombo->itemText(value);
+        serverConfig.rigs.first()->txAudioSetup.name = audioDev->getOutputName(value);
     }
 
 
@@ -3716,7 +3733,7 @@ void wfmain::sendRadioCommandLoop()
             if(haveRigCaps && !slowPollCmdQueue.empty())
             {
 
-                int nCmds = slowPollCmdQueue.size();
+                int nCmds = (int)slowPollCmdQueue.size();
                 cmds sCmd = slowPollCmdQueue[(slowCmdNum++)%nCmds];
                 doCmd(sCmd);
             }
@@ -3726,7 +3743,7 @@ void wfmain::sendRadioCommandLoop()
         // s-meter or other metering
         if(haveRigCaps && !periodicCmdQueue.empty())
         {
-            int nCmds = periodicCmdQueue.size();
+            int nCmds = (int)periodicCmdQueue.size();
             cmds pcmd = periodicCmdQueue[ (pCmdNum++)%nCmds ];
             doCmd(pcmd);
         }
@@ -5542,14 +5559,13 @@ void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
 {
 
     if (prefs.audioSystem == qtAudio) {
-        QVariant v = ui->audioOutputCombo->itemData(value);
-        rxSetup.port = v.value<QAudioDeviceInfo>();
+        rxSetup.port = audioDev->getOutputDeviceInfo(value);
     }
     else {
-        rxSetup.portInt = ui->audioOutputCombo->itemData(value).toInt();
+        rxSetup.portInt = audioDev->getOutputDeviceInt(value);
     }
 
-    rxSetup.name = ui->audioOutputCombo->itemText(value);
+    rxSetup.name = audioDev->getOutputName(value);
     qDebug(logGui()) << "Changed audio output to:" << rxSetup.name;
 }
 
@@ -5557,24 +5573,21 @@ void wfmain::on_audioInputCombo_currentIndexChanged(int value)
 {
 
     if (prefs.audioSystem == qtAudio) {
-        QVariant v = ui->audioInputCombo->itemData(value);
-        txSetup.port = v.value<QAudioDeviceInfo>();
+        txSetup.port = audioDev->getInputDeviceInfo(value);
     }
     else {
-        txSetup.portInt = ui->audioInputCombo->itemData(value).toInt();
+        txSetup.portInt = audioDev->getInputDeviceInt(value);
     }
 
-    txSetup.name = ui->audioInputCombo->itemText(value);
+    txSetup.name = audioDev->getInputName(value);
 
     qDebug(logGui()) << "Changed audio input to:" << txSetup.name;
 }
 
-void wfmain::on_audioSampleRateCombo_currentIndexChanged(QString text)
+void wfmain::on_audioSampleRateCombo_currentIndexChanged(int value)
 {
-    //udpPrefs.audioRXSampleRate = text.toInt();
-    //udpPrefs.audioTXSampleRate = text.toInt();
-    rxSetup.sampleRate=text.toInt();
-    txSetup.sampleRate=text.toInt();
+    rxSetup.sampleRate= ui->audioSampleRateCombo->itemText(value).toInt();
+    txSetup.sampleRate= ui->audioSampleRateCombo->itemText(value).toInt();
 }
 
 void wfmain::on_audioRXCodecCombo_currentIndexChanged(int value)
@@ -5637,26 +5650,14 @@ void wfmain::on_connectBtn_clicked()
 {
     this->rigStatus->setText(""); // Clear status
 
-    if (haveRigCaps) {
-        emit sendCloseComm();
-        ui->connectBtn->setText("Connect to Radio");
-        ui->audioSystemCombo->setEnabled(true);
-        ui->audioSystemServerCombo->setEnabled(true);
-        haveRigCaps = false;
-        rigName->setText("NONE");
+    if (ui->connectBtn->text() == "Connect to Radio") {
+        connectionHandler(true);
     }
-    else 
+    else
     {
-        emit sendCloseComm(); // Just in case there is a failed connection open.
-        if (ui->connectBtn->text() != "Cancel connection") {
-            openRig();
-        }
-        else {
-            ui->connectBtn->setText("Connect to Radio");
-            ui->audioSystemCombo->setEnabled(true);
-            ui->audioSystemServerCombo->setEnabled(true);
-        }
+        connectionHandler(false);
     }
+
     ui->connectBtn->clearFocus();
 }
 
@@ -6125,7 +6126,7 @@ void wfmain::on_tuneLockChk_clicked(bool checked)
     freqLock = checked;
 }
 
-void wfmain::on_serialDeviceListCombo_activated(const QString &arg1)
+void wfmain::on_serialDeviceListCombo_textActivated(const QString &arg1)
 {
     QString manualPort;
     bool ok;
@@ -6750,286 +6751,48 @@ void wfmain::on_radioStatusBtn_clicked()
 
 void wfmain::setAudioDevicesUI()
 {
-
-    // Enumerate audio devices, need to do before settings are loaded, 
-    // First clear all existing entries
     ui->audioInputCombo->blockSignals(true);
-    ui->audioOutputCombo->blockSignals(true);
-    ui->serverTXAudioOutputCombo->blockSignals(true);
-    ui->serverRXAudioInputCombo->blockSignals(true);
-
     ui->audioInputCombo->clear();
-    ui->audioOutputCombo->clear();
-    ui->serverTXAudioOutputCombo->clear();
-    ui->serverRXAudioInputCombo->clear();
-
-    qDebug(logSystem()) << "Finding audio devices, output=" << rxSetup.name << "input=" << txSetup.name;
-
-    int defaultAudioInputIndex = 0;
-    int defaultAudioOutputIndex = 0;
-    int numCharsIn = 0;
-    int numCharsOut = 0;
-    QFontMetrics fm(ui->audioInputCombo->font());
-
+    ui->audioInputCombo->addItems(audioDev->getInputs());
     ui->audioInputCombo->setCurrentIndex(-1);
-    ui->audioOutputCombo->setCurrentIndex(-1);
-    ui->serverRXAudioInputCombo->setCurrentIndex(-1);
-    ui->serverTXAudioOutputCombo->setCurrentIndex(-1);
-    QString defaultAudioInputName;
-    QString defaultAudioOutputName;
-
-    switch (prefs.audioSystem) 
-    {
-        case qtAudio:
-        {
-            Pa_Terminate();
-
-            int inCount = 0;
-            foreach(const QAudioDeviceInfo & deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioInput))
-            {
-                if (inCount == 0)
-                    defaultAudioInputName = QString(deviceInfo.deviceName().toLocal8Bit());
-#ifdef Q_OS_WIN
-                if (deviceInfo.realm() == "wasapi") {
-#endif
-                    ui->audioInputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
-                    ui->serverRXAudioInputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
-                    if (fm.boundingRect(deviceInfo.deviceName()).width() > numCharsIn)
-                        numCharsIn = fm.boundingRect(deviceInfo.deviceName()).width();
-#ifdef Q_OS_WIN
-                }
-#endif
-                inCount++;
-            }
-
-            int outCount = 0;
-            foreach(const QAudioDeviceInfo & deviceInfo, QAudioDeviceInfo::availableDevices(QAudio::AudioOutput))
-            {
-                if (outCount == 0)
-                    defaultAudioOutputName = QString(deviceInfo.deviceName().toLocal8Bit());
-#ifdef Q_OS_WIN
-                if (deviceInfo.realm() == "wasapi") {
-#endif
-                    ui->audioOutputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
-                    ui->serverTXAudioOutputCombo->addItem(deviceInfo.deviceName().toLocal8Bit(), QVariant::fromValue(deviceInfo));
-                    if (fm.boundingRect(deviceInfo.deviceName()).width() > numCharsOut)
-                        numCharsOut = fm.boundingRect(deviceInfo.deviceName()).width();
-
-#ifdef Q_OS_WIN
-                }
-#endif
-                outCount++;
-            }
-            break;
-        }
-        case portAudio:
-        {
-            PaError err;
-
-            err = Pa_Initialize();
-
-            if (err != paNoError)
-            {
-                qInfo(logAudio()) << "ERROR: Cannot initialize Portaudio";
-                return;
-            }
-
-            qInfo(logAudio()) << "PortAudio version: " << Pa_GetVersionInfo()->versionText;
-
-            int numDevices = Pa_GetDeviceCount();
-            qInfo(logAudio()) << "Pa_CountDevices returned" << numDevices;
-
-            const PaDeviceInfo* info;
-            for (int i = 0; i < numDevices; i++)
-            {
-                info = Pa_GetDeviceInfo(i);
-                if (info->maxInputChannels > 0) {
-                    qDebug(logAudio()) << (i == Pa_GetDefaultInputDevice() ? "*" : " ") << "(" << i << ") Input Device : " << QString(info->name).toLocal8Bit();
-
-                    ui->audioInputCombo->addItem(QString(info->name).toLocal8Bit(), i);
-                    ui->serverRXAudioInputCombo->addItem(QString(info->name).toLocal8Bit(), i);
-
-                    if (fm.boundingRect(QString(info->name)).width() > numCharsIn)
-                        numCharsIn = fm.boundingRect(QString(info->name)).width();
-
-                    if (i == Pa_GetDefaultInputDevice()) {
-                        defaultAudioInputName = info->name;
-                    }
-                }
-                if (info->maxOutputChannels > 0) {
-                    qDebug(logAudio()) << (i == Pa_GetDefaultOutputDevice() ? "*" : " ") << "(" << i << ") Output Device  : " << QString(info->name).toLocal8Bit();
-                    ui->audioOutputCombo->addItem(QString(info->name).toLocal8Bit(), i);
-                    ui->serverTXAudioOutputCombo->addItem(QString(info->name).toLocal8Bit(), i);
-
-                    if (fm.boundingRect(QString(info->name)).width() > numCharsOut)
-                        numCharsOut = fm.boundingRect(QString(info->name)).width();
-
-                    if (i == Pa_GetDefaultOutputDevice()) {
-                        defaultAudioOutputName = info->name;
-                    }
-                }
-            }
-            break;
-        }
-        case rtAudio:
-        {
-            Pa_Terminate();
-
-#if defined(Q_OS_LINUX)
-            RtAudio* audio = new RtAudio(RtAudio::Api::LINUX_ALSA);
-#elif defined(Q_OS_WIN)
-            RtAudio* audio = new RtAudio(RtAudio::Api::WINDOWS_WASAPI);
-#elif defined(Q_OS_MACX)
-            RtAudio* audio = new RtAudio(RtAudio::Api::MACOSX_CORE);
-#endif
-
-
-            // Enumerate audio devices, need to do before settings are loaded.
-            std::map<int, std::string> apiMap;
-            apiMap[RtAudio::MACOSX_CORE] = "OS-X Core Audio";
-            apiMap[RtAudio::WINDOWS_ASIO] = "Windows ASIO";
-            apiMap[RtAudio::WINDOWS_DS] = "Windows DirectSound";
-            apiMap[RtAudio::WINDOWS_WASAPI] = "Windows WASAPI";
-            apiMap[RtAudio::UNIX_JACK] = "Jack Client";
-            apiMap[RtAudio::LINUX_ALSA] = "Linux ALSA";
-            apiMap[RtAudio::LINUX_PULSE] = "Linux PulseAudio";
-            apiMap[RtAudio::LINUX_OSS] = "Linux OSS";
-            apiMap[RtAudio::RTAUDIO_DUMMY] = "RtAudio Dummy";
-
-            std::vector< RtAudio::Api > apis;
-            RtAudio::getCompiledApi(apis);
-
-            qInfo(logAudio()) << "RtAudio Version " << QString::fromStdString(RtAudio::getVersion());
-
-            qInfo(logAudio()) << "Compiled APIs:";
-            for (unsigned int i = 0; i < apis.size(); i++) {
-                qInfo(logAudio()) << "  " << QString::fromStdString(apiMap[apis[i]]);
-            }
-
-            RtAudio::DeviceInfo info;
-
-            qInfo(logAudio()) << "Current API: " << QString::fromStdString(apiMap[audio->getCurrentApi()]);
-
-            unsigned int devices = audio->getDeviceCount();
-            qInfo(logAudio()) << "Found " << devices << " audio device(s) *=default";
-
-            for (unsigned int i = 1; i < devices; i++) {
-                info = audio->getDeviceInfo(i);
-                if (info.inputChannels > 0) {
-                    qInfo(logAudio()) << (info.isDefaultInput ? "*" : " ") << "(" << i << ") Input Device  : " << QString::fromStdString(info.name).toLocal8Bit();
-                    ui->audioInputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
-                    ui->serverRXAudioInputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
-
-                    if (fm.boundingRect(QString::fromStdString(info.name)).width() > numCharsIn)
-                        numCharsIn = fm.boundingRect(QString::fromStdString(info.name)).width();
-
-                    if (info.isDefaultInput) {
-                        defaultAudioInputName = QString::fromStdString(info.name).toLocal8Bit();
-                    }
-                }
-                if (info.outputChannels > 0) {
-                    qInfo(logAudio()) << (info.isDefaultOutput ? "*" : " ") << "(" << i << ") Output Device : " << QString::fromStdString(info.name).toLocal8Bit();
-                    ui->audioOutputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
-                    ui->serverTXAudioOutputCombo->addItem(QString::fromStdString(info.name).toLocal8Bit(), i);
-
-                    if (fm.boundingRect(QString::fromStdString(info.name)).width() > numCharsOut)
-                        numCharsOut = fm.boundingRect(QString::fromStdString(info.name)).width();
-
-                    if (info.isDefaultOutput) {
-                        defaultAudioOutputName = QString::fromStdString(info.name).toLocal8Bit();
-                    }
-                }
-            }
-
-            delete audio;
-            break;
-        }
-
-    }
-
-    // Make the audio comboboxes expand when clicked (only needed for Windows)
-    ui->audioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsIn+30));
-    ui->audioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsOut+30));
-    ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsOut+30));
-    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(numCharsIn+30));
-
-
-    // Stop blocking signals so we can set the current values
+    ui->audioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn() + 30));
     ui->audioInputCombo->blockSignals(false);
-    ui->audioOutputCombo->blockSignals(false);
-    ui->serverTXAudioOutputCombo->blockSignals(false);
-    ui->serverRXAudioInputCombo->blockSignals(false);
+    ui->audioInputCombo->setCurrentIndex(audioDev->findInput("Client", txSetup.name));
 
+    ui->audioOutputCombo->blockSignals(true);
+    ui->audioOutputCombo->clear();
+    ui->audioOutputCombo->addItems(audioDev->getOutputs());
+    ui->audioOutputCombo->setCurrentIndex(-1);
+    ui->audioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
+    ui->audioOutputCombo->blockSignals(false);
+    ui->audioOutputCombo->setCurrentIndex(audioDev->findOutput("Client", rxSetup.name));
+
+    ui->serverTXAudioOutputCombo->blockSignals(true);
+    ui->serverTXAudioOutputCombo->clear();
+    ui->serverTXAudioOutputCombo->addItems(audioDev->getOutputs());
+    ui->serverTXAudioOutputCombo->setCurrentIndex(-1);
+    ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
+    ui->serverTXAudioOutputCombo->blockSignals(false);
+
+    ui->serverRXAudioInputCombo->blockSignals(true);
+    ui->serverRXAudioInputCombo->clear();
+    ui->serverRXAudioInputCombo->addItems(audioDev->getInputs());
+    ui->serverRXAudioInputCombo->setCurrentIndex(-1);
+    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn()+30));
+    ui->serverRXAudioInputCombo->blockSignals(false);
 
     rxSetup.type = prefs.audioSystem;
     txSetup.type = prefs.audioSystem;
 
-    int audioInputIndex = ui->audioInputCombo->findText(txSetup.name);
-    if (audioInputIndex != -1) {
-        qInfo(logGui()) << "Found Audio Input Device: " << txSetup.name;
-        ui->audioInputCombo->setCurrentIndex(audioInputIndex);
-    }
-    else {
-        qWarning(logGui()) << "Audio Input Device: " << txSetup.name << "Not Found, trying to select default";
-        audioInputIndex = ui->audioInputCombo->findText(defaultAudioInputName);
-        if (audioInputIndex != -1) {
-            ui->audioInputCombo->setCurrentIndex(audioInputIndex);
-        }
-        else {
-            qWarning(logGui()) << "Unable to select default input device,"<< defaultAudioInputName << " help.....";
-        }
-
-    }
-
-    int audioOutputIndex = ui->audioOutputCombo->findText(rxSetup.name.toLocal8Bit());
-    if (audioOutputIndex != -1) {
-        qInfo(logGui()) << "Found Audio Output Device: " << rxSetup.name.toLocal8Bit();
-        ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
-    }
-    else {
-        qWarning(logGui()) << "Audio output Device: " << rxSetup.name << "Not Found, trying to select default";
-        audioOutputIndex = ui->audioOutputCombo->findText(defaultAudioOutputName.toLocal8Bit());
-        if (audioOutputIndex != -1) {
-            ui->audioOutputCombo->setCurrentIndex(audioOutputIndex);
-        }
-        else {
-            qWarning(logGui()) << "Unable to select default output device," << defaultAudioOutputName.toLocal8Bit() << " help.....";
-        }
-    }
-
     if (!serverConfig.rigs.isEmpty())
-
     {
-        if (serverConfig.enabled)
-            qInfo(logGui()) << "Got Server Audio Input: " << serverConfig.rigs.first()->rxAudioSetup.name.toLocal8Bit();
-
         serverConfig.rigs.first()->rxAudioSetup.type = prefs.audioSystem;
         serverConfig.rigs.first()->txAudioSetup.type = prefs.audioSystem;
 
-        ui->serverRXAudioInputCombo->setCurrentIndex(defaultAudioInputIndex);
-        int serverAudioInputIndex = ui->serverRXAudioInputCombo->findText(serverConfig.rigs.first()->rxAudioSetup.name.toLocal8Bit());
-        if (serverAudioInputIndex != -1) {
-            ui->serverRXAudioInputCombo->setCurrentIndex(serverAudioInputIndex);
-        }
-        else {
-            if (serverConfig.enabled)
-                qWarning(logGui()) << "Server audio input NOT FOUND " << serverConfig.rigs.first()->rxAudioSetup.name.toLocal8Bit() << "not selecting default";
-        }
-
-        if (serverConfig.enabled)
-            qInfo(logGui()) << "Got Server Audio Output: " << serverConfig.rigs.first()->txAudioSetup.name.toLocal8Bit();
-
-        ui->serverTXAudioOutputCombo->setCurrentIndex(defaultAudioOutputIndex);
-        int serverAudioOutputIndex = ui->serverTXAudioOutputCombo->findText(serverConfig.rigs.first()->txAudioSetup.name.toLocal8Bit());
-        if (serverAudioOutputIndex != -1) {
-            ui->serverTXAudioOutputCombo->setCurrentIndex(serverAudioOutputIndex);
-        }
-        else {
-            if (serverConfig.enabled)
-                qWarning(logGui()) << "Server audio output NOT FOUND " << serverConfig.rigs.first()->txAudioSetup.name.toLocal8Bit() << "not selecting default";
-        }
-        
+        ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig.rigs.first()->rxAudioSetup.name));
+        ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig.rigs.first()->txAudioSetup.name));
     }
+
 
     qDebug(logSystem()) << "Audio devices done.";
 }
@@ -7037,7 +6800,8 @@ void wfmain::setAudioDevicesUI()
 void wfmain::on_audioSystemCombo_currentIndexChanged(int value) 
 {
     prefs.audioSystem = static_cast<audioType>(value);
-    setAudioDevicesUI(); // Force all audio devices to update
+    audioDev->setAudioType(prefs.audioSystem);
+    audioDev->enumerate();
     ui->audioSystemServerCombo->blockSignals(true);
     ui->audioSystemServerCombo->setCurrentIndex(value);
     ui->audioSystemServerCombo->blockSignals(false);
@@ -7046,7 +6810,8 @@ void wfmain::on_audioSystemCombo_currentIndexChanged(int value)
 void wfmain::on_audioSystemServerCombo_currentIndexChanged(int value)
 {
     prefs.audioSystem = static_cast<audioType>(value);
-    setAudioDevicesUI(); // Force all audio devices to update
+    audioDev->setAudioType(prefs.audioSystem);
+    audioDev->enumerate();
     ui->audioSystemCombo->blockSignals(true);
     ui->audioSystemCombo->setCurrentIndex(value);
     ui->audioSystemCombo->blockSignals(false);
@@ -8290,5 +8055,30 @@ void wfmain::changePollTiming(int timing_ms, bool setUI)
         ui->pollTimeMsSpin->blockSignals(true);
         ui->pollTimeMsSpin->setValue(timing_ms);
         ui->pollTimeMsSpin->blockSignals(false);
+    }
+}
+
+void wfmain::connectionHandler(bool connect) 
+{
+
+    if (!connect) {
+        emit sendCloseComm();
+        ui->connectBtn->setText("Connect to Radio");
+        ui->audioSystemCombo->setEnabled(true);
+        ui->audioSystemServerCombo->setEnabled(true);
+        haveRigCaps = false;
+        rigName->setText("NONE");
+    }
+    else
+    {
+        emit sendCloseComm(); // Just in case there is a failed connection open.
+        if (ui->connectBtn->text() != "Cancel connection") {
+            openRig();
+        }
+        else {
+            ui->connectBtn->setText("Connect to Radio");
+            ui->audioSystemCombo->setEnabled(true);
+            ui->audioSystemServerCombo->setEnabled(true);
+        }
     }
 }

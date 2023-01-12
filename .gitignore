@@ -8,3 +8,5 @@ wfserver-debug
 wfview-release
 wfserver-release
 ui_*
+portaudio_x86.dll
+qcustomplot2.dll

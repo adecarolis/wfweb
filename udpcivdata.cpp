@@ -93,7 +93,7 @@ void udpCivData::send(QByteArray d)
     //qInfo(logUdp()) << "Sending: (" << d.length() << ") " << d;
     data_packet p;
     memset(p.packet, 0x0, sizeof(p)); // We can't be sure it is initialized with 0x00!
-    p.len = sizeof(p) + d.length();
+    p.len = (quint32)sizeof(p) + d.length();
     p.sentid = myId;
     p.rcvdid = remoteId;
     p.reply = (char)0xc1;
