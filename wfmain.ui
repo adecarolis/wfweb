@@ -5131,7 +5131,7 @@
                 <height>22</height>
                </rect>
               </property>
-              <layout class="QHBoxLayout" name="horizontalLayout_45">
+              <layout class="QHBoxLayout" name="horizontalLayout_451">
                <item>
                 <widget class="QCheckBox" name="clusterSkimmerSpotsEnable">
                  <property name="text">
@@ -5214,7 +5214,7 @@
                  </widget>
                 </item>
                 <item>
-                 <spacer name="horizontalSpacer_36">
+                 <spacer name="horizontalSpacer_361">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
                   </property>
