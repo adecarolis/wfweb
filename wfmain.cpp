@@ -3509,7 +3509,7 @@ void wfmain::doCmd(commandtype cmddata)
         case cmdGetBandStackReg:
         {
             char band = (*std::static_pointer_cast<char>(data));
-            bandStkBand = rigCaps.bsr[band]; // 23cm Needs fixing
+            bandStkBand = rigCaps.bsr[(availableBands)band]; // 23cm Needs fixing
             bandStkRegCode = ui->bandStkPopdown->currentIndex() + 1;
             emit getBandStackReg(bandStkBand, bandStkRegCode);
             break;

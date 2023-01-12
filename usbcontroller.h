@@ -11,8 +11,9 @@
 #include <QColor>
 #include <QVector>
 
-#if defined(USB_CONTROLLER)
+#if defined(USB_CONTROLLER) && QT_VERSION < QT_VERSION_CHECK(6,0,0)
 #include <QGamepad>
+#endif
 
 #ifndef Q_OS_WIN
 #include "hidapi/hidapi.h"
@@ -23,7 +24,6 @@
 #ifndef Q_OS_WIN
 //Headers needed for sleeping.
 #include <unistd.h>
-#endif
 #endif
 
 // Include these so we have the various enums
@@ -122,7 +122,9 @@ private:
     QString product="";
     QString manufacturer="";
     QString serial="<none>";
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QGamepad* gamepad=Q_NULLPTR;
+#endif
     void buttonState(QString but, bool val);
     void buttonState(QString but, double val);
 

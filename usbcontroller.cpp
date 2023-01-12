@@ -20,11 +20,13 @@ usbController::~usbController()
     qInfo(logUsbControl) << "Ending usbController()";
     hid_close(handle);
     hid_exit();
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     if (gamepad != Q_NULLPTR)
     {
         delete gamepad;
         gamepad = Q_NULLPTR;
     }
+#endif
 }
 
 void usbController::init()
@@ -78,7 +80,7 @@ void usbController::run()
         QTimer::singleShot(1000, this, SLOT(run()));
         return;
     }
-
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     if (gamepad == Q_NULLPTR) {
         auto gamepads = QGamepadManager::instance()->connectedGamepads();
         if (!gamepads.isEmpty()) {
@@ -182,7 +184,7 @@ void usbController::run()
         delete gamepad;
         gamepad = Q_NULLPTR;
     }
-
+#endif
 
     handle = hid_open(0x0b33, 0x0020, NULL);
     if (!handle) {
