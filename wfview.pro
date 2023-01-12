@@ -9,7 +9,14 @@ QT       += core gui serialport network multimedia xml
 #QT += sql
 #DEFINES += USESQL
 
+#Uncomment The following line to enable USB controllers (Shuttle/RC-28 etc.)
+#DEFINES += USB_CONTROLLERS
+
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
+
+contains(DEFINES,USB_CONTROLLER){
+    lessThan(QT_MAJOR_VERSION, 6): QT += gamepad
+}
 
 TARGET = wfview
 TEMPLATE = app
@@ -17,14 +24,6 @@ TEMPLATE = app
 DEFINES += WFVIEW_VERSION=\\\"1.56\\\"
 
 DEFINES += BUILD_WFVIEW
-
-#Uncomment The following 6 lines to enable USB controllers (Shuttle/RC-28 etc.)
-#DEFINES += USB_CONTROLLERS
-#linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb
-#macx:LIBS += -framework CoreAudio -framework CoreFoundation -lhidapi
-#win32:INCLUDEPATH += ../hidapi/hidapi
-#win32:SOURCES += ../hidapi/windows/hid.c
-#QT += gamepad
 
 CONFIG(debug, release|debug) {
     # For Debug builds only:
@@ -175,6 +174,13 @@ CONFIG(debug, release|debug) {
 linux:LIBS += -L./ -l$$QCPLIB -lopus
 !linux:LIBS += -l$$QCPLIB -lopus
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus 
+
+contains(DEFINES,USB_CONTROLLER){
+    linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb
+    macx:LIBS += -framework CoreAudio -framework CoreFoundation -lhidapi
+    win32:INCLUDEPATH += ../hidapi/hidapi
+    win32:SOURCES += ../hidapi/windows/hid.c
+}
 
 !linux:INCLUDEPATH += ../qcustomplot
 !linux:INCLUDEPATH += ../opus/include
