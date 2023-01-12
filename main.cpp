@@ -138,9 +138,9 @@ int main(int argc, char *argv[])
 #ifdef BUILD_WFSERVER
 
     // Set the logging file before doing anything else.
-    logFile.reset(new QFile(logFilename));
+    m_logFile.reset(new QFile(logFilename));
     // Open the file logging
-    logFile.data()->open(QFile::WriteOnly | QFile::Truncate | QFile::Text);
+    m_logFile.data()->open(QFile::WriteOnly | QFile::Truncate | QFile::Text);
     // Set handler
     qInstallMessageHandler(messageHandler);
 
