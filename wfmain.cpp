@@ -4594,8 +4594,7 @@ void wfmain::handlePlotClick(QMouseEvent* me)
     QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
     int leftPix = (int)passbandIndicator->left->pixelPosition().x();
     int rightPix = (int)passbandIndicator->right->pixelPosition().x();
-    if (((rectItem != nullptr) && ((me->pos().x() > leftPix - 5) && (me->pos().x() <= leftPix))) ||
-        (((me->pos().x() >= rightPix) && (me->pos().x() < rightPix + 5)))) {
+    if (me->button() == Qt::LeftButton && rectItem != nullptr && (me->pos().x() <= leftPix || me->pos().x() >= rightPix)) {
         resizingPassband = true;
     }
     
@@ -4666,8 +4665,7 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
     QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
     int leftPix = (int)passbandIndicator->left->pixelPosition().x();
     int rightPix = (int)passbandIndicator->right->pixelPosition().x();
-    if (((rectItem != nullptr) && ((me->pos().x() > leftPix - 5) && (me->pos().x() <= leftPix))) ||
-        (((me->pos().x() >= rightPix) && (me->pos().x() < rightPix + 5)))) {
+    if (rectItem != nullptr && (me->pos().x() <= leftPix || me->pos().x() >= rightPix)) {
         setCursor(Qt::SizeHorCursor);
     }
     else if (resizingPassband) {
