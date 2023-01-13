@@ -375,9 +375,9 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveDTCS(quint16,bool,bool)), rpt, SLOT(handleDTCS(quint16,bool,bool)));
     connect(rig, SIGNAL(haveRptAccessMode(rptAccessTxRx)), rpt, SLOT(handleRptAccessMode(rptAccessTxRx)));
 
-
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
     connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
+    connect(this, SIGNAL(setPassband(quint16)), rig, SLOT(setPassband(quint16)));
     connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(this, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(this, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
@@ -3514,6 +3514,12 @@ void wfmain::doCmd(commandtype cmddata)
             emit getBandStackReg(bandStkBand, bandStkRegCode);
             break;
         }
+        case cmdSetPassband:
+        {
+            quint16 pass = (*std::static_pointer_cast<quint16>(data));
+            emit setPassband(pass);
+            break;
+        }
         default:
             doCmd(cmd);
             break;
@@ -3879,6 +3885,14 @@ void wfmain::issueCmd(cmds cmd, unsigned char c)
     delayedCmdQue.push_back(cmddata);
 }
 
+void wfmain::issueCmd(cmds cmd, quint16 c)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<quint16>(new quint16(c));
+    delayedCmdQue.push_back(cmddata);
+}
+
 void wfmain::issueCmdUniquePriority(cmds cmd, bool b)
 {
     commandtype cmddata;
@@ -3911,6 +3925,15 @@ void wfmain::issueCmdUniquePriority(cmds cmd, freqt f)
     commandtype cmddata;
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<freqt>(new freqt(f));
+    delayedCmdQue.push_front(cmddata);
+    removeSimilarCommand(cmd);
+}
+
+void wfmain::issueCmdUniquePriority(cmds cmd, quint16 c)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<quint16>(new quint16(c));
     delayedCmdQue.push_front(cmddata);
     removeSimilarCommand(cmd);
 }
@@ -4568,6 +4591,13 @@ void wfmain::handlePlotClick(QMouseEvent* me)
 {
     QCPAbstractItem* item = plot->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+    QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
+    if (rectItem != nullptr && ((me->pos().x()) == (int)passbandIndicator->right->pixelPosition().x() ||
+        (me->pos().x()) == (int)passbandIndicator->left->pixelPosition().x())) 
+    {
+        resizingPassband = true;
+    }
+    
     if (me->button() == Qt::RightButton && textItem != nullptr) {
         QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
         if (spot != clusterSpots.end() && spot.key() == textItem->text()) {
@@ -4623,12 +4653,43 @@ void wfmain::handlePlotMouseRelease(QMouseEvent* me)
         qInfo(logGui()) << "Mouse release delta: " << delta;
 
     }
+    if (resizingPassband) {
+        resizingPassband = false;
+    }
 }
 
 void wfmain::handlePlotMouseMove(QMouseEvent *me)
 {
     QCPAbstractItem* item = plot->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
+    QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
+    if (rectItem != nullptr && ((me->pos().x()) == (int)passbandIndicator->right->pixelPosition().x() ||
+        (me->pos().x()) == (int)passbandIndicator->left->pixelPosition().x())) {
+        setCursor(Qt::SizeHorCursor);
+    }
+    else if (!resizingPassband) {
+        setCursor(Qt::ArrowCursor);
+    }
+    else if (resizingPassband) {
+        // We are currently resizing the passband.
+        double left = passbandIndicator->topLeft->coords().x();
+        double right = passbandIndicator->bottomRight->coords().x();
+        double delta = plot->xAxis->pixelToCoord(me->pos().x());
+        //passBand = delta - left;
+
+        if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modePSK_R) {
+            passBand = right - delta;
+        }
+        else if (currentModeInfo.mk == modeUSB || currentModeInfo.mk == modePSK) {
+            passBand = delta - left;
+        }
+        else {
+            passBand = delta - left;
+        }
+
+        issueCmdUniquePriority(cmdSetPassband, (quint16)(passBand * 1000000));
+    }
+
     if(me->buttons() == Qt::LeftButton && textItem==nullptr && prefs.clickDragTuningEnable)
     {
         double delta = plot->xAxis->pixelToCoord(me->pos().x()) - mousePressFreq;
@@ -5962,17 +6023,6 @@ void wfmain::receiveLANGain(unsigned char level)
 
 void wfmain::receivePassband(quint16 pass)
 {
-/* int calc;
-    if (currentModeInfo.mk == modeAM) {
-        calc = 200 + (pass * 200);
-    }
-    else if (pass <= 10)
-    {
-        calc = 50 + (pass * 50);
-    }
-    else {
-        calc = 600 + ((pass - 10) * 100);
-    } */
     passBand = (double)(pass / 1000000.0);
 }
 
