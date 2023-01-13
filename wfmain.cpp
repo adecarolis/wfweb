@@ -4592,9 +4592,10 @@ void wfmain::handlePlotClick(QMouseEvent* me)
     QCPAbstractItem* item = plot->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
     QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
-    if (rectItem != nullptr && ((me->pos().x()) == (int)passbandIndicator->right->pixelPosition().x() ||
-        (me->pos().x()) == (int)passbandIndicator->left->pixelPosition().x())) 
-    {
+    int leftPix = (int)passbandIndicator->left->pixelPosition().x();
+    int rightPix = (int)passbandIndicator->right->pixelPosition().x();
+    if (rectItem != nullptr && (me->pos().x() > leftPix - 5 && me->pos().x() <= leftPix) ||
+        (me->pos().x() >= rightPix && me->pos().x() < rightPix + 5)) {
         resizingPassband = true;
     }
     
@@ -4663,31 +4664,29 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
     QCPAbstractItem* item = plot->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
     QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
-    if (rectItem != nullptr && ((me->pos().x()) == (int)passbandIndicator->right->pixelPosition().x() ||
-        (me->pos().x()) == (int)passbandIndicator->left->pixelPosition().x())) {
+    int leftPix = (int)passbandIndicator->left->pixelPosition().x();
+    int rightPix = (int)passbandIndicator->right->pixelPosition().x();
+    if (rectItem != nullptr && (me->pos().x() > leftPix - 5 && me->pos().x() <= leftPix) ||
+        (me->pos().x() >= rightPix && me->pos().x() < rightPix + 5)) {
         setCursor(Qt::SizeHorCursor);
-    }
-    else if (!resizingPassband) {
-        setCursor(Qt::ArrowCursor);
     }
     else if (resizingPassband) {
         // We are currently resizing the passband.
         double left = passbandIndicator->topLeft->coords().x();
         double right = passbandIndicator->bottomRight->coords().x();
         double delta = plot->xAxis->pixelToCoord(me->pos().x());
-        //passBand = delta - left;
 
-        if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modePSK_R) {
+        if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modePSK_R || delta < freq.MHzDouble) {
             passBand = right - delta;
         }
-        else if (currentModeInfo.mk == modeUSB || currentModeInfo.mk == modePSK) {
-            passBand = delta - left;
-        }
-        else {
+        else if (currentModeInfo.mk == modeUSB || currentModeInfo.mk == modePSK || delta >= freq.MHzDouble) {
             passBand = delta - left;
         }
 
         issueCmdUniquePriority(cmdSetPassband, (quint16)(passBand * 1000000));
+    }
+    else {
+        setCursor(Qt::ArrowCursor);
     }
 
     if(me->buttons() == Qt::LeftButton && textItem==nullptr && prefs.clickDragTuningEnable)
