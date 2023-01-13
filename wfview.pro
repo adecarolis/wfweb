@@ -10,11 +10,11 @@ QT       += core gui serialport network multimedia xml
 #DEFINES += USESQL
 
 #Uncomment The following line to enable USB controllers (Shuttle/RC-28 etc.)
-#DEFINES += USB_CONTROLLERS
+#DEFINES += USB_CONTROLLER
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
-contains(DEFINES,USB_CONTROLLERS){
+contains(DEFINES,USB_CONTROLLER){
     lessThan(QT_MAJOR_VERSION, 6): QT += gamepad
 }
 
@@ -175,7 +175,7 @@ linux:LIBS += -L./ -l$$QCPLIB -lopus
 !linux:LIBS += -l$$QCPLIB -lopus
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus 
 
-contains(DEFINES,USB_CONTROLLERS){
+contains(DEFINES,USB_CONTROLLER){
     linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb
     macx:LIBS += -framework CoreAudio -framework CoreFoundation -lhidapi
     win32:INCLUDEPATH += ../hidapi/hidapi
