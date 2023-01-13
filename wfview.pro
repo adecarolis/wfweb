@@ -14,7 +14,7 @@ QT       += core gui serialport network multimedia xml
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
-contains(DEFINES,USB_CONTROLLER){
+contains(DEFINES,USB_CONTROLLERS){
     lessThan(QT_MAJOR_VERSION, 6): QT += gamepad
 }
 
@@ -175,7 +175,7 @@ linux:LIBS += -L./ -l$$QCPLIB -lopus
 !linux:LIBS += -l$$QCPLIB -lopus
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus 
 
-contains(DEFINES,USB_CONTROLLER){
+contains(DEFINES,USB_CONTROLLERS){
     linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb
     macx:LIBS += -framework CoreAudio -framework CoreFoundation -lhidapi
     win32:INCLUDEPATH += ../hidapi/hidapi

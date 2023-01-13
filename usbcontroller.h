@@ -15,10 +15,12 @@
 #include <QGamepad>
 #endif
 
+#if defined(USB_CONTROLLER)
 #ifndef Q_OS_WIN
 #include "hidapi/hidapi.h"
 #else
 #include "hidapi.h"
+#endif
 #endif
 
 #ifndef Q_OS_WIN
