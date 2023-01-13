@@ -49,6 +49,8 @@ The following highlights are in this 1.51-release ince v1.50:
     		Various audio fixes (needs checking with Qt5)
     		Fix portaudio
     		Fix for QTAudio when using QT6 and above.
++1.57		Merged current shuttle code in. Note that it does
+                not work yet and is commented out in the build process
 	
 
 
