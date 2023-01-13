@@ -897,8 +897,6 @@ void rigCommander::setPassband(quint16 pass)
         calc = quint16((pass / 50) - 1);
     }
 
-    qDebug() << "Setting rig passband" << pass << "Sending" << calc;
-
     char tens = (calc  / 10);
     char units = (calc - (10 * tens));
 
@@ -4695,7 +4693,7 @@ void rigCommander::stateUpdated()
                 if (i.value()._valid) {
                     setDataMode(state.getBool(DATAMODE), state.getChar(FILTER));
                 }
-                getDuplexMode();
+                getDataMode();
                 break;
             case ANTENNA:
             case RXANTENNA:

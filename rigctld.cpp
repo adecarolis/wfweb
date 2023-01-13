@@ -663,20 +663,64 @@ void rigCtlClient::socketReadyRead()
 
             if (passband > 0)
             {
-                if (passband > 1800 && passband < 2700) {
-                    width = 1;
-                }
-                else if (passband <= 1800)
-                {
-                    width = 2;
-                }
-                else if (passband >= 2700)
-                {
-                    width = 0;
+                switch ((mode_kind)getMode(mode)) {
+
+                case modeAM:
+                    if (passband > 6000) {
+                        width = 1;
+                    }
+                    else if (passband > 3000 && passband <= 6000) {
+                        width = 2;
+                    }
+                    else if (passband <= 3000) {
+                        width = 3;
+                    }
+                    break;
+
+                case modeFM:
+                    if (passband > 10000) {
+                        width = 1;
+                    }
+                    else if (passband > 7000 && passband <= 10000) {
+                        width = 2;
+                    }
+                    else if (passband <= 7000) {
+                        width = 3;
+                    }
+                    break;
+
+                case modeCW:
+                case modeRTTY:
+                case modeCW_R:
+                case modeRTTY_R:
+                case modePSK:
+                    if (passband > 500) {
+                        width = 1;
+                    }
+                    else if (passband > 250 && passband <= 500) {
+                        width = 2;
+                    }
+                    else if (passband <= 250) {
+                        width = 3;
+                    }
+                    break;
+
+                default:
+                    if (passband > 2400) {
+                        width = 1;
+                    }
+                    else if (passband > 1800 && passband <= 2400) {
+                        width = 2;
+                    }
+                    else if (passband <= 1800) {
+                        width = 3;
+                    }
+                    break;
+
                 }
                 rigState->set(FILTER, width, true);
                 rigState->set(PASSBAND, passband, true);
-            }            
+            }
         }
         else if (command[0] == "j" || command[0] == "get_rit")
         {
