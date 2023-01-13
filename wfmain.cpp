@@ -6019,7 +6019,7 @@ void wfmain::receivePassband(quint16 pass)
 {
     if (passBand != (double)(pass / 1000000.0)) {
         passBand = (double)(pass / 1000000.0);
-        showStatusBarText(QString("Passband %1 Hz").arg(pass));
+        showStatusBarText(QString("IF Filter Passband %1 Hz").arg(pass));
     }
 }
 
