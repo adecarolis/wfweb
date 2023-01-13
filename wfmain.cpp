@@ -6017,7 +6017,10 @@ void wfmain::receiveLANGain(unsigned char level)
 
 void wfmain::receivePassband(quint16 pass)
 {
-    passBand = (double)(pass / 1000000.0);
+    if (passBand != (double)(pass / 1000000.0)) {
+        passBand = (double)(pass / 1000000.0);
+        showStatusBarText(QString("Passband %1 Hz").arg(pass));
+    }
 }
 
 void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
