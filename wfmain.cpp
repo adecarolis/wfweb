@@ -4594,8 +4594,8 @@ void wfmain::handlePlotClick(QMouseEvent* me)
     QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
     int leftPix = (int)passbandIndicator->left->pixelPosition().x();
     int rightPix = (int)passbandIndicator->right->pixelPosition().x();
-    if ((rectItem != nullptr) && ((me->pos().x() > leftPix - 5) && (me->pos().x() <= leftPix)) ||
-        ((me->pos().x() >= rightPix) && (me->pos().x() < rightPix + 5))) {
+    if (((rectItem != nullptr) && ((me->pos().x() > leftPix - 5) && (me->pos().x() <= leftPix))) ||
+        (((me->pos().x() >= rightPix) && (me->pos().x() < rightPix + 5)))) {
         resizingPassband = true;
     }
     
@@ -4666,8 +4666,8 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
     QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
     int leftPix = (int)passbandIndicator->left->pixelPosition().x();
     int rightPix = (int)passbandIndicator->right->pixelPosition().x();
-    if ((rectItem != nullptr) && ((me->pos().x() > leftPix - 5) && (me->pos().x() <= leftPix)) ||
-        ((me->pos().x() >= rightPix) && (me->pos().x() < rightPix + 5))) {
+    if (((rectItem != nullptr) && ((me->pos().x() > leftPix - 5) && (me->pos().x() <= leftPix))) ||
+        (((me->pos().x() >= rightPix) && (me->pos().x() < rightPix + 5)))) {
         setCursor(Qt::SizeHorCursor);
     }
     else if (resizingPassband) {
@@ -4675,15 +4675,15 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
         double left = passbandIndicator->topLeft->coords().x();
         double right = passbandIndicator->bottomRight->coords().x();
         double delta = plot->xAxis->pixelToCoord(me->pos().x());
-
+        double pb;
         if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modePSK_R || delta < freq.MHzDouble) {
-            passBand = right - delta;
+            pb = right - delta;
         }
         else if (currentModeInfo.mk == modeUSB || currentModeInfo.mk == modePSK || delta >= freq.MHzDouble) {
-            passBand = delta - left;
+            pb = delta - left;
         }
 
-        issueCmdUniquePriority(cmdSetPassband, (quint16)(passBand * 1000000));
+        issueCmdUniquePriority(cmdSetPassband, (quint16)(pb * 1000000));
     }
     else {
         setCursor(Qt::ArrowCursor);
