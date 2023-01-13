@@ -4672,15 +4672,12 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
     }
     else if (resizingPassband) {
         // We are currently resizing the passband.
-        double left = passbandIndicator->topLeft->coords().x();
-        double right = passbandIndicator->bottomRight->coords().x();
-        double delta = plot->xAxis->pixelToCoord(me->pos().x());
-        double pb;
-        if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modePSK_R || delta < freq.MHzDouble) {
-            pb = right - delta;
+        double pb=0.0;
+        if (currentModeInfo.mk == modeUSB || currentModeInfo.mk == modePSK || plot->xAxis->pixelToCoord(me->pos().x()) >= freq.MHzDouble) {
+            pb = plot->xAxis->pixelToCoord(me->pos().x()) - passbandIndicator->topLeft->coords().x();
         }
-        else if (currentModeInfo.mk == modeUSB || currentModeInfo.mk == modePSK || delta >= freq.MHzDouble) {
-            pb = delta - left;
+        else {
+            pb = passbandIndicator->bottomRight->coords().x() - plot->xAxis->pixelToCoord(me->pos().x());
         }
 
         issueCmdUniquePriority(cmdSetPassband, (quint16)(pb * 1000000));
