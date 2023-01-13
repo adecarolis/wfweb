@@ -1,3 +1,27 @@
+commit 5c210f0699baf6c861dc87491747089b9f69f69f
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 13 12:26:11 2023 +0000
+
+    Fix invalid filter width being sent to rig by rigctld.
+
+commit 996c8132515a14472fa50de41ff7a0d55edb6299
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 13 10:55:59 2023 +0000
+
+    Fix another minor issue with wfview.pro
+
+commit 8f5016a2f4e377eb7a7488f5bc49870b0526cb56
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 13 10:44:11 2023 +0000
+
+    Fix problem if USB_CONTROLLER isn't enabled
+
+commit f86a721a05e2517f32a9a345ee8eba58606adb49
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Fri Jan 13 10:57:00 2023 +0100
+
+    cleanup
+
 commit 7052dbf6efa4405f801030dede2b58e13d0ebda4
 Author: Roeland Jansen <roeland.jansen69@gmail.com>
 Date:   Fri Jan 13 10:53:51 2023 +0100
