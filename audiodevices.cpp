@@ -68,16 +68,16 @@ void audioDevices::enumerate()
                     }
 
 #if ((QT_VERSION >= QT_VERSION_CHECK(5,15,0)) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
-                    inputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, deviceInfo.realm(), isDefault));
+                    inputs.append(new audioDevice(deviceInfo.deviceName(), deviceInfo, deviceInfo.realm(), isDefault));
                     qInfo(logAudio()) << (deviceInfo.deviceName() == defaultInputDeviceName ? "*" : " ") <<
                         "(" << numInputDevices <<" " << deviceInfo.realm() << ") Input Device : " << 
                         deviceInfo.deviceName();
 #elif (QT_VERSION < QT_VERSION_CHECK(5,15,0))
-                    inputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
+                    inputs.append(new audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
                     qInfo(logAudio()) << (deviceInfo.deviceName() == defaultInputDeviceName ? "*" : " ") << 
                         "(" << numInputDevices << ") Input Device : " << deviceInfo.deviceName();
 #else
-                    inputs.append(audioDevice(deviceInfo.description(), deviceInfo, "", isDefault));
+                    inputs.append(new audioDevice(deviceInfo.description(), deviceInfo, "", isDefault));
                     qInfo(logAudio()) << (deviceInfo.description() == defaultInputDeviceName ? "*" : " ") << 
                         "(" << numInputDevices << ") Input Device : " << deviceInfo.description();
 #endif
@@ -128,16 +128,16 @@ void audioDevices::enumerate()
                     }
 
 #if ((QT_VERSION >= QT_VERSION_CHECK(5,15,0)) && (QT_VERSION < QT_VERSION_CHECK(6,0,0)))
-                    outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, deviceInfo.realm() , isDefault));
+                    outputs.append(new audioDevice(deviceInfo.deviceName(), deviceInfo, deviceInfo.realm() , isDefault));
                     qInfo(logAudio()) << (deviceInfo.deviceName() == defaultOutputDeviceName ? "*" : " ") << 
                         "(" << numOutputDevices << " " << deviceInfo.realm() << ") Output Device : " << 
                         deviceInfo.deviceName();
 #elif (QT_VERSION < QT_VERSION_CHECK(5,15,0))
-                    outputs.append(audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
+                    outputs.append(new audioDevice(deviceInfo.deviceName(), deviceInfo, "", isDefault));
                     qInfo(logAudio()) << (deviceInfo.deviceName() == defaultOutputDeviceName ? "*" : " ") << 
                         "(" << numOutputDevices << ") Output Device : " << deviceInfo.deviceName();
 #else
-                    outputs.append(audioDevice(deviceInfo.description(), deviceInfo, "", isDefault));
+                    outputs.append(new audioDevice(deviceInfo.description(), deviceInfo, "", isDefault));
                     qInfo(logAudio()) << (deviceInfo.description() == defaultOutputDeviceName ? "*" : " ") << 
                         "(" << numOutputDevices << ") Output Device : " << deviceInfo.description();
 #endif
@@ -189,7 +189,7 @@ void audioDevices::enumerate()
                         defaultInputDeviceName = info->name;
                         isDefault = true;
                     }
-                    inputs.append(audioDevice(QString(info->name), i,isDefault));
+                    inputs.append(new audioDevice(QString(info->name), i,isDefault));
 #ifndef BUILD_WFSERVER
                     if (fm.boundingRect(QString(info->name)).width() > numCharsIn)
                         numCharsIn = fm.boundingRect(QString(info->name)).width();
@@ -204,7 +204,7 @@ void audioDevices::enumerate()
                         defaultOutputDeviceName = info->name;
                         isDefault = true;
                     }
-                    outputs.append(audioDevice(QString(info->name), i,isDefault));
+                    outputs.append(new audioDevice(QString(info->name), i,isDefault));
 #ifndef BUILD_WFSERVER
                     if (fm.boundingRect(QString(info->name)).width() > numCharsOut)
                         numCharsOut = fm.boundingRect(QString(info->name)).width();
@@ -277,9 +277,9 @@ void audioDevices::enumerate()
                     }
 
 #if (RTAUDIO_VERSION_MAJOR > 5)
-                    inputs.append(audioDevice(QString::fromStdString(info.name), devices[i], isDefault));
+                    inputs.append(new audioDevice(QString::fromStdString(info.name), devices[i], isDefault));
 #else
-                    inputs.append(audioDevice(QString::fromStdString(info.name), i, isDefault));
+                    inputs.append(new audioDevice(QString::fromStdString(info.name), i, isDefault));
 #endif
 
 #ifndef BUILD_WFSERVER
@@ -299,9 +299,9 @@ void audioDevices::enumerate()
                     }
 
 #if (RTAUDIO_VERSION_MAJOR > 5)
-                    outputs.append(audioDevice(QString::fromStdString(info.name), devices[i], isDefault));
+                    outputs.append(new audioDevice(QString::fromStdString(info.name), devices[i], isDefault));
 #else
-                    outputs.append(audioDevice(QString::fromStdString(info.name), i, isDefault));
+                    outputs.append(new audioDevice(QString::fromStdString(info.name), i, isDefault));
 #endif
 
 #ifndef BUILD_WFSERVER
@@ -322,14 +322,16 @@ void audioDevices::enumerate()
 
 audioDevices::~audioDevices()
 {
-
+    outputs.clear();
+    inputs.clear();
 }
 
 QStringList audioDevices::getInputs()
 {
     QStringList list;
-    foreach(const audioDevice input, inputs) {
-        list.append(input.name);
+
+    for (int f = 0; f < inputs.size(); f++) {
+        list.append(inputs[f]->name);
     }
 
     return list;
@@ -337,9 +339,10 @@ QStringList audioDevices::getInputs()
 
 QStringList audioDevices::getOutputs()
 {
-    QStringList list;
-    foreach(const audioDevice output, outputs) {
-        list.append(output.name);
+    QStringList list;   
+
+    for (int f = 0; f < outputs.size(); f++) {
+        list.append(outputs[f]->name);
     }
 
     return list;
@@ -355,15 +358,15 @@ int audioDevices::findInput(QString type, QString name)
     for (int f = 0; f < inputs.size(); f++)
     {
         //qInfo(logAudio()) << "Found device" << inputs[f].name;
-        if (inputs[f].name.startsWith(name)) {
+        if (inputs[f]->name.startsWith(name)) {
             s << type << " Audio input device " << name << " found! ";
             ret = f;
         }
-        if (inputs[f].isDefault == true)
+        if (inputs[f]->isDefault == true)
         {
             def = f;
         }
-        if (inputs[f].name.toUpper().contains("USB")) {
+        if (inputs[f]->name.toUpper().contains("USB")) {
             // This is a USB device...
             usb = f;
         }
@@ -374,17 +377,17 @@ int audioDevices::findInput(QString type, QString name)
         s << type << " Audio input device " << name << " Not found: ";
 
         if (inputs.size() == 1) {
-            s << "Selecting first device " << inputs[0].name;
+            s << "Selecting first device " << inputs[0]->name;
             ret = 0;
         }
         else if (usb > -1 && type != "Client")
         {
-            s << " Selecting found USB device " << inputs[usb].name;
+            s << " Selecting found USB device " << inputs[usb]->name;
             ret = usb;
         }
         else if (def > -1)
         {
-            s << " Selecting default device " << inputs[def].name;
+            s << " Selecting default device " << inputs[def]->name;
             ret = def;
         }
         else {
@@ -406,15 +409,15 @@ int audioDevices::findOutput(QString type, QString name)
     for (int f = 0; f < outputs.size(); f++)
     {
         //qInfo(logAudio()) << "Found device" << outputs[f].name;
-        if (outputs[f].name.startsWith(name)) {
+        if (outputs[f]->name.startsWith(name)) {
             ret = f;
             s << type << " Audio output device " << name << " found! ";
         }
-        if (outputs[f].isDefault == true)
+        if (outputs[f]->isDefault == true)
         {
             def = f;
         }
-        if (outputs[f].name.toUpper().contains("USB")) {
+        if (outputs[f]->name.toUpper().contains("USB")) {
             // This is a USB device...
             usb = f;
         }
@@ -426,17 +429,17 @@ int audioDevices::findOutput(QString type, QString name)
         s << type << " Audio output device " << name << " Not found: ";
 
         if (outputs.size() == 1) {
-            s << " Selecting first device " << outputs[0].name;
+            s << " Selecting first device " << outputs[0]->name;
             ret = 0;
         }
         else if (usb > -1 && type != "Client")
         {
-            s << " Selecting found USB device " << outputs[usb].name;
+            s << " Selecting found USB device " << outputs[usb]->name;
             ret = usb;
         }
         else if (def > -1)
         {
-            s << " Selecting default device " << outputs[def].name;
+            s << " Selecting default device " << outputs[def]->name;
             ret = def;
         }
         else {

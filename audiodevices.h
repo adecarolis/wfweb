@@ -56,18 +56,18 @@ public:
     int getNumCharsIn() { return numCharsIn; };
     int getNumCharsOut() { return numCharsOut; };
 
-    QString getInputName(int num) { return inputs[num].name; };
-    QString getOutputName(int num) { return outputs[num].name; };
+    QString getInputName(int num) { return inputs[num]->name; };
+    QString getOutputName(int num) { return outputs[num]->name; };
 
-    int getInputDeviceInt(int num) { return inputs[num].deviceInt; };
-    int getOutputDeviceInt(int num) { return outputs[num].deviceInt; };
+    int getInputDeviceInt(int num) { return inputs[num]->deviceInt; };
+    int getOutputDeviceInt(int num) { return outputs[num]->deviceInt; };
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-    const QAudioDeviceInfo getInputDeviceInfo(int num) { return inputs[num].deviceInfo; };
-    const QAudioDeviceInfo getOutputDeviceInfo(int num) { return outputs[num].deviceInfo; };
+    const QAudioDeviceInfo getInputDeviceInfo(int num) { return inputs[num]->deviceInfo; };
+    const QAudioDeviceInfo getOutputDeviceInfo(int num) { return outputs[num]->deviceInfo; };
 #else
-    const QAudioDevice getInputDeviceInfo(int num) { return inputs[num].deviceInfo; };
-    const QAudioDevice getOutputDeviceInfo(int num) { return outputs[num].deviceInfo; };
+    const QAudioDevice getInputDeviceInfo(int num) { return inputs[num]->deviceInfo; };
+    const QAudioDevice getOutputDeviceInfo(int num) { return outputs[num]->deviceInfo; };
 #endif
 
     void enumerate();
@@ -95,8 +95,8 @@ private:
     QString defaultOutputDeviceName;
     int numInputDevices;
     int numOutputDevices;
-    QList<audioDevice> inputs;
-    QList<audioDevice> outputs;
+    QList<audioDevice*> inputs;
+    QList<audioDevice*> outputs;
     int numCharsIn = 0;
     int numCharsOut = 0;
     QString audioApi = "wasapi";

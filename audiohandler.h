@@ -70,11 +70,12 @@ public slots:
     virtual void incomingAudio(const audioPacket data);
     virtual void convertedInput(audioPacket audio);
     virtual void convertedOutput(audioPacket audio);
+    virtual void getNextAudioChunk();
 
 private slots:
     virtual void stateChanged(QAudio::State state);
     virtual void clearUnderrun();    
-    virtual void getNextAudioChunk();
+
 
 signals:
     void audioMessage(QString message);

@@ -37,13 +37,13 @@ using namespace std;
 #define HIDDATALENGTH 64
 #define MAX_STR 255
 
-enum commandType {normal,bandswitch,modeswitch};
+enum commandType {normalCommand,bandswitch,modeswitch};
 
 struct COMMAND {
     COMMAND() {}
 
     COMMAND(int index, QString text, int command, char suffix) :
-        index(index), text(text), command(command), suffix(suffix), type(normal){}
+        index(index), text(text), command(command), suffix(suffix), type(normalCommand){}
     COMMAND(int index, QString text, int command, bandType band) :
         index(index), text(text), command(command), band(band), type(bandswitch) {}
     COMMAND(int index, QString text, int command, mode_kind mode) :

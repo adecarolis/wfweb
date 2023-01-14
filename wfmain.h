@@ -105,7 +105,6 @@ signals:
 
     // Repeater:
     void getDuplexMode();
-    void getPassband();
     void getTone();
     void getTSQL();
     void getDTCS();
@@ -123,6 +122,9 @@ signals:
     void getMicGain();
     void getSpectrumRefLevel();
     void getModInputLevel(rigInput input);
+    void getMeters(meterKind meter);
+    void getPassband();
+
 
     // Level set:
     void setRfGain(unsigned char level);
@@ -131,7 +133,7 @@ signals:
     void setIFShift(unsigned char level);
     void setTPBFInner(unsigned char level);
     void setTPBFOuter(unsigned char level);
-
+  
     void setIFShiftWindow(unsigned char level);
     void setTPBFInnerWindow(unsigned char level);
     void setTPBFOuterWindow(unsigned char level);
@@ -149,9 +151,7 @@ signals:
     void setACCBGain(unsigned char level);
     void setUSBGain(unsigned char level);
     void setLANGain(unsigned char level);
-
-    void getMeters(meterKind meter);
-
+    void setPassband(quint16 pass);
 
     // PTT, ATU, ATT, Antenna, Preamp:
     void getPTT();
@@ -871,7 +871,7 @@ private:
               cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
               cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetTPBFInner, cmdSetTPBFInner,
-              cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus, cmdGetPassband, 
+              cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus, cmdGetPassband, cmdSetPassband,
               cmdSetATU, cmdStartATU, cmdGetSpectrumMode,
               cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,cmdPTTToggle,
               cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel,
@@ -902,12 +902,14 @@ private:
     void issueCmd(cmds cmd, unsigned char c);
     void issueCmd(cmds cmd, char c);
     void issueCmd(cmds cmd, bool b);
+    void issueCmd(cmds cmd, quint16 c);
 
     // These commands pop_front and remove similar commands:
     void issueCmdUniquePriority(cmds cmd, bool b);
     void issueCmdUniquePriority(cmds cmd, unsigned char c);
     void issueCmdUniquePriority(cmds cmd, char c);
     void issueCmdUniquePriority(cmds cmd, freqt f);
+    void issueCmdUniquePriority(cmds cmd, quint16 c);
 
     void removeSimilarCommand(cmds cmd);
 
@@ -1069,6 +1071,7 @@ private:
 
     rigstate* rigState = Q_NULLPTR;
 
+    bool resizingPassband = false;
     SERVERCONFIG serverConfig;
     void serverAddUserLine(const QString& user, const QString& pass, const int& type);
 

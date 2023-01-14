@@ -87,7 +87,7 @@ isEmpty(PREFIX) {
 DEFINES += PREFIX=\\\"$$PREFIX\\\"
 
 macx:INCLUDEPATH += /usr/local/include /opt/local/include 
-macx:LIBS += -L/usr/local/lib -L/opt/local/lib
+macx:LIBS += -L/usr/local/lib -L/opt/local/lib -L../qcustomplot
 
 macx:ICON = ../wfview/resources/wfview.icns
 win32:RC_ICONS = ../wfview/resources/wfview.ico
@@ -130,12 +130,14 @@ unix:stylesheets.files = qdarkstyle
 unix:stylesheets.path = $$PREFIX/share/wfview
 INSTALLS += stylesheets
 
+macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
+
 # Do not do this, it will hang on start:
 # CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 
 CONFIG(debug, release|debug) {
   linux: QCPLIB = qcustomplotd
-  !linux: QCPLIB = qcustomplotd2
+  win32: QCPLIB = qcustomplotd2
   win32 {
     contains(QMAKE_TARGET.arch, x86_64) {
       LIBS += -L../opus/win32/VS2015/x64/Debug/
@@ -153,7 +155,7 @@ CONFIG(debug, release|debug) {
   }
 } else {
   linux: QCPLIB = qcustomplot
-  !linux: QCPLIB = qcustomplot2
+  win32: QCPLIB = qcustomplot2
   win32 {
     contains(QMAKE_TARGET.arch, x86_64) {
       LIBS += -L../opus/win32/VS2015/x64/Release/
@@ -172,21 +174,23 @@ CONFIG(debug, release|debug) {
 }
 
 linux:LIBS += -L./ -l$$QCPLIB -lopus
-!linux:LIBS += -l$$QCPLIB -lopus
-macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus 
+win32:LIBS += -l$$QCPLIB -lopus
 
 contains(DEFINES,USB_CONTROLLER){
     linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb
-    macx:LIBS += -framework CoreAudio -framework CoreFoundation -lhidapi
+    macx:LIBS += -lhidapi
     win32:INCLUDEPATH += ../hidapi/hidapi
     win32:SOURCES += ../hidapi/windows/hid.c
 }
 
+macx:SOURCES += ../qcustomplot/qcustomplot.cpp 
+macx:HEADERS += ../qcustomplot/qcustomplot.h
+
 !linux:INCLUDEPATH += ../qcustomplot
 !linux:INCLUDEPATH += ../opus/include
 
-win32:INCLUDEPATH += ../eigen
-win32:INCLUDEPATH += ../r8brain-free-src
+!linux:INCLUDEPATH += ../eigen
+!linux:INCLUDEPATH += ../r8brain-free-src
 
 INCLUDEPATH += resampler
 
