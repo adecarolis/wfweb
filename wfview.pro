@@ -134,8 +134,8 @@ INSTALLS += stylesheets
 # CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 
 CONFIG(debug, release|debug) {
-  linux: QCPLIB = qcustomplotd
-  !linux: QCPLIB = qcustomplotd2
+  !win32: QCPLIB = qcustomplotd
+  win32: QCPLIB = qcustomplotd2
   win32 {
     contains(QMAKE_TARGET.arch, x86_64) {
       LIBS += -L../opus/win32/VS2015/x64/Debug/
@@ -152,8 +152,8 @@ CONFIG(debug, release|debug) {
     }
   }
 } else {
-  linux: QCPLIB = qcustomplot
-  !linux: QCPLIB = qcustomplot2
+  !win32: QCPLIB = qcustomplot
+  win32: QCPLIB = qcustomplot2
   win32 {
     contains(QMAKE_TARGET.arch, x86_64) {
       LIBS += -L../opus/win32/VS2015/x64/Release/
@@ -173,7 +173,7 @@ CONFIG(debug, release|debug) {
 
 linux:LIBS += -L./ -l$$QCPLIB -lopus
 !linux:LIBS += -l$$QCPLIB -lopus
-macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus 
+macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus -lqcustomplot
 
 contains(DEFINES,USB_CONTROLLER){
     linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb

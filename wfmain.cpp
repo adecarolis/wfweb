@@ -1507,7 +1507,7 @@ void wfmain::doShuttle(bool up, unsigned char level)
 void wfmain::buttonControl(const COMMAND* cmd)
 {
 
-    if (cmd->type==normal) {
+    if (cmd->type==normalCommand) {
         //qDebug() << "Other command";
         issueCmdUniquePriority((cmds)cmd->command, cmd->suffix);
     }

@@ -889,7 +889,7 @@ void rigCommander::setPassband(quint16 pass)
 
         calc = quint16((pass / 200) - 1);
     }
-    else if (pass >= 600 || pass <=3600) // SSB/CW/PSK 10-40 (10-31 for RTTY)
+    else if (pass >= 600 && pass <=3600) // SSB/CW/PSK 10-40 (10-31 for RTTY)
     {
         calc = quint16((pass / 100) + 4);
     }

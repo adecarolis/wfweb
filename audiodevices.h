@@ -14,7 +14,6 @@
 
 #include <portaudio.h>
 #ifndef Q_OS_LINUX
-#include "RtAudio.h"
 #else
 #include "rtaudio/RtAudio.h"
 #endif

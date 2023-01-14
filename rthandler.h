@@ -42,7 +42,7 @@ public:
 
     int getLatency();
 
-
+    using audioHandler::getNextAudioChunk;
     void getNextAudioChunk(QByteArray& data);
     quint16 getAmplitude();
 
