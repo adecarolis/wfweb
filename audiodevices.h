@@ -63,8 +63,8 @@ public:
     int getOutputDeviceInt(int num) { return outputs[num]->deviceInt; };
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-    const QAudioDeviceInfo getInputDeviceInfo(int num) { return inputs[num].deviceInfo; };
-    const QAudioDeviceInfo getOutputDeviceInfo(int num) { return outputs[num].deviceInfo; };
+    const QAudioDeviceInfo getInputDeviceInfo(int num) { return inputs[num]->deviceInfo; };
+    const QAudioDeviceInfo getOutputDeviceInfo(int num) { return outputs[num]->deviceInfo; };
 #else
     const QAudioDevice getInputDeviceInfo(int num) { return inputs[num]->deviceInfo; };
     const QAudioDevice getOutputDeviceInfo(int num) { return outputs[num]->deviceInfo; };
