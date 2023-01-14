@@ -52,7 +52,7 @@ The following highlights are in this 1.51-release ince v1.50:
 +1.57		Merged current shuttle code in. Note that it does
                 not work yet and is commented out in the build process
                 Fix invalid filter width being sent to rig by rigctld.
-	
+                Ability to drag the passband for a variable filter width	
 
 
 
