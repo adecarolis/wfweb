@@ -10,7 +10,7 @@ QT       += core gui serialport network multimedia xml
 #DEFINES += USESQL
 
 #Uncomment The following line to enable USB controllers (Shuttle/RC-28 etc.)
-DEFINES += USB_CONTROLLER
+#DEFINES += USB_CONTROLLER
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
