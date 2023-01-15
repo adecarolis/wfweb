@@ -355,6 +355,7 @@ int audioDevices::findInput(QString type, QString name)
     int usb = -1;
     QString msg;
     QTextStream s(&msg);
+
     for (int f = 0; f < inputs.size(); f++)
     {
         //qInfo(logAudio()) << "Found device" << inputs[f].name;
@@ -391,7 +392,7 @@ int audioDevices::findInput(QString type, QString name)
             ret = def;
         }
         else {
-        s << " and no default device found, aborting!";
+            s << " and no default device found, aborting!";
         }
     }
 
@@ -406,6 +407,7 @@ int audioDevices::findOutput(QString type, QString name)
     int usb = -1;
     QString msg;
     QTextStream s(&msg);
+
     for (int f = 0; f < outputs.size(); f++)
     {
         //qInfo(logAudio()) << "Found device" << outputs[f].name;

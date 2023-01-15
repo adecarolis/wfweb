@@ -2400,7 +2400,7 @@ void wfmain::on_serverAudioPortText_textChanged(QString text)
 void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
 {
 
-    if (!serverConfig.rigs.isEmpty())
+    if (!serverConfig.rigs.isEmpty() && value>=0)
     {
         if (prefs.audioSystem == qtAudio) {
             serverConfig.rigs.first()->rxAudioSetup.port = audioDev->getInputDeviceInfo(value);
@@ -2417,7 +2417,7 @@ void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
 void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
 {
 
-    if (!serverConfig.rigs.isEmpty())
+    if (!serverConfig.rigs.isEmpty() && value>=0)
     {
         if (prefs.audioSystem == qtAudio) {
             serverConfig.rigs.first()->txAudioSetup.port = audioDev->getOutputDeviceInfo(value);
@@ -5623,29 +5623,31 @@ void wfmain::on_passwordTxt_textChanged(QString text)
 void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
 {
 
-    if (prefs.audioSystem == qtAudio) {
-        rxSetup.port = audioDev->getOutputDeviceInfo(value);
-    }
-    else {
-        rxSetup.portInt = audioDev->getOutputDeviceInt(value);
-    }
+    if (value>=0) {
+        if (prefs.audioSystem == qtAudio) {
+            rxSetup.port = audioDev->getOutputDeviceInfo(value);
+        }
+        else {
+            rxSetup.portInt = audioDev->getOutputDeviceInt(value);
+        }
 
-    rxSetup.name = audioDev->getOutputName(value);
+        rxSetup.name = audioDev->getOutputName(value);
+    }
     qDebug(logGui()) << "Changed audio output to:" << rxSetup.name;
 }
 
 void wfmain::on_audioInputCombo_currentIndexChanged(int value)
 {
+    if (value >=0) {
+        if (prefs.audioSystem == qtAudio) {
+            txSetup.port = audioDev->getInputDeviceInfo(value);
+        }
+        else {
+            txSetup.portInt = audioDev->getInputDeviceInt(value);
+        }
 
-    if (prefs.audioSystem == qtAudio) {
-        txSetup.port = audioDev->getInputDeviceInfo(value);
+        txSetup.name = audioDev->getInputName(value);
     }
-    else {
-        txSetup.portInt = audioDev->getInputDeviceInt(value);
-    }
-
-    txSetup.name = audioDev->getInputName(value);
-
     qDebug(logGui()) << "Changed audio input to:" << txSetup.name;
 }
 
@@ -6808,6 +6810,7 @@ void wfmain::on_radioStatusBtn_clicked()
 
 void wfmain::setAudioDevicesUI()
 {
+    qInfo() << "Looking for inputs";
     ui->audioInputCombo->blockSignals(true);
     ui->audioInputCombo->clear();
     ui->audioInputCombo->addItems(audioDev->getInputs());
@@ -6816,6 +6819,7 @@ void wfmain::setAudioDevicesUI()
     ui->audioInputCombo->blockSignals(false);
     ui->audioInputCombo->setCurrentIndex(audioDev->findInput("Client", txSetup.name));
 
+    qInfo() << "Looking for outputs";
     ui->audioOutputCombo->blockSignals(true);
     ui->audioOutputCombo->clear();
     ui->audioOutputCombo->addItems(audioDev->getOutputs());
