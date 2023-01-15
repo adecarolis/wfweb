@@ -4592,8 +4592,13 @@ void wfmain::handlePlotClick(QMouseEvent* me)
     QCPAbstractItem* item = plot->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
     QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
+#if QCUSTOMPLOT_VERSION < 0x020000
+    int leftPix = (int)passbandIndicator->left->pixelPoint().x();
+    int rightPix = (int)passbandIndicator->right->pixelPoint().x();
+#else
     int leftPix = (int)passbandIndicator->left->pixelPosition().x();
     int rightPix = (int)passbandIndicator->right->pixelPosition().x();
+#endif
     if (me->button() == Qt::LeftButton && rectItem != nullptr && (me->pos().x() <= leftPix || me->pos().x() >= rightPix)) {
         resizingPassband = true;
     }
@@ -4663,8 +4668,13 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
     QCPAbstractItem* item = plot->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
     QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
+#if QCUSTOMPLOT_VERSION < 0x020000
+    int leftPix = (int)passbandIndicator->left->pixelPoint().x();
+    int rightPix = (int)passbandIndicator->right->pixelPoint().x();
+#else
     int leftPix = (int)passbandIndicator->left->pixelPosition().x();
     int rightPix = (int)passbandIndicator->right->pixelPosition().x();
+#endif
     if (rectItem != nullptr && (me->pos().x() <= leftPix || me->pos().x() >= rightPix)) {
         setCursor(Qt::SizeHorCursor);
     }
@@ -7989,14 +7999,17 @@ void wfmain::receiveSpots(QList<spotData> spots)
             sp->text->position->setCoords(left, top);
             sp->text->setVisible(false);
             while (conflict) {
+#if QCUSTOMPLOT_VERSION < 0x020000
+                QCPAbstractItem* item = plot->itemAt(sp->text->position->pixelPoint(), true);
+#else
                 QCPAbstractItem* item = plot->itemAt(sp->text->position->pixelPosition(), true);
+#endif
+
                 QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
                 if (textItem != nullptr && sp->text != textItem) {
-                    //qInfo(logGui()) << "CONFLICT:" << textItem->text() << "SAME POSITION AS" << sp->dxcall << sp->text->position->pixelPosition();
                     top = top - 5.0;
                 }
                 else {
-                    //qInfo(logGui()) << "OK:" << sp->dxcall << sp->text->position->pixelPosition();
                     conflict = false;
                 }
                 sp->text->position->setCoords(left, top);
