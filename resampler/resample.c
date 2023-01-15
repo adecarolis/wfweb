@@ -96,11 +96,11 @@ static void speex_free(void* ptr) { free(ptr); }
 #define UINT32_MAX 4294967295U
 #endif
 
-#ifdef USE_SSE
+#if defined(USE_SSE) && !defined(__aarch64__)
 #include "resample_sse.h"
 #endif
 
-#ifdef USE_NEON
+#if defined(USE_NEON) || defined(__aarch64__)
 #include "resample_neon.h"
 #endif
 

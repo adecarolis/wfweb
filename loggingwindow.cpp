@@ -27,8 +27,11 @@ loggingWindow::loggingWindow(QString logFilename, QWidget *parent) :
     connect(socket, SIGNAL(connected()), this, SLOT(connectedToHost()));
     connect(socket, SIGNAL(disconnected()), this, SLOT(disconnectedFromHost()));
     connect(socket, SIGNAL(readyRead()), this, SLOT(handleDataFromLoggingHost()));
+#if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
+    connect(socket, SIGNAL(errorOccurred(QAbstractSocket::SocketError)), this, SLOT(handleLoggingHostError(QAbstractSocket::SocketError)));
+#else
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)), this, SLOT(handleLoggingHostError(QAbstractSocket::SocketError)));
-
+#endif
     vertLogScroll = ui->logTextDisplay->verticalScrollBar();
     horizLogScroll = ui->logTextDisplay->horizontalScrollBar();
 

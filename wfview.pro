@@ -10,7 +10,7 @@ QT       += core gui serialport network multimedia xml
 #DEFINES += USESQL
 
 #Uncomment The following line to enable USB controllers (Shuttle/RC-28 etc.)
-#DEFINES += USB_CONTROLLER
+DEFINES += USB_CONTROLLER
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
@@ -87,16 +87,18 @@ isEmpty(PREFIX) {
 DEFINES += PREFIX=\\\"$$PREFIX\\\"
 
 macx:INCLUDEPATH += /usr/local/include /opt/local/include 
-macx:LIBS += -L/usr/local/lib -L/opt/local/lib -L../qcustomplot
+macx:LIBS += -L/usr/local/lib -L/opt/local/lib
 
 macx:ICON = ../wfview/resources/wfview.icns
 win32:RC_ICONS = ../wfview/resources/wfview.ico
-QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.13
+macx:QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.14
+macx:QMAKE_APPLE_DEVICE_ARCHS = x86_64 arm64
+macx:MY_ENTITLEMENTS.name = CODE_SIGN_ENTITLEMENTS
+macx:MY_ENTITLEMENTS.value = ../wfview/resources/wfview.entitlements
+macx:QMAKE_MAC_XCODE_SETTINGS += MY_ENTITLEMENTS
+macx:QMAKE_INFO_PLIST = ../wfview/resources/Info.plist
+
 QMAKE_TARGET_BUNDLE_PREFIX = org.wfview
-MY_ENTITLEMENTS.name = CODE_SIGN_ENTITLEMENTS
-MY_ENTITLEMENTS.value = ../wfview/resources/wfview.entitlements
-QMAKE_MAC_XCODE_SETTINGS += MY_ENTITLEMENTS
-QMAKE_INFO_PLIST = ../wfview/resources/Info.plist
 
 !win32:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
 
@@ -136,7 +138,7 @@ macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 # CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 
 CONFIG(debug, release|debug) {
-  linux: QCPLIB = qcustomplotd
+  !win32: QCPLIB = qcustomplotd
   win32: QCPLIB = qcustomplotd2
   win32 {
     contains(QMAKE_TARGET.arch, x86_64) {
@@ -154,7 +156,7 @@ CONFIG(debug, release|debug) {
     }
   }
 } else {
-  linux: QCPLIB = qcustomplot
+  !win32: QCPLIB = qcustomplot
   win32: QCPLIB = qcustomplot2
   win32 {
     contains(QMAKE_TARGET.arch, x86_64) {
@@ -173,7 +175,7 @@ CONFIG(debug, release|debug) {
   }
 }
 
-linux:LIBS += -L./ -l$$QCPLIB -lopus
+!win32:LIBS += -L./ -l$$QCPLIB -lopus
 win32:LIBS += -l$$QCPLIB -lopus
 
 contains(DEFINES,USB_CONTROLLER){
@@ -183,10 +185,10 @@ contains(DEFINES,USB_CONTROLLER){
     win32:SOURCES += ../hidapi/windows/hid.c
 }
 
-macx:SOURCES += ../qcustomplot/qcustomplot.cpp 
-macx:HEADERS += ../qcustomplot/qcustomplot.h
+#macx:SOURCES += ../qcustomplot/qcustomplot.cpp 
+#macx:HEADERS += ../qcustomplot/qcustomplot.h
 
-!linux:INCLUDEPATH += ../qcustomplot
+win32:INCLUDEPATH += ../qcustomplot
 !linux:INCLUDEPATH += ../opus/include
 
 !linux:INCLUDEPATH += ../eigen
