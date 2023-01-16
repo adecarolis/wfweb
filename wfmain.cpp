@@ -4742,10 +4742,10 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
         double pbFreq = 0.0;
 
         if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modePSK_R) {
-            pbFreq = ((TPBFInner - movedFrequency)/passBand)*127;
+            pbFreq = ((TPBFInner - movedFrequency) / passBand) * 127;
         }
-        else{
-            pbFreq = ((movedFrequency + TPBFInner)/passBand)*127;
+        else {
+            pbFreq = ((movedFrequency + TPBFInner) / passBand) * 127;
         }
 
         qint16 newFreq = pbFreq + 128;
@@ -6101,25 +6101,38 @@ void wfmain::receivePassband(quint16 pass)
 
 void wfmain::receiveTPBFInner(unsigned char level) {
 
-    static unsigned char oldLevel = level;
     qint16 shift = (qint16)(level - 128);
-    TPBFInner = (double)(shift / 127.0) * (passBand / 2);
-
-    if (level != oldLevel) {
-        //qInfo() << QString("Got TPBFInner %1 from %2 (%3)").arg(TPBFInner).arg(shift).arg(level);
-        oldLevel = level;
+    if (passbandAction != passbandResizing) {
+        TPBFInner = (double)(shift / 127.0) * (passBand);
     }
+    else {
+        double pbFreq = 0.0;
+        pbFreq = (TPBFInner / passBand) * 127;
+        qint16 newFreq = pbFreq + 128;
+        if (newFreq < 0)
+            newFreq = 0;
+        if (newFreq > 255)
+            newFreq = 255;
+        issueCmd(cmdSetTPBFInner, (unsigned char)newFreq);
+    }
+
 }
 
 void wfmain::receiveTPBFOuter(unsigned char level) {
-
-    static unsigned char oldLevel = level;
+    
     qint16 shift = (qint16)(level - 128);
-    TPBFOuter = (double)(shift / 127.0) * (passBand / 2);
-
-    if (level != oldLevel) {
-        //qInfo() << QString("Got TPBFOuter %1 from %2 (%3)").arg(TPBFOuter).arg(shift).arg(level);
-        oldLevel = level;
+    if (passbandAction != passbandResizing) {
+        TPBFOuter = (double)(shift / 127.0) * (passBand);
+    }
+    else {
+        double pbFreq = 0.0;
+        pbFreq = (TPBFOuter / passBand) * 127;
+        qint16 newFreq = pbFreq + 128;
+        if (newFreq < 0)
+            newFreq = 0;
+        if (newFreq > 255)
+            newFreq = 255;
+        issueCmd(cmdSetTPBFOuter, (unsigned char)newFreq);
     }
 }
 
