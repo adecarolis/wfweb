@@ -6106,7 +6106,7 @@ void wfmain::receiveTPBFInner(unsigned char level) {
     TPBFInner = (double)(shift / 127.0) * (passBand / 2);
 
     if (level != oldLevel) {
-        qInfo() << QString("Got TPBFInner %1 from %2 (%3)").arg(TPBFInner).arg(shift).arg(level);
+        //qInfo() << QString("Got TPBFInner %1 from %2 (%3)").arg(TPBFInner).arg(shift).arg(level);
         oldLevel = level;
     }
 }
@@ -6118,7 +6118,7 @@ void wfmain::receiveTPBFOuter(unsigned char level) {
     TPBFOuter = (double)(shift / 127.0) * (passBand / 2);
 
     if (level != oldLevel) {
-        qInfo() << QString("Got TPBFOuter %1 from %2 (%3)").arg(TPBFOuter).arg(shift).arg(level);
+        //qInfo() << QString("Got TPBFOuter %1 from %2 (%3)").arg(TPBFOuter).arg(shift).arg(level);
         oldLevel = level;
     }
 }
