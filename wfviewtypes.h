@@ -1,3 +1,4 @@
+
 #ifndef WFVIEWTYPES_H
 #define WFVIEWTYPES_H
 
@@ -60,5 +61,6 @@ struct errorType {
 enum audioType {qtAudio,portAudio,rtAudio};
 enum codecType { LPCM, PCMU, OPUS };
 
+enum passbandActions {passbandStatic,passbandMoving,passbandResizing};
 
 #endif // WFVIEWTYPES_H

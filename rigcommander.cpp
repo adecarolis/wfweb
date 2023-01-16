@@ -883,13 +883,13 @@ void rigCommander::setPassband(quint16 pass)
         SSB/CW/RTTY/PSK     0 to 9      50 ~ 500 Hz (50 Hz)
         SSB/CW/PSK          10 to 40    600 Hz ~ 3.6 kHz (100 Hz)
         RTTY                10 to 31    600 ~ 2.7 kHz (100 Hz)
-        AM                  0 to 49     200 Hz ~ 10.0 kHz (200 Hz)    
+        AM                  0 to 49     200 Hz ~ 10.0 kHz (200 Hz)
     */
     if (state.getChar(MODE) == modeAM) { // AM 0-49
 
         calc = quint16((pass / 200) - 1);
     }
-    else if (pass >= 600 && pass <=3600) // SSB/CW/PSK 10-40 (10-31 for RTTY)
+    else if (pass >= 600 && pass <= 3600) // SSB/CW/PSK 10-40 (10-31 for RTTY)
     {
         calc = quint16((pass / 100) + 4);
     }
@@ -897,7 +897,7 @@ void rigCommander::setPassband(quint16 pass)
         calc = quint16((pass / 50) - 1);
     }
 
-    char tens = (calc  / 10);
+    char tens = (calc / 10);
     char units = (calc - (10 * tens));
 
     char b1 = (units) | (tens << 4);

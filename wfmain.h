@@ -125,7 +125,6 @@ signals:
     void getMeters(meterKind meter);
     void getPassband();
 
-
     // Level set:
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
@@ -267,7 +266,8 @@ private slots:
     void receiveModInput(rigInput input, bool dataOn);
     //void receiveDuplexMode(duplexMode dm);
     void receivePassband(quint16 pass);
-
+    void receiveTPBFInner(unsigned char level);
+    void receiveTPBFOuter(unsigned char level);
 
     // Levels:
     void receiveRfGain(unsigned char level);
@@ -866,7 +866,6 @@ private:
     unsigned char setModeVal=0;
     unsigned char setFilterVal=0;
 
-    /* Any additions/modifications to cmds enum must also be made in usbcontroller.h */
     enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode,
               cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
               cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
@@ -903,6 +902,7 @@ private:
     void issueCmd(cmds cmd, char c);
     void issueCmd(cmds cmd, bool b);
     void issueCmd(cmds cmd, quint16 c);
+    void issueCmd(cmds cmd, qint16 c);
 
     // These commands pop_front and remove similar commands:
     void issueCmdUniquePriority(cmds cmd, bool b);
@@ -910,6 +910,7 @@ private:
     void issueCmdUniquePriority(cmds cmd, char c);
     void issueCmdUniquePriority(cmds cmd, freqt f);
     void issueCmdUniquePriority(cmds cmd, quint16 c);
+    void issueCmdUniquePriority(cmds cmd, qint16 c);
 
     void removeSimilarCommand(cmds cmd);
 
@@ -1071,7 +1072,10 @@ private:
 
     rigstate* rigState = Q_NULLPTR;
 
-    bool resizingPassband = false;
+    passbandActions passbandAction = passbandStatic;
+    double clickedFrequency = 0.0;
+    double TPBFInner = 0.0;
+    double TPBFOuter = 0.0;
     SERVERCONFIG serverConfig;
     void serverAddUserLine(const QString& user, const QString& pass, const int& type);
 

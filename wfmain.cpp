@@ -442,6 +442,8 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveIFShift(unsigned char)), trxadj, SLOT(updateIFShift(unsigned char)));
     connect(rig, SIGNAL(haveTPBFInner(unsigned char)), trxadj, SLOT(updateTPBFInner(unsigned char)));
     connect(rig, SIGNAL(haveTPBFOuter(unsigned char)), trxadj, SLOT(updateTPBFOuter(unsigned char)));
+    connect(rig, SIGNAL(haveTPBFInner(unsigned char)), this, SLOT(receiveTPBFInner(unsigned char)));
+    connect(rig, SIGNAL(haveTPBFOuter(unsigned char)), this, SLOT(receiveTPBFOuter(unsigned char)));
     connect(rig, SIGNAL(haveTxPower(unsigned char)), this, SLOT(receiveTxPower(unsigned char)));
     connect(rig, SIGNAL(haveMicGain(unsigned char)), this, SLOT(receiveMicGain(unsigned char)));
     connect(rig, SIGNAL(haveSpectrumRefLevel(int)), this, SLOT(receiveSpectrumRefLevel(int)));
@@ -3893,6 +3895,14 @@ void wfmain::issueCmd(cmds cmd, quint16 c)
     delayedCmdQue.push_back(cmddata);
 }
 
+void wfmain::issueCmd(cmds cmd, qint16 c)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<qint16>(new qint16(c));
+    delayedCmdQue.push_back(cmddata);
+}
+
 void wfmain::issueCmdUniquePriority(cmds cmd, bool b)
 {
     commandtype cmddata;
@@ -3934,6 +3944,15 @@ void wfmain::issueCmdUniquePriority(cmds cmd, quint16 c)
     commandtype cmddata;
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<quint16>(new quint16(c));
+    delayedCmdQue.push_front(cmddata);
+    removeSimilarCommand(cmd);
+}
+
+void wfmain::issueCmdUniquePriority(cmds cmd, qint16 c)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<qint16>(new qint16(c));
     delayedCmdQue.push_front(cmddata);
     removeSimilarCommand(cmd);
 }
@@ -4208,6 +4227,8 @@ void wfmain::initPeriodicCommands()
     if (rigCaps.hasSpectrum) {
         // Get passband
         insertPeriodicCommand(cmdGetPassband, 128);
+        insertPeriodicCommand(cmdGetTPBFInner, 128);
+        insertPeriodicCommand(cmdGetTPBFOuter, 128);
     }
 }
 
@@ -4390,14 +4411,17 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         {
             freqIndicatorLine->start->setCoords(freq.MHzDouble, 0);
             freqIndicatorLine->end->setCoords(freq.MHzDouble, rigCaps.spectAmpMax);
-
+            double tpbfDiff = qMax(TPBFInner, TPBFOuter);
+            if (TPBFOuter < TPBFInner) {
+                tpbfDiff = qMin(TPBFInner, TPBFOuter);
+            }
             if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modePSK_R) {
-                passbandIndicator->topLeft->setCoords(freq.MHzDouble - passBand - 0.0001, 0);
-                passbandIndicator->bottomRight->setCoords(freq.MHzDouble - 0.0001, rigCaps.spectAmpMax);
+                passbandIndicator->topLeft->setCoords(freq.MHzDouble - passBand - 0.0001 - tpbfDiff, 0);
+                passbandIndicator->bottomRight->setCoords(freq.MHzDouble - 0.0001 - tpbfDiff, rigCaps.spectAmpMax);
             }
             else if (currentModeInfo.mk == modeUSB || currentModeInfo.mk == modePSK) {
-                passbandIndicator->topLeft->setCoords(freq.MHzDouble + 0.0001, 0);
-                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + 0.0001 + passBand, rigCaps.spectAmpMax);
+                passbandIndicator->topLeft->setCoords(freq.MHzDouble + 0.0001 + tpbfDiff, 0);
+                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + 0.0001 + passBand + tpbfDiff, rigCaps.spectAmpMax);
             }
             else
             {
@@ -4409,10 +4433,9 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
                     else
                         passBand = 0.007;
                 }
-                passbandIndicator->topLeft->setCoords(freq.MHzDouble - (passBand / 2), 0);
-                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + (passBand / 2), rigCaps.spectAmpMax);
+                passbandIndicator->topLeft->setCoords(freq.MHzDouble - (passBand / 2) + tpbfDiff, 0);
+                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + (passBand / 2) + tpbfDiff, rigCaps.spectAmpMax);
             }
-
 
         }
 
@@ -4541,25 +4564,35 @@ void wfmain::receiveSpectrumMode(spectrumMode spectMode)
 
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 {
-    double x;
-    freqt freqGo;
-    //double y;
-    //double px;
-    if(!freqLock)
-    {
-        //y = plot->yAxis->pixelToCoord(me->pos().y());
-        x = plot->xAxis->pixelToCoord(me->pos().x());
-        freqGo.Hz = x*1E6;
+    if (me->button() == Qt::LeftButton) {
 
-        freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
-        freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
+        double x;
+        freqt freqGo;
+        //double y;
+        //double px;
+        if (!freqLock)
+        {
+            //y = plot->yAxis->pixelToCoord(me->pos().y());
+            x = plot->xAxis->pixelToCoord(me->pos().x());
+            freqGo.Hz = x * 1E6;
 
-        //emit setFrequency(0,freq);
-        issueCmd(cmdSetFreq, freqGo);
-        freq = freqGo;
-        setUIFreq();
-        //issueDelayedCommand(cmdGetFreq);
-        showStatusBarText(QString("Going to %1 MHz").arg(x));
+            freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
+            freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
+
+            //emit setFrequency(0,freq);
+            issueCmd(cmdSetFreq, freqGo);
+            freq = freqGo;
+            setUIFreq();
+            //issueDelayedCommand(cmdGetFreq);
+            showStatusBarText(QString("Going to %1 MHz").arg(x));
+        }
+    } else if (me->button() == Qt::RightButton) {
+        QCPAbstractItem* item = plot->itemAt(me->pos(), true);
+        QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
+        if (rectItem != nullptr) {
+            issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)128);
+            issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)128);
+        }
     }
 }
 
@@ -4599,51 +4632,59 @@ void wfmain::handlePlotClick(QMouseEvent* me)
     int leftPix = (int)passbandIndicator->left->pixelPosition().x();
     int rightPix = (int)passbandIndicator->right->pixelPosition().x();
 #endif
-    if (me->button() == Qt::LeftButton && rectItem != nullptr && (me->pos().x() <= leftPix || me->pos().x() >= rightPix)) {
-        resizingPassband = true;
-    }
-    
-    if (me->button() == Qt::RightButton && textItem != nullptr) {
-        QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
-        if (spot != clusterSpots.end() && spot.key() == textItem->text()) {
-            /* parent and children are destroyed on close */
-            QDialog* spotDialog = new QDialog();
-            QVBoxLayout* vlayout = new QVBoxLayout;
-            //spotDialog->setFixedSize(240, 100);
-            spotDialog->setBaseSize(1, 1);
-            spotDialog->setWindowTitle(spot.value()->dxcall);
-            QLabel* dxcall = new QLabel(QString("DX:%1").arg(spot.value()->dxcall));
-            QLabel* spotter = new QLabel(QString("Spotter:%1").arg(spot.value()->spottercall));
-            QLabel* frequency = new QLabel(QString("Frequency:%1 MHz").arg(spot.value()->frequency));
-            QLabel* comment = new QLabel(QString("Comment:%1").arg(spot.value()->comment));
-            QAbstractButton* bExit = new QPushButton("Close");
-            vlayout->addWidget(dxcall);
-            vlayout->addWidget(spotter);
-            vlayout->addWidget(frequency);
-            vlayout->addWidget(comment);
-            vlayout->addWidget(bExit);
-            spotDialog->setLayout(vlayout);
-            spotDialog->show();
-            spotDialog->connect(bExit, SIGNAL(clicked()), spotDialog, SLOT(close()));
+    int centerPix = leftPix + ((rightPix - leftPix) / 2);
+
+    if (me->button() == Qt::LeftButton) {
+        if (rectItem != nullptr && (me->pos().x() <= leftPix || me->pos().x() >= rightPix)) {
+            passbandAction = passbandResizing;
         }
-    }
-    else if (textItem != nullptr)
-    {
-        QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
-        if (spot != clusterSpots.end() && spot.key() == textItem->text()) 
+        else if (rectItem != nullptr && (me->pos().x() > centerPix - 10 && me->pos().x() < centerPix + 10)) {
+            passbandAction = passbandMoving;
+            clickedFrequency = plot->xAxis->pixelToCoord(me->pos().x());
+        }
+        else if (textItem != nullptr)
         {
-            qInfo(logGui()) << "Clicked on spot:" << textItem->text();
-            freqt freqGo;
-            freqGo.Hz = ( spot.value()->frequency)*1E6;
-            freqGo.MHzDouble = spot.value()->frequency;
-            issueCmdUniquePriority(cmdSetFreq, freqGo);
+            QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
+            if (spot != clusterSpots.end() && spot.key() == textItem->text())
+            {
+                qInfo(logGui()) << "Clicked on spot:" << textItem->text();
+                freqt freqGo;
+                freqGo.Hz = (spot.value()->frequency) * 1E6;
+                freqGo.MHzDouble = spot.value()->frequency;
+                issueCmdUniquePriority(cmdSetFreq, freqGo);
+            }
         }
-    }
-    else if (prefs.clickDragTuningEnable)
-    {
-        double x = plot->xAxis->pixelToCoord(me->pos().x());
-        showStatusBarText(QString("Selected %1 MHz").arg(x));
-        this->mousePressFreq = x;
+        else if (prefs.clickDragTuningEnable)
+        {
+            double x = plot->xAxis->pixelToCoord(me->pos().x());
+            showStatusBarText(QString("Selected %1 MHz").arg(x));
+            this->mousePressFreq = x;
+        }
+    } else if (me->button() == Qt::RightButton) {
+        if (textItem != nullptr) {
+            QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
+            if (spot != clusterSpots.end() && spot.key() == textItem->text()) {
+                /* parent and children are destroyed on close */
+                QDialog* spotDialog = new QDialog();
+                QVBoxLayout* vlayout = new QVBoxLayout;
+                //spotDialog->setFixedSize(240, 100);
+                spotDialog->setBaseSize(1, 1);
+                spotDialog->setWindowTitle(spot.value()->dxcall);
+                QLabel* dxcall = new QLabel(QString("DX:%1").arg(spot.value()->dxcall));
+                QLabel* spotter = new QLabel(QString("Spotter:%1").arg(spot.value()->spottercall));
+                QLabel* frequency = new QLabel(QString("Frequency:%1 MHz").arg(spot.value()->frequency));
+                QLabel* comment = new QLabel(QString("Comment:%1").arg(spot.value()->comment));
+                QAbstractButton* bExit = new QPushButton("Close");
+                vlayout->addWidget(dxcall);
+                vlayout->addWidget(spotter);
+                vlayout->addWidget(frequency);
+                vlayout->addWidget(comment);
+                vlayout->addWidget(bExit);
+                spotDialog->setLayout(vlayout);
+                spotDialog->show();
+                spotDialog->connect(bExit, SIGNAL(clicked()), spotDialog, SLOT(close()));
+            }
+        }
     }
 }
 
@@ -4658,8 +4699,8 @@ void wfmain::handlePlotMouseRelease(QMouseEvent* me)
         qInfo(logGui()) << "Mouse release delta: " << delta;
 
     }
-    if (resizingPassband) {
-        resizingPassband = false;
+    if (passbandAction != passbandStatic) {
+        passbandAction = passbandStatic;
     }
 }
 
@@ -4675,12 +4716,16 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
     int leftPix = (int)passbandIndicator->left->pixelPosition().x();
     int rightPix = (int)passbandIndicator->right->pixelPosition().x();
 #endif
-    if (rectItem != nullptr && (me->pos().x() <= leftPix || me->pos().x() >= rightPix)) {
+    int centerPix = leftPix + ((rightPix - leftPix) / 2);
+    if (passbandAction == passbandStatic && rectItem != nullptr && (me->pos().x() <= leftPix || me->pos().x() >= rightPix)) {
         setCursor(Qt::SizeHorCursor);
     }
-    else if (resizingPassband) {
+    else if (passbandAction == passbandStatic && rectItem != nullptr && (me->pos().x() > centerPix - 10 && me->pos().x() < centerPix + 10)) {
+        setCursor(Qt::OpenHandCursor);
+    }
+    else if (passbandAction == passbandResizing) {
         // We are currently resizing the passband.
-        double pb=0.0;
+        double pb = 0.0;
         if (currentModeInfo.mk == modeUSB || currentModeInfo.mk == modePSK || plot->xAxis->pixelToCoord(me->pos().x()) >= freq.MHzDouble) {
             pb = plot->xAxis->pixelToCoord(me->pos().x()) - passbandIndicator->topLeft->coords().x();
         }
@@ -4689,24 +4734,43 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
         }
 
         issueCmdUniquePriority(cmdSetPassband, (quint16)(pb * 1000000));
-    }
-    else {
-        setCursor(Qt::ArrowCursor);
-    }
+        issueCmdUniquePriority(cmdSetPassband, (quint16)(pb * 1000000));
 
-    if(me->buttons() == Qt::LeftButton && textItem==nullptr && prefs.clickDragTuningEnable)
+    }
+    else if (passbandAction == passbandMoving) {
+        double movedFrequency = plot->xAxis->pixelToCoord(me->pos().x()) - clickedFrequency;
+        double pbFreq = 0.0;
+
+        if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modePSK_R) {
+            pbFreq = ((TPBFInner - movedFrequency)/passBand)*127;
+        }
+        else{
+            pbFreq = ((movedFrequency + TPBFInner)/passBand)*127;
+        }
+
+        qint16 newFreq = pbFreq + 128;
+        if (newFreq >= 0 && newFreq <= 255) {
+            //qDebug() << QString("Moving passband by %1 Hz (%2) (%3) Mode:%4").arg((qint16)(movedFrequency * 1000000)).arg(pbFreq).arg(newFreq).arg(currentModeInfo.mk);
+            issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
+            issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
+        }
+    }
+    else  if (passbandAction == passbandStatic && me->buttons() == Qt::LeftButton && textItem == nullptr && prefs.clickDragTuningEnable)
     {
         double delta = plot->xAxis->pixelToCoord(me->pos().x()) - mousePressFreq;
-        qInfo(logGui()) << "Mouse moving delta: " << delta;
-        if( (( delta < -0.0001 ) || (delta > 0.0001)) && ((delta < 0.501) && (delta > -0.501)) )
+        qDebug(logGui()) << "Mouse moving delta: " << delta;
+        if (((delta < -0.0001) || (delta > 0.0001)) && ((delta < 0.501) && (delta > -0.501)))
         {
             freqt freqGo;
-            freqGo.Hz = ( freq.MHzDouble + delta)*1E6;
+            freqGo.Hz = (freq.MHzDouble + delta) * 1E6;
             //freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
             freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
             issueCmdUniquePriority(cmdSetFreq, freqGo);
         }
+    } else {
+        setCursor(Qt::ArrowCursor);
     }
+
 }
 
 void wfmain::handleWFClick(QMouseEvent *me)
@@ -5222,7 +5286,7 @@ void wfmain::on_band4mbtn_clicked()
 {
     // There isn't a BSR for this one:
     freqt f;
-    if((currentMode == modeAM) || (currentMode == modeFM))
+    if ((currentMode == modeAM) || (currentMode == modeFM))
     {
         f.Hz = (70.260) * 1E6;
     } else {
@@ -6034,6 +6098,31 @@ void wfmain::receivePassband(quint16 pass)
         showStatusBarText(QString("IF filter width %1 Hz").arg(pass));
     }
 }
+
+void wfmain::receiveTPBFInner(unsigned char level) {
+
+    static unsigned char oldLevel = level;
+    qint16 shift = (qint16)(level - 128);
+    TPBFInner = (double)(shift / 127.0) * (passBand / 2);
+
+    if (level != oldLevel) {
+        qInfo() << QString("Got TPBFInner %1 from %2 (%3)").arg(TPBFInner).arg(shift).arg(level);
+        oldLevel = level;
+    }
+}
+
+void wfmain::receiveTPBFOuter(unsigned char level) {
+
+    static unsigned char oldLevel = level;
+    qint16 shift = (qint16)(level - 128);
+    TPBFOuter = (double)(shift / 127.0) * (passBand / 2);
+
+    if (level != oldLevel) {
+        qInfo() << QString("Got TPBFOuter %1 from %2 (%3)").arg(TPBFOuter).arg(shift).arg(level);
+        oldLevel = level;
+    }
+}
+
 
 void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
 {
