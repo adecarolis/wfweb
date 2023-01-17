@@ -295,17 +295,10 @@ void paHandler::convertedOutput(audioPacket packet) {
 	if (packet.data.size() > 0) {
 
 		if (Pa_IsStreamActive(audio) == 1) {
-			if (currentLatency < (setup.latency+latencyAllowance)) {
-				PaError err = Pa_WriteStream(audio, (char*)packet.data.data(), packet.data.size() / nativeFormat.bytesPerFrame());
+			PaError err = Pa_WriteStream(audio, (char*)packet.data.data(), packet.data.size() / nativeFormat.bytesPerFrame());
 
-				if (err != paNoError) {
-					qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Error writing audio!";
-				}
-			}
-			else {
-				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Discarding audio data as current latency" << currentLatency << "exceeds setup latency" << setup.latency;
-				Pa_StopStream(audio);
-				latencyAllowance++;
+			if (err != paNoError) {
+				qDebug(logAudio()) << (setup.isinput ? "Input" : "Output") << "Error writing audio!";
 			}
 			const PaStreamInfo* info = Pa_GetStreamInfo(audio);
 			currentLatency = packet.time.msecsTo(QTime::currentTime()) + (info->outputLatency * 1000);
