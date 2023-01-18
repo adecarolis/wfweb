@@ -1600,7 +1600,7 @@ void wfmain::loadSettings()
     float priorVersionFloat = priorVersionString.toFloat();
     if(currentVersionString != priorVersionString)
     {
-      qWarning(logSystem()) << "Settings previously saved under version " << priorVersionString << ", you should review your settings and press SaveSettings.";
+        qWarning(logSystem()) << "Settings previously saved under version " << priorVersionString << ", you should review your settings and press SaveSettings.";
     }
     if(priorVersionFloat > currentVersionFloat)
     {
