@@ -6770,7 +6770,15 @@ void wfmain::on_waterfallFormatCombo_activated(int index)
 
 void wfmain::on_moreControlsBtn_clicked()
 {
+    if(trxadj->isMinimized())
+    {
+        trxadj->raise();
+        trxadj->activateWindow();
+        return;
+    }
     trxadj->show();
+    trxadj->raise();
+    trxadj->activateWindow();
 }
 
 void wfmain::on_useCIVasRigIDChk_clicked(bool checked)
