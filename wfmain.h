@@ -124,6 +124,9 @@ signals:
     void getModInputLevel(rigInput input);
     void getMeters(meterKind meter);
     void getPassband();
+    void getCwPitch();
+    void getPskTone();
+    void getRttyMark();
 
     // Level set:
     void setRfGain(unsigned char level);
@@ -266,6 +269,7 @@ private slots:
     void receiveModInput(rigInput input, bool dataOn);
     //void receiveDuplexMode(duplexMode dm);
     void receivePassband(quint16 pass);
+    void receiveCwPitch(unsigned char pitch);
     void receiveTPBFInner(unsigned char level);
     void receiveTPBFOuter(unsigned char level);
 
@@ -845,7 +849,7 @@ private:
     double wfCeiling = 160;
     double oldPlotFloor = -1;
     double oldPlotCeiling = 999;
-    double passBand = 0.0;
+    double passbandWidth = 0.0;
 
     double mousePressFreq = 0.0;
     double mouseReleaseFreq = 0.0;
@@ -866,21 +870,23 @@ private:
     unsigned char setModeVal=0;
     unsigned char setFilterVal=0;
 
-    enum cmds {cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode,
-              cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
-              cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
-              cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetTPBFInner, cmdSetTPBFInner,
-              cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus, cmdGetPassband, cmdSetPassband,
-              cmdSetATU, cmdStartATU, cmdGetSpectrumMode,
-              cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,cmdPTTToggle,
-              cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel,
-              cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
-              cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
-              cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
-              cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
-              cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
-              cmdGetBandStackReg,
-              cmdSetTime, cmdSetDate, cmdSetUTCOffset};
+    enum cmds {
+        cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode,
+        cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
+        cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
+        cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetTPBFInner, cmdSetTPBFInner,
+        cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus, cmdGetPassband, cmdSetPassband,
+        cmdGetCwPitch, cmdGetPskTone, cmdGetRttyMark, cmdSetCwPitch, cmdSetPskTone, cmdSetRttyMark,
+        cmdSetATU, cmdStartATU, cmdGetSpectrumMode,
+        cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,cmdPTTToggle,
+        cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel,
+        cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
+        cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
+        cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
+        cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
+        cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
+        cmdGetBandStackReg,
+        cmdSetTime, cmdSetDate, cmdSetUTCOffset};
 
     struct commandtype {
         cmds cmd;
@@ -1076,6 +1082,7 @@ private:
     double clickedFrequency = 0.0;
     double TPBFInner = 0.0;
     double TPBFOuter = 0.0;
+    double passbandCenterFrequency = 0.0;
     SERVERCONFIG serverConfig;
     void serverAddUserLine(const QString& user, const QString& pass, const int& type);
 

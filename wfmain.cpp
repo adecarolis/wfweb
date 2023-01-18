@@ -358,6 +358,7 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveMode(unsigned char, unsigned char)), this, SLOT(receiveMode(unsigned char, unsigned char)));
     connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
     connect(rig, SIGNAL(havePassband(quint16)), this, SLOT(receivePassband(quint16)));
+    connect(rig, SIGNAL(haveCwPitch(unsigned char)), this, SLOT(receiveCwPitch(unsigned char)));
 
     connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
     connect(rpt, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
@@ -378,6 +379,9 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
     connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
     connect(this, SIGNAL(setPassband(quint16)), rig, SLOT(setPassband(quint16)));
+    connect(this, SIGNAL(getCwPitch()), rig, SLOT(getCwPitch()));
+    connect(this, SIGNAL(getPskTone()), rig, SLOT(getPskTone()));
+    connect(this, SIGNAL(getRttyMark()), rig, SLOT(getRttyMark()));
     connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(this, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(this, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
@@ -3593,6 +3597,15 @@ void wfmain::doCmd(cmds cmd)
         case cmdGetPassband:
             emit getPassband();
             break;
+        case cmdGetCwPitch:
+            emit getCwPitch();
+            break;
+        case cmdGetPskTone:
+            emit getPskTone();
+            break;
+        case cmdGetRttyMark:
+            emit getRttyMark();
+            break;
         case cmdGetTone:
             emit getTone();
             break;
@@ -4399,73 +4412,74 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
     plasmaMutex.unlock();
 
 
-    if(!spectrumDrawLock)
+    if (!spectrumDrawLock)
     {
-        if((plotFloor != oldPlotFloor) || (plotCeiling != oldPlotCeiling))
+        if ((plotFloor != oldPlotFloor) || (plotCeiling != oldPlotCeiling)){
             updateRange = true;
+        }
+        plot->graph(0)->setData(x, y, true);
 
-#if QCUSTOMPLOT_VERSION >= 0x020000
-
-        plot->graph(0)->setData(x,y, true);
         if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
         {
             freqIndicatorLine->start->setCoords(freq.MHzDouble, 0);
             freqIndicatorLine->end->setCoords(freq.MHzDouble, rigCaps.spectAmpMax);
             double tpbfDiff = qMax(TPBFInner, TPBFOuter);
+            double pbStart = 0.0;
+            double pbEnd = 0.0;
+
             if (TPBFOuter < TPBFInner) {
                 tpbfDiff = qMin(TPBFInner, TPBFOuter);
             }
-            if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modePSK_R) {
-                passbandIndicator->topLeft->setCoords(freq.MHzDouble - passBand - 0.0001 - tpbfDiff, 0);
-                passbandIndicator->bottomRight->setCoords(freq.MHzDouble - 0.0001 - tpbfDiff, rigCaps.spectAmpMax);
-            }
-            else if (currentModeInfo.mk == modeUSB || currentModeInfo.mk == modePSK) {
-                passbandIndicator->topLeft->setCoords(freq.MHzDouble + 0.0001 + tpbfDiff, 0);
-                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + 0.0001 + passBand + tpbfDiff, rigCaps.spectAmpMax);
-            }
-            else
+
+            switch (currentModeInfo.mk)
             {
-                if (currentModeInfo.mk == modeFM) {
-                    if (currentModeInfo.filter == 1)
-                        passBand = 0.015;
-                    else if (currentModeInfo.filter == 2)
-                        passBand = 0.010;
-                    else
-                        passBand = 0.007;
+            case modeLSB:
+            case modeRTTY:
+            case modePSK_R:
+                pbStart = freq.MHzDouble - passbandCenterFrequency - (passbandWidth / 2);
+                pbEnd = freq.MHzDouble - passbandCenterFrequency + (passbandWidth / 2);
+                break;
+            case modeCW:
+                if (passbandWidth < 0.0006) {
+                    pbStart = freq.MHzDouble - (passbandWidth / 2);
+                    pbEnd = freq.MHzDouble + (passbandWidth / 2);
                 }
-                passbandIndicator->topLeft->setCoords(freq.MHzDouble - (passBand / 2) + tpbfDiff, 0);
-                passbandIndicator->bottomRight->setCoords(freq.MHzDouble + (passBand / 2) + tpbfDiff, rigCaps.spectAmpMax);
+                else {
+                    pbStart = freq.MHzDouble + passbandCenterFrequency - passbandWidth;
+                    pbEnd = freq.MHzDouble + passbandCenterFrequency;
+                }
+                break;
+            case modeCW_R:
+                if (passbandWidth < 0.0006) {
+                    pbStart = freq.MHzDouble - (passbandWidth / 2);
+                    pbEnd = freq.MHzDouble + (passbandWidth / 2);
+                }
+                else {
+                    pbStart = freq.MHzDouble - passbandCenterFrequency;
+                    pbEnd = freq.MHzDouble + passbandWidth - passbandCenterFrequency;
+                }
+                break;
+            default:
+                pbStart = freq.MHzDouble + passbandCenterFrequency - (passbandWidth / 2);
+                pbEnd = freq.MHzDouble + passbandCenterFrequency + (passbandWidth / 2);
+                break;
             }
 
+            passbandIndicator->topLeft->setCoords(pbStart, 0);
+            passbandIndicator->bottomRight->setCoords(pbEnd, rigCaps.spectAmpMax);
         }
 
-        if(underlayMode == underlayPeakHold)
+        if (underlayMode == underlayPeakHold)
         {
-            plot->graph(1)->setData(x,y2, true); // peaks
-        } else if (underlayMode != underlayNone) {
+            plot->graph(1)->setData(x, y2, true); // peaks
+        }
+        else if (underlayMode != underlayNone) {
             computePlasma();
-            plot->graph(1)->setData(x,spectrumPlasmaLine, true);
-        } else {
-            plot->graph(1)->setData(x,y2, true); // peaks, but probably cleared out
+            plot->graph(1)->setData(x, spectrumPlasmaLine, true);
         }
-#else
-        plot->graph(0)->setData(x,y);
-        if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
-        {
-            freqIndicatorLine->start->setCoords(freq.MHzDouble,0);
-            freqIndicatorLine->end->setCoords(freq.MHzDouble,rigCaps.spectAmpMax);
+        else {
+            plot->graph(1)->setData(x, y2, true); // peaks, but probably cleared out
         }
-
-        if(underlayMode == underlayPeakHold)
-        {
-            plot->graph(1)->setData(x,y2); // peaks
-        } else if (underlayMode != underlayNone) {
-            computePlasma();
-            plot->graph(1)->setData(x,spectrumPlasmaLine);
-        } else {
-            plot->graph(1)->setData(x,y2); // peaks, but probably cleared out
-        }
-#endif
 
         if(updateRange)
             plot->yAxis->setRange(prefs.plotFloor, prefs.plotCeiling);
@@ -4726,7 +4740,13 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
     else if (passbandAction == passbandResizing) {
         // We are currently resizing the passband.
         double pb = 0.0;
-        if (currentModeInfo.mk == modeUSB || currentModeInfo.mk == modePSK || plot->xAxis->pixelToCoord(me->pos().x()) >= freq.MHzDouble) {
+        double origin = passbandCenterFrequency;
+        if (currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R)
+        {
+            origin = 0.0;
+        }
+
+        if (plot->xAxis->pixelToCoord(me->pos().x()) >= freq.MHzDouble + origin) {
             pb = plot->xAxis->pixelToCoord(me->pos().x()) - passbandIndicator->topLeft->coords().x();
         }
         else {
@@ -4734,18 +4754,16 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
         }
 
         issueCmdUniquePriority(cmdSetPassband, (quint16)(pb * 1000000));
-        issueCmdUniquePriority(cmdSetPassband, (quint16)(pb * 1000000));
-
     }
     else if (passbandAction == passbandMoving) {
         double movedFrequency = plot->xAxis->pixelToCoord(me->pos().x()) - clickedFrequency;
         double pbFreq = 0.0;
 
         if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modePSK_R) {
-            pbFreq = ((TPBFInner - movedFrequency) / passBand) * 127;
+            pbFreq = ((TPBFInner - movedFrequency) / passbandWidth) * 127;
         }
         else {
-            pbFreq = ((movedFrequency + TPBFInner) / passBand) * 127;
+            pbFreq = ((movedFrequency + TPBFInner) / passbandWidth) * 127;
         }
 
         qint16 newFreq = pbFreq + 128;
@@ -4859,6 +4877,35 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
         currentModeIndex = mode;
         currentModeInfo.mk = (mode_kind)mode;
         currentModeInfo.filter = filter;
+
+        switch (currentModeInfo.mk) {
+        case modeFM:
+            if (currentModeInfo.filter == 1)
+                passbandWidth = 0.015;
+            else if (currentModeInfo.filter == 2)
+                passbandWidth = 0.010;
+            else
+                passbandWidth = 0.007;
+            passbandCenterFrequency = 0.0;
+            break;
+        case modeLSB:
+        case modeUSB:
+            removePeriodicCommand(cmdGetCwPitch);
+            removePeriodicCommand(cmdGetPskTone);
+            removePeriodicCommand(cmdGetRttyMark);
+            passbandCenterFrequency = 0.0015;
+            break;
+        case modeCW:
+        case modeCW_R:
+            insertPeriodicCommandUnique(cmdGetCwPitch);
+            removePeriodicCommand(cmdGetPskTone);
+            removePeriodicCommand(cmdGetRttyMark);
+            break;
+        default:
+            passbandCenterFrequency = 0.0;
+            break;
+        }
+
     } else {
         qInfo(logSystem()) << __func__ << "Invalid mode " << mode << " received. ";
     }
@@ -6093,47 +6140,28 @@ void wfmain::receiveLANGain(unsigned char level)
 
 void wfmain::receivePassband(quint16 pass)
 {
-    if (passBand != (double)(pass / 1000000.0)) {
-        passBand = (double)(pass / 1000000.0);
+    if (passbandWidth != (double)(pass / 1000000.0)) {
+        passbandWidth = (double)(pass / 1000000.0);
         showStatusBarText(QString("IF filter width %1 Hz").arg(pass));
+    }
+}
+
+void wfmain::receiveCwPitch(unsigned char pitch) {
+    if (currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) {
+        passbandCenterFrequency = (double)((((600 / 256) * pitch) + 300) / 1000000.0)/2.0;
     }
 }
 
 void wfmain::receiveTPBFInner(unsigned char level) {
 
     qint16 shift = (qint16)(level - 128);
-    if (passbandAction != passbandResizing) {
-        TPBFInner = (double)(shift / 127.0) * (passBand);
-    }
-    else {
-        double pbFreq = 0.0;
-        pbFreq = (TPBFInner / passBand) * 127;
-        qint16 newFreq = pbFreq + 128;
-        if (newFreq < 0)
-            newFreq = 0;
-        if (newFreq > 255)
-            newFreq = 255;
-        issueCmd(cmdSetTPBFInner, (unsigned char)newFreq);
-    }
-
+    TPBFInner = (double)(shift / 127.0) * (passbandWidth);
 }
 
 void wfmain::receiveTPBFOuter(unsigned char level) {
     
     qint16 shift = (qint16)(level - 128);
-    if (passbandAction != passbandResizing) {
-        TPBFOuter = (double)(shift / 127.0) * (passBand);
-    }
-    else {
-        double pbFreq = 0.0;
-        pbFreq = (TPBFOuter / passBand) * 127;
-        qint16 newFreq = pbFreq + 128;
-        if (newFreq < 0)
-            newFreq = 0;
-        if (newFreq > 255)
-            newFreq = 255;
-        issueCmd(cmdSetTPBFOuter, (unsigned char)newFreq);
-    }
+    TPBFOuter = (double)(shift / 127.0) * (passbandWidth);
 }
 
 

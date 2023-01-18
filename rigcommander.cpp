@@ -877,26 +877,39 @@ void rigCommander::setPassband(quint16 pass)
     QByteArray payload;
     payload.setRawData("\x1A\x03", 2);
 
-    unsigned char calc;
     /*
-        Mode                Data        Steps
-        SSB/CW/RTTY/PSK     0 to 9      50 ~ 500 Hz (50 Hz)
-        SSB/CW/PSK          10 to 40    600 Hz ~ 3.6 kHz (100 Hz)
-        RTTY                10 to 31    600 ~ 2.7 kHz (100 Hz)
-        AM                  0 to 49     200 Hz ~ 10.0 kHz (200 Hz)
+    * Passband is calculated as follows, if a higher than legal value is provided,
+    * It will set passband to the maximum allowed for the particular mode.
+    * 
+    * Mode                Data        Steps
+    * SSB/CW/RTTY/PSK     0 to 9      50 ~ 500 Hz (50 Hz)
+    * SSB/CW/PSK          10 to 40    600 Hz ~ 3.6 kHz (100 Hz)
+    * RTTY                10 to 31    600 ~ 2.7 kHz (100 Hz)
+    * AM                  0 to 49     200 Hz ~ 10.0 kHz (200 Hz)
     */
+    
+    unsigned char calc;
     if (state.getChar(MODE) == modeAM) { // AM 0-49
 
         calc = quint16((pass / 200) - 1);
+        if (calc > 49)
+            calc = 49;
     }
-    else if (pass >= 600 && pass <= 3600) // SSB/CW/PSK 10-40 (10-31 for RTTY)
+    else if (pass >= 600) // SSB/CW/PSK 10-40 (10-31 for RTTY)
     {
         calc = quint16((pass / 100) + 4);
+        if (((calc > 31) && (state.getChar(MODE) == modeRTTY || state.getChar(MODE) == modeRTTY_R)))
+        {
+            calc = 31;
+        } 
+        else if (calc > 40) {
+            calc = 40;
+        }
     }
     else {  // SSB etc 0-9
         calc = quint16((pass / 50) - 1);
     }
-
+    
     char tens = (calc / 10);
     char units = (calc - (10 * tens));
 
@@ -910,6 +923,27 @@ void rigCommander::getPassband()
 {
     QByteArray payload;
     payload.setRawData("\x1A\x03", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getCwPitch()
+{
+    QByteArray payload;
+    payload.setRawData("\x14\x09", 2);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getPskTone()
+{
+    QByteArray payload;
+    payload.setRawData("\x1a\x05\x00\x44", 4);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getRttyMark()
+{
+    QByteArray payload;
+    payload.setRawData("\x1a\x05\x00\x41", 4);
     prepDataAndSend(payload);
 }
 
@@ -1490,7 +1524,8 @@ void rigCommander::parseLevels()
                 state.set(PBTOUT, level, false);
                 break;
             case '\x09':
-                // CW Pitch - ignore for now
+                // CW Pitch
+                emit haveCwPitch(level);
                 state.set(CWPITCH, level, false);
                 break;
             case '\x0A':

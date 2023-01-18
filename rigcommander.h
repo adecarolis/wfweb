@@ -117,6 +117,9 @@ public slots:
     void getManualNotch();
 
     void getPassband();
+    void getCwPitch();
+    void getPskTone();
+    void getRttyMark();
 
     // Repeater:
     void setDuplexMode(duplexMode dm);
@@ -283,6 +286,9 @@ signals:
     void haveRitEnabled(bool ritEnabled);
     void haveRitFrequency(int ritHz);
     void havePassband(quint16 pass);
+    void haveCwPitch(unsigned char pitch);
+    void havePskTone(unsigned char tone);
+    void haveRttyMark(unsigned char mark);
 
     // Repeater:
     void haveDuplexMode(duplexMode);
