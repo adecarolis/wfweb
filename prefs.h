@@ -60,8 +60,8 @@ struct preferences {
     QString clusterTcpServerName;
     QString clusterTcpUserName;
     QString clusterTcpPassword;
-    int clusterTimeout;
-    bool clusterSkimmerSpotsEnable;
+    int clusterTimeout; // used?
+    bool clusterSkimmerSpotsEnable; // where is this used?
 };
 
 #endif // PREFS_H

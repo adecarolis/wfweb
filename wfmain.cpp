@@ -2439,15 +2439,20 @@ void wfmain::saveSettings()
     qInfo(logSystem()) << "Saving settings to " << settings->fileName();
     // Basic things to load:
 
-    QString versionstr = QString(WFVIEW_VERSION);
-    QString majorVersion = versionstr.split(".").at(0);
-    QString minorVersion = versionstr.split(".").at(1);
 
+    QString versionstr = QString(WFVIEW_VERSION);
+    QString majorVersion = "-1";
+    QString minorVersion = "-1";
+    if(versionstr.contains(".") && (versionstr.split(".").length() == 2))
+    {
+        majorVersion = versionstr.split(".").at(0);
+        minorVersion = versionstr.split(".").at(1);
+    }
 
     settings->beginGroup("Program");
     settings->setValue("version", versionstr);
-    settings->setValue("majorVersion", int(majorVersion.toInt());
-    settings->setValue("minorVersion", int(minorVersion.toInt());
+    settings->setValue("majorVersion", int(majorVersion.toInt()));
+    settings->setValue("minorVersion", int(minorVersion.toInt()));
     settings->setValue("gitShort", QString(GITSHORT));
     settings->endGroup();
 
