@@ -1118,8 +1118,6 @@ void wfmain::getSettingsFilePath(QString settingsFile)
             path = path + "/";
             file = info.fileName();
         }
-
-        qInfo(logSystem()) << "Loading settings from:" << path + file;
         settings = new QSettings(path + file, QSettings::Format::IniFormat);
     }
 }
@@ -1594,7 +1592,25 @@ void wfmain::loadSettings()
 {
     qInfo(logSystem()) << "Loading settings from " << settings->fileName();
 
-    // Basic things to load:
+    QString currentVersionString = QString(WFVIEW_VERSION);
+    float currentVersionFloat = currentVersionString.toFloat();
+
+    settings->beginGroup("Program");
+    QString priorVersionString = settings->value("version", "unset").toString();
+    float priorVersionFloat = priorVersionString.toFloat();
+    if(currentVersionString != priorVersionString)
+    {
+      qWarning(logSystem()) << "Settings previously saved under version " << priorVersionString << ", you should review your settings and press SaveSettings.";
+    }
+    if(priorVersionFloat > currentVersionFloat)
+    {
+        qWarning(logSystem()).noquote().nospace() << "It looks like the previous version of wfview (" << priorVersionString << ") was newer than this version (" << currentVersionString << ")";
+    }
+    prefs.version = priorVersionString;
+    prefs.majorVersion = settings->value("majorVersion", defPrefs.majorVersion).toInt();
+    prefs.minorVersion = settings->value("minorVersion", defPrefs.minorVersion).toInt();
+    settings->endGroup();
+
     // UI: (full screen, dark theme, draw peaks, colors, etc)
     settings->beginGroup("Interface");
     prefs.useFullScreen = settings->value("UseFullScreen", defPrefs.useFullScreen).toBool();
