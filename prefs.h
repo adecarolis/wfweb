@@ -6,7 +6,13 @@
 #include "wfviewtypes.h"
 
 struct preferences {
+    // Program:
     QString version;
+    int majorVersion = 0;
+    int minorVersion = 0;
+    QString gitShort;
+
+    // Interface:
     bool useFullScreen;
     bool useSystemTheme;
     bool drawPeaks;
@@ -14,31 +20,40 @@ struct preferences {
     int underlayBufferSize = 64;
     bool wfAntiAlias;
     bool wfInterpolate;
+    int wftheme;
+    int plotFloor;
+    int plotCeiling;
     QString stylesheetPath;
+    unsigned int wflength;
+    bool confirmExit;
+    bool confirmPowerOff;
+    meterKind meter2Type;
+    bool clickDragTuningEnable;
+
+    // Radio:
     unsigned char radioCIVAddr;
     bool CIVisRadioModel;
     bool forceRTSasPTT;
+    int polling_ms;
     QString serialPortRadio;
     quint32 serialPortBaud;
-    int polling_ms;
+    QString virtualSerialPort;
+    unsigned char localAFgain;
+    audioType audioSystem;
+
+    // Controls:
     bool enablePTT;
     bool niceTS;
+
+    // LAN:
     bool enableLAN;
     bool enableRigCtlD;
     quint16 rigCtlPort;
     int currentColorPresetNumber = 0;
-    QString virtualSerialPort;
-    unsigned char localAFgain;
-    unsigned int wflength;
-    int wftheme;
-    int plotFloor;
-    int plotCeiling;
-    bool confirmExit;
-    bool confirmPowerOff;
-    meterKind meter2Type;
     quint16 tcpPort;
     quint8 waterfallFormat;
-    audioType audioSystem;
+
+    // Cluster:
     bool clusterUdpEnable;
     bool clusterTcpEnable;
     int clusterUdpPort;
@@ -46,7 +61,6 @@ struct preferences {
     QString clusterTcpUserName;
     QString clusterTcpPassword;
     int clusterTimeout;
-    bool clickDragTuningEnable;
     bool clusterSkimmerSpotsEnable;
 };
 
