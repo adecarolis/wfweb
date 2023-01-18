@@ -4740,10 +4740,19 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
     else if (passbandAction == passbandResizing) {
         // We are currently resizing the passband.
         double pb = 0.0;
-        double origin = passbandCenterFrequency;
-        if (currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R)
+        double origin = 0.0;
+        switch (currentModeInfo.mk)
         {
+        case modeCW:
+        case modeCW_R:
             origin = 0.0;
+            break;
+        case modeLSB:
+            origin = -passbandCenterFrequency;
+            break;
+        default:
+            origin = passbandCenterFrequency;
+            break;
         }
 
         if (plot->xAxis->pixelToCoord(me->pos().x()) >= freq.MHzDouble + origin) {
@@ -4902,6 +4911,9 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
             removePeriodicCommand(cmdGetRttyMark);
             break;
         default:
+            removePeriodicCommand(cmdGetCwPitch);
+            removePeriodicCommand(cmdGetPskTone);
+            removePeriodicCommand(cmdGetRttyMark);
             passbandCenterFrequency = 0.0;
             break;
         }
