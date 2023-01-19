@@ -19,6 +19,7 @@ struct colorPrefsType{
     QColor plotBackground;
     QColor tuningLine;
     QColor passband;
+    QColor pbt;
 
     // Waterfall:
     QColor wfBackground;

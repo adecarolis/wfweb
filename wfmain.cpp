@@ -773,6 +773,13 @@ void wfmain::setupPlots()
     passbandIndicator->setBrush(QBrush(Qt::red));
     passbandIndicator->setSelectable(true);
 
+    pbtIndicator = new QCPItemRect(plot);
+    pbtIndicator->setAntialiased(true);
+    pbtIndicator->setPen(QPen(Qt::red));
+    pbtIndicator->setBrush(QBrush(Qt::red));
+    pbtIndicator->setSelectable(true);
+    pbtIndicator->setVisible(false);
+
     freqIndicatorLine = new QCPItemLine(plot);
     freqIndicatorLine->setAntialiased(true);
     freqIndicatorLine->setPen(QPen(Qt::blue));
@@ -815,6 +822,9 @@ void wfmain::setupPlots()
 
     passbandIndicator->topLeft->setCoords(0.5, 0);
     passbandIndicator->bottomRight->setCoords(0.5, 160);
+
+    pbtIndicator->topLeft->setCoords(0.5, 0);
+    pbtIndicator->bottomRight->setCoords(0.5, 160);
 
     // Plot user interaction
     connect(plot, SIGNAL(mouseDoubleClick(QMouseEvent*)), this, SLOT(handlePlotDoubleClick(QMouseEvent*)));
@@ -1666,6 +1676,7 @@ void wfmain::loadSettings()
             p->plotBackground.setNamedColor(settings->value("plotBackground", p->plotBackground.name(QColor::HexArgb)).toString());
             p->tuningLine.setNamedColor(settings->value("tuningLine", p->tuningLine.name(QColor::HexArgb)).toString());
             p->passband.setNamedColor(settings->value("passband", p->passband.name(QColor::HexArgb)).toString());
+            p->pbt.setNamedColor(settings->value("pbt", p->pbt.name(QColor::HexArgb)).toString());
             p->wfBackground.setNamedColor(settings->value("wfBackground", p->wfBackground.name(QColor::HexArgb)).toString());
             p->wfGrid.setNamedColor(settings->value("wfGrid", p->wfGrid.name(QColor::HexArgb)).toString());
             p->wfAxis.setNamedColor(settings->value("wfAxis", p->wfAxis.name(QColor::HexArgb)).toString());
@@ -2558,6 +2569,7 @@ void wfmain::saveSettings()
         settings->setValue("plotBackground", p->plotBackground.name(QColor::HexArgb));
         settings->setValue("tuningLine", p->tuningLine.name(QColor::HexArgb));
         settings->setValue("passband", p->passband.name(QColor::HexArgb));
+        settings->setValue("pbt", p->pbt.name(QColor::HexArgb));
         settings->setValue("wfBackground", p->wfBackground.name(QColor::HexArgb));
         settings->setValue("wfGrid", p->wfGrid.name(QColor::HexArgb));
         settings->setValue("wfAxis", p->wfAxis.name(QColor::HexArgb));
@@ -3286,6 +3298,7 @@ void wfmain::setDefaultColors(int presetNumber)
     p->plotBackground = QColor(Qt::black);
     p->tuningLine = QColor(Qt::blue);
     p->passband = QColor(Qt::blue);
+    p->pbt = QColor("#32ff0000");
 
     p->meterLevel = QColor("#148CD2").darker();
     p->meterAverage = QColor("#3FB7CD");
@@ -3320,6 +3333,7 @@ void wfmain::setDefaultColors(int presetNumber)
             p->underlayFill = QColor(20+200/4.0*1,70*(1.6-1/4.0), 150, 150);
             p->tuningLine = QColor("#ff55ffff");
             p->passband = QColor("#32ffffff");
+            p->pbt = QColor("#32ff0000");
 
             p->meterLevel = QColor("#148CD2").darker();
             p->meterAverage = QColor("#3FB7CD");
@@ -3349,6 +3363,7 @@ void wfmain::setDefaultColors(int presetNumber)
             p->underlayLine = QColor(Qt::blue);
             p->tuningLine = QColor(Qt::darkBlue);
             p->passband = QColor("#64000080");
+            p->pbt = QColor("#32ff0000");
 
             p->meterAverage = QColor("#3FB7CD");
             p->meterPeakLevel = QColor("#3CA0DB");
@@ -4423,13 +4438,9 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         {
             freqIndicatorLine->start->setCoords(freq.MHzDouble, 0);
             freqIndicatorLine->end->setCoords(freq.MHzDouble, rigCaps.spectAmpMax);
-            double tpbfDiff = qMax(TPBFInner, TPBFOuter);
+
             double pbStart = 0.0;
             double pbEnd = 0.0;
-
-            if (TPBFOuter < TPBFInner) {
-                tpbfDiff = qMin(TPBFInner, TPBFOuter);
-            }
 
             switch (currentModeInfo.mk)
             {
@@ -4467,6 +4478,33 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
             passbandIndicator->topLeft->setCoords(pbStart, 0);
             passbandIndicator->bottomRight->setCoords(pbEnd, rigCaps.spectAmpMax);
+
+            if (TPBFInner || TPBFOuter) {
+                pbtIndicator->setVisible(true);
+            }
+            else
+            {
+                pbtIndicator->setVisible(false);
+            }
+
+            if (TPBFInner < TPBFOuter) 
+            {
+                double width = passbandWidth - TPBFOuter - TPBFInner;
+                pbtIndicator->topLeft->setCoords(pbStart + TPBFInner + TPBFOuter, 0);
+                pbtIndicator->bottomRight->setCoords(pbStart + passbandWidth, rigCaps.spectAmpMax);
+            }
+            else if (TPBFOuter > TPBFInner) 
+            {
+                double width = passbandWidth - TPBFInner - TPBFOuter;
+                pbtIndicator->topLeft->setCoords(pbStart + TPBFInner+TPBFOuter, 0);
+                pbtIndicator->bottomRight->setCoords(pbEnd + width, rigCaps.spectAmpMax);
+            }
+            else if (passbandAction == passbandStatic) {
+                pbtIndicator->topLeft->setCoords(pbStart+TPBFInner, 0);
+                pbtIndicator->bottomRight->setCoords(pbEnd+TPBFOuter, rigCaps.spectAmpMax);
+            }
+
+
         }
 
         if (underlayMode == underlayPeakHold)
@@ -4642,21 +4680,19 @@ void wfmain::handlePlotClick(QMouseEvent* me)
 #if QCUSTOMPLOT_VERSION < 0x020000
     int leftPix = (int)passbandIndicator->left->pixelPoint().x();
     int rightPix = (int)passbandIndicator->right->pixelPoint().x();
+    int pbtLeftPix = (int)pbtIndicator->left->pixelPoint().x();
+    int pbtRightPix = (int)pbtIndicator->right->pixelPoint().x();
 #else
     int leftPix = (int)passbandIndicator->left->pixelPosition().x();
     int rightPix = (int)passbandIndicator->right->pixelPosition().x();
+    int pbtLeftPix = (int)pbtIndicator->left->pixelPosition().x();
+    int pbtRightPix = (int)pbtIndicator->right->pixelPosition().x();
 #endif
-    int centerPix = leftPix + ((rightPix - leftPix) / 2);
+    int pbtCenterPix = pbtLeftPix + ((pbtRightPix - pbtLeftPix) / 2);
+    int cursor = me->pos().x();
 
     if (me->button() == Qt::LeftButton) {
-        if (rectItem != nullptr && (me->pos().x() <= leftPix || me->pos().x() >= rightPix)) {
-            passbandAction = passbandResizing;
-        }
-        else if (rectItem != nullptr && (me->pos().x() > centerPix - 10 && me->pos().x() < centerPix + 10)) {
-            passbandAction = passbandMoving;
-            clickedFrequency = plot->xAxis->pixelToCoord(me->pos().x());
-        }
-        else if (textItem != nullptr)
+        if (textItem != nullptr)
         {
             QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
             if (spot != clusterSpots.end() && spot.key() == textItem->text())
@@ -4668,13 +4704,22 @@ void wfmain::handlePlotClick(QMouseEvent* me)
                 issueCmdUniquePriority(cmdSetFreq, freqGo);
             }
         }
+        else if (passbandAction == passbandStatic && rectItem != nullptr)
+        {
+            if ((cursor <= leftPix && cursor > leftPix - 10) || (cursor >= rightPix && cursor < rightPix + 10))
+            {
+                passbandAction = passbandResizing;
+            }
+        }
         else if (prefs.clickDragTuningEnable)
         {
             double x = plot->xAxis->pixelToCoord(me->pos().x());
             showStatusBarText(QString("Selected %1 MHz").arg(x));
             this->mousePressFreq = x;
         }
-    } else if (me->button() == Qt::RightButton) {
+    } 
+    else if (me->button() == Qt::RightButton) 
+    {
         if (textItem != nullptr) {
             QMap<QString, spotData*>::iterator spot = clusterSpots.find(textItem->text());
             if (spot != clusterSpots.end() && spot.key() == textItem->text()) {
@@ -4699,6 +4744,22 @@ void wfmain::handlePlotClick(QMouseEvent* me)
                 spotDialog->connect(bExit, SIGNAL(clicked()), spotDialog, SLOT(close()));
             }
         }
+        else if (passbandAction == passbandStatic && rectItem != nullptr)
+        {
+            if (cursor <= pbtLeftPix && cursor > pbtLeftPix - 10)
+            {
+                passbandAction = pbtInnerMove;
+            }
+            else if (cursor >= pbtRightPix && cursor < pbtRightPix + 10)
+            {
+                passbandAction = pbtOuterMove;
+            }
+            else if (cursor > pbtCenterPix - 20 && cursor < pbtCenterPix + 20)
+            {
+                passbandAction = pbtMoving;
+            }
+            clickedFrequency = plot->xAxis->pixelToCoord(me->pos().x());
+        }
     }
 }
 
@@ -4718,7 +4779,7 @@ void wfmain::handlePlotMouseRelease(QMouseEvent* me)
     }
 }
 
-void wfmain::handlePlotMouseMove(QMouseEvent *me)
+void wfmain::handlePlotMouseMove(QMouseEvent* me)
 {
     QCPAbstractItem* item = plot->itemAt(me->pos(), true);
     QCPItemText* textItem = dynamic_cast<QCPItemText*> (item);
@@ -4726,18 +4787,31 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
 #if QCUSTOMPLOT_VERSION < 0x020000
     int leftPix = (int)passbandIndicator->left->pixelPoint().x();
     int rightPix = (int)passbandIndicator->right->pixelPoint().x();
+    int pbtLeftPix = (int)pbtIndicator->left->pixelPoint().x();
+    int pbtRightPix = (int)pbtIndicator->right->pixelPoint().x();
 #else
     int leftPix = (int)passbandIndicator->left->pixelPosition().x();
     int rightPix = (int)passbandIndicator->right->pixelPosition().x();
+    int pbtLeftPix = (int)pbtIndicator->left->pixelPosition().x();
+    int pbtRightPix = (int)pbtIndicator->right->pixelPosition().x();
 #endif
-    int centerPix = leftPix + ((rightPix - leftPix) / 2);
-    if (passbandAction == passbandStatic && rectItem != nullptr && (me->pos().x() <= leftPix || me->pos().x() >= rightPix)) {
-        setCursor(Qt::SizeHorCursor);
+    int pbtCenterPix = pbtLeftPix + ((pbtRightPix - pbtLeftPix) / 2);
+    int cursor = me->pos().x();
+    if (passbandAction == passbandStatic && rectItem != nullptr)
+    {                
+        if ((cursor <= leftPix && cursor > leftPix - 10) ||
+            (cursor >= rightPix && cursor < rightPix + 10) ||
+            (cursor <= pbtLeftPix && cursor > pbtLeftPix - 10) ||
+            (cursor >= pbtRightPix && cursor < pbtRightPix + 10))
+        {
+            setCursor(Qt::SizeHorCursor);
+        }
+        else if (me->pos().x() > pbtCenterPix - 20 && me->pos().x() < pbtCenterPix + 20) {
+            setCursor(Qt::OpenHandCursor);
+        }
     }
-    else if (passbandAction == passbandStatic && rectItem != nullptr && (me->pos().x() > centerPix - 10 && me->pos().x() < centerPix + 10)) {
-        setCursor(Qt::OpenHandCursor);
-    }
-    else if (passbandAction == passbandResizing) {
+    else if (passbandAction == passbandResizing)
+    {
         // We are currently resizing the passband.
         double pb = 0.0;
         double origin = 0.0;
@@ -4764,7 +4838,7 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
 
         issueCmdUniquePriority(cmdSetPassband, (quint16)(pb * 1000000));
     }
-    else if (passbandAction == passbandMoving) {
+    else if (passbandAction == pbtMoving) {
         double movedFrequency = plot->xAxis->pixelToCoord(me->pos().x()) - clickedFrequency;
         double pbFreq = 0.0;
 
@@ -4780,6 +4854,32 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
             //qDebug() << QString("Moving passband by %1 Hz (%2) (%3) Mode:%4").arg((qint16)(movedFrequency * 1000000)).arg(pbFreq).arg(newFreq).arg(currentModeInfo.mk);
             issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
             issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
+        }
+    }
+    else if (passbandAction == pbtInnerMove) {
+        double movedFrequency = plot->xAxis->pixelToCoord(me->pos().x()) - clickedFrequency;
+        if (TPBFInner + movedFrequency < passbandCenterFrequency) {
+            double pbFreq = 0.0;
+
+            pbFreq = ((TPBFInner + movedFrequency) / passbandWidth) * 127;
+
+            qint16 newFreq = pbFreq + 128;
+            if (newFreq >= 0 && newFreq <= 255) {
+                issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
+            }
+        }
+    }
+    else if (passbandAction == pbtOuterMove) {
+        double movedFrequency = plot->xAxis->pixelToCoord(me->pos().x()) - clickedFrequency;
+        if (movedFrequency + TPBFOuter > passbandCenterFrequency) {
+            double pbFreq = 0.0;
+
+            pbFreq = ((movedFrequency + TPBFOuter) / passbandWidth) * 127;
+
+            qint16 newFreq = pbFreq + 128;
+            if (newFreq >= 0 && newFreq <= 255) {
+                issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
+            }
         }
     }
     else  if (passbandAction == passbandStatic && me->buttons() == Qt::LeftButton && textItem == nullptr && prefs.clickDragTuningEnable)
@@ -7268,8 +7368,12 @@ void wfmain::useColorPreset(colorPrefsType *cp)
     plot->yAxis->setTickPen(cp->axisColor);
 
     freqIndicatorLine->setPen(QPen(cp->tuningLine));
+
     passbandIndicator->setPen(QPen(cp->passband));
     passbandIndicator->setBrush(QBrush(cp->passband));
+
+    pbtIndicator->setPen(QPen(cp->pbt));
+    pbtIndicator->setBrush(QBrush(cp->pbt));
 
     plot->graph(0)->setPen(QPen(cp->spectrumLine));
     plot->graph(0)->setBrush(QBrush(cp->spectrumFill));
@@ -7787,6 +7891,7 @@ void wfmain::on_colorSavePresetBtn_clicked()
     settings->setValue("plotBackground", p->plotBackground.name(QColor::HexArgb));
     settings->setValue("tuningLine", p->tuningLine.name(QColor::HexArgb));
     settings->setValue("passband", p->passband.name(QColor::HexArgb));
+    settings->setValue("pbt", p->pbt.name(QColor::HexArgb));
     settings->setValue("wfBackground", p->wfBackground.name(QColor::HexArgb));
     settings->setValue("wfGrid", p->wfGrid.name(QColor::HexArgb));
     settings->setValue("wfAxis", p->wfAxis.name(QColor::HexArgb));

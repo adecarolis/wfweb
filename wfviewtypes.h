@@ -61,6 +61,6 @@ struct errorType {
 enum audioType {qtAudio,portAudio,rtAudio};
 enum codecType { LPCM, PCMU, OPUS };
 
-enum passbandActions {passbandStatic,passbandMoving,passbandResizing};
+enum passbandActions {passbandStatic, pbtInnerMove, pbtOuterMove, pbtMoving, passbandResizing};
 
 #endif // WFVIEWTYPES_H

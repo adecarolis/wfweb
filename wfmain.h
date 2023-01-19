@@ -738,6 +738,7 @@ private:
     QCustomPlot *wf; // waterfall image
     QCPItemLine * freqIndicatorLine;
     QCPItemRect* passbandIndicator;
+    QCPItemRect* pbtIndicator;
     void setAppTheme(bool isCustom);
     void prepareWf();
     void prepareWf(unsigned int wfLength);
