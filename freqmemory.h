@@ -2,37 +2,7 @@
 #define FREQMEMORY_H
 #include <QString>
 #include <QDebug>
-
-//          0      1        2         3       4
-//modes << "LSB" << "USB" << "AM" << "CW" << "RTTY";
-//          5      6          7           8          9
-// modes << "FM" << "CW-R" << "RTTY-R" << "LSB-D" << "USB-D";
-
-enum mode_kind {
-    modeLSB=0x00,
-    modeUSB=0x01,
-    modeAM=0x02,
-    modeCW=0x03,
-    modeRTTY=0x04,
-    modeFM=0x05,
-    modeCW_R=0x07,
-    modeRTTY_R=0x08,
-    modePSK = 0x12,
-    modePSK_R = 0x13,
-    modeLSB_D=0x80,
-    modeUSB_D=0x81,
-    modeDV=0x17,
-    modeDD=0x27,
-    modeWFM,
-    modeS_AMD,
-    modeS_AML,
-    modeS_AMU,
-    modeP25,
-    modedPMR,
-    modeNXDN_VN,
-    modeNXDN_N,
-    modeDCR
-};
+#include "wfviewtypes.h"
 
 struct mode_info {
     mode_kind mk;

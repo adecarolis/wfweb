@@ -44,6 +44,7 @@
 #include "loggingwindow.h"
 #include "cluster.h"
 #include "audiodevices.h"
+#include "sidebandchooser.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>

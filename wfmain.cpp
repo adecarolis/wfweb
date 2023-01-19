@@ -4885,18 +4885,23 @@ void wfmain::on_goFreqBtn_clicked()
         if(ok)
         {
             f.Hz = freqDbl*1E6;
-            issueCmd(cmdSetFreq, f);            
         }
     } else {
         KHz = ui->freqMhzLineEdit->text().toInt(&ok);
         if(ok)
         {
             f.Hz = KHz*1E3;
-            issueCmd(cmdSetFreq, f);
         }
     }
     if(ok)
     {
+        mode_info m;
+        issueCmd(cmdSetFreq, f);
+        m.mk = sidebandChooser::getMode(f, currentMode);
+        qDebug(logSystem()) << "current mode: " << currentMode << "new mode:" << m.mk;
+        if(m.mk != currentMode)
+            issueCmd(cmdSetMode, m);
+
         f.MHzDouble = (float)f.Hz / 1E6;
         freq = f;
         setUIFreq();
@@ -5055,7 +5060,11 @@ void wfmain::changeMode(mode_kind mode)
 void wfmain::changeMode(mode_kind mode, bool dataOn)
 {
     int filter = ui->modeFilterCombo->currentData().toInt();
-    emit setMode((unsigned char)mode, (unsigned char)filter);
+    mode_info m;
+    m.filter = (unsigned char) filter;
+    m.reg = (unsigned char) mode;
+    issueCmd(cmdSetMode, m);
+    //emit setMode((unsigned char)mode, (unsigned char)filter);
 
     currentMode = mode;
 
