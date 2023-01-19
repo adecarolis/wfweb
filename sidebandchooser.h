@@ -16,11 +16,11 @@ public:
         {
             return modeLSB;
         }
-        if( (f.Hz >= 5000000) || (f.Hz < 5600000) )
+        if( (f.Hz >= 5000000) && (f.Hz < 5600000) )
         {
             return modeUSB;
         }
-        if( (f.Hz >= 5600000) || (f.Hz < 10000000) )
+        if( (f.Hz >= 5600000) && (f.Hz < 10000000) )
         {
             return modeLSB;
         }

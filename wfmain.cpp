@@ -1256,6 +1256,14 @@ void wfmain::setUIToPrefs()
     ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
 
+    ui->tuningFloorZerosChk->blockSignals(true);
+    ui->tuningFloorZerosChk->setChecked(prefs.niceTS);
+    ui->tuningFloorZerosChk->blockSignals(false);
+
+    ui->autoSSBchk->blockSignals(true);
+    ui->autoSSBchk->setChecked(prefs.automaticSidebandSwitching);
+    ui->autoSSBchk->blockSignals(false);
+
     ui->useCIVasRigIDChk->blockSignals(true);
     ui->useCIVasRigIDChk->setChecked(prefs.CIVisRadioModel);
     ui->useCIVasRigIDChk->blockSignals(false);
@@ -1780,7 +1788,7 @@ void wfmain::loadSettings()
     prefs.enablePTT = settings->value("EnablePTT", defPrefs.enablePTT).toBool();
     ui->pttEnableChk->setChecked(prefs.enablePTT);
     prefs.niceTS = settings->value("NiceTS", defPrefs.niceTS).toBool();
-
+    prefs.automaticSidebandSwitching = settings->value("automaticSidebandSwitching", defPrefs.automaticSidebandSwitching).toBool();
     settings->endGroup();
 
     settings->beginGroup("LAN");
@@ -2514,6 +2522,7 @@ void wfmain::saveSettings()
     settings->beginGroup("Controls");
     settings->setValue("EnablePTT", prefs.enablePTT);
     settings->setValue("NiceTS", prefs.niceTS);
+    settings->setValue("automaticSidebandSwitching", prefs.automaticSidebandSwitching);
     settings->endGroup();
 
     settings->beginGroup("LAN");
@@ -4903,9 +4912,11 @@ void wfmain::on_goFreqBtn_clicked()
         m.reg = (unsigned char) m.mk;
         m.filter = ui->modeFilterCombo->currentData().toInt();
 
-        qDebug(logSystem()) << "current mode: " << currentMode << "new mode:" << m.mk;
-        if(m.mk != currentMode)
+        if((m.mk != currentMode) && !usingDataMode && prefs.automaticSidebandSwitching)
+        {
             issueCmd(cmdSetMode, m);
+            currentMode = m.mk;
+        }
 
         f.MHzDouble = (float)f.Hz / 1E6;
         freq = f;
@@ -8193,4 +8204,9 @@ void wfmain::connectionHandler(bool connect)
             ui->audioSystemServerCombo->setEnabled(true);
         }
     }
+}
+
+void wfmain::on_autoSSBchk_clicked(bool checked)
+{
+    prefs.automaticSidebandSwitching = checked;
 }

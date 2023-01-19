@@ -714,6 +714,8 @@ private slots:
 
     void on_pollTimeMsSpin_valueChanged(int arg1);
 
+    void on_autoSSBchk_clicked(bool checked);
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);

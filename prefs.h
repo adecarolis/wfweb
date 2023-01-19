@@ -44,6 +44,7 @@ struct preferences {
     // Controls:
     bool enablePTT;
     bool niceTS;
+    bool automaticSidebandSwitching = true;
 
     // LAN:
     bool enableLAN;
