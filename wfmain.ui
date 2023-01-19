@@ -1798,6 +1798,7 @@
              <font>
               <family>DejaVu Sans Mono</family>
               <pointsize>14</pointsize>
+              <weight>75</weight>
               <bold>true</bold>
              </font>
             </property>
@@ -2222,7 +2223,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>6</number>
+             <number>1</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -2915,6 +2916,22 @@
                  </widget>
                 </item>
                 <item>
+                 <widget class="QCheckBox" name="autoSSBchk">
+                  <property name="toolTip">
+                   <string>When using SSB, automatically switch to the standard sideband for a given band.</string>
+                  </property>
+                  <property name="accessibleName">
+                   <string>Auto SSB Switching</string>
+                  </property>
+                  <property name="accessibleDescription">
+                   <string>When using SSB, automatically switch to the standard sideband for a given band.</string>
+                  </property>
+                  <property name="text">
+                   <string>Auto SSB</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
                  <widget class="QCheckBox" name="clickDragTuningEnableChk">
                   <property name="text">
                    <string>Allow tuning via click and drag (experimental)</string>
@@ -3382,8 +3399,8 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>579</width>
-                      <height>224</height>
+                      <width>858</width>
+                      <height>287</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -5128,7 +5145,7 @@
                 <x>10</x>
                 <y>470</y>
                 <width>801</width>
-                <height>22</height>
+                <height>24</height>
                </rect>
               </property>
               <layout class="QHBoxLayout" name="horizontalLayout_451">
@@ -5332,6 +5349,7 @@
        <widget class="QPushButton" name="exitBtn">
         <property name="font">
          <font>
+          <weight>50</weight>
           <bold>false</bold>
          </font>
         </property>
@@ -5351,7 +5369,7 @@
      <x>0</x>
      <y>0</y>
      <width>1082</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
@@ -5378,8 +5396,8 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="underlayButtonGroup"/>
   <buttongroup name="pollingButtonGroup"/>
+  <buttongroup name="underlayButtonGroup"/>
   <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>

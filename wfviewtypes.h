@@ -2,6 +2,10 @@
 #ifndef WFVIEWTYPES_H
 #define WFVIEWTYPES_H
 
+#include <QString>
+#include <QtGlobal>
+#include <stdint.h>
+
 enum underlay_t { underlayNone, underlayPeakHold, underlayPeakBuffer, underlayAverageBuffer };
 
 enum meterKind {
@@ -27,6 +31,32 @@ enum spectrumMode {
     spectModeScrollC=0x02,
     spectModeScrollF=0x03,
     spectModeUnknown=0xff
+};
+
+enum mode_kind {
+    modeLSB=0x00,
+    modeUSB=0x01,
+    modeAM=0x02,
+    modeCW=0x03,
+    modeRTTY=0x04,
+    modeFM=0x05,
+    modeCW_R=0x07,
+    modeRTTY_R=0x08,
+    modePSK = 0x12,
+    modePSK_R = 0x13,
+    modeLSB_D=0x80,
+    modeUSB_D=0x81,
+    modeDV=0x17,
+    modeDD=0x27,
+    modeWFM,
+    modeS_AMD,
+    modeS_AML,
+    modeS_AMU,
+    modeP25,
+    modedPMR,
+    modeNXDN_VN,
+    modeNXDN_N,
+    modeDCR
 };
 
 struct freqt {

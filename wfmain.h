@@ -44,6 +44,7 @@
 #include "loggingwindow.h"
 #include "cluster.h"
 #include "audiodevices.h"
+#include "sidebandchooser.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -716,6 +717,8 @@ private slots:
     void on_manualPollBtn_clicked(bool checked);
 
     void on_pollTimeMsSpin_valueChanged(int arg1);
+
+    void on_autoSSBchk_clicked(bool checked);
 
 private:
     Ui::wfmain *ui;

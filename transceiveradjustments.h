@@ -40,6 +40,8 @@ private slots:
 
     void on_TPBFOuterSlider_valueChanged(int value);
 
+    void on_resetPBTbtn_clicked();
+
 private:
     Ui::transceiverAdjustments *ui;
     rigCapabilities rigCaps;

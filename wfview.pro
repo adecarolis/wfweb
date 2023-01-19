@@ -239,6 +239,7 @@ HEADERS  += wfmain.h \
     rigcommander.h \
     freqmemory.h \
     rigidentities.h \
+    sidebandchooser.h \
     udpbase.h \
     udphandler.h \
     udpcivdata.h \

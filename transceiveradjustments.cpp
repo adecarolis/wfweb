@@ -24,7 +24,7 @@ transceiverAdjustments::transceiverAdjustments(QWidget *parent) :
     this->window()->resize(QSizePolicy::Minimum, QSizePolicy::Minimum);
 
 #endif
-
+    this->setWindowTitle("TransceiverAdjustments");
 }
 
 transceiverAdjustments::~transceiverAdjustments()
@@ -102,4 +102,13 @@ void transceiverAdjustments::updateTPBFOuter(unsigned char level)
     ui->TPBFOuterSlider->blockSignals(true);
     ui->TPBFOuterSlider->setValue(level);
     ui->TPBFOuterSlider->blockSignals(false);
+}
+
+void transceiverAdjustments::on_resetPBTbtn_clicked()
+{
+    ui->TPBFInnerSlider->setValue(128);
+    ui->TPBFOuterSlider->setValue(128);
+    ui->IFShiftSlider->blockSignals(true);
+    ui->IFShiftSlider->setValue(128);
+    ui->IFShiftSlider->blockSignals(false);
 }

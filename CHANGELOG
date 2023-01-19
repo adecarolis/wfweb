@@ -1,3 +1,124 @@
+commit c221fb4a04006884e0fec8e16108828049c7eff1
+Merge: 596607e c3ba36e
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Sat Jan 14 19:58:02 2023 +0100
+
+    Merge branch 'filterwidth'
+
+commit c3ba36ebfdda9d2ef6b2d29274480e026cd3d0a9
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Jan 14 11:23:19 2023 +0000
+
+    More mac stuff
+
+commit d1ec010e68f2961ef9c60fe891dbce638b930113
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Jan 14 00:40:28 2023 +0000
+
+    more mac fixes
+
+commit e2f464620794f5b09bc5778eb87b7b1d1518020a
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Jan 14 00:35:27 2023 +0000
+
+    See if this fixes issue with mac compiling?
+
+commit 19818dc3b3f30b2efaa6d5bab5d8af5150d398fd
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Jan 14 00:21:55 2023 +0000
+
+    Fix for fix of mac build!
+
+commit 58f86f029bed3096ba5b2f3178a69b50cc81f871
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Jan 14 00:17:53 2023 +0000
+
+    Fix for mac compile
+
+commit b285b81d721bd0df9240cad3c6166d293f1405e9
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 13 21:07:55 2023 +0000
+
+    Rename to IF filter width to match documentation
+
+commit 8f98696bec315f9ad0a2c74322097dd04b63f340
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 13 21:06:50 2023 +0000
+
+    Change wording
+
+commit 4f4cd5146c0aecb846f8d1ad53b94563ded4773e
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 13 21:04:10 2023 +0000
+
+    Display current passband on status bar
+
+commit cac454cbf64b87056f3e3c6501d9c110220e05e1
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 13 20:53:51 2023 +0000
+
+    More tidying of code
+
+commit 3e46b5a42d18d8c8040014d81567765fef4667f9
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 13 19:40:38 2023 +0000
+
+    More tidying
+
+commit 41e5e4b1c30768865ac2046296fda288be1acbab
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 13 19:28:34 2023 +0000
+
+    Another fix
+
+commit d48bdfa6e227963aa8fa20da63aa4b5d921de8ca
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 13 19:19:04 2023 +0000
+
+    Fix parentheses warning from GCC
+
+commit 4ee87411577bca983d26f84b1d2d03560eae3ac1
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 13 18:50:06 2023 +0000
+
+    Few fixes to passband dragging
+
+commit efb953a8c9f68e2be5558621411310aca9e52032
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 13 18:14:11 2023 +0000
+
+    Allow on-screen adjustment of filter width
+
+commit 596607e95ae09a42e1a7ebf2f33e90a057d8d4b0
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Fri Jan 13 13:41:00 2023 +0100
+
+    amended CHANGELOG and WHATSNEW
+
+commit 5c210f0699baf6c861dc87491747089b9f69f69f
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 13 12:26:11 2023 +0000
+
+    Fix invalid filter width being sent to rig by rigctld.
+
+commit 996c8132515a14472fa50de41ff7a0d55edb6299
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 13 10:55:59 2023 +0000
+
+    Fix another minor issue with wfview.pro
+
+commit 8f5016a2f4e377eb7a7488f5bc49870b0526cb56
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 13 10:44:11 2023 +0000
+
+    Fix problem if USB_CONTROLLER isn't enabled
+
+commit f86a721a05e2517f32a9a345ee8eba58606adb49
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Fri Jan 13 10:57:00 2023 +0100
+
+    cleanup
+
 commit 7052dbf6efa4405f801030dede2b58e13d0ebda4
 Author: Roeland Jansen <roeland.jansen69@gmail.com>
 Date:   Fri Jan 13 10:53:51 2023 +0100

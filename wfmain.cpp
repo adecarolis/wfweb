@@ -1134,8 +1134,6 @@ void wfmain::getSettingsFilePath(QString settingsFile)
             path = path + "/";
             file = info.fileName();
         }
-
-        qInfo(logSystem()) << "Loading settings from:" << path + file;
         settings = new QSettings(path + file, QSettings::Format::IniFormat);
     }
 }
@@ -1273,6 +1271,14 @@ void wfmain::setUIToPrefs()
 
     ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
+
+    ui->tuningFloorZerosChk->blockSignals(true);
+    ui->tuningFloorZerosChk->setChecked(prefs.niceTS);
+    ui->tuningFloorZerosChk->blockSignals(false);
+
+    ui->autoSSBchk->blockSignals(true);
+    ui->autoSSBchk->setChecked(prefs.automaticSidebandSwitching);
+    ui->autoSSBchk->blockSignals(false);
 
     ui->useCIVasRigIDChk->blockSignals(true);
     ui->useCIVasRigIDChk->setChecked(prefs.CIVisRadioModel);
@@ -1610,7 +1616,25 @@ void wfmain::loadSettings()
 {
     qInfo(logSystem()) << "Loading settings from " << settings->fileName();
 
-    // Basic things to load:
+    QString currentVersionString = QString(WFVIEW_VERSION);
+    float currentVersionFloat = currentVersionString.toFloat();
+
+    settings->beginGroup("Program");
+    QString priorVersionString = settings->value("version", "unset").toString();
+    float priorVersionFloat = priorVersionString.toFloat();
+    if(currentVersionString != priorVersionString)
+    {
+        qWarning(logSystem()) << "Settings previously saved under version " << priorVersionString << ", you should review your settings and press SaveSettings.";
+    }
+    if(priorVersionFloat > currentVersionFloat)
+    {
+        qWarning(logSystem()).noquote().nospace() << "It looks like the previous version of wfview (" << priorVersionString << ") was newer than this version (" << currentVersionString << ")";
+    }
+    prefs.version = priorVersionString;
+    prefs.majorVersion = settings->value("majorVersion", defPrefs.majorVersion).toInt();
+    prefs.minorVersion = settings->value("minorVersion", defPrefs.minorVersion).toInt();
+    settings->endGroup();
+
     // UI: (full screen, dark theme, draw peaks, colors, etc)
     settings->beginGroup("Interface");
     prefs.useFullScreen = settings->value("UseFullScreen", defPrefs.useFullScreen).toBool();
@@ -1781,7 +1805,7 @@ void wfmain::loadSettings()
     prefs.enablePTT = settings->value("EnablePTT", defPrefs.enablePTT).toBool();
     ui->pttEnableChk->setChecked(prefs.enablePTT);
     prefs.niceTS = settings->value("NiceTS", defPrefs.niceTS).toBool();
-
+    prefs.automaticSidebandSwitching = settings->value("automaticSidebandSwitching", defPrefs.automaticSidebandSwitching).toBool();
     settings->endGroup();
 
     settings->beginGroup("LAN");
@@ -2456,8 +2480,21 @@ void wfmain::saveSettings()
     qInfo(logSystem()) << "Saving settings to " << settings->fileName();
     // Basic things to load:
 
+
+    QString versionstr = QString(WFVIEW_VERSION);
+    QString majorVersion = "-1";
+    QString minorVersion = "-1";
+    if(versionstr.contains(".") && (versionstr.split(".").length() == 2))
+    {
+        majorVersion = versionstr.split(".").at(0);
+        minorVersion = versionstr.split(".").at(1);
+    }
+
     settings->beginGroup("Program");
-    settings->setValue("version", QString(WFVIEW_VERSION));
+    settings->setValue("version", versionstr);
+    settings->setValue("majorVersion", int(majorVersion.toInt()));
+    settings->setValue("minorVersion", int(minorVersion.toInt()));
+    settings->setValue("gitShort", QString(GITSHORT));
     settings->endGroup();
 
     // UI: (full screen, dark theme, draw peaks, colors, etc)
@@ -2502,6 +2539,7 @@ void wfmain::saveSettings()
     settings->beginGroup("Controls");
     settings->setValue("EnablePTT", prefs.enablePTT);
     settings->setValue("NiceTS", prefs.niceTS);
+    settings->setValue("automaticSidebandSwitching", prefs.automaticSidebandSwitching);
     settings->endGroup();
 
     settings->beginGroup("LAN");
@@ -5019,21 +5057,25 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
         }
 
     } else {
-        qInfo(logSystem()) << __func__ << "Invalid mode " << mode << " received. ";
+        qCritical(logSystem()) << __func__ << "Invalid mode " << mode << " received. ";
     }
 
     if(!found)
     {
-        qInfo(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
+        qWarning(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
+        return;
     }
+
+    currentModeIndex = mode;
+    currentModeInfo.mk = (mode_kind)mode;
+    currentMode = (mode_kind)mode;
+    currentModeInfo.filter = filter;
 
     if( (filter) && (filter < 4)){
         ui->modeFilterCombo->blockSignals(true);
         ui->modeFilterCombo->setCurrentIndex(filter-1);
         ui->modeFilterCombo->blockSignals(false);
     }
-
-    (void)filter;
 
     // Note: we need to know if the DATA mode is active to reach mode-D
     // some kind of queued query:
@@ -5089,18 +5131,28 @@ void wfmain::on_goFreqBtn_clicked()
         if(ok)
         {
             f.Hz = freqDbl*1E6;
-            issueCmd(cmdSetFreq, f);            
         }
     } else {
         KHz = ui->freqMhzLineEdit->text().toInt(&ok);
         if(ok)
         {
             f.Hz = KHz*1E3;
-            issueCmd(cmdSetFreq, f);
         }
     }
     if(ok)
     {
+        mode_info m;
+        issueCmd(cmdSetFreq, f);
+        m.mk = sidebandChooser::getMode(f, currentMode);
+        m.reg = (unsigned char) m.mk;
+        m.filter = ui->modeFilterCombo->currentData().toInt();
+
+        if((m.mk != currentMode) && !usingDataMode && prefs.automaticSidebandSwitching)
+        {
+            issueCmd(cmdSetMode, m);
+            currentMode = m.mk;
+        }
+
         f.MHzDouble = (float)f.Hz / 1E6;
         freq = f;
         setUIFreq();
@@ -5259,17 +5311,20 @@ void wfmain::changeMode(mode_kind mode)
 void wfmain::changeMode(mode_kind mode, bool dataOn)
 {
     int filter = ui->modeFilterCombo->currentData().toInt();
-    emit setMode((unsigned char)mode, (unsigned char)filter);
+    mode_info m;
+    m.filter = (unsigned char) filter;
+    m.reg = (unsigned char) mode;
+    issueCmd(cmdSetMode, m);
 
     currentMode = mode;
 
-    if(dataOn)
+    if(dataOn && (!usingDataMode))
     {
         issueDelayedCommand(cmdSetDataModeOn);
         ui->dataModeBtn->blockSignals(true);
         ui->dataModeBtn->setChecked(true);
         ui->dataModeBtn->blockSignals(false);
-    } else {
+    } else if ((!dataOn) && usingDataMode) {
         issueDelayedCommand(cmdSetDataModeOff);
         ui->dataModeBtn->blockSignals(true);
         ui->dataModeBtn->setChecked(false);
@@ -5311,7 +5366,6 @@ void wfmain::on_modeSelectCombo_activated(int index)
 
         issueCmd(cmdSetMode, mode);
         currentModeInfo = mode;
-        //emit setMode(newMode, filterSelection);
     }
 }
 
@@ -5985,6 +6039,7 @@ void wfmain::on_modeFilterCombo_activated(int index)
 {
 
     int filterSelection = ui->modeFilterCombo->itemData(index).toInt();
+    mode_info m;
     if(filterSelection == 99)
     {
         // TODO:
@@ -5999,8 +6054,13 @@ void wfmain::on_modeFilterCombo_activated(int index)
         if(ui->dataModeBtn->isChecked())
         {
             emit setDataMode(true, (unsigned char)filterSelection);
+            issueDelayedCommand(cmdSetDataModeOn);
         } else {
-            emit setMode(newMode, (unsigned char)filterSelection);
+            m.filter = (unsigned char)filterSelection;
+            m.mk = (mode_kind)newMode;
+            m.reg = newMode;
+            issueCmd(cmdSetMode, m);
+            //emit setMode(newMode, (unsigned char)filterSelection);
         }
     }
 
@@ -7024,7 +7084,15 @@ void wfmain::on_waterfallFormatCombo_activated(int index)
 
 void wfmain::on_moreControlsBtn_clicked()
 {
+    if(trxadj->isMinimized())
+    {
+        trxadj->raise();
+        trxadj->activateWindow();
+        return;
+    }
     trxadj->show();
+    trxadj->raise();
+    trxadj->activateWindow();
 }
 
 void wfmain::on_useCIVasRigIDChk_clicked(bool checked)
@@ -8402,4 +8470,9 @@ void wfmain::connectionHandler(bool connect)
             ui->audioSystemServerCombo->setEnabled(true);
         }
     }
+}
+
+void wfmain::on_autoSSBchk_clicked(bool checked)
+{
+    prefs.automaticSidebandSwitching = checked;
 }
