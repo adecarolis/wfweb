@@ -4811,25 +4811,27 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
                 found = true;
             }
         }
-        currentModeIndex = mode;
-        currentModeInfo.mk = (mode_kind)mode;
-        currentModeInfo.filter = filter;
+
     } else {
-        qInfo(logSystem()) << __func__ << "Invalid mode " << mode << " received. ";
+        qCritical(logSystem()) << __func__ << "Invalid mode " << mode << " received. ";
     }
 
     if(!found)
     {
-        qInfo(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
+        qWarning(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
+        return;
     }
+
+    currentModeIndex = mode;
+    currentModeInfo.mk = (mode_kind)mode;
+    currentMode = (mode_kind)mode;
+    currentModeInfo.filter = filter;
 
     if( (filter) && (filter < 4)){
         ui->modeFilterCombo->blockSignals(true);
         ui->modeFilterCombo->setCurrentIndex(filter-1);
         ui->modeFilterCombo->blockSignals(false);
     }
-
-    (void)filter;
 
     // Note: we need to know if the DATA mode is active to reach mode-D
     // some kind of queued query:
@@ -4898,6 +4900,9 @@ void wfmain::on_goFreqBtn_clicked()
         mode_info m;
         issueCmd(cmdSetFreq, f);
         m.mk = sidebandChooser::getMode(f, currentMode);
+        m.reg = (unsigned char) m.mk;
+        m.filter = ui->modeFilterCombo->currentData().toInt();
+
         qDebug(logSystem()) << "current mode: " << currentMode << "new mode:" << m.mk;
         if(m.mk != currentMode)
             issueCmd(cmdSetMode, m);
@@ -5064,17 +5069,16 @@ void wfmain::changeMode(mode_kind mode, bool dataOn)
     m.filter = (unsigned char) filter;
     m.reg = (unsigned char) mode;
     issueCmd(cmdSetMode, m);
-    //emit setMode((unsigned char)mode, (unsigned char)filter);
 
     currentMode = mode;
 
-    if(dataOn)
+    if(dataOn && (!usingDataMode))
     {
         issueDelayedCommand(cmdSetDataModeOn);
         ui->dataModeBtn->blockSignals(true);
         ui->dataModeBtn->setChecked(true);
         ui->dataModeBtn->blockSignals(false);
-    } else {
+    } else if ((!dataOn) && usingDataMode) {
         issueDelayedCommand(cmdSetDataModeOff);
         ui->dataModeBtn->blockSignals(true);
         ui->dataModeBtn->setChecked(false);
@@ -5116,7 +5120,6 @@ void wfmain::on_modeSelectCombo_activated(int index)
 
         issueCmd(cmdSetMode, mode);
         currentModeInfo = mode;
-        //emit setMode(newMode, filterSelection);
     }
 }
 
@@ -5788,6 +5791,7 @@ void wfmain::on_modeFilterCombo_activated(int index)
 {
 
     int filterSelection = ui->modeFilterCombo->itemData(index).toInt();
+    mode_info m;
     if(filterSelection == 99)
     {
         // TODO:
@@ -5802,8 +5806,13 @@ void wfmain::on_modeFilterCombo_activated(int index)
         if(ui->dataModeBtn->isChecked())
         {
             emit setDataMode(true, (unsigned char)filterSelection);
+            issueDelayedCommand(cmdSetDataModeOn);
         } else {
-            emit setMode(newMode, (unsigned char)filterSelection);
+            m.filter = (unsigned char)filterSelection;
+            m.mk = (mode_kind)newMode;
+            m.reg = newMode;
+            issueCmd(cmdSetMode, m);
+            //emit setMode(newMode, (unsigned char)filterSelection);
         }
     }
 
