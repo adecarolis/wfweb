@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>832</width>
-    <height>342</height>
+    <width>961</width>
+    <height>370</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -166,9 +166,219 @@
      <item>
       <widget class="QGroupBox" name="receiverControlsGroupBox">
        <property name="title">
-        <string>Receiver</string>
+        <string>Receiver Passband Controls</string>
        </property>
-       <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_7">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="TPBFOuterLabel">
+            <property name="minimumSize">
+             <size>
+              <width>70</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>70</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>PBF Outer</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSlider" name="TPBFOuterSlider">
+            <property name="minimumSize">
+             <size>
+              <width>230</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="maximum">
+             <number>255</number>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_3">
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QLabel" name="TPBFInnerLabel">
+            <property name="minimumSize">
+             <size>
+              <width>70</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>70</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>PBF Inner</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSlider" name="TPBFInnerSlider">
+            <property name="minimumSize">
+             <size>
+              <width>230</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="maximum">
+             <number>255</number>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_6">
+          <item>
+           <widget class="QLabel" name="IFShiftLabel">
+            <property name="minimumSize">
+             <size>
+              <width>70</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>70</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>IF Shift</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSlider" name="IFShiftSlider">
+            <property name="minimumSize">
+             <size>
+              <width>230</width>
+              <height>20</height>
+             </size>
+            </property>
+            <property name="maximum">
+             <number>255</number>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_9">
+          <item>
+           <widget class="QLabel" name="label">
+            <property name="minimumSize">
+             <size>
+              <width>70</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>70</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Filter Width</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QSlider" name="passbandWidthSlider">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>100</number>
+            </property>
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_8">
+          <item>
+           <widget class="QPushButton" name="resetPBTbtn">
+            <property name="text">
+             <string>Reset PBT</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="otherGrpBox">
+       <property name="title">
+        <string>Other</string>
+       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_5">
         <item>
          <layout class="QVBoxLayout" name="bassRxVertLayout">
           <item>
@@ -224,111 +434,6 @@
             </property>
             <property name="text">
              <string>Treble</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QVBoxLayout" name="IFShiftVertLayout">
-          <item>
-           <widget class="QSlider" name="IFShiftSlider">
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>230</height>
-             </size>
-            </property>
-            <property name="maximum">
-             <number>255</number>
-            </property>
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="IFShiftLabel">
-            <property name="text">
-             <string>IF Shift</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QVBoxLayout" name="PBFInnerVertLayout">
-          <property name="leftMargin">
-           <number>0</number>
-          </property>
-          <property name="topMargin">
-           <number>0</number>
-          </property>
-          <property name="rightMargin">
-           <number>0</number>
-          </property>
-          <property name="bottomMargin">
-           <number>0</number>
-          </property>
-          <item>
-           <widget class="QSlider" name="TPBFInnerSlider">
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>230</height>
-             </size>
-            </property>
-            <property name="maximum">
-             <number>255</number>
-            </property>
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="TPBFInnerLabel">
-            <property name="text">
-             <string>PBF Inner</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QVBoxLayout" name="TPBFOuterVertLayout">
-          <property name="leftMargin">
-           <number>0</number>
-          </property>
-          <property name="topMargin">
-           <number>0</number>
-          </property>
-          <property name="rightMargin">
-           <number>0</number>
-          </property>
-          <property name="bottomMargin">
-           <number>0</number>
-          </property>
-          <item>
-           <widget class="QSlider" name="TPBFOuterSlider">
-            <property name="minimumSize">
-             <size>
-              <width>0</width>
-              <height>230</height>
-             </size>
-            </property>
-            <property name="maximum">
-             <number>255</number>
-            </property>
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QLabel" name="TPBFOuterLabel">
-            <property name="text">
-             <string>PBF Outer</string>
             </property>
            </widget>
           </item>
@@ -468,13 +573,6 @@
      <property name="topMargin">
       <number>0</number>
      </property>
-     <item>
-      <widget class="QPushButton" name="resetPBTbtn">
-       <property name="text">
-        <string>Reset PBT</string>
-       </property>
-      </widget>
-     </item>
      <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">

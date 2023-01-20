@@ -1039,6 +1039,9 @@ void wfmain::setupMainUI()
     connect(this->trxadj, &transceiverAdjustments::setTPBFOuter,
             [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetTPBFOuter, newValue);}
     );
+    connect(this->trxadj, &transceiverAdjustments::setPassband,
+            [=](const quint16 &passbandHz) { issueCmdUniquePriority(cmdSetPassband, passbandHz);}
+    );
 }
 
 void wfmain::prepareSettingsWindow()
@@ -4725,7 +4728,7 @@ void wfmain::handlePlotMouseMove(QMouseEvent *me)
     if(me->buttons() == Qt::LeftButton && textItem==nullptr && prefs.clickDragTuningEnable)
     {
         double delta = plot->xAxis->pixelToCoord(me->pos().x()) - mousePressFreq;
-        qInfo(logGui()) << "Mouse moving delta: " << delta;
+        qDebug(logGui()) << "Mouse moving delta: " << delta;
         if( (( delta < -0.0001 ) || (delta > 0.0001)) && ((delta < 0.501) && (delta > -0.501)) )
         {
             freqt freqGo;
@@ -4842,6 +4845,34 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
         ui->modeFilterCombo->blockSignals(false);
     }
 
+    quint16 maxPassbandHz = 0;
+    switch(currentMode)
+    {
+    case modeUSB:
+    case modeLSB:
+    case modeCW:
+    case modeCW_R:
+    case modePSK:
+    case modePSK_R:
+        maxPassbandHz = 3600;
+        break;
+    case modeRTTY:
+    case modeRTTY_R:
+        maxPassbandHz = 2700;
+        break;
+    case modeAM:
+        maxPassbandHz = 10E3;
+        break;
+    case modeFM:
+        maxPassbandHz = 10E3;
+        break;
+    default:
+        break;
+    }
+    if(maxPassbandHz != 0)
+    {
+        trxadj->setMaxPassband(maxPassbandHz);
+    }
     // Note: we need to know if the DATA mode is active to reach mode-D
     // some kind of queued query:
     if (rigCaps.hasDataModes && rigCaps.hasTransmit)
@@ -6077,6 +6108,7 @@ void wfmain::receivePassband(quint16 pass)
 {
     if (passBand != (double)(pass / 1000000.0)) {
         passBand = (double)(pass / 1000000.0);
+        trxadj->updatePassband(pass);
         showStatusBarText(QString("IF filter width %1 Hz").arg(pass));
     }
 }
