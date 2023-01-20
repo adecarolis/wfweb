@@ -121,7 +121,12 @@ void transceiverAdjustments::updatePassband(quint16 passbandHz)
 {
     lastKnownPassband = passbandHz;
     float l = 2.0*passbandHz/maxHz;
+#ifndef Q_OS_WIN
     int val = exp10f(l);
+#else
+    int val = pow(10, l);
+#endif
+
     //qDebug() << "Updating slider passband to " << passbandHz << "Hz using 1-100 value:" << val << "with l=" << l << "and max=" << maxHz;
     ui->passbandWidthSlider->blockSignals(true);
     ui->passbandWidthSlider->setValue(val);
