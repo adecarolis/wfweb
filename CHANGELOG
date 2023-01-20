@@ -1,3 +1,60 @@
+commit 71326cd3851ba1019665fa327345263d36a9493b
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Wed Jan 18 23:17:28 2023 -0800
+
+    Added preference for automatic sideband.
+
+commit b99249692fe855f5ee9f8875bb80db50c8d19584
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Wed Jan 18 22:50:18 2023 -0800
+
+    Cleaned up some old mode selection code.
+
+commit e9e042fad8adf43038d97016dbdce776732b27a1
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Wed Jan 18 22:27:06 2023 -0800
+
+    Change mode selection code to use the command queue (as it should have).
+    Beginnings of automatic sideband options.
+
+commit 0c27bf72084971ee8bb0166984fa64ebcfc26dad
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 17 21:49:17 2023 -0800
+
+    This is a stylistic thing that I saw which I could not let go.
+
+commit 05295acc6f87d7555a1f2352d0f5b5833019859c
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 17 21:43:58 2023 -0800
+
+    Added version mismatch warning messages.
+
+commit fc753ffd39357f49035fc14a30b299227208ead4
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 17 21:13:16 2023 -0800
+
+    cleanup of prefs
+
+commit f820d289b2b92a0ebe28176773c85a6468f553eb
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 17 21:09:54 2023 -0800
+
+    Re-arranged the preference structure to match how we save the
+    preferences.
+
+commit 9c0aea01026c41827cb953a8cc1f1b7795528fe6
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 17 20:53:34 2023 -0800
+
+    Changed Show More button to also raise the transceiver adjustments
+    window. Added "reset PBT" button to the transceiver adjustments window.
+
+commit b468c514df891312af7102654ac98d48c90ef5a5
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Sat Jan 14 19:59:04 2023 +0100
+
+    added var filterwidth
+
 commit c221fb4a04006884e0fec8e16108828049c7eff1
 Merge: 596607e c3ba36e
 Author: Roeland Jansen <roeland.jansen69@gmail.com>

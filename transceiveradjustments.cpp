@@ -6,7 +6,8 @@ transceiverAdjustments::transceiverAdjustments(QWidget *parent) :
     ui(new Ui::transceiverAdjustments)
 {
     ui->setupUi(this);
-#ifndef QT_DEBUG
+
+    // ---- These controls aren't finished yet:
     ui->transmitterControlsGroupBox->setVisible(false); // no controls available so far
     ui->bassRxLabel->setVisible(false);
     ui->bassRxSlider->setVisible(false);
@@ -20,10 +21,13 @@ transceiverAdjustments::transceiverAdjustments(QWidget *parent) :
     ui->NBRxChkBox->setVisible(false);
     ui->NBRxSlider->setVisible(false);
     ui->bandwidthGroupBox->setVisible(false);
+    ui->otherGrpBox->setVisible(false);
+    // ----
+
+    // Resize to fit new visible contents:
     this->window()->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
     this->window()->resize(QSizePolicy::Minimum, QSizePolicy::Minimum);
 
-#endif
     this->setWindowTitle("TransceiverAdjustments");
 }
 
@@ -35,6 +39,15 @@ transceiverAdjustments::~transceiverAdjustments()
     rigCaps.antennas.clear();
 
     delete ui;
+}
+
+void transceiverAdjustments::setMaxPassband(quint16 maxHzAllowed)
+{
+    if( (maxHzAllowed <= 10E3) && (maxHzAllowed != 0) )
+    {
+        maxHz = maxHzAllowed;
+        updatePassband(lastKnownPassband);
+    }
 }
 
 void transceiverAdjustments::on_IFShiftSlider_valueChanged(int value)
@@ -104,6 +117,17 @@ void transceiverAdjustments::updateTPBFOuter(unsigned char level)
     ui->TPBFOuterSlider->blockSignals(false);
 }
 
+void transceiverAdjustments::updatePassband(quint16 passbandHz)
+{
+    lastKnownPassband = passbandHz;
+    float l = 2.0*passbandHz/maxHz;
+    int val = exp10f(l);
+    //qDebug() << "Updating slider passband to " << passbandHz << "Hz using 1-100 value:" << val << "with l=" << l << "and max=" << maxHz;
+    ui->passbandWidthSlider->blockSignals(true);
+    ui->passbandWidthSlider->setValue(val);
+    ui->passbandWidthSlider->blockSignals(false);
+}
+
 void transceiverAdjustments::on_resetPBTbtn_clicked()
 {
     ui->TPBFInnerSlider->setValue(128);
@@ -111,4 +135,19 @@ void transceiverAdjustments::on_resetPBTbtn_clicked()
     ui->IFShiftSlider->blockSignals(true);
     ui->IFShiftSlider->setValue(128);
     ui->IFShiftSlider->blockSignals(false);
+}
+
+void transceiverAdjustments::on_passbandWidthSlider_valueChanged(int value)
+{
+    // value is 1-100
+    //float maxHz = 10E3;
+    float l = log10f(value);
+    float p = l*maxHz/2.0;
+    quint16 pbHz = (quint16)p;
+    if(pbHz != 0)
+    {
+        //qDebug() << "Setting passband, maxHZ" << maxHz << ", value: " << value << ", l:" << l << ", p:" << p << ", pbHz: " << pbHz;
+        lastKnownPassband = pbHz;
+        emit setPassband(pbHz);
+    }
 }
