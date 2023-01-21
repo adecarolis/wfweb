@@ -1585,8 +1585,8 @@ void rigCommander::parseLevels()
                 state.set(MICGAIN, level, false);
                 break;
             case '\x0C':
-                // CW Keying Speed - ignore for now
                 state.set(KEYSPD, level, false);
+                emit haveKeySpeed((level/6.071)+6);
                 break;
             case '\x0D':
                 // Notch filder setting - ignore for now
@@ -2786,6 +2786,7 @@ void rigCommander::parseRegister16()
                 state.set(FBKINFUNC, true, false);
                 state.set(SBKINFUNC, false, false);
             }
+            emit haveCWBreakMode(payloadIn.at(2));
             break;
         case '\x48': // Manual Notch
             state.set(MNFUNC, payloadIn.at(2) != 0, false);
@@ -4614,6 +4615,13 @@ void rigCommander::setKeySpeed(unsigned char wpm)
     QByteArray payload;
     payload.setRawData("\x14\x0C", 2);
     payload.append(wpmRadioSend);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getKeySpeed()
+{
+    QByteArray payload;
+    payload.setRawData("\x14\x0C", 2);
     prepDataAndSend(payload);
 }
 

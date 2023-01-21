@@ -729,6 +729,8 @@ private slots:
 
     void on_autoSSBchk_clicked(bool checked);
 
+    void on_cwButton_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);

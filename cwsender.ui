@@ -63,7 +63,10 @@
         </widget>
        </item>
        <item row="0" column="5">
-        <widget class="QCheckBox" name="checkBox">
+        <widget class="QCheckBox" name="macroEditChk">
+         <property name="toolTip">
+          <string>Check this box to enter edit mode, where you can then press the macro buttons to edit the macros.</string>
+         </property>
          <property name="text">
           <string>Edit Mode</string>
          </property>
@@ -137,6 +140,18 @@
     </item>
     <item row="1" column="2">
      <widget class="QLineEdit" name="textToSendEdit">
+      <property name="minimumSize">
+       <size>
+        <width>25</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>400</width>
+        <height>16777215</height>
+       </size>
+      </property>
       <property name="maxLength">
        <number>30</number>
       </property>

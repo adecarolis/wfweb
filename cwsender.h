@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QString>
 #include <QFont>
+#include <QInputDialog>
 #include "wfviewtypes.h"
 
 
@@ -23,9 +24,15 @@ signals:
     void stopCW();
     void setKeySpeed(unsigned char wpm);
     void setBreakInMode(unsigned char b);
+    void getCWSettings();
+
+public slots:
+    void handleKeySpeed(unsigned char wpm);
+    void handleBreakInMode(unsigned char b);
 
 private slots:
     void on_sendBtn_clicked();
+    void showEvent(QShowEvent* event);
 
     void on_stopBtn_clicked();
 
@@ -35,8 +42,33 @@ private slots:
 
     void on_wpmSpin_valueChanged(int arg1);
 
+    void on_macro1btn_clicked();
+
+    void on_macro2btn_clicked();
+
+    void on_macro3btn_clicked();
+
+    void on_macro4btn_clicked();
+
+    void on_macro5btn_clicked();
+
+    void on_macro6btn_clicked();
+
+    void on_macro7btn_clicked();
+
+    void on_macro8btn_clicked();
+
+    void on_macro9btn_clicked();
+
+    void on_macro10btn_clicked();
+
 private:
     Ui::cwSender *ui;
+    void processMacroButton(int buttonNumber);
+    void runMacroButton(int buttonNumber);
+    void editMacroButton(int buttonNumber);
+    QStringList macroTextList;
+    QString macroText[11];
 };
 
 #endif // CWSENDER_H

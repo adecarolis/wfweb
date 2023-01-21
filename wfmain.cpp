@@ -346,7 +346,13 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(sendCW(QString)), rig, SLOT(sendCW(QString)));
     connect(this, SIGNAL(stopCW()), rig, SLOT(sendStopCW()));
     connect(this, SIGNAL(setKeySpeed(unsigned char)), rig, SLOT(setKeySpeed(unsigned char)));
+    connect(this, SIGNAL(getKeySpeed()), rig, SLOT(getKeySpeed()));
     connect(this, SIGNAL(setCWBreakMode(unsigned char)), rig, SLOT(setBreakIn(unsigned char)));
+    connect(this, SIGNAL(getCWBreakMode()), rig, SLOT(getBreakIn()));
+    connect(this->rig, &rigCommander::haveKeySpeed,
+            [=](const unsigned char &wpm) { cw->handleKeySpeed(wpm);});
+    connect(this->rig, &rigCommander::haveCWBreakMode,
+            [=](const unsigned char &bm) { cw->handleBreakInMode(bm);});
 
     connect(rig, SIGNAL(haveBandStackReg(freqt,char,char,bool)), this, SLOT(receiveBandStackReg(freqt,char,char,bool)));
     connect(this, SIGNAL(setRitEnable(bool)), rig, SLOT(setRitEnable(bool)));
@@ -1074,6 +1080,11 @@ void wfmain::setupMainUI()
             [=](const unsigned char &bmode) { issueCmd(cmdSetBreakMode, bmode);});
     connect(this->cw, &cwSender::setKeySpeed,
             [=](const unsigned char &wpm) { issueCmd(cmdSetKeySpeed, wpm);});
+    connect(this->cw, &cwSender::getCWSettings,
+            [=]() { qInfo(logSystem()) << "Getting CW Settings for CW Sender";
+                    issueDelayedCommand(cmdGetKeySpeed);
+                    issueDelayedCommand(cmdGetBreakMode);});
+
 }
 
 void wfmain::prepareSettingsWindow()
@@ -8561,4 +8572,17 @@ void wfmain::connectionHandler(bool connect)
 void wfmain::on_autoSSBchk_clicked(bool checked)
 {
     prefs.automaticSidebandSwitching = checked;
+}
+
+void wfmain::on_cwButton_clicked()
+{
+    if(cw->isMinimized())
+    {
+        cw->raise();
+        cw->activateWindow();
+        return;
+    }
+    cw->show();
+    cw->raise();
+    cw->activateWindow();
 }
