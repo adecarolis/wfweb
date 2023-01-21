@@ -238,6 +238,7 @@ HEADERS  += wfmain.h \
     cwsender.h \
     loggingwindow.h \
     prefs.h \
+    printhex.h \
     rigcommander.h \
     freqmemory.h \
     rigidentities.h \

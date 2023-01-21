@@ -3,6 +3,7 @@
 
 #include "rigidentities.h"
 #include "logcategories.h"
+#include "printhex.h"
 
 // Copyright 2017-2020 Elliott H. Liggett
 
@@ -307,8 +308,10 @@ void rigCommander::prepDataAndSend(QByteArray data)
     if(data[4] != '\x15')
     {
         // We don't print out requests for meter levels
-        qDebug(logRig()) << "Final payload in rig commander to be sent to rig: ";
-        printHex(data);
+        qDebug(logRigTraffic()) << "Final payload in rig commander to be sent to rig: ";
+        //printHex(data);
+        //printHex(data, logRigTraffic());
+        printHexNow(data, logRigTraffic());
     }
 
     emit dataForComm(data);
@@ -1390,7 +1393,8 @@ void rigCommander::parseCommand()
     {
         // We do not log spectrum and meter data,
         // as they tend to clog up any useful logging.
-        printHex(payloadIn);
+        qDebug(logRigTraffic()) << "Received from radio:";
+        printHexNow(payloadIn, logRigTraffic());
     }
 
     switch(payloadIn[00])

@@ -8201,15 +8201,13 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     out << context.category << ": " << msg << "\n";
     out.flush();    // Clear the buffered data
 
-    if(QString(context.category) != QString("rigTraffic"))
-    {
-        text.append(context.category);
-        text.append(": ");
-        text.append(msg);
-        logTextMutex.lock();
-        logStringBuffer.push_front(text);
-        logTextMutex.unlock();
-    }
+    text.append(context.category);
+    text.append(": ");
+    text.append(msg);
+    logTextMutex.lock();
+    logStringBuffer.push_front(text);
+    logTextMutex.unlock();
+
 }
 
 void wfmain::on_customEdgeBtn_clicked()
