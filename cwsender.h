@@ -64,13 +64,16 @@ private slots:
 
     void on_macro10btn_clicked();
 
+    void on_sequenceSpin_valueChanged(int arg1);
+
 private:
     Ui::cwSender *ui;
+    QStringList macroTextList;
+    QString macroText[11];
+    int sequenceNumber = 1;
     void processMacroButton(int buttonNumber, QPushButton *btn);
     void runMacroButton(int buttonNumber);
     void editMacroButton(int buttonNumber, QPushButton *btn);
-    QStringList macroTextList;
-    QString macroText[11];
     void setMacroButtonText(QString btnText, QPushButton *btn);
 };
 

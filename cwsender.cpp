@@ -145,18 +145,31 @@ void cwSender::runMacroButton(int buttonNumber)
 {
     if(macroText[buttonNumber].isEmpty())
         return;
-    emit sendCW(macroText[buttonNumber]);
-    ui->transcriptText->appendPlainText(macroText[buttonNumber]);
+    QString outText = macroText[buttonNumber].arg(sequenceNumber);
+    emit sendCW(outText);
+    ui->transcriptText->appendPlainText(outText);
     ui->textToSendEdit->setFocus();
+    // We only sequenceNumber++ if the macro actually had the sequence "%1" code.
+    if(macroText[buttonNumber].contains("\%1"))
+    {
+        sequenceNumber++;
+        ui->sequenceSpin->blockSignals(true);
+        ui->sequenceSpin->setValue(sequenceNumber);
+        ui->sequenceSpin->blockSignals(false);
+    }
 }
 
 void cwSender::editMacroButton(int buttonNumber, QPushButton* btn)
 {
     bool ok;
-    QString prompt = QString("Please enter the text for macro %1, up to 30 characters.").arg(buttonNumber);
+    QString promptFirst = QString("Please enter the text for macro %1,\n"
+                                  "up to 30 characters.\n").arg(buttonNumber);
+    QString promptSecond = QString("You may use \"\%1\" to insert a sequence number.");
+    QString prompt = promptFirst+promptSecond;
+
     QString newMacroText = QInputDialog::getText(this, "Macro Edit",
-                          prompt,
-    QLineEdit::Normal, macroText[buttonNumber], &ok);
+                                                 prompt,
+                                                 QLineEdit::Normal, macroText[buttonNumber], &ok);
     if(!ok)
         return;
 
@@ -191,4 +204,9 @@ void cwSender::setMacroButtonText(QString btnText, QPushButton *btn)
         shortBtnName.append("…");
     }
     btn->setText(shortBtnName);
+}
+
+void cwSender::on_sequenceSpin_valueChanged(int newSeq)
+{
+    sequenceNumber = newSeq;
 }
