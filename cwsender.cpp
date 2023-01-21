@@ -143,8 +143,8 @@ void cwSender::runMacroButton(int buttonNumber)
     if(macroText[buttonNumber].isEmpty())
         return;
     emit sendCW(macroText[buttonNumber]);
-    //ui->transcriptText->appendPlainText(macroText[buttonNumber]);
-    //ui->textToSendEdit->setFocus();
+    ui->transcriptText->appendPlainText(macroText[buttonNumber]);
+    ui->textToSendEdit->setFocus();
 }
 
 void cwSender::editMacroButton(int buttonNumber)
