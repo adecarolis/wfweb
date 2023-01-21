@@ -12,6 +12,7 @@ cwSender::cwSender(QWidget *parent) :
     f.setStyleHint(QFont::TypeWriter);
     ui->textToSendEdit->setFont(f);
     ui->transcriptText->setFont(f);
+    ui->textToSendEdit->setFocus();
 }
 
 cwSender::~cwSender()
@@ -63,6 +64,7 @@ void cwSender::on_sendBtn_clicked()
 void cwSender::on_stopBtn_clicked()
 {
     emit stopCW();
+    ui->textToSendEdit->setFocus();
 }
 
 void cwSender::on_textToSendEdit_returnPressed()
@@ -74,6 +76,7 @@ void cwSender::on_breakinCombo_activated(int brkmode)
 {
     // 0 = off, 1 = semi, 2 = full
     emit setBreakInMode((unsigned char)brkmode);
+    ui->textToSendEdit->setFocus();
 }
 
 void cwSender::on_wpmSpin_valueChanged(int wpm)
@@ -139,6 +142,7 @@ void cwSender::processMacroButton(int buttonNumber, QPushButton *btn)
     } else {
         runMacroButton(buttonNumber);
     }
+    ui->textToSendEdit->setFocus();
 }
 
 void cwSender::runMacroButton(int buttonNumber)
@@ -209,6 +213,7 @@ void cwSender::setMacroButtonText(QString btnText, QPushButton *btn)
 void cwSender::on_sequenceSpin_valueChanged(int newSeq)
 {
     sequenceNumber = newSeq;
+    ui->textToSendEdit->setFocus();
 }
 
 QStringList cwSender::getMacroText()

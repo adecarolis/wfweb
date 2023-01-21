@@ -1081,8 +1081,7 @@ void wfmain::setupMainUI()
     connect(this->cw, &cwSender::setKeySpeed,
             [=](const unsigned char &wpm) { issueCmd(cmdSetKeySpeed, wpm);});
     connect(this->cw, &cwSender::getCWSettings,
-            [=]() { qInfo(logSystem()) << "Getting CW Settings for CW Sender";
-                    issueDelayedCommand(cmdGetKeySpeed);
+            [=]() { issueDelayedCommand(cmdGetKeySpeed);
                     issueDelayedCommand(cmdGetBreakMode);});
 
 }

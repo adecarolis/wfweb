@@ -3118,20 +3118,20 @@ void rigCommander::parseWFData()
             isSub = payloadIn.at(2)==0x01;
             freqSpan = parseFrequency(payloadIn, 6);
             emit haveScopeSpan(freqSpan, isSub);
-            qInfo(logRig()) << "Received 0x15 center span data: for frequency " << freqSpan.Hz;
+            //qInfo(logRig()) << "Received 0x15 center span data: for frequency " << freqSpan.Hz;
             //printHex(payloadIn, false, true);
             break;
         case 0x16:
             // read edge mode center in edge mode
             emit haveScopeEdge((char)payloadIn[2]);
-            qInfo(logRig()) << "Received 0x16 edge in center mode:";
+            //qInfo(logRig()) << "Received 0x16 edge in center mode:";
             printHex(payloadIn, false, true);
             // [1] 0x16
             // [2] 0x01, 0x02, 0x03: Edge 1,2,3
             break;
         case 0x17:
             // Hold status (only 9700?)
-            qInfo(logRig()) << "Received 0x17 hold status - need to deal with this!";
+            qDebug(logRig()) << "Received 0x17 hold status - need to deal with this!";
             printHex(payloadIn, false, true);
             break;
         case 0x19:
