@@ -145,7 +145,7 @@ void cwSender::runMacroButton(int buttonNumber)
 {
     if(macroText[buttonNumber].isEmpty())
         return;
-    QString outText = macroText[buttonNumber].arg(sequenceNumber);
+    QString outText = macroText[buttonNumber].arg(sequenceNumber, 3, 10, QChar('0'));
     emit sendCW(outText);
     ui->transcriptText->appendPlainText(outText);
     ui->textToSendEdit->setFocus();
