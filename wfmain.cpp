@@ -2151,8 +2151,24 @@ void wfmain::loadSettings()
         ui->clusterTimeoutLineEdit->setEnabled(false);
     }
     settings->endArray();
-
     settings->endGroup();
+
+    // CW Memory Load:
+    settings->beginGroup("Keyer");
+    int numMemories = settings->beginReadArray("macros");
+    if(numMemories==10)
+    {
+        QStringList macroList;
+        for(int m=0; m < 10; m++)
+        {
+            settings->setArrayIndex(m);
+            macroList << settings->value("macroText", "").toString();
+        }
+        cw->setMacroText(macroList);
+    }
+    settings->endArray();
+    settings->endGroup();
+
 #if defined (USB_CONTROLLER)
     /* Load USB buttons*/
     settings->beginGroup("USB");
@@ -2706,7 +2722,22 @@ void wfmain::saveSettings()
     }
 
     settings->endArray();
+    settings->endGroup();
 
+    settings->beginGroup("Keyer");
+    QStringList macroList = cw->getMacroText();
+    if(macroList.length() == 10)
+    {
+        settings->beginWriteArray("macros");
+        for(int m=0; m < 10; m++)
+        {
+            settings->setArrayIndex(m);
+            settings->setValue("macroText", macroList.at(m));
+        }
+        settings->endArray();
+    } else {
+        qDebug(logSystem()) << "Error, CW macro list is wrong length: " << macroList.length();
+    }
     settings->endGroup();
 
 #if defined(USB_CONTROLLER)

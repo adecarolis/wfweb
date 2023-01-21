@@ -210,3 +210,39 @@ void cwSender::on_sequenceSpin_valueChanged(int newSeq)
 {
     sequenceNumber = newSeq;
 }
+
+QStringList cwSender::getMacroText()
+{
+    // This is for preference saving:
+    QStringList mlist;
+    for(int i=1; i < 11; i++)
+    {
+        mlist << macroText[i];
+    }
+    return mlist;
+}
+
+void cwSender::setMacroText(QStringList macros)
+{
+    if(macros.length() != 10)
+    {
+        qCritical(logCW()) << "Macro list must be exactly 10. Rejecting macro text load.";
+        return;
+    }
+
+    for(int i=0; i < 10; i++)
+    {
+        macroText[i+1] = macros.at(i);
+    }
+
+    setMacroButtonText(macroText[1], ui->macro1btn);
+    setMacroButtonText(macroText[2], ui->macro2btn);
+    setMacroButtonText(macroText[3], ui->macro3btn);
+    setMacroButtonText(macroText[4], ui->macro4btn);
+    setMacroButtonText(macroText[5], ui->macro5btn);
+    setMacroButtonText(macroText[6], ui->macro6btn);
+    setMacroButtonText(macroText[7], ui->macro7btn);
+    setMacroButtonText(macroText[8], ui->macro8btn);
+    setMacroButtonText(macroText[9], ui->macro9btn);
+    setMacroButtonText(macroText[10], ui->macro10btn);
+}

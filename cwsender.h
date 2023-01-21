@@ -21,6 +21,8 @@ class cwSender : public QMainWindow
 public:
     explicit cwSender(QWidget *parent = 0);
     ~cwSender();
+    QStringList getMacroText();
+    void setMacroText(QStringList macros);
 signals:
     void sendCW(QString cwMessage);
     void stopCW();
@@ -68,7 +70,6 @@ private slots:
 
 private:
     Ui::cwSender *ui;
-    QStringList macroTextList;
     QString macroText[11];
     int sequenceNumber = 1;
     void processMacroButton(int buttonNumber, QPushButton *btn);
