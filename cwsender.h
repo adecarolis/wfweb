@@ -5,6 +5,7 @@
 #include <QString>
 #include <QFont>
 #include <QInputDialog>
+#include <QMessageBox>
 #include "wfviewtypes.h"
 #include "logcategories.h"
 

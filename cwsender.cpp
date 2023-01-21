@@ -16,7 +16,7 @@ cwSender::cwSender(QWidget *parent) :
 
 cwSender::~cwSender()
 {
-    qInfo(logCW()) << "Running CW Sender destructor.";
+    qDebug(logCW()) << "Running CW Sender destructor.";
     delete ui;
 }
 
@@ -28,10 +28,10 @@ void cwSender::showEvent(QShowEvent *event)
 
 void cwSender::handleKeySpeed(unsigned char wpm)
 {
-    qInfo(logCW()) << "Told that current WPM is" << wpm;
+    //qDebug(logCW()) << "Told that current WPM is" << wpm;
     if((wpm >= 6) && (wpm <=48))
     {
-        qInfo(logCW()) << "Setting WPM UI control to" << wpm;
+        //qDebug(logCW()) << "Setting WPM UI control to" << wpm;
         ui->wpmSpin->blockSignals(true);
         ui->wpmSpin->setValue(wpm);
         ui->wpmSpin->blockSignals(false);
@@ -159,8 +159,17 @@ void cwSender::editMacroButton(int buttonNumber)
     QLineEdit::Normal, macroText[buttonNumber], &ok);
     if(!ok)
         return;
+
     if(newMacroText.length() > 30)
+    {
+        QMessageBox msgBox;
+        msgBox.setText(QString("The text entered was too long \n"
+                       "(max length is 30 characters).\n"
+                       "Your input was %1 characters.").arg(newMacroText.length()));
+        msgBox.exec();
+        this->raise();
         return;
+    }
 
     macroText[buttonNumber] = newMacroText;
 }

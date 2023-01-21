@@ -1586,8 +1586,8 @@ void rigCommander::parseLevels()
                 break;
             case '\x0C':
                 state.set(KEYSPD, level, false);
-                qInfo(logRig()) << "Have received key speed in RC, raw level: " << level << ", WPM: " << (level/6.071)+6;
-                emit haveKeySpeed((level/6.071)+6);
+                //qInfo(logRig()) << "Have received key speed in RC, raw level: " << level << ", WPM: " << (level/6.071)+6 << ", rounded: " << round((level/6.071)+6);
+                emit haveKeySpeed(round((level/6.071)+6));
                 break;
             case '\x0D':
                 // Notch filder setting - ignore for now
@@ -4611,19 +4611,16 @@ void rigCommander::setKeySpeed(unsigned char wpm)
     // 0 = 6 WPM
     // 255 = 48 WPM
 
-    unsigned char wpmRadioSend = (wpm-6) * (6.071);
-
-    qInfo(logRig()) << "Setting keyspeed to " << wpm << "WPM, via command value" << wpmRadioSend;
-
+    unsigned char wpmRadioSend = round((wpm-6) * (6.071));
+    //qInfo(logRig()) << "Setting keyspeed to " << wpm << "WPM, via command value" << wpmRadioSend;
     QByteArray payload;
     payload.setRawData("\x14\x0C", 2);
-    payload.append(wpmRadioSend);
+    payload.append(bcdEncodeInt(wpmRadioSend));
     prepDataAndSend(payload);
 }
 
 void rigCommander::getKeySpeed()
 {
-    qInfo(logRig()) << "Getting key speed from radio...";
     QByteArray payload;
     payload.setRawData("\x14\x0C", 2);
     prepDataAndSend(payload);
