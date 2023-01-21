@@ -6,6 +6,7 @@
 #include <QFont>
 #include <QInputDialog>
 #include "wfviewtypes.h"
+#include "logcategories.h"
 
 
 namespace Ui {
