@@ -59,6 +59,12 @@ enum mode_kind {
     modeDCR
 };
 
+enum breakIn_t {
+    brkinOff  = 0x00,
+    brkinSemi = 0x01,
+    brkinFull = 0x02
+};
+
 struct freqt {
     quint64 Hz;
     double MHzDouble;

@@ -197,6 +197,7 @@ win32:INCLUDEPATH += ../qcustomplot
 INCLUDEPATH += resampler
 
 SOURCES += main.cpp\
+    cwsender.cpp \
     loggingwindow.cpp \
     wfmain.cpp \
     commhandler.cpp \
@@ -234,6 +235,7 @@ SOURCES += main.cpp\
 HEADERS  += wfmain.h \
     colorprefs.h \
     commhandler.h \
+    cwsender.h \
     loggingwindow.h \
     prefs.h \
     rigcommander.h \
@@ -278,6 +280,7 @@ HEADERS  += wfmain.h \
 
 FORMS    += wfmain.ui \
     calibrationwindow.ui \
+    cwsender.ui \
     loggingwindow.ui \
     satellitesetup.ui \
     selectradio.ui \

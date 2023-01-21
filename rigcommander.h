@@ -86,6 +86,8 @@ public slots:
     // PTT, ATU, ATT, Antenna, and Preamp:
     void getPTT();
     void setPTT(bool pttOn);
+    void sendCW(QString textToSend);
+    void sendStopCW();
     void startATU();
     void setATU(bool enabled);
     void getATUStatus();
@@ -113,6 +115,7 @@ public slots:
     void getVox();
     void setBreakIn(unsigned char type);
     void getBreakIn();
+    void setKeySpeed(unsigned char wpm);
     void setManualNotch(bool enabled);
     void getManualNotch();
 

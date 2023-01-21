@@ -48,6 +48,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     rpt = new repeaterSetup();
     sat = new satelliteSetup();
     trxadj = new transceiverAdjustments();
+    cw = new cwSender();
     shut = new controllerSetup();
     abtBox = new aboutbox();
     selRad = new selectRadio();
@@ -341,6 +342,12 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
     connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
     connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
+
+    connect(this, SIGNAL(sendCW(QString)), rig, SLOT(sendCW(QString)));
+    connect(this, SIGNAL(stopCW()), rig, SLOT(sendStopCW()));
+    connect(this, SIGNAL(setKeySpeed(unsigned char)), rig, SLOT(setKeySpeed(unsigned char)));
+    connect(this, SIGNAL(setCWBreakMode(unsigned char)), rig, SLOT(setBreakIn(unsigned char)));
+
     connect(rig, SIGNAL(haveBandStackReg(freqt,char,char,bool)), this, SLOT(receiveBandStackReg(freqt,char,char,bool)));
     connect(this, SIGNAL(setRitEnable(bool)), rig, SLOT(setRitEnable(bool)));
     connect(this, SIGNAL(setRitValue(int)), rig, SLOT(setRitValue(int)));
@@ -1058,6 +1065,15 @@ void wfmain::setupMainUI()
     connect(this->trxadj, &transceiverAdjustments::setPassband,
             [=](const quint16 &passbandHz) { issueCmdUniquePriority(cmdSetPassband, passbandHz);}
     );
+
+    connect(this->cw, &cwSender::sendCW,
+            [=](const QString &cwMessage) { issueCmd(cmdSendCW, cwMessage);});
+    connect(this->cw, &cwSender::stopCW,
+            [=]() { issueDelayedCommand(cmdStopCW);});
+    connect(this->cw, &cwSender::setBreakInMode,
+            [=](const unsigned char &bmode) { issueCmd(cmdSetBreakMode, bmode);});
+    connect(this->cw, &cwSender::setKeySpeed,
+            [=](const unsigned char &wpm) { issueCmd(cmdSetKeySpeed, wpm);});
 }
 
 void wfmain::prepareSettingsWindow()
@@ -3544,6 +3560,24 @@ void wfmain::doCmd(commandtype cmddata)
             }
             break;
         }
+        case cmdSendCW:
+        {
+            QString messageText = (*std::static_pointer_cast<QString>(data));
+            emit sendCW(messageText);
+            break;
+        }
+        case cmdSetBreakMode:
+        {
+            unsigned char bmode = (*std::static_pointer_cast<unsigned char>(data));
+            emit setCWBreakMode(bmode);
+            break;
+        }
+        case cmdSetKeySpeed:
+        {
+            unsigned char wpm = (*std::static_pointer_cast<unsigned char>(data));
+            emit setKeySpeed(wpm);
+            break;
+        }
         case cmdSetATU:
         {
             bool atuOn = (*std::static_pointer_cast<bool>(data));
@@ -3775,11 +3809,20 @@ void wfmain::doCmd(cmds cmd)
             break;
         case cmdGetALCMeter:
             if(amTransmitting)
-                emit getMeters(meterALC);
+                    emit getMeters(meterALC);
             break;
         case cmdGetCompMeter:
             if(amTransmitting)
                 emit getMeters(meterComp);
+            break;
+        case cmdGetKeySpeed:
+            emit getKeySpeed();
+            break;
+        case cmdGetBreakMode:
+            emit getCWBreakMode();
+            break;
+        case cmdStopCW:
+            emit stopCW();
             break;
         case cmdStartRegularPolling:
             runPeriodicCommands = true;
@@ -3969,6 +4012,14 @@ void wfmain::issueCmd(cmds cmd, qint16 c)
     commandtype cmddata;
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<qint16>(new qint16(c));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, QString s)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<QString>(new QString(s));
     delayedCmdQue.push_back(cmddata);
 }
 
@@ -4301,7 +4352,7 @@ void wfmain::initPeriodicCommands()
     }
 }
 
-void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
+void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority=100)
 {
     // TODO: meaningful priority
     // These commands get run at the fastest pace possible
@@ -4339,7 +4390,7 @@ void wfmain::removePeriodicCommand(cmds cmd)
 }
 
 
-void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority)
+void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority=100)
 {
     // TODO: meaningful priority
     // These commands are run every 20 "ticks" of the primary radio command loop
@@ -7339,7 +7390,7 @@ void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    emit getRigID();
+    cw->show();
 }
 
 // ----------   color helper functions:   ---------- //
@@ -8109,12 +8160,15 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     out << context.category << ": " << msg << "\n";
     out.flush();    // Clear the buffered data
 
-    text.append(context.category);
-    text.append(": ");
-    text.append(msg);
-    logTextMutex.lock();
-    logStringBuffer.push_front(text);
-    logTextMutex.unlock();
+    if(QString(context.category) != QString("rigCommands"))
+    {
+        text.append(context.category);
+        text.append(": ");
+        text.append(msg);
+        logTextMutex.lock();
+        logStringBuffer.push_front(text);
+        logTextMutex.unlock();
+    }
 }
 
 void wfmain::on_customEdgeBtn_clicked()

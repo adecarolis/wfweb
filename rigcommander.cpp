@@ -1164,6 +1164,52 @@ void rigCommander::setPTT(bool pttOn)
     }
 }
 
+void rigCommander::sendCW(QString textToSend)
+{
+    if(textToSend.length() >30)
+    {
+        qCritical(logRig()).nospace() << "Cannot send CW message, length > 30 characters (" << textToSend.length() << ")";
+        return;
+    }
+
+    QByteArray textData = textToSend.toLocal8Bit();
+    unsigned char p=0;
+    for(int c=0; c < textData.length(); c++)
+    {
+        p = textData.at(c);
+        if( ( (p >= 0x30) && (p <= 0x39) ) ||
+            ( (p >= 0x41) && (p <= 0x5A) ) ||
+            ( (p >= 0x61) && (p <= 0x7A) ) ||
+            (p==0x2F) || (p==0x3F) || (p==0x2E) ||
+            (p==0x2D) || (p==0x2C) || (p==0x3A) ||
+            (p==0x27) || (p==0x28) || (p==0x29) ||
+            (p==0x3D) || (p==0x2B) || (p==0x22) ||
+            (p==0x40) || (p==0x20) )
+        {
+            // Allowed character, continue
+        } else {
+            qWarning(logRig()) << "Invalid character detected in CW message at position " << c << ", the character is " << textToSend.at(c);
+            printHex(textData);
+            textData[c] = 0x3F; // "?"
+        }
+    }
+
+    if(pttAllowed)
+    {
+        QByteArray payload("\x17", 1);
+        payload.append(textData);
+        prepDataAndSend(payload);
+    }
+    // Does it need to end in "FF" or is that implicit at the end of a message?
+}
+
+void rigCommander::sendStopCW()
+{
+    QByteArray payload("\x17", 1);
+    payload.append("\xFF");
+    prepDataAndSend(payload);
+}
+
 void rigCommander::setCIVAddr(unsigned char civAddr)
 {
     // Note: This sets the radio's CIV address
@@ -4558,6 +4604,19 @@ void rigCommander::getBreakIn()
     prepDataAndSend(payload);
 }
 
+void rigCommander::setKeySpeed(unsigned char wpm)
+{
+    // 0 = 6 WPM
+    // 255 = 48 WPM
+
+    unsigned char wpmRadioSend = (wpm-6) * (6.071);
+
+    QByteArray payload;
+    payload.setRawData("\x14\x0C", 2);
+    payload.append(wpmRadioSend);
+    prepDataAndSend(payload);
+}
+
 void rigCommander::setManualNotch(bool enabled)
 {
     QByteArray payload("\x16\x48");
@@ -4571,7 +4630,6 @@ void rigCommander::getManualNotch()
     payload.setRawData("\x16\x48", 2);
     prepDataAndSend(payload);
 }
-
 
 void rigCommander::getRigID()
 {
