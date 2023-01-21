@@ -83,59 +83,59 @@ void cwSender::on_wpmSpin_valueChanged(int wpm)
 
 void cwSender::on_macro1btn_clicked()
 {
-    processMacroButton(1);
+    processMacroButton(1, ui->macro1btn);
 }
 
 void cwSender::on_macro2btn_clicked()
 {
-    processMacroButton(2);
+    processMacroButton(2, ui->macro2btn);
 }
 
 void cwSender::on_macro3btn_clicked()
 {
-    processMacroButton(3);
+    processMacroButton(3, ui->macro3btn);
 }
 
 void cwSender::on_macro4btn_clicked()
 {
-    processMacroButton(4);
+    processMacroButton(4, ui->macro4btn);
 }
 
 void cwSender::on_macro5btn_clicked()
 {
-    processMacroButton(5);
+    processMacroButton(5, ui->macro5btn);
 }
 
 void cwSender::on_macro6btn_clicked()
 {
-    processMacroButton(6);
+    processMacroButton(6, ui->macro6btn);
 }
 
 void cwSender::on_macro7btn_clicked()
 {
-    processMacroButton(7);
+    processMacroButton(7, ui->macro7btn);
 }
 
 void cwSender::on_macro8btn_clicked()
 {
-    processMacroButton(8);
+    processMacroButton(8, ui->macro8btn);
 }
 
 void cwSender::on_macro9btn_clicked()
 {
-    processMacroButton(9);
+    processMacroButton(9, ui->macro9btn);
 }
 
 void cwSender::on_macro10btn_clicked()
 {
-    processMacroButton(10);
+    processMacroButton(10, ui->macro10btn);
 }
 
-void cwSender::processMacroButton(int buttonNumber)
+void cwSender::processMacroButton(int buttonNumber, QPushButton *btn)
 {
     if(ui->macroEditChk->isChecked())
     {
-        editMacroButton(buttonNumber);
+        editMacroButton(buttonNumber, btn);
     } else {
         runMacroButton(buttonNumber);
     }
@@ -150,7 +150,7 @@ void cwSender::runMacroButton(int buttonNumber)
     ui->textToSendEdit->setFocus();
 }
 
-void cwSender::editMacroButton(int buttonNumber)
+void cwSender::editMacroButton(int buttonNumber, QPushButton* btn)
 {
     bool ok;
     QString prompt = QString("Please enter the text for macro %1, up to 30 characters.").arg(buttonNumber);
@@ -172,4 +172,23 @@ void cwSender::editMacroButton(int buttonNumber)
     }
 
     macroText[buttonNumber] = newMacroText;
+    setMacroButtonText(newMacroText, btn);
+}
+
+void cwSender::setMacroButtonText(QString btnText, QPushButton *btn)
+{
+    if(btn==Q_NULLPTR)
+        return;
+    if(btnText.isEmpty())
+        return;
+
+    QString shortBtnName;
+    if(btnText.length() <= 8)
+    {
+        shortBtnName = btnText;
+    } else {
+        shortBtnName = btnText.left(7);
+        shortBtnName.append("…");
+    }
+    btn->setText(shortBtnName);
 }

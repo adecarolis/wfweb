@@ -66,11 +66,12 @@ private slots:
 
 private:
     Ui::cwSender *ui;
-    void processMacroButton(int buttonNumber);
+    void processMacroButton(int buttonNumber, QPushButton *btn);
     void runMacroButton(int buttonNumber);
-    void editMacroButton(int buttonNumber);
+    void editMacroButton(int buttonNumber, QPushButton *btn);
     QStringList macroTextList;
     QString macroText[11];
+    void setMacroButtonText(QString btnText, QPushButton *btn);
 };
 
 #endif // CWSENDER_H
