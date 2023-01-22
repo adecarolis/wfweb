@@ -4528,24 +4528,13 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
                 pbtIndicator->setVisible(false);
             }
 
-            if (TPBFInner < TPBFOuter) 
-            {
-                double width = passbandWidth - TPBFOuter - TPBFInner;
-                pbtIndicator->topLeft->setCoords(pbStart + TPBFInner + TPBFOuter, 0);
-                pbtIndicator->bottomRight->setCoords(pbStart + passbandWidth, rigCaps.spectAmpMax);
-            }
-            else if (TPBFOuter > TPBFInner) 
-            {
-                double width = passbandWidth - TPBFInner - TPBFOuter;
-                pbtIndicator->topLeft->setCoords(pbStart + TPBFInner+TPBFOuter, 0);
-                pbtIndicator->bottomRight->setCoords(pbEnd + width, rigCaps.spectAmpMax);
-            }
-            else if (passbandAction == passbandStatic) {
-                pbtIndicator->topLeft->setCoords(pbStart+TPBFInner, 0);
-                pbtIndicator->bottomRight->setCoords(pbEnd+TPBFOuter, rigCaps.spectAmpMax);
-            }
+            /*
+                pbtIndicator displays the intersection between TPBFInner and TPBFOuter
+            */
+            pbtIndicator->topLeft->setCoords(qMax(pbStart + (TPBFInner / 2), pbStart + (TPBFOuter / 2)), 0);
 
-
+            pbtIndicator->bottomRight->setCoords(qMin(pbStart + (TPBFInner / 2) + passbandWidth, 
+                pbStart + (TPBFOuter / 2) + passbandWidth), rigCaps.spectAmpMax);
         }
 
         if (underlayMode == underlayPeakHold)
