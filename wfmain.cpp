@@ -4669,7 +4669,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
                 wfRow = wfimage.at(row);
                 for(int col = 0; col < spectWidth; col++)
                 {
-                    colorMap->data()->setCell( col, row, wfRow.at(col));
+                    colorMap->data()->setCell( col, row, (unsigned char)wfRow.at(col));
                 }
             }
             if(updateRange)
