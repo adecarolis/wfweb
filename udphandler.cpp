@@ -508,20 +508,13 @@ void udpHandler::dataReceived()
                     const char* tmpRad = r.constData();
                     memcpy(&rad, tmpRad+f, RADIO_CAP_SIZE);
                     radios.append(rad);
+                    qInfo(logUdp()) << this->metaObject()->className() << QString("Received radio capabilities, Name: %1, Audio: %2, CIV: %3, MAC: %4:%5:%6:%7:%8:%9 CAPF: %10")
+                        .arg(rad.name).arg(rad.audio).arg((unsigned char)rad.civ, 2, 16, QChar('0'))
+                        .arg(rad.macaddress[0], 2, 16, QChar('0')).arg(rad.macaddress[1], 2, 16, QChar('0'))
+                        .arg(rad.macaddress[2], 2, 16, QChar('0')).arg(rad.macaddress[3], 2, 16, QChar('0'))
+                        .arg(rad.macaddress[4], 2, 16, QChar('0')).arg(rad.macaddress[5], 2, 16, QChar('0')).arg(rad.capf, 4, 16, QChar('0'));
                 }
-                for(const radio_cap_packet &radio : radios)
-                {
-                    qInfo(logUdp()) << this->metaObject()->className() << "Received radio capabilities, Name:" <<
-                        radio.name << " Audio:" <<
-                        radio.audio << "CIV:" << QString("0x%1").arg((unsigned char)radio.civ,0, 16) <<
-                        "MAC:" << radio.macaddress[0] <<
-                        ":" << radio.macaddress[1] <<
-                        ":" << radio.macaddress[2] <<
-                        ":" << radio.macaddress[3] <<
-                        ":" << radio.macaddress[4] <<
-                        ":" << radio.macaddress[5] <<
-                        "CAPF" << radio.capf;
-                }
+
                 emit requestRadioSelection(radios);
 
                 break;
