@@ -1486,12 +1486,97 @@ void wfmain::setupKeyShortcuts()
     keyM->setKey(Qt::Key_M);
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
 
+    // Alternate for plus:
+    keyK = new QShortcut(this);
+    keyK->setKey(Qt::Key_K);
+    connect(keyK, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+        this->shortcutPlus();
+    });
+
+    // Alternate for minus:
+    keyJ = new QShortcut(this);
+    keyJ->setKey(Qt::Key_J);
+    connect(keyJ, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+        this->shortcutMinus();
+    });
+
+    keyShiftK = new QShortcut(this);
+    keyShiftK->setKey(Qt::SHIFT + Qt::Key_K);
+    connect(keyShiftK, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+        this->shortcutShiftPlus();
+    });
+
+
+    keyShiftJ = new QShortcut(this);
+    keyShiftJ->setKey(Qt::SHIFT + Qt::Key_J);
+    connect(keyShiftJ, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+        this->shortcutShiftMinus();
+    });
+
+    keyControlK = new QShortcut(this);
+    keyControlK->setKey(Qt::CTRL + Qt::Key_K);
+    connect(keyControlK, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+        this->shortcutControlPlus();
+    });
+
+
+    keyControlJ = new QShortcut(this);
+    keyControlJ->setKey(Qt::CTRL + Qt::Key_J);
+    connect(keyControlJ, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+        this->shortcutControlMinus();
+    });
+    // Move the tuning knob by the tuning step selected:
+    // H = Down
+    keyH = new QShortcut(this);
+    keyH->setKey(Qt::Key_H);
+    connect(keyH, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+
+        freqt f;
+        f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsKnobHz);
+        f.MHzDouble = f.Hz / (double)1E6;
+        freq.Hz = f.Hz;
+        freq.MHzDouble = f.MHzDouble;
+        setUIFreq();
+        issueCmd(cmdSetFreq, f);
+    });
+
+    // L = Up
+    keyL = new QShortcut(this);
+    keyL->setKey(Qt::Key_L);
+    connect(keyL, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+
+        freqt f;
+        f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsKnobHz);
+        f.MHzDouble = f.Hz / (double)1E6;
+        ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
+        freq.Hz = f.Hz;
+        freq.MHzDouble = f.MHzDouble;
+        setUIFreq();
+        issueCmd(cmdSetFreq, f);
+    });
+
     keyDebug = new QShortcut(this);
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     keyDebug->setKey(Qt::CTRL + Qt::SHIFT + Qt::Key_D);
 #else
     keyDebug->setKey(Qt::CTRL + Qt::Key_D);
- #endif
+#endif
     connect(keyDebug, SIGNAL(activated()), this, SLOT(on_debugBtn_clicked()));
 }
 
@@ -3078,12 +3163,13 @@ void wfmain::shortcutMinus()
 
     freqt f;
     f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsPlusHz);
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
     //issueCmd(cmdSetFreq, f);
     issueCmdUniquePriority(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutPlus()
@@ -3092,12 +3178,13 @@ void wfmain::shortcutPlus()
 
     freqt f;
     f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsPlusHz);
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
     //issueCmd(cmdSetFreq, f);
     issueCmdUniquePriority(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutStepMinus()
@@ -3132,12 +3219,13 @@ void wfmain::shortcutShiftMinus()
 
     freqt f;
     f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsPlusShiftHz);
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
     //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutShiftPlus()
@@ -3146,12 +3234,13 @@ void wfmain::shortcutShiftPlus()
 
     freqt f;
     f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsPlusShiftHz);
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
     //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutControlMinus()
@@ -3160,12 +3249,12 @@ void wfmain::shortcutControlMinus()
 
     freqt f;
     f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsPlusControlHz);
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
-    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutControlPlus()
@@ -3174,12 +3263,12 @@ void wfmain::shortcutControlPlus()
 
     freqt f;
     f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsPlusControlHz);
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
-    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutPageUp()
@@ -3188,12 +3277,12 @@ void wfmain::shortcutPageUp()
 
     freqt f;
     f.Hz = freq.Hz + tsPageHz;
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
-    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutPageDown()
@@ -3202,12 +3291,12 @@ void wfmain::shortcutPageDown()
 
     freqt f;
     f.Hz = freq.Hz - tsPageHz;
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
-    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutF()

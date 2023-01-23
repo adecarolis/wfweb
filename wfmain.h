@@ -807,6 +807,17 @@ private:
     QShortcut *keyF;
     QShortcut *keyM;
 
+    QShortcut *keyH;
+    QShortcut *keyK; // alternate +
+    QShortcut *keyJ; // alternate -
+    QShortcut *keyL;
+
+    QShortcut *keyShiftK;
+    QShortcut *keyShiftJ;
+
+    QShortcut *keyControlK;
+    QShortcut *keyControlJ;
+
     QShortcut *keyDebug;
 
 
