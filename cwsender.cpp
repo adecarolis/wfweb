@@ -13,6 +13,8 @@ cwSender::cwSender(QWidget *parent) :
     ui->textToSendEdit->setFont(f);
     ui->transcriptText->setFont(f);
     ui->textToSendEdit->setFocus();
+    ui->statusbar->setToolTipDuration(3000);
+    this->setToolTipDuration(3000);
 }
 
 cwSender::~cwSender()
@@ -49,6 +51,16 @@ void cwSender::handleBreakInMode(unsigned char b)
     }
 }
 
+void cwSender::handleCurrentModeUpdate(mode_kind mode)
+{
+    this->currentMode = mode;
+    if( (currentMode==modeCW) || (currentMode==modeCW_R) )
+    {
+    } else {
+        ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.", 3000);
+    }
+}
+
 void cwSender::on_sendBtn_clicked()
 {
     if( (ui->textToSendEdit->text().length() > 0) &&
@@ -58,6 +70,12 @@ void cwSender::on_sendBtn_clicked()
         ui->transcriptText->appendPlainText(ui->textToSendEdit->text());
         ui->textToSendEdit->clear();
         ui->textToSendEdit->setFocus();
+        ui->statusbar->showMessage("Sending CW", 3000);
+    }
+    if( (currentMode==modeCW) || (currentMode==modeCW_R) )
+    {
+    } else {
+        ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.", 3000);
     }
 }
 
@@ -65,6 +83,7 @@ void cwSender::on_stopBtn_clicked()
 {
     emit stopCW();
     ui->textToSendEdit->setFocus();
+    ui->statusbar->showMessage("Stopping CW transmission.", 3000);
 }
 
 void cwSender::on_textToSendEdit_returnPressed()
@@ -149,17 +168,26 @@ void cwSender::runMacroButton(int buttonNumber)
 {
     if(macroText[buttonNumber].isEmpty())
         return;
-    QString outText = macroText[buttonNumber].arg(sequenceNumber, 3, 10, QChar('0'));
-    emit sendCW(outText);
-    ui->transcriptText->appendPlainText(outText);
-    ui->textToSendEdit->setFocus();
-    // We only sequenceNumber++ if the macro actually had the sequence "%1" code.
+    QString outText;
     if(macroText[buttonNumber].contains("\%1"))
     {
+        outText = macroText[buttonNumber].arg(sequenceNumber, 3, 10, QChar('0'));
         sequenceNumber++;
         ui->sequenceSpin->blockSignals(true);
         ui->sequenceSpin->setValue(sequenceNumber);
         ui->sequenceSpin->blockSignals(false);
+    } else {
+        outText = macroText[buttonNumber];
+    }
+    emit sendCW(outText);
+    ui->transcriptText->appendPlainText(outText);
+    ui->textToSendEdit->setFocus();
+
+    if( (currentMode==modeCW) || (currentMode==modeCW_R) )
+    {
+        ui->statusbar->showMessage(QString("Sending CW macro %1").arg(buttonNumber));
+    } else {
+        ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.");
     }
 }
 

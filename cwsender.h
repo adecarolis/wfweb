@@ -33,6 +33,7 @@ signals:
 public slots:
     void handleKeySpeed(unsigned char wpm);
     void handleBreakInMode(unsigned char b);
+    void handleCurrentModeUpdate(mode_kind mode);
 
 private slots:
     void on_sendBtn_clicked();
@@ -72,6 +73,7 @@ private:
     Ui::cwSender *ui;
     QString macroText[11];
     int sequenceNumber = 1;
+    mode_kind currentMode;
     void processMacroButton(int buttonNumber, QPushButton *btn);
     void runMacroButton(int buttonNumber);
     void editMacroButton(int buttonNumber, QPushButton *btn);

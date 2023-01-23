@@ -5118,6 +5118,7 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
         }
         currentModeIndex = mode;
         currentModeInfo.mk = (mode_kind)mode;
+        cw->handleCurrentModeUpdate((mode_kind)mode);
         currentModeInfo.filter = filter;
 
         switch (currentModeInfo.mk) {
