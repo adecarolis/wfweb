@@ -4901,30 +4901,24 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
 
                 issueCmd(cmdSetTPBFInner, (unsigned char)newInFreq);
                 issueCmd(cmdSetTPBFOuter, (unsigned char)newOutFreq);
-                //issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newInFreq);
-                //issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newOutFreq);
 
             }
             lastFreq = movedFrequency;
         }
     }
     else if (passbandAction == pbtInnerMove) {
-        //if (TPBFInner + movedFrequency < passbandCenterFrequency) {
-            double pbFreq = ((double)(TPBFInner + movedFrequency) / passbandWidth) * 127.0;
-            qint16 newFreq = pbFreq + 128;
-            if (newFreq >= 0 && newFreq <= 255) {
-                issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
-            }
-        //}
+        double pbFreq = ((double)(TPBFInner + movedFrequency) / passbandWidth) * 127.0;
+        qint16 newFreq = pbFreq + 128;
+        if (newFreq >= 0 && newFreq <= 255) {
+            issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
+        }
     }
     else if (passbandAction == pbtOuterMove) {
-        //if (movedFrequency + TPBFOuter > passbandCenterFrequency) {
-            double pbFreq = ((double)(TPBFOuter + movedFrequency) / passbandWidth) * 127.0;
-            qint16 newFreq = pbFreq + 128;
-            if (newFreq >= 0 && newFreq <= 255) {
-                issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
-            }
-        //}
+        double pbFreq = ((double)(TPBFOuter + movedFrequency) / passbandWidth) * 127.0;
+        qint16 newFreq = pbFreq + 128;
+        if (newFreq >= 0 && newFreq <= 255) {
+            issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
+        }
     }
     else  if (passbandAction == passbandStatic && me->buttons() == Qt::LeftButton && textItem == nullptr && prefs.clickDragTuningEnable)
     {
