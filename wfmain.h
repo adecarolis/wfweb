@@ -1083,7 +1083,6 @@ private:
     rigstate* rigState = Q_NULLPTR;
 
     passbandActions passbandAction = passbandStatic;
-    double clickedFrequency = 0.0;
     double TPBFInner = 0.0;
     double TPBFOuter = 0.0;
     double passbandCenterFrequency = 0.0;
