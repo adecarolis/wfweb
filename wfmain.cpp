@@ -1589,7 +1589,7 @@ void wfmain::setDefPrefs()
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.serialPortBaud = 115200;
     defPrefs.polling_ms = 0; // 0 = Automatic
-    defPrefs.enablePTT = false;
+    defPrefs.enablePTT = true;
     defPrefs.niceTS = true;
     defPrefs.enableRigCtlD = false;
     defPrefs.rigCtlPort = 4533;
