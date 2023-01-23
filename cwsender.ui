@@ -13,6 +13,9 @@
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
+  <property name="toolTip">
+   <string>Send the text in the edit box</string>
+  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
     <item row="1" column="5">
@@ -26,6 +29,9 @@
      <widget class="QPlainTextEdit" name="transcriptText">
       <property name="focusPolicy">
        <enum>Qt::NoFocus</enum>
+      </property>
+      <property name="toolTip">
+       <string>CW Transmission Transcript</string>
       </property>
       <property name="undoRedoEnabled">
        <bool>false</bool>
@@ -43,6 +49,9 @@
       <layout class="QGridLayout" name="gridLayout_2">
        <item row="0" column="4">
         <widget class="QPushButton" name="macro5btn">
+         <property name="toolTip">
+          <string>Macro Access Button</string>
+         </property>
          <property name="text">
           <string>Macro 5</string>
          </property>
@@ -50,6 +59,9 @@
        </item>
        <item row="0" column="1">
         <widget class="QPushButton" name="macro2btn">
+         <property name="toolTip">
+          <string>Macro Access Button</string>
+         </property>
          <property name="text">
           <string>Macro 2</string>
          </property>
@@ -57,6 +69,9 @@
        </item>
        <item row="0" column="3">
         <widget class="QPushButton" name="macro4btn">
+         <property name="toolTip">
+          <string>Macro Access Button</string>
+         </property>
          <property name="text">
           <string>Macro 4</string>
          </property>
@@ -74,6 +89,9 @@
        </item>
        <item row="1" column="1">
         <widget class="QPushButton" name="macro7btn">
+         <property name="toolTip">
+          <string>Macro Access Button</string>
+         </property>
          <property name="text">
           <string>Macro 7</string>
          </property>
@@ -81,6 +99,9 @@
        </item>
        <item row="0" column="2">
         <widget class="QPushButton" name="macro3btn">
+         <property name="toolTip">
+          <string>Macro Access Button</string>
+         </property>
          <property name="text">
           <string>Macro 3</string>
          </property>
@@ -88,6 +109,9 @@
        </item>
        <item row="1" column="0">
         <widget class="QPushButton" name="macro6btn">
+         <property name="toolTip">
+          <string>Macro Access Button</string>
+         </property>
          <property name="text">
           <string>Macro 6</string>
          </property>
@@ -95,6 +119,9 @@
        </item>
        <item row="1" column="4">
         <widget class="QPushButton" name="macro10btn">
+         <property name="toolTip">
+          <string>Macro Access Button</string>
+         </property>
          <property name="text">
           <string>Macro 10</string>
          </property>
@@ -102,6 +129,9 @@
        </item>
        <item row="1" column="3">
         <widget class="QPushButton" name="macro9btn">
+         <property name="toolTip">
+          <string>Macro Access Button</string>
+         </property>
          <property name="text">
           <string>Macro 9</string>
          </property>
@@ -109,6 +139,9 @@
        </item>
        <item row="1" column="2">
         <widget class="QPushButton" name="macro8btn">
+         <property name="toolTip">
+          <string>Macro Access Button</string>
+         </property>
          <property name="text">
           <string>Macro 8</string>
          </property>
@@ -116,6 +149,9 @@
        </item>
        <item row="0" column="0">
         <widget class="QPushButton" name="macro1btn">
+         <property name="toolTip">
+          <string>Macro Access Button</string>
+         </property>
          <property name="text">
           <string>Macro 1</string>
          </property>
@@ -132,6 +168,9 @@
          </item>
          <item>
           <widget class="QSpinBox" name="sequenceSpin">
+           <property name="toolTip">
+            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Sequence number, for contests. &lt;/p&gt;&lt;p&gt;Substitute &amp;quot;%1&amp;quot; in your macro text to use it. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
            <property name="minimum">
             <number>1</number>
            </property>
@@ -147,6 +186,9 @@
     </item>
     <item row="1" column="1">
      <widget class="QPushButton" name="stopBtn">
+      <property name="toolTip">
+       <string>Stop sending CW</string>
+      </property>
       <property name="text">
        <string>Stop</string>
       </property>
@@ -173,6 +215,9 @@
         <height>16777215</height>
        </size>
       </property>
+      <property name="toolTip">
+       <string>Type the text you wish to send as CW here.</string>
+      </property>
       <property name="maxLength">
        <number>30</number>
       </property>
@@ -183,6 +228,9 @@
     </item>
     <item row="1" column="6">
      <widget class="QSpinBox" name="wpmSpin">
+      <property name="toolTip">
+       <string>Set the Words Per Minute</string>
+      </property>
       <property name="minimum">
        <number>6</number>
       </property>
@@ -206,6 +254,9 @@
     </item>
     <item row="1" column="4">
      <widget class="QComboBox" name="breakinCombo">
+      <property name="toolTip">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the desired break-in mode:&lt;/p&gt;&lt;p&gt;1. None: You must manually key and unkey the radio.&lt;/p&gt;&lt;p&gt;2. Semi: Transmit is automatic and switches to receive at the end of the text.&lt;/p&gt;&lt;p&gt;3. Full: Same as semi, but with breaks between words when possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
       <item>
        <property name="text">
         <string>Off</string>

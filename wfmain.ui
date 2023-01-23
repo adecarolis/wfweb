@@ -1043,6 +1043,9 @@
             </item>
             <item>
              <widget class="QPushButton" name="cwButton">
+              <property name="toolTip">
+               <string>Press to bring up the CW Sender</string>
+              </property>
               <property name="text">
                <string>CW</string>
               </property>
@@ -5403,8 +5406,8 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="underlayButtonGroup"/>
   <buttongroup name="pollingButtonGroup"/>
+  <buttongroup name="underlayButtonGroup"/>
   <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>
