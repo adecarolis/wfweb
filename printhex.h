@@ -20,7 +20,7 @@ QString inline getHex(const QByteArray &pdata)
         sdata.append("\n");
         index.append("\n");
 
-    QString tail = "----- End hex dump -----\n";
+    QString tail = "----  End hex dump  -----\n";
     return head + sdata + index + tail;
 }
 
