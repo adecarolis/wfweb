@@ -63,12 +63,16 @@ void cwSender::handleCurrentModeUpdate(mode_kind mode)
 
 void cwSender::on_sendBtn_clicked()
 {
-    if( (ui->textToSendEdit->text().length() > 0) &&
-        (ui->textToSendEdit->text().length() <= 30) )
+    if( (ui->textToSendEdit->currentText().length() > 0) &&
+        (ui->textToSendEdit->currentText().length() <= 30) )
     {
-        emit sendCW(ui->textToSendEdit->text());
-        ui->transcriptText->appendPlainText(ui->textToSendEdit->text());
-        ui->textToSendEdit->clear();
+        emit sendCW(ui->textToSendEdit->currentText());
+        ui->transcriptText->appendPlainText(ui->textToSendEdit->currentText());
+        ui->textToSendEdit->addItem(ui->textToSendEdit->currentText());
+        if (ui->textToSendEdit->count() > 5) {
+            ui->textToSendEdit->removeItem(0);
+        }
+        ui->textToSendEdit->setCurrentIndex(-1);
         ui->textToSendEdit->setFocus();
         ui->statusbar->showMessage("Sending CW", 3000);
     }

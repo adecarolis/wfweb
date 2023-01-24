@@ -18,13 +18,6 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="1" column="5">
-     <widget class="QLabel" name="label">
-      <property name="text">
-       <string>WPM:</string>
-      </property>
-     </widget>
-    </item>
     <item row="0" column="0" colspan="8">
      <widget class="QPlainTextEdit" name="transcriptText">
       <property name="focusPolicy">
@@ -184,6 +177,13 @@
       </layout>
      </widget>
     </item>
+    <item row="1" column="3">
+     <widget class="QLabel" name="label_2">
+      <property name="text">
+       <string>Break In</string>
+      </property>
+     </widget>
+    </item>
     <item row="1" column="1">
      <widget class="QPushButton" name="stopBtn">
       <property name="toolTip">
@@ -194,35 +194,54 @@
       </property>
      </widget>
     </item>
-    <item row="1" column="3">
-     <widget class="QLabel" name="label_2">
-      <property name="text">
-       <string>Break In</string>
+    <item row="1" column="4">
+     <widget class="QComboBox" name="breakinCombo">
+      <property name="toolTip">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the desired break-in mode:&lt;/p&gt;&lt;p&gt;1. None: You must manually key and unkey the radio.&lt;/p&gt;&lt;p&gt;2. Semi: Transmit is automatic and switches to receive at the end of the text.&lt;/p&gt;&lt;p&gt;3. Full: Same as semi, but with breaks between characters when possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
+      <item>
+       <property name="text">
+        <string>Off</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Semi</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>Full</string>
+       </property>
+      </item>
      </widget>
     </item>
     <item row="1" column="2">
-     <widget class="QLineEdit" name="textToSendEdit">
-      <property name="minimumSize">
-       <size>
-        <width>25</width>
-        <height>0</height>
-       </size>
+     <widget class="QComboBox" name="textToSendEdit">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
       </property>
-      <property name="maximumSize">
-       <size>
-        <width>400</width>
-        <height>16777215</height>
-       </size>
+      <property name="editable">
+       <bool>true</bool>
       </property>
-      <property name="toolTip">
-       <string>Type the text you wish to send as CW here.</string>
+      <property name="currentText">
+       <string notr="true"/>
       </property>
-      <property name="maxLength">
-       <number>30</number>
+      <property name="insertPolicy">
+       <enum>QComboBox::InsertAtTop</enum>
       </property>
       <property name="placeholderText">
-       <string>Type here...</string>
+       <string notr="true">Type here...</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="5">
+     <widget class="QLabel" name="label">
+      <property name="text">
+       <string>WPM:</string>
       </property>
      </widget>
     </item>
@@ -250,28 +269,6 @@
       <property name="default">
        <bool>true</bool>
       </property>
-     </widget>
-    </item>
-    <item row="1" column="4">
-     <widget class="QComboBox" name="breakinCombo">
-      <property name="toolTip">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the desired break-in mode:&lt;/p&gt;&lt;p&gt;1. None: You must manually key and unkey the radio.&lt;/p&gt;&lt;p&gt;2. Semi: Transmit is automatic and switches to receive at the end of the text.&lt;/p&gt;&lt;p&gt;3. Full: Same as semi, but with breaks between characters when possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
-      <item>
-       <property name="text">
-        <string>Off</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Semi</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Full</string>
-       </property>
-      </item>
      </widget>
     </item>
    </layout>
