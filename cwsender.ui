@@ -224,6 +224,9 @@
         <verstretch>0</verstretch>
        </sizepolicy>
       </property>
+      <property name="toolTip">
+       <string>Type here to send text as CW</string>
+      </property>
       <property name="editable">
        <bool>true</bool>
       </property>
@@ -232,9 +235,6 @@
       </property>
       <property name="insertPolicy">
        <enum>QComboBox::InsertAtTop</enum>
-      </property>
-      <property name="placeholderText">
-       <string notr="true">Type here...</string>
       </property>
      </widget>
     </item>
@@ -265,6 +265,9 @@
      <widget class="QPushButton" name="sendBtn">
       <property name="text">
        <string>Send</string>
+      </property>
+      <property name="shortcut">
+       <string>Return</string>
       </property>
       <property name="default">
        <bool>true</bool>
