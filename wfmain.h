@@ -829,7 +829,8 @@ private:
     QTimer * delayedCommand;
     QTimer * pttTimer;
     uint16_t loopTickCounter;
-    uint16_t slowCmdNum;
+    uint16_t slowCmdNum=0;
+    uint16_t rapidCmdNum=0;
 
     void setupPlots();
     void makeRig();
@@ -896,34 +897,14 @@ private:
     unsigned char setModeVal=0;
     unsigned char setFilterVal=0;
 
-    enum cmds {
-        cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode,
-        cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
-        cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
-        cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetTPBFInner, cmdSetTPBFInner,
-        cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus, cmdGetPassband, cmdSetPassband,
-        cmdGetCwPitch, cmdGetPskTone, cmdGetRttyMark, cmdSetCwPitch, cmdSetPskTone, cmdSetRttyMark,
-        cmdSetATU, cmdStartATU, cmdGetSpectrumMode,
-        cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,cmdPTTToggle,
-        cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel,
-        cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
-        cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
-        cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
-        cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
-        cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
-        cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW,
-        cmdSetTime, cmdSetDate, cmdSetUTCOffset};
-
-    struct commandtype {
-        cmds cmd;
-        std::shared_ptr<void> data;
-    };
-
-    std::deque <commandtype> delayedCmdQue;    // rapid que for commands to the radio
+    std::deque <commandtype> delayedCmdQue; // rapid commands from user interaction
     std::deque <cmds> periodicCmdQueue; // rapid que for metering
     std::deque <cmds> slowPollCmdQueue; // slow, regular checking for UI sync
+    std::deque <cmds> rapidPollCmdQueue; // rapid regular polling for non-meter actions
     void doCmd(cmds cmd);
     void doCmd(commandtype cmddata);
+
+    bool rapidPollCmdQueueEnabled = false;
 
     void issueCmd(cmds cmd, freqt f);
     void issueCmd(cmds cmd, mode_info m);
@@ -1030,11 +1011,16 @@ private:
 
     void changeModLabelAndSlider(rigInput source);
 
-    // Fast command queue:
     void initPeriodicCommands();
+    // Fast command queue for S-Meter:
     void insertPeriodicCommand(cmds cmd, unsigned char priority);
     void insertPeriodicCommandUnique(cmds cmd);
     void removePeriodicCommand(cmds cmd);
+    // Fast command queue for other functions:
+    void insertPeriodicRapidCmd(cmds cmd);
+    void insertPeriodicRapidCmdUnique(cmds cmd);
+    void removePeriodicRapidCmd(cmds cmd);
+
 
     void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
     void calculateTimingParameters();
@@ -1108,7 +1094,6 @@ private:
     rigstate* rigState = Q_NULLPTR;
 
     passbandActions passbandAction = passbandStatic;
-    double clickedFrequency = 0.0;
     double TPBFInner = 0.0;
     double TPBFOuter = 0.0;
     double passbandCenterFrequency = 0.0;

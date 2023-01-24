@@ -54,8 +54,11 @@ The following highlights are in this 1.51-release ince v1.50:
                 Fix invalid filter width being sent to rig by rigctld.
                 Ability to drag the passband for a variable filter width	
                 Added preference for automatic sideband.
-
-
++1.58		PTT on now is default	
+		PBT is shown on the passband, see "Show more" button 
+		filterwidth can be adjusted . see "Show more" button
+		cpability to send predefined cw for righs that support it.
+    		Fixed up many key shortcuts, added HJKL key shortcuts.
 
 
 	

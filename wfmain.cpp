@@ -1700,7 +1700,7 @@ void wfmain::setDefPrefs()
     defPrefs.serialPortRadio = QString("auto");
     defPrefs.serialPortBaud = 115200;
     defPrefs.polling_ms = 0; // 0 = Automatic
-    defPrefs.enablePTT = false;
+    defPrefs.enablePTT = true;
     defPrefs.niceTS = true;
     defPrefs.enableRigCtlD = false;
     defPrefs.rigCtlPort = 4533;
@@ -3997,6 +3997,11 @@ void wfmain::sendRadioCommandLoop()
                 cmds sCmd = slowPollCmdQueue[(slowCmdNum++)%nCmds];
                 doCmd(sCmd);
             }
+        } else if ((!rapidPollCmdQueue.empty()) && rapidPollCmdQueueEnabled)
+        {
+            int nrCmds = (int)rapidPollCmdQueue.size();
+            cmds rCmd = rapidPollCmdQueue[(rapidCmdNum++)%nrCmds];
+            doCmd(rCmd);
         }
     } else {
         // odd-number ticks:
@@ -4212,15 +4217,28 @@ void wfmain::removeSimilarCommand(cmds cmd)
     // pop anything out that is of the same kind of command:
     // pop anything out that is of the same kind of command:
     // Start at 1 since we put one in at zero that we want to keep.
+
+    for (auto it = delayedCmdQue.begin()+1; it != delayedCmdQue.end();)
+    {
+        if (it->cmd == cmd)
+        {
+            it = delayedCmdQue.erase(it);
+        }
+        else {
+            it++;
+        }
+    }
+    /*
     for(unsigned int i=1; i < delayedCmdQue.size(); i++)
     {
-        if(delayedCmdQue.at(i).cmd == cmd)
+        if (delayedCmdQue.at(i).cmd == cmd)
         {
             //delayedCmdQue[i].cmd = cmdNone;
             delayedCmdQue.erase(delayedCmdQue.begin()+i);
             // i -= 1;
         }
     }
+    */
 }
 
 void wfmain::receiveRigID(rigCapabilities rigCaps)
@@ -4474,12 +4492,20 @@ void wfmain::initPeriodicCommands()
     }
     insertSlowPeriodicCommand(cmdGetDuplexMode, 128);
 
+    rapidPollCmdQueueEnabled = false;
+    rapidPollCmdQueue.clear();
     if (rigCaps.hasSpectrum) {
         // Get passband
-        insertPeriodicCommand(cmdGetPassband, 128);
-        insertPeriodicCommand(cmdGetTPBFInner, 128);
-        insertPeriodicCommand(cmdGetTPBFOuter, 128);
+        insertPeriodicRapidCmd(cmdGetPassband);
+        insertPeriodicRapidCmd(cmdGetTPBFInner);
+        insertPeriodicRapidCmd(cmdGetTPBFOuter);
     }
+    rapidPollCmdQueueEnabled = true;
+}
+
+void wfmain::insertPeriodicRapidCmd(cmds cmd)
+{
+    rapidPollCmdQueue.push_back(cmd);
 }
 
 void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority=100)
@@ -4495,6 +4521,12 @@ void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority=100)
     }
 }
 
+void wfmain::insertPeriodicRapidCmdUnique(cmds cmd)
+{
+    removePeriodicRapidCmd(cmd);
+    rapidPollCmdQueue.push_back(cmd);
+}
+
 void wfmain::insertPeriodicCommandUnique(cmds cmd)
 {
     // Use this function to insert a non-duplicate command
@@ -4503,6 +4535,20 @@ void wfmain::insertPeriodicCommandUnique(cmds cmd)
 
     removePeriodicCommand(cmd);
     periodicCmdQueue.push_front(cmd);
+}
+
+void wfmain::removePeriodicRapidCmd(cmds cmd)
+{
+    while(true)
+    {
+        auto it = std::find(this->rapidPollCmdQueue.begin(), this->rapidPollCmdQueue.end(), cmd);
+        if(it != rapidPollCmdQueue.end())
+        {
+            rapidPollCmdQueue.erase(it);
+        } else {
+            break;
+        }
+    }
 }
 
 void wfmain::removePeriodicCommand(cmds cmd)
@@ -4654,7 +4700,11 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         if ((plotFloor != oldPlotFloor) || (plotCeiling != oldPlotCeiling)){
             updateRange = true;
         }
+#if QCUSTOMPLOT_VERSION < 0x020000
+        plot->graph(0)->setData(x, y);
+#else
         plot->graph(0)->setData(x, y, true);
+#endif
 
         if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
         {
@@ -4709,36 +4759,37 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
                 pbtIndicator->setVisible(false);
             }
 
-            if (TPBFInner < TPBFOuter) 
-            {
-                double width = passbandWidth - TPBFOuter - TPBFInner;
-                pbtIndicator->topLeft->setCoords(pbStart + TPBFInner + TPBFOuter, 0);
-                pbtIndicator->bottomRight->setCoords(pbStart + passbandWidth, rigCaps.spectAmpMax);
-            }
-            else if (TPBFOuter > TPBFInner) 
-            {
-                double width = passbandWidth - TPBFInner - TPBFOuter;
-                pbtIndicator->topLeft->setCoords(pbStart + TPBFInner+TPBFOuter, 0);
-                pbtIndicator->bottomRight->setCoords(pbEnd + width, rigCaps.spectAmpMax);
-            }
-            else if (passbandAction == passbandStatic) {
-                pbtIndicator->topLeft->setCoords(pbStart+TPBFInner, 0);
-                pbtIndicator->bottomRight->setCoords(pbEnd+TPBFOuter, rigCaps.spectAmpMax);
-            }
+            /*
+                pbtIndicator displays the intersection between TPBFInner and TPBFOuter
+            */
+            pbtIndicator->topLeft->setCoords(qMax(pbStart + (TPBFInner / 2), pbStart + (TPBFOuter / 2)), 0);
 
-
+            pbtIndicator->bottomRight->setCoords(qMin(pbStart + (TPBFInner / 2) + passbandWidth, 
+                pbStart + (TPBFOuter / 2) + passbandWidth), rigCaps.spectAmpMax);
         }
 
         if (underlayMode == underlayPeakHold)
         {
+#if QCUSTOMPLOT_VERSION < 0x020000
+            plot->graph(1)->setData(x, y2); // peaks
+#else
             plot->graph(1)->setData(x, y2, true); // peaks
+#endif
         }
         else if (underlayMode != underlayNone) {
             computePlasma();
+#if QCUSTOMPLOT_VERSION < 0x020000
+            plot->graph(1)->setData(x, spectrumPlasmaLine);
+#else
             plot->graph(1)->setData(x, spectrumPlasmaLine, true);
+#endif
         }
         else {
+#if QCUSTOMPLOT_VERSION < 0x020000
+            plot->graph(1)->setData(x, y2); // peaks, but probably cleared out
+#else
             plot->graph(1)->setData(x, y2, true); // peaks, but probably cleared out
+#endif
         }
 
         if(updateRange)
@@ -4935,9 +4986,8 @@ void wfmain::handlePlotClick(QMouseEvent* me)
         }
         else if (prefs.clickDragTuningEnable)
         {
-            double x = plot->xAxis->pixelToCoord(me->pos().x());
-            showStatusBarText(QString("Selected %1 MHz").arg(x));
-            this->mousePressFreq = x;
+            this->mousePressFreq = plot->xAxis->pixelToCoord(cursor);
+            showStatusBarText(QString("Selected %1 MHz").arg(this->mousePressFreq));
         }
     } 
     else if (me->button() == Qt::RightButton) 
@@ -4980,7 +5030,7 @@ void wfmain::handlePlotClick(QMouseEvent* me)
             {
                 passbandAction = pbtMoving;
             }
-            clickedFrequency = plot->xAxis->pixelToCoord(me->pos().x());
+            this->mousePressFreq = plot->xAxis->pixelToCoord(cursor);
         }
     }
 }
@@ -5019,6 +5069,7 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
 #endif
     int pbtCenterPix = pbtLeftPix + ((pbtRightPix - pbtLeftPix) / 2);
     int cursor = me->pos().x();
+    double movedFrequency = plot->xAxis->pixelToCoord(cursor) - mousePressFreq;
     if (passbandAction == passbandStatic && rectItem != nullptr)
     {                
         if ((cursor <= leftPix && cursor > leftPix - 10) ||
@@ -5028,7 +5079,7 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
         {
             setCursor(Qt::SizeHorCursor);
         }
-        else if (me->pos().x() > pbtCenterPix - 20 && me->pos().x() < pbtCenterPix + 20) {
+        else if (cursor > pbtCenterPix - 20 && cursor < pbtCenterPix + 20) {
             setCursor(Qt::OpenHandCursor);
         }
     }
@@ -5051,62 +5102,57 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
             break;
         }
 
-        if (plot->xAxis->pixelToCoord(me->pos().x()) >= freq.MHzDouble + origin) {
-            pb = plot->xAxis->pixelToCoord(me->pos().x()) - passbandIndicator->topLeft->coords().x();
+        if (plot->xAxis->pixelToCoord(cursor) >= freq.MHzDouble + origin) {
+            pb = plot->xAxis->pixelToCoord(cursor) - passbandIndicator->topLeft->coords().x();
         }
         else {
-            pb = passbandIndicator->bottomRight->coords().x() - plot->xAxis->pixelToCoord(me->pos().x());
+            pb = passbandIndicator->bottomRight->coords().x() - plot->xAxis->pixelToCoord(cursor);
         }
 
         issueCmdUniquePriority(cmdSetPassband, (quint16)(pb * 1000000));
     }
     else if (passbandAction == pbtMoving) {
-        double movedFrequency = plot->xAxis->pixelToCoord(me->pos().x()) - clickedFrequency;
-        double pbFreq = 0.0;
 
-        if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modePSK_R) {
-            pbFreq = ((TPBFInner - movedFrequency) / passbandWidth) * 127;
-        }
-        else {
-            pbFreq = ((movedFrequency + TPBFInner) / passbandWidth) * 127;
-        }
+        //qint16 shift = (qint16)(level - 128);
+        //TPBFInner = (double)(shift / 127.0) * (passbandWidth);
+        // Only move if more than 100Hz
+        static double lastFreq = movedFrequency;
+        if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
 
-        qint16 newFreq = pbFreq + 128;
-        if (newFreq >= 0 && newFreq <= 255) {
-            //qDebug() << QString("Moving passband by %1 Hz (%2) (%3) Mode:%4").arg((qint16)(movedFrequency * 1000000)).arg(pbFreq).arg(newFreq).arg(currentModeInfo.mk);
-            issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
-            issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
+            double innerFreq = ((double)(TPBFInner + movedFrequency) / passbandWidth) * 127.0;
+            double outerFreq = ((double)(TPBFOuter + movedFrequency) / passbandWidth) * 127.0;
+
+            qint16 newInFreq = innerFreq + 128;
+            qint16 newOutFreq = outerFreq + 128;
+
+            if (newInFreq >= 0 && newInFreq <= 255 && newOutFreq >= 0 && newOutFreq <= 255) {
+                qDebug() << QString("Moving passband by %1 Hz (Inner %2) (Outer %3) Mode:%4").arg((qint16)(movedFrequency * 1000000))
+                    .arg(newInFreq).arg(newOutFreq).arg(currentModeInfo.mk);
+
+                issueCmd(cmdSetTPBFInner, (unsigned char)newInFreq);
+                issueCmd(cmdSetTPBFOuter, (unsigned char)newOutFreq);
+
+            }
+            lastFreq = movedFrequency;
         }
     }
     else if (passbandAction == pbtInnerMove) {
-        double movedFrequency = plot->xAxis->pixelToCoord(me->pos().x()) - clickedFrequency;
-        if (TPBFInner + movedFrequency < passbandCenterFrequency) {
-            double pbFreq = 0.0;
-
-            pbFreq = ((TPBFInner + movedFrequency) / passbandWidth) * 127;
-
-            qint16 newFreq = pbFreq + 128;
-            if (newFreq >= 0 && newFreq <= 255) {
-                issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
-            }
+        double pbFreq = ((double)(TPBFInner + movedFrequency) / passbandWidth) * 127.0;
+        qint16 newFreq = pbFreq + 128;
+        if (newFreq >= 0 && newFreq <= 255) {
+            issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
         }
     }
     else if (passbandAction == pbtOuterMove) {
-        double movedFrequency = plot->xAxis->pixelToCoord(me->pos().x()) - clickedFrequency;
-        if (movedFrequency + TPBFOuter > passbandCenterFrequency) {
-            double pbFreq = 0.0;
-
-            pbFreq = ((movedFrequency + TPBFOuter) / passbandWidth) * 127;
-
-            qint16 newFreq = pbFreq + 128;
-            if (newFreq >= 0 && newFreq <= 255) {
-                issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
-            }
+        double pbFreq = ((double)(TPBFOuter + movedFrequency) / passbandWidth) * 127.0;
+        qint16 newFreq = pbFreq + 128;
+        if (newFreq >= 0 && newFreq <= 255) {
+            issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
         }
     }
     else  if (passbandAction == passbandStatic && me->buttons() == Qt::LeftButton && textItem == nullptr && prefs.clickDragTuningEnable)
     {
-        double delta = plot->xAxis->pixelToCoord(me->pos().x()) - mousePressFreq;
+        double delta = plot->xAxis->pixelToCoord(cursor) - mousePressFreq;
         qDebug(logGui()) << "Mouse moving delta: " << delta;
         if( (( delta < -0.0001 ) || (delta > 0.0001)) && ((delta < 0.501) && (delta > -0.501)) )
         {
@@ -6542,12 +6588,14 @@ void wfmain::receiveTPBFInner(unsigned char level) {
 
     qint16 shift = (qint16)(level - 128);
     TPBFInner = (double)(shift / 127.0) * (passbandWidth);
+    //qDebug() << "Inner" << level;
 }
 
 void wfmain::receiveTPBFOuter(unsigned char level) {
     
     qint16 shift = (qint16)(level - 128);
     TPBFOuter = (double)(shift / 127.0) * (passbandWidth);
+   /// qDebug() << "Outer" << level;
 }
 
 
@@ -7173,7 +7221,7 @@ void wfmain::on_wfInterpolateChk_clicked(bool checked)
     prefs.wfInterpolate = checked;
 }
 
-wfmain::cmds wfmain::meterKindToMeterCommand(meterKind m)
+cmds wfmain::meterKindToMeterCommand(meterKind m)
 {
     cmds c;
     switch(m)

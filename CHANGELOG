@@ -1,3 +1,244 @@
+commit d53c9b028e1e962b80334bbeaac794d4572d9939
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 24 10:37:26 2023 -0800
+
+    Added a rapidPollCmdQueue for things we need to poll rapidly on not-s-
+    meter-intervals. Moved command types to wfviewtypes.h.
+
+commit 2df82d4f922fcebd256816d41839977840d08e5b
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Tue Jan 24 17:22:34 2023 +0100
+
+    bumped to v1.58
+
+commit 152f71c6cf2aeb811da7ff795cd3cfd05c8cfd20
+Merge: 2ada127 4137fce
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Jan 24 11:20:01 2023 +0000
+
+    Merge branch 'cwcw' into filterwidth
+
+commit 2ada127124b86595495acf865553ff058f593b46
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Jan 24 11:19:26 2023 +0000
+
+    Delete cwsender.ui
+
+commit 646ee94341d1421bdf676791cc9c1be9be9fd644
+Merge: b89ae04 68ed3dc
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Jan 24 11:11:20 2023 +0000
+
+    Merge branch 'filterwidth' of https://gitlab.com/eliggett/wfview into filterwidth
+
+commit 68ed3dc56bc7bfedd49ade6dd0b5fa78dea39ffa
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Mon Jan 23 20:56:17 2023 -0800
+
+    Fixed issue with older version of qt.
+
+commit 4137fce70cb5eed17ce2c1b1c76a83302617d563
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Mon Jan 23 20:35:32 2023 -0800
+
+    Minor changes to UI file to get it building and to restore Enter key
+    functionality.
+
+commit 7ebfcdefbdedfebf6db48139fc4ad076ab3966fd
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Jan 24 01:33:57 2023 +0000
+
+    Make cw textbox a combobox
+
+commit b89ae0459e8c11bebf4e0617713c9913590d587a
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Jan 24 01:33:57 2023 +0000
+
+    Make cw textbox a combobox
+
+commit 525f984f01c71333f742d12c7556e6b53e82078a
+Merge: 9c3ca56 cba4ad3
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Jan 24 00:40:08 2023 +0000
+
+    Merge remote-tracking branch 'origin/cwcw' into filterwidth
+
+commit 9c3ca568edf403a53cc45c5a824fcfe519bb3fbe
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 23 21:34:35 2023 +0000
+
+    Make PTT Enabled by default, user has the option to disable it. #74
+
+commit 4e89c91f0d9e3b2a877619b2b91199a5218c721a
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 23 21:27:33 2023 +0000
+
+    Fix cosmetic bug #62
+
+commit f93dd8326840dc97befb01802ec7ba57f03955c5
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 23 21:26:43 2023 +0000
+
+    Remove some commented code
+
+commit 9349679e5b158283bc38e29aa6c93d3a07d5ce46
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 23 13:44:15 2023 +0000
+
+    Various fixes
+
+commit cba4ad345b6d4a75ebbe54c8850988c744947883
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sun Jan 22 23:41:31 2023 -0800
+
+    Fixed up many key shortcuts, added HJKL key shortcuts.
+
+commit 3297f6620851c68abc86c36d9247e1f70d89c762
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sun Jan 22 21:10:09 2023 -0800
+
+    Mistake in tooltip keeps man from sleeping. See page 4 for full story.
+
+commit 294fac72c6cdc90f17a56a63cc586ee983d57c71
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sun Jan 22 21:04:43 2023 -0800
+
+    Added some more CW-related tooltips for usability.
+
+commit 27dd547e2a9ee986bac6db3fb9942a45e860b07c
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sun Jan 22 20:59:01 2023 -0800
+
+    Added some tooltips and mode-awareness to the CW window.
+
+commit a205e003c9aea598c9d1def6c53ed3b9112e0a87
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sun Jan 22 20:38:27 2023 -0800
+
+    Lining up the text a little better with printHex.
+
+commit 4a0f5a7f5944ef734bbf685c4d92ddd672938d82
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sun Jan 22 15:24:21 2023 -0800
+
+    Fixed signed issue with waterfall data.
+
+commit e7091cb2c2396fa1fb88d068673b1daacc444bf0
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Jan 22 17:19:44 2023 +0000
+
+    Make PBT display correctly
+
+commit deade9a38e2edec144fa9cdb56feb077a4ecf228
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sat Jan 21 13:38:39 2023 -0800
+
+    Added universal printhex header and functions. Changed radio traffic to
+    log to new category "rigTraffic".
+
+commit c5c01cf81ddbba5e84b7181101601db2f021b414
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sat Jan 21 13:06:47 2023 -0800
+
+    removed a bit more debug and added some focus-force code for the CW
+    window.
+
+commit 7a4f708e684412469bd10a8e2f822e9c15ae29d7
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sat Jan 21 11:18:26 2023 -0800
+
+    Added Keyer macros to settings.
+
+commit c26409b2a8012abddb8bd3517008e905b53bbfb9
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sat Jan 21 10:43:54 2023 -0800
+
+    Now with padding
+
+commit ff507185635bf3cd2fd0d9af9a29c291f3b1a07e
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sat Jan 21 10:31:04 2023 -0800
+
+    Added CW sequence number
+
+commit 2f098be1a9c7436726b50b403d4101add4f9372a
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sat Jan 21 09:58:35 2023 -0800
+
+    Macro buttons are now filled with macro text, up to 8 characters.
+
+commit f772801b02ebadece101f56f2d3900066bd015f8
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sat Jan 21 09:37:36 2023 -0800
+
+    Fixed WPM and removed some extra debug.
+
+commit fd1dc860c176b5a705643d81fce53d990124186e
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sat Jan 21 09:18:15 2023 -0800
+
+    Added CW logging category and additional (and needed) debug info for the
+    CW features.
+
+commit 5664842f470f55328b07d6dc1d6db96df17275ca
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sat Jan 21 00:25:41 2023 -0800
+
+    minor change
+
+commit b3258c57a5df26d9aaaa26190d1c59e10888f0c5
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Fri Jan 20 23:23:47 2023 -0800
+
+    Added read/write for break in mode and key speed. Macro buttons working
+    although not saved.
+
+commit 23c191a091011cae14aabd3164e9ac0b611116a1
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Fri Jan 20 22:11:30 2023 -0800
+
+    Morse code, initial commit. Does not read back WPM and breaking mode
+    yet, although it can set them.
+
+commit 93d20cc1ba93bfebcea6572a3c405d5b1945637a
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 20 11:24:29 2023 +0000
+
+    Fix compile errors after merge
+
+commit ee4f00e1532fce5073bad24d6ec50ecad8f89255
+Merge: c98d709 1e79d5d
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 20 09:31:21 2023 +0000
+
+    Merge remote-tracking branch 'origin/horizpbt' into filterwidth
+
+commit 1e79d5d32d33cbf49bf5d1dcb8d1c22d0d2d260c
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Thu Jan 19 23:02:54 2023 -0800
+
+    Changed transceiver adjustments to be horizontal. Added passband width
+    control to the transceiver adjustments.
+
+commit 18281798d6e95f6f9d8da7063f02b0e6794bac45
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Thu Jan 19 19:07:04 2023 +0100
+
+    efixes pushed to master
+
+commit c98d7094f92d5b8ced2619ac43559b259ba0ae74
+Merge: 037f052 71326cd
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Jan 19 16:18:29 2023 +0000
+
+    Merge remote-tracking branch 'origin/efixes' into filterwidth
+
+commit 037f05297dcdb9fe1f852f79993511b4605114a2
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Jan 19 16:16:47 2023 +0000
+
+    Start to fix PBT
+
 commit 71326cd3851ba1019665fa327345263d36a9493b
 Author: Elliott Liggett <kilocharlie8@gmail.com>
 Date:   Wed Jan 18 23:17:28 2023 -0800
@@ -16,6 +257,18 @@ Date:   Wed Jan 18 22:27:06 2023 -0800
 
     Change mode selection code to use the command queue (as it should have).
     Beginnings of automatic sideband options.
+
+commit f224068ec1bdef7c13fe72734553ab44bfb3b3f5
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Jan 18 19:19:48 2023 +0000
+
+    Fix LSB passband resize
+
+commit e94c3e53c5e80c749a350947c4f5520577acb0a7
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Jan 18 18:52:05 2023 +0000
+
+    Correctly handle filter width (remove PBT for now)
 
 commit 0c27bf72084971ee8bb0166984fa64ebcfc26dad
 Author: Elliott Liggett <kilocharlie8@gmail.com>
@@ -48,6 +301,61 @@ Date:   Tue Jan 17 20:53:34 2023 -0800
 
     Changed Show More button to also raise the transceiver adjustments
     window. Added "reset PBT" button to the transceiver adjustments window.
+
+commit a0f7d5d86feae57db720029938cca2185b6a9e4c
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Jan 17 11:20:08 2023 +0000
+
+    Remove attempt to reduce PA latency
+
+commit a6ea32d996593048d430fdb1688f58088944a186
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 16 22:14:09 2023 +0000
+
+    Allow resize passband when moved.
+
+commit 450ccefb6038d284af3c2a185d20bef84bdd7d13
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 16 13:06:04 2023 +0000
+
+    Remove debugging messages
+
+commit ca84555c15d406dddfaaf234f1e59028e706869f
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 16 12:24:22 2023 +0000
+
+    Add move passband
+
+commit 8fca384135337bd18bc09ab520dab0c746db8861
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Jan 15 12:27:23 2023 +0000
+
+    Hopefully fix building with QCP < 2.0.0
+
+commit 794a8b71c878448267986be37d5bd07801637ef5
+Merge: 3baf3ea ffd7abb
+Author: Phil Taylor <phil@Phils-TouchBar.local>
+Date:   Sun Jan 15 11:15:32 2023 +0000
+
+    Merge branch 'filterwidth' of https://gitlab.com/eliggett/wfview into filterwidth
+
+commit 3baf3eae65fc522aad9befeb0b51b49010c162c2
+Author: Phil Taylor <phil@Phils-TouchBar.local>
+Date:   Sun Jan 15 11:14:28 2023 +0000
+
+    Fix crash when no audio device is found
+
+commit ffd7abb3767a7ba58a45a78cab7868044e33e7a8
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Jan 15 10:37:21 2023 +0000
+
+    Disabling compiling USB_CONTROLLER by default
+
+commit 120899e9f8d9f2d69bd835982ccfcade42c61755
+Author: Phil Taylor <phil@Phils-TouchBar.local>
+Date:   Sun Jan 15 10:34:54 2023 +0000
+
+    Various fixes to allow Qt6 compiling on mac
 
 commit b468c514df891312af7102654ac98d48c90ef5a5
 Author: Roeland Jansen <roeland.jansen69@gmail.com>
