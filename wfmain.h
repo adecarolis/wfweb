@@ -1111,6 +1111,7 @@ private:
     double TPBFInner = 0.0;
     double TPBFOuter = 0.0;
     double passbandCenterFrequency = 0.0;
+    quint16 cwPitch = 600;
     SERVERCONFIG serverConfig;
     void serverAddUserLine(const QString& user, const QString& pass, const int& type);
 
