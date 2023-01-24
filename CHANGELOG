@@ -1,3 +1,16 @@
+commit d53c9b028e1e962b80334bbeaac794d4572d9939
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 24 10:37:26 2023 -0800
+
+    Added a rapidPollCmdQueue for things we need to poll rapidly on not-s-
+    meter-intervals. Moved command types to wfviewtypes.h.
+
+commit 2df82d4f922fcebd256816d41839977840d08e5b
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Tue Jan 24 17:22:34 2023 +0100
+
+    bumped to v1.58
+
 commit 152f71c6cf2aeb811da7ff795cd3cfd05c8cfd20
 Merge: 2ada127 4137fce
 Author: Phil Taylor <phil@m0vse.uk>
