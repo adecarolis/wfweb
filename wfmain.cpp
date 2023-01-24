@@ -4667,7 +4667,11 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         if ((plotFloor != oldPlotFloor) || (plotCeiling != oldPlotCeiling)){
             updateRange = true;
         }
+#if QCUSTOMPLOT_VERSION < 0x020000
+        plot->graph(0)->setData(x, y);
+#else
         plot->graph(0)->setData(x, y, true);
+#endif
 
         if((freq.MHzDouble < endFreq) && (freq.MHzDouble > startFreq))
         {
@@ -4733,14 +4737,26 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
         if (underlayMode == underlayPeakHold)
         {
+#if QCUSTOMPLOT_VERSION < 0x020000
+            plot->graph(1)->setData(x, y2); // peaks
+#else
             plot->graph(1)->setData(x, y2, true); // peaks
+#endif
         }
         else if (underlayMode != underlayNone) {
             computePlasma();
+#if QCUSTOMPLOT_VERSION < 0x020000
+            plot->graph(1)->setData(x, spectrumPlasmaLine);
+#else
             plot->graph(1)->setData(x, spectrumPlasmaLine, true);
+#endif
         }
         else {
+#if QCUSTOMPLOT_VERSION < 0x020000
+            plot->graph(1)->setData(x, y2); // peaks, but probably cleared out
+#else
             plot->graph(1)->setData(x, y2, true); // peaks, but probably cleared out
+#endif
         }
 
         if(updateRange)
