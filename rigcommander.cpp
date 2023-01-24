@@ -3,6 +3,7 @@
 
 #include "rigidentities.h"
 #include "logcategories.h"
+#include "printhex.h"
 
 // Copyright 2017-2020 Elliott H. Liggett
 
@@ -307,8 +308,10 @@ void rigCommander::prepDataAndSend(QByteArray data)
     if(data[4] != '\x15')
     {
         // We don't print out requests for meter levels
-        qDebug(logRig()) << "Final payload in rig commander to be sent to rig: ";
-        printHex(data);
+        qDebug(logRigTraffic()) << "Final payload in rig commander to be sent to rig: ";
+        //printHex(data);
+        //printHex(data, logRigTraffic());
+        printHexNow(data, logRigTraffic());
     }
 
     emit dataForComm(data);
@@ -1164,6 +1167,52 @@ void rigCommander::setPTT(bool pttOn)
     }
 }
 
+void rigCommander::sendCW(QString textToSend)
+{
+    if(textToSend.length() >30)
+    {
+        qCritical(logRig()).nospace() << "Cannot send CW message, length > 30 characters (" << textToSend.length() << ")";
+        return;
+    }
+
+    QByteArray textData = textToSend.toLocal8Bit();
+    unsigned char p=0;
+    for(int c=0; c < textData.length(); c++)
+    {
+        p = textData.at(c);
+        if( ( (p >= 0x30) && (p <= 0x39) ) ||
+            ( (p >= 0x41) && (p <= 0x5A) ) ||
+            ( (p >= 0x61) && (p <= 0x7A) ) ||
+            (p==0x2F) || (p==0x3F) || (p==0x2E) ||
+            (p==0x2D) || (p==0x2C) || (p==0x3A) ||
+            (p==0x27) || (p==0x28) || (p==0x29) ||
+            (p==0x3D) || (p==0x2B) || (p==0x22) ||
+            (p==0x40) || (p==0x20) )
+        {
+            // Allowed character, continue
+        } else {
+            qWarning(logRig()) << "Invalid character detected in CW message at position " << c << ", the character is " << textToSend.at(c);
+            printHex(textData);
+            textData[c] = 0x3F; // "?"
+        }
+    }
+
+    if(pttAllowed)
+    {
+        QByteArray payload("\x17", 1);
+        payload.append(textData);
+        prepDataAndSend(payload);
+    }
+    // Does it need to end in "FF" or is that implicit at the end of a message?
+}
+
+void rigCommander::sendStopCW()
+{
+    QByteArray payload("\x17", 1);
+    payload.append("\xFF");
+    prepDataAndSend(payload);
+}
+
 void rigCommander::setCIVAddr(unsigned char civAddr)
 {
     // Note: This sets the radio's CIV address
@@ -1344,7 +1393,8 @@ void rigCommander::parseCommand()
     {
         // We do not log spectrum and meter data,
         // as they tend to clog up any useful logging.
-        printHex(payloadIn);
+        qDebug(logRigTraffic()) << "Received from radio:";
+        printHexNow(payloadIn, logRigTraffic());
     }
 
     switch(payloadIn[00])
@@ -1539,8 +1589,9 @@ void rigCommander::parseLevels()
                 state.set(MICGAIN, level, false);
                 break;
             case '\x0C':
-                // CW Keying Speed - ignore for now
                 state.set(KEYSPD, level, false);
+                //qInfo(logRig()) << "Have received key speed in RC, raw level: " << level << ", WPM: " << (level/6.071)+6 << ", rounded: " << round((level/6.071)+6);
+                emit haveKeySpeed(round((level/6.071)+6));
                 break;
             case '\x0D':
                 // Notch filder setting - ignore for now
@@ -2740,6 +2791,7 @@ void rigCommander::parseRegister16()
                 state.set(FBKINFUNC, true, false);
                 state.set(SBKINFUNC, false, false);
             }
+            emit haveCWBreakMode(payloadIn.at(2));
             break;
         case '\x48': // Manual Notch
             state.set(MNFUNC, payloadIn.at(2) != 0, false);
@@ -3070,20 +3122,20 @@ void rigCommander::parseWFData()
             isSub = payloadIn.at(2)==0x01;
             freqSpan = parseFrequency(payloadIn, 6);
             emit haveScopeSpan(freqSpan, isSub);
-            qInfo(logRig()) << "Received 0x15 center span data: for frequency " << freqSpan.Hz;
+            //qInfo(logRig()) << "Received 0x15 center span data: for frequency " << freqSpan.Hz;
             //printHex(payloadIn, false, true);
             break;
         case 0x16:
             // read edge mode center in edge mode
             emit haveScopeEdge((char)payloadIn[2]);
-            qInfo(logRig()) << "Received 0x16 edge in center mode:";
+            //qInfo(logRig()) << "Received 0x16 edge in center mode:";
             printHex(payloadIn, false, true);
             // [1] 0x16
             // [2] 0x01, 0x02, 0x03: Edge 1,2,3
             break;
         case 0x17:
             // Hold status (only 9700?)
-            qInfo(logRig()) << "Received 0x17 hold status - need to deal with this!";
+            qDebug(logRig()) << "Received 0x17 hold status - need to deal with this!";
             printHex(payloadIn, false, true);
             break;
         case 0x19:
@@ -4558,6 +4610,26 @@ void rigCommander::getBreakIn()
     prepDataAndSend(payload);
 }
 
+void rigCommander::setKeySpeed(unsigned char wpm)
+{
+    // 0 = 6 WPM
+    // 255 = 48 WPM
+
+    unsigned char wpmRadioSend = round((wpm-6) * (6.071));
+    //qInfo(logRig()) << "Setting keyspeed to " << wpm << "WPM, via command value" << wpmRadioSend;
+    QByteArray payload;
+    payload.setRawData("\x14\x0C", 2);
+    payload.append(bcdEncodeInt(wpmRadioSend));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getKeySpeed()
+{
+    QByteArray payload;
+    payload.setRawData("\x14\x0C", 2);
+    prepDataAndSend(payload);
+}
+
 void rigCommander::setManualNotch(bool enabled)
 {
     QByteArray payload("\x16\x48");
@@ -4571,7 +4643,6 @@ void rigCommander::getManualNotch()
     payload.setRawData("\x16\x48", 2);
     prepDataAndSend(payload);
 }
-
 
 void rigCommander::getRigID()
 {

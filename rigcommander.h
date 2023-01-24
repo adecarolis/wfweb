@@ -86,6 +86,8 @@ public slots:
     // PTT, ATU, ATT, Antenna, and Preamp:
     void getPTT();
     void setPTT(bool pttOn);
+    void sendCW(QString textToSend);
+    void sendStopCW();
     void startATU();
     void setATU(bool enabled);
     void getATUStatus();
@@ -113,6 +115,8 @@ public slots:
     void getVox();
     void setBreakIn(unsigned char type);
     void getBreakIn();
+    void setKeySpeed(unsigned char wpm);
+    void getKeySpeed();
     void setManualNotch(bool enabled);
     void getManualNotch();
 
@@ -338,6 +342,11 @@ signals:
     void haveAttenuator(unsigned char att);
     void havePreamp(unsigned char pre);
     void haveAntenna(unsigned char ant,bool rx);
+
+    // CW:
+    void haveKeySpeed(unsigned char wpm);
+    void haveCWBreakMode(unsigned char bmode);
+
 
     // Rig State
     void stateInfo(rigstate* state);

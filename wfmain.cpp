@@ -48,6 +48,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     rpt = new repeaterSetup();
     sat = new satelliteSetup();
     trxadj = new transceiverAdjustments();
+    cw = new cwSender();
     shut = new controllerSetup();
     abtBox = new aboutbox();
     selRad = new selectRadio();
@@ -341,6 +342,18 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
     connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
     connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
+
+    connect(this, SIGNAL(sendCW(QString)), rig, SLOT(sendCW(QString)));
+    connect(this, SIGNAL(stopCW()), rig, SLOT(sendStopCW()));
+    connect(this, SIGNAL(setKeySpeed(unsigned char)), rig, SLOT(setKeySpeed(unsigned char)));
+    connect(this, SIGNAL(getKeySpeed()), rig, SLOT(getKeySpeed()));
+    connect(this, SIGNAL(setCWBreakMode(unsigned char)), rig, SLOT(setBreakIn(unsigned char)));
+    connect(this, SIGNAL(getCWBreakMode()), rig, SLOT(getBreakIn()));
+    connect(this->rig, &rigCommander::haveKeySpeed,
+            [=](const unsigned char &wpm) { cw->handleKeySpeed(wpm);});
+    connect(this->rig, &rigCommander::haveCWBreakMode,
+            [=](const unsigned char &bm) { cw->handleBreakInMode(bm);});
+
     connect(rig, SIGNAL(haveBandStackReg(freqt,char,char,bool)), this, SLOT(receiveBandStackReg(freqt,char,char,bool)));
     connect(this, SIGNAL(setRitEnable(bool)), rig, SLOT(setRitEnable(bool)));
     connect(this, SIGNAL(setRitValue(int)), rig, SLOT(setRitValue(int)));
@@ -1058,6 +1071,19 @@ void wfmain::setupMainUI()
     connect(this->trxadj, &transceiverAdjustments::setPassband,
             [=](const quint16 &passbandHz) { issueCmdUniquePriority(cmdSetPassband, passbandHz);}
     );
+
+    connect(this->cw, &cwSender::sendCW,
+            [=](const QString &cwMessage) { issueCmd(cmdSendCW, cwMessage);});
+    connect(this->cw, &cwSender::stopCW,
+            [=]() { issueDelayedCommand(cmdStopCW);});
+    connect(this->cw, &cwSender::setBreakInMode,
+            [=](const unsigned char &bmode) { issueCmd(cmdSetBreakMode, bmode);});
+    connect(this->cw, &cwSender::setKeySpeed,
+            [=](const unsigned char &wpm) { issueCmd(cmdSetKeySpeed, wpm);});
+    connect(this->cw, &cwSender::getCWSettings,
+            [=]() { issueDelayedCommand(cmdGetKeySpeed);
+                    issueDelayedCommand(cmdGetBreakMode);});
+
 }
 
 void wfmain::prepareSettingsWindow()
@@ -1460,12 +1486,97 @@ void wfmain::setupKeyShortcuts()
     keyM->setKey(Qt::Key_M);
     connect(keyM, SIGNAL(activated()), this, SLOT(shortcutM()));
 
+    // Alternate for plus:
+    keyK = new QShortcut(this);
+    keyK->setKey(Qt::Key_K);
+    connect(keyK, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+        this->shortcutPlus();
+    });
+
+    // Alternate for minus:
+    keyJ = new QShortcut(this);
+    keyJ->setKey(Qt::Key_J);
+    connect(keyJ, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+        this->shortcutMinus();
+    });
+
+    keyShiftK = new QShortcut(this);
+    keyShiftK->setKey(Qt::SHIFT + Qt::Key_K);
+    connect(keyShiftK, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+        this->shortcutShiftPlus();
+    });
+
+
+    keyShiftJ = new QShortcut(this);
+    keyShiftJ->setKey(Qt::SHIFT + Qt::Key_J);
+    connect(keyShiftJ, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+        this->shortcutShiftMinus();
+    });
+
+    keyControlK = new QShortcut(this);
+    keyControlK->setKey(Qt::CTRL + Qt::Key_K);
+    connect(keyControlK, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+        this->shortcutControlPlus();
+    });
+
+
+    keyControlJ = new QShortcut(this);
+    keyControlJ->setKey(Qt::CTRL + Qt::Key_J);
+    connect(keyControlJ, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+        this->shortcutControlMinus();
+    });
+    // Move the tuning knob by the tuning step selected:
+    // H = Down
+    keyH = new QShortcut(this);
+    keyH->setKey(Qt::Key_H);
+    connect(keyH, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+
+        freqt f;
+        f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsKnobHz);
+        f.MHzDouble = f.Hz / (double)1E6;
+        freq.Hz = f.Hz;
+        freq.MHzDouble = f.MHzDouble;
+        setUIFreq();
+        issueCmd(cmdSetFreq, f);
+    });
+
+    // L = Up
+    keyL = new QShortcut(this);
+    keyL->setKey(Qt::Key_L);
+    connect(keyL, &QShortcut::activated,
+            [=]() {
+        if (freqLock) return;
+
+        freqt f;
+        f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsKnobHz);
+        f.MHzDouble = f.Hz / (double)1E6;
+        ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
+        freq.Hz = f.Hz;
+        freq.MHzDouble = f.MHzDouble;
+        setUIFreq();
+        issueCmd(cmdSetFreq, f);
+    });
+
     keyDebug = new QShortcut(this);
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     keyDebug->setKey(Qt::CTRL + Qt::SHIFT + Qt::Key_D);
 #else
     keyDebug->setKey(Qt::CTRL + Qt::Key_D);
- #endif
+#endif
     connect(keyDebug, SIGNAL(activated()), this, SLOT(on_debugBtn_clicked()));
 }
 
@@ -2124,8 +2235,24 @@ void wfmain::loadSettings()
         ui->clusterTimeoutLineEdit->setEnabled(false);
     }
     settings->endArray();
-
     settings->endGroup();
+
+    // CW Memory Load:
+    settings->beginGroup("Keyer");
+    int numMemories = settings->beginReadArray("macros");
+    if(numMemories==10)
+    {
+        QStringList macroList;
+        for(int m=0; m < 10; m++)
+        {
+            settings->setArrayIndex(m);
+            macroList << settings->value("macroText", "").toString();
+        }
+        cw->setMacroText(macroList);
+    }
+    settings->endArray();
+    settings->endGroup();
+
 #if defined (USB_CONTROLLER)
     /* Load USB buttons*/
     settings->beginGroup("USB");
@@ -2679,7 +2806,22 @@ void wfmain::saveSettings()
     }
 
     settings->endArray();
+    settings->endGroup();
 
+    settings->beginGroup("Keyer");
+    QStringList macroList = cw->getMacroText();
+    if(macroList.length() == 10)
+    {
+        settings->beginWriteArray("macros");
+        for(int m=0; m < 10; m++)
+        {
+            settings->setArrayIndex(m);
+            settings->setValue("macroText", macroList.at(m));
+        }
+        settings->endArray();
+    } else {
+        qDebug(logSystem()) << "Error, CW macro list is wrong length: " << macroList.length();
+    }
     settings->endGroup();
 
 #if defined(USB_CONTROLLER)
@@ -3021,12 +3163,13 @@ void wfmain::shortcutMinus()
 
     freqt f;
     f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsPlusHz);
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
     //issueCmd(cmdSetFreq, f);
     issueCmdUniquePriority(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutPlus()
@@ -3035,12 +3178,13 @@ void wfmain::shortcutPlus()
 
     freqt f;
     f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsPlusHz);
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
     //issueCmd(cmdSetFreq, f);
     issueCmdUniquePriority(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutStepMinus()
@@ -3075,12 +3219,13 @@ void wfmain::shortcutShiftMinus()
 
     freqt f;
     f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsPlusShiftHz);
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
     //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutShiftPlus()
@@ -3089,12 +3234,13 @@ void wfmain::shortcutShiftPlus()
 
     freqt f;
     f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsPlusShiftHz);
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
     //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutControlMinus()
@@ -3103,12 +3249,12 @@ void wfmain::shortcutControlMinus()
 
     freqt f;
     f.Hz = roundFrequencyWithStep(freq.Hz, -1, tsPlusControlHz);
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
-    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutControlPlus()
@@ -3117,12 +3263,12 @@ void wfmain::shortcutControlPlus()
 
     freqt f;
     f.Hz = roundFrequencyWithStep(freq.Hz, 1, tsPlusControlHz);
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
-    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutPageUp()
@@ -3131,12 +3277,12 @@ void wfmain::shortcutPageUp()
 
     freqt f;
     f.Hz = freq.Hz + tsPageHz;
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
-    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutPageDown()
@@ -3145,12 +3291,12 @@ void wfmain::shortcutPageDown()
 
     freqt f;
     f.Hz = freq.Hz - tsPageHz;
-
     f.MHzDouble = f.Hz / (double)1E6;
+    freq.Hz = f.Hz;
+    freq.MHzDouble = f.MHzDouble;
     setUIFreq();
-    //emit setFrequency(0,f);
     issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutF()
@@ -3544,6 +3690,24 @@ void wfmain::doCmd(commandtype cmddata)
             }
             break;
         }
+        case cmdSendCW:
+        {
+            QString messageText = (*std::static_pointer_cast<QString>(data));
+            emit sendCW(messageText);
+            break;
+        }
+        case cmdSetBreakMode:
+        {
+            unsigned char bmode = (*std::static_pointer_cast<unsigned char>(data));
+            emit setCWBreakMode(bmode);
+            break;
+        }
+        case cmdSetKeySpeed:
+        {
+            unsigned char wpm = (*std::static_pointer_cast<unsigned char>(data));
+            emit setKeySpeed(wpm);
+            break;
+        }
         case cmdSetATU:
         {
             bool atuOn = (*std::static_pointer_cast<bool>(data));
@@ -3775,11 +3939,20 @@ void wfmain::doCmd(cmds cmd)
             break;
         case cmdGetALCMeter:
             if(amTransmitting)
-                emit getMeters(meterALC);
+                    emit getMeters(meterALC);
             break;
         case cmdGetCompMeter:
             if(amTransmitting)
                 emit getMeters(meterComp);
+            break;
+        case cmdGetKeySpeed:
+            emit getKeySpeed();
+            break;
+        case cmdGetBreakMode:
+            emit getCWBreakMode();
+            break;
+        case cmdStopCW:
+            emit stopCW();
             break;
         case cmdStartRegularPolling:
             runPeriodicCommands = true;
@@ -3969,6 +4142,14 @@ void wfmain::issueCmd(cmds cmd, qint16 c)
     commandtype cmddata;
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<qint16>(new qint16(c));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, QString s)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<QString>(new QString(s));
     delayedCmdQue.push_back(cmddata);
 }
 
@@ -4314,7 +4495,7 @@ void wfmain::initPeriodicCommands()
     }
 }
 
-void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority)
+void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority=100)
 {
     // TODO: meaningful priority
     // These commands get run at the fastest pace possible
@@ -4352,7 +4533,7 @@ void wfmain::removePeriodicCommand(cmds cmd)
 }
 
 
-void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority)
+void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority=100)
 {
     // TODO: meaningful priority
     // These commands are run every 20 "ticks" of the primary radio command loop
@@ -4579,7 +4760,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
                 wfRow = wfimage.at(row);
                 for(int col = 0; col < spectWidth; col++)
                 {
-                    colorMap->data()->setCell( col, row, wfRow.at(col));
+                    colorMap->data()->setCell( col, row, (unsigned char)wfRow.at(col));
                 }
             }
             if(updateRange)
@@ -5023,6 +5204,7 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
         }
         currentModeIndex = mode;
         currentModeInfo.mk = (mode_kind)mode;
+        cw->handleCurrentModeUpdate((mode_kind)mode);
         currentModeInfo.filter = filter;
 
         switch (currentModeInfo.mk) {
@@ -7338,7 +7520,7 @@ void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    emit getRigID();
+    cw->show();
 }
 
 // ----------   color helper functions:   ---------- //
@@ -8114,6 +8296,7 @@ void wfmain::messageHandler(QtMsgType type, const QMessageLogContext& context, c
     logTextMutex.lock();
     logStringBuffer.push_front(text);
     logTextMutex.unlock();
+
 }
 
 void wfmain::on_customEdgeBtn_clicked()
@@ -8506,4 +8689,17 @@ void wfmain::connectionHandler(bool connect)
 void wfmain::on_autoSSBchk_clicked(bool checked)
 {
     prefs.automaticSidebandSwitching = checked;
+}
+
+void wfmain::on_cwButton_clicked()
+{
+    if(cw->isMinimized())
+    {
+        cw->raise();
+        cw->activateWindow();
+        return;
+    }
+    cw->show();
+    cw->raise();
+    cw->activateWindow();
 }

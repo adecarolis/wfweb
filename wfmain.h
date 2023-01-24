@@ -35,6 +35,7 @@
 #include "repeatersetup.h"
 #include "satellitesetup.h"
 #include "transceiveradjustments.h"
+#include "cwsender.h"
 #include "udpserver.h"
 #include "qledlabel.h"
 #include "rigctld.h"
@@ -158,7 +159,7 @@ signals:
 
     // PTT, ATU, ATT, Antenna, Preamp:
     void getPTT();
-    void setPTT(bool pttOn);
+    void setPTT(bool pttOn);    
     void getAttenuator();
     void getPreamp();
     void getAntenna();
@@ -168,6 +169,14 @@ signals:
     void startATU();
     void setATU(bool atuEnabled);
     void getATUStatus();
+
+    // CW Keying:
+    void sendCW(QString message);
+    void stopCW();
+    void getKeySpeed();
+    void setKeySpeed(unsigned char wpm);
+    void setCWBreakMode(unsigned char breakMode);
+    void getCWBreakMode();
 
     // Time and date:
     void setTime(timekind t);
@@ -720,6 +729,8 @@ private slots:
 
     void on_autoSSBchk_clicked(bool checked);
 
+    void on_cwButton_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -795,6 +806,17 @@ private:
 
     QShortcut *keyF;
     QShortcut *keyM;
+
+    QShortcut *keyH;
+    QShortcut *keyK; // alternate +
+    QShortcut *keyJ; // alternate -
+    QShortcut *keyL;
+
+    QShortcut *keyShiftK;
+    QShortcut *keyShiftJ;
+
+    QShortcut *keyControlK;
+    QShortcut *keyControlJ;
 
     QShortcut *keyDebug;
 
@@ -889,7 +911,7 @@ private:
         cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
         cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
         cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
-        cmdGetBandStackReg,
+        cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW,
         cmdSetTime, cmdSetDate, cmdSetUTCOffset};
 
     struct commandtype {
@@ -913,6 +935,7 @@ private:
     void issueCmd(cmds cmd, bool b);
     void issueCmd(cmds cmd, quint16 c);
     void issueCmd(cmds cmd, qint16 c);
+    void issueCmd(cmds cmd, QString s);
 
     // These commands pop_front and remove similar commands:
     void issueCmdUniquePriority(cmds cmd, bool b);
@@ -1045,10 +1068,12 @@ private:
     unsigned char usbGain=0;
     unsigned char lanGain=0;
 
+    // Widgets and Special Windows:
     calibrationWindow *cal;
     repeaterSetup *rpt;
     satelliteSetup *sat;
     transceiverAdjustments *trxadj;
+    cwSender *cw;
     controllerSetup* shut;
     aboutbox *abtBox;
     selectRadio *selRad;

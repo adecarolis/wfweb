@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -1038,6 +1038,16 @@
               </property>
               <property name="text">
                <string>Tune</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="cwButton">
+              <property name="toolTip">
+               <string>Press to bring up the CW Sender</string>
+              </property>
+              <property name="text">
+               <string>CW</string>
               </property>
              </widget>
             </item>
