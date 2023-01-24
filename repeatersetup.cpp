@@ -395,3 +395,48 @@ void repeaterSetup::on_debugBtn_clicked()
     //emit getDTCS();
     emit getRptAccessMode();
 }
+
+quint64 repeaterSetup::calcTransmitFreq(quint64 fOffset, bool isPlus)
+{
+    quint64 txfcalc = 0;
+    if(isPlus)
+        txfcalc = currentMainFrequency + fOffset;
+    else
+        txfcalc = currentMainFrequency - fOffset;
+    return txfcalc;
+}
+
+void repeaterSetup::on_splitOffsetSetBtn_clicked()
+{
+    freqt txFreq;
+    bool ok = true;
+    txFreq.Hz = ui->splitTransmitFreqEdit->text().toDouble(&ok) * 1E6;
+    emit setTransmitFrequency(txFreq);
+}
+
+void repeaterSetup::on_splitEnableChk_clicked(bool enabled)
+{
+    emit setSplitModeEnabled(enabled);
+}
+
+void repeaterSetup::on_splitPlusButton_clicked()
+{
+    bool ok = true;
+    quint64 fOffset = ui->splitOffsetEdit->text().toDouble(&ok) * 1E6;
+    quint64 f;
+    if(ok)
+    {
+        f = calcTransmitFreq(fOffset, true);
+        ui->splitTransmitFreqEdit->setText(QString("%1").arg(QString::number(f/(double)1E6, 'f', 2)));
+    }
+}
+
+void repeaterSetup::on_splitMinusBtn_clicked()
+{
+
+}
+
+void repeaterSetup::on_splitTxFreqSetBtn_clicked()
+{
+
+}
