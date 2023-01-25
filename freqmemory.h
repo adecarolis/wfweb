@@ -4,13 +4,6 @@
 #include <QDebug>
 #include "wfviewtypes.h"
 
-struct mode_info {
-    mode_kind mk;
-    unsigned char reg;
-    unsigned char filter;
-    QString name;
-};
-
 struct preset_kind {
     // QString name;
     // QString comment;

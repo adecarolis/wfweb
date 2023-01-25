@@ -388,6 +388,11 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveTSQL(quint16)), rpt, SLOT(handleTSQL(quint16)));
     connect(rig, SIGNAL(haveDTCS(quint16,bool,bool)), rpt, SLOT(handleDTCS(quint16,bool,bool)));
     connect(rig, SIGNAL(haveRptAccessMode(rptAccessTxRx)), rpt, SLOT(handleRptAccessMode(rptAccessTxRx)));
+    connect(this->rpt, &repeaterSetup::setTransmitFrequency,
+            [=](const freqt &transmitFreq) { issueCmd(cmdSetFreq, transmitFreq);});
+
+    connect(this->rpt, &repeaterSetup::setTransmitMode,
+            [=](const mode_info &transmitMode) { issueCmd(cmdSetMode, transmitMode);});
 
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
     connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
@@ -3589,7 +3594,7 @@ void wfmain::doCmd(commandtype cmddata)
         {
             lastFreqCmdTime_ms = QDateTime::currentMSecsSinceEpoch();
             freqt f = (*std::static_pointer_cast<freqt>(data));
-            emit setFrequency(0,f);
+            emit setFrequency(f.VFO,f);
             break;
         }
         case cmdSetMode:
@@ -4587,6 +4592,7 @@ void wfmain::receiveFreq(freqt freqStruct)
     {
         ui->freqLabel->setText(QString("%1").arg(freqStruct.MHzDouble, 0, 'f'));
         freq = freqStruct;
+        rpt->handleUpdateCurrentMainFrequency(freqStruct);
     } else {
         qDebug(logSystem()) << "Rejecting stale frequency: " << freqStruct.Hz << " Hz, delta time ms = " << tnow_ms - lastFreqCmdTime_ms\
                             << ", tnow_ms " << tnow_ms << ", last: " << lastFreqCmdTime_ms;
@@ -4607,6 +4613,7 @@ void wfmain::receivePTTstatus(bool pttOn)
         pttLed->setState(QLedLabel::State::StateOk);
     }
     amTransmitting = pttOn;
+    rpt->handleTransmitStatus(pttOn);
     changeTxBtn();
 }
 
@@ -5310,6 +5317,8 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
     currentModeInfo.mk = (mode_kind)mode;
     currentMode = (mode_kind)mode;
     currentModeInfo.filter = filter;
+    currentModeInfo.reg = mode;
+    rpt->handleUpdateCurrentMainMode(currentModeInfo);
 
     if( (filter) && (filter < 4)){
         ui->modeFilterCombo->blockSignals(true);

@@ -60,6 +60,19 @@ enum mode_kind {
     modeDCR
 };
 
+enum selVFO_t {
+    activeVFO = 0,
+    inactiveVFO = 1
+};
+
+struct mode_info {
+    mode_kind mk;
+    unsigned char reg;
+    unsigned char filter;
+    selVFO_t VFO = activeVFO;
+    QString name;
+};
+
 enum breakIn_t {
     brkinOff  = 0x00,
     brkinSemi = 0x01,
@@ -69,6 +82,7 @@ enum breakIn_t {
 struct freqt {
     quint64 Hz;
     double MHzDouble;
+    selVFO_t VFO = activeVFO;
 };
 
 struct datekind {
