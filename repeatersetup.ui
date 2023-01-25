@@ -171,14 +171,21 @@
            <item>
             <widget class="QPushButton" name="splitPlusButton">
              <property name="text">
-              <string>+</string>
+              <string>Split+</string>
              </property>
             </widget>
            </item>
            <item>
             <widget class="QPushButton" name="splitMinusBtn">
              <property name="text">
-              <string>-</string>
+              <string>Split-</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="rptOffsetBtn">
+             <property name="text">
+              <string>RPT</string>
              </property>
             </widget>
            </item>

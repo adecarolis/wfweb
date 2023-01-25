@@ -76,6 +76,8 @@ public slots:
     void getMode();
     void setDataMode(bool dataOn, unsigned char filter);
     void getDataMode();
+    void getSplit();
+    void setSplit(bool splitEnabled);
     void getBandStackReg(char band, char regCode);
     void getRitEnabled();
     void getRitValue();
@@ -362,7 +364,7 @@ private:
     void setup();
     QByteArray stripData(const QByteArray &data, unsigned char cutPosition);
     void parseData(QByteArray data); // new data come here
-    void parseCommand();
+    void parseCommand(); // Entry point for complete commands
     unsigned char bcdHexToUChar(unsigned char in);
     unsigned char bcdHexToUChar(unsigned char hundreds, unsigned char tensunits);
     unsigned int bcdHexToUInt(unsigned char hundreds, unsigned char tensunits);

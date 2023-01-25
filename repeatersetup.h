@@ -34,7 +34,8 @@ signals:
     // Split:
     void getSplitModeEnabled();
     void getTransmitFrequency();
-    void setSplitModeEnabled(bool splitEnabled);
+    // Use the duplexMode to communicate split.
+    // void setSplitModeEnabled(bool splitEnabled);
     void setTransmitFrequency(freqt transmitFreq);
     void setTransmitMode(mode_info m);
 
@@ -44,10 +45,11 @@ public slots:
     void handleTone(quint16 tone);
     void handleTSQL(quint16 tsql);
     void handleDTCS(quint16 dcscode, bool tinv, bool rinv);
-    void handleSplitMode(bool splitEnabled);
-    void handleSplitFrequency(freqt transmitFreq);
+    // void handleSplitMode(bool splitEnabled);
+    // void handleSplitFrequency(freqt transmitFreq);
     void handleUpdateCurrentMainFrequency(freqt mainfreq);
     void handleUpdateCurrentMainMode(mode_info m);
+    void handleTransmitStatus(bool amTransmitting);
 
 private slots:
     void showEvent(QShowEvent *event);
@@ -81,8 +83,10 @@ private:
     rigCapabilities rig;
     bool haveRig = false;
     duplexMode currentdm;
-    mode_info currentMode;
+    mode_info currentModeMain;
+    mode_info modeTransmitVFO;
     bool usedPlusSplit = false;
+    bool amTransmitting = false;
 };
 
 #endif // REPEATERSETUP_H
