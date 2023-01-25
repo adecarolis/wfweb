@@ -122,8 +122,11 @@ public slots:
 
     void getPassband();
     void getCwPitch();
+    void setCwPitch(unsigned char pitch);
     void getPskTone();
+    void setPskTone(unsigned char tone);
     void getRttyMark();
+    void setRttyMark(unsigned char mark);
 
     // Repeater:
     void setDuplexMode(duplexMode dm);

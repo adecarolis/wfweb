@@ -347,10 +347,13 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(stopCW()), rig, SLOT(sendStopCW()));
     connect(this, SIGNAL(setKeySpeed(unsigned char)), rig, SLOT(setKeySpeed(unsigned char)));
     connect(this, SIGNAL(getKeySpeed()), rig, SLOT(getKeySpeed()));
+    connect(this, SIGNAL(setCwPitch(unsigned char)), rig, SLOT(setCwPitch(unsigned char)));
     connect(this, SIGNAL(setCWBreakMode(unsigned char)), rig, SLOT(setBreakIn(unsigned char)));
     connect(this, SIGNAL(getCWBreakMode()), rig, SLOT(getBreakIn()));
     connect(this->rig, &rigCommander::haveKeySpeed,
-            [=](const unsigned char &wpm) { cw->handleKeySpeed(wpm);});
+        [=](const unsigned char& wpm) { cw->handleKeySpeed(wpm); });
+    connect(this->rig, &rigCommander::haveCwPitch,
+        [=](const unsigned char& speed) { cw->handlePitch(speed); });
     connect(this->rig, &rigCommander::haveCWBreakMode,
             [=](const unsigned char &bm) { cw->handleBreakInMode(bm);});
 
@@ -1079,7 +1082,9 @@ void wfmain::setupMainUI()
     connect(this->cw, &cwSender::setBreakInMode,
             [=](const unsigned char &bmode) { issueCmd(cmdSetBreakMode, bmode);});
     connect(this->cw, &cwSender::setKeySpeed,
-            [=](const unsigned char &wpm) { issueCmd(cmdSetKeySpeed, wpm);});
+        [=](const unsigned char& wpm) { issueCmd(cmdSetKeySpeed, wpm); });
+    connect(this->cw, &cwSender::setPitch,
+        [=](const unsigned char& pitch) { issueCmd(cmdSetCwPitch, pitch); });
     connect(this->cw, &cwSender::getCWSettings,
             [=]() { issueDelayedCommand(cmdGetKeySpeed);
                     issueDelayedCommand(cmdGetBreakMode);});
@@ -3706,6 +3711,12 @@ void wfmain::doCmd(commandtype cmddata)
         {
             unsigned char wpm = (*std::static_pointer_cast<unsigned char>(data));
             emit setKeySpeed(wpm);
+            break;
+        }
+        case cmdSetCwPitch:
+        {
+            unsigned char pitch = (*std::static_pointer_cast<unsigned char>(data));
+            emit setCwPitch(pitch);
             break;
         }
         case cmdSetATU:
@@ -6594,7 +6605,7 @@ void wfmain::receivePassband(quint16 pass)
 
 void wfmain::receiveCwPitch(unsigned char pitch) {
     if (currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) {
-        cwPitch = round((((600.0 / 255.0) * pitch) + 300)/5.0)*5.0;
+        cwPitch = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
         passbandCenterFrequency = cwPitch / 2000000.0;
     }
     //qDebug() << "CW" << pitch << "Pitch" << cwPitch;

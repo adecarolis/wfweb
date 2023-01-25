@@ -936,6 +936,14 @@ void rigCommander::getCwPitch()
     prepDataAndSend(payload);
 }
 
+void rigCommander::setCwPitch(unsigned char pitch)
+{
+    QByteArray payload;
+    payload.setRawData("\x14\x09", 2);
+    payload.append(bcdEncodeInt(pitch));
+    prepDataAndSend(payload);
+}
+
 void rigCommander::getPskTone()
 {
     QByteArray payload;
@@ -943,10 +951,26 @@ void rigCommander::getPskTone()
     prepDataAndSend(payload);
 }
 
+void rigCommander::setPskTone(unsigned char tone)
+{
+    QByteArray payload;
+    payload.setRawData("\x1a\x05\x00\x44", 4);
+    payload.append(bcdEncodeInt(tone));
+    prepDataAndSend(payload);
+}
+
 void rigCommander::getRttyMark()
 {
     QByteArray payload;
     payload.setRawData("\x1a\x05\x00\x41", 4);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setRttyMark(unsigned char mark)
+{
+    QByteArray payload;
+    payload.setRawData("\x1a\x05\x00\x41", 4);
+    payload.append(bcdEncodeInt(mark));
     prepDataAndSend(payload);
 }
 
