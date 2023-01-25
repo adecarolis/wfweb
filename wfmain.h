@@ -175,6 +175,7 @@ signals:
     void stopCW();
     void getKeySpeed();
     void setKeySpeed(unsigned char wpm);
+    void setCwPitch(unsigned char pitch);
     void setCWBreakMode(unsigned char breakMode);
     void getCWBreakMode();
 

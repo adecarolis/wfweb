@@ -41,6 +41,13 @@ void cwSender::handleKeySpeed(unsigned char wpm)
     }
 }
 
+void cwSender::handlePitch(unsigned char pitch) {
+    quint16 cwPitch = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
+    ui->pitchSpin->blockSignals(true);
+    ui->pitchSpin->setValue(cwPitch);
+    ui->pitchSpin->blockSignals(false);
+}
+
 void cwSender::handleBreakInMode(unsigned char b)
 {
     if(b < 3)
@@ -105,6 +112,15 @@ void cwSender::on_breakinCombo_activated(int brkmode)
 void cwSender::on_wpmSpin_valueChanged(int wpm)
 {
     emit setKeySpeed((unsigned char)wpm);
+}
+
+void cwSender::on_pitchSpin_valueChanged(int arg1)
+{
+    //    quint16 cwPitch = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
+    unsigned char pitch = 0;
+    pitch = ceil((arg1 - 300) * (255.0 / 600.0));
+    qDebug() << "Setting pitch" << pitch;
+    emit setPitch(pitch);
 }
 
 void cwSender::on_macro1btn_clicked()
