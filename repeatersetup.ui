@@ -126,18 +126,29 @@
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_5">
          <item>
-          <widget class="QCheckBox" name="splitEnableChk">
-           <property name="text">
-            <string>Split Enable</string>
-           </property>
-          </widget>
+          <layout class="QHBoxLayout" name="horizontalLayout_8">
+           <item>
+            <widget class="QCheckBox" name="splitEnableChk">
+             <property name="text">
+              <string>Split Enable</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="autoTrackLiveBtn">
+             <property name="text">
+              <string>Auto Track Live</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_6">
            <item>
             <widget class="QLabel" name="label_3">
              <property name="text">
-              <string>Offset (MHz):</string>
+              <string>Offset (KHz):</string>
              </property>
             </widget>
            </item>

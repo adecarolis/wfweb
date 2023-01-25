@@ -31,10 +31,12 @@ signals:
     void getDTCS();
     void setRptAccessMode(rptAccessTxRx tmode);
     void getRptAccessMode();
+    // Split:
     void getSplitModeEnabled();
     void getTransmitFrequency();
     void setSplitModeEnabled(bool splitEnabled);
     void setTransmitFrequency(freqt transmitFreq);
+    void setTransmitMode(mode_info m);
 
 public slots:
     void receiveDuplexMode(duplexMode dm);
@@ -45,8 +47,10 @@ public slots:
     void handleSplitMode(bool splitEnabled);
     void handleSplitFrequency(freqt transmitFreq);
     void handleUpdateCurrentMainFrequency(freqt mainfreq);
+    void handleUpdateCurrentMainMode(mode_info m);
 
 private slots:
+    void showEvent(QShowEvent *event);
     void on_rptSimplexBtn_clicked();
     void on_rptDupPlusBtn_clicked();
     void on_rptDupMinusBtn_clicked();
@@ -71,10 +75,14 @@ private:
     freqt currentMainFrequency;
     void populateTones();
     void populateDTCS();
-    quint64 calcTransmitFreq(quint64 fOffset, bool isPlus);
+    quint64 getFreqHzFromKHzString(QString khz);
+    quint64 getFreqHzFromMHzString(QString MHz);
+
     rigCapabilities rig;
     bool haveRig = false;
     duplexMode currentdm;
+    mode_info currentMode;
+    bool usedPlusSplit = false;
 };
 
 #endif // REPEATERSETUP_H

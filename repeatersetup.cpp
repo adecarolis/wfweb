@@ -296,6 +296,37 @@ void repeaterSetup::handleDTCS(quint16 dcode, bool tinv, bool rinv)
     ui->rptDTCSInvertRx->setChecked(rinv);
 }
 
+void repeaterSetup::handleUpdateCurrentMainFrequency(freqt mainfreq)
+{
+
+    this->currentMainFrequency = mainfreq;
+    if(ui->autoTrackLiveBtn->isChecked() && !ui->splitOffsetEdit->text.isEmpty())
+    {
+        if(currentMainFrequency.Hz != mainfreq.Hz)
+        {
+            if(usedPlusSplit)
+            {
+                on_splitPlusButton_clicked();
+            } else {
+                on_splitMinusBtn_clicked();
+            }
+        }
+    }
+}
+
+void repeaterSetup::handleUpdateCurrentMainMode(mode_info m)
+{
+    // Used to set the secondary VFO to the same mode
+    // (generally FM)
+    this->currentMode = m;
+}
+
+void repeaterSetup::showEvent(QShowEvent *event)
+{
+    emit getSplitModeEnabled();
+    (void)event;
+}
+
 void repeaterSetup::on_rptSimplexBtn_clicked()
 {
     // Simplex
@@ -396,16 +427,6 @@ void repeaterSetup::on_debugBtn_clicked()
     emit getRptAccessMode();
 }
 
-quint64 repeaterSetup::calcTransmitFreq(quint64 fOffset, bool isPlus)
-{
-    quint64 txfcalc = 0;
-    if(isPlus)
-        txfcalc = currentMainFrequency + fOffset;
-    else
-        txfcalc = currentMainFrequency - fOffset;
-    return txfcalc;
-}
-
 void repeaterSetup::on_splitOffsetSetBtn_clicked()
 {
     freqt txFreq;
@@ -417,26 +438,116 @@ void repeaterSetup::on_splitOffsetSetBtn_clicked()
 void repeaterSetup::on_splitEnableChk_clicked(bool enabled)
 {
     emit setSplitModeEnabled(enabled);
+    ui->autoTrackLiveBtn->setChecked(!enabled);
+}
+
+quint64 repeaterSetup::getFreqHzFromKHzString(QString khz)
+{
+    // This function takes a string containing a number in KHz,
+    // and creates an accurate quint64 in Hz.
+    quint64 fhz = 0;
+    bool hasDecimalPt = false;
+    bool ok = true;
+    if(khz.isEmpty())
+    {
+        qWarning() << "KHz offset was empty!";
+        return fhz;
+    }
+    if(khz.contains("."))
+    {
+        hasDecimalPt = true;
+        // "600.245" becomes "600"
+        khz.chop(khz.indexOf("."));
+    }
+    fhz = 1E3 * khz.toUInt(&ok);
+    if(!ok)
+    {
+        qWarning() << "Could not understand user KHz text";
+    }
+    return fhz;
+}
+
+quint64 repeaterSetup::getFreqHzFromMHzString(QString MHz)
+{
+    // This function takes a string containing a number in KHz,
+    // and creates an accurate quint64 in Hz.
+    quint64 fhz = 0;
+    bool hasDecimalPt = false;
+    bool ok = true;
+    if(MHz.isEmpty())
+    {
+        qWarning() << "MHz string was empty!";
+        return fhz;
+    }
+    if(MHz.contains("."))
+    {
+        hasDecimalPt = true;
+        int decimalPtIndex = MHz.indexOf(".");
+        // "29.623"
+        // indexOf(".") = 2
+        // length = 6
+        // We want the right 4xx 3 characters.
+        QString KHz = MHz.right(MHz.length() - decimalPtIndex - 1);
+        MHz.chop(decimalPtIndex);
+
+        fhz = MHz.toUInt(&ok) * 1E6; if(!ok) goto handleError;
+        fhz += KHz.toUInt(&ok) * 1E3; if(!ok) goto handleError;
+
+    } else {
+        // Frequency was already MHz (unlikely but what can we do?)
+        fhz = MHz.toUInt(&ok) * 1E6; if(!ok) goto handleError;
+    }
+    return fhz;
+
+handleError:
+    qWarning() << "Could not understand user MHz text " << MHz;
+    return 0;
 }
 
 void repeaterSetup::on_splitPlusButton_clicked()
 {
-    bool ok = true;
-    quint64 fOffset = ui->splitOffsetEdit->text().toDouble(&ok) * 1E6;
-    quint64 f;
-    if(ok)
+    quint64 hzOffset = getFreqHzFromKHzString(ui->splitOffsetEdit->text());
+    quint64 txfreqhz;
+    freqt f;
+    QString txString;
+    if(hzOffset)
     {
-        f = calcTransmitFreq(fOffset, true);
-        ui->splitTransmitFreqEdit->setText(QString("%1").arg(QString::number(f/(double)1E6, 'f', 2)));
+        txfreqhz = currentMainFrequency.Hz + hzOffset;
+        f.Hz = txfreqhz;
+        txString = QString::number(f.Hz / double(1E6), 'f', 3);
+        ui->splitTransmitFreqEdit->setText(txString);
+        usedPlusSplit = true;
+        emit setTransmitFrequency(f);
+        emit setTransmitMode(currentMode);
     }
 }
 
+
 void repeaterSetup::on_splitMinusBtn_clicked()
 {
-
+    quint64 hzOffset = getFreqHzFromKHzString(ui->splitOffsetEdit->text());
+    quint64 txfreqhz;
+    freqt f;
+    QString txString;
+    if(hzOffset)
+    {
+        txfreqhz = currentMainFrequency.Hz - hzOffset;
+        f.Hz = txfreqhz;
+        txString = QString::number(f.Hz / double(1E6), 'f', 3);
+        usedPlusSplit = false;
+        emit setTransmitFrequency(f);
+        emit setTransmitMode(currentMode);
+    }
 }
 
 void repeaterSetup::on_splitTxFreqSetBtn_clicked()
 {
-
+    quint64 fHz = getFreqHzFromMHzString(ui->splitTransmitFreqEdit->text());
+    freqt f;
+    if(fHz)
+    {
+        f.Hz = fHz;
+        emit setTransmitFrequency(f);
+        emit setTransmitMode(currentMode);
+    }
 }
