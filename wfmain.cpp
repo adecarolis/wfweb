@@ -4718,15 +4718,16 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             passbandIndicator->topLeft->setCoords(pbStart, 0);
             passbandIndicator->bottomRight->setCoords(pbEnd, rigCaps.spectAmpMax);
 
-            double pbtDefault = 0.0; // This will be the default PBT for the selected mode.
-
             if ((currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) && passbandWidth > 0.0006)
             {
-                pbtDefault = passbandWidth - (passbandCenterFrequency * 2);
+                pbtDefault = round((passbandWidth - (cwPitch / 1000000.0)) * 200000.0) / 200000.0;
+            }
+            else 
+            {
+                pbtDefault = 0.0;
             }
 
-            if ((int(TPBFInner*1000000) - int(pbtDefault*1000000) || int(TPBFOuter*1000000) - int(pbtDefault*1000000)) 
-                && passbandAction != passbandResizing && currentModeInfo.mk != modeFM)
+            if ((TPBFInner - pbtDefault || TPBFOuter - pbtDefault) && passbandAction != passbandResizing && currentModeInfo.mk != modeFM)
             {
                 pbtIndicator->setVisible(true);
             }
@@ -4742,6 +4743,8 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
 
             pbtIndicator->bottomRight->setCoords(qMin(pbStart + (TPBFInner / 2) - (pbtDefault /2) + passbandWidth,
                 pbStart + (TPBFOuter / 2) - (pbtDefault/2) + passbandWidth), rigCaps.spectAmpMax);
+
+            //qDebug() << "Default" << pbtDefault << "Inner" << TPBFInner << "Outer" << TPBFOuter << "Pass" << passbandWidth << "Center" << passbandCenterFrequency << "CW" << cwPitch;
         }
 
         if (underlayMode == underlayPeakHold)
@@ -4891,8 +4894,10 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
         QCPAbstractItem* item = plot->itemAt(me->pos(), true);
         QCPItemRect* rectItem = dynamic_cast<QCPItemRect*> (item);
         if (rectItem != nullptr) {
-            issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)128);
-            issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)128);
+            double pbFreq = (pbtDefault / passbandWidth) * 127.0;
+            qint16 newFreq = pbFreq + 128;
+            issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
+            issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
         }
     }
 }
@@ -6556,37 +6561,46 @@ void wfmain::receivePassband(quint16 pass)
 
 void wfmain::receiveCwPitch(unsigned char pitch) {
     if (currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) {
-        cwPitch = ((600.0 / 256.0) * pitch) + 300;
+        cwPitch = round((((600.0 / 255.0) * pitch) + 300)/5.0)*5.0;
         passbandCenterFrequency = cwPitch / 2000000.0;
     }
+    qDebug() << "CW" << pitch << "Pitch" << cwPitch;
 }
 
 void wfmain::receiveTPBFInner(unsigned char level) {
-
     /*
-    * This is written like this as although PBT is supposed to be sent in 50Hz steps,
+    * This is written like this as although PBT is supposed to be sent in 25Hz steps,
     * sometimes it sends the 'nearest' value. This results in math errors.
-    * By multiplying the MHz value by 20000 with rounding, then dividing this value
-    * by 20000, we are guaranteed to get a frequency value that matches the step size.
+    * In CW mode, the value is also dependant on the CW Pitch setting
     */
     qint16 shift = (qint16)(level - 128);
-    //TPBFInner = (double)(shift / 127.0) * (passbandWidth);
-    TPBFInner = ceil((shift / 127.0) * (passbandWidth) * 20000.0) / 20000.0;
-    qDebug() << "Inner" << level << "TPBFInner" << TPBFInner;
+    double tempVar = ceil((shift / 127.0) * passbandWidth * 20000.0) / 20000.0;
+    // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
+    double pitch = 0.0;
+    if ((currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) && passbandWidth > 0.0006)
+    {
+        pitch = (600.0 - cwPitch) / 1000000.0;
+    }
+    TPBFInner = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
+    //qDebug() << "Inner" << level << "TPBFInner" << TPBFInner;
 }
 
 void wfmain::receiveTPBFOuter(unsigned char level) {
-    
     /*
-    * This is written like this as although PBT is supposed to be sent in 50Hz steps,
+    * This is written like this as although PBT is supposed to be sent in 25Hz steps,
     * sometimes it sends the 'nearest' value. This results in math errors.
-    * By multiplying the MHz value by 20000 with rounding, then dividing this value
-    * by 20000, we are guaranteed to get a frequency value that matches the step size.
+    * In CW mode, the value is also dependant on the CW Pitch setting
     */
     qint16 shift = (qint16)(level - 128);
-    TPBFOuter = ceil((shift / 127.0) * (passbandWidth) * 20000.0) / 20000.0;
-    //TPBFOuter = (double)(shift / 127.0) * (passbandWidth);
-    qDebug() << "Outer" << level << "TPBFOuter" << TPBFOuter;
+    double tempVar = ceil((shift / 127.0) * passbandWidth * 20000.0) / 20000.0;
+    // tempVar now contains value to the nearest 50Hz If CW mode, add/remove the cwPitch.
+    double pitch = 0.0;
+    if ((currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) && passbandWidth > 0.0006)
+    {
+        pitch = (600.0 - cwPitch) / 1000000.0;
+    }
+    TPBFOuter = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
+    //qDebug() << "Outer" << level << "TPBFOuter" << TPBFOuter;
 }
 
 
