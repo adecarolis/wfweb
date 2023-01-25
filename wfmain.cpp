@@ -6597,7 +6597,7 @@ void wfmain::receiveCwPitch(unsigned char pitch) {
         cwPitch = round((((600.0 / 255.0) * pitch) + 300)/5.0)*5.0;
         passbandCenterFrequency = cwPitch / 2000000.0;
     }
-    qDebug() << "CW" << pitch << "Pitch" << cwPitch;
+    //qDebug() << "CW" << pitch << "Pitch" << cwPitch;
 }
 
 void wfmain::receiveTPBFInner(unsigned char level) {
