@@ -3997,6 +3997,11 @@ void wfmain::sendRadioCommandLoop()
                 cmds sCmd = slowPollCmdQueue[(slowCmdNum++)%nCmds];
                 doCmd(sCmd);
             }
+        } else if ((!rapidPollCmdQueue.empty()) && rapidPollCmdQueueEnabled)
+        {
+            int nrCmds = (int)rapidPollCmdQueue.size();
+            cmds rCmd = rapidPollCmdQueue[(rapidCmdNum++)%nrCmds];
+            doCmd(rCmd);
         }
     } else {
         // odd-number ticks:
@@ -4487,12 +4492,20 @@ void wfmain::initPeriodicCommands()
     }
     insertSlowPeriodicCommand(cmdGetDuplexMode, 128);
 
+    rapidPollCmdQueueEnabled = false;
+    rapidPollCmdQueue.clear();
     if (rigCaps.hasSpectrum) {
         // Get passband
-        insertPeriodicCommand(cmdGetPassband, 128);
-        insertPeriodicCommand(cmdGetTPBFInner, 128);
-        insertPeriodicCommand(cmdGetTPBFOuter, 128);
+        insertPeriodicRapidCmd(cmdGetPassband);
+        insertPeriodicRapidCmd(cmdGetTPBFInner);
+        insertPeriodicRapidCmd(cmdGetTPBFOuter);
     }
+    rapidPollCmdQueueEnabled = true;
+}
+
+void wfmain::insertPeriodicRapidCmd(cmds cmd)
+{
+    rapidPollCmdQueue.push_back(cmd);
 }
 
 void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority=100)
@@ -4508,6 +4521,12 @@ void wfmain::insertPeriodicCommand(cmds cmd, unsigned char priority=100)
     }
 }
 
+void wfmain::insertPeriodicRapidCmdUnique(cmds cmd)
+{
+    removePeriodicRapidCmd(cmd);
+    rapidPollCmdQueue.push_back(cmd);
+}
+
 void wfmain::insertPeriodicCommandUnique(cmds cmd)
 {
     // Use this function to insert a non-duplicate command
@@ -4516,6 +4535,20 @@ void wfmain::insertPeriodicCommandUnique(cmds cmd)
 
     removePeriodicCommand(cmd);
     periodicCmdQueue.push_front(cmd);
+}
+
+void wfmain::removePeriodicRapidCmd(cmds cmd)
+{
+    while(true)
+    {
+        auto it = std::find(this->rapidPollCmdQueue.begin(), this->rapidPollCmdQueue.end(), cmd);
+        if(it != rapidPollCmdQueue.end())
+        {
+            rapidPollCmdQueue.erase(it);
+        } else {
+            break;
+        }
+    }
 }
 
 void wfmain::removePeriodicCommand(cmds cmd)
@@ -7226,7 +7259,7 @@ void wfmain::on_wfInterpolateChk_clicked(bool checked)
     prefs.wfInterpolate = checked;
 }
 
-wfmain::cmds wfmain::meterKindToMeterCommand(meterKind m)
+cmds wfmain::meterKindToMeterCommand(meterKind m)
 {
     cmds c;
     switch(m)
