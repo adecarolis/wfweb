@@ -6,8 +6,10 @@
 #include <QFont>
 #include <QInputDialog>
 #include <QMessageBox>
+#include <math.h>
 #include "wfviewtypes.h"
 #include "logcategories.h"
+
 
 
 namespace Ui {

@@ -116,11 +116,11 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
 
     switch (devType) {
         case shuttleXpress:
-            image.load(":/resources/controllerxpress.png");
+            image.load(":/resources/shuttlexpress.png");
             deviceName = "shuttleXpress";
             break;
         case shuttlePro2:
-            image.load(":/resources/controllerpro.png");
+            image.load(":/resources/shuttlepro.png");
             deviceName = "shuttlePro2";
             break;
         case RC28:
