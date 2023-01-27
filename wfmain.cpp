@@ -3701,6 +3701,12 @@ void wfmain::doCmd(commandtype cmddata)
         }
         case cmdSetTSQL:
         {
+            rptrTone_t t = (*std::static_pointer_cast<rptrTone_t>(data));
+            emit setTSQL(t);
+            break;
+        }
+        case cmdSetRptAccessMode:
+        {
             rptrAccessData_t rd = (*std::static_pointer_cast<rptrAccessData_t>(data));
             emit setRepeaterAccessMode(rd);
             break;
