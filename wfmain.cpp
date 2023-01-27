@@ -401,6 +401,8 @@ void wfmain::rigConnections()
 
     connect(this->rpt, &repeaterSetup::setRptAccessMode,
             [=](const rptrAccessData_t &rd) { issueCmd(cmdSetRptAccessMode, rd);});
+    connect(this, SIGNAL(setRepeaterAccessMode(rptrAccessData_t)), rig, SLOT(setRptAccessMode(rptrAccessData_t)));
+    connect(this, SIGNAL(setTone(rptrTone_t)), rig, SLOT(setTone(rptrTone_t)));
 
     connect(rig, SIGNAL(haveTone(quint16)), rpt, SLOT(handleTone(quint16)));
     connect(rig, SIGNAL(haveTSQL(quint16)), rpt, SLOT(handleTSQL(quint16)));
