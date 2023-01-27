@@ -65,6 +65,13 @@ enum selVFO_t {
     inactiveVFO = 1
 };
 
+enum vfo_t {
+    vfoA=0,
+    vfoB=1,
+    vfoMain = 0xD0,
+    vfoSub = 0xD1
+};
+
 struct mode_info {
     mode_kind mk;
     unsigned char reg;
@@ -102,16 +109,18 @@ enum cmds {
     cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
     cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
     cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetTPBFInner, cmdSetTPBFInner,
-    cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus, cmdGetPassband, cmdSetPassband,
+    cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetPassband, cmdSetPassband,
     cmdGetCwPitch, cmdGetPskTone, cmdGetRttyMark, cmdSetCwPitch, cmdSetPskTone, cmdSetRttyMark,
-    cmdSetATU, cmdStartATU, cmdGetSpectrumMode,
-    cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,cmdPTTToggle,
+    cmdSetATU, cmdStartATU, cmdGetATUStatus,
+    cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode,
+    cmdGetPTT, cmdSetPTT,cmdPTTToggle,
     cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel,
     cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
     cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
     cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
     cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
-    cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
+    cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdSelVFO, cmdVFOSwap, cmdVFOEqualAB, cmdVFOEqualMS,
+    cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
     cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW,
     cmdSetTime, cmdSetDate, cmdSetUTCOffset
 };

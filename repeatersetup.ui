@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>922</width>
+    <width>1198</width>
     <height>217</height>
    </rect>
   </property>
@@ -224,6 +224,71 @@
             </widget>
            </item>
           </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="groupBox">
+        <property name="title">
+         <string>VFO</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout">
+         <item row="1" column="1">
+          <widget class="QPushButton" name="swapABBtn">
+           <property name="text">
+            <string>Swap AB</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QPushButton" name="selSubBtn">
+           <property name="text">
+            <string>Sel Sub</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QPushButton" name="selMainBtn">
+           <property name="text">
+            <string>Sel Main</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QPushButton" name="selBBtn">
+           <property name="text">
+            <string>Sel B</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QPushButton" name="selABtn">
+           <property name="text">
+            <string>Sel A</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QPushButton" name="aEqBBtn">
+           <property name="text">
+            <string>A=B</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QPushButton" name="mEqSBtn">
+           <property name="text">
+            <string>M=S</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QPushButton" name="swapMSBtn">
+           <property name="text">
+            <string>Swap MS</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>

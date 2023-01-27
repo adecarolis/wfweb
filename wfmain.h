@@ -94,6 +94,10 @@ signals:
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
     void setMode(mode_info);
+    void selectVFO(vfo_t vfo);
+    void sendVFOSwap();
+    void sendVFOEqualAB();
+    void sendVFOEqualMS();
     void setDataMode(bool dataOn, unsigned char filter);
     void getDataMode();
     void getModInput(bool dataOn);
@@ -908,6 +912,7 @@ private:
 
     void issueCmd(cmds cmd, freqt f);
     void issueCmd(cmds cmd, mode_info m);
+    void issueCmd(cmds cmd, vfo_t v);
     void issueCmd(cmds cmd, timekind t);
     void issueCmd(cmds cmd, datekind d);
     void issueCmd(cmds cmd, int i);
@@ -1135,6 +1140,7 @@ Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
 Q_DECLARE_METATYPE(enum mode_kind)
+Q_DECLARE_METATYPE(enum vfo_t);
 Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 Q_DECLARE_METATYPE(QList<spotData>)
 Q_DECLARE_METATYPE(rigstate*)

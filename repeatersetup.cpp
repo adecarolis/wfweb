@@ -50,7 +50,6 @@ void repeaterSetup::setRig(rigCapabilities inRig)
         ui->toneTone->setDisabled(true);
         ui->toneTSQL->setDisabled(true);
     }
-
     if(rig.hasDTCS)
     {
         ui->rptDTCSCombo->setDisabled(false);
@@ -62,6 +61,36 @@ void repeaterSetup::setRig(rigCapabilities inRig)
         ui->toneDTCS->setDisabled(true);
         ui->rptDTCSInvertRx->setDisabled(true);
         ui->rptDTCSInvertTx->setDisabled(true);
+    }
+    if(rig.hasVFOAB)
+    {
+        ui->selABtn->setDisabled(false);
+        ui->selBBtn->setDisabled(false);
+        ui->aEqBBtn->setDisabled(false);
+        ui->swapABBtn->setDisabled(false);
+    } else {
+        ui->selABtn->setDisabled(true);
+        ui->selBBtn->setDisabled(true);
+        ui->aEqBBtn->setDisabled(true);
+        ui->swapABBtn->setDisabled(true);
+    }
+    if(rig.hasVFOMS)
+    {
+        ui->selMainBtn->setDisabled(false);
+        ui->selSubBtn->setDisabled(false);
+        ui->mEqSBtn->setDisabled(false);
+        ui->swapMSBtn->setDisabled(false);
+    } else {
+        ui->selMainBtn->setDisabled(true);
+        ui->selSubBtn->setDisabled(true);
+        ui->mEqSBtn->setDisabled(true);
+        ui->swapMSBtn->setDisabled(true);
+    }
+    if(rig.hasVFOMS && rig.hasVFOAB)
+    {
+        // Rigs that have both AB and MS
+        // do not have a swap AB command.
+        ui->swapABBtn->setDisabled(true);
     }
 }
 
@@ -593,4 +622,48 @@ void repeaterSetup::on_splitTxFreqSetBtn_clicked()
         emit setTransmitFrequency(f);
         emit setTransmitMode(modeTransmitVFO);
     }
+}
+
+void repeaterSetup::on_selABtn_clicked()
+{
+    vfo_t v = vfoA;
+    emit selectVFO(v);
+}
+
+void repeaterSetup::on_selBBtn_clicked()
+{
+    vfo_t v = vfoB;
+    emit selectVFO(v);
+}
+
+void repeaterSetup::on_aEqBBtn_clicked()
+{
+    emit equalizeVFOsAB();
+}
+
+void repeaterSetup::on_swapABBtn_clicked()
+{
+    emit swapVFOs();
+}
+
+void repeaterSetup::on_selMainBtn_clicked()
+{
+    vfo_t v = vfoMain;
+    emit selectVFO(v);
+}
+
+void repeaterSetup::on_selSubBtn_clicked()
+{
+    vfo_t v = vfoSub;
+    emit selectVFO(v);
+}
+
+void repeaterSetup::on_mEqSBtn_clicked()
+{
+    emit equalizeVFOsMS();
+}
+
+void repeaterSetup::on_swapMSBtn_clicked()
+{
+    emit swapVFOs();
 }

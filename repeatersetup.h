@@ -38,6 +38,11 @@ signals:
     // void setSplitModeEnabled(bool splitEnabled);
     void setTransmitFrequency(freqt transmitFreq);
     void setTransmitMode(mode_info m);
+    // VFO:
+    void selectVFO(vfo_t v); // A,B,M,S
+    void equalizeVFOsAB();
+    void equalizeVFOsMS();
+    void swapVFOs();
 
 public slots:
     void receiveDuplexMode(duplexMode dm);
@@ -71,6 +76,22 @@ private slots:
     void on_splitMinusBtn_clicked();
 
     void on_splitTxFreqSetBtn_clicked();
+
+    void on_selABtn_clicked();
+
+    void on_selBBtn_clicked();
+
+    void on_aEqBBtn_clicked();
+
+    void on_swapABBtn_clicked();
+
+    void on_selMainBtn_clicked();
+
+    void on_selSubBtn_clicked();
+
+    void on_mEqSBtn_clicked();
+
+    void on_swapMSBtn_clicked();
 
 private:
     Ui::repeaterSetup *ui;

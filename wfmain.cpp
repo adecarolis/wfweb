@@ -61,6 +61,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<meterKind>();
     qRegisterMetaType<spectrumMode>();
     qRegisterMetaType<freqt>();
+    qRegisterMetaType<vfo_t>();
     qRegisterMetaType<mode_info>();
     qRegisterMetaType<mode_kind>();
     qRegisterMetaType<audioPacket>();
@@ -343,6 +344,11 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
     connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
 
+    connect(this, SIGNAL(selectVFO(vfo_t)), rig, SLOT(selectVFO(vfo_t)));
+    connect(this, SIGNAL(sendVFOSwap()), rig, SLOT(exchangeVFOs()));
+    connect(this, SIGNAL(sendVFOEqualAB()), rig, SLOT(equalizeVFOsAB()));
+    connect(this, SIGNAL(sendVFOEqualMS()), rig, SLOT(equalizeVFOsMS()));
+
     connect(this, SIGNAL(sendCW(QString)), rig, SLOT(sendCW(QString)));
     connect(this, SIGNAL(stopCW()), rig, SLOT(sendStopCW()));
     connect(this, SIGNAL(setKeySpeed(unsigned char)), rig, SLOT(setKeySpeed(unsigned char)));
@@ -390,9 +396,16 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveRptAccessMode(rptAccessTxRx)), rpt, SLOT(handleRptAccessMode(rptAccessTxRx)));
     connect(this->rpt, &repeaterSetup::setTransmitFrequency,
             [=](const freqt &transmitFreq) { issueCmd(cmdSetFreq, transmitFreq);});
-
     connect(this->rpt, &repeaterSetup::setTransmitMode,
             [=](const mode_info &transmitMode) { issueCmd(cmdSetMode, transmitMode);});
+    connect(this->rpt, &repeaterSetup::selectVFO,
+            [=](const vfo_t &v) { issueCmd(cmdSelVFO, v);});
+    connect(this->rpt, &repeaterSetup::equalizeVFOsAB,
+            [=]() { issueDelayedCommand(cmdVFOEqualAB);});
+    connect(this->rpt, &repeaterSetup::equalizeVFOsMS,
+            [=]() { issueDelayedCommand(cmdVFOEqualMS);});
+    connect(this->rpt, &repeaterSetup::swapVFOs,
+            [=]() { issueDelayedCommand(cmdVFOSwap);});
 
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
     connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
@@ -403,8 +416,6 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(this, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(this, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
-    //connect(this, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
-    //connect(rig, SIGNAL(haveDuplexMode(duplexMode)), this, SLOT(receiveDuplexMode(duplexMode)));
 
     connect(this, SIGNAL(getModInput(bool)), rig, SLOT(getModInput(bool)));
     connect(rig, SIGNAL(haveModInput(rigInput,bool)), this, SLOT(receiveModInput(rigInput, bool)));
@@ -3603,6 +3614,12 @@ void wfmain::doCmd(commandtype cmddata)
             emit setMode(m);
             break;
         }
+        case cmdSelVFO:
+        {
+            vfo_t v = (*std::static_pointer_cast<vfo_t>(data));
+            emit selectVFO(v);
+            break;
+        }
         case cmdSetTxPower:
         {
             unsigned char txpower = (*std::static_pointer_cast<unsigned char>(data));
@@ -3785,6 +3802,15 @@ void wfmain::doCmd(cmds cmd)
             break;
         case cmdGetMode:
             emit getMode();
+            break;
+        case cmdVFOSwap:
+            emit sendVFOSwap();
+            break;
+        case cmdVFOEqualAB:
+            emit sendVFOEqualAB();
+            break;
+        case cmdVFOEqualMS:
+            emit sendVFOEqualMS();
             break;
         case cmdGetDataMode:
             if(rigCaps.hasDataModes)
@@ -4004,6 +4030,7 @@ void wfmain::sendRadioCommandLoop()
             }
         } else if ((!rapidPollCmdQueue.empty()) && rapidPollCmdQueueEnabled)
         {
+            qDebug(logSystem()) << "Running rapid poll command.";
             int nrCmds = (int)rapidPollCmdQueue.size();
             cmds rCmd = rapidPollCmdQueue[(rapidCmdNum++)%nrCmds];
             doCmd(rCmd);
@@ -4078,6 +4105,14 @@ void wfmain::issueCmd(cmds cmd, mode_info m)
     commandtype cmddata;
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<mode_info>(new mode_info(m));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, vfo_t v)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<vfo_t>(new vfo_t(v));
     delayedCmdQue.push_back(cmddata);
 }
 
@@ -4504,6 +4539,11 @@ void wfmain::initPeriodicCommands()
         insertPeriodicRapidCmd(cmdGetPassband);
         insertPeriodicRapidCmd(cmdGetTPBFInner);
         insertPeriodicRapidCmd(cmdGetTPBFOuter);
+
+//        insertPeriodicCommand(cmdGetPassband, 128);
+//        insertPeriodicCommand(cmdGetTPBFInner, 128);
+//        insertPeriodicCommand(cmdGetTPBFOuter, 128);
+
     }
     rapidPollCmdQueueEnabled = true;
 }

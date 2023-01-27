@@ -147,6 +147,10 @@ struct rigCapabilities {
 
     bool hasRXAntenna;
 
+    bool hasSpecifyMainSubCmd = false; // 0x29
+    bool hasVFOMS = false;
+    bool hasVFOAB = true; // 0x07 [00||01]
+
     std::vector <unsigned char> attenuators;
     std::vector <unsigned char> preamps;
     std::vector <unsigned char> antennas;
