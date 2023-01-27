@@ -279,7 +279,7 @@
          <item row="3" column="0">
           <widget class="QPushButton" name="mEqSBtn">
            <property name="text">
-            <string>M=S</string>
+            <string>M=&gt;S</string>
            </property>
           </widget>
          </item>
