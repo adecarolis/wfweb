@@ -4578,6 +4578,10 @@ void wfmain::insertPeriodicCommandUnique(cmds cmd)
 
 void wfmain::removePeriodicRapidCmd(cmds cmd)
 {
+
+    rapidPollCmdQueue.erase(std::remove_if(rapidPollCmdQueue.begin() + 1, rapidPollCmdQueue.end(), [cmd](const commandtype& c) {  return (c.cmd == cmd); }), rapidPollCmdQueue.end());
+
+    /*
     while(true)
     {
         auto it = std::find(this->rapidPollCmdQueue.begin(), this->rapidPollCmdQueue.end(), cmd);
@@ -4588,11 +4592,15 @@ void wfmain::removePeriodicRapidCmd(cmds cmd)
             break;
         }
     }
+    */
 }
 
 void wfmain::removePeriodicCommand(cmds cmd)
 {
-    while(true)
+
+    periodicCmdQueue.erase(std::remove_if(periodicCmdQueue.begin() + 1, periodicCmdQueue.end(), [cmd](const commandtype& c) {  return (c.cmd == cmd); }), periodicCmdQueue.end());
+
+/*    while (true)
     {
         auto it = std::find(this->periodicCmdQueue.begin(), this->periodicCmdQueue.end(), cmd);
         if(it != periodicCmdQueue.end())
@@ -4602,6 +4610,7 @@ void wfmain::removePeriodicCommand(cmds cmd)
             break;
         }
     }
+    */
 }
 
 
