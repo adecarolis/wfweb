@@ -92,6 +92,16 @@ void repeaterSetup::setRig(rigCapabilities inRig)
         // do not have a swap AB command.
         ui->swapABBtn->setDisabled(true);
     }
+    if(rig.hasSpecifyMainSubCmd)
+    {
+        ui->setRptrSubVFOBtn->setEnabled(true);
+        ui->setToneSubVFOBtn->setEnabled(true);
+        ui->setSplitRptrToneChk->setEnabled(true);
+    } else {
+        ui->setRptrSubVFOBtn->setDisabled(true);
+        ui->setToneSubVFOBtn->setDisabled(true);
+        ui->setSplitRptrToneChk->setDisabled(true);
+    }
 }
 
 void repeaterSetup::populateTones()
@@ -362,6 +372,11 @@ void repeaterSetup::handleUpdateCurrentMainFrequency(freqt mainfreq)
                 on_splitMinusBtn_clicked();
             }
         }
+        if(ui->setSplitRptrToneChk->isChecked())
+        {
+            // TODO, not really needed if the op
+            // just sets the tone when needed, as it will do both bands.
+        }
     }
     this->currentMainFrequency = mainfreq;
 }
@@ -428,11 +443,25 @@ void repeaterSetup::on_rptToneCombo_activated(int tindex)
 {
     quint16 tone=0;
     tone = (quint16)ui->rptToneCombo->itemData(tindex).toUInt();
+    rptrTone_t rt;
+    rt.tone = tone;
+    bool updateSub = ui->setSplitRptrToneChk->isEnabled() && ui->setSplitRptrToneChk->isChecked();
     if(ui->toneTone->isChecked())
     {
-        emit setTone(tone);
+        emit setTone(rt);
+        if(updateSub)
+        {
+            rt.useSecondaryVFO = true;
+            emit setTone(rt);
+        }
+
     } else if (ui->toneTSQL->isChecked()) {
-        emit setTSQL(tone);
+        emit setTSQL(rt);
+        if(updateSub)
+        {
+            rt.useSecondaryVFO = true;
+            emit setTone(rt);
+        }
     }
 }
 
@@ -448,38 +477,75 @@ void repeaterSetup::on_rptDTCSCombo_activated(int index)
 void repeaterSetup::on_toneNone_clicked()
 {
     rptAccessTxRx rm;
+    rptrAccessData_t rd;
     rm = ratrNN;
-    emit setRptAccessMode(rm);
+    rd.accessMode = rm;
+    emit setRptAccessMode(rd);
+    bool updateSub = ui->setSplitRptrToneChk->isEnabled() && ui->setSplitRptrToneChk->isChecked();
+
+    if(updateSub)
+    {
+        rd.useSecondaryVFO = true;
+        emit setRptAccessMode(rd);
+    }
 }
 
 void repeaterSetup::on_toneTone_clicked()
 {
     rptAccessTxRx rm;
+    rptrAccessData_t rd;
     rm = ratrTN;
-    emit setRptAccessMode(rm);
-    emit setTone((quint16)ui->rptToneCombo->currentData().toUInt());
+    rd.accessMode = rm;
+    rptrTone_t rt;
+    rt.tone = (quint16)ui->rptToneCombo->currentData().toUInt();
+    emit setRptAccessMode(rd);
+    emit setTone(rt);
+
+    bool updateSub = ui->setSplitRptrToneChk->isEnabled() && ui->setSplitRptrToneChk->isChecked();
+
+    if(updateSub)
+    {
+        rd.useSecondaryVFO = true;
+        rt.useSecondaryVFO = true;
+        emit setRptAccessMode(rd);
+        emit setTone(rt);
+    }
 }
 
 void repeaterSetup::on_toneTSQL_clicked()
 {
     rptAccessTxRx rm;
+    rptrAccessData_t rd;
     rm = ratrTT;
-    emit setRptAccessMode(rm);
-    emit setTSQL((quint16)ui->rptToneCombo->currentData().toUInt());
+    rptrTone_t rt;
+    rt.tone = (quint16)ui->rptToneCombo->currentData().toUInt();
+    rd.accessMode = rm;
+    emit setRptAccessMode(rd);
+    emit setTSQL(rt);
+    bool updateSub = ui->setSplitRptrToneChk->isEnabled() && ui->setSplitRptrToneChk->isChecked();
+
+    if(updateSub)
+    {
+        rd.useSecondaryVFO = true;
+        rt.useSecondaryVFO = true;
+        emit setRptAccessMode(rd);
+        emit setTone(rt);
+    }
 }
 
 void repeaterSetup::on_toneDTCS_clicked()
 {
-    rptAccessTxRx rm;
+    rptrAccessData_t rd;
     quint16 dcode=0;
 
-    rm = ratrDD;
-    emit setRptAccessMode(rm);
+    rd.accessMode = ratrDD;
+    emit setRptAccessMode(rd);
 
     bool tinv = ui->rptDTCSInvertTx->isChecked();
     bool rinv = ui->rptDTCSInvertRx->isChecked();
     dcode = (quint16)ui->rptDTCSCombo->currentData().toUInt();
     emit setDTCS(dcode, tinv, rinv);
+    // TODO: DTCS with subband
 }
 
 void repeaterSetup::on_debugBtn_clicked()
@@ -666,4 +732,14 @@ void repeaterSetup::on_mEqSBtn_clicked()
 void repeaterSetup::on_swapMSBtn_clicked()
 {
     emit swapVFOs();
+}
+
+void repeaterSetup::on_setToneSubVFOBtn_clicked()
+{
+
+}
+
+void repeaterSetup::on_setRptrSubVFOBtn_clicked()
+{
+
 }

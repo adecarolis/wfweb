@@ -23,13 +23,14 @@ public:
 signals:
     void getDuplexMode();
     void setDuplexMode(duplexMode dm);
-    void setTone(quint16 tone);
-    void setTSQL(quint16 tsql);
+    void setTone(rptrTone_t tone);
+    void setTSQL(rptrTone_t tsql);
     void setDTCS(quint16 dcode, bool tinv, bool rinv);
     void getTone();
     void getTSQL();
     void getDTCS();
-    void setRptAccessMode(rptAccessTxRx tmode);
+    void setRptAccessMode(rptrAccessData_t rd);
+
     void getRptAccessMode();
     // Split:
     void getSplitModeEnabled();
@@ -92,6 +93,10 @@ private slots:
     void on_mEqSBtn_clicked();
 
     void on_swapMSBtn_clicked();
+
+    void on_setToneSubVFOBtn_clicked();
+
+    void on_setRptrSubVFOBtn_clicked();
 
 private:
     Ui::repeaterSetup *ui;

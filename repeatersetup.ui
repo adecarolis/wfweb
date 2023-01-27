@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1198</width>
-    <height>217</height>
+    <height>238</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -138,6 +138,13 @@
             <widget class="QCheckBox" name="autoTrackLiveBtn">
              <property name="text">
               <string>Auto Track Live</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="setSplitRptrToneChk">
+             <property name="text">
+              <string>Set Repeater Tone</string>
              </property>
             </widget>
            </item>
@@ -339,6 +346,13 @@
            </attribute>
           </widget>
          </item>
+         <item>
+          <widget class="QPushButton" name="setRptrSubVFOBtn">
+           <property name="text">
+            <string>Set Sub VFO</string>
+           </property>
+          </widget>
+         </item>
         </layout>
        </widget>
       </item>
@@ -393,6 +407,13 @@
             </widget>
            </item>
           </layout>
+         </item>
+         <item>
+          <widget class="QPushButton" name="setToneSubVFOBtn">
+           <property name="text">
+            <string>Set Sub VFO</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>

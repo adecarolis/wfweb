@@ -1019,28 +1019,54 @@ void rigCommander::getTransmitFrequency()
 
 void rigCommander::setTone(quint16 tone)
 {
+    rptrTone_t t;
+    t.tone = tone;
+    setTone(t);
+}
+
+void rigCommander::setTone(rptrTone_t t)
+{
+    quint16 tone = t.tone;
+
     QByteArray fenc = encodeTone(tone);
 
     QByteArray payload;
     payload.setRawData("\x1B\x00", 2);
     payload.append(fenc);
 
-    //qInfo() << __func__ << "TONE encoded payload: ";
-    printHex(payload);
+    if(t.useSecondaryVFO)
+    {
+        qDebug(logRig()) << "Sending TONE to secondary VFO";
+        payload.prepend("\x29\x01");
+        printHex(payload);
+    }
 
     prepDataAndSend(payload);
 }
 
-void rigCommander::setTSQL(quint16 tsql)
+void rigCommander::setTSQL(quint16 t)
 {
+    rptrTone_t tn;
+    tn.tone = t;
+    setTSQL(tn);
+}
+
+void rigCommander::setTSQL(rptrTone_t t)
+{
+    quint16 tsql = t.tone;
+
     QByteArray fenc = encodeTone(tsql);
 
     QByteArray payload;
     payload.setRawData("\x1B\x01", 2);
     payload.append(fenc);
 
-    //qInfo() << __func__ << "TSQL encoded payload: ";
-    printHex(payload);
+    if(t.useSecondaryVFO)
+    {
+        qDebug(logRig()) << "Sending TSQL to secondary VFO";
+        payload.prepend("\x29\x01");
+        printHex(payload);
+    }
 
     prepDataAndSend(payload);
 }
@@ -1149,9 +1175,20 @@ void rigCommander::getRptAccessMode()
 
 void rigCommander::setRptAccessMode(rptAccessTxRx ratr)
 {
+    rptrAccessData_t rd;
+    rd.accessMode = ratr;
+    setRptAccessMode(rd);
+}
+
+void rigCommander::setRptAccessMode(rptrAccessData_t rd)
+{
     QByteArray payload;
     payload.setRawData("\x16\x5D", 2);
-    payload.append((unsigned char)ratr);
+    payload.append((unsigned char)rd.accessMode);
+    if(rd.useSecondaryVFO)
+    {
+        payload.prepend("\x29\x01");
+    }
     prepDataAndSend(payload);
 }
 

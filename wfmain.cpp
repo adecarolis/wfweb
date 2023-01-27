@@ -57,11 +57,13 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<rigCapabilities>();
     qRegisterMetaType<duplexMode>();
     qRegisterMetaType<rptAccessTxRx>();
+    qRegisterMetaType<rptrAccessData_t>();
     qRegisterMetaType<rigInput>();
     qRegisterMetaType<meterKind>();
     qRegisterMetaType<spectrumMode>();
     qRegisterMetaType<freqt>();
     qRegisterMetaType<vfo_t>();
+    qRegisterMetaType<rptrTone_t>();
     qRegisterMetaType<mode_info>();
     qRegisterMetaType<mode_kind>();
     qRegisterMetaType<audioPacket>();
@@ -385,11 +387,21 @@ void wfmain::rigConnections()
     connect(rpt, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(rpt, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(rpt, SIGNAL(getDTCS()), rig, SLOT(getDTCS()));
-    connect(rpt, SIGNAL(setTone(quint16)), rig, SLOT(setTone(quint16)));
-    connect(rpt, SIGNAL(setTSQL(quint16)), rig, SLOT(setTSQL(quint16)));
+
+    connect(this->rpt, &repeaterSetup::setTone,
+            [=](const rptrTone_t &t) { issueCmd(cmdSetTone, t);});
+
+    connect(this->rpt, &repeaterSetup::setTSQL,
+            [=](const rptrTone_t &t) { issueCmd(cmdSetTSQL, t);});
+
     connect(rpt, SIGNAL(setDTCS(quint16,bool,bool)), rig, SLOT(setDTCS(quint16,bool,bool)));
     connect(rpt, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
-    connect(rpt, SIGNAL(setRptAccessMode(rptAccessTxRx)), rig, SLOT(setRptAccessMode(rptAccessTxRx)));
+
+    //connect(rpt, SIGNAL(setRptAccessMode(rptAccessTxRx)), rig, SLOT(setRptAccessMode(rptAccessTxRx)));
+
+    connect(this->rpt, &repeaterSetup::setRptAccessMode,
+            [=](const rptrAccessData_t &rd) { issueCmd(cmdSetRptAccessMode, rd);});
+
     connect(rig, SIGNAL(haveTone(quint16)), rpt, SLOT(handleTone(quint16)));
     connect(rig, SIGNAL(haveTSQL(quint16)), rpt, SLOT(handleTSQL(quint16)));
     connect(rig, SIGNAL(haveDTCS(quint16,bool,bool)), rpt, SLOT(handleDTCS(quint16,bool,bool)));
@@ -3681,6 +3693,18 @@ void wfmain::doCmd(commandtype cmddata)
             emit setTPBFOuter(outerLevel);
             break;
         }
+        case cmdSetTone:
+        {
+            rptrTone_t t = (*std::static_pointer_cast<rptrTone_t>(data));
+            emit setTone(t);
+            break;
+        }
+        case cmdSetTSQL:
+        {
+            rptrAccessData_t rd = (*std::static_pointer_cast<rptrAccessData_t>(data));
+            emit setRepeaterAccessMode(rd);
+            break;
+        }
         case cmdSetPTT:
         {
             bool pttrequest = (*std::static_pointer_cast<bool>(data));
@@ -4108,6 +4132,14 @@ void wfmain::issueCmd(cmds cmd, mode_info m)
     delayedCmdQue.push_back(cmddata);
 }
 
+void wfmain::issueCmd(cmds cmd, freqt f)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<freqt>(new freqt(f));
+    delayedCmdQue.push_back(cmddata);
+}
+
 void wfmain::issueCmd(cmds cmd, vfo_t v)
 {
     commandtype cmddata;
@@ -4116,11 +4148,19 @@ void wfmain::issueCmd(cmds cmd, vfo_t v)
     delayedCmdQue.push_back(cmddata);
 }
 
-void wfmain::issueCmd(cmds cmd, freqt f)
+void wfmain::issueCmd(cmds cmd, rptrTone_t v)
 {
     commandtype cmddata;
     cmddata.cmd = cmd;
-    cmddata.data = std::shared_ptr<freqt>(new freqt(f));
+    cmddata.data = std::shared_ptr<rptrTone_t>(new rptrTone_t(v));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, rptrAccessData_t rd)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<rptrAccessData_t>(new rptrAccessData_t(rd));
     delayedCmdQue.push_back(cmddata);
 }
 
