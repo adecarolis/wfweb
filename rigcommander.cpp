@@ -772,8 +772,17 @@ void rigCommander::setMode(mode_info m)
         m.filter = '\x01';
     }
 
-    payload.setRawData("\x06", 1);
+    if(m.VFO==inactiveVFO)
+    {
+        payload.setRawData("\x26\x01", 2);
+    } else {
+        payload.setRawData("\x06", 1);
+    }
+
     payload.append(m.reg);
+    if(m.VFO==inactiveVFO)
+        payload.append("\x00", 1);
+
     payload.append(m.filter);
 
     prepDataAndSend(payload);
@@ -843,6 +852,19 @@ void rigCommander::getMode()
 void rigCommander::getDataMode()
 {
     QByteArray payload("\x1A\x06");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getSplit()
+{
+    QByteArray payload("\x0F");
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setSplit(bool splitEnabled)
+{
+    QByteArray payload("\x0F");
+    payload.append((unsigned char)splitEnabled);
     prepDataAndSend(payload);
 }
 
