@@ -4981,6 +4981,9 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
             qint16 newFreq = pbFreq + 128;
             issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
             issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
+            issueDelayedCommandUnique(cmdGetTPBFInner);
+            issueDelayedCommandUnique(cmdGetTPBFOuter);
+
         }
     }
 }
