@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1082</width>
+    <width>1063</width>
     <height>660</height>
    </rect>
   </property>
@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -1808,7 +1808,6 @@
              <font>
               <family>DejaVu Sans Mono</family>
               <pointsize>14</pointsize>
-              <weight>75</weight>
               <bold>true</bold>
              </font>
             </property>
@@ -2233,7 +2232,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>1</number>
+             <number>0</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -2775,60 +2774,25 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLabel" name="label_15">
+                      <widget class="QLabel" name="label_51">
                        <property name="text">
-                        <string>Audio Output </string>
+                        <string>Duplex</string>
                        </property>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QComboBox" name="audioOutputCombo">
-                       <property name="maximumSize">
-                        <size>
-                         <width>120</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="accessibleName">
-                        <string>Audio Output Selector</string>
-                       </property>
+                      <widget class="QComboBox" name="audioDuplexCombo">
+                       <item>
+                        <property name="text">
+                         <string>Full Duplex</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>Half Duplex</string>
+                        </property>
+                       </item>
                       </widget>
-                     </item>
-                     <item>
-                      <widget class="QLabel" name="label_18">
-                       <property name="text">
-                        <string>Audio Input</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QComboBox" name="audioInputCombo">
-                       <property name="maximumSize">
-                        <size>
-                         <width>120</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="accessibleName">
-                        <string>Audio Input Selector</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <spacer name="horizontalSpacer_8">
-                       <property name="orientation">
-                        <enum>Qt::Horizontal</enum>
-                       </property>
-                       <property name="sizeType">
-                        <enum>QSizePolicy::Fixed</enum>
-                       </property>
-                       <property name="sizeHint" stdset="0">
-                        <size>
-                         <width>15</width>
-                         <height>20</height>
-                        </size>
-                       </property>
-                      </spacer>
                      </item>
                      <item>
                       <widget class="QLabel" name="label_40">
@@ -2858,6 +2822,63 @@
                      </item>
                      <item>
                       <spacer name="horizontalSpacer_31">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_47">
+                     <item>
+                      <widget class="QLabel" name="label_15">
+                       <property name="text">
+                        <string>Audio Output </string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QComboBox" name="audioOutputCombo">
+                       <property name="maximumSize">
+                        <size>
+                         <width>200</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
+                       <property name="accessibleName">
+                        <string>Audio Output Selector</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="label_18">
+                       <property name="text">
+                        <string>Audio Input</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QComboBox" name="audioInputCombo">
+                       <property name="maximumSize">
+                        <size>
+                         <width>200</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
+                       <property name="accessibleName">
+                        <string>Audio Input Selector</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <spacer name="horizontalSpacer_37">
                        <property name="orientation">
                         <enum>Qt::Horizontal</enum>
                        </property>
@@ -3409,8 +3430,8 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>858</width>
-                      <height>287</height>
+                      <width>579</width>
+                      <height>224</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -5359,7 +5380,6 @@
        <widget class="QPushButton" name="exitBtn">
         <property name="font">
          <font>
-          <weight>50</weight>
           <bold>false</bold>
          </font>
         </property>
@@ -5378,8 +5398,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1082</width>
-     <height>21</height>
+     <width>1063</width>
+     <height>22</height>
     </rect>
    </property>
   </widget>
@@ -5407,7 +5427,7 @@
  <connections/>
  <buttongroups>
   <buttongroup name="pollingButtonGroup"/>
-  <buttongroup name="underlayButtonGroup"/>
   <buttongroup name="buttonGroup"/>
+  <buttongroup name="underlayButtonGroup"/>
  </buttongroups>
 </ui>
