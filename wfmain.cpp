@@ -5485,7 +5485,7 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
             currentModeInfo.filter = filter;
             currentModeInfo.reg = mode;
             rpt->handleUpdateCurrentMainMode(currentModeInfo);
-
+            cw->handleCurrentModeUpdate(currentMode);
             if (!found)
             {
                 qWarning(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
