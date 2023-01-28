@@ -996,6 +996,14 @@ void rigCommander::getCwPitch()
     prepDataAndSend(payload);
 }
 
+void rigCommander::setCwPitch(unsigned char pitch)
+{
+    QByteArray payload;
+    payload.setRawData("\x14\x09", 2);
+    payload.append(bcdEncodeInt(pitch));
+    prepDataAndSend(payload);
+}
+
 void rigCommander::getPskTone()
 {
     QByteArray payload;
@@ -1003,10 +1011,26 @@ void rigCommander::getPskTone()
     prepDataAndSend(payload);
 }
 
+void rigCommander::setPskTone(unsigned char tone)
+{
+    QByteArray payload;
+    payload.setRawData("\x1a\x05\x00\x44", 4);
+    payload.append(bcdEncodeInt(tone));
+    prepDataAndSend(payload);
+}
+
 void rigCommander::getRttyMark()
 {
     QByteArray payload;
     payload.setRawData("\x1a\x05\x00\x41", 4);
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setRttyMark(unsigned char mark)
+{
+    QByteArray payload;
+    payload.setRawData("\x1a\x05\x00\x41", 4);
+    payload.append(bcdEncodeInt(mark));
     prepDataAndSend(payload);
 }
 
@@ -1548,7 +1572,7 @@ void rigCommander::parseCommand()
             this->parseMode();
             break;
         case '\x0C':
-            qDebug(logRig) << "Have 0x0C reply";
+            //qDebug(logRig) << "Have 0x0C reply";
             emit haveRptOffsetFrequency(parseFrequencyRptOffset(payloadIn));
             break;
         case '\x0F':
@@ -4438,20 +4462,23 @@ void rigCommander::parseFrequency()
 
 freqt rigCommander::parseFrequencyRptOffset(QByteArray data)
 {
+    // VHF 600 KHz:
     // DATA:  0c 00 60 00 fd
     // INDEX: 00 01 02 03 04
-    //           00.600.0 MHz (600.0 KHz)
+
+    // UHF 5 MHz:
+    // DATA:  0c 00 00 05 fd
+    // INDEX: 00 01 02 03 04
 
     freqt f;
     f.Hz = 0;
 
-    f.Hz += (data[1] & 0x0f)        *    1E6; // 1 MHz
-    f.Hz += ((data[1] & 0xf0) >> 4) *    1E6 * 10; //   10 MHz
+    f.Hz += (data[3] & 0x0f)        *    1E6; // 1 MHz
+    f.Hz += ((data[3] & 0xf0) >> 4) *    1E6 * 10; //   10 MHz
     f.Hz += (data[2] & 0x0f) *          10E3; // 10 KHz
     f.Hz += ((data[2] & 0xf0) >> 4) *  100E3; // 100 KHz
-
-    f.Hz += (data[3] & 0x0f) *           100; // 100 Hz
-    f.Hz += ((data[3] & 0xf0) >> 4) *   1000; // 1 KHz
+    f.Hz += (data[1] & 0x0f) *           100; // 100 Hz
+    f.Hz += ((data[1] & 0xf0) >> 4) *   1000; // 1 KHz
 
     return f;
 }

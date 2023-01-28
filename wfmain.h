@@ -184,6 +184,7 @@ signals:
     void stopCW();
     void getKeySpeed();
     void setKeySpeed(unsigned char wpm);
+    void setCwPitch(unsigned char pitch);
     void setCWBreakMode(unsigned char breakMode);
     void getCWBreakMode();
 
@@ -458,6 +459,8 @@ private slots:
     void on_usernameTxt_textChanged(QString text);
 
     void on_passwordTxt_textChanged(QString text);
+
+    void on_audioDuplexCombo_currentIndexChanged(int value);
 
     void on_audioOutputCombo_currentIndexChanged(int value);
 
@@ -1109,6 +1112,9 @@ private:
     double TPBFInner = 0.0;
     double TPBFOuter = 0.0;
     double passbandCenterFrequency = 0.0;
+    double pbtDefault = 0.0;
+    quint16 cwPitch = 600;
+
     SERVERCONFIG serverConfig;
     void serverAddUserLine(const QString& user, const QString& pass, const int& type);
 

@@ -1,9 +1,119 @@
+commit fe36ff1ac73dee5b14df534b50454587c95fe4bd
+Merge: 13f06e1 4950127
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Thu Jan 26 07:33:00 2023 +0100
+
+    Merge branch 'pbt-fixes'
+
+commit 49501273d02e02df7b2b1ca58be7a576daa1a19f
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Jan 25 21:37:12 2023 +0000
+
+    Fix for shuttle resource files
+
+commit ea46d6c625e02c4869bd5fcd42c191f111a590f7
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Jan 25 21:22:06 2023 +0000
+
+    Add math.h for cwsender
+
+commit 13f06e1dd7596a83f1686be7e632f62121574036
+Merge: 6df7099 ded6bd1
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Wed Jan 25 22:17:23 2023 +0100
+
+    Merge branch 'pbt-fixes'
+
+commit ded6bd1adeba5790b1457fa1afcae651f322f045
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Jan 25 18:01:24 2023 +0000
+
+    Add CW Speed spinbox to CW sender
+
+commit 4b40e20d9825e66c7b7cd77371d3f1e8801f06ae
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Jan 25 15:39:01 2023 +0000
+
+    Remove some debugging
+
+commit 6df7099cb3ac8d48fdbff501cc0c1a7e2b236341
+Merge: bc0f9f0 5483732
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Wed Jan 25 13:17:03 2023 +0100
+
+    Merge branch 'pbt-fixes'
+
+commit 54837327663bbb1b0aff5bb8cde45e1ebc4d63ee
+Merge: 8b8668a 7f97625
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Jan 25 11:42:13 2023 +0000
+
+    Merge branch 'master' into pbt-fixes
+
+commit 8b8668a6deacb528cf9e0bf7311465966abc1614
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Jan 25 11:41:50 2023 +0000
+
+    Finally PBT works in all modes/filter widths/cw pitch settings.
+
+commit bc0f9f01c7333285214d3b847517625de2a63899
+Merge: 85e38d9 be0aee6
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Wed Jan 25 09:16:36 2023 +0100
+
+    Merge branch 'morecontrols'
+
+commit be0aee6183286a73604f5eba7c4b2d57b530d383
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Wed Jan 25 00:15:20 2023 -0800
+
+    Split mode is working, can also live-sync frequency and mode.
+
+commit 85e38d940f2874bbcbdcbbb619203732b0f1c146
+Merge: 7f97625 a1d3f93
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Wed Jan 25 07:47:41 2023 +0100
+
+    Merge branch 'pbt-fixes'
+
+commit 4fea16c356189b06caad2adb2e5399dbbcc01945
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 24 16:35:46 2023 -0800
+
+    Refined split interface controls. Offset is KHz, automatic tracking mode
+    added.
+
+commit ae64677c4213c0e0f2789a4388f5f2120c1574ff
+Merge: 0a7f6b0 7f97625
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 24 15:17:17 2023 -0800
+
+    Merge branch 'master' into morecontrols
+
+commit a1d3f93dad7141a54a4ffd5585eaad0ee7774591
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Jan 24 20:12:23 2023 +0000
+
+    PBT should now display correctly in ALL modes!
+
+commit 7f97625e38eec48affcb4abe174802636a7b07ad
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Tue Jan 24 19:49:43 2023 +0100
+
+    modified CHANGELOG
+
 commit d53c9b028e1e962b80334bbeaac794d4572d9939
 Author: Elliott Liggett <kilocharlie8@gmail.com>
 Date:   Tue Jan 24 10:37:26 2023 -0800
 
     Added a rapidPollCmdQueue for things we need to poll rapidly on not-s-
     meter-intervals. Moved command types to wfviewtypes.h.
+
+commit 0a7f6b0b6547087841bd0f5da1f962250cdda49c
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 24 09:21:09 2023 -0800
+
+    Started work on the UI for a split control interface.
 
 commit 2df82d4f922fcebd256816d41839977840d08e5b
 Author: Roeland Jansen <roeland.jansen69@gmail.com>

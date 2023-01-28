@@ -35,6 +35,7 @@ struct udpPreferences {
 	QString password;
 	QString clientName;
 	quint8 waterfallFormat;
+	bool halfDuplex;
 };
 
 struct networkAudioLevels {

@@ -286,7 +286,7 @@ void repeaterSetup::receiveDuplexMode(duplexMode dm)
     switch(dm)
     {
         case dmSplitOff:
-            //ui->splitEnableChk->setChecked(false);
+            ui->splitOffBtn->setChecked(true);
             ui->autoTrackLiveBtn->setChecked(false);
             break;
         case dmSplitOn:

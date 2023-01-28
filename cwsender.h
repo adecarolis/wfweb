@@ -6,8 +6,10 @@
 #include <QFont>
 #include <QInputDialog>
 #include <QMessageBox>
+#include <math.h>
 #include "wfviewtypes.h"
 #include "logcategories.h"
+
 
 
 namespace Ui {
@@ -27,11 +29,13 @@ signals:
     void sendCW(QString cwMessage);
     void stopCW();
     void setKeySpeed(unsigned char wpm);
+    void setPitch(unsigned char pitch);
     void setBreakInMode(unsigned char b);
     void getCWSettings();
 
 public slots:
     void handleKeySpeed(unsigned char wpm);
+    void handlePitch(unsigned char pitch);
     void handleBreakInMode(unsigned char b);
     void handleCurrentModeUpdate(mode_kind mode);
 
@@ -46,6 +50,8 @@ private slots:
     void on_breakinCombo_activated(int index);
 
     void on_wpmSpin_valueChanged(int arg1);
+
+    void on_pitchSpin_valueChanged(int arg1);
 
     void on_macro1btn_clicked();
 
