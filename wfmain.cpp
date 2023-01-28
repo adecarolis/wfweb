@@ -4595,7 +4595,11 @@ void wfmain::initPeriodicCommands()
     if (rigCaps.hasRXAntenna) {
         insertSlowPeriodicCommand(cmdGetAntenna, 128);
     }
-    insertSlowPeriodicCommand(cmdGetDuplexMode, 128);
+    insertSlowPeriodicCommand(cmdGetDuplexMode, 128); // split and repeater
+    if(rigCaps.hasRepeaterModes)
+    {
+        insertSlowPeriodicCommand(cmdGetRptDuplexOffset, 128);
+    }
 
     rapidPollCmdQueueEnabled = false;
     rapidPollCmdQueue.clear();
