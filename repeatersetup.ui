@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1198</width>
-    <height>238</height>
+    <width>1230</width>
+    <height>267</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -116,6 +116,27 @@
            </attribute>
           </widget>
          </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_9">
+           <item>
+            <widget class="QLabel" name="label_5">
+             <property name="text">
+              <string>Offset (MHz):</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="rptrOffsetEdit"/>
+           </item>
+           <item>
+            <widget class="QPushButton" name="rptrOffsetSetBtn">
+             <property name="text">
+              <string>Set</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
         </layout>
        </widget>
       </item>
@@ -128,23 +149,36 @@
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_8">
            <item>
-            <widget class="QCheckBox" name="splitEnableChk">
+            <widget class="QRadioButton" name="splitEnableChk">
              <property name="text">
-              <string>Split Enable</string>
+              <string>Split On</string>
              </property>
+             <attribute name="buttonGroup">
+              <string notr="true">rptDuplexBtns</string>
+             </attribute>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="splitOffBtn">
+             <property name="text">
+              <string>Split Off</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">rptDuplexBtns</string>
+             </attribute>
             </widget>
            </item>
            <item>
             <widget class="QCheckBox" name="autoTrackLiveBtn">
              <property name="text">
-              <string>Auto Track Live</string>
+              <string>AutoTrack</string>
              </property>
             </widget>
            </item>
            <item>
             <widget class="QCheckBox" name="setSplitRptrToneChk">
              <property name="text">
-              <string>Set Repeater Tone</string>
+              <string>Set Rpt Tone</string>
              </property>
             </widget>
            </item>
@@ -186,13 +220,6 @@
             <widget class="QPushButton" name="splitMinusBtn">
              <property name="text">
               <string>Split-</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="rptOffsetBtn">
-             <property name="text">
-              <string>RPT</string>
              </property>
             </widget>
            </item>

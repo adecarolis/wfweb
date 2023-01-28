@@ -1192,6 +1192,27 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
     prepDataAndSend(payload);
 }
 
+void rigCommander::setRptDuplexOffset(freqt f)
+{
+    QByteArray payload;
+    payload.setRawData("\x0D", 1);
+    // get f, chop to 10 MHz
+    QByteArray freqPayload = makeFreqPayload(f);
+    payload.append(freqPayload.mid(1, 3));
+    //qInfo(logRig()) << "Here is potential repeater offset setting, not sending to radio:";
+    printHexNow(payload, logRig());
+    QString g = getHex(payload);
+    //qInfo(logRig()).noquote().nospace() << g;
+    prepDataAndSend(payload);
+}
+
+void rigCommander::getRptDuplexOffset()
+{
+    QByteArray payload;
+    payload.setRawData("\x0C", 1);
+    prepDataAndSend(payload);
+}
+
 void rigCommander::setIPP(bool enabled)
 {
     QByteArray payload;
@@ -1525,6 +1546,10 @@ void rigCommander::parseCommand()
         case '\x06':
             //qInfo(logRig()) << "Have mode data";
             this->parseMode();
+            break;
+        case '\x0C':
+            qDebug(logRig) << "Have 0x0C reply";
+            emit haveRptOffsetFrequency(parseFrequencyRptOffset(payloadIn));
             break;
         case '\x0F':
             emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
@@ -3467,6 +3492,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasDV = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasRepeaterModes = true;
             rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x10');
             rigCaps.preamps.push_back('\x01');
@@ -3494,6 +3520,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasDV = false;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasRepeaterModes = true;
             rigCaps.hasATU = false;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x10' , '\x20', '\x30'});
             rigCaps.preamps.push_back('\x01');
@@ -3623,6 +3650,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasRepeaterModes = true;
             rigCaps.hasTBPF = true;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x10' , '\x20'});
             rigCaps.preamps.push_back('\x01');
@@ -3706,6 +3734,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasRepeaterModes = true;
             rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x12');
             rigCaps.preamps.push_back('\x01');
@@ -3930,6 +3959,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasIFShift = true;
             rigCaps.hasCTCSS = true;
             rigCaps.hasDTCS = true;
+            rigCaps.hasRepeaterModes = true;
             rigCaps.hasAntennaSel = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
@@ -4050,6 +4080,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.hasDV = true;
             rigCaps.hasTBPF = true;
+            rigCaps.hasRepeaterModes = true;
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x20' });
@@ -4403,6 +4434,26 @@ void rigCommander::parseFrequency()
     }
     
     emit haveFrequency(freq);
+}
+
+freqt rigCommander::parseFrequencyRptOffset(QByteArray data)
+{
+    // DATA:  0c 00 60 00 fd
+    // INDEX: 00 01 02 03 04
+    //           00.600.0 MHz (600.0 KHz)
+
+    freqt f;
+    f.Hz = 0;
+
+    f.Hz += (data[1] & 0x0f)        *    1E6; // 1 MHz
+    f.Hz += ((data[1] & 0xf0) >> 4) *    1E6 * 10; //   10 MHz
+    f.Hz += (data[2] & 0x0f) *          10E3; // 10 KHz
+    f.Hz += ((data[2] & 0xf0) >> 4) *  100E3; // 100 KHz
+
+    f.Hz += (data[3] & 0x0f) *           100; // 100 Hz
+    f.Hz += ((data[3] & 0xf0) >> 4) *   1000; // 1 KHz
+
+    return f;
 }
 
 freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)

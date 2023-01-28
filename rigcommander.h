@@ -146,6 +146,8 @@ public slots:
     void setRptAccessMode(rptAccessTxRx ratr);
     void setRptAccessMode(rptrAccessData_t ratr);
     void getRptAccessMode();
+    void setRptDuplexOffset(freqt f);
+    void getRptDuplexOffset();
 
     // Get Levels:
     void getLevels(); // all supported levels
@@ -309,6 +311,7 @@ signals:
     void haveTone(quint16 tone);
     void haveTSQL(quint16 tsql);
     void haveDTCS(quint16 dcscode, bool tinv, bool rinv);
+    void haveRptOffsetFrequency(freqt f);
 
     // Levels:
     void haveRfGain(unsigned char level);
@@ -378,6 +381,8 @@ private:
     QByteArray bcdEncodeInt(unsigned int);
     void parseFrequency();
     freqt parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
+    freqt parseFrequencyRptOffset(QByteArray data);
+    QByteArray makeFreqPayloadRptOffset(freqt freq);
     QByteArray makeFreqPayload(double frequency);
     QByteArray makeFreqPayload(freqt freq);
     QByteArray encodeTone(quint16 tone, bool tinv, bool rinv);

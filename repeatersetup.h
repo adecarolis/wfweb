@@ -30,8 +30,9 @@ signals:
     void getTSQL();
     void getDTCS();
     void setRptAccessMode(rptrAccessData_t rd);
-
     void getRptAccessMode();
+    void setRptDuplexOffset(freqt f);
+    void getRptDuplexOffset();
     // Split:
     void getSplitModeEnabled();
     void getTransmitFrequency();
@@ -56,6 +57,7 @@ public slots:
     void handleUpdateCurrentMainFrequency(freqt mainfreq);
     void handleUpdateCurrentMainMode(mode_info m);
     void handleTransmitStatus(bool amTransmitting);
+    void handleRptOffsetFrequency(freqt f);
 
 private slots:
     void showEvent(QShowEvent *event);
@@ -71,8 +73,6 @@ private slots:
     void on_toneTone_clicked();
     void on_toneTSQL_clicked();
     void on_toneDTCS_clicked();    
-    void on_splitOffsetSetBtn_clicked();
-    void on_splitEnableChk_clicked(bool enabled);
     void on_splitPlusButton_clicked();
     void on_splitMinusBtn_clicked();
 
@@ -97,6 +97,12 @@ private slots:
     void on_setToneSubVFOBtn_clicked();
 
     void on_setRptrSubVFOBtn_clicked();
+
+    void on_rptrOffsetSetBtn_clicked();
+
+    void on_splitOffBtn_clicked();
+
+    void on_splitEnableChk_clicked();
 
 private:
     Ui::repeaterSetup *ui;

@@ -153,7 +153,7 @@ enum cmds {
     cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
     cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
     cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
-    cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdSetTone, cmdSetTSQL, cmdSetRptAccessMode,
+    cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdSetTone, cmdSetTSQL, cmdSetRptAccessMode, cmdSetRptDuplexOffset, cmdGetRptDuplexOffset,
     cmdSelVFO, cmdVFOSwap, cmdVFOEqualAB, cmdVFOEqualMS,
     cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
     cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW,

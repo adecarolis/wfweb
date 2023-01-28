@@ -381,9 +381,12 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(havePassband(quint16)), this, SLOT(receivePassband(quint16)));
     connect(rig, SIGNAL(haveCwPitch(unsigned char)), this, SLOT(receiveCwPitch(unsigned char)));
 
+    // Repeater, duplex, and split:
     connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
     connect(rpt, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
     connect(rig, SIGNAL(haveDuplexMode(duplexMode)), rpt, SLOT(receiveDuplexMode(duplexMode)));
+    connect(this, SIGNAL(getRptDuplexOffset()), rig, SLOT(getRptDuplexOffset()));
+    connect(rig, SIGNAL(haveRptOffsetFrequency(freqt)), rpt, SLOT(handleRptOffsetFrequency(freqt)));
     connect(rpt, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(rpt, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(rpt, SIGNAL(getDTCS()), rig, SLOT(getDTCS()));
@@ -420,8 +423,14 @@ void wfmain::rigConnections()
             [=]() { issueDelayedCommand(cmdVFOEqualMS);});
     connect(this->rpt, &repeaterSetup::swapVFOs,
             [=]() { issueDelayedCommand(cmdVFOSwap);});
+    connect(this->rpt, &repeaterSetup::setRptDuplexOffset,
+            [=](const freqt &fOffset) { issueCmd(cmdSetRptDuplexOffset, fOffset);});
+    connect(this->rpt, &repeaterSetup::getRptDuplexOffset,
+            [=]() { issueDelayedCommand(cmdGetRptDuplexOffset);});
 
+    connect(this, SIGNAL(setRptDuplexOffset(freqt)), rig, SLOT(setRptDuplexOffset(freqt)));
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
+
     connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
     connect(this, SIGNAL(setPassband(quint16)), rig, SLOT(setPassband(quint16)));
     connect(this, SIGNAL(getCwPitch()), rig, SLOT(getCwPitch()));
@@ -3713,6 +3722,12 @@ void wfmain::doCmd(commandtype cmddata)
             emit setRepeaterAccessMode(rd);
             break;
         }
+        case cmdSetRptDuplexOffset:
+        {
+            freqt f = (*std::static_pointer_cast<freqt>(data));
+            emit setRptDuplexOffset(f);
+            break;
+        }
         case cmdSetPTT:
         {
             bool pttrequest = (*std::static_pointer_cast<bool>(data));
@@ -3876,6 +3891,9 @@ void wfmain::doCmd(cmds cmd)
             break;
         case cmdGetDuplexMode:
             emit getDuplexMode();
+            break;
+        case cmdGetRptDuplexOffset:
+            emit getRptDuplexOffset();
             break;
         case cmdGetPassband:
             emit getPassband();
@@ -4062,7 +4080,6 @@ void wfmain::sendRadioCommandLoop()
             }
         } else if ((!rapidPollCmdQueue.empty()) && rapidPollCmdQueueEnabled)
         {
-            qDebug(logSystem()) << "Running rapid poll command.";
             int nrCmds = (int)rapidPollCmdQueue.size();
             cmds rCmd = rapidPollCmdQueue[(rapidCmdNum++)%nrCmds];
             doCmd(rCmd);
@@ -6894,7 +6911,15 @@ void wfmain::on_serialDeviceListCombo_textActivated(const QString &arg1)
 
 void wfmain::on_rptSetupBtn_clicked()
 {
+    if(rpt->isMinimized())
+    {
+        rpt->raise();
+        rpt->activateWindow();
+        return;
+    }
     rpt->show();
+    rpt->raise();
+    rpt->activateWindow();
 }
 
 void wfmain::on_attSelCombo_activated(int index)
@@ -7666,7 +7691,8 @@ void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    cw->show();
+    qDebug(logSystem()) << "Query for repeater duplex offset 0x0C headed out";
+    issueDelayedCommand(cmdGetRptDuplexOffset);
 }
 
 // ----------   color helper functions:   ---------- //

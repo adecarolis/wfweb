@@ -134,6 +134,7 @@ struct rigCapabilities {
 
     bool hasCTCSS;
     bool hasDTCS;
+    bool hasRepeaterModes = false;
 
     bool hasTransmit;
     bool hasPTTCommand;

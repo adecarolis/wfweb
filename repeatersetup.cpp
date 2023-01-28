@@ -16,11 +16,9 @@ repeaterSetup::repeaterSetup(QWidget *parent) :
 #ifdef QT_DEBUG
     ui->debugBtn->setVisible(true);
     ui->rptReadRigBtn->setVisible(true);
-    ui->rptOffsetBtn->setVisible(true);
 #else
     ui->debugBtn->setVisible(false);
     ui->rptReadRigBtn->setVisible(false);
-    ui->rptOffsetBtn->setVisible(false);
 #endif
 
 }
@@ -102,6 +100,14 @@ void repeaterSetup::setRig(rigCapabilities inRig)
         ui->setToneSubVFOBtn->setDisabled(true);
         ui->setSplitRptrToneChk->setDisabled(true);
     }
+    ui->rptAutoBtn->setEnabled(rig.hasRepeaterModes);
+    ui->rptDupMinusBtn->setEnabled(rig.hasRepeaterModes);
+    ui->rptDupPlusBtn->setEnabled(rig.hasRepeaterModes);
+    ui->rptSimplexBtn->setEnabled(rig.hasRepeaterModes);
+    ui->rptrOffsetEdit->setEnabled(rig.hasRepeaterModes);
+    ui->rptrOffsetSetBtn->setEnabled(rig.hasRepeaterModes);
+    ui->setToneSubVFOBtn->setEnabled(rig.hasSpecifyMainSubCmd);
+    ui->setRptrSubVFOBtn->setEnabled(rig.hasSpecifyMainSubCmd);
 }
 
 void repeaterSetup::populateTones()
@@ -280,7 +286,7 @@ void repeaterSetup::receiveDuplexMode(duplexMode dm)
     switch(dm)
     {
         case dmSplitOff:
-            ui->splitEnableChk->setChecked(false);
+            //ui->splitEnableChk->setChecked(false);
             ui->autoTrackLiveBtn->setChecked(false);
             break;
         case dmSplitOn:
@@ -291,17 +297,17 @@ void repeaterSetup::receiveDuplexMode(duplexMode dm)
             break;
         case dmSimplex:
             ui->rptSimplexBtn->setChecked(true);
-            ui->splitEnableChk->setChecked(false);
+            //ui->splitEnableChk->setChecked(false);
             ui->autoTrackLiveBtn->setChecked(false);
             break;
         case dmDupPlus:
             ui->rptDupPlusBtn->setChecked(true);
-            ui->splitEnableChk->setChecked(false);
+            //ui->splitEnableChk->setChecked(false);
             ui->autoTrackLiveBtn->setChecked(false);
             break;
         case dmDupMinus:
             ui->rptDupMinusBtn->setChecked(true);
-            ui->splitEnableChk->setChecked(false);
+            //ui->splitEnableChk->setChecked(false);
             ui->autoTrackLiveBtn->setChecked(false);
             break;
         default:
@@ -395,6 +401,12 @@ void repeaterSetup::handleUpdateCurrentMainMode(mode_info m)
     }
 }
 
+void repeaterSetup::handleRptOffsetFrequency(freqt f)
+{
+    QString offsetstr = QString::number(f.Hz / double(1E6), 'f', 4);
+    ui->rptrOffsetEdit->setText(offsetstr);
+}
+
 void repeaterSetup::handleTransmitStatus(bool amTransmitting)
 {
     this->amTransmitting = amTransmitting;
@@ -402,15 +414,38 @@ void repeaterSetup::handleTransmitStatus(bool amTransmitting)
 
 void repeaterSetup::showEvent(QShowEvent *event)
 {
+    emit getDuplexMode();
     emit getSplitModeEnabled();
+    if(rig.hasRepeaterModes)
+        emit getRptDuplexOffset();
+
     (void)event;
+}
+
+void repeaterSetup::on_splitEnableChk_clicked()
+{
+    emit setDuplexMode(dmSplitOn);
+
+    if(ui->autoTrackLiveBtn->isChecked())
+    {
+        ui->autoTrackLiveBtn->setChecked(false);
+    }
+}
+
+void repeaterSetup::on_splitOffBtn_clicked()
+{
+    emit setDuplexMode(dmSplitOff);
 }
 
 void repeaterSetup::on_rptSimplexBtn_clicked()
 {
     // Simplex
-    emit setDuplexMode(dmDupAutoOff);
-    emit setDuplexMode(dmSimplex);
+    emit setDuplexMode(dmSplitOff);
+    if(rig.hasRepeaterModes)
+    {
+        emit setDuplexMode(dmDupAutoOff);
+        emit setDuplexMode(dmSimplex);
+    }
 }
 
 void repeaterSetup::on_rptDupPlusBtn_clicked()
@@ -557,27 +592,13 @@ void repeaterSetup::on_debugBtn_clicked()
     emit getRptAccessMode();
 }
 
-void repeaterSetup::on_splitOffsetSetBtn_clicked()
-{
-    freqt txFreq;
-    bool ok = true;
-    txFreq.Hz = ui->splitTransmitFreqEdit->text().toDouble(&ok) * 1E6;
-    emit setTransmitFrequency(txFreq);
-}
-
-void repeaterSetup::on_splitEnableChk_clicked(bool enabled)
-{
-    if(enabled)
-    {
-        emit setDuplexMode(dmSplitOn);
-    } else {
-        emit setDuplexMode(dmSplitOff);
-    }
-    if(ui->autoTrackLiveBtn->isChecked())
-    {
-        ui->autoTrackLiveBtn->setChecked(false);
-    }
-}
+//void repeaterSetup::on_splitOffsetSetBtn_clicked()
+//{
+//    freqt txFreq;
+//    bool ok = true;
+//    txFreq.Hz = ui->splitTransmitFreqEdit->text().toDouble(&ok) * 1E6;
+//    emit setTransmitFrequency(txFreq);
+//}
 
 quint64 repeaterSetup::getFreqHzFromKHzString(QString khz)
 {
@@ -623,10 +644,16 @@ quint64 repeaterSetup::getFreqHzFromMHzString(QString MHz)
         // We want the right 4xx 3 characters.
         QString KHz = MHz.right(MHz.length() - decimalPtIndex - 1);
         MHz.chop(MHz.length() - decimalPtIndex);
-
+        if(KHz.length() != 6)
+        {
+            QString zeros = QString("000000");
+            zeros.chop(KHz.length());
+            KHz.append(zeros);
+        }
+        //qInfo() << "KHz string: " << KHz;
         fhz = MHz.toUInt(&ok) * 1E6; if(!ok) goto handleError;
-        fhz += KHz.toUInt(&ok) * 1E3; if(!ok) goto handleError;
-
+        fhz += KHz.toUInt(&ok) * 1; if(!ok) goto handleError;
+        //qInfo() << "Fhz: " << fhz;
     } else {
         // Frequency was already MHz (unlikely but what can we do?)
         fhz = MHz.toUInt(&ok) * 1E6; if(!ok) goto handleError;
@@ -736,10 +763,40 @@ void repeaterSetup::on_swapMSBtn_clicked()
 
 void repeaterSetup::on_setToneSubVFOBtn_clicked()
 {
-
+    // Perhaps not needed
+    // Set the secondary VFO to the selected tone
+    // TODO: DTCS
+    rptrTone_t rt;
+    rt.tone = (quint16)ui->rptToneCombo->currentData().toUInt();
+    rt.useSecondaryVFO = true;
+    emit setTone(rt);
 }
 
 void repeaterSetup::on_setRptrSubVFOBtn_clicked()
 {
+    // Perhaps not needed
+    // Set the secondary VFO to the selected repeater mode
+    rptrAccessData_t rd;
+    rd.useSecondaryVFO = true;
 
+    if(ui->toneTone->isChecked())
+        rd.accessMode=ratrTN;
+    if(ui->toneNone->isChecked())
+        rd.accessMode=ratrNN;
+    if(ui->toneTSQL->isChecked())
+        rd.accessMode=ratrTT;
+    if(ui->toneDTCS->isChecked())
+        rd.accessMode=ratrDD;
+
+    emit setRptAccessMode(rd);
+}
+
+void repeaterSetup::on_rptrOffsetSetBtn_clicked()
+{
+    freqt f;
+    f.Hz = getFreqHzFromMHzString(ui->rptrOffsetEdit->text());
+    if(f.Hz != 0)
+    {
+        emit setRptDuplexOffset(f);
+    }
 }

@@ -118,6 +118,8 @@ signals:
     void setRepeaterAccessMode(rptrAccessData_t rd);
     void setTone(rptrTone_t t);
     void setTSQL(rptrTone_t t);
+    void setRptDuplexOffset(freqt f);
+    void getRptDuplexOffset();
 
     // Level get:
     void getLevels(); // get all levels
