@@ -2044,6 +2044,8 @@ void wfmain::loadSettings()
 
     udpPrefs.clientName = settings->value("ClientName", udpDefPrefs.clientName).toString();
 
+    udpPrefs.halfDuplex = settings->value("HalfDuplex", udpDefPrefs.halfDuplex).toBool();
+
     settings->endGroup();
 
     settings->beginGroup("Server");
@@ -2705,6 +2707,7 @@ void wfmain::saveSettings()
     settings->setValue("ResampleQuality", rxSetup.resampleQuality);
     settings->setValue("ClientName", udpPrefs.clientName);
     settings->setValue("WaterfallFormat", prefs.waterfallFormat);
+    settings->setValue("HalfDuplex", udpPrefs.halfDuplex);
 
     settings->endGroup();
 
@@ -4060,9 +4063,15 @@ void wfmain::issueDelayedCommandUnique(cmds cmd)
     cmddata.cmd = cmd;
     cmddata.data = NULL;
 
+    delayedCmdQue.push_front(cmddata);
+    delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) {  return (c.cmd == cmd); }), delayedCmdQue.end());
+
     // The following is both expensive and not that great,
-    // since it does not check if the arguments are the same.
-    bool found = false;
+    // since it does not check if the arguments are the same.    
+/*    bool found = false;
+
+
+
     for(unsigned int i=0; i < delayedCmdQue.size(); i++)
     {
         if(delayedCmdQue.at(i).cmd == cmd)
@@ -4081,7 +4090,9 @@ void wfmain::issueDelayedCommandUnique(cmds cmd)
 //    {
 //        delayedCmdQue.push_front(cmddata);
 //    }
+*/
 
+//    delayedCmdQue.push_front(cmddata);
 }
 
 void wfmain::issueCmd(cmds cmd, mode_info m)
@@ -4180,7 +4191,9 @@ void wfmain::issueCmdUniquePriority(cmds cmd, bool b)
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<bool>(new bool(b));
     delayedCmdQue.push_front(cmddata);
-    removeSimilarCommand(cmd);
+    delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) { return (c.cmd == cmd); }), delayedCmdQue.end());
+
+    //removeSimilarCommand(cmd);
 }
 
 void wfmain::issueCmdUniquePriority(cmds cmd, unsigned char c)
@@ -4189,7 +4202,9 @@ void wfmain::issueCmdUniquePriority(cmds cmd, unsigned char c)
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<unsigned char>(new unsigned char(c));
     delayedCmdQue.push_front(cmddata);
-    removeSimilarCommand(cmd);
+    delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) { return (c.cmd == cmd); }), delayedCmdQue.end());
+
+    //removeSimilarCommand(cmd);
 }
 
 void wfmain::issueCmdUniquePriority(cmds cmd, char c)
@@ -4198,7 +4213,8 @@ void wfmain::issueCmdUniquePriority(cmds cmd, char c)
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<char>(new char(c));
     delayedCmdQue.push_front(cmddata);
-    removeSimilarCommand(cmd);
+    delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) { return (c.cmd == cmd); }), delayedCmdQue.end());
+    //removeSimilarCommand(cmd);
 }
 
 void wfmain::issueCmdUniquePriority(cmds cmd, freqt f)
@@ -4207,7 +4223,8 @@ void wfmain::issueCmdUniquePriority(cmds cmd, freqt f)
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<freqt>(new freqt(f));
     delayedCmdQue.push_front(cmddata);
-    removeSimilarCommand(cmd);
+    delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) { return (c.cmd == cmd); }), delayedCmdQue.end());
+    //removeSimilarCommand(cmd);
 }
 
 void wfmain::issueCmdUniquePriority(cmds cmd, quint16 c)
@@ -4216,7 +4233,8 @@ void wfmain::issueCmdUniquePriority(cmds cmd, quint16 c)
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<quint16>(new quint16(c));
     delayedCmdQue.push_front(cmddata);
-    removeSimilarCommand(cmd);
+    delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) { return (c.cmd == cmd); }), delayedCmdQue.end());
+    //removeSimilarCommand(cmd);
 }
 
 void wfmain::issueCmdUniquePriority(cmds cmd, qint16 c)
@@ -4225,7 +4243,8 @@ void wfmain::issueCmdUniquePriority(cmds cmd, qint16 c)
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<qint16>(new qint16(c));
     delayedCmdQue.push_front(cmddata);
-    removeSimilarCommand(cmd);
+    delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) { return (c.cmd == cmd); }), delayedCmdQue.end());
+    //removeSimilarCommand(cmd);
 }
 
 void wfmain::removeSimilarCommand(cmds cmd)
@@ -4512,9 +4531,13 @@ void wfmain::initPeriodicCommands()
     rapidPollCmdQueue.clear();
     if (rigCaps.hasSpectrum) {
         // Get passband
-        insertPeriodicRapidCmd(cmdGetPassband);
-        insertPeriodicRapidCmd(cmdGetTPBFInner);
-        insertPeriodicRapidCmd(cmdGetTPBFOuter);
+        //insertPeriodicRapidCmd(cmdGetPassband);
+        //insertPeriodicRapidCmd(cmdGetTPBFInner);
+        //insertPeriodicRapidCmd(cmdGetTPBFOuter);
+        insertSlowPeriodicCommand(cmdGetPassband, 128);
+        insertSlowPeriodicCommand(cmdGetTPBFInner, 128);
+        insertSlowPeriodicCommand(cmdGetTPBFOuter, 128);
+
     }
     rapidPollCmdQueueEnabled = true;
 }
@@ -4555,6 +4578,10 @@ void wfmain::insertPeriodicCommandUnique(cmds cmd)
 
 void wfmain::removePeriodicRapidCmd(cmds cmd)
 {
+
+    rapidPollCmdQueue.erase(std::remove_if(rapidPollCmdQueue.begin(), rapidPollCmdQueue.end(), [cmd](const cmds& c) {  return (c == cmd); }), rapidPollCmdQueue.end());
+
+    /*
     while(true)
     {
         auto it = std::find(this->rapidPollCmdQueue.begin(), this->rapidPollCmdQueue.end(), cmd);
@@ -4565,11 +4592,15 @@ void wfmain::removePeriodicRapidCmd(cmds cmd)
             break;
         }
     }
+    */
 }
 
 void wfmain::removePeriodicCommand(cmds cmd)
 {
-    while(true)
+
+    periodicCmdQueue.erase(std::remove_if(periodicCmdQueue.begin(), periodicCmdQueue.end(), [cmd](const cmds& c) {  return (c == cmd); }), periodicCmdQueue.end());
+
+/*    while (true)
     {
         auto it = std::find(this->periodicCmdQueue.begin(), this->periodicCmdQueue.end(), cmd);
         if(it != periodicCmdQueue.end())
@@ -4579,6 +4610,7 @@ void wfmain::removePeriodicCommand(cmds cmd)
             break;
         }
     }
+    */
 }
 
 
@@ -4949,6 +4981,9 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
             qint16 newFreq = pbFreq + 128;
             issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
             issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
+            issueDelayedCommandUnique(cmdGetTPBFInner);
+            issueDelayedCommandUnique(cmdGetTPBFOuter);
+
         }
     }
 }
@@ -5117,31 +5152,36 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
     }
     else if (passbandAction == passbandResizing)
     {
-        // We are currently resizing the passband.
-        double pb = 0.0;
-        double origin = 0.0;
-        switch (currentModeInfo.mk)
-        {
-        case modeCW:
-        case modeCW_R:
-            origin = 0.0;
-            break;
-        case modeLSB:
-            origin = -passbandCenterFrequency;
-            break;
-        default:
-            origin = passbandCenterFrequency;
-            break;
-        }
+        static double lastFreq = movedFrequency;
+        if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
 
-        if (plot->xAxis->pixelToCoord(cursor) >= freq.MHzDouble + origin) {
-            pb = plot->xAxis->pixelToCoord(cursor) - passbandIndicator->topLeft->coords().x();
-        }
-        else {
-            pb = passbandIndicator->bottomRight->coords().x() - plot->xAxis->pixelToCoord(cursor);
-        }
+            // We are currently resizing the passband.
+            double pb = 0.0;
+            double origin = 0.0;
+            switch (currentModeInfo.mk)
+            {
+            case modeCW:
+            case modeCW_R:
+                origin = 0.0;
+                break;
+            case modeLSB:
+                origin = -passbandCenterFrequency;
+                break;
+            default:
+                origin = passbandCenterFrequency;
+                break;
+            }
 
-        issueCmdUniquePriority(cmdSetPassband, (quint16)(pb * 1000000));
+            if (plot->xAxis->pixelToCoord(cursor) >= freq.MHzDouble + origin) {
+                pb = plot->xAxis->pixelToCoord(cursor) - passbandIndicator->topLeft->coords().x();
+            }
+            else {
+                pb = passbandIndicator->bottomRight->coords().x() - plot->xAxis->pixelToCoord(cursor);
+            }
+            issueCmdUniquePriority(cmdSetPassband, (quint16)(pb * 1000000));
+            issueDelayedCommandUnique(cmdGetPassband);
+            lastFreq = movedFrequency;
+        }
     }
     else if (passbandAction == pbtMoving) {
 
@@ -5161,25 +5201,36 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
                 qDebug() << QString("Moving passband by %1 Hz (Inner %2) (Outer %3) Mode:%4").arg((qint16)(movedFrequency * 1000000))
                     .arg(newInFreq).arg(newOutFreq).arg(currentModeInfo.mk);
 
-                issueCmd(cmdSetTPBFInner, (unsigned char)newInFreq);
-                issueCmd(cmdSetTPBFOuter, (unsigned char)newOutFreq);
-
+                issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newInFreq);
+                issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newOutFreq);
+                issueDelayedCommandUnique(cmdGetTPBFInner);
+                issueDelayedCommandUnique(cmdGetTPBFOuter);
             }
             lastFreq = movedFrequency;
         }
     }
     else if (passbandAction == pbtInnerMove) {
-        double pbFreq = ((double)(TPBFInner + movedFrequency) / passbandWidth) * 127.0;
-        qint16 newFreq = pbFreq + 128;
-        if (newFreq >= 0 && newFreq <= 255) {
-            issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
+        static double lastFreq = movedFrequency;
+        if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
+            double pbFreq = ((double)(TPBFInner + movedFrequency) / passbandWidth) * 127.0;
+            qint16 newFreq = pbFreq + 128;
+            if (newFreq >= 0 && newFreq <= 255) {
+                issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
+                issueDelayedCommandUnique(cmdGetTPBFInner);
+            }
+            lastFreq = movedFrequency;
         }
     }
     else if (passbandAction == pbtOuterMove) {
-        double pbFreq = ((double)(TPBFOuter + movedFrequency) / passbandWidth) * 127.0;
-        qint16 newFreq = pbFreq + 128;
-        if (newFreq >= 0 && newFreq <= 255) {
-            issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
+        static double lastFreq = movedFrequency;
+        if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
+            double pbFreq = ((double)(TPBFOuter + movedFrequency) / passbandWidth) * 127.0;
+            qint16 newFreq = pbFreq + 128;
+            if (newFreq >= 0 && newFreq <= 255) {
+                issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
+                issueDelayedCommandUnique(cmdGetTPBFOuter);
+            }
+            lastFreq = movedFrequency;
         }
     }
     else  if (passbandAction == passbandStatic && me->buttons() == Qt::LeftButton && textItem == nullptr && prefs.clickDragTuningEnable)
@@ -5274,108 +5325,94 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
     if(mode < 0x23)
     {
 
-        for(int i=0; i < ui->modeSelectCombo->count(); i++)
+        // Update mode information if mode/filter has changed
+        if (currentModeInfo.mk != (mode_kind)mode || currentModeInfo.filter != filter)
         {
-            if(ui->modeSelectCombo->itemData(i).toInt() == mode)
-            {
-                ui->modeSelectCombo->blockSignals(true);
-                ui->modeSelectCombo->setCurrentIndex(i);
-                ui->modeSelectCombo->blockSignals(false);
-                found = true;
-            }
-        }
-        currentModeIndex = mode;
-        currentModeInfo.mk = (mode_kind)mode;
-        cw->handleCurrentModeUpdate((mode_kind)mode);
-        currentModeInfo.filter = filter;
 
-        switch (currentModeInfo.mk) {
-        case modeFM:
-            if (currentModeInfo.filter == 1)
-                passbandWidth = 0.015;
-            else if (currentModeInfo.filter == 2)
-                passbandWidth = 0.010;
-            else
-                passbandWidth = 0.007;
-            passbandCenterFrequency = 0.0;
-            break;
-        case modeLSB:
-        case modeUSB:
-            removePeriodicCommand(cmdGetCwPitch);
-            removePeriodicCommand(cmdGetPskTone);
-            removePeriodicCommand(cmdGetRttyMark);
-            passbandCenterFrequency = 0.0015;
-            break;
-        case modeCW:
-        case modeCW_R:
-            insertPeriodicCommandUnique(cmdGetCwPitch);
-            removePeriodicCommand(cmdGetPskTone);
-            removePeriodicCommand(cmdGetRttyMark);
-            break;
-        default:
-            removePeriodicCommand(cmdGetCwPitch);
-            removePeriodicCommand(cmdGetPskTone);
-            removePeriodicCommand(cmdGetRttyMark);
-            passbandCenterFrequency = 0.0;
-            break;
+            removePeriodicRapidCmd(cmdGetCwPitch);
+            quint16 maxPassbandHz = 0;
+            switch ((mode_kind)mode) {
+            case modeFM:
+                if (filter == 1)
+                    passbandWidth = 0.015;
+                else if (filter == 2)
+                    passbandWidth = 0.010;
+                else
+                    passbandWidth = 0.007;
+                passbandCenterFrequency = 0.0;
+                maxPassbandHz = 10E3;
+                break;
+            case modeCW:
+            case modeCW_R:
+                insertPeriodicRapidCmdUnique(cmdGetCwPitch);
+                maxPassbandHz = 3600;
+                break;
+            case modeAM:
+                passbandCenterFrequency = 0.0;
+                maxPassbandHz = 10E3;
+                break;
+            case modeLSB:
+            case modeUSB:
+                passbandCenterFrequency = 0.0015;
+                maxPassbandHz = 3600;
+                break;
+            default:
+                passbandCenterFrequency = 0.0;
+                maxPassbandHz = 3600;
+                break;
+            }
+
+            for (int i = 0; i < ui->modeSelectCombo->count(); i++)
+            {
+                if (ui->modeSelectCombo->itemData(i).toInt() == mode)
+                {
+                    ui->modeSelectCombo->blockSignals(true);
+                    ui->modeSelectCombo->setCurrentIndex(i);
+                    ui->modeSelectCombo->blockSignals(false);
+                    found = true;
+                }
+            }
+
+            if ((filter) && (filter < 4)) {
+                ui->modeFilterCombo->blockSignals(true);
+                ui->modeFilterCombo->setCurrentIndex(filter - 1);
+                ui->modeFilterCombo->blockSignals(false);
+            }
+
+            currentModeIndex = mode;
+            currentModeInfo.mk = (mode_kind)mode;
+            currentMode = (mode_kind)mode;
+            currentModeInfo.filter = filter;
+            currentModeInfo.reg = mode;
+            rpt->handleUpdateCurrentMainMode(currentModeInfo);
+
+            if (!found)
+            {
+                qWarning(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
+                return;
+            }
+
+            if (maxPassbandHz != 0)
+            {
+                trxadj->setMaxPassband(maxPassbandHz);
+            }
+
+            issueDelayedCommandUnique(cmdGetPassband);
+            issueDelayedCommandUnique(cmdGetCwPitch);
+            issueDelayedCommandUnique(cmdGetTPBFInner);
+            issueDelayedCommandUnique(cmdGetTPBFOuter);
+
+            // Note: we need to know if the DATA mode is active to reach mode-D
+            // some kind of queued query:
+            if (rigCaps.hasDataModes && rigCaps.hasTransmit)
+            {
+                issueDelayedCommand(cmdGetDataMode);
+            }
+
         }
 
     } else {
         qCritical(logSystem()) << __func__ << "Invalid mode " << mode << " received. ";
-    }
-
-    if(!found)
-    {
-        qWarning(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
-        return;
-    }
-
-    currentModeIndex = mode;
-    currentModeInfo.mk = (mode_kind)mode;
-    currentMode = (mode_kind)mode;
-    currentModeInfo.filter = filter;
-    currentModeInfo.reg = mode;
-    rpt->handleUpdateCurrentMainMode(currentModeInfo);
-
-    if( (filter) && (filter < 4)){
-        ui->modeFilterCombo->blockSignals(true);
-        ui->modeFilterCombo->setCurrentIndex(filter-1);
-        ui->modeFilterCombo->blockSignals(false);
-    }
-
-    quint16 maxPassbandHz = 0;
-    switch(currentMode)
-    {
-    case modeUSB:
-    case modeLSB:
-    case modeCW:
-    case modeCW_R:
-    case modePSK:
-    case modePSK_R:
-        maxPassbandHz = 3600;
-        break;
-    case modeRTTY:
-    case modeRTTY_R:
-        maxPassbandHz = 2700;
-        break;
-    case modeAM:
-        maxPassbandHz = 10E3;
-        break;
-    case modeFM:
-        maxPassbandHz = 10E3;
-        break;
-    default:
-        break;
-    }
-    if(maxPassbandHz != 0)
-    {
-        trxadj->setMaxPassband(maxPassbandHz);
-    }
-    // Note: we need to know if the DATA mode is active to reach mode-D
-    // some kind of queued query:
-    if (rigCaps.hasDataModes && rigCaps.hasTransmit)
-    {
-        issueDelayedCommand(cmdGetDataMode);
     }
 }
 
@@ -5659,7 +5696,9 @@ void wfmain::on_modeSelectCombo_activated(int index)
         }
 
         issueCmd(cmdSetMode, mode);
-        currentModeInfo = mode;
+        issueDelayedCommand(cmdGetMode);
+
+        //currentModeInfo = mode;
     }
 }
 
@@ -6201,6 +6240,11 @@ void wfmain::on_passwordTxt_textChanged(QString text)
     udpPrefs.password = text;
 }
 
+void wfmain::on_audioDuplexCombo_currentIndexChanged(int value)
+{
+    udpPrefs.halfDuplex = (bool)value;
+}
+
 void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
 {
 
@@ -6354,6 +6398,7 @@ void wfmain::on_modeFilterCombo_activated(int index)
             m.mk = (mode_kind)newMode;
             m.reg = newMode;
             issueCmd(cmdSetMode, m);
+
             //emit setMode(newMode, (unsigned char)filterSelection);
         }
     }
