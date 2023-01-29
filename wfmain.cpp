@@ -4529,16 +4529,6 @@ void wfmain::initPeriodicCommands()
 
     rapidPollCmdQueueEnabled = false;
     rapidPollCmdQueue.clear();
-    if (rigCaps.hasSpectrum) {
-        // Get passband
-        //insertPeriodicRapidCmd(cmdGetPassband);
-        //insertPeriodicRapidCmd(cmdGetTPBFInner);
-        //insertPeriodicRapidCmd(cmdGetTPBFOuter);
-        insertSlowPeriodicCommand(cmdGetPassband, 128);
-        insertSlowPeriodicCommand(cmdGetTPBFInner, 128);
-        insertSlowPeriodicCommand(cmdGetTPBFOuter, 128);
-
-    }
     rapidPollCmdQueueEnabled = true;
 }
 
@@ -4579,7 +4569,9 @@ void wfmain::insertPeriodicCommandUnique(cmds cmd)
 void wfmain::removePeriodicRapidCmd(cmds cmd)
 {
 
-    rapidPollCmdQueue.erase(std::remove_if(rapidPollCmdQueue.begin(), rapidPollCmdQueue.end(), [cmd](const cmds& c) {  return (c == cmd); }), rapidPollCmdQueue.end());
+    qDebug() << "Removing" << cmd << "From periodic queue, len" << slowPollCmdQueue.size();
+    periodicCmdQueue.erase(std::remove_if(periodicCmdQueue.begin(), periodicCmdQueue.end(), [cmd](const cmds& c) {  return (c == cmd); }), periodicCmdQueue.end());
+    qDebug() << "Removed" << cmd << "From periodic queue, len" << slowPollCmdQueue.size();
 
     /*
     while(true)
@@ -4598,7 +4590,9 @@ void wfmain::removePeriodicRapidCmd(cmds cmd)
 void wfmain::removePeriodicCommand(cmds cmd)
 {
 
+    qDebug() << "Removing" << cmd << "From periodic queue, len" << slowPollCmdQueue.size();
     periodicCmdQueue.erase(std::remove_if(periodicCmdQueue.begin(), periodicCmdQueue.end(), [cmd](const cmds& c) {  return (c == cmd); }), periodicCmdQueue.end());
+    qDebug() << "Removed" << cmd << "From periodic queue, len" << slowPollCmdQueue.size();
 
 /*    while (true)
     {
@@ -4619,12 +4613,21 @@ void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority=100)
     // TODO: meaningful priority
     // These commands are run every 20 "ticks" of the primary radio command loop
     // Basically 20 times less often than the standard periodic command
+    qDebug() << "Inserting" << cmd << "To slow queue, priority" << priority << "len" << slowPollCmdQueue.size();
     if(priority < 10)
     {
         slowPollCmdQueue.push_front(cmd);
     } else {
         slowPollCmdQueue.push_back(cmd);
     }
+    qDebug() << "Inserted" << cmd << "To slow queue, priority" << priority << "len" << slowPollCmdQueue.size();
+}
+
+void wfmain::removeSlowPeriodicCommand(cmds cmd)
+{
+    qDebug() << "Removing" << cmd << "From slow queue, len" << slowPollCmdQueue.size();
+    slowPollCmdQueue.erase(std::remove_if(slowPollCmdQueue.begin(), slowPollCmdQueue.end(), [cmd](const cmds& c) {  return (c == cmd); }), slowPollCmdQueue.end());
+    qDebug() << "Removed" << cmd << "From slow queue, len" << slowPollCmdQueue.size();
 }
 
 void wfmain::receiveFreq(freqt freqStruct)
@@ -5330,6 +5333,10 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
         {
 
             removePeriodicRapidCmd(cmdGetCwPitch);
+            removeSlowPeriodicCommand(cmdGetPassband);
+            removeSlowPeriodicCommand(cmdGetTPBFInner);
+            removeSlowPeriodicCommand(cmdGetTPBFOuter);
+
             quint16 maxPassbandHz = 0;
             switch ((mode_kind)mode) {
             case modeFM:
@@ -5345,6 +5352,7 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
             case modeCW:
             case modeCW_R:
                 insertPeriodicRapidCmdUnique(cmdGetCwPitch);
+                issueDelayedCommandUnique(cmdGetCwPitch);
                 maxPassbandHz = 3600;
                 break;
             case modeAM:
@@ -5397,11 +5405,16 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
                 trxadj->setMaxPassband(maxPassbandHz);
             }
 
-            issueDelayedCommandUnique(cmdGetPassband);
-            issueDelayedCommandUnique(cmdGetCwPitch);
-            issueDelayedCommandUnique(cmdGetTPBFInner);
-            issueDelayedCommandUnique(cmdGetTPBFOuter);
-
+            if (currentModeInfo.mk != modeFM) 
+            {
+                insertSlowPeriodicCommand(cmdGetPassband, 128);
+                insertSlowPeriodicCommand(cmdGetTPBFInner, 128);
+                insertSlowPeriodicCommand(cmdGetTPBFOuter, 128);
+                issueDelayedCommandUnique(cmdGetPassband);
+                issueDelayedCommandUnique(cmdGetTPBFInner);
+                issueDelayedCommandUnique(cmdGetTPBFOuter);
+            }
+            
             // Note: we need to know if the DATA mode is active to reach mode-D
             // some kind of queued query:
             if (rigCaps.hasDataModes && rigCaps.hasTransmit)
