@@ -7,6 +7,8 @@ repeaterSetup::repeaterSetup(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    ui->autoTrackLiveBtn->setEnabled(false); // until we set split enabled.
+
     // populate the CTCSS combo box:
     populateTones();
 
@@ -278,28 +280,29 @@ void repeaterSetup::receiveDuplexMode(duplexMode dm)
     {
         case dmSplitOff:
             ui->splitOffBtn->setChecked(true);
-            ui->autoTrackLiveBtn->setChecked(false);
+            ui->autoTrackLiveBtn->setDisabled(true);
             break;
         case dmSplitOn:
             ui->splitEnableChk->setChecked(true);
             ui->rptSimplexBtn->setChecked(false);
             ui->rptDupPlusBtn->setChecked(false);
+            ui->autoTrackLiveBtn->setEnabled(true);
             ui->rptDupMinusBtn->setChecked(false);
             break;
         case dmSimplex:
             ui->rptSimplexBtn->setChecked(true);
             //ui->splitEnableChk->setChecked(false);
-            ui->autoTrackLiveBtn->setChecked(false);
+            ui->autoTrackLiveBtn->setDisabled(true);
             break;
         case dmDupPlus:
             ui->rptDupPlusBtn->setChecked(true);
             //ui->splitEnableChk->setChecked(false);
-            ui->autoTrackLiveBtn->setChecked(false);
+            ui->autoTrackLiveBtn->setDisabled(true);
             break;
         case dmDupMinus:
             ui->rptDupMinusBtn->setChecked(true);
             //ui->splitEnableChk->setChecked(false);
-            ui->autoTrackLiveBtn->setChecked(false);
+            ui->autoTrackLiveBtn->setDisabled(true);
             break;
         default:
             qDebug() << "Did not understand duplex/split/repeater value of " << (unsigned char)dm;
@@ -357,7 +360,8 @@ void repeaterSetup::handleUpdateCurrentMainFrequency(freqt mainfreq)
     if(amTransmitting)
         return;
 
-    if(ui->autoTrackLiveBtn->isChecked() && !ui->splitOffsetEdit->text().isEmpty())
+    // Track if autoTrack enabled, split enabled, and there's a split defined.
+    if(ui->autoTrackLiveBtn->isChecked() && (currentdm == dmSplitOn) && !ui->splitOffsetEdit->text().isEmpty())
     {
         if(currentMainFrequency.Hz != mainfreq.Hz)
         {
@@ -416,16 +420,23 @@ void repeaterSetup::showEvent(QShowEvent *event)
 void repeaterSetup::on_splitEnableChk_clicked()
 {
     emit setDuplexMode(dmSplitOn);
+    ui->autoTrackLiveBtn->setEnabled(true);
 
-    if(ui->autoTrackLiveBtn->isChecked())
+    if(ui->autoTrackLiveBtn->isChecked() && !ui->splitOffsetEdit->text().isEmpty())
     {
-        ui->autoTrackLiveBtn->setChecked(false);
+        if(usedPlusSplit)
+        {
+            on_splitPlusButton_clicked();
+        } else {
+            on_splitMinusBtn_clicked();
+        }
     }
 }
 
 void repeaterSetup::on_splitOffBtn_clicked()
 {
     emit setDuplexMode(dmSplitOff);
+    ui->autoTrackLiveBtn->setDisabled(true);
 }
 
 void repeaterSetup::on_rptSimplexBtn_clicked()
