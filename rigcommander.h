@@ -71,6 +71,10 @@ public slots:
     // Frequency, Mode, BSR:
     void setFrequency(unsigned char vfo, freqt freq);
     void getFrequency();
+    void selectVFO(vfo_t vfo);
+    void equalizeVFOsAB();
+    void equalizeVFOsMS();
+    void exchangeVFOs();
     void setMode(unsigned char mode, unsigned char modeFilter);
     void setMode(mode_info);
     void getMode();
@@ -134,14 +138,19 @@ public slots:
     void setDuplexMode(duplexMode dm);
     void getDuplexMode();
     void getTransmitFrequency();
-    void setTone(quint16 tone);
-    void setTSQL(quint16 tsql);
+    void setTone(rptrTone_t t);
+    void setTSQL(rptrTone_t t);
+    void setTone(quint16 t);
+    void setTSQL(quint16 t);
     void getTSQL();
     void getTone();
     void setDTCS(quint16 dcscode, bool tinv, bool rinv);
     void getDTCS();
     void setRptAccessMode(rptAccessTxRx ratr);
+    void setRptAccessMode(rptrAccessData_t ratr);
     void getRptAccessMode();
+    void setRptDuplexOffset(freqt f);
+    void getRptDuplexOffset();
 
     // Get Levels:
     void getLevels(); // all supported levels
@@ -305,6 +314,7 @@ signals:
     void haveTone(quint16 tone);
     void haveTSQL(quint16 tsql);
     void haveDTCS(quint16 dcscode, bool tinv, bool rinv);
+    void haveRptOffsetFrequency(freqt f);
 
     // Levels:
     void haveRfGain(unsigned char level);
@@ -374,6 +384,8 @@ private:
     QByteArray bcdEncodeInt(unsigned int);
     void parseFrequency();
     freqt parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
+    freqt parseFrequencyRptOffset(QByteArray data);
+    QByteArray makeFreqPayloadRptOffset(freqt freq);
     QByteArray makeFreqPayload(double frequency);
     QByteArray makeFreqPayload(freqt freq);
     QByteArray encodeTone(quint16 tone, bool tinv, bool rinv);

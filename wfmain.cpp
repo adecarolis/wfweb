@@ -57,10 +57,13 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<rigCapabilities>();
     qRegisterMetaType<duplexMode>();
     qRegisterMetaType<rptAccessTxRx>();
+    qRegisterMetaType<rptrAccessData_t>();
     qRegisterMetaType<rigInput>();
     qRegisterMetaType<meterKind>();
     qRegisterMetaType<spectrumMode>();
     qRegisterMetaType<freqt>();
+    qRegisterMetaType<vfo_t>();
+    qRegisterMetaType<rptrTone_t>();
     qRegisterMetaType<mode_info>();
     qRegisterMetaType<mode_kind>();
     qRegisterMetaType<audioPacket>();
@@ -343,6 +346,11 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
     connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
 
+    connect(this, SIGNAL(selectVFO(vfo_t)), rig, SLOT(selectVFO(vfo_t)));
+    connect(this, SIGNAL(sendVFOSwap()), rig, SLOT(exchangeVFOs()));
+    connect(this, SIGNAL(sendVFOEqualAB()), rig, SLOT(equalizeVFOsAB()));
+    connect(this, SIGNAL(sendVFOEqualMS()), rig, SLOT(equalizeVFOsMS()));
+
     connect(this, SIGNAL(sendCW(QString)), rig, SLOT(sendCW(QString)));
     connect(this, SIGNAL(stopCW()), rig, SLOT(sendStopCW()));
     connect(this, SIGNAL(setKeySpeed(unsigned char)), rig, SLOT(setKeySpeed(unsigned char)));
@@ -376,28 +384,56 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(havePassband(quint16)), this, SLOT(receivePassband(quint16)));
     connect(rig, SIGNAL(haveCwPitch(unsigned char)), this, SLOT(receiveCwPitch(unsigned char)));
 
+    // Repeater, duplex, and split:
     connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
     connect(rpt, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
     connect(rig, SIGNAL(haveDuplexMode(duplexMode)), rpt, SLOT(receiveDuplexMode(duplexMode)));
+    connect(this, SIGNAL(getRptDuplexOffset()), rig, SLOT(getRptDuplexOffset()));
+    connect(rig, SIGNAL(haveRptOffsetFrequency(freqt)), rpt, SLOT(handleRptOffsetFrequency(freqt)));
     connect(rpt, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(rpt, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(rpt, SIGNAL(getDTCS()), rig, SLOT(getDTCS()));
-    connect(rpt, SIGNAL(setTone(quint16)), rig, SLOT(setTone(quint16)));
-    connect(rpt, SIGNAL(setTSQL(quint16)), rig, SLOT(setTSQL(quint16)));
+
+    connect(this->rpt, &repeaterSetup::setTone,
+            [=](const rptrTone_t &t) { issueCmd(cmdSetTone, t);});
+
+    connect(this->rpt, &repeaterSetup::setTSQL,
+            [=](const rptrTone_t &t) { issueCmd(cmdSetTSQL, t);});
+
     connect(rpt, SIGNAL(setDTCS(quint16,bool,bool)), rig, SLOT(setDTCS(quint16,bool,bool)));
     connect(rpt, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
-    connect(rpt, SIGNAL(setRptAccessMode(rptAccessTxRx)), rig, SLOT(setRptAccessMode(rptAccessTxRx)));
+
+    //connect(rpt, SIGNAL(setRptAccessMode(rptAccessTxRx)), rig, SLOT(setRptAccessMode(rptAccessTxRx)));
+
+    connect(this->rpt, &repeaterSetup::setRptAccessMode,
+            [=](const rptrAccessData_t &rd) { issueCmd(cmdSetRptAccessMode, rd);});
+    connect(this, SIGNAL(setRepeaterAccessMode(rptrAccessData_t)), rig, SLOT(setRptAccessMode(rptrAccessData_t)));
+    connect(this, SIGNAL(setTone(rptrTone_t)), rig, SLOT(setTone(rptrTone_t)));
+
     connect(rig, SIGNAL(haveTone(quint16)), rpt, SLOT(handleTone(quint16)));
     connect(rig, SIGNAL(haveTSQL(quint16)), rpt, SLOT(handleTSQL(quint16)));
     connect(rig, SIGNAL(haveDTCS(quint16,bool,bool)), rpt, SLOT(handleDTCS(quint16,bool,bool)));
     connect(rig, SIGNAL(haveRptAccessMode(rptAccessTxRx)), rpt, SLOT(handleRptAccessMode(rptAccessTxRx)));
     connect(this->rpt, &repeaterSetup::setTransmitFrequency,
             [=](const freqt &transmitFreq) { issueCmd(cmdSetFreq, transmitFreq);});
-
     connect(this->rpt, &repeaterSetup::setTransmitMode,
             [=](const mode_info &transmitMode) { issueCmd(cmdSetMode, transmitMode);});
+    connect(this->rpt, &repeaterSetup::selectVFO,
+            [=](const vfo_t &v) { issueCmd(cmdSelVFO, v);});
+    connect(this->rpt, &repeaterSetup::equalizeVFOsAB,
+            [=]() { issueDelayedCommand(cmdVFOEqualAB);});
+    connect(this->rpt, &repeaterSetup::equalizeVFOsMS,
+            [=]() { issueDelayedCommand(cmdVFOEqualMS);});
+    connect(this->rpt, &repeaterSetup::swapVFOs,
+            [=]() { issueDelayedCommand(cmdVFOSwap);});
+    connect(this->rpt, &repeaterSetup::setRptDuplexOffset,
+            [=](const freqt &fOffset) { issueCmd(cmdSetRptDuplexOffset, fOffset);});
+    connect(this->rpt, &repeaterSetup::getRptDuplexOffset,
+            [=]() { issueDelayedCommand(cmdGetRptDuplexOffset);});
 
+    connect(this, SIGNAL(setRptDuplexOffset(freqt)), rig, SLOT(setRptDuplexOffset(freqt)));
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
+
     connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
     connect(this, SIGNAL(setPassband(quint16)), rig, SLOT(setPassband(quint16)));
     connect(this, SIGNAL(getCwPitch()), rig, SLOT(getCwPitch()));
@@ -406,8 +442,6 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(this, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(this, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
-    //connect(this, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
-    //connect(rig, SIGNAL(haveDuplexMode(duplexMode)), this, SLOT(receiveDuplexMode(duplexMode)));
 
     connect(this, SIGNAL(getModInput(bool)), rig, SLOT(getModInput(bool)));
     connect(rig, SIGNAL(haveModInput(rigInput,bool)), this, SLOT(receiveModInput(rigInput, bool)));
@@ -3611,6 +3645,12 @@ void wfmain::doCmd(commandtype cmddata)
             emit setMode(m);
             break;
         }
+        case cmdSelVFO:
+        {
+            vfo_t v = (*std::static_pointer_cast<vfo_t>(data));
+            emit selectVFO(v);
+            break;
+        }
         case cmdSetTxPower:
         {
             unsigned char txpower = (*std::static_pointer_cast<unsigned char>(data));
@@ -3670,6 +3710,30 @@ void wfmain::doCmd(commandtype cmddata)
         {
             unsigned char outerLevel = (*std::static_pointer_cast<unsigned char>(data));
             emit setTPBFOuter(outerLevel);
+            break;
+        }
+        case cmdSetTone:
+        {
+            rptrTone_t t = (*std::static_pointer_cast<rptrTone_t>(data));
+            emit setTone(t);
+            break;
+        }
+        case cmdSetTSQL:
+        {
+            rptrTone_t t = (*std::static_pointer_cast<rptrTone_t>(data));
+            emit setTSQL(t);
+            break;
+        }
+        case cmdSetRptAccessMode:
+        {
+            rptrAccessData_t rd = (*std::static_pointer_cast<rptrAccessData_t>(data));
+            emit setRepeaterAccessMode(rd);
+            break;
+        }
+        case cmdSetRptDuplexOffset:
+        {
+            freqt f = (*std::static_pointer_cast<freqt>(data));
+            emit setRptDuplexOffset(f);
             break;
         }
         case cmdSetPTT:
@@ -3800,6 +3864,15 @@ void wfmain::doCmd(cmds cmd)
         case cmdGetMode:
             emit getMode();
             break;
+        case cmdVFOSwap:
+            emit sendVFOSwap();
+            break;
+        case cmdVFOEqualAB:
+            emit sendVFOEqualAB();
+            break;
+        case cmdVFOEqualMS:
+            emit sendVFOEqualMS();
+            break;
         case cmdGetDataMode:
             if(rigCaps.hasDataModes)
                 emit getDataMode();
@@ -3832,6 +3905,9 @@ void wfmain::doCmd(cmds cmd)
             break;
         case cmdGetDuplexMode:
             emit getDuplexMode();
+            break;
+        case cmdGetRptDuplexOffset:
+            emit getRptDuplexOffset();
             break;
         case cmdGetPassband:
             emit getPassband();
@@ -4108,6 +4184,30 @@ void wfmain::issueCmd(cmds cmd, freqt f)
     commandtype cmddata;
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<freqt>(new freqt(f));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, vfo_t v)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<vfo_t>(new vfo_t(v));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, rptrTone_t v)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<rptrTone_t>(new rptrTone_t(v));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, rptrAccessData_t rd)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<rptrAccessData_t>(new rptrAccessData_t(rd));
     delayedCmdQue.push_back(cmddata);
 }
 
@@ -4525,7 +4625,11 @@ void wfmain::initPeriodicCommands()
     if (rigCaps.hasRXAntenna) {
         insertSlowPeriodicCommand(cmdGetAntenna, 128);
     }
-    insertSlowPeriodicCommand(cmdGetDuplexMode, 128);
+    insertSlowPeriodicCommand(cmdGetDuplexMode, 128); // split and repeater
+    if(rigCaps.hasRepeaterModes)
+    {
+        insertSlowPeriodicCommand(cmdGetRptDuplexOffset, 128);
+    }
 
     rapidPollCmdQueueEnabled = false;
     rapidPollCmdQueue.clear();
@@ -5393,7 +5497,7 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
             currentModeInfo.filter = filter;
             currentModeInfo.reg = mode;
             rpt->handleUpdateCurrentMainMode(currentModeInfo);
-
+            cw->handleCurrentModeUpdate(currentMode);
             if (!found)
             {
                 qWarning(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
@@ -6914,7 +7018,15 @@ void wfmain::on_serialDeviceListCombo_textActivated(const QString &arg1)
 
 void wfmain::on_rptSetupBtn_clicked()
 {
+    if(rpt->isMinimized())
+    {
+        rpt->raise();
+        rpt->activateWindow();
+        return;
+    }
     rpt->show();
+    rpt->raise();
+    rpt->activateWindow();
 }
 
 void wfmain::on_attSelCombo_activated(int index)
@@ -7686,7 +7798,8 @@ void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    cw->show();
+    qDebug(logSystem()) << "Query for repeater duplex offset 0x0C headed out";
+    issueDelayedCommand(cmdGetRptDuplexOffset);
 }
 
 // ----------   color helper functions:   ---------- //

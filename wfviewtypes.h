@@ -65,6 +65,47 @@ enum selVFO_t {
     inactiveVFO = 1
 };
 
+enum vfo_t {
+    vfoA=0,
+    vfoB=1,
+    vfoMain = 0xD0,
+    vfoSub = 0xD1
+};
+
+struct rptrTone_t {
+    quint16 tone = 0;
+    bool useSecondaryVFO = false;
+};
+
+enum duplexMode {
+    dmSplitOff=0x00,
+    dmSplitOn=0x01,
+    dmSimplex=0x10,
+    dmDupMinus=0x11,
+    dmDupPlus=0x12,
+    dmDupRPS=0x13,
+    dmDupAutoOn=0x26,
+    dmDupAutoOff=0x36
+};
+
+// Here, T=tone, D=DCS, N=none
+// And the naming convention order is Transmit Receive
+enum rptAccessTxRx {
+    ratrNN=0x00,
+    ratrTN=0x01, // "TONE" (T only)
+    ratrNT=0x02, // "TSQL" (R only)
+    ratrDD=0x03, // "DTCS" (TR)
+    ratrDN=0x06, // "DTCS(T)"
+    ratrTD=0x07, // "TONE(T) / TSQL(R)"
+    ratrDT=0x08, // "DTCS(T) / TSQL(R)"
+    ratrTT=0x09  // "TONE(T) / TSQL(R)"
+};
+
+struct rptrAccessData_t {
+    rptAccessTxRx accessMode = ratrNN;
+    bool useSecondaryVFO = false;
+};
+
 struct mode_info {
     mode_kind mk;
     unsigned char reg;
@@ -102,16 +143,19 @@ enum cmds {
     cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
     cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
     cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetTPBFInner, cmdSetTPBFInner,
-    cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetATUStatus, cmdGetPassband, cmdSetPassband,
+    cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetPassband, cmdSetPassband,
     cmdGetCwPitch, cmdGetPskTone, cmdGetRttyMark, cmdSetCwPitch, cmdSetPskTone, cmdSetRttyMark,
-    cmdSetATU, cmdStartATU, cmdGetSpectrumMode,
-    cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode, cmdGetPTT, cmdSetPTT,cmdPTTToggle,
+    cmdSetATU, cmdStartATU, cmdGetATUStatus,
+    cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode,
+    cmdGetPTT, cmdSetPTT,cmdPTTToggle,
     cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel,
     cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
     cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
     cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
     cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
-    cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
+    cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdSetTone, cmdSetTSQL, cmdSetRptAccessMode, cmdSetRptDuplexOffset, cmdGetRptDuplexOffset,
+    cmdSelVFO, cmdVFOSwap, cmdVFOEqualAB, cmdVFOEqualMS,
+    cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
     cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW,
     cmdSetTime, cmdSetDate, cmdSetUTCOffset
 };

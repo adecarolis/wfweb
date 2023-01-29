@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>922</width>
-    <height>217</height>
+    <width>1230</width>
+    <height>267</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -116,6 +116,27 @@
            </attribute>
           </widget>
          </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_9">
+           <item>
+            <widget class="QLabel" name="label_5">
+             <property name="text">
+              <string>Offset (MHz):</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="rptrOffsetEdit"/>
+           </item>
+           <item>
+            <widget class="QPushButton" name="rptrOffsetSetBtn">
+             <property name="text">
+              <string>Set</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
         </layout>
        </widget>
       </item>
@@ -128,16 +149,36 @@
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_8">
            <item>
-            <widget class="QCheckBox" name="splitEnableChk">
+            <widget class="QRadioButton" name="splitEnableChk">
              <property name="text">
-              <string>Split Enable</string>
+              <string>Split On</string>
              </property>
+             <attribute name="buttonGroup">
+              <string notr="true">rptDuplexBtns</string>
+             </attribute>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="splitOffBtn">
+             <property name="text">
+              <string>Split Off</string>
+             </property>
+             <attribute name="buttonGroup">
+              <string notr="true">rptDuplexBtns</string>
+             </attribute>
             </widget>
            </item>
            <item>
             <widget class="QCheckBox" name="autoTrackLiveBtn">
              <property name="text">
-              <string>Auto Track Live</string>
+              <string>AutoTrack</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="setSplitRptrToneChk">
+             <property name="text">
+              <string>Set Rpt Tone</string>
              </property>
             </widget>
            </item>
@@ -182,13 +223,6 @@
              </property>
             </widget>
            </item>
-           <item>
-            <widget class="QPushButton" name="rptOffsetBtn">
-             <property name="text">
-              <string>RPT</string>
-             </property>
-            </widget>
-           </item>
           </layout>
          </item>
          <item>
@@ -224,6 +258,71 @@
             </widget>
            </item>
           </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="groupBox">
+        <property name="title">
+         <string>VFO</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout">
+         <item row="1" column="1">
+          <widget class="QPushButton" name="swapABBtn">
+           <property name="text">
+            <string>Swap AB</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QPushButton" name="selSubBtn">
+           <property name="text">
+            <string>Sel Sub</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QPushButton" name="selMainBtn">
+           <property name="text">
+            <string>Sel Main</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QPushButton" name="selBBtn">
+           <property name="text">
+            <string>Sel B</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QPushButton" name="selABtn">
+           <property name="text">
+            <string>Sel A</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QPushButton" name="aEqBBtn">
+           <property name="text">
+            <string>A=B</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QPushButton" name="mEqSBtn">
+           <property name="text">
+            <string>M=&gt;S</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <widget class="QPushButton" name="swapMSBtn">
+           <property name="text">
+            <string>Swap MS</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>
@@ -272,6 +371,13 @@
            <attribute name="buttonGroup">
             <string notr="true">rptToneBtns</string>
            </attribute>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="setRptrSubVFOBtn">
+           <property name="text">
+            <string>Set Sub VFO</string>
+           </property>
           </widget>
          </item>
         </layout>
@@ -328,6 +434,13 @@
             </widget>
            </item>
           </layout>
+         </item>
+         <item>
+          <widget class="QPushButton" name="setToneSubVFOBtn">
+           <property name="text">
+            <string>Set Sub VFO</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>

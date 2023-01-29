@@ -23,14 +23,16 @@ public:
 signals:
     void getDuplexMode();
     void setDuplexMode(duplexMode dm);
-    void setTone(quint16 tone);
-    void setTSQL(quint16 tsql);
+    void setTone(rptrTone_t tone);
+    void setTSQL(rptrTone_t tsql);
     void setDTCS(quint16 dcode, bool tinv, bool rinv);
     void getTone();
     void getTSQL();
     void getDTCS();
-    void setRptAccessMode(rptAccessTxRx tmode);
+    void setRptAccessMode(rptrAccessData_t rd);
     void getRptAccessMode();
+    void setRptDuplexOffset(freqt f);
+    void getRptDuplexOffset();
     // Split:
     void getSplitModeEnabled();
     void getTransmitFrequency();
@@ -38,6 +40,11 @@ signals:
     // void setSplitModeEnabled(bool splitEnabled);
     void setTransmitFrequency(freqt transmitFreq);
     void setTransmitMode(mode_info m);
+    // VFO:
+    void selectVFO(vfo_t v); // A,B,M,S
+    void equalizeVFOsAB();
+    void equalizeVFOsMS();
+    void swapVFOs();
 
 public slots:
     void receiveDuplexMode(duplexMode dm);
@@ -50,6 +57,7 @@ public slots:
     void handleUpdateCurrentMainFrequency(freqt mainfreq);
     void handleUpdateCurrentMainMode(mode_info m);
     void handleTransmitStatus(bool amTransmitting);
+    void handleRptOffsetFrequency(freqt f);
 
 private slots:
     void showEvent(QShowEvent *event);
@@ -65,12 +73,36 @@ private slots:
     void on_toneTone_clicked();
     void on_toneTSQL_clicked();
     void on_toneDTCS_clicked();    
-    void on_splitOffsetSetBtn_clicked();
-    void on_splitEnableChk_clicked(bool enabled);
     void on_splitPlusButton_clicked();
     void on_splitMinusBtn_clicked();
 
     void on_splitTxFreqSetBtn_clicked();
+
+    void on_selABtn_clicked();
+
+    void on_selBBtn_clicked();
+
+    void on_aEqBBtn_clicked();
+
+    void on_swapABBtn_clicked();
+
+    void on_selMainBtn_clicked();
+
+    void on_selSubBtn_clicked();
+
+    void on_mEqSBtn_clicked();
+
+    void on_swapMSBtn_clicked();
+
+    void on_setToneSubVFOBtn_clicked();
+
+    void on_setRptrSubVFOBtn_clicked();
+
+    void on_rptrOffsetSetBtn_clicked();
+
+    void on_splitOffBtn_clicked();
+
+    void on_splitEnableChk_clicked();
 
 private:
     Ui::repeaterSetup *ui;
