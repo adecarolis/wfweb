@@ -1701,8 +1701,30 @@ void wfmain::buttonControl(const COMMAND* cmd)
         issueCmd((cmds)cmd->command, cmd->band.band);
         break;
     case cmdSetBandUp:
+        for (int i = 0; i < rigCaps.bands.size(); i++) {
+            if (rigCaps.bands[i].band == lastRequestedBand)
+            {
+                if (i>0) {
+                    issueCmd(cmdGetBandStackReg, rigCaps.bands[i - 1].band);
+                }
+                else {
+                    issueCmd(cmdGetBandStackReg, rigCaps.bands[rigCaps.bands.size() - 1].band);
+                }
+            }
+        }
         break;
     case cmdSetBandDown:
+        for (int i = 0; i < rigCaps.bands.size(); i++) {
+            if (rigCaps.bands[i].band == lastRequestedBand)
+            {
+                if (i + 1 < rigCaps.bands.size()) {
+                    issueCmd(cmdGetBandStackReg, rigCaps.bands[i + 1].band);
+                }
+                else {
+                    issueCmd(cmdGetBandStackReg, rigCaps.bands[0].band);
+                }
+            }
+        }
         break;
     case cmdSetMode:
         changeMode(cmd->mode);
@@ -3854,6 +3876,7 @@ void wfmain::doCmd(commandtype cmddata)
         case cmdGetBandStackReg:
         {
             char band = (*std::static_pointer_cast<char>(data));
+            lastRequestedBand = (availableBands)band;
             bandStkBand = rigCaps.bsr[(availableBands)band]; // 23cm Needs fixing
             bandStkRegCode = ui->bandStkPopdown->currentIndex() + 1;
             emit getBandStackReg(bandStkBand, bandStkRegCode);

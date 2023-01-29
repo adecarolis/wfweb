@@ -1117,6 +1117,8 @@ private:
     double pbtDefault = 0.0;
     quint16 cwPitch = 600;
 
+    availableBands lastRequestedBand=bandGen;
+
     SERVERCONFIG serverConfig;
     void serverAddUserLine(const QString& user, const QString& pass, const int& type);
 
