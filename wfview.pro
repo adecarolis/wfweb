@@ -176,7 +176,7 @@ CONFIG(debug, release|debug) {
 }
 
 contains(DEFINES,USB_CONTROLLER){
-    linux:LIBS += -L./ -l$$QCPLIB -lhidapi -libusb
+    linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb
     macx:LIBS += -lhidapi
     macx:LIBS += -L../hidapi/windows/x64/release -lhidapi
     win32:INCLUDEPATH += ../hidapi/hidapi
