@@ -104,6 +104,10 @@ private slots:
 
     void on_splitEnableChk_clicked();
 
+    void on_rptrOffsetEdit_returnPressed();
+
+    void on_splitTransmitFreqEdit_returnPressed();
+
 private:
     Ui::repeaterSetup *ui;
     freqt currentMainFrequency;

@@ -6,62 +6,27 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1230</width>
-    <height>267</height>
+    <width>1071</width>
+    <height>231</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1071</width>
+    <height>230</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>1071</width>
+    <height>231</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>Repeater Setup</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_2">
-    <item>
-     <spacer name="verticalSpacer">
-      <property name="orientation">
-       <enum>Qt::Vertical</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>20</width>
-        <height>40</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_5">
-      <property name="topMargin">
-       <number>0</number>
-      </property>
-      <item>
-       <widget class="QPushButton" name="rptReadRigBtn">
-        <property name="text">
-         <string>Read Current Settings</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="debugBtn">
-        <property name="text">
-         <string>Debug</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <spacer name="horizontalSpacer">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-     </layout>
-    </item>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <property name="leftMargin">
@@ -72,6 +37,12 @@
       </property>
       <item>
        <widget class="QGroupBox" name="rptGrpbox">
+        <property name="maximumSize">
+         <size>
+          <width>180</width>
+          <height>16777215</height>
+         </size>
+        </property>
         <property name="title">
          <string>Repeater Duplex</string>
         </property>
@@ -119,29 +90,35 @@
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_9">
            <item>
-            <widget class="QLabel" name="label_5">
-             <property name="text">
-              <string>Offset (MHz):</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLineEdit" name="rptrOffsetEdit"/>
-           </item>
-           <item>
             <widget class="QPushButton" name="rptrOffsetSetBtn">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the repeater offset for radios using Repeater modes. Only available on radios that have repeater modes. Radios using Split should instead use the provided Split Mode section with a custom Offset. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
              <property name="text">
-              <string>Set</string>
+              <string>Set Offset (MHz):</string>
              </property>
             </widget>
            </item>
           </layout>
+         </item>
+         <item>
+          <widget class="QLineEdit" name="rptrOffsetEdit">
+           <property name="placeholderText">
+            <string>Rpt Offset (MHz)</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>
       </item>
       <item>
        <widget class="QGroupBox" name="splitModeGrpbox">
+        <property name="maximumSize">
+         <size>
+          <width>400</width>
+          <height>16777215</height>
+         </size>
+        </property>
         <property name="title">
          <string>Split Mode</string>
         </property>
@@ -150,6 +127,9 @@
           <layout class="QHBoxLayout" name="horizontalLayout_8">
            <item>
             <widget class="QRadioButton" name="splitEnableChk">
+             <property name="toolTip">
+              <string>Turn on Split</string>
+             </property>
              <property name="text">
               <string>Split On</string>
              </property>
@@ -160,6 +140,9 @@
            </item>
            <item>
             <widget class="QRadioButton" name="splitOffBtn">
+             <property name="toolTip">
+              <string>Turn off Split</string>
+             </property>
              <property name="text">
               <string>Split Off</string>
              </property>
@@ -168,17 +151,27 @@
              </attribute>
             </widget>
            </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_10">
            <item>
-            <widget class="QCheckBox" name="autoTrackLiveBtn">
+            <widget class="QCheckBox" name="setSplitRptrToneChk">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click here to automatically set the sub VFO (transmit VFO) tone. Only available on some radios. Other radios may take care of this for you.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
              <property name="text">
-              <string>AutoTrack</string>
+              <string>Set Rpt Tone</string>
              </property>
             </widget>
            </item>
            <item>
-            <widget class="QCheckBox" name="setSplitRptrToneChk">
+            <widget class="QCheckBox" name="autoTrackLiveBtn">
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click here to continually set the transmit VFO to match the receive VFO with the offset accounted for.  &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
              <property name="text">
-              <string>Set Rpt Tone</string>
+              <string>AutoTrack</string>
              </property>
             </widget>
            </item>
@@ -207,10 +200,22 @@
                <height>16777215</height>
               </size>
              </property>
+             <property name="toolTip">
+              <string>Enter the desired split offset in KHz.</string>
+             </property>
             </widget>
            </item>
            <item>
             <widget class="QPushButton" name="splitPlusButton">
+             <property name="maximumSize">
+              <size>
+               <width>55</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the transmit frequency to the receive frequency PLUS the offset. Sets the radio sub VFO and also populates the wfview text box (as a convenience). &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
              <property name="text">
               <string>Split+</string>
              </property>
@@ -218,6 +223,15 @@
            </item>
            <item>
             <widget class="QPushButton" name="splitMinusBtn">
+             <property name="maximumSize">
+              <size>
+               <width>55</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the transmit frequency to the receive frequency PLUS the offset. Sets the radio sub VFO and also populates the wfview text box (as a convenience). &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
              <property name="text">
               <string>Split-</string>
              </property>
@@ -252,6 +266,15 @@
            </item>
            <item>
             <widget class="QPushButton" name="splitTxFreqSetBtn">
+             <property name="maximumSize">
+              <size>
+               <width>116</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the transmit frequency manually. Not needed if the Split+ or Split- button was used. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
              <property name="text">
               <string>Set</string>
              </property>
@@ -264,12 +287,21 @@
       </item>
       <item>
        <widget class="QGroupBox" name="groupBox">
+        <property name="maximumSize">
+         <size>
+          <width>220</width>
+          <height>16777215</height>
+         </size>
+        </property>
         <property name="title">
          <string>VFO</string>
         </property>
         <layout class="QGridLayout" name="gridLayout">
          <item row="1" column="1">
           <widget class="QPushButton" name="swapABBtn">
+           <property name="toolTip">
+            <string>Swap VFO A with VFO B. Some radios do not support this.</string>
+           </property>
            <property name="text">
             <string>Swap AB</string>
            </property>
@@ -277,6 +309,9 @@
          </item>
          <item row="2" column="1">
           <widget class="QPushButton" name="selSubBtn">
+           <property name="toolTip">
+            <string>Select the Sub VFO</string>
+           </property>
            <property name="text">
             <string>Sel Sub</string>
            </property>
@@ -284,6 +319,9 @@
          </item>
          <item row="2" column="0">
           <widget class="QPushButton" name="selMainBtn">
+           <property name="toolTip">
+            <string>Select the Main VFO</string>
+           </property>
            <property name="text">
             <string>Sel Main</string>
            </property>
@@ -291,6 +329,9 @@
          </item>
          <item row="0" column="1">
           <widget class="QPushButton" name="selBBtn">
+           <property name="toolTip">
+            <string>Select VFO B</string>
+           </property>
            <property name="text">
             <string>Sel B</string>
            </property>
@@ -298,6 +339,9 @@
          </item>
          <item row="0" column="0">
           <widget class="QPushButton" name="selABtn">
+           <property name="toolTip">
+            <string>Select VFO A</string>
+           </property>
            <property name="text">
             <string>Sel A</string>
            </property>
@@ -305,6 +349,9 @@
          </item>
          <item row="1" column="0">
           <widget class="QPushButton" name="aEqBBtn">
+           <property name="toolTip">
+            <string>Set VFO B to VFO A</string>
+           </property>
            <property name="text">
             <string>A=B</string>
            </property>
@@ -312,6 +359,9 @@
          </item>
          <item row="3" column="0">
           <widget class="QPushButton" name="mEqSBtn">
+           <property name="toolTip">
+            <string>Set the SUB VFO to match the Main VFO</string>
+           </property>
            <property name="text">
             <string>M=&gt;S</string>
            </property>
@@ -319,6 +369,9 @@
          </item>
          <item row="3" column="1">
           <widget class="QPushButton" name="swapMSBtn">
+           <property name="toolTip">
+            <string>Swap the Main VFO and Sub VFO</string>
+           </property>
            <property name="text">
             <string>Swap MS</string>
            </property>
@@ -329,6 +382,12 @@
       </item>
       <item>
        <widget class="QGroupBox" name="groupBox_2">
+        <property name="maximumSize">
+         <size>
+          <width>200</width>
+          <height>16777215</height>
+         </size>
+        </property>
         <property name="title">
          <string>Repeater Tone Type</string>
         </property>
@@ -375,6 +434,9 @@
          </item>
          <item>
           <widget class="QPushButton" name="setRptrSubVFOBtn">
+           <property name="toolTip">
+            <string>Set the Tone Mode for the Sub VFO. Not available on all radios.</string>
+           </property>
            <property name="text">
             <string>Set Sub VFO</string>
            </property>
@@ -385,6 +447,12 @@
       </item>
       <item>
        <widget class="QGroupBox" name="groupBox_3">
+        <property name="maximumSize">
+         <size>
+          <width>200</width>
+          <height>16777215</height>
+         </size>
+        </property>
         <property name="title">
          <string>Tone Selection</string>
         </property>
@@ -437,6 +505,9 @@
          </item>
          <item>
           <widget class="QPushButton" name="setToneSubVFOBtn">
+           <property name="toolTip">
+            <string>Set the Sub VFO to the selected Tone. Not available on all radios and not available for DTCS.</string>
+           </property>
            <property name="text">
             <string>Set Sub VFO</string>
            </property>
@@ -453,7 +524,7 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="rptToneBtns"/>
   <buttongroup name="rptDuplexBtns"/>
+  <buttongroup name="rptToneBtns"/>
  </buttongroups>
 </ui>

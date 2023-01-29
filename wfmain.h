@@ -1060,7 +1060,8 @@ private:
     mode_info currentModeInfo;
 
     bool haveRigCaps;
-    bool amTransmitting;
+    bool amTransmitting = false;
+    bool splitModeEnabled = false;
     bool usingDataMode = false;
 
     unsigned char micGain=0;
