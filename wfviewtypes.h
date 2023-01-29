@@ -157,7 +157,8 @@ enum cmds {
     cmdSelVFO, cmdVFOSwap, cmdVFOEqualAB, cmdVFOEqualMS,
     cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
     cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW,
-    cmdSetTime, cmdSetDate, cmdSetUTCOffset
+    cmdSetTime, cmdSetDate, cmdSetUTCOffset,
+    cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown // Only used for USB Controller at the moment.
 };
 
 struct commandtype {

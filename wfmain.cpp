@@ -1686,20 +1686,46 @@ void wfmain::doShuttle(bool up, unsigned char level)
 
 void wfmain::buttonControl(const COMMAND* cmd)
 {
-
-    if (cmd->type==normalCommand) {
-        //qDebug() << "Other command";
-        issueCmdUniquePriority((cmds)cmd->command, cmd->suffix);
-    }
-    else if (cmd->type == bandswitch)
-    {
-        //qDebug() << "Bandswitch";
-        //issueCmd((cmds)cmd->command, cmd->band); // Needs fixing!
-    }
-    else if (cmd->type == modeswitch)
-    {
-        //qDebug() << "Bandswitch";
+    switch (cmd->command) {
+    case cmdGetBandStackReg:
+        issueCmd((cmds)cmd->command, cmd->band.band);
+        break;
+    case cmdSetBandUp:
+        break;
+    case cmdSetBandDown:
+        break;
+    case cmdSetMode:
         changeMode(cmd->mode);
+        break;
+    case cmdSetModeUp:
+        for (int i = 0; i < rigCaps.modes.size(); i++) {
+            if (rigCaps.modes[i].mk == currentModeInfo.mk)
+            {
+                if (i + 1 < rigCaps.modes.size()) {
+                    changeMode(rigCaps.modes[i + 1].mk);
+                }
+                else {
+                    changeMode(rigCaps.modes[0].mk);
+                }
+            }
+        }
+        break;
+    case cmdSetModeDown:
+        for (int i = 0; i < rigCaps.modes.size(); i++) {
+            if (rigCaps.modes[i].mk == currentModeInfo.mk)
+            {
+                if (i>0) {
+                    changeMode(rigCaps.modes[i - 1].mk);
+                }
+                else {
+                    changeMode(rigCaps.modes[rigCaps.modes.size()-1].mk);
+                }
+            }
+        }
+        break;
+    default:
+        issueCmdUniquePriority((cmds)cmd->command, cmd->suffix);
+        break;
     }
 }
 
@@ -2314,10 +2340,10 @@ void wfmain::loadSettings()
         usbCommands.append(COMMAND(4, "Tune", cmdNone, 0x0));
         usbCommands.append(COMMAND(5, "Step+", cmdNone, 0x0));
         usbCommands.append(COMMAND(6, "Step-", cmdNone, 0x0));
-        usbCommands.append(COMMAND(7, "Mode+", cmdNone, 0x0));
-        usbCommands.append(COMMAND(8, "Mode-", cmdNone, 0x0));
-        usbCommands.append(COMMAND(9, "Band+", cmdNone, 0x0));
-        usbCommands.append(COMMAND(10, "Band-", cmdNone, 0x0));
+        usbCommands.append(COMMAND(7, "Mode+", cmdSetModeUp, 0x0));
+        usbCommands.append(COMMAND(8, "Mode-", cmdSetModeDown, 0x0));
+        usbCommands.append(COMMAND(9, "Band+", cmdSetBandUp, 0x0));
+        usbCommands.append(COMMAND(10, "Band-", cmdSetBandDown, 0x0));
         usbCommands.append(COMMAND(11, "NR", cmdNone, 0x0));
         usbCommands.append(COMMAND(12, "NB", cmdNone, 0x0));
         usbCommands.append(COMMAND(13, "AGC", cmdNone, 0x0));
