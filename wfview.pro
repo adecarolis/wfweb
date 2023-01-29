@@ -175,15 +175,16 @@ CONFIG(debug, release|debug) {
   }
 }
 
+contains(DEFINES,USB_CONTROLLER){
+    linux:LIBS += -L./ -l$$QCPLIB -lhidapi -libusb
+    macx:LIBS += -lhidapi
+    macx:LIBS += -L../hidapi/windows/x64/release -lhidapi
+    win32:INCLUDEPATH += ../hidapi/hidapi
+}
+
 !win32:LIBS += -L./ -l$$QCPLIB -lopus
 win32:LIBS += -l$$QCPLIB -lopus
 
-contains(DEFINES,USB_CONTROLLER){
-    linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb
-    macx:LIBS += -lhidapi
-    win32:INCLUDEPATH += ../hidapi/hidapi
-    win32:SOURCES += ../hidapi/windows/hid.c
-}
 
 #macx:SOURCES += ../qcustomplot/qcustomplot.cpp 
 #macx:HEADERS += ../qcustomplot/qcustomplot.h

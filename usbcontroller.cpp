@@ -307,14 +307,14 @@ void usbController::runTimer()
             {
 
 
-
                 // Step through all buttons and emit ones that have been pressed.
                 for (unsigned char i = 0; i < 16; i++)
                 {
-
+                    
                     for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
                         if (but->dev == usbDevice && but->num == i) {
-
+                            if ((tempButtons >> i & 1) && !(buttons >> i & 1))
+                                qInfo(logUsbControl) << "Button on" << i;
                             if ((tempButtons >> i & 1) && !(buttons >> i & 1) && but->onCommand->index > 0)
                             {
                                 qInfo(logUsbControl()) << "On Button event:" << but->onCommand->text;
@@ -421,33 +421,20 @@ void usbController::runTimer()
 
             if ((unsigned char)data[5] == 0x07)
             {
-		        // TODO: change of frequency should be multiplied by data[1] or data[4]
-		        // data[1] max value depend on rotation speed I was able to detect was 150 decimal
-		        // data[4] can have 3 values 0 1 or 2 it depends on rotation speed
-                if ((unsigned char)data[4] > 0x00) {
-		            changeVFO = data[4] * data[1];
-		        } else {
-		            changeVFO = data[1];
-		        }
                 if ((unsigned char)data[3] == 0x01)
                 {
-                    //qDebug(logUsbControl()) << "Frequency UP";
-                    //emit jogPlus();
-                    jogCounter = jogCounter + changeVFO;
+                    jogCounter = jogCounter + data[1];
                 }
                 else if ((unsigned char)data[3] == 0x02)
                 {
-                    //qDebug(logUsbControl()) << "Frequency DOWN";
-                    //emit jogMinus();
-                    jogCounter = jogCounter - changeVFO;
-                    jogCounter--;
+                    jogCounter = jogCounter - data[1];
                 }
             }
 
             lastData = data;
         }
 
-        if (lastusbController.msecsTo(QTime::currentTime()) >= 200 || lastusbController > QTime::currentTime())
+        if (lastusbController.msecsTo(QTime::currentTime()) >= 100 || lastusbController > QTime::currentTime())
         {
             if (usbDevice == shuttleXpress || usbDevice == shuttlePro2)
             {

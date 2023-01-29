@@ -1685,12 +1685,11 @@ void wfmain::changeFrequency(int value) {
     if (freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(freq.Hz, value, tsKnobHz);
-
+    f.Hz = roundFrequencyWithStep(freq.Hz, value, tsWfScrollHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    setUIFreq();
+    freq = f;
     issueCmdUniquePriority(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 }
 
 void wfmain::setDefPrefs()
@@ -1746,7 +1745,7 @@ void wfmain::loadSettings()
     settings->beginGroup("Program");
     QString priorVersionString = settings->value("version", "unset").toString();
     float priorVersionFloat = priorVersionString.toFloat();
-    if(currentVersionString != priorVersionString)
+    if (currentVersionString != priorVersionString)
     {
         qWarning(logSystem()) << "Settings previously saved under version " << priorVersionString << ", you should review your settings and press SaveSettings.";
     }
@@ -2267,7 +2266,8 @@ void wfmain::loadSettings()
     /* Load USB buttons*/
     settings->beginGroup("USB");
     int numCommands = settings->beginReadArray("Commands");
-    if (numCommands == 0) {
+    // This is the last time the commands were changed (v1.58)
+    if (numCommands == 0 || priorVersionFloat < 1.58) {
         settings->endArray();
         // We have no buttons so create defaults
         usbCommands.clear();
@@ -2353,17 +2353,18 @@ void wfmain::loadSettings()
     }
 
     int numButtons = settings->beginReadArray("Buttons");
-    if (numButtons == 0) {
+    // This is the last time the buttons were changed, (v1.58)
+    if (numButtons == 0 || priorVersionFloat < 1.58) {
         settings->endArray();
         // We have no buttons so create defaults
         usbButtons.clear();
 
         // ShuttleXpress
-        usbButtons.append(BUTTON(1, 0, QRect(60, 66, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(1, 1, QRect(114, 50, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(1, 2, QRect(169, 47, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(1, 3, QRect(225, 59, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(1, 4, QRect(41, 132, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
+        usbButtons.append(BUTTON(1, 4, QRect(25, 199, 89, 169), Qt::red, &usbCommands[0], &usbCommands[0]));
+        usbButtons.append(BUTTON(1, 5, QRect(101, 72, 83, 88), Qt::red, &usbCommands[0], &usbCommands[0]));
+        usbButtons.append(BUTTON(1, 6, QRect(238, 26, 134, 69), Qt::red, &usbCommands[0], &usbCommands[0]));
+        usbButtons.append(BUTTON(1, 7, QRect(452, 72, 77, 86), Qt::red, &usbCommands[0], &usbCommands[0]));
+        usbButtons.append(BUTTON(1, 8, QRect(504, 199, 89, 169), Qt::red, &usbCommands[0], &usbCommands[0]));
 
         // ShuttlePro2
         usbButtons.append(BUTTON(2, 0, QRect(60, 66, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
@@ -2404,7 +2405,6 @@ void wfmain::loadSettings()
         usbButtons.append(BUTTON(4, "LEFTY", QRect(162, 132, 50, 57), Qt::red, &usbCommands[0], &usbCommands[0]));
         usbButtons.append(BUTTON(4, "RIGHTX", QRect(430, 298, 83, 35), Qt::red, &usbCommands[0], &usbCommands[0]));
         usbButtons.append(BUTTON(4, "RIGHTY", QRect(453, 233, 50, 57), Qt::red, &usbCommands[0], &usbCommands[0]));
-        //usbButtons.append(BUTTON(4, 14, QRect(280, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
 
     }
     else {
@@ -5213,7 +5213,7 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     // We will click the dial once for every 120 received.
     //QPoint delta = we->angleDelta();
 
-    if(freqLock)
+    if (freqLock)
         return;
 
     freqt f;
@@ -5222,17 +5222,18 @@ void wfmain::handleWFScroll(QWheelEvent *we)
 
     int clicks = we->angleDelta().y() / 120;
 
-    if(!clicks)
+    if (!clicks)
         return;
 
     unsigned int stepsHz = tsWfScrollHz;
 
-    Qt::KeyboardModifiers key=  we->modifiers();
+    Qt::KeyboardModifiers key = we->modifiers();
 
-    if ((key == Qt::ShiftModifier) && (stepsHz !=1))
+    if ((key == Qt::ShiftModifier) && (stepsHz != 1))
     {
         stepsHz /= 10;
-    } else if (key == Qt::ControlModifier)
+    }
+    else if (key == Qt::ControlModifier)
     {
         stepsHz *= 10;
     }
