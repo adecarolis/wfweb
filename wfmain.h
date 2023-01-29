@@ -1038,6 +1038,7 @@ private:
 
 
     void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
+    void removeSlowPeriodicCommand(cmds cmd);
     void calculateTimingParameters();
     void changePollTiming(int timing_ms, bool setUI=false);
 
