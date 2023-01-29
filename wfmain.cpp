@@ -414,6 +414,15 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveTSQL(quint16)), rpt, SLOT(handleTSQL(quint16)));
     connect(rig, SIGNAL(haveDTCS(quint16,bool,bool)), rpt, SLOT(handleDTCS(quint16,bool,bool)));
     connect(rig, SIGNAL(haveRptAccessMode(rptAccessTxRx)), rpt, SLOT(handleRptAccessMode(rptAccessTxRx)));
+
+    connect(this->rig, &rigCommander::haveDuplexMode,
+            [=](const duplexMode &dm) {
+                if(dm==dmSplitOn)
+                    this->splitModeEnabled = true;
+                else
+                    this->splitModeEnabled = false;
+    });
+
     connect(this->rpt, &repeaterSetup::setTransmitFrequency,
             [=](const freqt &transmitFreq) { issueCmd(cmdSetFreq, transmitFreq);});
     connect(this->rpt, &repeaterSetup::setTransmitMode,
@@ -1044,6 +1053,7 @@ void wfmain::setupMainUI()
     pttLed = new QLedLabel(this);
     ui->statusBar->addPermanentWidget(pttLed);
     pttLed->setState(QLedLabel::State::StateOk);
+    pttLed->setToolTip("Receiving");
 
     connectedLed = new QLedLabel(this);
     ui->statusBar->addPermanentWidget(connectedLed);
@@ -4746,15 +4756,24 @@ void wfmain::receiveFreq(freqt freqStruct)
 void wfmain::receivePTTstatus(bool pttOn)
 {
     // This is the only place where amTransmitting and the transmit button text should be changed:
-    //qInfo(logSystem()) << "PTT status: " << pttOn;
     if (pttOn && !amTransmitting)
     {
-        pttLed->setState(QLedLabel::State::StateError);
 
+        pttLed->setState(QLedLabel::State::StateError);
+        pttLed->setToolTip("Transmitting");
+        if(splitModeEnabled)
+        {
+            pttLed->setState(QLedLabel::State::StateSplitErrorOk);
+            pttLed->setToolTip("TX Split");
+        } else {
+            pttLed->setState(QLedLabel::State::StateError);
+            pttLed->setToolTip("Transmitting");
+        }
     }
     else if (!pttOn && amTransmitting)
     {
         pttLed->setState(QLedLabel::State::StateOk);
+        pttLed->setToolTip("Receiving");
     }
     amTransmitting = pttOn;
     rpt->handleTransmitStatus(pttOn);

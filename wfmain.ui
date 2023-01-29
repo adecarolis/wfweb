@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -1057,7 +1057,7 @@
                <string>Show the repeater tone and offset window</string>
               </property>
               <property name="text">
-               <string>Repeater</string>
+               <string>Rpt/Split</string>
               </property>
              </widget>
             </item>
@@ -1808,6 +1808,7 @@
              <font>
               <family>DejaVu Sans Mono</family>
               <pointsize>14</pointsize>
+              <weight>75</weight>
               <bold>true</bold>
              </font>
             </property>
@@ -3430,7 +3431,7 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>579</width>
+                      <width>570</width>
                       <height>224</height>
                      </rect>
                     </property>
@@ -5380,6 +5381,7 @@
        <widget class="QPushButton" name="exitBtn">
         <property name="font">
          <font>
+          <weight>50</weight>
           <bold>false</bold>
          </font>
         </property>
@@ -5399,7 +5401,7 @@
      <x>0</x>
      <y>0</y>
      <width>1063</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
@@ -5426,8 +5428,8 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="pollingButtonGroup"/>
   <buttongroup name="buttonGroup"/>
   <buttongroup name="underlayButtonGroup"/>
+  <buttongroup name="pollingButtonGroup"/>
  </buttongroups>
 </ui>

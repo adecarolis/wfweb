@@ -12,15 +12,6 @@ repeaterSetup::repeaterSetup(QWidget *parent) :
 
     // populate the DCS combo box:
     populateDTCS();
-
-#ifdef QT_DEBUG
-    ui->debugBtn->setVisible(true);
-    ui->rptReadRigBtn->setVisible(true);
-#else
-    ui->debugBtn->setVisible(false);
-    ui->rptReadRigBtn->setVisible(false);
-#endif
-
 }
 
 repeaterSetup::~repeaterSetup()
@@ -684,7 +675,6 @@ void repeaterSetup::on_splitPlusButton_clicked()
     }
 }
 
-
 void repeaterSetup::on_splitMinusBtn_clicked()
 {
     quint64 hzOffset = getFreqHzFromKHzString(ui->splitOffsetEdit->text());
@@ -715,6 +705,11 @@ void repeaterSetup::on_splitTxFreqSetBtn_clicked()
         emit setTransmitFrequency(f);
         emit setTransmitMode(modeTransmitVFO);
     }
+}
+
+void repeaterSetup::on_splitTransmitFreqEdit_returnPressed()
+{
+    this->on_splitTxFreqSetBtn_clicked();
 }
 
 void repeaterSetup::on_selABtn_clicked()
@@ -799,4 +794,9 @@ void repeaterSetup::on_rptrOffsetSetBtn_clicked()
     {
         emit setRptDuplexOffset(f);
     }
+}
+
+void repeaterSetup::on_rptrOffsetEdit_returnPressed()
+{
+    this->on_rptrOffsetSetBtn_clicked();
 }
