@@ -246,7 +246,7 @@ void usbController::run()
 void usbController::runTimer()
 {
     int res=1;
-    int changeVFO=0;
+ 
     while (res > 0) {
         QByteArray data(HIDDATALENGTH, 0x0);
         res = hid_read(handle, (unsigned char*)data.data(), HIDDATALENGTH);
@@ -313,8 +313,6 @@ void usbController::runTimer()
                     
                     for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
                         if (but->dev == usbDevice && but->num == i) {
-                            if ((tempButtons >> i & 1) && !(buttons >> i & 1))
-                                qInfo(logUsbControl) << "Button on" << i;
                             if ((tempButtons >> i & 1) && !(buttons >> i & 1) && but->onCommand->index > 0)
                             {
                                 qInfo(logUsbControl()) << "On Button event:" << but->onCommand->text;
