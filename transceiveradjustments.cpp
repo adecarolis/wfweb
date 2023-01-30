@@ -121,7 +121,7 @@ void transceiverAdjustments::updatePassband(quint16 passbandHz)
 {
     lastKnownPassband = passbandHz;
     float l = 2.0*passbandHz/maxHz;
-#ifndef Q_OS_WIN
+#ifdef Q_OS_LINUX
     int val = exp10f(l);
 #else
     int val = pow(10, l);
