@@ -5653,54 +5653,46 @@ void wfmain::on_f2btn_clicked()
 {
     checkFreqSel();
     ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("2"));
-
 }
 void wfmain::on_f3btn_clicked()
 {
+    checkFreqSel();
     ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("3"));
-
 }
 void wfmain::on_f4btn_clicked()
 {
     checkFreqSel();
     ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("4"));
-
 }
 void wfmain::on_f5btn_clicked()
 {
     checkFreqSel();
     ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("5"));
-
 }
 void wfmain::on_f6btn_clicked()
 {
     checkFreqSel();
     ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("6"));
-
 }
 void wfmain::on_f7btn_clicked()
 {
     checkFreqSel();
     ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("7"));
-
 }
 void wfmain::on_f8btn_clicked()
 {
     checkFreqSel();
     ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("8"));
-
 }
 void wfmain::on_f9btn_clicked()
 {
     checkFreqSel();
     ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("9"));
-
 }
 void wfmain::on_fDotbtn_clicked()
 {
     checkFreqSel();
     ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("."));
-
 }
 
 
