@@ -146,6 +146,7 @@ CONFIG(debug, release|debug) {
       LIBS += -L../qcustomplot/x64
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\x64\qcustomplotd2.dll debug\$$escape_expand(\n\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll debug\$$escape_expand(\n\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\X64\Debug\hidapi.dll release\$$escape_expand(\n\t))
       win32:LIBS += -L../portaudio/msvc/X64/Debug/ -lportaudio_x64
       contains(DEFINES,USB_CONTROLLER){
             win32:LIBS += -L../hidapi/windows/x64/debug -lhidapi
@@ -155,6 +156,7 @@ CONFIG(debug, release|debug) {
       LIBS += -L../qcustomplot/win32
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y .\qcustomplot\win32\qcustomplotd2.dll debug\$$escape_expand(\n\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll debug\$$escape_expand(\n\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\Debug\hidapi.dll release\$$escape_expand(\n\t))
       win32:LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86 -lole32
       contains(DEFINES,USB_CONTROLLER){
             win32:LIBS += -L../hidapi/windows/debug -lhidapi
@@ -170,6 +172,7 @@ CONFIG(debug, release|debug) {
       LIBS += -L../qcustomplot/x64
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\x64\qcustomplot2.dll release\$$escape_expand(\n\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll release\$$escape_expand(\n\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\X64\Release\hidapi.dll release\$$escape_expand(\n\t))
       win32:LIBS += -L../portaudio/msvc/X64/Release/ -lportaudio_x64
       contains(DEFINES,USB_CONTROLLER){
             win32:LIBS += -L../hidapi/windows/x64/release -lhidapi
@@ -179,6 +182,7 @@ CONFIG(debug, release|debug) {
       LIBS += -L../qcustomplot/win32
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\qcustomplot\win32\qcustomplot2.dll release\$$escape_expand(\n\t))
       QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll release\$$escape_expand(\n\t))
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\hidapi\windows\Release\hidapi.dll release\$$escape_expand(\n\t))
       win32:LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86 -lole32
       contains(DEFINES,USB_CONTROLLER){
             win32:LIBS += -L../hidapi/windows/release -lhidapi
