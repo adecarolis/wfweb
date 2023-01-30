@@ -366,11 +366,14 @@ void repeaterSetup::handleUpdateCurrentMainFrequency(freqt mainfreq)
         if(currentMainFrequency.Hz != mainfreq.Hz)
         {
             this->currentMainFrequency = mainfreq;
-            if(usedPlusSplit)
+            if(!ui->splitTransmitFreqEdit->hasFocus())
             {
-                on_splitPlusButton_clicked();
-            } else {
-                on_splitMinusBtn_clicked();
+                if(usedPlusSplit)
+                {
+                    on_splitPlusButton_clicked();
+                } else {
+                    on_splitMinusBtn_clicked();
+                }
             }
         }
         if(ui->setSplitRptrToneChk->isChecked())
@@ -727,6 +730,7 @@ void repeaterSetup::on_splitTxFreqSetBtn_clicked()
 void repeaterSetup::on_splitTransmitFreqEdit_returnPressed()
 {
     this->on_splitTxFreqSetBtn_clicked();
+    ui->splitTransmitFreqEdit->clearFocus();
 }
 
 void repeaterSetup::on_selABtn_clicked()
