@@ -1701,7 +1701,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
         issueCmd((cmds)cmd->command, cmd->band.band);
         break;
     case cmdSetBandUp:
-        for (int i = 0; i < rigCaps.bands.size(); i++) {
+        for (size_t i = 0; i < rigCaps.bands.size(); i++) {
             if (rigCaps.bands[i].band == lastRequestedBand)
             {
                 if (i>0) {
@@ -1714,7 +1714,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
         }
         break;
     case cmdSetBandDown:
-        for (int i = 0; i < rigCaps.bands.size(); i++) {
+        for (size_t i = 0; i < rigCaps.bands.size(); i++) {
             if (rigCaps.bands[i].band == lastRequestedBand)
             {
                 if (i + 1 < rigCaps.bands.size()) {
@@ -1730,7 +1730,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
         changeMode(cmd->mode);
         break;
     case cmdSetModeUp:
-        for (int i = 0; i < rigCaps.modes.size(); i++) {
+        for (size_t i = 0; i < rigCaps.modes.size(); i++) {
             if (rigCaps.modes[i].mk == currentModeInfo.mk)
             {
                 if (i + 1 < rigCaps.modes.size()) {
@@ -1743,7 +1743,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
         }
         break;
     case cmdSetModeDown:
-        for (int i = 0; i < rigCaps.modes.size(); i++) {
+        for (size_t i = 0; i < rigCaps.modes.size(); i++) {
             if (rigCaps.modes[i].mk == currentModeInfo.mk)
             {
                 if (i>0) {
@@ -2423,40 +2423,41 @@ void wfmain::loadSettings()
         usbCommands.append(COMMAND(15, "Mode CW", cmdSetMode, modeCW));
         usbCommands.append(COMMAND(16, "Mode CWR", cmdSetMode, modeCW_R));
         usbCommands.append(COMMAND(17, "Mode FM", cmdSetMode, modeFM));
-        usbCommands.append(COMMAND(18, "Mode RTTY", cmdSetMode, modeRTTY));
-        usbCommands.append(COMMAND(19, "Mode RTTYR", cmdSetMode, modeRTTY_R));
-        usbCommands.append(COMMAND(20, "Mode PSK", cmdSetMode, modePSK));
-        usbCommands.append(COMMAND(21, "Mode PSKR", cmdSetMode, modePSK_R));
-        usbCommands.append(COMMAND(22, "Mode DV", cmdSetMode, modeDV));
-        usbCommands.append(COMMAND(23, "Mode DD", cmdSetMode, modeDD));
-        usbCommands.append(COMMAND(24, "Band+", cmdSetBandUp, 0x0));
-        usbCommands.append(COMMAND(25, "Band-", cmdSetBandDown, 0x0));
-        usbCommands.append(COMMAND(26, "23cm", cmdGetBandStackReg, band23cm));
-        usbCommands.append(COMMAND(27, "70cm", cmdGetBandStackReg, band70cm));
-        usbCommands.append(COMMAND(28, "2m", cmdGetBandStackReg, band2m));
-        usbCommands.append(COMMAND(29, "AIR", cmdGetBandStackReg, bandAir));
-        usbCommands.append(COMMAND(30, "WFM", cmdGetBandStackReg, bandWFM));
-        usbCommands.append(COMMAND(31, "4m", cmdGetBandStackReg, band4m));
-        usbCommands.append(COMMAND(32, "6m", cmdGetBandStackReg, band6m));
-        usbCommands.append(COMMAND(33, "10m", cmdGetBandStackReg, band10m));
-        usbCommands.append(COMMAND(34, "12m", cmdGetBandStackReg, band12m));
-        usbCommands.append(COMMAND(35, "15m", cmdGetBandStackReg, band15m));
-        usbCommands.append(COMMAND(36, "17m", cmdGetBandStackReg, band17m));
-        usbCommands.append(COMMAND(37, "20m", cmdGetBandStackReg, band20m));
-        usbCommands.append(COMMAND(38, "30m", cmdGetBandStackReg, band30m));
-        usbCommands.append(COMMAND(39, "40m", cmdGetBandStackReg, band40m));
-        usbCommands.append(COMMAND(40, "60m", cmdGetBandStackReg, band60m));
-        usbCommands.append(COMMAND(41, "80m", cmdGetBandStackReg, band80m));
-        usbCommands.append(COMMAND(42, "160m", cmdGetBandStackReg, band160m));
-        usbCommands.append(COMMAND(43, "630m", cmdGetBandStackReg, band630m));
-        usbCommands.append(COMMAND(44, "2200m", cmdGetBandStackReg, band2200m));
-        usbCommands.append(COMMAND(45, "GEN", cmdGetBandStackReg, bandGen));
-        usbCommands.append(COMMAND(46, "NR On", cmdNone, 0x0));
-        usbCommands.append(COMMAND(47, "NR Off", cmdNone, 0x0));
-        usbCommands.append(COMMAND(48, "NB On", cmdNone, 0x0));
-        usbCommands.append(COMMAND(49, "NB Off", cmdNone, 0x0));
-        usbCommands.append(COMMAND(50, "Split On", cmdNone, 0x01));
-        usbCommands.append(COMMAND(51, "Split Off", cmdNone, 0x0));
+        usbCommands.append(COMMAND(18, "Mode AM", cmdSetMode, modeAM));
+        usbCommands.append(COMMAND(19, "Mode RTTY", cmdSetMode, modeRTTY));
+        usbCommands.append(COMMAND(20, "Mode RTTYR", cmdSetMode, modeRTTY_R));
+        usbCommands.append(COMMAND(21, "Mode PSK", cmdSetMode, modePSK));
+        usbCommands.append(COMMAND(22, "Mode PSKR", cmdSetMode, modePSK_R));
+        usbCommands.append(COMMAND(23, "Mode DV", cmdSetMode, modeDV));
+        usbCommands.append(COMMAND(24, "Mode DD", cmdSetMode, modeDD));
+        usbCommands.append(COMMAND(25, "Band+", cmdSetBandUp, 0x0));
+        usbCommands.append(COMMAND(26, "Band-", cmdSetBandDown, 0x0));
+        usbCommands.append(COMMAND(27, "23cm", cmdGetBandStackReg, band23cm));
+        usbCommands.append(COMMAND(28, "70cm", cmdGetBandStackReg, band70cm));
+        usbCommands.append(COMMAND(29, "2m", cmdGetBandStackReg, band2m));
+        usbCommands.append(COMMAND(30, "AIR", cmdGetBandStackReg, bandAir));
+        usbCommands.append(COMMAND(31, "WFM", cmdGetBandStackReg, bandWFM));
+        usbCommands.append(COMMAND(32, "4m", cmdGetBandStackReg, band4m));
+        usbCommands.append(COMMAND(33, "6m", cmdGetBandStackReg, band6m));
+        usbCommands.append(COMMAND(34, "10m", cmdGetBandStackReg, band10m));
+        usbCommands.append(COMMAND(35, "12m", cmdGetBandStackReg, band12m));
+        usbCommands.append(COMMAND(36, "15m", cmdGetBandStackReg, band15m));
+        usbCommands.append(COMMAND(37, "17m", cmdGetBandStackReg, band17m));
+        usbCommands.append(COMMAND(38, "20m", cmdGetBandStackReg, band20m));
+        usbCommands.append(COMMAND(39, "30m", cmdGetBandStackReg, band30m));
+        usbCommands.append(COMMAND(40, "40m", cmdGetBandStackReg, band40m));
+        usbCommands.append(COMMAND(41, "60m", cmdGetBandStackReg, band60m));
+        usbCommands.append(COMMAND(42, "80m", cmdGetBandStackReg, band80m));
+        usbCommands.append(COMMAND(43, "160m", cmdGetBandStackReg, band160m));
+        usbCommands.append(COMMAND(44, "630m", cmdGetBandStackReg, band630m));
+        usbCommands.append(COMMAND(45, "2200m", cmdGetBandStackReg, band2200m));
+        usbCommands.append(COMMAND(46, "GEN", cmdGetBandStackReg, bandGen));
+        usbCommands.append(COMMAND(47, "NR On", cmdNone, 0x0));
+        usbCommands.append(COMMAND(48, "NR Off", cmdNone, 0x0));
+        usbCommands.append(COMMAND(49, "NB On", cmdNone, 0x0));
+        usbCommands.append(COMMAND(50, "NB Off", cmdNone, 0x0));
+        usbCommands.append(COMMAND(51, "Split On", cmdNone, 0x01));
+        usbCommands.append(COMMAND(52, "Split Off", cmdNone, 0x0));
 
 
         /*
