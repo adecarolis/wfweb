@@ -14,6 +14,7 @@ public:
         StateOkBlue,
         StateWarning,
         StateError,
+        StateSplitErrorOk,
         StateBlank
     };
 

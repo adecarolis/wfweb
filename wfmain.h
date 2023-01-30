@@ -94,6 +94,10 @@ signals:
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
     void setMode(mode_info);
+    void selectVFO(vfo_t vfo);
+    void sendVFOSwap();
+    void sendVFOEqualAB();
+    void sendVFOEqualMS();
     void setDataMode(bool dataOn, unsigned char filter);
     void getDataMode();
     void getModInput(bool dataOn);
@@ -111,6 +115,11 @@ signals:
     void getTSQL();
     void getDTCS();
     void getRptAccessMode();
+    void setRepeaterAccessMode(rptrAccessData_t rd);
+    void setTone(rptrTone_t t);
+    void setTSQL(rptrTone_t t);
+    void setRptDuplexOffset(freqt f);
+    void getRptDuplexOffset();
 
     // Level get:
     void getLevels(); // get all levels
@@ -383,6 +392,11 @@ private slots:
     void on_fEnterBtn_clicked();
     void on_usbControllerBtn_clicked();
 
+    void on_usbButtonsResetBtn_clicked();
+    void on_usbCommandsResetBtn_clicked();
+
+    void on_enableUsbChk_clicked(bool checked);
+
     void on_scopeBWCombo_currentIndexChanged(int index);
 
     void on_scopeEdgeCombo_currentIndexChanged(int index);
@@ -450,6 +464,8 @@ private slots:
     void on_usernameTxt_textChanged(QString text);
 
     void on_passwordTxt_textChanged(QString text);
+
+    void on_audioDuplexCombo_currentIndexChanged(int value);
 
     void on_audioOutputCombo_currentIndexChanged(int value);
 
@@ -909,6 +925,9 @@ private:
 
     void issueCmd(cmds cmd, freqt f);
     void issueCmd(cmds cmd, mode_info m);
+    void issueCmd(cmds cmd, vfo_t v);
+    void issueCmd(cmds cmd, rptrTone_t t);
+    void issueCmd(cmds cmd, rptrAccessData_t rd);
     void issueCmd(cmds cmd, timekind t);
     void issueCmd(cmds cmd, datekind d);
     void issueCmd(cmds cmd, int i);
@@ -1024,6 +1043,7 @@ private:
 
 
     void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
+    void removeSlowPeriodicCommand(cmds cmd);
     void calculateTimingParameters();
     void changePollTiming(int timing_ms, bool setUI=false);
 
@@ -1036,6 +1056,9 @@ private:
 
     void updateUsbButtons();
 
+    void resetUsbButtons();
+    void resetUsbCommands();
+
     int oldFreqDialVal;
 
     rigCapabilities rigCaps;
@@ -1045,7 +1068,8 @@ private:
     mode_info currentModeInfo;
 
     bool haveRigCaps;
-    bool amTransmitting;
+    bool amTransmitting = false;
+    bool splitModeEnabled = false;
     bool usingDataMode = false;
 
     unsigned char micGain=0;
@@ -1101,6 +1125,8 @@ private:
     double pbtDefault = 0.0;
     quint16 cwPitch = 600;
 
+    availableBands lastRequestedBand=bandGen;
+
     SERVERCONFIG serverConfig;
     void serverAddUserLine(const QString& user, const QString& pass, const int& type);
 
@@ -1139,6 +1165,7 @@ Q_DECLARE_METATYPE(enum rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
 Q_DECLARE_METATYPE(enum mode_kind)
+Q_DECLARE_METATYPE(enum vfo_t)
 Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 Q_DECLARE_METATYPE(QList<spotData>)
 Q_DECLARE_METATYPE(rigstate*)
@@ -1148,6 +1175,10 @@ Q_DECLARE_METATYPE(QVector <COMMAND>*)
 Q_DECLARE_METATYPE(const COMMAND*)
 Q_DECLARE_METATYPE(codecType)
 Q_DECLARE_METATYPE(errorType)
+Q_DECLARE_METATYPE(enum duplexMode)
+Q_DECLARE_METATYPE(enum rptAccessTxRx)
+Q_DECLARE_METATYPE(struct rptrTone_t)
+Q_DECLARE_METATYPE(struct rptrAccessData_t)
 
 //void (*wfmain::logthistext)(QString text) = NULL;
 

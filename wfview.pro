@@ -10,7 +10,7 @@ QT       += core gui serialport network multimedia xml
 #DEFINES += USESQL
 
 #Uncomment The following line to enable USB controllers (Shuttle/RC-28 etc.)
-#DEFINES += USB_CONTROLLER
+DEFINES += USB_CONTROLLER
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
 
@@ -175,15 +175,16 @@ CONFIG(debug, release|debug) {
   }
 }
 
-!win32:LIBS += -L./ -l$$QCPLIB -lopus
-win32:LIBS += -l$$QCPLIB -lopus
-
 contains(DEFINES,USB_CONTROLLER){
     linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb
     macx:LIBS += -lhidapi
+    macx:LIBS += -L../hidapi/windows/x64/release -lhidapi
     win32:INCLUDEPATH += ../hidapi/hidapi
-    win32:SOURCES += ../hidapi/windows/hid.c
 }
+
+!win32:LIBS += -L./ -l$$QCPLIB -lopus
+win32:LIBS += -l$$QCPLIB -lopus
+
 
 #macx:SOURCES += ../qcustomplot/qcustomplot.cpp 
 #macx:HEADERS += ../qcustomplot/qcustomplot.h

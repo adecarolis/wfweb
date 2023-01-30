@@ -246,7 +246,7 @@ void usbController::run()
 void usbController::runTimer()
 {
     int res=1;
-    int changeVFO=0;
+ 
     while (res > 0) {
         QByteArray data(HIDDATALENGTH, 0x0);
         res = hid_read(handle, (unsigned char*)data.data(), HIDDATALENGTH);
@@ -307,14 +307,12 @@ void usbController::runTimer()
             {
 
 
-
                 // Step through all buttons and emit ones that have been pressed.
                 for (unsigned char i = 0; i < 16; i++)
                 {
-
+                    
                     for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
                         if (but->dev == usbDevice && but->num == i) {
-
                             if ((tempButtons >> i & 1) && !(buttons >> i & 1) && but->onCommand->index > 0)
                             {
                                 qInfo(logUsbControl()) << "On Button event:" << but->onCommand->text;
@@ -343,9 +341,9 @@ void usbController::runTimer()
 
             // Buttons
 
-            BUTTON* butptt;
-            BUTTON* butf1;
-            BUTTON* butf2;
+            BUTTON* butptt = Q_NULLPTR;
+            BUTTON* butf1 = Q_NULLPTR;
+            BUTTON* butf2 = Q_NULLPTR;;
 
             for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
                 if (but->dev == usbDevice) {
@@ -370,7 +368,7 @@ void usbController::runTimer()
                 lastData = data;
             }
 
-            if (((unsigned char)data[5] == 0x06) && ((unsigned char)lastData[5] != 0x06))
+            if (butptt != Q_NULLPTR && ((unsigned char)data[5] == 0x06) && ((unsigned char)lastData[5] != 0x06))
             {
         		// TRANSMIT key down only (no other keys down)
                 qDebug(logUsbControl()) << "PTT key down";
@@ -378,7 +376,7 @@ void usbController::runTimer()
                 emit button(butptt->onCommand);
 
             }
-            else if (((unsigned char)data[5] != 0x06) && ((unsigned char)lastData[5] == 0x06))
+            else if (butptt != Q_NULLPTR && ((unsigned char)data[5] != 0x06) && ((unsigned char)lastData[5] == 0x06))
             {
 		        // TRANSMIT key up only (no other keys down)
                 //emit button(false, 6);
@@ -386,7 +384,7 @@ void usbController::runTimer()
                 qInfo(logUsbControl()) << "Off Button event:" << butptt->offCommand->text;
                 emit button(butptt->offCommand);
             }
-            else if (((unsigned char)data[5] == 0x03) && ((unsigned char)lastData[5] != 0x03))
+            else if (butf2 != Q_NULLPTR && ((unsigned char)data[5] == 0x03) && ((unsigned char)lastData[5] != 0x03))
             {
 		        // F-2 key up only (no other keys down)
                 //emit button(true, 7);
@@ -394,7 +392,7 @@ void usbController::runTimer()
                 qInfo(logUsbControl()) << "On Button event:" << butf2->onCommand->text;
                 emit button(butf2->onCommand);
             }
-            else if (((unsigned char)data[5] != 0x03) && ((unsigned char)lastData[5] == 0x03))
+            else if (butf2 != Q_NULLPTR && ((unsigned char)data[5] != 0x03) && ((unsigned char)lastData[5] == 0x03))
             {
 		        // F-2 key down only (no other keys down)
                 //emit button(false, 7);
@@ -402,7 +400,7 @@ void usbController::runTimer()
                 qInfo(logUsbControl()) << "Off Button event:" << butf2->offCommand->text;
                 emit button(butf2->offCommand);
             }
-            else if (((unsigned char)data[5] == 0x05) && ((unsigned char)lastData[5] != 0x05))
+            else if (butf1 != Q_NULLPTR && ((unsigned char)data[5] == 0x05) && ((unsigned char)lastData[5] != 0x05))
             {
         		// F-1 key up only (no other keys down)
                 //emit button(true, 5);
@@ -410,7 +408,7 @@ void usbController::runTimer()
                 qInfo(logUsbControl()) << "On Button event:" << butf1->onCommand->text;
                 emit button(butf1->onCommand);
             }
-            else if (((unsigned char)data[5] != 0x05) && ((unsigned char)lastData[5] == 0x05))
+            else if (butf1 != Q_NULLPTR && ((unsigned char)data[5] != 0x05) && ((unsigned char)lastData[5] == 0x05))
             {
 		        // F-1 key down only (no other keys down)
                 //emit button(false, 5);
@@ -421,33 +419,20 @@ void usbController::runTimer()
 
             if ((unsigned char)data[5] == 0x07)
             {
-		        // TODO: change of frequency should be multiplied by data[1] or data[4]
-		        // data[1] max value depend on rotation speed I was able to detect was 150 decimal
-		        // data[4] can have 3 values 0 1 or 2 it depends on rotation speed
-                if ((unsigned char)data[4] > 0x00) {
-		            changeVFO = data[4] * data[1];
-		        } else {
-		            changeVFO = data[1];
-		        }
                 if ((unsigned char)data[3] == 0x01)
                 {
-                    //qDebug(logUsbControl()) << "Frequency UP";
-                    //emit jogPlus();
-                    jogCounter = jogCounter + changeVFO;
+                    jogCounter = jogCounter + data[1];
                 }
                 else if ((unsigned char)data[3] == 0x02)
                 {
-                    //qDebug(logUsbControl()) << "Frequency DOWN";
-                    //emit jogMinus();
-                    jogCounter = jogCounter - changeVFO;
-                    jogCounter--;
+                    jogCounter = jogCounter - data[1];
                 }
             }
 
             lastData = data;
         }
 
-        if (lastusbController.msecsTo(QTime::currentTime()) >= 200 || lastusbController > QTime::currentTime())
+        if (lastusbController.msecsTo(QTime::currentTime()) >= 100 || lastusbController > QTime::currentTime())
         {
             if (usbDevice == shuttleXpress || usbDevice == shuttlePro2)
             {

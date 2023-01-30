@@ -57,10 +57,13 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<rigCapabilities>();
     qRegisterMetaType<duplexMode>();
     qRegisterMetaType<rptAccessTxRx>();
+    qRegisterMetaType<rptrAccessData_t>();
     qRegisterMetaType<rigInput>();
     qRegisterMetaType<meterKind>();
     qRegisterMetaType<spectrumMode>();
     qRegisterMetaType<freqt>();
+    qRegisterMetaType<vfo_t>();
+    qRegisterMetaType<rptrTone_t>();
     qRegisterMetaType<mode_info>();
     qRegisterMetaType<mode_kind>();
     qRegisterMetaType<audioPacket>();
@@ -164,13 +167,12 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     amTransmitting = false;
 
-#if defined(USB_CONTROLLER)
-    // Setup USB Controller
-    setupUsbControllerDevice();
-    emit sendUsbControllerCommands(&usbCommands);
-    emit sendUsbControllerButtons(&usbButtons);
-#else
+#if !defined(USB_CONTROLLER)
+    ui->enableUsbChk->setVisible(false);
     ui->usbControllerBtn->setVisible(false);
+    ui->usbButtonsResetBtn->setVisible(false);
+    ui->usbCommandsResetBtn->setVisible(false);
+    ui->usbResetLbl->setVisible(false);
 #endif
 
     connect(ui->txPowerSlider, &QSlider::sliderMoved,
@@ -343,6 +345,11 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
     connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
 
+    connect(this, SIGNAL(selectVFO(vfo_t)), rig, SLOT(selectVFO(vfo_t)));
+    connect(this, SIGNAL(sendVFOSwap()), rig, SLOT(exchangeVFOs()));
+    connect(this, SIGNAL(sendVFOEqualAB()), rig, SLOT(equalizeVFOsAB()));
+    connect(this, SIGNAL(sendVFOEqualMS()), rig, SLOT(equalizeVFOsMS()));
+
     connect(this, SIGNAL(sendCW(QString)), rig, SLOT(sendCW(QString)));
     connect(this, SIGNAL(stopCW()), rig, SLOT(sendStopCW()));
     connect(this, SIGNAL(setKeySpeed(unsigned char)), rig, SLOT(setKeySpeed(unsigned char)));
@@ -376,28 +383,65 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(havePassband(quint16)), this, SLOT(receivePassband(quint16)));
     connect(rig, SIGNAL(haveCwPitch(unsigned char)), this, SLOT(receiveCwPitch(unsigned char)));
 
+    // Repeater, duplex, and split:
     connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
     connect(rpt, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
     connect(rig, SIGNAL(haveDuplexMode(duplexMode)), rpt, SLOT(receiveDuplexMode(duplexMode)));
+    connect(this, SIGNAL(getRptDuplexOffset()), rig, SLOT(getRptDuplexOffset()));
+    connect(rig, SIGNAL(haveRptOffsetFrequency(freqt)), rpt, SLOT(handleRptOffsetFrequency(freqt)));
     connect(rpt, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(rpt, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(rpt, SIGNAL(getDTCS()), rig, SLOT(getDTCS()));
-    connect(rpt, SIGNAL(setTone(quint16)), rig, SLOT(setTone(quint16)));
-    connect(rpt, SIGNAL(setTSQL(quint16)), rig, SLOT(setTSQL(quint16)));
+
+    connect(this->rpt, &repeaterSetup::setTone,
+            [=](const rptrTone_t &t) { issueCmd(cmdSetTone, t);});
+
+    connect(this->rpt, &repeaterSetup::setTSQL,
+            [=](const rptrTone_t &t) { issueCmd(cmdSetTSQL, t);});
+
     connect(rpt, SIGNAL(setDTCS(quint16,bool,bool)), rig, SLOT(setDTCS(quint16,bool,bool)));
     connect(rpt, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
-    connect(rpt, SIGNAL(setRptAccessMode(rptAccessTxRx)), rig, SLOT(setRptAccessMode(rptAccessTxRx)));
+
+    //connect(rpt, SIGNAL(setRptAccessMode(rptAccessTxRx)), rig, SLOT(setRptAccessMode(rptAccessTxRx)));
+
+    connect(this->rpt, &repeaterSetup::setRptAccessMode,
+            [=](const rptrAccessData_t &rd) { issueCmd(cmdSetRptAccessMode, rd);});
+    connect(this, SIGNAL(setRepeaterAccessMode(rptrAccessData_t)), rig, SLOT(setRptAccessMode(rptrAccessData_t)));
+    connect(this, SIGNAL(setTone(rptrTone_t)), rig, SLOT(setTone(rptrTone_t)));
+
     connect(rig, SIGNAL(haveTone(quint16)), rpt, SLOT(handleTone(quint16)));
     connect(rig, SIGNAL(haveTSQL(quint16)), rpt, SLOT(handleTSQL(quint16)));
     connect(rig, SIGNAL(haveDTCS(quint16,bool,bool)), rpt, SLOT(handleDTCS(quint16,bool,bool)));
     connect(rig, SIGNAL(haveRptAccessMode(rptAccessTxRx)), rpt, SLOT(handleRptAccessMode(rptAccessTxRx)));
+
+    connect(this->rig, &rigCommander::haveDuplexMode,
+            [=](const duplexMode &dm) {
+                if(dm==dmSplitOn)
+                    this->splitModeEnabled = true;
+                else
+                    this->splitModeEnabled = false;
+    });
+
     connect(this->rpt, &repeaterSetup::setTransmitFrequency,
             [=](const freqt &transmitFreq) { issueCmd(cmdSetFreq, transmitFreq);});
-
     connect(this->rpt, &repeaterSetup::setTransmitMode,
             [=](const mode_info &transmitMode) { issueCmd(cmdSetMode, transmitMode);});
+    connect(this->rpt, &repeaterSetup::selectVFO,
+            [=](const vfo_t &v) { issueCmd(cmdSelVFO, v);});
+    connect(this->rpt, &repeaterSetup::equalizeVFOsAB,
+            [=]() { issueDelayedCommand(cmdVFOEqualAB);});
+    connect(this->rpt, &repeaterSetup::equalizeVFOsMS,
+            [=]() { issueDelayedCommand(cmdVFOEqualMS);});
+    connect(this->rpt, &repeaterSetup::swapVFOs,
+            [=]() { issueDelayedCommand(cmdVFOSwap);});
+    connect(this->rpt, &repeaterSetup::setRptDuplexOffset,
+            [=](const freqt &fOffset) { issueCmd(cmdSetRptDuplexOffset, fOffset);});
+    connect(this->rpt, &repeaterSetup::getRptDuplexOffset,
+            [=]() { issueDelayedCommand(cmdGetRptDuplexOffset);});
 
+    connect(this, SIGNAL(setRptDuplexOffset(freqt)), rig, SLOT(setRptDuplexOffset(freqt)));
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
+
     connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
     connect(this, SIGNAL(setPassband(quint16)), rig, SLOT(setPassband(quint16)));
     connect(this, SIGNAL(getCwPitch()), rig, SLOT(getCwPitch()));
@@ -406,8 +450,6 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(this, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(this, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
-    //connect(this, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
-    //connect(rig, SIGNAL(haveDuplexMode(duplexMode)), this, SLOT(receiveDuplexMode(duplexMode)));
 
     connect(this, SIGNAL(getModInput(bool)), rig, SLOT(getModInput(bool)));
     connect(rig, SIGNAL(haveModInput(rigInput,bool)), this, SLOT(receiveModInput(rigInput, bool)));
@@ -1010,6 +1052,7 @@ void wfmain::setupMainUI()
     pttLed = new QLedLabel(this);
     ui->statusBar->addPermanentWidget(pttLed);
     pttLed->setState(QLedLabel::State::StateOk);
+    pttLed->setToolTip("Receiving");
 
     connectedLed = new QLedLabel(this);
     ui->statusBar->addPermanentWidget(connectedLed);
@@ -1652,20 +1695,108 @@ void wfmain::doShuttle(bool up, unsigned char level)
 
 void wfmain::buttonControl(const COMMAND* cmd)
 {
-
-    if (cmd->type==normalCommand) {
-        //qDebug() << "Other command";
-        issueCmdUniquePriority((cmds)cmd->command, cmd->suffix);
-    }
-    else if (cmd->type == bandswitch)
-    {
-        //qDebug() << "Bandswitch";
-        //issueCmd((cmds)cmd->command, cmd->band); // Needs fixing!
-    }
-    else if (cmd->type == modeswitch)
-    {
-        //qDebug() << "Bandswitch";
+    switch (cmd->command) {
+    case cmdGetBandStackReg:
+        issueCmd((cmds)cmd->command, cmd->band);
+        break;
+    case cmdSetBandUp:
+        for (size_t i = 0; i < rigCaps.bands.size(); i++) {
+            if (rigCaps.bands[i].band == lastRequestedBand)
+            {
+                if (i>0) {
+                    issueCmd(cmdGetBandStackReg, rigCaps.bands[i - 1].band);
+                }
+                else {
+                    issueCmd(cmdGetBandStackReg, rigCaps.bands[rigCaps.bands.size() - 1].band);
+                }
+            }
+        }
+        break;
+    case cmdSetBandDown:
+        for (size_t i = 0; i < rigCaps.bands.size(); i++) {
+            if (rigCaps.bands[i].band == lastRequestedBand)
+            {
+                if (i + 1 < rigCaps.bands.size()) {
+                    issueCmd(cmdGetBandStackReg, rigCaps.bands[i + 1].band);
+                }
+                else {
+                    issueCmd(cmdGetBandStackReg, rigCaps.bands[0].band);
+                }
+            }
+        }
+        break;
+    case cmdSetMode:
         changeMode(cmd->mode);
+        break;
+    case cmdSetModeUp:
+        for (size_t i = 0; i < rigCaps.modes.size(); i++) {
+            if (rigCaps.modes[i].mk == currentModeInfo.mk)
+            {
+                if (i + 1 < rigCaps.modes.size()) {
+                    changeMode(rigCaps.modes[i + 1].mk);
+                }
+                else {
+                    changeMode(rigCaps.modes[0].mk);
+                }
+            }
+        }
+        break;
+    case cmdSetModeDown:
+        for (size_t i = 0; i < rigCaps.modes.size(); i++) {
+            if (rigCaps.modes[i].mk == currentModeInfo.mk)
+            {
+                if (i>0) {
+                    changeMode(rigCaps.modes[i - 1].mk);
+                }
+                else {
+                    changeMode(rigCaps.modes[rigCaps.modes.size()-1].mk);
+                }
+            }
+        }
+        break;
+    case cmdSetStepUp:
+        if (ui->tuningStepCombo->currentIndex() < ui->tuningStepCombo->count()-1)
+        {
+            ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->currentIndex() + 1);
+        }
+        else
+        {
+            ui->tuningStepCombo->setCurrentIndex(0);
+        }
+        break;
+    case cmdSetStepDown:
+        if (ui->tuningStepCombo->currentIndex() > 0)
+        {
+            ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->currentIndex() - 1);
+        }
+        else
+        {
+            ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->count() - 1);
+        }
+        break;
+    case cmdSetSpanUp:
+        if (ui->scopeBWCombo->currentIndex() < ui->scopeBWCombo->count()-1)
+        {
+            ui->scopeBWCombo->setCurrentIndex(ui->scopeBWCombo->currentIndex() + 1);
+        }
+        else
+        {
+            ui->scopeBWCombo->setCurrentIndex(0);
+        }
+        break;
+    case cmdSetSpanDown:
+        if (ui->scopeBWCombo->currentIndex() > 0)
+        {
+            ui->scopeBWCombo->setCurrentIndex(ui->scopeBWCombo->currentIndex() - 1);
+        }
+        else
+        {
+            ui->scopeBWCombo->setCurrentIndex(ui->scopeBWCombo->count() - 1);
+        }
+        break;
+    default:
+        issueCmdUniquePriority((cmds)cmd->command, cmd->suffix);
+        break;
     }
 }
 
@@ -1685,12 +1816,11 @@ void wfmain::changeFrequency(int value) {
     if (freqLock) return;
 
     freqt f;
-    f.Hz = roundFrequencyWithStep(freq.Hz, value, tsKnobHz);
-
+    f.Hz = roundFrequencyWithStep(freq.Hz, value, tsWfScrollHz);
     f.MHzDouble = f.Hz / (double)1E6;
-    setUIFreq();
+    freq = f;
     issueCmdUniquePriority(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 }
 
 void wfmain::setDefPrefs()
@@ -1726,6 +1856,7 @@ void wfmain::setDefPrefs()
     defPrefs.tcpPort = 0;
     defPrefs.waterfallFormat = 0;
     defPrefs.audioSystem = qtAudio;
+    defPrefs.enableUSBControllers = false;
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -1746,7 +1877,7 @@ void wfmain::loadSettings()
     settings->beginGroup("Program");
     QString priorVersionString = settings->value("version", "unset").toString();
     float priorVersionFloat = priorVersionString.toFloat();
-    if(currentVersionString != priorVersionString)
+    if (currentVersionString != priorVersionString)
     {
         qWarning(logSystem()) << "Settings previously saved under version " << priorVersionString << ", you should review your settings and press SaveSettings.";
     }
@@ -2045,6 +2176,8 @@ void wfmain::loadSettings()
 
     udpPrefs.clientName = settings->value("ClientName", udpDefPrefs.clientName).toString();
 
+    udpPrefs.halfDuplex = settings->value("HalfDuplex", udpDefPrefs.halfDuplex).toBool();
+
     settings->endGroup();
 
     settings->beginGroup("Server");
@@ -2264,79 +2397,30 @@ void wfmain::loadSettings()
     settings->endGroup();
 
 #if defined (USB_CONTROLLER)
-    /* Load USB buttons*/
     settings->beginGroup("USB");
+    /* Load USB buttons*/
+    prefs.enableUSBControllers = settings->value("EnableUSBControllers", defPrefs.enableUSBControllers).toBool();
+    ui->enableUsbChk->blockSignals(true);
+    ui->enableUsbChk->setChecked(prefs.enableUSBControllers);
+    ui->enableUsbChk->blockSignals(false);
+    ui->usbControllerBtn->setEnabled(prefs.enableUSBControllers);
+    ui->usbButtonsResetBtn->setEnabled(prefs.enableUSBControllers);
+    ui->usbCommandsResetBtn->setEnabled(prefs.enableUSBControllers);
+    ui->usbResetLbl->setVisible(prefs.enableUSBControllers);
+
+    if (prefs.enableUSBControllers) {
+        // Setup USB Controller
+        setupUsbControllerDevice();
+        emit sendUsbControllerCommands(&usbCommands);
+        emit sendUsbControllerButtons(&usbButtons);
+    }
+
     int numCommands = settings->beginReadArray("Commands");
-    if (numCommands == 0) {
+    // This is the last time the commands were changed (v1.58)
+    if (numCommands == 0 || priorVersionFloat < 1.58) {
         settings->endArray();
         // We have no buttons so create defaults
-        usbCommands.clear();
-        usbCommands.append(COMMAND(0, "None", cmdNone, 0x0));
-        usbCommands.append(COMMAND(1, "PTT On", cmdSetPTT, 0x1));
-        usbCommands.append(COMMAND(2, "PTT Off", cmdSetPTT, 0x0));
-        usbCommands.append(COMMAND(3, "PTT Toggle", cmdPTTToggle, 0x0));
-        usbCommands.append(COMMAND(4, "Tune", cmdNone, 0x0));
-        usbCommands.append(COMMAND(5, "Step+", cmdNone, 0x0));
-        usbCommands.append(COMMAND(6, "Step-", cmdNone, 0x0));
-        usbCommands.append(COMMAND(7, "Mode+", cmdNone, 0x0));
-        usbCommands.append(COMMAND(8, "Mode-", cmdNone, 0x0));
-        usbCommands.append(COMMAND(9, "Band+", cmdNone, 0x0));
-        usbCommands.append(COMMAND(10, "Band-", cmdNone, 0x0));
-        usbCommands.append(COMMAND(11, "NR", cmdNone, 0x0));
-        usbCommands.append(COMMAND(12, "NB", cmdNone, 0x0));
-        usbCommands.append(COMMAND(13, "AGC", cmdNone, 0x0));
-        usbCommands.append(COMMAND(14, "NB", cmdNone, 0x0));
-        usbCommands.append(COMMAND(15, "23cm", cmdGetBandStackReg, band23cm));
-        usbCommands.append(COMMAND(16, "70cm", cmdGetBandStackReg, band70cm));
-        usbCommands.append(COMMAND(17, "2m", cmdGetBandStackReg, band2m));
-        usbCommands.append(COMMAND(18, "AIR", cmdGetBandStackReg, bandAir));
-        usbCommands.append(COMMAND(19, "WFM", cmdGetBandStackReg, bandWFM));
-        usbCommands.append(COMMAND(20, "4m", cmdGetBandStackReg, band4m));
-        usbCommands.append(COMMAND(21, "6m", cmdGetBandStackReg, band6m));
-        usbCommands.append(COMMAND(22, "10m", cmdGetBandStackReg, band10m));
-        usbCommands.append(COMMAND(23, "12m", cmdGetBandStackReg, band12m));
-        usbCommands.append(COMMAND(24, "15m", cmdGetBandStackReg, band15m));
-        usbCommands.append(COMMAND(25, "17m", cmdGetBandStackReg, band17m));
-        usbCommands.append(COMMAND(26, "20m", cmdGetBandStackReg, band20m));
-        usbCommands.append(COMMAND(27, "30m", cmdGetBandStackReg, band30m));
-        usbCommands.append(COMMAND(28, "40m", cmdGetBandStackReg, band40m));
-        usbCommands.append(COMMAND(29, "60m", cmdGetBandStackReg, band60m));
-        usbCommands.append(COMMAND(30, "80m", cmdGetBandStackReg, band80m));
-        usbCommands.append(COMMAND(31, "160m", cmdGetBandStackReg, band160m));
-        usbCommands.append(COMMAND(32, "630m", cmdGetBandStackReg, band630m));
-        usbCommands.append(COMMAND(33, "2200m", cmdGetBandStackReg, band2200m));
-        usbCommands.append(COMMAND(34, "GEN", cmdGetBandStackReg, bandGen));
-        usbCommands.append(COMMAND(35, "Mode LSB", cmdSetMode, modeLSB));
-        usbCommands.append(COMMAND(36, "Mode USB", cmdSetMode, modeUSB));
-        usbCommands.append(COMMAND(37, "Mode CW", cmdSetMode, modeCW));
-        usbCommands.append(COMMAND(38, "Mode FM", cmdSetMode, modeFM));
-
-
-        /*
-            modeLSB = 0x00,
-            modeUSB = 0x01,
-            modeAM = 0x02,
-            modeCW = 0x03,
-            modeRTTY = 0x04,
-            modeFM = 0x05,
-            modeCW_R = 0x07,
-            modeRTTY_R = 0x08,
-            modeLSB_D = 0x80,
-            modeUSB_D = 0x81,
-            modeDV = 0x17,
-            modeDD = 0x27,
-            modeWFM,
-            modeS_AMD,
-            modeS_AML,
-            modeS_AMU,
-            modeP25,
-            modedPMR,
-            modeNXDN_VN,
-            modeNXDN_N,
-            modeDCR,
-            modePSK,
-            modePSK_R
-            */
+        resetUsbCommands();
     }
     else {
         for (int nc = 0; nc < numCommands; nc++)
@@ -2346,66 +2430,20 @@ void wfmain::loadSettings()
             comm.index = settings->value("Num", 0).toInt();
             comm.text = settings->value("Text", "").toString();
             comm.command = settings->value("Command", 0).toInt();
-            //comm.band = (bandType)settings->value("Band", 0).toInt(); // Needs fixing!
+            comm.band = (availableBands)settings->value("Band", 0).toInt();
+            comm.mode = (mode_kind)settings->value("Mode", 0).toInt();
+            comm.suffix = (unsigned char)settings->value("Suffix", 0).toInt();
             usbCommands.append(comm);
         }
         settings->endArray();
     }
 
     int numButtons = settings->beginReadArray("Buttons");
-    if (numButtons == 0) {
+    // This is the last time the buttons were changed, (v1.58)
+    if (numButtons == 0 || priorVersionFloat < 1.58) {
         settings->endArray();
         // We have no buttons so create defaults
-        usbButtons.clear();
-
-        // ShuttleXpress
-        usbButtons.append(BUTTON(1, 0, QRect(60, 66, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(1, 1, QRect(114, 50, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(1, 2, QRect(169, 47, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(1, 3, QRect(225, 59, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(1, 4, QRect(41, 132, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-
-        // ShuttlePro2
-        usbButtons.append(BUTTON(2, 0, QRect(60, 66, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(2, 1, QRect(114, 50, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(2, 2, QRect(169, 47, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(2, 3, QRect(225, 59, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(2, 4, QRect(41, 132, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(2, 5, QRect(91, 105, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(2, 6, QRect(144, 93, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(2, 7, QRect(204, 99, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(2, 8, QRect(253, 124, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(2, 9, QRect(50, 270, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(2, 10, QRect(210, 270, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(2, 11, QRect(50, 335, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(2, 12, QRect(210, 335, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(2, 13, QRect(30, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(2, 14, QRect(280, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
-
-        // RC28 
-        usbButtons.append(BUTTON(3, 0, QRect(52, 445, 238, 64), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(3, 1, QRect(52, 373, 98, 46), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(3, 2, QRect(193, 373, 98, 46), Qt::red, &usbCommands[0], &usbCommands[0]));
-
-        // Xbox Gamepad
-        usbButtons.append(BUTTON(4, "UP", QRect(256, 229, 50, 50), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(4, "DOWN", QRect(256, 316, 50, 50), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(4, "LEFT", QRect(203, 273, 50, 50), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(4, "RIGHT", QRect(303, 273, 50, 50), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(4, "SELECT", QRect(302, 160, 40, 40), Qt::red, &usbCommands[0], &usbCommands[0])); 
-        usbButtons.append(BUTTON(4, "START", QRect(412, 163, 40, 40), Qt::red, &usbCommands[0], &usbCommands[0])); 
-        usbButtons.append(BUTTON(4, "Y", QRect(534, 104, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); 
-        usbButtons.append(BUTTON(4, "X", QRect(485, 152, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); 
-        usbButtons.append(BUTTON(4, "B", QRect(590, 152, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); 
-        usbButtons.append(BUTTON(4, "A", QRect(534, 202, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0])); 
-        usbButtons.append(BUTTON(4, "L1", QRect(123, 40, 70, 45), Qt::red, &usbCommands[0], &usbCommands[0])); 
-        usbButtons.append(BUTTON(4, "R1", QRect(562, 40, 70, 45), Qt::red, &usbCommands[0], &usbCommands[0])); 
-        usbButtons.append(BUTTON(4, "LEFTX", QRect(143, 119, 83, 35), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(4, "LEFTY", QRect(162, 132, 50, 57), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(4, "RIGHTX", QRect(430, 298, 83, 35), Qt::red, &usbCommands[0], &usbCommands[0]));
-        usbButtons.append(BUTTON(4, "RIGHTY", QRect(453, 233, 50, 57), Qt::red, &usbCommands[0], &usbCommands[0]));
-        //usbButtons.append(BUTTON(4, 14, QRect(280, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
-
+        resetUsbButtons();
     }
     else {
         usbButtons.clear();
@@ -2705,6 +2743,7 @@ void wfmain::saveSettings()
     settings->setValue("ResampleQuality", rxSetup.resampleQuality);
     settings->setValue("ClientName", udpPrefs.clientName);
     settings->setValue("WaterfallFormat", prefs.waterfallFormat);
+    settings->setValue("HalfDuplex", udpPrefs.halfDuplex);
 
     settings->endGroup();
 
@@ -2837,6 +2876,7 @@ void wfmain::saveSettings()
 #if defined(USB_CONTROLLER)
     settings->beginGroup("USB");
     // Store USB Controller
+    settings->setValue("EnableUSBControllers", prefs.enableUSBControllers);
 
     settings->beginWriteArray("Buttons");
     for (int nb = 0; nb < usbButtons.count(); nb++)
@@ -2854,6 +2894,21 @@ void wfmain::saveSettings()
             settings->setValue("OnCommand", usbButtons[nb].onCommand->text);
         if (usbButtons[nb].offCommand != Q_NULLPTR)
             settings->setValue("OffCommand", usbButtons[nb].offCommand->text);
+    }
+
+    settings->endArray();
+
+    settings->beginWriteArray("Commands");
+    for (int nc = 0; nc < usbCommands.count(); nc++)
+    {
+        settings->setArrayIndex(nc);
+
+        settings->setValue("Num", usbCommands[nc].index);
+        settings->setValue("Text", usbCommands[nc].text);
+        settings->setValue("Command", usbCommands[nc].command);
+        settings->setValue("Band", usbCommands[nc].band);
+        settings->setValue("Mode", usbCommands[nc].mode);
+        settings->setValue("Suffix", usbCommands[nc].suffix);
     }
 
     settings->endArray();
@@ -3608,6 +3663,12 @@ void wfmain::doCmd(commandtype cmddata)
             emit setMode(m);
             break;
         }
+        case cmdSelVFO:
+        {
+            vfo_t v = (*std::static_pointer_cast<vfo_t>(data));
+            emit selectVFO(v);
+            break;
+        }
         case cmdSetTxPower:
         {
             unsigned char txpower = (*std::static_pointer_cast<unsigned char>(data));
@@ -3667,6 +3728,30 @@ void wfmain::doCmd(commandtype cmddata)
         {
             unsigned char outerLevel = (*std::static_pointer_cast<unsigned char>(data));
             emit setTPBFOuter(outerLevel);
+            break;
+        }
+        case cmdSetTone:
+        {
+            rptrTone_t t = (*std::static_pointer_cast<rptrTone_t>(data));
+            emit setTone(t);
+            break;
+        }
+        case cmdSetTSQL:
+        {
+            rptrTone_t t = (*std::static_pointer_cast<rptrTone_t>(data));
+            emit setTSQL(t);
+            break;
+        }
+        case cmdSetRptAccessMode:
+        {
+            rptrAccessData_t rd = (*std::static_pointer_cast<rptrAccessData_t>(data));
+            emit setRepeaterAccessMode(rd);
+            break;
+        }
+        case cmdSetRptDuplexOffset:
+        {
+            freqt f = (*std::static_pointer_cast<freqt>(data));
+            emit setRptDuplexOffset(f);
             break;
         }
         case cmdSetPTT:
@@ -3751,6 +3836,7 @@ void wfmain::doCmd(commandtype cmddata)
         case cmdGetBandStackReg:
         {
             char band = (*std::static_pointer_cast<char>(data));
+            lastRequestedBand = (availableBands)band;
             bandStkBand = rigCaps.bsr[(availableBands)band]; // 23cm Needs fixing
             bandStkRegCode = ui->bandStkPopdown->currentIndex() + 1;
             emit getBandStackReg(bandStkBand, bandStkRegCode);
@@ -3797,6 +3883,15 @@ void wfmain::doCmd(cmds cmd)
         case cmdGetMode:
             emit getMode();
             break;
+        case cmdVFOSwap:
+            emit sendVFOSwap();
+            break;
+        case cmdVFOEqualAB:
+            emit sendVFOEqualAB();
+            break;
+        case cmdVFOEqualMS:
+            emit sendVFOEqualMS();
+            break;
         case cmdGetDataMode:
             if(rigCaps.hasDataModes)
                 emit getDataMode();
@@ -3829,6 +3924,9 @@ void wfmain::doCmd(cmds cmd)
             break;
         case cmdGetDuplexMode:
             emit getDuplexMode();
+            break;
+        case cmdGetRptDuplexOffset:
+            emit getRptDuplexOffset();
             break;
         case cmdGetPassband:
             emit getPassband();
@@ -4060,9 +4158,15 @@ void wfmain::issueDelayedCommandUnique(cmds cmd)
     cmddata.cmd = cmd;
     cmddata.data = NULL;
 
+    delayedCmdQue.push_front(cmddata);
+    delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) {  return (c.cmd == cmd); }), delayedCmdQue.end());
+
     // The following is both expensive and not that great,
-    // since it does not check if the arguments are the same.
-    bool found = false;
+    // since it does not check if the arguments are the same.    
+/*    bool found = false;
+
+
+
     for(unsigned int i=0; i < delayedCmdQue.size(); i++)
     {
         if(delayedCmdQue.at(i).cmd == cmd)
@@ -4081,7 +4185,9 @@ void wfmain::issueDelayedCommandUnique(cmds cmd)
 //    {
 //        delayedCmdQue.push_front(cmddata);
 //    }
+*/
 
+//    delayedCmdQue.push_front(cmddata);
 }
 
 void wfmain::issueCmd(cmds cmd, mode_info m)
@@ -4097,6 +4203,30 @@ void wfmain::issueCmd(cmds cmd, freqt f)
     commandtype cmddata;
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<freqt>(new freqt(f));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, vfo_t v)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<vfo_t>(new vfo_t(v));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, rptrTone_t v)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<rptrTone_t>(new rptrTone_t(v));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, rptrAccessData_t rd)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<rptrAccessData_t>(new rptrAccessData_t(rd));
     delayedCmdQue.push_back(cmddata);
 }
 
@@ -4180,7 +4310,9 @@ void wfmain::issueCmdUniquePriority(cmds cmd, bool b)
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<bool>(new bool(b));
     delayedCmdQue.push_front(cmddata);
-    removeSimilarCommand(cmd);
+    delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) { return (c.cmd == cmd); }), delayedCmdQue.end());
+
+    //removeSimilarCommand(cmd);
 }
 
 void wfmain::issueCmdUniquePriority(cmds cmd, unsigned char c)
@@ -4189,7 +4321,9 @@ void wfmain::issueCmdUniquePriority(cmds cmd, unsigned char c)
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<unsigned char>(new unsigned char(c));
     delayedCmdQue.push_front(cmddata);
-    removeSimilarCommand(cmd);
+    delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) { return (c.cmd == cmd); }), delayedCmdQue.end());
+
+    //removeSimilarCommand(cmd);
 }
 
 void wfmain::issueCmdUniquePriority(cmds cmd, char c)
@@ -4198,7 +4332,8 @@ void wfmain::issueCmdUniquePriority(cmds cmd, char c)
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<char>(new char(c));
     delayedCmdQue.push_front(cmddata);
-    removeSimilarCommand(cmd);
+    delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) { return (c.cmd == cmd); }), delayedCmdQue.end());
+    //removeSimilarCommand(cmd);
 }
 
 void wfmain::issueCmdUniquePriority(cmds cmd, freqt f)
@@ -4207,7 +4342,8 @@ void wfmain::issueCmdUniquePriority(cmds cmd, freqt f)
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<freqt>(new freqt(f));
     delayedCmdQue.push_front(cmddata);
-    removeSimilarCommand(cmd);
+    delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) { return (c.cmd == cmd); }), delayedCmdQue.end());
+    //removeSimilarCommand(cmd);
 }
 
 void wfmain::issueCmdUniquePriority(cmds cmd, quint16 c)
@@ -4216,7 +4352,8 @@ void wfmain::issueCmdUniquePriority(cmds cmd, quint16 c)
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<quint16>(new quint16(c));
     delayedCmdQue.push_front(cmddata);
-    removeSimilarCommand(cmd);
+    delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) { return (c.cmd == cmd); }), delayedCmdQue.end());
+    //removeSimilarCommand(cmd);
 }
 
 void wfmain::issueCmdUniquePriority(cmds cmd, qint16 c)
@@ -4225,7 +4362,8 @@ void wfmain::issueCmdUniquePriority(cmds cmd, qint16 c)
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<qint16>(new qint16(c));
     delayedCmdQue.push_front(cmddata);
-    removeSimilarCommand(cmd);
+    delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) { return (c.cmd == cmd); }), delayedCmdQue.end());
+    //removeSimilarCommand(cmd);
 }
 
 void wfmain::removeSimilarCommand(cmds cmd)
@@ -4506,16 +4644,14 @@ void wfmain::initPeriodicCommands()
     if (rigCaps.hasRXAntenna) {
         insertSlowPeriodicCommand(cmdGetAntenna, 128);
     }
-    insertSlowPeriodicCommand(cmdGetDuplexMode, 128);
+    insertSlowPeriodicCommand(cmdGetDuplexMode, 128); // split and repeater
+    if(rigCaps.hasRepeaterModes)
+    {
+        insertSlowPeriodicCommand(cmdGetRptDuplexOffset, 128);
+    }
 
     rapidPollCmdQueueEnabled = false;
     rapidPollCmdQueue.clear();
-    if (rigCaps.hasSpectrum) {
-        // Get passband
-        insertPeriodicRapidCmd(cmdGetPassband);
-        insertPeriodicRapidCmd(cmdGetTPBFInner);
-        insertPeriodicRapidCmd(cmdGetTPBFOuter);
-    }
     rapidPollCmdQueueEnabled = true;
 }
 
@@ -4555,6 +4691,12 @@ void wfmain::insertPeriodicCommandUnique(cmds cmd)
 
 void wfmain::removePeriodicRapidCmd(cmds cmd)
 {
+
+    qDebug() << "Removing" << cmd << "From periodic queue, len" << slowPollCmdQueue.size();
+    periodicCmdQueue.erase(std::remove_if(periodicCmdQueue.begin(), periodicCmdQueue.end(), [cmd](const cmds& c) {  return (c == cmd); }), periodicCmdQueue.end());
+    qDebug() << "Removed" << cmd << "From periodic queue, len" << slowPollCmdQueue.size();
+
+    /*
     while(true)
     {
         auto it = std::find(this->rapidPollCmdQueue.begin(), this->rapidPollCmdQueue.end(), cmd);
@@ -4565,11 +4707,17 @@ void wfmain::removePeriodicRapidCmd(cmds cmd)
             break;
         }
     }
+    */
 }
 
 void wfmain::removePeriodicCommand(cmds cmd)
 {
-    while(true)
+
+    qDebug() << "Removing" << cmd << "From periodic queue, len" << slowPollCmdQueue.size();
+    periodicCmdQueue.erase(std::remove_if(periodicCmdQueue.begin(), periodicCmdQueue.end(), [cmd](const cmds& c) {  return (c == cmd); }), periodicCmdQueue.end());
+    qDebug() << "Removed" << cmd << "From periodic queue, len" << slowPollCmdQueue.size();
+
+/*    while (true)
     {
         auto it = std::find(this->periodicCmdQueue.begin(), this->periodicCmdQueue.end(), cmd);
         if(it != periodicCmdQueue.end())
@@ -4579,6 +4727,7 @@ void wfmain::removePeriodicCommand(cmds cmd)
             break;
         }
     }
+    */
 }
 
 
@@ -4587,12 +4736,21 @@ void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority=100)
     // TODO: meaningful priority
     // These commands are run every 20 "ticks" of the primary radio command loop
     // Basically 20 times less often than the standard periodic command
+    qDebug() << "Inserting" << cmd << "To slow queue, priority" << priority << "len" << slowPollCmdQueue.size();
     if(priority < 10)
     {
         slowPollCmdQueue.push_front(cmd);
     } else {
         slowPollCmdQueue.push_back(cmd);
     }
+    qDebug() << "Inserted" << cmd << "To slow queue, priority" << priority << "len" << slowPollCmdQueue.size();
+}
+
+void wfmain::removeSlowPeriodicCommand(cmds cmd)
+{
+    qDebug() << "Removing" << cmd << "From slow queue, len" << slowPollCmdQueue.size();
+    slowPollCmdQueue.erase(std::remove_if(slowPollCmdQueue.begin(), slowPollCmdQueue.end(), [cmd](const cmds& c) {  return (c == cmd); }), slowPollCmdQueue.end());
+    qDebug() << "Removed" << cmd << "From slow queue, len" << slowPollCmdQueue.size();
 }
 
 void wfmain::receiveFreq(freqt freqStruct)
@@ -4613,15 +4771,24 @@ void wfmain::receiveFreq(freqt freqStruct)
 void wfmain::receivePTTstatus(bool pttOn)
 {
     // This is the only place where amTransmitting and the transmit button text should be changed:
-    //qInfo(logSystem()) << "PTT status: " << pttOn;
     if (pttOn && !amTransmitting)
     {
-        pttLed->setState(QLedLabel::State::StateError);
 
+        pttLed->setState(QLedLabel::State::StateError);
+        pttLed->setToolTip("Transmitting");
+        if(splitModeEnabled)
+        {
+            pttLed->setState(QLedLabel::State::StateSplitErrorOk);
+            pttLed->setToolTip("TX Split");
+        } else {
+            pttLed->setState(QLedLabel::State::StateError);
+            pttLed->setToolTip("Transmitting");
+        }
     }
     else if (!pttOn && amTransmitting)
     {
         pttLed->setState(QLedLabel::State::StateOk);
+        pttLed->setToolTip("Receiving");
     }
     amTransmitting = pttOn;
     rpt->handleTransmitStatus(pttOn);
@@ -4949,6 +5116,9 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
             qint16 newFreq = pbFreq + 128;
             issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
             issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
+            issueDelayedCommandUnique(cmdGetTPBFInner);
+            issueDelayedCommandUnique(cmdGetTPBFOuter);
+
         }
     }
 }
@@ -5117,31 +5287,36 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
     }
     else if (passbandAction == passbandResizing)
     {
-        // We are currently resizing the passband.
-        double pb = 0.0;
-        double origin = 0.0;
-        switch (currentModeInfo.mk)
-        {
-        case modeCW:
-        case modeCW_R:
-            origin = 0.0;
-            break;
-        case modeLSB:
-            origin = -passbandCenterFrequency;
-            break;
-        default:
-            origin = passbandCenterFrequency;
-            break;
-        }
+        static double lastFreq = movedFrequency;
+        if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
 
-        if (plot->xAxis->pixelToCoord(cursor) >= freq.MHzDouble + origin) {
-            pb = plot->xAxis->pixelToCoord(cursor) - passbandIndicator->topLeft->coords().x();
-        }
-        else {
-            pb = passbandIndicator->bottomRight->coords().x() - plot->xAxis->pixelToCoord(cursor);
-        }
+            // We are currently resizing the passband.
+            double pb = 0.0;
+            double origin = 0.0;
+            switch (currentModeInfo.mk)
+            {
+            case modeCW:
+            case modeCW_R:
+                origin = 0.0;
+                break;
+            case modeLSB:
+                origin = -passbandCenterFrequency;
+                break;
+            default:
+                origin = passbandCenterFrequency;
+                break;
+            }
 
-        issueCmdUniquePriority(cmdSetPassband, (quint16)(pb * 1000000));
+            if (plot->xAxis->pixelToCoord(cursor) >= freq.MHzDouble + origin) {
+                pb = plot->xAxis->pixelToCoord(cursor) - passbandIndicator->topLeft->coords().x();
+            }
+            else {
+                pb = passbandIndicator->bottomRight->coords().x() - plot->xAxis->pixelToCoord(cursor);
+            }
+            issueCmdUniquePriority(cmdSetPassband, (quint16)(pb * 1000000));
+            issueDelayedCommandUnique(cmdGetPassband);
+            lastFreq = movedFrequency;
+        }
     }
     else if (passbandAction == pbtMoving) {
 
@@ -5161,25 +5336,36 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
                 qDebug() << QString("Moving passband by %1 Hz (Inner %2) (Outer %3) Mode:%4").arg((qint16)(movedFrequency * 1000000))
                     .arg(newInFreq).arg(newOutFreq).arg(currentModeInfo.mk);
 
-                issueCmd(cmdSetTPBFInner, (unsigned char)newInFreq);
-                issueCmd(cmdSetTPBFOuter, (unsigned char)newOutFreq);
-
+                issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newInFreq);
+                issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newOutFreq);
+                issueDelayedCommandUnique(cmdGetTPBFInner);
+                issueDelayedCommandUnique(cmdGetTPBFOuter);
             }
             lastFreq = movedFrequency;
         }
     }
     else if (passbandAction == pbtInnerMove) {
-        double pbFreq = ((double)(TPBFInner + movedFrequency) / passbandWidth) * 127.0;
-        qint16 newFreq = pbFreq + 128;
-        if (newFreq >= 0 && newFreq <= 255) {
-            issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
+        static double lastFreq = movedFrequency;
+        if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
+            double pbFreq = ((double)(TPBFInner + movedFrequency) / passbandWidth) * 127.0;
+            qint16 newFreq = pbFreq + 128;
+            if (newFreq >= 0 && newFreq <= 255) {
+                issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
+                issueDelayedCommandUnique(cmdGetTPBFInner);
+            }
+            lastFreq = movedFrequency;
         }
     }
     else if (passbandAction == pbtOuterMove) {
-        double pbFreq = ((double)(TPBFOuter + movedFrequency) / passbandWidth) * 127.0;
-        qint16 newFreq = pbFreq + 128;
-        if (newFreq >= 0 && newFreq <= 255) {
-            issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
+        static double lastFreq = movedFrequency;
+        if (lastFreq - movedFrequency > 0.000049 || movedFrequency - lastFreq > 0.000049) {
+            double pbFreq = ((double)(TPBFOuter + movedFrequency) / passbandWidth) * 127.0;
+            qint16 newFreq = pbFreq + 128;
+            if (newFreq >= 0 && newFreq <= 255) {
+                issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
+                issueDelayedCommandUnique(cmdGetTPBFOuter);
+            }
+            lastFreq = movedFrequency;
         }
     }
     else  if (passbandAction == passbandStatic && me->buttons() == Qt::LeftButton && textItem == nullptr && prefs.clickDragTuningEnable)
@@ -5213,7 +5399,7 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     // We will click the dial once for every 120 received.
     //QPoint delta = we->angleDelta();
 
-    if(freqLock)
+    if (freqLock)
         return;
 
     freqt f;
@@ -5222,17 +5408,18 @@ void wfmain::handleWFScroll(QWheelEvent *we)
 
     int clicks = we->angleDelta().y() / 120;
 
-    if(!clicks)
+    if (!clicks)
         return;
 
     unsigned int stepsHz = tsWfScrollHz;
 
-    Qt::KeyboardModifiers key=  we->modifiers();
+    Qt::KeyboardModifiers key = we->modifiers();
 
-    if ((key == Qt::ShiftModifier) && (stepsHz !=1))
+    if ((key == Qt::ShiftModifier) && (stepsHz != 1))
     {
         stepsHz /= 10;
-    } else if (key == Qt::ControlModifier)
+    }
+    else if (key == Qt::ControlModifier)
     {
         stepsHz *= 10;
     }
@@ -5273,108 +5460,104 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
     if(mode < 0x23)
     {
 
-        for(int i=0; i < ui->modeSelectCombo->count(); i++)
+        // Update mode information if mode/filter has changed
+        if (currentModeInfo.mk != (mode_kind)mode || currentModeInfo.filter != filter)
         {
-            if(ui->modeSelectCombo->itemData(i).toInt() == mode)
-            {
-                ui->modeSelectCombo->blockSignals(true);
-                ui->modeSelectCombo->setCurrentIndex(i);
-                ui->modeSelectCombo->blockSignals(false);
-                found = true;
-            }
-        }
-        currentModeIndex = mode;
-        currentModeInfo.mk = (mode_kind)mode;
-        cw->handleCurrentModeUpdate((mode_kind)mode);
-        currentModeInfo.filter = filter;
 
-        switch (currentModeInfo.mk) {
-        case modeFM:
-            if (currentModeInfo.filter == 1)
-                passbandWidth = 0.015;
-            else if (currentModeInfo.filter == 2)
-                passbandWidth = 0.010;
-            else
-                passbandWidth = 0.007;
-            passbandCenterFrequency = 0.0;
-            break;
-        case modeLSB:
-        case modeUSB:
-            removePeriodicCommand(cmdGetCwPitch);
-            removePeriodicCommand(cmdGetPskTone);
-            removePeriodicCommand(cmdGetRttyMark);
-            passbandCenterFrequency = 0.0015;
-            break;
-        case modeCW:
-        case modeCW_R:
-            insertPeriodicCommandUnique(cmdGetCwPitch);
-            removePeriodicCommand(cmdGetPskTone);
-            removePeriodicCommand(cmdGetRttyMark);
-            break;
-        default:
-            removePeriodicCommand(cmdGetCwPitch);
-            removePeriodicCommand(cmdGetPskTone);
-            removePeriodicCommand(cmdGetRttyMark);
-            passbandCenterFrequency = 0.0;
-            break;
+            removePeriodicRapidCmd(cmdGetCwPitch);
+            removeSlowPeriodicCommand(cmdGetPassband);
+            removeSlowPeriodicCommand(cmdGetTPBFInner);
+            removeSlowPeriodicCommand(cmdGetTPBFOuter);
+
+            quint16 maxPassbandHz = 0;
+            switch ((mode_kind)mode) {
+            case modeFM:
+                if (filter == 1)
+                    passbandWidth = 0.015;
+                else if (filter == 2)
+                    passbandWidth = 0.010;
+                else
+                    passbandWidth = 0.007;
+                passbandCenterFrequency = 0.0;
+                maxPassbandHz = 10E3;
+                break;
+            case modeCW:
+            case modeCW_R:
+                insertPeriodicRapidCmdUnique(cmdGetCwPitch);
+                issueDelayedCommandUnique(cmdGetCwPitch);
+                maxPassbandHz = 3600;
+                break;
+            case modeAM:
+                passbandCenterFrequency = 0.0;
+                maxPassbandHz = 10E3;
+                break;
+            case modeLSB:
+            case modeUSB:
+                passbandCenterFrequency = 0.0015;
+                maxPassbandHz = 3600;
+                break;
+            default:
+                passbandCenterFrequency = 0.0;
+                maxPassbandHz = 3600;
+                break;
+            }
+
+            for (int i = 0; i < ui->modeSelectCombo->count(); i++)
+            {
+                if (ui->modeSelectCombo->itemData(i).toInt() == mode)
+                {
+                    ui->modeSelectCombo->blockSignals(true);
+                    ui->modeSelectCombo->setCurrentIndex(i);
+                    ui->modeSelectCombo->blockSignals(false);
+                    found = true;
+                }
+            }
+
+            if ((filter) && (filter < 4)) {
+                ui->modeFilterCombo->blockSignals(true);
+                ui->modeFilterCombo->setCurrentIndex(filter - 1);
+                ui->modeFilterCombo->blockSignals(false);
+            }
+
+            currentModeIndex = mode;
+            currentModeInfo.mk = (mode_kind)mode;
+            currentMode = (mode_kind)mode;
+            currentModeInfo.filter = filter;
+            currentModeInfo.reg = mode;
+            rpt->handleUpdateCurrentMainMode(currentModeInfo);
+            cw->handleCurrentModeUpdate(currentMode);
+            if (!found)
+            {
+                qWarning(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
+                return;
+            }
+
+            if (maxPassbandHz != 0)
+            {
+                trxadj->setMaxPassband(maxPassbandHz);
+            }
+
+            if (currentModeInfo.mk != modeFM) 
+            {
+                insertSlowPeriodicCommand(cmdGetPassband, 128);
+                insertSlowPeriodicCommand(cmdGetTPBFInner, 128);
+                insertSlowPeriodicCommand(cmdGetTPBFOuter, 128);
+                issueDelayedCommandUnique(cmdGetPassband);
+                issueDelayedCommandUnique(cmdGetTPBFInner);
+                issueDelayedCommandUnique(cmdGetTPBFOuter);
+            }
+            
+            // Note: we need to know if the DATA mode is active to reach mode-D
+            // some kind of queued query:
+            if (rigCaps.hasDataModes && rigCaps.hasTransmit)
+            {
+                issueDelayedCommand(cmdGetDataMode);
+            }
+
         }
 
     } else {
         qCritical(logSystem()) << __func__ << "Invalid mode " << mode << " received. ";
-    }
-
-    if(!found)
-    {
-        qWarning(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
-        return;
-    }
-
-    currentModeIndex = mode;
-    currentModeInfo.mk = (mode_kind)mode;
-    currentMode = (mode_kind)mode;
-    currentModeInfo.filter = filter;
-    currentModeInfo.reg = mode;
-    rpt->handleUpdateCurrentMainMode(currentModeInfo);
-
-    if( (filter) && (filter < 4)){
-        ui->modeFilterCombo->blockSignals(true);
-        ui->modeFilterCombo->setCurrentIndex(filter-1);
-        ui->modeFilterCombo->blockSignals(false);
-    }
-
-    quint16 maxPassbandHz = 0;
-    switch(currentMode)
-    {
-    case modeUSB:
-    case modeLSB:
-    case modeCW:
-    case modeCW_R:
-    case modePSK:
-    case modePSK_R:
-        maxPassbandHz = 3600;
-        break;
-    case modeRTTY:
-    case modeRTTY_R:
-        maxPassbandHz = 2700;
-        break;
-    case modeAM:
-        maxPassbandHz = 10E3;
-        break;
-    case modeFM:
-        maxPassbandHz = 10E3;
-        break;
-    default:
-        break;
-    }
-    if(maxPassbandHz != 0)
-    {
-        trxadj->setMaxPassband(maxPassbandHz);
-    }
-    // Note: we need to know if the DATA mode is active to reach mode-D
-    // some kind of queued query:
-    if (rigCaps.hasDataModes && rigCaps.hasTransmit)
-    {
-        issueDelayedCommand(cmdGetDataMode);
     }
 }
 
@@ -5658,7 +5841,9 @@ void wfmain::on_modeSelectCombo_activated(int index)
         }
 
         issueCmd(cmdSetMode, mode);
-        currentModeInfo = mode;
+        issueDelayedCommand(cmdGetMode);
+
+        //currentModeInfo = mode;
     }
 }
 
@@ -6200,6 +6385,11 @@ void wfmain::on_passwordTxt_textChanged(QString text)
     udpPrefs.password = text;
 }
 
+void wfmain::on_audioDuplexCombo_currentIndexChanged(int value)
+{
+    udpPrefs.halfDuplex = (bool)value;
+}
+
 void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
 {
 
@@ -6353,6 +6543,7 @@ void wfmain::on_modeFilterCombo_activated(int index)
             m.mk = (mode_kind)newMode;
             m.reg = newMode;
             issueCmd(cmdSetMode, m);
+
             //emit setMode(newMode, (unsigned char)filterSelection);
         }
     }
@@ -6855,7 +7046,15 @@ void wfmain::on_serialDeviceListCombo_textActivated(const QString &arg1)
 
 void wfmain::on_rptSetupBtn_clicked()
 {
+    if(rpt->isMinimized())
+    {
+        rpt->raise();
+        rpt->activateWindow();
+        return;
+    }
     rpt->show();
+    rpt->raise();
+    rpt->activateWindow();
 }
 
 void wfmain::on_attSelCombo_activated(int index)
@@ -7627,7 +7826,8 @@ void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    cw->show();
+    qDebug(logSystem()) << "Query for repeater duplex offset 0x0C headed out";
+    issueDelayedCommand(cmdGetRptDuplexOffset);
 }
 
 // ----------   color helper functions:   ---------- //
@@ -8712,6 +8912,29 @@ void wfmain::on_clickDragTuningEnableChk_clicked(bool checked)
     prefs.clickDragTuningEnable = checked;
 }
 
+void wfmain::on_enableUsbChk_clicked(bool checked)
+{
+    prefs.enableUSBControllers = checked;
+    ui->usbControllerBtn->setEnabled(checked);
+    ui->usbButtonsResetBtn->setEnabled(checked);
+    ui->usbCommandsResetBtn->setEnabled(checked);
+    ui->usbResetLbl->setVisible(checked);
+
+#if defined (USB_CONTROLLER)
+    if (usbControllerThread != Q_NULLPTR) {
+        usbControllerThread->quit();
+        usbControllerThread->wait();
+        usbControllerThread = Q_NULLPTR;
+    }
+    if (checked) {
+        // Setup USB Controller
+        setupUsbControllerDevice();
+        emit sendUsbControllerCommands(&usbCommands);
+        emit sendUsbControllerButtons(&usbButtons);
+    }
+#endif
+}
+
 void wfmain::on_usbControllerBtn_clicked()
 {
     if (shut != Q_NULLPTR) {
@@ -8723,6 +8946,34 @@ void wfmain::on_usbControllerBtn_clicked()
             shut->raise();
         }
     }
+}
+
+
+void wfmain::on_usbButtonsResetBtn_clicked()
+{
+    int ret = QMessageBox::warning(this, tr("wfview"),
+        tr("Are you sure you wish to reset the USB buttons?"),
+        QMessageBox::Ok | QMessageBox::Cancel,
+        QMessageBox::Cancel);
+    if (ret == QMessageBox::Ok) {
+        qInfo(logUsbControl()) << "Resetting USB buttons to default values";
+        resetUsbButtons();
+        on_enableUsbChk_clicked(true); // Force disconnect/reconnect of USB controller.
+    }
+}
+
+void wfmain::on_usbCommandsResetBtn_clicked()
+{
+    int ret = QMessageBox::warning(this, tr("wfview"),
+        tr("Are you sure you wish to reset the USB commands?"),
+        QMessageBox::Ok | QMessageBox::Cancel,
+        QMessageBox::Cancel);
+    if (ret == QMessageBox::Ok) {
+        qInfo(logUsbControl()) << "Resetting USB commands to default values";
+        resetUsbCommands();
+        on_enableUsbChk_clicked(true); // Force disconnect/reconnect of USB controller.
+    }
+
 }
 
 void wfmain::on_autoPollBtn_clicked(bool checked)
@@ -8809,4 +9060,118 @@ void wfmain::on_cwButton_clicked()
     cw->show();
     cw->raise();
     cw->activateWindow();
+}
+
+void wfmain::resetUsbButtons()
+{
+    usbButtons.clear();
+
+    // ShuttleXpress
+    usbButtons.append(BUTTON(1, 4, QRect(25, 199, 89, 169), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(1, 5, QRect(101, 72, 83, 88), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(1, 6, QRect(238, 26, 134, 69), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(1, 7, QRect(452, 72, 77, 86), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(1, 8, QRect(504, 199, 89, 169), Qt::red, &usbCommands[0], &usbCommands[0]));
+
+    // ShuttlePro2
+    usbButtons.append(BUTTON(2, 0, QRect(60, 66, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(2, 1, QRect(114, 50, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(2, 2, QRect(169, 47, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(2, 3, QRect(225, 59, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(2, 4, QRect(41, 132, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(2, 5, QRect(91, 105, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(2, 6, QRect(144, 93, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(2, 7, QRect(204, 99, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(2, 8, QRect(253, 124, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(2, 9, QRect(50, 270, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(2, 10, QRect(210, 270, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(2, 11, QRect(50, 335, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(2, 12, QRect(210, 335, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(2, 13, QRect(30, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(2, 14, QRect(280, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
+
+    // RC28 
+    usbButtons.append(BUTTON(3, 0, QRect(52, 445, 238, 64), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(3, 1, QRect(52, 373, 98, 46), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(3, 2, QRect(193, 373, 98, 46), Qt::red, &usbCommands[0], &usbCommands[0]));
+
+    // Xbox Gamepad
+    usbButtons.append(BUTTON(4, "UP", QRect(256, 229, 50, 50), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(4, "DOWN", QRect(256, 316, 50, 50), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(4, "LEFT", QRect(203, 273, 50, 50), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(4, "RIGHT", QRect(303, 273, 50, 50), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(4, "SELECT", QRect(302, 160, 40, 40), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(4, "START", QRect(412, 163, 40, 40), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(4, "Y", QRect(534, 104, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(4, "X", QRect(485, 152, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(4, "B", QRect(590, 152, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(4, "A", QRect(534, 202, 53, 53), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(4, "L1", QRect(123, 40, 70, 45), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(4, "R1", QRect(562, 40, 70, 45), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(4, "LEFTX", QRect(143, 119, 83, 35), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(4, "LEFTY", QRect(162, 132, 50, 57), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(4, "RIGHTX", QRect(430, 298, 83, 35), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(4, "RIGHTY", QRect(453, 233, 50, 57), Qt::red, &usbCommands[0], &usbCommands[0]));
+    emit sendUsbControllerButtons(&usbButtons);
+
+
+}
+
+void wfmain::resetUsbCommands()
+{
+    usbCommands.clear();
+    usbCommands.append(COMMAND(0, "None", cmdNone, 0x0));
+    usbCommands.append(COMMAND(1, "PTT On", cmdSetPTT, 0x1));
+    usbCommands.append(COMMAND(2, "PTT Off", cmdSetPTT, 0x0));
+    usbCommands.append(COMMAND(3, "PTT Toggle", cmdPTTToggle, 0x0));
+    usbCommands.append(COMMAND(4, "Tune", cmdStartATU, 0x0));
+    usbCommands.append(COMMAND(5, "Step+", cmdSetStepUp, 0x0));
+    usbCommands.append(COMMAND(6, "Step-", cmdSetStepDown, 0x0));
+    usbCommands.append(COMMAND(7, "Span+", cmdSetSpanUp, 0x0));
+    usbCommands.append(COMMAND(8, "Span-", cmdSetSpanDown, 0x0));
+    usbCommands.append(COMMAND(9, "Mode+", cmdSetModeUp, 0x0));
+    usbCommands.append(COMMAND(10, "Mode-", cmdSetModeDown, 0x0));
+    usbCommands.append(COMMAND(11, "Mode LSB", cmdSetMode, modeLSB));
+    usbCommands.append(COMMAND(12, "Mode USB", cmdSetMode, modeUSB));
+    usbCommands.append(COMMAND(13, "Mode LSBD", cmdSetMode, modeLSB_D));
+    usbCommands.append(COMMAND(14, "Mode USBD", cmdSetMode, modeUSB_D));
+    usbCommands.append(COMMAND(15, "Mode CW", cmdSetMode, modeCW));
+    usbCommands.append(COMMAND(16, "Mode CWR", cmdSetMode, modeCW_R));
+    usbCommands.append(COMMAND(17, "Mode FM", cmdSetMode, modeFM));
+    usbCommands.append(COMMAND(18, "Mode AM", cmdSetMode, modeAM));
+    usbCommands.append(COMMAND(19, "Mode RTTY", cmdSetMode, modeRTTY));
+    usbCommands.append(COMMAND(20, "Mode RTTYR", cmdSetMode, modeRTTY_R));
+    usbCommands.append(COMMAND(21, "Mode PSK", cmdSetMode, modePSK));
+    usbCommands.append(COMMAND(22, "Mode PSKR", cmdSetMode, modePSK_R));
+    usbCommands.append(COMMAND(23, "Mode DV", cmdSetMode, modeDV));
+    usbCommands.append(COMMAND(24, "Mode DD", cmdSetMode, modeDD));
+    usbCommands.append(COMMAND(25, "Band+", cmdSetBandUp, 0x0));
+    usbCommands.append(COMMAND(26, "Band-", cmdSetBandDown, 0x0));
+    usbCommands.append(COMMAND(27, "23cm", cmdGetBandStackReg, band23cm));
+    usbCommands.append(COMMAND(28, "70cm", cmdGetBandStackReg, band70cm));
+    usbCommands.append(COMMAND(29, "2m", cmdGetBandStackReg, band2m));
+    usbCommands.append(COMMAND(30, "AIR", cmdGetBandStackReg, bandAir));
+    usbCommands.append(COMMAND(31, "WFM", cmdGetBandStackReg, bandWFM));
+    usbCommands.append(COMMAND(32, "4m", cmdGetBandStackReg, band4m));
+    usbCommands.append(COMMAND(33, "6m", cmdGetBandStackReg, band6m));
+    usbCommands.append(COMMAND(34, "10m", cmdGetBandStackReg, band10m));
+    usbCommands.append(COMMAND(35, "12m", cmdGetBandStackReg, band12m));
+    usbCommands.append(COMMAND(36, "15m", cmdGetBandStackReg, band15m));
+    usbCommands.append(COMMAND(37, "17m", cmdGetBandStackReg, band17m));
+    usbCommands.append(COMMAND(38, "20m", cmdGetBandStackReg, band20m));
+    usbCommands.append(COMMAND(39, "30m", cmdGetBandStackReg, band30m));
+    usbCommands.append(COMMAND(40, "40m", cmdGetBandStackReg, band40m));
+    usbCommands.append(COMMAND(41, "60m", cmdGetBandStackReg, band60m));
+    usbCommands.append(COMMAND(42, "80m", cmdGetBandStackReg, band80m));
+    usbCommands.append(COMMAND(43, "160m", cmdGetBandStackReg, band160m));
+    usbCommands.append(COMMAND(44, "630m", cmdGetBandStackReg, band630m));
+    usbCommands.append(COMMAND(45, "2200m", cmdGetBandStackReg, band2200m));
+    usbCommands.append(COMMAND(46, "GEN", cmdGetBandStackReg, bandGen));
+    usbCommands.append(COMMAND(47, "NR On", cmdNone, 0x0));
+    usbCommands.append(COMMAND(48, "NR Off", cmdNone, 0x0));
+    usbCommands.append(COMMAND(49, "NB On", cmdNone, 0x0));
+    usbCommands.append(COMMAND(50, "NB Off", cmdNone, 0x0));
+    usbCommands.append(COMMAND(51, "Split On", cmdNone, 0x01));
+    usbCommands.append(COMMAND(52, "Split Off", cmdNone, 0x0));
+    emit sendUsbControllerCommands(&usbCommands);
 }
