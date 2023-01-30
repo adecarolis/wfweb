@@ -398,8 +398,14 @@ void repeaterSetup::handleUpdateCurrentMainMode(mode_info m)
 
 void repeaterSetup::handleRptOffsetFrequency(freqt f)
 {
+    // Called when a new offset is available from the radio.
     QString offsetstr = QString::number(f.Hz / double(1E6), 'f', 4);
-    ui->rptrOffsetEdit->setText(offsetstr);
+
+    if(!ui->rptrOffsetEdit->hasFocus())
+    {
+        ui->rptrOffsetEdit->setText(offsetstr);
+        currentOffset = f;
+    }
 }
 
 void repeaterSetup::handleTransmitStatus(bool amTransmitting)
@@ -805,6 +811,7 @@ void repeaterSetup::on_rptrOffsetSetBtn_clicked()
     {
         emit setRptDuplexOffset(f);
     }
+    ui->rptrOffsetEdit->clearFocus();
 }
 
 void repeaterSetup::on_rptrOffsetEdit_returnPressed()
