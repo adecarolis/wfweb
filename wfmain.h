@@ -391,6 +391,7 @@ private slots:
 
     void on_fEnterBtn_clicked();
     void on_usbControllerBtn_clicked();
+    void on_enableUsbChk_clicked(bool checked);
 
     void on_scopeBWCombo_currentIndexChanged(int index);
 

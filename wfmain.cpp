@@ -167,12 +167,8 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     amTransmitting = false;
 
-#if defined(USB_CONTROLLER)
-    // Setup USB Controller
-    setupUsbControllerDevice();
-    emit sendUsbControllerCommands(&usbCommands);
-    emit sendUsbControllerButtons(&usbButtons);
-#else
+#if !defined(USB_CONTROLLER)
+    ui->enableUsbChk->setVisible(false);
     ui->usbControllerBtn->setVisible(false);
 #endif
 
@@ -1698,7 +1694,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
 {
     switch (cmd->command) {
     case cmdGetBandStackReg:
-        issueCmd((cmds)cmd->command, cmd->band.band);
+        issueCmd((cmds)cmd->command, cmd->band);
         break;
     case cmdSetBandUp:
         for (size_t i = 0; i < rigCaps.bands.size(); i++) {
@@ -1857,6 +1853,7 @@ void wfmain::setDefPrefs()
     defPrefs.tcpPort = 0;
     defPrefs.waterfallFormat = 0;
     defPrefs.audioSystem = qtAudio;
+    defPrefs.enableUSBControllers = false;
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -2397,8 +2394,20 @@ void wfmain::loadSettings()
     settings->endGroup();
 
 #if defined (USB_CONTROLLER)
-    /* Load USB buttons*/
     settings->beginGroup("USB");
+    /* Load USB buttons*/
+    prefs.enableUSBControllers = settings->value("EnableUSBControllers", defPrefs.enableUSBControllers).toBool();
+    ui->enableUsbChk->blockSignals(true);
+    ui->enableUsbChk->setChecked(prefs.enableUSBControllers);
+    ui->enableUsbChk->blockSignals(false);
+    ui->usbControllerBtn->setEnabled(prefs.enableUSBControllers);
+    if (prefs.enableUSBControllers) {
+        // Setup USB Controller
+        setupUsbControllerDevice();
+        emit sendUsbControllerCommands(&usbCommands);
+        emit sendUsbControllerButtons(&usbButtons);
+    }
+
     int numCommands = settings->beginReadArray("Commands");
     // This is the last time the commands were changed (v1.58)
     if (numCommands == 0 || priorVersionFloat < 1.58) {
@@ -2459,32 +2468,6 @@ void wfmain::loadSettings()
         usbCommands.append(COMMAND(51, "Split On", cmdNone, 0x01));
         usbCommands.append(COMMAND(52, "Split Off", cmdNone, 0x0));
 
-
-        /*
-            modeLSB = 0x00,
-            modeUSB = 0x01,
-            modeAM = 0x02,
-            modeCW = 0x03,
-            modeRTTY = 0x04,
-            modeFM = 0x05,
-            modeCW_R = 0x07,
-            modeRTTY_R = 0x08,
-            modeLSB_D = 0x80,
-            modeUSB_D = 0x81,
-            modeDV = 0x17,
-            modeDD = 0x27,
-            modeWFM,
-            modeS_AMD,
-            modeS_AML,
-            modeS_AMU,
-            modeP25,
-            modedPMR,
-            modeNXDN_VN,
-            modeNXDN_N,
-            modeDCR,
-            modePSK,
-            modePSK_R
-            */
     }
     else {
         for (int nc = 0; nc < numCommands; nc++)
@@ -2494,7 +2477,9 @@ void wfmain::loadSettings()
             comm.index = settings->value("Num", 0).toInt();
             comm.text = settings->value("Text", "").toString();
             comm.command = settings->value("Command", 0).toInt();
-            //comm.band = (bandType)settings->value("Band", 0).toInt(); // Needs fixing!
+            comm.band = (availableBands)settings->value("Band", 0).toInt();
+            comm.mode = (mode_kind)settings->value("Mode", 0).toInt();
+            comm.suffix = (unsigned char)settings->value("Suffix", 0).toInt();
             usbCommands.append(comm);
         }
         settings->endArray();
@@ -2986,6 +2971,7 @@ void wfmain::saveSettings()
 #if defined(USB_CONTROLLER)
     settings->beginGroup("USB");
     // Store USB Controller
+    settings->setValue("EnableUSBControllers", prefs.enableUSBControllers);
 
     settings->beginWriteArray("Buttons");
     for (int nb = 0; nb < usbButtons.count(); nb++)
@@ -3003,6 +2989,21 @@ void wfmain::saveSettings()
             settings->setValue("OnCommand", usbButtons[nb].onCommand->text);
         if (usbButtons[nb].offCommand != Q_NULLPTR)
             settings->setValue("OffCommand", usbButtons[nb].offCommand->text);
+    }
+
+    settings->endArray();
+
+    settings->beginWriteArray("Commands");
+    for (int nc = 0; nc < usbCommands.count(); nc++)
+    {
+        settings->setArrayIndex(nc);
+
+        settings->setValue("Num", usbCommands[nc].index);
+        settings->setValue("Text", usbCommands[nc].text);
+        settings->setValue("Command", usbCommands[nc].command);
+        settings->setValue("Band", usbCommands[nc].band);
+        settings->setValue("Mode", usbCommands[nc].mode);
+        settings->setValue("Suffix", usbCommands[nc].suffix);
     }
 
     settings->endArray();
@@ -9004,6 +9005,26 @@ void wfmain::on_clusterSkimmerSpotsEnable_clicked(bool enable)
 void wfmain::on_clickDragTuningEnableChk_clicked(bool checked)
 {
     prefs.clickDragTuningEnable = checked;
+}
+
+void wfmain::on_enableUsbChk_clicked(bool checked)
+{
+    prefs.enableUSBControllers = checked;
+    ui->usbControllerBtn->setEnabled(checked);
+
+#if defined (USB_CONTROLLER)
+    if (usbControllerThread != Q_NULLPTR) {
+        usbControllerThread->quit();
+        usbControllerThread->wait();
+        usbControllerThread = Q_NULLPTR;
+    }
+    if (checked) {
+        // Setup USB Controller
+        setupUsbControllerDevice();
+        emit sendUsbControllerCommands(&usbCommands);
+        emit sendUsbControllerButtons(&usbButtons);
+    }
+#endif
 }
 
 void wfmain::on_usbControllerBtn_clicked()
