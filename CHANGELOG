@@ -1,3 +1,272 @@
+commit 199295b6ae6ef8e90a0619e9ed67c701ca0a2c1e
+Merge: c89a7bd fc4bce8
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Mon Jan 30 18:53:20 2023 +0100
+
+    Merge branch 'morecontrols'
+
+commit c89a7bde97effe9b1469ade5c2c4b3f655572dd2
+Merge: 5afcfb4 0b37b1f
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Mon Jan 30 18:53:13 2023 +0100
+
+    Merge branch 'rc28-shuttle'
+
+commit 0b37b1f9848cbc9aa97a3148c320140726a1157b
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 30 17:49:42 2023 +0000
+
+    Fix compile warning
+
+commit fc4bce8cd7dd1af84c998ec73b4175da018b1868
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Mon Jan 30 09:10:39 2023 -0800
+
+    Fixed issue with number 3 in frequency button tab.
+
+commit 5d5723fae61d16a4eb51bc38b476e24e13351c58
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Mon Jan 30 08:44:06 2023 -0800
+
+    Added focus protection to the split tx frequency box. It will not update
+    while it has keyboard focus.
+
+commit eec2fff4ceccc7d6dba4fd1ec5b7b56453dd4c31
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Mon Jan 30 08:40:10 2023 -0800
+
+    Added focus protection around the offset frequency box.
+
+commit db686b1c8b4b2f1314def845b7cee373285e3c0e
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 30 16:27:40 2023 +0000
+
+    Enable USB_CONTROLLER build by default
+
+commit 5afcfb4e1dfb1339af927b26c7b4e3d848b16a1e
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 30 16:16:07 2023 +0000
+
+    Fix for MAC compiling
+
+commit cb81bef3bc6dd94383eb9dccf306070ad7bb80e9
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 30 16:16:07 2023 +0000
+
+    Fix for MAC compiling
+
+commit db5f8a08931833fa88e7065e29615ba0de091693
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 30 16:15:43 2023 +0000
+
+    Add buttons to reset buttons/commands
+
+commit 479671386e045da0285c2fa1e559eb09d36997af
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 30 12:01:29 2023 +0000
+
+    Various fixes to USB controllers
+
+commit 3faf8d331c1702e877a59be5960abf835004dd1d
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sun Jan 29 21:54:41 2023 -0800
+
+    Added Mode AM and removed some annoying signed warnings.
+
+commit 3ca82deb6c6a482afe71713eea9ba88f2f250be7
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 30 00:31:33 2023 +0000
+
+    Add some more USB commands
+
+commit 8d8f945cfa6ffef861dca71df459d72633f35b1f
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Jan 29 19:46:13 2023 +0000
+
+    Add support for band+/band- buttons
+
+commit 12f7a9cf0aed929849875de8b410fc970902f286
+Merge: 9d711f3 78ec6b1
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Jan 29 19:26:54 2023 +0000
+
+    Merge branch 'morecontrols' into rc28-shuttle
+
+commit 9d711f3a173f24958b2f80b1494c6736d86dddc3
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Jan 29 19:26:21 2023 +0000
+
+    Add some more USB controller features/fixes
+
+commit 78ec6b1423c51e61746d50dcc60cf8ea9d732650
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sun Jan 29 11:04:12 2023 -0800
+
+    Fixed issue with auto track getting unchecked.
+
+commit 0e9a26dbc10f4d77acabb92aedc8c59f0b9660ec
+Merge: 5926c12 e13d854
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Jan 29 18:46:06 2023 +0000
+
+    Merge branch 'rc28-shuttle' into 'rc28-shuttle'
+    
+    space/typo fix
+    
+    See merge request eliggett/wfview!15
+
+commit de9f510d769f2a0bb3a61806f4a09787761fdf42
+Merge: 2d17737 166905e
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sun Jan 29 10:40:39 2023 -0800
+
+    Merge branch 'morecontrols' of gitlab.com:eliggett/wfview into morecontrols
+
+commit 2d1773720dc1fdd838a0fb9b335ebd3487c1ce73
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sun Jan 29 10:39:24 2023 -0800
+
+    Added split state LED for split.
+
+commit e13d85489db8f92c2d08e9b06d60bfbcfd68caa0
+Author: Dawid SQ6EMM <dawszy@arhea.pl>
+Date:   Sun Jan 29 19:15:41 2023 +0100
+
+    space/typo fix
+
+commit 5926c12a20b2a998141367218de18a11f5b6343e
+Merge: c55ff52 166905e
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Jan 29 16:30:59 2023 +0000
+
+    Merge branch 'morecontrols' into rc28-shuttle
+
+commit c55ff52fc033f6460aad9de207a4ebbd68cce05d
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Jan 29 13:09:04 2023 +0000
+
+    Remove passband/PBT commands for FM
+
+commit 79decc552b8f5d2ddb7cf1cfc3db71825dd0d895
+Merge: 5d5ea25 eb782da
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Jan 29 16:25:34 2023 +0000
+
+    Merge branch 'pbt-fixes' into rc28-shuttle
+
+commit 5d5ea25fb64deeb8df0a72c601edb8657961bba4
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Jan 29 15:15:41 2023 +0000
+
+    Remove a bit of debugging and fix compile warning
+
+commit 7e7dceaa99987e0e1032dc60f672fd9a86d846b3
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Jan 29 15:08:47 2023 +0000
+
+    Various shuttle fixes incorporating  #54
+
+commit 166905ee76f1bed50df2caf4c47b129e5f07308e
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Jan 29 13:09:04 2023 +0000
+
+    Remove passband/PBT commands for FM
+
+commit c91d06fea5132c0bada82b581f96edea38f3bf43
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Fri Jan 27 22:34:40 2023 -0800
+
+    Added update of mode to CW sender. Modified cw sender UI slightly for
+    spacing.
+
+commit bc508565ee312e519fb1fa447b2ed153c32667b1
+Merge: 264badb eb782da
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Fri Jan 27 22:11:04 2023 -0800
+
+    Merge remote-tracking branch 'origin/pbt-fixes' into morecontrols
+    Fixed bugs in offset frequency
+
+commit 264badb9c92e1a7763d433a84a85ac54285d6325
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Fri Jan 27 21:48:26 2023 -0800
+
+    Added offset command to periodic polling
+
+commit 6976120d48573d96a6daeb1fa6e467ef15510d91
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Fri Jan 27 21:42:57 2023 -0800
+
+    Working manual repeater offset, split, tones, tones on sub vfo, etc!
+
+commit 8903c7cb07688734e1a0acea187799b69159bd0a
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Fri Jan 27 14:55:35 2023 -0800
+
+    Forgot the signal/slot out of the queue!
+
+commit b30230fc0567e965cf11825326f3d2c10b88628c
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Fri Jan 27 14:47:18 2023 -0800
+
+    Fixing broken TSQL
+
+commit 2c6884d827459703ee2433171129bd63b5946983
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Fri Jan 27 14:05:50 2023 -0800
+
+    Added sub VFO repeater access and tone control, hopefully will work for
+    IC-7610 and IC-7850.
+
+commit 404d6ddceb0c97e8ccc1912bd36d9e304bb0d16c
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Fri Jan 27 12:52:12 2023 -0800
+
+    Button name clarification on M->S
+
+commit f660681c5344488cae92beef06adb2de94f66b92
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Fri Jan 27 12:44:23 2023 -0800
+
+    Added MS and AB VFO operations.
+
+commit eb782da0108a885bb3e98dd00759ff8f52769b86
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 27 10:36:28 2023 +0000
+
+    Query PBT status after reset
+
+commit fa41571eca60fd0e1d584d3b59e1e120a5ba07f3
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 27 02:04:51 2023 +0000
+
+    Fix for remove_if
+
+commit 5d0a95cd00541320ecbf17f570da8457f69f359b
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 27 02:00:11 2023 +0000
+
+    Use remove_if() for command queue removal
+
+commit 5dc9107f00325e913ad92b89fdac61525cfadbe2
+Merge: 5128ea0 5db5f40
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 27 01:51:10 2023 +0000
+
+    Merge branch 'master' into pbt-fixes
+
+commit 5128ea0e69e4764342720b9df90cdd0bea0ee4f8
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Jan 27 01:41:35 2023 +0000
+
+    Lots of fixes for PBT and command handling - experimental
+
+commit 5db5f40ed4ac8c7682e28c39c629f08509809f9b
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Thu Jan 26 07:35:23 2023 +0100
+
+    small compiling fixes and magic pbt/cw calculations
+
 commit fe36ff1ac73dee5b14df534b50454587c95fe4bd
 Merge: 13f06e1 4950127
 Author: Roeland Jansen <roeland.jansen69@gmail.com>
