@@ -1699,11 +1699,11 @@ void wfmain::buttonControl(const COMMAND* cmd)
     case cmdGetBandStackReg:
         issueCmd((cmds)cmd->command, cmd->band);
         break;
-    case cmdSetBandUp:
+    case cmdSetBandDown:
         for (size_t i = 0; i < rigCaps.bands.size(); i++) {
             if (rigCaps.bands[i].band == lastRequestedBand)
             {
-                if (i>0) {
+                if (i > 0) {
                     issueCmd(cmdGetBandStackReg, rigCaps.bands[i - 1].band);
                 }
                 else {
@@ -1712,7 +1712,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
             }
         }
         break;
-    case cmdSetBandDown:
+    case cmdSetBandUp:
         for (size_t i = 0; i < rigCaps.bands.size(); i++) {
             if (rigCaps.bands[i].band == lastRequestedBand)
             {
@@ -4449,6 +4449,10 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->labelBot->setVisible(false);
         }
         haveRigCaps = true;
+
+        if (rigCaps.bands.size() > 0) {
+            lastRequestedBand = rigCaps.bands[0].band;
+        }
 
         // Added so that server receives rig capabilities.
         emit sendRigCaps(rigCaps);
@@ -9083,7 +9087,7 @@ void wfmain::resetUsbButtons()
     usbButtons.append(BUTTON(2, 14, QRect(280, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
 
     // RC28 
-    usbButtons.append(BUTTON(3, 0, QRect(52, 445, 238, 64), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(3, 0, QRect(52, 445, 238, 64), Qt::red, &usbCommands[1], &usbCommands[2])); // PTT On/OFF
     usbButtons.append(BUTTON(3, 1, QRect(52, 373, 98, 46), Qt::red, &usbCommands[0], &usbCommands[0]));
     usbButtons.append(BUTTON(3, 2, QRect(193, 373, 98, 46), Qt::red, &usbCommands[0], &usbCommands[0]));
 

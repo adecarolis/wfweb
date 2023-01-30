@@ -3348,8 +3348,8 @@ void rigCommander::determineRigCaps()
     bandType bandDefGen(bandGen, 10000, 30000000, modeAM);
 
 
-    standardHF = { bandDef6m, bandDef10m, bandDef12m, bandDef15m, bandDef17m,
-        bandDef20m, bandDef30m, bandDef40m, bandDef60m, bandDef80m, bandDef160m};
+    standardHF = { bandDef160m, bandDef80m, bandDef60m, bandDef40m, bandDef30m,
+        bandDef20m, bandDef17m, bandDef15m, bandDef12m, bandDef10m, bandDef6m };
 
     standardVU = { bandDef2m, bandDef70cm };
 
