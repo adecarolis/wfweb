@@ -121,6 +121,7 @@ private:
     duplexMode currentdm;
     mode_info currentModeMain;
     mode_info modeTransmitVFO;
+    freqt currentOffset;
     bool usedPlusSplit = false;
     bool amTransmitting = false;
 };
