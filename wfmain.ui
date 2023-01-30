@@ -4961,8 +4961,45 @@
                 </item>
                 <item>
                  <widget class="QPushButton" name="usbControllerBtn">
+                  <property name="toolTip">
+                   <string/>
+                  </property>
                   <property name="text">
-                   <string>Setup USB Controllers</string>
+                   <string>Setup USB Controller</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="horizontalSpacer_8">
+                  <property name="orientation">
+                   <enum>Qt::Horizontal</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>40</width>
+                    <height>20</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="usbButtonsResetBtn">
+                  <property name="text">
+                   <string>Reset Buttons</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="usbCommandsResetBtn">
+                  <property name="text">
+                   <string>Reset Commands</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="usbResetLbl">
+                  <property name="text">
+                   <string>Only reset buttons/commands if you have issues. </string>
                   </property>
                  </widget>
                 </item>
