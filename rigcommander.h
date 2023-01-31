@@ -291,6 +291,7 @@ signals:
     void haveSpectrumMode(spectrumMode spectmode);
     void haveScopeEdge(char edge);
     void haveSpectrumRefLevel(int level);
+    void haveScopeOutOfRange(bool outOfRange);
 
     // Rig ID:
     void haveRigID(rigCapabilities rigCaps);
@@ -457,6 +458,7 @@ private:
     quint16 spectAmpMax;
     quint16 spectLenMax;
     spectrumMode oldScopeMode;
+    bool wasOutOfRange = false;
 
     bool usingNativeLAN; // indicates using OEM LAN connection (705,7610,9700,7850)
     bool lookingForRig;

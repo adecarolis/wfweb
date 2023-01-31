@@ -457,6 +457,7 @@ void wfmain::rigConnections()
 
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
     connect(rig, SIGNAL(haveSpectrumMode(spectrumMode)), this, SLOT(receiveSpectrumMode(spectrumMode)));
+    connect(rig, SIGNAL(haveScopeOutOfRange(bool)), this, SLOT(handleScopeOutOfRange(bool)));
     connect(this, SIGNAL(setScopeMode(spectrumMode)), rig, SLOT(setSpectrumMode(spectrumMode)));
     connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
 
@@ -5083,6 +5084,17 @@ void wfmain::receiveSpectrumMode(spectrumMode spectMode)
     setUISpectrumControlsToMode(spectMode);
 }
 
+void wfmain::handleScopeOutOfRange(bool outOfRange)
+{
+    if(outOfRange)
+    {
+        ui->scopeOutOfRangeLabel->setText("OUT OF RANGE");
+        ui->scopeOutOfRangeLabel->setStyleSheet("QLabel { background-color : red; color : blue; }");
+    } else {
+        ui->scopeOutOfRangeLabel->setText("");
+        ui->scopeOutOfRangeLabel->setStyleSheet("");
+    }
+}
 
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 {

@@ -281,6 +281,7 @@ private slots:
     void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);
     void receiveSpectrumMode(spectrumMode spectMode);
     void receiveSpectrumSpan(freqt freqspan, bool isSub);
+    void handleScopeOutOfRange(bool outOfRange);
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(bool dataOn);
     void receiveBandStackReg(freqt f, char mode, char filter, bool dataOn); // freq, mode, (filter,) datamode
