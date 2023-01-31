@@ -1207,9 +1207,45 @@ void rigCommander::setRptAccessMode(rptAccessTxRx ratr)
 void rigCommander::setRptAccessMode(rptrAccessData_t rd)
 {
     QByteArray payload;
-    payload.setRawData("\x16\x5D", 2);
-    payload.append((unsigned char)rd.accessMode);
-    if(rd.useSecondaryVFO)
+    if(rigCaps.model==model9700)
+    {
+        payload.setRawData("\x16\x5D", 2);
+        payload.append((unsigned char)rd.accessMode);
+    } else {
+        // These radios either don't support DCS or
+        // we just haven't added DCS yet.
+
+        // 16 42 00 = TONE off
+        // 16 42 01 = TONE on
+        // 16 43 00 = TSQL off
+        // 16 43 01 = TSQL on
+
+        switch(rd.accessMode)
+        {
+        case ratrNN:
+            // No tone at all
+            payload.append("\x16\x42\x00", 3); // TONE off
+            //payload.append("\x16\x43\x00", 3);  // TSQL off
+            break;
+        case ratrTN:
+            // TONE on transmit only
+            payload.append("\x16\x42\x01", 3); // TONE on
+            break;
+        case ratrTT:
+            // Tone on transmit and TSQL
+            payload.append("\x16\x43\x01", 3); // TSQL on
+            break;
+        case ratrNT:
+            // Tone squelch and no tone transmit:
+            payload.append("\x16\x43\x01", 3); // TSQL on
+            // payload.append("\x16\x42\x00", 3); // TONE off
+            break;
+        default:
+            qWarning(logRig()) << "Cannot set tone mode" << (unsigned char)rd.accessMode << "on rig model" << rigCaps.modelName;
+            return;
+        }
+    }
+    if(rd.useSecondaryVFO && rigCaps.hasSpecifyMainSubCmd)
     {
         payload.prepend("\x29\x01");
     }
