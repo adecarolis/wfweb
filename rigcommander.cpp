@@ -1062,7 +1062,7 @@ void rigCommander::setTone(rptrTone_t t)
     {
         qDebug(logRig()) << "Sending TONE to secondary VFO";
         payload.prepend("\x29\x01");
-        printHex(payload);
+        //printHex(payload);
     }
 
     prepDataAndSend(payload);
@@ -1089,7 +1089,7 @@ void rigCommander::setTSQL(rptrTone_t t)
     {
         qDebug(logRig()) << "Sending TSQL to secondary VFO";
         payload.prepend("\x29\x01");
-        printHex(payload);
+        //printHex(payload);
     }
 
     prepDataAndSend(payload);
@@ -1105,7 +1105,7 @@ void rigCommander::setDTCS(quint16 dcscode, bool tinv, bool rinv)
     payload.append(denc);
 
     //qInfo() << __func__ << "DTCS encoded payload: ";
-    printHex(payload);
+    //printHex(payload);
 
     prepDataAndSend(payload);
 }
@@ -1270,8 +1270,8 @@ void rigCommander::setRptDuplexOffset(freqt f)
     QByteArray freqPayload = makeFreqPayload(f);
     payload.append(freqPayload.mid(1, 3));
     //qInfo(logRig()) << "Here is potential repeater offset setting, not sending to radio:";
-    printHexNow(payload, logRig());
-    QString g = getHex(payload);
+    //printHexNow(payload, logRig());
+    //QString g = getHex(payload);
     //qInfo(logRig()).noquote().nospace() << g;
     prepDataAndSend(payload);
 }
@@ -1365,6 +1365,7 @@ void rigCommander::sendCW(QString textToSend)
 
     QByteArray textData = textToSend.toLocal8Bit();
     unsigned char p=0;
+    bool printout=false;
     for(int c=0; c < textData.length(); c++)
     {
         p = textData.at(c);
@@ -1380,10 +1381,12 @@ void rigCommander::sendCW(QString textToSend)
             // Allowed character, continue
         } else {
             qWarning(logRig()) << "Invalid character detected in CW message at position " << c << ", the character is " << textToSend.at(c);
-            printHex(textData);
+            printout = true;
             textData[c] = 0x3F; // "?"
         }
     }
+    if(printout)
+        printHex(textData);
 
     if(pttAllowed)
     {
@@ -3336,7 +3339,7 @@ void rigCommander::parseWFData()
             // read edge mode center in edge mode
             emit haveScopeEdge((char)payloadIn[2]);
             //qInfo(logRig()) << "Received 0x16 edge in center mode:";
-            printHex(payloadIn, false, true);
+            //printHex(payloadIn, false, true);
             // [1] 0x16
             // [2] 0x01, 0x02, 0x03: Edge 1,2,3
             break;
