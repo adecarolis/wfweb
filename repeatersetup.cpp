@@ -101,6 +101,7 @@ void repeaterSetup::setRig(rigCapabilities inRig)
     ui->rptrOffsetSetBtn->setEnabled(rig.hasRepeaterModes);
     ui->setToneSubVFOBtn->setEnabled(rig.hasSpecifyMainSubCmd);
     ui->setRptrSubVFOBtn->setEnabled(rig.hasSpecifyMainSubCmd);
+    ui->quickSplitChk->setVisible(rig.hasQuickSplitCommand);
 }
 
 void repeaterSetup::populateTones()
@@ -830,4 +831,9 @@ void repeaterSetup::on_setSplitRptrToneChk_clicked(bool checked)
         on_setRptrSubVFOBtn_clicked();
         on_setToneSubVFOBtn_clicked();
     }
+}
+
+void repeaterSetup::on_quickSplitChk_clicked(bool checked)
+{
+    emit setQuickSplit(checked);
 }

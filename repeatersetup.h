@@ -35,6 +35,7 @@ signals:
     void getRptDuplexOffset();
     // Split:
     void getSplitModeEnabled();
+    void setQuickSplit(bool qsOn);
     void getTransmitFrequency();
     // Use the duplexMode to communicate split.
     // void setSplitModeEnabled(bool splitEnabled);
@@ -107,6 +108,8 @@ private slots:
     void on_splitTransmitFreqEdit_returnPressed();
 
     void on_setSplitRptrToneChk_clicked(bool checked);
+
+    void on_quickSplitChk_clicked(bool checked);
 
 private:
     Ui::repeaterSetup *ui;

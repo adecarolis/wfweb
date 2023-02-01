@@ -151,6 +151,13 @@
              </attribute>
             </widget>
            </item>
+           <item>
+            <widget class="QCheckBox" name="quickSplitChk">
+             <property name="text">
+              <string>QuickSplit</string>
+             </property>
+            </widget>
+           </item>
           </layout>
          </item>
          <item>

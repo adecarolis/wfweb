@@ -137,6 +137,7 @@ public slots:
     // Repeater:
     void setDuplexMode(duplexMode dm);
     void getDuplexMode();
+    void setQuickSplit(bool qsOn);
     void getTransmitFrequency();
     void setTone(rptrTone_t t);
     void setTSQL(rptrTone_t t);
