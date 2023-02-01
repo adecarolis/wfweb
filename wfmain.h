@@ -120,6 +120,8 @@ signals:
     void setTSQL(rptrTone_t t);
     void getToneEnabled();
     void getTSQLEnabled();
+    void setToneEnabled(bool enabled);
+    void setTSQLEnabled(bool enabled);
     void setRptDuplexOffset(freqt f);
     void getRptDuplexOffset();
 

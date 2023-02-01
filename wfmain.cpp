@@ -389,6 +389,8 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveDuplexMode(duplexMode)), rpt, SLOT(receiveDuplexMode(duplexMode)));
     connect(this, SIGNAL(getRptDuplexOffset()), rig, SLOT(getRptDuplexOffset()));
     connect(rig, SIGNAL(haveRptOffsetFrequency(freqt)), rpt, SLOT(handleRptOffsetFrequency(freqt)));
+
+    // These are the current tone frequency or DCS code selected:
     connect(rpt, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(rpt, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(rpt, SIGNAL(getDTCS()), rig, SLOT(getDTCS()));
@@ -427,7 +429,10 @@ void wfmain::rigConnections()
     //connect(rpt, SIGNAL(setRptAccessMode(rptAccessTxRx)), rig, SLOT(setRptAccessMode(rptAccessTxRx)));
 
     connect(this->rpt, &repeaterSetup::setRptAccessMode,
-            [=](const rptrAccessData_t &rd) { issueCmd(cmdSetRptAccessMode, rd);});
+            [=](const rptrAccessData_t &rd) {
+            issueCmd(cmdSetRptAccessMode, rd);
+    });
+
     connect(this, SIGNAL(setRepeaterAccessMode(rptrAccessData_t)), rig, SLOT(setRptAccessMode(rptrAccessData_t)));
     connect(this, SIGNAL(setTone(rptrTone_t)), rig, SLOT(setTone(rptrTone_t)));
 
@@ -3471,7 +3476,10 @@ void wfmain:: getInitialRigState()
     {
         issueDelayedCommand(cmdGetDTCS);
     }
+    // TODO: decide which one!
     issueDelayedCommand(cmdGetRptAccessMode);
+    issueDelayedCommand(cmdGetToneEnabled);
+    issueDelayedCommand(cmdGetTSQLEnabled);
 
     if(rigCaps.hasAntennaSel)
     {
@@ -3771,7 +3779,43 @@ void wfmain::doCmd(commandtype cmddata)
         case cmdSetRptAccessMode:
         {
             rptrAccessData_t rd = (*std::static_pointer_cast<rptrAccessData_t>(data));
+            if(rd.accessMode==ratrNN && !rigCaps.hasAdvancedRptrToneCmds)
+            {
+                rd.usingSequence = true;
+                switch(rd.sequence)
+                {
+                case 0:
+                    rd.turnOffTone = true;
+                    rd.turnOffTSQL = false;
+                    break;
+                case 1:
+                    rd.turnOffTSQL = true;
+                    rd.turnOffTone = false;
+                    break;
+                default:
+                    break;
+                }
+            }
             emit setRepeaterAccessMode(rd);
+            rd.sequence++;
+
+            if(rd.sequence == 1)
+                issueCmd(cmdSetRptAccessMode, rd);
+
+            break;
+        }
+        case cmdSetToneEnabled:
+        {
+            // This command is not aware of which VFO to use
+            bool toneEnabled = (*std::static_pointer_cast<bool>(data));
+            emit setToneEnabled(toneEnabled);
+            break;
+        }
+        case cmdSetTSQLEnabled:
+        {
+            // This command is not aware of which VFO to use
+            bool toneEnabled = (*std::static_pointer_cast<bool>(data));
+            emit setTSQLEnabled(toneEnabled);
             break;
         }
         case cmdSetRptDuplexOffset:
@@ -7867,8 +7911,8 @@ void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    qDebug(logSystem()) << "Query for repeater duplex offset 0x0C headed out";
-    issueDelayedCommand(cmdGetRptDuplexOffset);
+    qDebug(logSystem()) << "Query for repeater access mode (tone, tsql, etc) sent.";
+    issueDelayedCommand(cmdGetRptAccessMode);
 }
 
 // ----------   color helper functions:   ---------- //

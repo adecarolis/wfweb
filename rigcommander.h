@@ -451,6 +451,11 @@ private:
     struct rigCapabilities rigCaps;
     
     rigstate state;
+    // These are temporary measurements for debugging:
+    bool state_TONE_Main_Enabled = false;
+    bool state_TSQL_Main_Enabled = false;
+    bool state_TONE_Sub_Enabled = false;
+    bool state_TSQL_Sub_Enabled = false;
 
     bool haveRigCaps;
     model_kind model;

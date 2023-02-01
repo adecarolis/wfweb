@@ -1206,6 +1206,9 @@ void rigCommander::setRptAccessMode(rptAccessTxRx ratr)
 
 void rigCommander::setRptAccessMode(rptrAccessData_t rd)
 {
+    // NB: This function is the only recommended
+    // function to be used for toggling tone and tone squelch.
+
     QByteArray payload;
     if(rigCaps.hasAdvancedRptrToneCmds)
     {
@@ -1225,6 +1228,20 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
         {
         case ratrNN:
             // No tone at all
+            qDebug(logRig()) << "Tone off requested. state_TONE_enabled: " << state_TONE_Main_Enabled << ", state_TSQL_enabled: " << state_TSQL_Main_Enabled;
+            qDebug(logRig()) << "state.getBool(TONEFUNC): " << state.getBool(TONEFUNC);
+            qDebug(logRig()) << "state.getBool(TSQLFUNC): " << state.getBool(TSQLFUNC);
+            qDebug(logRig()) << "turn off tone: " << rd.turnOffTone << ", turn off tsql: " << rd.turnOffTSQL;
+            qDebug(logRig()) << "Using sequence? " << rd.usingSequence << ", sequence number: " << rd.sequence;
+            if(rd.turnOffTone)
+            {
+                payload.append("\x16\x42\x00", 3); // TONE off
+            } else if (rd.turnOffTSQL)
+            {
+                payload.append("\x16\x43\x00", 3);  // TSQL off
+            }
+
+            /*
             if(state.getBool(TONEFUNC))
             {
                 payload.append("\x16\x42\x00", 3); // TONE off
@@ -1234,6 +1251,8 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
                 // ?? turn off TSQL ??
                 payload.append("\x16\x43\x00", 3);  // TSQL off
             }
+            */
+
             break;
         case ratrTN:
             // TONE on transmit only
@@ -1245,7 +1264,7 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
             break;
         case ratrNT:
             // Tone squelch and no tone transmit:
-            payload.append("\x16\x43\x01", 3); // TSQL on
+            payload.append("\x16\x43\x01", 3); // TSQL on, close enough here.
             // payload.append("\x16\x42\x00", 3); // TONE off
             break;
         default:
@@ -1253,6 +1272,7 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
             return;
         }
     }
+
     if(rd.useSecondaryVFO && rigCaps.hasSpecifyMainSubCmd)
     {
         payload.prepend("\x29\x01");
@@ -2932,6 +2952,7 @@ void rigCommander::parseRegister16()
     //"INDEX: 00 01 02 03 "
     //"DATA:  16 5d 00 fd "
     //               ^-- mode info here
+    rptAccessTxRx ra;
 
     switch(payloadIn.at(1))
     {
@@ -2954,9 +2975,25 @@ void rigCommander::parseRegister16()
             break;
         case '\x42':
             state.set(TONEFUNC, payloadIn.at(2) != 0, false);
+            state_TONE_Main_Enabled = (bool)payloadIn.at(2);
+            if(payloadIn.at(2)==1)
+            {
+                ra = ratrTONEon;
+            } else {
+                ra = ratrTONEoff;
+            }
+            emit haveRptAccessMode(ra);
             break;
         case '\x43':
             state.set(TSQLFUNC, payloadIn.at(2) != 0, false);
+            state_TSQL_Main_Enabled = (bool)payloadIn.at(2);
+            if(payloadIn.at(2)==1)
+            {
+                ra = ratrTSQLon;
+            } else {
+                ra = ratrTSQLoff;
+            }
+            emit haveRptAccessMode(ra);
             break;
         case '\x44':
             state.set(COMPFUNC, payloadIn.at(2) != 0, false);

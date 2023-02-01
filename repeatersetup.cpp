@@ -313,25 +313,45 @@ void repeaterSetup::receiveDuplexMode(duplexMode dm)
 
 void repeaterSetup::handleRptAccessMode(rptAccessTxRx tmode)
 {
+    // ratrXY
+    // X = Transmit (T)one or (N)one or (D)CS
+    // Y = Receive (T)sql or (N)one or (D)CS
+    qDebug() << "In repeater setup, have received mode: " << tmode;
     switch(tmode)
     {
-        case ratrNN:
-            ui->toneNone->setChecked(true);
-            break;
-        case ratrTT:
-            ui->toneTSQL->setChecked(true);
-            break;
-        case ratrTN:
-            ui->toneTone->setChecked(true);
-            break;
-        case ratrDD:
-            ui->toneDTCS->setChecked(true);
-            break;
-        default:
-            break;
+    case ratrNN:
+        ui->toneNone->setChecked(true);
+        break;
+    case ratrTT:
+    case ratrNT:
+        ui->toneTSQL->setChecked(true);
+        break;
+    case ratrTN:
+        ui->toneTone->setChecked(true);
+        break;
+    case ratrDD:
+        ui->toneDTCS->setChecked(true);
+        break;
+    case ratrTONEoff:
+        ui->toneTone->setChecked(false);
+        break;
+    case ratrTONEon:
+        ui->toneTone->setChecked(true);
+        break;
+    case ratrTSQLoff:
+        ui->toneTSQL->setChecked(false);
+        break;
+    case ratrTSQLon:
+        ui->toneTSQL->setChecked(true);
+        break;
+    default:
+        break;
     }
-
-    (void)tmode;
+    if( !ui->toneTSQL->isChecked() && !ui->toneTone->isChecked() && !ui->toneDTCS->isChecked())
+    {
+        ui->toneNone->setChecked(true);
+        qDebug() << "Assuming tone None is correct";
+    }
 }
 
 void repeaterSetup::handleTone(quint16 tone)
