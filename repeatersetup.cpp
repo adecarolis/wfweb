@@ -316,7 +316,6 @@ void repeaterSetup::handleRptAccessMode(rptAccessTxRx tmode)
     // ratrXY
     // X = Transmit (T)one or (N)one or (D)CS
     // Y = Receive (T)sql or (N)one or (D)CS
-    qDebug() << "In repeater setup, have received mode: " << tmode;
     switch(tmode)
     {
     case ratrNN:
@@ -350,7 +349,6 @@ void repeaterSetup::handleRptAccessMode(rptAccessTxRx tmode)
     if( !ui->toneTSQL->isChecked() && !ui->toneTone->isChecked() && !ui->toneDTCS->isChecked())
     {
         ui->toneNone->setChecked(true);
-        qDebug() << "Assuming tone None is correct";
     }
 }
 

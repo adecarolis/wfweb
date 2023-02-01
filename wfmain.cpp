@@ -3476,10 +3476,11 @@ void wfmain:: getInitialRigState()
     {
         issueDelayedCommand(cmdGetDTCS);
     }
-    // TODO: decide which one!
-    issueDelayedCommand(cmdGetRptAccessMode);
-    issueDelayedCommand(cmdGetToneEnabled);
-    issueDelayedCommand(cmdGetTSQLEnabled);
+
+    if(rigCaps.hasCTCSS || rigCaps.hasDTCS)
+    {
+        issueDelayedCommand(cmdGetRptAccessMode);
+    }
 
     if(rigCaps.hasAntennaSel)
     {

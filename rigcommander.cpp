@@ -1228,11 +1228,6 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
         {
         case ratrNN:
             // No tone at all
-            qDebug(logRig()) << "Tone off requested. state_TONE_enabled: " << state_TONE_Main_Enabled << ", state_TSQL_enabled: " << state_TSQL_Main_Enabled;
-            qDebug(logRig()) << "state.getBool(TONEFUNC): " << state.getBool(TONEFUNC);
-            qDebug(logRig()) << "state.getBool(TSQLFUNC): " << state.getBool(TSQLFUNC);
-            qDebug(logRig()) << "turn off tone: " << rd.turnOffTone << ", turn off tsql: " << rd.turnOffTSQL;
-            qDebug(logRig()) << "Using sequence? " << rd.usingSequence << ", sequence number: " << rd.sequence;
             if(rd.turnOffTone)
             {
                 payload.append("\x16\x42\x00", 3); // TONE off
@@ -1240,19 +1235,6 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
             {
                 payload.append("\x16\x43\x00", 3);  // TSQL off
             }
-
-            /*
-            if(state.getBool(TONEFUNC))
-            {
-                payload.append("\x16\x42\x00", 3); // TONE off
-            } else if (state.getBool(TSQLFUNC)) {
-                payload.append("\x16\x43\x00", 3);  // TSQL off
-            } else {
-                // ?? turn off TSQL ??
-                payload.append("\x16\x43\x00", 3);  // TSQL off
-            }
-            */
-
             break;
         case ratrTN:
             // TONE on transmit only
@@ -2975,7 +2957,6 @@ void rigCommander::parseRegister16()
             break;
         case '\x42':
             state.set(TONEFUNC, payloadIn.at(2) != 0, false);
-            state_TONE_Main_Enabled = (bool)payloadIn.at(2);
             if(payloadIn.at(2)==1)
             {
                 ra = ratrTONEon;
@@ -2986,7 +2967,6 @@ void rigCommander::parseRegister16()
             break;
         case '\x43':
             state.set(TSQLFUNC, payloadIn.at(2) != 0, false);
-            state_TSQL_Main_Enabled = (bool)payloadIn.at(2);
             if(payloadIn.at(2)==1)
             {
                 ra = ratrTSQLon;
