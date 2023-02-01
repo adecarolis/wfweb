@@ -98,12 +98,20 @@ enum rptAccessTxRx {
     ratrDN=0x06, // "DTCS(T)"
     ratrTD=0x07, // "TONE(T) / TSQL(R)"
     ratrDT=0x08, // "DTCS(T) / TSQL(R)"
-    ratrTT=0x09  // "TONE(T) / TSQL(R)"
+    ratrTT=0x09,  // "TONE(T) / TSQL(R)"
+    ratrTONEoff,
+    ratrTONEon,
+    ratrTSQLoff,
+    ratrTSQLon
 };
 
 struct rptrAccessData_t {
     rptAccessTxRx accessMode = ratrNN;
     bool useSecondaryVFO = false;
+    bool turnOffTone = false;
+    bool turnOffTSQL = false;
+    bool usingSequence = false;
+    int sequence = 0;
 };
 
 struct mode_info {
@@ -153,7 +161,9 @@ enum cmds {
     cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
     cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
     cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
-    cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdSetTone, cmdSetTSQL, cmdSetRptAccessMode, cmdSetRptDuplexOffset, cmdGetRptDuplexOffset,
+    cmdGetTone, cmdGetTSQL, cmdGetToneEnabled, cmdGetTSQLEnabled, cmdGetDTCS,
+    cmdSetToneEnabled, cmdSetTSQLEnabled, cmdGetRptAccessMode, cmdSetTone, cmdSetTSQL,
+    cmdSetRptAccessMode, cmdSetRptDuplexOffset, cmdGetRptDuplexOffset,
     cmdSelVFO, cmdVFOSwap, cmdVFOEqualAB, cmdVFOEqualMS,
     cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
     cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW,

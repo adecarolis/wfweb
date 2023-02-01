@@ -97,10 +97,10 @@ void cwSender::on_stopBtn_clicked()
     ui->statusbar->showMessage("Stopping CW transmission.", 3000);
 }
 
-void cwSender::on_textToSendEdit_returnPressed()
-{
-    on_sendBtn_clicked();
-}
+//void cwSender::on_textToSendEdit_returnPressed()
+//{
+//    on_sendBtn_clicked();
+//}
 
 void cwSender::on_breakinCombo_activated(int brkmode)
 {

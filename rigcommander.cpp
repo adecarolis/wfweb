@@ -1206,10 +1206,56 @@ void rigCommander::setRptAccessMode(rptAccessTxRx ratr)
 
 void rigCommander::setRptAccessMode(rptrAccessData_t rd)
 {
+    // NB: This function is the only recommended
+    // function to be used for toggling tone and tone squelch.
+
     QByteArray payload;
-    payload.setRawData("\x16\x5D", 2);
-    payload.append((unsigned char)rd.accessMode);
-    if(rd.useSecondaryVFO)
+    if(rigCaps.hasAdvancedRptrToneCmds)
+    {
+        // IC-9700 basically
+        payload.setRawData("\x16\x5D", 2);
+        payload.append((unsigned char)rd.accessMode);
+    } else {
+        // These radios either don't support DCS or
+        // we just haven't added DCS yet.
+
+        // 16 42 00 = TONE off
+        // 16 42 01 = TONE on
+        // 16 43 00 = TSQL off
+        // 16 43 01 = TSQL on
+
+        switch(rd.accessMode)
+        {
+        case ratrNN:
+            // No tone at all
+            if(rd.turnOffTone)
+            {
+                payload.append("\x16\x42\x00", 3); // TONE off
+            } else if (rd.turnOffTSQL)
+            {
+                payload.append("\x16\x43\x00", 3);  // TSQL off
+            }
+            break;
+        case ratrTN:
+            // TONE on transmit only
+            payload.append("\x16\x42\x01", 3); // TONE on
+            break;
+        case ratrTT:
+            // Tone on transmit and TSQL
+            payload.append("\x16\x43\x01", 3); // TSQL on
+            break;
+        case ratrNT:
+            // Tone squelch and no tone transmit:
+            payload.append("\x16\x43\x01", 3); // TSQL on, close enough here.
+            // payload.append("\x16\x42\x00", 3); // TONE off
+            break;
+        default:
+            qWarning(logRig()) << "Cannot set tone mode" << (unsigned char)rd.accessMode << "on rig model" << rigCaps.modelName;
+            return;
+        }
+    }
+
+    if(rd.useSecondaryVFO && rigCaps.hasSpecifyMainSubCmd)
     {
         payload.prepend("\x29\x01");
     }
@@ -2888,6 +2934,7 @@ void rigCommander::parseRegister16()
     //"INDEX: 00 01 02 03 "
     //"DATA:  16 5d 00 fd "
     //               ^-- mode info here
+    rptAccessTxRx ra;
 
     switch(payloadIn.at(1))
     {
@@ -2910,9 +2957,23 @@ void rigCommander::parseRegister16()
             break;
         case '\x42':
             state.set(TONEFUNC, payloadIn.at(2) != 0, false);
+            if(payloadIn.at(2)==1)
+            {
+                ra = ratrTONEon;
+            } else {
+                ra = ratrTONEoff;
+            }
+            emit haveRptAccessMode(ra);
             break;
         case '\x43':
             state.set(TSQLFUNC, payloadIn.at(2) != 0, false);
+            if(payloadIn.at(2)==1)
+            {
+                ra = ratrTSQLon;
+            } else {
+                ra = ratrTSQLoff;
+            }
+            emit haveRptAccessMode(ra);
             break;
         case '\x44':
             state.set(COMPFUNC, payloadIn.at(2) != 0, false);
@@ -3531,6 +3592,7 @@ void rigCommander::determineRigCaps()
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x27");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = true;
+            rigCaps.hasAdvancedRptrToneCmds = true;
             break;
         case model910h:
             rigCaps.modelName = QString("IC-910H");
@@ -4244,6 +4306,17 @@ void rigCommander::parseSpectrum()
         return;
     }
 
+    if(payloadIn.length() >= 15)
+    {
+        bool outOfRange = (bool)payloadIn[16];
+        if(outOfRange != wasOutOfRange)
+        {
+            emit haveScopeOutOfRange(outOfRange);
+            wasOutOfRange = outOfRange;
+            return;
+        }
+    }
+
     // unsigned char waveInfo = payloadIn[06]; // really just one byte?
     //qInfo(logRig()) << "Spectrum Data received: " << sequence << "/" << sequenceMax << " mode: " << scopeMode << " waveInfo: " << waveInfo << " length: " << payloadIn.length();
 
@@ -4774,7 +4847,7 @@ void rigCommander::setToneSql(bool enabled)
     prepDataAndSend(payload);
 }
 
-void rigCommander::getToneSql()
+void rigCommander::getToneSqlEnabled()
 {
     QByteArray payload;
     payload.setRawData("\x16\x43", 2);
@@ -5152,7 +5225,7 @@ void rigCommander::stateUpdated()
                 if (i.value()._valid) {
                     setToneSql(state.getBool(TSQLFUNC));
                 }
-                getToneSql();
+                getToneSqlEnabled();
                 break;
             case COMPFUNC:
                 if (i.value()._valid) {

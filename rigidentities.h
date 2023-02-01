@@ -152,6 +152,8 @@ struct rigCapabilities {
     bool hasVFOMS = false;
     bool hasVFOAB = true; // 0x07 [00||01]
 
+    bool hasAdvancedRptrToneCmds = false;
+
     std::vector <unsigned char> attenuators;
     std::vector <unsigned char> preamps;
     std::vector <unsigned char> antennas;

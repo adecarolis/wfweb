@@ -389,6 +389,8 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveDuplexMode(duplexMode)), rpt, SLOT(receiveDuplexMode(duplexMode)));
     connect(this, SIGNAL(getRptDuplexOffset()), rig, SLOT(getRptDuplexOffset()));
     connect(rig, SIGNAL(haveRptOffsetFrequency(freqt)), rpt, SLOT(handleRptOffsetFrequency(freqt)));
+
+    // These are the current tone frequency or DCS code selected:
     connect(rpt, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(rpt, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(rpt, SIGNAL(getDTCS()), rig, SLOT(getDTCS()));
@@ -399,13 +401,38 @@ void wfmain::rigConnections()
     connect(this->rpt, &repeaterSetup::setTSQL,
             [=](const rptrTone_t &t) { issueCmd(cmdSetTSQL, t);});
 
+    // TODO: struct with the DCS components and command queue entry
     connect(rpt, SIGNAL(setDTCS(quint16,bool,bool)), rig, SLOT(setDTCS(quint16,bool,bool)));
-    connect(rpt, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
+
+    //connect(rpt, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
+    connect(this->rpt, &repeaterSetup::getRptAccessMode,
+            [=]() {
+            if(rigCaps.hasAdvancedRptrToneCmds) {
+                issueDelayedCommand(cmdGetRptAccessMode);
+            } else {
+                issueDelayedCommand(cmdGetToneEnabled);
+                issueDelayedCommand(cmdGetTSQLEnabled);
+            }
+    });
+
+    // How to understand the reply of getToneEnabled, getTSQLEnabled
+    // ......
+    // it's currently only read into rigState.
+    // We could emit a signal from rigCommander, turn it into
+    // a rptrAccess data type and feed that to rptr.
+    // But there will be two replies, and we need to somehow
+    // understand both before forming a sensible reply to
+    // the rptr setup.
+    // If we don't care, then it just works but we don't know the current state.
+
 
     //connect(rpt, SIGNAL(setRptAccessMode(rptAccessTxRx)), rig, SLOT(setRptAccessMode(rptAccessTxRx)));
 
     connect(this->rpt, &repeaterSetup::setRptAccessMode,
-            [=](const rptrAccessData_t &rd) { issueCmd(cmdSetRptAccessMode, rd);});
+            [=](const rptrAccessData_t &rd) {
+            issueCmd(cmdSetRptAccessMode, rd);
+    });
+
     connect(this, SIGNAL(setRepeaterAccessMode(rptrAccessData_t)), rig, SLOT(setRptAccessMode(rptrAccessData_t)));
     connect(this, SIGNAL(setTone(rptrTone_t)), rig, SLOT(setTone(rptrTone_t)));
 
@@ -421,6 +448,9 @@ void wfmain::rigConnections()
                 else
                     this->splitModeEnabled = false;
     });
+
+    connect(this, SIGNAL(getToneEnabled()), rig, SLOT(getToneEnabled()));
+    connect(this, SIGNAL(getTSQLEnabled()), rig, SLOT(getToneSqlEnabled()));
 
     connect(this->rpt, &repeaterSetup::setTransmitFrequency,
             [=](const freqt &transmitFreq) { issueCmd(cmdSetFreq, transmitFreq);});
@@ -457,6 +487,7 @@ void wfmain::rigConnections()
 
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
     connect(rig, SIGNAL(haveSpectrumMode(spectrumMode)), this, SLOT(receiveSpectrumMode(spectrumMode)));
+    connect(rig, SIGNAL(haveScopeOutOfRange(bool)), this, SLOT(handleScopeOutOfRange(bool)));
     connect(this, SIGNAL(setScopeMode(spectrumMode)), rig, SLOT(setSpectrumMode(spectrumMode)));
     connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
 
@@ -3445,7 +3476,11 @@ void wfmain:: getInitialRigState()
     {
         issueDelayedCommand(cmdGetDTCS);
     }
-    issueDelayedCommand(cmdGetRptAccessMode);
+
+    if(rigCaps.hasCTCSS || rigCaps.hasDTCS)
+    {
+        issueDelayedCommand(cmdGetRptAccessMode);
+    }
 
     if(rigCaps.hasAntennaSel)
     {
@@ -3745,7 +3780,43 @@ void wfmain::doCmd(commandtype cmddata)
         case cmdSetRptAccessMode:
         {
             rptrAccessData_t rd = (*std::static_pointer_cast<rptrAccessData_t>(data));
+            if(rd.accessMode==ratrNN && !rigCaps.hasAdvancedRptrToneCmds)
+            {
+                rd.usingSequence = true;
+                switch(rd.sequence)
+                {
+                case 0:
+                    rd.turnOffTone = true;
+                    rd.turnOffTSQL = false;
+                    break;
+                case 1:
+                    rd.turnOffTSQL = true;
+                    rd.turnOffTone = false;
+                    break;
+                default:
+                    break;
+                }
+            }
             emit setRepeaterAccessMode(rd);
+            rd.sequence++;
+
+            if(rd.sequence == 1)
+                issueCmd(cmdSetRptAccessMode, rd);
+
+            break;
+        }
+        case cmdSetToneEnabled:
+        {
+            // This command is not aware of which VFO to use
+            bool toneEnabled = (*std::static_pointer_cast<bool>(data));
+            emit setToneEnabled(toneEnabled);
+            break;
+        }
+        case cmdSetTSQLEnabled:
+        {
+            // This command is not aware of which VFO to use
+            bool toneEnabled = (*std::static_pointer_cast<bool>(data));
+            emit setTSQLEnabled(toneEnabled);
             break;
         }
         case cmdSetRptDuplexOffset:
@@ -3950,7 +4021,19 @@ void wfmain::doCmd(cmds cmd)
             emit getDTCS();
             break;
         case cmdGetRptAccessMode:
-            emit getRptAccessMode();
+            if(rigCaps.hasAdvancedRptrToneCmds) {
+                emit getRptAccessMode();
+            } else {
+                // Get both TONE and TSQL enabled status
+                emit getToneEnabled();
+                issueDelayedCommand(cmdGetTSQLEnabled);
+            }
+            break;
+        case cmdGetToneEnabled:
+            emit getToneEnabled();
+            break;
+        case cmdGetTSQLEnabled:
+            emit getTSQLEnabled();
             break;
         case cmdDispEnable:
             emit scopeDisplayEnable();
@@ -5087,6 +5170,17 @@ void wfmain::receiveSpectrumMode(spectrumMode spectMode)
     setUISpectrumControlsToMode(spectMode);
 }
 
+void wfmain::handleScopeOutOfRange(bool outOfRange)
+{
+    if(outOfRange)
+    {
+        ui->scopeOutOfRangeLabel->setText("OUT OF RANGE");
+        ui->scopeOutOfRangeLabel->setStyleSheet("QLabel { background-color : red; color : blue; }");
+    } else {
+        ui->scopeOutOfRangeLabel->setText("");
+        ui->scopeOutOfRangeLabel->setStyleSheet("");
+    }
+}
 
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 {
@@ -7822,8 +7916,8 @@ void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    qDebug(logSystem()) << "Query for repeater duplex offset 0x0C headed out";
-    issueDelayedCommand(cmdGetRptDuplexOffset);
+    qDebug(logSystem()) << "Query for repeater access mode (tone, tsql, etc) sent.";
+    issueDelayedCommand(cmdGetRptAccessMode);
 }
 
 // ----------   color helper functions:   ---------- //
