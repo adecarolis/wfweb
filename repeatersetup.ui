@@ -396,6 +396,13 @@
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_3">
          <item>
+          <widget class="QLabel" name="warningFMLabel">
+           <property name="text">
+            <string>Only available in FM</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QRadioButton" name="toneNone">
            <property name="text">
             <string>None</string>

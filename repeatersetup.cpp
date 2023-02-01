@@ -8,7 +8,7 @@ repeaterSetup::repeaterSetup(QWidget *parent) :
     ui->setupUi(this);
 
     ui->autoTrackLiveBtn->setEnabled(false); // until we set split enabled.
-
+    ui->warningFMLabel->setVisible(false);
     // populate the CTCSS combo box:
     populateTones();
 
@@ -414,6 +414,10 @@ void repeaterSetup::handleUpdateCurrentMainMode(mode_info m)
         this->currentModeMain = m;
         this->modeTransmitVFO = m;
         this->modeTransmitVFO.VFO = inactiveVFO;
+        if(m.mk == modeFM)
+            ui->warningFMLabel->setVisible(false);
+        else
+            ui->warningFMLabel->setVisible(true);
     }
 }
 
