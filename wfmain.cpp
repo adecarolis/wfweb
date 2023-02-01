@@ -399,8 +399,30 @@ void wfmain::rigConnections()
     connect(this->rpt, &repeaterSetup::setTSQL,
             [=](const rptrTone_t &t) { issueCmd(cmdSetTSQL, t);});
 
+    // TODO: struct with the DCS components and command queue entry
     connect(rpt, SIGNAL(setDTCS(quint16,bool,bool)), rig, SLOT(setDTCS(quint16,bool,bool)));
-    connect(rpt, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
+
+    //connect(rpt, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
+    connect(this->rpt, &repeaterSetup::getRptAccessMode,
+            [=]() {
+            if(rigCaps.hasAdvancedRptrToneCmds) {
+                issueDelayedCommand(cmdGetRptAccessMode);
+            } else {
+                issueDelayedCommand(cmdGetToneEnabled);
+                issueDelayedCommand(cmdGetTSQLEnabled);
+            }
+    });
+
+    // How to understand the reply of getToneEnabled, getTSQLEnabled
+    // ......
+    // it's currently only read into rigState.
+    // We could emit a signal from rigCommander, turn it into
+    // a rptrAccess data type and feed that to rptr.
+    // But there will be two replies, and we need to somehow
+    // understand both before forming a sensible reply to
+    // the rptr setup.
+    // If we don't care, then it just works but we don't know the current state.
+
 
     //connect(rpt, SIGNAL(setRptAccessMode(rptAccessTxRx)), rig, SLOT(setRptAccessMode(rptAccessTxRx)));
 
@@ -421,6 +443,9 @@ void wfmain::rigConnections()
                 else
                     this->splitModeEnabled = false;
     });
+
+    connect(this, SIGNAL(getToneEnabled()), rig, SLOT(getToneEnabled()));
+    connect(this, SIGNAL(getTSQLEnabled()), rig, SLOT(getToneSqlEnabled()));
 
     connect(this->rpt, &repeaterSetup::setTransmitFrequency,
             [=](const freqt &transmitFreq) { issueCmd(cmdSetFreq, transmitFreq);});
@@ -3951,7 +3976,19 @@ void wfmain::doCmd(cmds cmd)
             emit getDTCS();
             break;
         case cmdGetRptAccessMode:
-            emit getRptAccessMode();
+            if(rigCaps.hasAdvancedRptrToneCmds) {
+                emit getRptAccessMode();
+            } else {
+                // Get both TONE and TSQL enabled status
+                emit getToneEnabled();
+                issueDelayedCommand(cmdGetTSQLEnabled);
+            }
+            break;
+        case cmdGetToneEnabled:
+            emit getToneEnabled();
+            break;
+        case cmdGetTSQLEnabled:
+            emit getTSQLEnabled();
             break;
         case cmdDispEnable:
             emit scopeDisplayEnable();

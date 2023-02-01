@@ -1207,8 +1207,9 @@ void rigCommander::setRptAccessMode(rptAccessTxRx ratr)
 void rigCommander::setRptAccessMode(rptrAccessData_t rd)
 {
     QByteArray payload;
-    if(rigCaps.model==model9700)
+    if(rigCaps.hasAdvancedRptrToneCmds)
     {
+        // IC-9700 basically
         payload.setRawData("\x16\x5D", 2);
         payload.append((unsigned char)rd.accessMode);
     } else {
@@ -1224,8 +1225,15 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
         {
         case ratrNN:
             // No tone at all
-            payload.append("\x16\x42\x00", 3); // TONE off
-            //payload.append("\x16\x43\x00", 3);  // TSQL off
+            if(state.getBool(TONEFUNC))
+            {
+                payload.append("\x16\x42\x00", 3); // TONE off
+            } else if (state.getBool(TSQLFUNC)) {
+                payload.append("\x16\x43\x00", 3);  // TSQL off
+            } else {
+                // ?? turn off TSQL ??
+                payload.append("\x16\x43\x00", 3);  // TSQL off
+            }
             break;
         case ratrTN:
             // TONE on transmit only
@@ -3567,6 +3575,7 @@ void rigCommander::determineRigCaps()
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x27");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = true;
+            rigCaps.hasAdvancedRptrToneCmds = true;
             break;
         case model910h:
             rigCaps.modelName = QString("IC-910H");
@@ -4821,7 +4830,7 @@ void rigCommander::setToneSql(bool enabled)
     prepDataAndSend(payload);
 }
 
-void rigCommander::getToneSql()
+void rigCommander::getToneSqlEnabled()
 {
     QByteArray payload;
     payload.setRawData("\x16\x43", 2);
@@ -5199,7 +5208,7 @@ void rigCommander::stateUpdated()
                 if (i.value()._valid) {
                     setToneSql(state.getBool(TSQLFUNC));
                 }
-                getToneSql();
+                getToneSqlEnabled();
                 break;
             case COMPFUNC:
                 if (i.value()._valid) {

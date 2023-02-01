@@ -112,7 +112,7 @@ public slots:
     void setToneEnabled(bool enabled);
     void getToneEnabled();
     void setToneSql(bool enabled);
-    void getToneSql();
+    void getToneSqlEnabled();
     void setCompressor(bool enabled);
     void getCompressor();
     void setMonitor(bool enabled);
