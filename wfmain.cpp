@@ -1676,7 +1676,6 @@ void wfmain::setupUsbControllerDevice()
     connect(usbControllerDev, SIGNAL(doShuttle(bool, unsigned char)), this, SLOT(doShuttle(bool, unsigned char)));
     connect(usbControllerDev, SIGNAL(button(const COMMAND*)), this, SLOT(buttonControl(const COMMAND*)));
     connect(usbControllerDev, SIGNAL(setBand(int)), this, SLOT(setBand(int)));
-    connect(this, SIGNAL(controllerLed(bool, unsigned char)), usbControllerDev, SLOT(ledControl(bool, unsigned char)));
     connect(usbControllerDev, SIGNAL(newDevice(unsigned char, QVector<BUTTON>*, QVector<COMMAND>*)), shut, SLOT(newDevice(unsigned char, QVector<BUTTON>*, QVector<COMMAND>*)));
     usbControllerThread->start(QThread::LowestPriority);
 
@@ -1696,7 +1695,6 @@ void wfmain::pttToggle(bool status)
     }
 
     emit setPTT(status);
-    emit controllerLed(status, 1);
     // Start 3 minute timer
     if (status)
         pttTimer->start();
@@ -3829,7 +3827,6 @@ void wfmain::doCmd(commandtype cmddata)
         {
             bool pttrequest = (*std::static_pointer_cast<bool>(data));
             emit setPTT(pttrequest);
-            emit controllerLed(pttrequest, 1);
 
             ui->meter2Widget->clearMeterOnPTTtoggle();
             if (pttrequest)
@@ -3845,7 +3842,6 @@ void wfmain::doCmd(commandtype cmddata)
         {
             bool pttrequest = !amTransmitting;
             emit setPTT(pttrequest);
-            emit controllerLed(pttrequest, 1);
             ui->meter2Widget->clearMeterOnPTTtoggle();
             if (pttrequest)
             {

@@ -373,6 +373,7 @@ void usbController::runTimer()
         		// TRANSMIT key down only (no other keys down)
                 qDebug(logUsbControl()) << "PTT key down";
                 qInfo(logUsbControl()) << "On Button event:" << butptt->onCommand->text;
+                ledControl(true,0);
                 emit button(butptt->onCommand);
 
             }
@@ -382,39 +383,44 @@ void usbController::runTimer()
                 //emit button(false, 6);
                 qDebug(logUsbControl()) << "PTT key up";
                 qInfo(logUsbControl()) << "Off Button event:" << butptt->offCommand->text;
+                ledControl(false,0);
                 emit button(butptt->offCommand);
+            }
+            else if (butf1 != Q_NULLPTR && ((unsigned char)data[5] == 0x7d) && ((unsigned char)lastData[5] != 0x7d))
+            {
+        		// F-1 key up only (no other keys down)
+                //emit button(true, 5);
+                qDebug(logUsbControl()) << "F-1 key down";
+                qInfo(logUsbControl()) << "On Button event:" << butf1->onCommand->text;
+                ledControl(true,1);
+                emit button(butf1->onCommand);
+            }
+            else if (butf1 != Q_NULLPTR && ((unsigned char)data[5] != 0x7d) && ((unsigned char)lastData[5] == 0x7d))
+            {
+		        // F-1 key down only (no other keys down)
+                //emit button(false, 5);
+                qDebug(logUsbControl()) << "F-1 key up";
+                qInfo(logUsbControl()) << "Off Button event:" << butf1->offCommand->text;
+                ledControl(false,1);
+                emit button(butf1->offCommand);
             }
             else if (butf2 != Q_NULLPTR && ((unsigned char)data[5] == 0x03) && ((unsigned char)lastData[5] != 0x03))
             {
 		        // F-2 key up only (no other keys down)
                 //emit button(true, 7);
-                qDebug(logUsbControl()) << "F-2 key up";
+                qDebug(logUsbControl()) << "F-2 key down";
                 qInfo(logUsbControl()) << "On Button event:" << butf2->onCommand->text;
+                ledControl(true,2);
                 emit button(butf2->onCommand);
             }
             else if (butf2 != Q_NULLPTR && ((unsigned char)data[5] != 0x03) && ((unsigned char)lastData[5] == 0x03))
             {
 		        // F-2 key down only (no other keys down)
                 //emit button(false, 7);
-                qDebug(logUsbControl()) << "F-2 key down";
+                qDebug(logUsbControl()) << "F-2 key up";
                 qInfo(logUsbControl()) << "Off Button event:" << butf2->offCommand->text;
+                ledControl(false,2);
                 emit button(butf2->offCommand);
-            }
-            else if (butf1 != Q_NULLPTR && ((unsigned char)data[5] == 0x05) && ((unsigned char)lastData[5] != 0x05))
-            {
-        		// F-1 key up only (no other keys down)
-                //emit button(true, 5);
-                qDebug(logUsbControl()) << "F-1 key up";
-                qInfo(logUsbControl()) << "On Button event:" << butf1->onCommand->text;
-                emit button(butf1->onCommand);
-            }
-            else if (butf1 != Q_NULLPTR && ((unsigned char)data[5] != 0x05) && ((unsigned char)lastData[5] == 0x05))
-            {
-		        // F-1 key down only (no other keys down)
-                //emit button(false, 5);
-                qDebug(logUsbControl()) << "F-1 key down";
-                qInfo(logUsbControl()) << "Off Button event:" << butf1->offCommand->text;
-                emit button(butf1->offCommand);
             }
 
             if ((unsigned char)data[5] == 0x07)
@@ -469,9 +475,11 @@ void usbController::ledControl(bool on, unsigned char num)
         QByteArray data(9, 0x0);
         data[0] = 8;
         data[1] = 0x01;
-        unsigned char ledNum = 0x07;
+        static unsigned char ledNum = 0xff;
         if (on)
-            ledNum &= ~(1ULL << (num - 1));
+            ledNum &= ~(1UL << num);
+        else
+            ledNum |= 1UL << num;
 
         data[2] = ledNum;
 

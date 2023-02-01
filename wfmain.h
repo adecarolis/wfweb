@@ -222,7 +222,6 @@ signals:
     void openShuttle();
     void requestRigState();
     void stateUpdated();
-    void controllerLed(bool, unsigned char);
     void sendUsbControllerCommands(QVector<COMMAND>* cmds);
     void sendUsbControllerButtons(QVector<BUTTON>* buts);
     void setClusterUdpPort(int port);
