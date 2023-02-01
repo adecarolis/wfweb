@@ -108,6 +108,8 @@ private slots:
 
     void on_splitTransmitFreqEdit_returnPressed();
 
+    void on_setSplitRptrToneChk_clicked(bool checked);
+
 private:
     Ui::repeaterSetup *ui;
     freqt currentMainFrequency;

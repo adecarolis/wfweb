@@ -840,3 +840,12 @@ void repeaterSetup::on_rptrOffsetEdit_returnPressed()
 {
     this->on_rptrOffsetSetBtn_clicked();
 }
+
+void repeaterSetup::on_setSplitRptrToneChk_clicked(bool checked)
+{
+    if(checked)
+    {
+        on_setRptrSubVFOBtn_clicked();
+        on_setToneSubVFOBtn_clicked();
+    }
+}
