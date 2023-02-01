@@ -442,7 +442,7 @@ void usbController::runTimer()
         {
             if (usbDevice == shuttleXpress || usbDevice == shuttlePro2)
             {
-                if (shutpos < 0x08)
+                if (shutpos > 0  && shutpos < 0x08)
                 {
                     shutMult = shutpos;
                     emit doShuttle(true, shutMult);
