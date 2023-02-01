@@ -9169,5 +9169,7 @@ void wfmain::resetUsbCommands()
     usbCommands.append(COMMAND(50, "NB Off", cmdNone, 0x0));
     usbCommands.append(COMMAND(51, "Split On", cmdNone, 0x01));
     usbCommands.append(COMMAND(52, "Split Off", cmdNone, 0x0));
+    usbCommands.append(COMMAND(53, "Swap VFOs", cmdVFOSwap, 0x0));
     emit sendUsbControllerCommands(&usbCommands);
 }
+
