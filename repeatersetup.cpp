@@ -498,11 +498,6 @@ void repeaterSetup::on_rptAutoBtn_clicked()
     emit setDuplexMode(dmDupAutoOn);
 }
 
-void repeaterSetup::on_rptReadRigBtn_clicked()
-{
-    emit getDuplexMode();
-}
-
 void repeaterSetup::on_rptToneCombo_activated(int tindex)
 {
     quint16 tone=0;
@@ -611,23 +606,6 @@ void repeaterSetup::on_toneDTCS_clicked()
     emit setDTCS(dcode, tinv, rinv);
     // TODO: DTCS with subband
 }
-
-void repeaterSetup::on_debugBtn_clicked()
-{
-    // TODO: Move these four commands to wfview's startup command list (place at the end)
-    //emit getTone();
-    //emit getTSQL();
-    //emit getDTCS();
-    emit getRptAccessMode();
-}
-
-//void repeaterSetup::on_splitOffsetSetBtn_clicked()
-//{
-//    freqt txFreq;
-//    bool ok = true;
-//    txFreq.Hz = ui->splitTransmitFreqEdit->text().toDouble(&ok) * 1E6;
-//    emit setTransmitFrequency(txFreq);
-//}
 
 quint64 repeaterSetup::getFreqHzFromKHzString(QString khz)
 {
