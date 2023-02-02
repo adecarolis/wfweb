@@ -935,6 +935,16 @@ void rigCommander::getDuplexMode()
     prepDataAndSend(payload);
 }
 
+void rigCommander::setQuickSplit(bool qsOn)
+{
+    if(rigCaps.hasQuickSplitCommand)
+    {
+        QByteArray payload = rigCaps.quickSplitCommand;
+        payload.append((unsigned char)qsOn);
+        prepDataAndSend(payload);
+    }
+}
+
 void rigCommander::setPassband(quint16 pass)
 {
     QByteArray payload;
@@ -1062,7 +1072,7 @@ void rigCommander::setTone(rptrTone_t t)
     {
         qDebug(logRig()) << "Sending TONE to secondary VFO";
         payload.prepend("\x29\x01");
-        printHex(payload);
+        //printHex(payload);
     }
 
     prepDataAndSend(payload);
@@ -1089,7 +1099,7 @@ void rigCommander::setTSQL(rptrTone_t t)
     {
         qDebug(logRig()) << "Sending TSQL to secondary VFO";
         payload.prepend("\x29\x01");
-        printHex(payload);
+        //printHex(payload);
     }
 
     prepDataAndSend(payload);
@@ -1105,7 +1115,7 @@ void rigCommander::setDTCS(quint16 dcscode, bool tinv, bool rinv)
     payload.append(denc);
 
     //qInfo() << __func__ << "DTCS encoded payload: ";
-    printHex(payload);
+    //printHex(payload);
 
     prepDataAndSend(payload);
 }
@@ -1270,8 +1280,8 @@ void rigCommander::setRptDuplexOffset(freqt f)
     QByteArray freqPayload = makeFreqPayload(f);
     payload.append(freqPayload.mid(1, 3));
     //qInfo(logRig()) << "Here is potential repeater offset setting, not sending to radio:";
-    printHexNow(payload, logRig());
-    QString g = getHex(payload);
+    //printHexNow(payload, logRig());
+    //QString g = getHex(payload);
     //qInfo(logRig()).noquote().nospace() << g;
     prepDataAndSend(payload);
 }
@@ -1365,6 +1375,7 @@ void rigCommander::sendCW(QString textToSend)
 
     QByteArray textData = textToSend.toLocal8Bit();
     unsigned char p=0;
+    bool printout=false;
     for(int c=0; c < textData.length(); c++)
     {
         p = textData.at(c);
@@ -1380,10 +1391,12 @@ void rigCommander::sendCW(QString textToSend)
             // Allowed character, continue
         } else {
             qWarning(logRig()) << "Invalid character detected in CW message at position " << c << ", the character is " << textToSend.at(c);
-            printHex(textData);
+            printout = true;
             textData[c] = 0x3F; // "?"
         }
     }
+    if(printout)
+        printHex(textData);
 
     if(pttAllowed)
     {
@@ -3336,7 +3349,7 @@ void rigCommander::parseWFData()
             // read edge mode center in edge mode
             emit haveScopeEdge((char)payloadIn[2]);
             //qInfo(logRig()) << "Received 0x16 edge in center mode:";
-            printHex(payloadIn, false, true);
+            //printHex(payloadIn, false, true);
             // [1] 0x16
             // [2] 0x01, 0x02, 0x03: Edge 1,2,3
             break;
@@ -3520,6 +3533,8 @@ void rigCommander::determineRigCaps()
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x71");
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
+            rigCaps.hasQuickSplitCommand = true;
+            rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x30");
             break;
         case modelR8600:
             rigCaps.modelName = QString("IC-R8600");
@@ -3593,6 +3608,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = true;
             rigCaps.hasAdvancedRptrToneCmds = true;
+            rigCaps.hasQuickSplitCommand = true;
+            rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x43");
             break;
         case model910h:
             rigCaps.modelName = QString("IC-910H");
@@ -3647,6 +3664,8 @@ void rigCommander::determineRigCaps()
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x97");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = false;
+            rigCaps.hasQuickSplitCommand = true;
+            rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x64");
             break;
         case model7610:
             rigCaps.modelName = QString("IC-7610");
@@ -3681,6 +3700,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasRXAntenna = true;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x12");
             rigCaps.hasSpecifyMainSubCmd = true;
+            rigCaps.hasQuickSplitCommand = true;
+            rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x33");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = false;
             break;
@@ -3716,6 +3737,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasRXAntenna = true;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x55");
             rigCaps.hasSpecifyMainSubCmd = true;
+            rigCaps.hasQuickSplitCommand = true;
+            rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x01\x13");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = false;
             break;
@@ -3755,6 +3778,8 @@ void rigCommander::determineRigCaps()
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x31");
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
+            rigCaps.hasQuickSplitCommand = true;
+            rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x45");
             break;
         case model7000:
             rigCaps.modelName = QString("IC-7000");
@@ -3781,6 +3806,8 @@ void rigCommander::determineRigCaps()
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x92");
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
+            rigCaps.hasQuickSplitCommand = true;
+            rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x52");
             break;
         case model7410:
             rigCaps.modelName = QString("IC-7410");
@@ -3806,6 +3833,8 @@ void rigCommander::determineRigCaps()
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x40");
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
+            rigCaps.hasQuickSplitCommand = true;
+            rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x11");
             break;
         case model7100:
             rigCaps.modelName = QString("IC-7100");
@@ -3837,6 +3866,8 @@ void rigCommander::determineRigCaps()
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x95");
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
+            rigCaps.hasQuickSplitCommand = true;
+            rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x15");
             break;
         case model7200:
             rigCaps.modelName = QString("IC-7200");
@@ -3861,6 +3892,8 @@ void rigCommander::determineRigCaps()
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x03\x48");
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
+            rigCaps.hasQuickSplitCommand = true;
+            rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x03\x18");
             break;
         case model7700:
             rigCaps.modelName = QString("IC-7700");
@@ -3889,6 +3922,8 @@ void rigCommander::determineRigCaps()
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x95");
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
+            rigCaps.hasQuickSplitCommand = true;
+            rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x67");
             break;
         case model703:
             rigCaps.modelName = QString("IC-703");
@@ -4129,6 +4164,8 @@ void rigCommander::determineRigCaps()
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = false;
+            rigCaps.hasQuickSplitCommand = true;
+            rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x24");
             break;
         case model756proiii:
             rigCaps.modelName = QString("IC-756 Pro III");
@@ -4152,6 +4189,8 @@ void rigCommander::determineRigCaps()
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = false;
+            rigCaps.hasQuickSplitCommand = true;
+            rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x24");
             break;
         case model9100:
             rigCaps.modelName = QString("IC-9100");
@@ -4183,6 +4222,8 @@ void rigCommander::determineRigCaps()
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeDV, 0x17, "DV")});
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = true;
+            rigCaps.hasQuickSplitCommand = true;
+            rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x14");
             break;
         default:
             rigCaps.modelName = QString("IC-0x%1").arg(rigCaps.modelID, 2, 16);

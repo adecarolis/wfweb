@@ -8,7 +8,7 @@ repeaterSetup::repeaterSetup(QWidget *parent) :
     ui->setupUi(this);
 
     ui->autoTrackLiveBtn->setEnabled(false); // until we set split enabled.
-
+    ui->warningFMLabel->setVisible(false);
     // populate the CTCSS combo box:
     populateTones();
 
@@ -101,6 +101,7 @@ void repeaterSetup::setRig(rigCapabilities inRig)
     ui->rptrOffsetSetBtn->setEnabled(rig.hasRepeaterModes);
     ui->setToneSubVFOBtn->setEnabled(rig.hasSpecifyMainSubCmd);
     ui->setRptrSubVFOBtn->setEnabled(rig.hasSpecifyMainSubCmd);
+    ui->quickSplitChk->setVisible(rig.hasQuickSplitCommand);
 }
 
 void repeaterSetup::populateTones()
@@ -414,6 +415,10 @@ void repeaterSetup::handleUpdateCurrentMainMode(mode_info m)
         this->currentModeMain = m;
         this->modeTransmitVFO = m;
         this->modeTransmitVFO.VFO = inactiveVFO;
+        if(m.mk == modeFM)
+            ui->warningFMLabel->setVisible(false);
+        else
+            ui->warningFMLabel->setVisible(true);
     }
 }
 
@@ -826,4 +831,9 @@ void repeaterSetup::on_setSplitRptrToneChk_clicked(bool checked)
         on_setRptrSubVFOBtn_clicked();
         on_setToneSubVFOBtn_clicked();
     }
+}
+
+void repeaterSetup::on_quickSplitChk_clicked(bool checked)
+{
+    emit setQuickSplit(checked);
 }

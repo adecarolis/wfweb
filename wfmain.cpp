@@ -415,18 +415,12 @@ void wfmain::rigConnections()
             }
     });
 
-    // How to understand the reply of getToneEnabled, getTSQLEnabled
-    // ......
-    // it's currently only read into rigState.
-    // We could emit a signal from rigCommander, turn it into
-    // a rptrAccess data type and feed that to rptr.
-    // But there will be two replies, and we need to somehow
-    // understand both before forming a sensible reply to
-    // the rptr setup.
-    // If we don't care, then it just works but we don't know the current state.
+    connect(this->rpt, &repeaterSetup::setQuickSplit,
+            [=](const bool &qsEnabled) {
+        issueCmd(cmdSetQuickSplit, qsEnabled);
+    });
 
-
-    //connect(rpt, SIGNAL(setRptAccessMode(rptAccessTxRx)), rig, SLOT(setRptAccessMode(rptAccessTxRx)));
+    connect(this, SIGNAL(setQuickSplit(bool)), rig, SLOT(setQuickSplit(bool)));
 
     connect(this->rpt, &repeaterSetup::setRptAccessMode,
             [=](const rptrAccessData_t &rd) {
@@ -453,7 +447,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getTSQLEnabled()), rig, SLOT(getToneSqlEnabled()));
 
     connect(this->rpt, &repeaterSetup::setTransmitFrequency,
-            [=](const freqt &transmitFreq) { issueCmd(cmdSetFreq, transmitFreq);});
+            [=](const freqt &transmitFreq) { issueCmdUniquePriority(cmdSetFreq, transmitFreq);});
     connect(this->rpt, &repeaterSetup::setTransmitMode,
             [=](const mode_info &transmitMode) { issueCmd(cmdSetMode, transmitMode);});
     connect(this->rpt, &repeaterSetup::selectVFO,
@@ -3821,6 +3815,12 @@ void wfmain::doCmd(commandtype cmddata)
         {
             freqt f = (*std::static_pointer_cast<freqt>(data));
             emit setRptDuplexOffset(f);
+            break;
+        }
+        case cmdSetQuickSplit:
+        {
+            bool qsEnabled = (*std::static_pointer_cast<bool>(data));
+            emit setQuickSplit(qsEnabled);
             break;
         }
         case cmdSetPTT:

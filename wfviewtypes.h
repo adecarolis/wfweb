@@ -164,7 +164,7 @@ enum cmds {
     cmdGetTone, cmdGetTSQL, cmdGetToneEnabled, cmdGetTSQLEnabled, cmdGetDTCS,
     cmdSetToneEnabled, cmdSetTSQLEnabled, cmdGetRptAccessMode, cmdSetTone, cmdSetTSQL,
     cmdSetRptAccessMode, cmdSetRptDuplexOffset, cmdGetRptDuplexOffset,
-    cmdSelVFO, cmdVFOSwap, cmdVFOEqualAB, cmdVFOEqualMS,
+    cmdSelVFO, cmdVFOSwap, cmdVFOEqualAB, cmdVFOEqualMS, cmdSetQuickSplit,
     cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
     cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW,
     cmdSetTime, cmdSetDate, cmdSetUTCOffset,

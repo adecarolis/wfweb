@@ -153,6 +153,8 @@ struct rigCapabilities {
     bool hasVFOAB = true; // 0x07 [00||01]
 
     bool hasAdvancedRptrToneCmds = false;
+    bool hasQuickSplitCommand = false;
+    QByteArray quickSplitCommand;
 
     std::vector <unsigned char> attenuators;
     std::vector <unsigned char> preamps;

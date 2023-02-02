@@ -111,6 +111,7 @@ signals:
 
     // Repeater:
     void getDuplexMode();
+    void setQuickSplit(bool qsOn);
     void getTone();
     void getTSQL();
     void getDTCS();
