@@ -85,7 +85,6 @@ class usbController : public QObject
 public:
     usbController();
     ~usbController();
-    int hidApiWrite(unsigned char* data, unsigned char length);
 
 public slots:
     void init();

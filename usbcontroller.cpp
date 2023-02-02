@@ -45,32 +45,6 @@ void usbController::receiveButtons(QVector<BUTTON>* buts)
     buttonList = buts;
 }
 
-int usbController::hidApiWrite(unsigned char* data, unsigned char length)
-{
-    Q_UNUSED(data);
-    Q_UNUSED(length);
-/*    int res;
-    unsigned char realData[length + 1];
-
-    realData[0] = length;
-    int i;
-    for (i = 0; i < length; i++)
-    {
-        realData[i + 1] = data[i];
-    }
-
-    res = hid_write(handle, realData, length + 1);
-    if (res < 0) {
-        printf("Unable to write()\n");
-        printf("Error: %ls\n", hid_error(handle));
-        return -1;
-    }
-
-    printf("write success\n");
-    */
-    return 0;
-}
-
 
 void usbController::run()
 {
@@ -197,6 +171,9 @@ void usbController::run()
             else {
                 usbDevice = RC28;
                 getVersion();
+                ledControl(false, 0);
+                ledControl(false, 1);
+                ledControl(false, 2);
             }
         }
         else {
@@ -343,6 +320,7 @@ void usbController::runTimer()
             else 
             {
 
+                data.resize(8);
                 // Buttons
 
                 BUTTON* butptt = Q_NULLPTR;
@@ -480,7 +458,7 @@ void usbController::ledControl(bool on, unsigned char num)
         QByteArray data(9, 0x0);
         data[0] = 8;
         data[1] = 0x01;
-        static unsigned char ledNum = 0xff;
+        static unsigned char ledNum = 0x07;
         if (on)
             ledNum &= ~(1UL << num);
         else
