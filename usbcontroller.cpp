@@ -175,6 +175,7 @@ void usbController::run()
                 ledControl(false, 0);
                 ledControl(false, 1);
                 ledControl(false, 2);
+                ledControl(true, 3);
             }
         }
         else {
