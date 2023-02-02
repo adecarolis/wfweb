@@ -370,7 +370,7 @@ void usbController::runTimer()
                     ledControl(false, 0);
                     emit button(butptt->offCommand);
                 }
-                else if (butf1 != Q_NULLPTR && ((unsigned char)data[5] == 0x7d) && ((unsigned char)lastData[5] != 0x7d))
+                else if (butf1 != Q_NULLPTR && ((unsigned char)data[5] == 0x05) && ((unsigned char)lastData[5] != 0x05))
                 {
                     // F-1 key up only (no other keys down)
                     //emit button(true, 5);
@@ -379,7 +379,7 @@ void usbController::runTimer()
                     ledControl(true, 1);
                     emit button(butf1->onCommand);
                 }
-                else if (butf1 != Q_NULLPTR && ((unsigned char)data[5] != 0x7d) && ((unsigned char)lastData[5] == 0x7d))
+                else if (butf1 != Q_NULLPTR && ((unsigned char)data[5] != 0x05) && ((unsigned char)lastData[5] == 0x05))
                 {
                     // F-1 key down only (no other keys down)
                     //emit button(false, 5);
