@@ -94,6 +94,7 @@ public slots:
     void ledControl(bool on, unsigned char num);
     void receiveCommands(QVector<COMMAND>*);
     void receiveButtons(QVector<BUTTON>*);
+    void getVersion();
 
 signals:
     void jogPlus();

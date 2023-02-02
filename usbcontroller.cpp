@@ -196,6 +196,7 @@ void usbController::run()
             }
             else {
                 usbDevice = RC28;
+                getVersion();
             }
         }
         else {
@@ -336,6 +337,9 @@ void usbController::runTimer()
         else if ((res > 31) && usbDevice == RC28)
         {
             // This is a response from the Icom RC28
+            if (data[0] == 0x02) {
+                qInfo(logUsbControl()) << QString("Received RC-28 Firmware Version: %0").arg(data.mid(1,data.indexOf(" ")-1));
+            }
             data.resize(8); // Might as well get rid of the unused data.
 
 
@@ -494,6 +498,17 @@ void usbController::ledControl(bool on, unsigned char num)
     }
 }
 
+void usbController::getVersion()
+{
+    QByteArray data(9, 0x0);
+    data[0] = 8;
+    data[1] = 0x02;
+    int res = hid_write(handle, (const unsigned char*)data.constData(), 8);
+
+    if (res < 0) {
+        qDebug(logUsbControl()) << "Unable to write(), Error:" << hid_error(handle);
+    }
+}
 void usbController::buttonState(QString name, bool val)
 {
     for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
