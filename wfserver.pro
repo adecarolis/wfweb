@@ -19,20 +19,42 @@ DEFINES += BUILD_WFSERVER
 
 
 CONFIG(debug, release|debug) {
-    # For Debug builds only:
-    QMAKE_CXXFLAGS += -faligned-new
-    win32:DESTDIR = wfview-release
-    win32:LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86 -ole32
+  # For Debug builds only:
+  linux:QMAKE_CXXFLAGS += -faligned-new
+  win32 {
+    contains(QMAKE_TARGET.arch, x86_64) {
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfview-debug $$escape_expand(\\n\\t))
+      LIBS += -L../portaudio/msvc/X64/Debug/ -lportaudio_x64
+      LIBS += -L../opus/win32/VS2015/x64/Debug/ -lopus -lole32
+    } else {
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Debug\portaudio_x86.dll wfview-debug\$$escape_expand(\\n\\t))
+      LIBS += -L../portaudio/msvc/Win32/Debug/ -lportaudio_x86
+      LIBS += -L../opus/win32/VS2015/Win32/Debug/ -lopus -lole32
+    }
+    DESTDIR = wfview-release
+  }
 } else {
-    # For Release builds only:
-    linux:QMAKE_CXXFLAGS += -s
-    QMAKE_CXXFLAGS += -fvisibility=hidden
-    QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
-    QMAKE_CXXFLAGS += -faligned-new
-    linux:QMAKE_LFLAGS += -O2 -s
-    win32:DESTDIR = wfview-debug
-    win32:LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86 -lole32
+  # For Release builds only:
+  linux:QMAKE_CXXFLAGS += -s
+  linux:QMAKE_CXXFLAGS += -fvisibility=hidden
+  linux:QMAKE_CXXFLAGS += -fvisibility-inlines-hidden
+  linux:QMAKE_CXXFLAGS += -faligned-new
+  linux:QMAKE_LFLAGS += -O2 -s
+
+  win32 {
+    contains(QMAKE_TARGET.arch, x86_64) {
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfview-release $$escape_expand(\\n\\t))
+      LIBS += -L../portaudio/msvc/X64/Release/ -lportaudio_x64
+      LIBS += -L../opus/win32/VS2015/x64/Release/ -lopus -lole32
+    } else {
+      QMAKE_POST_LINK +=$$quote(cmd /c copy /y ..\portaudio\msvc\win32\Release\portaudio_x86.dll wfview-release $$escape_expand(\\n\\t))
+      LIBS += -L../portaudio/msvc/Win32/Release/ -lportaudio_x86
+      LIBS += -L../opus/win32/VS2015/Win32/Release/ -lopus -lole32
+    }
+    DESTDIR = wfview-debug
+  }
 }
+
 
 # RTAudio defines
 win32:DEFINES += __WINDOWS_WASAPI__
@@ -102,15 +124,6 @@ RESOURCES += qdarkstyle/style.qrc \
 
 unix:target.path = $$PREFIX/bin
 INSTALLS += target
-
-# Do not do this, it will hang on start:
-# CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
-
-CONFIG(debug, release|debug) {
-  win32:LIBS += -L../opus/win32/VS2015/Win32/Debug/ -lopus
-} else {
-  win32:LIBS += -L../opus/win32/VS2015/Win32/Release/ -lopus
-}
 
 linux:LIBS += -L./ -lopus
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus 
