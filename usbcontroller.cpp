@@ -337,7 +337,7 @@ void usbController::runTimer()
         else if ((res > 31) && usbDevice == RC28)
         {
             // This is a response from the Icom RC28
-            if (data[0] == 0x02) {
+            if ((unsigned char)data[0] == 0x02) {
                 qInfo(logUsbControl()) << QString("Received RC-28 Firmware Version: %0").arg(QString(data.mid(1,data.indexOf(" ")-1)));
             }
             else 
