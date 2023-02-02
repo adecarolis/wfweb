@@ -479,10 +479,10 @@ void usbController::ledControl(bool on, unsigned char num)
 
 void usbController::getVersion()
 {
-    QByteArray data(9, 0x0);
-    data[0] = 8;
+    QByteArray data(64, 0x0);
+    data[0] = 63;
     data[1] = 0x02;
-    int res = hid_write(handle, (const unsigned char*)data.constData(), 8);
+    int res = hid_write(handle, (const unsigned char*)data.constData(), data.size());
 
     if (res < 0) {
         qDebug(logUsbControl()) << "Unable to write(), Error:" << hid_error(handle);
