@@ -167,7 +167,7 @@ void usbController::run()
         if (!handle) {
             handle = hid_open(0x0c26, 0x001e, NULL);
             if (!handle) {
-                usbDevice = NONE;
+                usbDevice = usbNone;
             }
             else {
                 usbDevice = RC28;
@@ -226,7 +226,7 @@ void usbController::run()
 void usbController::runTimer()
 {
     int res=1;
- 
+
     while (res > 0) {
         QByteArray data(HIDDATALENGTH, 0x0);
         res = hid_read(handle, (unsigned char*)data.data(), HIDDATALENGTH);
@@ -328,6 +328,9 @@ void usbController::runTimer()
                 BUTTON* butptt = Q_NULLPTR;
                 BUTTON* butf1 = Q_NULLPTR;
                 BUTTON* butf2 = Q_NULLPTR;;
+
+
+                //delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) {  return (c.cmd == cmd); }),
 
                 for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
                     if (but->dev == usbDevice) {

@@ -106,7 +106,6 @@ signals:
 
 private:
     hid_device* handle;
-    enum { NONE=0, shuttleXpress, shuttlePro2, RC28, xBoxGamepad, unknownGamepad }usbDevice;
     bool isOpen=false;
     unsigned int buttons=0;
     unsigned char jogpos=0;
@@ -126,7 +125,7 @@ private:
 #endif
     void buttonState(QString but, bool val);
     void buttonState(QString but, double val);
-
+    usbDeviceType usbDevice = usbNone;
 protected:
 };
 
