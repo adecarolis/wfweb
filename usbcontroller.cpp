@@ -18,6 +18,7 @@ usbController::usbController()
 usbController::~usbController()
 {
     qInfo(logUsbControl) << "Ending usbController()";
+    ledControl(false, 3);
     hid_close(handle);
     hid_exit();
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
