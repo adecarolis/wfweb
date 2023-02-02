@@ -347,12 +347,7 @@ void usbController::runTimer()
                     }
                 }
 
-
-                if (lastData.size() != 8) {
-                    lastData = data;
-                }
-
-                if (butptt != Q_NULLPTR && ((unsigned char)data[5] == 0x06) && ((unsigned char)lastData[5] != 0x06))
+                if (butptt != Q_NULLPTR && !((unsigned char)data[5] ^ 0x06) && ((unsigned char)lastData[5] ^ 0x06))
                 {
                     // TRANSMIT key down only (no other keys down)
                     qDebug(logUsbControl()) << "PTT key down";
@@ -361,7 +356,7 @@ void usbController::runTimer()
                     emit button(butptt->onCommand);
 
                 }
-                else if (butptt != Q_NULLPTR && ((unsigned char)data[5] != 0x06) && ((unsigned char)lastData[5] == 0x06))
+                else if (butptt != Q_NULLPTR && ((unsigned char)data[5] ^ 0x06) && !((unsigned char)lastData[5] ^ 0x06))
                 {
                     // TRANSMIT key up only (no other keys down)
                     //emit button(false, 6);
@@ -370,7 +365,8 @@ void usbController::runTimer()
                     ledControl(false, 0);
                     emit button(butptt->offCommand);
                 }
-                else if (butf1 != Q_NULLPTR && ((unsigned char)data[5] == 0x05) && ((unsigned char)lastData[5] != 0x05))
+                
+                if (butf1 != Q_NULLPTR && !((unsigned char)data[5] ^ 0x05) && ((unsigned char)lastData[5] ^ 0x05))
                 {
                     // F-1 key up only (no other keys down)
                     //emit button(true, 5);
@@ -379,7 +375,7 @@ void usbController::runTimer()
                     ledControl(true, 1);
                     emit button(butf1->onCommand);
                 }
-                else if (butf1 != Q_NULLPTR && ((unsigned char)data[5] != 0x05) && ((unsigned char)lastData[5] == 0x05))
+                else if (butf1 != Q_NULLPTR && ((unsigned char)data[5] ^ 0x05) && !((unsigned char)lastData[5] ^ 0x05))
                 {
                     // F-1 key down only (no other keys down)
                     //emit button(false, 5);
@@ -388,7 +384,8 @@ void usbController::runTimer()
                     ledControl(false, 1);
                     emit button(butf1->offCommand);
                 }
-                else if (butf2 != Q_NULLPTR && ((unsigned char)data[5] == 0x03) && ((unsigned char)lastData[5] != 0x03))
+                
+                if (butf2 != Q_NULLPTR && !((unsigned char)data[5] ^ 0x03) && ((unsigned char)lastData[5] ^ 0x03))
                 {
                     // F-2 key up only (no other keys down)
                     //emit button(true, 7);
@@ -397,7 +394,7 @@ void usbController::runTimer()
                     ledControl(true, 2);
                     emit button(butf2->onCommand);
                 }
-                else if (butf2 != Q_NULLPTR && ((unsigned char)data[5] != 0x03) && ((unsigned char)lastData[5] == 0x03))
+                else if (butf2 != Q_NULLPTR && ((unsigned char)data[5] ^ 0x03) && !((unsigned char)lastData[5] ^ 0x03))
                 {
                     // F-2 key down only (no other keys down)
                     //emit button(false, 7);
