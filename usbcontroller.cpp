@@ -455,8 +455,7 @@ void usbController::runTimer()
 void usbController::ledControl(bool on, unsigned char num)
 {
     if (usbDevice == RC28) {
-        QByteArray data(9, 0x0);
-        data[0] = 8;
+        QByteArray data(3, 0x0);
         data[1] = 0x01;
         static unsigned char ledNum = 0x07;
         if (on)
@@ -466,7 +465,7 @@ void usbController::ledControl(bool on, unsigned char num)
 
         data[2] = ledNum;
 
-        int res = hid_write(handle, (const unsigned char*)data.constData(), 8);
+        int res = hid_write(handle, (const unsigned char*)data.constData(), data.size());
 
         if (res < 0) {
             qDebug(logUsbControl()) << "Unable to write(), Error:" << hid_error(handle);
