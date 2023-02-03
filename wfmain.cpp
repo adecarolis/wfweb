@@ -5285,6 +5285,10 @@ void wfmain::handlePlotClick(QMouseEvent* me)
             this->mousePressFreq = plot->xAxis->pixelToCoord(cursor);
             showStatusBarText(QString("Selected %1 MHz").arg(this->mousePressFreq));
         }
+        else {
+            double x = plot->xAxis->pixelToCoord(cursor);
+            showStatusBarText(QString("Selected %1 MHz").arg(x));
+        }
     } 
     else if (me->button() == Qt::RightButton) 
     {
