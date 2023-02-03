@@ -1,3 +1,258 @@
+commit 072ab1967f2c39b27a50b7d4e2fb4f04b20bb172
+Merge: c6bd93a 75b86a0
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Fri Feb 3 18:32:57 2023 +0100
+
+    Merge branch 'band-switching'
+
+commit 75b86a0e4af92615f7f3caa7f002a132272ebf4e
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 3 17:29:39 2023 +0000
+
+    Remove setting that causes error
+
+commit b334241ea05558ad8cd4e558d75fa0808c50b773
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 3 11:21:11 2023 +0000
+
+    Allow plot click to display frequency if nothing else is under it
+
+commit a5112825054fd51402ad32cf634bfc6241893369
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 2 23:46:39 2023 +0000
+
+    Simplify command creation
+
+commit 4ea80af164c1cca9a3a833228d2b768bd8e829c1
+Merge: 80dc5d2 156f45d
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 2 23:12:43 2023 +0000
+
+    Merge branch 'morecontrols' into band-switching
+
+commit 80dc5d2df680979e406d9ccb93cdbfd0b8ee8ef0
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 2 23:11:49 2023 +0000
+
+    Bit of tidying
+
+commit 3993046771d83a5130d0c683e4e1b6a034e52638
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 2 22:53:52 2023 +0000
+
+    Remove UDP congestion mitigation
+
+commit 06c3e33b4d0a91aafc1c7bf719eaf143199b80ce
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 2 17:45:24 2023 +0000
+
+    Initialize lastdata first.
+
+commit d0cd7e2eb3eac3f519e29eaf569927f95f1d633c
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 2 16:45:45 2023 +0000
+
+    Use correct data for F1 key
+
+commit 5237c930e5d5fdce238d7cdce562433293a48da0
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 2 16:23:41 2023 +0000
+
+    Ensure link LED is turned on at startup
+
+commit 777d08ef24882e5fbf1346c615642396b63b933f
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 2 16:21:59 2023 +0000
+
+    Turn off link LED when shutdown
+
+commit c4fcc8983092bb6846bb97df667abee749de8fec
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 2 16:17:41 2023 +0000
+
+    Reduce to only send 3 bytes (report+data)
+
+commit 193e07284e335c73dba4fc405ffb8db8655545c7
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 2 15:47:59 2023 +0000
+
+    LED not working, maybe due to data size?
+
+commit 6c44ea9e0d93ef2b90ee26efc81f87bde6eca3f9
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 2 15:02:32 2023 +0000
+
+    More fixes
+
+commit ad50d4107162290fa0c54e2f5099df45ec96738f
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 2 11:24:22 2023 +0000
+
+    Fix warning
+
+commit 1ac8f5c2f0f9e72a88ac6d18c8151bfe1b840eb9
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 2 11:23:17 2023 +0000
+
+    Fix GCC build error
+
+commit e20900dbcf02a533dbf5d6a62120b9dac2991b77
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 2 00:03:13 2023 +0000
+
+    Query RC-28 for version
+
+commit a192e6643b15e89a692bc1015af96a2f31f19859
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 2 00:02:59 2023 +0000
+
+    Tidy-up wfserver.pro
+
+commit c6bd93a2b688d34330ce26017f946e0d140e3b09
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Feb 1 18:29:26 2023 +0000
+
+    Stop shuttle emitting a signal every 100ms!
+
+commit 4816427954dd03140164cffe44ad65967b83fde9
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Feb 1 18:29:26 2023 +0000
+
+    Stop shuttle emitting a signal every 100ms!
+
+commit 156f45d42ffe390d63fe0b1346d109fe29e6ae77
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Wed Feb 1 09:21:17 2023 -0800
+
+    Added quicksplit checkbox
+
+commit bbcc0e484286043ecb8507caad489100c5115313
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Wed Feb 1 08:46:13 2023 -0800
+
+    Added "only available in FM" repeater setup warning.
+
+commit 4411c1480ead7d70dbd73927ccc13a504f45d99b
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Wed Feb 1 08:14:36 2023 -0800
+
+    Cleaned up some debug code, checked repter-split checkbox by default.
+
+commit 5fa14d13e1da33db47dd1295d80bed6980126eea
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Feb 1 12:16:04 2023 +0000
+
+    Try to get RC-28 LEDs working
+
+commit 180b7b0095af9014d7614bae145e867136544ebb
+Merge: 071606f eaf7eb1
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Feb 1 09:42:09 2023 +0000
+
+    Merge branch 'morecontrols' into band-switching
+
+commit 071606fe5a4159db43fa671424f85c2252e1f2e1
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Feb 1 09:41:18 2023 +0000
+
+    More commands
+
+commit 096c223715cbb2e40670c867f42d1c58e8de15b7
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Feb 1 09:24:26 2023 +0000
+
+    I've added a "Swap VFOs" command to the USB controller, which seems to work.
+
+commit eaf7eb126eea20e61919b3f0a9027975874e5f96
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 31 22:38:22 2023 -0800
+
+    Disabled function that does not work with the cw combo box.
+
+commit 38e6cb2ef4da044fa5c91bdf1cadba8a7dee0249
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 31 22:36:37 2023 -0800
+
+    removed unused functions
+
+commit 3c31687b158c5884f106e570aec620e8c9c73396
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 31 22:11:45 2023 -0800
+
+    Added additional tone and tone mode sync up for split mode
+
+commit a5f3750988323e5762139dc683857bf5754b180f
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 31 22:08:27 2023 -0800
+
+    Cleaned up repeater-related debug code.
+
+commit eea17e5e09c70784ebb8ac251d3686b296590881
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 31 21:52:24 2023 -0800
+
+    Possibly the tone issue is solved.
+
+commit d503df03bd675b8c2cc665a62dd548e3fecafc9d
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 31 18:00:12 2023 -0800
+
+    Continued repeater status work...
+
+commit 17d6493338a57c77348041844953038e6987dd63
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 31 14:03:51 2023 -0800
+
+    Potentially fixed TONE and TSQL for rigs other than the mighty IC-9700.
+
+commit cb7cf6c2185b39ea933ecf6ac3778776342eded8
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Tue Jan 31 09:35:55 2023 -0800
+
+    Added "scope out of range" notification.
+
+commit 2696d2c8d94cf391086be35854078dc454155359
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 30 23:54:45 2023 +0000
+
+    Fix for band +/- buttons
+
+commit 63a7ec0a2149a83ec319622d8d944fcbe81de159
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 30 21:43:47 2023 +0000
+
+    Final tidying for Windows Builld
+
+commit 28c9d1beb2fdfb3434805e732f87b287ba2a2f6f
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 30 19:12:42 2023 +0000
+
+    More fixes for windows building
+
+commit db9f6cb933a4806125b149522dc04681330655f4
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 30 19:06:23 2023 +0000
+
+    Improve windows compile fix
+
+commit 2c9c30484477c7497f2f7ba957dcf07c83c64eed
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Jan 30 18:51:50 2023 +0000
+
+    Fix windows build error
+
+commit b2915b9f5e6fdcb73437a63b07f684c770c2b62b
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Mon Jan 30 19:49:49 2023 +0100
+
+    fixed build info for opensuse 15.x
+
+commit 3bdee82501525a9ef27833efb28a17b254c19a32
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Mon Jan 30 19:16:19 2023 +0100
+
+    v1.59
+
 commit 199295b6ae6ef8e90a0619e9ed67c701ca0a2c1e
 Merge: c89a7bd fc4bce8
 Author: Roeland Jansen <roeland.jansen69@gmail.com>

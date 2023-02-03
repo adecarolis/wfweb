@@ -61,10 +61,10 @@ The following highlights are in this 1.51-release ince v1.50:
     		Fixed up many key shortcuts, added HJKL key shortcuts.
 +1.59		rc28-shuttle control added
 		many repeater/split functionality		
-		many fixes 
-
-
-
+    		added "Swap VFOs" command to the USB controller, which seems to work.
+		Added "scope out of range" notification.
+		many fixes	
+		added a known limitations and issues file.
 	
 Notes:
 
