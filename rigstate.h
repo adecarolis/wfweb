@@ -38,7 +38,7 @@ public:
     QDateTime whenUpdated(stateTypes s) { return map[s]._dateUpdated; }
 
     void set(stateTypes s, quint64 x, bool u) {
-        if (x != map[s]._value) {
+        if ((x != (quint64)map[s]._value) && ((!u && !map[s]._updated) || (u))) {
             _mutex.lock();
             map[s]._value = quint64(x);
             map[s]._valid = true;
@@ -48,7 +48,7 @@ public:
         }
     }
     void set(stateTypes s, qint32 x, bool u) {
-        if (quint64(x) != map[s]._value) {
+        if ((x != (qint32)map[s]._value) && ((!u && !map[s]._updated) || (u))) {
             _mutex.lock();
             map[s]._value = quint64(x);
             map[s]._valid = true;
@@ -58,7 +58,7 @@ public:
         }
     }
     void set(stateTypes s, qint16 x, bool u) {
-        if (quint64(x) != map[s]._value) {
+        if ((x != (qint16)map[s]._value) && ((!u && !map[s]._updated) || (u))) {
             _mutex.lock();
             map[s]._value = quint64(x);
             map[s]._valid = true;
@@ -68,7 +68,7 @@ public:
         }
     }
     void set(stateTypes s, quint16 x, bool u) {
-        if (quint64(x) != map[s]._value) {
+        if ((x != (quint16)map[s]._value) && ((!u && !map[s]._updated) || (u))) {
             _mutex.lock();
             map[s]._value = quint64(x);
             map[s]._valid = true;
@@ -78,7 +78,7 @@ public:
         }
     }
     void set(stateTypes s, quint8 x, bool u) {
-        if (quint64(x) != map[s]._value) {
+        if ((x != (quint8)map[s]._value) && ((!u && !map[s]._updated) || (u))) {
             _mutex.lock();
             map[s]._value = quint64(x);
             map[s]._valid = true;
@@ -88,7 +88,7 @@ public:
         }
     }
     void set(stateTypes s, bool x, bool u) {
-        if (quint64(x) != map[s]._value) {
+        if ((x != (bool)map[s]._value) && ((!u && !map[s]._updated) || (u))) {
             _mutex.lock();
             map[s]._value = quint64(x);
             map[s]._valid = true;
@@ -98,7 +98,7 @@ public:
         }
     }
     void set(stateTypes s, duplexMode x, bool u) {
-        if (quint64(x) != map[s]._value) {
+        if ((x != (duplexMode)map[s]._value) && ((!u && !map[s]._updated) || (u))) {
             _mutex.lock();
             map[s]._value = quint64(x);
             map[s]._valid = true;
@@ -109,7 +109,7 @@ public:
     }
 
     void set(stateTypes s, rigInput x, bool u) {
-        if (quint64(x) != map[s]._value) {
+        if ((x != map[s]._value) && ((!u && !map[s]._updated) || (u))) {
             _mutex.lock();
             map[s]._value = quint64(x);
             map[s]._valid = true;
