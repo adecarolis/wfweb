@@ -111,6 +111,7 @@ signals:
 
     // Repeater:
     void getDuplexMode();
+    void setQuickSplit(bool qsOn);
     void getTone();
     void getTSQL();
     void getDTCS();
@@ -118,6 +119,10 @@ signals:
     void setRepeaterAccessMode(rptrAccessData_t rd);
     void setTone(rptrTone_t t);
     void setTSQL(rptrTone_t t);
+    void getToneEnabled();
+    void getTSQLEnabled();
+    void setToneEnabled(bool enabled);
+    void setTSQLEnabled(bool enabled);
     void setRptDuplexOffset(freqt f);
     void getRptDuplexOffset();
 
@@ -218,7 +223,6 @@ signals:
     void openShuttle();
     void requestRigState();
     void stateUpdated();
-    void controllerLed(bool, unsigned char);
     void sendUsbControllerCommands(QVector<COMMAND>* cmds);
     void sendUsbControllerButtons(QVector<BUTTON>* buts);
     void setClusterUdpPort(int port);
@@ -281,6 +285,7 @@ private slots:
     void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);
     void receiveSpectrumMode(spectrumMode spectMode);
     void receiveSpectrumSpan(freqt freqspan, bool isSub);
+    void handleScopeOutOfRange(bool outOfRange);
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(bool dataOn);
     void receiveBandStackReg(freqt f, char mode, char filter, bool dataOn); // freq, mode, (filter,) datamode

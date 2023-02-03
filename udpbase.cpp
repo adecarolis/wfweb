@@ -429,11 +429,12 @@ void udpBase::sendTrackedPacket(QByteArray d)
 
     udpMutex.lock();
     udp->writeDatagram(d, radioIP, port);
-    if (congestion > 10) { // Poor quality connection?
+
+    /*if (congestion > 10) { // Poor quality connection?
         udp->writeDatagram(d, radioIP, port);
         if (congestion > 20) // Even worse so send again.
             udp->writeDatagram(d, radioIP, port);
-    }
+    } */
     if (idleTimer != Q_NULLPTR && idleTimer->isActive()) {
         idleTimer->start(IDLE_PERIOD); // Reset idle counter if it's running
     }

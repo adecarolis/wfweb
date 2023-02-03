@@ -151,6 +151,13 @@
              </attribute>
             </widget>
            </item>
+           <item>
+            <widget class="QCheckBox" name="quickSplitChk">
+             <property name="text">
+              <string>QuickSplit</string>
+             </property>
+            </widget>
+           </item>
           </layout>
          </item>
          <item>
@@ -162,6 +169,9 @@
              </property>
              <property name="text">
               <string>Set Rpt Tone</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
              </property>
             </widget>
            </item>
@@ -392,6 +402,13 @@
          <string>Repeater Tone Type</string>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_3">
+         <item>
+          <widget class="QLabel" name="warningFMLabel">
+           <property name="text">
+            <string>Only available in FM</string>
+           </property>
+          </widget>
+         </item>
          <item>
           <widget class="QRadioButton" name="toneNone">
            <property name="text">

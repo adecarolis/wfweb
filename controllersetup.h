@@ -44,8 +44,8 @@ public slots:
     void offEventIndexChanged(int index);
 
 private:
-    enum { NONE=0, shuttleXpress, shuttlePro2, RC28, xBoxGamepad, unknownGamepad } usbDevice;
 
+    usbDeviceType usbDevice = usbNone;
     Ui::controllerSetup* ui;
     QGraphicsScene* scene;
     QGraphicsTextItem* textItem;

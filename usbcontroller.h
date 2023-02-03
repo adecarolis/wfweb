@@ -85,7 +85,6 @@ class usbController : public QObject
 public:
     usbController();
     ~usbController();
-    int hidApiWrite(unsigned char* data, unsigned char length);
 
 public slots:
     void init();
@@ -94,6 +93,7 @@ public slots:
     void ledControl(bool on, unsigned char num);
     void receiveCommands(QVector<COMMAND>*);
     void receiveButtons(QVector<BUTTON>*);
+    void getVersion();
 
 signals:
     void jogPlus();
@@ -106,7 +106,6 @@ signals:
 
 private:
     hid_device* handle;
-    enum { NONE=0, shuttleXpress, shuttlePro2, RC28, xBoxGamepad, unknownGamepad }usbDevice;
     bool isOpen=false;
     unsigned int buttons=0;
     unsigned char jogpos=0;
@@ -114,7 +113,7 @@ private:
     unsigned char shutMult = 0;
     int jogCounter = 0;
     QTime	lastusbController = QTime::currentTime();
-    QByteArray lastData="";
+    QByteArray lastData = QByteArray(8,0x0);
     unsigned char lastDialPos=0;
     QVector<BUTTON>* buttonList;
     QVector<COMMAND>* commands = Q_NULLPTR;
@@ -126,7 +125,7 @@ private:
 #endif
     void buttonState(QString but, bool val);
     void buttonState(QString but, double val);
-
+    usbDeviceType usbDevice = usbNone;
 protected:
 };
 

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1012</width>
+    <width>1042</width>
     <height>660</height>
    </rect>
   </property>
@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -114,6 +114,19 @@
             </property>
             <property name="sizeAdjustPolicy">
              <enum>QComboBox::AdjustToContents</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="scopeOutOfRangeLabel">
+            <property name="minimumSize">
+             <size>
+              <width>5</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="text">
+             <string/>
             </property>
            </widget>
           </item>
@@ -1808,6 +1821,7 @@
              <font>
               <family>DejaVu Sans Mono</family>
               <pointsize>14</pointsize>
+              <weight>75</weight>
               <bold>true</bold>
              </font>
             </property>
@@ -3430,8 +3444,8 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>790</width>
-                      <height>302</height>
+                      <width>570</width>
+                      <height>224</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -5441,6 +5455,7 @@
        <widget class="QPushButton" name="exitBtn">
         <property name="font">
          <font>
+          <weight>50</weight>
           <bold>false</bold>
          </font>
         </property>
@@ -5459,8 +5474,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1012</width>
-     <height>22</height>
+     <width>1042</width>
+     <height>21</height>
     </rect>
    </property>
   </widget>
@@ -5488,7 +5503,7 @@
  <connections/>
  <buttongroups>
   <buttongroup name="buttonGroup"/>
-  <buttongroup name="pollingButtonGroup"/>
   <buttongroup name="underlayButtonGroup"/>
+  <buttongroup name="pollingButtonGroup"/>
  </buttongroups>
 </ui>

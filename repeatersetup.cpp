@@ -8,7 +8,7 @@ repeaterSetup::repeaterSetup(QWidget *parent) :
     ui->setupUi(this);
 
     ui->autoTrackLiveBtn->setEnabled(false); // until we set split enabled.
-
+    ui->warningFMLabel->setVisible(false);
     // populate the CTCSS combo box:
     populateTones();
 
@@ -101,6 +101,7 @@ void repeaterSetup::setRig(rigCapabilities inRig)
     ui->rptrOffsetSetBtn->setEnabled(rig.hasRepeaterModes);
     ui->setToneSubVFOBtn->setEnabled(rig.hasSpecifyMainSubCmd);
     ui->setRptrSubVFOBtn->setEnabled(rig.hasSpecifyMainSubCmd);
+    ui->quickSplitChk->setVisible(rig.hasQuickSplitCommand);
 }
 
 void repeaterSetup::populateTones()
@@ -313,25 +314,43 @@ void repeaterSetup::receiveDuplexMode(duplexMode dm)
 
 void repeaterSetup::handleRptAccessMode(rptAccessTxRx tmode)
 {
+    // ratrXY
+    // X = Transmit (T)one or (N)one or (D)CS
+    // Y = Receive (T)sql or (N)one or (D)CS
     switch(tmode)
     {
-        case ratrNN:
-            ui->toneNone->setChecked(true);
-            break;
-        case ratrTT:
-            ui->toneTSQL->setChecked(true);
-            break;
-        case ratrTN:
-            ui->toneTone->setChecked(true);
-            break;
-        case ratrDD:
-            ui->toneDTCS->setChecked(true);
-            break;
-        default:
-            break;
+    case ratrNN:
+        ui->toneNone->setChecked(true);
+        break;
+    case ratrTT:
+    case ratrNT:
+        ui->toneTSQL->setChecked(true);
+        break;
+    case ratrTN:
+        ui->toneTone->setChecked(true);
+        break;
+    case ratrDD:
+        ui->toneDTCS->setChecked(true);
+        break;
+    case ratrTONEoff:
+        ui->toneTone->setChecked(false);
+        break;
+    case ratrTONEon:
+        ui->toneTone->setChecked(true);
+        break;
+    case ratrTSQLoff:
+        ui->toneTSQL->setChecked(false);
+        break;
+    case ratrTSQLon:
+        ui->toneTSQL->setChecked(true);
+        break;
+    default:
+        break;
     }
-
-    (void)tmode;
+    if( !ui->toneTSQL->isChecked() && !ui->toneTone->isChecked() && !ui->toneDTCS->isChecked())
+    {
+        ui->toneNone->setChecked(true);
+    }
 }
 
 void repeaterSetup::handleTone(quint16 tone)
@@ -396,6 +415,10 @@ void repeaterSetup::handleUpdateCurrentMainMode(mode_info m)
         this->currentModeMain = m;
         this->modeTransmitVFO = m;
         this->modeTransmitVFO.VFO = inactiveVFO;
+        if(m.mk == modeFM)
+            ui->warningFMLabel->setVisible(false);
+        else
+            ui->warningFMLabel->setVisible(true);
     }
 }
 
@@ -478,11 +501,6 @@ void repeaterSetup::on_rptAutoBtn_clicked()
     // Auto Rptr (enable this feature)
     // TODO: Hide an AutoOff button somewhere for non-US users
     emit setDuplexMode(dmDupAutoOn);
-}
-
-void repeaterSetup::on_rptReadRigBtn_clicked()
-{
-    emit getDuplexMode();
 }
 
 void repeaterSetup::on_rptToneCombo_activated(int tindex)
@@ -593,23 +611,6 @@ void repeaterSetup::on_toneDTCS_clicked()
     emit setDTCS(dcode, tinv, rinv);
     // TODO: DTCS with subband
 }
-
-void repeaterSetup::on_debugBtn_clicked()
-{
-    // TODO: Move these four commands to wfview's startup command list (place at the end)
-    //emit getTone();
-    //emit getTSQL();
-    //emit getDTCS();
-    emit getRptAccessMode();
-}
-
-//void repeaterSetup::on_splitOffsetSetBtn_clicked()
-//{
-//    freqt txFreq;
-//    bool ok = true;
-//    txFreq.Hz = ui->splitTransmitFreqEdit->text().toDouble(&ok) * 1E6;
-//    emit setTransmitFrequency(txFreq);
-//}
 
 quint64 repeaterSetup::getFreqHzFromKHzString(QString khz)
 {
@@ -821,4 +822,18 @@ void repeaterSetup::on_rptrOffsetSetBtn_clicked()
 void repeaterSetup::on_rptrOffsetEdit_returnPressed()
 {
     this->on_rptrOffsetSetBtn_clicked();
+}
+
+void repeaterSetup::on_setSplitRptrToneChk_clicked(bool checked)
+{
+    if(checked)
+    {
+        on_setRptrSubVFOBtn_clicked();
+        on_setToneSubVFOBtn_clicked();
+    }
+}
+
+void repeaterSetup::on_quickSplitChk_clicked(bool checked)
+{
+    emit setQuickSplit(checked);
 }

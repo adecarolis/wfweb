@@ -98,12 +98,20 @@ enum rptAccessTxRx {
     ratrDN=0x06, // "DTCS(T)"
     ratrTD=0x07, // "TONE(T) / TSQL(R)"
     ratrDT=0x08, // "DTCS(T) / TSQL(R)"
-    ratrTT=0x09  // "TONE(T) / TSQL(R)"
+    ratrTT=0x09,  // "TONE(T) / TSQL(R)"
+    ratrTONEoff,
+    ratrTONEon,
+    ratrTSQLoff,
+    ratrTSQLon
 };
 
 struct rptrAccessData_t {
     rptAccessTxRx accessMode = ratrNN;
     bool useSecondaryVFO = false;
+    bool turnOffTone = false;
+    bool turnOffTSQL = false;
+    bool usingSequence = false;
+    int sequence = 0;
 };
 
 struct mode_info {
@@ -153,12 +161,15 @@ enum cmds {
     cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
     cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
     cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
-    cmdGetTone, cmdGetTSQL, cmdGetDTCS, cmdGetRptAccessMode, cmdSetTone, cmdSetTSQL, cmdSetRptAccessMode, cmdSetRptDuplexOffset, cmdGetRptDuplexOffset,
-    cmdSelVFO, cmdVFOSwap, cmdVFOEqualAB, cmdVFOEqualMS,
+    cmdGetTone, cmdGetTSQL, cmdGetToneEnabled, cmdGetTSQLEnabled, cmdGetDTCS,
+    cmdSetToneEnabled, cmdSetTSQLEnabled, cmdGetRptAccessMode, cmdSetTone, cmdSetTSQL,
+    cmdSetRptAccessMode, cmdSetRptDuplexOffset, cmdGetRptDuplexOffset,
+    cmdSelVFO, cmdVFOSwap, cmdVFOEqualAB, cmdVFOEqualMS, cmdSetQuickSplit,
     cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
     cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW,
     cmdSetTime, cmdSetDate, cmdSetUTCOffset,
-    cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown, cmdSetStepUp, cmdSetStepDown, cmdSetSpanUp, cmdSetSpanDown // Only used for USB Controller at the moment.
+    // Below Only used for USB Controller at the moment.
+    cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown, cmdSetStepUp, cmdSetStepDown, cmdSetSpanUp, cmdSetSpanDown, cmdIFFilterUp, cmdIFFilterDown
 };
 
 struct commandtype {
@@ -182,5 +193,7 @@ enum audioType {qtAudio,portAudio,rtAudio};
 enum codecType { LPCM, PCMU, OPUS };
 
 enum passbandActions {passbandStatic, pbtInnerMove, pbtOuterMove, pbtMoving, passbandResizing};
+
+enum usbDeviceType { usbNone = 0, shuttleXpress, shuttlePro2, RC28, xBoxGamepad, unknownGamepad };
 
 #endif // WFVIEWTYPES_H

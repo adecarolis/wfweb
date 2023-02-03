@@ -45,7 +45,7 @@ private slots:
 
     void on_stopBtn_clicked();
 
-    void on_textToSendEdit_returnPressed();
+    //void on_textToSendEdit_returnPressed();
 
     void on_breakinCombo_activated(int index);
 

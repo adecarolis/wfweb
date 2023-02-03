@@ -112,7 +112,7 @@ public slots:
     void setToneEnabled(bool enabled);
     void getToneEnabled();
     void setToneSql(bool enabled);
-    void getToneSql();
+    void getToneSqlEnabled();
     void setCompressor(bool enabled);
     void getCompressor();
     void setMonitor(bool enabled);
@@ -137,6 +137,7 @@ public slots:
     // Repeater:
     void setDuplexMode(duplexMode dm);
     void getDuplexMode();
+    void setQuickSplit(bool qsOn);
     void getTransmitFrequency();
     void setTone(rptrTone_t t);
     void setTSQL(rptrTone_t t);
@@ -291,6 +292,7 @@ signals:
     void haveSpectrumMode(spectrumMode spectmode);
     void haveScopeEdge(char edge);
     void haveSpectrumRefLevel(int level);
+    void haveScopeOutOfRange(bool outOfRange);
 
     // Rig ID:
     void haveRigID(rigCapabilities rigCaps);
@@ -457,6 +459,7 @@ private:
     quint16 spectAmpMax;
     quint16 spectLenMax;
     spectrumMode oldScopeMode;
+    bool wasOutOfRange = false;
 
     bool usingNativeLAN; // indicates using OEM LAN connection (705,7610,9700,7850)
     bool lookingForRig;

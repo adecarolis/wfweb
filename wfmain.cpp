@@ -389,6 +389,8 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveDuplexMode(duplexMode)), rpt, SLOT(receiveDuplexMode(duplexMode)));
     connect(this, SIGNAL(getRptDuplexOffset()), rig, SLOT(getRptDuplexOffset()));
     connect(rig, SIGNAL(haveRptOffsetFrequency(freqt)), rpt, SLOT(handleRptOffsetFrequency(freqt)));
+
+    // These are the current tone frequency or DCS code selected:
     connect(rpt, SIGNAL(getTone()), rig, SLOT(getTone()));
     connect(rpt, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(rpt, SIGNAL(getDTCS()), rig, SLOT(getDTCS()));
@@ -399,13 +401,32 @@ void wfmain::rigConnections()
     connect(this->rpt, &repeaterSetup::setTSQL,
             [=](const rptrTone_t &t) { issueCmd(cmdSetTSQL, t);});
 
+    // TODO: struct with the DCS components and command queue entry
     connect(rpt, SIGNAL(setDTCS(quint16,bool,bool)), rig, SLOT(setDTCS(quint16,bool,bool)));
-    connect(rpt, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
 
-    //connect(rpt, SIGNAL(setRptAccessMode(rptAccessTxRx)), rig, SLOT(setRptAccessMode(rptAccessTxRx)));
+    //connect(rpt, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
+    connect(this->rpt, &repeaterSetup::getRptAccessMode,
+            [=]() {
+            if(rigCaps.hasAdvancedRptrToneCmds) {
+                issueDelayedCommand(cmdGetRptAccessMode);
+            } else {
+                issueDelayedCommand(cmdGetToneEnabled);
+                issueDelayedCommand(cmdGetTSQLEnabled);
+            }
+    });
+
+    connect(this->rpt, &repeaterSetup::setQuickSplit,
+            [=](const bool &qsEnabled) {
+        issueCmd(cmdSetQuickSplit, qsEnabled);
+    });
+
+    connect(this, SIGNAL(setQuickSplit(bool)), rig, SLOT(setQuickSplit(bool)));
 
     connect(this->rpt, &repeaterSetup::setRptAccessMode,
-            [=](const rptrAccessData_t &rd) { issueCmd(cmdSetRptAccessMode, rd);});
+            [=](const rptrAccessData_t &rd) {
+            issueCmd(cmdSetRptAccessMode, rd);
+    });
+
     connect(this, SIGNAL(setRepeaterAccessMode(rptrAccessData_t)), rig, SLOT(setRptAccessMode(rptrAccessData_t)));
     connect(this, SIGNAL(setTone(rptrTone_t)), rig, SLOT(setTone(rptrTone_t)));
 
@@ -422,8 +443,11 @@ void wfmain::rigConnections()
                     this->splitModeEnabled = false;
     });
 
+    connect(this, SIGNAL(getToneEnabled()), rig, SLOT(getToneEnabled()));
+    connect(this, SIGNAL(getTSQLEnabled()), rig, SLOT(getToneSqlEnabled()));
+
     connect(this->rpt, &repeaterSetup::setTransmitFrequency,
-            [=](const freqt &transmitFreq) { issueCmd(cmdSetFreq, transmitFreq);});
+            [=](const freqt &transmitFreq) { issueCmdUniquePriority(cmdSetFreq, transmitFreq);});
     connect(this->rpt, &repeaterSetup::setTransmitMode,
             [=](const mode_info &transmitMode) { issueCmd(cmdSetMode, transmitMode);});
     connect(this->rpt, &repeaterSetup::selectVFO,
@@ -457,6 +481,7 @@ void wfmain::rigConnections()
 
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
     connect(rig, SIGNAL(haveSpectrumMode(spectrumMode)), this, SLOT(receiveSpectrumMode(spectrumMode)));
+    connect(rig, SIGNAL(haveScopeOutOfRange(bool)), this, SLOT(handleScopeOutOfRange(bool)));
     connect(this, SIGNAL(setScopeMode(spectrumMode)), rig, SLOT(setSpectrumMode(spectrumMode)));
     connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
 
@@ -1645,7 +1670,6 @@ void wfmain::setupUsbControllerDevice()
     connect(usbControllerDev, SIGNAL(doShuttle(bool, unsigned char)), this, SLOT(doShuttle(bool, unsigned char)));
     connect(usbControllerDev, SIGNAL(button(const COMMAND*)), this, SLOT(buttonControl(const COMMAND*)));
     connect(usbControllerDev, SIGNAL(setBand(int)), this, SLOT(setBand(int)));
-    connect(this, SIGNAL(controllerLed(bool, unsigned char)), usbControllerDev, SLOT(ledControl(bool, unsigned char)));
     connect(usbControllerDev, SIGNAL(newDevice(unsigned char, QVector<BUTTON>*, QVector<COMMAND>*)), shut, SLOT(newDevice(unsigned char, QVector<BUTTON>*, QVector<COMMAND>*)));
     usbControllerThread->start(QThread::LowestPriority);
 
@@ -1665,7 +1689,6 @@ void wfmain::pttToggle(bool status)
     }
 
     emit setPTT(status);
-    emit controllerLed(status, 1);
     // Start 3 minute timer
     if (status)
         pttTimer->start();
@@ -1699,11 +1722,11 @@ void wfmain::buttonControl(const COMMAND* cmd)
     case cmdGetBandStackReg:
         issueCmd((cmds)cmd->command, cmd->band);
         break;
-    case cmdSetBandUp:
+    case cmdSetBandDown:
         for (size_t i = 0; i < rigCaps.bands.size(); i++) {
             if (rigCaps.bands[i].band == lastRequestedBand)
             {
-                if (i>0) {
+                if (i > 0) {
                     issueCmd(cmdGetBandStackReg, rigCaps.bands[i - 1].band);
                 }
                 else {
@@ -1712,7 +1735,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
             }
         }
         break;
-    case cmdSetBandDown:
+    case cmdSetBandUp:
         for (size_t i = 0; i < rigCaps.bands.size(); i++) {
             if (rigCaps.bands[i].band == lastRequestedBand)
             {
@@ -3445,7 +3468,11 @@ void wfmain:: getInitialRigState()
     {
         issueDelayedCommand(cmdGetDTCS);
     }
-    issueDelayedCommand(cmdGetRptAccessMode);
+
+    if(rigCaps.hasCTCSS || rigCaps.hasDTCS)
+    {
+        issueDelayedCommand(cmdGetRptAccessMode);
+    }
 
     if(rigCaps.hasAntennaSel)
     {
@@ -3745,7 +3772,43 @@ void wfmain::doCmd(commandtype cmddata)
         case cmdSetRptAccessMode:
         {
             rptrAccessData_t rd = (*std::static_pointer_cast<rptrAccessData_t>(data));
+            if(rd.accessMode==ratrNN && !rigCaps.hasAdvancedRptrToneCmds)
+            {
+                rd.usingSequence = true;
+                switch(rd.sequence)
+                {
+                case 0:
+                    rd.turnOffTone = true;
+                    rd.turnOffTSQL = false;
+                    break;
+                case 1:
+                    rd.turnOffTSQL = true;
+                    rd.turnOffTone = false;
+                    break;
+                default:
+                    break;
+                }
+            }
             emit setRepeaterAccessMode(rd);
+            rd.sequence++;
+
+            if(rd.sequence == 1)
+                issueCmd(cmdSetRptAccessMode, rd);
+
+            break;
+        }
+        case cmdSetToneEnabled:
+        {
+            // This command is not aware of which VFO to use
+            bool toneEnabled = (*std::static_pointer_cast<bool>(data));
+            emit setToneEnabled(toneEnabled);
+            break;
+        }
+        case cmdSetTSQLEnabled:
+        {
+            // This command is not aware of which VFO to use
+            bool toneEnabled = (*std::static_pointer_cast<bool>(data));
+            emit setTSQLEnabled(toneEnabled);
             break;
         }
         case cmdSetRptDuplexOffset:
@@ -3754,11 +3817,16 @@ void wfmain::doCmd(commandtype cmddata)
             emit setRptDuplexOffset(f);
             break;
         }
+        case cmdSetQuickSplit:
+        {
+            bool qsEnabled = (*std::static_pointer_cast<bool>(data));
+            emit setQuickSplit(qsEnabled);
+            break;
+        }
         case cmdSetPTT:
         {
             bool pttrequest = (*std::static_pointer_cast<bool>(data));
             emit setPTT(pttrequest);
-            emit controllerLed(pttrequest, 1);
 
             ui->meter2Widget->clearMeterOnPTTtoggle();
             if (pttrequest)
@@ -3774,7 +3842,6 @@ void wfmain::doCmd(commandtype cmddata)
         {
             bool pttrequest = !amTransmitting;
             emit setPTT(pttrequest);
-            emit controllerLed(pttrequest, 1);
             ui->meter2Widget->clearMeterOnPTTtoggle();
             if (pttrequest)
             {
@@ -3950,7 +4017,19 @@ void wfmain::doCmd(cmds cmd)
             emit getDTCS();
             break;
         case cmdGetRptAccessMode:
-            emit getRptAccessMode();
+            if(rigCaps.hasAdvancedRptrToneCmds) {
+                emit getRptAccessMode();
+            } else {
+                // Get both TONE and TSQL enabled status
+                emit getToneEnabled();
+                issueDelayedCommand(cmdGetTSQLEnabled);
+            }
+            break;
+        case cmdGetToneEnabled:
+            emit getToneEnabled();
+            break;
+        case cmdGetTSQLEnabled:
+            emit getTSQLEnabled();
             break;
         case cmdDispEnable:
             emit scopeDisplayEnable();
@@ -4449,6 +4528,10 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->labelBot->setVisible(false);
         }
         haveRigCaps = true;
+
+        if (rigCaps.bands.size() > 0) {
+            lastRequestedBand = rigCaps.bands[0].band;
+        }
 
         // Added so that server receives rig capabilities.
         emit sendRigCaps(rigCaps);
@@ -5083,6 +5166,17 @@ void wfmain::receiveSpectrumMode(spectrumMode spectMode)
     setUISpectrumControlsToMode(spectMode);
 }
 
+void wfmain::handleScopeOutOfRange(bool outOfRange)
+{
+    if(outOfRange)
+    {
+        ui->scopeOutOfRangeLabel->setText("OUT OF RANGE");
+        ui->scopeOutOfRangeLabel->setStyleSheet("QLabel { background-color : red; color : blue; }");
+    } else {
+        ui->scopeOutOfRangeLabel->setText("");
+        ui->scopeOutOfRangeLabel->setStyleSheet("");
+    }
+}
 
 void wfmain::handlePlotDoubleClick(QMouseEvent *me)
 {
@@ -5190,6 +5284,10 @@ void wfmain::handlePlotClick(QMouseEvent* me)
         {
             this->mousePressFreq = plot->xAxis->pixelToCoord(cursor);
             showStatusBarText(QString("Selected %1 MHz").arg(this->mousePressFreq));
+        }
+        else {
+            double x = plot->xAxis->pixelToCoord(cursor);
+            showStatusBarText(QString("Selected %1 MHz").arg(x));
         }
     } 
     else if (me->button() == Qt::RightButton) 
@@ -7818,8 +7916,8 @@ void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    qDebug(logSystem()) << "Query for repeater duplex offset 0x0C headed out";
-    issueDelayedCommand(cmdGetRptDuplexOffset);
+    qDebug(logSystem()) << "Query for repeater access mode (tone, tsql, etc) sent.";
+    issueDelayedCommand(cmdGetRptAccessMode);
 }
 
 // ----------   color helper functions:   ---------- //
@@ -9083,7 +9181,7 @@ void wfmain::resetUsbButtons()
     usbButtons.append(BUTTON(2, 14, QRect(280, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
 
     // RC28 
-    usbButtons.append(BUTTON(3, 0, QRect(52, 445, 238, 64), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(3, 0, QRect(52, 445, 238, 64), Qt::red, &usbCommands[1], &usbCommands[2])); // PTT On/OFF
     usbButtons.append(BUTTON(3, 1, QRect(52, 373, 98, 46), Qt::red, &usbCommands[0], &usbCommands[0]));
     usbButtons.append(BUTTON(3, 2, QRect(193, 373, 98, 46), Qt::red, &usbCommands[0], &usbCommands[0]));
 
@@ -9112,58 +9210,61 @@ void wfmain::resetUsbButtons()
 void wfmain::resetUsbCommands()
 {
     usbCommands.clear();
-    usbCommands.append(COMMAND(0, "None", cmdNone, 0x0));
-    usbCommands.append(COMMAND(1, "PTT On", cmdSetPTT, 0x1));
-    usbCommands.append(COMMAND(2, "PTT Off", cmdSetPTT, 0x0));
-    usbCommands.append(COMMAND(3, "PTT Toggle", cmdPTTToggle, 0x0));
-    usbCommands.append(COMMAND(4, "Tune", cmdStartATU, 0x0));
-    usbCommands.append(COMMAND(5, "Step+", cmdSetStepUp, 0x0));
-    usbCommands.append(COMMAND(6, "Step-", cmdSetStepDown, 0x0));
-    usbCommands.append(COMMAND(7, "Span+", cmdSetSpanUp, 0x0));
-    usbCommands.append(COMMAND(8, "Span-", cmdSetSpanDown, 0x0));
-    usbCommands.append(COMMAND(9, "Mode+", cmdSetModeUp, 0x0));
-    usbCommands.append(COMMAND(10, "Mode-", cmdSetModeDown, 0x0));
-    usbCommands.append(COMMAND(11, "Mode LSB", cmdSetMode, modeLSB));
-    usbCommands.append(COMMAND(12, "Mode USB", cmdSetMode, modeUSB));
-    usbCommands.append(COMMAND(13, "Mode LSBD", cmdSetMode, modeLSB_D));
-    usbCommands.append(COMMAND(14, "Mode USBD", cmdSetMode, modeUSB_D));
-    usbCommands.append(COMMAND(15, "Mode CW", cmdSetMode, modeCW));
-    usbCommands.append(COMMAND(16, "Mode CWR", cmdSetMode, modeCW_R));
-    usbCommands.append(COMMAND(17, "Mode FM", cmdSetMode, modeFM));
-    usbCommands.append(COMMAND(18, "Mode AM", cmdSetMode, modeAM));
-    usbCommands.append(COMMAND(19, "Mode RTTY", cmdSetMode, modeRTTY));
-    usbCommands.append(COMMAND(20, "Mode RTTYR", cmdSetMode, modeRTTY_R));
-    usbCommands.append(COMMAND(21, "Mode PSK", cmdSetMode, modePSK));
-    usbCommands.append(COMMAND(22, "Mode PSKR", cmdSetMode, modePSK_R));
-    usbCommands.append(COMMAND(23, "Mode DV", cmdSetMode, modeDV));
-    usbCommands.append(COMMAND(24, "Mode DD", cmdSetMode, modeDD));
-    usbCommands.append(COMMAND(25, "Band+", cmdSetBandUp, 0x0));
-    usbCommands.append(COMMAND(26, "Band-", cmdSetBandDown, 0x0));
-    usbCommands.append(COMMAND(27, "23cm", cmdGetBandStackReg, band23cm));
-    usbCommands.append(COMMAND(28, "70cm", cmdGetBandStackReg, band70cm));
-    usbCommands.append(COMMAND(29, "2m", cmdGetBandStackReg, band2m));
-    usbCommands.append(COMMAND(30, "AIR", cmdGetBandStackReg, bandAir));
-    usbCommands.append(COMMAND(31, "WFM", cmdGetBandStackReg, bandWFM));
-    usbCommands.append(COMMAND(32, "4m", cmdGetBandStackReg, band4m));
-    usbCommands.append(COMMAND(33, "6m", cmdGetBandStackReg, band6m));
-    usbCommands.append(COMMAND(34, "10m", cmdGetBandStackReg, band10m));
-    usbCommands.append(COMMAND(35, "12m", cmdGetBandStackReg, band12m));
-    usbCommands.append(COMMAND(36, "15m", cmdGetBandStackReg, band15m));
-    usbCommands.append(COMMAND(37, "17m", cmdGetBandStackReg, band17m));
-    usbCommands.append(COMMAND(38, "20m", cmdGetBandStackReg, band20m));
-    usbCommands.append(COMMAND(39, "30m", cmdGetBandStackReg, band30m));
-    usbCommands.append(COMMAND(40, "40m", cmdGetBandStackReg, band40m));
-    usbCommands.append(COMMAND(41, "60m", cmdGetBandStackReg, band60m));
-    usbCommands.append(COMMAND(42, "80m", cmdGetBandStackReg, band80m));
-    usbCommands.append(COMMAND(43, "160m", cmdGetBandStackReg, band160m));
-    usbCommands.append(COMMAND(44, "630m", cmdGetBandStackReg, band630m));
-    usbCommands.append(COMMAND(45, "2200m", cmdGetBandStackReg, band2200m));
-    usbCommands.append(COMMAND(46, "GEN", cmdGetBandStackReg, bandGen));
-    usbCommands.append(COMMAND(47, "NR On", cmdNone, 0x0));
-    usbCommands.append(COMMAND(48, "NR Off", cmdNone, 0x0));
-    usbCommands.append(COMMAND(49, "NB On", cmdNone, 0x0));
-    usbCommands.append(COMMAND(50, "NB Off", cmdNone, 0x0));
-    usbCommands.append(COMMAND(51, "Split On", cmdNone, 0x01));
-    usbCommands.append(COMMAND(52, "Split Off", cmdNone, 0x0));
+    int num = 0;
+    usbCommands.append(COMMAND(num++, "None", cmdNone, 0x0));
+    usbCommands.append(COMMAND(num++, "PTT On", cmdSetPTT, 0x1));
+    usbCommands.append(COMMAND(num++, "PTT Off", cmdSetPTT, 0x0));
+    usbCommands.append(COMMAND(num++, "PTT Toggle", cmdPTTToggle, 0x0));
+    usbCommands.append(COMMAND(num++, "Tune", cmdStartATU, 0x0));
+    usbCommands.append(COMMAND(num++, "Step+", cmdSetStepUp, 0x0));
+    usbCommands.append(COMMAND(num++, "Step-", cmdSetStepDown, 0x0));
+    usbCommands.append(COMMAND(num++, "Span+", cmdSetSpanUp, 0x0));
+    usbCommands.append(COMMAND(num++, "Span-", cmdSetSpanDown, 0x0));
+    usbCommands.append(COMMAND(num++, "Mode+", cmdSetModeUp, 0x0));
+    usbCommands.append(COMMAND(num++, "Mode-", cmdSetModeDown, 0x0));
+    usbCommands.append(COMMAND(num++, "Mode LSB", cmdSetMode, modeLSB));
+    usbCommands.append(COMMAND(num++, "Mode USB", cmdSetMode, modeUSB));
+    usbCommands.append(COMMAND(num++, "Mode LSBD", cmdSetMode, modeLSB_D));
+    usbCommands.append(COMMAND(num++, "Mode USBD", cmdSetMode, modeUSB_D));
+    usbCommands.append(COMMAND(num++, "Mode CW", cmdSetMode, modeCW));
+    usbCommands.append(COMMAND(num++, "Mode CWR", cmdSetMode, modeCW_R));
+    usbCommands.append(COMMAND(num++, "Mode FM", cmdSetMode, modeFM));
+    usbCommands.append(COMMAND(num++, "Mode AM", cmdSetMode, modeAM));
+    usbCommands.append(COMMAND(num++, "Mode RTTY", cmdSetMode, modeRTTY));
+    usbCommands.append(COMMAND(num++, "Mode RTTYR", cmdSetMode, modeRTTY_R));
+    usbCommands.append(COMMAND(num++, "Mode PSK", cmdSetMode, modePSK));
+    usbCommands.append(COMMAND(num++, "Mode PSKR", cmdSetMode, modePSK_R));
+    usbCommands.append(COMMAND(num++, "Mode DV", cmdSetMode, modeDV));
+    usbCommands.append(COMMAND(num++, "Mode DD", cmdSetMode, modeDD));
+    usbCommands.append(COMMAND(num++, "Band+", cmdSetBandUp, 0x0));
+    usbCommands.append(COMMAND(num++, "Band-", cmdSetBandDown, 0x0));
+    usbCommands.append(COMMAND(num++, "23cm", cmdGetBandStackReg, band23cm));
+    usbCommands.append(COMMAND(num++, "70cm", cmdGetBandStackReg, band70cm));
+    usbCommands.append(COMMAND(num++, "2m", cmdGetBandStackReg, band2m));
+    usbCommands.append(COMMAND(num++, "AIR", cmdGetBandStackReg, bandAir));
+    usbCommands.append(COMMAND(num++, "WFM", cmdGetBandStackReg, bandWFM));
+    usbCommands.append(COMMAND(num++, "4m", cmdGetBandStackReg, band4m));
+    usbCommands.append(COMMAND(num++, "6m", cmdGetBandStackReg, band6m));
+    usbCommands.append(COMMAND(num++, "10m", cmdGetBandStackReg, band10m));
+    usbCommands.append(COMMAND(num++, "12m", cmdGetBandStackReg, band12m));
+    usbCommands.append(COMMAND(num++, "15m", cmdGetBandStackReg, band15m));
+    usbCommands.append(COMMAND(num++, "17m", cmdGetBandStackReg, band17m));
+    usbCommands.append(COMMAND(num++, "20m", cmdGetBandStackReg, band20m));
+    usbCommands.append(COMMAND(num++, "30m", cmdGetBandStackReg, band30m));
+    usbCommands.append(COMMAND(num++, "40m", cmdGetBandStackReg, band40m));
+    usbCommands.append(COMMAND(num++, "60m", cmdGetBandStackReg, band60m));
+    usbCommands.append(COMMAND(num++, "80m", cmdGetBandStackReg, band80m));
+    usbCommands.append(COMMAND(num++, "160m", cmdGetBandStackReg, band160m));
+    usbCommands.append(COMMAND(num++, "630m", cmdGetBandStackReg, band630m));
+    usbCommands.append(COMMAND(num++, "2200m", cmdGetBandStackReg, band2200m));
+    usbCommands.append(COMMAND(num++, "GEN", cmdGetBandStackReg, bandGen));
+    usbCommands.append(COMMAND(num++, "NR On", cmdNone, 0x0));
+    usbCommands.append(COMMAND(num++, "NR Off", cmdNone, 0x0));
+    usbCommands.append(COMMAND(num++, "NB On", cmdNone, 0x0));
+    usbCommands.append(COMMAND(num++, "NB Off", cmdNone, 0x0));
+    usbCommands.append(COMMAND(num++, "Split On", cmdNone, 0x01));
+    usbCommands.append(COMMAND(num++, "Split Off", cmdNone, 0x0));
+    usbCommands.append(COMMAND(num++, "Swap VFOs", cmdVFOSwap, 0x0));
     emit sendUsbControllerCommands(&usbCommands);
 }
+
