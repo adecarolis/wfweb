@@ -5040,10 +5040,19 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             /*
                 pbtIndicator displays the intersection between TPBFInner and TPBFOuter
             */
-            pbtIndicator->topLeft->setCoords(qMax(pbStart + (TPBFInner / 2) - (pbtDefault /2), pbStart + (TPBFOuter / 2) - (pbtDefault /2)), 0);
+            if (currentModeInfo.mk == modeLSB) {
+                pbtIndicator->topLeft->setCoords(qMax(pbStart - (TPBFInner / 2) - (pbtDefault / 2), pbStart - (TPBFOuter / 2) - (pbtDefault / 2)), 0);
 
-            pbtIndicator->bottomRight->setCoords(qMin(pbStart + (TPBFInner / 2) - (pbtDefault /2) + passbandWidth,
-                pbStart + (TPBFOuter / 2) - (pbtDefault/2) + passbandWidth), rigCaps.spectAmpMax);
+                pbtIndicator->bottomRight->setCoords(qMin(pbStart - (TPBFInner / 2) - (pbtDefault / 2) + passbandWidth,
+                    pbStart - (TPBFOuter / 2) - (pbtDefault / 2) + passbandWidth), rigCaps.spectAmpMax);
+            }
+            else
+            {
+                pbtIndicator->topLeft->setCoords(qMax(pbStart + (TPBFInner / 2) - (pbtDefault / 2), pbStart + (TPBFOuter / 2) - (pbtDefault / 2)), 0);
+
+                pbtIndicator->bottomRight->setCoords(qMin(pbStart + (TPBFInner / 2) - (pbtDefault / 2) + passbandWidth,
+                    pbStart + (TPBFOuter / 2) - (pbtDefault / 2) + passbandWidth), rigCaps.spectAmpMax);
+            }
 
             //qDebug() << "Default" << pbtDefault << "Inner" << TPBFInner << "Outer" << TPBFOuter << "Pass" << passbandWidth << "Center" << passbandCenterFrequency << "CW" << cwPitch;
         }
