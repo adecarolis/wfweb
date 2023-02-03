@@ -5040,11 +5040,11 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             /*
                 pbtIndicator displays the intersection between TPBFInner and TPBFOuter
             */
-            if (currentModeInfo.mk == modeLSB) {
-                pbtIndicator->topLeft->setCoords(qMax(pbStart - (TPBFInner / 2) - (pbtDefault / 2), pbStart - (TPBFOuter / 2) - (pbtDefault / 2)), 0);
+            if (currentModeInfo.mk == modeLSB || currentModeInfo.mk == modeCW || currentModeInfo.mk == modeRTTY) {
+                pbtIndicator->topLeft->setCoords(qMax(pbStart - (TPBFInner / 2) + (pbtDefault / 2), pbStart - (TPBFOuter / 2) + (pbtDefault / 2)), 0);
 
-                pbtIndicator->bottomRight->setCoords(qMin(pbStart - (TPBFInner / 2) - (pbtDefault / 2) + passbandWidth,
-                    pbStart - (TPBFOuter / 2) - (pbtDefault / 2) + passbandWidth), rigCaps.spectAmpMax);
+                pbtIndicator->bottomRight->setCoords(qMin(pbStart - (TPBFInner / 2) + (pbtDefault / 2) + passbandWidth,
+                    pbStart - (TPBFOuter / 2) + (pbtDefault / 2) + passbandWidth), rigCaps.spectAmpMax);
             }
             else
             {
