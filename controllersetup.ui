@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>300</width>
-    <height>300</height>
+    <width>302</width>
+    <height>343</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -22,6 +22,23 @@
     </layout>
    </item>
    <item row="1" column="0">
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Button configuration: &lt;/span&gt;Right-click on each button to configure it.&lt;/p&gt;&lt;p align=&quot;center&quot;&gt;Top selection is command to send when button is pressed and bottom is (optional) command to send when button is released.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="3" column="0">
     <layout class="QHBoxLayout">
      <property name="spacing">
       <number>6</number>
