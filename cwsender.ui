@@ -269,9 +269,6 @@
         <property name="singleStep">
          <number>5</number>
         </property>
-        <property name="stepType">
-         <enum>QAbstractSpinBox::DefaultStepType</enum>
-        </property>
         <property name="value">
          <number>600</number>
         </property>
