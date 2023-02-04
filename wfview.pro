@@ -12,10 +12,10 @@ QT       += core gui serialport network multimedia xml
 #Uncomment The following line to enable USB controllers (Shuttle/RC-28 etc.)
 DEFINES += USB_CONTROLLER
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets printsupport
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 contains(DEFINES,USB_CONTROLLER){
-    lessThan(QT_MAJOR_VERSION, 6): QT += gamepad
+    lessThan(QT_MAJOR_VERSION, 6): QT += gamepad printsupport
 }
 
 TARGET = wfview
@@ -167,6 +167,7 @@ CONFIG(debug, release|debug) {
   }
 } else {
   !win32: QCPLIB = qcustomplot
+  win32: QCPLIB = qcustomplot2
   win32 {
     contains(QMAKE_TARGET.arch, x86_64) {
       LIBS += -L../opus/win32/VS2015/x64/ReleaseDLL/
