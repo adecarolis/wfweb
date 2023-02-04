@@ -307,6 +307,9 @@ Q_DECLARE_METATYPE(rigstate*)
 Q_DECLARE_METATYPE(codecType)
 Q_DECLARE_METATYPE(errorType)
 Q_DECLARE_METATYPE(enum duplexMode)
+Q_DECLARE_METATYPE(enum rptAccessTxRx)
+Q_DECLARE_METATYPE(struct rptrTone_t)
+Q_DECLARE_METATYPE(struct rptrAccessData_t)
 
 
 #endif // WFMAIN_H

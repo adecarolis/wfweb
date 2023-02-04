@@ -15,6 +15,8 @@ servermain::servermain(const QString settingsFile)
     qRegisterMetaType <rigCapabilities>();
     qRegisterMetaType <duplexMode>();
     qRegisterMetaType <rptAccessTxRx>();
+    qRegisterMetaType <rptrAccessData_t>();
+    qRegisterMetaType <rptAccessTxRx>();
     qRegisterMetaType <rigInput>();
     qRegisterMetaType <meterKind>();
     qRegisterMetaType <spectrumMode>();
