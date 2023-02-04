@@ -1,3 +1,98 @@
+commit 82f268508ea210a8a3c89fcc31c7799833cb26ea
+Merge: a08ada4 a1db8d1
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Sat Feb 4 12:34:17 2023 +0100
+
+    Merge branch 'pbt-lsb-fix'
+
+commit a1db8d1d60c5af60d15173f18204d0edda7ec476
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Feb 4 11:32:52 2023 +0000
+
+    Another attempt to fix
+
+commit a08ada4cabb4366e83a5a7ab3f044385b04a4ed1
+Merge: 953399d 5671e26
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Sat Feb 4 12:31:23 2023 +0100
+
+    Merge branch 'pbt-lsb-fix'
+
+commit 5671e2659196cbec667785ce158467f143191842
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Feb 4 11:30:30 2023 +0000
+
+    Hopefully fix wfserver compiling
+
+commit 953399de063606a883bc04b7cdc168d9930ee1b0
+Merge: c70bbb0 903d196
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Sat Feb 4 12:11:20 2023 +0100
+
+    Merge branch 'pbt-lsb-fix'
+
+commit 903d1965ba03074c30ccb90ad35a463206bdc6ee
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Feb 4 10:26:42 2023 +0000
+
+    Hide half duplex combo to avoid confusion
+
+commit eae1fc725ee6599fc24276169c627ea56fa1289e
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Feb 4 00:02:59 2023 +0000
+
+    Fix some more bits in wfview.pro
+
+commit 857c62f99f64d8745f435b4294fbfa26f08985bb
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 3 23:10:40 2023 +0000
+
+    Move opus to .dll for 1.60R
+
+commit 7b2aca6cbd1457a3860886e8507c3d2326db4eb4
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 3 20:34:59 2023 +0000
+
+    Same PBT fix for CW and RTTY
+
+commit f3da86940fb53708b5ce119625be3c6c5756f473
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 3 19:58:37 2023 +0000
+
+    Fix for displaying PBT in LSB mode
+
+commit c70bbb0998fa063e64dc7fb436a38444a4aeae7b
+Merge: 0af2615 d7fa78f
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Fri Feb 3 20:15:58 2023 +0100
+
+    Merge branch 'usb-ui-help-text'
+
+commit d7fa78fcd22de57ea8d5878cd3c5d09bf2832803
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 3 19:08:08 2023 +0000
+
+    Add Help text to usbControllerSetup
+
+commit 0af2615833a06cd974b3a956786c1f3cc058423b
+Merge: 41aa951 b928f23
+Author: Roeland <roeland@taplop.invalid>
+Date:   Fri Feb 3 19:51:34 2023 +0100
+
+    Merge branch 'tx-rx-missed-fix'
+
+commit b928f230519c0379c4aa76313ed1617e51e97c26
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 3 18:08:19 2023 +0000
+
+    Only accept rigstate updates from rig if value is not in updated condition
+
+commit 41aa95129a136cfd9eac6df4baa66eda2d7748d1
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Fri Feb 3 18:39:10 2023 +0100
+
+    small steps... until 1.60 hits
+
 commit 072ab1967f2c39b27a50b7d4e2fb4f04b20bb172
 Merge: c6bd93a 75b86a0
 Author: Roeland Jansen <roeland.jansen69@gmail.com>
