@@ -306,6 +306,7 @@ Q_DECLARE_METATYPE(enum spectrumMode)
 Q_DECLARE_METATYPE(rigstate*)
 Q_DECLARE_METATYPE(codecType)
 Q_DECLARE_METATYPE(errorType)
+Q_DECLARE_METATYPE(enum duplexMode)
 
 
 #endif // WFMAIN_H
