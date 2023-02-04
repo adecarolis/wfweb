@@ -4347,17 +4347,6 @@ void rigCommander::parseSpectrum()
         return;
     }
 
-    if(payloadIn.length() >= 15)
-    {
-        bool outOfRange = (bool)payloadIn[16];
-        if(outOfRange != wasOutOfRange)
-        {
-            emit haveScopeOutOfRange(outOfRange);
-            wasOutOfRange = outOfRange;
-            return;
-        }
-    }
-
     // unsigned char waveInfo = payloadIn[06]; // really just one byte?
     //qInfo(logRig()) << "Spectrum Data received: " << sequence << "/" << sequenceMax << " mode: " << scopeMode << " waveInfo: " << waveInfo << " length: " << payloadIn.length();
 
@@ -4385,6 +4374,16 @@ void rigCommander::parseSpectrum()
             oldScopeMode = scopeMode;
         }
 
+        if(payloadIn.length() >= 15)
+        {
+            bool outOfRange = (bool)payloadIn[16];
+            if(outOfRange != wasOutOfRange)
+            {
+                emit haveScopeOutOfRange(outOfRange);
+                wasOutOfRange = outOfRange;
+                return;
+            }
+        }
 
         // wave information
         spectrumLine.clear();
