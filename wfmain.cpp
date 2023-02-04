@@ -2200,6 +2200,8 @@ void wfmain::loadSettings()
     udpPrefs.clientName = settings->value("ClientName", udpDefPrefs.clientName).toString();
 
     udpPrefs.halfDuplex = settings->value("HalfDuplex", udpDefPrefs.halfDuplex).toBool();
+    ui->audioDuplexCombo->setVisible(false);
+    ui->label_51->setVisible(false);
 
     settings->endGroup();
 
