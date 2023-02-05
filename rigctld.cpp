@@ -1267,7 +1267,7 @@ void rigCtlClient::socketReadyRead()
                 .arg(getVfoName(1)).arg(rigState->getInt64(VFOBFREQ)).arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))).arg(rigState->getUInt16(PASSBAND)).arg(rxb).arg(txb)
                 .arg(split).arg(rigState->getChar(SATMODEFUNC)).arg(rigCaps.modelName).arg(WFVIEW_VERSION); 
             unsigned long crc = doCrc((unsigned char*)resp.toStdString().c_str(), resp.length());
-            resp = resp + QString("CRC=0x%0").arg(crc, 8, 10, QLatin1Char('0'));
+            resp = resp + QString("CRC=0x%0").arg(crc, 8, 16, QLatin1Char('0'));
             response.append(resp);
         }
         else if (command.length() > 0 && (command[0] == "a" || command[0] == "get_trn"))
