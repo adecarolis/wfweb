@@ -3504,6 +3504,7 @@ void wfmain:: getInitialRigState()
     {
         issueDelayedCommand(cmdGetSpectrumMode);
         issueDelayedCommand(cmdGetSpectrumSpan);
+        issueDelayedCommand(cmdGetPassband);
     }
 
     issueDelayedCommand(cmdNone);
@@ -3513,7 +3514,7 @@ void wfmain:: getInitialRigState()
     {
         issueDelayedCommand(cmdGetATUStatus);
     }
-
+    
     delayedCommand->start();
 }
 
