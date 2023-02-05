@@ -1257,7 +1257,7 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command.length() > 0 && (command[0] == '\xf5' || command[0] == "get_rig_info"))
         {
-            quint8 split = rigState->getChar(DUPLEX);
+            duplexMode split = rigState->getDuplex(DUPLEX);
             quint8 rxa = 1;
             quint8 txa = split == 0;
             quint8 rxb = !rxa;
