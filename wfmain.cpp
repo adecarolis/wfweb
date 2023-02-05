@@ -6900,9 +6900,9 @@ void wfmain::receivePassband(quint16 pass)
     if (passbandWidth != (double)(pass / 1000000.0)) {
         passbandWidth = (double)(pass / 1000000.0);
         trxadj->updatePassband(pass);
+        rigState->set(PASSBAND, pass, false);
         showStatusBarText(QString("IF filter width %1 Hz").arg(pass));
     }
-    rigState->set(PASSBAND, pass, false);
 }
 
 void wfmain::receiveCwPitch(unsigned char pitch) {
