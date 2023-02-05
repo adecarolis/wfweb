@@ -6902,6 +6902,7 @@ void wfmain::receivePassband(quint16 pass)
         trxadj->updatePassband(pass);
         showStatusBarText(QString("IF filter width %1 Hz").arg(pass));
     }
+    rigState->set(PASSBAND, pass, false);
 }
 
 void wfmain::receiveCwPitch(unsigned char pitch) {
