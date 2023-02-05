@@ -1227,27 +1227,39 @@ void rigCtlClient::socketReadyRead()
         else if (command.length() > 0 && (command[0] == '\x88' || command[0] == "get_powerstat"))
         {
             
-            QString resp;
-            if (longReply && command.length() > 1) {
-                resp.append(QString("Power Status: "));
-            }
-            resp.append(QString("%1").arg(1)); // Always reply with ON
-            response.append(resp);
-            
+        QString resp;
+        if (longReply) {
+            resp.append(QString("Power Status: "));
+        }
+        resp.append(QString("%1").arg(1)); // Always reply with ON
+        response.append(resp);
+
         }
         else if (command.length() > 1 && (command[0] == '\x87' || command[0] == "set_powerstat"))
         {
-            setCommand = true;
-            if (command[1] == "0")
-                {
-                rigState->set(POWERONOFF, false, true);
+        setCommand = true;
+        if (command[1] == "0")
+        {
+            rigState->set(POWERONOFF, false, true);
+        }
+        else {
+            rigState->set(POWERONOFF, true, true);
+        }
+        }
+        else if (command.length() > 0 && (command[0] == '\xa3' || command[0] == "get_lock_mode"))
+        {
+            QString resp;
+            if (longReply) {
+                resp.append(QString("Locked: "));
             }
-                else {
-                rigState->set(POWERONOFF, true, true);
-            }
+            resp.append(QString("%1").arg(0)); // Always reply with RIG_OK (0)
+            response.append(resp);
         }
         else {
             qInfo(logRigCtlD()) << "Unimplemented command" << commands;
+            if (command.length() > 0)
+                qInfo(logRigCtlD()) << "Initial command" << command[0];
+
         }
         if (longReply) {
             if (command.length() == 2)
