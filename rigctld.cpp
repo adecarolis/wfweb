@@ -1081,7 +1081,7 @@ void rigCtlClient::socketReadyRead()
             }
             else if (command[1] == "LOCK")
             {
-                result = rigState->getBool(LOCKFUNC);
+            result = rigState->getBool(LOCKFUNC);
             }
             else {
                 qInfo(logRigCtlD()) << "Unimplemented func:" << command[0] << command[1];
@@ -1248,18 +1248,53 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command.length() > 0 && (command[0] == '\xa3' || command[0] == "get_lock_mode"))
         {
-            QString resp;
-            if (longReply) {
-                resp.append(QString("Locked: "));
-            }
-            resp.append(QString("%1").arg(0)); // Always reply with RIG_OK (0)
-            response.append(resp);
+        QString resp;
+        if (longReply) {
+            resp.append(QString("Locked: "));
+        }
+        resp.append(QString("%1").arg(0)); // Always reply with RIG_OK (0)
+        response.append(resp);
+        }
+        else if (command.length() > 0 && (command[0] == '\xf5' || command[0] == "get_rig_info"))
+        {
+            quint8 split = rigState->getChar(DUPLEX);
+            quint8 rxa = 1;
+            quint8 txa = split == 0;
+            quint8 rxb = !rxa;
+            quint8 txb = split == 1;
+            QString resp = QString("VFO=%0 Freq=%1 Mode=%2 Width=%3 RX=%4 TX=%5\nVFO=%6 Freq=%7 Mode=%8 Width=%9 RX=%10 TX=%11\nSplit=%12 SatMode=%13\nRig=%14\nApp=wfview\nVersion=%15\n")
+                .arg(getVfoName(0)).arg(rigState->getInt64(VFOAFREQ)).arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))).arg(rigState->getUInt16(PASSBAND)).arg(rxa).arg(txa)
+                .arg(getVfoName(1)).arg(rigState->getInt64(VFOBFREQ)).arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))).arg(rigState->getUInt16(PASSBAND)).arg(rxb).arg(txb)
+                .arg(split).arg(rigState->getChar(SATMODEFUNC)).arg(rigCaps.modelName).arg(WFVIEW_VERSION); 
+            unsigned long crc = doCrc((unsigned char*)resp.toStdString().c_str(), resp.length());
+            resp = resp + QString("CRC=0x%0").arg(crc, 8, 10, QLatin1Char('0'));
+        }
+        else if (command.length() > 0 && (command[0] == "a" || command[0] == "get_trn"))
+        {
+            responseCode = -18;
+        }
+        else if (command.length() > 0 && (command[0] == "A" || command[0] == "set_trn"))
+        {
+            responseCode = -18;
+        }
+        else if (command.length() > 0 && (command[0] == "G" || command[0] == "vfo_op"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "u" || command[0] == "get_func"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "U" || command[0] == "set_func"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "_" || command[0] == "get_info"))
+        {
+            response.append("None"); 
         }
         else {
             qInfo(logRigCtlD()) << "Unimplemented command" << commands;
-            if (command.length() > 0)
-                qInfo(logRigCtlD()) << "Initial command" << command[0];
-
         }
         if (longReply) {
             if (command.length() == 2)
@@ -1561,6 +1596,26 @@ quint8 rigCtlClient::antFromName(QString name) {
     return ret;
 }
 
+quint8 rigCtlClient::vfoFromName(QString vfo) {
+
+    if (vfo.toUpper() == "VFOA" || vfo.toUpper() == "MAIN") return 0;
+    if (vfo.toUpper() == "VFOB" || vfo.toUpper() == "SUB") return 1;
+    if (vfo.toUpper() == "MEM") return 2;
+    return 0;
+}
+
+QString rigCtlClient::getVfoName(quint8 vfo)
+{
+    QString ret;
+    switch (vfo) {
+    case 0: ret = "VFOA"; break;
+    case 1: ret = "VFOB"; break;
+    default: ret = "MEM"; break;
+    }
+
+    return ret;
+}
+
 int rigCtlClient::getCalibratedValue(quint8 meter,cal_table_t cal) {
     
     int interp;
@@ -1591,4 +1646,43 @@ int rigCtlClient::getCalibratedValue(quint8 meter,cal_table_t cal) {
         / (cal.table[i].raw - cal.table[i - 1].raw);
 
     return cal.table[i].val - interp;
+}
+
+unsigned long rigCtlClient::doCrc(unsigned char* p, size_t n)
+{
+    unsigned long crc = 0xfffffffful;
+    size_t i;
+
+    if (crcTable[0] == 0) { genCrc(crcTable); }
+
+    for (i = 0; i < n; i++)
+    {
+        crc = crcTable[*p++ ^ (crc & 0xff)] ^ (crc >> 8);
+    }
+
+    return ((~crc) & 0xffffffff);
+}
+
+void rigCtlClient::genCrc(unsigned long crcTable[])
+{
+    unsigned long POLYNOMIAL = 0xEDB88320;
+    unsigned char b = 0;
+
+    while (0 != ++b)
+    {
+        unsigned long remainder = b;
+        unsigned long bit;
+        for (bit = 8; bit > 0; --bit)
+        {
+            if (remainder & 1)
+            {
+                remainder = (remainder >> 1) ^ POLYNOMIAL;
+            }
+            else
+            {
+                remainder = (remainder >> 1);
+            }
+        }
+        crcTable[(size_t)b] = remainder;
+    }
 }
