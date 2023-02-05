@@ -8196,6 +8196,7 @@ void wfmain::loadColorPresetToUIandPlots(int presetNumber)
     setEditAndLedFromColor(p.plotBackground, ui->colorEditPlotBackground, ui->colorSwatchPlotBackground);
     setEditAndLedFromColor(p.tuningLine, ui->colorEditTuningLine, ui->colorSwatchTuningLine);
     setEditAndLedFromColor(p.passband, ui->colorEditPassband, ui->colorSwatchPassband);
+    setEditAndLedFromColor(p.pbt, ui->colorEditPBT, ui->colorSwatchPBT);
 
     setEditAndLedFromColor(p.meterLevel, ui->colorEditMeterLevel, ui->colorSwatchMeterLevel);
     setEditAndLedFromColor(p.meterAverage, ui->colorEditMeterAvg, ui->colorSwatchMeterAverage);
@@ -8449,11 +8450,26 @@ void wfmain::on_colorSetBtnPassband_clicked()
     QColor* c = &(colorPreset[pos].passband);
     setColorButtonOperations(c, ui->colorEditPassband, ui->colorSwatchPassband);
 }
+
 void wfmain::on_colorEditPassband_editingFinished()
 {
     int pos = ui->colorPresetCombo->currentIndex();
     QColor* c = &(colorPreset[pos].passband);
     setColorLineEditOperations(c, ui->colorEditPassband, ui->colorSwatchPassband);
+}
+
+void wfmain::on_colorSetBtnPBT_clicked()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].pbt);
+    setColorButtonOperations(c, ui->colorEditPBT, ui->colorSwatchPBT);
+}
+
+void wfmain::on_colorEditPBT_editingFinished()
+{
+    int pos = ui->colorPresetCombo->currentIndex();
+    QColor* c = &(colorPreset[pos].pbt);
+    setColorLineEditOperations(c, ui->colorEditPBT, ui->colorSwatchPBT);
 }
 
 // Meter Level:

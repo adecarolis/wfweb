@@ -686,6 +686,10 @@ private slots:
 
     void on_colorEditPassband_editingFinished();
 
+    void on_colorSetBtnPBT_clicked();
+
+    void on_colorEditPBT_editingFinished();
+
     void on_colorSetBtnMeterLevel_clicked();
 
     void on_colorEditMeterLevel_editingFinished();
