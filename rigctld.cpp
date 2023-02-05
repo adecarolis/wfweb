@@ -1268,26 +1268,27 @@ void rigCtlClient::socketReadyRead()
                 .arg(split).arg(rigState->getChar(SATMODEFUNC)).arg(rigCaps.modelName).arg(WFVIEW_VERSION); 
             unsigned long crc = doCrc((unsigned char*)resp.toStdString().c_str(), resp.length());
             resp = resp + QString("CRC=0x%0").arg(crc, 8, 10, QLatin1Char('0'));
+            response.append(resp);
         }
         else if (command.length() > 0 && (command[0] == "a" || command[0] == "get_trn"))
         {
-            responseCode = -18;
+            responseCode = -18;  //Deprecated
         }
         else if (command.length() > 0 && (command[0] == "A" || command[0] == "set_trn"))
         {
-            responseCode = -18;
+            responseCode = -18; //Deprecated
         }
         else if (command.length() > 0 && (command[0] == "G" || command[0] == "vfo_op"))
         {
-            responseCode = -11;
+            responseCode = -11; //Not implemented
         }
         else if (command.length() > 0 && (command[0] == "u" || command[0] == "get_func"))
         {
-            responseCode = -11;
+            responseCode = -11; //Not implemented
         }
         else if (command.length() > 0 && (command[0] == "U" || command[0] == "set_func"))
         {
-            responseCode = -11;
+            responseCode = -11; //Not implemented
         }
         else if (command.length() > 0 && (command[0] == "_" || command[0] == "get_info"))
         {
