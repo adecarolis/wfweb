@@ -41,7 +41,6 @@
 #endif
 
 #ifndef Q_OS_WIN
-//Headers needed for sleeping.
 #include <unistd.h>
 #endif
 
