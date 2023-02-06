@@ -403,6 +403,9 @@ private:
     rigstate* rigState = Q_NULLPTR;
     rigCtlD* parent;
     bool chkVfoEecuted=false;
+    unsigned long crcTable[256];
+    unsigned long doCrc(unsigned char* p, size_t n);
+    void genCrc(unsigned long crcTable[]);
     QString getMode(quint8 mode, bool datamode);
     quint8 getMode(QString modeString);
     QString getFilter(quint8 mode, quint8 filter);
@@ -410,6 +413,9 @@ private:
     quint64 getRadioModes(QString mode = "");
     QString getAntName(quint8 ant);
     quint8 antFromName(QString name);
+    quint8 vfoFromName(QString vfo);
+    QString getVfoName(quint8 vfo);
+
     int getCalibratedValue(quint8 meter,cal_table_t cal);
 };
 
