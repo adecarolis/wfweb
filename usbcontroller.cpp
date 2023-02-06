@@ -54,10 +54,9 @@ void usbController::init()
         struct hid_device_info* devs;
         devs = hid_enumerate(0x0, 0x0);
         while (devs) {
-            qInfo(logUsbControl()) << QString("Manufacturer: %0 Product: %1 Release: %2")
+            qInfo(logUsbControl()) << QString("Manufacturer: %0 Product: %1")
                 .arg(QString::fromWCharArray(devs->manufacturer_string))
-                .arg(QString::fromWCharArray(devs->product_string))
-                .arg(QString::fromWCharArray(devs->release_number));
+                .arg(QString::fromWCharArray(devs->product_string));
             devs = devs->next;
         }
         hid_free_enumeration(devs);
