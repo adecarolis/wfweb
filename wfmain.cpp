@@ -3504,6 +3504,7 @@ void wfmain:: getInitialRigState()
     {
         issueDelayedCommand(cmdGetSpectrumMode);
         issueDelayedCommand(cmdGetSpectrumSpan);
+        issueDelayedCommand(cmdGetPassband);
     }
 
     issueDelayedCommand(cmdNone);
@@ -3513,7 +3514,7 @@ void wfmain:: getInitialRigState()
     {
         issueDelayedCommand(cmdGetATUStatus);
     }
-
+    
     delayedCommand->start();
 }
 
@@ -6900,6 +6901,7 @@ void wfmain::receivePassband(quint16 pass)
     if (passbandWidth != (double)(pass / 1000000.0)) {
         passbandWidth = (double)(pass / 1000000.0);
         trxadj->updatePassband(pass);
+        rigState->set(PASSBAND, pass, false);
         showStatusBarText(QString("IF filter width %1 Hz").arg(pass));
     }
 }
