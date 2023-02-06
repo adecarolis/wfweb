@@ -1,3 +1,83 @@
+commit eae5b93f0e404fc15561ad310e39fd3be9d01ccf
+Merge: 2128e6f 02c1dcd
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Mon Feb 6 10:44:34 2023 +0100
+
+    Merge branch 'wsjtx-fix'
+
+commit 02c1dcdb8b2abefe0e78bb53cea4c1e17914746a
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 5 21:58:49 2023 +0000
+
+    Request passband at startup
+
+commit f4e772e1c7903e0d31492917a053e849da38236f
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 5 21:51:00 2023 +0000
+
+    Update wfmain.cpp
+
+commit 4a3f8692b553ad3d5030cf04796fd9f08e966cf6
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 5 21:50:24 2023 +0000
+
+    Update rigState on receipt of new passband from rig.
+
+commit 2ec62b6c807702fb96bc0a10eaa2614ec7bea5b4
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 5 21:43:51 2023 +0000
+
+    Make CRC hex
+
+commit 01e01321d397ef812ceb5d2b2c5e97082d99268b
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 5 21:40:59 2023 +0000
+
+    This might cause a compile warning?
+
+commit f0c8842c058c3481463e8b99e542302eaf96b7a5
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 5 21:33:02 2023 +0000
+
+    Actually send the response!
+
+commit 979dffc1761c5e86821be46b2f16faf5db20c58a
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 5 21:28:24 2023 +0000
+
+    Add some more commands
+
+commit 2128e6fc1080ea7c7a31597e5c23626f97dd4ae4
+Merge: fd86efa 27ac972
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 5 20:15:42 2023 +0000
+
+    Merge branch 'wsjtx-fix' into pbt-color-picker
+
+commit fd86efa4b90123882d45a2d86474f69784d35dcc
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 5 13:21:12 2023 +0000
+
+    Add color picker for PBT
+
+commit 27ac972f4a1e5a0d9606d74df47d0a490b1298a0
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 5 11:30:38 2023 +0000
+
+    Add support for latest version of wsjt-x to rigctld
+
+commit bb632b8e2b1115c5e4cf7d56726e6c55046b93a8
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Sat Feb 4 09:57:12 2023 -0800
+
+    Fixed placement of "out of range" data byte reading.
+
+commit 11f8cb702ff236f96b40ee1e9b255f97becb1a72
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Sat Feb 4 14:49:58 2023 +0100
+
+    v1.60 milestone released
+
 commit 82f268508ea210a8a3c89fcc31c7799833cb26ea
 Merge: a08ada4 a1db8d1
 Author: Roeland Jansen <roeland.jansen69@gmail.com>
