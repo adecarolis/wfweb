@@ -23,7 +23,7 @@
 #endif
 
 #if defined(__APPLE__) && HID_API_VERSION >= HID_API_MAKE_VERSION(0, 12, 0)
-#include <hidapi_darwin.h>
+#include <hidapi/hidapi_darwin.h>
 #endif
 
 #if defined(USING_HIDAPI_LIBUSB) && HID_API_VERSION >= HID_API_MAKE_VERSION(0, 12, 0)
