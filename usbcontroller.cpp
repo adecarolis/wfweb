@@ -276,7 +276,7 @@ void usbController::run()
         {
             qInfo(logUsbControl()) << QString("Error connecting to  %0: %1")
                 .arg(this->product)
-                .arg(hid_error(this->handle));                
+                .arg(QString::fromWCharArray(hid_error(this->handle)));
         }
         // Call me again in 2 seconds to try connecting again
         QTimer::singleShot(2000, this, SLOT(run()));
