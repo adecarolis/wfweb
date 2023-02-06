@@ -191,83 +191,76 @@ void usbController::run()
     }
 #endif
 
-    usbDevice = usbNone;
-
     struct hid_device_info* devs;
     const char* path = NULL;
     devs = hid_enumerate(0x0, 0x0);
-
+    usbDeviceType tempDev = usbDevice;
     // Always only look for the first device and then exit
     // Maybe in the future we could add support for multiple devices?
     while (devs) {
         if (devs->vendor_id == 0x0b33 && devs->product_id == 0x0020) {
+            this->manufacturer = QString::fromWCharArray(devs->manufacturer_string);
+            this->product = QString::fromWCharArray(devs->product_string);
+            this->serial = QString::fromWCharArray(devs->serial_number);
             usbDevice = shuttleXpress;
             path = devs->path;
             break;
         }
         else if (devs->vendor_id == 0x0b33 && devs->product_id == 0x0030) {
+            this->manufacturer = QString::fromWCharArray(devs->manufacturer_string);
+            this->product = QString::fromWCharArray(devs->product_string);
+            this->serial = QString::fromWCharArray(devs->serial_number);
             usbDevice = shuttlePro2;
             path = devs->path;
             break;
         }
         else if (devs->vendor_id == 0x0c26 && devs->product_id == 0x001e) {
+            this->manufacturer = QString::fromWCharArray(devs->manufacturer_string);
+            this->product = QString::fromWCharArray(devs->product_string);
+            this->serial = QString::fromWCharArray(devs->serial_number);
             usbDevice = RC28;
             path = devs->path;
             break;
         } 
         devs = devs->next;
     }
-    
     hid_free_enumeration(devs);
 
     if (path) {
-       handle = hid_open_path(path);
-    }
-
-    if (handle && usbDevice == RC28) {
-        getVersion();
-        ledControl(false, 0);
-        ledControl(false, 1);
-        ledControl(false, 2);
-        ledControl(true, 3);
+       handle = hid_open_path(path);       
     }
 
     if (handle)
     {
-        int res;
-        wchar_t manufacturer[MAX_STR];
-        wchar_t product[MAX_STR];
-        wchar_t serial[MAX_STR];
-
-        res = hid_get_manufacturer_string(handle, manufacturer, MAX_STR);
-        if (res > -1)
-        {
-            this->manufacturer = QString::fromWCharArray(manufacturer);
-        }
- 
-        res = hid_get_product_string(handle, product, MAX_STR);
-        if (res > -1)
-        {
-            this->product = QString::fromWCharArray(product);
-        }
-
-        res = hid_get_serial_number_string(handle, serial, MAX_STR);
-        if (res > -1)
-        {
-            this->serial = QString::fromWCharArray(serial);
-        }
-
-        qInfo(logUsbControl()) << QString("Found Device: %0 from %1 S/N %2").arg(this->product).arg(this->manufacturer).arg(this->serial);
+        qInfo(logUsbControl()) << QString("Connected to device: %0 from %1 S/N %2").arg(this->product).arg(this->manufacturer).arg(this->serial);
         hid_set_nonblocking(handle, 1);
-        emit newDevice(usbDevice, buttonList, commands); // Let the UI know we have a new controller
-        QTimer::singleShot(0, this, SLOT(runTimer()));
-        return;
+
+        // Set RC28 LEDs to default state
+        if (usbDevice == RC28) {
+            getVersion();
+            ledControl(false, 0);
+            ledControl(false, 1);
+            ledControl(false, 2);
+            ledControl(true, 3);
+        }
+
+        // Let the UI know we have a new controller
+        emit newDevice(usbDevice, buttonList, commands); 
+        // Run the periodic timer to get data
+        QTimer::singleShot(25, this, SLOT(runTimer()));
     }
-    else
+    else 
     {
-        // No devices found, schedule another check in 2 seconds
+        // This should only get displayed once if we fail to connect to a device
+        if (usbDevice != usbNone && tempDev != usbDevice) 
+        {
+            qInfo(logUsbControl()) << QString("Found device %0 from %1 S/N %2 but a connection failed (in use?)")
+                .arg(this->product).arg(this->manufacturer).arg(serial);
+        }
+        // Call me again in 2 seconds to try connecting again
         QTimer::singleShot(2000, this, SLOT(run()));
     }
+
 }
 
 void usbController::runTimer()
@@ -343,12 +336,12 @@ void usbController::runTimer()
                         if (but->dev == usbDevice && but->num == i) {
                             if ((tempButtons >> i & 1) && !(buttons >> i & 1) && but->onCommand->index > 0)
                             {
-                                qInfo(logUsbControl()) << "On Button event:" << but->onCommand->text;
+                                qDebug(logUsbControl()) << "On Button event:" << but->onCommand->text;
                                 emit button(but->onCommand);
                             }
                             else if ((buttons >> i & 1) && !(tempButtons >> i & 1) && but->offCommand->index > 0)
                             {
-                                qInfo(logUsbControl()) << "Off Button event:" << but->offCommand->text;
+                                qDebug(logUsbControl()) << "Off Button event:" << but->offCommand->text;
                                 emit button(but->offCommand);
                             }
                         }
