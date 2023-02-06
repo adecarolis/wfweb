@@ -137,6 +137,7 @@ private:
     QString product="";
     QString manufacturer="";
     QString serial="<none>";
+    QString path = "";
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QGamepad* gamepad=Q_NULLPTR;
 #endif

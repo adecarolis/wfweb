@@ -209,9 +209,9 @@ void usbController::run()
 #endif
 
     struct hid_device_info* devs;
-    const char* path = NULL;
     devs = hid_enumerate(0x0, 0x0);
     usbDeviceType tempDev = usbDevice;
+    this->path = "";
     // Always only look for the first device and then exit
     // Maybe in the future we could add support for multiple devices?
     while (devs) {
@@ -220,7 +220,7 @@ void usbController::run()
             this->product = QString::fromWCharArray(devs->product_string);
             this->serial = QString::fromWCharArray(devs->serial_number);
             usbDevice = shuttleXpress;
-            path = devs->path;
+            this->path = QString::fromLocal8Bit(devs->path);
             break;
         }
         else if (devs->vendor_id == 0x0b33 && devs->product_id == 0x0030) {
@@ -228,7 +228,7 @@ void usbController::run()
             this->product = QString::fromWCharArray(devs->product_string);
             this->serial = QString::fromWCharArray(devs->serial_number);
             usbDevice = shuttlePro2;
-            path = devs->path;
+            this->path = QString::fromLocal8Bit(devs->path);
             break;
         }
         else if (devs->vendor_id == 0x0c26 && devs->product_id == 0x001e) {
@@ -236,21 +236,23 @@ void usbController::run()
             this->product = QString::fromWCharArray(devs->product_string);
             this->serial = QString::fromWCharArray(devs->serial_number);
             usbDevice = RC28;
-            path = devs->path;
+            this->path = QString::fromLocal8Bit(devs->path);
             break;
         } 
         devs = devs->next;
     }
+
     hid_free_enumeration(devs);
 
-    if (path) {
-       handle = hid_open_path(path);       
+    if (!this->path.isEmpty()) {
+        qInfo(logUsbControl()) << QString("Attempting to connect to %0").arg(this->product);
+        this->handle = hid_open_path(this->path.toLocal8Bit());       
     }
 
-    if (handle)
+    if (this->handle)
     {
         qInfo(logUsbControl()) << QString("Connected to device: %0 from %1 S/N %2").arg(this->product).arg(this->manufacturer).arg(this->serial);
-        hid_set_nonblocking(handle, 1);
+        hid_set_nonblocking(this->handle, 1);
 
         // Set RC28 LEDs to default state
         if (usbDevice == RC28) {
@@ -268,11 +270,13 @@ void usbController::run()
     }
     else 
     {
+
         // This should only get displayed once if we fail to connect to a device
         if (usbDevice != usbNone && tempDev != usbDevice) 
         {
-            qInfo(logUsbControl()) << QString("Found device %0 from %1 S/N %2 but a connection failed (in use?)")
-                .arg(this->product).arg(this->manufacturer).arg(serial);
+            qInfo(logUsbControl()) << QString("Error connecting to  %0: %1")
+                .arg(this->product)
+                .arg(hid_error(this->handle));                
         }
         // Call me again in 2 seconds to try connecting again
         QTimer::singleShot(2000, this, SLOT(run()));
@@ -286,7 +290,7 @@ void usbController::runTimer()
 
     while (res > 0) {
         QByteArray data(HIDDATALENGTH, 0x0);
-        res = hid_read(handle, (unsigned char*)data.data(), HIDDATALENGTH);
+        res = hid_read(this->handle, (unsigned char*)data.data(), HIDDATALENGTH);
         if (res < 0)
         {
             qInfo(logUsbControl()) << "USB Device disconnected" << this->product;
@@ -294,8 +298,8 @@ void usbController::runTimer()
             this->product = "";
             this->manufacturer = "";
             this->serial = "<none>";
-            hid_close(handle);
-            handle = NULL;
+            hid_close(this->handle);
+            this->handle = NULL;
             QTimer::singleShot(1000, this, SLOT(run()));
             return;
         }
@@ -525,10 +529,10 @@ void usbController::ledControl(bool on, unsigned char num)
 
         data[2] = ledNum;
 
-        int res = hid_write(handle, (const unsigned char*)data.constData(), data.size());
+        int res = hid_write(this->handle, (const unsigned char*)data.constData(), data.size());
 
         if (res < 0) {
-            qDebug(logUsbControl()) << "Unable to write(), Error:" << hid_error(handle);
+            qDebug(logUsbControl()) << "Unable to write(), Error:" << hid_error(this->handle);
             return;
         }
 
