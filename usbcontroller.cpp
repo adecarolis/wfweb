@@ -41,7 +41,7 @@ usbController::~usbController()
 void usbController::init()
 {
     if (HID_API_VERSION == HID_API_MAKE_VERSION(hid_version()->major, hid_version()->minor, hid_version()->patch)) {
-        qInfo(logUsbControl) << QString("Compile-time version matches runtime version of hidapi: %0.%1,%2")
+        qInfo(logUsbControl) << QString("Compile-time version matches runtime version of hidapi: %0.%1.%2")
             .arg(hid_version()->major)
             .arg(hid_version()->minor)
             .arg(hid_version()->patch);
@@ -70,9 +70,10 @@ void usbController::init()
         struct hid_device_info* devs;
         devs = hid_enumerate(0x0, 0x0);
         while (devs) {
-            qInfo(logUsbControl()) << QString("Manufacturer: %0 Product: %1")
+            qInfo(logUsbControl()) << QString("Manufacturer: %0 Product: %1 Path: %2")
                 .arg(QString::fromWCharArray(devs->manufacturer_string))
-                .arg(QString::fromWCharArray(devs->product_string));
+                .arg(QString::fromWCharArray(devs->product_string))
+                .arg(QString::fromLocal8Bit(devs->path));
             devs = devs->next;
         }
         hid_free_enumeration(devs);
@@ -100,6 +101,7 @@ void usbController::run()
         QTimer::singleShot(1000, this, SLOT(run()));
         return;
     }
+
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     if (gamepad == Q_NULLPTR) {
         auto gamepads = QGamepadManager::instance()->connectedGamepads();
