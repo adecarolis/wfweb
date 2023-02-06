@@ -22,6 +22,14 @@
 #include "hidapi.h"
 #endif
 
+#ifndef HID_API_MAKE_VERSION
+#define HID_API_MAKE_VERSION(mj, mn, p) (((mj) << 24) | ((mn) << 8) | (p))
+#endif
+#ifndef HID_API_VERSION
+#define HID_API_VERSION HID_API_MAKE_VERSION(HID_API_VERSION_MAJOR, HID_API_VERSION_MINOR, HID_API_VERSION_PATCH)
+#endif
+
+
 #if defined(__APPLE__) && HID_API_VERSION >= HID_API_MAKE_VERSION(0, 12, 0)
 #include <hidapi/hidapi_darwin.h>
 #endif
