@@ -21,6 +21,15 @@
 #else
 #include "hidapi.h"
 #endif
+
+#if defined(__APPLE__) && HID_API_VERSION >= HID_API_MAKE_VERSION(0, 12, 0)
+#include <hidapi_darwin.h>
+#endif
+
+#if defined(USING_HIDAPI_LIBUSB) && HID_API_VERSION >= HID_API_MAKE_VERSION(0, 12, 0)
+#include <hidapi_libusb.h>
+#endif
+
 #endif
 
 #ifndef Q_OS_WIN
@@ -105,7 +114,8 @@ signals:
     void newDevice(unsigned char devType, QVector<BUTTON>* but,QVector<COMMAND>* cmd);
 
 private:
-    hid_device* handle;
+    hid_device* handle=NULL;
+    int hidStatus = 1;
     bool isOpen=false;
     unsigned int buttons=0;
     unsigned char jogpos=0;

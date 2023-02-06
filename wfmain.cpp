@@ -1672,9 +1672,11 @@ void wfmain::setupUsbControllerDevice()
     connect(usbControllerDev, SIGNAL(setBand(int)), this, SLOT(setBand(int)));
     connect(usbControllerDev, SIGNAL(newDevice(unsigned char, QVector<BUTTON>*, QVector<COMMAND>*)), shut, SLOT(newDevice(unsigned char, QVector<BUTTON>*, QVector<COMMAND>*)));
     usbControllerThread->start(QThread::LowestPriority);
-
+    
     connect(this, SIGNAL(sendUsbControllerCommands(QVector<COMMAND>*)), usbControllerDev, SLOT(receiveCommands(QVector<COMMAND>*)));
     connect(this, SIGNAL(sendUsbControllerButtons(QVector<BUTTON>*)), usbControllerDev, SLOT(receiveButtons(QVector<BUTTON>*)));
+    connect(this, SIGNAL(initUsbController()), usbControllerDev, SLOT(init()));
+    emit initUsbController();
 #endif
 }
 

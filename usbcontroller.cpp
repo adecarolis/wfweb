@@ -18,8 +18,16 @@ usbController::usbController()
 usbController::~usbController()
 {
     qInfo(logUsbControl) << "Ending usbController()";
-    ledControl(false, 3);
-    hid_close(handle);
+
+    if (handle) {
+
+        if (usbDevice == RC28) {
+            ledControl(false, 3);
+        }
+
+        hid_close(handle);
+    }
+
     hid_exit();
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     if (gamepad != Q_NULLPTR)
@@ -32,6 +40,29 @@ usbController::~usbController()
 
 void usbController::init()
 {
+    hidStatus = hid_init();
+    if (hidStatus) {
+        qInfo(logUsbControl()) << "Failed to intialize HID Devices";
+    }
+    else {
+
+#if defined(__APPLE__) && HID_API_VERSION >= HID_API_MAKE_VERSION(0, 12, 0)
+        hid_darwin_set_open_exclusive(0);
+#endif
+        
+        qInfo(logUsbControl()) << "Found available HID devices (not all will be suitable for use):";
+        struct hid_device_info* devs;
+        devs = hid_enumerate(0x0, 0x0);
+        while (devs) {
+            qInfo(logUsbControl()) << QString("Manufacturer: %0 Product: %1 Release: %2")
+                .arg(devs->manufacturer_string)
+                .arg(devs->product_string)
+                .arg(devs->release_number);
+            devs = devs->next;
+        }
+        hid_free_enumeration(devs);
+        
+    }
 }
 
 void usbController::receiveCommands(QVector<COMMAND>* cmds)
@@ -49,9 +80,8 @@ void usbController::receiveButtons(QVector<BUTTON>* buts)
 
 void usbController::run()
 {
-
-    if (commands == Q_NULLPTR) {
-        // We are not ready yet, commands haven't been loaded!
+    if (commands == Q_NULLPTR || hidStatus) {
+        // We are not ready yet, commands haven't been loaded or hid hasn't been initialized!
         QTimer::singleShot(1000, this, SLOT(run()));
         return;
     }
@@ -161,29 +191,45 @@ void usbController::run()
     }
 #endif
 
-    handle = hid_open(0x0b33, 0x0020, NULL);
-    if (!handle) {
-        handle = hid_open(0x0b33, 0x0030, NULL);
-        if (!handle) {
-            handle = hid_open(0x0c26, 0x001e, NULL);
-            if (!handle) {
-                usbDevice = usbNone;
-            }
-            else {
-                usbDevice = RC28;
-                getVersion();
-                ledControl(false, 0);
-                ledControl(false, 1);
-                ledControl(false, 2);
-                ledControl(true, 3);
-            }
+    usbDevice = usbNone;
+
+    struct hid_device_info* devs;
+    const char* path = NULL;
+    devs = hid_enumerate(0x0, 0x0);
+
+    // Always only look for the first device and then exit
+    // Maybe in the future we could add support for multiple devices?
+    while (devs) {
+        if (devs->vendor_id == 0x0b33 && devs->product_id == 0x0020) {
+            usbDevice = shuttleXpress;
+            path = devs->path;
+            break;
         }
-        else {
+        else if (devs->vendor_id == 0x0b33 && devs->product_id == 0x0030) {
             usbDevice = shuttlePro2;
+            path = devs->path;
+            break;
         }
+        else if (devs->vendor_id == 0x0c26 && devs->product_id == 0x001e) {
+            usbDevice = RC28;
+            path = devs->path;
+            break;
+        } 
+        devs = devs->next;
     }
-    else {
-        usbDevice = shuttleXpress;
+    
+    hid_free_enumeration(devs);
+
+    if (path) {
+       handle = hid_open_path(path);
+    }
+
+    if (handle && usbDevice == RC28) {
+        getVersion();
+        ledControl(false, 0);
+        ledControl(false, 1);
+        ledControl(false, 2);
+        ledControl(true, 3);
     }
 
     if (handle)
@@ -217,10 +263,11 @@ void usbController::run()
         QTimer::singleShot(0, this, SLOT(runTimer()));
         return;
     }
-
-    // No devices found, schedule another check in 1000ms
-    QTimer::singleShot(1000, this, SLOT(run()));
-
+    else
+    {
+        // No devices found, schedule another check in 2 seconds
+        QTimer::singleShot(2000, this, SLOT(run()));
+    }
 }
 
 void usbController::runTimer()
@@ -238,6 +285,7 @@ void usbController::runTimer()
             this->manufacturer = "";
             this->serial = "<none>";
             hid_close(handle);
+            handle = NULL;
             QTimer::singleShot(1000, this, SLOT(run()));
             return;
         }
