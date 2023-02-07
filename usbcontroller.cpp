@@ -475,6 +475,10 @@ void usbController::runTimer()
                 lastData = data;
             }
         }
+        else if (usbDevice == eCoderPlus) {
+            quint16 buts = (data[2] << 8) | (data[1] & 0xff);
+
+        }
 
         if (lastusbController.msecsTo(QTime::currentTime()) >= 100 || lastusbController > QTime::currentTime())
         {
