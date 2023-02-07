@@ -1,3 +1,124 @@
+commit 40f49c56e7553ca907c533b5d0fe5f277a1420f3
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 17:11:53 2023 +0000
+
+    Try again
+
+commit 529d1015409ee326e6bd81132f41e07bc34bc1dd
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 16:50:02 2023 +0000
+
+    Quick fix
+
+commit 14a4b25e9740d39213c9036e9415751db7dc700a
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 15:22:22 2023 +0000
+
+    Add a comment about usb device types
+
+commit 78fa2489634d1dcdecf27de05af0aa3f7a5f5538
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 14:49:17 2023 +0000
+
+    Slightly better way of defining USB device types
+
+commit 7de515b70d58ce9f1775bd7b13c202029fce0a40
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 10:10:04 2023 +0000
+
+    Add spacer
+
+commit 76694361b58d3f7312847e32e79e97feecd36a82
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 09:40:38 2023 +0000
+
+    Add small space above sensitivity slider
+
+commit 0e28f288ff6e9349971466d453b7c447f971b46f
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 09:32:33 2023 +0000
+
+    Add sensitivity control to USB controllers.
+
+commit b619be3e2a3b2ad66e6a2056fb73e7fdb0ca86be
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 6 19:54:52 2023 +0000
+
+    Another fix
+
+commit 64c0007c78cbc4914d5a731654362596214ab8dc
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 6 19:51:30 2023 +0000
+
+    More USB fixes
+
+commit b566a760ed0f252137c4703c4db01f8309c47563
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 6 18:50:49 2023 +0000
+
+    Add device path
+
+commit 69afce7712101ed1d35981bfa0465a5119318c66
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 6 18:19:12 2023 +0000
+
+    Check hidapi version
+
+commit 5654fa524e57f8c8462d4395a551e33768e5db4e
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 6 17:52:47 2023 +0000
+
+    More attempts to fix MacOS
+
+commit 3d053c3c96312b3310583d1c0e3a87ce358cd4a8
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 6 15:54:35 2023 +0000
+
+    Require exclusive access for MacOS
+
+commit 872c8aee302819b0aef9b333fce841db54be837f
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 6 15:48:04 2023 +0000
+
+    Update usbcontroller.cpp
+
+commit e2d6101a530fb49863ecbc3773b2fe983f16454e
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 6 15:46:48 2023 +0000
+
+    Fic mac build
+
+commit b35e1af185b2bd68eeb37d910aa1e0bbd9d0a89c
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 6 15:43:53 2023 +0000
+
+    Update usbcontroller.h
+
+commit a60cb39483428a2ee54fe24391c8ff954a236ab9
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 6 15:33:59 2023 +0000
+
+    More improvements to device enumeration
+
+commit 6464f28159ae2fb52fd6590974ba07b103ec3741
+Merge: 7b7d21d 16eb459
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 6 15:03:19 2023 +0000
+
+    Merge branch 'master' into usb-macfix
+
+commit 7b7d21d3a72e840ee61681495156f309fe2c86ed
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 6 15:02:48 2023 +0000
+
+    Improve USB device enumeration and fix for MacOS
+
+commit 16eb4591eb767797125ea134de87cd1931536dbf
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Mon Feb 6 10:45:08 2023 +0100
+
+    updated CHANGELOG
+
 commit eae5b93f0e404fc15561ad310e39fd3be9d01ccf
 Merge: 2128e6f 02c1dcd
 Author: Roeland Jansen <roeland.jansen69@gmail.com>
