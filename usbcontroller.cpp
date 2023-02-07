@@ -475,7 +475,7 @@ void usbController::runTimer()
                 lastData = data;
             }
         }
-        else if (usbDevice == eCoderPlus && data.length() >= 0x0f) {
+        else if (usbDevice == eCoderPlus && data.length() >= 0x0f && (quint8)data[0] == 0xff) {
             /* Button matrix:
             DATA2     DATA 1
             7654321076543210
@@ -494,7 +494,7 @@ void usbController::runTimer()
             0000000000000100 = button2
             0000000000000010 = button1
             */
-            quint16 tempButtons = (data[2] << 8) | (data[1] & 0xff);
+            quint16 tempButtons = ((quint8)data[2] << 8) | ((quint8)data[1] & 0xff);
 
             if (buttons != tempButtons)
             {
