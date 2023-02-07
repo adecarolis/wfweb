@@ -217,30 +217,18 @@ void usbController::run()
     this->path = "";
     // Always only look for the first device and then exit
     // Maybe in the future we could add support for multiple devices?
+
+
     while (devs) {
-        if (devs->vendor_id == 0x0b33 && devs->product_id == 0x0020) {
-            this->manufacturer = QString::fromWCharArray(devs->manufacturer_string);
-            this->product = QString::fromWCharArray(devs->product_string);
-            this->serial = QString::fromWCharArray(devs->serial_number);
-            usbDevice = shuttleXpress;
-            this->path = QString::fromLocal8Bit(devs->path);
-            break;
-        }
-        else if (devs->vendor_id == 0x0b33 && devs->product_id == 0x0030) {
-            this->manufacturer = QString::fromWCharArray(devs->manufacturer_string);
-            this->product = QString::fromWCharArray(devs->product_string);
-            this->serial = QString::fromWCharArray(devs->serial_number);
-            usbDevice = shuttlePro2;
-            this->path = QString::fromLocal8Bit(devs->path);
-            break;
-        }
-        else if (devs->vendor_id == 0x0c26 && devs->product_id == 0x001e) {
-            this->manufacturer = QString::fromWCharArray(devs->manufacturer_string);
-            this->product = QString::fromWCharArray(devs->product_string);
-            this->serial = QString::fromWCharArray(devs->serial_number);
-            usbDevice = RC28;
-            this->path = QString::fromLocal8Bit(devs->path);
-            break;
+        for (int i = 0; i < sizeof knownUsbDevices / sizeof knownUsbDevices[0]; i++) {
+            if (devs->vendor_id == knownUsbDevices[i][1] && devs->product_id == knownUsbDevices[i][2]) {
+                this->manufacturer = QString::fromWCharArray(devs->manufacturer_string);
+                this->product = QString::fromWCharArray(devs->product_string);
+                this->serial = QString::fromWCharArray(devs->serial_number);
+                usbDevice = (usbDeviceType)knownUsbDevices[i][0];
+                this->path = QString::fromLocal8Bit(devs->path);
+                break;
+            }
         } 
         devs = devs->next;
     }

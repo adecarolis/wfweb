@@ -147,6 +147,9 @@ private:
     void buttonState(QString but, bool val);
     void buttonState(QString but, double val);
     usbDeviceType usbDevice = usbNone;
+
+
+
 protected:
 };
 
