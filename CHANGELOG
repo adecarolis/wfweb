@@ -1,3 +1,28 @@
+commit ea1fefc219017856df6bf3c1f79b596213c97403
+Merge: 6e0ebcd 3d2c162
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Tue Feb 7 18:52:37 2023 +0100
+
+    Merge branch 'wf-fix'
+
+commit 3d2c16201be5fa6a92f2931cfad754cee48448a1
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 17:51:52 2023 +0000
+
+    Fix invalid scope data in combine mode
+
+commit 6e0ebcdd5a109695ca95da5cb41bb13d6e08ac79
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Tue Feb 7 18:20:18 2023 +0100
+
+    removed empty file
+
+commit 2488d62f2e429e1607fc12966db8d4f03312ad7f
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Tue Feb 7 18:17:57 2023 +0100
+
+    fixes stuff after 1.60 release
+
 commit 40f49c56e7553ca907c533b5d0fe5f277a1420f3
 Author: Phil Taylor <phil@m0vse.uk>
 Date:   Tue Feb 7 17:11:53 2023 +0000
