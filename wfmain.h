@@ -223,7 +223,7 @@ signals:
     void openShuttle();
     void requestRigState();
     void stateUpdated();
-    void initUsbController();
+    void initUsbController(int sens);
     void sendUsbControllerCommands(QVector<COMMAND>* cmds);
     void sendUsbControllerButtons(QVector<BUTTON>* buts);
     void setClusterUdpPort(int port);
@@ -350,6 +350,7 @@ private slots:
     void showStatusBarText(QString text);
     void receiveBaudRate(quint32 baudrate);
     void radioSelection(QList<radio_cap_packet> radios);
+    void receiveUsbSensitivity(int val);
 
     // Added for RC28/Shuttle support
     void pttToggle(bool);

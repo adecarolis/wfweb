@@ -103,13 +103,14 @@ public:
     ~usbController();
 
 public slots:
-    void init();
+    void init(int sens);
     void run();
     void runTimer();
     void ledControl(bool on, unsigned char num);
     void receiveCommands(QVector<COMMAND>*);
     void receiveButtons(QVector<BUTTON>*);
     void getVersion();
+    void receiveSensitivity(int val);
 
 signals:
     void jogPlus();
@@ -119,6 +120,7 @@ signals:
     void setBand(int band);
     void button(const COMMAND* cmd);
     void newDevice(unsigned char devType, QVector<BUTTON>* but,QVector<COMMAND>* cmd);
+    void sendSensitivity(int val);
 
 private:
     hid_device* handle=NULL;
@@ -138,6 +140,7 @@ private:
     QString manufacturer="";
     QString serial="<none>";
     QString path = "";
+    int sensitivity = 1;
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QGamepad* gamepad=Q_NULLPTR;
 #endif

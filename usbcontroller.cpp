@@ -38,8 +38,11 @@ usbController::~usbController()
 #endif
 }
 
-void usbController::init()
+void usbController::init(int sens)
 {
+    sensitivity = sens;
+    emit sendSensitivity(sensitivity);
+
     if (HID_API_VERSION == HID_API_MAKE_VERSION(hid_version()->major, hid_version()->minor, hid_version()->patch)) {
         qInfo(logUsbControl) << QString("Compile-time version matches runtime version of hidapi: %0.%1.%2")
             .arg(hid_version()->major)
@@ -503,7 +506,7 @@ void usbController::runTimer()
                 }
             }
             if (jogCounter != 0) {
-                emit sendJog(jogCounter);
+                emit sendJog(jogCounter/sensitivity);
                 qDebug(logUsbControl()) << "Change Frequency by" << jogCounter << "hz";
                 jogCounter = 0;
             }
@@ -591,4 +594,10 @@ void usbController::buttonState(QString name, double val)
     }
     */
 }
+
+void usbController::receiveSensitivity(int val)
+{
+    sensitivity = val;
+}
+
 #endif

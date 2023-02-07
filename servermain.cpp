@@ -440,6 +440,7 @@ void servermain::setDefPrefs()
     udpDefPrefs.username = QString("");
     udpDefPrefs.password = QString("");
     udpDefPrefs.clientName = QHostInfo::localHostName();
+
 }
 
 void servermain::loadSettings()

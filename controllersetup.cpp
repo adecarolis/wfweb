@@ -187,5 +187,16 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
     ui->graphicsView->resize(ui->graphicsView->sizeHint());
     //this->resize(this->sizeHint());
     this->adjustSize();
+}
 
+void controllerSetup::receiveSensitivity(int val)
+{
+    ui->sensitivitySlider->blockSignals(true);
+    ui->sensitivitySlider->setValue(val);
+    ui->sensitivitySlider->blockSignals(false);
+}
+
+void controllerSetup::on_sensitivitySlider_valueChanged(int val)
+{
+    emit sendSensitivity(val);
 }

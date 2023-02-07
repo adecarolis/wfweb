@@ -35,13 +35,15 @@ public:
     ~controllerSetup();
 
 signals:
-
+    void sendSensitivity(int val);
 
 public slots:
     void newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<COMMAND>* cmd);
     void mousePressed(QPoint p);
     void onEventIndexChanged(int index);
     void offEventIndexChanged(int index);
+    void receiveSensitivity(int val);
+    void on_sensitivitySlider_valueChanged(int val);
 
 private:
 

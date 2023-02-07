@@ -46,6 +46,7 @@ struct preferences {
     bool niceTS;
     bool automaticSidebandSwitching = true;
     bool enableUSBControllers;
+    int usbSensitivity;
 
     // LAN:
     bool enableLAN;

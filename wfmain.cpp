@@ -1675,8 +1675,10 @@ void wfmain::setupUsbControllerDevice()
     
     connect(this, SIGNAL(sendUsbControllerCommands(QVector<COMMAND>*)), usbControllerDev, SLOT(receiveCommands(QVector<COMMAND>*)));
     connect(this, SIGNAL(sendUsbControllerButtons(QVector<BUTTON>*)), usbControllerDev, SLOT(receiveButtons(QVector<BUTTON>*)));
-    connect(this, SIGNAL(initUsbController()), usbControllerDev, SLOT(init()));
-    emit initUsbController();
+    connect(shut, SIGNAL(sendSensitivity(int)), usbControllerDev, SLOT(receiveSensitivity(int)));
+    connect(shut, SIGNAL(sendSensitivity(int)), this, SLOT(receiveUsbSensitivity(int)));
+    connect(usbControllerDev, SIGNAL(sendSensitivity(int)), shut, SLOT(receiveSensitivity(int)));
+    connect(this, SIGNAL(initUsbController(int)), usbControllerDev, SLOT(init(int)));
 #endif
 }
 
@@ -1882,6 +1884,7 @@ void wfmain::setDefPrefs()
     defPrefs.waterfallFormat = 0;
     defPrefs.audioSystem = qtAudio;
     defPrefs.enableUSBControllers = false;
+    defPrefs.usbSensitivity = 1;
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -2427,6 +2430,7 @@ void wfmain::loadSettings()
     settings->beginGroup("USB");
     /* Load USB buttons*/
     prefs.enableUSBControllers = settings->value("EnableUSBControllers", defPrefs.enableUSBControllers).toBool();
+    prefs.usbSensitivity = settings->value("USBSensitivity", defPrefs.usbSensitivity).toInt();
     ui->enableUsbChk->blockSignals(true);
     ui->enableUsbChk->setChecked(prefs.enableUSBControllers);
     ui->enableUsbChk->blockSignals(false);
@@ -2438,6 +2442,7 @@ void wfmain::loadSettings()
     if (prefs.enableUSBControllers) {
         // Setup USB Controller
         setupUsbControllerDevice();
+        emit initUsbController(prefs.usbSensitivity);
         emit sendUsbControllerCommands(&usbCommands);
         emit sendUsbControllerButtons(&usbButtons);
     }
@@ -2904,6 +2909,7 @@ void wfmain::saveSettings()
     settings->beginGroup("USB");
     // Store USB Controller
     settings->setValue("EnableUSBControllers", prefs.enableUSBControllers);
+    settings->setValue("USBSensitivity", prefs.usbSensitivity);
 
     settings->beginWriteArray("Buttons");
     for (int nb = 0; nb < usbButtons.count(); nb++)
@@ -9050,6 +9056,7 @@ void wfmain::on_enableUsbChk_clicked(bool checked)
     if (checked) {
         // Setup USB Controller
         setupUsbControllerDevice();
+        emit initUsbController(prefs.usbSensitivity);
         emit sendUsbControllerCommands(&usbCommands);
         emit sendUsbControllerButtons(&usbButtons);
     }
@@ -9299,3 +9306,6 @@ void wfmain::resetUsbCommands()
     emit sendUsbControllerCommands(&usbCommands);
 }
 
+void wfmain::receiveUsbSensitivity(int val) {
+    prefs.usbSensitivity = val;
+}
