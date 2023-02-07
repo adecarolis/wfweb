@@ -131,6 +131,10 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
             image.load(":/resources/xbox.png");
             deviceName = "XBox";
             break;
+        case eCoderPlus:
+            image.load(":/resources/ecoder.png");
+            deviceName = "eCoderPlus";
+            break;
         default:
             textItem->show();
             ui->graphicsView->setSceneRect(scene->itemsBoundingRect());
