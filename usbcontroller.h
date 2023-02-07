@@ -148,6 +148,10 @@ private:
     void buttonState(QString but, double val);
     usbDeviceType usbDevice = usbNone;
 
+    unsigned short knownUsbDevices[3][3] = {
+        {shuttleXpress,0x0b33,0x0020},
+        {shuttlePro2,0x0b33,0x0030},
+        {RC28,0x0c26,0x001e} };
 
 
 protected:
