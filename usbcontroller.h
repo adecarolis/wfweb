@@ -126,7 +126,7 @@ private:
     hid_device* handle=NULL;
     int hidStatus = 1;
     bool isOpen=false;
-    unsigned int buttons=0;
+    quint16 buttons=0;
     unsigned char jogpos=0;
     unsigned char shutpos=0;
     unsigned char shutMult = 0;
@@ -149,9 +149,10 @@ private:
     usbDeviceType usbDevice = usbNone;
 
     unsigned short knownUsbDevices[4][3] = {
-    {shuttleXpress,0x0b33,0x0020},
+    //{shuttleXpress,0x0b33,0x0020},
     {shuttlePro2,0x0b33,0x0030},
-    {eCoderPlus,0x1fc9,0x0003},
+    //{eCoderPlus,0x1fc9,0x0003},
+    {eCoderPlus,0x0b33,0x0020},
     {RC28,0x0c26,0x001e} };
 
 protected:

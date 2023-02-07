@@ -9242,22 +9242,20 @@ void wfmain::resetUsbButtons()
     usbButtons.append(BUTTON(xBoxGamepad, "RIGHTY", QRect(453, 233, 50, 57), Qt::red, &usbCommands[0], &usbCommands[0]));
 
     // eCoder
-    // ShuttlePro2
-    usbButtons.append(BUTTON(eCoderPlus, 0, QRect(60, 66, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-    usbButtons.append(BUTTON(eCoderPlus, 1, QRect(114, 50, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-    usbButtons.append(BUTTON(eCoderPlus, 2, QRect(169, 47, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-    usbButtons.append(BUTTON(eCoderPlus, 3, QRect(225, 59, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-    usbButtons.append(BUTTON(eCoderPlus, 4, QRect(41, 132, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-    usbButtons.append(BUTTON(eCoderPlus, 5, QRect(91, 105, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-    usbButtons.append(BUTTON(eCoderPlus, 6, QRect(144, 93, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-    usbButtons.append(BUTTON(eCoderPlus, 7, QRect(204, 99, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-    usbButtons.append(BUTTON(eCoderPlus, 8, QRect(253, 124, 40, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
-    usbButtons.append(BUTTON(eCoderPlus, 9, QRect(50, 270, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
-    usbButtons.append(BUTTON(eCoderPlus, 10, QRect(210, 270, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
-    usbButtons.append(BUTTON(eCoderPlus, 11, QRect(50, 335, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
-    usbButtons.append(BUTTON(eCoderPlus, 12, QRect(210, 335, 70, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
-    usbButtons.append(BUTTON(eCoderPlus, 13, QRect(30, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
-    usbButtons.append(BUTTON(eCoderPlus, 14, QRect(280, 195, 25, 80), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 1, QRect(87, 190, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 2, QRect(168, 190, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 3, QRect(249, 190, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 4, QRect(329, 190, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 5, QRect(410, 190, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 6, QRect(87, 270, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 7, QRect(168, 270, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 8, QRect(249, 270, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 9, QRect(329, 270, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 10, QRect(410, 270, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 11, QRect(87, 351, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 12, QRect(410, 351, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 13, QRect(87, 512, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 14, QRect(410, 512, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
 
     emit sendUsbControllerButtons(&usbButtons);
 

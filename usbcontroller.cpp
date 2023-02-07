@@ -304,7 +304,7 @@ void usbController::runTimer()
                 << hex << (unsigned char)data[3] << ":"
                 << hex << (unsigned char)data[4];
                 */
-            unsigned int tempButtons = (unsigned int)((unsigned char)data[3] | (unsigned char)data[4] << 8);
+            quint16 tempButtons = (data[4] << 8) | (data[3] & 0xff);
             unsigned char tempJogpos = (unsigned char)data[1];
             unsigned char tempShutpos = (unsigned char)data[0];
 
@@ -343,7 +343,7 @@ void usbController::runTimer()
                 // Step through all buttons and emit ones that have been pressed.
                 for (unsigned char i = 0; i < 16; i++)
                 {
-                    
+
                     for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
                         if (but->dev == usbDevice && but->num == i) {
                             if ((tempButtons >> i & 1) && !(buttons >> i & 1) && but->onCommand->index > 0)
@@ -475,8 +475,47 @@ void usbController::runTimer()
                 lastData = data;
             }
         }
-        else if (usbDevice == eCoderPlus) {
-            quint16 buts = (data[2] << 8) | (data[1] & 0xff);
+        else if (usbDevice == eCoderPlus && data.length() == 16 && data[0]==0xff) {
+            /* Button matrix:
+            0100000000000000 = button14
+            0010000000000000 = button13
+            0001000000000000 = button12
+            0000100000000000 = button11
+            0000010000000000 = button10
+            0000001000000000 = button9
+            0000000100000000 = button8 
+            0000000010000000 = button7 
+            0000000001000000 = button6
+            0000000000100000 = button5
+            0000000000010000 = button4
+            0000000000001000 = button3
+            0000000000000100 = button2
+            0000000000000010 = button1
+            */
+            quint16 tempButtons = (data[2] << 8) | (data[1] & 0xff);
+
+            if (buttons != tempButtons)
+            {
+                // Step through all buttons and emit ones that have been pressed.
+                for (unsigned char i = 1; i < 15; i++)
+                {
+                    for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
+                        if (but->dev == usbDevice && but->num == i) {
+                            if ((tempButtons << i & 1) && !(buttons << i & 1) && but->onCommand->index > 0)
+                            {
+                                qDebug(logUsbControl()) << "On Button event:" << but->onCommand->text;
+                                emit button(but->onCommand);
+                            }
+                            else if ((buttons << i & 1) && !(tempButtons << i & 1) && but->offCommand->index > 0)
+                            {
+                                qDebug(logUsbControl()) << "Off Button event:" << but->offCommand->text;
+                                emit button(but->offCommand);
+                            }
+                        }
+                    }
+                }
+            }
+            buttons = tempButtons;
 
         }
 
