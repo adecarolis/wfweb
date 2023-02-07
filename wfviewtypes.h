@@ -196,6 +196,10 @@ enum passbandActions {passbandStatic, pbtInnerMove, pbtOuterMove, pbtMoving, pas
 
 enum usbDeviceType { usbNone = 0, shuttleXpress, shuttlePro2, RC28, xBoxGamepad, unknownGamepad };
 
+
+/* Entries in knownUsbDevices contain:
+ * {usbDeviceType,vendorId,productId}
+ */
 static unsigned short knownUsbDevices[3][3] = {
     {shuttleXpress,0x0b33,0x0020},
     {shuttlePro2,0x0b33,0x0030},
