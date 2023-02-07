@@ -304,7 +304,7 @@ void usbController::runTimer()
                 << hex << (unsigned char)data[3] << ":"
                 << hex << (unsigned char)data[4];
                 */
-            quint16 tempButtons = (data[4] << 8) | (data[3] & 0xff);
+            quint16 tempButtons = ((quint8)data[4] << 8) | ((quint8)data[3] & 0xff);
             unsigned char tempJogpos = (unsigned char)data[1];
             unsigned char tempShutpos = (unsigned char)data[0];
 
@@ -518,6 +518,9 @@ void usbController::runTimer()
                 }
             }
             buttons = tempButtons;
+
+            // Will this work for the tuning knob?
+            jogCounter = jogCounter + (qint8)data[13];
 
         }
 
