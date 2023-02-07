@@ -111,19 +111,19 @@
     <OutDir>$(SolutionDir)wfview-release\</OutDir>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <QtInstall>msvc2019_64_v62</QtInstall>
+    <QtInstall>msvc2016_64_v632</QtInstall>
     <QtModules>core;gui;network;widgets;multimedia;printsupport;serialport;xml</QtModules>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="QtSettings">
-    <QtInstall>msvc2019_64_v62</QtInstall>
+    <QtInstall>msvc2019</QtInstall>
     <QtModules>core;gui;network;widgets;multimedia;printsupport;serialport;xml</QtModules>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <QtInstall>msvc2019_64_v62</QtInstall>
+    <QtInstall>msvc2016_64_v632</QtInstall>
     <QtModules>core;gui;network;widgets;multimedia;printsupport;serialport;xml</QtModules>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="QtSettings">
-    <QtInstall>msvc2019_64_v62</QtInstall>
+    <QtInstall>msvc2019</QtInstall>
     <QtModules>core;gui;network;widgets;multimedia;printsupport;serialport;xml</QtModules>
   </PropertyGroup>
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.props')">
@@ -131,7 +131,7 @@
   </ImportGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>.;..\rtaudio;..\portaudio\include;..\qcustomplot;..\opus\include;..\eigen;..\r8brain-free-src;resampler;release;/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;..\hidapi\hidapi;..\rtaudio;..\portaudio\include;..\qcustomplot;..\opus\include;..\eigen;..\r8brain-free-src;resampler;release;/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>-Zc:rvalueCast -Zc:inline -Zc:strictStrings -Zc:throwingNew -permissive- -Zc:__cplusplus -Zc:externConstexpr -utf-8 -w34100 -w34189 -w44996 -w44456 -w44457 -w44458 %(AdditionalOptions)</AdditionalOptions>
       <AssemblerListingLocation>release\</AssemblerListingLocation>
       <BrowseInformation>false</BrowseInformation>
@@ -141,7 +141,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ObjectFileName>release\</ObjectFileName>
       <Optimization>MaxSpeed</Optimization>
-      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION="1.55";BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX="/usr/local";GITSHORT="4574e2b";HOST="wfview.org";UNAME="build";NDEBUG;QT_NO_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;UNICODE;_UNICODE;WIN32;_ENABLE_EXTENDED_ALIGNED_STORAGE;WIN64;WFVIEW_VERSION="1.58";USB_CONTROLLER;BUILD_WFVIEW;__WINDOWS_WASAPI__;QT_DEPRECATED_WARNINGS;QCUSTOMPLOT_USE_LIBRARY;USE_SSE;USE_SSE2;OUTSIDE_SPEEX;RANDOM_PREFIX=wf;EIGEN_MPL2_ONLY;EIGEN_DONT_VECTORIZE;EIGEN_VECTORIZE_SSE3;PREFIX="/usr/local";GITSHORT="4574e2b";HOST="wfview.org";UNAME="build";NDEBUG;QT_NO_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessToFile>false</PreprocessToFile>
       <ProgramDataBaseFileName>
       </ProgramDataBaseFileName>
@@ -152,8 +152,8 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>..\portaudio\msvc\X64\Release\portaudio_x64.lib;..\qcustomplot\x64\qcustomplot2.lib;..\opus\win32\VS2015\x64\Release\opus.lib;$(QTDIR)\lib\Qt6Multimedia.lib;$(QTDIR)\lib\Qt6PrintSupport.lib;$(QTDIR)\lib\Qt6Widgets.lib;$(QTDIR)\lib\Qt6Gui.lib;$(QTDIR)\lib\Qt6SerialPort.lib;$(QTDIR)\lib\Qt6Network.lib;$(QTDIR)\lib\Qt6Core.lib;$(QTDIR)\lib\Qt6EntryPoint.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\opus\win32\VS2015\x64\Release;..\qcustomplot\x64;..\portaudio\msvc\X64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>..\hidapi\windows\x64\Release\hidapi.lib;..\portaudio\msvc\X64\Release\portaudio_x64.lib;..\qcustomplot\x64\qcustomplot2.lib;..\opus\win32\VS2015\x64\Release\opus.lib;$(QTDIR)\lib\Qt6Multimedia.lib;$(QTDIR)\lib\Qt6PrintSupport.lib;$(QTDIR)\lib\Qt6Widgets.lib;$(QTDIR)\lib\Qt6Gui.lib;$(QTDIR)\lib\Qt6SerialPort.lib;$(QTDIR)\lib\Qt6Network.lib;$(QTDIR)\lib\Qt6Core.lib;$(QTDIR)\lib\Qt6EntryPoint.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\hidapi\windows\x64\Release;..\opus\win32\VS2015\x64\ReleaseDLL;..\qcustomplot\x64;..\portaudio\msvc\X64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>"/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' publicKeyToken='6595b64144ccf1df' language='*' processorArchitecture='*'" %(AdditionalOptions)</AdditionalOptions>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -194,8 +194,10 @@
       <QtUicFileName>ui_%(Filename).h</QtUicFileName>
     </QtUic>
     <PostBuildEvent>
-      <Command>cmd /c copy /y ..\qcustomplot\x64\qcustomplot2.dll wfview-release\
-cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfview-release\</Command>
+      <Command>cmd /c copy /y ..\hidapi\windows\x64\Debug\hidapi.dll wfview-debug
+cmd /c copy /y ..\qcustomplot\x64\qcustomplotd2.dll wfview-debug
+cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfview-debug
+cmd /c copy /y ..\opus\win32\VS2015\x64\DebugDLL\opus.dll wfview-debug</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy DLL Files</Message>
@@ -225,7 +227,7 @@ cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfview-release\</
     </ClCompile>
     <Link>
       <AdditionalDependencies>..\portaudio\msvc\Win32\Release\portaudio_x86.lib;..\qcustomplot\Win32\qcustomplot2.lib;..\opus\win32\VS2015\Win32\Release\opus.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\opus\win32\VS2015\Win32\Release;..\qcustomplot\Win32;..\portaudio\msvc\Win32\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\hidapi\windows\Win32\Release;..\opus\win32\VS2015\Win32\ReleaseDLL;..\qcustomplot\Win32;..\portaudio\msvc\Win32\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>"/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' publicKeyToken='6595b64144ccf1df' language='*' processorArchitecture='*'" %(AdditionalOptions)</AdditionalOptions>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -266,8 +268,11 @@ cmd /c copy /y ..\portaudio\msvc\x64\Release\portaudio_x64.dll wfview-release\</
       <QtUicFileName>ui_%(Filename).h</QtUicFileName>
     </QtUic>
     <PostBuildEvent>
-      <Command>cmd /c copy /y ..\qcustomplot\Win32\qcustomplot2.dll wfview-release\
-cmd /c copy /y ..\portaudio\msvc\Win32\Release\portaudio_x86.dll wfview-release\</Command>
+      <Command>cmd /c copy /y ..\qcustomplot\Win32\qcustomplot2.dll wfview-release
+cmd /c copy /y ..\portaudio\msvc\Win32\Release\portaudio_x86.dll wfview-release
+cmd /c copy /y ..\hidapi\windows\Release\hidapi.dll wfview-release
+cmd /c copy /y ..\opus\win32\VS2015\win32\ReleaseDLL\opus.dll wfview-release
+</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy DLL Files</Message>
@@ -296,7 +301,7 @@ cmd /c copy /y ..\portaudio\msvc\Win32\Release\portaudio_x86.dll wfview-release\
     </ClCompile>
     <Link>
       <AdditionalDependencies>..\portaudio\msvc\X64\Debug\portaudio_x64.lib;..\qcustomplot\x64\qcustomplotd2.lib;..\opus\win32\VS2015\x64\Debug\opus.lib;$(QTDIR)\lib\Qt6Multimediad.lib;$(QTDIR)\lib\Qt6PrintSupportd.lib;$(QTDIR)\lib\Qt6Widgetsd.lib;$(QTDIR)\lib\Qt6Guid.lib;$(QTDIR)\lib\Qt6SerialPortd.lib;$(QTDIR)\lib\Qt6Networkd.lib;$(QTDIR)\lib\Qt6Cored.lib;$(QTDIR)\lib\Qt6EntryPointd.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\opus\win32\VS2015\x64\Debug;..\qcustomplot\x64;..\portaudio\msvc\X64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\hidapi\windows\x64\Debug;..\opus\win32\VS2015\x64\DebugDLL;..\qcustomplot\x64;..\portaudio\msvc\X64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>"/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' publicKeyToken='6595b64144ccf1df' language='*' processorArchitecture='*'" %(AdditionalOptions)</AdditionalOptions>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -362,7 +367,7 @@ cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfview-debug</Comma
     </ClCompile>
     <Link>
       <AdditionalDependencies>..\portaudio\msvc\Win32\Debug\portaudio_x86.lib;..\qcustomplot\Win32\qcustomplotd2.lib;..\opus\win32\VS2015\Win32\Debug\opus.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\opus\win32\VS2015\Win32\Debug;..\qcustomplot\Win32;..\portaudio\msvc\Win32\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\hidapi\windows\Win32\Debug;..\opus\win32\VS2015\Win32\DebugDLL;..\qcustomplot\Win32;..\portaudio\msvc\Win32\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>"/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' publicKeyToken='6595b64144ccf1df' language='*' processorArchitecture='*'" %(AdditionalOptions)</AdditionalOptions>
       <DataExecutionPrevention>true</DataExecutionPrevention>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -382,7 +387,9 @@ cmd /c copy /y ..\portaudio\msvc\x64\Debug\portaudio_x64.dll wfview-debug</Comma
     </ResourceCompile>
     <PostBuildEvent>
       <Command>cmd /c copy /y ..\qcustomplot\Win32\qcustomplotd2.dll wfview-debug
-cmd /c copy /y ..\portaudio\msvc\Win32\Debug\portaudio_x86.dll wfview-debug</Command>
+cmd /c copy /y ..\portaudio\msvc\Win32\Debug\portaudio_x86.dll wfview-debug
+cmd /c copy /y ..\hidapi\windows\Debug\hidapi.dll wfview-debug
+cmd /c copy /y ..\opus\win32\VS2015\win32\DebugDLL\opus.dll wfview-debug</Command>
       <Message>Copy DLL files</Message>
     </PostBuildEvent>
     <QtMoc>
@@ -415,6 +422,7 @@ cmd /c copy /y ..\portaudio\msvc\Win32\Debug\portaudio_x86.dll wfview-debug</Com
     <ClCompile Include="cluster.cpp" />
     <ClCompile Include="commhandler.cpp" />
     <ClCompile Include="controllersetup.cpp" />
+    <ClCompile Include="cwsender.cpp" />
     <ClCompile Include="freqmemory.cpp" />
     <ClCompile Include="logcategories.cpp" />
     <ClCompile Include="loggingwindow.cpp" />
@@ -443,6 +451,9 @@ cmd /c copy /y ..\portaudio\msvc\Win32\Debug\portaudio_x86.dll wfview-debug</Com
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\rtaudio\RTAUdio.h" />
+    <ClInclude Include="prefs.h" />
+    <ClInclude Include="rigstate.h" />
+    <ClInclude Include="wfviewtypes.h" />
     <QtMoc Include="usbcontroller.h" />
     <QtMoc Include="aboutbox.h">
     </QtMoc>
@@ -450,6 +461,7 @@ cmd /c copy /y ..\portaudio\msvc\Win32\Debug\portaudio_x86.dll wfview-debug</Com
     <QtMoc Include="loggingwindow.h" />
     <QtMoc Include="cluster.h" />
     <QtMoc Include="controllersetup.h" />
+    <QtMoc Include="cwsender.h" />
     <ClInclude Include="resampler\arch.h" />
     <QtMoc Include="audioconverter.h">
     </QtMoc>
@@ -538,6 +550,7 @@ cmd /c copy /y ..\portaudio\msvc\Win32\Debug\portaudio_x86.dll wfview-debug</Com
     <QtUic Include="calibrationwindow.ui">
     </QtUic>
     <QtUic Include="controllersetup.ui" />
+    <QtUic Include="cwsender.ui" />
     <QtUic Include="loggingwindow.ui" />
     <QtUic Include="repeatersetup.ui">
     </QtUic>

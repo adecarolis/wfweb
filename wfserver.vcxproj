@@ -112,7 +112,7 @@
     <QtModules>core;network;gui;multimedia;widgets;serialport;printsupport</QtModules>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="QtSettings">
-    <QtInstall>msvc2019_64_v62</QtInstall>
+    <QtInstall>msvc2016_64_v640</QtInstall>
     <QtModules>core;network;gui;multimedia;widgets;serialport;printsupport</QtModules>
   </PropertyGroup>
   <PropertyGroup Label="QtSettings" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -120,7 +120,7 @@
     <QtModules>core;network;gui;multimedia;widgets;serialport;printsupport</QtModules>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="QtSettings">
-    <QtInstall>msvc2019_64_v62</QtInstall>
+    <QtInstall>msvc2016_64_v640</QtInstall>
     <QtModules>core;network;gui;multimedia;widgets;serialport;printsupport</QtModules>
   </PropertyGroup>
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.props')">
