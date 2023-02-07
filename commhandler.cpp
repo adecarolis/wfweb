@@ -126,7 +126,7 @@ void commHandler::sendDataOut(const QByteArray &writeData)
             printHex(pttreturncmd, false, true);
             emit haveDataFromPort(pttreturncmd);
 
-
+            
             mutex.unlock();
             return;
         } else if(writeData.endsWith(QByteArrayLiteral("\x1C\x00\x01\xFD")))
@@ -210,7 +210,6 @@ void commHandler::receiveDataIn()
                 //printHex(inPortData, false, true);
                 while (pos > -1 && fdPos > -1) {
                     combined++;
-                    spectrumDivisionNumber = 0;
                     spectrumDivisionNumber = inPortData[pos + 3] & 0x0f;
                     spectrumDivisionNumber += ((inPortData[pos + 3] & 0xf0) >> 4) * 10;
 
@@ -226,8 +225,8 @@ void commHandler::receiveDataIn()
 
                     }
                     else  if (spectrumDivisionNumber > lastSpectrum && spectrumDivisionNumber <= spectrumDivisionMax) {
-                        spectrumData.insert(spectrumData.length(), inPortData.mid(pos + 4, fdPos-5));
-                        //qDebug() << "Added spectrum seq:" << spectrumDivisionNumber << "len" << fdPos-5;
+                        spectrumData.insert(spectrumData.length(), inPortData.mid(pos + 5, fdPos-5));
+                        //qInfo() << "Added spectrum seq:" << spectrumDivisionNumber << "len" << fdPos-5<< "Spec" << spectrumData.length();
                         //printHex(inPortData.mid((pos+4),fdPos - (pos+5)), false, true);
                     }
                     else {
