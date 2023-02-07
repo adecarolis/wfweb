@@ -109,6 +109,9 @@
      <item>
       <widget class="QGraphicsView" name="graphicsView"/>
      </item>
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayout_2"/>
+     </item>
     </layout>
    </item>
   </layout>
