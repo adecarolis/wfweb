@@ -9192,6 +9192,7 @@ void wfmain::on_cwButton_clicked()
 
 void wfmain::resetUsbButtons()
 {
+#ifdef USB_CONTROLLER
     usbButtons.clear();
 
     // ShuttleXpress
@@ -9242,11 +9243,12 @@ void wfmain::resetUsbButtons()
     usbButtons.append(BUTTON(4, "RIGHTY", QRect(453, 233, 50, 57), Qt::red, &usbCommands[0], &usbCommands[0]));
     emit sendUsbControllerButtons(&usbButtons);
 
-
+#endif
 }
 
 void wfmain::resetUsbCommands()
 {
+#ifdef USB_CONTROLLER
     usbCommands.clear();
     int num = 0;
     usbCommands.append(COMMAND(num++, "None", cmdNone, 0x0));
@@ -9304,6 +9306,7 @@ void wfmain::resetUsbCommands()
     usbCommands.append(COMMAND(num++, "Split Off", cmdNone, 0x0));
     usbCommands.append(COMMAND(num++, "Swap VFOs", cmdVFOSwap, 0x0));
     emit sendUsbControllerCommands(&usbCommands);
+#endif
 }
 
 void wfmain::receiveUsbSensitivity(int val) {
