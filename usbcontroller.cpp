@@ -501,12 +501,12 @@ void usbController::runTimer()
                 {
                     for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
                         if (but->dev == usbDevice && but->num == i) {
-                            if ((tempButtons << i & 1) && !(buttons << i & 1) && but->onCommand->index > 0)
+                            if ((tempButtons >> i & 1) && !(buttons >> i & 1) && but->onCommand->index > 0)
                             {
                                 qDebug(logUsbControl()) << "On Button event:" << but->onCommand->text;
                                 emit button(but->onCommand);
                             }
-                            else if ((buttons << i & 1) && !(tempButtons << i & 1) && but->offCommand->index > 0)
+                            else if ((buttons >> i & 1) && !(tempButtons >> i & 1) && but->offCommand->index > 0)
                             {
                                 qDebug(logUsbControl()) << "Off Button event:" << but->offCommand->text;
                                 emit button(but->offCommand);
