@@ -2245,7 +2245,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>1</number>
+             <number>4</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -4979,6 +4979,13 @@
                  </widget>
                 </item>
                 <item>
+                 <widget class="QLabel" name="label_52">
+                  <property name="text">
+                   <string>Only change this if you are absolutely sure you need it (connecting to N1MM+ or similar)</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
                  <spacer name="horizontalSpacer_28">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
@@ -5530,8 +5537,8 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="pollingButtonGroup"/>
-  <buttongroup name="buttonGroup"/>
   <buttongroup name="underlayButtonGroup"/>
+  <buttongroup name="buttonGroup"/>
+  <buttongroup name="pollingButtonGroup"/>
  </buttongroups>
 </ui>
