@@ -9256,6 +9256,12 @@ void wfmain::resetUsbButtons()
     usbButtons.append(BUTTON(eCoderPlus, 12, QRect(410, 351, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
     usbButtons.append(BUTTON(eCoderPlus, 13, QRect(87, 512, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
     usbButtons.append(BUTTON(eCoderPlus, 14, QRect(410, 512, 55, 55), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 16, QRect(121, 102, 68, 73), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 17, QRect(242, 102, 68, 73), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 18, QRect(362, 102, 68, 73), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 19, QRect(124, 2, 55, 30), Qt::red, &usbCommands[1], &usbCommands[2]));
+    usbButtons.append(BUTTON(eCoderPlus, 20, QRect(290, 2, 55, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(eCoderPlus, 21, QRect(404, 2, 55, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
 
     emit sendUsbControllerButtons(&usbButtons);
 

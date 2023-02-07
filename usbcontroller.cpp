@@ -304,7 +304,7 @@ void usbController::runTimer()
                 << hex << (unsigned char)data[3] << ":"
                 << hex << (unsigned char)data[4];
                 */
-            quint16 tempButtons = ((quint8)data[4] << 8) | ((quint8)data[3] & 0xff);
+            quint32 tempButtons = ((quint8)data[4] << 8) | ((quint8)data[3] & 0xff);
             unsigned char tempJogpos = (unsigned char)data[1];
             unsigned char tempShutpos = (unsigned char)data[0];
 
@@ -477,29 +477,35 @@ void usbController::runTimer()
         }
         else if (usbDevice == eCoderPlus && data.length() >= 0x0f && (quint8)data[0] == 0xff) {
             /* Button matrix:
-            DATA2     DATA 1
-            7654321076543210
-            0100000000000000 = button14
-            0010000000000000 = button13
-            0001000000000000 = button12
-            0000100000000000 = button11
-            0000010000000000 = button10
-            0000001000000000 = button9
-            0000000100000000 = button8 
-            0000000010000000 = button7 
-            0000000001000000 = button6
-            0000000000100000 = button5
-            0000000000010000 = button4
-            0000000000001000 = button3
-            0000000000000100 = button2
-            0000000000000010 = button1
+            DATA3   DATA2     DATA 1
+            765432107654321076543210
+            001000000000000000000000 = Left CW
+            000100000000000000000000 = Right CW
+            000010000000000000000000 = PTT
+            000001000000000000000000 = Knob 3 Press
+            000000100000000000000000 = Knob 2 Press
+            000000010000000000000000 = Knob 1 Press
+            000000000100000000000000 = button14
+            000000000010000000000000 = button13
+            000000000001000000000000 = button12
+            000000000000100000000000 = button11
+            000000000000010000000000 = button10
+            000000000000001000000000 = button9
+            000000000000000100000000 = button8 
+            000000000000000010000000 = button7 
+            000000000000000001000000 = button6
+            000000000000000000100000 = button5
+            000000000000000000010000 = button4
+            000000000000000000001000 = button3
+            000000000000000000000100 = button2
+            000000000000000000000010 = button1
             */
-            quint16 tempButtons = ((quint8)data[2] << 8) | ((quint8)data[1] & 0xff);
+            quint32 tempButtons = ((quint8)data[3] << 16) | ((quint8)data[2] << 8) | ((quint8)data[1] & 0xff);
 
             if (buttons != tempButtons)
             {
                 // Step through all buttons and emit ones that have been pressed.
-                for (unsigned char i = 1; i < 15; i++)
+                for (unsigned char i = 1; i < 23; i++)
                 {
                     for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
                         if (but->dev == usbDevice && but->num == i) {

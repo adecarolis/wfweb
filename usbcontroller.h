@@ -126,7 +126,7 @@ private:
     hid_device* handle=NULL;
     int hidStatus = 1;
     bool isOpen=false;
-    quint16 buttons=0;
+    quint32 buttons=0;
     unsigned char jogpos=0;
     unsigned char shutpos=0;
     unsigned char shutMult = 0;
