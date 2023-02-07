@@ -220,7 +220,7 @@ void usbController::run()
 
 
     while (devs) {
-        for (int i = 0; i < sizeof knownUsbDevices / sizeof knownUsbDevices[0]; i++) {
+        for (int i = 0; i < (int)sizeof knownUsbDevices / (int)sizeof knownUsbDevices[0]; i++) {
             if (devs->vendor_id == knownUsbDevices[i][1] && devs->product_id == knownUsbDevices[i][2]) {
                 this->manufacturer = QString::fromWCharArray(devs->manufacturer_string);
                 this->product = QString::fromWCharArray(devs->product_string);
