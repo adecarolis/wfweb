@@ -477,6 +477,8 @@ void usbController::runTimer()
         }
         else if (usbDevice == eCoderPlus && data.length() >= 0x0f) {
             /* Button matrix:
+            DATA2     DATA 1
+            7654321076543210
             0100000000000000 = button14
             0010000000000000 = button13
             0001000000000000 = button12
