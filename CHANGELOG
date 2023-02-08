@@ -1,3 +1,15 @@
+commit bbbfe38e0bfc5280e349049c126dcf2792c06b52
+Author: Elliott Liggett <kilocharlie8@gmail.com>
+Date:   Wed Feb 8 08:26:36 2023 -0800
+
+    Very minor thing to help compiling with older hidapi.
+
+commit 6a76efa368b9d0fa88d8ae3761229dbefcd25c87
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Wed Feb 8 11:26:33 2023 +0100
+
+    compilation fixes
+
 commit 1515e135e5434ab7c334214ff10165e484536906
 Author: Phil Taylor <phil@m0vse.uk>
 Date:   Wed Feb 8 10:12:48 2023 +0000
