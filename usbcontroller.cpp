@@ -65,8 +65,10 @@ void usbController::init(int sens)
     }
     else {
 
+#ifdef HID_API_VERSION_MAJOR
 #if defined(__APPLE__) && HID_API_VERSION >= HID_API_MAKE_VERSION(0, 12, 0)
         hid_darwin_set_open_exclusive(0);
+#endif
 #endif
         
         qInfo(logUsbControl()) << "Found available HID devices (not all will be suitable for use):";
