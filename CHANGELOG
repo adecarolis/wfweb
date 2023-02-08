@@ -1,3 +1,21 @@
+commit 1515e135e5434ab7c334214ff10165e484536906
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Feb 8 10:12:48 2023 +0000
+
+    Fix for old hidapi without version info.
+
+commit 0ff2551026c7861ab1dc2194388ea3c5cbbfdf67
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 23:29:50 2023 +0000
+
+    Fix compile if controller disabled
+
+commit b373685fd31f7d6cf21a117650a9bbdf17e5d107
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Tue Feb 7 18:56:41 2023 +0100
+
+    v1.61
+
 commit ea1fefc219017856df6bf3c1f79b596213c97403
 Merge: 6e0ebcd 3d2c162
 Author: Roeland Jansen <roeland.jansen69@gmail.com>
