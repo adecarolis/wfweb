@@ -561,7 +561,7 @@ void usbController::runTimer()
                             if ((tempKnobs >> (i*8) & 0xff) != (knobs >> (i*8) & 0xff) && kb->command->index > 0)
                             {
                                 COMMAND cmd = *kb->command;
-                                cmd.suffix = (unsigned char)(knobs >> (i * 8) & 0xff);
+                                cmd.suffix = (unsigned char)~(knobs >> (i * 8)) & 0xff;
                                 qDebug(logUsbControl()) << "Knob event:" << cmd.command << "Value:" << cmd.suffix;
                                 emit button(&cmd);
                             }
