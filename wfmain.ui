@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -1821,6 +1821,7 @@
              <font>
               <family>DejaVu Sans Mono</family>
               <pointsize>14</pointsize>
+              <weight>75</weight>
               <bold>true</bold>
              </font>
             </property>
@@ -3443,8 +3444,8 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>820</width>
-                      <height>302</height>
+                      <width>570</width>
+                      <height>254</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -5491,6 +5492,7 @@
        <widget class="QPushButton" name="exitBtn">
         <property name="font">
          <font>
+          <weight>50</weight>
           <bold>false</bold>
          </font>
         </property>
@@ -5510,7 +5512,7 @@
      <x>0</x>
      <y>0</y>
      <width>1042</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>
@@ -5537,8 +5539,8 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="underlayButtonGroup"/>
-  <buttongroup name="buttonGroup"/>
   <buttongroup name="pollingButtonGroup"/>
+  <buttongroup name="buttonGroup"/>
+  <buttongroup name="underlayButtonGroup"/>
  </buttongroups>
 </ui>

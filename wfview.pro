@@ -217,6 +217,7 @@ win32:INCLUDEPATH += ../qcustomplot
 INCLUDEPATH += resampler
 
 SOURCES += main.cpp\
+    bandbuttons.cpp \
     cwsender.cpp \
     loggingwindow.cpp \
     wfmain.cpp \
@@ -253,6 +254,7 @@ SOURCES += main.cpp\
     audiodevices.cpp
 
 HEADERS  += wfmain.h \
+    bandbuttons.h \
     colorprefs.h \
     commhandler.h \
     cwsender.h \
@@ -300,6 +302,7 @@ HEADERS  += wfmain.h \
     audiodevices.h
 
 FORMS    += wfmain.ui \
+    bandbuttons.ui \
     calibrationwindow.ui \
     cwsender.ui \
     loggingwindow.ui \
