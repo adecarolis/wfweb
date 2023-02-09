@@ -16,6 +16,7 @@ controllerSetup::controllerSetup(QWidget* parent) :
 
     connect(&onEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(onEventIndexChanged(int)));
     connect(&offEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(offEventIndexChanged(int)));
+    connect(&knobEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(knobEventIndexChanged(int)));
 }
 
 controllerSetup::~controllerSetup()
@@ -50,48 +51,80 @@ void controllerSetup::mousePressed(QPoint p)
             }
             onEvent.blockSignals(true);
             onEvent.move(p);
-            onEvent.setCurrentIndex(currentButton->onCommand->index);
+            onEvent.setCurrentIndex(onEvent.findData(currentButton->onCommand->index));
             onEvent.show();
             onEvent.blockSignals(false);
 
             p.setY(p.y() + 40);
             offEvent.blockSignals(true);
             offEvent.move(p);
-            offEvent.setCurrentIndex(currentButton->offCommand->index);
+            offEvent.setCurrentIndex(offEvent.findData(currentButton->offCommand->index));
             offEvent.show();
             offEvent.blockSignals(false);
-
+            knobEvent.hide();
+            break;
+        }
+    }
+    if (!found) {
+        for (KNOB& k : *knobs)
+        {
+            if (k.dev == currentDevice && k.pos.contains(p))
+            {
+                found = true;
+                currentKnob = &k;
+                qDebug() << "Knob" << currentKnob->num << "Event" << currentKnob->command->text;
+                if (knobEventProxy == Q_NULLPTR) {
+                    knobEventProxy = scene->addWidget(&knobEvent);
+                }
+                knobEvent.blockSignals(true);
+                knobEvent.move(p);
+                knobEvent.setCurrentIndex(knobEvent.findData(currentKnob->command->index));
+                knobEvent.show();
+                knobEvent.blockSignals(false);
+                onEvent.hide();
+                offEvent.hide();
+                break;
+            }
         }
     }
 
     if (!found) {
         onEvent.hide();
         offEvent.hide();
+        knobEvent.hide();
     }
-
 }
 
 void controllerSetup::onEventIndexChanged(int index) {
-    qDebug() << "On Event for button" << currentButton->num << "Event" << index;
-    if (currentButton != Q_NULLPTR && index < commands->size()) {
-        currentButton->onCommand = &commands->at(index);
+    Q_UNUSED(index);
+    if (currentButton != Q_NULLPTR && onEvent.currentData().toInt() < commands->size()) {
+        currentButton->onCommand = &commands->at(onEvent.currentData().toInt());
         currentButton->onText->setPlainText(currentButton->onCommand->text);
     }
 }
 
 
 void controllerSetup::offEventIndexChanged(int index) {
-    qDebug() << "Off Event for button" << currentButton->num << "Event" << index;
-    if (currentButton != Q_NULLPTR && index < commands->size()) {
-        currentButton->offCommand = &commands->at(index);
+    Q_UNUSED(index);
+    if (currentButton != Q_NULLPTR && offEvent.currentData().toInt() < commands->size()) {
+        currentButton->offCommand = &commands->at(offEvent.currentData().toInt());
         currentButton->offText->setPlainText(currentButton->offCommand->text);
     }
 }
 
+void controllerSetup::knobEventIndexChanged(int index) {
+    Q_UNUSED(index);
+    if (currentKnob != Q_NULLPTR && knobEvent.currentData().toInt() < commands->size()) {
+        currentKnob->command = &commands->at(knobEvent.currentData().toInt());
+        currentKnob->text->setPlainText(currentKnob->command->text);
+    }
+}
 
-void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<COMMAND>* cmd)
+
+void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd)
 {
     buttons = but;
+    knobs = kb;
     commands = cmd;
 
     // Remove any existing button text:
@@ -107,10 +140,18 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
         scene->removeItem(bgImage);
         delete bgImage;
         bgImage = Q_NULLPTR;
-        if (onEventProxy != Q_NULLPTR)
+        if (onEventProxy != Q_NULLPTR) {
             scene->removeItem(onEventProxy);
-        if (offEventProxy != Q_NULLPTR)
+            onEventProxy = Q_NULLPTR;
+        }
+        if (offEventProxy != Q_NULLPTR) {
             scene->removeItem(offEventProxy);
+            offEventProxy = Q_NULLPTR;
+        }
+        if (knobEventProxy != Q_NULLPTR) {
+            scene->removeItem(knobEventProxy);
+            knobEventProxy = Q_NULLPTR;
+        }
     }
     QImage image;
 
@@ -151,35 +192,46 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
 
     onEvent.blockSignals(true);
     offEvent.blockSignals(true);
+    knobEvent.blockSignals(true);
     onEvent.clear();
     offEvent.clear();
+    knobEvent.clear();
 
     onEvent.setMaxVisibleItems(5);
     offEvent.setMaxVisibleItems(5);
+    knobEvent.setMaxVisibleItems(5);
     onEvent.view()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     offEvent.view()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    knobEvent.view()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     onEvent.setStyleSheet("combobox-popup: 0;");
     offEvent.setStyleSheet("combobox-popup: 0;");
+    knobEvent.setStyleSheet("combobox-popup: 0;");
 
     for (COMMAND &c : *commands) {
-        onEvent.addItem(c.text);
-        offEvent.addItem(c.text);
+        if (c.cmdType == commandButton || c.text == "None") {
+            onEvent.addItem(c.text,c.index);
+            offEvent.addItem(c.text,c.index);
+        }
+
+        if (c.cmdType == commandKnob || c.text == "None") {
+            knobEvent.addItem(c.text,c.index);
+        }
     }
+
     onEvent.blockSignals(false);
     offEvent.blockSignals(false);
+    knobEvent.blockSignals(false);
 
     // Set button text
     for (BUTTON& b : *buttons)
     {
 
         if (b.dev == currentDevice) {
-            //b.onCommand = &commands->at(0);
             b.onText = new QGraphicsTextItem(b.onCommand->text);
             b.onText->setDefaultTextColor(b.textColour);
             scene->addItem(b.onText);
             b.onText->setPos(b.pos.x(), b.pos.y());
 
-            //b.offCommand = &commands->at(0);
             b.offText = new QGraphicsTextItem(b.offCommand->text);
             b.offText->setDefaultTextColor(b.textColour);
             scene->addItem(b.offText);
@@ -187,6 +239,18 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
         }
     }
 
+    // Set knob text
+
+    for (KNOB& k : *knobs)
+    {
+        if (k.dev == currentDevice) {
+            k.text = new QGraphicsTextItem(k.command->text);
+            k.text->setDefaultTextColor(k.textColour);
+            scene->addItem(k.text);
+            k.text->setPos(k.pos.x(), k.pos.y());
+        }
+    }
+    
     ui->graphicsView->setSceneRect(scene->itemsBoundingRect());
     ui->graphicsView->resize(ui->graphicsView->sizeHint());
     //this->resize(this->sizeHint());

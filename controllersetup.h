@@ -38,10 +38,11 @@ signals:
     void sendSensitivity(int val);
 
 public slots:
-    void newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<COMMAND>* cmd);
+    void newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd);
     void mousePressed(QPoint p);
     void onEventIndexChanged(int index);
     void offEventIndexChanged(int index);
+    void knobEventIndexChanged(int index);
     void receiveSensitivity(int val);
     void on_sensitivitySlider_valueChanged(int val);
 
@@ -55,12 +56,16 @@ private:
     QLabel* imgLabel;
     unsigned char currentDevice = 0;
     QVector<BUTTON>* buttons;
+    QVector<KNOB>* knobs;
     QVector<COMMAND>* commands;
-    BUTTON* currentButton=Q_NULLPTR;
+    BUTTON* currentButton = Q_NULLPTR;
+    KNOB* currentKnob = Q_NULLPTR;
     QComboBox onEvent;
     QComboBox offEvent;
-    QGraphicsProxyWidget* onEventProxy=Q_NULLPTR;
-    QGraphicsProxyWidget* offEventProxy=Q_NULLPTR;
+    QComboBox knobEvent;
+    QGraphicsProxyWidget* onEventProxy = Q_NULLPTR;
+    QGraphicsProxyWidget* offEventProxy = Q_NULLPTR;
+    QGraphicsProxyWidget* knobEventProxy = Q_NULLPTR;
     QString deviceName;
 
 };

@@ -56,12 +56,12 @@ using namespace std;
 struct COMMAND {
     COMMAND() {}
 
-    COMMAND(int index, QString text, int command, char suffix) :
-        index(index), text(text), command(command), suffix(suffix) {}
-    COMMAND(int index, QString text, int command, availableBands band) :
-        index(index), text(text), command(command), band(band) {}
-    COMMAND(int index, QString text, int command, mode_kind mode) :
-        index(index), text(text), command(command), mode(mode) {}
+    COMMAND(int index, QString text, usbCommandType cmdType, int command, unsigned char suffix) :
+        index(index), text(text), cmdType(cmdType), command(command), suffix(suffix) {}
+    COMMAND(int index, QString text, usbCommandType cmdType, int command, availableBands band) :
+        index(index), text(text), cmdType(cmdType), command(command), band(band) {}
+    COMMAND(int index, QString text, usbCommandType cmdType, int command, mode_kind mode) :
+        index(index), text(text), cmdType(cmdType), command(command), mode(mode) {}
 
     int index=0;
     QString text;
@@ -69,27 +69,43 @@ struct COMMAND {
     unsigned char suffix=0x0;
     availableBands band=bandGen;
     mode_kind mode=modeLSB;
+    usbCommandType cmdType = commandButton;
 };
 
 struct BUTTON {
     BUTTON() {}
 
-    BUTTON(quint8 dev, int num, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
+    BUTTON(usbDeviceType dev, int num, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
         dev(dev), num(num), name(""), pos(pos), textColour(textColour), onCommand(on), offCommand(off) {}
-    BUTTON(quint8 dev, QString name, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
+    BUTTON(usbDeviceType dev, QString name, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
         dev(dev), num(-1), name(name), pos(pos), textColour(textColour), onCommand(on), offCommand(off) {}
 
-    quint8 dev;
+    usbDeviceType dev;
     int num;
     QString name;
     QRect pos;
     QColor textColour;
-    int onEvent = 0;
-    int offEvent = 0;
-    const COMMAND* onCommand=Q_NULLPTR;
-    const COMMAND* offCommand=Q_NULLPTR;
+    const COMMAND* onCommand = Q_NULLPTR;
+    const COMMAND* offCommand = Q_NULLPTR;
     QGraphicsTextItem* onText;
     QGraphicsTextItem* offText;
+
+};
+
+
+struct KNOB {
+    KNOB() {}
+
+    KNOB(usbDeviceType dev, int num, QRect pos, const QColor textColour, COMMAND* command) :
+        dev(dev), num(num), name(""), pos(pos), textColour(textColour), command(command) {}
+
+    usbDeviceType dev;
+    int num;
+    QString name;
+    QRect pos;
+    QColor textColour;
+    const COMMAND* command = Q_NULLPTR;
+    QGraphicsTextItem* text;
 
 };
 
@@ -109,6 +125,7 @@ public slots:
     void ledControl(bool on, unsigned char num);
     void receiveCommands(QVector<COMMAND>*);
     void receiveButtons(QVector<BUTTON>*);
+    void receiveKnobs(QVector<KNOB>*);
     void getVersion();
     void receiveSensitivity(int val);
 
@@ -119,14 +136,15 @@ signals:
     void doShuttle(bool plus, quint8 level);
     void setBand(int band);
     void button(const COMMAND* cmd);
-    void newDevice(unsigned char devType, QVector<BUTTON>* but,QVector<COMMAND>* cmd);
+    void newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd);
     void sendSensitivity(int val);
 
 private:
     hid_device* handle=NULL;
     int hidStatus = 1;
     bool isOpen=false;
-    quint32 buttons=0;
+    quint32 buttons = 0;
+    quint32 knobs = 0;
     unsigned char jogpos=0;
     unsigned char shutpos=0;
     unsigned char shutMult = 0;
@@ -135,6 +153,7 @@ private:
     QByteArray lastData = QByteArray(8,0x0);
     unsigned char lastDialPos=0;
     QVector<BUTTON>* buttonList;
+    QVector<KNOB>* knobList;
     QVector<COMMAND>* commands = Q_NULLPTR;
     QString product="";
     QString manufacturer="";
@@ -151,8 +170,9 @@ private:
     unsigned short knownUsbDevices[4][3] = {
     {shuttleXpress,0x0b33,0x0020},
     {shuttlePro2,0x0b33,0x0030},
-    {RC28,0x0c26,0x001e},
-    {eCoderPlus, 0x1fc9, 0x0003}
+    {eCoderPlus,0x0c26,0x001e},
+    //{RC28,0x0c26,0x001e},
+    //{eCoderPlus, 0x1fc9, 0x0003}
     };
 
 protected:

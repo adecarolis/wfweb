@@ -96,6 +96,11 @@ void usbController::receiveButtons(QVector<BUTTON>* buts)
     buttonList = buts;
 }
 
+void usbController::receiveKnobs(QVector<KNOB>* kbs)
+{
+    qDebug(logUsbControl()) << "Receiving knobs";
+    knobList = kbs;
+}
 
 void usbController::run()
 {
@@ -201,7 +206,7 @@ void usbController::run()
                 qInfo(logUsbControl()) << "Button Guide" << pressed;
             });
 
-            emit newDevice(usbDevice, buttonList, commands); // Let the UI know we have a new controller
+            emit newDevice(usbDevice, buttonList, knobList, commands); // Let the UI know we have a new controller
             return;
         }
     }
@@ -240,6 +245,19 @@ void usbController::run()
         this->handle = hid_open_path(this->path.toLocal8Bit());       
     }
 
+
+    /* ADDED FOR DEBUGGING ONLY MUST BE REMOVED!*/
+    //this->manufacturer = "EESDR";
+    //this->product = "ecoderplus";
+    //this->serial = "1";
+    //usbDevice = eCoderPlus;
+    // Let the UI know we have a new controller
+    //emit newDevice(usbDevice, buttonList, knobList, commands);
+    // Run the periodic timer to get data
+    //QTimer::singleShot(25, this, SLOT(runTimer()));
+    //return;
+    /********************************************/
+
     if (this->handle)
     {
         qInfo(logUsbControl()) << QString("Connected to device: %0 from %1 S/N %2").arg(this->product).arg(this->manufacturer).arg(this->serial);
@@ -255,7 +273,7 @@ void usbController::run()
         }
 
         // Let the UI know we have a new controller
-        emit newDevice(usbDevice, buttonList, commands); 
+        emit newDevice(usbDevice, buttonList, knobList, commands); 
         // Run the periodic timer to get data
         QTimer::singleShot(25, this, SLOT(runTimer()));
     }
@@ -278,6 +296,11 @@ void usbController::run()
 void usbController::runTimer()
 {
     int res=1;
+    if (!this->handle) {
+        // Something bad happened!
+        QTimer::singleShot(25, this, SLOT(runTimer()));
+        res = 0;
+    }
 
     while (res > 0) {
         QByteArray data(HIDDATALENGTH, 0x0);
@@ -285,7 +308,7 @@ void usbController::runTimer()
         if (res < 0)
         {
             qInfo(logUsbControl()) << "USB Device disconnected" << this->product;
-            emit newDevice(0, buttonList, commands);
+            emit newDevice(0, buttonList, knobList, commands);
             this->product = "";
             this->manufacturer = "";
             this->serial = "<none>";
@@ -360,6 +383,8 @@ void usbController::runTimer()
                     }
                 }
             }
+
+
 
             buttons = tempButtons;
             jogpos = tempJogpos;
@@ -475,7 +500,7 @@ void usbController::runTimer()
                 lastData = data;
             }
         }
-        else if (usbDevice == eCoderPlus && data.length() >= 0x0f && (quint8)data[0] == 0xff) {
+        else if (usbDevice == eCoderPlus && data.length() > 0x0f && (quint8)data[0] == 0xff) {
             /* Button matrix:
             DATA3   DATA2     DATA 1
             765432107654321076543210
@@ -501,6 +526,7 @@ void usbController::runTimer()
             000000000000000000000010 = button1
             */
             quint32 tempButtons = ((quint8)data[3] << 16) | ((quint8)data[2] << 8) | ((quint8)data[1] & 0xff);
+            quint32 tempKnobs = ((quint8)data[16] << 16) | ((quint8)data[15] << 8) | ((quint8)data[14] & 0xff);
 
             if (buttons != tempButtons)
             {
@@ -512,12 +538,14 @@ void usbController::runTimer()
                             if ((tempButtons >> i & 1) && !(buttons >> i & 1) && but->onCommand->index > 0)
                             {
                                 qDebug(logUsbControl()) << "On Button event:" << but->onCommand->text;
-                                emit button(but->onCommand);
+                                COMMAND cmd = *but->onCommand;
+                                emit button(&cmd);
                             }
                             else if ((buttons >> i & 1) && !(tempButtons >> i & 1) && but->offCommand->index > 0)
                             {
                                 qDebug(logUsbControl()) << "Off Button event:" << but->offCommand->text;
-                                emit button(but->offCommand);
+                                COMMAND cmd = *but->offCommand;
+                                emit button(&cmd);
                             }
                         }
                     }
@@ -525,7 +553,26 @@ void usbController::runTimer()
             }
             buttons = tempButtons;
 
-            // Will this work for the tuning knob?
+            if (knobs != tempKnobs) {
+                // One of the knobs has moved
+                for (unsigned char i = 0; i < 3; i = i++) {
+                    for (KNOB* kb = knobList->begin(); kb != knobList->end(); kb++) {
+                        if (kb->dev == usbDevice && kb->num == i+1) {
+                            if ((tempKnobs >> (i*8) & 0xff) != (knobs >> (i*8) & 0xff) && kb->command->index > 0)
+                            {
+                                COMMAND cmd = *kb->command;
+                                cmd.suffix = (unsigned char)(knobs >> (i * 8) & 0xff);
+                                qDebug(logUsbControl()) << "Knob event:" << cmd.command << "Value:" << cmd.suffix;
+                                emit button(&cmd);
+                            }
+                        }
+                    }
+
+                }
+            }
+            knobs = tempKnobs;
+ 
+            // Tuning knob
             jogCounter = jogCounter + (qint8)data[13];
 
         }

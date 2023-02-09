@@ -226,6 +226,7 @@ signals:
     void initUsbController(int sens);
     void sendUsbControllerCommands(QVector<COMMAND>* cmds);
     void sendUsbControllerButtons(QVector<BUTTON>* buts);
+    void sendUsbControllerKnobs(QVector<KNOB>* kbs);
     void setClusterUdpPort(int port);
     void setClusterEnableUdp(bool udp);
     void setClusterEnableTcp(bool tcp);
@@ -1068,6 +1069,7 @@ private:
     void updateUsbButtons();
 
     void resetUsbButtons();
+    void resetUsbKnobs();
     void resetUsbCommands();
 
     int oldFreqDialVal;
@@ -1147,6 +1149,7 @@ private:
     QString usbDeviceName;
     QVector<COMMAND> usbCommands;
     QVector<BUTTON> usbButtons;
+    QVector<KNOB> usbKnobs;
 #endif
 
     dxClusterClient* cluster = Q_NULLPTR;
@@ -1181,7 +1184,7 @@ Q_DECLARE_METATYPE(QList<radio_cap_packet>)
 Q_DECLARE_METATYPE(QList<spotData>)
 Q_DECLARE_METATYPE(rigstate*)
 Q_DECLARE_METATYPE(QVector <BUTTON>*)
-Q_DECLARE_METATYPE(struct BUTTON*)
+Q_DECLARE_METATYPE(QVector <KNOB>*)
 Q_DECLARE_METATYPE(QVector <COMMAND>*)
 Q_DECLARE_METATYPE(const COMMAND*)
 Q_DECLARE_METATYPE(codecType)

@@ -195,5 +195,6 @@ enum codecType { LPCM, PCMU, OPUS };
 enum passbandActions {passbandStatic, pbtInnerMove, pbtOuterMove, pbtMoving, passbandResizing};
 
 enum usbDeviceType { usbNone = 0, shuttleXpress, shuttlePro2, RC28, xBoxGamepad, unknownGamepad, eCoderPlus};
+enum usbCommandType{ commandButton, commandKnob };
 
 #endif // WFVIEWTYPES_H
