@@ -170,9 +170,9 @@ private:
     unsigned short knownUsbDevices[4][3] = {
     {shuttleXpress,0x0b33,0x0020},
     {shuttlePro2,0x0b33,0x0030},
-    {eCoderPlus,0x0c26,0x001e},
-    //{RC28,0x0c26,0x001e},
-    //{eCoderPlus, 0x1fc9, 0x0003}
+    //{eCoderPlus,0x0c26,0x001e}, // Only enable for testing!
+    {RC28,0x0c26,0x001e},
+    {eCoderPlus, 0x1fc9, 0x0003}
     };
 
 protected:
