@@ -2,6 +2,11 @@
 #define BANDBUTTONS_H
 
 #include <QWidget>
+#include <QPushButton>
+
+#include "logcategories.h"
+#include "wfviewtypes.h"
+#include "rigidentities.h"
 
 namespace Ui {
 class bandbuttons;
@@ -14,6 +19,40 @@ class bandbuttons : public QWidget
 public:
     explicit bandbuttons(QWidget *parent = nullptr);
     ~bandbuttons();
+
+    int getBSRNumber(); // returns the BSR combo box position
+
+
+    // flow:
+    // User presses button
+    // this sends request for BSR information and flags waitingForBSR=true
+    // When BSR data is received, and if we were waiting for it,
+    // then we select the frequency and mode and act upon it,
+    // by sending out a gotoFreqMode(freq, mode).
+    // Or we could grant access to the command queue and not have to do these
+    // custom functions.
+
+    // The BSR can presumably show up without having been invited.
+
+    // Most of the connections shall be to rigCommander and
+    // to the command queue in wfmain (soon to be broken out).
+    // One connection may also be made to update the UI when we change frequency and mode.
+
+signals:
+    // look at what cmdSetModeFilter does, can we depreciate it?
+    void issueCmdUniquePriority(cmds cmd, char c); // to go to a mode
+    void issueDelayedCommand(cmds cmd); // for data mode and filter
+    void issueCmdF(cmds cmd, freqt f); // go to frequency
+    void issueCmd(cmds, char); // to get BSR of a specific band
+
+    // void getBandStackReg(char band, char regCode); // no, use the queue.
+    // void gotoFreqMode(); // TODO, arguments will contain BSR data
+
+
+public slots:
+    // These should come from connections to rigCommander:
+    void acceptRigCaps(rigCapabilities rc);
+    void receiveBandStackReg(freqt freqGo, char mode, char filter, bool dataOn);
 
 private slots:
     void on_band2200mbtn_clicked();
@@ -58,10 +97,17 @@ private slots:
 
 private:
     Ui::bandbuttons *ui;
-    void bandStackBtnClick();
-
-    char bandStkBand;
+    void bandStackBtnClick(availableBands band);
+    void jumpToBandWithoutBSR(availableBands band);
+    void setUIToRig();
+    void showButton(QPushButton *b);
+    void hideButton(QPushButton *b);
     char bandStkRegCode;
+
+    bool waitingForBSR = false;
+    rigCapabilities rigCaps;
+    bool haveRigCaps = false;
+
 };
 
 #endif // BANDBUTTONS_H

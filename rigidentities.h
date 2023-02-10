@@ -109,6 +109,11 @@ struct bandType {
 
 model_kind determineRadioModel(unsigned char rigID);
 
+struct bsrRequest {
+    availableBands band;
+    int bsrPosition=1;
+};
+
 struct rigCapabilities {
     model_kind model;
     quint8 civ;

@@ -26,6 +26,7 @@ cwSender::~cwSender()
 void cwSender::showEvent(QShowEvent *event)
 {
     emit getCWSettings();
+    QMainWindow::showEvent(event);
     (void)event;
 }
 

@@ -52,6 +52,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     shut = new controllerSetup();
     abtBox = new aboutbox();
     selRad = new selectRadio();
+    bandbtns = new bandbuttons();
 
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
     qRegisterMetaType<rigCapabilities>();
@@ -364,7 +365,7 @@ void wfmain::rigConnections()
     connect(this->rig, &rigCommander::haveCWBreakMode,
             [=](const unsigned char &bm) { cw->handleBreakInMode(bm);});
 
-    connect(rig, SIGNAL(haveBandStackReg(freqt,char,char,bool)), this, SLOT(receiveBandStackReg(freqt,char,char,bool)));
+    connect(rig, SIGNAL(haveBandStackReg(freqt,char,char,bool)), this, SLOT(handleBandStackReg(freqt,char,char,bool)));
     connect(this, SIGNAL(setRitEnable(bool)), rig, SLOT(setRitEnable(bool)));
     connect(this, SIGNAL(setRitValue(int)), rig, SLOT(setRitValue(int)));
     connect(rig, SIGNAL(haveRitEnabled(bool)), this, SLOT(receiveRITStatus(bool)));
@@ -465,6 +466,43 @@ void wfmain::rigConnections()
 
     connect(this, SIGNAL(setRptDuplexOffset(freqt)), rig, SLOT(setRptDuplexOffset(freqt)));
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
+
+    // Band buttons:
+    //connect(rig, SIGNAL(haveRigID(rigCapabilities)), bandbtns, SLOT(acceptRigCaps(rigCapabilities)));
+
+    connect(rig, &rigCommander::haveRigID,
+            [=](const rigCapabilities &rigid) {
+            bandbtns->acceptRigCaps(rigid);
+            qDebug() << "Rig caps going to band buttons";
+    });
+
+    if(haveRigCaps)
+    {
+        qDebug(logGui()) << "Already had rigCaps, sending to band buttons...";
+        bandbtns->acceptRigCaps(rigCaps);
+    }
+
+    connect(rig, SIGNAL(haveBandStackReg(freqt,char,char,bool)), bandbtns, SLOT(handleBandStackReg(freqt,char,char,bool)));
+
+    connect(this->bandbtns, &bandbuttons::issueCmdF,
+            [=](const cmds cmd, freqt f) {
+        issueCmd(cmd, f);
+    });
+
+    connect(bandbtns, &bandbuttons::issueCmdUniquePriority,
+            [=](const cmds cmd, char c) {
+       issueCmdUniquePriority(cmd, c);
+    });
+
+    connect(bandbtns, &bandbuttons::issueCmd,
+            [=](cmds cmd, char c) {
+       issueCmd(cmd, c);
+    });
+
+    connect(bandbtns, &bandbuttons::issueDelayedCommand,
+            [=](cmds cmd) {
+       issueDelayedCommand(cmd);
+    });
 
     connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
     connect(this, SIGNAL(setPassband(quint16)), rig, SLOT(setPassband(quint16)));
@@ -3916,7 +3954,7 @@ void wfmain::doCmd(commandtype cmddata)
             char band = (*std::static_pointer_cast<char>(data));
             lastRequestedBand = (availableBands)band;
             bandStkBand = rigCaps.bsr[(availableBands)band]; // 23cm Needs fixing
-            bandStkRegCode = ui->bandStkPopdown->currentIndex() + 1;
+            bandStkRegCode = bandbtns->getBSRNumber(); // TODO, pass as argument
             emit getBandStackReg(bandStkBand, bandStkRegCode);
             break;
         }
@@ -4489,8 +4527,10 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 {
     // Note: We intentionally request rigID several times
     // because without rigID, we can't do anything with the waterfall.
+    bandbtns->acceptRigCaps(rigCaps);
     if(haveRigCaps)
     {
+        // Note: This line makes it difficult to accept a different radio connecting.
         return;
     } else {
 
@@ -6013,7 +6053,7 @@ void wfmain::on_freqDial_valueChanged(int value)
     }
 }
 
-void wfmain::receiveBandStackReg(freqt freqGo, char mode, char filter, bool dataOn)
+void wfmain::handleBandStackReg(freqt freqGo, char mode, char filter, bool dataOn)
 {
     // read the band stack and apply by sending out commands
 
@@ -7937,8 +7977,8 @@ void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    qDebug(logSystem()) << "Query for repeater access mode (tone, tsql, etc) sent.";
-    issueDelayedCommand(cmdGetRptAccessMode);
+    bandbtns->show();
+    //emit getRigID();
 }
 
 // ----------   color helper functions:   ---------- //

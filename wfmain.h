@@ -36,6 +36,7 @@
 #include "satellitesetup.h"
 #include "transceiveradjustments.h"
 #include "cwsender.h"
+#include "bandbuttons.h"
 #include "udpserver.h"
 #include "qledlabel.h"
 #include "rigctld.h"
@@ -289,7 +290,7 @@ private slots:
     void handleScopeOutOfRange(bool outOfRange);
     void receivePTTstatus(bool pttOn);
     void receiveDataModeStatus(bool dataOn);
-    void receiveBandStackReg(freqt f, char mode, char filter, bool dataOn); // freq, mode, (filter,) datamode
+    void handleBandStackReg(freqt f, char mode, char filter, bool dataOn); // freq, mode, (filter,) datamode
     void receiveRITStatus(bool ritEnabled);
     void receiveRITValue(int ritValHz);
     void receiveModInput(rigInput input, bool dataOn);
@@ -1100,6 +1101,7 @@ private:
     aboutbox *abtBox;
     selectRadio *selRad;
     loggingWindow *logWindow;
+    bandbuttons *bandbtns;
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
