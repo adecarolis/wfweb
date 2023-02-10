@@ -537,14 +537,12 @@ void usbController::runTimer()
                             if ((tempButtons >> i & 1) && !(buttons >> i & 1) && but->onCommand->index > 0)
                             {
                                 qDebug(logUsbControl()) << "On Button event:" << but->onCommand->text;
-                                COMMAND cmd = *but->onCommand;
-                                emit button(&cmd);
+                                emit button(but->onCommand);
                             }
                             else if ((buttons >> i & 1) && !(tempButtons >> i & 1) && but->offCommand->index > 0)
                             {
                                 qDebug(logUsbControl()) << "Off Button event:" << but->offCommand->text;
-                                COMMAND cmd = *but->offCommand;
-                                emit button(&cmd);
+                                emit button(but->offCommand);
                             }
                         }
                     }
@@ -555,7 +553,9 @@ void usbController::runTimer()
             if (knobs != tempKnobs) {
                 // One of the knobs has moved
                 for (unsigned char i = 0; i < 3; i++) {
-                    knobValues[i] = knobValues[i] + (qint8)((knobs >> (i * 8)) & 0xff);
+                    if ((tempKnobs >> (i * 8) & 0xff) != (knobs >> (i * 8) & 0xff)) {
+                        knobValues[i] = knobValues[i] + (qint8)((knobs >> (i * 8)) & 0xff);
+                    }
                 }
             }
             knobs = tempKnobs;
@@ -587,7 +587,8 @@ void usbController::runTimer()
                 for (unsigned char i = 0; i < 3; i++) {
                     for (KNOB* kb = knobList->begin(); kb != knobList->end(); kb++) {
                         if (kb && kb->dev == usbDevice && kb->num == i + 1 && knobValues[i]) {
-                            COMMAND cmd = *kb->command;
+                            COMMAND cmd;
+                            cmd.command = kb->command->command;
                             cmd.suffix = (quint8)knobValues[i];
                             qInfo(logUsbControl()) << "Sending Knob:" << kb->num << "Command:" << cmd.index << ":Value:" << cmd.suffix;
                             emit button(&cmd);
