@@ -231,7 +231,7 @@ void usbController::run()
                 qInfo(logUsbControl()) << "Button Guide" << pressed;
             });
 
-            emit newDevice(usbDevice, buttonList, knobList, commands, &mutex); // Let the UI know we have a new controller
+            emit newDevice(usbDevice, buttonList, knobList, commands, mutex); // Let the UI know we have a new controller
             return;
         }
     }
