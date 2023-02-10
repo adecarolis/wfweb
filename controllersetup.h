@@ -60,9 +60,9 @@ private:
     QVector<COMMAND>* commands;
     BUTTON* currentButton = Q_NULLPTR;
     KNOB* currentKnob = Q_NULLPTR;
-    QComboBox onEvent;
-    QComboBox offEvent;
-    QComboBox knobEvent;
+    QComboBox* onEvent = Q_NULLPTR;
+    QComboBox* offEvent = Q_NULLPTR;
+    QComboBox* knobEvent = Q_NULLPTR;
     QGraphicsProxyWidget* onEventProxy = Q_NULLPTR;
     QGraphicsProxyWidget* offEventProxy = Q_NULLPTR;
     QGraphicsProxyWidget* knobEventProxy = Q_NULLPTR;

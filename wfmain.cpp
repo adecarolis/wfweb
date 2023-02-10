@@ -9337,9 +9337,9 @@ void wfmain::resetUsbKnobs()
 #ifdef USB_CONTROLLER
     usbKnobs.clear();
     // eCoder
-    usbKnobs.append(KNOB(eCoderPlus, 1, QRect(120, 153, 72, 27), Qt::red, &usbCommands[0]));
-    usbKnobs.append(KNOB(eCoderPlus, 2, QRect(242, 153, 72, 27), Qt::red, &usbCommands[0]));
-    usbKnobs.append(KNOB(eCoderPlus, 3, QRect(362, 153, 72, 27), Qt::red, &usbCommands[0]));
+    usbKnobs.append(KNOB(eCoderPlus, 1, QRect(120, 153, 72, 27), Qt::green, &usbCommands[0]));
+    usbKnobs.append(KNOB(eCoderPlus, 2, QRect(242, 153, 72, 27), Qt::green, &usbCommands[0]));
+    usbKnobs.append(KNOB(eCoderPlus, 3, QRect(362, 153, 72, 27), Qt::green, &usbCommands[0]));
     emit sendUsbControllerKnobs(&usbKnobs);
 
 #endif
@@ -9406,6 +9406,15 @@ void wfmain::resetUsbCommands()
     usbCommands.append(COMMAND(num++, "Swap VFOs", commandButton, cmdVFOSwap, 0x0));
     usbCommands.append(COMMAND(num++, "AF Gain", commandKnob, cmdSetAfGain, 0xff));
     usbCommands.append(COMMAND(num++, "RF Gain", commandKnob, cmdSetRxRfGain, 0xff));
+    usbCommands.append(COMMAND(num++, "TX Power", commandKnob, cmdSetTxPower, 0xff));
+    usbCommands.append(COMMAND(num++, "Mic Gain", commandKnob, cmdSetMicGain, 0xff));
+    usbCommands.append(COMMAND(num++, "Mod Level", commandKnob, cmdSetModLevel, 0xff));
+    usbCommands.append(COMMAND(num++, "Squelch", commandKnob, cmdSetSql, 0xff));
+    usbCommands.append(COMMAND(num++, "IF Shift", commandKnob, cmdSetIFShift, 0xff));
+    usbCommands.append(COMMAND(num++, "Inner PBT", commandKnob, cmdSetTPBFInner, 0xff));
+    usbCommands.append(COMMAND(num++, "Outer PBT", commandKnob, cmdSetTPBFOuter, 0xff));
+    usbCommands.append(COMMAND(num++, "CW Pitch", commandKnob, cmdSetCwPitch, 0xff));
+    usbCommands.append(COMMAND(num++, "CW Speed", commandKnob, cmdSetKeySpeed, 0xff));
     emit sendUsbControllerCommands(&usbCommands);
 #endif
 }
