@@ -102,6 +102,7 @@ void usbController::receiveKnobs(QVector<KNOB>* kbs)
     knobList = kbs;
 }
 
+
 void usbController::run()
 {
     if (commands == Q_NULLPTR || hidStatus) {
@@ -289,6 +290,7 @@ void usbController::run()
 void usbController::runTimer()
 {
     int res=1;
+
     if (!this->handle) {
         // Something bad happened!
         QTimer::singleShot(25, this, SLOT(runTimer()));
@@ -548,7 +550,7 @@ void usbController::runTimer()
 
             if (knobs != tempKnobs) {
                 // One of the knobs has moved
-                for (unsigned char i = 0; i < 3; i = i++) {
+                for (unsigned char i = 0; i < 3; i++) {
                     knobValues[i] = knobValues[i] + (qint8)((knobs >> (i * 8)) & 0xff);
                 }
             }
@@ -578,9 +580,9 @@ void usbController::runTimer()
             }
 
             if (usbDevice == eCoderPlus) {
-                for (unsigned char i = 0; i < 3; i = i++) {
+                for (unsigned char i = 0; i < 3; i++) {
                     for (KNOB* kb = knobList->begin(); kb != knobList->end(); kb++) {
-                        if (kb->dev == usbDevice && kb->num == i + 1 && knobValues[i]) {
+                        if (kb && kb->dev == usbDevice && kb->num == i + 1 && knobValues[i]) {
                             COMMAND cmd = *kb->command;
                             cmd.suffix = (quint8)knobValues[i];
                             qInfo(logUsbControl()) << "Sending Knob:" << kb->num << "Command:" << cmd.index << ":Value:" << cmd.suffix;
