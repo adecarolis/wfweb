@@ -17,6 +17,7 @@ controllerSetup::controllerSetup(QWidget* parent) :
 
 controllerSetup::~controllerSetup()
 {
+    /*
     // Remove any existing button text:
     for (QGraphicsItem* item : scene->items())
     {
@@ -27,11 +28,6 @@ controllerSetup::~controllerSetup()
         delete txt;
     }
 
-    if (bgImage != Q_NULLPTR) {
-        scene->removeItem(bgImage);
-        delete bgImage;
-        bgImage = Q_NULLPTR;
-    }
     if (onEventProxy != Q_NULLPTR) {
         scene->removeItem(onEventProxy);
         onEventProxy = Q_NULLPTR;
@@ -50,7 +46,14 @@ controllerSetup::~controllerSetup()
         delete knobEvent;
         knobEvent = Q_NULLPTR;
     }
-    
+    */
+
+    if (bgImage != Q_NULLPTR) {
+        scene->removeItem(bgImage);
+        delete bgImage;
+        bgImage = Q_NULLPTR;
+    }
+
     delete textItem;
     delete scene;
     delete ui;

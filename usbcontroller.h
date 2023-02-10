@@ -10,6 +10,7 @@
 #include <QGraphicsTextItem>
 #include <QColor>
 #include <QVector>
+#include <QList>
 
 #if defined(USB_CONTROLLER) && QT_VERSION < QT_VERSION_CHECK(6,0,0)
 #include <QGamepad>
@@ -160,6 +161,7 @@ private:
     QString serial="<none>";
     QString path = "";
     int sensitivity = 1;
+    QList<int> knobValues;
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QGamepad* gamepad=Q_NULLPTR;
 #endif
