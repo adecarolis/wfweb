@@ -9122,6 +9122,13 @@ void wfmain::on_enableUsbChk_clicked(bool checked)
         emit sendUsbControllerButtons(&usbButtons);
         emit sendUsbControllerKnobs(&usbKnobs);
     }
+    else {
+        if (shut != Q_NULLPTR) {
+            if (shut->isVisible()) {
+                shut->hide();
+            }
+        }
+    }
 #endif
 }
 
