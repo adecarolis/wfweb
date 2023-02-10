@@ -521,7 +521,7 @@ void usbController::runTimer()
             000000000000000000000010 = button1
             */
             quint32 tempButtons = ((quint8)data[3] << 16) | ((quint8)data[2] << 8) | ((quint8)data[1] & 0xff);
-            quint32 tempKnobs = ((quint8)data[13] << 24) | ((quint8)data[14] << 16) | ((quint8)data[15] << 8) | ((quint8)data[16] & 0xff);
+            quint32 tempKnobs = ((quint8)data[14] << 16) | ((quint8)data[15] << 8) | ((quint8)data[16] & 0xff);
 
             if (buttons != tempButtons)
             {
