@@ -164,6 +164,7 @@ private:
     QString path = "";
     int sensitivity = 1;
     QList<int> knobValues;
+    QList<quint8> knobSend;
     QMutex* mutex=Q_NULLPTR;
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QGamepad* gamepad=Q_NULLPTR;

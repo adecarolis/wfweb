@@ -286,7 +286,9 @@ void usbController::run()
         else if (usbDevice == eCoderPlus)
         {
             knobValues.clear();
-            knobValues.append({ 0,0,0});
+            knobSend.clear();
+            knobValues.append({ 0,0,0 });
+            knobSend.append({ 0,0,0 });
         }
 
 
@@ -548,7 +550,7 @@ void usbController::runTimer()
             000000000000000000000010 = button1
             */
             quint32 tempButtons = ((quint8)data[3] << 16) | ((quint8)data[2] << 8) | ((quint8)data[1] & 0xff);
-            quint32 tempKnobs = ((quint8)data[14] << 16) | ((quint8)data[15] << 8) | ((quint8)data[16] & 0xff);
+            quint32 tempKnobs = ((quint8)data[16] << 16) | ((quint8)data[15] << 8) | ((quint8)data[14] & 0xff);
 
             if (buttons != tempButtons)
             {
@@ -612,8 +614,19 @@ void usbController::runTimer()
                         if (kb && kb->dev == usbDevice && kb->num == i + 1 && knobValues[i]) {
                             COMMAND cmd;
                             cmd.command = kb->command->command;
-                            cmd.suffix = (quint8)knobValues[i];
-                            qInfo(logUsbControl()) << "Sending Knob:" << kb->num << "Command:" << cmd.index << ":Value:" << cmd.suffix << "Raw value:" << knobValues[i];
+                            if (knobSend[i] + knobValues[i] <= 0)
+                            {
+                                knobSend[i] = 0;
+                            }
+                            else if (knobSend[i] + knobValues[i] >= 255)
+                            {
+                                knobSend[i] = 255;
+                            }
+                            else {
+                                knobSend[i] = knobSend[i] + knobValues[i];
+                            }
+                            cmd.suffix = knobSend[i];
+                            qInfo(logUsbControl()) << "Sending Knob:" << kb->num << "Command:" << cmd.command << " Value:" << cmd.suffix << "Raw value:" << knobValues[i];
                             emit button(&cmd);
                             knobValues[i] = 0;
                         }
