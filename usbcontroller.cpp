@@ -38,9 +38,10 @@ usbController::~usbController()
 #endif
 }
 
-void usbController::init(int sens)
+void usbController::init(int sens, QMutex* mut)
 {
-    sensitivity = sens;
+    this->mutex = mut;
+    this->sensitivity = sens;
     emit sendSensitivity(sensitivity);
 
     if (HID_API_VERSION == HID_API_MAKE_VERSION(hid_version()->major, hid_version()->minor, hid_version()->patch)) {
@@ -207,7 +208,7 @@ void usbController::run()
                 qInfo(logUsbControl()) << "Button Guide" << pressed;
             });
 
-            emit newDevice(usbDevice, buttonList, knobList, commands); // Let the UI know we have a new controller
+            emit newDevice(usbDevice, buttonList, knobList, commands, &usbMutex); // Let the UI know we have a new controller
             return;
         }
     }
@@ -267,7 +268,7 @@ void usbController::run()
 
 
         // Let the UI know we have a new controller
-        emit newDevice(usbDevice, buttonList, knobList, commands); 
+        emit newDevice(usbDevice, buttonList, knobList, commands, mutex); 
         // Run the periodic timer to get data
         QTimer::singleShot(25, this, SLOT(runTimer()));
     }
@@ -297,13 +298,16 @@ void usbController::runTimer()
         res = 0;
     }
 
+    QMutexLocker locker(mutex);
+
+
     while (res > 0) {
         QByteArray data(HIDDATALENGTH, 0x0);
         res = hid_read(this->handle, (unsigned char*)data.data(), HIDDATALENGTH);
         if (res < 0)
         {
             qInfo(logUsbControl()) << "USB Device disconnected" << this->product;
-            emit newDevice(0, buttonList, knobList, commands);
+            emit newDevice(0, buttonList, knobList, commands, mutex);
             this->product = "";
             this->manufacturer = "";
             this->serial = "<none>";
@@ -602,6 +606,7 @@ void usbController::runTimer()
         }
 
     }
+
     // Run every 25ms
     QTimer::singleShot(25, this, SLOT(runTimer()));
 }

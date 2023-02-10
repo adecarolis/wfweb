@@ -1671,7 +1671,7 @@ void wfmain::setupUsbControllerDevice()
     connect(usbControllerDev, SIGNAL(doShuttle(bool, unsigned char)), this, SLOT(doShuttle(bool, unsigned char)));
     connect(usbControllerDev, SIGNAL(button(const COMMAND*)), this, SLOT(buttonControl(const COMMAND*)));
     connect(usbControllerDev, SIGNAL(setBand(int)), this, SLOT(setBand(int)));
-    connect(usbControllerDev, SIGNAL(newDevice(unsigned char, QVector<BUTTON>*, QVector<KNOB>*, QVector<COMMAND>*)), shut, SLOT(newDevice(unsigned char, QVector<BUTTON>*, QVector<KNOB>*, QVector<COMMAND>*)));
+    connect(usbControllerDev, SIGNAL(newDevice(unsigned char, QVector<BUTTON>*, QVector<KNOB>*, QVector<COMMAND>*, QMutex*)), shut, SLOT(newDevice(unsigned char, QVector<BUTTON>*, QVector<KNOB>*, QVector<COMMAND>*,QMutex*)));
     usbControllerThread->start(QThread::LowestPriority);
     
     connect(this, SIGNAL(sendUsbControllerCommands(QVector<COMMAND>*)), usbControllerDev, SLOT(receiveCommands(QVector<COMMAND>*)));
@@ -1680,7 +1680,7 @@ void wfmain::setupUsbControllerDevice()
     connect(shut, SIGNAL(sendSensitivity(int)), usbControllerDev, SLOT(receiveSensitivity(int)));
     connect(shut, SIGNAL(sendSensitivity(int)), this, SLOT(receiveUsbSensitivity(int)));
     connect(usbControllerDev, SIGNAL(sendSensitivity(int)), shut, SLOT(receiveSensitivity(int)));
-    connect(this, SIGNAL(initUsbController(int)), usbControllerDev, SLOT(init(int)));
+    connect(this, SIGNAL(initUsbController(int,QMutex*)), usbControllerDev, SLOT(init(int,QMutex*)));
 #endif
 }
 
@@ -2440,11 +2440,14 @@ void wfmain::loadSettings()
     ui->usbButtonsResetBtn->setEnabled(prefs.enableUSBControllers);
     ui->usbCommandsResetBtn->setEnabled(prefs.enableUSBControllers);
     ui->usbResetLbl->setVisible(prefs.enableUSBControllers);
+    
+    /*Ensure that no operations on the usb commands/buttons/knobs take place*/
+    QMutexLocker locker(&usbMutex);
 
     if (prefs.enableUSBControllers) {
         // Setup USB Controller
         setupUsbControllerDevice();
-        emit initUsbController(prefs.usbSensitivity);
+        emit initUsbController(prefs.usbSensitivity, &usbMutex);
         emit sendUsbControllerCommands(&usbCommands);
         emit sendUsbControllerButtons(&usbButtons);
         emit sendUsbControllerKnobs(&usbKnobs);
@@ -2514,7 +2517,6 @@ void wfmain::loadSettings()
         }
         settings->endArray();
     }
-
 
     int numKnobs = settings->beginReadArray("Knobs");
     // This is the last time the knobs were changed, (v1.58)
@@ -2954,6 +2956,7 @@ void wfmain::saveSettings()
     settings->setValue("EnableUSBControllers", prefs.enableUSBControllers);
     settings->setValue("USBSensitivity", prefs.usbSensitivity);
 
+    QMutexLocker locker(&usbMutex);
     settings->beginWriteArray("Buttons");
     for (int nb = 0; nb < usbButtons.count(); nb++)
     {
@@ -9117,7 +9120,7 @@ void wfmain::on_enableUsbChk_clicked(bool checked)
     if (checked) {
         // Setup USB Controller
         setupUsbControllerDevice();
-        emit initUsbController(prefs.usbSensitivity);
+        emit initUsbController(prefs.usbSensitivity, &usbMutex);
         emit sendUsbControllerCommands(&usbCommands);
         emit sendUsbControllerButtons(&usbButtons);
         emit sendUsbControllerKnobs(&usbKnobs);
@@ -9263,6 +9266,7 @@ void wfmain::on_cwButton_clicked()
 void wfmain::resetUsbButtons()
 {
 #ifdef USB_CONTROLLER
+    qInfo(logUsbControl) << "Resetting USB Buttons to defaults";
     usbButtons.clear();
 
     // ShuttleXpress
@@ -9342,6 +9346,7 @@ void wfmain::resetUsbButtons()
 void wfmain::resetUsbKnobs()
 {
 #ifdef USB_CONTROLLER
+    qInfo(logUsbControl) << "Resetting USB Knobs to defaults";
     usbKnobs.clear();
     // eCoder
     usbKnobs.append(KNOB(eCoderPlus, 1, QRect(120, 153, 72, 27), Qt::green, &usbCommands[0]));
@@ -9355,6 +9360,7 @@ void wfmain::resetUsbKnobs()
 void wfmain::resetUsbCommands()
 {
 #ifdef USB_CONTROLLER
+    qInfo(logUsbControl) << "Resetting USB Commands to defaults";
     usbCommands.clear();
     int num = 0;
     usbCommands.append(COMMAND(num++, "None", commandButton, cmdNone, 0x0));

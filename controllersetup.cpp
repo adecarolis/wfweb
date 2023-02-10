@@ -70,6 +70,9 @@ void controllerSetup::mousePressed(QPoint p)
     }
         
     bool found = false;
+    QMutexLocker locker(mutex);
+
+
     for (BUTTON& b : *buttons)
     {
         if (b.dev == currentDevice && b.pos.contains(p))
@@ -119,20 +122,25 @@ void controllerSetup::mousePressed(QPoint p)
         offEvent->hide();
         knobEvent->hide();
     }
+
 }
 
 void controllerSetup::onEventIndexChanged(int index) {
     Q_UNUSED(index);
+
     if (currentButton != Q_NULLPTR && onEvent->currentData().toInt() < commands->size()) {
+        QMutexLocker locker(mutex);
         currentButton->onCommand = &commands->at(onEvent->currentData().toInt());
         currentButton->onText->setPlainText(currentButton->onCommand->text);
     }
+
 }
 
 
 void controllerSetup::offEventIndexChanged(int index) {
     Q_UNUSED(index);
     if (currentButton != Q_NULLPTR && offEvent->currentData().toInt() < commands->size()) {
+        QMutexLocker locker(mutex);
         currentButton->offCommand = &commands->at(offEvent->currentData().toInt());
         currentButton->offText->setPlainText(currentButton->offCommand->text);
     }
@@ -141,17 +149,21 @@ void controllerSetup::offEventIndexChanged(int index) {
 void controllerSetup::knobEventIndexChanged(int index) {
     Q_UNUSED(index);
     if (currentKnob != Q_NULLPTR && knobEvent->currentData().toInt() < commands->size()) {
+        QMutexLocker locker(mutex);
         currentKnob->command = &commands->at(knobEvent->currentData().toInt());
         currentKnob->text->setPlainText(currentKnob->command->text);
     }
 }
 
 
-void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd)
+void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut)
 {
     buttons = but;
     knobs = kb;
     commands = cmd;
+    mutex = mut;
+
+    QMutexLocker locker(mutex);
 
     // Remove any existing button text:
     for (QGraphicsItem* item : scene->items())

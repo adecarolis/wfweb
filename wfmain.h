@@ -223,7 +223,7 @@ signals:
     void openShuttle();
     void requestRigState();
     void stateUpdated();
-    void initUsbController(int sens);
+    void initUsbController(int sens, QMutex* mutex);
     void sendUsbControllerCommands(QVector<COMMAND>* cmds);
     void sendUsbControllerButtons(QVector<BUTTON>* buts);
     void sendUsbControllerKnobs(QVector<KNOB>* kbs);
@@ -1150,6 +1150,7 @@ private:
     QVector<COMMAND> usbCommands;
     QVector<BUTTON> usbButtons;
     QVector<KNOB> usbKnobs;
+    QMutex usbMutex;
 #endif
 
     dxClusterClient* cluster = Q_NULLPTR;

@@ -11,6 +11,7 @@
 #include <QColor>
 #include <QVector>
 #include <QList>
+#include <QMutex>
 
 #if defined(USB_CONTROLLER) && QT_VERSION < QT_VERSION_CHECK(6,0,0)
 #include <QGamepad>
@@ -120,7 +121,7 @@ public:
     ~usbController();
 
 public slots:
-    void init(int sens);
+    void init(int sens, QMutex *mut);
     void run();
     void runTimer();
     void ledControl(bool on, unsigned char num);
@@ -137,7 +138,7 @@ signals:
     void doShuttle(bool plus, quint8 level);
     void setBand(int band);
     void button(const COMMAND* cmd);
-    void newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd);
+    void newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut);
     void sendSensitivity(int val);
 
 private:
@@ -162,6 +163,7 @@ private:
     QString path = "";
     int sensitivity = 1;
     QList<int> knobValues;
+    QMutex* mutex=Q_NULLPTR;
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QGamepad* gamepad=Q_NULLPTR;
 #endif

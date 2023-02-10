@@ -38,7 +38,7 @@ signals:
     void sendSensitivity(int val);
 
 public slots:
-    void newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd);
+    void newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut);
     void mousePressed(QPoint p);
     void onEventIndexChanged(int index);
     void offEventIndexChanged(int index);
@@ -67,7 +67,7 @@ private:
     QGraphicsProxyWidget* offEventProxy = Q_NULLPTR;
     QGraphicsProxyWidget* knobEventProxy = Q_NULLPTR;
     QString deviceName;
-
+    QMutex* mutex;
 };
 
 
