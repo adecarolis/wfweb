@@ -613,7 +613,7 @@ void usbController::runTimer()
                             COMMAND cmd;
                             cmd.command = kb->command->command;
                             cmd.suffix = (quint8)knobValues[i];
-                            qInfo(logUsbControl()) << "Sending Knob:" << kb->num << "Command:" << cmd.index << ":Value:" << cmd.suffix;
+                            qInfo(logUsbControl()) << "Sending Knob:" << kb->num << "Command:" << cmd.index << ":Value:" << cmd.suffix << "Raw value:" << knobValues[i];
                             emit button(&cmd);
                             knobValues[i] = 0;
                         }
