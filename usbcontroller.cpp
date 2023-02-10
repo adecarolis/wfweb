@@ -614,16 +614,16 @@ void usbController::runTimer()
                         if (kb && kb->dev == usbDevice && kb->num == i + 1 && knobValues[i]) {
                             COMMAND cmd;
                             cmd.command = kb->command->command;
-                            if (knobSend[i] + knobValues[i] <= 0)
+                            if (knobSend[i] + (knobValues[i] * 10) <= 0)
                             {
                                 knobSend[i] = 0;
                             }
-                            else if (knobSend[i] + knobValues[i] >= 255)
+                            else if (knobSend[i] + (knobValues[i] * 10) >= 255)
                             {
                                 knobSend[i] = 255;
                             }
                             else {
-                                knobSend[i] = knobSend[i] + knobValues[i];
+                                knobSend[i] = knobSend[i] + (knobValues[i] * 10);
                             }
                             cmd.suffix = knobSend[i];
                             qInfo(logUsbControl()) << "Sending Knob:" << kb->num << "Command:" << cmd.command << " Value:" << cmd.suffix << "Raw value:" << knobValues[i];
