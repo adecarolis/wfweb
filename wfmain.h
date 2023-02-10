@@ -413,30 +413,6 @@ private slots:
 
     void on_freqDial_valueChanged(int value);
 
-    void on_band6mbtn_clicked();
-
-    void on_band10mbtn_clicked();
-
-    void on_band12mbtn_clicked();
-
-    void on_band15mbtn_clicked();
-
-    void on_band17mbtn_clicked();
-
-    void on_band20mbtn_clicked();
-
-    void on_band30mbtn_clicked();
-
-    void on_band40mbtn_clicked();
-
-    void on_band60mbtn_clicked();
-
-    void on_band80mbtn_clicked();
-
-    void on_band160mbtn_clicked();
-
-    void on_bandGenbtn_clicked();
-
     void on_aboutBtn_clicked();
 
     void on_fStoBtn_clicked();
@@ -550,22 +526,6 @@ private slots:
     void on_ritTuneDial_valueChanged(int value);
 
     void on_ritEnableChk_clicked(bool checked);
-
-    void on_band23cmbtn_clicked();
-
-    void on_band70cmbtn_clicked();
-
-    void on_band2mbtn_clicked();
-
-    void on_band4mbtn_clicked();
-
-    void on_band630mbtn_clicked();
-
-    void on_band2200mbtn_clicked();
-
-    void on_bandAirbtn_clicked();
-
-    void on_bandWFMbtn_clicked();
 
     void on_rigCIVManualAddrChk_clicked(bool checked);
 
@@ -760,6 +720,8 @@ private slots:
 
     void on_cwButton_clicked();
 
+    void on_showBandsBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -790,7 +752,6 @@ private:
     void computePlasma();
     void showHideSpectrum(bool show);
     void getInitialRigState();
-    void setBandButtons();
     void showButton(QPushButton *btn);
     void hideButton(QPushButton *btn);
 
@@ -1031,6 +992,7 @@ private:
     void issueDelayedCommandPriority(cmds cmd);
     void issueDelayedCommandUnique(cmds cmd);
     void changeSliderQuietly(QSlider *slider, int value);
+    void showAndRaiseWidget(QWidget *w);
     void statusFromSliderPercent(QString name, int percentValue);
     void statusFromSliderRaw(QString name, int rawValue);
 

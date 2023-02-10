@@ -968,11 +968,6 @@ void wfmain::setupMainUI()
 {
     createSettingsListItems();
 
-    ui->bandStkLastUsedBtn->setVisible(false);
-    ui->bandStkVoiceBtn->setVisible(false);
-    ui->bandStkDataBtn->setVisible(false);
-    ui->bandStkCWBtn->setVisible(false);
-
     ui->baudRateCombo->insertItem(0, QString("115200"), 115200);
     ui->baudRateCombo->insertItem(1, QString("57600"), 57600);
     ui->baudRateCombo->insertItem(2, QString("38400"), 38400);
@@ -4709,8 +4704,6 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         }
         ui->scopeBWCombo->blockSignals(false);
 
-        setBandButtons();
-
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
 
@@ -6080,170 +6073,9 @@ void wfmain::handleBandStackReg(freqt freqGo, char mode, char filter, bool dataO
     receiveMode((unsigned char) mode, (unsigned char) filter); // update UI
 }
 
-void wfmain::bandStackBtnClick()
-{
-    bandStkRegCode = ui->bandStkPopdown->currentIndex() + 1;
-    waitingForBandStackRtn = true; // so that when the return is parsed we jump to this frequency/mode info
-    emit getBandStackReg(bandStkBand, bandStkRegCode);
-}
-
 void wfmain::setBand(int band)
 {
     issueCmdUniquePriority(cmdGetBandStackReg, (char)band);
-    //bandStackBtnClick();
-}
-
-void wfmain::on_band23cmbtn_clicked()
-{
-    bandStkBand = rigCaps.bsr[band23cm]; // 23cm
-    bandStackBtnClick();
-}
-
-void wfmain::on_band70cmbtn_clicked()
-{
-    bandStkBand = rigCaps.bsr[band70cm]; // 70cm
-    bandStackBtnClick();
-}
-
-void wfmain::on_band2mbtn_clicked()
-{
-    bandStkBand = rigCaps.bsr[band2m]; // 2m
-    bandStackBtnClick();
-}
-
-void wfmain::on_bandAirbtn_clicked()
-{
-    bandStkBand = rigCaps.bsr[bandAir]; // VHF Aircraft
-    bandStackBtnClick();
-}
-
-void wfmain::on_bandWFMbtn_clicked()
-{
-    bandStkBand = rigCaps.bsr[bandWFM]; // Broadcast FM
-    bandStackBtnClick();
-}
-
-void wfmain::on_band4mbtn_clicked()
-{
-    // There isn't a BSR for this one:
-    freqt f;
-    if ((currentMode == modeAM) || (currentMode == modeFM))
-    {
-        f.Hz = (70.260) * 1E6;
-    } else {
-        f.Hz = (70.200) * 1E6;
-    }
-    issueCmd(cmdSetFreq, f);
-    //emit setFrequency(0,f);
-    issueDelayedCommandUnique(cmdGetFreq);
-    ui->tabWidget->setCurrentIndex(0);
-}
-
-void wfmain::on_band6mbtn_clicked()
-{
-    bandStkBand = 0x10; // 6 meters
-    bandStackBtnClick();
-}
-
-void wfmain::on_band10mbtn_clicked()
-{
-    bandStkBand = 0x09; // 10 meters
-    bandStackBtnClick();
-}
-
-void wfmain::on_band12mbtn_clicked()
-{
-    bandStkBand = 0x08; // 12 meters
-    bandStackBtnClick();
-}
-
-void wfmain::on_band15mbtn_clicked()
-{
-    bandStkBand = 0x07; // 15 meters
-    bandStackBtnClick();
-}
-
-void wfmain::on_band17mbtn_clicked()
-{
-    bandStkBand = 0x06; // 17 meters
-    bandStackBtnClick();
-}
-
-void wfmain::on_band20mbtn_clicked()
-{
-    bandStkBand = 0x05; // 20 meters
-    bandStackBtnClick();
-}
-
-void wfmain::on_band30mbtn_clicked()
-{
-    bandStkBand = 0x04; // 30 meters
-    bandStackBtnClick();
-}
-
-void wfmain::on_band40mbtn_clicked()
-{
-    bandStkBand = 0x03; // 40 meters
-    bandStackBtnClick();
-}
-
-void wfmain::on_band60mbtn_clicked()
-{
-    // This one is tricky. There isn't a band stack register on the
-    // 7300 for 60 meters, so we just drop to the middle of the band:
-    // Channel 1: 5330.5 kHz
-    // Channel 2: 5346.5 kHz
-    // Channel 3: 5357.0 kHz
-    // Channel 4: 5371.5 kHz
-    // Channel 5: 5403.5 kHz
-    // Really not sure what the best strategy here is, don't want to
-    // clutter the UI with 60M channel buttons...
-    freqt f;
-    f.Hz = (5.3305) * 1E6;
-    issueCmd(cmdSetFreq, f);
-    //emit setFrequency(0,f);
-    issueDelayedCommandUnique(cmdGetFreq);
-    ui->tabWidget->setCurrentIndex(0);
-}
-
-void wfmain::on_band80mbtn_clicked()
-{
-    bandStkBand = 0x02; // 80 meters
-    bandStackBtnClick();
-}
-
-void wfmain::on_band160mbtn_clicked()
-{
-    bandStkBand = 0x01; // 160 meters
-    bandStackBtnClick();
-}
-
-void wfmain::on_band630mbtn_clicked()
-{
-    freqt f;
-    f.Hz = 475 * 1E3;
-    //emit setFrequency(0,f);
-    issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
-    ui->tabWidget->setCurrentIndex(0);
-}
-
-void wfmain::on_band2200mbtn_clicked()
-{
-    freqt f;
-    f.Hz = 136 * 1E3;
-    //emit setFrequency(0,f);
-    issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
-    ui->tabWidget->setCurrentIndex(0);
-}
-
-void wfmain::on_bandGenbtn_clicked()
-{
-    // "GENE" general coverage frequency outside the ham bands
-    // which does probably include any 60 meter frequencies used.
-    bandStkBand = rigCaps.bsr[bandGen]; // GEN
-    bandStackBtnClick();
 }
 
 void wfmain::on_aboutBtn_clicked()
@@ -6806,6 +6638,22 @@ void wfmain::setRadioTimeDateSend()
     issueCmd(cmdSetDate, datesetpoint);
     issueCmd(cmdSetUTCOffset, utcsetting);
     waitingToSetTimeDate = false;
+}
+
+void wfmain::showAndRaiseWidget(QWidget *w)
+{
+    if(!w)
+        return;
+
+    if(w->isMinimized())
+    {
+        w->raise();
+        w->activateWindow();
+        return;
+    }
+    w->show();
+    w->raise();
+    w->activateWindow();
 }
 
 void wfmain::changeSliderQuietly(QSlider *slider, int value)
@@ -7456,109 +7304,6 @@ void wfmain::showButton(QPushButton *btn)
 void wfmain::hideButton(QPushButton *btn)
 {
     btn->setHidden(true);
-}
-
-void wfmain::setBandButtons()
-{
-    // Turn off each button first:
-    hideButton(ui->band23cmbtn);
-    hideButton(ui->band70cmbtn);
-    hideButton(ui->band2mbtn);
-    hideButton(ui->bandAirbtn);
-    hideButton(ui->bandWFMbtn);
-    hideButton(ui->band4mbtn);
-    hideButton(ui->band6mbtn);
-
-    hideButton(ui->band10mbtn);
-    hideButton(ui->band12mbtn);
-    hideButton(ui->band15mbtn);
-    hideButton(ui->band17mbtn);
-    hideButton(ui->band20mbtn);
-    hideButton(ui->band30mbtn);
-    hideButton(ui->band40mbtn);
-    hideButton(ui->band60mbtn);
-    hideButton(ui->band80mbtn);
-    hideButton(ui->band160mbtn);
-
-    hideButton(ui->band630mbtn);
-    hideButton(ui->band2200mbtn);
-    hideButton(ui->bandGenbtn);
-
-    bandType bandSel;
-
-    //for (auto band = rigCaps.bands.begin(); band != rigCaps.bands.end(); ++band) // no worky
-    for(unsigned int i=0; i < rigCaps.bands.size(); i++)
-    {
-        bandSel = rigCaps.bands.at(i);
-        switch(bandSel.band)
-        {
-            case(band23cm):
-                showButton(ui->band23cmbtn);
-                break;
-            case(band70cm):
-                showButton(ui->band70cmbtn);
-                break;
-            case(band2m):
-                showButton(ui->band2mbtn);
-                break;
-            case(bandAir):
-                showButton(ui->bandAirbtn);
-                break;
-            case(bandWFM):
-                showButton(ui->bandWFMbtn);
-                break;
-            case(band4m):
-                showButton(ui->band4mbtn);
-                break;
-            case(band6m):
-                showButton(ui->band6mbtn);
-                break;
-
-            case(band10m):
-                showButton(ui->band10mbtn);
-                break;
-            case(band12m):
-                showButton(ui->band12mbtn);
-                break;
-            case(band15m):
-                showButton(ui->band15mbtn);
-                break;
-            case(band17m):
-                showButton(ui->band17mbtn);
-                break;
-            case(band20m):
-                showButton(ui->band20mbtn);
-                break;
-            case(band30m):
-                showButton(ui->band30mbtn);
-                break;
-            case(band40m):
-                showButton(ui->band40mbtn);
-                break;
-            case(band60m):
-                showButton(ui->band60mbtn);
-                break;
-            case(band80m):
-                showButton(ui->band80mbtn);
-                break;
-            case(band160m):
-                showButton(ui->band160mbtn);
-                break;
-
-            case(band630m):
-                showButton(ui->band630mbtn);
-                break;
-            case(band2200m):
-                showButton(ui->band2200mbtn);
-                break;
-            case(bandGen):
-                showButton(ui->bandGenbtn);
-                break;
-
-            default:
-                break;
-        }
-    }
 }
 
 void wfmain::on_rigCIVManualAddrChk_clicked(bool checked)
@@ -9352,3 +9097,9 @@ void wfmain::resetUsbCommands()
 void wfmain::receiveUsbSensitivity(int val) {
     prefs.usbSensitivity = val;
 }
+
+void wfmain::on_showBandsBtn_clicked()
+{
+    showAndRaiseWidget(bandbtns);
+}
+

@@ -6,6 +6,10 @@ bandbuttons::bandbuttons(QWidget *parent) :
     ui(new Ui::bandbuttons)
 {
     ui->setupUi(this);
+    ui->bandStkLastUsedBtn->setVisible(false);
+    ui->bandStkVoiceBtn->setVisible(false);
+    ui->bandStkDataBtn->setVisible(false);
+    ui->bandStkCWBtn->setVisible(false);
 }
 
 bandbuttons::~bandbuttons()
