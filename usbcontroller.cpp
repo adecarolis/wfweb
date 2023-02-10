@@ -43,7 +43,7 @@ void usbController::init(int sens, QMutex* mut)
     this->mutex = mut;
     this->sensitivity = sens;
     emit sendSensitivity(sensitivity);
-
+#ifdef HID_API_VERSION_MAJOR
     if (HID_API_VERSION == HID_API_MAKE_VERSION(hid_version()->major, hid_version()->minor, hid_version()->patch)) {
         qInfo(logUsbControl) << QString("Compile-time version matches runtime version of hidapi: %0.%1.%2")
             .arg(hid_version()->major)
@@ -59,15 +59,17 @@ void usbController::init(int sens, QMutex* mut)
             .arg(hid_version()->minor)
             .arg(hid_version()->patch);
     }
-
+#endif
     hidStatus = hid_init();
     if (hidStatus) {
         qInfo(logUsbControl()) << "Failed to intialize HID Devices";
     }
     else {
 
+#ifdef HID_API_VERSION_MAJOR
 #if defined(__APPLE__) && HID_API_VERSION >= HID_API_MAKE_VERSION(0, 12, 0)
         hid_darwin_set_open_exclusive(0);
+#endif
 #endif
         
         qInfo(logUsbControl()) << "Found available HID devices (not all will be suitable for use):";
