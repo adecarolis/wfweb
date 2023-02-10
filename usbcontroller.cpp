@@ -74,10 +74,11 @@ void usbController::init(int sens, QMutex* mut)
         struct hid_device_info* devs;
         devs = hid_enumerate(0x0, 0x0);
         while (devs) {
-            qInfo(logUsbControl()) << QString("Manufacturer: %0 Product: %1 Path: %2")
-                .arg(QString::fromWCharArray(devs->manufacturer_string))
+            qInfo(logUsbControl()) << QString("Device found: %0 manufacturer: %1 usage: 0x%3 usage_page 0x%4")
                 .arg(QString::fromWCharArray(devs->product_string))
-                .arg(QString::fromLocal8Bit(devs->path));
+                .arg(QString::fromWCharArray(devs->manufacturer_string))
+                .arg(devs->usage, 4, 16, QChar('0'))
+                .arg(devs->usage_page, 4, 16, QChar('0'));
             devs = devs->next;
         }
         hid_free_enumeration(devs);
@@ -103,6 +104,26 @@ void usbController::receiveKnobs(QVector<KNOB>* kbs)
     knobList = kbs;
 }
 
+void usbController::programButtons() {
+    QMutexLocker locker(mutex);
+    if (usbDevice == QuickKeys) {
+        for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
+            QByteArray data(16, 0x0);
+            data[0] = (qint8)0x02;
+            data[1] = (qint8)0xb1;
+            data[2] = but->num;
+            data.replace(3,but->name.mid(0,8).length(), but->name.mid(0,8).toLocal8Bit());
+
+            int res = hid_write(this->handle, (const unsigned char*)data.constData(), data.size());
+
+            if (res < 0) {
+                qDebug(logUsbControl()) << "Unable to write(), Error:" << hid_error(this->handle);
+                return;
+            }
+        }
+    }
+
+}
 
 void usbController::run()
 {
@@ -208,7 +229,7 @@ void usbController::run()
                 qInfo(logUsbControl()) << "Button Guide" << pressed;
             });
 
-            emit newDevice(usbDevice, buttonList, knobList, commands, &usbMutex); // Let the UI know we have a new controller
+            emit newDevice(usbDevice, buttonList, knobList, commands, &mutex); // Let the UI know we have a new controller
             return;
         }
     }

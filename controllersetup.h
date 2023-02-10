@@ -36,6 +36,7 @@ public:
 
 signals:
     void sendSensitivity(int val);
+    void programButtons();
 
 public slots:
     void newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut);

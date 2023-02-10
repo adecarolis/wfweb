@@ -130,6 +130,7 @@ public slots:
     void receiveKnobs(QVector<KNOB>*);
     void getVersion();
     void receiveSensitivity(int val);
+    void programButtons();
 
 signals:
     void jogPlus();
@@ -171,12 +172,13 @@ private:
     void buttonState(QString but, double val);
     usbDeviceType usbDevice = usbNone;
 
-    unsigned short knownUsbDevices[4][3] = {
+    unsigned short knownUsbDevices[5][3] = {
     {shuttleXpress,0x0b33,0x0020},
     {shuttlePro2,0x0b33,0x0030},
     //{eCoderPlus,0x0c26,0x001e}, // Only enable for testing!
     {RC28,0x0c26,0x001e},
-    {eCoderPlus, 0x1fc9, 0x0003}
+    {eCoderPlus, 0x1fc9, 0x0003},
+    {QuickKeys, 0x28bd, 0x5202}
     };
 
 protected:

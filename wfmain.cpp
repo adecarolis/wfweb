@@ -1680,6 +1680,7 @@ void wfmain::setupUsbControllerDevice()
     connect(shut, SIGNAL(sendSensitivity(int)), usbControllerDev, SLOT(receiveSensitivity(int)));
     connect(shut, SIGNAL(sendSensitivity(int)), this, SLOT(receiveUsbSensitivity(int)));
     connect(usbControllerDev, SIGNAL(sendSensitivity(int)), shut, SLOT(receiveSensitivity(int)));
+    connect(usbControllerDev, SIGNAL(programButtons()), shut, SLOT(programButtons()));
     connect(this, SIGNAL(initUsbController(int,QMutex*)), usbControllerDev, SLOT(init(int,QMutex*)));
 #endif
 }
