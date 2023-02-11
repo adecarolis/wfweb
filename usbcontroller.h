@@ -130,7 +130,7 @@ public slots:
     void receiveKnobs(QVector<KNOB>*);
     void getVersion();
     void receiveSensitivity(int val);
-    void programButtons();
+    void programButton(int val, QString text);
 
 signals:
     void jogPlus();

@@ -1680,7 +1680,7 @@ void wfmain::setupUsbControllerDevice()
     connect(shut, SIGNAL(sendSensitivity(int)), usbControllerDev, SLOT(receiveSensitivity(int)));
     connect(shut, SIGNAL(sendSensitivity(int)), this, SLOT(receiveUsbSensitivity(int)));
     connect(usbControllerDev, SIGNAL(sendSensitivity(int)), shut, SLOT(receiveSensitivity(int)));
-    connect(usbControllerDev, SIGNAL(programButtons()), shut, SLOT(programButtons()));
+    connect(shut, SIGNAL(programButton(int, QString)), usbControllerDev, SLOT(programButton(int, QString)));
     connect(this, SIGNAL(initUsbController(int,QMutex*)), usbControllerDev, SLOT(init(int,QMutex*)));
 #endif
 }
@@ -9375,20 +9375,20 @@ void wfmain::resetUsbCommands()
     usbCommands.append(COMMAND(num++, "Span-", commandButton, cmdSetSpanDown, 0x0));
     usbCommands.append(COMMAND(num++, "Mode+", commandButton, cmdSetModeUp, 0x0));
     usbCommands.append(COMMAND(num++, "Mode-", commandButton, cmdSetModeDown, 0x0));
-    usbCommands.append(COMMAND(num++, "Mode LSB", commandButton, cmdSetMode, modeLSB));
-    usbCommands.append(COMMAND(num++, "Mode USB", commandButton, cmdSetMode, modeUSB));
-    usbCommands.append(COMMAND(num++, "Mode LSBD", commandButton, cmdSetMode, modeLSB_D));
-    usbCommands.append(COMMAND(num++, "Mode USBD", commandButton, cmdSetMode, modeUSB_D));
-    usbCommands.append(COMMAND(num++, "Mode CW", commandButton, cmdSetMode, modeCW));
-    usbCommands.append(COMMAND(num++, "Mode CWR", commandButton, cmdSetMode, modeCW_R));
-    usbCommands.append(COMMAND(num++, "Mode FM", commandButton, cmdSetMode, modeFM));
-    usbCommands.append(COMMAND(num++, "Mode AM", commandButton, cmdSetMode, modeAM));
-    usbCommands.append(COMMAND(num++, "Mode RTTY", commandButton, cmdSetMode, modeRTTY));
-    usbCommands.append(COMMAND(num++, "Mode RTTYR", commandButton, cmdSetMode, modeRTTY_R));
-    usbCommands.append(COMMAND(num++, "Mode PSK", commandButton, cmdSetMode, modePSK));
-    usbCommands.append(COMMAND(num++, "Mode PSKR", commandButton, cmdSetMode, modePSK_R));
-    usbCommands.append(COMMAND(num++, "Mode DV", commandButton, cmdSetMode, modeDV));
-    usbCommands.append(COMMAND(num++, "Mode DD", commandButton, cmdSetMode, modeDD));
+    usbCommands.append(COMMAND(num++, "LSB", commandButton, cmdSetMode, modeLSB));
+    usbCommands.append(COMMAND(num++, "USB", commandButton, cmdSetMode, modeUSB));
+    usbCommands.append(COMMAND(num++, "LSBD", commandButton, cmdSetMode, modeLSB_D));
+    usbCommands.append(COMMAND(num++, "USBD", commandButton, cmdSetMode, modeUSB_D));
+    usbCommands.append(COMMAND(num++, "CW", commandButton, cmdSetMode, modeCW));
+    usbCommands.append(COMMAND(num++, "CWR", commandButton, cmdSetMode, modeCW_R));
+    usbCommands.append(COMMAND(num++, "FM", commandButton, cmdSetMode, modeFM));
+    usbCommands.append(COMMAND(num++, "AM", commandButton, cmdSetMode, modeAM));
+    usbCommands.append(COMMAND(num++, "RTTY", commandButton, cmdSetMode, modeRTTY));
+    usbCommands.append(COMMAND(num++, "RTTYR", commandButton, cmdSetMode, modeRTTY_R));
+    usbCommands.append(COMMAND(num++, "PSK", commandButton, cmdSetMode, modePSK));
+    usbCommands.append(COMMAND(num++, "PSKR", commandButton, cmdSetMode, modePSK_R));
+    usbCommands.append(COMMAND(num++, "DV", commandButton, cmdSetMode, modeDV));
+    usbCommands.append(COMMAND(num++, "DD", commandButton, cmdSetMode, modeDD));
     usbCommands.append(COMMAND(num++, "Band+", commandButton, cmdSetBandUp, 0x0));
     usbCommands.append(COMMAND(num++, "Band-", commandButton, cmdSetBandDown, 0x0));
     usbCommands.append(COMMAND(num++, "23cm", commandButton, cmdGetBandStackReg, band23cm));
@@ -9417,7 +9417,7 @@ void wfmain::resetUsbCommands()
     usbCommands.append(COMMAND(num++, "NB Off", commandButton, cmdNone, 0x0));
     usbCommands.append(COMMAND(num++, "Split On", commandButton, cmdNone, 0x01));
     usbCommands.append(COMMAND(num++, "Split Off", commandButton, cmdNone, 0x0));
-    usbCommands.append(COMMAND(num++, "Swap VFOs", commandButton, cmdVFOSwap, 0x0));
+    usbCommands.append(COMMAND(num++, "Swap VFO", commandButton, cmdVFOSwap, 0x0));
     usbCommands.append(COMMAND(num++, "AF Gain", commandKnob, cmdSetAfGain, 0xff));
     usbCommands.append(COMMAND(num++, "RF Gain", commandKnob, cmdSetRxRfGain, 0xff));
     usbCommands.append(COMMAND(num++, "TX Power", commandKnob, cmdSetTxPower, 0xff));
@@ -9425,8 +9425,8 @@ void wfmain::resetUsbCommands()
     usbCommands.append(COMMAND(num++, "Mod Level", commandKnob, cmdSetModLevel, 0xff));
     usbCommands.append(COMMAND(num++, "Squelch", commandKnob, cmdSetSql, 0xff));
     usbCommands.append(COMMAND(num++, "IF Shift", commandKnob, cmdSetIFShift, 0xff));
-    usbCommands.append(COMMAND(num++, "Inner PBT", commandKnob, cmdSetTPBFInner, 0xff));
-    usbCommands.append(COMMAND(num++, "Outer PBT", commandKnob, cmdSetTPBFOuter, 0xff));
+    usbCommands.append(COMMAND(num++, "In PBT", commandKnob, cmdSetTPBFInner, 0xff));
+    usbCommands.append(COMMAND(num++, "Out PBT", commandKnob, cmdSetTPBFOuter, 0xff));
     usbCommands.append(COMMAND(num++, "CW Pitch", commandKnob, cmdSetCwPitch, 0xff));
     usbCommands.append(COMMAND(num++, "CW Speed", commandKnob, cmdSetKeySpeed, 0xff));
     emit sendUsbControllerCommands(&usbCommands);

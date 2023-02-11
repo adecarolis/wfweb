@@ -132,7 +132,8 @@ void controllerSetup::onEventIndexChanged(int index) {
         currentButton->onCommand = &commands->at(onEvent->currentData().toInt());
         currentButton->onText->setPlainText(currentButton->onCommand->text);
     }
-    emit programButtons(); // Signal that any button programming on the device should be completed.
+    // Signal that any button programming on the device should be completed.
+    emit programButton(onEvent->currentData().toInt(), currentButton->onCommand->text); 
 }
 
 
@@ -143,7 +144,6 @@ void controllerSetup::offEventIndexChanged(int index) {
         currentButton->offCommand = &commands->at(offEvent->currentData().toInt());
         currentButton->offText->setPlainText(currentButton->offCommand->text);
     }
-    emit programButtons(); // Signal that any button programming on the device should be completed.
 }
 
 void controllerSetup::knobEventIndexChanged(int index) {
@@ -153,7 +153,6 @@ void controllerSetup::knobEventIndexChanged(int index) {
         currentKnob->command = &commands->at(knobEvent->currentData().toInt());
         currentKnob->text->setPlainText(currentKnob->command->text);
     }
-    emit programButtons(); // Signal that any button programming on the device should be completed.
 }
 
 
@@ -164,7 +163,7 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
     commands = cmd;
     mutex = mut;
 
-    mutex->lock();
+    QMutexLocker locker(mutex);
 
     // Remove any existing button text:
     for (QGraphicsItem* item : scene->items())
@@ -290,6 +289,7 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
             b.onText->setDefaultTextColor(b.textColour);
             scene->addItem(b.onText);
             b.onText->setPos(b.pos.center().x() - b.onText->boundingRect().width() / 2, b.pos.y());
+            emit programButton(b.num, b.onCommand->text); // Program the button with ontext if supported
 
             b.offText = new QGraphicsTextItem(b.offCommand->text);
             b.offText->setDefaultTextColor(b.textColour);
@@ -322,8 +322,6 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
     knobEventProxy = scene->addWidget(knobEvent);
     connect(knobEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(knobEventIndexChanged(int)));
 
-    mutex->unlock();
-    emit programButtons(); // Needs to take the mutex
 }
 
 void controllerSetup::receiveSensitivity(int val)

@@ -106,25 +106,22 @@ void usbController::receiveKnobs(QVector<KNOB>* kbs)
     knobList = kbs;
 }
 
-void usbController::programButtons() {
-    QMutexLocker locker(mutex);
+void usbController::programButton(int val, QString text) 
+{
     if (usbDevice == QuickKeys) {
-        for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
-            QByteArray data(16, 0x0);
-            data[0] = (qint8)0x02;
-            data[1] = (qint8)0xb1;
-            data[2] = but->num;
-            data.replace(3,but->name.mid(0,8).length(), but->name.mid(0,8).toLocal8Bit());
+        QByteArray data(16, 0x0);
+        data[0] = (qint8)0x02;
+        data[1] = (qint8)0xb1;
+        data[2] = val;
+        data.replace(3, text.mid(0, 8).length(), text.mid(0, 8).toLocal8Bit());
 
-            int res = hid_write(this->handle, (const unsigned char*)data.constData(), data.size());
+        int res = hid_write(this->handle, (const unsigned char*)data.constData(), data.size());
 
-            if (res < 0) {
-                qDebug(logUsbControl()) << "Unable to write(), Error:" << hid_error(this->handle);
-                return;
-            }
+        if (res < 0) {
+            qDebug(logUsbControl()) << "Unable to write(), Error:" << hid_error(this->handle);
+            return;
         }
     }
-
 }
 
 void usbController::run()
@@ -289,6 +286,9 @@ void usbController::run()
             knobSend.clear();
             knobValues.append({ 0,0,0 });
             knobSend.append({ 0,0,0 });
+        } 
+        else if (usbDevice == QuickKeys) {
+
         }
 
 
@@ -324,7 +324,6 @@ void usbController::runTimer()
     }
 
     QMutexLocker locker(mutex);
-
 
     while (res > 0) {
         QByteArray data(HIDDATALENGTH, 0x0);
@@ -386,29 +385,26 @@ void usbController::runTimer()
             if (buttons != tempButtons)
             {
 
-
                 // Step through all buttons and emit ones that have been pressed.
+
                 for (unsigned char i = 0; i < 16; i++)
                 {
-
-                    for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
-                        if (but->dev == usbDevice && but->num == i) {
-                            if ((tempButtons >> i & 1) && !(buttons >> i & 1) && but->onCommand->index > 0)
-                            {
-                                qDebug(logUsbControl()) << "On Button event:" << but->onCommand->text;
-                                emit button(but->onCommand);
-                            }
-                            else if ((buttons >> i & 1) && !(tempButtons >> i & 1) && but->offCommand->index > 0)
-                            {
-                                qDebug(logUsbControl()) << "Off Button event:" << but->offCommand->text;
-                                emit button(but->offCommand);
-                            }
+                    auto but = std::find_if(buttonList->begin(), buttonList->end(), [this, i](const BUTTON& b) 
+                        { return (b.dev == this->usbDevice && b.num == i); });
+                    if (but != buttonList->end()) {
+                        if ((tempButtons >> i & 1) && !(buttons >> i & 1) && but->onCommand->index > 0)
+                        {
+                            qDebug(logUsbControl()) << "On Button event:" << but->onCommand->text;
+                            emit button(but->onCommand);
+                        }
+                        else if ((buttons >> i & 1) && !(tempButtons >> i & 1) && but->offCommand->index > 0)
+                        {
+                            qDebug(logUsbControl()) << "Off Button event:" << but->offCommand->text;
+                            emit button(but->offCommand);
                         }
                     }
                 }
             }
-
-
 
             buttons = tempButtons;
             jogpos = tempJogpos;
@@ -430,9 +426,6 @@ void usbController::runTimer()
                 BUTTON* butptt = Q_NULLPTR;
                 BUTTON* butf1 = Q_NULLPTR;
                 BUTTON* butf2 = Q_NULLPTR;;
-
-
-                //delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) {  return (c.cmd == cmd); }),
 
                 for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
                     if (but->dev == usbDevice) {
@@ -557,18 +550,18 @@ void usbController::runTimer()
                 // Step through all buttons and emit ones that have been pressed.
                 for (unsigned char i = 1; i < 23; i++)
                 {
-                    for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
-                        if (but->dev == usbDevice && but->num == i) {
-                            if ((tempButtons >> i & 1) && !(buttons >> i & 1) && but->onCommand->index > 0)
-                            {
-                                qDebug(logUsbControl()) << "On Button event:" << but->onCommand->text;
-                                emit button(but->onCommand);
-                            }
-                            else if ((buttons >> i & 1) && !(tempButtons >> i & 1) && but->offCommand->index > 0)
-                            {
-                                qDebug(logUsbControl()) << "Off Button event:" << but->offCommand->text;
-                                emit button(but->offCommand);
-                            }
+                    auto but = std::find_if(buttonList->begin(), buttonList->end(), [this, i](const BUTTON& b) 
+                        { return (b.dev == this->usbDevice && b.num == i); });
+                    if (but != buttonList->end()) {
+                        if ((tempButtons >> i & 1) && !(buttons >> i & 1) && but->onCommand->index > 0)
+                        {
+                            qDebug(logUsbControl()) << "On Button event:" << but->onCommand->text;
+                            emit button(but->onCommand);
+                        }
+                        else if ((buttons >> i & 1) && !(tempButtons >> i & 1) && but->offCommand->index > 0)
+                        {
+                            qDebug(logUsbControl()) << "Off Button event:" << but->offCommand->text;
+                            emit button(but->offCommand);
                         }
                     }
                 }
