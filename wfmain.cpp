@@ -1118,7 +1118,6 @@ void wfmain::setupMainUI()
     ui->scopeRefLevelSlider->setTickInterval(50);
     ui->scopeRefLevelSlider->setSingleStep(20);
 
-    ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
     ui->controlPortTxt->setValidator(new QIntValidator(this));
 
     qDebug(logSystem()) << "Running with debugging options enabled.";
@@ -3161,7 +3160,7 @@ void wfmain::shortcutF3()
 
 void wfmain::shortcutF4()
 {
-    ui->tabWidget->setCurrentIndex(3);
+    ui->tabWidget->setCurrentIndex(1);
 }
 
 // Mode switch keys:

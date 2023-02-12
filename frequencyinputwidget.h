@@ -2,6 +2,7 @@
 #define FREQUENCYINPUTWIDGET_H
 
 #include <QWidget>
+#include <QDoubleValidator>
 
 #include "sidebandchooser.h"
 #include "wfviewtypes.h"

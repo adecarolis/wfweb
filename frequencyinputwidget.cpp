@@ -7,6 +7,7 @@ frequencyinputwidget::frequencyinputwidget(QWidget *parent) :
 {
     ui->setupUi(this);
     this->setWindowTitle("Frequency Input");
+    ui->freqMhzLineEdit->setValidator( new QDoubleValidator(0, 100, 6, this));
 }
 
 frequencyinputwidget::~frequencyinputwidget()
