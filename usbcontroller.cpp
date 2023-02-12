@@ -578,7 +578,7 @@ void usbController::runTimer()
             if ((quint8)data[1] == 0xf0) {
 
                 qInfo(logUsbControl()) << "Received:" << data;
-                quint32 tempButtons = data[3] << 8 | data[2] & 0xff;
+                quint32 tempButtons = (data[3] << 8) | (data[2] & 0xff);
 
                 // Step through all buttons and emit ones that have been pressed.
                 for (unsigned char i = 0; i < 10; i++)
