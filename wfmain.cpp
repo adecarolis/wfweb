@@ -1680,8 +1680,18 @@ void wfmain::setupUsbControllerDevice()
     connect(shut, SIGNAL(sendSensitivity(int)), usbControllerDev, SLOT(receiveSensitivity(int)));
     connect(shut, SIGNAL(sendSensitivity(int)), this, SLOT(receiveUsbSensitivity(int)));
     connect(usbControllerDev, SIGNAL(sendSensitivity(int)), shut, SLOT(receiveSensitivity(int)));
-    connect(shut, SIGNAL(programButton(int, QString)), usbControllerDev, SLOT(programButton(int, QString)));
-    connect(this, SIGNAL(initUsbController(int,QMutex*)), usbControllerDev, SLOT(init(int,QMutex*)));
+    connect(shut, SIGNAL(programButton(quint8, QString)), usbControllerDev, SLOT(programButton(quint8, QString)));
+    connect(shut, SIGNAL(programBrightness(quint8)), usbControllerDev, SLOT(programBrightness(quint8)));
+    connect(shut, SIGNAL(programOrientation(quint8)), usbControllerDev, SLOT(programOrientation(quint8)));
+    connect(shut, SIGNAL(programSpeed(quint8)), usbControllerDev, SLOT(programSpeed(quint8)));
+    connect(shut, SIGNAL(programWheelColour(quint8, quint8, quint8)), usbControllerDev, SLOT(programWheelColour(quint8, quint8, quint8)));
+    connect(shut, SIGNAL(programOverlay(quint8, QString)), usbControllerDev, SLOT(programOverlay(quint8, QString)));
+    connect(shut, SIGNAL(programTimeout(quint8)), usbControllerDev, SLOT(programTimeout(quint8)));
+    connect(shut, SIGNAL(updateSettings(quint8, quint8, quint8, quint8, QColor)), this, SLOT(receiveUsbSettings(quint8, quint8, quint8, quint8, QColor)));
+    connect(this, SIGNAL(setPTT(bool)), usbControllerDev, SLOT(receivePTTStatus(bool)));
+    connect(this, SIGNAL(initUsbController(int, QMutex*)), usbControllerDev, SLOT(init(int, QMutex*)));
+    connect(this, SIGNAL(initUsbDefaults(quint8, quint8, quint8, quint8, QColor)), shut, SLOT(setDefaults(quint8, quint8, quint8, quint8, QColor)));
+
 #endif
 }
 
@@ -1888,6 +1898,11 @@ void wfmain::setDefPrefs()
     defPrefs.audioSystem = qtAudio;
     defPrefs.enableUSBControllers = false;
     defPrefs.usbSensitivity = 1;
+    defPrefs.usbSpeed = 3;
+    defPrefs.usbTimeout = 30;
+    defPrefs.usbBrightness = 3;
+    defPrefs.usbOrientation = 3;
+    defPrefs.usbColor = Qt::white;
 
     udpDefPrefs.ipAddress = QString("");
     udpDefPrefs.controlLANPort = 50001;
@@ -2442,6 +2457,12 @@ void wfmain::loadSettings()
     ui->usbCommandsResetBtn->setEnabled(prefs.enableUSBControllers);
     ui->usbResetLbl->setVisible(prefs.enableUSBControllers);
     
+    prefs.usbBrightness = (quint8)settings->value("USBBrightness", defPrefs.usbBrightness).toInt();
+    prefs.usbOrientation = (quint8)settings->value("USBOrientation", defPrefs.usbOrientation).toInt();
+    prefs.usbSpeed = (quint8)settings->value("USBSpeed", defPrefs.usbSpeed).toInt();
+    prefs.usbTimeout = (quint8)settings->value("USBBTimeout", defPrefs.usbTimeout).toInt();
+    prefs.usbColor.setNamedColor(settings->value("USBColor", defPrefs.usbColor.name(QColor::HexArgb)).toString());
+
     /*Ensure that no operations on the usb commands/buttons/knobs take place*/
     QMutexLocker locker(&usbMutex);
 
@@ -2452,6 +2473,7 @@ void wfmain::loadSettings()
         emit sendUsbControllerCommands(&usbCommands);
         emit sendUsbControllerButtons(&usbButtons);
         emit sendUsbControllerKnobs(&usbKnobs);
+        emit initUsbDefaults(prefs.usbBrightness, prefs.usbOrientation, prefs.usbSpeed, prefs.usbTimeout, prefs.usbColor);
     }
 
     int numCommands = settings->beginReadArray("Commands");
@@ -2956,6 +2978,12 @@ void wfmain::saveSettings()
     // Store USB Controller
     settings->setValue("EnableUSBControllers", prefs.enableUSBControllers);
     settings->setValue("USBSensitivity", prefs.usbSensitivity);
+    
+    settings->setValue("USBBrightness", prefs.usbBrightness);
+    settings->setValue("USBOrientation", prefs.usbOrientation);
+    settings->setValue("USBSpeed", prefs.usbSpeed);
+    settings->setValue("USBTimeout", prefs.usbTimeout);
+    settings->setValue("USBColor", prefs.usbColor.name(QColor::HexArgb));
 
     QMutexLocker locker(&usbMutex);
     settings->beginWriteArray("Buttons");
@@ -8046,17 +8074,18 @@ QColor wfmain::getColorFromPicker(QColor initialColor)
     int alphaVal = 0;
     bool ok = false;
 
-    if(selColor.isValid())
+    if (selColor.isValid())
     {
-        if(selColor.alpha() == 0)
+        if (selColor.alpha() == 0)
         {
             alphaVal = QInputDialog::getInt(this, tr("Specify Opacity"),
-                                            tr("You specified an opacity value of 0. \nDo you want to change it? (0=transparent, 255=opaque)"), 0, 0, 255, 1,
-                                            &ok);
-            if(!ok)
+                tr("You specified an opacity value of 0. \nDo you want to change it? (0=transparent, 255=opaque)"), 0, 0, 255, 1,
+                &ok);
+            if (!ok)
             {
                 return selColor;
-            } else {
+            }
+            else {
                 selColor.setAlpha(alphaVal);
                 return selColor;
             }
@@ -9125,6 +9154,7 @@ void wfmain::on_enableUsbChk_clicked(bool checked)
         emit sendUsbControllerCommands(&usbCommands);
         emit sendUsbControllerButtons(&usbButtons);
         emit sendUsbControllerKnobs(&usbKnobs);
+        emit initUsbDefaults(prefs.usbBrightness, prefs.usbOrientation, prefs.usbSpeed, prefs.usbTimeout, prefs.usbColor);
     }
     else {
         if (shut != Q_NULLPTR) {
@@ -9339,6 +9369,18 @@ void wfmain::resetUsbButtons()
     usbButtons.append(BUTTON(eCoderPlus, 20, QRect(290, 2, 55, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
     usbButtons.append(BUTTON(eCoderPlus, 21, QRect(404, 2, 55, 30), Qt::red, &usbCommands[0], &usbCommands[0]));
 
+    // QuickKeys
+    usbButtons.append(BUTTON(QuickKeys, 0, QRect(77, 204, 39, 63), Qt::white, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(QuickKeys, 1, QRect(77, 276, 39, 63), Qt::white, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(QuickKeys, 2, QRect(77, 348, 39, 63), Qt::white, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(QuickKeys, 3, QRect(77, 422, 39, 63), Qt::white, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(QuickKeys, 4, QRect(230, 204, 39, 63), Qt::white, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(QuickKeys, 5, QRect(230, 276, 39, 63), Qt::white, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(QuickKeys, 6, QRect(230, 348, 39, 63), Qt::white, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(QuickKeys, 7, QRect(230, 422, 39, 63), Qt::white, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(QuickKeys, 8, QRect(143, 515, 55, 40), Qt::white, &usbCommands[0], &usbCommands[0]));
+    usbButtons.append(BUTTON(QuickKeys, 9, QRect(139, 68, 65, 65), Qt::white, &usbCommands[0], &usbCommands[0]));
+
     emit sendUsbControllerButtons(&usbButtons);
 
 #endif
@@ -9375,42 +9417,42 @@ void wfmain::resetUsbCommands()
     usbCommands.append(COMMAND(num++, "Span-", commandButton, cmdSetSpanDown, 0x0));
     usbCommands.append(COMMAND(num++, "Mode+", commandButton, cmdSetModeUp, 0x0));
     usbCommands.append(COMMAND(num++, "Mode-", commandButton, cmdSetModeDown, 0x0));
-    usbCommands.append(COMMAND(num++, "LSB", commandButton, cmdSetMode, modeLSB));
-    usbCommands.append(COMMAND(num++, "USB", commandButton, cmdSetMode, modeUSB));
-    usbCommands.append(COMMAND(num++, "LSBD", commandButton, cmdSetMode, modeLSB_D));
-    usbCommands.append(COMMAND(num++, "USBD", commandButton, cmdSetMode, modeUSB_D));
-    usbCommands.append(COMMAND(num++, "CW", commandButton, cmdSetMode, modeCW));
-    usbCommands.append(COMMAND(num++, "CWR", commandButton, cmdSetMode, modeCW_R));
-    usbCommands.append(COMMAND(num++, "FM", commandButton, cmdSetMode, modeFM));
-    usbCommands.append(COMMAND(num++, "AM", commandButton, cmdSetMode, modeAM));
-    usbCommands.append(COMMAND(num++, "RTTY", commandButton, cmdSetMode, modeRTTY));
-    usbCommands.append(COMMAND(num++, "RTTYR", commandButton, cmdSetMode, modeRTTY_R));
-    usbCommands.append(COMMAND(num++, "PSK", commandButton, cmdSetMode, modePSK));
-    usbCommands.append(COMMAND(num++, "PSKR", commandButton, cmdSetMode, modePSK_R));
-    usbCommands.append(COMMAND(num++, "DV", commandButton, cmdSetMode, modeDV));
-    usbCommands.append(COMMAND(num++, "DD", commandButton, cmdSetMode, modeDD));
+    usbCommands.append(COMMAND(num++, "Mode LSB", commandButton, cmdSetMode, modeLSB));
+    usbCommands.append(COMMAND(num++, "Mode USB", commandButton, cmdSetMode, modeUSB));
+    usbCommands.append(COMMAND(num++, "Mode LSBD", commandButton, cmdSetMode, modeLSB_D));
+    usbCommands.append(COMMAND(num++, "Mode USBD", commandButton, cmdSetMode, modeUSB_D));
+    usbCommands.append(COMMAND(num++, "Mode CW", commandButton, cmdSetMode, modeCW));
+    usbCommands.append(COMMAND(num++, "Mode CWR", commandButton, cmdSetMode, modeCW_R));
+    usbCommands.append(COMMAND(num++, "Mode FM", commandButton, cmdSetMode, modeFM));
+    usbCommands.append(COMMAND(num++, "Mode AM", commandButton, cmdSetMode, modeAM));
+    usbCommands.append(COMMAND(num++, "Mode RTTY", commandButton, cmdSetMode, modeRTTY));
+    usbCommands.append(COMMAND(num++, "Mode RTTYR", commandButton, cmdSetMode, modeRTTY_R));
+    usbCommands.append(COMMAND(num++, "Mode PSK", commandButton, cmdSetMode, modePSK));
+    usbCommands.append(COMMAND(num++, "Mode PSKR", commandButton, cmdSetMode, modePSK_R));
+    usbCommands.append(COMMAND(num++, "Mode DV", commandButton, cmdSetMode, modeDV));
+    usbCommands.append(COMMAND(num++, "Mode DD", commandButton, cmdSetMode, modeDD));
     usbCommands.append(COMMAND(num++, "Band+", commandButton, cmdSetBandUp, 0x0));
     usbCommands.append(COMMAND(num++, "Band-", commandButton, cmdSetBandDown, 0x0));
-    usbCommands.append(COMMAND(num++, "23cm", commandButton, cmdGetBandStackReg, band23cm));
-    usbCommands.append(COMMAND(num++, "70cm", commandButton, cmdGetBandStackReg, band70cm));
-    usbCommands.append(COMMAND(num++, "2m", commandButton, cmdGetBandStackReg, band2m));
-    usbCommands.append(COMMAND(num++, "AIR", commandButton, cmdGetBandStackReg, bandAir));
-    usbCommands.append(COMMAND(num++, "WFM", commandButton, cmdGetBandStackReg, bandWFM));
-    usbCommands.append(COMMAND(num++, "4m", commandButton, cmdGetBandStackReg, band4m));
-    usbCommands.append(COMMAND(num++, "6m", commandButton, cmdGetBandStackReg, band6m));
-    usbCommands.append(COMMAND(num++, "10m", commandButton, cmdGetBandStackReg, band10m));
-    usbCommands.append(COMMAND(num++, "12m", commandButton, cmdGetBandStackReg, band12m));
-    usbCommands.append(COMMAND(num++, "15m", commandButton, cmdGetBandStackReg, band15m));
-    usbCommands.append(COMMAND(num++, "17m", commandButton, cmdGetBandStackReg, band17m));
-    usbCommands.append(COMMAND(num++, "20m", commandButton, cmdGetBandStackReg, band20m));
-    usbCommands.append(COMMAND(num++, "30m", commandButton, cmdGetBandStackReg, band30m));
-    usbCommands.append(COMMAND(num++, "40m", commandButton, cmdGetBandStackReg, band40m));
-    usbCommands.append(COMMAND(num++, "60m", commandButton, cmdGetBandStackReg, band60m));
-    usbCommands.append(COMMAND(num++, "80m", commandButton, cmdGetBandStackReg, band80m));
-    usbCommands.append(COMMAND(num++, "160m", commandButton, cmdGetBandStackReg, band160m));
-    usbCommands.append(COMMAND(num++, "630m", commandButton, cmdGetBandStackReg, band630m));
-    usbCommands.append(COMMAND(num++, "2200m", commandButton, cmdGetBandStackReg, band2200m));
-    usbCommands.append(COMMAND(num++, "GEN", commandButton, cmdGetBandStackReg, bandGen));
+    usbCommands.append(COMMAND(num++, "Band 23cm", commandButton, cmdGetBandStackReg, band23cm));
+    usbCommands.append(COMMAND(num++, "Band 70cm", commandButton, cmdGetBandStackReg, band70cm));
+    usbCommands.append(COMMAND(num++, "Band 2m", commandButton, cmdGetBandStackReg, band2m));
+    usbCommands.append(COMMAND(num++, "Band AIR", commandButton, cmdGetBandStackReg, bandAir));
+    usbCommands.append(COMMAND(num++, "Band WFM", commandButton, cmdGetBandStackReg, bandWFM));
+    usbCommands.append(COMMAND(num++, "Band 4m", commandButton, cmdGetBandStackReg, band4m));
+    usbCommands.append(COMMAND(num++, "Band 6m", commandButton, cmdGetBandStackReg, band6m));
+    usbCommands.append(COMMAND(num++, "Band 10m", commandButton, cmdGetBandStackReg, band10m));
+    usbCommands.append(COMMAND(num++, "Band 12m", commandButton, cmdGetBandStackReg, band12m));
+    usbCommands.append(COMMAND(num++, "Band 15m", commandButton, cmdGetBandStackReg, band15m));
+    usbCommands.append(COMMAND(num++, "Band 17m", commandButton, cmdGetBandStackReg, band17m));
+    usbCommands.append(COMMAND(num++, "Band 20m", commandButton, cmdGetBandStackReg, band20m));
+    usbCommands.append(COMMAND(num++, "Band 30m", commandButton, cmdGetBandStackReg, band30m));
+    usbCommands.append(COMMAND(num++, "Band 40m", commandButton, cmdGetBandStackReg, band40m));
+    usbCommands.append(COMMAND(num++, "Band 60m", commandButton, cmdGetBandStackReg, band60m));
+    usbCommands.append(COMMAND(num++, "Band 80m", commandButton, cmdGetBandStackReg, band80m));
+    usbCommands.append(COMMAND(num++, "Band 160m", commandButton, cmdGetBandStackReg, band160m));
+    usbCommands.append(COMMAND(num++, "Band 630m", commandButton, cmdGetBandStackReg, band630m));
+    usbCommands.append(COMMAND(num++, "Band 2200m", commandButton, cmdGetBandStackReg, band2200m));
+    usbCommands.append(COMMAND(num++, "Band GEN", commandButton, cmdGetBandStackReg, bandGen));
     usbCommands.append(COMMAND(num++, "NR On", commandButton, cmdNone, 0x0));
     usbCommands.append(COMMAND(num++, "NR Off", commandButton, cmdNone, 0x0));
     usbCommands.append(COMMAND(num++, "NB On", commandButton, cmdNone, 0x0));
@@ -9435,4 +9477,14 @@ void wfmain::resetUsbCommands()
 
 void wfmain::receiveUsbSensitivity(int val) {
     prefs.usbSensitivity = val;
+}
+
+void wfmain::receiveUsbSettings(quint8 bright, quint8 orient, quint8 speed, quint8 timeout, QColor color)
+{
+    qInfo(logUsbControl()) << QString("USB brightness: %0 orentation: %1 speed: %2 timeout: %3 color: %4").arg(bright).arg(orient).arg(speed).arg(timeout).arg(color.name());
+    prefs.usbBrightness = bright;
+    prefs.usbOrientation = orient;
+    prefs.usbSpeed = speed;
+    prefs.usbTimeout = timeout;
+    prefs.usbColor = color;
 }

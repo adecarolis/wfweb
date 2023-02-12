@@ -227,6 +227,7 @@ signals:
     void sendUsbControllerCommands(QVector<COMMAND>* cmds);
     void sendUsbControllerButtons(QVector<BUTTON>* buts);
     void sendUsbControllerKnobs(QVector<KNOB>* kbs);
+    void initUsbDefaults(quint8 bright, quint8 orient, quint8 speed, quint8 timeout, QColor color);
     void setClusterUdpPort(int port);
     void setClusterEnableUdp(bool udp);
     void setClusterEnableTcp(bool tcp);
@@ -352,6 +353,8 @@ private slots:
     void receiveBaudRate(quint32 baudrate);
     void radioSelection(QList<radio_cap_packet> radios);
     void receiveUsbSensitivity(int val);
+    void receiveUsbSettings(quint8 bright, quint8 orient, quint8 speed, quint8 timeout, QColor color);
+
 
     // Added for RC28/Shuttle support
     void pttToggle(bool);
@@ -1071,7 +1074,6 @@ private:
     void resetUsbButtons();
     void resetUsbKnobs();
     void resetUsbCommands();
-
     int oldFreqDialVal;
 
     rigCapabilities rigCaps;

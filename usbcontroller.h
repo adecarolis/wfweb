@@ -12,6 +12,8 @@
 #include <QVector>
 #include <QList>
 #include <QMutex>
+#include <QIODevice>
+#include <QtEndian>
 
 #if defined(USB_CONTROLLER) && QT_VERSION < QT_VERSION_CHECK(6,0,0)
 #include <QGamepad>
@@ -128,9 +130,16 @@ public slots:
     void receiveCommands(QVector<COMMAND>*);
     void receiveButtons(QVector<BUTTON>*);
     void receiveKnobs(QVector<KNOB>*);
+    void receivePTTStatus(bool on);
     void getVersion();
     void receiveSensitivity(int val);
-    void programButton(int val, QString text);
+    void programButton(quint8 val, QString text);
+    void programBrightness(quint8 val);
+    void programOrientation(quint8 val);
+    void programSpeed(quint8 val);
+    void programWheelColour(quint8 r, quint8 g, quint8 b);
+    void programOverlay(quint8 duration, QString text);
+    void programTimeout(quint8 val);
 
 signals:
     void jogPlus();
@@ -161,11 +170,15 @@ private:
     QString product="";
     QString manufacturer="";
     QString serial="<none>";
+    QString deviceId = "";
     QString path = "";
+    quint16 vendorId = 0;
+    quint16 productId = 0;
     int sensitivity = 1;
     QList<int> knobValues;
     QList<quint8> knobSend;
     QMutex* mutex=Q_NULLPTR;
+    QColor currentColour;
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QGamepad* gamepad=Q_NULLPTR;
 #endif
@@ -173,13 +186,14 @@ private:
     void buttonState(QString but, double val);
     usbDeviceType usbDevice = usbNone;
 
-    unsigned short knownUsbDevices[5][3] = {
-    {shuttleXpress,0x0b33,0x0020},
-    {shuttlePro2,0x0b33,0x0030},
+    unsigned short knownUsbDevices[6][5] = {
+    {shuttleXpress,0x0b33,0x0020,0x0001,0x000c},
+    {shuttlePro2,0x0b33,0x0030,0x0001,0x000c},
     //{eCoderPlus,0x0c26,0x001e}, // Only enable for testing!
-    {RC28,0x0c26,0x001e},
-    {eCoderPlus, 0x1fc9, 0x0003},
-    {QuickKeys, 0x28bd, 0x5202}
+    {RC28,0x0c26,0x001e,0x0004,0x0004},
+    {eCoderPlus, 0x1fc9, 0x0003,0x0000,0x0000},
+    {QuickKeys, 0x28bd, 0x5202,0x0001,0xff0a},
+    {QuickKeys, 0x28bd, 0x5203,0x0001,0xff0a}
     };
 
 protected:

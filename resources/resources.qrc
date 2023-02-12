@@ -5,6 +5,7 @@
         <file>shuttlepro.png</file>
         <file>rc28.png</file>
         <file>ecoder.png</file>
+        <file>quickkeys.png</file>
         <file>xbox.png</file>
     </qresource>
 </RCC>
