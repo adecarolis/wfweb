@@ -3151,14 +3151,12 @@ void wfmain::shortcutF1()
 
 void wfmain::shortcutF2()
 {
-    ui->tabWidget->setCurrentIndex(1);
+    showAndRaiseWidget(bandbtns);
 }
 
 void wfmain::shortcutF3()
 {
-    ui->tabWidget->setCurrentIndex(2);
-    ui->freqMhzLineEdit->clear();
-    ui->freqMhzLineEdit->setFocus();
+    showAndRaiseWidget(finputbtns);
 }
 
 void wfmain::shortcutF4()
@@ -3240,9 +3238,7 @@ void wfmain::shortcutControlU()
 void wfmain::shortcutStar()
 {
     // Jump to frequency tab from Asterisk key on keypad
-    ui->tabWidget->setCurrentIndex(2);
-    ui->freqMhzLineEdit->clear();
-    ui->freqMhzLineEdit->setFocus();
+    showAndRaiseWidget(finputbtns);
 }
 
 void wfmain::shortcutSlash()

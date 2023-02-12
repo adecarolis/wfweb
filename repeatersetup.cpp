@@ -446,7 +446,7 @@ void repeaterSetup::showEvent(QShowEvent *event)
     if(rig.hasRepeaterModes)
         emit getRptDuplexOffset();
 
-    QMainWindow::showEvent(event);
+    QWidget::showEvent(event);
 }
 
 void repeaterSetup::on_splitEnableChk_clicked()

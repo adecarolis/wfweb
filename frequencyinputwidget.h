@@ -33,40 +33,24 @@ public slots:
     void setAutomaticSidebandSwitching(bool autossb);
 
 private slots:
+    void showEvent(QShowEvent *event);
     void on_f1btn_clicked();
-
     void on_f2btn_clicked();
-
     void on_f3btn_clicked();
-
     void on_f4btn_clicked();
-
     void on_f5btn_clicked();
-
     void on_f6btn_clicked();
-
     void on_f7btn_clicked();
-
     void on_f8btn_clicked();
-
     void on_f9btn_clicked();
-
     void on_fDotbtn_clicked();
-
     void on_f0btn_clicked();
-
     void on_fCEbtn_clicked();
-
     void on_fStoBtn_clicked();
-
     void on_fRclBtn_clicked();
-
     void on_fEnterBtn_clicked();
-
     void on_fBackbtn_clicked();
-
     void on_goFreqBtn_clicked();
-
     void on_freqMhzLineEdit_returnPressed();
 
 private:

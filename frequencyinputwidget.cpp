@@ -14,6 +14,12 @@ frequencyinputwidget::~frequencyinputwidget()
     delete ui;
 }
 
+void frequencyinputwidget::showEvent(QShowEvent *event)
+{
+    ui->freqMhzLineEdit->setFocus();
+    QWidget::showEvent(event);
+}
+
 void frequencyinputwidget::setAutomaticSidebandSwitching(bool autossb)
 {
     this->automaticSidebandSwitching = autossb;
@@ -124,6 +130,7 @@ void frequencyinputwidget::on_fStoBtn_clicked()
     } else {
         //showStatusBarText(QString("Could not store preset to %1. Valid preset numbers are 0 to 99").arg(preset_number));
     }
+    ui->freqMhzLineEdit->clear();
 }
 
 void frequencyinputwidget::on_fRclBtn_clicked()
@@ -148,6 +155,7 @@ void frequencyinputwidget::on_fRclBtn_clicked()
     } else {
         qInfo(logSystem()) << "Could not recall preset. Valid presets are 0 through 99.";
     }
+    ui->freqMhzLineEdit->clear();
 }
 
 void frequencyinputwidget::on_fEnterBtn_clicked()
@@ -204,8 +212,12 @@ void frequencyinputwidget::on_goFreqBtn_clicked()
         f.MHzDouble = (float)f.Hz / 1E6;
         emit updateUIFrequency(f);
         currentFrequency = f;
+    } else {
+        qWarning(logGui()) << "Could not understand frequency" << ui->freqMhzLineEdit->text();
+        ui->freqMhzLineEdit->clear();
     }
 
+    //ui->freqMhzLineEdit->clear();
     ui->freqMhzLineEdit->selectAll();
     freqTextSelected = true;
     //ui->tabWidget->setCurrentIndex(0);
