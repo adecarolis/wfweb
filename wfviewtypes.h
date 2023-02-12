@@ -57,7 +57,8 @@ enum mode_kind {
     modedPMR,
     modeNXDN_VN,
     modeNXDN_N,
-    modeDCR
+    modeDCR,
+    modeUnset
 };
 
 enum selVFO_t {
@@ -115,7 +116,7 @@ struct rptrAccessData_t {
 };
 
 struct mode_info {
-    mode_kind mk;
+    mode_kind mk = modeUnset;
     unsigned char reg;
     unsigned char filter;
     selVFO_t VFO = activeVFO;

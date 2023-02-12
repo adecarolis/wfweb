@@ -10,6 +10,7 @@ bandbuttons::bandbuttons(QWidget *parent) :
     ui->bandStkVoiceBtn->setVisible(false);
     ui->bandStkDataBtn->setVisible(false);
     ui->bandStkCWBtn->setVisible(false);
+    this->setWindowTitle("Band Switcher");
 }
 
 bandbuttons::~bandbuttons()

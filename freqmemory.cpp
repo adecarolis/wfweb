@@ -21,7 +21,7 @@ void freqMemory::initializePresets()
     {
         presets[p].frequency = 14.1 + p/1000.0;
         presets[p].mode = modeUSB;
-        presets[p].isSet = true;
+        presets[p].isSet = false;
     }
 }
 
@@ -61,6 +61,9 @@ void freqMemory::dumpMemory()
 {
     for(unsigned int p=0; p < numPresets; p++)
     {
+        if(presets[p].isSet)
+        {
         qInfo(logSystem()) << "Index: " << p << " freq: " << presets[p].frequency << " Mode: " << presets[p].mode << " isSet: " << presets[p].isSet;
+        }
     }
 }

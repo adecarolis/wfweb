@@ -219,6 +219,7 @@ INCLUDEPATH += resampler
 SOURCES += main.cpp\
     bandbuttons.cpp \
     cwsender.cpp \
+    frequencyinputwidget.cpp \
     loggingwindow.cpp \
     wfmain.cpp \
     commhandler.cpp \
@@ -258,6 +259,7 @@ HEADERS  += wfmain.h \
     colorprefs.h \
     commhandler.h \
     cwsender.h \
+    frequencyinputwidget.h \
     loggingwindow.h \
     prefs.h \
     printhex.h \
@@ -305,6 +307,7 @@ FORMS    += wfmain.ui \
     bandbuttons.ui \
     calibrationwindow.ui \
     cwsender.ui \
+    frequencyinputwidget.ui \
     loggingwindow.ui \
     satellitesetup.ui \
     selectradio.ui \

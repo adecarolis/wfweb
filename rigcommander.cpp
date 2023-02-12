@@ -817,7 +817,24 @@ void rigCommander::setMode(mode_info m)
         payload.setRawData("\x06", 1);
     }
 
-    payload.append(m.reg);
+    if(m.mk == modeUnset)
+    {
+        // If the mode_kind is unset, we will trust the m.reg to be correct.
+        payload.append(m.reg);
+    } else {
+        // Otherwise, we will search for the m.reg
+        // and still fallback on the m.reg provided on the off chance that it is correct.
+        unsigned char reg = m.reg;
+        for (mode_info rcMode : rigCaps.modes)
+        {
+            if(rcMode.mk == m.mk)
+            {
+                reg = rcMode.reg;
+                break;
+            }
+        }
+        payload.append(reg);
+    }
     if(m.VFO==inactiveVFO)
         payload.append("\x00", 1);
 

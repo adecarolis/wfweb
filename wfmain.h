@@ -37,6 +37,7 @@
 #include "transceiveradjustments.h"
 #include "cwsender.h"
 #include "bandbuttons.h"
+#include "frequencyinputwidget.h"
 #include "udpserver.h"
 #include "qledlabel.h"
 #include "rigctld.h"
@@ -722,6 +723,8 @@ private slots:
 
     void on_showBandsBtn_clicked();
 
+    void on_showFreqBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -939,6 +942,8 @@ private:
     datekind datesetpoint;
 
     freqMemory mem;
+    void gotoMemoryPreset(int presetNumber);
+    void saveMemoryPreset(int presetNumber);
 
     colorPrefsType colorPreset[numColorPresetsTotal];
 
@@ -1064,6 +1069,7 @@ private:
     selectRadio *selRad;
     loggingWindow *logWindow;
     bandbuttons *bandbtns;
+    frequencyinputwidget *finputbtns;
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;

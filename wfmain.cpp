@@ -53,6 +53,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     abtBox = new aboutbox();
     selRad = new selectRadio();
     bandbtns = new bandbuttons();
+    finputbtns = new frequencyinputwidget();
 
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
     qRegisterMetaType<rigCapabilities>();
@@ -468,8 +469,6 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
 
     // Band buttons:
-    //connect(rig, SIGNAL(haveRigID(rigCapabilities)), bandbtns, SLOT(acceptRigCaps(rigCapabilities)));
-
     connect(rig, &rigCommander::haveRigID,
             [=](const rigCapabilities &rigid) {
             bandbtns->acceptRigCaps(rigid);
@@ -483,27 +482,55 @@ void wfmain::rigConnections()
     }
 
     connect(rig, SIGNAL(haveBandStackReg(freqt,char,char,bool)), bandbtns, SLOT(handleBandStackReg(freqt,char,char,bool)));
-
     connect(this->bandbtns, &bandbuttons::issueCmdF,
             [=](const cmds cmd, freqt f) {
         issueCmd(cmd, f);
     });
-
     connect(bandbtns, &bandbuttons::issueCmdUniquePriority,
             [=](const cmds cmd, char c) {
        issueCmdUniquePriority(cmd, c);
     });
-
     connect(bandbtns, &bandbuttons::issueCmd,
             [=](cmds cmd, char c) {
        issueCmd(cmd, c);
     });
-
     connect(bandbtns, &bandbuttons::issueDelayedCommand,
             [=](cmds cmd) {
        issueDelayedCommand(cmd);
     });
 
+    // Frequency Buttons:
+    connect(finputbtns, &frequencyinputwidget::issueCmdF,
+            [=](cmds cmd, freqt f) {
+        issueCmd(cmd, f);
+    });
+    connect(finputbtns, &frequencyinputwidget::issueCmdM,
+            [=](cmds cmd, mode_info m) {
+        issueCmd(cmd, m);
+    });
+    connect(finputbtns, &frequencyinputwidget::updateUIMode,
+            [=](mode_kind m) {
+        // set the mode combo box, quietly, to the mode indicated.
+        ui->modeSelectCombo->blockSignals(true);
+        ui->modeSelectCombo->setCurrentIndex(ui->modeSelectCombo->findData(m));
+        ui->modeSelectCombo->blockSignals(false);
+    });
+    connect(finputbtns, &frequencyinputwidget::updateUIFrequency,
+            [=](freqt f) {
+        // f has both parts populated
+        this->freq = f;
+        setUIFreq(); // requires f.MHzDouble
+    });
+    connect(finputbtns, &frequencyinputwidget::gotoMemoryPreset,
+            [=](int presetNumber) {
+        gotoMemoryPreset(presetNumber);
+    });
+    connect(finputbtns, &frequencyinputwidget::saveMemoryPreset,
+            [=](int presetNumber) {
+        saveMemoryPreset(presetNumber);
+    });
+
+    // Passband, CW Pitch, Tone, TSQL...
     connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
     connect(this, SIGNAL(setPassband(quint16)), rig, SLOT(setPassband(quint16)));
     connect(this, SIGNAL(getCwPitch()), rig, SLOT(getCwPitch()));
@@ -1418,6 +1445,7 @@ void wfmain::setUIToPrefs()
 
     ui->autoSSBchk->blockSignals(true);
     ui->autoSSBchk->setChecked(prefs.automaticSidebandSwitching);
+    finputbtns->setAutomaticSidebandSwitching(prefs.automaticSidebandSwitching);
     ui->autoSSBchk->blockSignals(false);
 
     ui->useCIVasRigIDChk->blockSignals(true);
@@ -5675,6 +5703,10 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
             currentMode = (mode_kind)mode;
             currentModeInfo.filter = filter;
             currentModeInfo.reg = mode;
+
+            finputbtns->updateCurrentMode(currentMode);
+            finputbtns->updateFilterSelection(filter);
+
             rpt->handleUpdateCurrentMainMode(currentModeInfo);
             cw->handleCurrentModeUpdate(currentMode);
             if (!found)
@@ -6103,6 +6135,46 @@ void wfmain::on_fStoBtn_clicked()
     } else {
         showStatusBarText(QString("Could not store preset to %1. Valid preset numbers are 0 to 99").arg(preset_number));
     }
+}
+
+void wfmain::gotoMemoryPreset(int presetNumber)
+{
+    preset_kind temp = mem.getPreset(presetNumber);
+    if(!temp.isSet)
+    {
+        qWarning(logGui()) << "Recalled Preset #" << presetNumber << "is not set.";
+    }
+    setFilterVal = ui->modeFilterCombo->currentIndex()+1; // TODO, add to memory
+    setModeVal = temp.mode;
+    freqt memFreq;
+    mode_info m;
+    m.mk = temp.mode;
+    m.filter = ui->modeFilterCombo->currentIndex()+1;
+    m.reg =(unsigned char) m.mk; // fallback, works only for some modes
+    memFreq.Hz = temp.frequency * 1E6;
+    issueCmd(cmdSetFreq, memFreq);
+    //issueDelayedCommand(cmdSetModeFilter); // goes to setModeVal
+    issueCmd(cmdSetMode, m);
+    memFreq.MHzDouble = memFreq.Hz / 1.0E6;
+    freq = memFreq;
+    qDebug(logGui()) << "Recalling preset number " << presetNumber << " as frequency " << temp.frequency << "MHz";
+
+    setUIFreq();
+}
+
+void wfmain::saveMemoryPreset(int presetNumber)
+{
+    // int, double, mode_kind
+    double frequency;
+    if(this->freq.Hz == 0)
+    {
+        frequency = freq.MHzDouble;
+    } else {
+        frequency = freq.Hz / 1.0E6;
+    }
+    mode_kind mode = currentMode;
+    qDebug(logGui()) << "Saving preset number " << presetNumber << " to frequency " << frequency << " MHz";
+    mem.setPreset(presetNumber, frequency, mode);
 }
 
 void wfmain::on_fRclBtn_clicked()
@@ -7722,8 +7794,7 @@ void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    bandbtns->show();
-    //emit getRigID();
+    mem.dumpMemory();
 }
 
 // ----------   color helper functions:   ---------- //
@@ -8960,6 +9031,7 @@ void wfmain::connectionHandler(bool connect)
 void wfmain::on_autoSSBchk_clicked(bool checked)
 {
     prefs.automaticSidebandSwitching = checked;
+    finputbtns->setAutomaticSidebandSwitching(checked);
 }
 
 void wfmain::on_cwButton_clicked()
@@ -9103,3 +9175,7 @@ void wfmain::on_showBandsBtn_clicked()
     showAndRaiseWidget(bandbtns);
 }
 
+void wfmain::on_showFreqBtn_clicked()
+{
+    showAndRaiseWidget(finputbtns);
+}
