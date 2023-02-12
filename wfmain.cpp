@@ -5772,132 +5772,6 @@ void wfmain::on_fullScreenChk_clicked(bool checked)
     prefs.useFullScreen = checked;
 }
 
-void wfmain::on_goFreqBtn_clicked()
-{
-    freqt f;
-    bool ok = false;
-    double freqDbl = 0;
-    int KHz = 0;
-
-    if(ui->freqMhzLineEdit->text().contains("."))
-    {
-
-        freqDbl = ui->freqMhzLineEdit->text().toDouble(&ok);
-        if(ok)
-        {
-            f.Hz = freqDbl*1E6;
-        }
-    } else {
-        KHz = ui->freqMhzLineEdit->text().toInt(&ok);
-        if(ok)
-        {
-            f.Hz = KHz*1E3;
-        }
-    }
-    if(ok)
-    {
-        mode_info m;
-        issueCmd(cmdSetFreq, f);
-        m.mk = sidebandChooser::getMode(f, currentMode);
-        m.reg = (unsigned char) m.mk;
-        m.filter = ui->modeFilterCombo->currentData().toInt();
-
-        if((m.mk != currentMode) && !usingDataMode && prefs.automaticSidebandSwitching)
-        {
-            issueCmd(cmdSetMode, m);
-            currentMode = m.mk;
-        }
-
-        f.MHzDouble = (float)f.Hz / 1E6;
-        freq = f;
-        setUIFreq();
-    }
-
-    ui->freqMhzLineEdit->selectAll();
-    freqTextSelected = true;
-    ui->tabWidget->setCurrentIndex(0);
-}
-
-void wfmain::checkFreqSel()
-{
-    if(freqTextSelected)
-    {
-        freqTextSelected = false;
-        ui->freqMhzLineEdit->clear();
-    }
-}
-
-void wfmain::on_f0btn_clicked()
-{
-    checkFreqSel();
-    ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("0"));
-}
-void wfmain::on_f1btn_clicked()
-{
-    checkFreqSel();
-    ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("1"));
-}
-
-void wfmain::on_f2btn_clicked()
-{
-    checkFreqSel();
-    ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("2"));
-}
-void wfmain::on_f3btn_clicked()
-{
-    checkFreqSel();
-    ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("3"));
-}
-void wfmain::on_f4btn_clicked()
-{
-    checkFreqSel();
-    ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("4"));
-}
-void wfmain::on_f5btn_clicked()
-{
-    checkFreqSel();
-    ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("5"));
-}
-void wfmain::on_f6btn_clicked()
-{
-    checkFreqSel();
-    ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("6"));
-}
-void wfmain::on_f7btn_clicked()
-{
-    checkFreqSel();
-    ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("7"));
-}
-void wfmain::on_f8btn_clicked()
-{
-    checkFreqSel();
-    ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("8"));
-}
-void wfmain::on_f9btn_clicked()
-{
-    checkFreqSel();
-    ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("9"));
-}
-void wfmain::on_fDotbtn_clicked()
-{
-    checkFreqSel();
-    ui->freqMhzLineEdit->setText(ui->freqMhzLineEdit->text().append("."));
-}
-
-
-void wfmain::on_fBackbtn_clicked()
-{
-    QString currentFreq = ui->freqMhzLineEdit->text();
-    currentFreq.chop(1);
-    ui->freqMhzLineEdit->setText(currentFreq);
-}
-
-void wfmain::on_fCEbtn_clicked()
-{
-    ui->freqMhzLineEdit->clear();
-    freqTextSelected = false;
-}
-
 void wfmain::on_spectrumModeCombo_currentIndexChanged(int index)
 {
     spectrumMode smode = static_cast<spectrumMode>(ui->spectrumModeCombo->itemData(index).toInt());
@@ -5923,14 +5797,6 @@ void wfmain::setUISpectrumControlsToMode(spectrumMode smode)
         ui->specSpanLabel->hide();
         ui->scopeBWCombo->hide();
     }
-}
-
-void wfmain::on_fEnterBtn_clicked()
-{
-    // TODO: do not jump to main tab on enter, only on return
-    // or something.
-    // Maybe this should be an option in settings->
-    on_goFreqBtn_clicked();
 }
 
 void wfmain::on_scopeBWCombo_currentIndexChanged(int index)
@@ -6111,28 +5977,6 @@ void wfmain::on_aboutBtn_clicked()
     abtBox->show();
 }
 
-void wfmain::on_fStoBtn_clicked()
-{
-    // sequence:
-    // type frequency
-    // press Enter or Go
-    // change mode if desired
-    // type in index number 0 through 99
-    // press STO
-
-    bool ok;
-    int preset_number = ui->freqMhzLineEdit->text().toInt(&ok);
-
-    if(ok && (preset_number >= 0) && (preset_number < 100))
-    {
-        // TODO: keep an enum around with the current mode
-        mem.setPreset(preset_number, freq.MHzDouble, (mode_kind)ui->modeSelectCombo->currentData().toInt() );
-        showStatusBarText( QString("Storing frequency %1 to memory location %2").arg( freq.MHzDouble ).arg(preset_number) );
-    } else {
-        showStatusBarText(QString("Could not store preset to %1. Valid preset numbers are 0 to 99").arg(preset_number));
-    }
-}
-
 void wfmain::gotoMemoryPreset(int presetNumber)
 {
     preset_kind temp = mem.getPreset(presetNumber);
@@ -6171,39 +6015,6 @@ void wfmain::saveMemoryPreset(int presetNumber)
     mode_kind mode = currentMode;
     qDebug(logGui()) << "Saving preset number " << presetNumber << " to frequency " << frequency << " MHz";
     mem.setPreset(presetNumber, frequency, mode);
-}
-
-void wfmain::on_fRclBtn_clicked()
-{
-    // Sequence:
-    // type memory location 0 through 99
-    // press RCL
-
-    // Program recalls data stored in vector at position specified
-    // drop contents into text box, press go button
-    // add delayed command for mode and data mode
-
-    preset_kind temp;
-    bool ok;
-    QString freqString;
-    int preset_number = ui->freqMhzLineEdit->text().toInt(&ok);
-
-    if(ok && (preset_number >= 0) && (preset_number < 100))
-    {
-        temp = mem.getPreset(preset_number);
-        // TODO: change to int hz
-        // TODO: store filter setting as well.
-        freqString = QString("%1").arg(temp.frequency);
-        ui->freqMhzLineEdit->setText( freqString );
-        ui->goFreqBtn->click();
-        setModeVal = temp.mode;
-        setFilterVal = ui->modeFilterCombo->currentIndex()+1; // TODO, add to memory
-        issueDelayedCommand(cmdSetModeFilter);
-        issueDelayedCommand(cmdGetMode);
-    } else {
-        qInfo(logSystem()) << "Could not recall preset. Valid presets are 0 through 99.";
-    }
-
 }
 
 void wfmain::on_rfGainSlider_valueChanged(int value)

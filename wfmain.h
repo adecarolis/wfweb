@@ -367,199 +367,93 @@ private slots:
 
     void buttonControl(const COMMAND* cmd);
 
-
-    // void on_getFreqBtn_clicked();
-
-    // void on_getModeBtn_clicked();
-
-    // void on_debugBtn_clicked();
-
     void on_clearPeakBtn_clicked();
 
     void on_fullScreenChk_clicked(bool checked);
 
-    void on_goFreqBtn_clicked();
-
-    void on_f0btn_clicked();
-    void on_f1btn_clicked();
-    void on_f2btn_clicked();
-    void on_f3btn_clicked();
-    void on_f4btn_clicked();
-    void on_f5btn_clicked();
-    void on_f6btn_clicked();
-    void on_f7btn_clicked();
-    void on_f8btn_clicked();
-    void on_f9btn_clicked();
-    void on_fDotbtn_clicked();
-
-
-
-    void on_fBackbtn_clicked();
-
-    void on_fCEbtn_clicked();
-
-    void on_fEnterBtn_clicked();
     void on_usbControllerBtn_clicked();
-
     void on_usbButtonsResetBtn_clicked();
     void on_usbCommandsResetBtn_clicked();
-
     void on_enableUsbChk_clicked(bool checked);
 
     void on_scopeBWCombo_currentIndexChanged(int index);
-
     void on_scopeEdgeCombo_currentIndexChanged(int index);
-
     void on_modeSelectCombo_activated(int index);
-
     void on_freqDial_valueChanged(int value);
-
     void on_aboutBtn_clicked();
 
-    void on_fStoBtn_clicked();
-
-    void on_fRclBtn_clicked();
-
     void on_rfGainSlider_valueChanged(int value);
-
     void on_afGainSlider_valueChanged(int value);
-
     void on_tuneNowBtn_clicked();
-
     void on_tuneEnableChk_clicked(bool checked);
-
     void on_exitBtn_clicked();
-
     void on_pttOnBtn_clicked();
-
     void on_pttOffBtn_clicked();
-
     void on_saveSettingsBtn_clicked();
-
     void on_debugBtn_clicked();
-
     void on_pttEnableChk_clicked(bool checked);
-
     void on_lanEnableBtn_clicked(bool checked);
-
     void on_ipAddressTxt_textChanged(QString text);
-
     void on_controlPortTxt_textChanged(QString text);
-
     void on_usernameTxt_textChanged(QString text);
-
     void on_passwordTxt_textChanged(QString text);
-
     void on_audioDuplexCombo_currentIndexChanged(int value);
-
     void on_audioOutputCombo_currentIndexChanged(int value);
-
     void on_audioInputCombo_currentIndexChanged(int value);
-
     void on_toFixedBtn_clicked();
-
     void on_connectBtn_clicked();
-
     void on_rxLatencySlider_valueChanged(int value);
-
     void on_txLatencySlider_valueChanged(int value);
-
     void on_audioRXCodecCombo_currentIndexChanged(int value);
-
     void on_audioTXCodecCombo_currentIndexChanged(int value);
-
     void on_audioSampleRateCombo_currentIndexChanged(int value);
-
     void on_vspCombo_currentIndexChanged(int value);
-
     void on_scopeEnableWFBtn_clicked(bool checked);
-
     void on_sqlSlider_valueChanged(int value);
-
     void on_modeFilterCombo_activated(int index);
-
     void on_dataModeBtn_toggled(bool checked);
-
     void on_transmitBtn_clicked();
-
     void on_adjRefBtn_clicked();
-
     void on_satOpsBtn_clicked();
-
     void on_txPowerSlider_valueChanged(int value);
-
     void on_micGainSlider_valueChanged(int value);
-
     void on_scopeRefLevelSlider_valueChanged(int value);
-
     void on_useSystemThemeChk_clicked(bool checked);
-
     void on_modInputCombo_activated(int index);
-
     void on_modInputDataCombo_activated(int index);
-
     void on_tuneLockChk_clicked(bool checked);
-
     void on_spectrumModeCombo_currentIndexChanged(int index);
-
     void on_serialEnableBtn_clicked(bool checked);
-
     void on_tuningStepCombo_currentIndexChanged(int index);
-
     void on_serialDeviceListCombo_textActivated(const QString &arg1);
-
     void on_rptSetupBtn_clicked();
-
     void on_attSelCombo_activated(int index);
-
     void on_preampSelCombo_activated(int index);
-
     void on_antennaSelCombo_activated(int index);
-
     void on_rxAntennaCheck_clicked(bool value);
-
     void on_wfthemeCombo_activated(int index);
-
     void on_rigPowerOnBtn_clicked();
-
     void on_rigPowerOffBtn_clicked();
-
     void on_ritTuneDial_valueChanged(int value);
-
     void on_ritEnableChk_clicked(bool checked);
-
     void on_rigCIVManualAddrChk_clicked(bool checked);
-
     void on_rigCIVaddrHexLine_editingFinished();
-
     void on_baudRateCombo_activated(int);
-
     void on_wfLengthSlider_valueChanged(int value);
-
     void on_wfAntiAliasChk_clicked(bool checked);
-
     void on_wfInterpolateChk_clicked(bool checked);
-
     void on_meter2selectionCombo_activated(int index);
-
     void on_waterfallFormatCombo_activated(int index);
-
     void on_enableRigctldChk_clicked(bool checked);
-
     void on_rigctldPortTxt_editingFinished();
-
     void on_tcpServerPortTxt_editingFinished();
-
     void on_moreControlsBtn_clicked();
-
     void on_useCIVasRigIDChk_clicked(bool checked);
 
     void receiveStateInfo(rigstate* state);
 
     void on_settingsList_currentRowChanged(int currentRow);
-
     void on_setClockBtn_clicked();
-
     void on_serverEnableCheckbox_clicked(bool checked);
     void on_serverControlPortText_textChanged(QString text);
     void on_serverCivPortText_textChanged(QString text);
@@ -567,125 +461,66 @@ private slots:
     void on_serverTXAudioOutputCombo_currentIndexChanged(int value);
     void on_serverRXAudioInputCombo_currentIndexChanged(int value);
     void onServerUserFieldChanged();
-
     void on_serverAddUserBtn_clicked();
-
     void on_useRTSforPTTchk_clicked(bool checked);
-
     void on_radioStatusBtn_clicked();
-
     void on_audioSystemCombo_currentIndexChanged(int value);
-
     void on_topLevelSlider_valueChanged(int value);
-
     void on_botLevelSlider_valueChanged(int value);
-
     void on_underlayBufferSlider_valueChanged(int value);
-
     void on_underlayNone_toggled(bool checked);
-
     void on_underlayPeakHold_toggled(bool checked);
-
     void on_underlayPeakBuffer_toggled(bool checked);
-
     void on_underlayAverageBuffer_toggled(bool checked);
 
     void on_colorSetBtnGrid_clicked();
-
     void on_colorSetBtnPlotBackground_clicked();
-
     void on_colorSetBtnText_clicked();
-
     void on_colorSetBtnSpecLine_clicked();
-
     void on_colorSetBtnSpecFill_clicked();
-
     void on_colorEditPlotBackground_editingFinished();
-
     void on_colorPopOutBtn_clicked();
-
     void on_colorPresetCombo_currentIndexChanged(int index);
-
     void on_colorEditSpecLine_editingFinished();
-
     void on_colorEditGrid_editingFinished();
-
     void on_colorEditText_editingFinished();
-
     void on_colorEditSpecFill_editingFinished();
-
     void on_colorSetBtnAxis_clicked();
-
     void on_colorEditAxis_editingFinished();
-
     void on_colorSetBtnUnderlayLine_clicked();
-
     void on_colorEditUnderlayLine_editingFinished();
-
     void on_colorSetBtnUnderlayFill_clicked();
-
     void on_colorEditUnderlayFill_editingFinished();
-
     void on_colorSetBtnwfBackground_clicked();
-
     void on_colorEditWfBackground_editingFinished();
-
     void on_colorSetBtnWfGrid_clicked();
-
     void on_colorEditWfGrid_editingFinished();
-
     void on_colorSetBtnWfAxis_clicked();
-
     void on_colorEditWfAxis_editingFinished();
-
     void on_colorSetBtnWfText_clicked();
-
     void on_colorEditWfText_editingFinished();
-
     void on_colorSetBtnTuningLine_clicked();
-
     void on_colorEditTuningLine_editingFinished();
-
     void on_colorSetBtnPassband_clicked();
-
     void on_colorEditPassband_editingFinished();
-
     void on_colorSetBtnPBT_clicked();
-
     void on_colorEditPBT_editingFinished();
-
     void on_colorSetBtnMeterLevel_clicked();
-
     void on_colorEditMeterLevel_editingFinished();
-
     void on_colorSetBtnMeterAvg_clicked();
-
     void on_colorEditMeterAvg_editingFinished();
-
     void on_colorSetBtnMeterScale_clicked();
-
     void on_colorEditMeterScale_editingFinished();
-
     void on_colorSetBtnMeterText_clicked();
-
     void on_colorEditMeterText_editingFinished();
-
     void on_colorSetBtnClusterSpots_clicked();
-
     void on_colorEditClusterSpots_editingFinished();
-
     void on_colorRenamePresetBtn_clicked();
-
     void on_colorRevertPresetBtn_clicked();
-
     void on_colorSetBtnMeterPeakLevel_clicked();
-
     void on_colorEditMeterPeakLevel_editingFinished();
-
     void on_colorSetBtnMeterPeakScale_clicked();
-
     void on_colorEditMeterPeakScale_editingFinished();
-
     void on_colorSavePresetBtn_clicked();
 
     void on_showLogBtn_clicked();
@@ -879,7 +714,6 @@ private:
 
     bool onFullscreen;
     bool freqTextSelected;
-    void checkFreqSel();
     void setUISpectrumControlsToMode(spectrumMode smode);
 
     double oldLowerFreq;
