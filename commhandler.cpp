@@ -175,6 +175,8 @@ void commHandler::receiveDataIn()
     if (inPortData.startsWith("\xFC\xFC\xFC\xFC\xFC"))
     {
         // Colission detected by remote end, re-send previous command.
+        qInfo(logSerial()) << "Collision detected by remote, resending previous command";
+        port->commitTransaction();
         sendDataOut(previousSent);
         return;
     }
