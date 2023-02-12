@@ -69,11 +69,11 @@ struct COMMAND {
 
     int index=0;
     QString text;
+    usbCommandType cmdType = commandButton;
     int command=0;
     unsigned char suffix=0x0;
     availableBands band=bandGen;
     mode_kind mode=modeLSB;
-    usbCommandType cmdType = commandButton;
 };
 
 struct BUTTON {
