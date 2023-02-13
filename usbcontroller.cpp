@@ -705,13 +705,15 @@ void usbController::receiveSensitivity(int val)
 
 void usbController::receivePTTStatus(bool on) {
     static QColor lastColour = currentColour;
-    if (on) {
+    static bool ptt;
+    if (on && !ptt) {
         lastColour = currentColour;
         programWheelColour(255, 0, 0);
     }
     else {
         programWheelColour((quint8)lastColour.red(), (quint8)lastColour.green(), (quint8)lastColour.blue());
     }
+    ptt = on;
 }
 
 /*
