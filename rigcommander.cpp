@@ -1014,6 +1014,72 @@ void rigCommander::setCwPitch(unsigned char pitch)
     prepDataAndSend(payload);
 }
 
+void rigCommander::getDashRatio()
+{
+    QByteArray payload;
+    switch (rigCaps.model)
+    {
+    case model705:
+        payload.setRawData("\x1A\x05\x02\x52", 4);
+        break;
+    case model9700:
+        payload.setRawData("\x1A\x05\x02\x24", 4);
+        break;
+    case model7100:
+        payload.setRawData("\x1A\x05\x01\x35", 4);
+        break;
+    case model7300:
+        payload.setRawData("\x1A\x05\x01\x61", 4);
+        break;
+    case model7610:
+        payload.setRawData("\x1A\x05\x02\x28", 4);
+        break;
+    case model7700:
+        payload.setRawData("\x1A\x05\x01\x34", 4);
+        break;
+    case model7850:
+        payload.setRawData("\x1A\x05\x02\x51", 4);
+        break;
+    default:
+        break;
+    }
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setDashRatio(unsigned char ratio)
+{
+    QByteArray payload;
+    switch (rigCaps.model)
+    {
+    case model705:
+        payload.setRawData("\x1A\x05\x02\x52", 4);
+        break;
+    case model9700:
+        payload.setRawData("\x1A\x05\x02\x24", 4);
+        break;
+    case model7100:
+        payload.setRawData("\x1A\x05\x01\x35", 4);
+        break;
+    case model7300:
+        payload.setRawData("\x1A\x05\x01\x61", 4);
+        break;
+    case model7610:
+        payload.setRawData("\x1A\x05\x02\x28", 4);
+        break;
+    case model7700:
+        payload.setRawData("\x1A\x05\x01\x34", 4);
+        break;
+    case model7850:
+        payload.setRawData("\x1A\x05\x02\x51", 4);
+        break;
+    default:
+        break;
+    }
+
+    payload.append(bcdEncodeInt(ratio).at(1)); // Discard first byte
+    prepDataAndSend(payload);
+}
+
 void rigCommander::getPskTone()
 {
     QByteArray payload;
@@ -1796,7 +1862,7 @@ void rigCommander::parseLevels()
             case '\x0C':
                 state.set(KEYSPD, level, false);
                 //qInfo(logRig()) << "Have received key speed in RC, raw level: " << level << ", WPM: " << (level/6.071)+6 << ", rounded: " << round((level/6.071)+6);
-                emit haveKeySpeed(round((level/6.071)+6));
+                emit haveKeySpeed(round((level / 6.071) + 6));
                 break;
             case '\x0D':
                 // Notch filder setting - ignore for now
@@ -3198,6 +3264,8 @@ void rigCommander::parseDetailedRegisters1A05()
                 case 90:
                     emit haveLANGain(level);
                     break;
+                case 228:
+                    emit haveDashRatio(inputRaw);
                 default:
                     break;
             }

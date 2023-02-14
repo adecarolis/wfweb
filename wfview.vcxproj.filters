@@ -149,6 +149,9 @@
     <ClCompile Include="controllersetup.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="cwsender.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\rtaudio\RTAUdio.h">
@@ -262,6 +265,9 @@
     <QtMoc Include="wfmain.h">
       <Filter>Header Files</Filter>
     </QtMoc>
+    <ClInclude Include="wfviewtypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="debug\moc_predefs.h.cbt">
@@ -297,6 +303,9 @@
       <Filter>Form Files</Filter>
     </QtUic>
     <QtUic Include="wfmain.ui">
+      <Filter>Form Files</Filter>
+    </QtUic>
+    <QtUic Include="cwsender.ui">
       <Filter>Form Files</Filter>
     </QtUic>
   </ItemGroup>
@@ -439,6 +448,9 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="controllersetup.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="cwsender.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>

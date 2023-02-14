@@ -355,10 +355,13 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setKeySpeed(unsigned char)), rig, SLOT(setKeySpeed(unsigned char)));
     connect(this, SIGNAL(getKeySpeed()), rig, SLOT(getKeySpeed()));
     connect(this, SIGNAL(setCwPitch(unsigned char)), rig, SLOT(setCwPitch(unsigned char)));
+    connect(this, SIGNAL(setDashRatio(unsigned char)), rig, SLOT(setDashRatio(unsigned char)));
     connect(this, SIGNAL(setCWBreakMode(unsigned char)), rig, SLOT(setBreakIn(unsigned char)));
     connect(this, SIGNAL(getCWBreakMode()), rig, SLOT(getBreakIn()));
     connect(this->rig, &rigCommander::haveKeySpeed,
         [=](const unsigned char& wpm) { cw->handleKeySpeed(wpm); });
+    connect(this->rig, &rigCommander::haveDashRatio,
+        [=](const unsigned char& ratio) { cw->handleDashRatio(ratio); });
     connect(this->rig, &rigCommander::haveCwPitch,
         [=](const unsigned char& speed) { cw->handlePitch(speed); });
     connect(this->rig, &rigCommander::haveCWBreakMode,
@@ -469,6 +472,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
     connect(this, SIGNAL(setPassband(quint16)), rig, SLOT(setPassband(quint16)));
     connect(this, SIGNAL(getCwPitch()), rig, SLOT(getCwPitch()));
+    connect(this, SIGNAL(getDashRatio()), rig, SLOT(getDashRatio()));
     connect(this, SIGNAL(getPskTone()), rig, SLOT(getPskTone()));
     connect(this, SIGNAL(getRttyMark()), rig, SLOT(getRttyMark()));
     connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
@@ -1156,12 +1160,15 @@ void wfmain::setupMainUI()
             [=](const unsigned char &bmode) { issueCmd(cmdSetBreakMode, bmode);});
     connect(this->cw, &cwSender::setKeySpeed,
         [=](const unsigned char& wpm) { issueCmd(cmdSetKeySpeed, wpm); });
+    connect(this->cw, &cwSender::setDashRatio,
+        [=](const unsigned char& ratio) { issueCmd(cmdSetDashRatio, ratio); });
     connect(this->cw, &cwSender::setPitch,
         [=](const unsigned char& pitch) { issueCmd(cmdSetCwPitch, pitch); });
     connect(this->cw, &cwSender::getCWSettings,
-            [=]() { issueDelayedCommand(cmdGetKeySpeed);
-                    issueDelayedCommand(cmdGetBreakMode);});
-
+        [=]() { issueDelayedCommand(cmdGetKeySpeed);
+        issueDelayedCommand(cmdGetBreakMode);
+        issueDelayedCommand(cmdGetCwPitch);
+        issueDelayedCommand(cmdGetDashRatio); });
 }
 
 void wfmain::prepareSettingsWindow()
@@ -3887,6 +3894,12 @@ void wfmain::doCmd(commandtype cmddata)
             emit setCwPitch(pitch);
             break;
         }
+        case cmdSetDashRatio:
+        {
+            unsigned char ratio = (*std::static_pointer_cast<unsigned char>(data));
+            emit setDashRatio(ratio);
+            break;
+        }
         case cmdSetATU:
         {
             bool atuOn = (*std::static_pointer_cast<bool>(data));
@@ -4011,6 +4024,9 @@ void wfmain::doCmd(cmds cmd)
             break;
         case cmdGetCwPitch:
             emit getCwPitch();
+            break;
+        case cmdGetDashRatio:
+            emit getDashRatio();
             break;
         case cmdGetPskTone:
             emit getPskTone();

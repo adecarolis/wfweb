@@ -15,6 +15,7 @@ cwSender::cwSender(QWidget *parent) :
     ui->textToSendEdit->setFocus();
     ui->statusbar->setToolTipDuration(3000);
     this->setToolTipDuration(3000);
+    connect(ui->textToSendEdit->lineEdit(), &QLineEdit::textEdited, this, &cwSender::textChanged);
 }
 
 cwSender::~cwSender()
@@ -26,18 +27,29 @@ cwSender::~cwSender()
 void cwSender::showEvent(QShowEvent *event)
 {
     emit getCWSettings();
+    QMainWindow::showEvent(event);
     (void)event;
 }
 
 void cwSender::handleKeySpeed(unsigned char wpm)
 {
     //qDebug(logCW()) << "Told that current WPM is" << wpm;
-    if((wpm >= 6) && (wpm <=48))
+    if ((wpm >= 6) && (wpm <= 48))
     {
         //qDebug(logCW()) << "Setting WPM UI control to" << wpm;
         ui->wpmSpin->blockSignals(true);
         ui->wpmSpin->setValue(wpm);
         ui->wpmSpin->blockSignals(false);
+    }
+}
+
+void cwSender::handleDashRatio(unsigned char ratio)
+{
+    if ((ratio >= 28) && (ratio <= 45))
+    {
+        ui->dashSpin->blockSignals(true);
+        ui->dashSpin->setValue(double(ratio/10));
+        ui->dashSpin->blockSignals(false);
     }
 }
 
@@ -65,6 +77,22 @@ void cwSender::handleCurrentModeUpdate(mode_kind mode)
     {
     } else {
         ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.", 3000);
+    }
+}
+
+void cwSender::textChanged(QString text)
+{
+    if (ui->sendImmediateChk->isChecked())
+    {
+        if (text.back() == ' ')
+        {
+            int toSend = text.mid(0, 30).size();
+            if (toSend > 0) {
+                emit sendCW(text.mid(0, 30));
+                ui->transcriptText->appendPlainText(text.mid(0, 30));
+                ui->textToSendEdit->clearEditText();
+            }
+        }
     }
 }
 
@@ -114,12 +142,16 @@ void cwSender::on_wpmSpin_valueChanged(int wpm)
     emit setKeySpeed((unsigned char)wpm);
 }
 
+void cwSender::on_dashSpin_valueChanged(double ratio)
+{
+    emit setDashRatio((unsigned char)double(ratio * 10));
+}
+
 void cwSender::on_pitchSpin_valueChanged(int arg1)
 {
     //    quint16 cwPitch = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
     unsigned char pitch = 0;
     pitch = ceil((arg1 - 300) * (255.0 / 600.0));
-    qDebug() << "Setting pitch" << pitch;
     emit setPitch(pitch);
 }
 
@@ -189,7 +221,7 @@ void cwSender::runMacroButton(int buttonNumber)
     if(macroText[buttonNumber].isEmpty())
         return;
     QString outText;
-    if(macroText[buttonNumber].contains("\%1"))
+    if(macroText[buttonNumber].contains("%1"))
     {
         outText = macroText[buttonNumber].arg(sequenceNumber, 3, 10, QChar('0'));
         sequenceNumber++;
@@ -199,9 +231,20 @@ void cwSender::runMacroButton(int buttonNumber)
     } else {
         outText = macroText[buttonNumber];
     }
-    emit sendCW(outText);
+
+    if (ui->cutNumbersChk->isChecked())
+    {
+        outText.replace("0", "T");
+        outText.replace("9", "N");
+    }
+
+    for (int i = 0; i < outText.size(); i = i + 30) {
+        emit sendCW(outText.mid(i,30));
+    }
+
     ui->transcriptText->appendPlainText(outText);
     ui->textToSendEdit->setFocus();
+   
 
     if( (currentMode==modeCW) || (currentMode==modeCW_R) )
     {
@@ -215,8 +258,8 @@ void cwSender::editMacroButton(int buttonNumber, QPushButton* btn)
 {
     bool ok;
     QString promptFirst = QString("Please enter the text for macro %1,\n"
-                                  "up to 30 characters.\n").arg(buttonNumber);
-    QString promptSecond = QString("You may use \"\%1\" to insert a sequence number.");
+        "up to 60 characters.\n").arg(buttonNumber);
+    QString promptSecond = QString("You may use \"%1\" to insert a sequence number.");
     QString prompt = promptFirst+promptSecond;
 
     QString newMacroText = QInputDialog::getText(this, "Macro Edit",
@@ -225,12 +268,12 @@ void cwSender::editMacroButton(int buttonNumber, QPushButton* btn)
     if(!ok)
         return;
 
-    if(newMacroText.length() > 30)
+    if (newMacroText.length() > 60)
     {
         QMessageBox msgBox;
         msgBox.setText(QString("The text entered was too long \n"
-                       "(max length is 30 characters).\n"
-                       "Your input was %1 characters.").arg(newMacroText.length()));
+            "(max length is 60 characters).\n"
+            "Your input was %1 characters.").arg(newMacroText.length()));
         msgBox.exec();
         this->raise();
         return;

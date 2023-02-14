@@ -129,6 +129,8 @@ public slots:
     void getPassband();
     void getCwPitch();
     void setCwPitch(unsigned char pitch);
+    void getDashRatio();
+    void setDashRatio(unsigned char ratio);
     void getPskTone();
     void setPskTone(unsigned char tone);
     void getRttyMark();
@@ -363,6 +365,7 @@ signals:
     // CW:
     void haveKeySpeed(unsigned char wpm);
     void haveCWBreakMode(unsigned char bmode);
+    void haveDashRatio(unsigned char ratio);
 
 
     // Rig State

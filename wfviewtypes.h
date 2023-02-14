@@ -166,7 +166,7 @@ enum cmds {
     cmdSetRptAccessMode, cmdSetRptDuplexOffset, cmdGetRptDuplexOffset,
     cmdSelVFO, cmdVFOSwap, cmdVFOEqualAB, cmdVFOEqualMS, cmdSetQuickSplit,
     cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
-    cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW,
+    cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW, cmdGetDashRatio, cmdSetDashRatio,
     cmdSetTime, cmdSetDate, cmdSetUTCOffset,
     // Below Only used for USB Controller at the moment.
     cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown, cmdSetStepUp, cmdSetStepDown, cmdSetSpanUp, cmdSetSpanDown, cmdIFFilterUp, cmdIFFilterDown

@@ -29,12 +29,14 @@ signals:
     void sendCW(QString cwMessage);
     void stopCW();
     void setKeySpeed(unsigned char wpm);
+    void setDashRatio(unsigned char ratio);
     void setPitch(unsigned char pitch);
     void setBreakInMode(unsigned char b);
     void getCWSettings();
 
 public slots:
     void handleKeySpeed(unsigned char wpm);
+    void handleDashRatio(unsigned char ratio);
     void handlePitch(unsigned char pitch);
     void handleBreakInMode(unsigned char b);
     void handleCurrentModeUpdate(mode_kind mode);
@@ -47,9 +49,13 @@ private slots:
 
     //void on_textToSendEdit_returnPressed();
 
+    void textChanged(QString text);
+
     void on_breakinCombo_activated(int index);
 
     void on_wpmSpin_valueChanged(int arg1);
+
+    void on_dashSpin_valueChanged(double arg1);
 
     void on_pitchSpin_valueChanged(int arg1);
 
@@ -79,6 +85,7 @@ private:
     Ui::cwSender *ui;
     QString macroText[11];
     int sequenceNumber = 1;
+    int lastSentPos = 0;
     mode_kind currentMode;
     void processMacroButton(int buttonNumber, QPushButton *btn);
     void runMacroButton(int buttonNumber);
