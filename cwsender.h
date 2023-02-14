@@ -25,6 +25,11 @@ public:
     ~cwSender();
     QStringList getMacroText();
     void setMacroText(QStringList macros);
+    void setCutNumbers(bool val);
+    void setSendImmediate(bool val);
+    bool getCutNumbers();
+    bool getSendImmediate();
+
 signals:
     void sendCW(QString cwMessage);
     void stopCW();

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>822</width>
+    <width>835</width>
     <height>451</height>
    </rect>
   </property>
@@ -246,6 +246,9 @@
           <property name="toolTip">
            <string>Type here to send text as CW</string>
           </property>
+          <property name="inputMethodHints">
+           <set>Qt::ImhUppercaseOnly</set>
+          </property>
           <property name="editable">
            <bool>true</bool>
           </property>
@@ -348,6 +351,9 @@
       </item>
       <item row="3" column="3">
        <widget class="QDoubleSpinBox" name="dashSpin">
+        <property name="decimals">
+         <number>1</number>
+        </property>
         <property name="minimum">
          <double>2.800000000000000</double>
         </property>
@@ -356,6 +362,9 @@
         </property>
         <property name="singleStep">
          <double>0.100000000000000</double>
+        </property>
+        <property name="stepType">
+         <enum>QAbstractSpinBox::DefaultStepType</enum>
         </property>
         <property name="value">
          <double>3.000000000000000</double>

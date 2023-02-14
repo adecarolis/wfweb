@@ -26,17 +26,15 @@ cwSender::~cwSender()
 
 void cwSender::showEvent(QShowEvent *event)
 {
+    (void)event;
     emit getCWSettings();
     QMainWindow::showEvent(event);
-    (void)event;
 }
 
 void cwSender::handleKeySpeed(unsigned char wpm)
 {
-    //qDebug(logCW()) << "Told that current WPM is" << wpm;
     if ((wpm >= 6) && (wpm <= 48))
     {
-        //qDebug(logCW()) << "Setting WPM UI control to" << wpm;
         ui->wpmSpin->blockSignals(true);
         ui->wpmSpin->setValue(wpm);
         ui->wpmSpin->blockSignals(false);
@@ -45,19 +43,23 @@ void cwSender::handleKeySpeed(unsigned char wpm)
 
 void cwSender::handleDashRatio(unsigned char ratio)
 {
-    if ((ratio >= 28) && (ratio <= 45))
+    double calc = double(ratio/10);
+    if ((calc >= 2.8) && (ratio <= 4.5))
     {
         ui->dashSpin->blockSignals(true);
-        ui->dashSpin->setValue(double(ratio/10));
+        ui->dashSpin->setValue(calc);
         ui->dashSpin->blockSignals(false);
     }
 }
 
 void cwSender::handlePitch(unsigned char pitch) {
     quint16 cwPitch = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
-    ui->pitchSpin->blockSignals(true);
-    ui->pitchSpin->setValue(cwPitch);
-    ui->pitchSpin->blockSignals(false);
+    if (cwPitch >= 300 && cwPitch <= 900)
+    {
+        ui->pitchSpin->blockSignals(true);
+        ui->pitchSpin->setValue(cwPitch);
+        ui->pitchSpin->blockSignals(false);
+    }
 }
 
 void cwSender::handleBreakInMode(unsigned char b)
@@ -82,16 +84,16 @@ void cwSender::handleCurrentModeUpdate(mode_kind mode)
 
 void cwSender::textChanged(QString text)
 {
-    if (ui->sendImmediateChk->isChecked())
+    if (ui->sendImmediateChk->isChecked() && text.size() && text.back() == ' ')
     {
-        if (text.back() == ' ')
-        {
-            int toSend = text.mid(0, 30).size();
-            if (toSend > 0) {
-                emit sendCW(text.mid(0, 30));
-                ui->transcriptText->appendPlainText(text.mid(0, 30));
-                ui->textToSendEdit->clearEditText();
-            }
+        int toSend = text.mid(0, 30).size();
+        if (toSend > 0) {
+            emit sendCW(text.mid(0, 30));
+            ui->textToSendEdit->clearEditText();
+
+            ui->transcriptText->moveCursor(QTextCursor::End);
+            ui->transcriptText->insertPlainText(text.mid(0, 30).toUpper());
+            ui->transcriptText->moveCursor(QTextCursor::End);
         }
     }
 }
@@ -102,12 +104,22 @@ void cwSender::on_sendBtn_clicked()
         (ui->textToSendEdit->currentText().length() <= 30) )
     {
         emit sendCW(ui->textToSendEdit->currentText());
-        ui->transcriptText->appendPlainText(ui->textToSendEdit->currentText());
-        ui->textToSendEdit->addItem(ui->textToSendEdit->currentText());
-        if (ui->textToSendEdit->count() > 5) {
-            ui->textToSendEdit->removeItem(0);
+
+        ui->transcriptText->moveCursor(QTextCursor::End);
+        ui->transcriptText->insertPlainText(ui->textToSendEdit->currentText().toUpper()+"\n");
+        ui->transcriptText->moveCursor(QTextCursor::End);
+        if (!ui->sendImmediateChk->isChecked())
+        {
+            ui->textToSendEdit->addItem(ui->textToSendEdit->currentText());
+            if (ui->textToSendEdit->count() > 5) {
+                ui->textToSendEdit->removeItem(0);
+            }
+            ui->textToSendEdit->setCurrentIndex(-1);
+        } else {
+            ui->textToSendEdit->clearEditText();
+            ui->textToSendEdit->clear();
         }
-        ui->textToSendEdit->setCurrentIndex(-1);
+
         ui->textToSendEdit->setFocus();
         ui->statusbar->showMessage("Sending CW", 3000);
     }
@@ -242,7 +254,10 @@ void cwSender::runMacroButton(int buttonNumber)
         emit sendCW(outText.mid(i,30));
     }
 
-    ui->transcriptText->appendPlainText(outText);
+    ui->transcriptText->moveCursor(QTextCursor::End);
+    ui->transcriptText->insertPlainText(outText.toUpper()+"\n");
+    ui->transcriptText->moveCursor(QTextCursor::End);
+
     ui->textToSendEdit->setFocus();
    
 
@@ -264,7 +279,7 @@ void cwSender::editMacroButton(int buttonNumber, QPushButton* btn)
 
     QString newMacroText = QInputDialog::getText(this, "Macro Edit",
                                                  prompt,
-                                                 QLineEdit::Normal, macroText[buttonNumber], &ok);
+                                                 QLineEdit::Normal, macroText[buttonNumber], &ok).toUpper();
     if(!ok)
         return;
 
@@ -305,6 +320,26 @@ void cwSender::on_sequenceSpin_valueChanged(int newSeq)
 {
     sequenceNumber = newSeq;
     ui->textToSendEdit->setFocus();
+}
+
+bool cwSender::getCutNumbers()
+{
+    return ui->cutNumbersChk->isChecked();
+}
+
+bool cwSender::getSendImmediate()
+{
+    return ui->sendImmediateChk->isChecked();
+}
+
+void cwSender::setCutNumbers(bool val)
+{
+    ui->cutNumbersChk->setChecked(val);
+}
+
+void cwSender::setSendImmediate(bool val)
+{
+    ui->sendImmediateChk->setChecked(val);
 }
 
 QStringList cwSender::getMacroText()

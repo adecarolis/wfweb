@@ -2437,6 +2437,8 @@ void wfmain::loadSettings()
 
     // CW Memory Load:
     settings->beginGroup("Keyer");
+    cw->setCutNumbers(settings->value("CutNumbers", false).toBool());
+    cw->setSendImmediate(settings->value("SendImmediate", false).toBool());
     int numMemories = settings->beginReadArray("macros");
     if(numMemories==10)
     {
@@ -2965,6 +2967,8 @@ void wfmain::saveSettings()
     settings->endGroup();
 
     settings->beginGroup("Keyer");
+    settings->setValue("CutNumbers", cw->getCutNumbers());
+    settings->setValue("SendImmediate", cw->getSendImmediate());
     QStringList macroList = cw->getMacroText();
     if(macroList.length() == 10)
     {

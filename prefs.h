@@ -70,6 +70,7 @@ struct preferences {
     QString clusterTcpPassword;
     int clusterTimeout; 
     bool clusterSkimmerSpotsEnable; 
+
 };
 
 #endif // PREFS_H
