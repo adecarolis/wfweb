@@ -12,6 +12,7 @@
 
 usbController::usbController()
 {
+    // As this is run in it's own thread, don't do anything in the constructor
 	qInfo(logUsbControl()) << "Starting usbController()";
 }
 
@@ -20,6 +21,7 @@ usbController::~usbController()
     qInfo(logUsbControl) << "Ending usbController()";
 
     if (handle) {
+        programOverlay(60, "Goodbye from wfview");
 
         if (usbDevice == RC28) {
             ledControl(false, 3);
@@ -38,9 +40,10 @@ usbController::~usbController()
 #endif
 }
 
-void usbController::init(int sens)
+void usbController::init(int sens, QMutex* mut)
 {
-    sensitivity = sens;
+    this->mutex = mut;
+    this->sensitivity = sens;
     emit sendSensitivity(sensitivity);
 #ifdef HID_API_VERSION_MAJOR
     if (HID_API_VERSION == HID_API_MAKE_VERSION(hid_version()->major, hid_version()->minor, hid_version()->patch)) {
@@ -75,10 +78,14 @@ void usbController::init(int sens)
         struct hid_device_info* devs;
         devs = hid_enumerate(0x0, 0x0);
         while (devs) {
-            qInfo(logUsbControl()) << QString("Manufacturer: %0 Product: %1 Path: %2")
-                .arg(QString::fromWCharArray(devs->manufacturer_string))
+            qInfo(logUsbControl()) << QString("Device found: (%0:%1) %2 manufacturer: (%3)%4 usage: 0x%5 usage_page 0x%6")
+                .arg(devs->vendor_id, 4, 16, QChar('0'))
+                .arg(devs->product_id, 4, 16, QChar('0'))
                 .arg(QString::fromWCharArray(devs->product_string))
-                .arg(QString::fromLocal8Bit(devs->path));
+                .arg(QString::fromWCharArray(devs->product_string))
+                .arg(QString::fromWCharArray(devs->manufacturer_string))
+                .arg(devs->usage, 4, 16, QChar('0'))
+                .arg(devs->usage_page, 4, 16, QChar('0'));
             devs = devs->next;
         }
         hid_free_enumeration(devs);
@@ -86,19 +93,7 @@ void usbController::init(int sens)
     }
 }
 
-void usbController::receiveCommands(QVector<COMMAND>* cmds)
-{
-    qDebug(logUsbControl()) << "Receiving commands";
-    commands = cmds;
-}
-
-void usbController::receiveButtons(QVector<BUTTON>* buts)
-{
-    qDebug(logUsbControl()) << "Receiving buttons";
-    buttonList = buts;
-}
-
-
+/* run() is called every 2s and attempts to connect to a supported controller */
 void usbController::run()
 {
     if (commands == Q_NULLPTR || hidStatus) {
@@ -203,7 +198,7 @@ void usbController::run()
                 qInfo(logUsbControl()) << "Button Guide" << pressed;
             });
 
-            emit newDevice(usbDevice, buttonList, commands); // Let the UI know we have a new controller
+            emit newDevice(usbDevice, buttonList, knobList, commands, mutex); // Let the UI know we have a new controller
             return;
         }
     }
@@ -223,12 +218,18 @@ void usbController::run()
 
     while (devs) {
         for (int i = 0; i < (int)sizeof knownUsbDevices / (int)sizeof knownUsbDevices[0]; i++) {
-            if (devs->vendor_id == knownUsbDevices[i][1] && devs->product_id == knownUsbDevices[i][2]) {
+            if (devs->vendor_id == knownUsbDevices[i][1] && devs->product_id == knownUsbDevices[i][2] 
+                && (knownUsbDevices[i][3] == 0x00 || devs->usage == knownUsbDevices[i][3])
+                && (knownUsbDevices[i][4] == 0x00 || devs->usage_page == knownUsbDevices[i][4])) 
+            {
                 this->manufacturer = QString::fromWCharArray(devs->manufacturer_string);
+                this->vendorId = devs->vendor_id;
+                this->productId = devs->product_id;
                 this->product = QString::fromWCharArray(devs->product_string);
                 this->serial = QString::fromWCharArray(devs->serial_number);
-                usbDevice = (usbDeviceType)knownUsbDevices[i][0];
                 this->path = QString::fromLocal8Bit(devs->path);
+                this->deviceId = QString("0x%1").arg(this->productId, 4, 16, QChar('0'));
+                this->usbDevice = (usbDeviceType)knownUsbDevices[i][0];
                 break;
             }
         } 
@@ -255,9 +256,35 @@ void usbController::run()
             ledControl(false, 2);
             ledControl(true, 3);
         }
+        else if (usbDevice == eCoderPlus)
+        {
+            knobValues.clear();
+            knobSend.clear();
+            knobValues.append({ 0,0,0 });
+            knobSend.append({ 0,0,0 });
+        } 
+        else if (usbDevice == QuickKeys) {
+            // Subscribe to event streams
+            
+            QByteArray b(32,0x0);
+            b[0] = (qint8)0x02;
+            b[1] = (qint8)0xb0;
+            b[2] = (qint8)0x04;
+
+            b.replace(10, sizeof(this->deviceId), this->deviceId.toLocal8Bit());
+            hid_write(this->handle, (const unsigned char*)b.constData(), b.size());
+
+            b[0] = (qint8)0x02;
+            b[1] = (qint8)0xb4;
+            b[2] = (qint8)0x10;
+            b.replace(10, sizeof(this->deviceId), this->deviceId.toLocal8Bit());
+
+            hid_write(this->handle, (const unsigned char*)b.constData(), b.size()); 
+        }
+
 
         // Let the UI know we have a new controller
-        emit newDevice(usbDevice, buttonList, commands); 
+        emit newDevice(usbDevice, buttonList, knobList, commands, mutex); 
         // Run the periodic timer to get data
         QTimer::singleShot(25, this, SLOT(runTimer()));
     }
@@ -277,9 +304,18 @@ void usbController::run()
 
 }
 
+/* runTimer is called every 25ms once a connection to a supported controller is established */
 void usbController::runTimer()
 {
     int res=1;
+
+    if (!this->handle) {
+        // Something bad happened!
+        QTimer::singleShot(25, this, SLOT(runTimer()));
+        res = 0;
+    }
+
+    QMutexLocker locker(mutex);
 
     while (res > 0) {
         QByteArray data(HIDDATALENGTH, 0x0);
@@ -287,7 +323,7 @@ void usbController::runTimer()
         if (res < 0)
         {
             qInfo(logUsbControl()) << "USB Device disconnected" << this->product;
-            emit newDevice(0, buttonList, commands);
+            emit newDevice(0, buttonList, knobList, commands, mutex);
             this->product = "";
             this->manufacturer = "";
             this->serial = "<none>";
@@ -306,7 +342,7 @@ void usbController::runTimer()
                 << hex << (unsigned char)data[3] << ":"
                 << hex << (unsigned char)data[4];
                 */
-            unsigned int tempButtons = (unsigned int)((unsigned char)data[3] | (unsigned char)data[4] << 8);
+            quint32 tempButtons = ((quint8)data[4] << 8) | ((quint8)data[3] & 0xff);
             unsigned char tempJogpos = (unsigned char)data[1];
             unsigned char tempShutpos = (unsigned char)data[0];
 
@@ -341,23 +377,22 @@ void usbController::runTimer()
             if (buttons != tempButtons)
             {
 
-
                 // Step through all buttons and emit ones that have been pressed.
+
                 for (unsigned char i = 0; i < 16; i++)
                 {
-                    
-                    for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
-                        if (but->dev == usbDevice && but->num == i) {
-                            if ((tempButtons >> i & 1) && !(buttons >> i & 1) && but->onCommand->index > 0)
-                            {
-                                qDebug(logUsbControl()) << "On Button event:" << but->onCommand->text;
-                                emit button(but->onCommand);
-                            }
-                            else if ((buttons >> i & 1) && !(tempButtons >> i & 1) && but->offCommand->index > 0)
-                            {
-                                qDebug(logUsbControl()) << "Off Button event:" << but->offCommand->text;
-                                emit button(but->offCommand);
-                            }
+                    auto but = std::find_if(buttonList->begin(), buttonList->end(), [this, i](const BUTTON& b) 
+                        { return (b.dev == this->usbDevice && b.num == i); });
+                    if (but != buttonList->end()) {
+                        if ((tempButtons >> i & 1) && !(buttons >> i & 1))
+                        {
+                            qDebug(logUsbControl()) << "On Button event:" << but->onCommand->text;
+                            emit button(but->onCommand);
+                        }
+                        else if ((buttons >> i & 1) && !(tempButtons >> i & 1))
+                        {
+                            qDebug(logUsbControl()) << "Off Button event:" << but->offCommand->text;
+                            emit button(but->offCommand);
                         }
                     }
                 }
@@ -383,9 +418,6 @@ void usbController::runTimer()
                 BUTTON* butptt = Q_NULLPTR;
                 BUTTON* butf1 = Q_NULLPTR;
                 BUTTON* butf2 = Q_NULLPTR;;
-
-
-                //delayedCmdQue.erase(std::remove_if(delayedCmdQue.begin() + 1, delayedCmdQue.end(), [cmd](const commandtype& c) {  return (c.cmd == cmd); }),
 
                 for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
                     if (but->dev == usbDevice) {
@@ -477,6 +509,115 @@ void usbController::runTimer()
                 lastData = data;
             }
         }
+        else if (usbDevice == eCoderPlus && data.length() > 0x0f && (quint8)data[0] == 0xff) {
+            /* Button matrix:
+            DATA3   DATA2     DATA 1
+            765432107654321076543210
+            001000000000000000000000 = Left CW
+            000100000000000000000000 = Right CW
+            000010000000000000000000 = PTT
+            000001000000000000000000 = Knob 3 Press
+            000000100000000000000000 = Knob 2 Press
+            000000010000000000000000 = Knob 1 Press
+            000000000100000000000000 = button14
+            000000000010000000000000 = button13
+            000000000001000000000000 = button12
+            000000000000100000000000 = button11
+            000000000000010000000000 = button10
+            000000000000001000000000 = button9
+            000000000000000100000000 = button8 
+            000000000000000010000000 = button7 
+            000000000000000001000000 = button6
+            000000000000000000100000 = button5
+            000000000000000000010000 = button4
+            000000000000000000001000 = button3
+            000000000000000000000100 = button2
+            000000000000000000000010 = button1
+            */
+            quint32 tempButtons = ((quint8)data[3] << 16) | ((quint8)data[2] << 8) | ((quint8)data[1] & 0xff);
+            quint32 tempKnobs = ((quint8)data[16] << 16) | ((quint8)data[15] << 8) | ((quint8)data[14] & 0xff);
+
+            if (buttons != tempButtons)
+            {
+                // Step through all buttons and emit ones that have been pressed.
+                for (unsigned char i = 1; i < 23; i++)
+                {
+                    auto but = std::find_if(buttonList->begin(), buttonList->end(), [this, i](const BUTTON& b)
+                    { return (b.dev == this->usbDevice && b.num == i); });
+                    if (but != buttonList->end()) {
+                        if ((tempButtons >> i & 1) && !(buttons >> i & 1))
+                        {
+                            qDebug(logUsbControl()) << "On Button event:" << but->onCommand->text;
+                            emit button(but->onCommand);
+                        }
+                        else if ((buttons >> i & 1) && !(tempButtons >> i & 1))
+                        {
+                            qDebug(logUsbControl()) << "Off Button event:" << but->offCommand->text;
+                            emit button(but->offCommand);
+                        }
+                    }
+                }
+            }
+            buttons = tempButtons;
+
+            if (knobs != tempKnobs) {
+                // One of the knobs has moved
+                for (unsigned char i = 0; i < 3; i++) {
+                    if ((tempKnobs >> (i * 8) & 0xff) != (knobs >> (i * 8) & 0xff)) {
+                        knobValues[i] = knobValues[i] + (qint8)((knobs >> (i * 8)) & 0xff);
+                    }
+                }
+            }
+            knobs = tempKnobs;
+ 
+            // Tuning knob
+            jogCounter = jogCounter + (qint8)data[13];
+
+        } else if (usbDevice == QuickKeys && (quint8)data[0] == 0x02) {
+
+            if ((quint8)data[1] == 0xf0) {
+
+                //qInfo(logUsbControl()) << "Received:" << data;
+                quint32 tempButtons = (data[3] << 8) | (data[2] & 0xff);
+
+                // Step through all buttons and emit ones that have been pressed.
+                for (unsigned char i = 0; i < 10; i++)
+                {
+                    auto but = std::find_if(buttonList->begin(), buttonList->end(), [this, i](const BUTTON& b)
+                    { return (b.dev == this->usbDevice && b.num == i); });
+                    if (but != buttonList->end()) {
+                        if ((tempButtons >> i & 1) && !(buttons >> i & 1))
+                        {
+                            qDebug(logUsbControl()) << "On Button event:" << but->onCommand->text;
+                            emit button(but->onCommand);
+                            programButton(but->num, but->offCommand->text);
+                        }
+                        else if ((buttons >> i & 1) && !(tempButtons >> i & 1))
+                        {
+                            qDebug(logUsbControl()) << "Off Button event:" << but->offCommand->text;
+                            emit button(but->offCommand);
+                            programButton(but->num, but->onCommand->text);
+                        }
+                    }
+                }
+
+                buttons = tempButtons;
+
+                // Tuning knob
+                if (data[7] & 0x01) {
+                    jogCounter++;
+                }
+                else if (data[7] & 0x02) {
+                    jogCounter--;
+                }
+            } 
+            else if ((quint8)data[1] == 0xf2 && (quint8)data[2] == 0x01)
+            {
+                // Battery level
+                quint8 battery = (quint8)data[3];
+                qDebug(logUsbControl()) << QString("Battery level %1 %").arg(battery);
+            }
+        }
 
         if (lastusbController.msecsTo(QTime::currentTime()) >= 100 || lastusbController > QTime::currentTime())
         {
@@ -495,6 +636,33 @@ void usbController::runTimer()
                     qDebug(logUsbControl()) << "Shuttle MINUS" << shutMult;
                 }
             }
+
+            if (usbDevice == eCoderPlus) {
+                for (unsigned char i = 0; i < 3; i++) {
+                    for (KNOB* kb = knobList->begin(); kb != knobList->end(); kb++) {
+                        if (kb && kb->dev == usbDevice && kb->num == i + 1 && knobValues[i]) {
+                            COMMAND cmd;
+                            cmd.command = kb->command->command;
+                            if (knobSend[i] + (knobValues[i] * 10) <= 0)
+                            {
+                                knobSend[i] = 0;
+                            }
+                            else if (knobSend[i] + (knobValues[i] * 10) >= 255)
+                            {
+                                knobSend[i] = 255;
+                            }
+                            else {
+                                knobSend[i] = knobSend[i] + (knobValues[i] * 10);
+                            }
+                            cmd.suffix = knobSend[i];
+                            qInfo(logUsbControl()) << "Sending Knob:" << kb->num << "Command:" << cmd.command << " Value:" << cmd.suffix << "Raw value:" << knobValues[i];
+                            emit button(&cmd);
+                            knobValues[i] = 0;
+                        }
+                    }
+                }
+            }
+
             if (jogCounter != 0) {
                 emit sendJog(jogCounter/sensitivity);
                 qDebug(logUsbControl()) << "Change Frequency by" << jogCounter << "hz";
@@ -505,9 +673,54 @@ void usbController::runTimer()
         }
 
     }
+
     // Run every 25ms
     QTimer::singleShot(25, this, SLOT(runTimer()));
 }
+
+
+/* Functions below receive various settings from other classes/threads */
+void usbController::receiveCommands(QVector<COMMAND>* cmds)
+{
+    qDebug(logUsbControl()) << "Receiving commands";
+    commands = cmds;
+}
+
+void usbController::receiveButtons(QVector<BUTTON>* buts)
+{
+    qDebug(logUsbControl()) << "Receiving buttons";
+    buttonList = buts;
+}
+
+void usbController::receiveKnobs(QVector<KNOB>* kbs)
+{
+    qDebug(logUsbControl()) << "Receiving knobs";
+    knobList = kbs;
+}
+
+void usbController::receiveSensitivity(int val)
+{
+    sensitivity = val;
+}
+
+void usbController::receivePTTStatus(bool on) {
+    static QColor lastColour = currentColour;
+    static bool ptt;
+    if (on && !ptt) {
+        lastColour = currentColour;
+        programWheelColour(255, 0, 0);
+    }
+    else {
+        programWheelColour((quint8)lastColour.red(), (quint8)lastColour.green(), (quint8)lastColour.blue());
+    }
+    ptt = on;
+}
+
+/*
+ * All functions below here are for specific controllers
+*/
+
+/* Functions below are for RC28 */
 
 void usbController::ledControl(bool on, unsigned char num)
 {
@@ -544,6 +757,10 @@ void usbController::getVersion()
         qDebug(logUsbControl()) << "Unable to write(), Error:" << hid_error(handle);
     }
 }
+
+/* End of RC28 functions*/
+
+/* Functions below are for Gamepad controllers */
 void usbController::buttonState(QString name, bool val)
 {
     for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
@@ -560,6 +777,7 @@ void usbController::buttonState(QString name, bool val)
         }
     }
 }
+
 void usbController::buttonState(QString name, double val)
 {
 
@@ -585,9 +803,133 @@ void usbController::buttonState(QString name, double val)
     */
 }
 
-void usbController::receiveSensitivity(int val)
+/* End of Gamepad functions*/
+
+
+/* Functions below are for Xencelabs QuickKeys*/
+void usbController::programButton(quint8 val, QString text)
 {
-    sensitivity = val;
+    if (handle && usbDevice == QuickKeys && val < 8) {
+        text = text.mid(0, 10); // Make sure text is no more than 10 characters.
+        qDebug(logUsbControl()) << QString("Programming button %0 with %1").arg(val).arg(text);
+        QByteArray data(32, 0x0);
+        data[0] = (qint8)0x02;
+        data[1] = (qint8)0xb1;
+        data[3] = val + 1;
+        data[5] = text.length() * 2;
+        data.replace(10, this->deviceId.size(), this->deviceId.toLocal8Bit());
+
+        QByteArray le = qToLittleEndian(QByteArray::fromRawData(reinterpret_cast<const char*>(text.constData()), text.size() * 2));
+        data.replace(16, le.size(), le);
+
+        int res = hid_write(this->handle, (const unsigned char*)data.constData(), data.size());
+
+        if (res < 0) {
+            qDebug(logUsbControl()) << "Unable to write(), Error:" << hid_error(this->handle);
+            return;
+        }
+    }
 }
+
+void usbController::programBrightness(quint8 val) {
+    if (handle && usbDevice == QuickKeys) {
+        qDebug(logUsbControl()) << QString("Programming brightness to %0").arg(val);
+        QByteArray data(32, 0x0);
+        data[0] = (qint8)0x02;
+        data[1] = (qint8)0xb1;
+        data[2] = (qint8)0x0a;
+        data[3] = (qint8)0x01;
+        data[4] = val;
+        data.replace(10, this->deviceId.size(), this->deviceId.toLocal8Bit());
+        hid_write(this->handle, (const unsigned char*)data.constData(), data.size());
+    }
+}
+
+void usbController::programOrientation(quint8 val) {
+    if (handle && usbDevice == QuickKeys) {
+        qDebug(logUsbControl()) << QString("Programming orientation to %0").arg(val);
+        QByteArray data(32, 0x0);
+        data[0] = (qint8)0x02;
+        data[1] = (qint8)0xb1;
+        data[2] = (qint8)val;
+        data.replace(10, this->deviceId.size(), this->deviceId.toLocal8Bit());
+        hid_write(this->handle, (const unsigned char*)data.constData(), data.size());
+    }
+}
+
+void usbController::programSpeed(quint8 val) {
+    if (handle && usbDevice == QuickKeys) {
+        qDebug(logUsbControl()) << QString("Programming speed to %0").arg(val);
+        QByteArray data(32, 0x0);
+        data[0] = (qint8)0x02;
+        data[1] = (qint8)0xb4;
+        data[2] = (qint8)0x04;
+        data[3] = (qint8)0x01;
+        data[4] = (qint8)0x01;
+        data[5] = val;
+        data.replace(10, this->deviceId.size(), this->deviceId.toLocal8Bit());
+        hid_write(this->handle, (const unsigned char*)data.constData(), data.size());
+    }
+}
+
+
+void usbController::programWheelColour(quint8 r, quint8 g, quint8 b)
+{
+    if (handle && usbDevice == QuickKeys) {
+        QByteArray data(32, 0x0);
+        data[0] = (qint8)0x02;
+        data[1] = (qint8)0xb4;
+        data[2] = (qint8)0x01;
+        data[3] = (qint8)0x01;
+        data[6] = (qint8)r;
+        data[7] = (qint8)g;
+        data[8] = (qint8)b;
+        data.replace(10, this->deviceId.size(), this->deviceId.toLocal8Bit());
+        hid_write(this->handle, (const unsigned char*)data.constData(), data.size());
+        currentColour.setRed(r);
+        currentColour.setGreen(g);
+        currentColour.setBlue(b);
+    }
+}
+
+void usbController::programOverlay(quint8 duration, QString text)
+{
+    if (handle && usbDevice == QuickKeys) {
+        text = text.mid(0, 32);
+        QByteArray data(32, 0x0);
+        data[0] = (qint8)0x02;
+        data[1] = (qint8)0xb1;
+        data[3] = (qint8)duration;
+        data.replace(10, this->deviceId.size(), this->deviceId.toLocal8Bit());
+        for (int i = 0; i < text.length(); i = i + 8)
+        {
+            data[2] = (i == 0) ? 0x05 : 0x06;
+            QByteArray le = qToLittleEndian(QByteArray::fromRawData(reinterpret_cast<const char*>(text.mid(i, 8).constData()), text.mid(i, 8).size() * 2));
+            data.replace(16, le.size(), le);
+            data[5] = text.mid(i, 8).length() * 2;
+            data[6] = (i > 0 && text.mid(i).size() > 8) ? 0x01 : 0x00;
+            hid_write(this->handle, (const unsigned char*)data.constData(), data.size());
+        }
+        //qInfo(logUsbControl()) << "Sent overlay" << text;
+    }
+}
+
+void usbController::programTimeout(quint8 val)
+{
+    if (handle && usbDevice == QuickKeys) {
+        qInfo(logUsbControl()) << QString("Programming timeout to %0 minutes").arg(val);
+        QByteArray data(32, 0x0);
+        data[0] = (qint8)0x02;
+        data[1] = (qint8)0xb4;
+        data[2] = (qint8)0x08;
+        data[3] = (qint8)0x01;
+        data[4] = val;
+        data.replace(10, this->deviceId.size(), this->deviceId.toLocal8Bit());
+        hid_write(this->handle, (const unsigned char*)data.constData(), data.size());
+    }
+}
+
+/* End of functions for Xencelabs QuickKeys*/
+
 
 #endif

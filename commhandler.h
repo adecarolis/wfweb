@@ -57,6 +57,7 @@ private:
     //QDataStream stream;
     QByteArray outPortData;
     QByteArray inPortData;
+    QByteArray previousSent;
 
     //QDataStream outStream;
     //QDataStream inStream;

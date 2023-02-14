@@ -103,6 +103,8 @@ void commHandler::sendDataOut(const QByteArray &writeData)
 
     qint64 bytesWritten;
 
+    previousSent = writeData;
+
     if(PTTviaRTS)
     {
         // Size:    1  2  3    4    5    6    7    8
@@ -170,6 +172,15 @@ void commHandler::receiveDataIn()
     port->startTransaction();
     inPortData = port->readAll();
 
+    if (inPortData.startsWith("\xFC\xFC\xFC\xFC\xFC"))
+    {
+        // Colission detected by remote end, re-send previous command.
+        qInfo(logSerial()) << "Collision detected by remote, resending previous command";
+        port->commitTransaction();
+        sendDataOut(previousSent);
+        return;
+    }
+
     if(inPortData.size() == 1)
     {
         // Generally for baud <= 9600
@@ -184,7 +195,6 @@ void commHandler::receiveDataIn()
             return;
         }
     }
-
 
     if (inPortData.startsWith("\xFE\xFE"))
     {

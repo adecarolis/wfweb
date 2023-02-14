@@ -47,6 +47,11 @@ struct preferences {
     bool automaticSidebandSwitching = true;
     bool enableUSBControllers;
     int usbSensitivity;
+    quint8 usbSpeed;
+    quint8 usbTimeout;
+    quint8 usbBrightness;
+    quint8 usbOrientation;
+    QColor usbColor;
 
     // LAN:
     bool enableLAN;
@@ -63,8 +68,8 @@ struct preferences {
     QString clusterTcpServerName;
     QString clusterTcpUserName;
     QString clusterTcpPassword;
-    int clusterTimeout; // used?
-    bool clusterSkimmerSpotsEnable; // where is this used?
+    int clusterTimeout; 
+    bool clusterSkimmerSpotsEnable; 
 };
 
 #endif // PREFS_H

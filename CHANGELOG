@@ -1,3 +1,179 @@
+commit dd4770a85ff462913c223fcb1a9aeff65cce0a5d
+Merge: 32e6622 3582c95
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 13 15:37:26 2023 +0000
+
+    Merge branch 'collision-detection' into ecoder
+
+commit 32e662237bebcf46f337d173a195849f4d98ee7a
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 13 15:14:27 2023 +0000
+
+    Make ptt react correctly
+
+commit 3582c95c58185a951ecb1b242bec974d835082df
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 12 23:14:39 2023 +0000
+
+    Fixes to collision detection.
+
+commit da71bb3bc3d244a6d33307d180d8cc5f4069b7aa
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 12 23:14:51 2023 +0000
+
+    Remove debugging
+
+commit 0397b4b68aab860bd1aa8ca9ab1a4ff0828b11df
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 12 23:14:39 2023 +0000
+
+    Fixes to collision detection.
+
+commit feac83b997da6dfff3170813fa0b16150482d7fb
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Feb 11 11:40:30 2023 +0000
+
+    Attempt at simple collision detection
+
+commit 9afc661c4c52276fafb5b866f09e4d52024b5943
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 12 17:17:29 2023 +0000
+
+    Update usbcontroller.cpp
+
+commit 6de14df1da5e2303c6c2b89e2b399ae3312657be
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 12 17:14:26 2023 +0000
+
+    Fix compile warnings
+
+commit 7e89e9f457f2867bd2f5a00f2299281cd6100eef
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Feb 12 16:45:21 2023 +0000
+
+    Add support for Xencelabs QuickKeys
+
+commit 3cb54f9cd7c512ada7b63bc1507a4dee805f85e6
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Feb 11 11:40:30 2023 +0000
+
+    Attempt at simple collision detection
+
+commit 80838e4f82068a6e7ad042e06abc073626f4ad69
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Feb 11 11:39:18 2023 +0000
+
+    Some more changes
+
+commit 54c75d5defaff2014f96b8256d621f832b557211
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 10 18:52:51 2023 +0000
+
+    Multiply knob values * 10
+
+commit 8b59efbf336bae5bae8d2f85ed4e94c2067bf492
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 10 18:40:11 2023 +0000
+
+    Another try
+
+commit 9db06989279270b03f5d968c03015e4d249d6e49
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 10 18:26:34 2023 +0000
+
+    Quick test
+
+commit 251239e445b2faf2f1ee5d4eae8668b522de5268
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 10 18:13:50 2023 +0000
+
+    Update usbcontroller.cpp
+
+commit a3a82cd442a2a6a2fa428e99e9401d360996e9b1
+Merge: 3461a0e 6e5e22a
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 10 18:11:42 2023 +0000
+
+    Merge branch 'master' into ecoder
+
+commit 3461a0e5e51b68517561cbdfbedd19141725f7c6
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 10 18:10:32 2023 +0000
+
+    Correct usbMutex
+
+commit 3429786e106f2c145c8987d5b4a39e63134a789b
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 10 15:51:01 2023 +0000
+
+    Reset knobValues to 0 after sending
+
+commit c2e9100a40f4550fd51e312ac359034d8323f552
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 10 15:47:23 2023 +0000
+
+    Hopefully fix random buttons
+
+commit c8a29bb40096de3fd4b77d7c7f218531a1372647
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 10 15:23:57 2023 +0000
+
+    Add mutex to ensure thread safety
+
+commit fa47bfb4bc37fe96e0e602eabf8ed267342a9928
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 10 13:34:04 2023 +0000
+
+    Update usbcontroller.cpp
+
+commit 82425b445e21a6ef1381a39d10c666cc4910e082
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 10 13:28:09 2023 +0000
+
+    Try again
+
+commit 7aa75466600a50578e335ae5f47c8ef257382596
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 10 09:52:51 2023 +0000
+
+    More work on knobs
+
+commit 4e61a455b5cf7f9679d7182c494c8ea2b6156b81
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 10 00:31:12 2023 +0000
+
+    Hide setup screen if disabled
+
+commit cad3bb9418020ff9583d25d688b397afd88f6fea
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 10 00:27:01 2023 +0000
+
+    Various (I hope) improvements!
+
+commit 1f1800f046a32a969c17d1d48d2dd826ffc4081e
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 9 18:43:42 2023 +0000
+
+    Flip bits in knob command
+
+commit 5ed380c03d792de91ba15a14549b46ca8d8cabca
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 9 18:35:07 2023 +0000
+
+    Remove debug setup
+
+commit a8951813f5a69f17d044f8f723fc23702c0f7bc1
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Feb 9 13:21:51 2023 +0000
+
+    Provisional support for knobs
+
+commit 6e5e22a672e430d872eddb232bcc8491134dc13d
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Wed Feb 8 19:00:44 2023 +0100
+
+    another compile fix
+
 commit bbbfe38e0bfc5280e349049c126dcf2792c06b52
 Author: Elliott Liggett <kilocharlie8@gmail.com>
 Date:   Wed Feb 8 08:26:36 2023 -0800
@@ -10,6 +186,13 @@ Date:   Wed Feb 8 11:26:33 2023 +0100
 
     compilation fixes
 
+commit 17a65472646b1113da2c4b7dcccf3763f41d3085
+Merge: cb339ed 0ff2551
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Feb 8 10:15:16 2023 +0000
+
+    Merge branch 'master' into ecoder
+
 commit 1515e135e5434ab7c334214ff10165e484536906
 Author: Phil Taylor <phil@m0vse.uk>
 Date:   Wed Feb 8 10:12:48 2023 +0000
@@ -21,6 +204,89 @@ Author: Phil Taylor <phil@m0vse.uk>
 Date:   Tue Feb 7 23:29:50 2023 +0000
 
     Fix compile if controller disabled
+
+commit cb339edc1f4881df29db1d4d9f93b38e8316aa8d
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 23:29:50 2023 +0000
+
+    Fix compile if controller disabled
+
+commit f4a86ac02e5996d61bdddef0f69b4ce92b19a4de
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 23:05:42 2023 +0000
+
+    Add more buttons
+
+commit b783f8057a8e1d4e85db4e89de14c059b22e8169
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 22:37:26 2023 +0000
+
+    tuning knob?
+
+commit 10640381387bac9893122e9fd7a2530e52522e50
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 21:12:02 2023 +0000
+
+    Another try
+
+commit dda3c8ee9d52855be21cfcf3288664bf52d7c8de
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 21:01:54 2023 +0000
+
+    Update usbcontroller.cpp
+
+commit 63b8a356e85528ec8dbbbfc403a7d317e6e2705f
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 20:59:53 2023 +0000
+
+    Another try for buttons
+
+commit 4fc37290e516e8507137b4f91084967749f22381
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 20:51:20 2023 +0000
+
+    try to fix ecoder buttons
+
+commit 72e8bc6fa6903e6094de58084e96509f1b8f6f7c
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 20:32:46 2023 +0000
+
+    Remove debug code
+
+commit 8a28a8976090f433c0822fc66d9aa01b107bc215
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 19:41:39 2023 +0000
+
+    Correct order!
+
+commit 5298949f3a50ebb7fba6e265ba656a300679a2be
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 19:37:33 2023 +0000
+
+    Add support for ecoder buttons
+
+commit 1e217bc5b82b43f63d75e3f3db4f6f8b29bcbeb2
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 19:02:05 2023 +0000
+
+    Some initial updates
+
+commit fbea7f1a136f9f5e2b6b3cc599be14c344294fd7
+Merge: b373685 32639c5
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 7 18:41:02 2023 +0000
+
+    Merge branch 'ecoderplus' into 'ecoder'
+    
+    Ecoderplus
+    
+    See merge request eliggett/wfview!17
+
+commit 32639c5394409abb05b95c7d292c09d9bda375f3
+Author: Dawid Szymanski - SQ6EMM/SN6M <dawszy@arhea.pl>
+Date:   Tue Feb 7 18:41:02 2023 +0000
+
+    Ecoderplus
 
 commit b373685fd31f7d6cf21a117650a9bbdf17e5d107
 Author: Roeland Jansen <roeland.jansen69@gmail.com>

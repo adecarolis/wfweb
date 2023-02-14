@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>302</width>
+    <width>442</width>
     <height>343</height>
    </rect>
   </property>
@@ -14,24 +14,7 @@
    <string>Controller setup</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="3" column="0">
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QLabel" name="label">
-       <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Button configuration: &lt;/span&gt;Right-click on each button to configure it.&lt;/p&gt;&lt;p align=&quot;center&quot;&gt;Top selection is command to send when button is pressed and bottom is (optional) command to send when button is released.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-       <property name="wordWrap">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item row="5" column="0">
+   <item row="7" column="0">
     <layout class="QHBoxLayout">
      <property name="spacing">
       <number>6</number>
@@ -77,7 +60,134 @@
      </item>
     </layout>
    </item>
+   <item row="4" column="0">
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
+     <item>
+      <widget class="QComboBox" name="qkBrightCombo">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <item>
+        <property name="text">
+         <string>Brightness</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Off</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Low</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Medium</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>High</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="qkSpeedCombo">
+       <item>
+        <property name="text">
+         <string>Speed</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Fastest</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Faster</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Normal</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Slower</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Slowest</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="qkOrientCombo">
+       <item>
+        <property name="text">
+         <string>Orientation</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Rotate 0</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Rotate 90</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Rotate 180</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Rotate 270</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="qkColorButton">
+       <property name="text">
+        <string>Color</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="qkTimeoutLabel">
+       <property name="text">
+        <string>Timeout</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSpinBox" name="qkTimeoutSpin">
+       <property name="maximum">
+        <number>255</number>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
    <item row="2" column="0">
+    <widget class="QLabel" name="label_3">
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0">
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
       <widget class="QLabel" name="label_2">
@@ -98,6 +208,23 @@
         <enum>Qt::Horizontal</enum>
        </property>
        <property name="invertedAppearance">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="5" column="0">
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Button configuration: &lt;/span&gt;Right-click on each button to configure it.&lt;/p&gt;&lt;p align=&quot;center&quot;&gt;Top selection is command to send when button is pressed and bottom is (optional) command to send when button is released.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+       <property name="wordWrap">
         <bool>true</bool>
        </property>
       </widget>

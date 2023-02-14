@@ -10,6 +10,10 @@
 #include <QGraphicsTextItem>
 #include <QColor>
 #include <QVector>
+#include <QList>
+#include <QMutex>
+#include <QIODevice>
+#include <QtEndian>
 
 #if defined(USB_CONTROLLER) && QT_VERSION < QT_VERSION_CHECK(6,0,0)
 #include <QGamepad>
@@ -56,15 +60,16 @@ using namespace std;
 struct COMMAND {
     COMMAND() {}
 
-    COMMAND(int index, QString text, int command, char suffix) :
-        index(index), text(text), command(command), suffix(suffix) {}
-    COMMAND(int index, QString text, int command, availableBands band) :
-        index(index), text(text), command(command), band(band) {}
-    COMMAND(int index, QString text, int command, mode_kind mode) :
-        index(index), text(text), command(command), mode(mode) {}
+    COMMAND(int index, QString text, usbCommandType cmdType, int command, unsigned char suffix) :
+        index(index), text(text), cmdType(cmdType), command(command), suffix(suffix) {}
+    COMMAND(int index, QString text, usbCommandType cmdType, int command, availableBands band) :
+        index(index), text(text), cmdType(cmdType), command(command), band(band) {}
+    COMMAND(int index, QString text, usbCommandType cmdType, int command, mode_kind mode) :
+        index(index), text(text), cmdType(cmdType), command(command), mode(mode) {}
 
     int index=0;
     QString text;
+    usbCommandType cmdType = commandButton;
     int command=0;
     unsigned char suffix=0x0;
     availableBands band=bandGen;
@@ -74,22 +79,37 @@ struct COMMAND {
 struct BUTTON {
     BUTTON() {}
 
-    BUTTON(quint8 dev, int num, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
+    BUTTON(usbDeviceType dev, int num, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
         dev(dev), num(num), name(""), pos(pos), textColour(textColour), onCommand(on), offCommand(off) {}
-    BUTTON(quint8 dev, QString name, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
+    BUTTON(usbDeviceType dev, QString name, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
         dev(dev), num(-1), name(name), pos(pos), textColour(textColour), onCommand(on), offCommand(off) {}
 
-    quint8 dev;
+    usbDeviceType dev;
     int num;
     QString name;
     QRect pos;
     QColor textColour;
-    int onEvent = 0;
-    int offEvent = 0;
-    const COMMAND* onCommand=Q_NULLPTR;
-    const COMMAND* offCommand=Q_NULLPTR;
+    const COMMAND* onCommand = Q_NULLPTR;
+    const COMMAND* offCommand = Q_NULLPTR;
     QGraphicsTextItem* onText;
     QGraphicsTextItem* offText;
+
+};
+
+
+struct KNOB {
+    KNOB() {}
+
+    KNOB(usbDeviceType dev, int num, QRect pos, const QColor textColour, COMMAND* command) :
+        dev(dev), num(num), name(""), pos(pos), textColour(textColour), command(command) {}
+
+    usbDeviceType dev;
+    int num;
+    QString name;
+    QRect pos;
+    QColor textColour;
+    const COMMAND* command = Q_NULLPTR;
+    QGraphicsTextItem* text;
 
 };
 
@@ -103,14 +123,23 @@ public:
     ~usbController();
 
 public slots:
-    void init(int sens);
+    void init(int sens, QMutex *mut);
     void run();
     void runTimer();
     void ledControl(bool on, unsigned char num);
     void receiveCommands(QVector<COMMAND>*);
     void receiveButtons(QVector<BUTTON>*);
+    void receiveKnobs(QVector<KNOB>*);
+    void receivePTTStatus(bool on);
     void getVersion();
     void receiveSensitivity(int val);
+    void programButton(quint8 val, QString text);
+    void programBrightness(quint8 val);
+    void programOrientation(quint8 val);
+    void programSpeed(quint8 val);
+    void programWheelColour(quint8 r, quint8 g, quint8 b);
+    void programOverlay(quint8 duration, QString text);
+    void programTimeout(quint8 val);
 
 signals:
     void jogPlus();
@@ -119,14 +148,15 @@ signals:
     void doShuttle(bool plus, quint8 level);
     void setBand(int band);
     void button(const COMMAND* cmd);
-    void newDevice(unsigned char devType, QVector<BUTTON>* but,QVector<COMMAND>* cmd);
+    void newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut);
     void sendSensitivity(int val);
 
 private:
     hid_device* handle=NULL;
     int hidStatus = 1;
     bool isOpen=false;
-    unsigned int buttons=0;
+    quint32 buttons = 0;
+    quint32 knobs = 0;
     unsigned char jogpos=0;
     unsigned char shutpos=0;
     unsigned char shutMult = 0;
@@ -135,12 +165,20 @@ private:
     QByteArray lastData = QByteArray(8,0x0);
     unsigned char lastDialPos=0;
     QVector<BUTTON>* buttonList;
+    QVector<KNOB>* knobList;
     QVector<COMMAND>* commands = Q_NULLPTR;
     QString product="";
     QString manufacturer="";
     QString serial="<none>";
+    QString deviceId = "";
     QString path = "";
+    quint16 vendorId = 0;
+    quint16 productId = 0;
     int sensitivity = 1;
+    QList<int> knobValues;
+    QList<quint8> knobSend;
+    QMutex* mutex=Q_NULLPTR;
+    QColor currentColour;
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QGamepad* gamepad=Q_NULLPTR;
 #endif
@@ -148,11 +186,15 @@ private:
     void buttonState(QString but, double val);
     usbDeviceType usbDevice = usbNone;
 
-    unsigned short knownUsbDevices[3][3] = {
-        {shuttleXpress,0x0b33,0x0020},
-        {shuttlePro2,0x0b33,0x0030},
-        {RC28,0x0c26,0x001e} };
-
+    unsigned short knownUsbDevices[6][5] = {
+    {shuttleXpress,0x0b33,0x0020,0x0001,0x000c},
+    {shuttlePro2,0x0b33,0x0030,0x0001,0x000c},
+    //{eCoderPlus,0x0c26,0x001e}, // Only enable for testing!
+    {RC28,0x0c26,0x001e,0x0004,0x0004},
+    {eCoderPlus, 0x1fc9, 0x0003,0x0000,0x0000},
+    {QuickKeys, 0x28bd, 0x5202,0x0001,0xff0a},
+    {QuickKeys, 0x28bd, 0x5203,0x0001,0xff0a}
+    };
 
 protected:
 };
