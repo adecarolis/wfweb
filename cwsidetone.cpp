@@ -148,8 +148,8 @@ void cwSidetone::send(QString text)
             pos++;
         }
         if (outputDevice != Q_NULLPTR) {
-            qint64 written = outputDevice->write(buffer);
-            while (written < buffer.size())
+            qint64 written = 0;
+            while (written != -1 && written < buffer.size())
             {
                 written += outputDevice->write(buffer.data()+written, buffer.size() - written);
                 QApplication::processEvents();
