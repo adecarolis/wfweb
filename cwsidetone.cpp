@@ -151,8 +151,12 @@ void cwSidetone::send(QString text)
             qint64 written = 0;
             while (written != -1 && written < buffer.size())
             {
-                written += outputDevice->write(buffer.data()+written, buffer.size() - written);
+                written += outputDevice->write(buffer.data() + written, buffer.size() - written);
                 QApplication::processEvents();
+            }
+            if (written == -1)
+            {
+                qWarning(logCW()) << QString("Sidetone sending error occurred, aborting (%0 bytes of %1 remaining)").arg(buffer.size()-written).arg(buffer.size());
             }
         }
     }
