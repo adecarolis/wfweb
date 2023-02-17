@@ -89,7 +89,7 @@ void cwSidetone::init()
     format.setSampleType(QAudioFormat::SignedInt);
     QAudioDeviceInfo device(QAudioDeviceInfo::defaultOutputDevice());
 #else
-    format.setSampleFormat(QAudioFormat::Int16);
+    format.setSampleFormat(QAudioFormat::Float);
     QAudioDevice device = QMediaDevices::defaultAudioOutput();
 #endif
     if (!device.isNull()) {
@@ -105,6 +105,16 @@ void cwSidetone::init()
 #endif
 
         output->setVolume((qreal)volume/100.0);
+
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+        qInfo(logCW()) << QString("Sidetone Output: %0 (volume: %1 rate: %2 size: %3 type: %4)")
+                          .arg(device.deviceName()).arg(volume).arg(format.sampleRate()).arg(format.sampleSize()).arg(format.sampleType());
+#else
+        qInfo(logCW()) << QString("Sidetone Output: %0 (volume: %1 rate: %2 type: %3")
+                          .arg(device.description()).arg(volume).arg(format.sampleRate()).arg(format.sampleFormat());
+#endif
+
+
         outputDevice = output->start();
     }
 }
@@ -218,6 +228,22 @@ QByteArray cwSidetone::generateData(qint64 len, qint64 freq)
                 *reinterpret_cast<quint8*>(ptr) = value;
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+            } else if (format.sampleType() == QAudioFormat::Float)
+#else
+            } else if (format.sampleFormat() == QAudioFormat::Float)
+#endif
+            {
+                float value = static_cast<float>(x);
+                qToLittleEndian<float>(value, ptr);
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+            } else if (format.sampleSize() == 32 && format.sampleType() == QAudioFormat::SignedInt)
+#else
+            } else if (format.sampleFormat() == QAudioFormat::Int32)
+#endif
+            {
+                qint32 value = static_cast<qint32>(x);
+                qToLittleEndian<qint32>(value, ptr);
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
             } else if (format.sampleSize() == 16 && format.sampleType() == QAudioFormat::SignedInt)
 #else
             } else if (format.sampleFormat() == QAudioFormat::Int16)
@@ -226,7 +252,13 @@ QByteArray cwSidetone::generateData(qint64 len, qint64 freq)
                 qint16 value = static_cast<qint16>(x * 32767);
                 qToLittleEndian<qint16>(value, ptr);
             }
-
+            else {
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+                qWarning(logCW()) << QString("Unsupported sample size: %0 type: %1").arg(format.sampleSize()).arg(format.sampleType());
+#else
+                qWarning(logCW()) << QString("Unsupported sample format: %0").arg(format.sampleFormat());
+#endif
+            }
             ptr += channelBytes;
             length -= channelBytes;
         }
