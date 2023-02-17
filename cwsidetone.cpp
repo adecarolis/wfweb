@@ -105,17 +105,20 @@ void cwSidetone::init()
 #endif
 
         output->setVolume((qreal)volume/100.0);
+        outputDevice = output->start();
     }
 }
 
 void cwSidetone::send(QString text)
 {
-    if (output != Q_NULLPTR) {
+    if (output != Q_NULLPTR && outputDevice != Q_NULLPTR) {
         text=text.simplified();
         buffer.clear();
         QString currentChar;
         int pos = 0;
-        outputDevice = output->start();
+        if (output->state() == QAudio::StoppedState || output->state() == QAudio::SuspendedState) {
+            output->resume();
+        }
         while (pos < text.size())
         {
             QChar ch = text.at(pos).toUpper();
@@ -145,7 +148,6 @@ void cwSidetone::send(QString text)
     }
     //qInfo(logCW()) << "Sending" << this->currentChar;
     emit finished();
-    output->stop();
     return;
 }
 
