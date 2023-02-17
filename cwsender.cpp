@@ -38,10 +38,6 @@ cwSender::cwSender(QWidget *parent) :
         [=](const unsigned char& pitch) { tone->setFrequency(pitch); });
     connect(this, &cwSender::setLevel,
         [=](const unsigned char& level) { tone->setLevel(level); });
-
-    connect( this, SIGNAL( pitchChanged(int) ), ui->pitchSpin, SLOT( setValue(int) ) );
-    connect( this, SIGNAL( dashChanged(int) ), ui->dashSpin, SLOT( setValue(int) ) );
-    connect( this, SIGNAL( wpmChanged(int) ), ui->wpmSpin, SLOT( setValue(int) ) );
 }
 
 cwSender::~cwSender()
@@ -70,7 +66,7 @@ void cwSender::handleKeySpeed(unsigned char wpm)
     if (wpm != ui->wpmSpin->value() && (wpm >= ui->wpmSpin->minimum()) && (wpm <= ui->wpmSpin->maximum()))
     {
         ui->wpmSpin->blockSignals(true);
-        emit wpmChanged((int)wpm);
+        QMetaObject::invokeMethod(ui->wpmSpin, "setValue", Qt::QueuedConnection, Q_ARG(int, wpm));
         ui->wpmSpin->blockSignals(false);
 #if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
         QMetaObject::invokeMethod(tone, [=]() {
@@ -88,7 +84,7 @@ void cwSender::handleDashRatio(unsigned char ratio)
     if (calc != ui->dashSpin->value() && (calc >= ui->dashSpin->minimum()) && (ratio <= ui->dashSpin->maximum()))
     {
         ui->dashSpin->blockSignals(true);
-        emit dashChanged(calc);
+        QMetaObject::invokeMethod(ui->dashSpin, "setValue", Qt::QueuedConnection, Q_ARG(double, calc));
         ui->dashSpin->blockSignals(false);
 #if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
         QMetaObject::invokeMethod(tone, [=]() {
@@ -105,7 +101,7 @@ void cwSender::handlePitch(unsigned char pitch) {
     if (cwPitch != ui->pitchSpin->value() && cwPitch >= ui->pitchSpin->minimum() && cwPitch <= ui->pitchSpin->maximum())
     {
         ui->pitchSpin->blockSignals(true);
-        emit pitchChanged(cwPitch);
+        QMetaObject::invokeMethod(ui->pitchSpin, "setValue", Qt::QueuedConnection, Q_ARG(int, cwPitch));
         ui->pitchSpin->blockSignals(false);
 #if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
         QMetaObject::invokeMethod(tone, [=]() {
@@ -313,7 +309,7 @@ void cwSender::runMacroButton(int buttonNumber)
         outText = macroText[buttonNumber].arg(sequenceNumber, 3, 10, QChar('0'));
         sequenceNumber++;
         ui->sequenceSpin->blockSignals(true);
-        ui->sequenceSpin->setValue(sequenceNumber);
+        QMetaObject::invokeMethod(ui->sequenceSpin, "setValue", Qt::QueuedConnection, Q_ARG(int, sequenceNumber));
         ui->sequenceSpin->blockSignals(false);
     } else {
         outText = macroText[buttonNumber];
@@ -435,7 +431,7 @@ void cwSender::setSidetoneEnable(bool val)
 
 void cwSender::setSidetoneLevel(int val)
 {
-    ui->sidetoneLevelSlider->setValue(val);
+    QMetaObject::invokeMethod(ui->sidetoneLevelSlider, "setValue", Qt::QueuedConnection, Q_ARG(int, val));
 }
 
 QStringList cwSender::getMacroText()

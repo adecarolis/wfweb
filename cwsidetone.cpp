@@ -92,51 +92,55 @@ void cwSidetone::init()
     format.setSampleFormat(QAudioFormat::Int16);
     QAudioDevice device = QMediaDevices::defaultAudioOutput();
 #endif
-
-    if (!device.isFormatSupported(format)) {
-        qWarning(logCW()) << "Default format not supported, using preferred";
-        format = device.preferredFormat();
-    }
+    if (device.isDefault()) {
+        if (!device.isFormatSupported(format)) {
+            qWarning(logCW()) << "Default format not supported, using preferred";
+            format = device.preferredFormat();
+        }
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-    output = new QAudioOutput(device,format);
+        output = new QAudioOutput(device,format);
 #else
-    output = new QAudioSink(device,format);
+        output = new QAudioSink(device,format);
 #endif
-    output->setVolume((qreal)volume/100.0);
+
+        output->setVolume((qreal)volume/100.0);
+    }
 }
 
 void cwSidetone::send(QString text)
 {
-    text=text.simplified();
-    buffer.clear();
-    QString currentChar;
-    int pos = 0;
-    while (pos < text.size())
-    {
-        QChar ch = text.at(pos).toUpper();
-        if (ch == NULL)
+    if (output != Q_NULLPTR) {
+        text=text.simplified();
+        buffer.clear();
+        QString currentChar;
+        int pos = 0;
+        while (pos < text.size())
         {
-            currentChar = cwTable[' '];
+            QChar ch = text.at(pos).toUpper();
+            if (ch == NULL)
+            {
+                currentChar = cwTable[' '];
+            }
+            else if (this->cwTable.contains(ch))
+            {
+                currentChar = cwTable[ch];
+            }
+            else
+            {
+                currentChar=cwTable['?'];
+            }
+            generateMorse(currentChar);
+            pos++;
         }
-        else if (this->cwTable.contains(ch))
-        {
-            currentChar = cwTable[ch];
-        }
-        else
-        {
-            currentChar=cwTable['?'];
-        }
-        generateMorse(currentChar);
-        pos++;
-    }
-    outputDevice = output->start();
-    if (outputDevice) {
-        qint64 written = outputDevice->write(buffer);
-        while (written < buffer.size())
-        {
-            written += outputDevice->write(buffer.data()+written, buffer.size() - written);
-            QApplication::processEvents();
+        outputDevice = output->start();
+        if (outputDevice != Q_NULLPTR) {
+            qint64 written = outputDevice->write(buffer);
+            while (written < buffer.size())
+            {
+                written += outputDevice->write(buffer.data()+written, buffer.size() - written);
+                QApplication::processEvents();
+            }
         }
     }
     //qInfo(logCW()) << "Sending" << this->currentChar;
