@@ -18,7 +18,8 @@
 #include <QtEndian>
 #include <QTimer>
 
-#define SIDETONE_MULTIPLIER 386.0
+//#define SIDETONE_MULTIPLIER 386.0
+#define SIDETONE_MULTIPLIER 1095.46
 
 class cwSidetone : public QObject
 {

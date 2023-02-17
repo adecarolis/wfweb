@@ -175,15 +175,17 @@ void cwSidetone::generateMorse(QString morse)
         if (c == '-')
         {
             buffer.append(generateData(dah,this->frequency));
-        } else if (c == '.')
+        }
+        else if (c == '.')
         {
             buffer.append(generateData(dit,this->frequency));
-        } else // Space char
+        }
+        else // Space char
         {
-            buffer.append(generateData(dah+dit,0));
+            buffer.append(generateData(dit,0));
         }
 
-        if (i+1<morse.size())
+        if (i<morse.size()-1)
         {
             buffer.append(generateData(dit,0));
         }
@@ -207,7 +209,8 @@ QByteArray cwSidetone::generateData(qint64 len, qint64 freq)
 #endif
 
     const int sampleRate = format.sampleRate();
-    qint64 length = (sampleRate * channels * channelBytes) * len / 100000;
+    //qint64 length = (sampleRate * channels * channelBytes) * len / 100000;
+    qint64 length = format.bytesForDuration(len);
     const int sampleBytes = channels * channelBytes;
 
     length -= length % sampleBytes;
