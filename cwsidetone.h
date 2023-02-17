@@ -18,6 +18,8 @@
 #include <QtEndian>
 #include <QTimer>
 
+#include <deque>
+
 //#define SIDETONE_MULTIPLIER 386.0
 #define SIDETONE_MULTIPLIER 1095.46
 
@@ -52,6 +54,7 @@ private:
     int frequency;
     double ratio;
     QAudioFormat format;
+    std::deque <QString> messages;
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QAudioOutput* output = Q_NULLPTR;
 #else

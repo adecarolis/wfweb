@@ -119,17 +119,26 @@ void cwSidetone::init()
 
 void cwSidetone::send(QString text)
 {
-    if (output != Q_NULLPTR && outputDevice != Q_NULLPTR) {
-        text=text.simplified();
-        buffer.clear();
-        QString currentChar;
+    messages.push_back(text.simplified());
+
+    if (messages.size() > 1) {
+        // There are already queued messages so just return
+        return;
+    }
+
+    QString currentChar;
+    if (output->state() == QAudio::StoppedState || output->state() == QAudio::SuspendedState) {
+        output->resume();
+    }
+
+    for (auto txt = messages.begin(); txt != messages.end();)
+    {
         int pos = 0;
-        if (output->state() == QAudio::StoppedState || output->state() == QAudio::SuspendedState) {
-            output->resume();
-        }
-        while (pos < text.size())
+        buffer.clear();
+
+        while (pos < txt->size())
         {
-            QChar ch = text.at(pos).toUpper();
+            QChar ch = txt->at(pos).toUpper();
             if (ch == NULL)
             {
                 currentChar = cwTable[' '];
@@ -157,6 +166,7 @@ void cwSidetone::send(QString text)
                 qWarning(logCW()) << QString("Sidetone sending error occurred, aborting (%0 bytes of %1 remaining)").arg(buffer.size()-written).arg(buffer.size());
             }
         }
+        txt = messages.erase(txt);
     }
     //qInfo(logCW()) << "Sending" << this->currentChar;
     emit finished();
