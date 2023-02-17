@@ -180,11 +180,10 @@ QByteArray cwSidetone::generateData(qint64 len, qint64 freq)
 {
     QByteArray data;
 
+    const int channels = format.channelCount();
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-    const int channels = format.channels();
     const int channelBytes = format.sampleSize() / 8;
 #else
-    const int channels = format.channelCount();
     const int channelBytes = format.bytesPerSample();
 #endif
 
