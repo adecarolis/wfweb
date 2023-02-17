@@ -92,7 +92,7 @@ void cwSidetone::init()
     format.setSampleFormat(QAudioFormat::Int16);
     QAudioDevice device = QMediaDevices::defaultAudioOutput();
 #endif
-    if (device.isDefault()) {
+    if (!device.isNull()) {
         if (!device.isFormatSupported(format)) {
             qWarning(logCW()) << "Default format not supported, using preferred";
             format = device.preferredFormat();
