@@ -2439,8 +2439,8 @@ void wfmain::loadSettings()
     settings->beginGroup("Keyer");
     cw->setCutNumbers(settings->value("CutNumbers", false).toBool());
     cw->setSendImmediate(settings->value("SendImmediate", false).toBool());
-    cw->setSidetoneEnable(settings->value("SidetoneEnabled", false).toBool());
-    cw->setSidetoneLevel(settings->value("SidetoneLevel", 0).toInt());
+    cw->setSidetoneEnable(settings->value("SidetoneEnabled", true).toBool());
+    cw->setSidetoneLevel(settings->value("SidetoneLevel", 100).toInt());
     int numMemories = settings->beginReadArray("macros");
     if(numMemories==10)
     {

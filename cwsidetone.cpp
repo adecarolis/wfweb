@@ -115,6 +115,7 @@ void cwSidetone::send(QString text)
         buffer.clear();
         QString currentChar;
         int pos = 0;
+        outputDevice = output->start();
         while (pos < text.size())
         {
             QChar ch = text.at(pos).toUpper();
@@ -133,7 +134,6 @@ void cwSidetone::send(QString text)
             generateMorse(currentChar);
             pos++;
         }
-        outputDevice = output->start();
         if (outputDevice != Q_NULLPTR) {
             qint64 written = outputDevice->write(buffer);
             while (written < buffer.size())
@@ -145,6 +145,7 @@ void cwSidetone::send(QString text)
     }
     //qInfo(logCW()) << "Sending" << this->currentChar;
     emit finished();
+    output->stop();
     return;
 }
 
