@@ -145,7 +145,8 @@ void cwSender::textChanged(QString text)
             ui->transcriptText->moveCursor(QTextCursor::End);
 
             emit sendCW(text.mid(0, 30));
-            emit sidetone(text.mid(0,30));
+            if (ui->sidetoneEnableChk->isChecked())
+                emit sidetone(text.mid(0,30));
 
         }
         if( (currentMode != modeCW) && (currentMode != modeCW_R) )
@@ -179,8 +180,10 @@ void cwSender::on_sendBtn_clicked()
 
         ui->textToSendEdit->setFocus();
         ui->statusbar->showMessage("Sending CW", 3000);
+
         emit sendCW(text);
-        emit sidetone(text);
+        if (ui->sidetoneEnableChk->isChecked())
+            emit sidetone(text);
     }
 
     if( (currentMode != modeCW) && (currentMode != modeCW_R) )
@@ -327,7 +330,8 @@ void cwSender::runMacroButton(int buttonNumber)
 
     for (int i = 0; i < outText.size(); i = i + 30) {
         emit sendCW(outText.mid(i,30));
-        emit sidetone(outText.mid(i,30));
+        if (ui->sidetoneEnableChk->isChecked())
+            emit sidetone(outText.mid(i,30));
     }
 
     ui->textToSendEdit->setFocus();
