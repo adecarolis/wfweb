@@ -104,8 +104,6 @@ void cwSidetone::init()
         output = new QAudioSink(device,format);
 #endif
 
-        output->setVolume((qreal)volume/100.0);
-
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         qInfo(logCW()) << QString("Sidetone Output: %0 (volume: %1 rate: %2 size: %3 type: %4)")
                           .arg(device.deviceName()).arg(volume).arg(format.sampleRate()).arg(format.sampleSize()).arg(format.sampleType());
@@ -220,7 +218,7 @@ QByteArray cwSidetone::generateData(qint64 len, qint64 freq)
     int sampleIndex = 0;
 
     while (length) {
-        const qreal x = qSin(2 * M_PI * freq * qreal(sampleIndex % sampleRate) / sampleRate);
+        const qreal x = (qSin(2 * M_PI * freq * qreal(sampleIndex % sampleRate) / sampleRate)) * qreal(volume/100.0);
         for (int i=0; i<channels; ++i) {
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
             if (format.sampleSize() == 8 && format.sampleType() == QAudioFormat::UnSignedInt)
@@ -289,8 +287,4 @@ void cwSidetone::setRatio(unsigned char ratio)
 
 void cwSidetone::setLevel(int level) {
     volume = level;
-    if (output != Q_NULLPTR) {
-        output->setVolume((qreal)level/100.0);
-    }
-
 }
