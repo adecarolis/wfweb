@@ -118,12 +118,10 @@ void cwSidetone::send(QString text)
 {
     text=text.simplified();
 
-    QString currentChar;
-
-    int pos = 0;
-    while (pos < text.size())
+    for (int pos=0; pos < text.size(); pos++)
     {
         QChar ch = text.at(pos).toUpper();
+        QString currentChar;
         if (ch == NULL)
         {
             currentChar = cwTable[' '];
@@ -137,15 +135,13 @@ void cwSidetone::send(QString text)
             currentChar=cwTable['?'];
         }
         generateMorse(currentChar);
-        pos++;
     }
-    //qInfo(logCW()) << "Sending" << this->currentChar;
+
     if (output->state() == QAudio::StoppedState)
     {
         output->start(this);
     }
-
-    if (output->state() == QAudio::IdleState) {
+    else if (output->state() == QAudio::IdleState) {
         output->suspend();
         output->resume();
     }
