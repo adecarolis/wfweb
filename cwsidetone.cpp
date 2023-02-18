@@ -1,7 +1,6 @@
 #include "cwsidetone.h"
 
 #include "logcategories.h"
-#include "qapplication.h"
 
 cwSidetone::cwSidetone(int level, int speed, int freq, double ratio, QWidget* parent) :
     parent(parent),
@@ -74,8 +73,8 @@ cwSidetone::cwSidetone(int level, int speed, int freq, double ratio, QWidget* pa
 
 cwSidetone::~cwSidetone()
 {
+    this->stop();
     output->stop();
-    delete output;
 }
 
 void cwSidetone::init()
@@ -89,7 +88,7 @@ void cwSidetone::init()
     format.setSampleType(QAudioFormat::SignedInt);
     QAudioDeviceInfo device(QAudioDeviceInfo::defaultOutputDevice());
 #else
-    format.setSampleFormat(QAudioFormat::Float);
+    format.setSampleFormat(QAudioFormat::Int16);
     QAudioDevice device = QMediaDevices::defaultAudioOutput();
 #endif
     if (!device.isNull()) {
@@ -99,9 +98,9 @@ void cwSidetone::init()
         }
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-        output = new QAudioOutput(device,format);
+        output.reset(new QAudioOutput(device,format));
 #else
-        output = new QAudioSink(device,format);
+        output.reset(new QAudioSink(device,format));
 #endif
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
@@ -110,75 +109,93 @@ void cwSidetone::init()
 #else
         qInfo(logCW()) << QString("Sidetone Output: %0 (volume: %1 rate: %2 type: %3")
                           .arg(device.description()).arg(volume).arg(format.sampleRate()).arg(format.sampleFormat());
-#endif
-
-
-        outputDevice = output->start();
+#endif        
     }
+    this->start(); // Start QIODevice
 }
 
 void cwSidetone::send(QString text)
 {
-    messages.push_back(text.simplified());
-
-    if (messages.size() > 1) {
-        // There are already queued messages so just return
-        return;
-    }
+    text=text.simplified();
 
     QString currentChar;
-    if (output->state() == QAudio::StoppedState || output->state() == QAudio::SuspendedState) {
-        output->resume();
-    }
 
-    for (auto txt = messages.begin(); txt != messages.end();)
+    int pos = 0;
+    while (pos < text.size())
     {
-        int pos = 0;
-        buffer.clear();
-
-        while (pos < txt->size())
+        QChar ch = text.at(pos).toUpper();
+        if (ch == NULL)
         {
-            QChar ch = txt->at(pos).toUpper();
-            if (ch == NULL)
-            {
-                currentChar = cwTable[' '];
-            }
-            else if (this->cwTable.contains(ch))
-            {
-                currentChar = cwTable[ch];
-            }
-            else
-            {
-                currentChar=cwTable['?'];
-            }
-            generateMorse(currentChar);
-            pos++;
+            currentChar = cwTable[' '];
         }
-        if (outputDevice != Q_NULLPTR) {
-            qint64 written = 0;
-            while (written != -1 && written < buffer.size())
-            {
-                written += outputDevice->write(buffer.data() + written, buffer.size() - written);
-                QApplication::processEvents();
-            }
-            if (written == -1)
-            {
-                qWarning(logCW()) << QString("Sidetone sending error occurred, aborting (%0 bytes of %1 remaining)").arg(buffer.size()-written).arg(buffer.size());
-            }
+        else if (this->cwTable.contains(ch))
+        {
+            currentChar = cwTable[ch];
         }
-        txt = messages.erase(txt);
+        else
+        {
+            currentChar=cwTable['?'];
+        }
+        generateMorse(currentChar);
+        pos++;
     }
     //qInfo(logCW()) << "Sending" << this->currentChar;
-    emit finished();
+    if (output->state() == QAudio::StoppedState)
+    {
+        output->start(this);
+    }
+
+    if (output->state() == QAudio::IdleState) {
+        output->suspend();
+        output->resume();
+    }
     return;
+}
+
+
+void cwSidetone::start()
+{
+    open(QIODevice::ReadOnly);
+}
+
+void cwSidetone::stop()
+{
+    close();
+}
+
+qint64 cwSidetone::readData(char *data, qint64 len)
+{
+    QMutexLocker locker(&mutex);
+    const qint64 total = qMin((buffer.size()), len);
+    memcpy(data, buffer.constData(), total);
+    buffer.remove(0,total);
+    if (buffer.size() == 0) {
+        emit finished();
+    }
+    return total;
+}
+
+qint64 cwSidetone::writeData(const char *data, qint64 len)
+{
+    Q_UNUSED(data);
+    Q_UNUSED(len);
+
+    return 0;
+}
+
+qint64 cwSidetone::bytesAvailable() const
+{
+    return buffer.size() + QIODevice::bytesAvailable();
 }
 
 void cwSidetone::generateMorse(QString morse)
 {
 
     int dit = int(double(SIDETONE_MULTIPLIER / this->speed * SIDETONE_MULTIPLIER));
-    int dah = int(dit * this->ratio);
+    int dah = int(double(dit * this->ratio));
 
+
+    QMutexLocker locker(&mutex);
     for (int i=0;i<morse.size();i++)
     {
         QChar c = morse.at(i);
@@ -201,7 +218,7 @@ void cwSidetone::generateMorse(QString morse)
         }
         else
         {
-            buffer.append(generateData(dah,0)); // inter-character space
+            buffer.append(generateData(dit*3,0)); // inter-character space
         }
     }
     return;
@@ -237,7 +254,7 @@ QByteArray cwSidetone::generateData(qint64 len, qint64 freq)
             if (format.sampleSize() == 8 && format.sampleType() == QAudioFormat::UnSignedInt)
                 *reinterpret_cast<quint8 *>(ptr) = static_cast<quint8>((1.0 + x) / 2 * 255);
             else if (format.sampleSize() == 16 && format.sampleType() == QAudioFormat::SignedInt)
-                *reinterpret_cast<qint16 *>(ptr) = static_cast<qint16>(x * 32767);
+                *reinterpret_cast<qint16 *>(ptr) = static_cast<qint16>(x * std::numeric_limits<qint16>::max());
             else if (format.sampleSize() == 32 && format.sampleType() == QAudioFormat::SignedInt)
                 *reinterpret_cast<qint32 *>(ptr) = static_cast<qint32>(x * std::numeric_limits<qint32>::max());
             else if (format.sampleType() == QAudioFormat::Float)
@@ -248,7 +265,7 @@ QByteArray cwSidetone::generateData(qint64 len, qint64 freq)
             if (format.sampleFormat() == QAudioFormat::UInt8)
                 *reinterpret_cast<quint8 *>(ptr) = static_cast<quint8>((1.0 + x) / 2 * 255);
             else if (format.sampleFormat() == QAudioFormat::Int16)
-                *reinterpret_cast<qint16 *>(ptr) = static_cast<qint16>(x * 32767);
+                *reinterpret_cast<qint16 *>(ptr) = static_cast<qint16>(x * std::numeric_limits<qint16>::max());
             else if (format.sampleFormat() == QAudioFormat::Int32)
                 *reinterpret_cast<qint32 *>(ptr) = static_cast<qint32>(x * std::numeric_limits<qint32>::max());
             else if (format.sampleFormat() == QAudioFormat::Float)
@@ -284,3 +301,10 @@ void cwSidetone::setRatio(unsigned char ratio)
 void cwSidetone::setLevel(int level) {
     volume = level;
 }
+
+void cwSidetone::stopSending() {
+    QMutexLocker locker(&mutex);
+    buffer.clear();
+}
+
+

@@ -38,6 +38,8 @@ cwSender::cwSender(QWidget *parent) :
         [=](const unsigned char& pitch) { tone->setFrequency(pitch); });
     connect(this, &cwSender::setLevel,
         [=](const unsigned char& level) { tone->setLevel(level); });
+    connect(this, &cwSender::stopCW,
+        [=]() { tone->stopSending(); });
 }
 
 cwSender::~cwSender()
