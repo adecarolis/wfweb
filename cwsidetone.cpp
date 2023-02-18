@@ -162,7 +162,7 @@ void cwSidetone::stop()
 qint64 cwSidetone::readData(char *data, qint64 len)
 {
     QMutexLocker locker(&mutex);
-    const int total = qMin(((int)buffer.size()), (int)len);
+    const qint64 total = qMin(((qint64)buffer.size()), len);
     memcpy(data, buffer.constData(), total);
     buffer.remove(0,total);
     if (buffer.size() == 0) {
