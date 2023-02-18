@@ -235,45 +235,28 @@ QByteArray cwSidetone::generateData(qint64 len, qint64 freq)
         for (int i=0; i<channels; ++i) {
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
             if (format.sampleSize() == 8 && format.sampleType() == QAudioFormat::UnSignedInt)
-#else
-            if (format.sampleFormat() == QAudioFormat::UInt8)
-#endif
-            {
-                const quint8 value = static_cast<quint8>((1.0 + x) / 2 * 255);
-                *reinterpret_cast<quint8*>(ptr) = value;
-
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-            } else if (format.sampleType() == QAudioFormat::Float)
-#else
-            } else if (format.sampleFormat() == QAudioFormat::Float)
-#endif
-            {
-                float value = static_cast<float>(x);
-                qToLittleEndian<float>(value, ptr);
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-            } else if (format.sampleSize() == 32 && format.sampleType() == QAudioFormat::SignedInt)
-#else
-            } else if (format.sampleFormat() == QAudioFormat::Int32)
-#endif
-            {
-                qint32 value = static_cast<qint32>(x);
-                qToLittleEndian<qint32>(value, ptr);
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-            } else if (format.sampleSize() == 16 && format.sampleType() == QAudioFormat::SignedInt)
-#else
-            } else if (format.sampleFormat() == QAudioFormat::Int16)
-#endif
-            {
-                qint16 value = static_cast<qint16>(x * 32767);
-                qToLittleEndian<qint16>(value, ptr);
-            }
-            else {
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+                *reinterpret_cast<quint8 *>(ptr) = static_cast<quint8>((1.0 + x) / 2 * 255);
+            else if (format.sampleSize() == 16 && format.sampleType() == QAudioFormat::SignedInt)
+                *reinterpret_cast<qint16 *>(ptr) = static_cast<qint16>(x * 32767);
+            else if (format.sampleSize() == 32 && format.sampleType() == QAudioFormat::SignedInt)
+                *reinterpret_cast<qint32 *>(ptr) = static_cast<qint32>(x * std::numeric_limits<qint32>::max());
+            else if (format.sampleType() == QAudioFormat::Float)
+                *reinterpret_cast<float *>(ptr) = x;
+            else
                 qWarning(logCW()) << QString("Unsupported sample size: %0 type: %1").arg(format.sampleSize()).arg(format.sampleType());
 #else
+            if (format.sampleFormat() == QAudioFormat::UInt8)
+                *reinterpret_cast<quint8 *>(ptr) = static_cast<quint8>((1.0 + x) / 2 * 255);
+            else if (format.sampleFormat() == QAudioFormat::Int16)
+                *reinterpret_cast<qint16 *>(ptr) = static_cast<qint16>(x * 32767);
+            else if (format.sampleFormat() == QAudioFormat::Int32)
+                *reinterpret_cast<qint32 *>(ptr) = static_cast<qint32>(x * std::numeric_limits<qint32>::max());
+            else if (format.sampleFormat() == QAudioFormat::Float)
+                *reinterpret_cast<float *>(ptr) = x;
+            else
                 qWarning(logCW()) << QString("Unsupported sample format: %0").arg(format.sampleFormat());
 #endif
-            }
+
             ptr += channelBytes;
             length -= channelBytes;
         }
