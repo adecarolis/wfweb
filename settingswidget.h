@@ -3,8 +3,10 @@
 
 #include <QWidget>
 #include <QSlider>
+#include <QSpinBox>
 #include <QCheckBox>
 #include <QRadioButton>
+#include <QStringList>
 
 #include "logcategories.h"
 #include "prefs.h"
@@ -40,11 +42,13 @@ public slots:
     void updateLanPref(prefLanItem plan);
     void updateClusterPref(prefClusterItem pcl);
 
-    // depreciated:
-    //void externalChangedPreferences(prefItem pi);
     void updateUdpPref(udpPrefsItem upi);
-    //void externalChangedMultiplePreferences(uint64_t items);
     void updateUdpPrefs(int items);
+
+    void updateAudioInputs(QStringList deviceList, int currentIndex, int chars);
+    void updateAudioOutputs(QStringList deviceList, int currentIndex, int chars);
+    void updateServerRXAudioInputs(QStringList deviceList, int currentIndex, int chars);
+    void updateServerTXAudioOutputs(QStringList deviceList, int currentIndex, int chars);
 
 
 signals:
@@ -63,6 +67,8 @@ private slots:
 
     void on_lanEnableBtn_clicked(bool checked);
 
+    void on_autoSSBchk_clicked(bool checked);
+
 private:
     Ui::settingswidget *ui;
     void createSettingsListItems();
@@ -70,6 +76,7 @@ private:
     void updateAllPrefs();
     void updateUnderlayMode();
     void quietlyUpdateSlider(QSlider* sl, int val);
+    void quietlyUpdateSpinbox(QSpinBox *sb, int val);
     void quietlyUpdateCheckbox(QCheckBox *cb, bool isChecked);
     void quietlyUpdateRadiobutton(QRadioButton *rb, bool isChecked);
 
@@ -77,6 +84,11 @@ private:
     udpPreferences *udpPrefs = NULL;
     bool havePrefs = false;
     bool haveUdpPrefs = false;
+    bool haveSerialDevices = false;
+    bool haveAudioInputs = false;
+    bool haveAudioOutputs = false;
+    bool haveServerAudioInputs = false;
+    bool haveServerAudioOutputs = false;
     bool updatingUIFromPrefs = false;
 };
 

@@ -17,6 +17,7 @@ settingswidget::~settingswidget()
     delete ui;
 }
 
+// Startup:
 void settingswidget::createSettingsListItems()
 {
     // Add items to the settings tab list widget
@@ -68,11 +69,7 @@ void settingswidget::populateComboBoxes()
     ui->controlPortTxt->setValidator(new QIntValidator(this));
 }
 
-void settingswidget::on_settingsList_currentRowChanged(int currentRow)
-{
-    ui->settingsStack->setCurrentIndex(currentRow);
-}
-
+// Updating Preferences:
 void settingswidget::acceptPreferencesPtr(preferences *pptr)
 {
     if(pptr != NULL)
@@ -502,6 +499,85 @@ void settingswidget::updateUdpPref(udpPrefsItem upi)
     updatingUIFromPrefs = false;
 }
 
+void settingswidget::updateAllPrefs()
+{
+    // DEPRECIATED
+    // Maybe make this a public convenience function
+
+    // Review all the preferences. This is intended to be called
+    // after new settings are loaded in.
+    // Not sure if we actually want to always assume we should load prefs.
+    updatingUIFromPrefs = true;
+    if(havePrefs)
+    {
+        updateIfPrefs((int)if_all);
+        updateRaPrefs((int)ra_all);
+        updateCtPrefs((int)ct_all);
+        updateClusterPrefs((int)cl_all);
+        updateLanPrefs((int)l_all);
+    }
+    if(haveUdpPrefs)
+    {
+        updateUdpPrefs((int)u_all);
+    }
+
+    updatingUIFromPrefs = false;
+}
+
+void settingswidget::updateAudioInputs(QStringList deviceList, int currentIndex, int chars)
+{
+    // see wfmain::setAudioDevicesUI()
+    if(haveAudioInputs)
+        qInfo(logGui()) << "Reloading audio input list";
+    ui->audioInputCombo->blockSignals(true);
+    ui->audioInputCombo->clear();
+    ui->audioInputCombo->addItems(deviceList);
+    ui->audioInputCombo->setCurrentIndex(-1);
+    ui->audioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(chars + 30));
+    ui->audioInputCombo->blockSignals(false);
+    ui->audioInputCombo->setCurrentIndex(currentIndex);
+    haveAudioInputs = true;
+}
+
+void settingswidget::updateAudioOutputs(QStringList deviceList, int currentIndex, int chars)
+{
+    if(haveAudioOutputs)
+        qInfo(logGui()) << "Reloading audio output list";
+    ui->audioOutputCombo->blockSignals(true);
+    ui->audioOutputCombo->clear();
+    ui->audioOutputCombo->addItems(deviceList);
+    ui->audioOutputCombo->setCurrentIndex(-1);
+    ui->audioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(chars + 30));
+    ui->audioOutputCombo->blockSignals(false);
+    ui->audioOutputCombo->setCurrentIndex(currentIndex);
+    haveAudioOutputs = true;
+}
+
+void settingswidget::updateServerTXAudioOutputs(QStringList deviceList, int currentIndex, int chars)
+{
+    ui->serverTXAudioOutputCombo->blockSignals(true);
+    ui->serverTXAudioOutputCombo->clear();
+    ui->serverTXAudioOutputCombo->addItems(deviceList);
+    ui->serverTXAudioOutputCombo->setCurrentIndex(-1);
+    ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(chars + 30));
+    ui->serverTXAudioOutputCombo->blockSignals(false);
+    ui->serverTXAudioOutputCombo->setCurrentIndex(currentIndex);
+    haveServerAudioOutputs = true;
+}
+
+void settingswidget::updateServerRXAudioInputs(QStringList deviceList, int currentIndex, int chars)
+{
+    ui->serverRXAudioInputCombo->blockSignals(true);
+    ui->serverRXAudioInputCombo->clear();
+    ui->serverRXAudioInputCombo->addItems(deviceList);
+    ui->serverRXAudioInputCombo->setCurrentIndex(-1);
+    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(chars+30));
+    ui->serverRXAudioInputCombo->blockSignals(false);
+    ui->serverRXAudioInputCombo->setCurrentIndex(currentIndex);
+    haveServerAudioInputs = true;
+}
+
+// Utility Functions:
 void settingswidget::updateUnderlayMode()
 {
 
@@ -528,46 +604,20 @@ void settingswidget::updateUnderlayMode()
     }
 }
 
-void settingswidget::updateAllPrefs()
-{
-    // DEPRECIATED
-
-
-    // Review all the preferences. This is intended to be called
-    // after new settings are loaded in.
-    updatingUIFromPrefs = true;
-    ui->fullScreenChk->setChecked(prefs->useFullScreen);
-    ui->useSystemThemeChk->setChecked(prefs->useSystemTheme);
-    //drawPeaks not used
-    switch(prefs->underlayMode) {
-    case underlayNone:
-        ui->underlayNone->setChecked(true);
-        break;
-    case underlayPeakHold:
-        ui->underlayPeakHold->setChecked(true);
-        break;
-    case underlayPeakBuffer:
-        ui->underlayPeakBuffer->setChecked(true);
-        break;
-    case underlayAverageBuffer:
-        ui->underlayAverageBuffer->setChecked(true);
-        break;
-    default:
-        qWarning() << "Do not understand underlay mode: " << (unsigned int) prefs->underlayMode;
-    }
-    quietlyUpdateSlider(ui->underlayBufferSlider, prefs->underlayBufferSize);
-    ui->wfAntiAliasChk->setChecked(prefs->wfAntiAlias);
-    ui->wfInterpolateChk->setChecked(prefs->wfInterpolate);
-
-    updatingUIFromPrefs = false;
-}
-
 void settingswidget::quietlyUpdateSlider(QSlider *sl, int val)
 {
     sl->blockSignals(true);
     if( (val >= sl->minimum()) && (val <= sl->maximum()) )
         sl->setValue(val);
     sl->blockSignals(false);
+}
+
+void settingswidget::quietlyUpdateSpinbox(QSpinBox *sb, int val)
+{
+    sb->blockSignals(true);
+    if( (val >= sb->minimum()) && (val <= sb->maximum()) )
+        sb->setValue(val);
+    sb->blockSignals(false);
 }
 
 void settingswidget::quietlyUpdateCheckbox(QCheckBox *cb, bool isChecked)
@@ -582,6 +632,13 @@ void settingswidget::quietlyUpdateRadiobutton(QRadioButton *rb, bool isChecked)
     rb->blockSignals(true);
     rb->setChecked(isChecked);
     rb->blockSignals(false);
+}
+
+// Resulting from User Interaction
+
+void settingswidget::on_settingsList_currentRowChanged(int currentRow)
+{
+    ui->settingsStack->setCurrentIndex(currentRow);
 }
 
 void settingswidget::on_lanEnableBtn_clicked(bool checked)
@@ -610,5 +667,12 @@ void settingswidget::on_lanEnableBtn_clicked(bool checked)
         //showStatusBarText("After filling in values, press Save Settings.");
     }
     prefs->enableLAN = checked;
+    emit changedLanPrefs(l_enableLAN);
     // TODO: emit widgetChangedPrefs(l_enableLAN);
+}
+
+void settingswidget::on_autoSSBchk_clicked(bool checked)
+{
+    prefs->automaticSidebandSwitching = checked;
+    emit changedCtPrefs(ct_automaticSidebandSwitching);
 }

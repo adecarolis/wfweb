@@ -7433,6 +7433,7 @@ void wfmain::on_radioStatusBtn_clicked()
 void wfmain::setAudioDevicesUI()
 {
     qInfo() << "Looking for inputs";
+    // got these:
     ui->audioInputCombo->blockSignals(true);
     ui->audioInputCombo->clear();
     ui->audioInputCombo->addItems(audioDev->getInputs());
@@ -7441,7 +7442,10 @@ void wfmain::setAudioDevicesUI()
     ui->audioInputCombo->blockSignals(false);
     ui->audioInputCombo->setCurrentIndex(audioDev->findInput("Client", txSetup.name));
 
+    setupui->updateAudioInputs(audioDev->getInputs(), audioDev->findInput("Client", txSetup.name), audioDev->getNumCharsIn());
+
     qInfo() << "Looking for outputs";
+    // done:
     ui->audioOutputCombo->blockSignals(true);
     ui->audioOutputCombo->clear();
     ui->audioOutputCombo->addItems(audioDev->getOutputs());
@@ -7450,12 +7454,15 @@ void wfmain::setAudioDevicesUI()
     ui->audioOutputCombo->blockSignals(false);
     ui->audioOutputCombo->setCurrentIndex(audioDev->findOutput("Client", rxSetup.name));
 
+    setupui->updateAudioOutputs(audioDev->getOutputs(), audioDev->findOutput("Client", rxSetup.name), audioDev->getNumCharsOut());
+
     ui->serverTXAudioOutputCombo->blockSignals(true);
     ui->serverTXAudioOutputCombo->clear();
     ui->serverTXAudioOutputCombo->addItems(audioDev->getOutputs());
     ui->serverTXAudioOutputCombo->setCurrentIndex(-1);
     ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
     ui->serverTXAudioOutputCombo->blockSignals(false);
+    int serverOutputIndex = -1;
 
     ui->serverRXAudioInputCombo->blockSignals(true);
     ui->serverRXAudioInputCombo->clear();
@@ -7463,6 +7470,7 @@ void wfmain::setAudioDevicesUI()
     ui->serverRXAudioInputCombo->setCurrentIndex(-1);
     ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn()+30));
     ui->serverRXAudioInputCombo->blockSignals(false);
+    int serverInputIndex = -1;
 
     rxSetup.type = prefs.audioSystem;
     txSetup.type = prefs.audioSystem;
@@ -7473,8 +7481,13 @@ void wfmain::setAudioDevicesUI()
         serverConfig.rigs.first()->txAudioSetup.type = prefs.audioSystem;
 
         ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig.rigs.first()->rxAudioSetup.name));
+        serverOutputIndex = audioDev->findOutput("Server", serverConfig.rigs.first()->txAudioSetup.name);
         ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig.rigs.first()->txAudioSetup.name));
+        serverInputIndex = audioDev->findOutput("Server", serverConfig.rigs.first()->txAudioSetup.name);
     }
+
+    setupui->updateServerRXAudioInputs(audioDev->getInputs(), audioDev->getNumCharsIn(), serverInputIndex);
+    setupui->updateServerTXAudioOutputs(audioDev->getOutputs(), audioDev->getNumCharsOut(), serverOutputIndex);
 
 
     qDebug(logSystem()) << "Audio devices done.";
