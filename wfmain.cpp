@@ -1479,14 +1479,22 @@ void wfmain::setSerialDevicesUI()
 
     setupui->updateSerialPortList(deviceList, deviceData);
 
+
+    // VSP:
+    QStringList vspList;
+    QVector<int> vspData;
+    int vspCount=0;
     ui->vspCombo->blockSignals(true);
 
 #ifdef Q_OS_WIN
-    ui->vspCombo->addItem(QString("None"), i++);
+    ui->vspCombo->addItem(QString("None"), i++); // i=0 when this is run
 
     foreach(const QSerialPortInfo & serialPortInfo, QSerialPortInfo::availablePorts())
     {
         ui->vspCombo->addItem(serialPortInfo.portName());
+        vspList.append(serialPortInfo.portName(), vspCount);
+        vspData.append(vspCount);
+        vspCount++;
     }
 #else
     // Provide reasonable names for the symbolic link to the pty device
@@ -1497,15 +1505,21 @@ void wfmain::setSerialDevicesUI()
 #endif
     for (i = 1; i < 8; i++) {
         ui->vspCombo->addItem(vspName + QString::number(i));
-
+        vspList.append(vspName + QString::number(i));
+        vspData.append(vspCount);
+        vspCount++;
         if (QFile::exists(vspName + QString::number(i))) {
             auto* model = qobject_cast<QStandardItemModel*>(ui->vspCombo->model());
             auto* item = model->item(ui->vspCombo->count() - 1);
             item->setEnabled(false);
         }
     }
-    ui->vspCombo->addItem(vspName + QString::number(i));
-    ui->vspCombo->addItem(QString("None"), i++);
+    ui->vspCombo->addItem(vspName + QString::number(i)); // i=8
+    vspList.append(vspName + QString::number(i));
+    vspData.append(vspCount);
+    ui->vspCombo->addItem(QString("None"), i++); // i=9 when this is run
+
+    setupui->updateVSPList(vspList, vspData);
 
 #endif
     ui->vspCombo->setEditable(true);

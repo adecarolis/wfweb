@@ -313,12 +313,27 @@ void settingswidget::updateRaPref(prefRaItem pra)
         break;
     case ra_serialPortRadio:
     {
-        int serialIndex = ui->serialDeviceListCombo->findText(prefs->serialPortRadio);
-        if (serialIndex != -1) {
-            ui->serialDeviceListCombo->setCurrentIndex(serialIndex);
+        if(!haveSerialDevices)
+        {
+            qCritical(logGui()) << "Asked to show serial device without serial device list.";
+            break;
+        }
+        if(!prefs->serialPortRadio.isEmpty())
+        {
+            int serialIndex = -1;
+            if(prefs->serialPortRadio.toLower() == "auto")
+            {
+                serialIndex = ui->serialDeviceListCombo->findText(QString("Auto"));
+            } else {
+                serialIndex = ui->serialDeviceListCombo->findText(prefs->serialPortRadio);
+            }
+            if (serialIndex != -1) {
+                ui->serialDeviceListCombo->setCurrentIndex(serialIndex);
+            } else {
+                qWarning(logGui()) << "Cannot find serial port" << prefs->serialPortRadio << "mentioned in preferences inside the serial combo box.";
+            }
         } else {
-            // TODO: load the combo box with the serial port choices first!
-            qWarning(logGui()) << "Cannot find serial port in serial combo box.";
+            qDebug(logGui()) << "Serial port in prefs is blank";
         }
         break;
     }
@@ -329,14 +344,21 @@ void settingswidget::updateRaPref(prefRaItem pra)
         break;
     case ra_virtualSerialPort:
     {
+        if(!haveVspDevices)
+        {
+            qCritical(logGui()) << "Asked to select VSP device without VSP device list.";
+            break;
+        }
         int vspIndex = ui->vspCombo->findText(prefs->virtualSerialPort);
         if (vspIndex != -1) {
             ui->vspCombo->setCurrentIndex(vspIndex);
-        }
-        else
-        {
-            ui->vspCombo->addItem(prefs->virtualSerialPort);
-            ui->vspCombo->setCurrentIndex(ui->vspCombo->count() - 1);
+        } else {
+            // TODO: Are we sure this is a good idea?
+            if(!prefs->virtualSerialPort.isEmpty())
+            {
+                ui->vspCombo->addItem(prefs->virtualSerialPort);
+                ui->vspCombo->setCurrentIndex(ui->vspCombo->count() - 1);
+            }
         }
         break;
     }
@@ -603,10 +625,43 @@ void settingswidget::updateSerialPortList(QStringList deviceList, QVector<int> d
         ui->serialDeviceListCombo->addItem("Manual...", 256);
 #endif
         ui->serialDeviceListCombo->blockSignals(false);
+        haveSerialDevices = true;
     } else {
         qCritical(logGui()) << "Cannot populate serial device list. Data of unequal length.";
     }
 }
+
+void settingswidget::updateVSPList(QStringList deviceList, QVector<int> data)
+{
+    // Do not supply "None" device, that is a UI thing and it is done here.
+    // Supply the complete filename
+
+    // TODO: Should we clear the list first?
+    if(deviceList.length() == data.length())
+    {
+        ui->vspCombo->blockSignals(true);
+
+        for(int i=0; i < deviceList.length(); i++)
+        {
+            ui->vspCombo->addItem(deviceList.at(i), data.at(i));
+
+            if (QFile::exists(deviceList.at(i))) {
+                auto* model = qobject_cast<QStandardItemModel*>(ui->vspCombo->model());
+                auto* item = model->item(ui->vspCombo->count() - 1);
+                item->setEnabled(false);
+            }
+        }
+
+        ui->serialDeviceListCombo->addItem("None", deviceList.size());
+
+        ui->vspCombo->blockSignals(false);
+        haveVspDevices = true;
+    } else {
+        qCritical(logGui()) << "Cannot populate serial device list. Data of unequal length.";
+    }
+}
+
+// TODO: VSP from wfmain line 1498...
 
 // Utility Functions:
 void settingswidget::updateUnderlayMode()

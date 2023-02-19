@@ -1,7 +1,9 @@
 #ifndef SETTINGSWIDGET_H
 #define SETTINGSWIDGET_H
 
+#include <QStandardItemModel>
 #include <QWidget>
+#include <QFile>
 #include <QSlider>
 #include <QSpinBox>
 #include <QCheckBox>
@@ -51,6 +53,8 @@ public slots:
     void updateServerTXAudioOutputs(QStringList deviceList, int currentIndex, int chars);
 
     void updateSerialPortList(QStringList deviceList, QVector<int> data);
+    void updateVSPList(QStringList deviceList, QVector<int> data);
+
 
 signals:
     // Not sure if we should do it this way,
@@ -86,6 +90,7 @@ private:
     bool havePrefs = false;
     bool haveUdpPrefs = false;
     bool haveSerialDevices = false;
+    bool haveVspDevices = false;
     bool haveAudioInputs = false;
     bool haveAudioOutputs = false;
     bool haveServerAudioInputs = false;
