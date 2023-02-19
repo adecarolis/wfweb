@@ -477,7 +477,7 @@ void wfmain::rigConnections()
         bandbtns->acceptRigCaps(rigCaps);
     }
 
-    connect(rig, SIGNAL(haveBandStackReg(freqt,char,char,bool)), bandbtns, SLOT(handleBandStackReg(freqt,char,char,bool)));
+    connect(rig, SIGNAL(haveBandStackReg(freqt,char,char,bool)), bandbtns, SLOT(receiveBandStackReg(freqt,char,char,bool)));
     connect(this->bandbtns, &bandbuttons::issueCmdF,
             [=](const cmds cmd, freqt f) {
         issueCmd(cmd, f);

@@ -183,9 +183,9 @@ void settingswidget::updateClusterPrefs(int items)
     {
         items = 0xffffffff;
     }
-    for(int i=0; i < (int)cl_all; i++)
+    for(int i=1; i < (int)cl_all; i = i << 1)
     {
-        if(items & (0x1 << i))
+        if(items & i)
         {
             qDebug(logGui()) << "Updating Cluster pref" << (int)i;
             pcl = (prefClusterItem)i;
@@ -448,7 +448,7 @@ void settingswidget::updateUdpPrefs(int items)
     {
         items = 0xffffffff;
     }
-    for(int i=0; i < (int)u_all; i++)
+    for(int i=1; i < (int)u_all; i = i << 1)
     {
         if(items & i)
         {
