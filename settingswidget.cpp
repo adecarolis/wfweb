@@ -528,7 +528,7 @@ void settingswidget::updateAudioInputs(QStringList deviceList, int currentIndex,
 {
     // see wfmain::setAudioDevicesUI()
     if(haveAudioInputs)
-        qInfo(logGui()) << "Reloading audio input list";
+        qDebug(logGui()) << "Reloading audio input list";
     ui->audioInputCombo->blockSignals(true);
     ui->audioInputCombo->clear();
     ui->audioInputCombo->addItems(deviceList);
@@ -542,7 +542,7 @@ void settingswidget::updateAudioInputs(QStringList deviceList, int currentIndex,
 void settingswidget::updateAudioOutputs(QStringList deviceList, int currentIndex, int chars)
 {
     if(haveAudioOutputs)
-        qInfo(logGui()) << "Reloading audio output list";
+        qDebug(logGui()) << "Reloading audio output list";
     ui->audioOutputCombo->blockSignals(true);
     ui->audioOutputCombo->clear();
     ui->audioOutputCombo->addItems(deviceList);
@@ -555,6 +555,8 @@ void settingswidget::updateAudioOutputs(QStringList deviceList, int currentIndex
 
 void settingswidget::updateServerTXAudioOutputs(QStringList deviceList, int currentIndex, int chars)
 {
+    if(haveServerAudioOutputs)
+        qDebug(logGui()) << "Reloading ServerTXAudioOutputs";
     ui->serverTXAudioOutputCombo->blockSignals(true);
     ui->serverTXAudioOutputCombo->clear();
     ui->serverTXAudioOutputCombo->addItems(deviceList);
@@ -567,6 +569,8 @@ void settingswidget::updateServerTXAudioOutputs(QStringList deviceList, int curr
 
 void settingswidget::updateServerRXAudioInputs(QStringList deviceList, int currentIndex, int chars)
 {
+    if(haveServerAudioInputs)
+        qDebug(logGui()) << "Reloading ServerRXAudioInputs";
     ui->serverRXAudioInputCombo->blockSignals(true);
     ui->serverRXAudioInputCombo->clear();
     ui->serverRXAudioInputCombo->addItems(deviceList);
