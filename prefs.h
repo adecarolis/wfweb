@@ -51,24 +51,24 @@ enum prefCtItem {
 
 enum prefLanItem {
 
-    l_enableLAN = 1 << 1,
-    l_enableRigCtlD = 1 << 2,
-    l_rigCtlPort = 1 << 3,
-    l_tcpPort = 1 << 4,
-    l_waterfallFormat = 1 << 5,
-    l_all = 1 << 6
+    l_enableLAN = 1 << 0,
+    l_enableRigCtlD = 1 << 1,
+    l_rigCtlPort = 1 << 2,
+    l_tcpPort = 1 << 3,
+    l_waterfallFormat = 1 << 4,
+    l_all = 1 << 5
 };
 
 enum prefClusterItem {
-    cl_clusterUdpEnable = 1 << 1,
-    cl_clusterTcpEnable = 1 << 2,
-    cl_clusterUdpPort = 1 << 3,
-    cl_clusterTcpServerName = 1 << 4,
-    cl_clusterTcpUserName = 1 << 5,
-    cl_clusterTcpPassword = 1 << 6,
-    cl_clusterTimeout = 1 << 7,
-    cl_clusterSkimmerSpotsEnable = 1 << 8,
-    cl_all = 1 << 9
+    cl_clusterUdpEnable = 1 << 0,
+    cl_clusterTcpEnable = 1 << 1,
+    cl_clusterUdpPort = 1 << 2,
+    cl_clusterTcpServerName = 1 << 3,
+    cl_clusterTcpUserName = 1 << 4,
+    cl_clusterTcpPassword = 1 << 5,
+    cl_clusterTimeout = 1 << 6,
+    cl_clusterSkimmerSpotsEnable = 1 << 7,
+    cl_all = 1 << 8
 };
 
 

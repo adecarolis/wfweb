@@ -2577,6 +2577,7 @@ void wfmain::loadSettings()
     setupui->updateRaPrefs((int)ra_all);
     setupui->updateCtPrefs((int)ct_all);
     setupui->updateClusterPrefs((int)cl_all);
+    setupui->updateLanPrefs((int)l_all);
 
     setupui->acceptUdpPreferencesPtr(&udpPrefs);
     setupui->updateUdpPrefs((int)u_all);

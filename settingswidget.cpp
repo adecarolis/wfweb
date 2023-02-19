@@ -312,7 +312,7 @@ void settingswidget::updateRaPref(prefRaItem pra)
         if (serialIndex != -1) {
             ui->serialDeviceListCombo->setCurrentIndex(serialIndex);
         } else {
-            // TODO
+            // TODO: load the combo box with the serial port choices first!
             qWarning(logGui()) << "Cannot find serial port in serial combo box.";
         }
         break;
@@ -403,7 +403,7 @@ void settingswidget::updateLanPref(prefLanItem plan)
         ui->waterfallFormatCombo->blockSignals(false);
         break;
     default:
-        qWarning(logGui()) << "Did not find matching preference for ui update:" << (int)plan;
+        qWarning(logGui()) << "Did not find matching preference for LAN ui update:" << (int)plan;
     }
     updatingUIFromPrefs = false;
 }
