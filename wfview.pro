@@ -221,6 +221,7 @@ SOURCES += main.cpp\
     cwsender.cpp \
     frequencyinputwidget.cpp \
     loggingwindow.cpp \
+    settingswidget.cpp \
     wfmain.cpp \
     commhandler.cpp \
     rigcommander.cpp \
@@ -266,6 +267,7 @@ HEADERS  += wfmain.h \
     rigcommander.h \
     freqmemory.h \
     rigidentities.h \
+    settingswidget.h \
     sidebandchooser.h \
     udpbase.h \
     udphandler.h \
@@ -312,6 +314,7 @@ FORMS    += wfmain.ui \
     satellitesetup.ui \
     selectradio.ui \
     repeatersetup.ui \
+    settingswidget.ui \
     transceiveradjustments.ui \
     controllersetup.ui \
     aboutbox.ui

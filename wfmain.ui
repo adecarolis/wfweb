@@ -4455,6 +4455,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="showSettingsBtn">
+        <property name="text">
+         <string>Settings</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="saveSettingsBtn">
         <property name="text">
          <string>Save Settings</string>
@@ -4574,7 +4581,7 @@
  <connections/>
  <buttongroups>
   <buttongroup name="pollingButtonGroup"/>
-  <buttongroup name="buttonGroup"/>
   <buttongroup name="underlayButtonGroup"/>
+  <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>

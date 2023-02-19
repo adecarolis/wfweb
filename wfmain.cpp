@@ -5,7 +5,7 @@
 #include "rigidentities.h"
 #include "logcategories.h"
 
-// This code is copyright 2017-2022 Elliott H. Liggett
+// This code is copyright 2017-2023 Elliott H. Liggett
 // All rights reserved
 
 // Log support:
@@ -54,6 +54,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     selRad = new selectRadio();
     bandbtns = new bandbuttons();
     finputbtns = new frequencyinputwidget();
+    setupui = new settingswidget();
 
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
     qRegisterMetaType<rigCapabilities>();
@@ -304,6 +305,7 @@ void wfmain::openRig()
 
 }
 
+// Migrated
 void wfmain::createSettingsListItems()
 {
     // Add items to the settings tab list widget
@@ -318,17 +320,11 @@ void wfmain::createSettingsListItems()
     ui->settingsStack->setCurrentIndex(0);
 }
 
+// Migrated
 void wfmain::on_settingsList_currentRowChanged(int currentRow)
 {
     ui->settingsStack->setCurrentIndex(currentRow);
 }
-
-
-void wfmain::connectSettingsList()
-{
-
-}
-
 
 void wfmain::rigConnections()
 {
@@ -1120,6 +1116,7 @@ void wfmain::setupMainUI()
 
     ui->controlPortTxt->setValidator(new QIntValidator(this));
 
+    // Keep this code when the rest is removed from this function:
     qDebug(logSystem()) << "Running with debugging options enabled.";
 #ifdef QT_DEBUG
     ui->debugBtn->setVisible(true);
@@ -1239,6 +1236,7 @@ void wfmain::prepareSettingsWindow()
     // TODO: Capture an event when the window closes and handle accordingly.
 }
 
+// NOT Migrated, EHL TODO, carefully remove this function
 void wfmain::updateSizes(int tabIndex)
 {
 
@@ -2573,6 +2571,15 @@ void wfmain::loadSettings()
 
     settings->endGroup();
 #endif
+
+    setupui->acceptPreferencesPtr(&prefs);
+    setupui->updateIfPrefs((int)if_all);
+    setupui->updateRaPrefs((int)ra_all);
+    setupui->updateCtPrefs((int)ct_all);
+    setupui->updateClusterPrefs((int)cl_all);
+
+    setupui->acceptUdpPreferencesPtr(&udpPrefs);
+    setupui->updateUdpPrefs((int)u_all);
 }
 
 void wfmain::serverAddUserLine(const QString& user, const QString& pass, const int& type)
@@ -6198,6 +6205,7 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
 
 }
 
+// Migrated
 void wfmain::on_lanEnableBtn_clicked(bool checked)
 {
     prefs.enableLAN = checked;
@@ -7600,7 +7608,12 @@ void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 void wfmain::on_debugBtn_clicked()
 {
     qInfo(logSystem()) << "Debug button pressed.";
-    mem.dumpMemory();
+    //showAndRaiseWidget(setupui);
+    setupui->updateIfPrefs((int)if_all);
+    setupui->updateRaPrefs((int)ra_all);
+    setupui->updateCtPrefs((int)ct_all);
+    setupui->updateClusterPrefs((int)cl_all);
+    setupui->updateUdpPrefs((int)u_all);
 }
 
 // ----------   color helper functions:   ---------- //
@@ -8984,4 +8997,9 @@ void wfmain::on_showBandsBtn_clicked()
 void wfmain::on_showFreqBtn_clicked()
 {
     showAndRaiseWidget(finputbtns);
+}
+
+void wfmain::on_showSettingsBtn_clicked()
+{
+    showAndRaiseWidget(setupui);
 }

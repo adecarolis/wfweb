@@ -38,6 +38,7 @@
 #include "cwsender.h"
 #include "bandbuttons.h"
 #include "frequencyinputwidget.h"
+#include "settingswidget.h"
 #include "udpserver.h"
 #include "qledlabel.h"
 #include "rigctld.h"
@@ -560,6 +561,8 @@ private slots:
 
     void on_showFreqBtn_clicked();
 
+    void on_showSettingsBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -571,7 +574,6 @@ private:
     void saveSettings();
 
     void createSettingsListItems();
-    void connectSettingsList();
 
     void initLogging();
     QTimer logCheckingTimer;
@@ -904,6 +906,7 @@ private:
     loggingWindow *logWindow;
     bandbuttons *bandbtns;
     frequencyinputwidget *finputbtns;
+    settingswidget *setupui;
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;
