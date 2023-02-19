@@ -57,14 +57,22 @@ void settingswidget::populateComboBoxes()
     ui->meter2selectionCombo->addItem("RxAudio", meterRxAudio);
     ui->meter2selectionCombo->addItem("TxAudio", meterTxMod);
 
-
     ui->meter2selectionCombo->show();
-    // prefs not valid yet ui->meter2selectionCombo->setCurrentIndex((int)prefs.meter2Type);
-
     ui->secondaryMeterSelectionLabel->show();
 
+    ui->audioRXCodecCombo->addItem("LPCM 1ch 16bit", 4);
+    ui->audioRXCodecCombo->addItem("LPCM 1ch 8bit", 2);
+    ui->audioRXCodecCombo->addItem("uLaw 1ch 8bit", 1);
+    ui->audioRXCodecCombo->addItem("LPCM 2ch 16bit", 16);
+    ui->audioRXCodecCombo->addItem("uLaw 2ch 8bit", 32);
+    ui->audioRXCodecCombo->addItem("PCM 2ch 8bit", 8);
+    ui->audioRXCodecCombo->addItem("Opus 1ch", 64);
+    ui->audioRXCodecCombo->addItem("Opus 2ch", 128);
 
-
+    ui->audioTXCodecCombo->addItem("LPCM 1ch 16bit", 4);
+    ui->audioTXCodecCombo->addItem("LPCM 1ch 8bit", 2);
+    ui->audioTXCodecCombo->addItem("uLaw 1ch 8bit", 1);
+    ui->audioTXCodecCombo->addItem("Opus 1ch", 64);
 
     ui->controlPortTxt->setValidator(new QIntValidator(this));
 }
