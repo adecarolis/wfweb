@@ -50,6 +50,7 @@ public slots:
     void updateServerRXAudioInputs(QStringList deviceList, int currentIndex, int chars);
     void updateServerTXAudioOutputs(QStringList deviceList, int currentIndex, int chars);
 
+    void updateSerialPortList(QStringList deviceList, QVector<int> data);
 
 signals:
     // Not sure if we should do it this way,

@@ -589,6 +589,25 @@ void settingswidget::updateServerRXAudioInputs(QStringList deviceList, int curre
     haveServerAudioInputs = true;
 }
 
+void settingswidget::updateSerialPortList(QStringList deviceList, QVector<int> data)
+{
+    if(deviceList.length() == data.length())
+    {
+        ui->serialDeviceListCombo->blockSignals(true);
+        ui->serialDeviceListCombo->addItem("Auto", 0);
+        for(int i=0; i < deviceList.length(); i++)
+        {
+            ui->serialDeviceListCombo->addItem(deviceList.at(i), data.at(i));
+        }
+#if defined(Q_OS_LINUX) || defined(Q_OS_MAC) || defined(Q_OS_UNIX)
+        ui->serialDeviceListCombo->addItem("Manual...", 256);
+#endif
+        ui->serialDeviceListCombo->blockSignals(false);
+    } else {
+        qCritical(logGui()) << "Cannot populate serial device list. Data of unequal length.";
+    }
+}
+
 // Utility Functions:
 void settingswidget::updateUnderlayMode()
 {

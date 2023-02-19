@@ -1452,6 +1452,9 @@ void wfmain::setUIToPrefs()
 
 void wfmain::setSerialDevicesUI()
 {
+    QStringList deviceList;
+    QVector<int> deviceData;
+
     ui->serialDeviceListCombo->blockSignals(true);
     ui->serialDeviceListCombo->addItem("Auto", 0);
     int i = 0;
@@ -1459,9 +1462,13 @@ void wfmain::setSerialDevicesUI()
     {
         portList.append(serialPortInfo.portName());
 #if defined(Q_OS_LINUX) || defined(Q_OS_MAC)
+        deviceData.append(i);
         ui->serialDeviceListCombo->addItem(QString("/dev/") + serialPortInfo.portName(), i++);
+        deviceList.append(QString("/dev/") + serialPortInfo.portName());
 #else
         ui->serialDeviceListCombo->addItem(serialPortInfo.portName(), i++);
+        deviceList.append(serialPortInfo.portName());
+
         //qInfo(logSystem()) << "Serial Port found: " << serialPortInfo.portName() << "Manufacturer:" << serialPortInfo.manufacturer() << "Product ID" << serialPortInfo.description() << "S/N" << serialPortInfo.serialNumber();
 #endif
     }
@@ -1469,6 +1476,8 @@ void wfmain::setSerialDevicesUI()
     ui->serialDeviceListCombo->addItem("Manual...", 256);
 #endif
     ui->serialDeviceListCombo->blockSignals(false);
+
+    setupui->updateSerialPortList(deviceList, deviceData);
 
     ui->vspCombo->blockSignals(true);
 
