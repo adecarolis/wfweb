@@ -46,6 +46,7 @@ void settingswidget::populateComboBoxes()
     ui->baudRateCombo->insertItem(8, QString("1200"), 1200);
     ui->baudRateCombo->insertItem(9, QString("300"), 300);
 
+    ui->meter2selectionCombo->blockSignals(true);
     ui->meter2selectionCombo->addItem("None", meterNone);
     ui->meter2selectionCombo->addItem("SWR", meterSWR);
     ui->meter2selectionCombo->addItem("ALC", meterALC);
@@ -56,8 +57,9 @@ void settingswidget::populateComboBoxes()
     ui->meter2selectionCombo->addItem("TxRxAudio", meterAudio);
     ui->meter2selectionCombo->addItem("RxAudio", meterRxAudio);
     ui->meter2selectionCombo->addItem("TxAudio", meterTxMod);
-
     ui->meter2selectionCombo->show();
+    ui->meter2selectionCombo->blockSignals(false);
+
     ui->secondaryMeterSelectionLabel->show();
 
     ui->audioRXCodecCombo->addItem("LPCM 1ch 16bit", 4);
@@ -248,15 +250,19 @@ void settingswidget::updateIfPref(prefIfItem pif)
         break;
     case if_meter2Type:
     {
+        ui->meter2selectionCombo->blockSignals(true);
         int m = ui->meter2selectionCombo->findData(prefs->meter2Type);
         ui->meter2selectionCombo->setCurrentIndex(m);
+        ui->meter2selectionCombo->blockSignals(false);
         break;
     }
     case if_clickDragTuningEnable:
         quietlyUpdateCheckbox(ui->clickDragTuningEnableChk, prefs->clickDragTuningEnable);
         break;
     case if_currentColorPresetNumber:
+        ui->colorPresetCombo->blockSignals(true);
         ui->colorPresetCombo->setCurrentIndex(prefs->currentColorPresetNumber);
+        ui->colorPresetCombo->blockSignals(false);
         // activate? or done when prefs load? Maybe some of each?
         // TODO
         break;
@@ -894,4 +900,10 @@ void settingswidget::on_audioSystemServerCombo_currentIndexChanged(int value)
     ui->audioSystemCombo->setCurrentIndex(value);
     ui->audioSystemCombo->blockSignals(false);
     emit changedRaPref(ra_audioSystem);
+}
+
+void settingswidget::on_meter2selectionCombo_currentIndexChanged(int index)
+{
+    prefs->meter2Type = static_cast<meterKind>(ui->meter2selectionCombo->itemData(index).toInt());
+    emit changedIfPref(if_meter2Type);
 }

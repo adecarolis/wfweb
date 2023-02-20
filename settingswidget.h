@@ -107,6 +107,8 @@ private slots:
 
     void on_audioSystemServerCombo_currentIndexChanged(int index);
 
+    void on_meter2selectionCombo_currentIndexChanged(int index);
+
 private:
     Ui::settingswidget *ui;
     void createSettingsListItems();
