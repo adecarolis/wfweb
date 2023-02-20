@@ -302,6 +302,7 @@ void cwSidetone::setLevel(int level) {
 void cwSidetone::stopSending() {
     QMutexLocker locker(&mutex);
     buffer.clear();
+    emit finished();
 }
 
 
