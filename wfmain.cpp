@@ -2192,11 +2192,9 @@ void wfmain::loadSettings()
     ui->connectBtn->setEnabled(true);
 
     prefs.enableRigCtlD = settings->value("EnableRigCtlD", defPrefs.enableRigCtlD).toBool();
-    ui->enableRigctldChk->setChecked(prefs.enableRigCtlD);
     prefs.rigCtlPort = settings->value("RigCtlPort", defPrefs.rigCtlPort).toInt();
-    ui->rigctldPortTxt->setText(QString("%1").arg(prefs.rigCtlPort));
     // Call the function to start rigctld if enabled.
-    on_enableRigctldChk_clicked(prefs.enableRigCtlD);
+    enableRigCtl(prefs.enableRigCtlD);
 
     prefs.tcpPort = settings->value("TcpServerPort", defPrefs.tcpPort).toInt();
     ui->tcpServerPortTxt->setText(QString("%1").arg(prefs.tcpPort));
@@ -2865,7 +2863,26 @@ void wfmain::extChangedCtPref(prefCtItem i)
 
 void wfmain::extChangedLanPref(prefLanItem i)
 {
-
+    switch(i)
+    {
+    case l_enableLAN:
+        ui->connectBtn->setEnabled(true); // always set, not sure why.
+        break;
+    case l_enableRigCtlD:
+        enableRigCtl(prefs.enableRigCtlD);
+        break;
+    case l_rigCtlPort:
+        // no action
+        break;
+    case l_tcpPort:
+        // no action
+        break;
+    case l_waterfallFormat:
+        // no action
+        break;
+    default:
+        qWarning(logSystem()) << "Did not find matching preference in wfmain for LAN ui update:" << (int)i;
+    }
 }
 
 void wfmain::extChangedClusterPref(prefClusterItem i)
@@ -6474,6 +6491,7 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
 
 void wfmain::on_serialEnableBtn_clicked(bool checked)
 {
+    // migrated
     prefs.enableLAN = !checked;
     ui->serialDeviceListCombo->setEnabled(checked);
 
@@ -6498,9 +6516,9 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
 
 }
 
-// Migrated
 void wfmain::on_lanEnableBtn_clicked(bool checked)
 {
+    // Migrated
     prefs.enableLAN = checked;
     ui->connectBtn->setEnabled(true);
     ui->ipAddressTxt->setEnabled(checked);
@@ -7603,8 +7621,9 @@ void wfmain::changeMeter2Type(meterKind m)
     }
 }
 
-void wfmain::on_enableRigctldChk_clicked(bool checked)
+void wfmain::enableRigCtl(bool enabled)
 {
+    // migrated to this, keep
     if (rigCtl != Q_NULLPTR)
     {
         rigCtl->disconnect();
@@ -7612,7 +7631,7 @@ void wfmain::on_enableRigctldChk_clicked(bool checked)
         rigCtl = Q_NULLPTR;
     }
 
-    if (checked) {
+    if (enabled) {
         // Start rigctld
         rigCtl = new rigCtlD(this);
         rigCtl->startServer(prefs.rigCtlPort);
@@ -7626,34 +7645,7 @@ void wfmain::on_enableRigctldChk_clicked(bool checked)
             emit requestRigState();
         }
     }    
-    prefs.enableRigCtlD = checked;
-}
-
-void wfmain::on_rigctldPortTxt_editingFinished()
-{
-
-    bool okconvert = false;
-    unsigned int port = ui->rigctldPortTxt->text().toUInt(&okconvert);
-    if (okconvert)
-    {
-        prefs.rigCtlPort = port;
-    }
-}
-
-void wfmain::on_tcpServerPortTxt_editingFinished()
-{
-
-    bool okconvert = false;
-    unsigned int port = ui->tcpServerPortTxt->text().toUInt(&okconvert);
-    if (okconvert)
-    {
-        prefs.tcpPort = port;
-    }
-}
-
-void wfmain::on_waterfallFormatCombo_activated(int index)
-{
-    prefs.waterfallFormat = index;
+    //prefs.enableRigCtlD = checked;
 }
 
 void wfmain::on_moreControlsBtn_clicked()

@@ -34,7 +34,7 @@ void settingswidget::createSettingsListItems()
 
 void settingswidget::populateComboBoxes()
 {
-
+    ui->baudRateCombo->blockSignals(true);
     ui->baudRateCombo->insertItem(0, QString("115200"), 115200);
     ui->baudRateCombo->insertItem(1, QString("57600"), 57600);
     ui->baudRateCombo->insertItem(2, QString("38400"), 38400);
@@ -45,6 +45,7 @@ void settingswidget::populateComboBoxes()
     ui->baudRateCombo->insertItem(7, QString("2400"), 2400);
     ui->baudRateCombo->insertItem(8, QString("1200"), 1200);
     ui->baudRateCombo->insertItem(9, QString("300"), 300);
+    ui->baudRateCombo->blockSignals(false);
 
     ui->meter2selectionCombo->blockSignals(true);
     ui->meter2selectionCombo->addItem("None", meterNone);
@@ -62,6 +63,7 @@ void settingswidget::populateComboBoxes()
 
     ui->secondaryMeterSelectionLabel->show();
 
+    ui->audioRXCodecCombo->blockSignals(true);
     ui->audioRXCodecCombo->addItem("LPCM 1ch 16bit", 4);
     ui->audioRXCodecCombo->addItem("LPCM 1ch 8bit", 2);
     ui->audioRXCodecCombo->addItem("uLaw 1ch 8bit", 1);
@@ -70,11 +72,14 @@ void settingswidget::populateComboBoxes()
     ui->audioRXCodecCombo->addItem("PCM 2ch 8bit", 8);
     ui->audioRXCodecCombo->addItem("Opus 1ch", 64);
     ui->audioRXCodecCombo->addItem("Opus 2ch", 128);
+    ui->audioRXCodecCombo->blockSignals(false);
 
+    ui->audioTXCodecCombo->blockSignals(true);
     ui->audioTXCodecCombo->addItem("LPCM 1ch 16bit", 4);
     ui->audioTXCodecCombo->addItem("LPCM 1ch 8bit", 2);
     ui->audioTXCodecCombo->addItem("uLaw 1ch 8bit", 1);
     ui->audioTXCodecCombo->addItem("Opus 1ch", 64);
+    ui->audioTXCodecCombo->blockSignals(false);
 
     ui->controlPortTxt->setValidator(new QIntValidator(this));
 }
@@ -740,7 +745,7 @@ void settingswidget::on_settingsList_currentRowChanged(int currentRow)
 void settingswidget::on_lanEnableBtn_clicked(bool checked)
 {
     // TODO: prefs.enableLAN = checked;
-    // TOTO? ui->connectBtn->setEnabled(true);
+    // TOTO? ui->connectBtn->setEnabled(true); // move to other side
     ui->ipAddressTxt->setEnabled(checked);
     ui->controlPortTxt->setEnabled(checked);
     ui->usernameTxt->setEnabled(checked);
@@ -758,19 +763,43 @@ void settingswidget::on_lanEnableBtn_clicked(bool checked)
     ui->serialDeviceListCombo->setEnabled(!checked);
     ui->serverRXAudioInputCombo->setEnabled(!checked);
     ui->serverTXAudioOutputCombo->setEnabled(!checked);
-    if(checked)
-    {
-        //showStatusBarText("After filling in values, press Save Settings.");
-    }
+    ui->useRTSforPTTchk->setEnabled(!checked);
+
     prefs->enableLAN = checked;
-    emit changedLanPrefs(l_enableLAN);
-    // TODO: emit widgetChangedPrefs(l_enableLAN);
+    emit changedLanPref(l_enableLAN);
+}
+
+void settingswidget::on_serialEnableBtn_clicked(bool checked)
+{
+    prefs->enableLAN = !checked;
+    ui->serialDeviceListCombo->setEnabled(checked);
+
+    ui->ipAddressTxt->setEnabled(!checked);
+    ui->controlPortTxt->setEnabled(!checked);
+    ui->usernameTxt->setEnabled(!checked);
+    ui->passwordTxt->setEnabled(!checked);
+    ui->audioRXCodecCombo->setEnabled(!checked);
+    ui->audioTXCodecCombo->setEnabled(!checked);
+    ui->audioSampleRateCombo->setEnabled(!checked);
+    ui->rxLatencySlider->setEnabled(!checked);
+    ui->txLatencySlider->setEnabled(!checked);
+    ui->rxLatencyValue->setEnabled(!checked);
+    ui->txLatencyValue->setEnabled(!checked);
+    ui->audioOutputCombo->setEnabled(!checked);
+    ui->audioInputCombo->setEnabled(!checked);
+    ui->baudRateCombo->setEnabled(checked);
+    ui->serialDeviceListCombo->setEnabled(checked);
+    ui->serverRXAudioInputCombo->setEnabled(checked);
+    ui->serverTXAudioOutputCombo->setEnabled(checked);
+    ui->useRTSforPTTchk->setEnabled(checked);
+
+    emit changedLanPref(l_enableLAN);
 }
 
 void settingswidget::on_autoSSBchk_clicked(bool checked)
 {
     prefs->automaticSidebandSwitching = checked;
-    emit changedCtPrefs(ct_automaticSidebandSwitching);
+    emit changedCtPref(ct_automaticSidebandSwitching);
 }
 
 void settingswidget::on_useSystemThemeChk_clicked(bool checked)
@@ -906,4 +935,114 @@ void settingswidget::on_meter2selectionCombo_currentIndexChanged(int index)
 {
     prefs->meter2Type = static_cast<meterKind>(ui->meter2selectionCombo->itemData(index).toInt());
     emit changedIfPref(if_meter2Type);
+}
+
+void settingswidget::on_tuningFloorZerosChk_clicked(bool checked)
+{
+    prefs->niceTS = checked;
+    emit changedCtPref(ct_niceTS);
+}
+
+void settingswidget::on_fullScreenChk_clicked(bool checked)
+{
+    prefs->useFullScreen = checked;
+    emit changedIfPref(if_useFullScreen);
+}
+
+void settingswidget::on_wfAntiAliasChk_clicked(bool checked)
+{
+    prefs->wfAntiAlias = checked;
+    emit changedIfPref(if_wfAntiAlias);
+}
+
+void settingswidget::on_wfInterpolateChk_clicked(bool checked)
+{
+    prefs->wfInterpolate = checked;
+    emit changedIfPref(if_wfInterpolate);
+}
+
+void settingswidget::on_underlayNone_clicked(bool checked)
+{
+    if(checked)
+    {
+        prefs->underlayMode = underlayNone;
+        ui->underlayBufferSlider->setDisabled(true);
+        emit changedIfPref(if_underlayMode);
+    }
+}
+
+void settingswidget::on_underlayPeakHold_clicked(bool checked)
+{
+    if(checked)
+    {
+        prefs->underlayMode = underlayPeakHold;
+        ui->underlayBufferSlider->setDisabled(true);
+        emit changedIfPref(if_underlayMode);
+    }
+}
+
+void settingswidget::on_underlayPeakBuffer_clicked(bool checked)
+{
+    if(checked)
+    {
+        prefs->underlayMode = underlayPeakBuffer;
+        ui->underlayBufferSlider->setEnabled(true);
+        emit changedIfPref(if_underlayMode);
+    }
+}
+
+void settingswidget::on_underlayAverageBuffer_clicked(bool checked)
+{
+    if(checked)
+    {
+        prefs->underlayMode = underlayAverageBuffer;
+        ui->underlayBufferSlider->setEnabled(true);
+        emit changedIfPref(if_underlayMode);
+    }
+}
+
+void settingswidget::on_underlayBufferSlider_valueChanged(int value)
+{
+    prefs->underlayBufferSize = value;
+    emit changedIfPref(if_underlayBufferSize);
+}
+
+void settingswidget::on_pttEnableChk_clicked(bool checked)
+{
+    prefs->enablePTT = checked;
+    emit changedCtPref(ct_enablePTT);
+}
+
+void settingswidget::on_clickDragTuningEnableChk_clicked(bool checked)
+{
+    prefs->clickDragTuningEnable = checked;
+    emit changedIfPref(if_clickDragTuningEnable);
+}
+
+void settingswidget::on_enableRigctldChk_clicked(bool checked)
+{
+    prefs->enableRigCtlD = checked;
+    emit changedLanPref(l_enableRigCtlD);
+}
+
+void settingswidget::on_rigctldPortTxt_editingFinished()
+{
+    bool okconvert = false;
+    unsigned int port = ui->rigctldPortTxt->text().toUInt(&okconvert);
+    if (okconvert)
+    {
+        prefs->rigCtlPort = port;
+        emit changedLanPref(l_rigCtlPort);
+    }
+}
+
+void settingswidget::on_tcpServerPortTxt_editingFinished()
+{
+    bool okconvert = false;
+    unsigned int port = ui->tcpServerPortTxt->text().toUInt(&okconvert);
+    if (okconvert)
+    {
+        prefs->tcpPort = port;
+        emit changedLanPref(l_tcpPort);
+    }
 }

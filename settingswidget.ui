@@ -41,7 +41,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>1</number>
+        <number>4</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -819,7 +819,7 @@
            <item>
             <widget class="QCheckBox" name="fullScreenChk">
              <property name="text">
-              <string>Show full screen</string>
+              <string>Show full screen (F11)</string>
              </property>
             </widget>
            </item>
@@ -1144,16 +1144,6 @@
              </property>
              <property name="text">
               <string>Rename Preset</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="colorPopOutBtn">
-             <property name="toolTip">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Pop out (or pop back in) the entire Settings tab. &lt;/p&gt;&lt;p&gt;NOTE: Press this button again to re-insert the tab when finished. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-             </property>
-             <property name="text">
-              <string>Pop-Out</string>
              </property>
             </widget>
            </item>

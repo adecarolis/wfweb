@@ -109,6 +109,37 @@ private slots:
 
     void on_meter2selectionCombo_currentIndexChanged(int index);
 
+    void on_tuningFloorZerosChk_clicked(bool checked);
+
+    void on_fullScreenChk_clicked(bool checked);
+
+    void on_wfAntiAliasChk_clicked(bool checked);
+
+    void on_wfInterpolateChk_clicked(bool checked);
+
+    void on_underlayNone_clicked(bool checked);
+
+
+    void on_underlayPeakHold_clicked(bool checked);
+
+    void on_underlayPeakBuffer_clicked(bool checked);
+
+    void on_underlayAverageBuffer_clicked(bool checked);
+
+    void on_underlayBufferSlider_valueChanged(int value);
+
+    void on_pttEnableChk_clicked(bool checked);
+
+    void on_clickDragTuningEnableChk_clicked(bool checked);
+
+    void on_serialEnableBtn_clicked(bool checked);
+
+    void on_enableRigctldChk_clicked(bool checked);
+
+    void on_rigctldPortTxt_editingFinished();
+
+    void on_tcpServerPortTxt_editingFinished();
+
 private:
     Ui::settingswidget *ui;
     void createSettingsListItems();

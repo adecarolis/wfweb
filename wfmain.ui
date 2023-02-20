@@ -2215,8 +2215,8 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>818</width>
-                      <height>324</height>
+                      <width>570</width>
+                      <height>254</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -3569,16 +3569,6 @@
                  <number>0</number>
                 </property>
                 <item>
-                 <widget class="QCheckBox" name="enableRigctldChk">
-                  <property name="layoutDirection">
-                   <enum>Qt::LeftToRight</enum>
-                  </property>
-                  <property name="text">
-                   <string>Enable RigCtld</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
                  <spacer name="horizontalSpacer_18">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
@@ -3598,22 +3588,6 @@
                  <widget class="QLabel" name="label_28">
                   <property name="text">
                    <string>Port</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLineEdit" name="rigctldPortTxt">
-                  <property name="minimumSize">
-                   <size>
-                    <width>75</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>75</width>
-                    <height>16777215</height>
-                   </size>
                   </property>
                  </widget>
                 </item>

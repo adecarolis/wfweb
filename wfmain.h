@@ -458,10 +458,7 @@ private slots:
     void on_wfAntiAliasChk_clicked(bool checked);
     void on_wfInterpolateChk_clicked(bool checked);
     void changeMeter2Type(meterKind m);
-    void on_waterfallFormatCombo_activated(int index);
-    void on_enableRigctldChk_clicked(bool checked);
-    void on_rigctldPortTxt_editingFinished();
-    void on_tcpServerPortTxt_editingFinished();
+    void enableRigCtl(bool enabled);
     void on_moreControlsBtn_clicked();
     void on_useCIVasRigIDChk_clicked(bool checked);
 
