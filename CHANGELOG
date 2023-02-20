@@ -1,3 +1,21 @@
+commit 2186a74490d6d62ee5581ba9956aac7e738f9791
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 20 13:05:23 2023 +0000
+
+    Minor change to p and P commands in rigctld
+
+commit b9288175bd67df8609996ba008268514c80515c1
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 20 12:43:26 2023 +0000
+
+    Add remaining rigctld commands (mainly unimplemented)
+
+commit ce9e3e9f2cd8a343ab65d068904475126bfc8483
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Tue Feb 14 16:10:38 2023 +0100
+
+    ecoder, collission-detection added
+
 commit dd4770a85ff462913c223fcb1a9aeff65cce0a5d
 Merge: 32e6622 3582c95
 Author: Phil Taylor <phil@m0vse.uk>
