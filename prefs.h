@@ -20,7 +20,7 @@ enum prefIfItem {
     if_wflength = 1 << 11,
     if_confirmExit = 1 << 12,
     if_confirmPowerOff = 1 << 13,
-    if_meterKind = 1 << 14,
+    if_meter2Type = 1 << 14,
     if_clickDragTuningEnable = 1 << 15,
     if_currentColorPresetNumber = 1 << 16,
     if_all = 1 << 17

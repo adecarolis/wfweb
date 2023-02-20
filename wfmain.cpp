@@ -57,6 +57,14 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     setupui = new settingswidget();
 
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
+    qRegisterMetaType<udpPrefsItem>();
+    qRegisterMetaType<preferences>();
+    qRegisterMetaType<prefIfItem>();
+    qRegisterMetaType<prefRaItem>();
+    qRegisterMetaType<prefCtItem>();
+    qRegisterMetaType<prefLanItem>();
+    qRegisterMetaType<prefClusterItem>();
+
     qRegisterMetaType<rigCapabilities>();
     qRegisterMetaType<duplexMode>();
     qRegisterMetaType<rptAccessTxRx>();
@@ -91,6 +99,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     setupKeyShortcuts();
 
     setupMainUI();
+    connectSettingsWidget();
     prepareSettingsWindow();
 
     setSerialDevicesUI();
@@ -1058,23 +1067,23 @@ void wfmain::setupMainUI()
     ui->wfthemeCombo->addItem("Spectrum", QCPColorGradient::gpSpectrum);
     ui->wfthemeCombo->addItem("Candy", QCPColorGradient::gpCandy);
 
-    ui->meter2selectionCombo->addItem("None", meterNone);
-    ui->meter2selectionCombo->addItem("SWR", meterSWR);
-    ui->meter2selectionCombo->addItem("ALC", meterALC);
-    ui->meter2selectionCombo->addItem("Compression", meterComp);
-    ui->meter2selectionCombo->addItem("Voltage", meterVoltage);
-    ui->meter2selectionCombo->addItem("Current", meterCurrent);
-    ui->meter2selectionCombo->addItem("Center", meterCenter);
-    ui->meter2selectionCombo->addItem("TxRxAudio", meterAudio);
-    ui->meter2selectionCombo->addItem("RxAudio", meterRxAudio);
-    ui->meter2selectionCombo->addItem("TxAudio", meterTxMod);
+//    ui->meter2selectionCombo->addItem("None", meterNone);
+//    ui->meter2selectionCombo->addItem("SWR", meterSWR);
+//    ui->meter2selectionCombo->addItem("ALC", meterALC);
+//    ui->meter2selectionCombo->addItem("Compression", meterComp);
+//    ui->meter2selectionCombo->addItem("Voltage", meterVoltage);
+//    ui->meter2selectionCombo->addItem("Current", meterCurrent);
+//    ui->meter2selectionCombo->addItem("Center", meterCenter);
+//    ui->meter2selectionCombo->addItem("TxRxAudio", meterAudio);
+//    ui->meter2selectionCombo->addItem("RxAudio", meterRxAudio);
+//    ui->meter2selectionCombo->addItem("TxAudio", meterTxMod);
 
     ui->meter2Widget->hide();
 
-    ui->meter2selectionCombo->show();
-    ui->meter2selectionCombo->setCurrentIndex((int)prefs.meter2Type);
+//    ui->meter2selectionCombo->show();
+//    ui->meter2selectionCombo->setCurrentIndex((int)prefs.meter2Type);
 
-    ui->secondaryMeterSelectionLabel->show();
+//    ui->secondaryMeterSelectionLabel->show();
 
 
     // Future ideas:
@@ -1218,6 +1227,27 @@ void wfmain::setupMainUI()
             [=]() { issueDelayedCommand(cmdGetKeySpeed);
                     issueDelayedCommand(cmdGetBreakMode);});
 
+}
+
+void wfmain::connectSettingsWidget()
+{
+    connect(setupui, SIGNAL(changedClusterPref(prefClusterItem)), this, SLOT(extChangedClusterPref(prefClusterItem)));
+    connect(setupui, SIGNAL(changedClusterPrefs(int)), this, SLOT(extChangedClusterPrefs(int)));
+
+    connect(setupui, SIGNAL(changedCtPref(prefCtItem)), this, SLOT(extChangedCtPref(prefCtItem)));
+    connect(setupui, SIGNAL(changedCtPrefs(int)), this, SLOT(extChangedCtPrefs(int)));
+
+    connect(setupui, SIGNAL(changedIfPref(prefIfItem)), this, SLOT(extChangedIfPref(prefIfItem)));
+    connect(setupui, SIGNAL(changedIfPrefs(int)), this, SLOT(extChangedIfPrefs(int)));
+
+    connect(setupui, SIGNAL(changedLanPref(prefLanItem)), this, SLOT(extChangedLanPref(prefLanItem)));
+    connect(setupui, SIGNAL(changedLanPrefs(int)), this, SLOT(extChangedLanPrefs(int)));
+
+    connect(setupui, SIGNAL(changedRaPref(prefRaItem)), this, SLOT(extChangedRaPref(prefRaItem)));
+    connect(setupui, SIGNAL(changedRaPrefs(int)), this, SLOT(extChangedRaPrefs(int)));
+
+    connect(setupui, SIGNAL(changedUdpPref(udpPrefsItem)), this, SLOT(extChangedUdpPref(udpPrefsItem)));
+    connect(setupui, SIGNAL(changedUdpPrefs(int)), this, SLOT(extChangedUdpPrefs(int)));
 }
 
 void wfmain::prepareSettingsWindow()
@@ -1379,38 +1409,38 @@ void wfmain::setServerToPrefs()
 
 void wfmain::setUIToPrefs()
 {
-    ui->fullScreenChk->setChecked(prefs.useFullScreen);
-    on_fullScreenChk_clicked(prefs.useFullScreen);
+    //ui->fullScreenChk->setChecked(prefs.useFullScreen);
+    changeFullScreenMode(prefs.useFullScreen);
 
-    ui->useSystemThemeChk->setChecked(prefs.useSystemTheme);
-    on_useSystemThemeChk_clicked(prefs.useSystemTheme);
+    //ui->useSystemThemeChk->setChecked(prefs.useSystemTheme);
+    useSystemTheme(prefs.useSystemTheme);
 
     underlayMode = prefs.underlayMode;
-    switch(underlayMode)
-    {
-        case underlayNone:
-            ui->underlayNone->setChecked(true);
-            break;
-        case underlayPeakHold:
-            ui->underlayPeakHold->setChecked(true);
-            break;
-        case underlayPeakBuffer:
-            ui->underlayPeakBuffer->setChecked(true);
-            break;
-        case underlayAverageBuffer:
-            ui->underlayAverageBuffer->setChecked(true);
-            break;
-        default:
-            break;
-    }
+//    switch(underlayMode)
+//    {
+//        case underlayNone:
+//            ui->underlayNone->setChecked(true);
+//            break;
+//        case underlayPeakHold:
+//            ui->underlayPeakHold->setChecked(true);
+//            break;
+//        case underlayPeakBuffer:
+//            ui->underlayPeakBuffer->setChecked(true);
+//            break;
+//        case underlayAverageBuffer:
+//            ui->underlayAverageBuffer->setChecked(true);
+//            break;
+//        default:
+//            break;
+//    }
 
-    ui->underlayBufferSlider->setValue(prefs.underlayBufferSize);
+    //ui->underlayBufferSlider->setValue(prefs.underlayBufferSize);
     on_underlayBufferSlider_valueChanged(prefs.underlayBufferSize);
 
-    ui->wfAntiAliasChk->setChecked(prefs.wfAntiAlias);
+    //ui->wfAntiAliasChk->setChecked(prefs.wfAntiAlias);
     on_wfAntiAliasChk_clicked(prefs.wfAntiAlias);
 
-    ui->wfInterpolateChk->setChecked(prefs.wfInterpolate);
+    //ui->wfInterpolateChk->setChecked(prefs.wfInterpolate);
     on_wfInterpolateChk_clicked(prefs.wfInterpolate);
 
     ui->wfLengthSlider->setValue(prefs.wflength);
@@ -2606,6 +2636,212 @@ void wfmain::loadSettings()
     setupui->updateUdpPrefs((int)u_all);
 }
 
+void wfmain::extChangedIfPrefs(int items)
+{
+    prefIfItem pif;
+    if(items & (int)if_all)
+    {
+        items = 0xffffffff;
+    }
+    for(int i=1; i < (int)if_all; i = i << 1)
+    {
+        if(items & i)
+        {
+            qDebug(logSystem()) << "Updating If pref in wfmain" << (int)i;
+            pif = (prefIfItem)i;
+            extChangedIfPref(pif);
+        }
+    }
+}
+
+void wfmain::extChangedRaPrefs(int items)
+{
+    prefRaItem pra;
+    if(items & (int)ra_all)
+    {
+        items = 0xffffffff;
+    }
+    for(int i=1; i < (int)ra_all; i = i << 1)
+    {
+        if(items & i)
+        {
+            qDebug(logSystem()) << "Updating Ra pref in wfmain" << (int)i;
+            pra = (prefRaItem)i;
+            extChangedRaPref(pra);
+        }
+    }
+}
+
+void wfmain::extChangedCtPrefs(int items)
+{
+    prefCtItem pct;
+    if(items & (int)ct_all)
+    {
+        items = 0xffffffff;
+    }
+    for(int i=1; i < (int)ct_all; i = i << 1)
+    {
+        if(items & i)
+        {
+            qDebug(logSystem()) << "Updating Ct pref in wfmain" << (int)i;
+            pct = (prefCtItem)i;
+            extChangedCtPref(pct);
+        }
+    }
+}
+
+void wfmain::extChangedLanPrefs(int items)
+{
+    prefLanItem plan;
+    if(items & (int)l_all)
+    {
+        items = 0xffffffff;
+    }
+    for(int i=1; i < (int)l_all; i = i << 1)
+    {
+        if(items & i)
+        {
+            qDebug(logSystem()) << "Updating Lan pref in wfmain" << (int)i;
+            plan = (prefLanItem)i;
+            extChangedLanPref(plan);
+        }
+    }
+}
+
+void wfmain::extChangedClusterPrefs(int items)
+{
+    prefClusterItem pcl;
+    if(items & (int)cl_all)
+    {
+        items = 0xffffffff;
+    }
+    for(int i=1; i < (int)cl_all; i = i << 1)
+    {
+        if(items & i)
+        {
+            qDebug(logSystem()) << "Updating Cluster pref in wfmain" << (int)i;
+            pcl = (prefClusterItem)i;
+            extChangedClusterPref(pcl);
+        }
+    }
+}
+
+void wfmain::extChangedUdpPrefs(int items)
+{
+    udpPrefsItem upi;
+    if(items & (int)u_all)
+    {
+        items = 0xffffffff;
+    }
+    for(int i=1; i < (int)u_all; i = i << 1)
+    {
+        if(items & i)
+        {
+            qDebug(logSystem()) << "Updating UDP preference in wfmain:" << i;
+            upi = (udpPrefsItem)i;
+            extChangedUdpPref(upi);
+        }
+    }
+}
+
+void wfmain::extChangedIfPref(prefIfItem i)
+{
+    switch(i)
+    {
+    case if_useFullScreen:
+        changeFullScreenMode(prefs.useFullScreen);
+        break;
+    case if_useSystemTheme:
+        useSystemTheme(prefs.useSystemTheme);
+        break;
+    case if_drawPeaks:
+        // depreciated;
+        break;
+    case if_underlayMode:
+        underlayMode = prefs.underlayMode;
+        on_clearPeakBtn_clicked();
+        break;
+    case if_underlayBufferSize:
+        resizePlasmaBuffer(prefs.underlayBufferSize);
+        spectrumPlasmaSize = prefs.underlayBufferSize;
+        break;
+    case if_wfAntiAlias:
+        colorMap->setAntialiased(prefs.wfAntiAlias);
+        break;
+    case if_wfInterpolate:
+        colorMap->setInterpolate(prefs.wfInterpolate);
+        break;
+    case if_wftheme:
+        // Not in settings widget
+        colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
+        break;
+    case if_plotFloor:
+        // Not in settings widget
+        wfFloor = prefs.plotFloor;
+        plotFloor = prefs.plotFloor;
+        plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
+        colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+        break;
+    case if_plotCeiling:
+        // Not in settings widget
+        wfCeiling = prefs.plotCeiling;
+        plotCeiling = prefs.plotCeiling;
+        plot->yAxis->setRange(QCPRange(plotFloor, plotCeiling));
+        colorMap->setDataRange(QCPRange(wfFloor, wfCeiling));
+        break;
+    case if_stylesheetPath:
+        // Not in settings widget
+        break;
+    case if_wflength:
+        // Not in settings widget
+        break;
+    case if_confirmExit:
+        // Not in settings widget
+        break;
+    case if_confirmPowerOff:
+        // Not in settings widget
+        break;
+    case if_meter2Type:
+        changeMeter2Type(prefs.meter2Type);
+        break;
+    case if_clickDragTuningEnable:
+        // There's nothing to do here since the code
+        // already uses the preference variable as state.
+        break;
+    case if_currentColorPresetNumber:
+        // TODO.....
+        break;
+    default:
+        qWarning(logGui()) << "Did not understand if pref update item " << (int)i;
+        break;
+    }
+}
+
+void wfmain::extChangedRaPref(prefRaItem i)
+{
+
+}
+
+void wfmain::extChangedCtPref(prefCtItem i)
+{
+
+}
+
+void wfmain::extChangedLanPref(prefLanItem i)
+{
+
+}
+
+void wfmain::extChangedClusterPref(prefClusterItem i)
+{
+
+}
+
+void wfmain::extChangedUdpPref(udpPrefsItem i)
+{
+
+}
+
 void wfmain::serverAddUserLine(const QString& user, const QString& pass, const int& type)
 {
     ui->serverUsersTable->blockSignals(true);
@@ -3167,11 +3403,13 @@ void wfmain::shortcutF11()
     {
         this->showNormal();
         onFullscreen = false;
+        prefs.useFullScreen = false;
     } else {
         this->showFullScreen();
         onFullscreen = true;
+        prefs.useFullScreen = true;
     }
-    ui->fullScreenChk->setChecked(onFullscreen);
+    setupui->updateIfPref(if_useFullScreen);
 }
 
 void wfmain::shortcutF1()
@@ -3618,7 +3856,7 @@ void wfmain::showStatusBarText(QString text)
     ui->statusBar->showMessage(text, 5000);
 }
 
-void wfmain::on_useSystemThemeChk_clicked(bool checked)
+void wfmain::useSystemTheme(bool checked)
 {
     setAppTheme(!checked);
     prefs.useSystemTheme = checked;
@@ -4788,16 +5026,17 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         initPeriodicCommands();
         
         // Set the second meter here as I suspect we need to be connected for it to work?
-        for (int i = 0; i < ui->meter2selectionCombo->count(); i++)
-        {
-            if (static_cast<meterKind>(ui->meter2selectionCombo->itemData(i).toInt()) == prefs.meter2Type)
-            {
-                // I thought that setCurrentIndex() would call the activated() function for the combobox
-                // but it doesn't, so call it manually.
-                ui->meter2selectionCombo->setCurrentIndex(i);
-                on_meter2selectionCombo_activated(i); 
-            }
-        }
+        changeMeter2Type(prefs.meter2Type);
+//        for (int i = 0; i < ui->meter2selectionCombo->count(); i++)
+//        {
+//            if (static_cast<meterKind>(ui->meter2selectionCombo->itemData(i).toInt()) == prefs.meter2Type)
+//            {
+//                // I thought that setCurrentIndex() would call the activated() function for the combobox
+//                // but it doesn't, so call it manually.
+//                //ui->meter2selectionCombo->setCurrentIndex(i);
+//                changeMeter2Type(i);
+//            }
+//        }
     }
     updateSizes(ui->tabWidget->currentIndex());
 }
@@ -5789,7 +6028,7 @@ void wfmain::on_clearPeakBtn_clicked()
     return;
 }
 
-void wfmain::on_fullScreenChk_clicked(bool checked)
+void wfmain::changeFullScreenMode(bool checked)
 {
     if(checked)
     {
@@ -7325,11 +7564,11 @@ cmds wfmain::meterKindToMeterCommand(meterKind m)
 }
 
 
-void wfmain::on_meter2selectionCombo_activated(int index)
+void wfmain::changeMeter2Type(meterKind m)
 {
     meterKind newMeterType;
     meterKind oldMeterType;
-    newMeterType = static_cast<meterKind>(ui->meter2selectionCombo->currentData().toInt());
+    newMeterType = m;
     oldMeterType = ui->meter2Widget->getMeterType();
     if(newMeterType == oldMeterType)
         return;
@@ -7349,9 +7588,6 @@ void wfmain::on_meter2selectionCombo_activated(int index)
         if((newMeterType!=meterRxAudio) && (newMeterType!=meterTxMod) && (newMeterType!=meterAudio))
             insertPeriodicCommandUnique(newCmd);
     }
-    prefs.meter2Type = newMeterType;
-
-    (void)index;
 }
 
 void wfmain::on_enableRigctldChk_clicked(bool checked)
@@ -7601,7 +7837,7 @@ void wfmain::clearPlasmaBuffer()
 
 void wfmain::on_underlayNone_toggled(bool checked)
 {
-    ui->underlayBufferSlider->setDisabled(checked);
+    //ui->underlayBufferSlider->setDisabled(checked);
     if(checked)
     {
         underlayMode = underlayNone;
@@ -7612,7 +7848,7 @@ void wfmain::on_underlayNone_toggled(bool checked)
 
 void wfmain::on_underlayPeakHold_toggled(bool checked)
 {
-    ui->underlayBufferSlider->setDisabled(checked);
+    //ui->underlayBufferSlider->setDisabled(checked);
     if(checked)
     {
         underlayMode = underlayPeakHold;
@@ -7623,7 +7859,7 @@ void wfmain::on_underlayPeakHold_toggled(bool checked)
 
 void wfmain::on_underlayPeakBuffer_toggled(bool checked)
 {
-    ui->underlayBufferSlider->setDisabled(!checked);
+    //ui->underlayBufferSlider->setDisabled(!checked);
     if(checked)
     {
         underlayMode = underlayPeakBuffer;
@@ -7633,7 +7869,7 @@ void wfmain::on_underlayPeakBuffer_toggled(bool checked)
 
 void wfmain::on_underlayAverageBuffer_toggled(bool checked)
 {
-    ui->underlayBufferSlider->setDisabled(!checked);
+    //ui->underlayBufferSlider->setDisabled(!checked);
     if(checked)
     {
         underlayMode = underlayAverageBuffer;

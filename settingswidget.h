@@ -61,11 +61,19 @@ signals:
     // since many of these changes are not thought
     // of as merely "preferences"... although they generally are...
     // ...hmm
-    void changedIfPref(int items);
-    void changedRaPref(int items);
+    void changedIfPrefs(int items);
+    void changedRaPrefs(int items);
     void changedCtPrefs(int items);
     void changedLanPrefs(int items);
     void changedClusterPrefs(int items);
+    void changedUdpPrefs(int items);
+
+    void changedIfPref(prefIfItem i);
+    void changedRaPref(prefRaItem i);
+    void changedCtPref(prefCtItem i);
+    void changedLanPref(prefLanItem i);
+    void changedClusterPref(prefClusterItem i);
+    void changedUdpPref(udpPrefsItem i);
 
 private slots:
     void on_settingsList_currentRowChanged(int currentRow);
@@ -73,6 +81,8 @@ private slots:
     void on_lanEnableBtn_clicked(bool checked);
 
     void on_autoSSBchk_clicked(bool checked);
+
+    void on_useSystemThemeChk_clicked(bool checked);
 
 private:
     Ui::settingswidget *ui;

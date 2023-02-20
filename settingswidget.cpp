@@ -246,7 +246,7 @@ void settingswidget::updateIfPref(prefIfItem pif)
     case if_confirmPowerOff:
         // No UI element for this.
         break;
-    case if_meterKind:
+    case if_meter2Type:
     {
         int m = ui->meter2selectionCombo->findData(prefs->meter2Type);
         ui->meter2selectionCombo->setCurrentIndex(m);
@@ -675,15 +675,19 @@ void settingswidget::updateUnderlayMode()
     switch(prefs->underlayMode) {
     case underlayNone:
         quietlyUpdateRadiobutton(ui->underlayNone, true);
+        ui->underlayBufferSlider->setDisabled(true);
         break;
     case underlayPeakHold:
         quietlyUpdateRadiobutton(ui->underlayPeakHold, true);
+        ui->underlayBufferSlider->setDisabled(true);
         break;
     case underlayPeakBuffer:
         quietlyUpdateRadiobutton(ui->underlayPeakBuffer, true);
+        ui->underlayBufferSlider->setEnabled(true);
         break;
     case underlayAverageBuffer:
         quietlyUpdateRadiobutton(ui->underlayAverageBuffer, true);
+        ui->underlayBufferSlider->setEnabled(true);
         break;
     default:
         qWarning() << "Do not understand underlay mode: " << (unsigned int) prefs->underlayMode;
@@ -761,4 +765,10 @@ void settingswidget::on_autoSSBchk_clicked(bool checked)
 {
     prefs->automaticSidebandSwitching = checked;
     emit changedCtPrefs(ct_automaticSidebandSwitching);
+}
+
+void settingswidget::on_useSystemThemeChk_clicked(bool checked)
+{
+    prefs->useSystemTheme = checked;
+    emit changedIfPrefs(if_useSystemTheme);
 }

@@ -241,6 +241,22 @@ signals:
     void setFrequencyRange(double low, double high);
 
 private slots:
+    // Triggered from external preference changes:
+    void extChangedIfPrefs(int items);
+    void extChangedRaPrefs(int items);
+    void extChangedCtPrefs(int items);
+    void extChangedLanPrefs(int items);
+    void extChangedClusterPrefs(int items);
+    void extChangedUdpPrefs(int items);
+
+    void extChangedIfPref(prefIfItem i);
+    void extChangedRaPref(prefRaItem i);
+    void extChangedCtPref(prefCtItem i);
+    void extChangedLanPref(prefLanItem i);
+    void extChangedClusterPref(prefClusterItem i);
+    void extChangedUdpPref(udpPrefsItem i);
+
+
     void setAudioDevicesUI();
     void updateSizes(int tabIndex);
     void shortcutF1();
@@ -370,7 +386,7 @@ private slots:
 
     void on_clearPeakBtn_clicked();
 
-    void on_fullScreenChk_clicked(bool checked);
+    void changeFullScreenMode(bool checked);
 
     void on_usbControllerBtn_clicked();
     void on_usbButtonsResetBtn_clicked();
@@ -419,7 +435,7 @@ private slots:
     void on_txPowerSlider_valueChanged(int value);
     void on_micGainSlider_valueChanged(int value);
     void on_scopeRefLevelSlider_valueChanged(int value);
-    void on_useSystemThemeChk_clicked(bool checked);
+    void useSystemTheme(bool checked);
     void on_modInputCombo_activated(int index);
     void on_modInputDataCombo_activated(int index);
     void on_tuneLockChk_clicked(bool checked);
@@ -443,7 +459,7 @@ private slots:
     void on_wfLengthSlider_valueChanged(int value);
     void on_wfAntiAliasChk_clicked(bool checked);
     void on_wfInterpolateChk_clicked(bool checked);
-    void on_meter2selectionCombo_activated(int index);
+    void changeMeter2Type(meterKind m);
     void on_waterfallFormatCombo_activated(int index);
     void on_enableRigctldChk_clicked(bool checked);
     void on_rigctldPortTxt_editingFinished();
@@ -572,6 +588,7 @@ private:
     QSettings *settings=Q_NULLPTR;
     void loadSettings();
     void saveSettings();
+    void connectSettingsWidget();
 
     void createSettingsListItems();
 
@@ -971,6 +988,13 @@ Q_DECLARE_METATYPE(struct rigCapabilities)
 Q_DECLARE_METATYPE(struct freqt)
 Q_DECLARE_METATYPE(struct mode_info)
 Q_DECLARE_METATYPE(struct udpPreferences)
+Q_DECLARE_METATYPE(struct preferences)
+Q_DECLARE_METATYPE(enum prefIfItem)
+Q_DECLARE_METATYPE(enum prefRaItem)
+Q_DECLARE_METATYPE(enum prefCtItem)
+Q_DECLARE_METATYPE(enum prefLanItem)
+Q_DECLARE_METATYPE(enum prefClusterItem)
+Q_DECLARE_METATYPE(enum udpPrefsItem)
 Q_DECLARE_METATYPE(struct audioPacket)
 Q_DECLARE_METATYPE(struct audioSetup)
 Q_DECLARE_METATYPE(struct SERVERCONFIG)

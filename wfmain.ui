@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -1266,7 +1266,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>4</number>
+             <number>1</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -2021,164 +2021,7 @@
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_22">
                 <item>
-                 <widget class="QCheckBox" name="wfInterpolateChk">
-                  <property name="toolTip">
-                   <string>Enables interpolation between pixels. Note that this will increase CPU usage.</string>
-                  </property>
-                  <property name="text">
-                   <string>Interpolate Waterfall</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QCheckBox" name="wfAntiAliasChk">
-                  <property name="text">
-                   <string>Anti-Alias Waterfall</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QCheckBox" name="useSystemThemeChk">
-                  <property name="text">
-                   <string>Use System Theme</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QCheckBox" name="fullScreenChk">
-                  <property name="text">
-                   <string>Show full screen</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
                  <spacer name="horizontalSpacer_12">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-               </layout>
-              </item>
-              <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_43">
-                <property name="leftMargin">
-                 <number>0</number>
-                </property>
-                <property name="topMargin">
-                 <number>0</number>
-                </property>
-                <property name="rightMargin">
-                 <number>0</number>
-                </property>
-                <property name="bottomMargin">
-                 <number>0</number>
-                </property>
-                <item>
-                 <widget class="QLabel" name="underlayLabel">
-                  <property name="text">
-                   <string>Underlay Mode</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="underlayNone">
-                  <property name="toolTip">
-                   <string>No underlay graphics</string>
-                  </property>
-                  <property name="text">
-                   <string>None</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                  <attribute name="buttonGroup">
-                   <string notr="true">underlayButtonGroup</string>
-                  </attribute>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="underlayPeakHold">
-                  <property name="toolTip">
-                   <string>Indefinite peak hold</string>
-                  </property>
-                  <property name="text">
-                   <string>Peak Hold</string>
-                  </property>
-                  <attribute name="buttonGroup">
-                   <string notr="true">underlayButtonGroup</string>
-                  </attribute>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="underlayPeakBuffer">
-                  <property name="toolTip">
-                   <string>Peak value within the buffer</string>
-                  </property>
-                  <property name="text">
-                   <string>Peak</string>
-                  </property>
-                  <attribute name="buttonGroup">
-                   <string notr="true">underlayButtonGroup</string>
-                  </attribute>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="underlayAverageBuffer">
-                  <property name="toolTip">
-                   <string>Average value within the buffer</string>
-                  </property>
-                  <property name="text">
-                   <string>Average</string>
-                  </property>
-                  <attribute name="buttonGroup">
-                   <string notr="true">underlayButtonGroup</string>
-                  </attribute>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLabel" name="label_42">
-                  <property name="text">
-                   <string>Underlay Buffer Size:</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QSlider" name="underlayBufferSlider">
-                  <property name="maximumSize">
-                   <size>
-                    <width>100</width>
-                    <height>16777215</height>
-                   </size>
-                  </property>
-                  <property name="toolTip">
-                   <string>Size of buffer for spectrum data. Shorter values are more responsive.</string>
-                  </property>
-                  <property name="minimum">
-                   <number>8</number>
-                  </property>
-                  <property name="maximum">
-                   <number>128</number>
-                  </property>
-                  <property name="value">
-                   <number>64</number>
-                  </property>
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <spacer name="horizontalSpacer_27">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
                   </property>
@@ -2216,16 +2059,6 @@
                    </size>
                   </property>
                  </spacer>
-                </item>
-                <item>
-                 <widget class="QLabel" name="secondaryMeterSelectionLabel">
-                  <property name="text">
-                   <string>Secondary Meter Selection:</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QComboBox" name="meter2selectionCombo"/>
                 </item>
                 <item>
                  <widget class="QRadioButton" name="autoPollBtn">
@@ -2464,8 +2297,8 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>570</width>
-                      <height>254</height>
+                      <width>818</width>
+                      <height>319</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
