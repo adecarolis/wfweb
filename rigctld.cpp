@@ -183,201 +183,7 @@ void rigCtlClient::socketReadyRead()
         QStringList command = commands.mid(num).split(" ");
 
 
-        if (command[0] == '\xf0' || command[0] == "chk_vfo")
-        {
-            chkVfoEecuted = true;
-            QString resp;
-            if (longReply) {
-                resp.append(QString("ChkVFO: "));
-            }
-            resp.append(QString("%1").arg(rigState->getChar(CURRENTVFO)));
-            response.append(resp);
-        }
-        else if (command[0] == "dump_state")
-        {
-            quint64 modes = getRadioModes();
-
-            // rigctld protocol version
-            response.append("1"); 
-            // Radio model
-            response.append(QString("%1").arg(rigCaps.rigctlModel)); 
-            // Print something (used to be ITU region)
-            response.append("0"); 
-            // Supported RX bands (startf,endf,modes,low_power,high_power,vfo,ant)
-            quint32 lowFreq = 0;
-            quint32 highFreq = 0;
-            for (bandType band : rigCaps.bands)
-            {
-                if (lowFreq == 0 || band.lowFreq < lowFreq)
-                    lowFreq = band.lowFreq;
-                if (band.highFreq > highFreq)
-                    highFreq = band.highFreq;
-            }
-            response.append(QString("%1.000000 %2.000000 0x%3 %4 %5 0x%6 0x%7").arg(lowFreq).arg(highFreq)
-                .arg(modes, 0, 16).arg(-1).arg(-1).arg(0x16000000, 0, 16).arg(getAntennas(), 0, 16));
-            response.append("0 0 0 0 0 0 0");
-
-            if (rigCaps.hasTransmit) {
-                // Supported TX bands (startf,endf,modes,low_power,high_power,vfo,ant)
-                for (bandType band : rigCaps.bands)
-                {   
-                    response.append(QString("%1.000000 %2.000000 0x%3 %4 %5 0x%6 0x%7").arg(band.lowFreq).arg(band.highFreq)
-                        .arg(modes, 0, 16).arg(2000).arg(100000).arg(0x16000000, 0, 16).arg(getAntennas(), 0, 16));
-                }
-            }
-            response.append("0 0 0 0 0 0 0");
-
-            response.append(QString("0x%1 1").arg(modes, 0, 16));
-            response.append(QString("0x%1 10").arg(modes, 0, 16));
-            response.append(QString("0x%1 100").arg(modes, 0, 16));
-            response.append(QString("0x%1 1000").arg(modes, 0, 16));
-            response.append(QString("0x%1 2500").arg(modes, 0, 16));
-            response.append(QString("0x%1 5000").arg(modes, 0, 16));
-            response.append(QString("0x%1 6125").arg(modes, 0, 16));
-            response.append(QString("0x%1 8333").arg(modes, 0, 16));
-            response.append(QString("0x%1 10000").arg(modes, 0, 16));
-            response.append(QString("0x%1 12500").arg(modes, 0, 16));
-            response.append(QString("0x%1 25000").arg(modes, 0, 16));
-            response.append(QString("0x%1 100000").arg(modes, 0, 16));
-            response.append(QString("0x%1 250000").arg(modes, 0, 16));
-            response.append(QString("0x%1 1000000").arg(modes, 0, 16));
-            response.append("0 0");
-
-            modes = getRadioModes("SB");
-            if (modes) {
-                response.append(QString("0x%1 3000").arg(modes, 0, 16));
-                response.append(QString("0x%1 2400").arg(modes, 0, 16));
-                response.append(QString("0x%1 1800").arg(modes, 0, 16));
-            }
-            modes = getRadioModes("AM");
-            if (modes) {
-                response.append(QString("0x%1 9000").arg(modes, 0, 16));
-                response.append(QString("0x%1 6000").arg(modes, 0, 16));
-                response.append(QString("0x%1 3000").arg(modes, 0, 16));
-            }
-            modes = getRadioModes("CW");
-            if (modes) {
-                response.append(QString("0x%1 1200").arg(modes, 0, 16));
-                response.append(QString("0x%1 500").arg(modes, 0, 16));
-                response.append(QString("0x%1 200").arg(modes, 0, 16));
-            }
-            modes = getRadioModes("FM");
-            if (modes) {
-                response.append(QString("0x%1 15000").arg(modes, 0, 16));
-                response.append(QString("0x%1 10000").arg(modes, 0, 16));
-                response.append(QString("0x%1 7000").arg(modes, 0, 16));
-            }
-            modes = getRadioModes("RTTY");
-            if (modes) {
-                response.append(QString("0x%1 2400").arg(modes, 0, 16));
-                response.append(QString("0x%1 500").arg(modes, 0, 16));
-                response.append(QString("0x%1 250").arg(modes, 0, 16));
-            }
-            modes = getRadioModes("PSK");
-            if (modes) {
-                response.append(QString("0x%1 1200").arg(modes, 0, 16));
-                response.append(QString("0x%1 500").arg(modes, 0, 16));
-                response.append(QString("0x%1 250").arg(modes, 0, 16));
-            }
-            response.append("0 0");
-            response.append("9900");
-            response.append("9900");
-            response.append("10000");
-            response.append("0");
-            QString preamps="";
-            if (rigCaps.hasPreamp) {
-                for (quint8 pre : rigCaps.preamps)
-                {
-                    if (pre == 0)
-                        continue;
-                    preamps.append(QString("%1 ").arg(pre*10));
-                }
-                if (preamps.endsWith(" "))
-                    preamps.chop(1);
-            }
-            else {
-                preamps = "0";
-            }
-            response.append(preamps);
-
-            QString attens = "";
-            if (rigCaps.hasAttenuator) {
-                for (quint8 att : rigCaps.attenuators)
-                {
-                    if (att == 0)
-                        continue;
-                    attens.append(QString("%1 ").arg(att,0,16));
-                }
-                if (attens.endsWith(" "))
-                    attens.chop(1);
-            }
-            else {
-                attens = "0";
-            }
-            response.append(attens);
-
-            response.append("0xffffffffffffffff");
-            response.append("0xffffffffffffffff");
-            response.append("0xffffffffffffffff");
-            response.append("0xffffffffffffffff");
-            response.append("0xffffffffffffffff");
-            response.append("0xffffffffffffffff");
-
-            if (chkVfoEecuted) {
-                response.append(QString("vfo_ops=0x%1").arg(255, 0, 16));
-                response.append(QString("ptt_type=0x%1").arg(rigCaps.hasTransmit, 0, 16));
-                response.append(QString("has_set_vfo=0x%1").arg(1, 0, 16));
-                response.append(QString("has_get_vfo=0x%1").arg(1, 0, 16));
-                response.append(QString("has_set_freq=0x%1").arg(1, 0, 16));
-                response.append(QString("has_get_freq=0x%1").arg(1, 0, 16));
-                response.append(QString("has_set_conf=0x%1").arg(1, 0, 16));
-                response.append(QString("has_get_conf=0x%1").arg(1, 0, 16));
-                response.append(QString("has_power2mW=0x%1").arg(1, 0, 16));
-                response.append(QString("has_mW2power=0x%1").arg(1, 0, 16));
-                response.append(QString("timeout=0x%1").arg(1000, 0, 16));
-                response.append("done");
-            }
-        }
-
-        else if (command[0] == "fmv") {
-            QString resp;
-
-            if (rigState->getChar(CURRENTVFO) == 0) {
-                resp.append(QString("%1").arg(rigState->getInt64(VFOAFREQ)));
-            }
-            else {
-                resp.append(QString("%1").arg(rigState->getInt64(VFOBFREQ)));
-            }
-            response.append(resp);
-            resp = "";
-            response.append(QString("%1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
-            response.append(QString("%1").arg(rigState->getUInt16(PASSBAND)));
-
-            if (rigState->getChar(CURRENTVFO) == 0) {
-                resp.append("VFOA");
-            }
-            else {
-                resp.append("VFOB");
-            }
-            response.append(resp);
-        }
-        else if (command[0] == "f" || command[0] == "get_freq")
-        {
-            QString resp;
-            if (longReply) {
-                resp.append(QString("Frequency: "));
-            }
-
-            if (rigState->getChar(CURRENTVFO)==0) {
-                resp.append(QString("%1").arg(rigState->getInt64(VFOAFREQ)));
-            }
-            else {
-                resp.append(QString("%1").arg(rigState->getInt64(VFOBFREQ)));
-            }
-            
-            response.append(resp);
-        }
-        else if (command[0] == "F" || command[0] == "set_freq")
+        if (command[0] == "F" || command[0] == "set_freq")
         {
             setCommand = true;
             freqt freq;
@@ -388,7 +194,7 @@ void rigCtlClient::socketReadyRead()
             {
                 newFreq = command[1].toDouble(&ok);
             }
-            else if (command.length() == 3) // Includes VFO 
+            else if (command.length() == 3) // Includes VFO
             {
                 newFreq = command[2].toDouble(&ok);
                 if (command[1] == "VFOB")
@@ -408,224 +214,21 @@ void rigCtlClient::socketReadyRead()
                 }
             }
         }
-        else if (command[0] == "1" || command[0] == "dump_caps")
-        {
-            response.append(QString("Caps dump for model: %1").arg(rigCaps.modelID));
-            response.append(QString("Model Name:\t%1").arg(rigCaps.modelName));
-            response.append(QString("Mfg Name:\tIcom"));
-            response.append(QString("Backend version:\t0.1"));
-            response.append(QString("Backend copyright:\t2021"));
-            if (rigCaps.hasTransmit) {
-                response.append(QString("Rig type:\tTransceiver"));
-            }
-            else
-            {
-                response.append(QString("Rig type:\tReceiver"));
-            }
-            if (rigCaps.hasPTTCommand) {
-                response.append(QString("PTT type:\tRig capable"));
-            }
-            response.append(QString("DCD type:\tRig capable"));
-            response.append(QString("Port type:\tNetwork link"));
-        }
-        else if (command[0] == "t" || command[0] == "get_ptt")
-        {
-            if (rigCaps.hasPTTCommand) {
-                QString resp;
-                if (longReply) {
-                    resp.append(QString("PTT: "));
-                }
-                resp.append(QString("%1").arg(rigState->getBool(PTT)));
-                response.append(resp);
-            }
-            else
-            {
-                responseCode = -1;
-            }
-        }
-        else if (command.length() > 1 && (command[0] == "T" || command[0] == "set_ptt"))
-        {
-            setCommand = true;
-            if (rigCaps.hasPTTCommand) {
-                rigState->set(PTT, (bool)command[1].toInt(), true);
-            }
-            else
-            {
-                responseCode = -1;
-            }
-        }
-        else if (command[0] == "v" || command[0] == "v\nv" || command[0] == "get_vfo")
-        {
-        QString resp;
-            if (longReply) {
-                resp.append("VFO: ");
-            }
-            
-            if (rigState->getChar(CURRENTVFO) == 0) {
-                resp.append("VFOA");
-            }
-            else if (rigState->getChar(CURRENTVFO) == 1) {
-                resp.append("VFOB");
-            }
-            else if (rigState->getChar(CURRENTVFO) == 2) {
-                resp.append("MEM");
-            }
-            
-            response.append(resp);
-        }
-        else if (command.length() > 1 && (command[0] == "V" || command[0] == "set_vfo"))
-        {
-        setCommand = true;
-            if (command[1] == "?") {
-                response.append("set_vfo: ?");
-                response.append("VFOA");
-                response.append("VFOB");
-                response.append("Sub");
-                response.append("Main");
-                response.append("MEM");
-            }
-            else if (command[1] == "VFOA" || command[1] == "Main")
-            {
-                rigState->set(CURRENTVFO, (quint8)0, true);
-            }
-            else if (command[1] == "VFOB" || command[1] == "Sub")
-            {
-                rigState->set(CURRENTVFO, (quint8)1, true);
-            }
-            else if (command[1] == "MEM")
-            {
-                rigState->set(CURRENTVFO, (quint8)2, true);
-            }
-        }
-        else if (command[0] == "s" || command[0] == "get_split_vfo")
-        {
-
-            if (longReply) {
-                response.append(QString("Split: %1").arg(rigState->getChar(DUPLEX)));
-            }
-            else {
-                response.append(QString("%1").arg(rigState->getChar(DUPLEX)));
-            }
-            
-            QString resp;
-            if (longReply) {
-                resp.append("TX VFO: ");
-            }
-
-            
-            if (rigState->getChar(CURRENTVFO) == 0)
-            {
-                resp.append(QString("%1").arg("VFOB"));
-            }
-            else {
-                resp.append(QString("%1").arg("VFOA"));
-            }
-            
-            response.append(resp);
-        }
-        else if (command.length() > 1 && (command[0] == "S" || command[0] == "set_split_vfo"))
-        {
-            setCommand = true;
-            
-            if (command[1] == "1")
-            {
-                rigState->set(DUPLEX, dmSplitOn, true);
-            }
-            else {
-                rigState->set(DUPLEX, dmSplitOff, true);
-            }
-        }
-        else if (command[0] == "\xf3" || command[0] == "get_vfo_info")
-        {
-            if (longReply) {
-                if (command[1] == "?") {
-                    if (rigState->getChar(CURRENTVFO) == 0) {
-                        response.append(QString("set_vfo: VFOA"));
-                    }
-                    else
-                    {
-                        response.append(QString("set_vfo: VFOB"));
-                    }
-                }
-                if (command[1] == "VFOB") {
-                    response.append(QString("Freq: %1").arg(rigState->getInt64(VFOBFREQ)));
-                }
-                else {
-                    response.append(QString("Freq: %1").arg(rigState->getInt64(VFOAFREQ)));
-                }
-                response.append(QString("Mode: %1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
-                response.append(QString("Width: %1").arg(rigState->getUInt16(PASSBAND)));
-
-                response.append(QString("Split: %1").arg(rigState->getDuplex(DUPLEX)));
-                response.append(QString("SatMode: %1").arg(0)); // Need to get satmode 
-            }
-            else {
-                if (command[1] == "VFOB") {
-                    response.append(QString("%1").arg(rigState->getInt64(VFOBFREQ)));
-                }
-                else {
-                    response.append(QString("%1").arg(rigState->getInt64(VFOAFREQ)));
-                }
-                response.append(QString("%1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
-                response.append(QString("%1").arg(rigState->getUInt16(PASSBAND)));
-
-            }
-        }
-        else if (command[0] == "i" || command[0] == "get_split_freq")
+        else if (command[0] == "f" || command[0] == "get_freq")
         {
             QString resp;
             if (longReply) {
-                resp.append("TX VFO: ");
+                resp.append(QString("Frequency: "));
             }
-            
-            if (rigState->getInt64(CURRENTVFO) == 0) {
-                resp.append(QString("%1").arg(rigState->getInt64(VFOBFREQ)));
-            }
-            else {
+
+            if (rigState->getChar(CURRENTVFO)==0) {
                 resp.append(QString("%1").arg(rigState->getInt64(VFOAFREQ)));
             }
-            
-            response.append(resp);
-        }
-        else if (command.length() > 1 && (command[0] == "I" || command[0] == "set_split_freq"))
-        {
-            setCommand = true;
-            bool ok = false;
-            double newFreq = 0.0f;
-            newFreq = command[1].toDouble(&ok);
-            if (ok) {
-                qDebug(logRigCtlD()) << QString("set_split_freq: %1 (%2)").arg(newFreq).arg(command[1]);
-                rigState->set(VFOBFREQ, static_cast<quint64>(newFreq),false);
-            }
-        }
-        else if (command.length() > 2 && (command[0] == "X" || command[0] == "set_split_mode"))
-        {
-            setCommand = true;
-        }
-            
-        else if (command.length() > 0 && (command[0] == "x" || command[0] == "get_split_mode"))
-        {
-        if (longReply) {
-            response.append(QString("TX Mode: %1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
-            response.append(QString("TX Passband: %1").arg(rigState->getUInt16(PASSBAND)));
-        }
-        else {
-            response.append(QString("%1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
-            response.append(QString("%1").arg(rigState->getUInt16(PASSBAND)));
-        }
-        }
-
-        else if (command[0] == "m" || command[0] == "get_mode")
-        {
-            if (longReply) {
-                response.append(QString("TX Mode: %1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
-                response.append(QString("TX Passband: %1").arg(rigState->getUInt16(PASSBAND)));
-            }
             else {
-                response.append(QString("%1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
-                response.append(QString("%1").arg(rigState->getUInt16(PASSBAND)));
+                resp.append(QString("%1").arg(rigState->getInt64(VFOBFREQ)));
             }
-            //qDebug(logRigCtlD()) << QString("get_mode: %1 passband: %2").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))).arg(rigState->getUInt16(PASSBAND));
+
+            response.append(resp);
         }
         else if (command[0] == "M" || command[0] == "set_mode")
         {
@@ -722,6 +325,66 @@ void rigCtlClient::socketReadyRead()
                 rigState->set(PASSBAND, passband, true);
             }
         }
+        else if (command[0] == "m" || command[0] == "get_mode")
+        {
+            if (longReply) {
+                response.append(QString("TX Mode: %1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
+                response.append(QString("TX Passband: %1").arg(rigState->getUInt16(PASSBAND)));
+            }
+            else {
+                response.append(QString("%1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
+                response.append(QString("%1").arg(rigState->getUInt16(PASSBAND)));
+            }
+            //qDebug(logRigCtlD()) << QString("get_mode: %1 passband: %2").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))).arg(rigState->getUInt16(PASSBAND));
+        }
+        else if (command.length() > 1 && (command[0] == "V" || command[0] == "set_vfo"))
+        {
+        setCommand = true;
+            if (command[1] == "?") {
+                response.append("set_vfo: ?");
+                response.append("VFOA");
+                response.append("VFOB");
+                response.append("Sub");
+                response.append("Main");
+                response.append("MEM");
+            }
+            else if (command[1] == "VFOA" || command[1] == "Main")
+            {
+                rigState->set(CURRENTVFO, (quint8)0, true);
+            }
+            else if (command[1] == "VFOB" || command[1] == "Sub")
+            {
+                rigState->set(CURRENTVFO, (quint8)1, true);
+            }
+            else if (command[1] == "MEM")
+            {
+                rigState->set(CURRENTVFO, (quint8)2, true);
+            }
+        }
+        else if (command[0] == "v" || command[0] == "v\nv" || command[0] == "get_vfo")
+        {
+        QString resp;
+            if (longReply) {
+                resp.append("VFO: ");
+            }
+
+            if (rigState->getChar(CURRENTVFO) == 0) {
+                resp.append("VFOA");
+            }
+            else if (rigState->getChar(CURRENTVFO) == 1) {
+                resp.append("VFOB");
+            }
+            else if (rigState->getChar(CURRENTVFO) == 2) {
+                resp.append("MEM");
+            }
+
+            response.append(resp);
+        }
+        else if (command[0] == "J" || command[0] == "set_rit")
+        {
+            rigState->set(RITVALUE, command[1].toInt(),true);
+            setCommand = true;
+        }
         else if (command[0] == "j" || command[0] == "get_rit")
         {
             QString resp;
@@ -731,35 +394,9 @@ void rigCtlClient::socketReadyRead()
             resp.append(QString("%1").arg(rigState->getInt32(RITVALUE)));
             response.append(resp);
         }
-        else if (command[0] == "J" || command[0] == "set_rit")
-        {
-            rigState->set(RITVALUE, command[1].toInt(),true);
-            setCommand = true;
-        }
-        else if (command[0] == "y" || command[0] == "get_ant")
-        {
-            qInfo(logRigCtlD()) << "get_ant:";
-
-            if (command.length() > 1) {
-                if (longReply) {
-                    response.append(QString("AntCurr: %1").arg(getAntName((quint8)command[1].toInt())));
-                    response.append(QString("Option: %1").arg(0));
-                    response.append(QString("AntTx: %1").arg(getAntName(rigState->getChar(ANTENNA))));
-                    response.append(QString("AntRx: %1").arg(getAntName(rigState->getChar(ANTENNA))));
-                }
-                else {
-                    response.append(QString("%1").arg(getAntName((quint8)command[1].toInt())));
-                    response.append(QString("%1").arg(0));
-                    response.append(QString("%1").arg(getAntName(rigState->getChar(ANTENNA))));
-                    response.append(QString("%1").arg(getAntName(rigState->getChar(ANTENNA))));
-                }
-            }
-        }
-        else if (command.length() > 1 && (command[0] == "Y" || command[0] == "set_ant"))
+        else if (command[0] == "Z" || command[0] == "set_xit")
         {
             setCommand = true;
-            qInfo(logRigCtlD()) << "set_ant:" << command[1];
-            rigState->set(ANTENNA,antFromName(command[1]),true);
         }
         else if (command[0] == "z" || command[0] == "get_xit")
         {
@@ -770,187 +407,306 @@ void rigCtlClient::socketReadyRead()
             resp.append(QString("%1").arg(0));
             response.append(resp);
         }
-        else if (command[0] == "Z" || command[0] == "set_xit")
+        else if (command.length() > 1 && (command[0] == "T" || command[0] == "set_ptt"))
         {
             setCommand = true;
+            if (rigCaps.hasPTTCommand) {
+                rigState->set(PTT, (bool)command[1].toInt(), true);
+            }
+            else
+            {
+                responseCode = -1;
+            }
         }
-        else if (command.length() > 1 && (command[0] == "l" || command[0] == "get_level"))
+        else if (command[0] == "t" || command[0] == "get_ptt")
+        {
+            if (rigCaps.hasPTTCommand) {
+                QString resp;
+                if (longReply) {
+                    resp.append(QString("PTT: "));
+                }
+                resp.append(QString("%1").arg(rigState->getBool(PTT)));
+                response.append(resp);
+            }
+            else
+            {
+                responseCode = -1;
+            }
+        }
+        else if (command.length() > 0 && (command[0] == "0x0b" || command[0] == "get_dcd"))
+        {
+            response.append(QString("%1").arg((float)rigState->getChar(SQUELCH) / 255.0));
+        }
+        else if (command.length() > 0 && (command[0] == "R" || command[0] == "set_rptr_shift"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "r" || command[0] == "get_rptr_shift"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "O" || command[0] == "set_rptr_offs"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "o" || command[0] == "get_rptr_offs"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "C" || command[0] == "set_ctcss_tone"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "c" || command[0] == "get_ctcss_tone"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "D" || command[0] == "set_dcs_tone"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "d" || command[0] == "get_dcs_tone"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "\x90" || command[0] == "set_ctcss_sql"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "\x91" || command[0] == "get_ctcss_sql"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "\x92" || command[0] == "set_dcs_sql"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "\x93" || command[0] == "get_dcs_sql"))
+        {
+            responseCode = -11;
+        }
+        else if (command[0] == "i" || command[0] == "get_split_freq")
         {
             QString resp;
-            int value = 0;
             if (longReply) {
-                resp.append("Level Value: ");
+                resp.append("TX VFO: ");
             }
 
-            if (command[1] == "STRENGTH") {
-                
-                if (rigCaps.model == model7610)
-                    value = getCalibratedValue(rigState->getChar(SMETER), IC7610_STR_CAL);
-                else if (rigCaps.model == model7850)
-                    value = getCalibratedValue(rigState->getChar(SMETER), IC7850_STR_CAL);
-                else
-                    value = getCalibratedValue(rigState->getChar(SMETER), IC7300_STR_CAL);
-                //qInfo(logRigCtlD()) << "Calibration IN:" << rigState->sMeter << "OUT" << value;
-                resp.append(QString("%1").arg(value));
-            }
-            
-            else if (command[1] == "AF") {
-                resp.append(QString("%1").arg((float)rigState->getChar(AFGAIN) / 255.0));
-            }
-            else if (command[1] == "RF") {
-                resp.append(QString("%1").arg((float)rigState->getChar(RFGAIN) / 255.0));
-            }
-            else if (command[1] == "SQL") {
-                resp.append(QString("%1").arg((float)rigState->getChar(SQUELCH) / 255.0));
-            }
-            else if (command[1] == "COMP") {
-                resp.append(QString("%1").arg((float)rigState->getChar(COMPLEVEL) / 255.0));
-            }
-            else if (command[1] == "MICGAIN") {
-                resp.append(QString("%1").arg((float)rigState->getChar(MICGAIN) / 255.0));
-            }
-            else if (command[1] == "MON") {
-                resp.append(QString("%1").arg((float)rigState->getChar(MONITORLEVEL) / 255.0));
-            }
-            else if (command[1] == "VOXGAIN") {
-                resp.append(QString("%1").arg((float)rigState->getChar(VOXGAIN) / 255.0));
-            }
-            else if (command[1] == "ANTIVOX") {
-                resp.append(QString("%1").arg((float)rigState->getChar(ANTIVOXGAIN) / 255.0));
-            }
-            else if (command[1] == "RFPOWER") {
-                resp.append(QString("%1").arg((float)rigState->getChar(RFPOWER) / 255.0));
-            }
-            else if (command[1] == "PREAMP") {
-                resp.append(QString("%1").arg(rigState->getChar(PREAMP)*10));
-            }
-            else if (command[1] == "ATT") {
-                resp.append(QString("%1").arg(rigState->getChar(ATTENUATOR)));
-            }
-            else if (command[1] == "CWPITCH") {
-                resp.append(QString("%1").arg(rigState->getInt16(CWPITCH)));
-            }
-            else if (command[1] == "NOTCHF") {
-                resp.append(QString("%1").arg(rigState->getInt16(NOTCHF)));
-            }
-            else if (command[1] == "IF") {
-                resp.append(QString("%1").arg(rigState->getInt16(IF)));
-            }
-            else if (command[1] == "PBT_IN") {
-                resp.append(QString("%1").arg((float)rigState->getChar(PBTIN) / 255.0));
-            }
-            else if (command[1] == "PBT_OUT") {
-                resp.append(QString("%1").arg((float)rigState->getChar(PBTOUT) / 255.0));
-            }
-            else if (command[1] == "APF") {
-                resp.append(QString("%1").arg((float)rigState->getChar(APF) / 255.0));
-            }
-            else if (command[1] == "NR") {
-                resp.append(QString("%1").arg((float)rigState->getChar(NR) / 255.0));
-            }
-            else if (command[1] == "BAL") {
-                resp.append(QString("%1").arg((float)rigState->getChar(BAL) / 255.0));
-            }
-            else if (command[1] == "KEYSPD") {
-                resp.append(QString("%1").arg(rigState->getChar(KEYSPD)/5.1));
+            if (rigState->getInt64(CURRENTVFO) == 0) {
+                resp.append(QString("%1").arg(rigState->getInt64(VFOBFREQ)));
             }
             else {
-                resp.append(QString("%1").arg(value));
+                resp.append(QString("%1").arg(rigState->getInt64(VFOAFREQ)));
             }
-            
+
             response.append(resp);
         }
-        else if (command.length() > 2 && (command[0] == "L" || command[0] == "set_level"))
+        else if (command.length() > 1 && (command[0] == "I" || command[0] == "set_split_freq"))
         {
-            int value=0;
             setCommand = true;
-            if (command[1] == "AF") {
-                value = command[2].toFloat() * 255;
-                rigState->set(AFGAIN, quint8(value), true);
+            bool ok = false;
+            double newFreq = 0.0f;
+            newFreq = command[1].toDouble(&ok);
+            if (ok) {
+                qDebug(logRigCtlD()) << QString("set_split_freq: %1 (%2)").arg(newFreq).arg(command[1]);
+                rigState->set(VFOBFREQ, static_cast<quint64>(newFreq),false);
             }
-            else if (command[1] == "RF") {
-                value = command[2].toFloat() * 255;
-                rigState->set(RFGAIN, quint8(value), true);
+        }
+        else if (command.length() > 2 && (command[0] == "X" || command[0] == "set_split_mode"))
+        {
+            setCommand = true;
+        }
+
+        else if (command.length() > 0 && (command[0] == "x" || command[0] == "get_split_mode"))
+        {
+            if (longReply) {
+                response.append(QString("TX Mode: %1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
+                response.append(QString("TX Passband: %1").arg(rigState->getUInt16(PASSBAND)));
             }
-            else if (command[1] == "RFPOWER") {
-		        value = command[2].toFloat() * 255;
-		        rigState->set(RFPOWER, quint8(value), true);
+            else {
+                response.append(QString("%1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
+                response.append(QString("%1").arg(rigState->getUInt16(PASSBAND)));
             }
-            else if (command[1] == "SQL") {
-                value = command[2].toFloat() * 255;
-                rigState->set(SQUELCH, quint8(value), true);
+        }
+        else if (command.length() > 1 && (command[0] == "S" || command[0] == "set_split_vfo"))
+        {
+            setCommand = true;
+
+            if (command[1] == "1")
+            {
+                rigState->set(DUPLEX, dmSplitOn, true);
             }
-            else if (command[1] == "COMP") {
-                value = command[2].toFloat() * 255;
-                rigState->set(COMPLEVEL, quint8(value), true);
+            else {
+                rigState->set(DUPLEX, dmSplitOff, true);
             }
-            else if (command[1] == "MICGAIN") {
-                value = command[2].toFloat() * 255;
-                rigState->set(MICGAIN, quint8(value), true);
+        }
+        else if (command[0] == "s" || command[0] == "get_split_vfo")
+        {
+
+            if (longReply) {
+                response.append(QString("Split: %1").arg(rigState->getChar(DUPLEX)));
             }
-            else if (command[1] == "MON") {
-                value = command[2].toFloat() * 255;
-                rigState->set(MONITORLEVEL, quint8(value), true);
-            }
-            else if (command[1] == "VOXGAIN") {
-                value = command[2].toFloat() * 255;
-                rigState->set(VOXGAIN, quint8(value), true);
-            }
-            else if (command[1] == "ANTIVOX") {
-                value = command[2].toFloat() * 255;
-                rigState->set(ANTIVOXGAIN, quint8(value), true);
-            }
-            else if (command[1] == "ATT") {
-                value = command[2].toInt();
-                rigState->set(ATTENUATOR, quint8(value), true);
-            }
-            else if (command[1] == "PREAMP") {
-                value = command[2].toFloat() / 10;
-                rigState->set(PREAMP, quint8(value), true);
-            }
-            else if (command[1] == "AGC") {
-                value = command[2].toFloat() * 255;
-                rigState->set(AGC, quint8(value), true);
-            }
-            else if (command[1] == "CWPITCH") {
-                value = command[2].toInt();
-                rigState->set(CWPITCH, value, true);
-            }
-            else if (command[1] == "NOTCHF") {
-                value = command[2].toInt();
-                rigState->set(NOTCHF, value, true);
-            }
-            else if (command[1] == "IF") {
-                value = command[2].toInt();
-                rigState->set(IF, qint16(value), true);
-            }
-            else if (command[1] == "PBT_IN") {
-                value = command[2].toFloat() * 255;
-                rigState->set(PBTIN, quint8(value), true);
-            }
-            else if (command[1] == "PBT_OUT") {
-                value = command[2].toFloat() * 255;
-                rigState->set(PBTOUT, quint8(value), true);
-            }
-            else if (command[1] == "APF") {
-                value = command[2].toFloat() * 255;
-                rigState->set(APF, quint8(value), true);
-            }
-            else if (command[1] == "NR") {
-                value = command[2].toFloat() * 255;
-                rigState->set(NR, quint8(value), true);
-            }
-            else if (command[1] == "BAL") {
-                value = command[2].toFloat() * 255;
-                rigState->set(BAL, quint8(value), true);
-            }
-            else if (command[1] == "KEYSPD") {
-                value = command[2].toInt() * 5.1;
-                rigState->set(KEYSPD, quint8(value), true);
+            else {
+                response.append(QString("%1").arg(rigState->getChar(DUPLEX)));
             }
 
-            qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2] << value;
+            QString resp;
+            if (longReply) {
+                resp.append("TX VFO: ");
+            }
 
+
+            if (rigState->getChar(CURRENTVFO) == 0)
+            {
+                resp.append(QString("%1").arg("VFOB"));
+            }
+            else {
+                resp.append(QString("%1").arg("VFOA"));
+            }
+
+            response.append(resp);
+        }
+        else if (command.length() > 0 && (command[0] == "N" || command[0] == "set_ts"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "n" || command[0] == "get_ts"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() >2 && (command[0] == "U" || command[0] == "set_func"))
+        {
+            setCommand = true;
+
+            if (command[1] == "FAGC")
+            {
+                rigState->set(FAGCFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "NB")
+            {
+                rigState->set(NBFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "COMP")
+            {
+                rigState->set(COMPFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "VOX")
+            {
+                rigState->set(VOXFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "TONE")
+            {
+                rigState->set(TONEFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "TSQL")
+            {
+                rigState->set(TSQLFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "SBKIN")
+            {
+                rigState->set(SBKINFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "FBKIN")
+            {
+                rigState->set(FBKINFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "ANF")
+            {
+                rigState->set(ANFFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "NR")
+            {
+                rigState->set(NRFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "AIP")
+            {
+                rigState->set(AIPFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "APF")
+            {
+                rigState->set(APFFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "MON")
+            {
+                rigState->set(MONFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "MN")
+            {
+                rigState->set(MNFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "RF")
+            {
+                rigState->set(RFFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "ARO")
+            {
+                rigState->set(AROFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "MUTE")
+            {
+                rigState->set(MUTEFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "VSC")
+            {
+                rigState->set(VSCFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "REV")
+            {
+                rigState->set(REVFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "SQL")
+            {
+                rigState->set(SQLFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "ABM")
+            {
+                rigState->set(ABMFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "BC")
+            {
+                rigState->set(BCFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "MBC")
+            {
+                rigState->set(MBCFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "RIT")
+            {
+                rigState->set(RITFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "AFC")
+            {
+                rigState->set(AFCFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "SATMODE")
+            {
+                rigState->set(SATMODEFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "SCOPE")
+            {
+                rigState->set(SCOPEFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "RESUME")
+            {
+                rigState->set(RESUMEFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "TBURST")
+            {
+                rigState->set(TBURSTFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "TUNER")
+            {
+                rigState->set(TUNERFUNC, (quint8)command[2].toInt(), true);
+            }
+            else if (command[1] == "LOCK")
+            {
+                rigState->set(LOCKFUNC, (quint8)command[2].toInt(), true);
+            }
+            else {
+                qInfo(logRigCtlD()) << "Unimplemented func:" << command[0] << command[1] << command[2];
+            }
+
+            qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2];
         }
         else if (command.length()>1 && (command[0] == "u" || command[0] == "get_func"))
         {
@@ -960,7 +716,7 @@ void rigCtlClient::socketReadyRead()
                 resp.append(QString("Func Status: "));
             }
             if (command[1] == "FAGC")
-            {               
+            {
                 result=rigState->getBool(FAGCFUNC);
             }
             else if (command[1] == "NB")
@@ -1086,174 +842,364 @@ void rigCtlClient::socketReadyRead()
             else {
                 qInfo(logRigCtlD()) << "Unimplemented func:" << command[0] << command[1];
             }
-            
+
             resp.append(QString("%1").arg(result));
             response.append(resp);
         }
-        else if (command.length() >2 && (command[0] == "U" || command[0] == "set_func"))
+        else if (command.length() > 2 && (command[0] == "L" || command[0] == "set_level"))
         {
+            int value=0;
             setCommand = true;
-            
-            if (command[1] == "FAGC")
-            {
-                rigState->set(FAGCFUNC, (quint8)command[2].toInt(), true);
+            if (command[1] == "AF") {
+                value = command[2].toFloat() * 255;
+                rigState->set(AFGAIN, quint8(value), true);
             }
-            else if (command[1] == "NB")
-            {
-                rigState->set(NBFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "RF") {
+                value = command[2].toFloat() * 255;
+                rigState->set(RFGAIN, quint8(value), true);
             }
-            else if (command[1] == "COMP")
-            {
-                rigState->set(COMPFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "RFPOWER") {
+                value = command[2].toFloat() * 255;
+                rigState->set(RFPOWER, quint8(value), true);
             }
-            else if (command[1] == "VOX")
-            {
-                rigState->set(VOXFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "SQL") {
+                value = command[2].toFloat() * 255;
+                rigState->set(SQUELCH, quint8(value), true);
             }
-            else if (command[1] == "TONE")
-            {
-                rigState->set(TONEFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "COMP") {
+                value = command[2].toFloat() * 255;
+                rigState->set(COMPLEVEL, quint8(value), true);
             }
-            else if (command[1] == "TSQL")
-            {
-                rigState->set(TSQLFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "MICGAIN") {
+                value = command[2].toFloat() * 255;
+                rigState->set(MICGAIN, quint8(value), true);
             }
-            else if (command[1] == "SBKIN")
-            {
-                rigState->set(SBKINFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "MON") {
+                value = command[2].toFloat() * 255;
+                rigState->set(MONITORLEVEL, quint8(value), true);
             }
-            else if (command[1] == "FBKIN")
-            {
-                rigState->set(FBKINFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "VOXGAIN") {
+                value = command[2].toFloat() * 255;
+                rigState->set(VOXGAIN, quint8(value), true);
             }
-            else if (command[1] == "ANF")
-            {
-                rigState->set(ANFFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "ANTIVOX") {
+                value = command[2].toFloat() * 255;
+                rigState->set(ANTIVOXGAIN, quint8(value), true);
             }
-            else if (command[1] == "NR")
-            {
-                rigState->set(NRFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "ATT") {
+                value = command[2].toInt();
+                rigState->set(ATTENUATOR, quint8(value), true);
             }
-            else if (command[1] == "AIP")
-            {
-                rigState->set(AIPFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "PREAMP") {
+                value = command[2].toFloat() / 10;
+                rigState->set(PREAMP, quint8(value), true);
             }
-            else if (command[1] == "APF")
-            {
-                rigState->set(APFFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "AGC") {
+                value = command[2].toFloat() * 255;
+                rigState->set(AGC, quint8(value), true);
             }
-            else if (command[1] == "MON")
-            {
-                rigState->set(MONFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "CWPITCH") {
+                value = command[2].toInt();
+                rigState->set(CWPITCH, value, true);
             }
-            else if (command[1] == "MN")
-            {
-                rigState->set(MNFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "NOTCHF") {
+                value = command[2].toInt();
+                rigState->set(NOTCHF, value, true);
             }
-            else if (command[1] == "RF")
-            {
-                rigState->set(RFFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "IF") {
+                value = command[2].toInt();
+                rigState->set(IF, qint16(value), true);
             }
-            else if (command[1] == "ARO")
-            {
-                rigState->set(AROFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "PBT_IN") {
+                value = command[2].toFloat() * 255;
+                rigState->set(PBTIN, quint8(value), true);
             }
-            else if (command[1] == "MUTE")
-            {
-                rigState->set(MUTEFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "PBT_OUT") {
+                value = command[2].toFloat() * 255;
+                rigState->set(PBTOUT, quint8(value), true);
             }
-            else if (command[1] == "VSC")
-            {
-                rigState->set(VSCFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "APF") {
+                value = command[2].toFloat() * 255;
+                rigState->set(APF, quint8(value), true);
             }
-            else if (command[1] == "REV")
-            {
-                rigState->set(REVFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "NR") {
+                value = command[2].toFloat() * 255;
+                rigState->set(NR, quint8(value), true);
             }
-            else if (command[1] == "SQL")
-            {
-                rigState->set(SQLFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "BAL") {
+                value = command[2].toFloat() * 255;
+                rigState->set(BAL, quint8(value), true);
             }
-            else if (command[1] == "ABM")
-            {
-                rigState->set(ABMFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "KEYSPD") {
+                value = command[2].toInt() * 5.1;
+                rigState->set(KEYSPD, quint8(value), true);
             }
-            else if (command[1] == "BC")
-            {
-                rigState->set(BCFUNC, (quint8)command[2].toInt(), true);
+
+            qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2] << value;
+
+        }
+        else if (command.length() > 1 && (command[0] == "l" || command[0] == "get_level"))
+        {
+            QString resp;
+            int value = 0;
+            if (longReply) {
+                resp.append("Level Value: ");
             }
-            else if (command[1] == "MBC")
-            {
-                rigState->set(MBCFUNC, (quint8)command[2].toInt(), true);
+
+            if (command[1] == "STRENGTH") {
+
+                if (rigCaps.model == model7610)
+                    value = getCalibratedValue(rigState->getChar(SMETER), IC7610_STR_CAL);
+                else if (rigCaps.model == model7850)
+                    value = getCalibratedValue(rigState->getChar(SMETER), IC7850_STR_CAL);
+                else
+                    value = getCalibratedValue(rigState->getChar(SMETER), IC7300_STR_CAL);
+                //qInfo(logRigCtlD()) << "Calibration IN:" << rigState->sMeter << "OUT" << value;
+                resp.append(QString("%1").arg(value));
             }
-            else if (command[1] == "RIT")
-            {
-                rigState->set(RITFUNC, (quint8)command[2].toInt(), true);
+
+            else if (command[1] == "AF") {
+                resp.append(QString("%1").arg((float)rigState->getChar(AFGAIN) / 255.0));
             }
-            else if (command[1] == "AFC")
-            {
-                rigState->set(AFCFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "RF") {
+                resp.append(QString("%1").arg((float)rigState->getChar(RFGAIN) / 255.0));
             }
-            else if (command[1] == "SATMODE")
-            {
-                rigState->set(SATMODEFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "SQL") {
+                resp.append(QString("%1").arg((float)rigState->getChar(SQUELCH) / 255.0));
             }
-            else if (command[1] == "SCOPE")
-            {
-                rigState->set(SCOPEFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "COMP") {
+                resp.append(QString("%1").arg((float)rigState->getChar(COMPLEVEL) / 255.0));
             }
-            else if (command[1] == "RESUME")
-            {
-                rigState->set(RESUMEFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "MICGAIN") {
+                resp.append(QString("%1").arg((float)rigState->getChar(MICGAIN) / 255.0));
             }
-            else if (command[1] == "TBURST")
-            {
-                rigState->set(TBURSTFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "MON") {
+                resp.append(QString("%1").arg((float)rigState->getChar(MONITORLEVEL) / 255.0));
             }
-            else if (command[1] == "TUNER")
-            {   
-                rigState->set(TUNERFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "VOXGAIN") {
+                resp.append(QString("%1").arg((float)rigState->getChar(VOXGAIN) / 255.0));
             }
-            else if (command[1] == "LOCK")
-            {
-                rigState->set(LOCKFUNC, (quint8)command[2].toInt(), true);
+            else if (command[1] == "ANTIVOX") {
+                resp.append(QString("%1").arg((float)rigState->getChar(ANTIVOXGAIN) / 255.0));
+            }
+            else if (command[1] == "RFPOWER") {
+                resp.append(QString("%1").arg((float)rigState->getChar(RFPOWER) / 255.0));
+            }
+            else if (command[1] == "PREAMP") {
+                resp.append(QString("%1").arg(rigState->getChar(PREAMP)*10));
+            }
+            else if (command[1] == "ATT") {
+                resp.append(QString("%1").arg(rigState->getChar(ATTENUATOR)));
+            }
+            else if (command[1] == "CWPITCH") {
+                resp.append(QString("%1").arg(rigState->getInt16(CWPITCH)));
+            }
+            else if (command[1] == "NOTCHF") {
+                resp.append(QString("%1").arg(rigState->getInt16(NOTCHF)));
+            }
+            else if (command[1] == "IF") {
+                resp.append(QString("%1").arg(rigState->getInt16(IF)));
+            }
+            else if (command[1] == "PBT_IN") {
+                resp.append(QString("%1").arg((float)rigState->getChar(PBTIN) / 255.0));
+            }
+            else if (command[1] == "PBT_OUT") {
+                resp.append(QString("%1").arg((float)rigState->getChar(PBTOUT) / 255.0));
+            }
+            else if (command[1] == "APF") {
+                resp.append(QString("%1").arg((float)rigState->getChar(APF) / 255.0));
+            }
+            else if (command[1] == "NR") {
+                resp.append(QString("%1").arg((float)rigState->getChar(NR) / 255.0));
+            }
+            else if (command[1] == "BAL") {
+                resp.append(QString("%1").arg((float)rigState->getChar(BAL) / 255.0));
+            }
+            else if (command[1] == "KEYSPD") {
+                resp.append(QString("%1").arg(rigState->getChar(KEYSPD)/5.1));
             }
             else {
-                qInfo(logRigCtlD()) << "Unimplemented func:" << command[0] << command[1] << command[2];
+                resp.append(QString("%1").arg(value));
             }
-            
-            qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2];
-        }
-        else if (command.length() > 0 && (command[0] == '\x88' || command[0] == "get_powerstat"))
-        {
-            
-        QString resp;
-        if (longReply) {
-            resp.append(QString("Power Status: "));
-        }
-        resp.append(QString("%1").arg(1)); // Always reply with ON
-        response.append(resp);
 
+            response.append(resp);
+        }
+
+        else if (command.length() > 2 && (command[0] == "P" || command[0] == "set_parm"))
+        {
+            int value=0;
+            setCommand = true;
+            if (command[1] == "ANN") {
+                value = command[2].toInt();
+                rigState->set(ANN, quint8(value), true);
+            }
+            else if (command[1] == "APO") {
+                value = command[2].toInt();
+                rigState->set(APO, quint8(value), true);
+            }
+            else if (command[1] == "BACKLIGHT") {
+                value = command[2].toFloat() * 255;
+                rigState->set(BACKLIGHT, quint8(value), true);
+            }
+            else if (command[1] == "BEEP") {
+                value = command[2].toInt();
+                rigState->set(BEEP, quint8(value), true);
+            }
+            else if (command[1] == "TIME") {
+                value = command[2].toLongLong();
+                rigState->set(TIME, value, true);
+            }
+            else if (command[1] == "BAT") {
+                value = command[2].toFloat() * 255;
+                rigState->set(BAT, quint8(value), true);
+            }
+            else if (command[1] == "KEYLIGHT") {
+                value = command[2].toFloat() * 255;
+                rigState->set(KEYLIGHT, quint8(value), true);
+            }
+            else {
+                qInfo(logRigCtlD()) << "Unimplemented parm:" << command[0] << command[1];
+            }
+
+            qInfo(logRigCtlD()) << "Setting:" << command[1] << command[2] << value;
+
+        }
+        else if (command.length() > 1 && (command[0] == "p" || command[0] == "get_parm"))
+        {
+            QString resp;
+            if (longReply) {
+                resp.append(QString("get_parm: %1%2").arg(command[1]).arg(sep));
+            }
+
+            if (command[1] == "ANN") {
+                resp.append(QString("%1").arg(rigState->getChar(ANN)));
+            }
+            else if (command[1] == "APO") {
+                resp.append(QString("%1").arg(rigState->getChar(APO)));
+            }
+            else if (command[1] == "BACKLIGHT") {
+                resp.append(QString("%1").arg((float)rigState->getChar(BACKLIGHT) / 255.0));
+            }
+            else if (command[1] == "BEEP") {
+                resp.append(QString("%1").arg(rigState->getChar(BEEP)));
+            }
+            else if (command[1] == "TIME") {
+                resp.append(QString("%1").arg(rigState->getInt64(TIME)));
+            }
+            else if (command[1] == "BAT") {
+                resp.append(QString("%1").arg((float)rigState->getChar(BAT) / 255.0));
+            }
+            else if (command[1] == "KEYLIGHT") {
+                resp.append(QString("%1").arg((float)rigState->getChar(KEYLIGHT) / 255.0));
+            }
+            else {
+                qInfo(logRigCtlD()) << "Unimplemented parm:" << command[0] << command[1];
+            }
+
+            response.append(resp);
+        }
+        else if (command.length() > 0 && (command[0] == "B" || command[0] == "set_bank"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "b" || command[0] == "get_bank"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "E" || command[0] == "set_mem"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "e" || command[0] == "get_mem"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "G" || command[0] == "vfo_op"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "g" || command[0] == "scan"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "H" || command[0] == "set_channel"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "A" || command[0] == "set_trn"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 0 && (command[0] == "a" || command[0] == "get_trn"))
+        {
+            responseCode = -11;
+        }
+        else if (command.length() > 1 && (command[0] == "Y" || command[0] == "set_ant"))
+        {
+            setCommand = true;
+            qInfo(logRigCtlD()) << "set_ant:" << command[1];
+            rigState->set(ANTENNA,antFromName(command[1]),true);
+        }
+        else if (command[0] == "y" || command[0] == "get_ant")
+        {
+            qInfo(logRigCtlD()) << "get_ant:";
+
+            if (command.length() > 1) {
+                if (longReply) {
+                    response.append(QString("AntCurr: %1").arg(getAntName((quint8)command[1].toInt())));
+                    response.append(QString("Option: %1").arg(0));
+                    response.append(QString("AntTx: %1").arg(getAntName(rigState->getChar(ANTENNA))));
+                    response.append(QString("AntRx: %1").arg(getAntName(rigState->getChar(ANTENNA))));
+                }
+                else {
+                    response.append(QString("%1").arg(getAntName((quint8)command[1].toInt())));
+                    response.append(QString("%1").arg(0));
+                    response.append(QString("%1").arg(getAntName(rigState->getChar(ANTENNA))));
+                    response.append(QString("%1").arg(getAntName(rigState->getChar(ANTENNA))));
+                }
+            }
+        }
+        else if (command.length() > 0 && (command[0] == "*" || command[0] == "reset"))
+        {
+            responseCode = -11; //Unimplemented
+        }
+        else if (command.length() > 0 && (command[0] == "b" || command[0] == "send_morse"))
+        {
+            responseCode = -11; //Unimplemented
         }
         else if (command.length() > 1 && (command[0] == '\x87' || command[0] == "set_powerstat"))
         {
-        setCommand = true;
-        if (command[1] == "0")
+            setCommand = true;
+            if (command[1] == "0")
+            {
+                rigState->set(POWERONOFF, false, true);
+            }
+            else {
+                rigState->set(POWERONOFF, true, true);
+            }
+        }
+        else if (command.length() > 0 && (command[0] == '\x88' || command[0] == "get_powerstat"))
         {
-            rigState->set(POWERONOFF, false, true);
+
+            QString resp;
+            if (longReply) {
+                resp.append(QString("Power Status: "));
+            }
+            resp.append(QString("%1").arg(1)); // Always reply with ON
+            response.append(resp);
+
         }
-        else {
-            rigState->set(POWERONOFF, true, true);
-        }
-        }
-        else if (command.length() > 0 && (command[0] == '\xa3' || command[0] == "get_lock_mode"))
+        else if (command.length() > 0 && (command[0] == "\x89" || command[0] == "send_dtmf"))
         {
-        QString resp;
-        if (longReply) {
-            resp.append(QString("Locked: "));
+            responseCode = -11; //Unimplemented
         }
-        resp.append(QString("%1").arg(0)); // Always reply with RIG_OK (0)
-        response.append(resp);
+        else if (command.length() > 0 && (command[0] == "\x8a" || command[0] == "recv_dtmf"))
+        {
+            responseCode = -11; //Unimplemented
+        }
+        else if (command.length() > 0 && (command[0] == "_" || command[0] == "get_info"))
+        {
+            response.append("None");
         }
         else if (command.length() > 0 && (command[0] == '\xf5' || command[0] == "get_rig_info"))
         {
@@ -1265,34 +1211,283 @@ void rigCtlClient::socketReadyRead()
             QString resp = QString("VFO=%0 Freq=%1 Mode=%2 Width=%3 RX=%4 TX=%5\nVFO=%6 Freq=%7 Mode=%8 Width=%9 RX=%10 TX=%11\nSplit=%12 SatMode=%13\nRig=%14\nApp=wfview\nVersion=%15\n")
                 .arg(getVfoName(0)).arg(rigState->getInt64(VFOAFREQ)).arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))).arg(rigState->getUInt16(PASSBAND)).arg(rxa).arg(txa)
                 .arg(getVfoName(1)).arg(rigState->getInt64(VFOBFREQ)).arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))).arg(rigState->getUInt16(PASSBAND)).arg(rxb).arg(txb)
-                .arg(split).arg(rigState->getChar(SATMODEFUNC)).arg(rigCaps.modelName).arg(WFVIEW_VERSION); 
+                .arg(split).arg(rigState->getChar(SATMODEFUNC)).arg(rigCaps.modelName).arg(WFVIEW_VERSION);
             unsigned long crc = doCrc((unsigned char*)resp.toStdString().c_str(), resp.length());
             resp = resp + QString("CRC=0x%0").arg(crc, 8, 16, QLatin1Char('0'));
             response.append(resp);
         }
-        else if (command.length() > 0 && (command[0] == "a" || command[0] == "get_trn"))
+        else if (command[0] == "\xf3" || command[0] == "get_vfo_info")
         {
-            responseCode = -18;  //Deprecated
+            if (longReply) {
+                if (command[1] == "?") {
+                    if (rigState->getChar(CURRENTVFO) == 0) {
+                        response.append(QString("set_vfo: VFOA"));
+                    }
+                    else
+                    {
+                        response.append(QString("set_vfo: VFOB"));
+                    }
+                }
+                if (command[1] == "VFOB") {
+                    response.append(QString("Freq: %1").arg(rigState->getInt64(VFOBFREQ)));
+                }
+                else {
+                    response.append(QString("Freq: %1").arg(rigState->getInt64(VFOAFREQ)));
+                }
+                response.append(QString("Mode: %1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
+                response.append(QString("Width: %1").arg(rigState->getUInt16(PASSBAND)));
+
+                response.append(QString("Split: %1").arg(rigState->getDuplex(DUPLEX)));
+                response.append(QString("SatMode: %1").arg(0)); // Need to get satmode
+            }
+            else {
+                if (command[1] == "VFOB") {
+                    response.append(QString("%1").arg(rigState->getInt64(VFOBFREQ)));
+                }
+                else {
+                    response.append(QString("%1").arg(rigState->getInt64(VFOAFREQ)));
+                }
+                response.append(QString("%1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
+                response.append(QString("%1").arg(rigState->getUInt16(PASSBAND)));
+
+            }
         }
-        else if (command.length() > 0 && (command[0] == "A" || command[0] == "set_trn"))
+        else if (command[0] == "dump_state")
         {
-            responseCode = -18; //Deprecated
+            quint64 modes = getRadioModes();
+
+            // rigctld protocol version
+            response.append("1");
+            // Radio model
+            response.append(QString("%1").arg(rigCaps.rigctlModel));
+            // Print something (used to be ITU region)
+            response.append("0");
+            // Supported RX bands (startf,endf,modes,low_power,high_power,vfo,ant)
+            quint32 lowFreq = 0;
+            quint32 highFreq = 0;
+            for (bandType band : rigCaps.bands)
+            {
+                if (lowFreq == 0 || band.lowFreq < lowFreq)
+                    lowFreq = band.lowFreq;
+                if (band.highFreq > highFreq)
+                    highFreq = band.highFreq;
+            }
+            response.append(QString("%1.000000 %2.000000 0x%3 %4 %5 0x%6 0x%7").arg(lowFreq).arg(highFreq)
+                .arg(modes, 0, 16).arg(-1).arg(-1).arg(0x16000000, 0, 16).arg(getAntennas(), 0, 16));
+            response.append("0 0 0 0 0 0 0");
+
+            if (rigCaps.hasTransmit) {
+                // Supported TX bands (startf,endf,modes,low_power,high_power,vfo,ant)
+                for (bandType band : rigCaps.bands)
+                {
+                    response.append(QString("%1.000000 %2.000000 0x%3 %4 %5 0x%6 0x%7").arg(band.lowFreq).arg(band.highFreq)
+                        .arg(modes, 0, 16).arg(2000).arg(100000).arg(0x16000000, 0, 16).arg(getAntennas(), 0, 16));
+                }
+            }
+            response.append("0 0 0 0 0 0 0");
+
+            response.append(QString("0x%1 1").arg(modes, 0, 16));
+            response.append(QString("0x%1 10").arg(modes, 0, 16));
+            response.append(QString("0x%1 100").arg(modes, 0, 16));
+            response.append(QString("0x%1 1000").arg(modes, 0, 16));
+            response.append(QString("0x%1 2500").arg(modes, 0, 16));
+            response.append(QString("0x%1 5000").arg(modes, 0, 16));
+            response.append(QString("0x%1 6125").arg(modes, 0, 16));
+            response.append(QString("0x%1 8333").arg(modes, 0, 16));
+            response.append(QString("0x%1 10000").arg(modes, 0, 16));
+            response.append(QString("0x%1 12500").arg(modes, 0, 16));
+            response.append(QString("0x%1 25000").arg(modes, 0, 16));
+            response.append(QString("0x%1 100000").arg(modes, 0, 16));
+            response.append(QString("0x%1 250000").arg(modes, 0, 16));
+            response.append(QString("0x%1 1000000").arg(modes, 0, 16));
+            response.append("0 0");
+
+            modes = getRadioModes("SB");
+            if (modes) {
+                response.append(QString("0x%1 3000").arg(modes, 0, 16));
+                response.append(QString("0x%1 2400").arg(modes, 0, 16));
+                response.append(QString("0x%1 1800").arg(modes, 0, 16));
+            }
+            modes = getRadioModes("AM");
+            if (modes) {
+                response.append(QString("0x%1 9000").arg(modes, 0, 16));
+                response.append(QString("0x%1 6000").arg(modes, 0, 16));
+                response.append(QString("0x%1 3000").arg(modes, 0, 16));
+            }
+            modes = getRadioModes("CW");
+            if (modes) {
+                response.append(QString("0x%1 1200").arg(modes, 0, 16));
+                response.append(QString("0x%1 500").arg(modes, 0, 16));
+                response.append(QString("0x%1 200").arg(modes, 0, 16));
+            }
+            modes = getRadioModes("FM");
+            if (modes) {
+                response.append(QString("0x%1 15000").arg(modes, 0, 16));
+                response.append(QString("0x%1 10000").arg(modes, 0, 16));
+                response.append(QString("0x%1 7000").arg(modes, 0, 16));
+            }
+            modes = getRadioModes("RTTY");
+            if (modes) {
+                response.append(QString("0x%1 2400").arg(modes, 0, 16));
+                response.append(QString("0x%1 500").arg(modes, 0, 16));
+                response.append(QString("0x%1 250").arg(modes, 0, 16));
+            }
+            modes = getRadioModes("PSK");
+            if (modes) {
+                response.append(QString("0x%1 1200").arg(modes, 0, 16));
+                response.append(QString("0x%1 500").arg(modes, 0, 16));
+                response.append(QString("0x%1 250").arg(modes, 0, 16));
+            }
+            response.append("0 0");
+            response.append("9900");
+            response.append("9900");
+            response.append("10000");
+            response.append("0");
+            QString preamps="";
+            if (rigCaps.hasPreamp) {
+                for (quint8 pre : rigCaps.preamps)
+                {
+                    if (pre == 0)
+                        continue;
+                    preamps.append(QString("%1 ").arg(pre*10));
+                }
+                if (preamps.endsWith(" "))
+                    preamps.chop(1);
+            }
+            else {
+                preamps = "0";
+            }
+            response.append(preamps);
+
+            QString attens = "";
+            if (rigCaps.hasAttenuator) {
+                for (quint8 att : rigCaps.attenuators)
+                {
+                    if (att == 0)
+                        continue;
+                    attens.append(QString("%1 ").arg(att,0,16));
+                }
+                if (attens.endsWith(" "))
+                    attens.chop(1);
+            }
+            else {
+                attens = "0";
+            }
+            response.append(attens);
+
+            response.append("0xffffffffffffffff");
+            response.append("0xffffffffffffffff");
+            response.append("0xffffffffffffffff");
+            response.append("0xffffffffffffffff");
+            response.append("0xffffffffffffffff");
+            response.append("0xffffffffffffffff");
+
+            if (chkVfoEecuted) {
+                response.append(QString("vfo_ops=0x%1").arg(255, 0, 16));
+                response.append(QString("ptt_type=0x%1").arg(rigCaps.hasTransmit, 0, 16));
+                response.append(QString("has_set_vfo=0x%1").arg(1, 0, 16));
+                response.append(QString("has_get_vfo=0x%1").arg(1, 0, 16));
+                response.append(QString("has_set_freq=0x%1").arg(1, 0, 16));
+                response.append(QString("has_get_freq=0x%1").arg(1, 0, 16));
+                response.append(QString("has_set_conf=0x%1").arg(1, 0, 16));
+                response.append(QString("has_get_conf=0x%1").arg(1, 0, 16));
+                response.append(QString("has_power2mW=0x%1").arg(1, 0, 16));
+                response.append(QString("has_mW2power=0x%1").arg(1, 0, 16));
+                response.append(QString("timeout=0x%1").arg(1000, 0, 16));
+                response.append("done");
+            }
         }
-        else if (command.length() > 0 && (command[0] == "G" || command[0] == "vfo_op"))
-        {
-            responseCode = -11; //Not implemented
+
+        /* Fake command to resolve parsing error */
+        else if (command[0] == "fmv") {
+            QString resp;
+
+            if (rigState->getChar(CURRENTVFO) == 0) {
+                resp.append(QString("%1").arg(rigState->getInt64(VFOAFREQ)));
+            }
+            else {
+                resp.append(QString("%1").arg(rigState->getInt64(VFOBFREQ)));
+            }
+            response.append(resp);
+            resp = "";
+            response.append(QString("%1").arg(getMode(rigState->getChar(MODE), rigState->getBool(DATAMODE))));
+            response.append(QString("%1").arg(rigState->getUInt16(PASSBAND)));
+
+            if (rigState->getChar(CURRENTVFO) == 0) {
+                resp.append("VFOA");
+            }
+            else {
+                resp.append("VFOB");
+            }
+            response.append(resp);
         }
-        else if (command.length() > 0 && (command[0] == "u" || command[0] == "get_func"))
+        else if (command[0] == "1" || command[0] == "dump_caps")
         {
-            responseCode = -11; //Not implemented
+            response.append(QString("Caps dump for model: %1").arg(rigCaps.modelID));
+            response.append(QString("Model Name:\t%1").arg(rigCaps.modelName));
+            response.append(QString("Mfg Name:\tIcom"));
+            response.append(QString("Backend version:\t0.1"));
+            response.append(QString("Backend copyright:\t2021"));
+            if (rigCaps.hasTransmit) {
+                response.append(QString("Rig type:\tTransceiver"));
+            }
+            else
+            {
+                response.append(QString("Rig type:\tReceiver"));
+            }
+            if (rigCaps.hasPTTCommand) {
+                response.append(QString("PTT type:\tRig capable"));
+            }
+            response.append(QString("DCD type:\tRig capable"));
+            response.append(QString("Port type:\tNetwork link"));
         }
-        else if (command.length() > 0 && (command[0] == "U" || command[0] == "set_func"))
+        else if (command.length() > 0 && (command[0] == "2" || command[0] == "power2mW"))
         {
-            responseCode = -11; //Not implemented
+            responseCode = -11; //Unimplemented
         }
-        else if (command.length() > 0 && (command[0] == "_" || command[0] == "get_info"))
+        else if (command.length() > 0 && (command[0] == "3" || command[0] == "mW2power"))
         {
-            response.append("None"); 
+            responseCode = -11; //Unimplemented
+        }
+        else if (command.length() > 0 && (command[0] == "set_clock"))
+        {
+            responseCode = -11; //Unimplemented
+        }
+        else if (command.length() > 0 && (command[0] == "get_clock"))
+        {
+            responseCode = -11; //Unimplemented
+        }
+        else if (command[0] == '\xf0' || command[0] == "chk_vfo")
+        {
+            chkVfoEecuted = true;
+            QString resp;
+            if (longReply) {
+                resp.append(QString("ChkVFO: "));
+            }
+            resp.append(QString("%1").arg(rigState->getChar(CURRENTVFO)));
+            response.append(resp);
+        }
+        else if (command.length() > 0 && (command[0] == "set_vfo_opt"))
+        {
+            responseCode = -11; //Unimplemented
+        }
+        else if (command.length() > 0 && (command[0] == '\xa2' || command[0] == "set_lock_mode"))
+        {
+            responseCode = -11; //Unimplemented
+        }
+        else if (command.length() > 0 && (command[0] == '\xa3' || command[0] == "get_lock_mode"))
+        {
+            QString resp;
+            if (longReply) {
+                resp.append(QString("Locked: "));
+            }
+            resp.append(QString("%1").arg(0)); // Always reply with RIG_OK (0)
+            response.append(resp);
+        }
+
+        else if (command.length() > 0 && (command[0] == "w" || command[0] == "send_cmd"))
+        {
+            responseCode = -11; //Unimplemented
         }
         else {
             qInfo(logRigCtlD()) << "Unimplemented command" << commands;
