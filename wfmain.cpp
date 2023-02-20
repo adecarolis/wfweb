@@ -1248,6 +1248,12 @@ void wfmain::connectSettingsWidget()
 
     connect(setupui, SIGNAL(changedUdpPref(udpPrefsItem)), this, SLOT(extChangedUdpPref(udpPrefsItem)));
     connect(setupui, SIGNAL(changedUdpPrefs(int)), this, SLOT(extChangedUdpPrefs(int)));
+
+    connect(setupui, &settingswidget::showUSBControllerSetup, [=](){
+        if(shut != Q_NULLPTR)
+            showAndRaiseWidget(shut);
+    });
+
 }
 
 void wfmain::prepareSettingsWindow()
@@ -1466,14 +1472,11 @@ void wfmain::setUIToPrefs()
     ui->wfthemeCombo->setCurrentIndex(ui->wfthemeCombo->findData(prefs.wftheme));
     colorMap->setGradient(static_cast<QCPColorGradient::GradientPreset>(prefs.wftheme));
 
-    ui->tuningFloorZerosChk->blockSignals(true);
-    ui->tuningFloorZerosChk->setChecked(prefs.niceTS);
-    ui->tuningFloorZerosChk->blockSignals(false);
+//    ui->tuningFloorZerosChk->blockSignals(true);
+//    ui->tuningFloorZerosChk->setChecked(prefs.niceTS);
+//    ui->tuningFloorZerosChk->blockSignals(false);
 
-    ui->autoSSBchk->blockSignals(true);
-    ui->autoSSBchk->setChecked(prefs.automaticSidebandSwitching);
     finputbtns->setAutomaticSidebandSwitching(prefs.automaticSidebandSwitching);
-    ui->autoSSBchk->blockSignals(false);
 
     ui->useCIVasRigIDChk->blockSignals(true);
     ui->useCIVasRigIDChk->setChecked(prefs.CIVisRadioModel);
@@ -1514,7 +1517,6 @@ void wfmain::setSerialDevicesUI()
     QStringList vspList;
     QVector<int> vspData;
     int vspCount=0;
-    ui->vspCombo->blockSignals(true);
 
 #ifdef Q_OS_WIN
     ui->vspCombo->addItem(QString("None"), i++); // i=0 when this is run
@@ -1534,26 +1536,17 @@ void wfmain::setSerialDevicesUI()
     QString vspName = QDir::homePath() + "/rig-pty";
 #endif
     for (i = 1; i < 8; i++) {
-        ui->vspCombo->addItem(vspName + QString::number(i));
         vspList.append(vspName + QString::number(i));
         vspData.append(vspCount);
         vspCount++;
-        if (QFile::exists(vspName + QString::number(i))) {
-            auto* model = qobject_cast<QStandardItemModel*>(ui->vspCombo->model());
-            auto* item = model->item(ui->vspCombo->count() - 1);
-            item->setEnabled(false);
-        }
+
     }
-    ui->vspCombo->addItem(vspName + QString::number(i)); // i=8
     vspList.append(vspName + QString::number(i));
     vspData.append(vspCount);
-    ui->vspCombo->addItem(QString("None"), i++); // i=9 when this is run
 
     setupui->updateVSPList(vspList, vspData);
 
 #endif
-    ui->vspCombo->setEditable(true);
-    ui->vspCombo->blockSignals(false);
 }
 
 
@@ -1797,7 +1790,7 @@ void wfmain::pttToggle(bool status)
 {
     // is it enabled?
 
-    if (!ui->pttEnableChk->isChecked())
+    if (!prefs.enablePTT)
     {
         showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
         return;
@@ -2129,7 +2122,7 @@ void wfmain::loadSettings()
     prefs.CIVisRadioModel = (bool)settings->value("CIVisRadioModel", defPrefs.CIVisRadioModel).toBool();
     prefs.forceRTSasPTT = (bool)settings->value("ForceRTSasPTT", defPrefs.forceRTSasPTT).toBool();
 
-    ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
+    //ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
 
     prefs.serialPortRadio = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
     int serialIndex = ui->serialDeviceListCombo->findText(prefs.serialPortRadio);
@@ -2148,36 +2141,18 @@ void wfmain::loadSettings()
     }
 
     prefs.polling_ms = settings->value("polling_ms", defPrefs.polling_ms).toInt();
+    // Migrated
     if(prefs.polling_ms == 0)
     {
         // Automatic
-        ui->pollingButtonGroup->blockSignals(true);
-        ui->autoPollBtn->setChecked(true);
-        ui->manualPollBtn->setChecked(false);
-        ui->pollingButtonGroup->blockSignals(false);
-        ui->pollTimeMsSpin->setEnabled(false);
+
     } else {
         // Manual
-        ui->pollingButtonGroup->blockSignals(true);
-        ui->autoPollBtn->setChecked(false);
-        ui->manualPollBtn->setChecked(true);
-        ui->pollingButtonGroup->blockSignals(false);
-        ui->pollTimeMsSpin->blockSignals(true);
-        ui->pollTimeMsSpin->setValue(prefs.polling_ms);
-        ui->pollTimeMsSpin->blockSignals(false);
-        ui->pollTimeMsSpin->setEnabled(true);
+
     }
 
     prefs.virtualSerialPort = settings->value("VirtualSerialPort", defPrefs.virtualSerialPort).toString();
-    int vspIndex = ui->vspCombo->findText(prefs.virtualSerialPort);
-    if (vspIndex != -1) {
-        ui->vspCombo->setCurrentIndex(vspIndex);
-    }
-    else
-    {
-        ui->vspCombo->addItem(prefs.virtualSerialPort);
-        ui->vspCombo->setCurrentIndex(ui->vspCombo->count() - 1);
-    }
+
 
     prefs.localAFgain = (unsigned char)settings->value("localAFgain", defPrefs.localAFgain).toUInt();
     rxSetup.localAFgain = prefs.localAFgain;
@@ -2197,7 +2172,6 @@ void wfmain::loadSettings()
     // Misc. user settings (enable PTT, draw peaks, etc)
     settings->beginGroup("Controls");
     prefs.enablePTT = settings->value("EnablePTT", defPrefs.enablePTT).toBool();
-    ui->pttEnableChk->setChecked(prefs.enablePTT);
     prefs.niceTS = settings->value("NiceTS", defPrefs.niceTS).toBool();
     prefs.automaticSidebandSwitching = settings->value("automaticSidebandSwitching", defPrefs.automaticSidebandSwitching).toBool();
     settings->endGroup();
@@ -2542,9 +2516,7 @@ void wfmain::loadSettings()
     /* Load USB buttons*/
     prefs.enableUSBControllers = settings->value("EnableUSBControllers", defPrefs.enableUSBControllers).toBool();
     prefs.usbSensitivity = settings->value("USBSensitivity", defPrefs.usbSensitivity).toInt();
-    ui->enableUsbChk->blockSignals(true);
-    ui->enableUsbChk->setChecked(prefs.enableUSBControllers);
-    ui->enableUsbChk->blockSignals(false);
+
     ui->usbControllerBtn->setEnabled(prefs.enableUSBControllers);
     ui->usbButtonsResetBtn->setEnabled(prefs.enableUSBControllers);
     ui->usbCommandsResetBtn->setEnabled(prefs.enableUSBControllers);
@@ -2812,19 +2784,83 @@ void wfmain::extChangedIfPref(prefIfItem i)
         // TODO.....
         break;
     default:
-        qWarning(logGui()) << "Did not understand if pref update item " << (int)i;
+        qWarning(logSystem()) << "Did not understand if pref update in wfmain for item " << (int)i;
         break;
     }
 }
 
 void wfmain::extChangedRaPref(prefRaItem i)
 {
-
+    // Radio Access Prefs
+    switch(i)
+    {
+    case ra_radioCIVAddr:
+        if(prefs.radioCIVAddr == 0) {
+            showStatusBarText("Setting radio CI-V address to: 'auto'. Make sure CI-V Transceive is enabled on the radio.");
+        } else {
+            showStatusBarText(QString("Setting radio CI-V address to: 0x%1. Press Save Settings to retain.").arg(prefs.radioCIVAddr, 2, 16));
+        }
+        break;
+    case ra_CIVisRadioModel:
+        break;
+    case ra_forceRTSasPTT:
+        emit setRTSforPTT(prefs.forceRTSasPTT);
+        break;
+    case ra_polling_ms:
+        if(prefs.polling_ms == 0)
+        {
+            // Automatic
+            qInfo(logSystem()) << "User set radio polling interval to automatic.";
+            calculateTimingParameters();
+        } else {
+            // Manual
+            changePollTiming(prefs.polling_ms);
+        }
+        break;
+    case ra_serialPortRadio:
+    {
+        break;
+    }
+    case ra_serialPortBaud:
+        prefs.serialPortBaud = prefs.serialPortBaud;
+        serverConfig.baudRate = prefs.serialPortBaud;
+        showStatusBarText(QString("Changed baud rate to %1 bps. Press Save Settings to retain.").arg(prefs.serialPortBaud));
+        break;
+    case ra_virtualSerialPort:
+        break;
+    case ra_localAFgain:
+        // Not handled here.
+        break;
+    case ra_audioSystem:
+        audioDev->setAudioType(prefs.audioSystem);
+        audioDev->enumerate();
+        break;
+    default:
+        qWarning(logSystem()) << "Cannot update wfmain ra pref" << (int)i;
+    }
 }
 
 void wfmain::extChangedCtPref(prefCtItem i)
 {
-
+    switch(i)
+    {
+    case ct_enablePTT:
+        break;
+    case ct_niceTS:
+        break;
+    case ct_automaticSidebandSwitching:
+        finputbtns->setAutomaticSidebandSwitching(prefs.automaticSidebandSwitching);
+        break;
+    case ct_enableUSBControllers:
+        enableUsbControllers(prefs.enableUSBControllers);
+        break;
+    case ct_usbSensitivity:
+        // No UI element for this.
+        break;
+    default:
+        qWarning(logGui()) << "No UI element matches setting" << (int)i;
+        break;
+    }
 }
 
 void wfmain::extChangedLanPref(prefLanItem i)
@@ -3551,7 +3587,7 @@ void wfmain::on_tuningStepCombo_currentIndexChanged(int index)
 quint64 wfmain::roundFrequency(quint64 frequency, unsigned int tsHz)
 {
     quint64 rounded = 0;
-    if(ui->tuningFloorZerosChk->isChecked())
+    if(prefs.niceTS)
     {
         rounded = ((frequency % tsHz) > tsHz/2) ? frequency + tsHz - frequency%tsHz : frequency - frequency%tsHz;
         return rounded;
@@ -3571,7 +3607,7 @@ quint64 wfmain::roundFrequencyWithStep(quint64 frequency, int steps, unsigned in
         frequency = frequency - std::min((quint64)(abs(steps)*tsHz), frequency);
     }
 
-    if(ui->tuningFloorZerosChk->isChecked())
+    if(prefs.niceTS)
     {
         rounded = ((frequency % tsHz) > tsHz/2) ? frequency + tsHz - frequency%tsHz : frequency - frequency%tsHz;
         return rounded;
@@ -4999,7 +5035,6 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
         ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
 
-        ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
 
         ui->audioSystemCombo->setEnabled(false);
         ui->audioSystemServerCombo->setEnabled(false);
@@ -6365,7 +6400,7 @@ void wfmain::on_pttOnBtn_clicked()
 {
     // is it enabled?
 
-    if(!ui->pttEnableChk->isChecked())
+    if(!prefs.enablePTT)
     {
         showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
         return;
@@ -6435,11 +6470,6 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
             qInfo(logSystem()) << "Did not understand ATU status: " << (unsigned int) atustatus;
             break;
     }
-}
-
-void wfmain::on_pttEnableChk_clicked(bool checked)
-{
-    prefs.enablePTT = checked;
 }
 
 void wfmain::on_serialEnableBtn_clicked(bool checked)
@@ -6581,12 +6611,6 @@ void wfmain::on_txLatencySlider_valueChanged(int value)
     ui->txLatencyValue->setText(QString::number(value));
 }
 
-void wfmain::on_vspCombo_currentIndexChanged(int value) 
-{
-    Q_UNUSED(value);
-    prefs.virtualSerialPort = ui->vspCombo->currentText();
-}
-
 void wfmain::on_toFixedBtn_clicked()
 {
     int currentEdge = ui->scopeEdgeCombo->currentIndex();
@@ -6698,7 +6722,7 @@ void wfmain::on_transmitBtn_clicked()
     if(!amTransmitting)
     {
         // Currently receiving
-        if(!ui->pttEnableChk->isChecked())
+        if(!prefs.enablePTT)
         {
             showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
             return;
@@ -7326,12 +7350,7 @@ void wfmain::calculateTimingParameters()
         delayedCommand->setInterval( msMinTiming * 3); // 20 byte message
     }
 
-
     qInfo(logSystem()) << "Delay command interval timing: " << delayedCommand->interval() << "ms";
-
-    ui->pollTimeMsSpin->blockSignals(true);
-    ui->pollTimeMsSpin->setValue(delayedCommand->interval());
-    ui->pollTimeMsSpin->blockSignals(false);
 
     // Normal:
     delayedCmdIntervalLAN_ms =  delayedCommand->interval();
@@ -7497,12 +7516,6 @@ void wfmain::on_baudRateCombo_activated(int index)
         showStatusBarText(QString("Changed baud rate to %1 bps. Press Save Settings to retain.").arg(baud));
     }
     (void)index;
-}
-
-void wfmain::on_useRTSforPTTchk_clicked(bool checked)
-{
-    emit setRTSforPTT(checked);
-    prefs.forceRTSasPTT = checked;
 }
 
 void wfmain::on_wfLengthSlider_valueChanged(int value)
@@ -7754,6 +7767,7 @@ void wfmain::setAudioDevicesUI()
 
 void wfmain::on_audioSystemCombo_currentIndexChanged(int value) 
 {
+    // migrated
     prefs.audioSystem = static_cast<audioType>(value);
     audioDev->setAudioType(prefs.audioSystem);
     audioDev->enumerate();
@@ -7764,6 +7778,7 @@ void wfmain::on_audioSystemCombo_currentIndexChanged(int value)
 
 void wfmain::on_audioSystemServerCombo_currentIndexChanged(int value)
 {
+    // migrated
     prefs.audioSystem = static_cast<audioType>(value);
     audioDev->setAudioType(prefs.audioSystem);
     audioDev->enumerate();
@@ -8987,13 +9002,8 @@ void wfmain::on_clickDragTuningEnableChk_clicked(bool checked)
     prefs.clickDragTuningEnable = checked;
 }
 
-void wfmain::on_enableUsbChk_clicked(bool checked)
+void wfmain::enableUsbControllers(bool enabled)
 {
-    prefs.enableUSBControllers = checked;
-    ui->usbControllerBtn->setEnabled(checked);
-    ui->usbButtonsResetBtn->setEnabled(checked);
-    ui->usbCommandsResetBtn->setEnabled(checked);
-    ui->usbResetLbl->setVisible(checked);
 
 #if defined (USB_CONTROLLER)
     if (usbControllerThread != Q_NULLPTR) {
@@ -9001,7 +9011,7 @@ void wfmain::on_enableUsbChk_clicked(bool checked)
         usbControllerThread->wait();
         usbControllerThread = Q_NULLPTR;
     }
-    if (checked) {
+    if (enabled) {
         // Setup USB Controller
         setupUsbControllerDevice();
         emit initUsbController(prefs.usbSensitivity);
@@ -9013,6 +9023,7 @@ void wfmain::on_enableUsbChk_clicked(bool checked)
 
 void wfmain::on_usbControllerBtn_clicked()
 {
+    // migrated
     if (shut != Q_NULLPTR) {
         if (shut->isVisible()) {
             shut->hide();
@@ -9027,6 +9038,7 @@ void wfmain::on_usbControllerBtn_clicked()
 
 void wfmain::on_usbButtonsResetBtn_clicked()
 {
+    // TODO
     int ret = QMessageBox::warning(this, tr("wfview"),
         tr("Are you sure you wish to reset the USB buttons?"),
         QMessageBox::Ok | QMessageBox::Cancel,
@@ -9034,12 +9046,13 @@ void wfmain::on_usbButtonsResetBtn_clicked()
     if (ret == QMessageBox::Ok) {
         qInfo(logUsbControl()) << "Resetting USB buttons to default values";
         resetUsbButtons();
-        on_enableUsbChk_clicked(true); // Force disconnect/reconnect of USB controller.
+        enableUsbControllers(true); // Force disconnect/reconnect of USB controller.
     }
 }
 
 void wfmain::on_usbCommandsResetBtn_clicked()
 {
+    // TODO
     int ret = QMessageBox::warning(this, tr("wfview"),
         tr("Are you sure you wish to reset the USB commands?"),
         QMessageBox::Ok | QMessageBox::Cancel,
@@ -9047,37 +9060,7 @@ void wfmain::on_usbCommandsResetBtn_clicked()
     if (ret == QMessageBox::Ok) {
         qInfo(logUsbControl()) << "Resetting USB commands to default values";
         resetUsbCommands();
-        on_enableUsbChk_clicked(true); // Force disconnect/reconnect of USB controller.
-    }
-
-}
-
-void wfmain::on_autoPollBtn_clicked(bool checked)
-{
-    ui->pollTimeMsSpin->setEnabled(!checked);
-    if(checked)
-    {
-        prefs.polling_ms = 0;
-        qInfo(logSystem()) << "User set radio polling interval to automatic.";
-        calculateTimingParameters();
-    }
-}
-
-void wfmain::on_manualPollBtn_clicked(bool checked)
-{
-    ui->pollTimeMsSpin->setEnabled(checked);
-    if(checked)
-    {
-        prefs.polling_ms = ui->pollTimeMsSpin->value();
-        changePollTiming(prefs.polling_ms);
-    }
-}
-
-void wfmain::on_pollTimeMsSpin_valueChanged(int timing_ms)
-{
-    if(ui->manualPollBtn->isChecked())
-    {
-        changePollTiming(timing_ms);
+        enableUsbControllers(true); // Force disconnect/reconnect of USB controller.
     }
 }
 
@@ -9087,17 +9070,11 @@ void wfmain::changePollTiming(int timing_ms, bool setUI)
     qInfo(logSystem()) << "User changed radio polling interval to " << timing_ms << "ms.";
     showStatusBarText("User changed radio polling interval to " + QString("%1").arg(timing_ms) + "ms.");
     prefs.polling_ms = timing_ms;
-    if(setUI)
-    {
-        ui->pollTimeMsSpin->blockSignals(true);
-        ui->pollTimeMsSpin->setValue(timing_ms);
-        ui->pollTimeMsSpin->blockSignals(false);
-    }
+    (void)setUI;
 }
 
 void wfmain::connectionHandler(bool connect) 
 {
-
     if (!connect) {
         emit sendCloseComm();
         ui->connectBtn->setText("Connect to Radio");
@@ -9118,12 +9095,6 @@ void wfmain::connectionHandler(bool connect)
             ui->audioSystemServerCombo->setEnabled(true);
         }
     }
-}
-
-void wfmain::on_autoSSBchk_clicked(bool checked)
-{
-    prefs.automaticSidebandSwitching = checked;
-    finputbtns->setAutomaticSidebandSwitching(checked);
 }
 
 void wfmain::on_cwButton_clicked()

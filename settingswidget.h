@@ -3,6 +3,7 @@
 
 #include <QStandardItemModel>
 #include <QWidget>
+#include <QInputDialog>
 #include <QFile>
 #include <QSlider>
 #include <QSpinBox>
@@ -75,6 +76,8 @@ signals:
     void changedClusterPref(prefClusterItem i);
     void changedUdpPref(udpPrefsItem i);
 
+    void showUSBControllerSetup();
+
 private slots:
     void on_settingsList_currentRowChanged(int currentRow);
 
@@ -83,6 +86,26 @@ private slots:
     void on_autoSSBchk_clicked(bool checked);
 
     void on_useSystemThemeChk_clicked(bool checked);
+
+    void on_enableUsbChk_clicked(bool checked);
+
+    void on_usbControllerBtn_clicked();
+
+    void on_autoPollBtn_clicked(bool checked);
+
+    void on_manualPollBtn_clicked(bool checked);
+
+    void on_pollTimeMsSpin_valueChanged(int arg1);
+
+    void on_serialDeviceListCombo_activated(const QString &arg1);
+
+    void on_baudRateCombo_activated(int index);
+
+    void on_vspCombo_activated(int index);
+
+    void on_audioSystemCombo_currentIndexChanged(int index);
+
+    void on_audioSystemServerCombo_currentIndexChanged(int index);
 
 private:
     Ui::settingswidget *ui;

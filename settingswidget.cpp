@@ -772,3 +772,126 @@ void settingswidget::on_useSystemThemeChk_clicked(bool checked)
     prefs->useSystemTheme = checked;
     emit changedIfPrefs(if_useSystemTheme);
 }
+
+void settingswidget::on_enableUsbChk_clicked(bool checked)
+{
+    prefs->enableUSBControllers = checked;
+    ui->usbControllerBtn->setEnabled(checked);
+    ui->usbButtonsResetBtn->setEnabled(checked);
+    ui->usbCommandsResetBtn->setEnabled(checked);
+    ui->usbResetLbl->setVisible(checked);
+
+    emit changedCtPref(ct_enableUSBControllers);
+}
+
+void settingswidget::on_usbControllerBtn_clicked()
+{
+    emit showUSBControllerSetup();
+}
+
+void settingswidget::on_autoPollBtn_clicked(bool checked)
+{
+    if(checked)
+    {
+        prefs->polling_ms = 0;
+        emit changedRaPref(ra_polling_ms);
+        ui->pollTimeMsSpin->setEnabled(false);
+    }
+}
+
+void settingswidget::on_manualPollBtn_clicked(bool checked)
+{
+    if(checked)
+    {
+        ui->pollTimeMsSpin->setEnabled(true);
+        prefs->polling_ms = ui->pollTimeMsSpin->value();
+        emit changedRaPref(ra_polling_ms);
+    } else {
+        // Do we need this...
+        //        prefs.polling_ms = 0;
+        //        emit changedRaPref(ra_polling_ms);
+    }
+}
+
+void settingswidget::on_pollTimeMsSpin_valueChanged(int val)
+{
+    prefs->polling_ms = val;
+    emit changedRaPref(ra_polling_ms);
+}
+
+void settingswidget::on_serialDeviceListCombo_activated(const QString &arg1)
+{
+    QString manualPort;
+    bool ok;
+    if(arg1==QString("Manual..."))
+    {
+        manualPort = QInputDialog::getText(this, tr("Manual port assignment"),
+                                           tr("Enter serial port assignment:"),
+                                           QLineEdit::Normal,
+                                           tr("/dev/device"), &ok);
+        if(manualPort.isEmpty() || !ok)
+        {
+            ui->serialDeviceListCombo->blockSignals(true);
+            ui->serialDeviceListCombo->setCurrentIndex(0);
+            ui->serialDeviceListCombo->blockSignals(false);
+            return;
+        } else {
+            prefs->serialPortRadio = manualPort;
+            qInfo(logGui()) << "Setting preferences to use manually-assigned serial port: " << manualPort;
+            ui->serialEnableBtn->setChecked(true);
+            emit changedRaPref(ra_serialPortRadio);
+            return;
+        }
+    }
+    if(arg1==QString("Auto"))
+    {
+        prefs->serialPortRadio = "auto";
+        qInfo(logGui()) << "Setting preferences to automatically find rig serial port.";
+        ui->serialEnableBtn->setChecked(true);
+        emit changedRaPref(ra_serialPortRadio);
+        return;
+    }
+
+    prefs->serialPortRadio = arg1;
+    qInfo(logGui()) << "Setting preferences to use manually-assigned serial port: " << arg1;
+    ui->serialEnableBtn->setChecked(true);
+    emit changedRaPref(ra_serialPortRadio);
+}
+
+void settingswidget::on_baudRateCombo_activated(int index)
+{
+    bool ok = false;
+    quint32 baud = ui->baudRateCombo->currentData().toUInt(&ok);
+    if(ok)
+    {
+        prefs->serialPortBaud = baud;
+        qInfo(logGui()) << "Changed baud rate to" << baud << "bps. Press Save Settings to retain.";
+        emit changedRaPref(ra_serialPortBaud);
+    }
+    (void)index;
+}
+
+void settingswidget::on_vspCombo_activated(int index)
+{
+    Q_UNUSED(index);
+    prefs->virtualSerialPort = ui->vspCombo->currentText();
+    emit changedRaPref(ra_virtualSerialPort);
+}
+
+void settingswidget::on_audioSystemCombo_currentIndexChanged(int value)
+{
+    prefs->audioSystem = static_cast<audioType>(value);
+    ui->audioSystemServerCombo->blockSignals(true);
+    ui->audioSystemServerCombo->setCurrentIndex(value);
+    ui->audioSystemServerCombo->blockSignals(false);
+    emit changedRaPref(ra_audioSystem);
+}
+
+void settingswidget::on_audioSystemServerCombo_currentIndexChanged(int value)
+{
+    prefs->audioSystem = static_cast<audioType>(value);
+    ui->audioSystemCombo->blockSignals(true);
+    ui->audioSystemCombo->setCurrentIndex(value);
+    ui->audioSystemCombo->blockSignals(false);
+    emit changedRaPref(ra_audioSystem);
+}

@@ -391,7 +391,7 @@ private slots:
     void on_usbControllerBtn_clicked();
     void on_usbButtonsResetBtn_clicked();
     void on_usbCommandsResetBtn_clicked();
-    void on_enableUsbChk_clicked(bool checked);
+    void enableUsbControllers(bool enabled);
 
     void on_scopeBWCombo_currentIndexChanged(int index);
     void on_scopeEdgeCombo_currentIndexChanged(int index);
@@ -408,7 +408,6 @@ private slots:
     void on_pttOffBtn_clicked();
     void on_saveSettingsBtn_clicked();
     void on_debugBtn_clicked();
-    void on_pttEnableChk_clicked(bool checked);
     void on_lanEnableBtn_clicked(bool checked);
     void on_ipAddressTxt_textChanged(QString text);
     void on_controlPortTxt_textChanged(QString text);
@@ -424,7 +423,6 @@ private slots:
     void on_audioRXCodecCombo_currentIndexChanged(int value);
     void on_audioTXCodecCombo_currentIndexChanged(int value);
     void on_audioSampleRateCombo_currentIndexChanged(int value);
-    void on_vspCombo_currentIndexChanged(int value);
     void on_scopeEnableWFBtn_clicked(bool checked);
     void on_sqlSlider_valueChanged(int value);
     void on_modeFilterCombo_activated(int index);
@@ -479,7 +477,6 @@ private slots:
     void on_serverRXAudioInputCombo_currentIndexChanged(int value);
     void onServerUserFieldChanged();
     void on_serverAddUserBtn_clicked();
-    void on_useRTSforPTTchk_clicked(bool checked);
     void on_radioStatusBtn_clicked();
     void on_audioSystemCombo_currentIndexChanged(int value);
     void on_topLevelSlider_valueChanged(int value);
@@ -562,14 +559,6 @@ private slots:
 
     void receiveClusterOutput(QString text);
     void receiveSpots(QList<spotData> spots);
-
-    void on_autoPollBtn_clicked(bool checked);
-
-    void on_manualPollBtn_clicked(bool checked);
-
-    void on_pollTimeMsSpin_valueChanged(int arg1);
-
-    void on_autoSSBchk_clicked(bool checked);
 
     void on_cwButton_clicked();
 

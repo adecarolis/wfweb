@@ -1266,7 +1266,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>1</number>
+             <number>4</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -1459,16 +1459,6 @@
                        <width>120</width>
                        <height>16777215</height>
                       </size>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QCheckBox" name="useRTSforPTTchk">
-                     <property name="toolTip">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This feature is for older radios that respond best to an RTS serial port signal than a PTT command.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;For radios lacking PTT commands, this is automatic and transparent, but for radios which have a PTT command, you can check this box to override and force the PTT to be done using RTS. Do not check this box unless you really need this and have an appropriate adapter with RTS connected to the PTT line of the transceiver. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                     </property>
-                     <property name="text">
-                      <string>Send RTS for PTT</string>
                      </property>
                     </widget>
                    </item>
@@ -1981,22 +1971,6 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QCheckBox" name="autoSSBchk">
-                  <property name="toolTip">
-                   <string>When using SSB, automatically switch to the standard sideband for a given band.</string>
-                  </property>
-                  <property name="accessibleName">
-                   <string>Auto SSB Switching</string>
-                  </property>
-                  <property name="accessibleDescription">
-                   <string>When using SSB, automatically switch to the standard sideband for a given band.</string>
-                  </property>
-                  <property name="text">
-                   <string>Auto SSB</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
                  <widget class="QCheckBox" name="clickDragTuningEnableChk">
                   <property name="text">
                    <string>Allow tuning via click and drag (experimental)</string>
@@ -2038,13 +2012,6 @@
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_28">
                 <item>
-                 <widget class="QCheckBox" name="pttEnableChk">
-                  <property name="text">
-                   <string>Enable PTT Controls</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
                  <spacer name="horizontalSpacer_30">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
@@ -2059,55 +2026,6 @@
                    </size>
                   </property>
                  </spacer>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="autoPollBtn">
-                  <property name="toolTip">
-                   <string>wfview will automatically calculate command polling. Recommended.</string>
-                  </property>
-                  <property name="text">
-                   <string>AutoPolling</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                  <attribute name="buttonGroup">
-                   <string notr="true">pollingButtonGroup</string>
-                  </attribute>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="manualPollBtn">
-                  <property name="toolTip">
-                   <string>Manual (user-defined) command polling</string>
-                  </property>
-                  <property name="text">
-                   <string>Manual Polling Inteval:</string>
-                  </property>
-                  <attribute name="buttonGroup">
-                   <string notr="true">pollingButtonGroup</string>
-                  </attribute>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QSpinBox" name="pollTimeMsSpin">
-                  <property name="toolTip">
-                   <string>Sets the polling interval, in ms. Automatic polling is recommended. Serial port and USB port radios should not poll quicker than about 75ms.</string>
-                  </property>
-                  <property name="minimum">
-                   <number>1</number>
-                  </property>
-                  <property name="maximum">
-                   <number>250</number>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLabel" name="label_50">
-                  <property name="text">
-                   <string>ms</string>
-                  </property>
-                 </widget>
                 </item>
                 <item>
                  <spacer name="horizontalSpacer_11">
@@ -2298,7 +2216,7 @@
                       <x>0</x>
                       <y>0</y>
                       <width>818</width>
-                      <height>319</height>
+                      <height>324</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -3724,28 +3642,6 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QComboBox" name="vspCombo">
-                  <property name="minimumSize">
-                   <size>
-                    <width>250</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                  <property name="maximumSize">
-                   <size>
-                    <width>250</width>
-                    <height>16777215</height>
-                   </size>
-                  </property>
-                  <property name="toolTip">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use this to define a virtual serial port. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;On Windows, the virtual serial port can be used to connect to a serial port loopback device, through which other programs can connect to the radio. &lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;On Linux and macOS, the port defined here is a pseudo-terminal device, which may be connected to directly by any program designed for a serial connection. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                  <property name="accessibleName">
-                   <string>Virtual Serial Port Selector</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
                  <spacer name="horizontalSpacer_19">
                   <property name="orientation">
                    <enum>Qt::Horizontal</enum>
@@ -3856,13 +3752,6 @@
               </item>
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_46">
-                <item>
-                 <widget class="QCheckBox" name="enableUsbChk">
-                  <property name="text">
-                   <string>Enable USB Controllers</string>
-                  </property>
-                 </widget>
-                </item>
                 <item>
                  <widget class="QPushButton" name="usbControllerBtn">
                   <property name="toolTip">
@@ -4413,8 +4302,6 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="pollingButtonGroup"/>
-  <buttongroup name="underlayButtonGroup"/>
   <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>
