@@ -1030,11 +1030,11 @@ void rigCtlClient::socketReadyRead()
             int value=0;
             setCommand = true;
             if (command[1] == "ANN") {
-                value = command[2].toFloat() * 255;
+                value = command[2].toInt();
                 rigState->set(ANN, quint8(value), true);
             }
             else if (command[1] == "APO") {
-                value = command[2].toFloat() * 255;
+                value = command[2].toInt();
                 rigState->set(APO, quint8(value), true);
             }
             else if (command[1] == "BACKLIGHT") {
@@ -1042,7 +1042,7 @@ void rigCtlClient::socketReadyRead()
                 rigState->set(BACKLIGHT, quint8(value), true);
             }
             else if (command[1] == "BEEP") {
-                value = command[2].toFloat() * 255;
+                value = command[2].toInt();
                 rigState->set(BEEP, quint8(value), true);
             }
             else if (command[1] == "TIME") {
@@ -1068,20 +1068,20 @@ void rigCtlClient::socketReadyRead()
         {
             QString resp;
             if (longReply) {
-                resp.append("Level Value: ");
+                resp.append(QString("get_parm: %1%2").arg(command[1]).arg(sep));
             }
 
             if (command[1] == "ANN") {
-                resp.append(QString("%1").arg((float)rigState->getChar(ANN) / 255.0));
+                resp.append(QString("%1").arg(rigState->getChar(ANN)));
             }
             else if (command[1] == "APO") {
-                resp.append(QString("%1").arg((float)rigState->getChar(APO) / 255.0));
+                resp.append(QString("%1").arg(rigState->getChar(APO)));
             }
             else if (command[1] == "BACKLIGHT") {
                 resp.append(QString("%1").arg((float)rigState->getChar(BACKLIGHT) / 255.0));
             }
             else if (command[1] == "BEEP") {
-                resp.append(QString("%1").arg((float)rigState->getChar(BEEP) / 255.0));
+                resp.append(QString("%1").arg(rigState->getChar(BEEP)));
             }
             else if (command[1] == "TIME") {
                 resp.append(QString("%1").arg(rigState->getInt64(TIME)));
