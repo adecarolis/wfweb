@@ -1226,7 +1226,6 @@ void wfmain::setupMainUI()
     connect(this->cw, &cwSender::getCWSettings,
             [=]() { issueDelayedCommand(cmdGetKeySpeed);
                     issueDelayedCommand(cmdGetBreakMode);});
-
 }
 
 void wfmain::connectSettingsWidget()
@@ -1253,7 +1252,7 @@ void wfmain::connectSettingsWidget()
         if(shut != Q_NULLPTR)
             showAndRaiseWidget(shut);
     });
-
+    connect(this, SIGNAL(haveClusterList(QList<clusterSettings>)), setupui, SLOT(copyClusterList(QList<clusterSettings>)));
 }
 
 void wfmain::prepareSettingsWindow()
@@ -2492,6 +2491,7 @@ void wfmain::loadSettings()
     }
     settings->endArray();
     settings->endGroup();
+    emit haveClusterList(clusters);
 
     // CW Memory Load:
     settings->beginGroup("Keyer");
@@ -2887,7 +2887,41 @@ void wfmain::extChangedLanPref(prefLanItem i)
 
 void wfmain::extChangedClusterPref(prefClusterItem i)
 {
-
+    switch(i)
+    {
+    case cl_clusterUdpEnable:
+        emit setClusterEnableUdp(prefs.clusterUdpEnable);
+        break;
+    case cl_clusterTcpEnable:
+        emit setClusterEnableTcp(prefs.clusterTcpEnable);
+        break;
+    case cl_clusterUdpPort:
+        emit setClusterUdpPort(prefs.clusterUdpPort);
+        break;
+    case cl_clusterTcpServerName:
+        emit setClusterServerName(prefs.clusterTcpServerName);
+        break;
+    case cl_clusterTcpUserName:
+        emit setClusterUserName(prefs.clusterTcpUserName);
+        break;
+    case cl_clusterTcpPassword:
+        emit setClusterPassword(prefs.clusterTcpPassword);
+        break;
+    case cl_clusterTcpPort:
+        emit setClusterTcpPort(prefs.clusterTcpPort);
+        break;
+    case cl_clusterTimeout:
+        // Used?
+        emit setClusterTimeout(prefs.clusterTimeout);
+        break;
+    case cl_clusterSkimmerSpotsEnable:
+        // Used?
+        emit setClusterSkimmerSpots(prefs.clusterSkimmerSpotsEnable);
+        break;
+    default:
+        qWarning(logSystem()) << "Did not find matching preference element in wfmain for cluster preference " << (int)i;
+        break;
+    }
 }
 
 void wfmain::extChangedUdpPref(udpPrefsItem i)
@@ -8855,7 +8889,6 @@ void wfmain::on_clusterPasswordLineEdit_editingFinished()
         clusters[index].password = ui->clusterPasswordLineEdit->text();
         emit setClusterPassword(clusters[index].password);
     }
-
 }
 
 void wfmain::on_clusterTimeoutLineEdit_editingFinished()

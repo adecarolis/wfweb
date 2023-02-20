@@ -105,6 +105,59 @@ void settingswidget::acceptUdpPreferencesPtr(udpPreferences *upptr)
     }
 }
 
+void settingswidget::copyClusterList(QList<clusterSettings> c)
+{
+    this->clusters = c;
+    haveClusterList = true;
+    qDebug(logGui()) << "Updated settings widget clusters. Size of this->clusters: " << clusters.size();
+    setUItoClustersList();
+}
+
+void settingswidget::setUItoClustersList()
+{
+    if(haveClusterList)
+    {
+        int defaultCluster = 0;
+        int numClusters = clusters.size();
+        if(numClusters > 0)
+        {
+            ui->clusterServerNameCombo->blockSignals(true);
+            for (int f = 0; f < clusters.size(); f++)
+            {
+                ui->clusterServerNameCombo->addItem(clusters[f].server);
+                if (clusters[f].isdefault) {
+                    defaultCluster = f;
+                }
+            }
+            ui->clusterServerNameCombo->blockSignals(false);
+            if (clusters.size() > defaultCluster)
+            {
+                ui->clusterServerNameCombo->setCurrentIndex(defaultCluster);
+                ui->clusterTcpPortLineEdit->blockSignals(true);
+                ui->clusterUsernameLineEdit->blockSignals(true);
+                ui->clusterPasswordLineEdit->blockSignals(true);
+                ui->clusterTimeoutLineEdit->blockSignals(true);
+                ui->clusterTcpPortLineEdit->setText(QString::number(clusters[defaultCluster].port));
+                ui->clusterUsernameLineEdit->setText(clusters[defaultCluster].userName);
+                ui->clusterPasswordLineEdit->setText(clusters[defaultCluster].password);
+                ui->clusterTimeoutLineEdit->setText(QString::number(clusters[defaultCluster].timeout));
+                ui->clusterTcpPortLineEdit->blockSignals(false);
+                ui->clusterUsernameLineEdit->blockSignals(false);
+                ui->clusterPasswordLineEdit->blockSignals(false);
+                ui->clusterTimeoutLineEdit->blockSignals(false);
+            }
+        } else {
+            // No clusters in the list
+            ui->clusterTcpPortLineEdit->setEnabled(false);
+            ui->clusterUsernameLineEdit->setEnabled(false);
+            ui->clusterPasswordLineEdit->setEnabled(false);
+            ui->clusterTimeoutLineEdit->setEnabled(false);
+        }
+    } else {
+        qCritical(logGui()) << "Called to update UI of cluster info without cluister list.";
+    }
+}
+
 void settingswidget::updateIfPrefs(int items)
 {
     prefIfItem pif;
@@ -121,17 +174,6 @@ void settingswidget::updateIfPrefs(int items)
             updateIfPref(pif);
         }
     }
-
-
-//    for(int i=0; 0x1 << i < (int)if_all; i++)
-//    {
-//        if(items & (0x1 << i))
-//        {
-//            qDebug(logGui()) << "Updating If pref" << (int)0;
-//            pif = (prefIfItem)(0x1 << i);
-//            updateIfPref(pif);
-//        }
-//    }
 }
 
 void settingswidget::updateRaPrefs(int items)
@@ -449,7 +491,6 @@ void settingswidget::updateLanPref(prefLanItem plan)
 void settingswidget::updateClusterPref(prefClusterItem pcl)
 {
     updatingUIFromPrefs = true;
-    // TODO, lots of work here....
     switch(pcl)
     {
     case cl_clusterUdpEnable:
@@ -459,15 +500,23 @@ void settingswidget::updateClusterPref(prefClusterItem pcl)
         quietlyUpdateCheckbox(ui->clusterTcpEnable, prefs->clusterTcpEnable);
         break;
     case cl_clusterUdpPort:
+        ui->clusterUdpPortLineEdit->blockSignals(true);
         ui->clusterUdpPortLineEdit->setText(QString::number(prefs->clusterUdpPort));
+        ui->clusterUdpPortLineEdit->blockSignals(false);
         break;
     case cl_clusterTcpServerName:
+        // Take this from the clusters list
         break;
     case cl_clusterTcpUserName:
+        // Take this from the clusters list
         break;
     case cl_clusterTcpPassword:
+        // Take this from the clusters list
+        break;
+    case cl_clusterTcpPort:
         break;
     case cl_clusterTimeout:
+        // Take this from the clusters list
         break;
     case cl_clusterSkimmerSpotsEnable:
         quietlyUpdateCheckbox(ui->clusterSkimmerSpotsEnable, prefs->clusterSkimmerSpotsEnable);
@@ -1044,5 +1093,169 @@ void settingswidget::on_tcpServerPortTxt_editingFinished()
     {
         prefs->tcpPort = port;
         emit changedLanPref(l_tcpPort);
+    }
+}
+
+void settingswidget::on_clusterServerNameCombo_currentIndexChanged(int index)
+{
+    if (index < 0)
+        return;
+
+    if(!haveClusterList)
+        qWarning(logGui()) << "Do not have cluster list yet. Editing may not work.";
+
+    QString text = ui->clusterServerNameCombo->currentText();
+
+    if (clusters.size() <= index)
+    {
+        qInfo(logGui) << "Adding Cluster server" << text;
+        clusterSettings c;
+        c.server = text;
+        clusters.append(c);
+        ui->clusterTcpPortLineEdit->setEnabled(true);
+        ui->clusterUsernameLineEdit->setEnabled(true);
+        ui->clusterPasswordLineEdit->setEnabled(true);
+        ui->clusterTimeoutLineEdit->setEnabled(true);
+
+    }
+    else {
+        qInfo(logGui) << "Editing Cluster server" << text;
+        clusters[index].server = text;
+    }
+    ui->clusterUsernameLineEdit->blockSignals(true);
+    ui->clusterPasswordLineEdit->blockSignals(true);
+    ui->clusterTimeoutLineEdit->blockSignals(true);
+    ui->clusterTcpPortLineEdit->setText(QString::number(clusters[index].port));
+    ui->clusterUsernameLineEdit->setText(clusters[index].userName);
+    ui->clusterPasswordLineEdit->setText(clusters[index].password);
+    ui->clusterTimeoutLineEdit->setText(QString::number(clusters[index].timeout));
+    ui->clusterUsernameLineEdit->blockSignals(false);
+    ui->clusterPasswordLineEdit->blockSignals(false);
+    ui->clusterTimeoutLineEdit->blockSignals(false);
+
+
+    for (int i = 0; i < clusters.size(); i++) {
+        if (i == index)
+            clusters[i].isdefault = true;
+        else
+            clusters[i].isdefault = false;
+    }
+
+    // For reference, here is what the code on the other side is basically doing:
+//    emit setClusterServerName(clusters[index].server);
+//    emit setClusterTcpPort(clusters[index].port);
+//    emit setClusterUserName(clusters[index].userName);
+//    emit setClusterPassword(clusters[index].password);
+//    emit setClusterTimeout(clusters[index].timeout);
+
+    // We are using the not-arrayed data in preferences
+    // to communicate the current cluster information:
+    prefs->clusterTcpServerName = clusters[index].server;
+    prefs->clusterTcpPort = clusters[index].port;
+    prefs->clusterTcpUserName = clusters[index].userName;
+    prefs->clusterTcpPassword = clusters[index].password;
+    prefs->clusterTimeout = clusters[index].timeout;
+    prefs->clusterTcpEnable = ui->clusterTcpEnable->isChecked();
+
+    emit changedClusterPrefs(cl_clusterTcpServerName |
+                             cl_clusterTcpPort |
+                             cl_clusterTcpUserName |
+                             cl_clusterTcpPassword |
+                             cl_clusterTimeout |
+                             cl_clusterTcpEnable);
+
+}
+
+void settingswidget::on_clusterUdpEnable_clicked(bool checked)
+{
+    prefs->clusterUdpEnable = checked;
+    emit changedClusterPref(cl_clusterUdpEnable);
+}
+
+void settingswidget::on_clusterTcpEnable_clicked(bool checked)
+{
+    prefs->clusterTcpEnable = checked;
+    emit changedClusterPref(cl_clusterTcpEnable);
+}
+
+void settingswidget::on_clusterTcpSetNowBtn_clicked()
+{
+    // Maybe this will be easier than "hit enter" ?
+    int index = ui->clusterServerNameCombo->currentIndex();
+    on_clusterServerNameCombo_currentIndexChanged(index);
+}
+
+void settingswidget::on_clusterServerNameCombo_currentTextChanged(const QString &text)
+{
+    if (text.isEmpty()) {
+        int index = ui->clusterServerNameCombo->currentIndex();
+        ui->clusterServerNameCombo->removeItem(index);
+        clusters.removeAt(index);
+        if (clusters.size() == 0)
+        {
+            ui->clusterTcpPortLineEdit->setEnabled(false);
+            ui->clusterUsernameLineEdit->setEnabled(false);
+            ui->clusterPasswordLineEdit->setEnabled(false);
+            ui->clusterTimeoutLineEdit->setEnabled(false);
+        }
+    }
+}
+
+void settingswidget::on_clusterTcpPortLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].port = ui->clusterTcpPortLineEdit->displayText().toInt();
+        //emit setClusterTcpPort(clusters[index].port);
+        prefs->clusterTcpPort = clusters[index].port;
+        emit changedClusterPref(cl_clusterTcpPort);
+    }
+}
+
+void settingswidget::on_clusterUsernameLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].userName = ui->clusterUsernameLineEdit->text();
+        //emit setClusterUserName(clusters[index].userName);
+        prefs->clusterTcpUserName = clusters[index].userName;
+        emit changedClusterPref(cl_clusterTcpUserName);
+    }
+}
+
+void settingswidget::on_clusterPasswordLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].password = ui->clusterPasswordLineEdit->text();
+        //emit setClusterPassword(clusters[index].password);
+        prefs->clusterTcpPassword = clusters[index].password;
+        emit changedClusterPref(cl_clusterTcpPassword);
+    }
+}
+
+void settingswidget::on_clusterTimeoutLineEdit_editingFinished()
+{
+    int index = ui->clusterServerNameCombo->currentIndex();
+    if (index < clusters.size())
+    {
+        clusters[index].timeout = ui->clusterTimeoutLineEdit->displayText().toInt();
+        //emit setClusterTimeout(clusters[index].timeout);
+        prefs->clusterTimeout = clusters[index].timeout;
+        emit changedClusterPref(cl_clusterTimeout);
+    }
+}
+
+void settingswidget::on_clusterUdpPortLineEdit_editingFinished()
+{
+    bool ok = false;
+    int p = ui->clusterUdpPortLineEdit->text().toInt(&ok);
+    if(ok)
+    {
+        prefs->clusterUdpPort = p;
+        emit changedClusterPref(cl_clusterUdpPort);
     }
 }

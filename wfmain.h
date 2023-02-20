@@ -229,6 +229,7 @@ signals:
     void initUsbController(int sens);
     void sendUsbControllerCommands(QVector<COMMAND>* cmds);
     void sendUsbControllerButtons(QVector<BUTTON>* buts);
+    void haveClusterList(QList<clusterSettings> c);
     void setClusterUdpPort(int port);
     void setClusterEnableUdp(bool udp);
     void setClusterEnableTcp(bool tcp);

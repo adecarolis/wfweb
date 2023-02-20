@@ -41,7 +41,7 @@
      <item>
       <widget class="QStackedWidget" name="settingsStack">
        <property name="currentIndex">
-        <number>4</number>
+        <number>5</number>
        </property>
        <widget class="QWidget" name="radioAccess">
         <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -1211,8 +1211,8 @@
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>916</width>
-                 <height>311</height>
+                 <width>570</width>
+                 <height>254</height>
                 </rect>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">
@@ -3018,6 +3018,13 @@
             <widget class="QLineEdit" name="clusterTcpPortLineEdit">
              <property name="inputMask">
               <string>00000</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QPushButton" name="clusterTcpSetNowBtn">
+             <property name="text">
+              <string>SetNow</string>
              </property>
             </widget>
            </item>

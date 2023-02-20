@@ -66,9 +66,10 @@ enum prefClusterItem {
     cl_clusterTcpServerName = 1 << 3,
     cl_clusterTcpUserName = 1 << 4,
     cl_clusterTcpPassword = 1 << 5,
-    cl_clusterTimeout = 1 << 6,
-    cl_clusterSkimmerSpotsEnable = 1 << 7,
-    cl_all = 1 << 8
+    cl_clusterTcpPort = 1 << 6,
+    cl_clusterTimeout = 1 << 7,
+    cl_clusterSkimmerSpotsEnable = 1 << 8,
+    cl_all = 1 << 9
 };
 
 
@@ -132,6 +133,7 @@ struct preferences {
     QString clusterTcpServerName;
     QString clusterTcpUserName;
     QString clusterTcpPassword;
+    int clusterTcpPort = 7300;
     int clusterTimeout; // used?
     bool clusterSkimmerSpotsEnable; // where is this used?
 };

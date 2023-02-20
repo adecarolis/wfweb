@@ -3,6 +3,7 @@
 
 #include <QStandardItemModel>
 #include <QWidget>
+#include <QList>
 #include <QInputDialog>
 #include <QFile>
 #include <QSlider>
@@ -15,6 +16,7 @@
 #include "prefs.h"
 #include "colorprefs.h"
 #include "udpbase.h" // for udp preferences
+#include "cluster.h" // for clusterSettings
 
 namespace Ui {
 class settingswidget;
@@ -32,6 +34,7 @@ public:
 public slots:
     void acceptPreferencesPtr(preferences *pptr);
     void acceptUdpPreferencesPtr(udpPreferences *upptr);
+    void copyClusterList(QList<clusterSettings> c);
 
     void updateIfPrefs(int items);
     void updateRaPrefs(int items);
@@ -140,12 +143,33 @@ private slots:
 
     void on_tcpServerPortTxt_editingFinished();
 
+    void on_clusterServerNameCombo_currentIndexChanged(int index);
+
+    void on_clusterUdpEnable_clicked(bool checked);
+
+    void on_clusterTcpEnable_clicked(bool checked);
+
+    void on_clusterTcpSetNowBtn_clicked();
+
+    void on_clusterServerNameCombo_currentTextChanged(const QString &arg1);
+
+    void on_clusterTcpPortLineEdit_editingFinished();
+
+    void on_clusterUsernameLineEdit_editingFinished();
+
+    void on_clusterPasswordLineEdit_editingFinished();
+
+    void on_clusterTimeoutLineEdit_editingFinished();
+
+    void on_clusterUdpPortLineEdit_editingFinished();
+
 private:
     Ui::settingswidget *ui;
     void createSettingsListItems();
     void populateComboBoxes();
     void updateAllPrefs();
     void updateUnderlayMode();
+    void setUItoClustersList();
     void quietlyUpdateSlider(QSlider* sl, int val);
     void quietlyUpdateSpinbox(QSpinBox *sb, int val);
     void quietlyUpdateCheckbox(QCheckBox *cb, bool isChecked);
@@ -161,7 +185,11 @@ private:
     bool haveAudioOutputs = false;
     bool haveServerAudioInputs = false;
     bool haveServerAudioOutputs = false;
+    bool haveClusterList = false;
     bool updatingUIFromPrefs = false;
+
+    QList<clusterSettings> clusters;
+
 };
 
 #endif // SETTINGSWIDGET_H
