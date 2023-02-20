@@ -25,15 +25,15 @@ cwSender::~cwSender()
     qDebug(logCW()) << "Running CW Sender destructor.";
 
     if (toneThread != Q_NULLPTR) {
-        for (auto conn: connections)
-        {
-            disconnect(conn);
-        }
         toneThread->quit();
         toneThread->wait();
         toneThread = Q_NULLPTR;
         tone = Q_NULLPTR;
         /* Finally disconnect all connections */
+        for (auto conn: connections)
+        {
+            disconnect(conn);
+        }
         connections.clear();
     }
 
@@ -272,9 +272,8 @@ void cwSender::on_sidetoneEnableChk_clicked(bool clicked)
         tone->moveToThread(toneThread);
         toneThread->start();
 
-        connect(toneThread, &QThread::finished,
-            [=]() { tone->deleteLater(); });
-
+        connections.append(connect(toneThread, &QThread::finished,
+            [=]() { tone->deleteLater(); }));
         connections.append(connect(this, &cwSender::sendCW,
             [=](const QString& text) { tone->send(text); ui->sidetoneEnableChk->setEnabled(false); }));
         connections.append(connect(this, &cwSender::setKeySpeed,
@@ -292,15 +291,15 @@ void cwSender::on_sidetoneEnableChk_clicked(bool clicked)
 
     } else if (!clicked && toneThread != Q_NULLPTR) {
         /* disconnect all connections */
+        toneThread->quit();
+        toneThread->wait();
+        toneThread = Q_NULLPTR;
+        tone = Q_NULLPTR;
         for (auto conn: connections)
         {
             disconnect(conn);
         }
         connections.clear();
-        toneThread->quit();
-        toneThread->wait();
-        toneThread = Q_NULLPTR;
-        tone = Q_NULLPTR;
     }
 }
 
