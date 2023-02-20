@@ -18,28 +18,6 @@ cwSender::cwSender(QWidget *parent) :
     ui->statusbar->setToolTipDuration(3000);
     this->setToolTipDuration(3000);
     connect(ui->textToSendEdit->lineEdit(), &QLineEdit::textEdited, this, &cwSender::textChanged);
-
-    toneThread = new QThread(this);
-    toneThread->setObjectName("sidetone()");
-
-    tone = new cwSidetone(sidetoneLevel, ui->wpmSpin->value(),ui->pitchSpin->value(),ui->dashSpin->value(),this);
-    tone->moveToThread(toneThread);
-    toneThread->start();
-
-    connect(toneThread, &QThread::finished,
-        [=]() { tone->deleteLater(); });
-    connect(this, &cwSender::sidetone,
-        [=](const QString& text) { tone->send(text); });
-    connect(this, &cwSender::setKeySpeed,
-        [=](const unsigned char& wpm) { tone->setSpeed(wpm); });
-    connect(this, &cwSender::setDashRatio,
-        [=](const unsigned char& ratio) { tone->setRatio(ratio); });
-    connect(this, &cwSender::setPitch,
-        [=](const unsigned char& pitch) { tone->setFrequency(pitch); });
-    connect(this, &cwSender::setLevel,
-        [=](const unsigned char& level) { tone->setLevel(level); });
-    connect(this, &cwSender::stopCW,
-        [=]() { tone->stopSending(); });
 }
 
 cwSender::~cwSender()
@@ -47,10 +25,16 @@ cwSender::~cwSender()
     qDebug(logCW()) << "Running CW Sender destructor.";
 
     if (toneThread != Q_NULLPTR) {
+        for (auto conn: connections)
+        {
+            disconnect(conn);
+        }
         toneThread->quit();
         toneThread->wait();
         toneThread = Q_NULLPTR;
         tone = Q_NULLPTR;
+        /* Finally disconnect all connections */
+        connections.clear();
     }
 
     delete ui;
@@ -147,9 +131,6 @@ void cwSender::textChanged(QString text)
             ui->transcriptText->moveCursor(QTextCursor::End);
 
             emit sendCW(text.mid(0, 30));
-            if (ui->sidetoneEnableChk->isChecked())
-                emit sidetone(text.mid(0,30));
-
         }
         if( (currentMode != modeCW) && (currentMode != modeCW_R) )
         {
@@ -184,8 +165,6 @@ void cwSender::on_sendBtn_clicked()
         ui->statusbar->showMessage("Sending CW", 3000);
 
         emit sendCW(text);
-        if (ui->sidetoneEnableChk->isChecked())
-            emit sidetone(text);
     }
 
     if( (currentMode != modeCW) && (currentMode != modeCW_R) )
@@ -284,6 +263,45 @@ void cwSender::on_macro10btn_clicked()
 void cwSender::on_sidetoneEnableChk_clicked(bool clicked)
 {
     ui->sidetoneLevelSlider->setEnabled(clicked);
+    if (clicked && toneThread == Q_NULLPTR)
+    {
+        toneThread = new QThread(this);
+        toneThread->setObjectName("sidetone()");
+
+        tone = new cwSidetone(sidetoneLevel, ui->wpmSpin->value(),ui->pitchSpin->value(),ui->dashSpin->value(),this);
+        tone->moveToThread(toneThread);
+        toneThread->start();
+
+        connect(toneThread, &QThread::finished,
+            [=]() { tone->deleteLater(); });
+
+        connections.append(connect(this, &cwSender::sendCW,
+            [=](const QString& text) { tone->send(text); ui->sidetoneEnableChk->setEnabled(false); }));
+        connections.append(connect(this, &cwSender::setKeySpeed,
+            [=](const unsigned char& wpm) { tone->setSpeed(wpm); }));
+        connections.append(connect(this, &cwSender::setDashRatio,
+            [=](const unsigned char& ratio) { tone->setRatio(ratio); }));
+        connections.append(connect(this, &cwSender::setPitch,
+            [=](const unsigned char& pitch) { tone->setFrequency(pitch); }));
+        connections.append(connect(this, &cwSender::setLevel,
+            [=](const unsigned char& level) { tone->setLevel(level); }));
+        connections.append(connect(this, &cwSender::stopCW,
+            [=]() { tone->stopSending(); }));
+        connections.append(connect(tone, &cwSidetone::finished,
+            [=]() { ui->sidetoneEnableChk->setEnabled(true); }));
+
+    } else if (!clicked && toneThread != Q_NULLPTR) {
+        /* disconnect all connections */
+        for (auto conn: connections)
+        {
+            disconnect(conn);
+        }
+        connections.clear();
+        toneThread->quit();
+        toneThread->wait();
+        toneThread = Q_NULLPTR;
+        tone = Q_NULLPTR;
+    }
 }
 
 void cwSender::on_sidetoneLevelSlider_valueChanged(int val)
@@ -332,8 +350,6 @@ void cwSender::runMacroButton(int buttonNumber)
 
     for (int i = 0; i < outText.size(); i = i + 30) {
         emit sendCW(outText.mid(i,30));
-        if (ui->sidetoneEnableChk->isChecked())
-            emit sidetone(outText.mid(i,30));
     }
 
     ui->textToSendEdit->setFocus();
@@ -433,6 +449,7 @@ void cwSender::setSendImmediate(bool val)
 void cwSender::setSidetoneEnable(bool val)
 {
     ui->sidetoneEnableChk->setChecked(val);
+    on_sidetoneEnableChk_clicked(val);
 }
 
 void cwSender::setSidetoneLevel(int val)

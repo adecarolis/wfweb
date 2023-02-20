@@ -73,6 +73,7 @@ cwSidetone::cwSidetone(int level, int speed, int freq, double ratio, QWidget* pa
 
 cwSidetone::~cwSidetone()
 {
+    qInfo(logCW()) << "cwSidetone() finished";
     this->stop();
     output->stop();
 }

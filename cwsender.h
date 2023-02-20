@@ -7,6 +7,7 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QThread>
+#include <QList>
 #include <math.h>
 #include "cwsidetone.h"
 #include "wfviewtypes.h"
@@ -111,7 +112,8 @@ private:
     void setMacroButtonText(QString btnText, QPushButton *btn);
     cwSidetone* tone=Q_NULLPTR;
     QThread* toneThread = Q_NULLPTR;
-
+    bool sidetoneWasEnabled=false;
+    QList<QMetaObject::Connection> connections;
 };
 
 #endif // CWSENDER_H
