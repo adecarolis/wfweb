@@ -5535,6 +5535,16 @@ void rigCommander::stateUpdated()
                  }
                  getDialLock();
                  break;
+
+            case ANN:
+            case APO:
+            case BACKLIGHT:
+            case BEEP:
+            case TIME:
+            case BAT:
+            case KEYLIGHT:
+                break;
+
             }
         }
         ++i;
