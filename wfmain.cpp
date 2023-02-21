@@ -2926,7 +2926,34 @@ void wfmain::extChangedClusterPref(prefClusterItem i)
 
 void wfmain::extChangedUdpPref(udpPrefsItem i)
 {
-
+    switch(i)
+    {
+    case u_ipAddress:
+        break;
+    case u_controlLANPort:
+        break;
+    case u_serialLANPort:
+        // Not used in the UI.
+        break;
+    case u_audioLANPort:
+        // Not used in the UI.
+        break;
+    case u_username:
+        break;
+    case u_password:
+        break;
+    case u_clientName:
+        // Not used in the UI.
+        break;
+    case u_waterfallFormat:
+        // Not used in the UI.
+        break;
+    case u_halfDuplex:
+        break;
+    default:
+        qWarning(logGui()) << "Did not find matching pref element in wfmain for UDP pref item " << (int)i;
+        break;
+    }
 }
 
 void wfmain::serverAddUserLine(const QString& user, const QString& pass, const int& type)
@@ -4989,6 +5016,9 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->modInputCombo->clear();
         ui->modInputDataCombo->clear();
 
+        QStringList modSources;
+        QVector<rigInput> modData;
+
         for(int i=0; i < rigCaps.inputs.length(); i++)
         {
             switch(rigCaps.inputs.at(i))
@@ -5018,12 +5048,18 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             }
             ui->modInputCombo->addItem(inName, rigCaps.inputs.at(i));
             ui->modInputDataCombo->addItem(inName, rigCaps.inputs.at(i));
+            modSources.append(inName);
+            modData.append(rigCaps.inputs.at(i));
         }
         if(rigCaps.inputs.length() == 0)
         {
             ui->modInputCombo->addItem("None", inputNone);
             ui->modInputDataCombo->addItem("None", inputNone);
+            modSources.append("None");
+            modData.append(inputNone);
         }
+        setupui->updateModSourceList(modSources, modData);
+        setupui->updateDataModSourceList(modSources, modData);
 
         ui->attSelCombo->clear();
         if(rigCaps.hasAttenuator)
@@ -6580,31 +6616,37 @@ void wfmain::on_lanEnableBtn_clicked(bool checked)
 
 void wfmain::on_ipAddressTxt_textChanged(QString text)
 {
+    //migrated
     udpPrefs.ipAddress = text;
 }
 
 void wfmain::on_controlPortTxt_textChanged(QString text)
 {
+    // migrated
     udpPrefs.controlLANPort = text.toUInt();
 }
 
 void wfmain::on_usernameTxt_textChanged(QString text)
 {
+    // migrated
     udpPrefs.username = text;
 }
 
 void wfmain::on_passwordTxt_textChanged(QString text)
 {
+    // migrated
     udpPrefs.password = text;
 }
 
 void wfmain::on_audioDuplexCombo_currentIndexChanged(int value)
 {
+    // migrated
     udpPrefs.halfDuplex = (bool)value;
 }
 
 void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
 {
+    // TODO: Change function name, send value from setupui to here.
 
     if (value>=0) {
         if (prefs.audioSystem == qtAudio) {
@@ -8775,6 +8817,7 @@ void wfmain::receiveClusterOutput(QString text) {
     ui->clusterOutputTextEdit->moveCursor(QTextCursor::End);
     ui->clusterOutputTextEdit->insertPlainText(text);
     ui->clusterOutputTextEdit->moveCursor(QTextCursor::End);
+    setupui->insertClusterOutputText(text);
 }
 
 void wfmain::on_clusterUdpEnable_clicked(bool enable)
@@ -8990,7 +9033,7 @@ void wfmain::receiveSpots(QList<spotData> spots)
 
 void wfmain::on_clusterPopOutBtn_clicked()
 {
-
+    // can be removed now
     if (settingsTabisAttached)
     {
         settingsTab = ui->tabWidget->currentWidget();
@@ -9018,12 +9061,14 @@ void wfmain::on_clusterPopOutBtn_clicked()
 
 void wfmain::on_clusterSkimmerSpotsEnable_clicked(bool enable)
 {
+    // migrated
     prefs.clusterSkimmerSpotsEnable = enable;
     emit setClusterSkimmerSpots(enable);
 }
 
 void wfmain::on_clickDragTuningEnableChk_clicked(bool checked)
 {
+    // migrated
     prefs.clickDragTuningEnable = checked;
 }
 

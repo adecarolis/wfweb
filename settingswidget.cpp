@@ -113,6 +113,13 @@ void settingswidget::copyClusterList(QList<clusterSettings> c)
     setUItoClustersList();
 }
 
+void settingswidget::insertClusterOutputText(QString text)
+{
+    ui->clusterOutputTextEdit->moveCursor(QTextCursor::End);
+    ui->clusterOutputTextEdit->insertPlainText(text);
+    ui->clusterOutputTextEdit->moveCursor(QTextCursor::End);
+}
+
 void settingswidget::setUItoClustersList()
 {
     if(haveClusterList)
@@ -552,12 +559,16 @@ void settingswidget::updateUdpPref(udpPrefsItem upi)
     switch(upi)
     {
     case u_ipAddress:
+        ui->ipAddressTxt->blockSignals(true);
         ui->ipAddressTxt->setEnabled(ui->lanEnableBtn->isChecked());
         ui->ipAddressTxt->setText(udpPrefs->ipAddress);
+        ui->ipAddressTxt->blockSignals(false);
         break;
     case u_controlLANPort:
+        ui->controlPortTxt->blockSignals(true);
         ui->controlPortTxt->setEnabled(ui->lanEnableBtn->isChecked());
         ui->controlPortTxt->setText(QString("%1").arg(udpPrefs->controlLANPort));
+        ui->controlPortTxt->blockSignals(false);
         break;
     case u_serialLANPort:
         // Not used in the UI.
@@ -566,21 +577,29 @@ void settingswidget::updateUdpPref(udpPrefsItem upi)
         // Not used in the UI.
         break;
     case u_username:
+        ui->usernameTxt->blockSignals(true);
         ui->usernameTxt->setEnabled(ui->lanEnableBtn->isChecked());
         ui->usernameTxt->setText(QString("%1").arg(udpPrefs->username));
+        ui->usernameTxt->blockSignals(false);
         break;
     case u_password:
+        ui->passwordTxt->blockSignals(true);
         ui->passwordTxt->setEnabled(ui->lanEnableBtn->isChecked());
         ui->passwordTxt->setText(QString("%1").arg(udpPrefs->password));
+        ui->passwordTxt->blockSignals(false);
         break;
     case u_clientName:
         // Not used in the UI.
         break;
     case u_waterfallFormat:
-        // Not used in the UI.
+        ui->waterfallFormatCombo->blockSignals(true);
+        ui->waterfallFormatCombo->setCurrentIndex(prefs->waterfallFormat);
+        ui->waterfallFormatCombo->blockSignals(false);
         break;
     case u_halfDuplex:
+        ui->audioDuplexCombo->blockSignals(true);
         ui->audioDuplexCombo->setCurrentIndex((int)udpPrefs->halfDuplex);
+        ui->audioDuplexCombo->blockSignals(false);
         break;
     default:
         qWarning(logGui()) << "Did not find matching UI element for UDP pref item " << (int)upi;
@@ -721,7 +740,27 @@ void settingswidget::updateVSPList(QStringList deviceList, QVector<int> data)
     }
 }
 
-// TODO: VSP from wfmain line 1498...
+void settingswidget::updateModSourceList(QStringList deviceNames, QVector<rigInput> data)
+{
+    ui->modInputCombo->blockSignals(true);
+    ui->modInputCombo->clear();
+    for(int i=0; i < deviceNames.length(); i++)
+    {
+        ui->modInputCombo->addItem(deviceNames.at(i), data.at(i));
+    }
+    ui->modInputCombo->blockSignals(false);
+}
+
+void settingswidget::updateDataModSourceList(QStringList deviceNames, QVector<rigInput> data)
+{
+    ui->modInputDataCombo->blockSignals(true);
+    ui->modInputDataCombo->clear();
+    for(int i=0; i < deviceNames.length(); i++)
+    {
+        ui->modInputDataCombo->addItem(deviceNames.at(i), data.at(i));
+    }
+    ui->modInputDataCombo->blockSignals(false);
+}
 
 // Utility Functions:
 void settingswidget::updateUnderlayMode()
@@ -785,6 +824,11 @@ void settingswidget::quietlyUpdateRadiobutton(QRadioButton *rb, bool isChecked)
 }
 
 // Resulting from User Interaction
+
+void settingswidget::on_debugBtn_clicked()
+{
+    qDebug(logGui()) << "Debug button pressed in settings widget.";
+}
 
 void settingswidget::on_settingsList_currentRowChanged(int currentRow)
 {
@@ -1163,7 +1207,6 @@ void settingswidget::on_clusterServerNameCombo_currentIndexChanged(int index)
                              cl_clusterTcpPassword |
                              cl_clusterTimeout |
                              cl_clusterTcpEnable);
-
 }
 
 void settingswidget::on_clusterUdpEnable_clicked(bool checked)
@@ -1258,4 +1301,46 @@ void settingswidget::on_clusterUdpPortLineEdit_editingFinished()
         prefs->clusterUdpPort = p;
         emit changedClusterPref(cl_clusterUdpPort);
     }
+}
+
+void settingswidget::on_clusterSkimmerSpotsEnable_clicked(bool checked)
+{
+    prefs->clusterSkimmerSpotsEnable = checked;
+    emit changedClusterPref(cl_clusterSkimmerSpotsEnable);
+}
+
+
+void settingswidget::on_ipAddressTxt_textChanged(const QString &arg1)
+{
+    udpPrefs->ipAddress = arg1;
+    emit changedUdpPref(u_ipAddress);
+}
+
+void settingswidget::on_usernameTxt_textChanged(const QString &arg1)
+{
+    udpPrefs->username = arg1;
+    emit changedUdpPref(u_username);
+}
+
+void settingswidget::on_controlPortTxt_textChanged(const QString &arg1)
+{
+    bool ok = false;
+    int port = arg1.toUInt(&ok);
+    if(ok)
+    {
+        udpPrefs->controlLANPort = port;
+        emit changedUdpPref(u_controlLANPort);
+    }
+}
+
+void settingswidget::on_passwordTxt_textChanged(const QString &arg1)
+{
+    udpPrefs->password = arg1;
+    emit changedUdpPref(u_password);
+}
+
+void settingswidget::on_audioDuplexCombo_currentIndexChanged(int index)
+{
+    udpPrefs->halfDuplex = (bool)index;
+    emit changedUdpPref(u_halfDuplex);
 }
