@@ -4864,6 +4864,13 @@ void wfmain::initPeriodicCommands()
     rapidPollCmdQueueEnabled = false;
     rapidPollCmdQueue.clear();
     rapidPollCmdQueueEnabled = true;
+
+    if (rigCaps.hasSpectrum) {
+        insertPeriodicRapidCmdUnique(cmdGetTPBFInner);
+        insertPeriodicRapidCmdUnique(cmdGetTPBFOuter);
+        insertPeriodicRapidCmdUnique(cmdGetPassband);
+    }
+
 }
 
 void wfmain::insertPeriodicRapidCmd(cmds cmd)
@@ -5700,12 +5707,6 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
         {
 
             // Remove all "Slow" commands (they will be added later if needed)
-            removePeriodicRapidCmd(cmdGetCwPitch);
-            removePeriodicRapidCmd(cmdGetDashRatio);
-            removePeriodicRapidCmd(cmdGetKeySpeed);
-            removePeriodicRapidCmd(cmdGetPassband);
-            removePeriodicRapidCmd(cmdGetTPBFInner);
-            removePeriodicRapidCmd(cmdGetTPBFOuter);
 
             quint16 maxPassbandHz = 0;
             switch ((mode_kind)mode) {
@@ -5718,12 +5719,15 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
                     passbandWidth = 0.007;
                 passbandCenterFrequency = 0.0;
                 maxPassbandHz = 10E3;
+                removePeriodicRapidCmd(cmdGetPassband);
+                removePeriodicRapidCmd(cmdGetTPBFInner);
+                removePeriodicRapidCmd(cmdGetTPBFOuter);
                 break;
             case modeCW:
             case modeCW_R:
-                insertPeriodicRapidCmd(cmdGetCwPitch);
-                insertPeriodicRapidCmd(cmdGetDashRatio);
-                insertPeriodicRapidCmd(cmdGetKeySpeed);
+                insertPeriodicRapidCmdUnique(cmdGetCwPitch);
+                insertPeriodicRapidCmdUnique(cmdGetDashRatio);
+                insertPeriodicRapidCmdUnique(cmdGetKeySpeed);
                 maxPassbandHz = 3600;
                 break;
             case modeAM:
@@ -5739,6 +5743,23 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
                 passbandCenterFrequency = 0.0;
                 maxPassbandHz = 3600;
                 break;
+            }
+
+            if ((mode_kind)mode != modeFM && currentModeInfo.mk == modeFM)
+            {
+                /* mode was FM but now isn't so insert commands */
+                insertPeriodicRapidCmdUnique(cmdGetPassband);
+                insertPeriodicRapidCmdUnique(cmdGetTPBFInner);
+                insertPeriodicRapidCmdUnique(cmdGetTPBFOuter);
+            }
+
+
+            if (((mode_kind)mode != modeCW && (mode_kind)mode != modeCW_R) && (currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R))
+            {
+                /* mode was CW/CWR but now isn't so remove CW commands */
+                removePeriodicRapidCmd(cmdGetCwPitch);
+                removePeriodicRapidCmd(cmdGetDashRatio);
+                removePeriodicRapidCmd(cmdGetKeySpeed);
             }
 
             for (int i = 0; i < ui->modeSelectCombo->count(); i++)
@@ -5774,14 +5795,6 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
             if (maxPassbandHz != 0)
             {
                 trxadj->setMaxPassband(maxPassbandHz);
-            }
-
-            if (currentModeInfo.mk != modeFM) 
-            {
-
-                insertPeriodicRapidCmd(cmdGetPassband);
-                insertPeriodicRapidCmd(cmdGetTPBFInner);
-                insertPeriodicRapidCmd(cmdGetTPBFOuter);
             }
             
             // Note: we need to know if the DATA mode is active to reach mode-D
