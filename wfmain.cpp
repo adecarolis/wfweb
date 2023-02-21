@@ -5700,13 +5700,12 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
         {
 
             // Remove all "Slow" commands (they will be added later if needed)
-            removeSlowPeriodicCommand(cmdGetCwPitch);
-            removeSlowPeriodicCommand(cmdGetDashRatio);
-            removeSlowPeriodicCommand(cmdGetKeySpeed);
-            removeSlowPeriodicCommand(cmdGetPassband);
-            removeSlowPeriodicCommand(cmdGetTPBFInner);
-            removeSlowPeriodicCommand(cmdGetTPBFOuter);
-
+            removePeriodicRapidCmd(cmdGetCwPitch);
+            removePeriodicRapidCmd(cmdGetDashRatio);
+            removePeriodicRapidCmd(cmdGetKeySpeed);
+            removePeriodicRapidCmd(cmdGetPassband);
+            removePeriodicRapidCmd(cmdGetTPBFInner);
+            removePeriodicRapidCmd(cmdGetTPBFOuter);
 
             quint16 maxPassbandHz = 0;
             switch ((mode_kind)mode) {
@@ -5722,9 +5721,9 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
                 break;
             case modeCW:
             case modeCW_R:
-                insertSlowPeriodicCommand(cmdGetCwPitch,128);
-                insertSlowPeriodicCommand(cmdGetDashRatio,128);
-                insertSlowPeriodicCommand(cmdGetKeySpeed,128);
+                insertPeriodicRapidCmd(cmdGetCwPitch);
+                insertPeriodicRapidCmd(cmdGetDashRatio);
+                insertPeriodicRapidCmd(cmdGetKeySpeed);
                 maxPassbandHz = 3600;
                 break;
             case modeAM:
@@ -5779,12 +5778,10 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
 
             if (currentModeInfo.mk != modeFM) 
             {
-                insertSlowPeriodicCommand(cmdGetPassband,128);
-                insertSlowPeriodicCommand(cmdGetTPBFInner,128);
-                insertSlowPeriodicCommand(cmdGetTPBFOuter,128);
-                issueDelayedCommandUnique(cmdGetPassband);
-                issueDelayedCommandUnique(cmdGetTPBFInner);
-                issueDelayedCommandUnique(cmdGetTPBFOuter);
+
+                insertPeriodicRapidCmd(cmdGetPassband);
+                insertPeriodicRapidCmd(cmdGetTPBFInner);
+                insertPeriodicRapidCmd(cmdGetTPBFOuter);
             }
             
             // Note: we need to know if the DATA mode is active to reach mode-D
