@@ -96,6 +96,7 @@ signals:
 
 private slots:
     void on_settingsList_currentRowChanged(int currentRow);
+    void onServerUserFieldChanged();
     void on_lanEnableBtn_clicked(bool checked);
     void on_autoSSBchk_clicked(bool checked);
     void on_useSystemThemeChk_clicked(bool checked);
@@ -147,6 +148,8 @@ private slots:
     void on_serverRXAudioInputCombo_currentIndexChanged(int index);
     void on_serverTXAudioOutputCombo_currentIndexChanged(int index);
     void on_serverEnableCheckbox_clicked(bool checked);
+
+    void on_serverAddUserBtn_clicked();
 
 private:
     Ui::settingswidget *ui;

@@ -7850,8 +7850,8 @@ void wfmain::setAudioDevicesUI()
         serverInputIndex = audioDev->findOutput("Server", serverConfig.rigs.first()->txAudioSetup.name);
     }
 
-    setupui->updateServerRXAudioInputs(audioDev->getInputs(), audioDev->getNumCharsIn(), serverInputIndex);
-    setupui->updateServerTXAudioOutputs(audioDev->getOutputs(), audioDev->getNumCharsOut(), serverOutputIndex);
+    setupui->updateServerRXAudioInputs(audioDev->getInputs(), serverInputIndex, audioDev->getNumCharsIn());
+    setupui->updateServerTXAudioOutputs(audioDev->getOutputs(), serverOutputIndex, audioDev->getNumCharsOut());
 
 
     qDebug(logSystem()) << "Audio devices done.";

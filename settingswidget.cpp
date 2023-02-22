@@ -762,8 +762,8 @@ void settingswidget::updateServerTXAudioOutputs(QStringList deviceList, int curr
     ui->serverTXAudioOutputCombo->addItems(deviceList);
     ui->serverTXAudioOutputCombo->setCurrentIndex(-1);
     ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(chars + 30));
-    ui->serverTXAudioOutputCombo->blockSignals(false);
     ui->serverTXAudioOutputCombo->setCurrentIndex(currentIndex);
+    ui->serverTXAudioOutputCombo->blockSignals(false);
     haveServerAudioOutputs = true;
 }
 
@@ -776,8 +776,8 @@ void settingswidget::updateServerRXAudioInputs(QStringList deviceList, int curre
     ui->serverRXAudioInputCombo->addItems(deviceList);
     ui->serverRXAudioInputCombo->setCurrentIndex(-1);
     ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(chars+30));
-    ui->serverRXAudioInputCombo->blockSignals(false);
     ui->serverRXAudioInputCombo->setCurrentIndex(currentIndex);
+    ui->serverRXAudioInputCombo->blockSignals(false);
     haveServerAudioInputs = true;
 }
 
@@ -1004,6 +1004,60 @@ void settingswidget::on_debugBtn_clicked()
 void settingswidget::on_settingsList_currentRowChanged(int currentRow)
 {
     ui->settingsStack->setCurrentIndex(currentRow);
+}
+
+void settingswidget::onServerUserFieldChanged()
+{
+    if(!haveServerConfig) {
+        qCritical(logGui()) << "Do not have serverConfig, cannot edit users.";
+        return;
+    }
+    int row = sender()->property("row").toInt();
+    int col = sender()->property("col").toInt();
+    qDebug() << "Server User field col" << col << "row" << row << "changed";
+
+    // This is a new user line so add to serverUsersTable
+    if (serverConfig->users.length() <= row)
+    {
+        qInfo() << "Something bad has happened, serverConfig.users is shorter than table!";
+    }
+    else
+    {
+        if (col == 0)
+        {
+            QLineEdit* username = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 0);
+            if (username->text() != serverConfig->users[row].username) {
+                serverConfig->users[row].username = username->text();
+            }
+        }
+        else if (col == 1)
+        {
+            QLineEdit* password = (QLineEdit*)ui->serverUsersTable->cellWidget(row, 1);
+            QByteArray pass;
+            passcode(password->text(), pass);
+            if (QString(pass) != serverConfig->users[row].password) {
+                serverConfig->users[row].password = pass;
+            }
+        }
+        else if (col == 2)
+        {
+            QComboBox* comboBox = (QComboBox*)ui->serverUsersTable->cellWidget(row, 2);
+            serverConfig->users[row].userType = comboBox->currentIndex();
+        }
+        else if (col == 3)
+        {
+            serverConfig->users.removeAt(row);
+            ui->serverUsersTable->setRowCount(0);
+            foreach(SERVERUSER user, serverConfig->users)
+            {
+                serverAddUserLine(user.username, user.password, user.userType);
+            }
+        }
+        if (row == ui->serverUsersTable->rowCount() - 1) {
+            ui->serverAddUserBtn->setEnabled(true);
+        }
+
+    }
 }
 
 void settingswidget::on_lanEnableBtn_clicked(bool checked)
@@ -1539,4 +1593,21 @@ void settingswidget::on_serverEnableCheckbox_clicked(bool checked)
 {
     serverConfig->enabled = checked;
     emit changedServerConfig(s_enabled);
+}
+
+void settingswidget::on_serverAddUserBtn_clicked()
+{
+    if(!haveServerConfig)
+    {
+        qCritical(logGui()) << "Cannot modify users without valid serverConfig.";
+        return;
+    }
+    serverAddUserLine("", "", 0);
+    SERVERUSER user;
+    user.username = "";
+    user.password = "";
+    user.userType = 0;
+    serverConfig->users.append(user);
+
+    ui->serverAddUserBtn->setEnabled(false);
 }
