@@ -415,8 +415,8 @@ private slots:
     void on_usernameTxt_textChanged(QString text);
     void on_passwordTxt_textChanged(QString text);
     void on_audioDuplexCombo_currentIndexChanged(int value);
-    void on_audioOutputCombo_currentIndexChanged(int value);
-    void on_audioInputCombo_currentIndexChanged(int value);
+    void changedAudioInput(int value);
+    void changedAudioOutput(int value);
     void on_toFixedBtn_clicked();
     void on_connectBtn_clicked();
     void on_rxLatencySlider_valueChanged(int value);
@@ -471,8 +471,8 @@ private slots:
     void on_serverControlPortText_textChanged(QString text);
     void on_serverCivPortText_textChanged(QString text);
     void on_serverAudioPortText_textChanged(QString text);
-    void on_serverTXAudioOutputCombo_currentIndexChanged(int value);
-    void on_serverRXAudioInputCombo_currentIndexChanged(int value);
+    void changedServerTXAudioOutput(int value);
+    void changedServerRXAudioInput(int value);
     void onServerUserFieldChanged();
     void on_serverAddUserBtn_clicked();
     void on_radioStatusBtn_clicked();

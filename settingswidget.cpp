@@ -105,6 +105,16 @@ void settingswidget::acceptUdpPreferencesPtr(udpPreferences *upptr)
     }
 }
 
+void settingswidget::acceptServerConfig(SERVERCONFIG *sc)
+{
+    if(sc != NULL)
+    {
+        qDebug(logGui()) << "Accepting ServerConfig pointer into settings widget.";
+        serverConfig = sc;
+        haveServerConfig = true;
+    }
+}
+
 void settingswidget::copyClusterList(QList<clusterSettings> c)
 {
     this->clusters = c;
@@ -219,6 +229,24 @@ void settingswidget::updateCtPrefs(int items)
     }
 }
 
+void settingswidget::updateServerConfigs(int items)
+{
+    serverItems si;
+    if(items & (int)s_all)
+    {
+        items = 0xffffffff;
+    }
+    for(int i=1; i < (int)s_all; i = i << 1)
+    {
+        if(items & i)
+        {
+            qDebug(logGui()) << "Updating ServerConfig" << (int)i;
+            si = (serverItems)i;
+            updateServerConfig(si);
+        }
+    }
+}
+
 void settingswidget::updateLanPrefs(int items)
 {
     prefLanItem plan;
@@ -257,6 +285,9 @@ void settingswidget::updateClusterPrefs(int items)
 
 void settingswidget::updateIfPref(prefIfItem pif)
 {
+    if(prefs==NULL)
+        return;
+
     updatingUIFromPrefs = true;
     switch(pif)
     {
@@ -329,6 +360,9 @@ void settingswidget::updateIfPref(prefIfItem pif)
 
 void settingswidget::updateRaPref(prefRaItem pra)
 {
+    if(prefs==NULL)
+        return;
+
     updatingUIFromPrefs = true;
     switch(pra)
     {
@@ -441,8 +475,10 @@ void settingswidget::updateRaPref(prefRaItem pra)
 
 void settingswidget::updateCtPref(prefCtItem pct)
 {
-    updatingUIFromPrefs = true;
+    if(prefs==NULL)
+        return;
 
+    updatingUIFromPrefs = true;
     switch(pct)
     {
     case ct_enablePTT:
@@ -469,6 +505,9 @@ void settingswidget::updateCtPref(prefCtItem pct)
 
 void settingswidget::updateLanPref(prefLanItem plan)
 {
+    if(prefs==NULL)
+        return;
+
     updatingUIFromPrefs = true;
     switch(plan)
     {
@@ -497,6 +536,9 @@ void settingswidget::updateLanPref(prefLanItem plan)
 
 void settingswidget::updateClusterPref(prefClusterItem pcl)
 {
+    if(prefs==NULL)
+        return;
+
     updatingUIFromPrefs = true;
     switch(pcl)
     {
@@ -532,6 +574,55 @@ void settingswidget::updateClusterPref(prefClusterItem pcl)
         qWarning(logGui()) << "Did not find matching UI element for cluster preference " << (int)pcl;
         break;
     }
+    updatingUIFromPrefs = false;
+}
+
+void settingswidget::updateServerConfig(serverItems si)
+{
+    if(serverConfig == NULL)
+    {
+        qCritical(logGui()) << "serverConfig is NULL, cannot set preferences!";
+        return;
+    }
+    updatingUIFromPrefs = true;
+    switch(si)
+    {
+    case s_enabled:
+        quietlyUpdateCheckbox(ui->serverEnableCheckbox, serverConfig->enabled);
+        break;
+    case s_lan:
+        // Not used here
+        break;
+    case s_controlPort:
+        quietlyUpdateLineEdit(ui->serverControlPortText, QString::number(serverConfig->civPort));
+        break;
+    case s_civPort:
+        quietlyUpdateLineEdit(ui->serverCivPortText, QString::number(serverConfig->civPort));
+        break;
+    case s_audioPort:
+        quietlyUpdateLineEdit(ui->serverAudioPortText, QString::number(serverConfig->audioPort));
+        break;
+    case s_audioOutput:
+        break;
+    case s_audioInput:
+        break;
+    case s_resampleQuality:
+        // Not used here
+        break;
+    case s_baudRate:
+        // Not used here
+        break;
+    case s_users:
+        // This is fairly complex
+        populateServerUsers();
+        break;
+    case s_rigs:
+        // Not used here
+        break;
+    default:
+        qWarning(logGui()) << "Did not find matching UI element for ServerConfig " << (int)si;
+    }
+
     updatingUIFromPrefs = false;
 }
 
@@ -762,6 +853,78 @@ void settingswidget::updateDataModSourceList(QStringList deviceNames, QVector<ri
     ui->modInputDataCombo->blockSignals(false);
 }
 
+void settingswidget::populateServerUsers()
+{
+    // Copy data from serverConfig.users into the server UI table
+    // We will assume the data are safe to use.
+    bool blank = false;
+    int row=0;
+    QList<SERVERUSER>::iterator user = serverConfig->users.begin();
+    while (user != serverConfig->users.end())
+    {
+        serverAddUserLine(user->username, user->password, user->userType);
+        row++;
+        user++;
+        // TODO: CRASH!! Cannot evaluate username if users are blank/empty.
+//        if((user->username == "") && !blank)
+//            blank = true;
+    }
+    if (row==1 && blank)
+    {
+        // There are no defined users. The only user present is the blank one.
+        // The button is disabled, but it may be enabled
+        // when the user enters valid information for a potential new
+        // user account.
+        ui->serverAddUserBtn->setEnabled(false);
+    }
+}
+
+void settingswidget::serverAddUserLine(const QString &user, const QString &pass, const int &type)
+{
+    // migration TODO: Review these signals/slots
+
+    ui->serverUsersTable->blockSignals(true);
+
+    ui->serverUsersTable->insertRow(ui->serverUsersTable->rowCount());
+
+    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 0, new QTableWidgetItem());
+    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 1, new QTableWidgetItem());
+    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 2, new QTableWidgetItem());
+    ui->serverUsersTable->setItem(ui->serverUsersTable->rowCount() - 1, 3, new QTableWidgetItem());
+
+    QLineEdit* username = new QLineEdit();
+    username->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
+    username->setProperty("col", (int)0);
+    username->setText(user);
+    connect(username, SIGNAL(editingFinished()), this, SLOT(onServerUserFieldChanged()));
+    ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 0, username);
+
+    QLineEdit* password = new QLineEdit();
+    password->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
+    password->setProperty("col", (int)1);
+    password->setEchoMode(QLineEdit::PasswordEchoOnEdit);
+    password->setText(pass);
+    connect(password, SIGNAL(editingFinished()), this, SLOT(onServerUserFieldChanged()));
+    ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 1, password);
+
+    QComboBox* comboBox = new QComboBox();
+    comboBox->insertItems(0, { "Full User","Full with no TX","Monitor only" });
+    comboBox->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
+    comboBox->setProperty("col", (int)2);
+    comboBox->setCurrentIndex(type);
+    connect(comboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onServerUserFieldChanged()));
+    ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 2, comboBox);
+
+    QPushButton* button = new QPushButton();
+    button->setText("Delete");
+    button->setProperty("row", (int)ui->serverUsersTable->rowCount() - 1);
+    button->setProperty("col", (int)3);
+    connect(button, SIGNAL(clicked()), this, SLOT(onServerUserFieldChanged()));
+    ui->serverUsersTable->setCellWidget(ui->serverUsersTable->rowCount() - 1, 3, button);
+
+    ui->serverUsersTable->blockSignals(false);
+}
+
 // Utility Functions:
 void settingswidget::updateUnderlayMode()
 {
@@ -821,6 +984,13 @@ void settingswidget::quietlyUpdateRadiobutton(QRadioButton *rb, bool isChecked)
     rb->blockSignals(true);
     rb->setChecked(isChecked);
     rb->blockSignals(false);
+}
+
+void settingswidget::quietlyUpdateLineEdit(QLineEdit *le, const QString text)
+{
+    le->blockSignals(true);
+    le->setText(text);
+    le->blockSignals(false);
 }
 
 // Resulting from User Interaction
@@ -1309,7 +1479,6 @@ void settingswidget::on_clusterSkimmerSpotsEnable_clicked(bool checked)
     emit changedClusterPref(cl_clusterSkimmerSpotsEnable);
 }
 
-
 void settingswidget::on_ipAddressTxt_textChanged(const QString &arg1)
 {
     udpPrefs->ipAddress = arg1;
@@ -1343,4 +1512,30 @@ void settingswidget::on_audioDuplexCombo_currentIndexChanged(int index)
 {
     udpPrefs->halfDuplex = (bool)index;
     emit changedUdpPref(u_halfDuplex);
+}
+
+void settingswidget::on_audioOutputCombo_currentIndexChanged(int index)
+{
+    emit changedAudioOutputCombo(index);
+}
+
+void settingswidget::on_audioInputCombo_currentIndexChanged(int index)
+{
+    emit changedAudioInputCombo(index);
+}
+
+void settingswidget::on_serverRXAudioInputCombo_currentIndexChanged(int index)
+{
+    emit changedServerRXAudioInputCombo(index);
+}
+
+void settingswidget::on_serverTXAudioOutputCombo_currentIndexChanged(int index)
+{
+    emit changedServerTXAudioOutputCombo(index);
+}
+
+void settingswidget::on_serverEnableCheckbox_clicked(bool checked)
+{
+    serverConfig->enabled = checked;
+    emit changedServerConfig(s_enabled);
 }

@@ -10,6 +10,7 @@
 #include <QSpinBox>
 #include <QCheckBox>
 #include <QRadioButton>
+#include <QLineEdit>
 #include <QStringList>
 
 #include "logcategories.h"
@@ -18,6 +19,7 @@
 #include "udpbase.h" // for udp preferences
 #include "cluster.h" // for clusterSettings
 #include "rigidentities.h" // for rigInputs
+#include "udpserver.h" // for SERVERCONFIG
 
 namespace Ui {
 class settingswidget;
@@ -35,6 +37,7 @@ public:
 public slots:
     void acceptPreferencesPtr(preferences *pptr);
     void acceptUdpPreferencesPtr(udpPreferences *upptr);
+    void acceptServerConfig(SERVERCONFIG *serverConfig);
 
     void copyClusterList(QList<clusterSettings> c);
     void insertClusterOutputText(QString text);
@@ -44,12 +47,14 @@ public slots:
     void updateCtPrefs(int items);
     void updateLanPrefs(int items);
     void updateClusterPrefs(int items);
+    void updateServerConfigs(int items);
 
     void updateIfPref(prefIfItem pif);
     void updateRaPref(prefRaItem pra);
     void updateCtPref(prefCtItem pct);
     void updateLanPref(prefLanItem plan);
     void updateClusterPref(prefClusterItem pcl);
+    void updateServerConfig(serverItems si);
 
     void updateUdpPref(udpPrefsItem upi);
     void updateUdpPrefs(int items);
@@ -65,19 +70,19 @@ public slots:
     void updateModSourceList(QStringList deviceNames, QVector<rigInput> data);
     void updateDataModSourceList(QStringList deviceNames, QVector<rigInput> data);
 
-
-
 signals:
-    // Not sure if we should do it this way,
-    // since many of these changes are not thought
-    // of as merely "preferences"... although they generally are...
-    // ...hmm
     void changedIfPrefs(int items);
     void changedRaPrefs(int items);
     void changedCtPrefs(int items);
     void changedLanPrefs(int items);
     void changedClusterPrefs(int items);
     void changedUdpPrefs(int items);
+    void changedServerConfigs(int i);
+
+    void changedAudioOutputCombo(int index);
+    void changedAudioInputCombo(int index);
+    void changedServerTXAudioOutputCombo(int index);
+    void changedServerRXAudioInputCombo(int index);
 
     void changedIfPref(prefIfItem i);
     void changedRaPref(prefRaItem i);
@@ -85,6 +90,7 @@ signals:
     void changedLanPref(prefLanItem i);
     void changedClusterPref(prefClusterItem i);
     void changedUdpPref(udpPrefsItem i);
+    void changedServerConfig(serverItems i);
 
     void showUSBControllerSetup();
 
@@ -136,6 +142,11 @@ private slots:
     void on_controlPortTxt_textChanged(const QString &arg1);
     void on_passwordTxt_textChanged(const QString &arg1);
     void on_audioDuplexCombo_currentIndexChanged(int index);
+    void on_audioOutputCombo_currentIndexChanged(int index);
+    void on_audioInputCombo_currentIndexChanged(int index);
+    void on_serverRXAudioInputCombo_currentIndexChanged(int index);
+    void on_serverTXAudioOutputCombo_currentIndexChanged(int index);
+    void on_serverEnableCheckbox_clicked(bool checked);
 
 private:
     Ui::settingswidget *ui;
@@ -144,15 +155,23 @@ private:
     void updateAllPrefs();
     void updateUnderlayMode();
     void setUItoClustersList();
+
+    // Utility:
     void quietlyUpdateSlider(QSlider* sl, int val);
     void quietlyUpdateSpinbox(QSpinBox *sb, int val);
     void quietlyUpdateCheckbox(QCheckBox *cb, bool isChecked);
     void quietlyUpdateRadiobutton(QRadioButton *rb, bool isChecked);
+    void quietlyUpdateLineEdit(QLineEdit *le, const QString text);
+
+    void populateServerUsers();
+    void serverAddUserLine(const QString& user, const QString& pass, const int& type);
 
     preferences *prefs = NULL;
     udpPreferences *udpPrefs = NULL;
+    SERVERCONFIG *serverConfig = NULL;
     bool havePrefs = false;
     bool haveUdpPrefs = false;
+    bool haveServerConfig = false;
     bool haveSerialDevices = false;
     bool haveVspDevices = false;
     bool haveAudioInputs = false;

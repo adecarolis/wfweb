@@ -1266,7 +1266,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>4</number>
+             <number>3</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -1869,35 +1869,9 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QComboBox" name="audioOutputCombo">
-                       <property name="maximumSize">
-                        <size>
-                         <width>200</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="accessibleName">
-                        <string>Audio Output Selector</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
                       <widget class="QLabel" name="label_18">
                        <property name="text">
                         <string>Audio Input</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QComboBox" name="audioInputCombo">
-                       <property name="maximumSize">
-                        <size>
-                         <width>200</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                       <property name="accessibleName">
-                        <string>Audio Input Selector</string>
                        </property>
                       </widget>
                      </item>
@@ -2215,8 +2189,8 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>570</width>
-                      <height>254</height>
+                      <width>818</width>
+                      <height>324</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -3343,41 +3317,9 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QComboBox" name="serverRXAudioInputCombo">
-                       <property name="minimumSize">
-                        <size>
-                         <width>100</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>100</width>
-                         <height>16777215</height>
-                        </size>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
                       <widget class="QLabel" name="label_34">
                        <property name="text">
                         <string>TX Audio Output</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QComboBox" name="serverTXAudioOutputCombo">
-                       <property name="minimumSize">
-                        <size>
-                         <width>100</width>
-                         <height>0</height>
-                        </size>
-                       </property>
-                       <property name="maximumSize">
-                        <size>
-                         <width>100</width>
-                         <height>16777215</height>
-                        </size>
                        </property>
                       </widget>
                      </item>

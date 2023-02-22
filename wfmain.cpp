@@ -114,7 +114,9 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     loadSettings(); // Look for saved preferences
 
-    audioDev = new audioDevices(prefs.audioSystem, QFontMetrics(ui->audioInputCombo->font()));
+    // TODO: How to tell this thing how big the font is...? There isn't a UI anymore for this...
+    // Fake it for now assuming the button has the same font as a combo box
+    audioDev = new audioDevices(prefs.audioSystem, QFontMetrics(ui->connectBtn->font()));
     connect(audioDev, SIGNAL(updated()), this, SLOT(setAudioDevicesUI()));
     audioDev->enumerate();
     //setAudioDevicesUI(); // no need to call this as it will be called by the updated() signal
@@ -1252,7 +1254,14 @@ void wfmain::connectSettingsWidget()
         if(shut != Q_NULLPTR)
             showAndRaiseWidget(shut);
     });
+
     connect(this, SIGNAL(haveClusterList(QList<clusterSettings>)), setupui, SLOT(copyClusterList(QList<clusterSettings>)));
+
+    connect(setupui, SIGNAL(changedAudioInputCombo(int)), this, SLOT(changedAudioInput(int)));
+    connect(setupui, SIGNAL(changedAudioOutputCombo(int)), this, SLOT(changedAudioOutput(int)));
+    connect(setupui, SIGNAL(changedServerRXAudioInputCombo(int)), this, SLOT(changedServerRXAudioInput(int)));
+    connect(setupui, SIGNAL(changedServerTXAudioOutputCombo(int)), this, SLOT(changedServerTXAudioOutput(int)));
+
 }
 
 void wfmain::prepareSettingsWindow()
@@ -2001,6 +2010,7 @@ void wfmain::setDefPrefs()
 void wfmain::loadSettings()
 {
     qInfo(logSystem()) << "Loading settings from " << settings->fileName();
+    setupui->acceptServerConfig(&serverConfig);
 
     QString currentVersionString = QString(WFVIEW_VERSION);
     float currentVersionFloat = currentVersionString.toFloat();
@@ -2180,8 +2190,9 @@ void wfmain::loadSettings()
     prefs.enableLAN = settings->value("EnableLAN", defPrefs.enableLAN).toBool();
 
     // If LAN is enabled, server gets its audio straight from the LAN
-    ui->serverRXAudioInputCombo->setEnabled(!prefs.enableLAN);
-    ui->serverTXAudioOutputCombo->setEnabled(!prefs.enableLAN);
+    // migrated, remove these
+    //ui->serverRXAudioInputCombo->setEnabled(!prefs.enableLAN);
+    //ui->serverTXAudioOutputCombo->setEnabled(!prefs.enableLAN);
     ui->audioSystemServerCombo->setEnabled(!prefs.enableLAN);
 
     ui->baudRateCombo->setEnabled(!prefs.enableLAN);
@@ -2298,6 +2309,11 @@ void wfmain::loadSettings()
     serverConfig.civPort = settings->value("ServerCivPort", 50002).toInt();
     serverConfig.audioPort = settings->value("ServerAudioPort", 50003).toInt();
 
+    setupui->updateServerConfigs((int)(s_enabled |
+                                 s_controlPort |
+                                 s_civPort |
+                                 s_audioPort));
+
     serverConfig.users.clear();
 
     int numUsers = settings->beginReadArray("Users");
@@ -2334,6 +2350,7 @@ void wfmain::loadSettings()
     ui->serverControlPortText->setText(QString::number(serverConfig.controlPort));
     ui->serverCivPortText->setText(QString::number(serverConfig.civPort));
     ui->serverAudioPortText->setText(QString::number(serverConfig.audioPort));
+
 
     RIGCONFIG* rigTemp = new RIGCONFIG();
     rigTemp->rxAudioSetup.isinput = true;
@@ -2390,6 +2407,10 @@ void wfmain::loadSettings()
 
         ui->serverAddUserBtn->setEnabled(false);
     }
+
+    // At this point, the users list has exactly one empty user.
+    setupui->updateServerConfig(s_users);
+
 
     settings->endGroup();
 
@@ -2604,6 +2625,7 @@ void wfmain::loadSettings()
 
     setupui->acceptUdpPreferencesPtr(&udpPrefs);
     setupui->updateUdpPrefs((int)u_all);
+
 }
 
 void wfmain::extChangedIfPrefs(int items)
@@ -2958,6 +2980,7 @@ void wfmain::extChangedUdpPref(udpPrefsItem i)
 
 void wfmain::serverAddUserLine(const QString& user, const QString& pass, const int& type)
 {
+    // migrated
     ui->serverUsersTable->blockSignals(true);
 
     ui->serverUsersTable->insertRow(ui->serverUsersTable->rowCount());
@@ -3089,7 +3112,7 @@ void wfmain::on_serverAudioPortText_textChanged(QString text)
     serverConfig.audioPort = text.toInt();
 }
 
-void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
+void wfmain::changedServerRXAudioInput(int value)
 {
 
     if (!serverConfig.rigs.isEmpty() && value>=0)
@@ -3106,7 +3129,7 @@ void wfmain::on_serverRXAudioInputCombo_currentIndexChanged(int value)
 
 }
 
-void wfmain::on_serverTXAudioOutputCombo_currentIndexChanged(int value)
+void wfmain::changedServerTXAudioOutput(int value)
 {
 
     if (!serverConfig.rigs.isEmpty() && value>=0)
@@ -6561,7 +6584,7 @@ void wfmain::receiveATUStatus(unsigned char atustatus)
 
 void wfmain::on_serialEnableBtn_clicked(bool checked)
 {
-    // migrated
+    // migrated, can be removed entirely
     prefs.enableLAN = !checked;
     ui->serialDeviceListCombo->setEnabled(checked);
 
@@ -6577,18 +6600,18 @@ void wfmain::on_serialEnableBtn_clicked(bool checked)
     ui->txLatencySlider->setEnabled(!checked);
     ui->rxLatencyValue->setEnabled(!checked);
     ui->txLatencyValue->setEnabled(!checked);
-    ui->audioOutputCombo->setEnabled(!checked);
-    ui->audioInputCombo->setEnabled(!checked);
+    //ui->audioOutputCombo->setEnabled(!checked);
+    //ui->audioInputCombo->setEnabled(!checked);
     ui->baudRateCombo->setEnabled(checked);
     ui->serialDeviceListCombo->setEnabled(checked);
-    ui->serverRXAudioInputCombo->setEnabled(checked);
-    ui->serverTXAudioOutputCombo->setEnabled(checked);
+    //ui->serverRXAudioInputCombo->setEnabled(checked);
+    //ui->serverTXAudioOutputCombo->setEnabled(checked);
 
 }
 
 void wfmain::on_lanEnableBtn_clicked(bool checked)
 {
-    // Migrated
+    // Migrated, can be removed entirely
     prefs.enableLAN = checked;
     ui->connectBtn->setEnabled(true);
     ui->ipAddressTxt->setEnabled(checked);
@@ -6602,12 +6625,12 @@ void wfmain::on_lanEnableBtn_clicked(bool checked)
     ui->txLatencySlider->setEnabled(checked);
     ui->rxLatencyValue->setEnabled(checked);
     ui->txLatencyValue->setEnabled(checked);
-    ui->audioOutputCombo->setEnabled(checked);
-    ui->audioInputCombo->setEnabled(checked);
+    //ui->audioOutputCombo->setEnabled(checked);
+    //ui->audioInputCombo->setEnabled(checked);
     ui->baudRateCombo->setEnabled(!checked);
     ui->serialDeviceListCombo->setEnabled(!checked);
-    ui->serverRXAudioInputCombo->setEnabled(!checked);
-    ui->serverTXAudioOutputCombo->setEnabled(!checked);
+    //ui->serverRXAudioInputCombo->setEnabled(!checked);
+    //ui->serverTXAudioOutputCombo->setEnabled(!checked);
     if(checked)
     {
         showStatusBarText("After filling in values, press Save Settings.");
@@ -6644,7 +6667,7 @@ void wfmain::on_audioDuplexCombo_currentIndexChanged(int value)
     udpPrefs.halfDuplex = (bool)value;
 }
 
-void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
+void wfmain::changedAudioInput(int value)
 {
     // TODO: Change function name, send value from setupui to here.
 
@@ -6661,7 +6684,7 @@ void wfmain::on_audioOutputCombo_currentIndexChanged(int value)
     qDebug(logGui()) << "Changed audio output to:" << rxSetup.name;
 }
 
-void wfmain::on_audioInputCombo_currentIndexChanged(int value)
+void wfmain::changedAudioOutput(int value)
 {
     if (value >=0) {
         if (prefs.audioSystem == qtAudio) {
@@ -7772,44 +7795,45 @@ void wfmain::on_radioStatusBtn_clicked()
 
 void wfmain::setAudioDevicesUI()
 {
+    // ready for cleaning
     qInfo() << "Looking for inputs";
     // got these:
-    ui->audioInputCombo->blockSignals(true);
-    ui->audioInputCombo->clear();
-    ui->audioInputCombo->addItems(audioDev->getInputs());
-    ui->audioInputCombo->setCurrentIndex(-1);
-    ui->audioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn() + 30));
-    ui->audioInputCombo->blockSignals(false);
-    ui->audioInputCombo->setCurrentIndex(audioDev->findInput("Client", txSetup.name));
+//    ui->audioInputCombo->blockSignals(true);
+//    ui->audioInputCombo->clear();
+//    ui->audioInputCombo->addItems(audioDev->getInputs());
+//    ui->audioInputCombo->setCurrentIndex(-1);
+//    ui->audioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn() + 30));
+//    ui->audioInputCombo->blockSignals(false);
+//    ui->audioInputCombo->setCurrentIndex(audioDev->findInput("Client", txSetup.name));
 
     setupui->updateAudioInputs(audioDev->getInputs(), audioDev->findInput("Client", txSetup.name), audioDev->getNumCharsIn());
 
     qInfo() << "Looking for outputs";
     // done:
-    ui->audioOutputCombo->blockSignals(true);
-    ui->audioOutputCombo->clear();
-    ui->audioOutputCombo->addItems(audioDev->getOutputs());
-    ui->audioOutputCombo->setCurrentIndex(-1);
-    ui->audioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
-    ui->audioOutputCombo->blockSignals(false);
-    ui->audioOutputCombo->setCurrentIndex(audioDev->findOutput("Client", rxSetup.name));
+//    ui->audioOutputCombo->blockSignals(true);
+//    ui->audioOutputCombo->clear();
+//    ui->audioOutputCombo->addItems(audioDev->getOutputs());
+//    ui->audioOutputCombo->setCurrentIndex(-1);
+//    ui->audioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
+//    ui->audioOutputCombo->blockSignals(false);
+//    ui->audioOutputCombo->setCurrentIndex(audioDev->findOutput("Client", rxSetup.name));
 
     setupui->updateAudioOutputs(audioDev->getOutputs(), audioDev->findOutput("Client", rxSetup.name), audioDev->getNumCharsOut());
 
-    ui->serverTXAudioOutputCombo->blockSignals(true);
-    ui->serverTXAudioOutputCombo->clear();
-    ui->serverTXAudioOutputCombo->addItems(audioDev->getOutputs());
-    ui->serverTXAudioOutputCombo->setCurrentIndex(-1);
-    ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
-    ui->serverTXAudioOutputCombo->blockSignals(false);
+//    ui->serverTXAudioOutputCombo->blockSignals(true);
+//    ui->serverTXAudioOutputCombo->clear();
+//    ui->serverTXAudioOutputCombo->addItems(audioDev->getOutputs());
+//    ui->serverTXAudioOutputCombo->setCurrentIndex(-1);
+//    ui->serverTXAudioOutputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsOut() + 30));
+//    ui->serverTXAudioOutputCombo->blockSignals(false);
     int serverOutputIndex = -1;
 
-    ui->serverRXAudioInputCombo->blockSignals(true);
-    ui->serverRXAudioInputCombo->clear();
-    ui->serverRXAudioInputCombo->addItems(audioDev->getInputs());
-    ui->serverRXAudioInputCombo->setCurrentIndex(-1);
-    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn()+30));
-    ui->serverRXAudioInputCombo->blockSignals(false);
+//    ui->serverRXAudioInputCombo->blockSignals(true);
+//    ui->serverRXAudioInputCombo->clear();
+//    ui->serverRXAudioInputCombo->addItems(audioDev->getInputs());
+//    ui->serverRXAudioInputCombo->setCurrentIndex(-1);
+//    ui->serverRXAudioInputCombo->setStyleSheet(QString("QComboBox QAbstractItemView {min-width: %1px;}").arg(audioDev->getNumCharsIn()+30));
+//    ui->serverRXAudioInputCombo->blockSignals(false);
     int serverInputIndex = -1;
 
     rxSetup.type = prefs.audioSystem;
@@ -7820,9 +7844,9 @@ void wfmain::setAudioDevicesUI()
         serverConfig.rigs.first()->rxAudioSetup.type = prefs.audioSystem;
         serverConfig.rigs.first()->txAudioSetup.type = prefs.audioSystem;
 
-        ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig.rigs.first()->rxAudioSetup.name));
+        //ui->serverRXAudioInputCombo->setCurrentIndex(audioDev->findInput("Server", serverConfig.rigs.first()->rxAudioSetup.name));
         serverOutputIndex = audioDev->findOutput("Server", serverConfig.rigs.first()->txAudioSetup.name);
-        ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig.rigs.first()->txAudioSetup.name));
+        //ui->serverTXAudioOutputCombo->setCurrentIndex(audioDev->findOutput("Server", serverConfig.rigs.first()->txAudioSetup.name));
         serverInputIndex = audioDev->findOutput("Server", serverConfig.rigs.first()->txAudioSetup.name);
     }
 
