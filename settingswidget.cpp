@@ -859,15 +859,16 @@ void settingswidget::populateServerUsers()
     // We will assume the data are safe to use.
     bool blank = false;
     int row=0;
+    qDebug(logGui()) << "Adding server users. Size: " << serverConfig->users.size();
+
     QList<SERVERUSER>::iterator user = serverConfig->users.begin();
     while (user != serverConfig->users.end())
     {
         serverAddUserLine(user->username, user->password, user->userType);
+        if((user->username == "") && !blank)
+            blank = true;
         row++;
         user++;
-        // TODO: CRASH!! Cannot evaluate username if users are blank/empty.
-//        if((user->username == "") && !blank)
-//            blank = true;
     }
     if (row==1 && blank)
     {
