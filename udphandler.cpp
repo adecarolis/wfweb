@@ -683,6 +683,7 @@ void udpHandler::sendToken(uint8_t magic)
     p.requestreply = 0x01;
     p.innerseq = qToBigEndian(authSeq++);
     p.tokrequest = tokRequest;
+    p.resetcap = qToBigEndian((quint16)0x0798);
     p.token = token;
 
     sendTrackedPacket(QByteArray::fromRawData((const char *)p.packet, sizeof(p)));

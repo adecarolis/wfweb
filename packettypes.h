@@ -177,10 +177,12 @@ typedef union token_packet {
         union {
             struct {
                 quint16 authstartid;    // 0x20
-                char unusedg[5];        // 0x22
+                char unusedg2[2];       // 0x22
+                quint16 resetcap;       // 0x24
+                char unusedg1;          // 0x26
                 quint16 commoncap;      // 0x27
                 char unusedh;           // 0x29
-                quint8 macaddress[6];     // 0x2a
+                quint8 macaddress[6];   // 0x2a
             };
             quint8 guid[GUIDLEN];                  // 0x20
         };
