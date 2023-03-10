@@ -1,3 +1,34 @@
+commit 48a9710c118dfe0d154706180bfd2d22ca542dec
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Mar 9 17:47:52 2023 +0000
+
+    Add improved connection timeout for IC9700
+
+commit cf4e872e4ff9c68095017ab0159d3aaec4a4da3f
+Merge: 37c3040 5b9a5ba
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 20 22:20:14 2023 +0000
+
+    Merge branch 'master' of https://gitlab.com/eliggett/wfview
+
+commit 37c30404d81c2550ce0ce7552126a9f747e791c8
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 20 22:19:55 2023 +0000
+
+    Fix for shuttle detection on Linux
+
+commit 5b9a5baaa1ee704220fe63f100a362a6f13e79d0
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 20 18:26:22 2023 +0000
+
+    Add printsupport back
+
+commit fc0bd2232dedf95705a04d7834a95cc27d00fa98
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Mon Feb 20 19:24:44 2023 +0100
+
+    changelog updated after rigctld-fixes
+
 commit 2186a74490d6d62ee5581ba9956aac7e738f9791
 Author: Phil Taylor <phil@m0vse.uk>
 Date:   Mon Feb 20 13:05:23 2023 +0000
