@@ -141,6 +141,7 @@ signals:
     void getMeters(meterKind meter);
     void getPassband();
     void getCwPitch();
+    void getDashRatio();
     void getPskTone();
     void getRttyMark();
 
@@ -190,6 +191,7 @@ signals:
     void getKeySpeed();
     void setKeySpeed(unsigned char wpm);
     void setCwPitch(unsigned char pitch);
+    void setDashRatio(unsigned char ratio);
     void setCWBreakMode(unsigned char breakMode);
     void getCWBreakMode();
 

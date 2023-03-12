@@ -1,6 +1,8 @@
 #include "cwsender.h"
 #include "ui_cwsender.h"
 
+#include "logcategories.h"
+
 cwSender::cwSender(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::cwSender)
@@ -15,37 +17,86 @@ cwSender::cwSender(QWidget *parent) :
     ui->textToSendEdit->setFocus();
     ui->statusbar->setToolTipDuration(3000);
     this->setToolTipDuration(3000);
+    connect(ui->textToSendEdit->lineEdit(), &QLineEdit::textEdited, this, &cwSender::textChanged);
 }
 
 cwSender::~cwSender()
 {
     qDebug(logCW()) << "Running CW Sender destructor.";
+
+    if (toneThread != Q_NULLPTR) {
+        toneThread->quit();
+        toneThread->wait();
+        toneThread = Q_NULLPTR;
+        tone = Q_NULLPTR;
+        /* Finally disconnect all connections */
+        for (auto conn: connections)
+        {
+            disconnect(conn);
+        }
+        connections.clear();
+    }
+
     delete ui;
 }
 
 void cwSender::showEvent(QShowEvent *event)
 {
-    emit getCWSettings();
     (void)event;
+    emit getCWSettings();
+    QMainWindow::showEvent(event);
 }
 
 void cwSender::handleKeySpeed(unsigned char wpm)
 {
-    //qDebug(logCW()) << "Told that current WPM is" << wpm;
-    if((wpm >= 6) && (wpm <=48))
+    if (wpm != ui->wpmSpin->value() && (wpm >= ui->wpmSpin->minimum()) && (wpm <= ui->wpmSpin->maximum()))
     {
-        //qDebug(logCW()) << "Setting WPM UI control to" << wpm;
         ui->wpmSpin->blockSignals(true);
-        ui->wpmSpin->setValue(wpm);
+        QMetaObject::invokeMethod(ui->wpmSpin, "setValue", Qt::QueuedConnection, Q_ARG(int, wpm));
         ui->wpmSpin->blockSignals(false);
+#if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
+        QMetaObject::invokeMethod(tone, [=]() {
+            tone->setSpeed(wpm);
+        }, Qt::QueuedConnection);
+#else
+        emit setKeySpeed(ratio);
+#endif
+    }
+}
+
+void cwSender::handleDashRatio(unsigned char ratio)
+{
+    double calc = double(ratio/10);
+    if (calc != ui->dashSpin->value() && (calc >= ui->dashSpin->minimum()) && (ratio <= ui->dashSpin->maximum()))
+    {
+        ui->dashSpin->blockSignals(true);
+        QMetaObject::invokeMethod(ui->dashSpin, "setValue", Qt::QueuedConnection, Q_ARG(double, calc));
+        ui->dashSpin->blockSignals(false);
+#if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
+        QMetaObject::invokeMethod(tone, [=]() {
+            tone->setRatio(ratio);
+        }, Qt::QueuedConnection);
+#else
+        emit setDashRatio(ratio);
+#endif
     }
 }
 
 void cwSender::handlePitch(unsigned char pitch) {
-    quint16 cwPitch = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
-    ui->pitchSpin->blockSignals(true);
-    ui->pitchSpin->setValue(cwPitch);
-    ui->pitchSpin->blockSignals(false);
+    int cwPitch = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
+    if (cwPitch != ui->pitchSpin->value() && cwPitch >= ui->pitchSpin->minimum() && cwPitch <= ui->pitchSpin->maximum())
+    {
+        ui->pitchSpin->blockSignals(true);
+        QMetaObject::invokeMethod(ui->pitchSpin, "setValue", Qt::QueuedConnection, Q_ARG(int, cwPitch));
+        ui->pitchSpin->blockSignals(false);
+#if (QT_VERSION >= QT_VERSION_CHECK(5,10,0))
+        QMetaObject::invokeMethod(tone, [=]() {
+            tone->setFrequency(pitch);
+        }, Qt::QueuedConnection);
+#else
+        emit setPitch(tone);
+#endif
+    }
 }
 
 void cwSender::handleBreakInMode(unsigned char b)
@@ -68,24 +119,56 @@ void cwSender::handleCurrentModeUpdate(mode_kind mode)
     }
 }
 
+void cwSender::textChanged(QString text)
+{
+    if (ui->sendImmediateChk->isChecked() && text.size() && text.back() == ' ')
+    {
+        int toSend = text.mid(0, 30).size();
+        if (toSend > 0) {
+            ui->textToSendEdit->clearEditText();
+            ui->transcriptText->moveCursor(QTextCursor::End);
+            ui->transcriptText->insertPlainText(text.mid(0, 30).toUpper());
+            ui->transcriptText->moveCursor(QTextCursor::End);
+
+            emit sendCW(text.mid(0, 30));
+        }
+        if( (currentMode != modeCW) && (currentMode != modeCW_R) )
+        {
+            ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.", 3000);
+        }
+    }
+}
+
 void cwSender::on_sendBtn_clicked()
 {
     if( (ui->textToSendEdit->currentText().length() > 0) &&
         (ui->textToSendEdit->currentText().length() <= 30) )
     {
-        emit sendCW(ui->textToSendEdit->currentText());
-        ui->transcriptText->appendPlainText(ui->textToSendEdit->currentText());
-        ui->textToSendEdit->addItem(ui->textToSendEdit->currentText());
-        if (ui->textToSendEdit->count() > 5) {
-            ui->textToSendEdit->removeItem(0);
+        QString text = ui->textToSendEdit->currentText();
+
+        ui->transcriptText->moveCursor(QTextCursor::End);
+        ui->transcriptText->insertPlainText(ui->textToSendEdit->currentText().toUpper()+"\n");
+        ui->transcriptText->moveCursor(QTextCursor::End);
+        if (!ui->sendImmediateChk->isChecked())
+        {
+            ui->textToSendEdit->addItem(ui->textToSendEdit->currentText());
+            if (ui->textToSendEdit->count() > 5) {
+                ui->textToSendEdit->removeItem(0);
+            }
+            ui->textToSendEdit->setCurrentIndex(-1);
+        } else {
+            ui->textToSendEdit->clearEditText();
+            ui->textToSendEdit->clear();
         }
-        ui->textToSendEdit->setCurrentIndex(-1);
+
         ui->textToSendEdit->setFocus();
         ui->statusbar->showMessage("Sending CW", 3000);
+
+        emit sendCW(text);
     }
-    if( (currentMode==modeCW) || (currentMode==modeCW_R) )
+
+    if( (currentMode != modeCW) && (currentMode != modeCW_R) )
     {
-    } else {
         ui->statusbar->showMessage("Note: Mode needs to be set to CW or CW-R to send CW.", 3000);
     }
 }
@@ -114,12 +197,16 @@ void cwSender::on_wpmSpin_valueChanged(int wpm)
     emit setKeySpeed((unsigned char)wpm);
 }
 
+void cwSender::on_dashSpin_valueChanged(double ratio)
+{
+    emit setDashRatio((unsigned char)double(ratio * 10));
+}
+
 void cwSender::on_pitchSpin_valueChanged(int arg1)
 {
     //    quint16 cwPitch = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
     unsigned char pitch = 0;
     pitch = ceil((arg1 - 300) * (255.0 / 600.0));
-    qDebug() << "Setting pitch" << pitch;
     emit setPitch(pitch);
 }
 
@@ -173,6 +260,56 @@ void cwSender::on_macro10btn_clicked()
     processMacroButton(10, ui->macro10btn);
 }
 
+void cwSender::on_sidetoneEnableChk_clicked(bool clicked)
+{
+    ui->sidetoneLevelSlider->setEnabled(clicked);
+    if (clicked && toneThread == Q_NULLPTR)
+    {
+        toneThread = new QThread(this);
+        toneThread->setObjectName("sidetone()");
+
+        tone = new cwSidetone(sidetoneLevel, ui->wpmSpin->value(),ui->pitchSpin->value(),ui->dashSpin->value(),this);
+        tone->moveToThread(toneThread);
+        toneThread->start();
+
+        connections.append(connect(toneThread, &QThread::finished,
+            [=]() { tone->deleteLater(); }));
+        connections.append(connect(this, &cwSender::sendCW,
+            [=](const QString& text) { tone->send(text); ui->sidetoneEnableChk->setEnabled(false); }));
+        connections.append(connect(this, &cwSender::setKeySpeed,
+            [=](const unsigned char& wpm) { tone->setSpeed(wpm); }));
+        connections.append(connect(this, &cwSender::setDashRatio,
+            [=](const unsigned char& ratio) { tone->setRatio(ratio); }));
+        connections.append(connect(this, &cwSender::setPitch,
+            [=](const unsigned char& pitch) { tone->setFrequency(pitch); }));
+        connections.append(connect(this, &cwSender::setLevel,
+            [=](const unsigned char& level) { tone->setLevel(level); }));
+        connections.append(connect(this, &cwSender::stopCW,
+            [=]() { tone->stopSending(); }));
+        connections.append(connect(tone, &cwSidetone::finished,
+            [=]() { ui->sidetoneEnableChk->setEnabled(true); }));
+
+    } else if (!clicked && toneThread != Q_NULLPTR) {
+        /* disconnect all connections */
+        toneThread->quit();
+        toneThread->wait();
+        toneThread = Q_NULLPTR;
+        tone = Q_NULLPTR;
+        for (auto conn: connections)
+        {
+            disconnect(conn);
+        }
+        connections.clear();
+    }
+}
+
+void cwSender::on_sidetoneLevelSlider_valueChanged(int val)
+{
+    sidetoneLevel = val;
+    emit setLevel(val);
+}
+
+
 void cwSender::processMacroButton(int buttonNumber, QPushButton *btn)
 {
     if(ui->macroEditChk->isChecked())
@@ -189,19 +326,33 @@ void cwSender::runMacroButton(int buttonNumber)
     if(macroText[buttonNumber].isEmpty())
         return;
     QString outText;
-    if(macroText[buttonNumber].contains("\%1"))
+    if(macroText[buttonNumber].contains("%1"))
     {
         outText = macroText[buttonNumber].arg(sequenceNumber, 3, 10, QChar('0'));
         sequenceNumber++;
         ui->sequenceSpin->blockSignals(true);
-        ui->sequenceSpin->setValue(sequenceNumber);
+        QMetaObject::invokeMethod(ui->sequenceSpin, "setValue", Qt::QueuedConnection, Q_ARG(int, sequenceNumber));
         ui->sequenceSpin->blockSignals(false);
     } else {
         outText = macroText[buttonNumber];
     }
-    emit sendCW(outText);
-    ui->transcriptText->appendPlainText(outText);
+
+    if (ui->cutNumbersChk->isChecked())
+    {
+        outText.replace("0", "T");
+        outText.replace("9", "N");
+    }
+
+    ui->transcriptText->moveCursor(QTextCursor::End);
+    ui->transcriptText->insertPlainText(outText.toUpper()+"\n");
+    ui->transcriptText->moveCursor(QTextCursor::End);
+
+    for (int i = 0; i < outText.size(); i = i + 30) {
+        emit sendCW(outText.mid(i,30));
+    }
+
     ui->textToSendEdit->setFocus();
+   
 
     if( (currentMode==modeCW) || (currentMode==modeCW_R) )
     {
@@ -215,22 +366,22 @@ void cwSender::editMacroButton(int buttonNumber, QPushButton* btn)
 {
     bool ok;
     QString promptFirst = QString("Please enter the text for macro %1,\n"
-                                  "up to 30 characters.\n").arg(buttonNumber);
-    QString promptSecond = QString("You may use \"\%1\" to insert a sequence number.");
+        "up to 60 characters.\n").arg(buttonNumber);
+    QString promptSecond = QString("You may use \"%1\" to insert a sequence number.");
     QString prompt = promptFirst+promptSecond;
 
     QString newMacroText = QInputDialog::getText(this, "Macro Edit",
                                                  prompt,
-                                                 QLineEdit::Normal, macroText[buttonNumber], &ok);
+                                                 QLineEdit::Normal, macroText[buttonNumber], &ok).toUpper();
     if(!ok)
         return;
 
-    if(newMacroText.length() > 30)
+    if (newMacroText.length() > 60)
     {
         QMessageBox msgBox;
         msgBox.setText(QString("The text entered was too long \n"
-                       "(max length is 30 characters).\n"
-                       "Your input was %1 characters.").arg(newMacroText.length()));
+            "(max length is 60 characters).\n"
+            "Your input was %1 characters.").arg(newMacroText.length()));
         msgBox.exec();
         this->raise();
         return;
@@ -262,6 +413,47 @@ void cwSender::on_sequenceSpin_valueChanged(int newSeq)
 {
     sequenceNumber = newSeq;
     ui->textToSendEdit->setFocus();
+}
+
+bool cwSender::getCutNumbers()
+{
+    return ui->cutNumbersChk->isChecked();
+}
+
+bool cwSender::getSendImmediate()
+{
+    return ui->sendImmediateChk->isChecked();
+}
+
+bool cwSender::getSidetoneEnable()
+{
+    return ui->sidetoneEnableChk->isChecked();
+}
+
+int cwSender::getSidetoneLevel()
+{
+    return ui->sidetoneLevelSlider->value();
+}
+
+void cwSender::setCutNumbers(bool val)
+{
+    ui->cutNumbersChk->setChecked(val);
+}
+
+void cwSender::setSendImmediate(bool val)
+{
+    ui->sendImmediateChk->setChecked(val);
+}
+
+void cwSender::setSidetoneEnable(bool val)
+{
+    ui->sidetoneEnableChk->setChecked(val);
+    on_sidetoneEnableChk_clicked(val);
+}
+
+void cwSender::setSidetoneLevel(int val)
+{
+    QMetaObject::invokeMethod(ui->sidetoneLevelSlider, "setValue", Qt::QueuedConnection, Q_ARG(int, val));
 }
 
 QStringList cwSender::getMacroText()
