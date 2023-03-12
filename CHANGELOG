@@ -1,8 +1,46 @@
+commit 6049e1dee67e981625652b43492f1f2f6c8edac1
+Merge: e8ca39c 5328838
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Sun Mar 12 12:34:47 2023 +0100
+
+    Merge branch 'sidetone'
+
+commit e8ca39ca18981c3bf1bb3e888efdc3b4b9ed9489
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Fri Mar 10 08:19:03 2023 +0100
+
+    fixes the dreaded connection timeouts some 9700 users have
+
 commit 48a9710c118dfe0d154706180bfd2d22ca542dec
 Author: Phil Taylor <phil@m0vse.uk>
 Date:   Thu Mar 9 17:47:52 2023 +0000
 
     Add improved connection timeout for IC9700
+
+commit 5328838c7399c943d8ac4556c8071157c38d267c
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 21 11:46:14 2023 +0000
+
+    better control of rapid commands when mode changes
+
+commit 87a261be1220bc2e3908d274b77ce961912e6f90
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 21 11:11:55 2023 +0000
+
+    Move periodic pbt/passband to rapid queue
+
+commit b738a38cbe1f2bce23088946898aab01b5470e8e
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 21 10:53:58 2023 +0000
+
+    fix compile warnings from rigctl
+
+commit b2af4c898efbd2475ebcb72294b7067f886e4fc6
+Merge: 7901ceb cf4e872
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 21 10:48:01 2023 +0000
+
+    Merge branch 'master' into sidetone
 
 commit cf4e872e4ff9c68095017ab0159d3aaec4a4da3f
 Merge: 37c3040 5b9a5ba
@@ -40,6 +78,159 @@ Author: Phil Taylor <phil@m0vse.uk>
 Date:   Mon Feb 20 12:43:26 2023 +0000
 
     Add remaining rigctld commands (mainly unimplemented)
+
+commit 7901ceba79e4e28fddeaa134e213dc756173f747
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 20 12:43:26 2023 +0000
+
+    Add remaining rigctld commands (mainly unimplemented)
+
+commit e49eb2878e941f52e6f75f97888ae09fd20c0791
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 20 11:48:53 2023 +0000
+
+    Rearrange signals
+
+commit c8b97e895286f1143c65e4e5c89d65185ed31304
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 20 10:34:21 2023 +0000
+
+    Emit finished() if sending is stopped prematurely
+
+commit a6b1bce69eb4e196a815749dbb46bc0f67b4487a
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Feb 20 10:31:09 2023 +0000
+
+    Disconnect signals when not in use
+
+commit e6644cdc1116e0ae22ca7464111ba26cf3ff96b7
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Feb 18 15:14:05 2023 +0000
+
+    Update cwsidetone.cpp
+
+commit fe0fc0a5bb8f611004cdc3a8dac724e53276e309
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Feb 18 15:13:05 2023 +0000
+
+    Compile issue
+
+commit 5fb9588c4aee25d18a6b3bb2e644c2558020dc28
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Feb 18 14:25:36 2023 +0000
+
+    Bit more tidying
+
+commit 62f923d8ad38f4823d62569df71d8726c01616cd
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Feb 18 13:18:42 2023 +0000
+
+    Add support for push audio and various other fixes
+
+commit 9f97df0ea5ea01d032c264619bbd929e122346b8
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Feb 18 11:03:13 2023 +0000
+
+    Make generateData more readable
+
+commit ed1e8c3a8e87e2811639c5f4d989530c49890c10
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 17 23:57:53 2023 +0000
+
+    Add message stacking
+
+commit acec37ea17161ff0a7e6c30e5fcf0997f5217ed1
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 17 23:21:29 2023 +0000
+
+    Improve timing
+
+commit 428ea9156c03d85abe9fdb88d514e6e8601785f9
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 17 18:08:44 2023 +0000
+
+    Change way we set sidetone volume
+
+commit 18254cad1006292e75c29c67e886fcb138efe7d0
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 17 17:56:10 2023 +0000
+
+    Log if write fails
+
+commit 67685dc100affd1376085764c9f813044bf0b986
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 17 17:46:12 2023 +0000
+
+    Stop writing sidetone audio on error
+
+commit 71fd70f78bb512c9b3118bd450f888c173752abf
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 17 17:26:21 2023 +0000
+
+    Sample type fixes
+
+commit f9ca8e7e844d99fa14a8c36597ad454176a903cb
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 17 16:56:01 2023 +0000
+
+    Restart audio device if stopped/suspended
+
+commit acaed4601e215b13766cd69f9f7805809cfa4150
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 17 16:49:19 2023 +0000
+
+    Hopefully fix audio.
+
+commit 1177fa34198fbe5aac589242d99445d939593616
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 17 16:28:56 2023 +0000
+
+    Disable sidetone if unchecked
+
+commit 97ed3f6f424494c4305588558a32e6b79a4e68ef
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 17 14:34:08 2023 +0000
+
+    Fix compile in linux
+
+commit e594efdbbc9dd0e0e88eb4eb9d5a49a622a2fc83
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 17 14:30:22 2023 +0000
+
+    Try to stop crash if there is no default audio device
+
+commit 3ce35500b9f3861f3aea00f2becbf3e43d861826
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 17 14:01:09 2023 +0000
+
+    Fix Qt5 compile (hopefully)
+
+commit 9eb89a9cb1279ee7e8badeba0230fce19baf77d6
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Feb 17 13:58:02 2023 +0000
+
+    First working cw sidetone
+    
+    Still needs better timing and volume
+
+commit fd6d132fd3616f6681b1924f9b46dcdd69b1aaba
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 14 20:27:32 2023 +0000
+
+    Various fixes
+
+commit 6f1d4e24b7676bebae425c778cae4085355cdb99
+Merge: 8b7377f ce9e3e9
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 14 18:48:10 2023 +0000
+
+    Merge branch 'master' into sidetone
+
+commit 8b7377f0960ff1b2936e4eccebd831312e673b56
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Feb 14 18:47:32 2023 +0000
+
+    Add some feature in the hope of supporting sidetone
 
 commit ce9e3e9f2cd8a343ab65d068904475126bfc8483
 Author: Roeland Jansen <roeland.jansen69@gmail.com>
