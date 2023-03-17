@@ -872,6 +872,18 @@ void rigCommander::setDataMode(bool dataOn, unsigned char filter)
     prepDataAndSend(payload);
 }
 
+void rigCommander::getFrequency(unsigned char vfo)
+{
+    if (rigCaps.hasVFOAB || rigCaps.hasVFOMS)
+    {
+        QByteArray payload("\x25");
+        payload.append(vfo);
+        prepDataAndSend(payload);
+    } else {
+        getFrequency();
+    }
+}
+
 void rigCommander::getFrequency()
 {
     // figure out frequency and then respond with haveFrequency();
@@ -1675,11 +1687,9 @@ void rigCommander::parseCommand()
             parseFrequency();
             break;
         case '\x25':
-            if((int)payloadIn[1] == 0)
-            {
-                emit haveFrequency(parseFrequency(payloadIn, 5));
-            }
-            break;
+            // Parse both VFOs
+            emit haveFrequency(parseFrequency(payloadIn, 5));
+        break;
         case '\x01':
             //qInfo(logRig()) << "Have mode data";
             this->parseMode();
@@ -4591,6 +4601,7 @@ void rigCommander::parseFrequency()
     //    payloadIn[01] = ; //      . XX KHz
 
     // printHex(payloadIn, false, true);
+
     frequencyMhz = 0.0;
     if (payloadIn.length() == 7)
     {
@@ -4680,40 +4691,25 @@ freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
     // NOTE: This function was written on the IC-7300, which has no need for 100 MHz and 1 GHz.
     //       Therefore, this function has to go to position +1 to retrieve those numbers for the IC-9700.
 
-    // TODO: 64-bit value is incorrect, multiplying by wrong numbers.
-
-    float freq = 0.0;
-
     freqt freqs;
     freqs.MHzDouble = 0;
     freqs.Hz = 0;
 
-    // MHz:
-    freq += 100*(data[lastPosition+1] & 0x0f);
-    freq += (1000*((data[lastPosition+1] & 0xf0) >> 4));
-
-    freq += data[lastPosition] & 0x0f;
-    freq += 10*((data[lastPosition] & 0xf0) >> 4);
-
-    freqs.Hz += (data[lastPosition] & 0x0f) * 1E6;
-    freqs.Hz += ((data[lastPosition] & 0xf0) >> 4) * 1E6 *     10; //   10 MHz
-
+    // Does Frequency contain 100 MHz/1 GHz data?
     if(data.length() >= lastPosition+1)
     {
         freqs.Hz += (data[lastPosition+1] & 0x0f) * 1E6 *         100; //  100 MHz
         freqs.Hz += ((data[lastPosition+1] & 0xf0) >> 4) * 1E6 * 1000; // 1000 MHz
     }
 
+    // Does Frequency contain VFO data? (\x25 command)
+    if (lastPosition-4 >= 0 && (quint8)data[lastPosition-4] < 0x02 && (quint8)data[lastPosition-4] >= 0x00)
+    {
+        freqs.VFO=(selVFO_t)(quint8)data[lastPosition-4];
+    }
 
-    // Hz:
-    freq += ((data[lastPosition-1] & 0xf0) >>4)/10.0 ;
-    freq += (data[lastPosition-1] & 0x0f) / 100.0;
-
-    freq += ((data[lastPosition-2] & 0xf0) >> 4) / 1000.0;
-    freq += (data[lastPosition-2] & 0x0f) / 10000.0;
-
-    freq += ((data[lastPosition-3] & 0xf0) >> 4) / 100000.0;
-    freq += (data[lastPosition-3] & 0x0f) / 1000000.0;
+    freqs.Hz += (data[lastPosition] & 0x0f) * 1E6;
+    freqs.Hz += ((data[lastPosition] & 0xf0) >> 4) * 1E6 *     10; //   10 MHz
 
     freqs.Hz += (data[lastPosition-1] & 0x0f) *          10E3; // 10 KHz
     freqs.Hz += ((data[lastPosition-1] & 0xf0) >> 4) *  100E3; // 100 KHz

@@ -19,6 +19,7 @@
 #include <QMutexLocker>
 #include <QColorDialog>
 #include <QColor>
+#include <QMap>
 
 #include "logcategories.h"
 #include "wfviewtypes.h"
@@ -90,6 +91,7 @@ signals:
 
     // Frequency, mode, band:
     void getFrequency();
+    void getFrequency(unsigned char);
     void setFrequency(unsigned char vfo, freqt freq);
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
@@ -225,11 +227,7 @@ signals:
     void openShuttle();
     void requestRigState();
     void stateUpdated();
-    void initUsbController(int sens, QMutex* mutex);
-    void sendUsbControllerCommands(QVector<COMMAND>* cmds);
-    void sendUsbControllerButtons(QVector<BUTTON>* buts);
-    void sendUsbControllerKnobs(QVector<KNOB>* kbs);
-    void initUsbDefaults(quint8 bright, quint8 orient, quint8 speed, quint8 timeout, QColor color);
+    void initUsbController(QMutex* mutex,usbMap* prefs ,QVector<BUTTON>* buts,QVector<KNOB>* knobs);
     void setClusterUdpPort(int port);
     void setClusterEnableUdp(bool udp);
     void setClusterEnableTcp(bool tcp);
@@ -354,8 +352,6 @@ private slots:
     void showStatusBarText(QString text);
     void receiveBaudRate(quint32 baudrate);
     void radioSelection(QList<radio_cap_packet> radios);
-    void receiveUsbSensitivity(int val);
-    void receiveUsbSettings(quint8 bright, quint8 orient, quint8 speed, quint8 timeout, QColor color);
 
 
     // Added for RC28/Shuttle support
@@ -926,6 +922,7 @@ private:
     double oldLowerFreq;
     double oldUpperFreq;
     freqt freq;
+    freqt freqb;
     float tsKnobMHz;
 
     unsigned char setModeVal=0;
@@ -1073,9 +1070,6 @@ private:
 
     void updateUsbButtons();
 
-    void resetUsbButtons();
-    void resetUsbKnobs();
-    void resetUsbCommands();
     int oldFreqDialVal;
 
     rigCapabilities rigCaps;
@@ -1151,9 +1145,9 @@ private:
     usbController *usbControllerDev = Q_NULLPTR;
     QThread *usbControllerThread = Q_NULLPTR;
     QString usbDeviceName;
-    QVector<COMMAND> usbCommands;
     QVector<BUTTON> usbButtons;
     QVector<KNOB> usbKnobs;
+    usbMap usbControllers;
     QMutex usbMutex;
 #endif
 
@@ -1191,7 +1185,9 @@ Q_DECLARE_METATYPE(rigstate*)
 Q_DECLARE_METATYPE(QVector <BUTTON>*)
 Q_DECLARE_METATYPE(QVector <KNOB>*)
 Q_DECLARE_METATYPE(QVector <COMMAND>*)
+Q_DECLARE_METATYPE(const CONTROLLER*)
 Q_DECLARE_METATYPE(const COMMAND*)
+Q_DECLARE_METATYPE(const USBDEVICE*)
 Q_DECLARE_METATYPE(codecType)
 Q_DECLARE_METATYPE(errorType)
 Q_DECLARE_METATYPE(enum duplexMode)

@@ -147,7 +147,7 @@ struct timekind {
 };
 
 enum cmds {
-    cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode,
+    cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetFreqB, cmdSetFreq, cmdGetMode, cmdSetMode,
     cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
     cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
     cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetTPBFInner, cmdSetTPBFInner,

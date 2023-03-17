@@ -14,13 +14,40 @@
 #include <QLabel>
 #include <QGraphicsProxyWidget>
 #include <QAbstractItemView>
+#include <QHBoxLayout>
+#include <QGridLayout>
+#include <QPushButton>
+#include <QScopedPointer>
 
 #include <QDebug>
 #include <QObject>
 #include <QColorDialog>
+#include <QWidget>
+#include <QSpinBox>
 
 #include "usbcontroller.h"
 
+
+class controllerScene : public QGraphicsScene
+{
+    Q_OBJECT
+        QGraphicsLineItem* item = Q_NULLPTR;
+
+signals:
+    void mousePressed(controllerScene* scene, QPoint p);
+protected:
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) {
+
+        if (event->button() == Qt::RightButton)
+        {
+            emit mousePressed(this, event->scenePos().toPoint());
+        }
+        else
+        {
+            QGraphicsScene::mousePressEvent(event);
+        }
+    }
+};
 
 
 namespace Ui {
@@ -36,43 +63,41 @@ public:
     ~controllerSetup();
 
 signals:
-    void sendSensitivity(int val);
-    void programButton(quint8 but, QString text);
-    void programBrightness(quint8 level);
-    void programWheelColour(quint8 r, quint8 g, quint8 b);
-    void programOverlay(quint8 duration, QString text);
-    void programOrientation(quint8 value);
-    void programSpeed(quint8 value);
-    void programTimeout(quint8 value);
-    void updateSettings(quint8 bright, quint8 orient, quint8 speed, quint8 timeout, QColor color);
+    void programButton(QString path, quint8 but, QString text);
+    void programSensitivity(QString path, quint8 level);
+    void programBrightness(QString path, quint8 level);
+    void programWheelColour(QString path, quint8 r, quint8 g, quint8 b);
+    void programOverlay(QString path, quint8 duration, QString text);
+    void programOrientation(QString path, quint8 value);
+    void programSpeed(QString path, quint8 value);
+    void programTimeout(QString path, quint8 value);
 
 public slots:
-    void newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut);
-    void mousePressed(QPoint p);
+    void newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut);
+    void removeDevice(USBDEVICE* dev);
+    void mousePressed(controllerScene *scene,QPoint p);
     void onEventIndexChanged(int index);
     void offEventIndexChanged(int index);
     void knobEventIndexChanged(int index);
     void receiveSensitivity(int val);
-    void on_sensitivitySlider_valueChanged(int val);
-    void on_qkBrightCombo_currentIndexChanged(int index);
-    void on_qkOrientCombo_currentIndexChanged(int index);
-    void on_qkSpeedCombo_currentIndexChanged(int index);
-    void on_qkColorButton_clicked();
-    void on_qkTimeoutSpin_valueChanged(int arg1);
-    void setDefaults(quint8 bright, quint8 orient, quint8 speed, quint8 timeout, QColor color);
+    void sensitivityMoved(QString path, int val);
+    void brightnessChanged(QString path, int index);
+    void orientationChanged(QString path, int index);
+    void speedChanged(QString path, int index);
+    void colorPicker(QString path);
+    void timeoutChanged(QString path, int val);
 
 private:
 
     usbDeviceType usbDevice = usbNone;
     Ui::controllerSetup* ui;
-    QGraphicsScene* scene;
     QGraphicsTextItem* textItem;
-    QGraphicsItem* bgImage = Q_NULLPTR;
     QLabel* imgLabel;
     unsigned char currentDevice = 0;
     QVector<BUTTON>* buttons;
     QVector<KNOB>* knobs;
     QVector<COMMAND>* commands;
+    usbMap* controllers;
     BUTTON* currentButton = Q_NULLPTR;
     KNOB* currentKnob = Q_NULLPTR;
     QComboBox* onEvent = Q_NULLPTR;
@@ -86,30 +111,31 @@ private:
     QString deviceName;
     QMutex* mutex;
     QColor initialColor = Qt::white;
+
+    QLabel* noControllersText;
+
+    int numTabs=0;
+
+    // Below are used for each tab:
+    /*
+    QList<QWidget *> tabs;
+    QList<QVBoxLayout *> layouts;
+    QList<QWidget *> widgets;
+    QList<QGraphicsView *> graphicsViews;
+    QList<QGraphicsScene*> scenes;
+    QList<QGraphicsItem*> bgImages;
+    QList<QSlider *>sensitivitys;
+
+    // Just used for QuickKeys device
+    QList<QComboBox *>brightCombos;
+    QList<QComboBox *>speedCombos;
+    QList<QComboBox *>orientCombos;
+    QList<QPushButton *>colorButtons;
+    QList<QSpinBox *>timeoutSpins;
+*/
 };
 
 
-
-class controllerScene : public QGraphicsScene
-{
-    Q_OBJECT
-        QGraphicsLineItem* item = Q_NULLPTR;
-
-signals:
-    void mousePressed(QPoint p);
-protected:
-    void mousePressEvent(QGraphicsSceneMouseEvent* event) {
-
-        if (event->button() == Qt::RightButton)
-        {
-            emit mousePressed(event->scenePos().toPoint());
-        }
-        else
-        {
-            QGraphicsScene::mousePressEvent(event);
-        }
-    }
-};
 
 
 

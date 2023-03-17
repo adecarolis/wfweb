@@ -70,6 +70,7 @@ public slots:
 
     // Frequency, Mode, BSR:
     void setFrequency(unsigned char vfo, freqt freq);
+    void getFrequency(unsigned char vfo);
     void getFrequency();
     void selectVFO(vfo_t vfo);
     void equalizeVFOsAB();

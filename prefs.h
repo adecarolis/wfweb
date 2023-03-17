@@ -2,8 +2,10 @@
 #define PREFS_H
 
 #include <QString>
-
+#include <QColor>
+#include <QMap>
 #include "wfviewtypes.h"
+
 
 struct preferences {
     // Program:
@@ -46,12 +48,6 @@ struct preferences {
     bool niceTS;
     bool automaticSidebandSwitching = true;
     bool enableUSBControllers;
-    int usbSensitivity;
-    quint8 usbSpeed;
-    quint8 usbTimeout;
-    quint8 usbBrightness;
-    quint8 usbOrientation;
-    QColor usbColor;
 
     // LAN:
     bool enableLAN;

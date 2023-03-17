@@ -7,65 +7,36 @@ controllerSetup::controllerSetup(QWidget* parent) :
     ui(new Ui::controllerSetup)
 {
     ui->setupUi(this);
-    scene = new controllerScene();
-    connect(scene, SIGNAL(mousePressed(QPoint)), this, SLOT(mousePressed(QPoint)));
-    ui->graphicsView->setScene(scene);
-    ui->qkBrightCombo->setVisible(false);
-    ui->qkOrientCombo->setVisible(false);
-    ui->qkSpeedCombo->setVisible(false);
-    ui->qkColorButton->setVisible(false);
-    ui->qkTimeoutSpin->setVisible(false);
-    ui->qkTimeoutLabel->setVisible(false);
-    textItem = scene->addText("No USB controller found");
-    textItem->setDefaultTextColor(Qt::gray);
+    ui->tabWidget->clear();
+    ui->tabWidget->hide();
+    noControllersText = new QLabel("No USB controller found");
+    noControllersText->setStyleSheet("QLabel { color : gray; }");
+    ui->hboxLayout->addWidget(noControllersText);
     this->resize(this->sizeHint());
 }
 
 controllerSetup::~controllerSetup()
 {
-    /*
-    // Remove any existing button text:
-    for (QGraphicsItem* item : scene->items())
-    {
-        QGraphicsTextItem* txt = qgraphicsitem_cast<QGraphicsTextItem*>(item);
-        if (!txt || txt == textItem)
-            continue;
-        scene->removeItem(txt);
-        delete txt;
-    }
 
     if (onEventProxy != Q_NULLPTR) {
-        scene->removeItem(onEventProxy);
-        onEventProxy = Q_NULLPTR;
+        delete onEventProxy;
         delete onEvent;
-        onEvent = Q_NULLPTR;
     }
+
     if (offEventProxy != Q_NULLPTR) {
-        scene->removeItem(offEventProxy);
-        offEventProxy = Q_NULLPTR;
+        delete offEventProxy;
         delete offEvent;
-        offEvent = Q_NULLPTR;
     }
+
     if (knobEventProxy != Q_NULLPTR) {
-        scene->removeItem(knobEventProxy);
-        knobEventProxy = Q_NULLPTR;
+        delete knobEventProxy;
         delete knobEvent;
-        knobEvent = Q_NULLPTR;
-    }
-    */
-
-    if (bgImage != Q_NULLPTR) {
-        scene->removeItem(bgImage);
-        delete bgImage;
-        bgImage = Q_NULLPTR;
     }
 
-    delete textItem;
-    delete scene;
     delete ui;
 }
 
-void controllerSetup::mousePressed(QPoint p) 
+void controllerSetup::mousePressed(controllerScene* scene, QPoint p)
 {
     // Receive mouse event from the scene
     qDebug() << "Looking for button Point x=" << p.x() << " y=" << p.y();
@@ -79,9 +50,11 @@ void controllerSetup::mousePressed(QPoint p)
     QMutexLocker locker(mutex);
 
 
+
     for (BUTTON& b : *buttons)
     {
-        if (b.dev == currentDevice && b.pos.contains(p))
+
+        if (ui->tabWidget->currentWidget()->objectName() == b.devicePath && b.pos.contains(p))
         {
             found = true;
             currentButton = &b;
@@ -106,7 +79,7 @@ void controllerSetup::mousePressed(QPoint p)
     if (!found) {
         for (KNOB& k : *knobs)
         {
-            if (k.dev == currentDevice && k.pos.contains(p))
+            if (ui->tabWidget->currentWidget()->objectName() == k.devicePath && k.pos.contains(p))
             {
                 found = true;
                 currentKnob = &k;
@@ -123,7 +96,25 @@ void controllerSetup::mousePressed(QPoint p)
         }
     }
 
-    if (!found) {
+    if(found)
+    {
+        found=false;
+        foreach (QGraphicsItem *item, scene->items())
+        {
+            QGraphicsProxyWidget *node = dynamic_cast<QGraphicsProxyWidget *>(item);
+            if (node) {
+                found=true;
+                break;
+            }
+        }
+        if (!found) {
+            scene->addItem(offEvent->graphicsProxyWidget());
+            scene->addItem(onEvent->graphicsProxyWidget());
+            scene->addItem(knobEvent->graphicsProxyWidget());
+        }
+    }
+    else
+    {
         onEvent->hide();
         offEvent->hide();
         knobEvent->hide();
@@ -140,7 +131,7 @@ void controllerSetup::onEventIndexChanged(int index) {
         currentButton->onText->setPos(currentButton->pos.center().x() - currentButton->onText->boundingRect().width() / 2,
             (currentButton->pos.center().y() - currentButton->onText->boundingRect().height() / 2)-6);
         // Signal that any button programming on the device should be completed.
-        emit programButton(currentButton->num, currentButton->onCommand->text);
+        emit programButton(currentButton->devicePath,currentButton->num, currentButton->onCommand->text);
     }
 }
 
@@ -168,8 +159,33 @@ void controllerSetup::knobEventIndexChanged(int index) {
     }
 }
 
+void controllerSetup::removeDevice(USBDEVICE* dev)
+{
+    QMutexLocker locker(mutex);
 
-void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut)
+    int remove = -1;
+
+    for (int i = 0; i < ui->tabWidget->count(); i++) {
+        auto widget = ui->tabWidget->widget(i);
+        if (widget->objectName() == dev->path) {
+            qDeleteAll(widget->findChildren<QWidget *>("", Qt::FindDirectChildrenOnly));
+            remove = i;
+        }
+    }
+
+    if (remove != -1) {
+        qInfo(logUsbControl()) << "Removing tab" << dev->product;
+        ui->tabWidget->removeTab(remove);
+    }
+    if (ui->tabWidget->count() == 0)
+    {
+        ui->tabWidget->hide();
+        noControllersText->show();
+        this->adjustSize();
+    }
+}
+
+void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut)
 {
     buttons = but;
     knobs = kb;
@@ -178,100 +194,141 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
 
     QMutexLocker locker(mutex);
 
-    // Remove any existing button text:
-    for (QGraphicsItem* item : scene->items())
+    noControllersText->hide();
+    QWidget* tab = new QWidget();
+    tab->setObjectName(dev->path);
+    QWidget* widget = new QWidget(tab);
+
+    QVBoxLayout* layout = new QVBoxLayout(widget);
+    layout->setContentsMargins(0,0,0,0);
+    QGraphicsView *view = new QGraphicsView(widget);
+    layout->addWidget(view);
+
+    QHBoxLayout* senslayout = new QHBoxLayout(widget);
+    layout->addLayout(senslayout);
+    QLabel* senslabel = new QLabel("Sensitivity");
+    senslayout->addWidget(senslabel);
+    QSlider *sens = new QSlider(widget);
+    sens->setMinimum(1);
+    sens->setMaximum(21);
+    sens->setOrientation(Qt::Horizontal);
+    sens->setInvertedAppearance(true);
+    senslayout->addWidget(sens);
+    sens->setValue(cntrl->sensitivity);
+    connect(sens, &QSlider::valueChanged,
+        [dev,this](int val) { this->sensitivityMoved(dev->path,val); });
+
+    if (dev->usbDevice == QuickKeys)
     {
-        QGraphicsTextItem* txt = qgraphicsitem_cast<QGraphicsTextItem*>(item);
-        if (!txt || txt==textItem)
-            continue;
-        scene->removeItem(txt);
-        delete txt;
+        // Add QuickKeys section
+
+        QGridLayout* grid = new QGridLayout(widget);
+        layout->addLayout(grid);
+        QLabel* brightlabel = new QLabel("Brightness");
+        grid->addWidget(brightlabel,0,0);
+        QComboBox *brightness = new QComboBox(widget);
+        brightness->addItem("Off");
+        brightness->addItem("Low");
+        brightness->addItem("Medium");
+        brightness->addItem("High");
+        brightness->setCurrentIndex(cntrl->brightness);
+        grid->addWidget(brightness,1,0);
+        connect(brightness, qOverload<int>(&QComboBox::currentIndexChanged),
+            [dev,this](int index) { this->brightnessChanged(dev->path,index); });
+
+        QLabel* speedlabel = new QLabel("Speed");
+        grid->addWidget(speedlabel,0,1);
+        QComboBox *speed = new QComboBox(widget);
+        speed->addItem("Fastest");
+        speed->addItem("Faster");
+        speed->addItem("Normal");
+        speed->addItem("Slower");
+        speed->addItem("Slowest");
+        speed->setCurrentIndex(cntrl->speed);
+        grid->addWidget(speed,1,1);
+        connect(speed, qOverload<int>(&QComboBox::currentIndexChanged),
+            [dev,this](int index) { this->speedChanged(dev->path,index); });
+
+        QLabel* orientlabel = new QLabel("Orientation");
+        grid->addWidget(orientlabel,0,2);
+        QComboBox *orientation = new QComboBox(widget);
+        orientation->addItem("Rotate 0");
+        orientation->addItem("Rotate 90");
+        orientation->addItem("Rotate 180");
+        orientation->addItem("Rotate 270");
+        orientation->setCurrentIndex(cntrl->orientation);
+        grid->addWidget(orientation,1,2);
+        connect(orientation, qOverload<int>(&QComboBox::currentIndexChanged),
+            [dev,this](int index) { this->orientationChanged(dev->path,index); });
+
+        QLabel* colorlabel = new QLabel("Dial Color");
+        grid->addWidget(colorlabel,0,3);
+        QPushButton* color = new QPushButton("Select");
+        grid->addWidget(color,1,3);
+        connect(color, &QPushButton::clicked,
+            [dev,this]() { this->colorPicker(dev->path); });
+
+        QLabel* timeoutlabel = new QLabel("Timeout");
+        grid->addWidget(timeoutlabel,0,4);
+        QSpinBox *timeout = new QSpinBox(widget);
+        timeout->setValue(cntrl->timeout);
+        grid->addWidget(timeout,1,4);
+        connect(timeout, qOverload<int>(&QSpinBox::valueChanged),
+            [dev,this](int index) { this->timeoutChanged(dev->path,index); });
+
+        // Finally update the device with the default values
+        emit programSensitivity(dev->path, cntrl->sensitivity);
+        emit programBrightness(dev->path,cntrl->brightness);
+        emit programOrientation(dev->path,cntrl->orientation);
+        emit programSpeed(dev->path,cntrl->speed);
+        emit programTimeout(dev->path,cntrl->timeout);
+        emit programWheelColour(dev->path, cntrl->color.red(), cntrl->color.green(), cntrl->color.blue());
     }
 
-    if (bgImage != Q_NULLPTR) {
-        scene->removeItem(bgImage);
-        delete bgImage;
-        bgImage = Q_NULLPTR;
-    }
-    if (onEventProxy != Q_NULLPTR) {
-        scene->removeItem(onEventProxy);
-        onEventProxy = Q_NULLPTR;
-        delete onEvent;
-        onEvent = Q_NULLPTR;
-    }
-    if (offEventProxy != Q_NULLPTR) {
-        scene->removeItem(offEventProxy);
-        offEventProxy = Q_NULLPTR;
-        delete offEvent;
-        offEvent = Q_NULLPTR;
-    }
-    if (knobEventProxy != Q_NULLPTR) {
-        scene->removeItem(knobEventProxy);
-        knobEventProxy = Q_NULLPTR;
-        delete knobEvent;
-        knobEvent = Q_NULLPTR;
-    }
+    QLabel *helpText = new QLabel(widget);
+    helpText->setText("<p><b>Button configuration:</b> Right-click on each button to configure it.</p><p>Top selection is command to send when button is pressed and bottom is (optional) command to send when button is released.</p>");
+    helpText->setAlignment(Qt::AlignCenter);
+    layout->addWidget(helpText);
 
     QImage image;
 
-    switch (devType) {
+    switch (dev->usbDevice) {
         case shuttleXpress:
             image.load(":/resources/shuttlexpress.png");
-            deviceName = "shuttleXpress";
             break;
         case shuttlePro2:
             image.load(":/resources/shuttlepro.png");
-            deviceName = "shuttlePro2";
             break;
         case RC28:
             image.load(":/resources/rc28.png");
-            deviceName = "RC28";
             break;
         case xBoxGamepad:
             image.load(":/resources/xbox.png");
-            deviceName = "XBox";
             break;
         case eCoderPlus:
             image.load(":/resources/ecoder.png");
-            deviceName = "eCoderPlus";
             break;
         case QuickKeys:
             image.load(":/resources/quickkeys.png");
-            deviceName = "QuickKeys";
             break;
         default:
-            textItem->show();
-            ui->graphicsView->setSceneRect(scene->itemsBoundingRect());
+            //ui->graphicsView->setSceneRect(scene->itemsBoundingRect());
             this->adjustSize();
             break;
     }
-    
-    textItem->hide();
-    bgImage = new QGraphicsPixmapItem(QPixmap::fromImage(image));
+
+    QGraphicsItem* bgImage = new QGraphicsPixmapItem(QPixmap::fromImage(image));
+    view->setMinimumSize(bgImage->boundingRect().width() + 2, bgImage->boundingRect().height() + 2);
+    this->setMinimumSize(bgImage->boundingRect().width() + 370, bgImage->boundingRect().height() + 250);
+    controllerScene * scene = new controllerScene();
+    view->setScene(scene);
+    connect(scene, SIGNAL(mousePressed(controllerScene *,QPoint)), this, SLOT(mousePressed(controllerScene *,QPoint)));
     scene->addItem(bgImage);
 
-    ui->graphicsView->setMinimumSize(bgImage->boundingRect().width() + 100, bgImage->boundingRect().height() + 2);
-    currentDevice = devType;
+    ui->tabWidget->addTab(tab,dev->product);
+    ui->tabWidget->show();
 
-    if (currentDevice == QuickKeys) {
-        ui->qkBrightCombo->setVisible(true);
-        ui->qkOrientCombo->setVisible(true);
-        ui->qkSpeedCombo->setVisible(true);
-        ui->qkColorButton->setVisible(true);
-        ui->qkTimeoutSpin->setVisible(true);
-        ui->qkTimeoutLabel->setVisible(true);
-    }
-    else
-    {
-        ui->qkBrightCombo->setVisible(false);
-        ui->qkOrientCombo->setVisible(false);
-        ui->qkSpeedCombo->setVisible(false);
-        ui->qkColorButton->setVisible(false);
-        ui->qkTimeoutSpin->setVisible(false);
-        ui->qkTimeoutLabel->setVisible(false);
-    }
-
-    if (currentDevice != usbNone)
+    if (dev->usbDevice != usbNone)
     {
         offEvent = new QComboBox;
         onEvent = new QComboBox;
@@ -320,13 +377,13 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
         for (BUTTON& b : *buttons)
         {
 
-            if (b.dev == currentDevice) {
+            if (b.devicePath == dev->path) {
                 b.onText = new QGraphicsTextItem(b.onCommand->text);
                 b.onText->setDefaultTextColor(b.textColour);
                 scene->addItem(b.onText);
                 b.onText->setPos(b.pos.center().x() - b.onText->boundingRect().width() / 2,
                     (b.pos.center().y() - b.onText->boundingRect().height() / 2) - 6);
-                emit programButton(b.num, b.onCommand->text); // Program the button with ontext if supported
+                emit programButton(b.devicePath,b.num, b.onCommand->text); // Program the button with ontext if supported
 
                 b.offText = new QGraphicsTextItem(b.offCommand->text);
                 b.offText->setDefaultTextColor(b.textColour);
@@ -340,7 +397,7 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
 
         for (KNOB& k : *knobs)
         {
-            if (k.dev == currentDevice) {
+            if (k.devicePath == dev->path) {
                 k.text = new QGraphicsTextItem(k.command->text);
                 k.text->setDefaultTextColor(k.textColour);
                 scene->addItem(k.text);
@@ -348,74 +405,59 @@ void controllerSetup::newDevice(unsigned char devType, QVector<BUTTON>* but, QVe
                     (k.pos.center().y() - k.text->boundingRect().height() / 2));
             }
         }
-        ui->graphicsView->setSceneRect(scene->itemsBoundingRect());
-        ui->graphicsView->resize(ui->graphicsView->sizeHint());
-        //this->resize(this->sizeHint());
-        this->adjustSize();
+        view->setSceneRect(scene->itemsBoundingRect());
 
         // Add comboboxes to scene after everything else.
-        offEventProxy = scene->addWidget(offEvent);
         connect(offEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(offEventIndexChanged(int)));
-        onEventProxy = scene->addWidget(onEvent);
         connect(onEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(onEventIndexChanged(int)));
-        knobEventProxy = scene->addWidget(knobEvent);
         connect(knobEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(knobEventIndexChanged(int)));
 
-        if (currentDevice == QuickKeys) {
-            // Finally update the device with the default values
-            emit programBrightness((quint8)ui->qkBrightCombo->currentIndex() - 1);
-            emit programOrientation((quint8)ui->qkOrientCombo->currentIndex());
-            emit programSpeed((quint8)ui->qkSpeedCombo->currentIndex());
-            emit programTimeout((quint8)ui->qkTimeoutSpin->value());
-            emit programWheelColour((quint8)initialColor.red(), (quint8)initialColor.green(), (quint8)initialColor.blue());
-        }
+        onEventProxy = new QGraphicsProxyWidget();
+        onEventProxy->setWidget(onEvent);
+        offEventProxy = new QGraphicsProxyWidget();
+        offEventProxy->setWidget(offEvent);
+        knobEventProxy = new QGraphicsProxyWidget();
+        knobEventProxy->setWidget(knobEvent);
+
+        this->adjustSize();
+        //QTimer::singleShot(0, this, [this,view]() {this->resize(view->minimumSizeHint());});
     }
+
+
+    numTabs++;
+
 }
 
 void controllerSetup::receiveSensitivity(int val)
 {
-    ui->sensitivitySlider->blockSignals(true);
-    ui->sensitivitySlider->setValue(val);
-    ui->sensitivitySlider->blockSignals(false);
+    //ui->sensitivitySlider->blockSignals(true);
+    //ui->sensitivitySlider->setValue(val);
+   // ui->sensitivitySlider->blockSignals(false);
 }
 
-void controllerSetup::on_sensitivitySlider_valueChanged(int val)
+void controllerSetup::sensitivityMoved(QString path, int val)
 {
-    emit sendSensitivity(val);
+    qInfo(logUsbControl()) << "Setting sensitivity" << val <<"for device" << path;
+    emit programSensitivity(path, val);
 }
 
-void controllerSetup::on_qkBrightCombo_currentIndexChanged(int index)
+void controllerSetup::brightnessChanged(QString path, int index)
 {
-    if (index) {
-        emit programBrightness((quint8)index - 1);
-    }
-    emit updateSettings((quint8)ui->qkBrightCombo->currentIndex(), (quint8)ui->qkOrientCombo->currentIndex(),
-        (quint8)ui->qkSpeedCombo->currentIndex(), (quint8)ui->qkTimeoutSpin->value(), initialColor);
+    emit programBrightness(path, (quint8)index);
 }
 
-void controllerSetup::on_qkOrientCombo_currentIndexChanged(int index)
+void controllerSetup::orientationChanged(QString path, int index)
 {
-    if (index) {
-        emit programOrientation((quint8)index);
-        emit programOverlay(3, QString("Orientation set to %0").arg(ui->qkOrientCombo->currentText()));
-    }
-    emit updateSettings((quint8)ui->qkBrightCombo->currentIndex(), (quint8)ui->qkOrientCombo->currentIndex(),
-        (quint8)ui->qkSpeedCombo->currentIndex(), (quint8)ui->qkTimeoutSpin->value(), initialColor);
+    emit programOrientation(path, (quint8)index);
 }
 
-void controllerSetup::on_qkSpeedCombo_currentIndexChanged(int index)
+void controllerSetup::speedChanged(QString path, int index)
 {
-    if (index) {
-        emit programSpeed((quint8)index);
-        emit programOverlay(3, QString("Dial speed set to %0").arg(ui->qkSpeedCombo->currentText()));
-    }
-    emit updateSettings((quint8)ui->qkBrightCombo->currentIndex(), (quint8)ui->qkOrientCombo->currentIndex(),
-        (quint8)ui->qkSpeedCombo->currentIndex(), (quint8)ui->qkTimeoutSpin->value(), initialColor);
+    emit programSpeed(path, (quint8)index);
 }
 
-void controllerSetup::on_qkColorButton_clicked()
+void controllerSetup::colorPicker(QString path)
 {
-    
     QColorDialog::ColorDialogOptions options;
     options.setFlag(QColorDialog::ShowAlphaChannel, false);
     options.setFlag(QColorDialog::DontUseNativeDialog, false);
@@ -426,35 +468,12 @@ void controllerSetup::on_qkColorButton_clicked()
         selColor = initialColor;
     }
     initialColor = selColor;
-    emit programWheelColour((quint8)selColor.red(), (quint8)selColor.green(), (quint8)initialColor.blue());
-    emit updateSettings((quint8)ui->qkBrightCombo->currentIndex(), (quint8)ui->qkOrientCombo->currentIndex(),
-        (quint8)ui->qkSpeedCombo->currentIndex(), (quint8)ui->qkTimeoutSpin->value(), initialColor);
+    emit programWheelColour(path, (quint8)selColor.red(), (quint8)selColor.green(), (quint8)initialColor.blue());
 }
 
-void controllerSetup::on_qkTimeoutSpin_valueChanged(int arg1)
+void controllerSetup::timeoutChanged(QString path, int val)
 {
-    emit programTimeout((quint8)arg1);
-    emit programOverlay(3, QString("Sleep timeout set to %0 minutes").arg(arg1));
-    emit updateSettings((quint8)ui->qkBrightCombo->currentIndex(), (quint8)ui->qkOrientCombo->currentIndex(), 
-        (quint8)ui->qkSpeedCombo->currentIndex(), (quint8)ui->qkTimeoutSpin->value(), initialColor);
+    emit programTimeout(path, (quint8)val);
+    emit programOverlay(path, 3, QString("Sleep timeout set to %0 minutes").arg(val));
 }
 
-void controllerSetup::setDefaults(quint8 bright, quint8 orient, quint8 speed, quint8 timeout, QColor color)
-{
-    ui->qkBrightCombo->blockSignals(true);
-    ui->qkSpeedCombo->blockSignals(true);
-    ui->qkOrientCombo->blockSignals(true);
-    ui->qkTimeoutSpin->blockSignals(true);
-
-    ui->qkBrightCombo->setCurrentIndex((int)bright);
-    ui->qkOrientCombo->setCurrentIndex((int)orient);
-    ui->qkSpeedCombo->setCurrentIndex((int)speed);
-    ui->qkTimeoutSpin->setValue((int)timeout);
-    initialColor = color;
-
-    ui->qkBrightCombo->blockSignals(false);
-    ui->qkSpeedCombo->blockSignals(false);
-    ui->qkOrientCombo->blockSignals(false);
-    ui->qkTimeoutSpin->blockSignals(false);
-
-}
