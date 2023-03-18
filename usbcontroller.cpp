@@ -363,6 +363,8 @@ void usbController::run()
                     dev.knobSend.append(0);
                 }
 
+                dev.knobPrevious.append(dev.knobValues);
+
                 // Find our defaults/knobs/buttons for this controller:
                 // First see if we have any stored and add them to the list if not.
 
@@ -764,7 +766,8 @@ void usbController::runTimer()
                 for (unsigned char i = 0; i < dev.knobValues.size(); i++) {
                     for (KNOB* kb = knobList->begin(); kb != knobList->end(); kb++) {
                         if (kb != knobList->end() && kb->command && kb->devicePath == dev.path && kb->num == i && dev.knobValues[i]) {
-                            COMMAND cmd(*kb->command);
+                            // sendCommand mustn't be deleted so we ensure it stays in-scope by declaring it private.
+                            sendCommand = *kb->command;
                             if (kb->num >0) {
                                 if (dev.knobSend[i] + (dev.knobValues[i] * 10) <= 0)
                                 {
@@ -777,14 +780,23 @@ void usbController::runTimer()
                                 else {
                                     dev.knobSend[i] = dev.knobSend[i] + (dev.knobValues[i] * 10);
                                 }
-                                cmd.suffix = dev.knobSend[i];
+                                sendCommand.suffix = dev.knobSend[i];
                             } else {
-                                cmd.value = dev.knobValues[i]/dev.sensitivity;
+                                int tempVal = dev.knobValues[i] * dev.sensitivity;
+                                tempVal = qMin(qMax(tempVal,0),255);
+                                sendCommand.suffix = quint8(tempVal);
+                                dev.knobValues[i]=tempVal/dev.sensitivity; // This ensures that dial can't go outside 0-255
                             }
 
-                            qInfo(logUsbControl()) << "Sending Knob:" << kb->num << "Command:" << cmd.command << " Value:" << cmd.suffix << "Raw value:" << dev.knobValues[i];
-                            emit button(&cmd);
-                            dev.knobValues[i] = 0;
+                            if (dev.knobValues[i] != dev.knobPrevious[i]) {
+                                emit button(&sendCommand);
+                            }
+
+                            if (sendCommand.command == cmdSetFreq) {
+                                dev.knobValues[i] = 0;
+                            } else {
+                                dev.knobPrevious[i]=dev.knobValues[i];
+                            }
                         }
                     }
                 }

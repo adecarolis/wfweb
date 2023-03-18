@@ -1860,7 +1860,6 @@ void wfmain::buttonControl(const COMMAND* cmd)
     }
     default:
         issueCmdUniquePriority((cmds)cmd->command, cmd->suffix);
-        qInfo(logUsbControl()) << "Command fell through command:" << cmd->command << "suffix" << cmd->suffix;
         break;
     }
 }

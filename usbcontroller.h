@@ -78,6 +78,7 @@ struct USBDEVICE {
     quint32 buttons = 0;
     quint32 knobs = 0;
     QList<int> knobValues;
+    QList<int> knobPrevious;
     QList<quint8> knobSend;
     QTime lastusbController = QTime::currentTime();
     QByteArray lastData = QByteArray(8,0x0);
@@ -218,6 +219,7 @@ private:
     QColor currentColour;
 
     QMutex* mutex=Q_NULLPTR;
+    COMMAND sendCommand;
 
     unsigned short knownUsbDevices[6][5] = {
     {shuttleXpress,0x0b33,0x0020,0x0000,0x0000},
