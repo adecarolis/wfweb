@@ -165,7 +165,7 @@ void usbController::run()
             newDev.product = gamepad->name();
             newDev.path = gamepad->name();
             // Is this a new device? If so add it to usbDevices
-            //auto p = std::find_if(usbDevices.begin(),usbDevices.end(),[newDev](const USBDEVICE& dev) {return dev.path == newDev.path; });
+            // auto p = std::find_if(usbDevices.begin(),usbDevices.end(),[newDev](const USBDEVICE& dev) {return dev.path == newDev.path; });
             //if (p == usbDevices.end()) {
             //    usbDevices.append(newDev);
             //}
@@ -270,14 +270,18 @@ void usbController::run()
     auto it = usbDevices.begin();
     while (it != usbDevices.end())
     {
-        if (!it->connected)
+        if (it.value().remove)
+        {
             it = usbDevices.erase(it);
+        }
         else
+        {
             ++it;
+        }
     }
 #else
-    // Remove any devices from the list that are not connected (doesn't work on QT5!
-    usbDevices.erase(std::remove_if(usbDevices.begin(), usbDevices.end(), [](const USBDEVICE& dev) { return (!dev.connected); }),usbDevices.end());
+    // Remove any devices from the list that are not connected (doesn't work on QT5!)
+    usbDevices.erase(std::remove_if(usbDevices.begin(), usbDevices.end(), [](const USBDEVICE& dev) { return (dev.remove); }),usbDevices.end());
 #endif
     struct hid_device_info* devs;
     devs = hid_enumerate(0x0, 0x0);
@@ -299,8 +303,9 @@ void usbController::run()
                 newDev.usbDevice = (usbDeviceType)knownUsbDevices[i][0];
                 newDev.uuid = QUuid::createUuid();
                 // Is this a new device? If so add it to usbDevices
-                auto p = std::find_if(usbDevices.begin(),usbDevices.end(),[newDev](const USBDEVICE& dev) {return dev.path == newDev.path; });
-                if (p == usbDevices.end()) {
+
+                if (!usbDevices.contains(newDev.path))
+                {
                     usbDevices.insert(newDev.path,newDev);
                 }
             }
@@ -313,8 +318,17 @@ void usbController::run()
     for (USBDEVICE &dev: usbDevices) {
 
         if (!dev.connected && !dev.path.isEmpty()) {
-            qInfo(logUsbControl()) << QString("Attempting to connect to %0").arg(dev.product);
-            dev.handle = hid_open_path(dev.path.toLocal8Bit());
+
+            if (!controllers->contains(dev.path)) {
+                controllers->insert(dev.path,CONTROLLER());
+            }
+
+            dev.disabled = (*controllers)[dev.path].disabled;
+
+            if (!dev.disabled) {
+                qInfo(logUsbControl()) << QString("Attempting to connect to %0").arg(dev.product);
+                dev.handle = hid_open_path(dev.path.toLocal8Bit());
+            }
 
             if (dev.handle)
             {
@@ -323,28 +337,15 @@ void usbController::run()
                 dev.connected=true;
                 hid_set_nonblocking(dev.handle, 1);
 
-                if (dev.usbDevice == shuttleXpress || dev.usbDevice == shuttlePro2)
-                {
-                    dev.knobValues.append(0);
-                    dev.knobSend.append(0);
-                }
-                else if (dev.usbDevice == RC28) {
+                if (dev.usbDevice == RC28) {
                     getVersion();
                     ledControl(false, 0);
                     ledControl(false, 1);
                     ledControl(false, 2);
                     ledControl(true, 3);
-                    dev.knobValues.append(0);
-                    dev.knobSend.append(0);
-                }
-                else if (dev.usbDevice == eCoderPlus)
-                {
-                    dev.knobValues.append({ 0,0,0,0 });
-                    dev.knobSend.append({ 0,0,0,0 });
                 }
                 else if (dev.usbDevice == QuickKeys) {
                     // Subscribe to event streams
-
                     QByteArray b(32,0x0);
                     b[0] = (qint8)0x02;
                     b[1] = (qint8)0xb0;
@@ -359,18 +360,41 @@ void usbController::run()
                     b.replace(10, sizeof(dev.deviceId), dev.deviceId.toLocal8Bit());
 
                     hid_write(dev.handle, (const unsigned char*)b.constData(), b.size());
+
+                    programOverlay(dev.path, 3, "Hello from wfview");
+
+                }
+            }
+
+            else if (!dev.disabled)
+            {
+                // This should only get displayed once if we fail to connect to a device
+                if (dev.usbDevice != usbNone)
+                {
+                    qInfo(logUsbControl()) << QString("Error connecting to  %0: %1")
+                        .arg(dev.product)
+                        .arg(QString::fromWCharArray(hid_error(dev.handle)));
+                }
+                // Call me again in 2 seconds to try connecting again
+            }
+
+            if (!dev.uiCreated)
+            {
+                if (dev.usbDevice == shuttleXpress || dev.usbDevice == shuttlePro2 || dev.usbDevice == RC28 || dev.usbDevice == QuickKeys)
+                {
                     dev.knobValues.append(0);
                     dev.knobSend.append(0);
+                }
+                else if (dev.usbDevice == eCoderPlus)
+                {
+                    dev.knobValues.append({ 0,0,0,0 });
+                    dev.knobSend.append({ 0,0,0,0 });
                 }
 
                 dev.knobPrevious.append(dev.knobValues);
 
                 // Find our defaults/knobs/buttons for this controller:
                 // First see if we have any stored and add them to the list if not.
-
-                if (!controllers->contains(dev.path)) {
-                    controllers->insert(dev.path,CONTROLLER());
-                }
 
                 auto bti = std::find_if(buttonList->begin(), buttonList->end(), [dev](const BUTTON& b)
                     { return (b.devicePath == dev.path); });
@@ -405,19 +429,19 @@ void usbController::run()
                 }
                 // Let the UI know we have a new controller
                 emit newDevice(&dev, &(*controllers)[dev.path],buttonList, knobList, &commands, mutex);
-            }
-            else
-            {
 
-                // This should only get displayed once if we fail to connect to a device
-                if (dev.usbDevice != usbNone)
+                dev.uiCreated = true;
+            } else {
+                if (dev.connected)
                 {
-                    qInfo(logUsbControl()) << QString("Error connecting to  %0: %1")
-                        .arg(dev.product)
-                        .arg(QString::fromWCharArray(hid_error(dev.handle)));
+                    dev.message->setStyleSheet("QLabel { color : green; }");
+                    dev.message->setText("Connected");
+                } else {
+                    dev.message->setStyleSheet("QLabel { color : red; }");
+                    dev.message->setText("Not Connected");
                 }
-                // Call me again in 2 seconds to try connecting again
             }
+
         }
     }
 
@@ -439,7 +463,7 @@ void usbController::runTimer()
 
     for (USBDEVICE &dev: usbDevices)
     {
-        if (!dev.connected || !dev.handle) {
+        if (dev.disabled || !dev.connected || !dev.handle) {
             continue;
         }
 
@@ -454,7 +478,8 @@ void usbController::runTimer()
                 emit removeDevice(&dev);
                 hid_close(dev.handle);
                 dev.handle = NULL;
-                dev.connected=false;
+                dev.connected = false;
+                dev.remove = true;
                 devicesConnected--;
                 break;
             }
@@ -813,8 +838,10 @@ void usbController::runTimer()
         }
     }
 
-    // Run every 25ms
-    QTimer::singleShot(25, this, SLOT(runTimer()));
+    if (devicesConnected>0) {
+        // Run the periodic timer to get data if we have any devices
+        QTimer::singleShot(25, this, SLOT(runTimer()));
+    }
 }
 
 void usbController::receivePTTStatus(bool on) {
@@ -843,7 +870,7 @@ void usbController::receivePTTStatus(bool on) {
 void usbController::ledControl(bool on, unsigned char num)
 {
     for (USBDEVICE &dev: usbDevices) {
-        if (dev.usbDevice == RC28) {
+        if (dev.connected && dev.usbDevice == RC28) {
             QByteArray data(3, 0x0);
             data[1] = 0x01;
             static unsigned char ledNum = 0x07;
@@ -869,7 +896,7 @@ void usbController::ledControl(bool on, unsigned char num)
 void usbController::getVersion()
 {
     for (USBDEVICE &dev: usbDevices) {
-        if (dev.usbDevice == RC28) {
+        if (dev.connected && dev.usbDevice == RC28) {
 
             QByteArray data(64, 0x0);
             data[0] = 63;
@@ -940,7 +967,7 @@ void usbController::programButton(QString path, quint8 val, QString text)
     if (usbDevices.contains(path))
     {
         USBDEVICE* dev=&usbDevices[path];
-        if (dev->usbDevice == QuickKeys && dev->handle && val < 8) {
+        if (dev->connected && dev->usbDevice == QuickKeys && val < 8 && path == dev->path) {
             text = text.mid(0, 10); // Make sure text is no more than 10 characters.
             qDebug(logUsbControl()) << QString("Programming button %0 with %1").arg(val).arg(text);
             QByteArray data(32, 0x0);
@@ -977,7 +1004,7 @@ void usbController::programBrightness(QString path, quint8 val) {
     if (usbDevices.contains(path))
     {
         USBDEVICE* dev = &usbDevices[path];
-        if (dev->usbDevice == QuickKeys && dev->handle) {
+        if (dev->connected && dev->usbDevice == QuickKeys && path == dev->path) {
             qDebug(logUsbControl()) << QString("Programming brightness to %0").arg(val+1);
             QByteArray data(32, 0x0);
             data[0] = (qint8)0x02;
@@ -998,7 +1025,7 @@ void usbController::programOrientation(QString path, quint8 val) {
     if (usbDevices.contains(path))
     {
         USBDEVICE* dev = &usbDevices[path];
-        if (dev->usbDevice == QuickKeys && dev->handle) {
+        if (dev->connected && dev->usbDevice == QuickKeys && path == dev->path) {
             qDebug(logUsbControl()) << QString("Programming orientation to %0").arg(val+1);
             QByteArray data(32, 0x0);
             data[0] = (qint8)0x02;
@@ -1017,7 +1044,7 @@ void usbController::programSpeed(QString path, quint8 val) {
     if (usbDevices.contains(path))
     {
         USBDEVICE* dev = &usbDevices[path];
-        if (dev->usbDevice == QuickKeys && dev->handle) {
+        if (dev->connected && dev->usbDevice == QuickKeys && path == dev->path) {
             qDebug(logUsbControl()) << QString("Programming speed to %0").arg(val+1);
             QByteArray data(32, 0x0);
             data[0] = (qint8)0x02;
@@ -1041,7 +1068,7 @@ void usbController::programWheelColour(QString path, quint8 r, quint8 g, quint8 
     if (usbDevices.contains(path))
     {
         USBDEVICE* dev = &usbDevices[path];
-        if (dev->usbDevice == QuickKeys && dev->handle) {
+        if (dev->connected && dev->usbDevice == QuickKeys && path == dev->path) {
             QByteArray data(32, 0x0);
             data[0] = (qint8)0x02;
             data[1] = (qint8)0xb4;
@@ -1064,7 +1091,7 @@ void usbController::programOverlay(QString path, quint8 duration, QString text)
     if (usbDevices.contains(path))
     {
         USBDEVICE* dev = &usbDevices[path];
-        if (dev->usbDevice == QuickKeys && dev->handle) {
+        if (dev->connected && dev->usbDevice == QuickKeys && path == dev->path) {
             text = text.mid(0, 32);
             QByteArray data(32, 0x0);
             data[0] = (qint8)0x02;
@@ -1086,11 +1113,11 @@ void usbController::programOverlay(QString path, quint8 duration, QString text)
 }
 
 void usbController::programTimeout(QString path, quint8 val)
-{
+{    
     if (usbDevices.contains(path))
     {
         USBDEVICE* dev = &usbDevices[path];
-        if (dev->usbDevice == QuickKeys && dev->handle && path == dev->path) {
+        if (dev->connected && dev->usbDevice == QuickKeys && path == dev->path) {
             qInfo(logUsbControl()) << QString("Programming %0 timeout to %1 minutes").arg(dev->product).arg(val);
             QByteArray data(32, 0x0);
             data[0] = (qint8)0x02;
@@ -1106,6 +1133,35 @@ void usbController::programTimeout(QString path, quint8 val)
 }
 
 /* End of functions for Xencelabs QuickKeys*/
+
+void usbController::programDisable(QString path, bool disabled)
+{
+    QMutexLocker locker(mutex);
+
+    if (usbDevices.contains(path))
+    {
+        USBDEVICE* dev = &usbDevices[path];
+        dev->disabled = disabled;
+        (*controllers)[path].disabled = disabled;
+
+        if (disabled)
+        {
+            // Disconnect the device:
+            if (dev->handle) {
+                qInfo(logUsbControl()) << "Disconnecting device:" << dev->product;
+
+                programOverlay(dev->path, 60, "Goodbye from wfview");
+
+                if (dev->usbDevice == RC28) {
+                    ledControl(false, 3);
+                }
+                hid_close(dev->handle);
+                dev->connected=false;
+                dev->handle=NULL;
+            }
+        }
+    }
+}
 
 
 /* Button/Knob/Command defaults */

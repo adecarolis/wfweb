@@ -197,18 +197,49 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
     noControllersText->hide();
     QWidget* tab = new QWidget();
     tab->setObjectName(dev->path);
-    QWidget* widget = new QWidget(tab);
 
+    QVBoxLayout* mainlayout = new QVBoxLayout();
+    mainlayout->setContentsMargins(0,0,0,0);
+    tab->setLayout(mainlayout);
+
+    QHBoxLayout* toplayout = new QHBoxLayout();
+    mainlayout->addLayout(toplayout);
+    toplayout->setContentsMargins(0,0,0,0);
+
+    QWidget* widget = new QWidget();
+    mainlayout->addWidget(widget);
     QVBoxLayout* layout = new QVBoxLayout(widget);
     layout->setContentsMargins(0,0,0,0);
-    QGraphicsView *view = new QGraphicsView(widget);
+    //mainlayout->addLayout(layout);
+
+    QCheckBox* disabled = new QCheckBox();
+    disabled->setText("Disable");
+    toplayout->addWidget(disabled);
+    QLabel* connectionLabel = new QLabel();
+    if (dev->connected) {
+        connectionLabel->setStyleSheet("QLabel { color : green; }");
+        connectionLabel->setText("Connected");
+    } else {
+        connectionLabel->setStyleSheet("QLabel { color : red; }");
+        connectionLabel->setText("Not Connected");
+    }
+    connectionLabel->setAlignment(Qt::AlignRight);
+    toplayout->addWidget(connectionLabel);
+    dev->message = connectionLabel;
+
+    connect(disabled, qOverload<bool>(&QCheckBox::clicked),
+        [dev,this,widget,connectionLabel](bool checked) { this->disableClicked(dev->path,checked,widget,connectionLabel); });
+
+    disabled->setChecked(dev->disabled);
+
+    QGraphicsView *view = new QGraphicsView();
     layout->addWidget(view);
 
-    QHBoxLayout* senslayout = new QHBoxLayout(widget);
+    QHBoxLayout* senslayout = new QHBoxLayout();
     layout->addLayout(senslayout);
     QLabel* senslabel = new QLabel("Sensitivity");
     senslayout->addWidget(senslabel);
-    QSlider *sens = new QSlider(widget);
+    QSlider *sens = new QSlider();
     sens->setMinimum(1);
     sens->setMaximum(21);
     sens->setOrientation(Qt::Horizontal);
@@ -217,78 +248,6 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
     sens->setValue(cntrl->sensitivity);
     connect(sens, &QSlider::valueChanged,
         [dev,this](int val) { this->sensitivityMoved(dev->path,val); });
-
-    if (dev->usbDevice == QuickKeys)
-    {
-        // Add QuickKeys section
-
-        QGridLayout* grid = new QGridLayout(widget);
-        layout->addLayout(grid);
-        QLabel* brightlabel = new QLabel("Brightness");
-        grid->addWidget(brightlabel,0,0);
-        QComboBox *brightness = new QComboBox(widget);
-        brightness->addItem("Off");
-        brightness->addItem("Low");
-        brightness->addItem("Medium");
-        brightness->addItem("High");
-        brightness->setCurrentIndex(cntrl->brightness);
-        grid->addWidget(brightness,1,0);
-        connect(brightness, qOverload<int>(&QComboBox::currentIndexChanged),
-            [dev,this](int index) { this->brightnessChanged(dev->path,index); });
-
-        QLabel* speedlabel = new QLabel("Speed");
-        grid->addWidget(speedlabel,0,1);
-        QComboBox *speed = new QComboBox(widget);
-        speed->addItem("Fastest");
-        speed->addItem("Faster");
-        speed->addItem("Normal");
-        speed->addItem("Slower");
-        speed->addItem("Slowest");
-        speed->setCurrentIndex(cntrl->speed);
-        grid->addWidget(speed,1,1);
-        connect(speed, qOverload<int>(&QComboBox::currentIndexChanged),
-            [dev,this](int index) { this->speedChanged(dev->path,index); });
-
-        QLabel* orientlabel = new QLabel("Orientation");
-        grid->addWidget(orientlabel,0,2);
-        QComboBox *orientation = new QComboBox(widget);
-        orientation->addItem("Rotate 0");
-        orientation->addItem("Rotate 90");
-        orientation->addItem("Rotate 180");
-        orientation->addItem("Rotate 270");
-        orientation->setCurrentIndex(cntrl->orientation);
-        grid->addWidget(orientation,1,2);
-        connect(orientation, qOverload<int>(&QComboBox::currentIndexChanged),
-            [dev,this](int index) { this->orientationChanged(dev->path,index); });
-
-        QLabel* colorlabel = new QLabel("Dial Color");
-        grid->addWidget(colorlabel,0,3);
-        QPushButton* color = new QPushButton("Select");
-        grid->addWidget(color,1,3);
-        connect(color, &QPushButton::clicked,
-            [dev,this]() { this->colorPicker(dev->path); });
-
-        QLabel* timeoutlabel = new QLabel("Timeout");
-        grid->addWidget(timeoutlabel,0,4);
-        QSpinBox *timeout = new QSpinBox(widget);
-        timeout->setValue(cntrl->timeout);
-        grid->addWidget(timeout,1,4);
-        connect(timeout, qOverload<int>(&QSpinBox::valueChanged),
-            [dev,this](int index) { this->timeoutChanged(dev->path,index); });
-
-        // Finally update the device with the default values
-        emit programSensitivity(dev->path, cntrl->sensitivity);
-        emit programBrightness(dev->path,cntrl->brightness);
-        emit programOrientation(dev->path,cntrl->orientation);
-        emit programSpeed(dev->path,cntrl->speed);
-        emit programTimeout(dev->path,cntrl->timeout);
-        emit programWheelColour(dev->path, cntrl->color.red(), cntrl->color.green(), cntrl->color.blue());
-    }
-
-    QLabel *helpText = new QLabel(widget);
-    helpText->setText("<p><b>Button configuration:</b> Right-click on each button to configure it.</p><p>Top selection is command to send when button is pressed and bottom is (optional) command to send when button is released.</p>");
-    helpText->setAlignment(Qt::AlignCenter);
-    layout->addWidget(helpText);
 
     QImage image;
 
@@ -324,6 +283,79 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
     view->setScene(scene);
     connect(scene, SIGNAL(mousePressed(controllerScene *,QPoint)), this, SLOT(mousePressed(controllerScene *,QPoint)));
     scene->addItem(bgImage);
+
+    QGridLayout* grid = new QGridLayout();
+    layout->addLayout(grid);
+
+    if (dev->usbDevice == QuickKeys)
+    {
+        // Add QuickKeys section
+
+        QLabel* brightlabel = new QLabel("Brightness");
+        grid->addWidget(brightlabel,0,0);
+        QComboBox *brightness = new QComboBox();
+        brightness->addItem("Off");
+        brightness->addItem("Low");
+        brightness->addItem("Medium");
+        brightness->addItem("High");
+        brightness->setCurrentIndex(cntrl->brightness);
+        grid->addWidget(brightness,1,0);
+        connect(brightness, qOverload<int>(&QComboBox::currentIndexChanged),
+            [dev,this](int index) { this->brightnessChanged(dev->path,index); });
+
+        QLabel* speedlabel = new QLabel("Speed");
+        grid->addWidget(speedlabel,0,1);
+        QComboBox *speed = new QComboBox();
+        speed->addItem("Fastest");
+        speed->addItem("Faster");
+        speed->addItem("Normal");
+        speed->addItem("Slower");
+        speed->addItem("Slowest");
+        speed->setCurrentIndex(cntrl->speed);
+        grid->addWidget(speed,1,1);
+        connect(speed, qOverload<int>(&QComboBox::currentIndexChanged),
+            [dev,this](int index) { this->speedChanged(dev->path,index); });
+
+        QLabel* orientlabel = new QLabel("Orientation");
+        grid->addWidget(orientlabel,0,2);
+        QComboBox *orientation = new QComboBox();
+        orientation->addItem("Rotate 0");
+        orientation->addItem("Rotate 90");
+        orientation->addItem("Rotate 180");
+        orientation->addItem("Rotate 270");
+        orientation->setCurrentIndex(cntrl->orientation);
+        grid->addWidget(orientation,1,2);
+        connect(orientation, qOverload<int>(&QComboBox::currentIndexChanged),
+            [dev,this](int index) { this->orientationChanged(dev->path,index); });
+
+        QLabel* colorlabel = new QLabel("Dial Color");
+        grid->addWidget(colorlabel,0,3);
+        QPushButton* color = new QPushButton("Select");
+        grid->addWidget(color,1,3);
+        connect(color, &QPushButton::clicked,
+            [dev,this]() { this->colorPicker(dev->path); });
+
+        QLabel* timeoutlabel = new QLabel("Timeout");
+        grid->addWidget(timeoutlabel,0,4);
+        QSpinBox *timeout = new QSpinBox();
+        timeout->setValue(cntrl->timeout);
+        grid->addWidget(timeout,1,4);
+        connect(timeout, qOverload<int>(&QSpinBox::valueChanged),
+            [dev,this](int index) { this->timeoutChanged(dev->path,index); });
+
+        // Finally update the device with the default values
+        emit programSensitivity(dev->path, cntrl->sensitivity);
+        emit programBrightness(dev->path,cntrl->brightness);
+        emit programOrientation(dev->path,cntrl->orientation);
+        emit programSpeed(dev->path,cntrl->speed);
+        emit programTimeout(dev->path,cntrl->timeout);
+        emit programWheelColour(dev->path, cntrl->color.red(), cntrl->color.green(), cntrl->color.blue());
+    }
+
+    QLabel *helpText = new QLabel();
+    helpText->setText("<p><b>Button configuration:</b> Right-click on each button to configure it.</p><p>Top selection is command to send when button is pressed and bottom is (optional) command to send when button is released.</p>");
+    helpText->setAlignment(Qt::AlignCenter);
+    layout->addWidget(helpText);
 
     ui->tabWidget->addTab(tab,dev->product);
     ui->tabWidget->show();
@@ -420,19 +452,12 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
         knobEventProxy->setWidget(knobEvent);
 
         this->adjustSize();
-        //QTimer::singleShot(0, this, [this,view]() {this->resize(view->minimumSizeHint());});
+
     }
 
 
     numTabs++;
 
-}
-
-void controllerSetup::receiveSensitivity(int val)
-{
-    //ui->sensitivitySlider->blockSignals(true);
-    //ui->sensitivitySlider->setValue(val);
-   // ui->sensitivitySlider->blockSignals(false);
 }
 
 void controllerSetup::sensitivityMoved(QString path, int val)
@@ -477,3 +502,18 @@ void controllerSetup::timeoutChanged(QString path, int val)
     emit programOverlay(path, 3, QString("Sleep timeout set to %0 minutes").arg(val));
 }
 
+void controllerSetup::disableClicked(QString path, bool clicked, QWidget* widget, QLabel* label)
+{
+    // Disable checkbox has been clicked
+    emit programDisable(path,clicked);
+    widget->setEnabled(!clicked);
+    /*
+    if (!clicked) {
+        label->setStyleSheet("QLabel { color : green; }");
+        label->setText("Connected");
+    } else {
+        label->setStyleSheet("QLabel { color : red; }");
+        label->setText("Not Connected");
+    }
+    */
+}

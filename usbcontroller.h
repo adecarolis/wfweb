@@ -61,7 +61,10 @@ using namespace std;
 
 struct USBDEVICE {
     usbDeviceType usbDevice = usbNone;
+    bool remove = false;
     bool connected = false;
+    bool uiCreated = false;
+    bool disabled = false;
     hid_device* handle = NULL;
     QString product = "";
     QString manufacturer = "";
@@ -84,7 +87,7 @@ struct USBDEVICE {
     QByteArray lastData = QByteArray(8,0x0);
     unsigned char lastDialPos=0;
     QUuid uuid;
-
+    QLabel* message;
 };
 
 struct COMMAND {
@@ -148,6 +151,7 @@ struct KNOB {
 };
 
 struct CONTROLLER {
+    bool disabled=false;
     int sensitivity=1;
     quint8 speed=2;
     quint8 timeout=30;
@@ -182,6 +186,8 @@ public slots:
     void programWheelColour(QString path, quint8 r, quint8 g, quint8 b);
     void programOverlay(QString path, quint8 duration, QString text);
     void programTimeout(QString path, quint8 val);
+    void programDisable(QString path, bool disabled);
+
 
 signals:
     void jogPlus();

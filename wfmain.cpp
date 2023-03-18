@@ -1693,6 +1693,7 @@ void wfmain::setupUsbControllerDevice()
     connect(shut, SIGNAL(programWheelColour(QString, quint8, quint8, quint8)), usbControllerDev, SLOT(programWheelColour(QString, quint8, quint8, quint8)));
     connect(shut, SIGNAL(programOverlay(QString, quint8, QString)), usbControllerDev, SLOT(programOverlay(QString, quint8, QString)));
     connect(shut, SIGNAL(programTimeout(QString, quint8)), usbControllerDev, SLOT(programTimeout(QString, quint8)));
+    connect(shut, SIGNAL(programDisable(QString, bool)), usbControllerDev, SLOT(programDisable(QString, bool)));
     connect(this, SIGNAL(setPTT(bool)), usbControllerDev, SLOT(receivePTTStatus(bool)));
     connect(this, SIGNAL(initUsbController(QMutex*,usbMap*,QVector<BUTTON>*,QVector<KNOB>*)), usbControllerDev, SLOT(init(QMutex*,usbMap*,QVector<BUTTON>*,QVector<KNOB>*)));
 
@@ -2492,6 +2493,7 @@ void wfmain::loadSettings()
             settings->setArrayIndex(nc);
             CONTROLLER tempPrefs;
             QString tempPath = settings->value("Path", "").toString();
+            tempPrefs.disabled = settings->value("Disabled", false).toBool();
             tempPrefs.sensitivity = settings->value("Sensitivity", 1).toInt();
             tempPrefs.brightness = (quint8)settings->value("Brightness", 2).toInt();
             tempPrefs.orientation = (quint8)settings->value("Orientation", 2).toInt();
@@ -2985,6 +2987,7 @@ void wfmain::saveSettings()
         settings->setArrayIndex(nc);
 
         settings->setValue("Path", i.key());
+        settings->setValue("Disabled", i.value().disabled);
         settings->setValue("Sensitivity", i.value().sensitivity);
         settings->setValue("Brightness", i.value().brightness);
         settings->setValue("Orientation", i.value().orientation);

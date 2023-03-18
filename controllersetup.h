@@ -18,6 +18,7 @@
 #include <QGridLayout>
 #include <QPushButton>
 #include <QScopedPointer>
+#include <QCheckBox>
 
 #include <QDebug>
 #include <QObject>
@@ -71,6 +72,7 @@ signals:
     void programOrientation(QString path, quint8 value);
     void programSpeed(QString path, quint8 value);
     void programTimeout(QString path, quint8 value);
+    void programDisable(QString path, bool disable);
 
 public slots:
     void newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut);
@@ -79,13 +81,13 @@ public slots:
     void onEventIndexChanged(int index);
     void offEventIndexChanged(int index);
     void knobEventIndexChanged(int index);
-    void receiveSensitivity(int val);
     void sensitivityMoved(QString path, int val);
     void brightnessChanged(QString path, int index);
     void orientationChanged(QString path, int index);
     void speedChanged(QString path, int index);
     void colorPicker(QString path);
     void timeoutChanged(QString path, int val);
+    void disableClicked(QString path, bool clicked, QWidget* widget, QLabel* label);
 
 private:
 
