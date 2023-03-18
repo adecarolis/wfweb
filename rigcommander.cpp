@@ -4703,7 +4703,7 @@ freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
     }
 
     // Does Frequency contain VFO data? (\x25 command)
-    if (lastPosition-4 >= 0 && (quint8)data[lastPosition-4] < 0x02 && (quint8)data[lastPosition-4] >= 0x00)
+    if (lastPosition-4 >= 0 && (quint8)data[lastPosition-4] < 0x02)
     {
         freqs.VFO=(selVFO_t)(quint8)data[lastPosition-4];
     }
