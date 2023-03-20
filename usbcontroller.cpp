@@ -297,6 +297,10 @@ void usbController::run()
                 newDev.vendorId = devs->vendor_id;
                 newDev.productId = devs->product_id;
                 newDev.product = QString::fromWCharArray(devs->product_string);
+                if (newDev.product.isEmpty())
+                {
+                    newDev.product = "<Not Detected>";
+                }
                 newDev.serial = QString::fromWCharArray(devs->serial_number);
                 newDev.path = QString::fromLocal8Bit(devs->path);
                 newDev.deviceId = QString("0x%1").arg(newDev.productId, 4, 16, QChar('0'));
