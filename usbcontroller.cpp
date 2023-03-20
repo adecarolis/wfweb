@@ -432,7 +432,7 @@ void usbController::run()
 
                 dev.uiCreated = true;
             } else {
-                if (dev.connected)
+                if (dev.uiCreated && dev.connected)
                 {
                     dev.message->setStyleSheet("QLabel { color : green; }");
                     dev.message->setText("Connected");

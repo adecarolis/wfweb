@@ -87,7 +87,7 @@ struct USBDEVICE {
     QByteArray lastData = QByteArray(8,0x0);
     unsigned char lastDialPos=0;
     QUuid uuid;
-    QLabel* message;
+    QLabel *message;
 };
 
 struct COMMAND {

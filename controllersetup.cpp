@@ -194,13 +194,19 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
 
     QMutexLocker locker(mutex);
 
+    qDebug(logUsbControl()) << "Adding new tab for" << dev->product;
     noControllersText->hide();
+
     QWidget* tab = new QWidget();
     tab->setObjectName(dev->path);
+
+    ui->tabWidget->addTab(tab,dev->product);
+    ui->tabWidget->show();
 
     QVBoxLayout* mainlayout = new QVBoxLayout();
     mainlayout->setContentsMargins(0,0,0,0);
     tab->setLayout(mainlayout);
+
 
     QHBoxLayout* toplayout = new QHBoxLayout();
     mainlayout->addLayout(toplayout);
@@ -210,25 +216,24 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
     mainlayout->addWidget(widget);
     QVBoxLayout* layout = new QVBoxLayout(widget);
     layout->setContentsMargins(0,0,0,0);
-    //mainlayout->addLayout(layout);
 
     QCheckBox* disabled = new QCheckBox();
     disabled->setText("Disable");
     toplayout->addWidget(disabled);
-    QLabel* connectionLabel = new QLabel();
+    dev->message = new QLabel();
     if (dev->connected) {
-        connectionLabel->setStyleSheet("QLabel { color : green; }");
-        connectionLabel->setText("Connected");
+        dev->message->setStyleSheet("QLabel { color : green; }");
+        dev->message->setText("Connected");
     } else {
-        connectionLabel->setStyleSheet("QLabel { color : red; }");
-        connectionLabel->setText("Not Connected");
+        dev->message->setStyleSheet("QLabel { color : red; }");
+        dev->message->setText("Not Connected");
     }
-    connectionLabel->setAlignment(Qt::AlignRight);
-    toplayout->addWidget(connectionLabel);
-    dev->message = connectionLabel;
+
+    toplayout->addWidget(dev->message);
+    dev->message->setAlignment(Qt::AlignRight);
 
     connect(disabled, qOverload<bool>(&QCheckBox::clicked),
-        [dev,this,widget,connectionLabel](bool checked) { this->disableClicked(dev->path,checked,widget,connectionLabel); });
+        [dev,this,widget](bool checked) { this->disableClicked(dev->path,checked,widget); });
 
     disabled->setChecked(dev->disabled);
 
@@ -278,7 +283,12 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
 
     QGraphicsItem* bgImage = new QGraphicsPixmapItem(QPixmap::fromImage(image));
     view->setMinimumSize(bgImage->boundingRect().width() + 2, bgImage->boundingRect().height() + 2);
+
+    // This command causes the window to disappear in Linux?
+#if !defined(Q_OS_LINUX)
     this->setMinimumSize(bgImage->boundingRect().width() + 370, bgImage->boundingRect().height() + 250);
+#endif
+
     controllerScene * scene = new controllerScene();
     view->setScene(scene);
     connect(scene, SIGNAL(mousePressed(controllerScene *,QPoint)), this, SLOT(mousePressed(controllerScene *,QPoint)));
@@ -357,8 +367,6 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
     helpText->setAlignment(Qt::AlignCenter);
     layout->addWidget(helpText);
 
-    ui->tabWidget->addTab(tab,dev->product);
-    ui->tabWidget->show();
 
     if (dev->usbDevice != usbNone)
     {
@@ -502,18 +510,9 @@ void controllerSetup::timeoutChanged(QString path, int val)
     emit programOverlay(path, 3, QString("Sleep timeout set to %0 minutes").arg(val));
 }
 
-void controllerSetup::disableClicked(QString path, bool clicked, QWidget* widget, QLabel* label)
+void controllerSetup::disableClicked(QString path, bool clicked, QWidget* widget)
 {
     // Disable checkbox has been clicked
     emit programDisable(path,clicked);
     widget->setEnabled(!clicked);
-    /*
-    if (!clicked) {
-        label->setStyleSheet("QLabel { color : green; }");
-        label->setText("Connected");
-    } else {
-        label->setStyleSheet("QLabel { color : red; }");
-        label->setText("Not Connected");
-    }
-    */
 }

@@ -87,7 +87,7 @@ public slots:
     void speedChanged(QString path, int index);
     void colorPicker(QString path);
     void timeoutChanged(QString path, int val);
-    void disableClicked(QString path, bool clicked, QWidget* widget, QLabel* label);
+    void disableClicked(QString path, bool clicked, QWidget* widget);
 
 private:
 

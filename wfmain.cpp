@@ -9205,6 +9205,7 @@ void wfmain::on_usbControllerBtn_clicked()
             shut->hide();
         }
         else {
+            qInfo(logUsbControl()) << "Showing USB Controller window";
             shut->show();
             shut->raise();
         }
