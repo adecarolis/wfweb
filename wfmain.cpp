@@ -1740,6 +1740,7 @@ void wfmain::doShuttle(bool up, unsigned char level)
 
 void wfmain::buttonControl(const COMMAND* cmd)
 {
+    qDebug(logUsbControl()) << QString("executing command: %0 (%1) suffix:%2 value:%3" ).arg(cmd->text).arg(cmd->command).arg(cmd->suffix).arg(cmd->value);
     switch (cmd->command) {
     case cmdGetBandStackReg:
         issueCmd((cmds)cmd->command, cmd->band);

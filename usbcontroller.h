@@ -92,7 +92,6 @@ struct USBDEVICE {
 
 struct COMMAND {
     COMMAND() {}
-
     COMMAND(int index, QString text, usbCommandType cmdType, int command, unsigned char suffix) :
         index(index), text(text), cmdType(cmdType), command(command), suffix(suffix) {}
     COMMAND(int index, QString text, usbCommandType cmdType, int command, availableBands band) :

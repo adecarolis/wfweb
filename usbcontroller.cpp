@@ -56,6 +56,7 @@ void usbController::init(QMutex* mut,usbMap* prefs ,QVector<BUTTON>* buts,QVecto
     QMutexLocker locker(mutex);
 
     // We need to make sure that all buttons/knobs have a command assigned, this is a fairly expensive operation
+    // Perform a deep copy of the command to ensure that each controller is using a unique command.
 
     for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++)
     {
@@ -64,9 +65,9 @@ void usbController::init(QMutex* mut,usbMap* prefs ,QVector<BUTTON>* buts,QVecto
         while (usbc != commands.end())
         {
             if (but->on == usbc->text)
-                but->onCommand = usbc;
+                but->onCommand = new COMMAND(*usbc);
             if (but->off == usbc->text)
-                but->offCommand = usbc;
+                but->offCommand = new COMMAND(*usbc);
             ++usbc;
         }
 
@@ -78,7 +79,7 @@ void usbController::init(QMutex* mut,usbMap* prefs ,QVector<BUTTON>* buts,QVecto
         while (usbc != commands.end())
         {
             if (kb->cmd == usbc->text)
-                kb->command = usbc;
+                kb->command = new COMMAND(*usbc);
             ++usbc;
         }
     }
@@ -501,16 +502,6 @@ void usbController::runTimer()
                 unsigned char tempJogpos = (unsigned char)data[1];
                 unsigned char tempShutpos = (unsigned char)data[0];
 
-                if (tempJogpos == dev.jogpos + 1 || (tempJogpos == 0 && dev.jogpos == 0xff))
-                {
-                    dev.knobValues[0]++;
-                    //qDebug(logUsbControl()) << "JOG PLUS" << jogCounter;
-                }
-                else if (tempJogpos != dev.jogpos) {
-                    dev.knobValues[0]--;
-                    //qDebug(logUsbControl()) << "JOG MINUS" << jogCounter;
-                }
-
                 /* Button matrix:
                     1000000000000000 = button15
                     0100000000000000 = button14
@@ -550,6 +541,20 @@ void usbController::runTimer()
                                 emit button(but->offCommand);
                             }
                         }
+                    }
+                }
+
+                auto kb = std::find_if(knobList->begin(), knobList->end(), [dev](const KNOB& k)
+                { return (k.devicePath == dev.path && k.num == 0); });
+                if (kb != knobList->end()) {
+                    if (tempJogpos == dev.jogpos + 1 || (tempJogpos == 0 && dev.jogpos == 0xff))
+                    {
+                        dev.knobValues[0]++;
+                        //qDebug(logUsbControl()) << "JOG PLUS" << jogCounter;
+                    }
+                    else if (tempJogpos != dev.jogpos) {
+                        dev.knobValues[0]--;
+                        //qDebug(logUsbControl()) << "JOG MINUS" << jogCounter;
                     }
                 }
 
@@ -649,15 +654,19 @@ void usbController::runTimer()
                         emit button(butf2->offCommand);
                     }
 
-                    if ((unsigned char)data[5] == 0x07)
-                    {
-                        if ((unsigned char)data[3] == 0x01)
+                    auto kb = std::find_if(knobList->begin(), knobList->end(), [dev](const KNOB& k)
+                    { return (k.devicePath == dev.path && k.num == 0); });
+                    if (kb != knobList->end()) {
+                        if ((unsigned char)data[5] == 0x07)
                         {
-                            dev.knobValues[0] = dev.knobValues[0] + data[1];
-                        }
-                        else if ((unsigned char)data[3] == 0x02)
-                        {
-                            dev.knobValues[0] = dev.knobValues[0] - data[1];
+                            if ((unsigned char)data[3] == 0x01)
+                            {
+                                dev.knobValues[0] = dev.knobValues[0] + data[1];
+                            }
+                            else if ((unsigned char)data[3] == 0x02)
+                            {
+                                dev.knobValues[0] = dev.knobValues[0] - data[1];
+                            }
                         }
                     }
 
@@ -690,7 +699,7 @@ void usbController::runTimer()
                 000000000000000000000010 = button1
                 */
                 quint32 tempButtons = ((quint8)data[3] << 16) | ((quint8)data[2] << 8) | ((quint8)data[1] & 0xff);
-                quint32 tempKnobs = ((quint8)data[16] << 16) | ((quint8)data[15] << 8) | ((quint8)data[14] & 0xff);
+                quint32 tempKnobs = ((quint8)data[16] << 24) | ((quint8)data[15] << 16) | ((quint8)data[14] << 8) | ((quint8)data[13]  & 0xff);
 
                 if (dev.buttons != tempButtons)
                 {
@@ -715,20 +724,27 @@ void usbController::runTimer()
                 }
                 dev.buttons = tempButtons;
 
-                if (dev.knobs != tempKnobs) {
-                    // One of the knobs has moved
-                    for (unsigned char i = 0; i < 3; i++) {
-                        if ((tempKnobs >> (i * 8) & 0xff) != (dev.knobs >> (i * 8) & 0xff)) {
-                            dev.knobValues[i] = dev.knobValues[i] + (qint8)((dev.knobs >> (i * 8)) & 0xff);
+
+                // Step through all knobs and emit ones that have been pressed.
+                for (unsigned char i = 0; i < dev.knobValues.size(); i++)
+                {
+                    auto kb = std::find_if(knobList->begin(), knobList->end(), [dev,i](const KNOB& k)
+                    { return (k.devicePath == dev.path && k.num == i); });
+                    if (kb != knobList->end()) {
+                        if (dev.knobs != tempKnobs) {
+                            // One of the knobs has moved
+                            for (unsigned char i = 0; i < 4; i++) {
+                                if ((tempKnobs >> (i * 8) & 0xff) != (dev.knobs >> (i * 8) & 0xff)) {
+                                    dev.knobValues[i] = dev.knobValues[i] + (qint8)((dev.knobs >> (i * 8)) & 0xff);
+                                }
+                            }
+                            dev.knobs = tempKnobs;
                         }
+
                     }
                 }
-                dev.knobs = tempKnobs;
-
-                // Tuning knob
-                dev.knobValues[0] = dev.knobValues[0] + (qint8)data[13];
-
-            } else if (dev.usbDevice == QuickKeys && (quint8)data[0] == 0x02) {
+            }
+            else if (dev.usbDevice == QuickKeys && (quint8)data[0] == 0x02) {
 
                 if ((quint8)data[1] == 0xf0) {
 
@@ -758,13 +774,18 @@ void usbController::runTimer()
 
                     dev.buttons = tempButtons;
 
-                    // Tuning knob
-                    if (data[7] & 0x01) {
-                        dev.knobValues[0]++;
+                    auto kb = std::find_if(knobList->begin(), knobList->end(), [dev](const KNOB& k)
+                    { return (k.devicePath == dev.path && k.num == 0); });
+                    if (kb != knobList->end()) {
+                        // Tuning knob
+                        if (data[7] & 0x01) {
+                            dev.knobValues[0]++;
+                        }
+                        else if (data[7] & 0x02) {
+                            dev.knobValues[0]--;
+                        }
                     }
-                    else if (data[7] & 0x02) {
-                        dev.knobValues[0]--;
-                    }
+
                 }
                 else if ((quint8)data[1] == 0xf2 && (quint8)data[2] == 0x01)
                 {
@@ -794,38 +815,26 @@ void usbController::runTimer()
 
                 for (unsigned char i = 0; i < dev.knobValues.size(); i++) {
                     for (KNOB* kb = knobList->begin(); kb != knobList->end(); kb++) {
-                        if (kb != knobList->end() && kb->command && kb->devicePath == dev.path && kb->num == i && dev.knobValues[i]) {
+                        if (kb != knobList->end() && kb->command && kb->devicePath == dev.path && kb->num == i && dev.knobValues[i] != dev.knobPrevious[i]) {
                             // sendCommand mustn't be deleted so we ensure it stays in-scope by declaring it private.
                             sendCommand = *kb->command;
-                            if (kb->num >0) {
-                                if (dev.knobSend[i] + (dev.knobValues[i] * 10) <= 0)
-                                {
-                                    dev.knobSend[i] = 0;
-                                }
-                                else if (dev.knobSend[i] + (dev.knobValues[i] * 10) >= 255)
-                                {
-                                    dev.knobSend[i] = 255;
-                                }
-                                else {
-                                    dev.knobSend[i] = dev.knobSend[i] + (dev.knobValues[i] * 10);
-                                }
-                                sendCommand.suffix = dev.knobSend[i];
-                            } else {
+                            if (sendCommand.command != cmdSetFreq) {
                                 int tempVal = dev.knobValues[i] * dev.sensitivity;
                                 tempVal = qMin(qMax(tempVal,0),255);
                                 sendCommand.suffix = quint8(tempVal);
                                 dev.knobValues[i]=tempVal/dev.sensitivity; // This ensures that dial can't go outside 0-255
                             }
-
-                            if (dev.knobValues[i] != dev.knobPrevious[i]) {
-                                emit button(&sendCommand);
+                            else
+                            {
+                                sendCommand.value = dev.knobValues[i]/dev.sensitivity;
                             }
+
+                            emit button(&sendCommand);
 
                             if (sendCommand.command == cmdSetFreq) {
                                 dev.knobValues[i] = 0;
-                            } else {
-                                dev.knobPrevious[i]=dev.knobValues[i];
                             }
+                            dev.knobPrevious[i]=dev.knobValues[i];
                         }
                     }
                 }

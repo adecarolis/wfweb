@@ -123,10 +123,12 @@ void controllerSetup::mousePressed(controllerScene* scene, QPoint p)
 
 void controllerSetup::onEventIndexChanged(int index) {
     Q_UNUSED(index);
-
+    // If command is changed, delete current command and deep copy the new command
     if (currentButton != Q_NULLPTR && onEvent->currentData().toInt() < commands->size()) {
         QMutexLocker locker(mutex);
-        currentButton->onCommand = &commands->at(onEvent->currentData().toInt());
+        if (currentButton->onCommand)
+            delete currentButton->onCommand;
+        currentButton->onCommand = new COMMAND(commands->at(onEvent->currentData().toInt()));
         currentButton->onText->setPlainText(currentButton->onCommand->text);
         currentButton->onText->setPos(currentButton->pos.center().x() - currentButton->onText->boundingRect().width() / 2,
             (currentButton->pos.center().y() - currentButton->onText->boundingRect().height() / 2)-6);
@@ -138,9 +140,12 @@ void controllerSetup::onEventIndexChanged(int index) {
 
 void controllerSetup::offEventIndexChanged(int index) {
     Q_UNUSED(index);
+    // If command is changed, delete current command and deep copy the new command
     if (currentButton != Q_NULLPTR && offEvent->currentData().toInt() < commands->size()) {
         QMutexLocker locker(mutex);
-        currentButton->offCommand = &commands->at(offEvent->currentData().toInt());
+        if (currentButton->offCommand)
+            delete currentButton->offCommand;
+        currentButton->offCommand = new COMMAND(commands->at(offEvent->currentData().toInt()));
         currentButton->offText->setPlainText(currentButton->offCommand->text);
         currentButton->offText->setPos(currentButton->pos.center().x() - currentButton->offText->boundingRect().width() / 2,
             (currentButton->pos.center().y() - currentButton->offText->boundingRect().height() / 2)+6);
@@ -149,9 +154,12 @@ void controllerSetup::offEventIndexChanged(int index) {
 
 void controllerSetup::knobEventIndexChanged(int index) {
     Q_UNUSED(index);
+    // If command is changed, delete current command and deep copy the new command
     if (currentKnob != Q_NULLPTR && knobEvent->currentData().toInt() < commands->size()) {
         QMutexLocker locker(mutex);
-        currentKnob->command = &commands->at(knobEvent->currentData().toInt());
+        if (currentKnob->command)
+            delete currentKnob->command;
+        currentKnob->command = new COMMAND(commands->at(knobEvent->currentData().toInt()));
         currentKnob->text->setPlainText(currentKnob->command->text);
         currentKnob->text->setPos(currentKnob->pos.center().x() - currentKnob->text->boundingRect().width() / 2,
             (currentKnob->pos.center().y() - currentKnob->text->boundingRect().height() / 2));
