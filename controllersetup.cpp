@@ -294,7 +294,7 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
 
     // This command causes the window to disappear in Linux?
 #if !defined(Q_OS_LINUX)
-    this->setMinimumSize(bgImage->boundingRect().width() + 370, bgImage->boundingRect().height() + 250);
+    this->setMinimumSize(bgImage->boundingRect().width() + 2, bgImage->boundingRect().height() + 250);
 #endif
 
     controllerScene * scene = new controllerScene();
