@@ -3114,6 +3114,10 @@ void rigCommander::parseBandStackReg()
     freqt freqs = parseFrequency(payloadIn, 7);
     //float freq = (float)freqs.MHzDouble;
 
+    // The Band Stacking command returns the regCode in the position that VFO is expected.
+    // As BSR is always on the active VFO, just set that.
+    freqs.VFO = selVFO_t::activeVFO;
+
     bool dataOn = (payloadIn[11] & 0x10) >> 4; // not sure...
     char mode = payloadIn[9];
     char filter = payloadIn[10];
