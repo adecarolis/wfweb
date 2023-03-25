@@ -8,6 +8,7 @@
 #include <QDateTime>
 #include <QRect>
 #include <QGraphicsTextItem>
+#include <QSpinBox>
 #include <QColor>
 #include <QVector>
 #include <QList>
@@ -17,6 +18,10 @@
 #include <QtEndian>
 #include <QUuid>
 #include <QLabel>
+#include <QImage>
+#include <QPainter>
+#include <QImageWriter>
+#include <QBuffer>
 
 #if defined(USB_CONTROLLER) && QT_VERSION < QT_VERSION_CHECK(6,0,0)
 #include <QGamepad>
@@ -59,8 +64,28 @@ using namespace std;
 #define HIDDATALENGTH 64
 #define MAX_STR 255
 
+struct USBTYPE {
+    USBTYPE() {}
+    USBTYPE(usbDeviceType model,quint32 manufacturerId, quint32 productId , quint32 usage, quint32 usagePage, int buttons, int knobs, int maxPayload, int iconSize) :
+        model(model), manufacturerId(manufacturerId), productId(productId), usage(usage), usagePage(usagePage), buttons(buttons), knobs(knobs),maxPayload(maxPayload), iconSize(iconSize) {}
+
+    usbDeviceType model = usbNone;
+    quint32 manufacturerId=0;
+    quint32 productId=0;
+    quint32 usage=0;
+    quint32 usagePage=0;
+    int buttons=0;
+    int knobs=0;
+    int maxPayload=0;
+    int iconSize=0;
+};
+
+
 struct USBDEVICE {
-    usbDeviceType usbDevice = usbNone;
+    USBDEVICE() {}
+    USBDEVICE(USBTYPE type) : type(type) {}
+
+    USBTYPE type;
     bool remove = false;
     bool connected = false;
     bool uiCreated = false;
@@ -71,8 +96,6 @@ struct USBDEVICE {
     QString serial = "<none>";
     QString deviceId = "";
     QString path = "";
-    quint16 vendorId = 0;
-    quint16 productId = 0;
     int sensitivity = 1;
     unsigned char jogpos=0;
     unsigned char shutpos=0;
@@ -88,6 +111,12 @@ struct USBDEVICE {
     unsigned char lastDialPos=0;
     QUuid uuid;
     QLabel *message;
+    int pages=1;
+    int currentPage=0;
+    QGraphicsScene* scene = Q_NULLPTR;
+    QSpinBox* pageSpin = Q_NULLPTR;
+    QImage image;
+
 };
 
 struct COMMAND {
@@ -113,22 +142,27 @@ struct BUTTON {
     BUTTON() {}
 
     BUTTON(usbDeviceType dev, int num, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
-        dev(dev), num(num), name(""), pos(pos), textColour(textColour), onCommand(on), offCommand(off) {}
-    BUTTON(usbDeviceType dev, QString name, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
-        dev(dev), num(-1), name(name), pos(pos), textColour(textColour), onCommand(on), offCommand(off) {}
+        dev(dev), num(num), name(""), pos(pos), textColour(textColour), onCommand(on), offCommand(off), on(onCommand->text), off(offCommand->text) {}
+    BUTTON(usbDeviceType dev,  QString name, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
+        dev(dev), num(-1), name(name), pos(pos), textColour(textColour), onCommand(on), offCommand(off), on(onCommand->text), off(offCommand->text) {}
 
     usbDeviceType dev;
+    USBDEVICE* parent;
+    int page=1;
     int num;
     QString name;
     QRect pos;
     QColor textColour;
     const COMMAND* onCommand = Q_NULLPTR;
     const COMMAND* offCommand = Q_NULLPTR;
-    QGraphicsTextItem* onText;
+    QGraphicsTextItem* onText = Q_NULLPTR;
     QGraphicsTextItem* offText;
     QString on;
     QString off;
-    QString devicePath;
+    QString path;
+    QColor background = Qt::white;
+    bool toggle = false;
+    bool isOn = false;
 };
 
 
@@ -136,20 +170,25 @@ struct KNOB {
     KNOB() {}
 
     KNOB(usbDeviceType dev, int num, QRect pos, const QColor textColour, COMMAND* command) :
-        dev(dev), num(num), name(""), pos(pos), textColour(textColour), command(command) {}
+        dev(dev), num(num), name(""), pos(pos), textColour(textColour), command(command), cmd(command->text) {}
 
     usbDeviceType dev;
+    USBDEVICE* parent;
+    int page=1;
     int num;
     QString name;
     QRect pos;
     QColor textColour;
     const COMMAND* command = Q_NULLPTR;
-    QGraphicsTextItem* text;
+    QGraphicsTextItem* text = Q_NULLPTR;
     QString cmd;
-    QString devicePath;
+    QString path;
 };
 
+
 struct CONTROLLER {
+    CONTROLLER() {}
+    CONTROLLER(USBDEVICE* dev) : dev(dev) {}
     bool disabled=false;
     int sensitivity=1;
     quint8 speed=2;
@@ -157,7 +196,12 @@ struct CONTROLLER {
     quint8 brightness=2;
     quint8 orientation=0;
     QColor color=Qt::white;
+    int pages=1;
+    cmds lcd=cmdNone;
+    USBDEVICE* dev;
 };
+
+
 typedef QMap<QString,CONTROLLER> usbMap;
 
 
@@ -176,17 +220,11 @@ public slots:
     void runTimer();
     void ledControl(bool on, unsigned char num);
     void receivePTTStatus(bool on);
-    void getVersion();
-    void programButton(QString path, quint8 val, QString text);
-    void programSensitivity(QString path, quint8 val);
-    void programBrightness(QString path, quint8 val);
-    void programOrientation(QString path, quint8 val);
-    void programSpeed(QString path, quint8 val);
-    void programWheelColour(QString path, quint8 r, quint8 g, quint8 b);
-    void programOverlay(QString path, quint8 duration, QString text);
-    void programTimeout(QString path, quint8 val);
-    void programDisable(QString path, bool disabled);
+    void programPages(USBDEVICE* dev, int pages);
+    void programDisable(USBDEVICE* dev, bool disabled);
 
+    void sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
+    void sendToLCD(QImage *img);
 
 signals:
     void jogPlus();
@@ -195,24 +233,27 @@ signals:
     void doShuttle(bool plus, quint8 level);
     void setBand(int band);
     void button(const COMMAND* cmd);
+    void initUI();
     void newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut);
     void removeDevice(USBDEVICE* dev);
+    void setConnected(USBDEVICE* dev);
+    void changePage(USBDEVICE* dev, int page);
 
 private:
     void loadButtons();
     void loadKnobs();
     void loadCommands();
+
+
     int hidStatus = 1;
     bool isOpen=false;
     int devicesConnected=0;
     QVector<BUTTON>* buttonList;
     QVector<KNOB>* knobList;
 
-    QList<QVector<KNOB>*> deviceKnobs;
-    QList<QVector<BUTTON>*> deviceButtons;
-
     QVector<BUTTON> defaultButtons;
     QVector<KNOB> defaultKnobs;
+    QVector<USBTYPE> knownDevices;
     QVector<COMMAND> commands;
     QMap<QString,USBDEVICE> usbDevices;
     usbMap *controllers;
@@ -225,15 +266,6 @@ private:
 
     QMutex* mutex=Q_NULLPTR;
     COMMAND sendCommand;
-
-    unsigned short knownUsbDevices[6][5] = {
-    {shuttleXpress,0x0b33,0x0020,0x0000,0x0000},
-    {shuttlePro2,0x0b33,0x0030,0x0000,0x0000},
-    {RC28,0x0c26,0x001e,0x0000,0x0000},
-    {eCoderPlus, 0x1fc9, 0x0003,0x0000,0x0000},
-    {QuickKeys, 0x28bd, 0x5202,0x0001,0xff0a},
-    {QuickKeys, 0x28bd, 0x5203,0x0001,0xff0a}
-    };
 
 protected:
 };

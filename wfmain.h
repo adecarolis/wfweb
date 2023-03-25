@@ -238,6 +238,7 @@ signals:
     void setClusterTimeout(int timeout);
     void setClusterSkimmerSpots(bool enable);
     void setFrequencyRange(double low, double high);
+    void sendControllerRequest(USBDEVICE* dev, usbFeatureType request, quint8 val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
 
 private slots:
     void setAudioDevicesUI();
@@ -1144,7 +1145,7 @@ private:
 #if defined (USB_CONTROLLER)
     usbController *usbControllerDev = Q_NULLPTR;
     QThread *usbControllerThread = Q_NULLPTR;
-    QString usbDeviceName;
+    QString typeName;
     QVector<BUTTON> usbButtons;
     QVector<KNOB> usbKnobs;
     usbMap usbControllers;
@@ -1160,6 +1161,7 @@ private:
     QMutex clusterMutex;
     QColor clusterColor;
     audioDevices* audioDev = Q_NULLPTR;
+    QImage lcdImage;
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
@@ -1194,6 +1196,7 @@ Q_DECLARE_METATYPE(enum duplexMode)
 Q_DECLARE_METATYPE(enum rptAccessTxRx)
 Q_DECLARE_METATYPE(struct rptrTone_t)
 Q_DECLARE_METATYPE(struct rptrAccessData_t)
+Q_DECLARE_METATYPE(enum usbFeatureType)
 
 //void (*wfmain::logthistext)(QString text) = NULL;
 

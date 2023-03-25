@@ -169,7 +169,9 @@ enum cmds {
     cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW, cmdGetDashRatio, cmdSetDashRatio,
     cmdSetTime, cmdSetDate, cmdSetUTCOffset,
     // Below Only used for USB Controller at the moment.
-    cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown, cmdSetStepUp, cmdSetStepDown, cmdSetSpanUp, cmdSetSpanDown, cmdIFFilterUp, cmdIFFilterDown
+    cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown, cmdSetStepUp, cmdSetStepDown,
+    cmdSetSpanUp, cmdSetSpanDown, cmdIFFilterUp, cmdIFFilterDown, cmdPageDown, cmdPageUp,
+    cmdLCDWaterfall, cmdLCDSpectrum
 };
 
 struct commandtype {
@@ -194,7 +196,14 @@ enum codecType { LPCM, PCMU, OPUS };
 
 enum passbandActions {passbandStatic, pbtInnerMove, pbtOuterMove, pbtMoving, passbandResizing};
 
-enum usbDeviceType { usbNone = 0, shuttleXpress, shuttlePro2, RC28, xBoxGamepad, unknownGamepad, eCoderPlus, QuickKeys};
+enum usbDeviceType { usbNone = 0, shuttleXpress, shuttlePro2,
+                     RC28, xBoxGamepad, unknownGamepad, eCoderPlus, QuickKeys,
+                     StreamDeckMini,StreamDeckMiniV2,StreamDeckOriginal,StreamDeckOriginalV2,
+                     StreamDeckOriginalMK2,StreamDeckXL,StreamDeckXLV2,StreamDeckPedal, StreamDeckPlus
+                   };
+
 enum usbCommandType{ commandButton, commandKnob };
+enum usbFeatureType { featureReset,featureResetKeys, featureEventsA, featureEventsB, featureFirmware, featureSerial, featureButton, featureSensitivity, featureBrightness,
+                      featureOrientation, featureSpeed, featureColor, featureOverlay, featureTimeout, featureLCD };
 
 #endif // WFVIEWTYPES_H

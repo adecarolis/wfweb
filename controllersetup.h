@@ -25,6 +25,7 @@
 #include <QColorDialog>
 #include <QWidget>
 #include <QSpinBox>
+#include <QCheckBox>
 
 #include "usbcontroller.h"
 
@@ -64,34 +65,36 @@ public:
     ~controllerSetup();
 
 signals:
-    void programButton(QString path, quint8 but, QString text);
-    void programSensitivity(QString path, quint8 level);
-    void programBrightness(QString path, quint8 level);
-    void programWheelColour(QString path, quint8 r, quint8 g, quint8 b);
-    void programOverlay(QString path, quint8 duration, QString text);
-    void programOrientation(QString path, quint8 value);
-    void programSpeed(QString path, quint8 value);
-    void programTimeout(QString path, quint8 value);
-    void programDisable(QString path, bool disable);
+    void sendRequest(USBDEVICE* dev, usbFeatureType request, quint8 val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
+    void programDisable(USBDEVICE* dev, bool disable);
+    void programPages(USBDEVICE* dev, int pages);
 
 public slots:
+    void init();
     void newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut);
     void removeDevice(USBDEVICE* dev);
     void mousePressed(controllerScene *scene,QPoint p);
     void onEventIndexChanged(int index);
     void offEventIndexChanged(int index);
     void knobEventIndexChanged(int index);
-    void sensitivityMoved(QString path, int val);
-    void brightnessChanged(QString path, int index);
-    void orientationChanged(QString path, int index);
-    void speedChanged(QString path, int index);
-    void colorPicker(QString path);
-    void timeoutChanged(QString path, int val);
-    void disableClicked(QString path, bool clicked, QWidget* widget);
+    void sensitivityMoved(USBDEVICE* dev, int val);
+    void brightnessChanged(USBDEVICE* dev, int index);
+    void orientationChanged(USBDEVICE* dev, int index);
+    void speedChanged(USBDEVICE* dev, int index);
+    void colorPicker(USBDEVICE* dev);
+    void buttonColorClicked();
+    void latchStateChanged(int state);
+
+    void timeoutChanged(USBDEVICE* dev, int val);
+    void pageChanged(USBDEVICE* dev, int val);
+    void pagesChanged(USBDEVICE* dev, int val);
+    void disableClicked(USBDEVICE* dev, bool clicked, QWidget* widget);
+    void setConnected(USBDEVICE* dev);
+
 
 private:
 
-    usbDeviceType usbDevice = usbNone;
+    usbDeviceType type = usbNone;
     Ui::controllerSetup* ui;
     QGraphicsTextItem* textItem;
     QLabel* imgLabel;
@@ -99,17 +102,22 @@ private:
     QVector<BUTTON>* buttons;
     QVector<KNOB>* knobs;
     QVector<COMMAND>* commands;
+
     usbMap* controllers;
     BUTTON* currentButton = Q_NULLPTR;
     KNOB* currentKnob = Q_NULLPTR;
-    QComboBox* onEvent = Q_NULLPTR;
-    QComboBox* offEvent = Q_NULLPTR;
-    QComboBox* knobEvent = Q_NULLPTR;
-    QComboBox* qkBright = Q_NULLPTR;
-    QGraphicsProxyWidget* onEventProxy = Q_NULLPTR;
-    QGraphicsProxyWidget* offEventProxy = Q_NULLPTR;
-    QGraphicsProxyWidget* knobEventProxy = Q_NULLPTR;
-    QGraphicsProxyWidget* qkBrightProxy = Q_NULLPTR;
+
+    // Update Dialog
+    QDialog * updateDialog;
+    QComboBox* onEvent;
+    QComboBox* offEvent;
+    QComboBox* knobEvent;
+    QLabel* onLabel;
+    QLabel* offLabel;
+    QLabel* knobLabel;
+    QPushButton* buttonColor;
+    QCheckBox *buttonLatch;
+
     QString deviceName;
     QMutex* mutex;
     QColor initialColor = Qt::white;

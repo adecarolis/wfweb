@@ -85,6 +85,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<networkAudioLevels>();
     qRegisterMetaType<codecType>();
     qRegisterMetaType<errorType>();
+    qRegisterMetaType<usbFeatureType>();
 
     haveRigCaps = false;
 
@@ -1678,24 +1679,23 @@ void wfmain::setupUsbControllerDevice()
     connect(usbControllerThread, SIGNAL(started()), usbControllerDev, SLOT(run()));
     connect(usbControllerThread, SIGNAL(finished()), usbControllerDev, SLOT(deleteLater()));
     connect(usbControllerDev, SIGNAL(sendJog(int)), this, SLOT(changeFrequency(int)));
-    connect(usbControllerDev, SIGNAL(doShuttle(bool, unsigned char)), this, SLOT(doShuttle(bool, unsigned char)));
+    connect(usbControllerDev, SIGNAL(doShuttle(bool,unsigned char)), this, SLOT(doShuttle(bool,unsigned char)));
     connect(usbControllerDev, SIGNAL(button(const COMMAND*)), this, SLOT(buttonControl(const COMMAND*)));
     connect(usbControllerDev, SIGNAL(setBand(int)), this, SLOT(setBand(int)));
-    connect(usbControllerDev, SIGNAL(removeDevice(USBDEVICE *)), shut, SLOT(removeDevice(USBDEVICE *)));
-    connect(usbControllerDev, SIGNAL(newDevice(USBDEVICE *, CONTROLLER *, QVector<BUTTON>*, QVector<KNOB>*, QVector<COMMAND>*, QMutex*)), shut, SLOT(newDevice(USBDEVICE *,CONTROLLER *, QVector<BUTTON>*, QVector<KNOB>*, QVector<COMMAND>*,QMutex*)));
+    connect(usbControllerDev, SIGNAL(removeDevice(USBDEVICE*)), shut, SLOT(removeDevice(USBDEVICE*)));
+    connect(usbControllerDev, SIGNAL(initUI()), shut, SLOT(init()));
+    connect(usbControllerDev, SIGNAL(changePage(USBDEVICE*, int)), shut, SLOT(pageChanged(USBDEVICE*, int)));
+    connect(usbControllerDev, SIGNAL(setConnected(USBDEVICE*)), shut, SLOT(setConnected(USBDEVICE*)));
+    connect(usbControllerDev, SIGNAL(newDevice(USBDEVICE*, CONTROLLER *, QVector<BUTTON>*, QVector<KNOB>*, QVector<COMMAND>*, QMutex*)), shut, SLOT(newDevice(USBDEVICE *,CONTROLLER *, QVector<BUTTON>*, QVector<KNOB>*, QVector<COMMAND>*,QMutex*)));
     usbControllerThread->start(QThread::LowestPriority);
     
-    connect(shut, SIGNAL(programButton(QString, quint8, QString)), usbControllerDev, SLOT(programButton(QString, quint8, QString)));
-    connect(shut, SIGNAL(programSensitivity(QString, quint8)), usbControllerDev, SLOT(programSensitivity(QString, quint8)));
-    connect(shut, SIGNAL(programBrightness(QString, quint8)), usbControllerDev, SLOT(programBrightness(QString, quint8)));
-    connect(shut, SIGNAL(programOrientation(QString, quint8)), usbControllerDev, SLOT(programOrientation(QString, quint8)));
-    connect(shut, SIGNAL(programSpeed(QString, quint8)), usbControllerDev, SLOT(programSpeed(QString, quint8)));
-    connect(shut, SIGNAL(programWheelColour(QString, quint8, quint8, quint8)), usbControllerDev, SLOT(programWheelColour(QString, quint8, quint8, quint8)));
-    connect(shut, SIGNAL(programOverlay(QString, quint8, QString)), usbControllerDev, SLOT(programOverlay(QString, quint8, QString)));
-    connect(shut, SIGNAL(programTimeout(QString, quint8)), usbControllerDev, SLOT(programTimeout(QString, quint8)));
-    connect(shut, SIGNAL(programDisable(QString, bool)), usbControllerDev, SLOT(programDisable(QString, bool)));
+    connect(shut, SIGNAL(sendRequest(USBDEVICE*, usbFeatureType, quint8, QString, QImage*, QColor *)), usbControllerDev, SLOT(sendRequest(USBDEVICE*, usbFeatureType, quint8, QString, QImage*, QColor *)));
+    connect(this, SIGNAL(sendControllerRequest(USBDEVICE*, usbFeatureType, quint8, QString, QImage*, QColor *)), usbControllerDev, SLOT(sendRequest(USBDEVICE*, usbFeatureType, quint8, QString, QImage*, QColor *)));
+    connect(shut, SIGNAL(programPages(USBDEVICE*, int)), usbControllerDev, SLOT(programPages(USBDEVICE*, int)));
+    connect(shut, SIGNAL(programDisable(USBDEVICE*, bool)), usbControllerDev, SLOT(programDisable(USBDEVICE*, bool)));
     connect(this, SIGNAL(setPTT(bool)), usbControllerDev, SLOT(receivePTTStatus(bool)));
     connect(this, SIGNAL(initUsbController(QMutex*,usbMap*,QVector<BUTTON>*,QVector<KNOB>*)), usbControllerDev, SLOT(init(QMutex*,usbMap*,QVector<BUTTON>*,QVector<KNOB>*)));
+
 
 #endif
 }
@@ -2496,11 +2496,13 @@ void wfmain::loadSettings()
             QString tempPath = settings->value("Path", "").toString();
             tempPrefs.disabled = settings->value("Disabled", false).toBool();
             tempPrefs.sensitivity = settings->value("Sensitivity", 1).toInt();
+            tempPrefs.pages = settings->value("Pages", 1).toInt();
             tempPrefs.brightness = (quint8)settings->value("Brightness", 2).toInt();
             tempPrefs.orientation = (quint8)settings->value("Orientation", 2).toInt();
             tempPrefs.speed = (quint8)settings->value("Speed", 2).toInt();
             tempPrefs.timeout = (quint8)settings->value("Timeout", 30).toInt();
             tempPrefs.color.setNamedColor(settings->value("Color", QColor(Qt::white).name(QColor::HexArgb)).toString());
+            tempPrefs.lcd = (cmds)settings->value("LCD",0).toInt();
 
             if (!tempPath.isEmpty()) {
                 usbControllers.insert(tempPath,tempPrefs);
@@ -2519,7 +2521,8 @@ void wfmain::loadSettings()
         {
             settings->setArrayIndex(nb);
             BUTTON butt;
-            butt.devicePath = settings->value("Path", "").toString();
+            butt.path = settings->value("Path", "").toString();
+            butt.page = settings->value("Page", 1).toInt();
             butt.dev = (usbDeviceType)settings->value("Dev", 0).toInt();
             butt.num = settings->value("Num", 0).toInt();
             butt.name = settings->value("Name", "").toString();
@@ -2527,11 +2530,13 @@ void wfmain::loadSettings()
                 settings->value("Top", 0).toInt(),
                 settings->value("Width", 0).toInt(),
                 settings->value("Height", 0).toInt());
-            butt.textColour = QColor((settings->value("Colour", "Green").toString()));
+            butt.textColour.setNamedColor(settings->value("Colour", QColor(Qt::white).name(QColor::HexArgb)).toString());
+            butt.background.setNamedColor(settings->value("Background", QColor(Qt::white).name(QColor::HexArgb)).toString());
+            butt.toggle = settings->value("Toggle", false).toBool();
 
             butt.on = settings->value("OnCommand", "None").toString();
             butt.off = settings->value("OffCommand", "None").toString();
-            if (!butt.devicePath.isEmpty())
+            if (!butt.path.isEmpty())
                 usbButtons.append(butt);
         }
         settings->endArray();
@@ -2547,7 +2552,8 @@ void wfmain::loadSettings()
         {
             settings->setArrayIndex(nk);
             KNOB kb;
-            kb.devicePath = settings->value("Path", "").toString();
+            kb.path = settings->value("Path", "").toString();
+            kb.page = settings->value("Page", 1).toInt();
             kb.dev = (usbDeviceType)settings->value("Dev", 0).toInt();
             kb.num = settings->value("Num", 0).toInt();
             kb.name = settings->value("Name", "").toString();
@@ -2558,7 +2564,7 @@ void wfmain::loadSettings()
             kb.textColour = QColor((settings->value("Colour", "Green").toString()));
 
             kb.cmd = settings->value("Command", "None").toString();
-            if (!kb.devicePath.isEmpty())
+            if (!kb.path.isEmpty())
                 usbKnobs.append(kb);
         }
         settings->endArray();
@@ -2979,6 +2985,7 @@ void wfmain::saveSettings()
 
     // Store USB Controller
 
+    settings->remove("Controllers");
     settings->beginWriteArray("Controllers");
     int nc=0;
 
@@ -2994,7 +3001,9 @@ void wfmain::saveSettings()
         settings->setValue("Orientation", i.value().orientation);
         settings->setValue("Speed", i.value().speed);
         settings->setValue("Timeout", i.value().timeout);
+        settings->setValue("Pages", i.value().pages);
         settings->setValue("Color", i.value().color.name(QColor::HexArgb));
+        settings->setValue("LCD", i.value().lcd);
 
         ++i;
         ++nc;
@@ -3002,19 +3011,24 @@ void wfmain::saveSettings()
     settings->endArray();
 
 
+    settings->remove("Buttons");
     settings->beginWriteArray("Buttons");
     for (int nb = 0; nb < usbButtons.count(); nb++)
     {
         settings->setArrayIndex(nb);
+        settings->setValue("Page", usbButtons[nb].page);
         settings->setValue("Dev", usbButtons[nb].dev);
         settings->setValue("Num", usbButtons[nb].num);
-        settings->setValue("Path", usbButtons[nb].devicePath);
+        settings->setValue("Path", usbButtons[nb].path);
         settings->setValue("Name", usbButtons[nb].name);
         settings->setValue("Left", usbButtons[nb].pos.left());
         settings->setValue("Top", usbButtons[nb].pos.top());
         settings->setValue("Width", usbButtons[nb].pos.width());
         settings->setValue("Height", usbButtons[nb].pos.height());
-        settings->setValue("Colour", usbButtons[nb].textColour.name());
+        settings->setValue("Colour", usbButtons[nb].textColour.name(QColor::HexArgb));
+        settings->setValue("Background", usbButtons[nb].background.name(QColor::HexArgb));
+        settings->setValue("Toggle", usbButtons[nb].toggle);
+
         if (usbButtons[nb].onCommand != Q_NULLPTR)
             settings->setValue("OnCommand", usbButtons[nb].onCommand->text);
         if (usbButtons[nb].offCommand != Q_NULLPTR)
@@ -3023,13 +3037,15 @@ void wfmain::saveSettings()
 
     settings->endArray();
 
+    settings->remove("Knobs");
     settings->beginWriteArray("Knobs");
     for (int nk = 0; nk < usbKnobs.count(); nk++)
     {
         settings->setArrayIndex(nk);
+        settings->setValue("Page", usbKnobs[nk].page);
         settings->setValue("Dev", usbKnobs[nk].dev);
         settings->setValue("Num", usbKnobs[nk].num);
-        settings->setValue("Path", usbKnobs[nk].devicePath);
+        settings->setValue("Path", usbKnobs[nk].path);
         settings->setValue("Left", usbKnobs[nk].pos.left());
         settings->setValue("Top", usbKnobs[nk].pos.top());
         settings->setValue("Width", usbKnobs[nk].pos.width());
@@ -5241,9 +5257,31 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             wf->yAxis->setRange(0,wfLength - 1);
             wf->xAxis->setRange(0, spectWidth-1);
             wf->replot();
+
+            // Send to USB Controllers if requested
+            usbMap::const_iterator i = usbControllers.constBegin();
+            while (i != usbControllers.constEnd())
+            {
+                if (i.value().dev != Q_NULLPTR && i.value().lcd == cmdLCDWaterfall )
+                {
+                    lcdImage = wf->toPixmap(800,100,1.0).toImage();
+                    emit sendControllerRequest(i.value().dev, usbFeatureType::featureLCD, 0, "", &lcdImage);
+                }
+                else if (i.value().dev != Q_NULLPTR && i.value().lcd == cmdLCDSpectrum)
+                {
+                    lcdImage = plot->toPixmap(800,100,1.0).toImage();
+                    emit sendControllerRequest(i.value().dev, usbFeatureType::featureLCD, 0, "", &lcdImage);
+                }
+                 ++i;
+            }
+
+
         }
         oldPlotFloor = plotFloor;
         oldPlotCeiling = plotCeiling;
+
+
+
     }
 }
 
