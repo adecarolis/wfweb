@@ -20,11 +20,18 @@ controllerSetup::~controllerSetup()
     delete ui;
 }
 
+void controllerSetup::hideEvent(QHideEvent *event)
+{
+    qDebug(logUsbControl()) << "Controller window hiding";
+    updateDialog->hide();
+}
+
 void controllerSetup::init()
 {
 
     updateDialog = new QDialog(this);
-    //updateDialog->setModal(true);
+    // Not sure if I like it Frameless or not?
+    updateDialog->setWindowFlags(Qt::FramelessWindowHint | Qt::Dialog);
 
     QGridLayout* udLayout = new QGridLayout;
     updateDialog->setLayout(udLayout);
@@ -72,19 +79,14 @@ void controllerSetup::mousePressed(controllerScene* scene, QPoint p)
     Q_UNUSED (scene) // We might want it in the future?
 
     // Receive mouse event from the scene
-    qDebug() << "Looking for button Point x=" << p.x() << " y=" << p.y();
-    if (onEvent == Q_NULLPTR|| offEvent == Q_NULLPTR|| knobEvent == Q_NULLPTR)
-    {
-        qInfo(logUsbControl()) << "Event missing, cannot continue...";
-        return;
-    }
+    qDebug() << "Looking for knob or button at Point x=" << p.x() << " y=" << p.y();
         
     bool found = false;
     QPoint gp = this->mapToGlobal(p);
 
     for (auto b = buttons->begin(); b != buttons->end(); b++)
     {
-        if (b->page == b->parent->currentPage && ui->tabWidget->currentWidget()->objectName() == b->path && b->pos.contains(p))
+        if (b->parent != Q_NULLPTR && b->parent != Q_NULLPTR && b->pos.contains(p) && b->page == b->parent->currentPage && ui->tabWidget->currentWidget()->objectName() == b->path)
         {
             found = true;
             currentButton = b;
@@ -112,7 +114,7 @@ void controllerSetup::mousePressed(controllerScene* scene, QPoint p)
 
             buttonLatch->show();
             buttonColor->show();
-            currentKnob = Q_NULLPTR;
+            //currentKnob = Q_NULLPTR;
             break;
         }
     }
@@ -120,7 +122,7 @@ void controllerSetup::mousePressed(controllerScene* scene, QPoint p)
     if (!found) {
         for (auto k = knobs->begin(); k != knobs->end(); k++)
         {
-            if (k->page == k->parent->currentPage && ui->tabWidget->currentWidget()->objectName() == k->path && k->pos.contains(p))
+            if (k->parent != Q_NULLPTR && k->pos.contains(p) && k->page == k->parent->currentPage && ui->tabWidget->currentWidget()->objectName() == k->path)
             {
                 found = true;
                 currentKnob = k;
@@ -139,7 +141,7 @@ void controllerSetup::mousePressed(controllerScene* scene, QPoint p)
                 offLabel->hide();
                 buttonLatch->hide();
                 buttonColor->hide();
-                currentButton = Q_NULLPTR;
+                //currentButton = Q_NULLPTR;
                 break;
             }
         }
@@ -150,12 +152,13 @@ void controllerSetup::mousePressed(controllerScene* scene, QPoint p)
         updateDialog->show();
         updateDialog->move(gp);
         updateDialog->adjustSize();
+        updateDialog->raise();
     }
     else
     {
         updateDialog->hide();
-        currentButton = Q_NULLPTR;
-        currentKnob = Q_NULLPTR;
+       // currentButton = Q_NULLPTR;
+        //currentKnob = Q_NULLPTR;
     }
 }
 

@@ -90,6 +90,7 @@ public slots:
     void pagesChanged(USBDEVICE* dev, int val);
     void disableClicked(USBDEVICE* dev, bool clicked, QWidget* widget);
     void setConnected(USBDEVICE* dev);
+    void hideEvent(QHideEvent *event);
 
 
 private:
