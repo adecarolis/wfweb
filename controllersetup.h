@@ -83,7 +83,8 @@ public slots:
     void orientationChanged(USBDEVICE* dev, int index);
     void speedChanged(USBDEVICE* dev, int index);
     void colorPicker(USBDEVICE* dev);
-    void buttonColorClicked();
+    void buttonOnColorClicked();
+    void buttonOffColorClicked();
     void buttonIconClicked();
     void latchStateChanged(int state);
 
@@ -118,7 +119,8 @@ private:
     QLabel* onLabel;
     QLabel* offLabel;
     QLabel* knobLabel;
-    QPushButton* buttonColor;
+    QPushButton* buttonOnColor;
+    QPushButton* buttonOffColor;
     QCheckBox *buttonLatch;
     QPushButton* buttonIcon;
     QLabel* iconLabel;

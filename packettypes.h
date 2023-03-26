@@ -412,6 +412,19 @@ typedef union streamdeck_image_header {
     char packet[8];
 } *streamdeck_image_header_t;
 
+typedef union streamdeck_v1_image_header {
+    struct
+    {
+        quint8 cmd;
+        quint8 suffix;
+        quint16 index;
+        quint8 isLast;
+        quint8 button;
+        quint8 unused[10];
+    };
+    char packet[16];
+} *streamdeck_v1_image_header_t;
+
 typedef union streamdeck_lcd_header {
     struct
     {

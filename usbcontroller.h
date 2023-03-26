@@ -160,8 +160,9 @@ struct BUTTON {
     QString on;
     QString off;
     QString path;
-    QColor background = Qt::white;
-    QImage icon;
+    QColor backgroundOn = Qt::lightGray;
+    QColor backgroundOff = Qt::blue;
+    QImage* icon = Q_NULLPTR;
     bool toggle = false;
     bool isOn = false;
 };

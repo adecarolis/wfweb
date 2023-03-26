@@ -2531,9 +2531,11 @@ void wfmain::loadSettings()
                 settings->value("Width", 0).toInt(),
                 settings->value("Height", 0).toInt());
             butt.textColour.setNamedColor(settings->value("Colour", QColor(Qt::white).name(QColor::HexArgb)).toString());
-            butt.background.setNamedColor(settings->value("Background", QColor(Qt::white).name(QColor::HexArgb)).toString());
+            butt.backgroundOn.setNamedColor(settings->value("BackgroundOn", QColor(Qt::lightGray).name(QColor::HexArgb)).toString());
+            butt.backgroundOff.setNamedColor(settings->value("BackgroundOff", QColor(Qt::blue).name(QColor::HexArgb)).toString());
             butt.toggle = settings->value("Toggle", false).toBool();
-
+            if (settings->value("Icon",NULL) != NULL)
+                butt.icon = new QImage(settings->value("Icon",NULL).value<QImage>());
             butt.on = settings->value("OnCommand", "None").toString();
             butt.off = settings->value("OffCommand", "None").toString();
             if (!butt.path.isEmpty())
@@ -3026,7 +3028,10 @@ void wfmain::saveSettings()
         settings->setValue("Width", usbButtons[nb].pos.width());
         settings->setValue("Height", usbButtons[nb].pos.height());
         settings->setValue("Colour", usbButtons[nb].textColour.name(QColor::HexArgb));
-        settings->setValue("Background", usbButtons[nb].background.name(QColor::HexArgb));
+        settings->setValue("BackgroundOn", usbButtons[nb].backgroundOn.name(QColor::HexArgb));
+        settings->setValue("BackgroundOff", usbButtons[nb].backgroundOff.name(QColor::HexArgb));
+        if (usbButtons[nb].icon != Q_NULLPTR)
+            settings->setValue("Icon", *usbButtons[nb].icon);
         settings->setValue("Toggle", usbButtons[nb].toggle);
 
         if (usbButtons[nb].onCommand != Q_NULLPTR)
@@ -5258,24 +5263,26 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             wf->xAxis->setRange(0, spectWidth-1);
             wf->replot();
 
-
+#if defined (USB_CONTROLLER)
             // Send to USB Controllers if requested
             usbMap::const_iterator i = usbControllers.constBegin();
             while (i != usbControllers.constEnd())
             {
-                if (i.value().dev != Q_NULLPTR && i.value().dev->connected && i.value().lcd == cmdLCDWaterfall )
+                if (i.value().dev != Q_NULLPTR && i.value().dev->connected
+                        && i.value().dev->type.model == usbDeviceType::StreamDeckPlus && i.value().lcd == cmdLCDWaterfall )
                 {
-                    lcdImage = plot->toPixmap().toImage();
+                    lcdImage = wf->toPixmap().toImage();
                     emit sendControllerRequest(i.value().dev, usbFeatureType::featureLCD, 0, "", &lcdImage);
                 }
-                else if (i.value().dev != Q_NULLPTR && i.value().dev->connected && i.value().lcd == cmdLCDSpectrum)
+                else if (i.value().dev != Q_NULLPTR && i.value().dev->connected
+                        && i.value().dev->type.model == usbDeviceType::StreamDeckPlus && i.value().lcd == cmdLCDSpectrum)
                 {
                     lcdImage = plot->toPixmap().toImage();
                     emit sendControllerRequest(i.value().dev, usbFeatureType::featureLCD, 0, "", &lcdImage);
                 }
                  ++i;
             }
-
+#endif
 
         }
         oldPlotFloor = plotFloor;

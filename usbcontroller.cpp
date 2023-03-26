@@ -686,7 +686,7 @@ void usbController::runTimer()
                             // Change the button text to reflect the off Button
                             if (but->offCommand->index != 0) {
                                 locker.unlock();
-                                sendRequest(&dev,usbFeatureType::featureButton,i,but->offCommand->text,Q_NULLPTR,&but->background);
+                                sendRequest(&dev,usbFeatureType::featureButton,i,but->offCommand->text,but->icon,&but->backgroundOff);
                                 locker.relock();
                             }
                             but->isOn=true;
@@ -706,7 +706,7 @@ void usbController::runTimer()
                                 emit button(but->offCommand);
                             }
                             locker.unlock();
-                            sendRequest(&dev,usbFeatureType::featureButton,i,but->onCommand->text,Q_NULLPTR,&but->background);
+                            sendRequest(&dev,usbFeatureType::featureButton,i,but->onCommand->text,but->icon,&but->backgroundOn);
                             locker.relock();
                             but->isOn=false;
                         }
@@ -723,7 +723,7 @@ void usbController::runTimer()
                             }
                             // Change the button text to reflect the on Button
                             locker.unlock();
-                            sendRequest(&dev,usbFeatureType::featureButton,i,but->onCommand->text,Q_NULLPTR,&but->background);
+                            sendRequest(&dev,usbFeatureType::featureButton,i,but->onCommand->text,but->icon,&but->backgroundOn);
                             locker.relock();
                             but->isOn=false;
                         }
@@ -757,7 +757,7 @@ void usbController::runTimer()
                     { return (k.command && k.path == dev.path && k.page == dev.currentPage && k.num == i && dev.knobValues[i] != dev.knobPrevious[i]); });
 
                     if (kb != knobList->end()) {
-                        // sendCommand mustn't be deleted so we ensure it stays in-scope by declaring it private.
+                        // sendCommand mustn't be deleted so we ensure it stays in-scope by declaring it private (we will only ever send one command).
                         sendCommand = *kb->command;
                         if (sendCommand.command != cmdSetFreq) {
                             int tempVal = dev.knobValues[i] * dev.sensitivity;
@@ -1044,89 +1044,45 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
             break;
         case usbFeatureType::featureOverlay:
         {
-            QImage image(800,100, QImage::Format_RGB888);
-            QPainter paint(&image);
-            if (val) {
-                paint.setFont(QFont("times",16));
-                paint.fillRect(image.rect(), (*controllers)[dev->path].color);
-                paint.drawText(image.rect(),Qt::AlignCenter | Qt::AlignVCenter, text);
-                QTimer::singleShot(val*1000, this, [=]() { sendRequest(dev,usbFeatureType::featureOverlay); });
-            } else {
-                paint.fillRect(image.rect(), (*controllers)[dev->path].color);
+            if (dev->type.model == usbDeviceType::StreamDeckPlus)
+            {
+                QImage image(800,100, QImage::Format_RGB888);
+                QPainter paint(&image);
+                if (val) {
+                    paint.setFont(QFont("times",16));
+                    paint.fillRect(image.rect(), (*controllers)[dev->path].color);
+                    paint.drawText(image.rect(),Qt::AlignCenter | Qt::AlignVCenter, text);
+                    QTimer::singleShot(val*1000, this, [=]() { sendRequest(dev,usbFeatureType::featureOverlay); });
+                } else {
+                    paint.fillRect(image.rect(), (*controllers)[dev->path].color);
+                }
+                QBuffer buffer(&data2);
+                image.save(&buffer, "JPG");
             }
-            QBuffer buffer(&data2);
-            image.save(&buffer, "JPG");
             // Fall through
         }
         case usbFeatureType::featureLCD:
         {
-            if (img != Q_NULLPTR)
+            if (dev->type.model == usbDeviceType::StreamDeckPlus)
             {
-                *img = img->scaled(800,100);
-                data2.clear();
-                QBuffer buffer(&data2);
-                img->save(&buffer, "JPG");
-            }
-            quint32 rem = data2.size();
-            quint16 index = 0;
-
-            streamdeck_lcd_header h;
-            memset(h.packet, 0x0, sizeof(h)); // We can't be sure it is initialized with 0x00!
-            h.cmd = 0x02;
-            h.suffix = 0x0c;
-            h.x=0;
-            h.y=0;
-            h.width=800;
-            h.height=100;
-
-            while (rem > 0)
-            {
-                quint16 length = qMin(rem,dev->type.maxPayload-sizeof(h));
-                data.clear();
-                h.isLast = (quint8)(rem <= dev->type.maxPayload-sizeof(h) ? 1 : 0); // isLast ? 1 : 0,3
-                h.length = length;
-                h.index = index;
-                rem -= length;
-                data.append(QByteArray::fromRawData((const char*)h.packet,sizeof(h)));
-                data.append(data2.mid(0,length));
-                data.resize(dev->type.maxPayload);
-                memset(data.data()+length+sizeof(h),0x0,data.size()-(length+sizeof(h)));
-                res=hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
-                //qInfo(logUsbControl()) << "Sending" << (((quint8)data[7] << 8) | ((quint8)data[6] & 0xff)) << "total=" << data.size()  << "payload=" << (((quint8)data[5] << 8) | ((quint8)data[4] & 0xff)) << "last" << (quint8)data[3];
-                data2.remove(0,length);
-                index++;
-            }
-            break;
-        }
-        case usbFeatureType::featureButton: {
-            if (val < 8) {
-                QImage butImage(dev->type.iconSize,dev->type.iconSize, QImage::Format_RGB888);
                 if (img != Q_NULLPTR)
                 {
-                    butImage = *img;
+                    QImage image = img->scaled(800,100,Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
+                    data2.clear();
+                    QBuffer buffer(&data2);
+                    image.save(&buffer, "JPG");
                 }
-                else
-                {
-                    QPainter butPaint(&butImage);
-                    butPaint.setFont(QFont("times",16));
-                    if (color == Q_NULLPTR)
-                        butPaint.fillRect(butImage.rect(), (*controllers)[dev->path].color);
-                    else
-                        butPaint.fillRect(butImage.rect(), *color);
-
-                    butPaint.drawText(butImage.rect(),Qt::AlignCenter | Qt::AlignVCenter, text);
-                }
-                QBuffer butBuffer(&data2);
-                butImage.save(&butBuffer, "JPG");
-                //butImage.save("test.jpg");
                 quint32 rem = data2.size();
                 quint16 index = 0;
 
-                streamdeck_image_header h;
+                streamdeck_lcd_header h;
                 memset(h.packet, 0x0, sizeof(h)); // We can't be sure it is initialized with 0x00!
                 h.cmd = 0x02;
-                h.suffix = 0x07;
-                h.button = val;
+                h.suffix = 0x0c;
+                h.x=0;
+                h.y=0;
+                h.width=800;
+                h.height=100;
 
                 while (rem > 0)
                 {
@@ -1144,6 +1100,91 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
                     //qInfo(logUsbControl()) << "Sending" << (((quint8)data[7] << 8) | ((quint8)data[6] & 0xff)) << "total=" << data.size()  << "payload=" << (((quint8)data[5] << 8) | ((quint8)data[4] & 0xff)) << "last" << (quint8)data[3];
                     data2.remove(0,length);
                     index++;
+                }
+            }
+            break;
+        }
+        case usbFeatureType::featureButton: {
+            // StreamDeckPedal is the only model without oled buttons
+            // Plus has 12 buttons but only 8 oled
+            if (dev->type.model != usbDeviceType::StreamDeckPedal &&
+                ((dev->type.model == usbDeviceType::StreamDeckPlus  && val < 8) ||
+                (val < dev->type.buttons)))
+            {
+                if (val < 8) {
+                    QImage butImage(dev->type.iconSize,dev->type.iconSize, QImage::Format_RGB888);
+                    if (color != Q_NULLPTR)
+                        butImage.fill(*color);
+                    else
+                        butImage.fill((*controllers)[dev->path].color);
+
+                    QPainter butPaint(&butImage);
+
+                    if ( img == Q_NULLPTR) {
+                        butPaint.setFont(QFont("times",16));
+                        butPaint.drawText(butImage.rect(),Qt::AlignCenter | Qt::AlignVCenter, text);
+                    } else {
+                        butPaint.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+                        butPaint.drawImage(0, 0, *img);
+                    }
+
+                    QBuffer butBuffer(&data2);
+
+                    if (sdv1)
+                    {
+                        butImage.save(&butBuffer, "BMP");
+                        quint32 rem = data2.size();
+                        quint16 index = 0;
+                        streamdeck_v1_image_header h1;
+                        memset(h1.packet, 0x0, sizeof(h1)); // We can't be sure it is initialized with 0x00!
+                        h1.cmd = 0x02;
+                        h1.suffix = 0x01;
+                        h1.button = val;
+                        while (rem > 0)
+                        {
+                            quint16 length = qMin(rem,dev->type.maxPayload-sizeof(h1));
+                            data.clear();
+                            h1.isLast = (quint8)(rem <= dev->type.maxPayload-sizeof(h1) ? 1 : 0); // isLast ? 1 : 0,3
+                            h1.index = index;
+                            data.append(QByteArray::fromRawData((const char*)h1.packet,sizeof(h1)));
+                            rem -= length;
+                            data.append(data2.mid(0,length));
+                            data.resize(dev->type.maxPayload);
+                            memset(data.data()+length+sizeof(h1),0x0,data.size()-(length+sizeof(h1)));
+                            res=hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
+                            //qInfo(logUsbControl()) << "Sending" << (((quint8)data[7] << 8) | ((quint8)data[6] & 0xff)) << "total=" << data.size()  << "payload=" << (((quint8)data[5] << 8) | ((quint8)data[4] & 0xff)) << "last" << (quint8)data[3];
+                            data2.remove(0,length);
+                            index++;
+                        }
+                    }
+                    else
+                    {
+                        butImage.save(&butBuffer, "JPG");
+                        quint32 rem = data2.size();
+                        quint16 index = 0;
+                        streamdeck_image_header h;
+                        memset(h.packet, 0x0, sizeof(h)); // We can't be sure it is initialized with 0x00!
+                        h.cmd = 0x02;
+                        h.suffix = 0x07;
+                        h.button = val;
+                        while (rem > 0)
+                        {
+                            quint16 length = qMin(rem,dev->type.maxPayload-sizeof(h));
+                            data.clear();
+                            h.isLast = (quint8)(rem <= dev->type.maxPayload-sizeof(h) ? 1 : 0); // isLast ? 1 : 0,3
+                            h.length = length;
+                            h.index = index;
+                            data.append(QByteArray::fromRawData((const char*)h.packet,sizeof(h)));
+                            rem -= length;
+                            data.append(data2.mid(0,length));
+                            data.resize(dev->type.maxPayload);
+                            memset(data.data()+length+sizeof(h),0x0,data.size()-(length+sizeof(h)));
+                            res=hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
+                             //qInfo(logUsbControl()) << "Sending" << (((quint8)data[7] << 8) | ((quint8)data[6] & 0xff)) << "total=" << data.size()  << "payload=" << (((quint8)data[5] << 8) | ((quint8)data[4] & 0xff)) << "last" << (quint8)data[3];
+                            data2.remove(0,length);
+                            index++;
+                        }
+                    }
                 }
             }
         }

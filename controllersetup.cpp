@@ -55,13 +55,18 @@ void controllerSetup::init()
     udLayout->addWidget(knobEvent,2,1);
     knobLabel->setBuddy(knobEvent);
 
-    buttonColor = new QPushButton("Color");
-    udLayout->addWidget(buttonColor,3,0);
-
     buttonLatch = new QCheckBox();
     buttonLatch->setText("Toggle");
-    udLayout->addWidget(buttonLatch,3,1);
-    udLayout->setAlignment(buttonLatch,Qt::AlignRight);
+    udLayout->addWidget(buttonLatch,3,0);
+
+    QHBoxLayout* colorLayout = new QHBoxLayout();
+    udLayout->addLayout(colorLayout,3,1);
+
+    buttonOnColor = new QPushButton("Color");
+    colorLayout->addWidget(buttonOnColor);
+
+    buttonOffColor = new QPushButton("Pressed");
+    colorLayout->addWidget(buttonOffColor);
 
     buttonIcon = new QPushButton("Icon");
     udLayout->addWidget(buttonIcon,4,0);
@@ -76,7 +81,8 @@ void controllerSetup::init()
     connect(offEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(offEventIndexChanged(int)));
     connect(onEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(onEventIndexChanged(int)));
     connect(knobEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(knobEventIndexChanged(int)));
-    connect(buttonColor, SIGNAL(clicked()), this, SLOT(buttonColorClicked()));
+    connect(buttonOnColor, SIGNAL(clicked()), this, SLOT(buttonOnColorClicked()));
+    connect(buttonOffColor, SIGNAL(clicked()), this, SLOT(buttonOffColorClicked()));
     connect(buttonIcon, SIGNAL(clicked()), this, SLOT(buttonIconClicked()));
     connect(buttonLatch, SIGNAL(stateChanged(int)), this, SLOT(latchStateChanged(int)));
 
@@ -121,7 +127,8 @@ void controllerSetup::mousePressed(controllerScene* scene, QPoint p)
         buttonLatch->blockSignals(false);
 
         buttonLatch->show();
-        buttonColor->show();
+        buttonOnColor->show();
+        buttonOffColor->show();
         buttonIcon->show();
         iconLabel->show();
 
@@ -152,7 +159,8 @@ void controllerSetup::mousePressed(controllerScene* scene, QPoint p)
             onLabel->hide();
             offLabel->hide();
             buttonLatch->hide();
-            buttonColor->hide();
+            buttonOnColor->hide();
+            buttonOffColor->hide();
             buttonIcon->hide();
             iconLabel->hide();
 
@@ -184,7 +192,7 @@ void controllerSetup::onEventIndexChanged(int index) {
         currentButton->onText->setPos(currentButton->pos.center().x() - currentButton->onText->boundingRect().width() / 2,
             (currentButton->pos.center().y() - currentButton->onText->boundingRect().height() / 2)-6);
         // Signal that any button programming on the device should be completed.
-        emit sendRequest(currentButton->parent,usbFeatureType::featureButton,currentButton->num,currentButton->onCommand->text);
+        emit sendRequest(currentButton->parent,usbFeatureType::featureButton,currentButton->num,currentButton->onCommand->text,Q_NULLPTR,&currentButton->backgroundOn);
     }
 }
 
@@ -221,22 +229,32 @@ void controllerSetup::knobEventIndexChanged(int index) {
 }
 
 
-void controllerSetup::buttonColorClicked()
+void controllerSetup::buttonOnColorClicked()
 {
     QColorDialog::ColorDialogOptions options;
     options.setFlag(QColorDialog::ShowAlphaChannel, false);
     options.setFlag(QColorDialog::DontUseNativeDialog, false);
-    QColor selColor = QColorDialog::getColor(initialColor, this, "Select Color", options);
+    QColor selColor = QColorDialog::getColor(currentButton->backgroundOn, this, "Select Color to use for unpressed button", options);
 
-    if(!selColor.isValid())
+    if(selColor.isValid() && currentButton != Q_NULLPTR)
     {
-        return;
-    }
-
-    if (currentButton != Q_NULLPTR) {
         QMutexLocker locker(mutex);
-        currentButton->background = selColor;
-        emit sendRequest(currentButton->parent,usbFeatureType::featureButton,currentButton->num,currentButton->onCommand->text,Q_NULLPTR,&currentButton->background);
+        currentButton->backgroundOn = selColor;
+        emit sendRequest(currentButton->parent,usbFeatureType::featureButton,currentButton->num,currentButton->onCommand->text,currentButton->icon,&currentButton->backgroundOn);
+    }
+}
+
+void controllerSetup::buttonOffColorClicked()
+{
+    QColorDialog::ColorDialogOptions options;
+    options.setFlag(QColorDialog::ShowAlphaChannel, false);
+    options.setFlag(QColorDialog::DontUseNativeDialog, false);
+    QColor selColor = QColorDialog::getColor(currentButton->backgroundOff, this, "Select Color to use for pressed button", options);
+
+    if(selColor.isValid() && currentButton != Q_NULLPTR)
+    {
+        QMutexLocker locker(mutex);
+        currentButton->backgroundOff = selColor;
     }
 }
 
@@ -248,8 +266,10 @@ void controllerSetup::buttonIconClicked()
         iconLabel->setText(info.fileName());
         QImage image;
         image.load(file);
-        currentButton->icon = image.scaled(currentButton->parent->type.iconSize,currentButton->parent->type.iconSize);
-        emit sendRequest(currentButton->parent,usbFeatureType::featureButton,currentButton->num,currentButton->onCommand->text,&currentButton->icon, Q_NULLPTR);
+        if (currentButton->icon != Q_NULLPTR)
+            delete currentButton->icon;
+        currentButton->icon = new QImage(image.scaled(currentButton->parent->type.iconSize,currentButton->parent->type.iconSize));
+        emit sendRequest(currentButton->parent,usbFeatureType::featureButton,currentButton->num,currentButton->onCommand->text,currentButton->icon, &currentButton->backgroundOn);
     }
 }
 
@@ -622,7 +642,7 @@ void controllerSetup::pageChanged(USBDEVICE* dev, int val)
                 dev->scene->addItem(b->onText);
                 b->onText->setPos(b->pos.center().x() - b->onText->boundingRect().width() / 2,
                     (b->pos.center().y() - b->onText->boundingRect().height() / 2) - 6);
-                emit sendRequest(dev,usbFeatureType::featureButton,b->num,b->onCommand->text,Q_NULLPTR,&b->background);
+                emit sendRequest(dev,usbFeatureType::featureButton,b->num,b->onCommand->text,b->icon,&b->backgroundOn);
 
                 b->offText = new QGraphicsTextItem(b->offCommand->text);
                 b->offText->setDefaultTextColor(b->textColour);
