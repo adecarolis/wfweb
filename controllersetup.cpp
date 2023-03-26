@@ -22,7 +22,7 @@ controllerSetup::~controllerSetup()
 
 void controllerSetup::hideEvent(QHideEvent *event)
 {
-    qDebug(logUsbControl()) << "Controller window hiding";
+    qDebug(logUsbControl()) << "Controller window hideEvent()";
     updateDialog->hide();
 }
 
@@ -63,6 +63,12 @@ void controllerSetup::init()
     udLayout->addWidget(buttonLatch,3,1);
     udLayout->setAlignment(buttonLatch,Qt::AlignRight);
 
+    buttonIcon = new QPushButton("Icon");
+    udLayout->addWidget(buttonIcon,4,0);
+    iconLabel = new QLabel("<None>");
+    udLayout->addWidget(iconLabel,4,1);
+    udLayout->setAlignment(iconLabel,Qt::AlignCenter);
+
     udLayout->setSizeConstraint(QLayout::SetFixedSize);
 
     updateDialog->hide();
@@ -71,6 +77,7 @@ void controllerSetup::init()
     connect(onEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(onEventIndexChanged(int)));
     connect(knobEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(knobEventIndexChanged(int)));
     connect(buttonColor, SIGNAL(clicked()), this, SLOT(buttonColorClicked()));
+    connect(buttonIcon, SIGNAL(clicked()), this, SLOT(buttonIconClicked()));
     connect(buttonLatch, SIGNAL(stateChanged(int)), this, SLOT(latchStateChanged(int)));
 
 }
@@ -81,86 +88,89 @@ void controllerSetup::mousePressed(controllerScene* scene, QPoint p)
     // Receive mouse event from the scene
     qDebug() << "Looking for knob or button at Point x=" << p.x() << " y=" << p.y();
         
-    bool found = false;
     QPoint gp = this->mapToGlobal(p);
 
-    for (auto b = buttons->begin(); b != buttons->end(); b++)
+    // Did the user click on a button?
+    auto b = std::find_if(buttons->begin(), buttons->end(), [p, this](BUTTON& b)
+    { return (b.parent != Q_NULLPTR && b.pos.contains(p) && b.page == b.parent->currentPage && ui->tabWidget->currentWidget()->objectName() == b.path ); });
+
+    if (b != buttons->end())
     {
-        if (b->parent != Q_NULLPTR && b->parent != Q_NULLPTR && b->pos.contains(p) && b->page == b->parent->currentPage && ui->tabWidget->currentWidget()->objectName() == b->path)
-        {
-            found = true;
-            currentButton = b;
-            qDebug() << "Button" << currentButton->num << "On Event" << currentButton->onCommand->text << "Off Event" << currentButton->offCommand->text;
+        currentButton = b;
+        currentKnob = Q_NULLPTR;
+        qDebug() << "Button" << currentButton->num << "On Event" << currentButton->onCommand->text << "Off Event" << currentButton->offCommand->text;
 
-            updateDialog->setWindowTitle(QString("Update button %0").arg(b->num));
+        updateDialog->setWindowTitle(QString("Update button %0").arg(b->num));
 
-            onEvent->blockSignals(true);
-            onEvent->setCurrentIndex(onEvent->findData(currentButton->onCommand->index));
-            onEvent->show();
-            onLabel->show();
-            onEvent->blockSignals(false);
+        onEvent->blockSignals(true);
+        onEvent->setCurrentIndex(onEvent->findData(currentButton->onCommand->index));
+        onEvent->show();
+        onLabel->show();
+        onEvent->blockSignals(false);
 
-            offEvent->blockSignals(true);
-            offEvent->setCurrentIndex(offEvent->findData(currentButton->offCommand->index));
-            offEvent->show();
-            offLabel->show();
-            offEvent->blockSignals(false);
-            knobEvent->hide();
-            knobLabel->hide();
+        offEvent->blockSignals(true);
+        offEvent->setCurrentIndex(offEvent->findData(currentButton->offCommand->index));
+        offEvent->show();
+        offLabel->show();
+        offEvent->blockSignals(false);
+        knobEvent->hide();
+        knobLabel->hide();
 
-            buttonLatch->blockSignals(true);
-            buttonLatch->setChecked(currentButton->toggle);
-            buttonLatch->blockSignals(false);
+        buttonLatch->blockSignals(true);
+        buttonLatch->setChecked(currentButton->toggle);
+        buttonLatch->blockSignals(false);
 
-            buttonLatch->show();
-            buttonColor->show();
-            //currentKnob = Q_NULLPTR;
-            break;
-        }
-    }
+        buttonLatch->show();
+        buttonColor->show();
+        buttonIcon->show();
+        iconLabel->show();
 
-    if (!found) {
-        for (auto k = knobs->begin(); k != knobs->end(); k++)
-        {
-            if (k->parent != Q_NULLPTR && k->pos.contains(p) && k->page == k->parent->currentPage && ui->tabWidget->currentWidget()->objectName() == k->path)
-            {
-                found = true;
-                currentKnob = k;
-                qDebug() << "Knob" << currentKnob->num << "Event" << currentKnob->command->text;
-
-                updateDialog->setWindowTitle(QString("Update knob %0").arg(k->num));
-
-                knobEvent->blockSignals(true);
-                knobEvent->setCurrentIndex(knobEvent->findData(currentKnob->command->index));
-                knobEvent->show();
-                knobLabel->show();
-                knobEvent->blockSignals(false);
-                onEvent->hide();
-                offEvent->hide();
-                onLabel->hide();
-                offLabel->hide();
-                buttonLatch->hide();
-                buttonColor->hide();
-                //currentButton = Q_NULLPTR;
-                break;
-            }
-        }
-    }
-
-    if(found)
-    {
         updateDialog->show();
         updateDialog->move(gp);
         updateDialog->adjustSize();
         updateDialog->raise();
-    }
-    else
-    {
-        updateDialog->hide();
-       // currentButton = Q_NULLPTR;
-        //currentKnob = Q_NULLPTR;
+    } else {
+        // It wasn't a button so was it a knob?
+        auto k = std::find_if(knobs->begin(), knobs->end(), [p, this](KNOB& k)
+        { return (k.parent != Q_NULLPTR && k.pos.contains(p) && k.page == k.parent->currentPage && ui->tabWidget->currentWidget()->objectName() == k.path ); });
+
+        if (k != knobs->end())
+        {
+            currentKnob = k;
+            currentButton = Q_NULLPTR;
+            qDebug() << "Knob" << currentKnob->num << "Event" << currentKnob->command->text;
+
+            updateDialog->setWindowTitle(QString("Update knob %0").arg(k->num));
+
+            knobEvent->blockSignals(true);
+            knobEvent->setCurrentIndex(knobEvent->findData(currentKnob->command->index));
+            knobEvent->show();
+            knobLabel->show();
+            knobEvent->blockSignals(false);
+            onEvent->hide();
+            offEvent->hide();
+            onLabel->hide();
+            offLabel->hide();
+            buttonLatch->hide();
+            buttonColor->hide();
+            buttonIcon->hide();
+            iconLabel->hide();
+
+            updateDialog->show();
+            updateDialog->move(gp);
+            updateDialog->adjustSize();
+            updateDialog->raise();
+        }
+        else
+        {
+            // It wasn't either so hide the updateDialog();
+            updateDialog->hide();
+            currentButton = Q_NULLPTR;
+            currentKnob = Q_NULLPTR;
+        }
     }
 }
+
 
 void controllerSetup::onEventIndexChanged(int index) {
     Q_UNUSED(index);
@@ -227,6 +237,19 @@ void controllerSetup::buttonColorClicked()
         QMutexLocker locker(mutex);
         currentButton->background = selColor;
         emit sendRequest(currentButton->parent,usbFeatureType::featureButton,currentButton->num,currentButton->onCommand->text,Q_NULLPTR,&currentButton->background);
+    }
+}
+
+void controllerSetup::buttonIconClicked()
+{
+    QString file = QFileDialog::getOpenFileName(this,"Select Icon Filename",".","Images (*png *.jpg)");
+    if (!file.isEmpty()) {
+        QFileInfo info = QFileInfo(file);
+        iconLabel->setText(info.fileName());
+        QImage image;
+        image.load(file);
+        currentButton->icon = image.scaled(currentButton->parent->type.iconSize,currentButton->parent->type.iconSize);
+        emit sendRequest(currentButton->parent,usbFeatureType::featureButton,currentButton->num,currentButton->onCommand->text,&currentButton->icon, Q_NULLPTR);
     }
 }
 
@@ -458,9 +481,6 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
     helpText->setAlignment(Qt::AlignCenter);
     layout->addWidget(helpText);
 
-
-
-
     onEvent->blockSignals(true);
     offEvent->blockSignals(true);
     knobEvent->blockSignals(true);
@@ -468,20 +488,6 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
     onEvent->clear();
     offEvent->clear();
     knobEvent->clear();
-
-    /*
-    onEvent->setMaxVisibleItems(5);
-    offEvent->setMaxVisibleItems(5);
-    knobEvent->setMaxVisibleItems(5);
-
-    onEvent->view()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-    offEvent->view()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-    knobEvent->view()->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-
-    onEvent->setStyleSheet("combobox-popup: 0;");
-    offEvent->setStyleSheet("combobox-popup: 0;");
-    knobEvent->setStyleSheet("combobox-popup: 0;");
-    */
 
     for (COMMAND& c : *commands) {
         if (c.cmdType == commandButton || c.text == "None") {
@@ -497,10 +503,6 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
     onEvent->blockSignals(false);
     offEvent->blockSignals(false);
     knobEvent->blockSignals(false);
-
-    onEvent->hide();
-    offEvent->hide();
-    knobEvent->hide();
 
     locker.unlock();
     pageChanged(dev,1);
@@ -586,6 +588,8 @@ void controllerSetup::pageChanged(USBDEVICE* dev, int val)
         val=1;
     if (val < 1)
         val = dev->pages;
+
+    updateDialog->hide(); // Hide the dialog if the page changes.
 
     QMutexLocker locker(mutex);
 

@@ -19,6 +19,7 @@
 #include <QPushButton>
 #include <QScopedPointer>
 #include <QCheckBox>
+#include <QFileDialog>
 
 #include <QDebug>
 #include <QObject>
@@ -83,6 +84,7 @@ public slots:
     void speedChanged(USBDEVICE* dev, int index);
     void colorPicker(USBDEVICE* dev);
     void buttonColorClicked();
+    void buttonIconClicked();
     void latchStateChanged(int state);
 
     void timeoutChanged(USBDEVICE* dev, int val);
@@ -118,6 +120,8 @@ private:
     QLabel* knobLabel;
     QPushButton* buttonColor;
     QCheckBox *buttonLatch;
+    QPushButton* buttonIcon;
+    QLabel* iconLabel;
 
     QString deviceName;
     QMutex* mutex;

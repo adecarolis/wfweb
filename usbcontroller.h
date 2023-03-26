@@ -161,6 +161,7 @@ struct BUTTON {
     QString off;
     QString path;
     QColor background = Qt::white;
+    QImage icon;
     bool toggle = false;
     bool isOn = false;
 };
@@ -198,7 +199,7 @@ struct CONTROLLER {
     QColor color=Qt::white;
     int pages=1;
     cmds lcd=cmdNone;
-    USBDEVICE* dev;
+    USBDEVICE* dev = Q_NULLPTR;
 };
 
 

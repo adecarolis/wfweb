@@ -328,9 +328,9 @@ void usbController::run()
             if (dev.handle)
             {
                 qInfo(logUsbControl()) << QString("Connected to device: %0 from %1 S/N %2").arg(dev.product).arg(dev.manufacturer).arg(dev.serial);
+                hid_set_nonblocking(dev.handle, 1);
                 devicesConnected++;
                 dev.connected=true;
-                hid_set_nonblocking(dev.handle, 1);
 
                 locker.unlock(); // Unlock the mutex so other devices can use it
 
@@ -656,7 +656,6 @@ void usbController::runTimer()
                     }
 
                 }
-                qInfo(logUsbControl()) << "DATA:" << data;
             }
 
             // Step through all buttons and emit ones that have been pressed.
@@ -668,7 +667,7 @@ void usbController::runTimer()
                 for (unsigned char i = 0; i <dev.type.buttons; i++)
                 {
                     auto but = std::find_if(buttonList->begin(), buttonList->end(), [dev, i](const BUTTON& b)
-                    { return (b.path == dev.path && b.num == i); });
+                    { return (b.path == dev.path && b.page == dev.currentPage && b.num == i); });
                     if (but != buttonList->end()) {
                         if ((!but->isOn) && ((tempButtons >> i & 1) && !(dev.buttons >> i & 1)))
                         {
@@ -755,7 +754,7 @@ void usbController::runTimer()
                 for (unsigned char i = 0; i < dev.knobValues.size(); i++)
                 {
                     auto kb = std::find_if(knobList->begin(), knobList->end(), [dev, i](const KNOB& k)
-                    { return (k.command && k.path == dev.path && k.num == i && dev.knobValues[i] != dev.knobPrevious[i]); });
+                    { return (k.command && k.path == dev.path && k.page == dev.currentPage && k.num == i && dev.knobValues[i] != dev.knobPrevious[i]); });
 
                     if (kb != knobList->end()) {
                         // sendCommand mustn't be deleted so we ensure it stays in-scope by declaring it private.
@@ -865,14 +864,15 @@ void usbController::ledControl(bool on, unsigned char num)
 
 void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 val, QString text, QImage* img, QColor* color)
 {
-    if (!dev->connected)
+    if (dev == Q_NULLPTR || !dev->connected || dev->disabled || !dev->handle)
         return;
+
     QMutexLocker locker(mutex);
 
     QByteArray data(64, 0x0);
     QByteArray data2;
     int res=0;
-
+    bool sdv1=false;
     switch (dev->type.model)
     {
     case QuickKeys:
@@ -975,36 +975,8 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
     case StreamDeckMini:
     case StreamDeckMiniV2:
         data.resize(17);
-        switch (feature)
-        {
-        case usbFeatureType::featureFirmware:
-            data[0] = 0x04;
-            hid_get_feature_report(dev->handle,(unsigned char*)data.data(),(size_t)data.size());
-            qInfo(logUsbControl()) << QString("%0: Firmware = %1").arg(dev->product).arg(QString::fromLatin1(data.mid(5,8)));
-            break;
-        case usbFeatureType::featureSerial:
-            data[0] = 0x03;
-            hid_get_feature_report(dev->handle,(unsigned char*)data.data(),(size_t)data.size());
-            qInfo(logUsbControl()) << QString("%0: Firmware = %1").arg(dev->product).arg(QString::fromLatin1(data.mid(2,12)));
-            break;
-        case usbFeatureType::featureReset:
-            data[0] = (qint8)0x0b;
-            data[1] = (qint8)0x63;
-            hid_send_feature_report(dev->handle, (const unsigned char*)data.constData(), data.size());
-        case usbFeatureType::featureBrightness:
-            data[0] = (qint8)0x05;
-            data[1] = (qint8)0x55;
-            data[2] = (qint8)0xaa;
-            data[3] = (qint8)0xd1;
-            data[4] = (qint8)0x01;
-            data[5] = val*25;
-            hid_send_feature_report(dev->handle, (const unsigned char*)data.constData(), data.size());
-            break;
-        default:
-            break;
-        }
-        break;
-
+        sdv1=true;
+        // Allow pass through.
         // Below are StreamDeck Generation 2 h/w
     case StreamDeckOriginalMK2:
     case StreamDeckOriginalV2:
@@ -1016,18 +988,31 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
         switch (feature)
         {
         case usbFeatureType::featureFirmware:
-            data[0] = 0x05;
+            if (sdv1) {
+                data[0] = 0x04;
+            } else {
+                data[0] = 0x05;
+            }
             hid_get_feature_report(dev->handle,(unsigned char*)data.data(),(size_t)data.size());
             qInfo(logUsbControl()) << QString("%0: Firmware = %1").arg(dev->product).arg(QString::fromLatin1(data.mid(2,12)));
             break;
         case usbFeatureType::featureSerial:
-            data[0] = 0x06;
+            if (sdv1) {
+                data[0] = 0x03;
+            } else {
+                data[0] = 0x06;
+            }
             hid_get_feature_report(dev->handle,(unsigned char*)data.data(),(size_t)data.size());
             qInfo(logUsbControl()) << QString("%0: Serial Number = %1").arg(dev->product).arg(QString::fromLatin1(data.mid(5,8)));
             break;
         case usbFeatureType::featureReset:
-            data[0] = (qint8)0x03;
-            data[1] = (qint8)0x02;
+            if (sdv1) {
+                data[0] = (qint8)0x0b;
+                data[1] = (qint8)0x63;
+            } else {
+                data[0] = (qint8)0x03;
+                data[1] = (qint8)0x02;
+            }
             hid_send_feature_report(dev->handle, (const unsigned char*)data.constData(), data.size());
             break;
         case usbFeatureType::featureResetKeys:
@@ -1037,9 +1022,18 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
             res=hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
             break;
         case usbFeatureType::featureBrightness:
-            data[0] = (qint8)0x03;
-            data[1] = (qint8)0x08;
-            data[2] = val*25; // Stream Deck brightness is in %
+            if (sdv1) {
+                data[0] = (qint8)0x05;
+                data[1] = (qint8)0x55;
+                data[2] = (qint8)0xaa;
+                data[3] = (qint8)0xd1;
+                data[4] = (qint8)0x01;
+                data[5] = val*25;
+            } else {
+                data[0] = (qint8)0x03;
+                data[1] = (qint8)0x08;
+                data[2] = val*25; // Stream Deck brightness is in %
+            }
             res = hid_send_feature_report(dev->handle, (const unsigned char*)data.constData(), data.size());
             break;
         case usbFeatureType::featureColor:
@@ -1068,6 +1062,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
         {
             if (img != Q_NULLPTR)
             {
+                *img = img->scaled(800,100);
                 data2.clear();
                 QBuffer buffer(&data2);
                 img->save(&buffer, "JPG");
@@ -1106,14 +1101,21 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
         case usbFeatureType::featureButton: {
             if (val < 8) {
                 QImage butImage(dev->type.iconSize,dev->type.iconSize, QImage::Format_RGB888);
-                QPainter butPaint(&butImage);
-                butPaint.setFont(QFont("times",16));
-                if (color == Q_NULLPTR)
-                    butPaint.fillRect(butImage.rect(), (*controllers)[dev->path].color);
+                if (img != Q_NULLPTR)
+                {
+                    butImage = *img;
+                }
                 else
-                    butPaint.fillRect(butImage.rect(), *color);
+                {
+                    QPainter butPaint(&butImage);
+                    butPaint.setFont(QFont("times",16));
+                    if (color == Q_NULLPTR)
+                        butPaint.fillRect(butImage.rect(), (*controllers)[dev->path].color);
+                    else
+                        butPaint.fillRect(butImage.rect(), *color);
 
-                butPaint.drawText(butImage.rect(),Qt::AlignCenter | Qt::AlignVCenter, text);
+                    butPaint.drawText(butImage.rect(),Qt::AlignCenter | Qt::AlignVCenter, text);
+                }
                 QBuffer butBuffer(&data2);
                 butImage.save(&butBuffer, "JPG");
                 //butImage.save("test.jpg");

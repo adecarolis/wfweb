@@ -5258,18 +5258,19 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
             wf->xAxis->setRange(0, spectWidth-1);
             wf->replot();
 
+
             // Send to USB Controllers if requested
             usbMap::const_iterator i = usbControllers.constBegin();
             while (i != usbControllers.constEnd())
             {
-                if (i.value().dev != Q_NULLPTR && i.value().lcd == cmdLCDWaterfall )
+                if (i.value().dev != Q_NULLPTR && i.value().dev->connected && i.value().lcd == cmdLCDWaterfall )
                 {
-                    lcdImage = wf->toPixmap(800,100,1.0).toImage();
+                    lcdImage = plot->toPixmap().toImage();
                     emit sendControllerRequest(i.value().dev, usbFeatureType::featureLCD, 0, "", &lcdImage);
                 }
-                else if (i.value().dev != Q_NULLPTR && i.value().lcd == cmdLCDSpectrum)
+                else if (i.value().dev != Q_NULLPTR && i.value().dev->connected && i.value().lcd == cmdLCDSpectrum)
                 {
-                    lcdImage = plot->toPixmap(800,100,1.0).toImage();
+                    lcdImage = plot->toPixmap().toImage();
                     emit sendControllerRequest(i.value().dev, usbFeatureType::featureLCD, 0, "", &lcdImage);
                 }
                  ++i;
