@@ -174,8 +174,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 #if !defined(USB_CONTROLLER)
     ui->enableUsbChk->setVisible(false);
     ui->usbControllerBtn->setVisible(false);
-    ui->usbButtonsResetBtn->setVisible(false);
-    ui->usbCommandsResetBtn->setVisible(false);
+    ui->usbControllersResetBtn->setVisible(false);
     ui->usbResetLbl->setVisible(false);
 #endif
 
@@ -1694,6 +1693,7 @@ void wfmain::setupUsbControllerDevice()
     connect(shut, SIGNAL(programPages(USBDEVICE*, int)), usbControllerDev, SLOT(programPages(USBDEVICE*, int)));
     connect(shut, SIGNAL(programDisable(USBDEVICE*, bool)), usbControllerDev, SLOT(programDisable(USBDEVICE*, bool)));
     connect(this, SIGNAL(setPTT(bool)), usbControllerDev, SLOT(receivePTTStatus(bool)));
+    connect(this, SIGNAL(sendLevel(cmds, unsigned char)), usbControllerDev, SLOT(receiveLevel(cmds, unsigned char)));
     connect(this, SIGNAL(initUsbController(QMutex*,usbMap*,QVector<BUTTON>*,QVector<KNOB>*)), usbControllerDev, SLOT(init(QMutex*,usbMap*,QVector<BUTTON>*,QVector<KNOB>*)));
 
 
@@ -2476,8 +2476,7 @@ void wfmain::loadSettings()
     ui->enableUsbChk->setChecked(prefs.enableUSBControllers);
     ui->enableUsbChk->blockSignals(false);
     ui->usbControllerBtn->setEnabled(prefs.enableUSBControllers);
-    ui->usbButtonsResetBtn->setEnabled(prefs.enableUSBControllers);
-    ui->usbCommandsResetBtn->setEnabled(prefs.enableUSBControllers);
+    ui->usbControllersResetBtn->setEnabled(prefs.enableUSBControllers);
     ui->usbResetLbl->setVisible(prefs.enableUSBControllers);
 
     /*Ensure that no operations on the usb commands/buttons/knobs take place*/
@@ -4813,6 +4812,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         if(usingLAN)
         {
             ui->afGainSlider->setValue(prefs.localAFgain);
+            emit sendLevel(cmdGetAfGain,prefs.localAFgain);
         }
         // Adding these here because clearly at this point we have valid
         // rig comms. In the future, we should establish comms and then
@@ -4999,6 +4999,7 @@ void wfmain::receiveFreq(freqt freqStruct)
         } else {
             freqb = freqStruct;
         }
+
     } else {
         qDebug(logSystem()) << "Rejecting stale frequency: " << freqStruct.Hz << " Hz, delta time ms = " << tnow_ms - lastFreqCmdTime_ms\
                             << ", tnow_ms " << tnow_ms << ", last: " << lastFreqCmdTime_ms;
@@ -6454,6 +6455,7 @@ void wfmain::on_afGainSlider_valueChanged(int value)
     {
         rxSetup.localAFgain = (unsigned char)(value);
         prefs.localAFgain = (unsigned char)(value);
+        emit sendLevel(cmdGetAfGain,value);
     }
 }
 
@@ -6463,6 +6465,7 @@ void wfmain::receiveRfGain(unsigned char level)
     ui->rfGainSlider->blockSignals(true);
     ui->rfGainSlider->setValue(level);
     ui->rfGainSlider->blockSignals(false);
+    emit sendLevel(cmdGetRxGain,level);
 }
 
 void wfmain::receiveAfGain(unsigned char level)
@@ -6471,26 +6474,31 @@ void wfmain::receiveAfGain(unsigned char level)
     ui->afGainSlider->blockSignals(true);
     ui->afGainSlider->setValue(level);
     ui->afGainSlider->blockSignals(false);
+    emit sendLevel(cmdGetAfGain,level);
 }
 
 void wfmain::receiveSql(unsigned char level)
 {
     ui->sqlSlider->setValue(level);
+    emit sendLevel(cmdGetSql,level);
 }
 
 void wfmain::receiveIFShift(unsigned char level)
 {
     trxadj->updateIFShift(level);
+    emit sendLevel(cmdGetIFShift,level);
 }
 
 void wfmain::receiveTBPFInner(unsigned char level)
 {
     trxadj->updateTPBFInner(level);
+    emit sendLevel(cmdGetTPBFInner,level);
 }
 
 void wfmain::receiveTBPFOuter(unsigned char level)
 {
     trxadj->updateTPBFOuter(level);
+    emit sendLevel(cmdGetTPBFOuter,level);
 }
 
 void wfmain::on_tuneNowBtn_clicked()
@@ -6964,11 +6972,14 @@ void wfmain::statusFromSliderPercent(QString name, int rawValue)
 void wfmain::receiveTxPower(unsigned char power)
 {
     changeSliderQuietly(ui->txPowerSlider, power);
+    emit sendLevel(cmdGetTxPower,power);
+
 }
 
 void wfmain::receiveMicGain(unsigned char gain)
 {
     processModLevel(inputMic, gain);
+    emit sendLevel(cmdGetMicGain,gain);
 }
 
 void wfmain::processModLevel(rigInput source, unsigned char level)
@@ -7012,6 +7023,7 @@ void wfmain::processModLevel(rigInput source, unsigned char level)
     if(currentIn == source)
     {
         changeSliderQuietly(ui->micGainSlider, level);
+        emit sendLevel(cmdGetModLevel,level);
     }
 
 }
@@ -7094,6 +7106,7 @@ void wfmain::receiveCwPitch(unsigned char pitch) {
     if (currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R) {
         cwPitch = round((((600.0 / 255.0) * pitch) + 300) / 5.0) * 5.0;
         passbandCenterFrequency = cwPitch / 2000000.0;
+        emit sendLevel(cmdGetCwPitch,pitch);
     }
     //qDebug() << "CW" << pitch << "Pitch" << cwPitch;
 }
@@ -7113,6 +7126,7 @@ void wfmain::receiveTPBFInner(unsigned char level) {
         pitch = (600.0 - cwPitch) / 1000000.0;
     }
     TPBFInner = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
+    emit sendLevel(cmdGetTPBFInner,level);
     //qDebug() << "Inner" << level << "TPBFInner" << TPBFInner;
 }
 
@@ -7131,6 +7145,7 @@ void wfmain::receiveTPBFOuter(unsigned char level) {
         pitch = (600.0 - cwPitch) / 1000000.0;
     }
     TPBFOuter = round((tempVar + pitch) * 200000.0) / 200000.0; // Nearest 5Hz.
+    emit sendLevel(cmdGetTPBFOuter,level);
     //qDebug() << "Outer" << level << "TPBFOuter" << TPBFOuter;
 }
 
@@ -7167,7 +7182,7 @@ void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
 
 void wfmain::receiveCompLevel(unsigned char compLevel)
 {
-    (void)compLevel;
+    (void)compLevel;    
 }
 
 void wfmain::receiveMonitorGain(unsigned char monitorGain)
@@ -9220,8 +9235,7 @@ void wfmain::on_enableUsbChk_clicked(bool checked)
 {
     prefs.enableUSBControllers = checked;
     ui->usbControllerBtn->setEnabled(checked);
-    ui->usbButtonsResetBtn->setEnabled(checked);
-    ui->usbCommandsResetBtn->setEnabled(checked);
+    ui->usbControllersResetBtn->setEnabled(checked);
     ui->usbResetLbl->setVisible(checked);
 
 #if defined (USB_CONTROLLER)
@@ -9260,33 +9274,25 @@ void wfmain::on_usbControllerBtn_clicked()
 }
 
 
-void wfmain::on_usbButtonsResetBtn_clicked()
+void wfmain::on_usbControllersResetBtn_clicked()
 {
     int ret = QMessageBox::warning(this, tr("wfview"),
-        tr("Are you sure you wish to reset the USB buttons?"),
+        tr("Are you sure you wish to reset the USB controllers?"),
         QMessageBox::Ok | QMessageBox::Cancel,
         QMessageBox::Cancel);
     if (ret == QMessageBox::Ok) {
-        qInfo(logUsbControl()) << "Resetting USB buttons to default values";
-        //resetUsbButtons();
-        //resetUsbKnobs();
-        on_enableUsbChk_clicked(true); // Force disconnect/reconnect of USB controller.
+        qInfo(logUsbControl()) << "Resetting USB controllers to default values";
+        bool enabled = ui->enableUsbChk->isChecked();
+        if (enabled) on_enableUsbChk_clicked(false); // Force disconnect of USB controllers
+
+        usbButtons.clear();
+        usbKnobs.clear();
+        usbControllers.clear();
+
+        if (enabled) on_enableUsbChk_clicked(true); // Force connect of USB controllers
     }
 }
 
-void wfmain::on_usbCommandsResetBtn_clicked()
-{
-    int ret = QMessageBox::warning(this, tr("wfview"),
-        tr("Are you sure you wish to reset the USB commands?"),
-        QMessageBox::Ok | QMessageBox::Cancel,
-        QMessageBox::Cancel);
-    if (ret == QMessageBox::Ok) {
-        qInfo(logUsbControl()) << "Resetting USB commands to default values";
-        //resetUsbCommands();
-        on_enableUsbChk_clicked(true); // Force disconnect/reconnect of USB controller.
-    }
-
-}
 
 void wfmain::on_autoPollBtn_clicked(bool checked)
 {

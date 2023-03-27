@@ -80,6 +80,8 @@ public:
     void handleLogText(QString text);
 
 signals:
+    // Signal levels received to other parts of wfview
+    void sendLevel(cmds cmd, unsigned char level);
     // Basic to rig:
     void setCIVAddr(unsigned char newRigCIVAddr);
     void setRigID(unsigned char rigID);
@@ -402,8 +404,7 @@ private slots:
     void on_fEnterBtn_clicked();
     void on_usbControllerBtn_clicked();
 
-    void on_usbButtonsResetBtn_clicked();
-    void on_usbCommandsResetBtn_clicked();
+    void on_usbControllersResetBtn_clicked();
 
     void on_enableUsbChk_clicked(bool checked);
 

@@ -123,6 +123,8 @@ struct COMMAND {
     COMMAND() {}
     COMMAND(int index, QString text, usbCommandType cmdType, int command, unsigned char suffix) :
         index(index), text(text), cmdType(cmdType), command(command), suffix(suffix) {}
+    COMMAND(int index, QString text, usbCommandType cmdType, int command, int getCommand, unsigned char suffix) :
+        index(index), text(text), cmdType(cmdType), command(command), getCommand(getCommand), suffix(suffix) {}
     COMMAND(int index, QString text, usbCommandType cmdType, int command, availableBands band) :
         index(index), text(text), cmdType(cmdType), command(command), band(band) {}
     COMMAND(int index, QString text, usbCommandType cmdType, int command, mode_kind mode) :
@@ -132,6 +134,7 @@ struct COMMAND {
     QString text;
     usbCommandType cmdType = commandButton;
     int command=0;
+    int getCommand=0;
     unsigned char suffix=0x0;
     int value=0;
     availableBands band=bandGen;
@@ -222,6 +225,7 @@ public slots:
     void runTimer();
     void ledControl(bool on, unsigned char num);
     void receivePTTStatus(bool on);
+    void receiveLevel(cmds cmd, unsigned char level);
     void programPages(USBDEVICE* dev, int pages);
     void programDisable(USBDEVICE* dev, bool disabled);
 

@@ -1418,17 +1418,17 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Split On", commandButton, cmdNone, 0x01));
     commands.append(COMMAND(num++, "Split Off", commandButton, cmdNone, 0x0));
     commands.append(COMMAND(num++, "Swap VFO", commandButton, cmdVFOSwap, 0x0));
-    commands.append(COMMAND(num++, "AF Gain", commandKnob, cmdSetAfGain, 0xff));
-    commands.append(COMMAND(num++, "RF Gain", commandKnob, cmdSetRxRfGain, 0xff));
-    commands.append(COMMAND(num++, "TX Power", commandKnob, cmdSetTxPower, 0xff));
-    commands.append(COMMAND(num++, "Mic Gain", commandKnob, cmdSetMicGain, 0xff));
-    commands.append(COMMAND(num++, "Mod Level", commandKnob, cmdSetModLevel, 0xff));
-    commands.append(COMMAND(num++, "Squelch", commandKnob, cmdSetSql, 0xff));
-    commands.append(COMMAND(num++, "IF Shift", commandKnob, cmdSetIFShift, 0xff));
-    commands.append(COMMAND(num++, "In PBT", commandKnob, cmdSetTPBFInner, 0xff));
-    commands.append(COMMAND(num++, "Out PBT", commandKnob, cmdSetTPBFOuter, 0xff));
-    commands.append(COMMAND(num++, "CW Pitch", commandKnob, cmdSetCwPitch, 0xff));
-    commands.append(COMMAND(num++, "CW Speed", commandKnob, cmdSetKeySpeed, 0xff));
+    commands.append(COMMAND(num++, "AF Gain", commandKnob, cmdSetAfGain, cmdGetAfGain, 0xff));
+    commands.append(COMMAND(num++, "RF Gain", commandKnob, cmdSetRxRfGain, cmdGetRxGain,  0xff));
+    commands.append(COMMAND(num++, "TX Power", commandKnob, cmdSetTxPower, cmdGetTxPower, 0xff));
+    commands.append(COMMAND(num++, "Mic Gain", commandKnob, cmdSetMicGain, cmdGetMicGain, 0xff));
+    commands.append(COMMAND(num++, "Mod Level", commandKnob, cmdSetModLevel, cmdNone, 0xff));
+    commands.append(COMMAND(num++, "Squelch", commandKnob, cmdSetSql, cmdGetSql, 0xff));
+    commands.append(COMMAND(num++, "IF Shift", commandKnob, cmdSetIFShift, cmdGetIFShift, 0xff));
+    commands.append(COMMAND(num++, "In PBT", commandKnob, cmdSetTPBFInner, cmdGetTPBFInner, 0xff));
+    commands.append(COMMAND(num++, "Out PBT", commandKnob, cmdSetTPBFOuter, cmdGetTPBFOuter, 0xff));
+    commands.append(COMMAND(num++, "CW Pitch", commandKnob, cmdSetCwPitch, cmdGetCwPitch, 0xff));
+    commands.append(COMMAND(num++, "CW Speed", commandKnob, cmdSetKeySpeed, cmdGetKeySpeed, 0xff));
     commands.append(COMMAND(num++, "Waterfall", commandButton, cmdLCDWaterfall, 0x0));
     commands.append(COMMAND(num++, "Spectrum", commandButton, cmdLCDSpectrum, 0x0));
     commands.append(COMMAND(num++, "Page Down", commandButton, cmdPageDown, 0x0));
@@ -1563,5 +1563,22 @@ void usbController::buttonState(QString name, double val)
 
 /* End of Gamepad functions*/
 
+void usbController::receiveLevel(cmds cmd, unsigned char level)
+{
+    // Update knob if relevant, step through all devices
+    QMutexLocker locker(mutex);
+
+    for (auto dev = usbDevices.begin(); dev != usbDevices.end(); dev++)
+    {
+        auto kb = std::find_if(knobList->begin(), knobList->end(), [dev, cmd](const KNOB& k)
+        { return (k.command && k.path == dev->path && k.page == dev->currentPage && k.command->getCommand == cmd);});
+        if (kb != knobList->end() && kb->num < dev->knobValues.size()) {
+            qInfo(logUsbControl()) << "Received value:" << level << "for knob" << kb->num;
+            // Set both current and previous knobvalue to the received value
+            dev->knobValues[kb->num] = level;
+            dev->knobPrevious[kb->num] = level;
+        }
+    }
+}
 
 #endif
