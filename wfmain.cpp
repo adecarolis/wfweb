@@ -349,6 +349,12 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
     connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
 
+    connect(this, SIGNAL(getVox()), rig, SLOT(getVox()));
+    connect(this, SIGNAL(getMonitor()), rig, SLOT(getMonitor()));
+    connect(this, SIGNAL(getComp()), rig, SLOT(getComp()));
+    connect(this, SIGNAL(getNB()), rig, SLOT(getNB()));
+    connect(this, SIGNAL(getNR()), rig, SLOT(getNR()));
+
     connect(this, SIGNAL(selectVFO(vfo_t)), rig, SLOT(selectVFO(vfo_t)));
     connect(this, SIGNAL(sendVFOSwap()), rig, SLOT(exchangeVFOs()));
     connect(this, SIGNAL(sendVFOEqualAB()), rig, SLOT(equalizeVFOsAB()));
@@ -389,6 +395,12 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveDataMode(bool)), this, SLOT(receiveDataModeStatus(bool)));
     connect(rig, SIGNAL(havePassband(quint16)), this, SLOT(receivePassband(quint16)));
     connect(rig, SIGNAL(haveCwPitch(unsigned char)), this, SLOT(receiveCwPitch(unsigned char)));
+    connect(rig, SIGNAL(haveMonitorGain(unsigned char)), this, SLOT(receiveMonitorGain(unsigned char)));
+    connect(rig, SIGNAL(haveVoxGain(unsigned char)), this, SLOT(receiveVoxGain(unsigned char)));
+    connect(rig, SIGNAL(haveAntiVoxGain(unsigned char)), this, SLOT(receiveAntiVoxGain(unsigned char)));
+    connect(rig, SIGNAL(haveNBLevel(unsigned char)), this, SLOT(receiveNBLevel(unsigned char)));
+    connect(rig, SIGNAL(haveNRLevel(unsigned char)), this, SLOT(receiveNRLevel(unsigned char)));
+    connect(rig, SIGNAL(haveCompLevel(unsigned char)), this, SLOT(receiveCompLevel(unsigned char)));
 
     // Repeater, duplex, and split:
     connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
@@ -473,16 +485,6 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setRptDuplexOffset(freqt)), rig, SLOT(setRptDuplexOffset(freqt)));
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
 
-    connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
-    connect(this, SIGNAL(setPassband(quint16)), rig, SLOT(setPassband(quint16)));
-    connect(this, SIGNAL(getCwPitch()), rig, SLOT(getCwPitch()));
-    connect(this, SIGNAL(getDashRatio()), rig, SLOT(getDashRatio()));
-    connect(this, SIGNAL(getPskTone()), rig, SLOT(getPskTone()));
-    connect(this, SIGNAL(getRttyMark()), rig, SLOT(getRttyMark()));
-    connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
-    connect(this, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
-    connect(this, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
-
     connect(this, SIGNAL(getModInput(bool)), rig, SLOT(getModInput(bool)));
     connect(rig, SIGNAL(haveModInput(rigInput,bool)), this, SLOT(receiveModInput(rigInput, bool)));
     connect(this, SIGNAL(setModInput(rigInput, bool)), rig, SLOT(setModInput(rigInput,bool)));
@@ -505,6 +507,14 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
     connect(this, SIGNAL(setMode(mode_info)), rig, SLOT(setMode(mode_info)));
 
+    connect(this, SIGNAL(setVox(bool)), rig, SLOT(setVox(bool)));
+    connect(this, SIGNAL(setMonitor(bool)), rig, SLOT(setMonitor(bool)));
+    connect(this, SIGNAL(setComp(bool)), rig, SLOT(setComp(bool)));
+    connect(this, SIGNAL(setNb(bool)), rig, SLOT(setNb(bool)));
+    connect(this, SIGNAL(setNr(bool)), rig, SLOT(setNr(bool)));
+
+    connect(this, SIGNAL(setPassband(quint16)), rig, SLOT(setPassband(quint16)));
+
     // Levels (read and write)
     // Levels: Query:
     connect(this, SIGNAL(getLevels()), rig, SLOT(getLevels()));
@@ -518,7 +528,20 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getMicGain()), rig, SLOT(getMicGain()));
     connect(this, SIGNAL(getSpectrumRefLevel()), rig, SLOT(getSpectrumRefLevel()));
     connect(this, SIGNAL(getModInputLevel(rigInput)), rig, SLOT(getModInputLevel(rigInput)));
-
+    connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
+    connect(this, SIGNAL(getMonitorGain()), rig, SLOT(getMonitorGain()));
+    connect(this, SIGNAL(getVoxGain()), rig, SLOT(getVoxGain()));
+    connect(this, SIGNAL(getAntiVoxGain()), rig, SLOT(getAntVoxGain()));
+    connect(this, SIGNAL(getNBLevel()), rig, SLOT(getNBLevel()));
+    connect(this, SIGNAL(getNRLevel()), rig, SLOT(getNRLevel()));
+    connect(this, SIGNAL(getCompLevel()), rig, SLOT(getCompLevel()));
+    connect(this, SIGNAL(getCwPitch()), rig, SLOT(getCwPitch()));
+    connect(this, SIGNAL(getDashRatio()), rig, SLOT(getDashRatio()));
+    connect(this, SIGNAL(getPskTone()), rig, SLOT(getPskTone()));
+    connect(this, SIGNAL(getRttyMark()), rig, SLOT(getRttyMark()));
+    connect(this, SIGNAL(getTone()), rig, SLOT(getTone()));
+    connect(this, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
+    connect(this, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
 
     // Levels: Set:
     connect(this, SIGNAL(setRfGain(unsigned char)), rig, SLOT(setRfGain(unsigned char)));
@@ -529,11 +552,13 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setTPBFOuter(unsigned char)), rig, SLOT(setTPBFOuter(unsigned char)));
     connect(this, SIGNAL(setTxPower(unsigned char)), rig, SLOT(setTxPower(unsigned char)));
     connect(this, SIGNAL(setMicGain(unsigned char)), rig, SLOT(setMicGain(unsigned char)));
-    connect(this, SIGNAL(setMonitorLevel(unsigned char)), rig, SLOT(setMonitorLevel(unsigned char)));
+    connect(this, SIGNAL(setMonitorGain(unsigned char)), rig, SLOT(setMonitorGain(unsigned char)));
     connect(this, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
     connect(this, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
     connect(this, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
     connect(this, SIGNAL(setModLevel(rigInput, unsigned char)), rig, SLOT(setModInputLevel(rigInput, unsigned char)));
+    connect(this, SIGNAL(setNBLevel(unsigned char)), rig, SLOT(setNBLevel(unsigned char)));
+    connect(this, SIGNAL(setNBLevel(unsigned char)), rig, SLOT(setNBLevel(unsigned char)));
 
     // Levels: handle return on query:
     connect(rig, SIGNAL(haveRfGain(unsigned char)), this, SLOT(receiveRfGain(unsigned char)));
@@ -4052,6 +4077,67 @@ void wfmain::doCmd(commandtype cmddata)
             emit setPassband(pass);
             break;
         }
+        case cmdSetMonitorGain:
+        {
+            quint16 gain = (*std::static_pointer_cast<quint16>(data));
+            emit setMonitorGain(gain);
+            break;
+        }
+        case cmdSetVoxGain:
+        {
+            quint16 gain = (*std::static_pointer_cast<quint16>(data));
+            emit setVoxGain(gain);
+            break;
+        }
+        case cmdSetAntiVoxGain:
+        {
+            quint16 gain = (*std::static_pointer_cast<quint16>(data));
+            emit setAntiVoxGain(gain);
+            break;
+        }
+        case cmdSetNBLevel:
+        {
+            quint16 level = (*std::static_pointer_cast<quint16>(data));
+            emit setNBLevel(level);
+            break;
+        }
+        case cmdSetNRLevel:
+        {
+            quint16 level = (*std::static_pointer_cast<quint16>(data));
+            emit setNRLevel(level);
+            break;
+        }
+        case cmdSetMonitor:
+        {
+            bool en = (*std::static_pointer_cast<bool>(data));
+            emit setMonitor(en);
+            break;
+        }
+        case cmdSetVox:
+        {
+            bool en = (*std::static_pointer_cast<bool>(data));
+            emit setVox(en);
+            break;
+        }
+        case cmdSetComp:
+        {
+            bool en = (*std::static_pointer_cast<quint16>(data));
+            emit setCompressor(en);
+            break;
+        }
+        case cmdSetNB:
+        {
+            bool en = (*std::static_pointer_cast<bool>(data));
+            emit setNb(en);
+            break;
+        }
+        case cmdSetNR:
+        {
+            bool en = (*std::static_pointer_cast<bool>(data));
+            emit setNr(en);
+            break;
+        }
+
         default:
             doCmd(cmd);
             break;
@@ -4138,6 +4224,23 @@ void wfmain::doCmd(cmds cmd)
         case cmdGetPassband:
             emit getPassband();
             break;
+        case cmdGetMonitorGain:
+            emit getMonitorGain();
+            break;
+        case cmdGetVoxGain:
+            emit getVoxGain();
+            break;
+        case cmdGetAntiVoxGain:
+            emit getAntiVoxGain();
+            break;
+        case cmdGetNBLevel:
+            emit getNBLevel();
+            break;
+        case cmdGetNRLevel:
+            emit getNRLevel();
+            break;
+        case cmdGetCompLevel:
+            emit getCompLevel();
         case cmdGetCwPitch:
             emit getCwPitch();
             break;
@@ -7187,22 +7290,57 @@ void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
 
 void wfmain::receiveCompLevel(unsigned char compLevel)
 {
-    (void)compLevel;    
+    emit sendLevel(cmdGetCompLevel,compLevel);
 }
 
 void wfmain::receiveMonitorGain(unsigned char monitorGain)
 {
-    (void)monitorGain;
+    emit sendLevel(cmdGetMonitorGain,monitorGain);
 }
 
 void wfmain::receiveVoxGain(unsigned char voxGain)
 {
-    (void)voxGain;
+    emit sendLevel(cmdGetVoxGain,voxGain);
 }
 
 void wfmain::receiveAntiVoxGain(unsigned char antiVoxGain)
 {
-    (void)antiVoxGain;
+    emit sendLevel(cmdGetAntiVoxGain,antiVoxGain);
+}
+
+void wfmain::receiveNBLevel(unsigned char level)
+{
+    emit sendLevel(cmdGetNBLevel,level);
+}
+
+void wfmain::receiveNRLevel(unsigned char level)
+{
+    emit sendLevel(cmdGetNRLevel,level);
+}
+
+void wfmain::receiveComp(bool en)
+{
+    Q_UNUSED(en);
+}
+
+void wfmain::receiveMonitor(bool en)
+{
+    Q_UNUSED(en);
+}
+
+void wfmain::receiveVox(bool en)
+{
+    Q_UNUSED(en);
+}
+
+void wfmain::receiveNB(bool en)
+{
+    Q_UNUSED(en);
+}
+
+void wfmain::receiveNR(bool en)
+{
+    Q_UNUSED(en);
 }
 
 void wfmain::on_txPowerSlider_valueChanged(int value)

@@ -158,7 +158,20 @@ signals:
     void getModInputLevel(rigInput input);
     void getMeters(meterKind meter);
     void getPassband();
+    void getVoxGain();
+    void getAntiVoxGain();
+    void getMonitorGain();
+    void getNBLevel();
+    void getNRLevel();
+    void getCompLevel();
     void getCwPitch();
+
+    void getVox();
+    void getMonitor();
+    void getCompressor();
+    void getNb();
+    void getNr();
+
     void getDashRatio();
     void getPskTone();
     void getRttyMark();
@@ -177,9 +190,18 @@ signals:
     void setMicGain(unsigned char);
     void setCompLevel(unsigned char);
     void setTxPower(unsigned char);
-    void setMonitorLevel(unsigned char);
+    void setMonitorGain(unsigned char);
     void setVoxGain(unsigned char);
     void setAntiVoxGain(unsigned char);
+    void setNBLevel(unsigned char level);
+    void setNRLevel(unsigned char level);
+
+    void setVox(bool en);
+    void setMonitor(bool en);
+    void setCompressor(bool en);
+    void setNb(bool en);
+    void setNr(bool en);
+
     void setSpectrumRefLevel(int);
 
     void setModLevel(rigInput input, unsigned char level);
@@ -188,6 +210,7 @@ signals:
     void setACCBGain(unsigned char level);
     void setUSBGain(unsigned char level);
     void setLANGain(unsigned char level);
+
     void setPassband(quint16 pass);
 
     // PTT, ATU, ATT, Antenna, Preamp:
@@ -314,9 +337,17 @@ private slots:
     void receiveModInput(rigInput input, bool dataOn);
     //void receiveDuplexMode(duplexMode dm);
     void receivePassband(quint16 pass);
+    void receiveMonitorGain(unsigned char pass);
+    void receiveNBLevel(unsigned char pass);
+    void receiveNRLevel(unsigned char pass);
     void receiveCwPitch(unsigned char pitch);
     void receiveTPBFInner(unsigned char level);
     void receiveTPBFOuter(unsigned char level);
+    void receiveVox(bool en);
+    void receiveMonitor(bool en);
+    void receiveComp(bool en);
+    void receiveNB(bool en);
+    void receiveNR(bool en);
 
     // Levels:
     void receiveRfGain(unsigned char level);
@@ -332,7 +363,6 @@ private slots:
     void receiveTxPower(unsigned char power);
     void receiveMicGain(unsigned char gain);
     void receiveCompLevel(unsigned char compLevel);
-    void receiveMonitorGain(unsigned char monitorGain);
     void receiveVoxGain(unsigned char voxGain);
     void receiveAntiVoxGain(unsigned char antiVoxGain);
     void receiveSpectrumRefLevel(int level);

@@ -360,7 +360,7 @@ signals:
     void setMicGain(quint8);
     void setCompLevel(quint8);
     void setTxPower(quint8);
-    void setMonitorLevel(quint8);
+    void setMonitorGain(quint8);
     void setVoxGain(quint8);
     void setAntiVoxGain(quint8);
     void setSpectrumRefLevel(int);

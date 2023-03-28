@@ -1854,6 +1854,11 @@ void rigCommander::parseLevels()
                 emit haveTPBFOuter(level);
                 state.set(PBTOUT, level, false);
                 break;
+            case '\x06':
+                // NR Level
+                emit haveNRLevel(level);
+                state.set(NR, level, false);
+                break;
             case '\x09':
                 // CW Pitch
                 emit haveCwPitch(level);
@@ -1889,7 +1894,7 @@ void rigCommander::parseLevels()
                 break;
             case '\x15':
                 // monitor level
-                emit haveMonitorLevel(level);
+                emit haveMonitorGain(level);
                 state.set(MONITORLEVEL, level, false);
                 break;
             case '\x16':
@@ -2409,9 +2414,9 @@ void rigCommander::setCompLevel(unsigned char compLevel)
     prepDataAndSend(payload);
 }
 
-void rigCommander::setMonitorLevel(unsigned char monitorLevel)
+void rigCommander::setMonitorGain(unsigned char monitorLevel)
 {
-    QByteArray payload("\x14\x0E");
+    QByteArray payload("\x14\x15");
     payload.append(bcdEncodeInt(monitorLevel));
     prepDataAndSend(payload);
 }
@@ -2427,6 +2432,22 @@ void rigCommander::setAntiVoxGain(unsigned char gain)
 {
     QByteArray payload("\x14\x17");
     payload.append(bcdEncodeInt(gain));
+    prepDataAndSend(payload);
+}
+
+void rigCommander::setNBLevel(unsigned char level)
+{
+    if (rigCaps.hasNB) {
+        QByteArray payload(rigCaps.nbCommand);
+        payload.append(bcdEncodeInt(level));
+        prepDataAndSend(payload);
+    }
+}
+
+void rigCommander::setNRLevel(unsigned char level)
+{
+    QByteArray payload("\x14\x06");
+    payload.append(bcdEncodeInt(level));
     prepDataAndSend(payload);
 }
 
@@ -2485,7 +2506,7 @@ void rigCommander::getCompLevel()
     prepDataAndSend(payload);
 }
 
-void rigCommander::getMonitorLevel()
+void rigCommander::getMonitorGain()
 {
     QByteArray payload("\x14\x15");
     prepDataAndSend(payload);
@@ -2503,6 +2524,19 @@ void rigCommander::getAntiVoxGain()
     prepDataAndSend(payload);
 }
 
+void rigCommander::getNBLevel()
+{
+    if (rigCaps.hasNB) {
+        prepDataAndSend(rigCaps.nbCommand);
+    }
+}
+
+void rigCommander::getNRLevel()
+{
+    QByteArray payload("\x14\x06");
+    prepDataAndSend(payload);
+}
+
 void rigCommander::getLevels()
 {
     // Function to grab all levels
@@ -2512,7 +2546,7 @@ void rigCommander::getLevels()
     getTxLevel(); // 0x0A
     getMicGain(); // 0x0B
     getCompLevel(); // 0x0E
-//    getMonitorLevel(); // 0x15
+//    getMonitorGain(); // 0x15
 //    getVoxGain(); // 0x16
 //    getAntiVoxGain(); // 0x17
 }
@@ -5289,9 +5323,9 @@ void rigCommander::stateUpdated()
                 break;
             case MONITORLEVEL:
                 if (i.value()._valid) {
-                    setMonitorLevel(state.getChar(MONITORLEVEL));
+                    setMonitorGain(state.getChar(MONITORLEVEL));
                 }
-                getMonitorLevel();
+                getMonitorGain();
                 break;
             case VOXGAIN:
                 if (i.value()._valid) {

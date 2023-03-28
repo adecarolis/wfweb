@@ -128,7 +128,8 @@ public slots:
     void getManualNotch();
 
     void getPassband();
-    void getCwPitch();
+    void getNBLevel();
+    void getNRLevel();   void getCwPitch();
     void setCwPitch(unsigned char pitch);
     void getDashRatio();
     void setDashRatio(unsigned char ratio);
@@ -167,7 +168,7 @@ public slots:
     void getTxLevel();
     void getMicGain();
     void getCompLevel();
-    void getMonitorLevel();
+    void getMonitorGain();
     void getVoxGain();
     void getAntiVoxGain();
     void getUSBGain();
@@ -193,13 +194,15 @@ public slots:
     void setACCGain(unsigned char gain);
     void setACCGain(unsigned char gain, unsigned char ab);
     void setCompLevel(unsigned char compLevel);
-    void setMonitorLevel(unsigned char monitorLevel);
+    void setMonitorGain(unsigned char monitorLevel);
     void setVoxGain(unsigned char gain);
     void setAntiVoxGain(unsigned char gain);
     void setModInput(rigInput input, bool dataOn);
     void setModInputLevel(rigInput input, unsigned char level);
     void setAfMute(bool muteOn);
     void setDialLock(bool lockOn);
+    void setNBLevel(unsigned char level);
+    void setNRLevel(unsigned char level);
 
     // NB, NR, IP+:
     void setIPP(bool enabled);
@@ -331,9 +334,16 @@ signals:
     void haveTxPower(unsigned char level);
     void haveMicGain(unsigned char level);
     void haveCompLevel(unsigned char level);
-    void haveMonitorLevel(unsigned char level);
+    void haveMonitorGain(unsigned char level);
     void haveVoxGain(unsigned char gain);
     void haveAntiVoxGain(unsigned char gain);
+    void haveNBLevel(unsigned char level);
+    void haveNRLevel(unsigned char level);
+    void haveVox(bool en);
+    void haveMonitor(bool en);
+    void haveComp(bool en);
+    void haveNB(bool en);
+    void haveNR(bool en);
 
     // Modulation source and gain:
     void haveModInput(rigInput input, bool isData);

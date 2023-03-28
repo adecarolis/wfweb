@@ -555,7 +555,7 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
 
     for (COMMAND& c : *commands) {
         if (c.cmdType == commandButton || c.text == "None") {
-            if (c.index == -1) {
+            if (c.command == cmdSeparator) {
                 onEvent->insertSeparator(onEvent->count());
                 offEvent->insertSeparator(offEvent->count());
 
@@ -565,7 +565,7 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
             }
         }
         else if (c.cmdType == commandKnob || c.text == "None") {
-            if (c.index == -1) {
+            if (c.command == cmdSeparator) {
                 knobEvent->insertSeparator(knobEvent->count());
             } else {
                 knobEvent->addItem(c.text, c.index);
