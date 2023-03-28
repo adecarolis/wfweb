@@ -1695,7 +1695,7 @@ void wfmain::setupUsbControllerDevice()
     connect(this, SIGNAL(setPTT(bool)), usbControllerDev, SLOT(receivePTTStatus(bool)));
     connect(this, SIGNAL(sendLevel(cmds, unsigned char)), usbControllerDev, SLOT(receiveLevel(cmds, unsigned char)));
     connect(this, SIGNAL(initUsbController(QMutex*,usbMap*,QVector<BUTTON>*,QVector<KNOB>*)), usbControllerDev, SLOT(init(QMutex*,usbMap*,QVector<BUTTON>*,QVector<KNOB>*)));
-
+    connect(this, SIGNAL(usbHotplug()), usbControllerDev, SLOT(run()));
 
 #endif
 }
@@ -1861,6 +1861,7 @@ void wfmain::buttonControl(const COMMAND* cmd)
         break;
     }
     default:
+        qInfo(logUsbControl()) << "Command" << cmd->command << "Suffix" << cmd->suffix;
         issueCmdUniquePriority((cmds)cmd->command, cmd->suffix);
         break;
     }
@@ -2533,8 +2534,10 @@ void wfmain::loadSettings()
             butt.backgroundOn.setNamedColor(settings->value("BackgroundOn", QColor(Qt::lightGray).name(QColor::HexArgb)).toString());
             butt.backgroundOff.setNamedColor(settings->value("BackgroundOff", QColor(Qt::blue).name(QColor::HexArgb)).toString());
             butt.toggle = settings->value("Toggle", false).toBool();
-            if (settings->value("Icon",NULL) != NULL)
+            if (settings->value("Icon",NULL) != NULL) {
                 butt.icon = new QImage(settings->value("Icon",NULL).value<QImage>());
+                butt.iconName = settings->value("IconName", "").toString();
+            }
             butt.on = settings->value("OnCommand", "None").toString();
             butt.off = settings->value("OffCommand", "None").toString();
             if (!butt.path.isEmpty())
@@ -3029,8 +3032,10 @@ void wfmain::saveSettings()
         settings->setValue("Colour", usbButtons[nb].textColour.name(QColor::HexArgb));
         settings->setValue("BackgroundOn", usbButtons[nb].backgroundOn.name(QColor::HexArgb));
         settings->setValue("BackgroundOff", usbButtons[nb].backgroundOff.name(QColor::HexArgb));
-        if (usbButtons[nb].icon != Q_NULLPTR)
+        if (usbButtons[nb].icon != Q_NULLPTR) {
             settings->setValue("Icon", *usbButtons[nb].icon);
+            settings->setValue("IconName", usbButtons[nb].iconName);
+        }
         settings->setValue("Toggle", usbButtons[nb].toggle);
 
         if (usbButtons[nb].onCommand != Q_NULLPTR)
@@ -3805,7 +3810,7 @@ void wfmain::doCmd(commandtype cmddata)
     {
         case cmdSetFreq:
         {
-            lastFreqCmdTime_ms = QDateTime::currentMSecsSinceEpoch();
+        lastFreqCmdTime_ms = QDateTime::currentMSecsSinceEpoch();
             freqt f = (*std::static_pointer_cast<freqt>(data));
             emit setFrequency(f.VFO,f);
             break;
@@ -9380,3 +9385,54 @@ void wfmain::on_cwButton_clicked()
     cw->activateWindow();
 }
 
+#ifdef USB_HOTPLUG
+bool wfmain::nativeEvent(const QByteArray& eventType, void* message, qintptr* result)
+{
+    Q_UNUSED(eventType);
+    Q_UNUSED(result);
+
+    if (prefs.enableUSBControllers)
+    {
+        static bool created = false;
+
+        MSG * msg = static_cast< MSG * > (message);
+        switch (msg->message)
+        {
+            case WM_PAINT:
+            {
+                if (!created) {
+                    GUID InterfaceClassGuid = {0x745a17a0, 0x74d3, 0x11d0,{ 0xb6, 0xfe, 0x00, 0xa0, 0xc9, 0x0f, 0x57, 0xda}};
+                    DEV_BROADCAST_DEVICEINTERFACE NotificationFilter;
+                    ZeroMemory( &NotificationFilter, sizeof(NotificationFilter) );
+                    NotificationFilter.dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE);
+                    NotificationFilter.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
+                    NotificationFilter.dbcc_classguid = InterfaceClassGuid;
+                    HWND hw = (HWND) this->effectiveWinId();   //Main window handle
+                    HDEVNOTIFY hDevNotify = RegisterDeviceNotification(hw,&NotificationFilter, DEVICE_NOTIFY_ALL_INTERFACE_CLASSES );
+                    created = true;
+                }
+                break;
+            }
+            case WM_DEVICECHANGE:
+            {
+                switch (msg->wParam) {
+                case DBT_DEVICEARRIVAL:
+                case DBT_DEVICEREMOVECOMPLETE:
+                    emit usbHotplug();
+                    break;
+                case DBT_DEVNODES_CHANGED:
+                    break;
+                default:
+                    break;
+                }
+
+                return true;
+                break;
+            }
+            default:
+                break;
+        }
+    }
+    return false; // Process native events as normal
+}
+#endif

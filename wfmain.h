@@ -63,6 +63,14 @@
 #include "rtaudio/RtAudio.h"
 #endif
 
+#ifdef USB_CONTROLLER
+    #ifdef Q_OS_WIN
+        #include <windows.h>
+        #include <dbt.h>
+        #define USB_HOTPLUG
+    #endif
+#endif
+
 #define numColorPresetsTotal (5)
 
 namespace Ui {
@@ -79,9 +87,15 @@ public:
     static void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
     void handleLogText(QString text);
 
+#ifdef USB_HOTPLUG
+protected:
+    virtual bool nativeEvent(const QByteArray& eventType, void* message, qintptr* result);
+#endif
+
 signals:
     // Signal levels received to other parts of wfview
     void sendLevel(cmds cmd, unsigned char level);
+    void usbHotplug();
     // Basic to rig:
     void setCIVAddr(unsigned char newRigCIVAddr);
     void setRigID(unsigned char rigID);

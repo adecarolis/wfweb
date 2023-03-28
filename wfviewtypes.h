@@ -204,6 +204,6 @@ enum usbDeviceType { usbNone = 0, shuttleXpress, shuttlePro2,
 
 enum usbCommandType{ commandButton, commandKnob };
 enum usbFeatureType { featureReset,featureResetKeys, featureEventsA, featureEventsB, featureFirmware, featureSerial, featureButton, featureSensitivity, featureBrightness,
-                      featureOrientation, featureSpeed, featureColor, featureOverlay, featureTimeout, featureLCD };
+                      featureOrientation, featureSpeed, featureColor, featureOverlay, featureTimeout, featureLCD, featureGraph };
 
 #endif // WFVIEWTYPES_H

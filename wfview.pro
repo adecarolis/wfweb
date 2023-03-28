@@ -202,7 +202,7 @@ contains(DEFINES,USB_CONTROLLER){
 }
 
 !win32:LIBS += -L./ -l$$QCPLIB -lopus
-win32:LIBS += -l$$QCPLIB -lopus -lole32
+win32:LIBS += -l$$QCPLIB -lopus -lole32 -luser32
 
 
 #macx:SOURCES += ../qcustomplot/qcustomplot.cpp 

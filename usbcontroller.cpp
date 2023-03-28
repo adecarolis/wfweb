@@ -124,20 +124,22 @@ void usbController::init(QMutex* mut,usbMap* prefs ,QVector<BUTTON>* buts,QVecto
         hid_free_enumeration(devs);
         
     }
-    
 }
 
 /* run() is called every 2s and attempts to connect to a supported controller */
 void usbController::run()
 {
     QMutexLocker locker(mutex);
-    
     if (hidStatus) {
         // We are not ready yet, hid hasn't been initialized!
         QTimer::singleShot(2000, this, SLOT(run()));
         return;
     }
-    
+
+#ifdef Q_OS_WIN
+   qDebug(logUsbControl()) << "Re-enumerating USB devices due to program startup or hotplug event";
+#endif
+
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     if (gamepad == Q_NULLPTR) {
         auto gamepads = QGamepadManager::instance()->connectedGamepads();
@@ -275,35 +277,32 @@ void usbController::run()
     }
 #else
     // Remove any devices from the list that are not connected (doesn't work on QT5!)
-    usbDevices.erase(std::remove_if(usbDevices.begin(), usbDevices.end(), [](const USBDEVICE& dev) { return (dev.remove); }),usbDevices.end());
+    usbDevices.erase(std::remove_if(usbDevices.begin(), usbDevices.end(), [](const USBDEVICE& dev)
+        { if (dev.remove) qInfo(logUsbControl()) << "Removing device" << dev.product; return (dev.remove); }),usbDevices.end());
 #endif
     struct hid_device_info* devs;
     devs = hid_enumerate(0x0, 0x0);
-    
+    // Step through all currenly connected devices and add any newly discovered ones to usbDevices.
     while (devs) {
-        for (auto i = knownDevices.begin();i != knownDevices.end(); i++)
+        auto i = std::find_if(knownDevices.begin(), knownDevices.end(), [this,devs](const USBTYPE& d)
+        { return ((devs->vendor_id == d.manufacturerId) && (devs->product_id == d.productId)
+                        && (d.usage == 0x00 || devs->usage == d.usage)
+                        && (d.usagePage == 0x00 || devs->usage_page == d.usagePage)
+                        && (!this->usbDevices.contains(QString::fromLocal8Bit(devs->path))));});
+
+        if (i != knownDevices.end())
         {
-            if (devs->vendor_id == i->manufacturerId && devs->product_id == i->productId
-                    && (i->usage == 0x00 || devs->usage == i->usage)
-                    && (i->usagePage == 0x00 || devs->usage_page == i->usagePage))
+            USBDEVICE newDev(*i);
+            newDev.manufacturer = QString::fromWCharArray(devs->manufacturer_string);
+            newDev.product = QString::fromWCharArray(devs->product_string);
+            if (newDev.product.isEmpty())
             {
-                USBDEVICE newDev(*i);
-                newDev.manufacturer = QString::fromWCharArray(devs->manufacturer_string);
-                newDev.product = QString::fromWCharArray(devs->product_string);
-                if (newDev.product.isEmpty())
-                {
-                    newDev.product = "<Not Detected>";
-                }
-                newDev.serial = QString::fromWCharArray(devs->serial_number);
-                newDev.path = QString::fromLocal8Bit(devs->path);
-                newDev.deviceId = QString("0x%1").arg(newDev.type.productId, 4, 16, QChar('0'));
-                // Is this a new device? If so add it to usbDevices
-                
-                if (!usbDevices.contains(newDev.path))
-                {
-                    usbDevices.insert(newDev.path,newDev);
-                }
+                newDev.product = "<Not Detected>";
             }
+            newDev.serial = QString::fromWCharArray(devs->serial_number);
+            newDev.path = QString::fromLocal8Bit(devs->path);
+            newDev.deviceId = QString("0x%1").arg(newDev.type.productId, 4, 16, QChar('0'));
+            usbDevices.insert(newDev.path,newDev);
         }
         devs = devs->next;
     }
@@ -366,9 +365,7 @@ void usbController::run()
             {
                 for (int i=0;i<dev.type.knobs;i++)
                 {
-                    dev.knobValues.append(0);
-                    dev.knobSend.append(0);
-                    dev.knobPrevious.append(0);
+                    dev.knobValues.append(KNOBVALUE());
                 }
 
                 // Find our defaults/knobs/buttons for this controller:
@@ -437,7 +434,8 @@ void usbController::run()
                             qWarning(logUsbControl()) << "Knob Command" << kb->cmd << "not found";
 
                         kb->parent = &dev;
-
+                        if (dev.currentPage == 1)
+                            dev.knobValues[kb->num].name = kb->cmd;
                     }
                 }
 
@@ -458,9 +456,10 @@ void usbController::run()
         QTimer::singleShot(25, this, SLOT(runTimer()));
     }
     
+#ifndef Q_OS_WIN
     // Run the periodic timer to check for new devices
     QTimer::singleShot(2000, this, SLOT(run()));
-    
+#endif
 }
 
 
@@ -524,10 +523,10 @@ void usbController::runTimer()
 
                 if (tempJogpos == dev.jogpos + 1 || (tempJogpos == 0 && dev.jogpos == 0xff))
                 {
-                    dev.knobValues[0]++;
+                    dev.knobValues[0].value++;
                 }
                 else if (tempJogpos != dev.jogpos) {
-                    dev.knobValues[0]--;
+                    dev.knobValues[0].value--;
                 }
 
                 dev.jogpos = tempJogpos;
@@ -548,11 +547,11 @@ void usbController::runTimer()
                     {
                         if ((unsigned char)data[3] == 0x01)
                         {
-                            dev.knobValues[0] = dev.knobValues[0] + data[1];
+                            dev.knobValues[0].value = dev.knobValues[0].value + data[1];
                         }
                         else if ((unsigned char)data[3] == 0x02)
                         {
-                            dev.knobValues[0] = dev.knobValues[0] - data[1];
+                            dev.knobValues[0].value = dev.knobValues[0].value - data[1];
                         }
                     }
                 }
@@ -567,7 +566,7 @@ void usbController::runTimer()
                         // One of the knobs has moved
                         for (unsigned char i = 0; i < 4; i++) {
                             if ((tempKnobs >> (i * 8) & 0xff) != (dev.knobs >> (i * 8) & 0xff)) {
-                                dev.knobValues[i] = dev.knobValues[i] + (qint8)((dev.knobs >> (i * 8)) & 0xff);
+                                dev.knobValues[i].value = dev.knobValues[i].value + (qint8)((dev.knobs >> (i * 8)) & 0xff);
                             }
                         }
                         dev.knobs = tempKnobs;
@@ -582,10 +581,10 @@ void usbController::runTimer()
                     tempButtons = (data[3] << 8) | (data[2] & 0xff);
 
                     if (data[7] & 0x01) {
-                        dev.knobValues[0]++;
+                        dev.knobValues[0].value++;
                     }
                     else if (data[7] & 0x02) {
-                        dev.knobValues[0]--;
+                        dev.knobValues[0].value--;
                     }
                     
                 }
@@ -625,7 +624,7 @@ void usbController::runTimer()
                             // Knob moved
                             for (int i=0;i<dev.type.knobs;i++)
                             {
-                                dev.knobValues[i] += (qint8)data[i+5];
+                                dev.knobValues[i].value += (qint8)data[i+5];
                             }
                             break;
                         }
@@ -662,7 +661,7 @@ void usbController::runTimer()
             // Only do it if actual data has been received.
             if (res > 0 && dev.buttons != tempButtons)
             {
-                qInfo(logUsbControl()) << "Got Buttons:" << QString::number(tempButtons,2);
+                qDebug(logUsbControl()) << "Got Buttons:" << QString::number(tempButtons,2);
                 // Step through all buttons and emit ones that have been pressed.
                 for (unsigned char i = 0; i <dev.type.buttons; i++)
                 {
@@ -754,28 +753,32 @@ void usbController::runTimer()
                 for (unsigned char i = 0; i < dev.knobValues.size(); i++)
                 {
                     auto kb = std::find_if(knobList->begin(), knobList->end(), [dev, i](const KNOB& k)
-                    { return (k.command && k.path == dev.path && k.page == dev.currentPage && k.num == i && dev.knobValues[i] != dev.knobPrevious[i]); });
+                    { return (k.command && k.path == dev.path && k.page == dev.currentPage && k.num == i && dev.knobValues[i].value != dev.knobValues[i].previous); });
 
                     if (kb != knobList->end()) {
                         // sendCommand mustn't be deleted so we ensure it stays in-scope by declaring it private (we will only ever send one command).
                         sendCommand = *kb->command;
                         if (sendCommand.command != cmdSetFreq) {
-                            int tempVal = dev.knobValues[i] * dev.sensitivity;
+                            int tempVal = dev.knobValues[i].value * dev.sensitivity;
                             tempVal = qMin(qMax(tempVal,0),255);
                             sendCommand.suffix = quint8(tempVal);
-                            dev.knobValues[i]=tempVal/dev.sensitivity; // This ensures that dial can't go outside 0-255
+                            dev.knobValues[i].value=tempVal/dev.sensitivity; // This ensures that dial can't go outside 0-255
+                            locker.unlock();
+                            dev.knobValues[i].name = kb->command->text;
+                            sendRequest(&dev,usbFeatureType::featureGraph,i,"");
+                            locker.relock();
                         }
                         else
                         {
-                            sendCommand.value = dev.knobValues[i]/dev.sensitivity;
+                            sendCommand.value = dev.knobValues[i].value/dev.sensitivity;
                         }
                         
                         emit button(&sendCommand);
-                        
+
                         if (sendCommand.command == cmdSetFreq) {
-                            dev.knobValues[i] = 0;
+                            dev.knobValues[i].value = 0;
                         }
-                        dev.knobPrevious[i]=dev.knobValues[i];
+                        dev.knobValues[i].previous=dev.knobValues[i].value;
                     }
                 }
                 
@@ -848,9 +851,7 @@ void usbController::ledControl(bool on, unsigned char num)
             if (res < 0) {
                 qDebug(logUsbControl()) << "Unable to write(), Error:" << hid_error(dev.handle);
                 return;
-            }
-            
-            qDebug(logUsbControl()) << "write() success";
+            }            
         }
     }
 }
@@ -873,6 +874,15 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
     QByteArray data2;
     int res=0;
     bool sdv1=false;
+
+    // If feature is sensitivity, this is not model dependant and will update the internal sensitivity divider.
+    if (feature == usbFeatureType::featureSensitivity)
+    {
+        dev->sensitivity=val;
+        (*controllers)[dev->path].sensitivity = val;
+        return;
+    }
+
     switch (dev->type.model)
     {
     case QuickKeys:
@@ -899,11 +909,6 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
             data[5] = text.length() * 2;
             data2 = qToLittleEndian(QByteArray::fromRawData(reinterpret_cast<const char*>(text.constData()), text.size() * 2));
             data.replace(16, data2.size(), data2);
-            break;
-        case usbFeatureType::featureSensitivity:
-            dev->sensitivity=val;
-            (*controllers)[dev->path].sensitivity = val;
-            return;
             break;
         case usbFeatureType::featureBrightness:
             qDebug(logUsbControl()) << QString("Setting brightness to %0").arg(val);
@@ -1032,9 +1037,14 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
             } else {
                 data[0] = (qint8)0x03;
                 data[1] = (qint8)0x08;
-                data[2] = val*25; // Stream Deck brightness is in %
+                data[2] = val*33; // Stream Deck brightness is in %
             }
             res = hid_send_feature_report(dev->handle, (const unsigned char*)data.constData(), data.size());
+            (*controllers)[dev->path].brightness = val;
+            break;
+        case usbFeatureType::featureSensitivity:
+            dev->sensitivity=val;
+            (*controllers)[dev->path].sensitivity = val;
             break;
         case usbFeatureType::featureColor:
             if (val) {
@@ -1042,6 +1052,58 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
                 (*controllers)[dev->path].color=currentColour;
             }
             break;
+        case usbFeatureType::featureGraph:
+        {
+            if (dev->type.model == usbDeviceType::StreamDeckPlus && val < dev->type.knobs)
+            {
+                QImage image(200,25, QImage::Format_RGB888);
+                image.fill(Qt::black);
+                QPainter paint(&image);
+                int x=qMin(190,(dev->knobValues[val].value * dev->sensitivity) * 190 / 255);
+                int perc=qMin(100,(dev->knobValues[val].value * dev->sensitivity) * 100 / 255);
+                paint.fillRect((200*val)+5,80,x,20, Qt::darkGreen);
+                paint.setFont(QFont("times",10));
+                paint.setPen(Qt::white);
+                paint.drawText((200*val)+5,80,190,20, Qt::AlignCenter | Qt::AlignVCenter, QString("%0 %1%").arg(dev->knobValues[val].name).arg(perc));
+
+                data2.clear();
+                QBuffer buffer(&data2);
+                image.save(&buffer, "JPG");
+
+                quint32 rem = data2.size();
+                quint16 index = 0;
+
+                streamdeck_lcd_header h;
+                memset(h.packet, 0x0, sizeof(h)); // We can't be sure it is initialized with 0x00!
+                h.cmd = 0x02;
+                h.suffix = 0x0c;
+                h.x=val*200;
+                h.y=75;
+                h.width=200;
+                h.height=25;
+
+                while (rem > 0)
+                {
+                    quint16 length = qMin(rem,dev->type.maxPayload-sizeof(h));
+                    data.clear();
+                    h.isLast = (quint8)(rem <= dev->type.maxPayload-sizeof(h) ? 1 : 0); // isLast ? 1 : 0,3
+                    h.length = length;
+                    h.index = index;
+                    rem -= length;
+                    data.append(QByteArray::fromRawData((const char*)h.packet,sizeof(h)));
+                    data.append(data2.mid(0,length));
+                    data.resize(dev->type.maxPayload);
+                    memset(data.data()+length+sizeof(h),0x0,data.size()-(length+sizeof(h)));
+                    res=hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
+                    //qInfo(logUsbControl()) << "Sending" << (((quint8)data[7] << 8) | ((quint8)data[6] & 0xff)) << "total=" << data.size()  << "payload=" << (((quint8)data[5] << 8) | ((quint8)data[4] & 0xff)) << "last" << (quint8)data[3];
+                    data2.remove(0,length);
+                    index++;
+                }
+                dev->knobValues[val].lastChanged = QDateTime::currentMSecsSinceEpoch();
+            }
+            break;
+
+        }
         case usbFeatureType::featureOverlay:
         {
             if (dev->type.model == usbDeviceType::StreamDeckPlus)
@@ -1068,6 +1130,20 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
                 if (img != Q_NULLPTR)
                 {
                     QImage image = img->scaled(800,100,Qt::IgnoreAspectRatio,Qt::SmoothTransformation);
+                    QPainter paint(&image);
+
+                    for (int i=0;i<dev->type.knobs;i++) {
+                        if (QDateTime::currentMSecsSinceEpoch() < dev->knobValues[i].lastChanged + 1000)
+                        {
+                            paint.fillRect(200*i,75,200,25, Qt::black);
+                            int x=qMin(190,(dev->knobValues[i].value * dev->sensitivity) * 190 / 255);
+                            paint.fillRect((200*i)+5,80,x,20, Qt::darkGreen);
+                            paint.setFont(QFont("times",10));
+                            paint.setPen(Qt::white);
+                            int perc=qMin(100,(dev->knobValues[i].value * dev->sensitivity) * 100 / 255);
+                            paint.drawText((200*i)+5,80,190,20, Qt::AlignCenter | Qt::AlignVCenter, QString("%0 %1%").arg(dev->knobValues[i].name).arg(perc));
+                        }
+                    }
                     data2.clear();
                     QBuffer buffer(&data2);
                     image.save(&buffer, "JPG");
@@ -1193,14 +1269,16 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
         }
         break;
     case RC28:
-        if (feature == usbFeatureType::featureFirmware)
+        switch (feature)
         {
+        case usbFeatureType::featureFirmware:
             data[0] = 63;
             data[1] = 0x02;
             hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
+        default:
+            break;
         }
         break;
-
     default:
         break;
     }
@@ -1321,6 +1399,146 @@ void usbController::loadButtons()
     defaultButtons.append(BUTTON(QuickKeys, 8, QRect(143, 515, 55, 40), Qt::white, &commands[0], &commands[0]));
     defaultButtons.append(BUTTON(QuickKeys, 9, QRect(139, 68, 65, 65), Qt::white, &commands[0], &commands[0]));
 
+    // StreamDeckOriginal
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 0, QRect(65, 91, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 1, QRect(165, 91, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 2, QRect(263, 91, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 3, QRect(364, 91, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 4, QRect(462, 91, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 5, QRect(65, 190, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 6, QRect(165, 190, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 7, QRect(263, 190, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 8, QRect(364, 190, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 9, QRect(462, 190, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 10, QRect(332, 291, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 11, QRect(462, 291, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 12, QRect(74, 291, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 13, QRect(204, 291, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginal, 14, QRect(332, 291, 75, 75), Qt::white, &commands[0], &commands[0]));
+
+    // StreamDeckOriginalMK2
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 0, QRect(65, 91, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 1, QRect(165, 91, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 2, QRect(263, 91, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 3, QRect(364, 91, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 4, QRect(462, 91, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 5, QRect(65, 190, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 6, QRect(165, 190, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 7, QRect(263, 190, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 8, QRect(364, 190, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 9, QRect(462, 190, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 10, QRect(332, 291, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 11, QRect(462, 291, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 12, QRect(74, 291, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 13, QRect(204, 291, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalMK2, 14, QRect(332, 291, 75, 75), Qt::white, &commands[0], &commands[0]));
+
+    // StreamDeckOriginalV2
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 0, QRect(65, 91, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 1, QRect(165, 91, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 2, QRect(263, 91, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 3, QRect(364, 91, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 4, QRect(462, 91, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 5, QRect(65, 190, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 6, QRect(165, 190, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 7, QRect(263, 190, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 8, QRect(364, 190, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 9, QRect(462, 190, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 10, QRect(332, 291, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 11, QRect(462, 291, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 12, QRect(74, 291, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 13, QRect(204, 291, 75, 75), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckOriginalV2, 14, QRect(332, 291, 75, 75), Qt::white, &commands[0], &commands[0]));
+
+    // StreamDeckMini
+    defaultButtons.append(BUTTON(StreamDeckMini, 0, QRect(113, 86, 100, 80), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckMini, 1, QRect(252, 86, 100, 80), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckMini, 2, QRect(388, 86, 100, 80), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckMini, 3, QRect(113, 204, 100, 80), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckMini, 4, QRect(252, 204, 100, 80), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckMini, 5, QRect(388, 204, 100, 80), Qt::white, &commands[0], &commands[0]));
+
+    // StreamDeckMiniV2
+    defaultButtons.append(BUTTON(StreamDeckMiniV2, 0, QRect(113, 86, 100, 80), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckMiniV2, 1, QRect(252, 86, 100, 80), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckMiniV2, 2, QRect(388, 86, 100, 80), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckMiniV2, 3, QRect(113, 204, 100, 80), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckMiniV2, 4, QRect(252, 204, 100, 80), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckMiniV2, 5, QRect(388, 204, 100, 80), Qt::white, &commands[0], &commands[0]));
+
+    // StreamDeckXL
+    defaultButtons.append(BUTTON(StreamDeckXL, 0, QRect(80, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 1, QRect(168, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 2, QRect(258, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 3, QRect(349, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 4, QRect(438, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 5, QRect(529, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 6, QRect(618, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 7, QRect(711, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 8, QRect(80, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 9, QRect(168, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 10, QRect(258, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 11, QRect(349, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 12, QRect(438, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 13, QRect(529, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 14, QRect(618, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 15, QRect(711, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 16, QRect(80, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 17, QRect(168, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 18, QRect(258, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 19, QRect(349, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 20, QRect(438, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 21, QRect(529, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 22, QRect(618, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 23, QRect(711, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 24, QRect(80, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 25, QRect(168, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 26, QRect(258, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 27, QRect(349, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 28, QRect(438, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 29, QRect(529, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 30, QRect(618, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXL, 31, QRect(711, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+
+    // StreamDeckXLV2
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 0, QRect(80, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 1, QRect(168, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 2, QRect(258, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 3, QRect(349, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 4, QRect(438, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 5, QRect(529, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 6, QRect(618, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 7, QRect(711, 106, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 8, QRect(80, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 9, QRect(168, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 10, QRect(258, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 11, QRect(349, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 12, QRect(438, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 13, QRect(529, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 14, QRect(618, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 15, QRect(711, 195, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 16, QRect(80, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 17, QRect(168, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 18, QRect(258, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 19, QRect(349, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 20, QRect(438, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 21, QRect(529, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 22, QRect(618, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 23, QRect(711, 287, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 24, QRect(80, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 25, QRect(168, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 26, QRect(258, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 27, QRect(349, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 28, QRect(438, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 29, QRect(529, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 30, QRect(618, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckXLV2, 31, QRect(711, 376, 61, 61), Qt::white, &commands[0], &commands[0]));
+
+    // StreamDeckPedal
+    defaultButtons.append(BUTTON(StreamDeckPedal, 0, QRect(7, 47, 115, 347), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckPedal, 1, QRect(155, 47, 291, 353), Qt::white, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(StreamDeckPedal, 2, QRect(475, 47, 115, 347), Qt::white, &commands[0], &commands[0]));
+
     // StreamDeckPlus
     defaultButtons.append(BUTTON(StreamDeckPlus, 0, QRect(69, 43, 78, 66), Qt::white, &commands[0], &commands[0]));
     defaultButtons.append(BUTTON(StreamDeckPlus, 1, QRect(198, 43, 78, 66), Qt::white, &commands[0], &commands[0]));
@@ -1368,11 +1586,14 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "PTT Toggle", commandButton, cmdPTTToggle, 0x0));
     commands.append(COMMAND(num++, "VFOA", commandKnob, cmdSetFreq, 0x0));
     commands.append(COMMAND(num++, "VFOB", commandKnob, cmdSetFreq, 0x1));
+    commands.append(COMMAND(-1, "Span/Step", commandKnob, cmdNone, 0x0));
     commands.append(COMMAND(num++, "Tune", commandButton, cmdStartATU, 0x0));
+    commands.append(COMMAND(-1, "Span/Step", commandButton, cmdNone, 0x0));
     commands.append(COMMAND(num++, "Step+", commandButton, cmdSetStepUp, 0x0));
     commands.append(COMMAND(num++, "Step-", commandButton, cmdSetStepDown, 0x0));
     commands.append(COMMAND(num++, "Span+", commandButton, cmdSetSpanUp, 0x0));
     commands.append(COMMAND(num++, "Span-", commandButton, cmdSetSpanDown, 0x0));
+    commands.append(COMMAND(-1, "Modes", commandButton, cmdNone, 0x0));
     commands.append(COMMAND(num++, "Mode+", commandButton, cmdSetModeUp, 0x0));
     commands.append(COMMAND(num++, "Mode-", commandButton, cmdSetModeDown, 0x0));
     commands.append(COMMAND(num++, "Mode LSB", commandButton, cmdSetMode, modeLSB));
@@ -1389,6 +1610,7 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Mode PSKR", commandButton, cmdSetMode, modePSK_R));
     commands.append(COMMAND(num++, "Mode DV", commandButton, cmdSetMode, modeDV));
     commands.append(COMMAND(num++, "Mode DD", commandButton, cmdSetMode, modeDD));
+    commands.append(COMMAND(-1, "Bands", commandButton, cmdNone, 0x0));
     commands.append(COMMAND(num++, "Band+", commandButton, cmdSetBandUp, 0x0));
     commands.append(COMMAND(num++, "Band-", commandButton, cmdSetBandDown, 0x0));
     commands.append(COMMAND(num++, "Band 23cm", commandButton, cmdGetBandStackReg, band23cm));
@@ -1411,28 +1633,35 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Band 630m", commandButton, cmdGetBandStackReg, band630m));
     commands.append(COMMAND(num++, "Band 2200m", commandButton, cmdGetBandStackReg, band2200m));
     commands.append(COMMAND(num++, "Band GEN", commandButton, cmdGetBandStackReg, bandGen));
+    commands.append(COMMAND(-1, "NB/NR", commandButton, cmdNone, 0x0));
     commands.append(COMMAND(num++, "NR On", commandButton, cmdNone, 0x0));
     commands.append(COMMAND(num++, "NR Off", commandButton, cmdNone, 0x0));
     commands.append(COMMAND(num++, "NB On", commandButton, cmdNone, 0x0));
     commands.append(COMMAND(num++, "NB Off", commandButton, cmdNone, 0x0));
-    commands.append(COMMAND(num++, "Split On", commandButton, cmdNone, 0x01));
-    commands.append(COMMAND(num++, "Split Off", commandButton, cmdNone, 0x0));
+    commands.append(COMMAND(-1, "Split", commandButton, cmdNone, 0x0));
+    commands.append(COMMAND(num++, "Split On", commandButton, cmdSetQuickSplit, 0x01));
+    commands.append(COMMAND(num++, "Split Off", commandButton, cmdSetQuickSplit, 0x0));
     commands.append(COMMAND(num++, "Swap VFO", commandButton, cmdVFOSwap, 0x0));
+    commands.append(COMMAND(-1, "Scope", commandButton, cmdNone, 0x0));
+    commands.append(COMMAND(num++, "Spectrum", commandButton, cmdLCDSpectrum, 0x0));
+    commands.append(COMMAND(num++, "Waterfall", commandButton, cmdLCDWaterfall, 0x0));
+    commands.append(COMMAND(-1, "Pages", commandButton, cmdNone, 0x0));
+    commands.append(COMMAND(num++, "Page Down", commandButton, cmdPageDown, 0x0));
+    commands.append(COMMAND(num++, "Page Up", commandButton, cmdPageUp, 0x0));
+
     commands.append(COMMAND(num++, "AF Gain", commandKnob, cmdSetAfGain, cmdGetAfGain, 0xff));
     commands.append(COMMAND(num++, "RF Gain", commandKnob, cmdSetRxRfGain, cmdGetRxGain,  0xff));
     commands.append(COMMAND(num++, "TX Power", commandKnob, cmdSetTxPower, cmdGetTxPower, 0xff));
     commands.append(COMMAND(num++, "Mic Gain", commandKnob, cmdSetMicGain, cmdGetMicGain, 0xff));
     commands.append(COMMAND(num++, "Mod Level", commandKnob, cmdSetModLevel, cmdNone, 0xff));
     commands.append(COMMAND(num++, "Squelch", commandKnob, cmdSetSql, cmdGetSql, 0xff));
+    commands.append(COMMAND(-1, "Span/Step", commandKnob, cmdNone, 0x0));
     commands.append(COMMAND(num++, "IF Shift", commandKnob, cmdSetIFShift, cmdGetIFShift, 0xff));
     commands.append(COMMAND(num++, "In PBT", commandKnob, cmdSetTPBFInner, cmdGetTPBFInner, 0xff));
     commands.append(COMMAND(num++, "Out PBT", commandKnob, cmdSetTPBFOuter, cmdGetTPBFOuter, 0xff));
+    commands.append(COMMAND(-1, "Span/Step", commandKnob, cmdNone, 0x0));
     commands.append(COMMAND(num++, "CW Pitch", commandKnob, cmdSetCwPitch, cmdGetCwPitch, 0xff));
     commands.append(COMMAND(num++, "CW Speed", commandKnob, cmdSetKeySpeed, cmdGetKeySpeed, 0xff));
-    commands.append(COMMAND(num++, "Waterfall", commandButton, cmdLCDWaterfall, 0x0));
-    commands.append(COMMAND(num++, "Spectrum", commandButton, cmdLCDSpectrum, 0x0));
-    commands.append(COMMAND(num++, "Page Down", commandButton, cmdPageDown, 0x0));
-    commands.append(COMMAND(num++, "Page Up", commandButton, cmdPageUp, 0x0));
 }
 
 
@@ -1571,12 +1800,12 @@ void usbController::receiveLevel(cmds cmd, unsigned char level)
     for (auto dev = usbDevices.begin(); dev != usbDevices.end(); dev++)
     {
         auto kb = std::find_if(knobList->begin(), knobList->end(), [dev, cmd](const KNOB& k)
-        { return (k.command && k.path == dev->path && k.page == dev->currentPage && k.command->getCommand == cmd);});
+        { return (k.command && dev->connected && k.path == dev->path && k.page == dev->currentPage && k.command->getCommand == cmd);});
         if (kb != knobList->end() && kb->num < dev->knobValues.size()) {
-            qInfo(logUsbControl()) << "Received value:" << level << "for knob" << kb->num;
+            qDebug(logUsbControl()) << "Received value:" << level << "for knob" << kb->num;
             // Set both current and previous knobvalue to the received value
-            dev->knobValues[kb->num] = level;
-            dev->knobPrevious[kb->num] = level;
+            dev->knobValues[kb->num].value = level/dev->sensitivity;
+            dev->knobValues[kb->num].previous = level/dev->sensitivity;
         }
     }
 }

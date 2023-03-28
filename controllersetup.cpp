@@ -26,6 +26,13 @@ void controllerSetup::hideEvent(QHideEvent *event)
     updateDialog->hide();
 }
 
+void controllerSetup::on_tabWidget_currentChanged(int index)
+{
+    if (updateDialog != Q_NULLPTR)
+        updateDialog->hide();
+}
+
+
 void controllerSetup::init()
 {
 
@@ -125,12 +132,33 @@ void controllerSetup::mousePressed(controllerScene* scene, QPoint p)
         buttonLatch->blockSignals(true);
         buttonLatch->setChecked(currentButton->toggle);
         buttonLatch->blockSignals(false);
-
         buttonLatch->show();
-        buttonOnColor->show();
-        buttonOffColor->show();
-        buttonIcon->show();
-        iconLabel->show();
+
+        switch (currentButton->parent->type.model)
+        {
+        case StreamDeckMini:
+        case StreamDeckMiniV2:
+        case StreamDeckOriginal:
+        case StreamDeckOriginalV2:
+        case StreamDeckOriginalMK2:
+        case StreamDeckXL:
+        case StreamDeckXLV2:
+        case StreamDeckPlus:
+            buttonOnColor->setStyleSheet(QString("background-color: %1").arg(currentButton->backgroundOn.name(QColor::HexArgb)));
+            buttonOffColor->setStyleSheet(QString("background-color: %1").arg(currentButton->backgroundOff.name(QColor::HexArgb)));
+            buttonOnColor->show();
+            buttonOffColor->show();
+            buttonIcon->show();
+            iconLabel->setText(currentButton->iconName);
+            iconLabel->show();
+            break;
+        default:
+            buttonOnColor->hide();
+            buttonOffColor->hide();
+            buttonIcon->hide();
+            iconLabel->hide();
+            break;
+        }
 
         updateDialog->show();
         updateDialog->move(gp);
@@ -240,6 +268,7 @@ void controllerSetup::buttonOnColorClicked()
     {
         QMutexLocker locker(mutex);
         currentButton->backgroundOn = selColor;
+        buttonOnColor->setStyleSheet(QString("background-color: %1").arg(currentButton->backgroundOn.name(QColor::HexArgb)));
         emit sendRequest(currentButton->parent,usbFeatureType::featureButton,currentButton->num,currentButton->onCommand->text,currentButton->icon,&currentButton->backgroundOn);
     }
 }
@@ -255,6 +284,7 @@ void controllerSetup::buttonOffColorClicked()
     {
         QMutexLocker locker(mutex);
         currentButton->backgroundOff = selColor;
+        buttonOffColor->setStyleSheet(QString("background-color: %1").arg(currentButton->backgroundOff.name(QColor::HexArgb)));
     }
 }
 
@@ -263,7 +293,8 @@ void controllerSetup::buttonIconClicked()
     QString file = QFileDialog::getOpenFileName(this,"Select Icon Filename",".","Images (*png *.jpg)");
     if (!file.isEmpty()) {
         QFileInfo info = QFileInfo(file);
-        iconLabel->setText(info.fileName());
+        currentButton->iconName = info.fileName();
+        iconLabel->setText(currentButton->iconName);
         QImage image;
         image.load(file);
         if (currentButton->icon != Q_NULLPTR)
@@ -406,6 +437,19 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
         case QuickKeys:
             image.load(":/resources/quickkeys.png");
             break;
+        case StreamDeckOriginal:
+        case StreamDeckOriginalV2:
+        case StreamDeckOriginalMK2:
+            image.load(":/resources/streamdeck.png");
+            break;
+        case StreamDeckMini:
+        case StreamDeckMiniV2:
+            image.load(":/resources/streamdeckmini.png");
+            break;
+        case StreamDeckXL:
+        case StreamDeckXLV2:
+            image.load(":/resources/streamdeckxl.png");
+            break;
         case StreamDeckPlus:
             image.load(":/resources/streamdeckplus.png");
             break;
@@ -511,12 +555,21 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
 
     for (COMMAND& c : *commands) {
         if (c.cmdType == commandButton || c.text == "None") {
-            onEvent->addItem(c.text, c.index);
-            offEvent->addItem(c.text, c.index);
-        }
+            if (c.index == -1) {
+                onEvent->insertSeparator(onEvent->count());
+                offEvent->insertSeparator(offEvent->count());
 
-        if (c.cmdType == commandKnob || c.text == "None") {
-            knobEvent->addItem(c.text, c.index);
+            } else {
+                onEvent->addItem(c.text, c.index);
+                offEvent->addItem(c.text, c.index);
+            }
+        }
+        else if (c.cmdType == commandKnob || c.text == "None") {
+            if (c.index == -1) {
+                knobEvent->insertSeparator(knobEvent->count());
+            } else {
+                knobEvent->addItem(c.text, c.index);
+            }
         }
     }
 
@@ -553,7 +606,7 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
 
 void controllerSetup::sensitivityMoved(USBDEVICE* dev, int val)
 {
-    qInfo(logUsbControl()) << "Setting sensitivity" << val <<"for device" << dev->path;
+    qInfo(logUsbControl()) << "Setting sensitivity" << val <<"for device" << dev->product;
     emit sendRequest(dev,usbFeatureType::featureSensitivity,val);
 }
 

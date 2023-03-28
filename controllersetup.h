@@ -94,6 +94,7 @@ public slots:
     void disableClicked(USBDEVICE* dev, bool clicked, QWidget* widget);
     void setConnected(USBDEVICE* dev);
     void hideEvent(QHideEvent *event);
+    void on_tabWidget_currentChanged(int index);
 
 
 private:
@@ -112,7 +113,7 @@ private:
     KNOB* currentKnob = Q_NULLPTR;
 
     // Update Dialog
-    QDialog * updateDialog;
+    QDialog * updateDialog = Q_NULLPTR;
     QComboBox* onEvent;
     QComboBox* offEvent;
     QComboBox* knobEvent;

@@ -31,7 +31,7 @@
     #ifndef Q_OS_WIN
         #include "hidapi/hidapi.h"
     #else
-    #include "hidapi.h"
+        #include "hidapi.h"
     #endif
 
     #ifdef HID_API_VERSION_MAJOR
@@ -81,6 +81,14 @@ struct USBTYPE {
 };
 
 
+struct KNOBVALUE {
+    int value=0;
+    int previous=0;
+    quint8 send=0;
+    qint64 lastChanged=0;
+    QString name="";
+};
+
 struct USBDEVICE {
     USBDEVICE() {}
     USBDEVICE(USBTYPE type) : type(type) {}
@@ -103,9 +111,7 @@ struct USBDEVICE {
     int jogCounter = 0;
     quint32 buttons = 0;
     quint32 knobs = 0;
-    QList<int> knobValues;
-    QList<int> knobPrevious;
-    QList<quint8> knobSend;
+    QList<KNOBVALUE> knobValues;
     QTime lastusbController = QTime::currentTime();
     QByteArray lastData = QByteArray(8,0x0);
     unsigned char lastDialPos=0;
@@ -165,6 +171,7 @@ struct BUTTON {
     QString path;
     QColor backgroundOn = Qt::lightGray;
     QColor backgroundOff = Qt::blue;
+    QString iconName = "";
     QImage* icon = Q_NULLPTR;
     bool toggle = false;
     bool isOn = false;
@@ -218,6 +225,7 @@ class usbController : public QObject
 public:
     usbController();
     ~usbController();
+    bool hotPlugEvent(const QByteArray & eventType, void * message, long * result);
 
 public slots:
     void init(QMutex* mut,usbMap* prefs ,QVector<BUTTON>* buts,QVector<KNOB>* knobs);
