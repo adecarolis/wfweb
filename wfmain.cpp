@@ -1721,6 +1721,8 @@ void wfmain::setupUsbControllerDevice()
     connect(this, SIGNAL(sendLevel(cmds, unsigned char)), usbControllerDev, SLOT(receiveLevel(cmds, unsigned char)));
     connect(this, SIGNAL(initUsbController(QMutex*,usbMap*,QVector<BUTTON>*,QVector<KNOB>*)), usbControllerDev, SLOT(init(QMutex*,usbMap*,QVector<BUTTON>*,QVector<KNOB>*)));
     connect(this, SIGNAL(usbHotplug()), usbControllerDev, SLOT(run()));
+    connect(shut, SIGNAL(backup(QString, QString)), usbControllerDev, SLOT(backupController(QString, QString)));
+    connect(shut, SIGNAL(restore(QString, QString)), usbControllerDev, SLOT(restoreController(QString, QString)));
 
 #endif
 }

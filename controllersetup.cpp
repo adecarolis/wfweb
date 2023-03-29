@@ -321,14 +321,18 @@ void controllerSetup::removeDevice(USBDEVICE* dev)
     for (int i = 0; i < ui->tabWidget->count(); i++) {
         auto widget = ui->tabWidget->widget(i);
         if (widget->objectName() == dev->path) {
+            qInfo(logUsbControl()) << "Removing child widgets for" << dev->product;
             qDeleteAll(widget->findChildren<QWidget *>("", Qt::FindDirectChildrenOnly));
             remove = i;
+            //break;
         }
     }
 
     if (remove != -1) {
         qInfo(logUsbControl()) << "Removing tab" << dev->product;
+        //auto widget = ui->tabWidget->widget(remove);
         ui->tabWidget->removeTab(remove);
+        //widget->deleteLater();
     }
     if (ui->tabWidget->count() == 0)
     {
@@ -346,6 +350,14 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
     mutex = mut;
 
     QMutexLocker locker(mutex);
+
+    for (int i=0; i<ui->tabWidget->count();i++) {
+        if (ui->tabWidget->widget(i)->objectName() == dev->path)
+        {
+            qInfo(logUsbControl()) <<"Tab for " << dev->product << "("<< dev->path << ") Already exists!";
+            return;
+        }
+    }
 
     qDebug(logUsbControl()) << "Adding new tab for" << dev->product;
     noControllersText->hide();
@@ -594,6 +606,8 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
 
     numTabs++;
 
+    dev->uiCreated = true;
+
     // Finally update the device with the default values
     emit sendRequest(dev,usbFeatureType::featureSensitivity,cntrl->sensitivity);
     emit sendRequest(dev,usbFeatureType::featureBrightness,cntrl->brightness);
@@ -739,12 +753,37 @@ void controllerSetup::disableClicked(USBDEVICE* dev, bool clicked, QWidget* widg
 
 void controllerSetup::setConnected(USBDEVICE* dev)
 {
-    if (dev->connected)
+    QMutexLocker locker(mutex);
+
+
+    if (dev->uiCreated)
     {
-       dev->message->setStyleSheet("QLabel { color : green; }");
-       dev->message->setText("Connected");
-    } else {
-       dev->message->setStyleSheet("QLabel { color : red; }");
-       dev->message->setText("Not Connected");
+        if (dev->connected)
+        {
+           dev->message->setStyleSheet("QLabel { color : green; }");
+           dev->message->setText("Connected");
+        } else {
+           dev->message->setStyleSheet("QLabel { color : red; }");
+           dev->message->setText("Not Connected");
+        }
     }
 }
+
+void controllerSetup::on_backupButton_clicked()
+{
+    QString file = QFileDialog::getSaveFileName(this,"Select Backup Filename",".","Backup Files (*.ini)");
+    if (!file.isEmpty()) {
+        QFileInfo info = QFileInfo(file);
+        emit backup(file, ui->tabWidget->currentWidget()->objectName());
+    }
+}
+
+void controllerSetup::on_restoreButton_clicked()
+{
+    QString file = QFileDialog::getOpenFileName(this,"Select Backup Filename",".","Backup Files (*.ini)");
+    if (!file.isEmpty()) {
+        QFileInfo info = QFileInfo(file);
+        emit restore(file, ui->tabWidget->currentWidget()->objectName());
+    }
+}
+

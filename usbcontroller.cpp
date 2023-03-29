@@ -262,12 +262,13 @@ void usbController::run()
 #endif
     
     
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+//#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     auto it = usbDevices.begin();
     while (it != usbDevices.end())
     {
         if (it.value().remove)
         {
+            qInfo(logUsbControl()) << "Device has been removed, deleting from known devices" << it.value().product;
             it = usbDevices.erase(it);
         }
         else
@@ -275,11 +276,11 @@ void usbController::run()
             ++it;
         }
     }
-#else
+//#else
     // Remove any devices from the list that are not connected (doesn't work on QT5!)
-    usbDevices.erase(std::remove_if(usbDevices.begin(), usbDevices.end(), [](const USBDEVICE& dev)
-        { if (dev.remove) qInfo(logUsbControl()) << "Removing device" << dev.product; return (dev.remove); }),usbDevices.end());
-#endif
+//    usbDevices.erase(std::remove_if(usbDevices.begin(), usbDevices.end(), [](const USBDEVICE& dev)
+//        { if (dev.remove) qInfo(logUsbControl()) << "Removing device" << dev.product; return (dev.remove); }),usbDevices.end());
+//#endif
     struct hid_device_info* devs;
     devs = hid_enumerate(0x0, 0x0);
     // Step through all currenly connected devices and add any newly discovered ones to usbDevices.
@@ -302,6 +303,7 @@ void usbController::run()
             newDev.serial = QString::fromWCharArray(devs->serial_number);
             newDev.path = QString::fromLocal8Bit(devs->path);
             newDev.deviceId = QString("0x%1").arg(newDev.type.productId, 4, 16, QChar('0'));
+            qDebug(logUsbControl()) << "New device detected" << newDev.product;
             usbDevices.insert(newDev.path,newDev);
         }
         devs = devs->next;
@@ -385,6 +387,8 @@ void usbController::run()
                             buttonList->append(BUTTON(*but));
                         }
                     }
+                } else {
+                    qInfo(logUsbControl()) << "Found buttons for this device, loading.";
                 }
 
                 // We need to set the parent device for all buttons belonging to this device!
@@ -402,7 +406,7 @@ void usbController::run()
                         if (boff != commands.end())
                             but->offCommand = new COMMAND(*boff);
                         else
-                            qWarning(logUsbControl()) << "Off Command" << but->on << "not found";
+                            qWarning(logUsbControl()) << "Off Command" << but->off << "not found";
 
                         but->parent = &dev;
                     }
@@ -434,15 +438,14 @@ void usbController::run()
                             qWarning(logUsbControl()) << "Knob Command" << kb->cmd << "not found";
 
                         kb->parent = &dev;
-                        if (dev.currentPage == 1)
+                        if (kb->page == 1)
                             dev.knobValues[kb->num].name = kb->cmd;
                     }
                 }
 
                 // Let the UI know we have a new controller
                 emit newDevice(&dev, &(*controllers)[dev.path],buttonList, knobList, &commands, mutex);
-                
-                dev.uiCreated = true;
+
             }
         }
         else if (dev.uiCreated)
@@ -493,6 +496,7 @@ void usbController::runTimer()
                 dev.connected = false;
                 dev.remove = true;
                 devicesConnected--;
+                QTimer::singleShot(250, this, SLOT(run())); // Cleanup
                 break;
             }
 
@@ -1820,6 +1824,187 @@ void usbController::receiveLevel(cmds cmd, unsigned char level)
             dev->knobValues[kb->num].previous = level/dev->sensitivity;
         }
     }
+}
+
+void usbController::backupController(QString file, QString path)
+{
+    QSettings settings = QSettings(file, QSettings::Format::IniFormat);
+
+    qInfo(logUsbControl()) << "Backup of" << path << "to" << file;
+    settings.beginGroup("Controller");
+    QMutexLocker locker(mutex);
+
+    CONTROLLER cntrl = (*controllers)[path];
+    settings.setValue("Disabled", cntrl.disabled);
+    settings.setValue("Sensitivity", cntrl.sensitivity);
+    settings.setValue("Brightness", cntrl.brightness);
+    settings.setValue("Orientation", cntrl.orientation);
+    settings.setValue("Speed", cntrl.speed);
+    settings.setValue("Timeout", cntrl.timeout);
+    settings.setValue("Pages", cntrl.pages);
+    settings.setValue("Color", cntrl.color.name(QColor::HexArgb));
+    settings.setValue("LCD", cntrl.lcd);
+
+    int n=0;
+    settings.beginWriteArray("Buttons");
+    for (auto b = buttonList->begin(); b != buttonList->end(); b++)
+    {
+        if (b->path == path)
+        {
+            settings.setArrayIndex(n);
+            settings.setValue("Page", b->page);
+            settings.setValue("Dev", b->dev);
+            settings.setValue("Num", b->num);
+            settings.setValue("Name", b->name);
+            settings.setValue("Left", b->pos.left());
+            settings.setValue("Top", b->pos.top());
+            settings.setValue("Width", b->pos.width());
+            settings.setValue("Height", b->pos.height());
+            settings.setValue("Colour", b->textColour.name(QColor::HexArgb));
+            settings.setValue("BackgroundOn", b->backgroundOn.name(QColor::HexArgb));
+            settings.setValue("BackgroundOff", b->backgroundOff.name(QColor::HexArgb));
+            if (b->icon != Q_NULLPTR) {
+                settings.setValue("Icon", *b->icon);
+                settings.setValue("IconName", b->iconName);
+            }
+            settings.setValue("Toggle", b->toggle);
+
+            if (b->onCommand != Q_NULLPTR)
+                settings.setValue("OnCommand", b->onCommand->text);
+            if (b->offCommand != Q_NULLPTR)
+                settings.setValue("OffCommand", b->offCommand->text);
+            ++n;
+        }
+    }
+    settings.endArray();
+
+    n = 0;
+    settings.beginWriteArray("Knobs");
+    for (auto k = knobList->begin(); k != knobList->end(); k++)
+    {
+        if (k->path == path)
+        {
+            settings.setArrayIndex(n);
+            settings.setValue("Page", k->page);
+            settings.setValue("Dev", k->dev);
+            settings.setValue("Num", k->num);
+            settings.setValue("Left", k->pos.left());
+            settings.setValue("Top", k->pos.top());
+            settings.setValue("Width", k->pos.width());
+            settings.setValue("Height", k->pos.height());
+            settings.setValue("Colour", k->textColour.name());
+            if (k->command != Q_NULLPTR)
+                settings.setValue("Command", k->command->text);
+            ++n;
+        }
+    }
+
+    settings.endArray();
+    settings.endGroup();
+    settings.sync();
+}
+
+void usbController::restoreController(QString file, QString path)
+{
+    CONTROLLER cntrl = (*controllers)[path];
+    USBDEVICE* dev = &usbDevices[path];
+    QSettings settings = QSettings(file, QSettings::Format::IniFormat);
+
+    qInfo(logUsbControl()) << "Restore of" << path << "from" << file;
+    settings.beginGroup("Controller");
+    emit removeDevice(dev);
+
+    QMutexLocker locker(mutex);
+
+    // Remove buttons/knobs
+    buttonList->erase(std::remove_if(buttonList->begin(), buttonList->end(), [path](const BUTTON& b)
+        { return (b.path == path); }),buttonList->end());
+
+    cntrl.disabled = settings.value("Disabled", false).toBool();
+    cntrl.sensitivity = settings.value("Sensitivity", 1).toInt();
+    cntrl.pages = settings.value("Pages", 1).toInt();
+    cntrl.brightness = (quint8)settings.value("Brightness", 2).toInt();
+    cntrl.orientation = (quint8)settings.value("Orientation", 2).toInt();
+    cntrl.speed = (quint8)settings.value("Speed", 2).toInt();
+    cntrl.timeout = (quint8)settings.value("Timeout", 30).toInt();
+    cntrl.color.setNamedColor(settings.value("Color", QColor(Qt::white).name(QColor::HexArgb)).toString());
+    cntrl.lcd = (cmds)settings.value("LCD",0).toInt();
+
+    int numButtons = settings.beginReadArray("Buttons");
+    if (numButtons == 0) {
+        settings.endArray();
+    }
+    else {
+        for (int b = 0; b < numButtons; b++)
+        {
+            settings.setArrayIndex(b);
+            BUTTON but;
+            but.page = settings.value("Page", 1).toInt();
+            but.dev = (usbDeviceType)settings.value("Dev", 0).toInt();
+            but.num = settings.value("Num", 0).toInt();
+            but.name = settings.value("Name", "").toString();
+            but.pos = QRect(settings.value("Left", 0).toInt(),
+                settings.value("Top", 0).toInt(),
+                settings.value("Width", 0).toInt(),
+                settings.value("Height", 0).toInt());
+            but.textColour.setNamedColor(settings.value("Colour", QColor(Qt::white).name(QColor::HexArgb)).toString());
+            but.backgroundOn.setNamedColor(settings.value("BackgroundOn", QColor(Qt::lightGray).name(QColor::HexArgb)).toString());
+            but.backgroundOff.setNamedColor(settings.value("BackgroundOff", QColor(Qt::blue).name(QColor::HexArgb)).toString());
+            but.toggle = settings.value("Toggle", false).toBool();
+            if (settings.value("Icon",NULL) != NULL) {
+                but.icon = new QImage(settings.value("Icon",NULL).value<QImage>());
+                but.iconName = settings.value("IconName", "").toString();
+            }
+            but.on = settings.value("OnCommand", "None").toString();
+            but.off = settings.value("OffCommand", "None").toString();
+
+            but.path = path;
+            buttonList->append(but);
+        }
+        settings.endArray();
+    }
+
+    knobList->erase(std::remove_if(knobList->begin(), knobList->end(), [path](const KNOB& k)
+        { return (k.path == path); }),knobList->end());
+
+    int numKnobs = settings.beginReadArray("Knobs");
+    if (numKnobs == 0) {
+        settings.endArray();
+    }
+    else {
+        for (int k = 0; k < numKnobs; k++)
+        {
+            settings.setArrayIndex(k);
+            KNOB kb;
+            kb.page = settings.value("Page", 1).toInt();
+            kb.dev = (usbDeviceType)settings.value("Dev", 0).toInt();
+            kb.num = settings.value("Num", 0).toInt();
+            kb.name = settings.value("Name", "").toString();
+            kb.pos = QRect(settings.value("Left", 0).toInt(),
+                settings.value("Top", 0).toInt(),
+                settings.value("Width", 0).toInt(),
+                settings.value("Height", 0).toInt());
+            kb.textColour = QColor((settings.value("Colour", "Green").toString()));
+
+            kb.cmd = settings.value("Command", "None").toString();
+            kb.path = path;
+            knobList->append(kb);
+        }
+        settings.endArray();
+    }
+
+    settings.endGroup();
+    settings.sync();
+
+    qInfo(logUsbControl()) << "Disconnecting device" << dev->product;
+    emit removeDevice(dev);
+    hid_close(dev->handle);
+    dev->handle = NULL;
+    dev->connected = false;
+    dev->remove = true;
+    dev->uiCreated = false;
+    devicesConnected--;
+    QTimer::singleShot(250, this, SLOT(run()));
 }
 
 #endif

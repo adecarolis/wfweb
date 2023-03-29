@@ -22,6 +22,8 @@
 #include <QPainter>
 #include <QImageWriter>
 #include <QBuffer>
+#include <QSettings>
+
 
 #if defined(USB_CONTROLLER) && QT_VERSION < QT_VERSION_CHECK(6,0,0)
 #include <QGamepad>
@@ -239,6 +241,8 @@ public slots:
 
     void sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
     void sendToLCD(QImage *img);
+    void backupController(QString file, QString path);
+    void restoreController(QString file, QString path);
 
 signals:
     void jogPlus();

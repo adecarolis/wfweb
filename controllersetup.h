@@ -20,6 +20,7 @@
 #include <QScopedPointer>
 #include <QCheckBox>
 #include <QFileDialog>
+#include <QMessageBox>
 
 #include <QDebug>
 #include <QObject>
@@ -69,6 +70,8 @@ signals:
     void sendRequest(USBDEVICE* dev, usbFeatureType request, quint8 val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
     void programDisable(USBDEVICE* dev, bool disable);
     void programPages(USBDEVICE* dev, int pages);
+    void backup(QString file, QString path);
+    void restore(QString file, QString path);
 
 public slots:
     void init();
@@ -95,7 +98,8 @@ public slots:
     void setConnected(USBDEVICE* dev);
     void hideEvent(QHideEvent *event);
     void on_tabWidget_currentChanged(int index);
-
+    void on_backupButton_clicked();
+    void on_restoreButton_clicked();
 
 private:
 
