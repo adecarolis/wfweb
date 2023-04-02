@@ -21,6 +21,7 @@
 #include <QCheckBox>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QLayoutItem>
 
 #include <QDebug>
 #include <QObject>
@@ -54,6 +55,40 @@ protected:
 };
 
 
+struct tabContent {
+    QWidget tab;
+    QVBoxLayout mainLayout;
+    QHBoxLayout topLayout;
+    QWidget widget;
+    QVBoxLayout layout;
+    QCheckBox disabled;
+    QLabel message;
+    QGraphicsView view;
+    QSpinBox page;
+    QHBoxLayout sensLayout;
+    QLabel sensLabel;
+    QSlider sens;
+    QImage image;
+    QGraphicsItem* bgImage = Q_NULLPTR;
+    controllerScene* scene = Q_NULLPTR;
+    QGridLayout grid;
+    QLabel brightLabel;
+    QComboBox brightness;
+    QLabel speedLabel;
+    QComboBox speed;
+    QLabel orientLabel;
+    QComboBox orientation;
+    QLabel colorLabel;
+    QPushButton color;
+    QLabel timeoutLabel;
+    QSpinBox timeout;
+    QLabel pagesLabel;
+    QSpinBox pages;
+    QLabel helpText;
+};
+
+
+
 namespace Ui {
     class controllerSetup;
 }
@@ -67,6 +102,7 @@ public:
     ~controllerSetup();
 
 signals:
+    void started();
     void sendRequest(USBDEVICE* dev, usbFeatureType request, quint8 val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
     void programDisable(USBDEVICE* dev, bool disable);
     void programPages(USBDEVICE* dev, int pages);
@@ -74,8 +110,8 @@ signals:
     void restore(QString file, QString path);
 
 public slots:
-    void init();
-    void newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut);
+    void init(usbDevMap* dev, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut);
+    void newDevice(USBDEVICE* dev);
     void removeDevice(USBDEVICE* dev);
     void mousePressed(controllerScene *scene,QPoint p);
     void onEventIndexChanged(int index);
@@ -85,7 +121,7 @@ public slots:
     void brightnessChanged(USBDEVICE* dev, int index);
     void orientationChanged(USBDEVICE* dev, int index);
     void speedChanged(USBDEVICE* dev, int index);
-    void colorPicker(USBDEVICE* dev);
+    void colorPicker(USBDEVICE* dev, QPushButton* btn, QColor color);
     void buttonOnColorClicked();
     void buttonOffColorClicked();
     void buttonIconClicked();
@@ -103,6 +139,7 @@ public slots:
 
 private:
 
+    void deleteMyWidget(QWidget *);
     usbDeviceType type = usbNone;
     Ui::controllerSetup* ui;
     QGraphicsTextItem* textItem;
@@ -111,8 +148,8 @@ private:
     QVector<BUTTON>* buttons;
     QVector<KNOB>* knobs;
     QVector<COMMAND>* commands;
+    usbDevMap* devices;
 
-    usbMap* controllers;
     BUTTON* currentButton = Q_NULLPTR;
     KNOB* currentKnob = Q_NULLPTR;
 
@@ -137,6 +174,7 @@ private:
     QLabel* noControllersText;
 
     int numTabs=0;
+    QMap<QString,tabContent*> tabs;
 
     // Below are used for each tab:
     /*

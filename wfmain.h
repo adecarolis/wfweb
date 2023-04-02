@@ -266,7 +266,7 @@ signals:
     void openShuttle();
     void requestRigState();
     void stateUpdated();
-    void initUsbController(QMutex* mutex,usbMap* prefs ,QVector<BUTTON>* buts,QVector<KNOB>* knobs);
+    void initUsbController(QMutex* mutex,usbDevMap* devs ,QVector<BUTTON>* buts,QVector<KNOB>* knobs);
     void setClusterUdpPort(int port);
     void setClusterEnableUdp(bool udp);
     void setClusterEnableTcp(bool tcp);
@@ -1142,7 +1142,7 @@ private:
     satelliteSetup *sat;
     transceiverAdjustments *trxadj;
     cwSender *cw;
-    controllerSetup* shut;
+    controllerSetup* usbWindow = Q_NULLPTR;
     aboutbox *abtBox;
     selectRadio *selRad;
     loggingWindow *logWindow;
@@ -1193,7 +1193,7 @@ private:
     QString typeName;
     QVector<BUTTON> usbButtons;
     QVector<KNOB> usbKnobs;
-    usbMap usbControllers;
+    usbDevMap usbDevices;
     QMutex usbMutex;
 #endif
 
@@ -1232,7 +1232,6 @@ Q_DECLARE_METATYPE(rigstate*)
 Q_DECLARE_METATYPE(QVector <BUTTON>*)
 Q_DECLARE_METATYPE(QVector <KNOB>*)
 Q_DECLARE_METATYPE(QVector <COMMAND>*)
-Q_DECLARE_METATYPE(const CONTROLLER*)
 Q_DECLARE_METATYPE(const COMMAND*)
 Q_DECLARE_METATYPE(const USBDEVICE*)
 Q_DECLARE_METATYPE(codecType)

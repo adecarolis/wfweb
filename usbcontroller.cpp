@@ -39,18 +39,20 @@ usbController::usbController()
 usbController::~usbController()
 {
     qInfo(logUsbControl) << "Ending usbController()";
-    
-    for (USBDEVICE &dev: usbDevices)
+    auto devIt = devices->begin();
+    while (devIt != devices->end())
     {
-        if (dev.handle) {
-            sendRequest(&dev,usbFeatureType::featureOverlay,60,"Goodbye from wfview");
+        auto dev = &devIt.value();
+        if (dev->handle) {
+            sendRequest(dev,usbFeatureType::featureOverlay,60,"Goodbye from wfview");
 
-            if (dev.type.model == RC28) {
+            if (dev->type.model == RC28) {
                 ledControl(false, 3);
             }
-            emit removeDevice(&dev);
-            hid_close(dev.handle);
+            emit removeDevice(dev);
+            hid_close(dev->handle);
         }
+        ++devIt;
     }
     
     hid_exit();
@@ -63,20 +65,19 @@ usbController::~usbController()
 #endif
 }
 
-void usbController::init(QMutex* mut,usbMap* prefs ,QVector<BUTTON>* buts,QVector<KNOB>* knobs)
+void usbController::init(QMutex* mut,usbDevMap* devs ,QVector<BUTTON>* buts,QVector<KNOB>* knobs)
 {
     mutex = mut;
-    this->controllers = prefs;
+    this->devices = devs;
     this->buttonList = buts;
     this->knobList = knobs;
     
-    emit initUI();
+    emit initUI(this->devices, this->buttonList, this->knobList,&this->commands,this->mutex);
     
     QMutexLocker locker(mutex);
     
     // We need to make sure that all buttons/knobs have a command assigned, this is a fairly expensive operation
     // Perform a deep copy of the command to ensure that each controller is using a unique copy of the command.
-
     
 #ifdef HID_API_VERSION_MAJOR
     if (HID_API_VERSION == HID_API_MAKE_VERSION(hid_version()->major, hid_version()->minor, hid_version()->patch)) {
@@ -152,16 +153,16 @@ void usbController::run()
             USBDEVICE newDev;
             if (gamepad->name() == "Microsoft X-Box 360 pad 0")
             {
-                newdev.type.model = xBoxGamepad;
+                newdev->type.model = xBoxGamepad;
             }
             else {
-                newdev.type.model = unknownGamepad;
+                newdev->type.model = unknownGamepad;
             }
             
-            newDev.product = gamepad->name();
-            newDev.path = gamepad->name();
+            newdev->product = gamepad->name();
+            newdev->path = gamepad->name();
             // Is this a new device? If so add it to usbDevices
-            // auto p = std::find_if(usbDevices.begin(),usbDevices.end(),[newDev](const USBDEVICE& dev) {return dev.path == newDev.path; });
+            // auto p = std::find_if(usbDevices.begin(),usbDevices.end(),[newDev](const USBDEVICE& dev) {return dev->path == newdev->path; });
             //if (p == usbDevices.end()) {
             //    usbDevices.append(newDev);
             //}
@@ -250,9 +251,17 @@ void usbController::run()
                 controllers->insert(gamepad->name(),CONTROLLER());
             }
             
-            newDev.connected=true;
-            usbDevices.insert(newDev.path,newDev);
-            emit newDevice(&newDev, &(*controllers)[gamepad->name()], buttonList, knobList, &commands, mutex); // Let the UI know we have a new controller
+            newdev->connected=true;
+            usbDevices.insert(newdev->path,newDev);
+            auto cntrlIt = controllers->find(newdev->path);
+            if (cntrlIt != controllers->end())
+            {
+                qWarning(logUsbControl()) << "Cannot find controller, something bad has happened...";
+                return;
+            }
+            CONTROLLER* cntrl = &cntrlIt.value();
+
+            emit newDevice(&newDev); // Let the UI know we have a new controller
         }
     }
     else if (!gamepad->isConnected()) {
@@ -263,23 +272,23 @@ void usbController::run()
     
     
 //#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-    auto it = usbDevices.begin();
-    while (it != usbDevices.end())
+/*    auto it = devices->begin();
+    while (it != devices->end())
     {
         if (it.value().remove)
         {
             qInfo(logUsbControl()) << "Device has been removed, deleting from known devices" << it.value().product;
-            it = usbDevices.erase(it);
+            it = devices->erase(it);
         }
         else
         {
             ++it;
         }
-    }
+    } */
 //#else
     // Remove any devices from the list that are not connected (doesn't work on QT5!)
 //    usbDevices.erase(std::remove_if(usbDevices.begin(), usbDevices.end(), [](const USBDEVICE& dev)
-//        { if (dev.remove) qInfo(logUsbControl()) << "Removing device" << dev.product; return (dev.remove); }),usbDevices.end());
+//        { if (dev->remove) qInfo(logUsbControl()) << "Removing device" << dev->product; return (dev->remove); }),usbDevices.end());
 //#endif
     struct hid_device_info* devs;
     devs = hid_enumerate(0x0, 0x0);
@@ -288,169 +297,188 @@ void usbController::run()
         auto i = std::find_if(knownDevices.begin(), knownDevices.end(), [this,devs](const USBTYPE& d)
         { return ((devs->vendor_id == d.manufacturerId) && (devs->product_id == d.productId)
                         && (d.usage == 0x00 || devs->usage == d.usage)
-                        && (d.usagePage == 0x00 || devs->usage_page == d.usagePage)
-                        && (!this->usbDevices.contains(QString::fromLocal8Bit(devs->path))));});
+                        && (d.usagePage == 0x00 || devs->usage_page == d.usagePage));});
 
         if (i != knownDevices.end())
         {
-            USBDEVICE newDev(*i);
-            newDev.manufacturer = QString::fromWCharArray(devs->manufacturer_string);
-            newDev.product = QString::fromWCharArray(devs->product_string);
-            if (newDev.product.isEmpty())
+            auto it = devices->find(QString::fromLocal8Bit(devs->path));
+            if (it == devices->end())
             {
-                newDev.product = "<Not Detected>";
+                USBDEVICE newDev(*i);
+                newDev.manufacturer = QString::fromWCharArray(devs->manufacturer_string);
+                newDev.product = QString::fromWCharArray(devs->product_string);
+                if (newDev.product.isEmpty())
+                {
+                  newDev.product = "<Not Detected>";
+                }
+                newDev.serial = QString::fromWCharArray(devs->serial_number);
+                newDev.path = QString::fromLocal8Bit(devs->path);
+                newDev.deviceId = QString("0x%1").arg(newDev.type.productId, 4, 16, QChar('0'));
+                newDev.detected = true;
+                qDebug(logUsbControl()) << "New device detected" << newDev.product;
+                devices->insert(newDev.path,newDev);
+            } else if (!it->detected){
+                // This is a known device
+                auto dev = &it.value();
+                dev->type = *i;
+                dev->manufacturer = QString::fromWCharArray(devs->manufacturer_string);
+                dev->product = QString::fromWCharArray(devs->product_string);
+                if (dev->product.isEmpty())
+                {
+                  dev->product = "<Not Detected>";
+                }
+                dev->serial = QString::fromWCharArray(devs->serial_number);
+                dev->deviceId = QString("0x%1").arg(dev->type.productId, 4, 16, QChar('0'));
+                dev->detected = true;
+                qDebug(logUsbControl()) << "Known device detected" << dev->product;
             }
-            newDev.serial = QString::fromWCharArray(devs->serial_number);
-            newDev.path = QString::fromLocal8Bit(devs->path);
-            newDev.deviceId = QString("0x%1").arg(newDev.type.productId, 4, 16, QChar('0'));
-            qDebug(logUsbControl()) << "New device detected" << newDev.product;
-            usbDevices.insert(newDev.path,newDev);
         }
         devs = devs->next;
     }
     
     hid_free_enumeration(devs);
     
-    for (USBDEVICE &dev: usbDevices) {
-        
-        dev.disabled = (*controllers)[dev.path].disabled;
-        dev.pages = (*controllers)[dev.path].pages;
-        if (!dev.disabled && !dev.connected && !dev.path.isEmpty()) {
+    for (auto devIt = devices->begin(); devIt != devices->end(); devIt++)
+    {
+        auto dev = &devIt.value();
+
+        if (dev->detected && !dev->disabled && !dev->connected && !dev->path.isEmpty()) {
+                        
+            qInfo(logUsbControl()) << QString("Attempting to connect to %0").arg(dev->product);
+            dev->handle = hid_open_path(dev->path.toLocal8Bit());
             
-            if (!controllers->contains(dev.path)) {
-                controllers->insert(dev.path,CONTROLLER(&dev));
-            } else {
-                (*controllers)[dev.path].dev = &dev;
-            }
-            
-            qInfo(logUsbControl()) << QString("Attempting to connect to %0").arg(dev.product);
-            dev.handle = hid_open_path(dev.path.toLocal8Bit());
-            
-            if (dev.handle)
+            if (dev->handle)
             {
-                qInfo(logUsbControl()) << QString("Connected to device: %0 from %1 S/N %2").arg(dev.product).arg(dev.manufacturer).arg(dev.serial);
-                hid_set_nonblocking(dev.handle, 1);
+                qInfo(logUsbControl()) << QString("Connected to device: %0 from %1 S/N %2").arg(dev->product).arg(dev->manufacturer).arg(dev->serial);
+                hid_set_nonblocking(dev->handle, 1);
                 devicesConnected++;
-                dev.connected=true;
+                dev->connected=true;
 
                 locker.unlock(); // Unlock the mutex so other devices can use it
 
-                if (dev.type.model == RC28)
+                if (dev->type.model == RC28)
                 {
                     ledControl(false, 0);
                     ledControl(false, 1);
                     ledControl(false, 2);
                     ledControl(true, 3);
                 }
-                else if (dev.type.model == QuickKeys)
+                else if (dev->type.model == QuickKeys)
                 {
-                    sendRequest(&dev,usbFeatureType::featureEventsA);
-                    sendRequest(&dev,usbFeatureType::featureEventsB);
+                    sendRequest(dev,usbFeatureType::featureEventsA);
+                    sendRequest(dev,usbFeatureType::featureEventsB);
                 }
 
-                sendRequest(&dev,usbFeatureType::featureSerial);
-                sendRequest(&dev,usbFeatureType::featureFirmware);
-                sendRequest(&dev,usbFeatureType::featureResetKeys);
-                //sendRequest(&dev,usbFeatureType::featureReset);
-                sendRequest(&dev,usbFeatureType::featureOverlay,5,"Hello from wfview");
+                sendRequest(dev,usbFeatureType::featureSerial);
+                sendRequest(dev,usbFeatureType::featureFirmware);
+                sendRequest(dev,usbFeatureType::featureResetKeys);
+                sendRequest(dev,usbFeatureType::featureOverlay,5,"Hello from wfview");
                 locker.relock(); // Take the mutex back.
             }
-            else if (!dev.uiCreated)
+            else if (!dev->uiCreated)
             {
                 // This should only get displayed once if we fail to connect to a device
                 qInfo(logUsbControl()) << QString("Error connecting to  %0: %1")
-                                          .arg(dev.product)
-                                          .arg(QString::fromWCharArray(hid_error(dev.handle)));
+                                          .arg(dev->product)
+                                          .arg(QString::fromWCharArray(hid_error(dev->handle)));
             }
             
-            if (!dev.uiCreated)
+            if (!dev->uiCreated)
             {
-                for (int i=0;i<dev.type.knobs;i++)
+                for (int i=0;i<dev->type.knobs;i++)
                 {
-                    dev.knobValues.append(KNOBVALUE());
+                    dev->knobValues.append(KNOBVALUE());
                 }
 
                 // Find our defaults/knobs/buttons for this controller:
                 // First see if we have any stored and add them to the list if not.
                 
-                auto bti = std::find_if(buttonList->begin(), buttonList->end(), [dev](const BUTTON& b)
-                { return (b.path == dev.path); });
-                if (bti == buttonList->end())
+                if (dev->type.buttons > 0)
                 {
-                    // List doesn't contain any buttons for this device so add all existing buttons to the end of buttonList
-                    qInfo(logUsbControl()) << "No stored buttons found, loading defaults";
-                    for (auto but=defaultButtons.begin();but!=defaultButtons.end();but++)
+                    auto bti = std::find_if(buttonList->begin(), buttonList->end(), [dev](const BUTTON& b)
+                    { return (b.path == dev->path); });
+                    if (bti == buttonList->end())
                     {
-                        if (but->dev == dev.type.model)
+                        // List doesn't contain any buttons for this device so add all existing buttons to the end of buttonList
+                        qInfo(logUsbControl()) << "No stored buttons found, loading defaults";
+                        for (auto but=defaultButtons.begin();but!=defaultButtons.end();but++)
                         {
-                            but->path = dev.path;
-                            buttonList->append(BUTTON(*but));
+                            if (but->dev == dev->type.model)
+                            {
+                                but->path = dev->path;
+                                buttonList->append(BUTTON(*but));
+                            }
                         }
+                    } else {
+                        qInfo(logUsbControl()) << "Found stored buttons for this device, loading.";
                     }
-                } else {
-                    qInfo(logUsbControl()) << "Found buttons for this device, loading.";
-                }
 
-                // We need to set the parent device for all buttons belonging to this device!
-                for (auto but = buttonList->begin(); but != buttonList->end(); but++)
-                {
-                    if (but->path == dev.path)
+                    // We need to set the parent device for all buttons belonging to this device!
+                    for (auto but = buttonList->begin(); but != buttonList->end(); but++)
                     {
-                        auto bon = std::find_if(commands.begin(), commands.end(), [but](const COMMAND& c) { return (c.text == but->on); });
-                        if (bon != commands.end())
-                            but->onCommand = new COMMAND(*bon);
-                        else
-                            qWarning(logUsbControl()) << "On Command" << but->on << "not found";
+                        if (but->path == dev->path)
+                        {
+                            auto bon = std::find_if(commands.begin(), commands.end(), [but](const COMMAND& c) { return (c.text == but->on); });
+                            if (bon != commands.end())
+                                but->onCommand = bon;
+                            else
+                                qWarning(logUsbControl()) << "On Command" << but->on << "not found";
 
-                        auto boff = std::find_if(commands.begin(), commands.end(), [but](const COMMAND& c) { return (c.text == but->off); });
-                        if (boff != commands.end())
-                            but->offCommand = new COMMAND(*boff);
-                        else
-                            qWarning(logUsbControl()) << "Off Command" << but->off << "not found";
+                            auto boff = std::find_if(commands.begin(), commands.end(), [but](const COMMAND& c) { return (c.text == but->off); });
+                            if (boff != commands.end())
+                                but->offCommand = boff;
+                            else
+                                qWarning(logUsbControl()) << "Off Command" << but->off << "not found";
 
-                        but->parent = &dev;
-                    }
-                }
-
-                
-                auto kbi = std::find_if(knobList->begin(), knobList->end(), [dev](const KNOB& k)
-                { return (k.path == dev.path); });
-                if (kbi == knobList->end())
-                {
-                    qInfo(logUsbControl()) << "No stored knobs found, loading defaults";
-                    for (auto kb = defaultKnobs.begin();kb != defaultKnobs.end(); kb++)
-                    {
-                        if (kb->dev == dev.type.model) {
-                            kb->path = dev.path;
-                            knobList->append(KNOB(*kb));
+                            but->parent = dev;
                         }
                     }
                 }
 
-                for (auto kb = knobList->begin(); kb != knobList->end(); kb++)
+                if (dev->type.knobs > 0)
                 {
-                    if (kb->path == dev.path)
+                    auto kbi = std::find_if(knobList->begin(), knobList->end(), [dev](const KNOB& k)
+                    { return (k.path == dev->path); });
+                    if (kbi == knobList->end())
                     {
-                        auto k = std::find_if(commands.begin(), commands.end(), [kb](const COMMAND& c) { return (c.text == kb->cmd); });
-                        if (k != commands.end())
-                            kb->command = new COMMAND(*k);
-                        else
-                            qWarning(logUsbControl()) << "Knob Command" << kb->cmd << "not found";
+                        qInfo(logUsbControl()) << "No stored knobs found, loading defaults";
+                        for (auto kb = defaultKnobs.begin();kb != defaultKnobs.end(); kb++)
+                        {
+                            if (kb->dev == dev->type.model) {
+                                kb->path = dev->path;
+                                knobList->append(KNOB(*kb));
+                            }
+                        }
+                    } else {
+                        qInfo(logUsbControl()) << "Found stored knobs for this device, loading.";
+                    }
 
-                        kb->parent = &dev;
-                        if (kb->page == 1)
-                            dev.knobValues[kb->num].name = kb->cmd;
+                    for (auto kb = knobList->begin(); kb != knobList->end(); kb++)
+                    {
+                        if (kb->path == dev->path)
+                        {
+                            auto k = std::find_if(commands.begin(), commands.end(), [kb](const COMMAND& c) { return (c.text == kb->cmd); });
+                            if (k != commands.end())
+                                kb->command = k;
+                            else
+                                qWarning(logUsbControl()) << "Knob Command" << kb->cmd << "not found";
+
+                            kb->parent = dev;
+                            if (kb->page == 1)
+                                dev->knobValues[kb->num].name = kb->cmd;
+                        }
                     }
                 }
-
                 // Let the UI know we have a new controller
-                emit newDevice(&dev, &(*controllers)[dev.path],buttonList, knobList, &commands, mutex);
+                emit newDevice(dev);
 
+            } else {
+                emit setConnected(dev);
             }
         }
-        else if (dev.uiCreated)
+        else if (dev->uiCreated)
         {
-            emit setConnected(&dev);
+            emit setConnected(dev);
         }
     }
     
@@ -474,33 +502,39 @@ void usbController::run()
 void usbController::runTimer()
 {
     QMutexLocker locker(mutex);
-    
-    for (USBDEVICE &dev: usbDevices)
+
+    for (auto devIt = devices->begin(); devIt != devices->end(); devIt++)
     {
-        if (dev.disabled || !dev.connected || !dev.handle) {
+        auto dev = &devIt.value();
+
+        if (dev->disabled || !dev->detected || !dev->connected || !dev->handle) {
+            // This device isn't currently connected.
             continue;
         }
-        
+
         int res=1;
         
         while (res > 0) {
             quint32 tempButtons = 0;
             QByteArray data(HIDDATALENGTH, 0x0);
-            res = hid_read(dev.handle, (unsigned char*)data.data(), HIDDATALENGTH);
+            res = hid_read(dev->handle, (unsigned char*)data.data(), HIDDATALENGTH);
             if (res < 0)
             {
-                qInfo(logUsbControl()) << "USB Device disconnected" << dev.product;
-                emit removeDevice(&dev);
-                hid_close(dev.handle);
-                dev.handle = NULL;
-                dev.connected = false;
-                dev.remove = true;
+                qInfo(logUsbControl()) << "USB Device disconnected" << dev->product;
+                hid_close(dev->handle);
+                dev->handle = NULL;
+                dev->detected = false;
+                dev->connected = false;
+                dev->detected = false;
+                dev->remove = true;
+                dev->uiCreated = false;
                 devicesConnected--;
+                emit removeDevice(dev);
                 QTimer::singleShot(250, this, SLOT(run())); // Cleanup
                 break;
             }
 
-            if (res == 5 && (dev.type.model == shuttleXpress || dev.type.model == shuttlePro2))
+            if (res == 5 && (dev->type.model == shuttleXpress || dev->type.model == shuttlePro2))
             {
                 tempButtons = ((quint8)data[4] << 8) | ((quint8)data[3] & 0xff);
                 unsigned char tempJogpos = (unsigned char)data[1];
@@ -525,18 +559,18 @@ void usbController::runTimer()
                     0000000000000001 = button0
                 */
 
-                if (tempJogpos == dev.jogpos + 1 || (tempJogpos == 0 && dev.jogpos == 0xff))
+                if (tempJogpos == dev->jogpos + 1 || (tempJogpos == 0 && dev->jogpos == 0xff))
                 {
-                    dev.knobValues[0].value++;
+                    dev->knobValues[0].value++;
                 }
-                else if (tempJogpos != dev.jogpos) {
-                    dev.knobValues[0].value--;
+                else if (tempJogpos != dev->jogpos) {
+                    dev->knobValues[0].value--;
                 }
 
-                dev.jogpos = tempJogpos;
-                dev.shutpos = tempShutpos;
+                dev->jogpos = tempJogpos;
+                dev->shutpos = tempShutpos;
             }
-            else if ((res > 31) && dev.type.model == RC28)
+            else if ((res > 31) && dev->type.model == RC28)
             {
                 // This is a response from the Icom RC28
                 if ((unsigned char)data[0] == 0x02) {
@@ -551,33 +585,33 @@ void usbController::runTimer()
                     {
                         if ((unsigned char)data[3] == 0x01)
                         {
-                            dev.knobValues[0].value = dev.knobValues[0].value + data[1];
+                            dev->knobValues[0].value = dev->knobValues[0].value + data[1];
                         }
                         else if ((unsigned char)data[3] == 0x02)
                         {
-                            dev.knobValues[0].value = dev.knobValues[0].value - data[1];
+                            dev->knobValues[0].value = dev->knobValues[0].value - data[1];
                         }
                     }
                 }
             }
-            else if (res > 15 && dev.type.model == eCoderPlus && (quint8)data[0] == 0xff) {
+            else if (res > 15 && dev->type.model == eCoderPlus && (quint8)data[0] == 0xff) {
                 tempButtons = ((quint8)data[3] << 16) | ((quint8)data[2] << 8) | ((quint8)data[1] & 0xff);
                 quint32 tempKnobs = ((quint8)data[16] << 24) | ((quint8)data[15] << 16) | ((quint8)data[14] << 8) | ((quint8)data[13]  & 0xff);
                 
-                for (unsigned char i = 0; i < dev.knobValues.size(); i++)
+                for (unsigned char i = 0; i < dev->knobValues.size(); i++)
                 {
-                    if (dev.knobs != tempKnobs) {
+                    if (dev->knobs != tempKnobs) {
                         // One of the knobs has moved
                         for (unsigned char i = 0; i < 4; i++) {
-                            if ((tempKnobs >> (i * 8) & 0xff) != (dev.knobs >> (i * 8) & 0xff)) {
-                                dev.knobValues[i].value = dev.knobValues[i].value + (qint8)((dev.knobs >> (i * 8)) & 0xff);
+                            if ((tempKnobs >> (i * 8) & 0xff) != (dev->knobs >> (i * 8) & 0xff)) {
+                                dev->knobValues[i].value = dev->knobValues[i].value + (qint8)((dev->knobs >> (i * 8)) & 0xff);
                             }
                         }
-                        dev.knobs = tempKnobs;
+                        dev->knobs = tempKnobs;
                     }
                 }
             }
-            else if (res > 5 && dev.type.model == QuickKeys && (quint8)data[0] == 0x02) {
+            else if (res > 5 && dev->type.model == QuickKeys && (quint8)data[0] == 0x02) {
 
                 if ((quint8)data[1] == 0xf0) {
                     
@@ -585,10 +619,10 @@ void usbController::runTimer()
                     tempButtons = (data[3] << 8) | (data[2] & 0xff);
 
                     if (data[7] & 0x01) {
-                        dev.knobValues[0].value++;
+                        dev->knobValues[0].value++;
                     }
                     else if (data[7] & 0x02) {
-                        dev.knobValues[0].value--;
+                        dev->knobValues[0].value--;
                     }
                     
                 }
@@ -600,18 +634,18 @@ void usbController::runTimer()
                 }
             }
             // Is it any model of StreamDeck?
-            else if (res>=dev.type.buttons && dev.type.model != usbNone)
+            else if (res>=dev->type.buttons && dev->type.model != usbNone)
             {
                 // Main buttons
                 if ((quint8)data[1] == 0x00)
                 {
-                    for (int i=dev.type.buttons-dev.type.knobs;i>0;i--) {
+                    for (int i=dev->type.buttons-dev->type.knobs;i>0;i--) {
                         tempButtons |= ((quint8)data[i+3] & 0x01) << (i-1);
                     }
                 }
 
                 // Knobs and secondary buttons
-                if (dev.type.model == StreamDeckPlus) {
+                if (dev->type.model == StreamDeckPlus) {
                     if ((quint8)data[1] == 0x03 && (quint8)data[2] == 0x05)
                     {
                         // Knob action!
@@ -619,16 +653,16 @@ void usbController::runTimer()
                         {
                         case 0x00:
                             // Knob button
-                            for (int i=dev.type.buttons;i>7;i--)
+                            for (int i=dev->type.buttons;i>7;i--)
                             {
                                 tempButtons |= ((quint8)data[i-4] & 0x01) << (i-1);
                             }
                             break;
                         case 0x01:
                             // Knob moved
-                            for (int i=0;i<dev.type.knobs;i++)
+                            for (int i=0;i<dev->type.knobs;i++)
                             {
-                                dev.knobValues[i].value += (qint8)data[i+5];
+                                dev->knobValues[i].value += (qint8)data[i+5];
                             }
                             break;
                         }
@@ -663,62 +697,62 @@ void usbController::runTimer()
 
             // Step through all buttons and emit ones that have been pressed.
             // Only do it if actual data has been received.
-            if (res > 0 && dev.buttons != tempButtons)
+            if (res > 0 && dev->buttons != tempButtons)
             {
                 qDebug(logUsbControl()) << "Got Buttons:" << QString::number(tempButtons,2);
                 // Step through all buttons and emit ones that have been pressed.
-                for (unsigned char i = 0; i <dev.type.buttons; i++)
+                for (unsigned char i = 0; i <dev->type.buttons; i++)
                 {
                     auto but = std::find_if(buttonList->begin(), buttonList->end(), [dev, i](const BUTTON& b)
-                    { return (b.path == dev.path && b.page == dev.currentPage && b.num == i); });
+                    { return (b.path == dev->path && b.page == dev->currentPage && b.num == i); });
                     if (but != buttonList->end()) {
-                        if ((!but->isOn) && ((tempButtons >> i & 1) && !(dev.buttons >> i & 1)))
+                        if ((!but->isOn) && ((tempButtons >> i & 1) && !(dev->buttons >> i & 1)))
                         {
                             qDebug(logUsbControl()) << QString("On Button event for button %0: %1").arg(but->num).arg(but->onCommand->text);
                             if (but->onCommand->command == cmdPageUp)
-                                emit changePage(&dev, dev.currentPage+1);
+                                emit changePage(dev, dev->currentPage+1);
                             else if (but->onCommand->command == cmdPageDown)
-                                emit changePage(&dev, dev.currentPage-1);
+                                emit changePage(dev, dev->currentPage-1);
                             else if (but->onCommand->command == cmdLCDSpectrum)
-                                (*controllers)[dev.path].lcd = cmdLCDSpectrum;
+                                dev->lcd = cmdLCDSpectrum;
                             else if (but->onCommand->command == cmdLCDWaterfall)
-                                (*controllers)[dev.path].lcd = cmdLCDWaterfall;
+                                dev->lcd = cmdLCDWaterfall;
                             else {
                                 emit button(but->onCommand);
                             }
                             // Change the button text to reflect the off Button
                             if (but->offCommand->index != 0) {
                                 locker.unlock();
-                                sendRequest(&dev,usbFeatureType::featureButton,i,but->offCommand->text,but->icon,&but->backgroundOff);
+                                sendRequest(dev,usbFeatureType::featureButton,i,but->offCommand->text,but->icon,&but->backgroundOff);
                                 locker.relock();
                             }
                             but->isOn=true;
                         }
-                        else if ((but->toggle && but->isOn) && ((tempButtons >> i & 1) && !(dev.buttons >> i & 1)))
+                        else if ((but->toggle && but->isOn) && ((tempButtons >> i & 1) && !(dev->buttons >> i & 1)))
                         {
                             qDebug(logUsbControl()) << QString("Off Button (toggle) event for button %0: %1").arg(but->num).arg(but->onCommand->text);
                             if (but->offCommand->command == cmdPageUp)
-                                emit changePage(&dev, dev.currentPage+1);
+                                emit changePage(dev, dev->currentPage+1);
                             else if (but->offCommand->command == cmdPageDown)
-                                emit changePage(&dev, dev.currentPage-1);
+                                emit changePage(dev, dev->currentPage-1);
                             else if (but->offCommand->command == cmdLCDSpectrum)
-                                (*controllers)[dev.path].lcd = cmdLCDSpectrum;
+                                dev->lcd = cmdLCDSpectrum;
                             else if (but->offCommand->command == cmdLCDWaterfall)
-                                (*controllers)[dev.path].lcd = cmdLCDWaterfall;
+                                dev->lcd = cmdLCDWaterfall;
                             else {
                                 emit button(but->offCommand);
                             }
                             locker.unlock();
-                            sendRequest(&dev,usbFeatureType::featureButton,i,but->onCommand->text,but->icon,&but->backgroundOn);
+                            sendRequest(dev,usbFeatureType::featureButton,i,but->onCommand->text,but->icon,&but->backgroundOn);
                             locker.relock();
                             but->isOn=false;
                         }
-                        else if ((!but->toggle && but->isOn) && ((dev.buttons >> i & 1) && !(tempButtons >> i & 1)))
+                        else if ((!but->toggle && but->isOn) && ((dev->buttons >> i & 1) && !(tempButtons >> i & 1)))
                         {
                             if (but->offCommand->command == cmdLCDSpectrum)
-                                (*controllers)[dev.path].lcd = cmdLCDSpectrum;
+                                dev->lcd = cmdLCDSpectrum;
                             else if (but->offCommand->command == cmdLCDWaterfall)
-                                (*controllers)[dev.path].lcd = cmdLCDWaterfall;
+                                dev->lcd = cmdLCDWaterfall;
                             else
                             {
                                 qDebug(logUsbControl()) << QString("Off Button event for button %0: %1").arg(but->num).arg(but->offCommand->text);
@@ -726,69 +760,69 @@ void usbController::runTimer()
                             }
                             // Change the button text to reflect the on Button
                             locker.unlock();
-                            sendRequest(&dev,usbFeatureType::featureButton,i,but->onCommand->text,but->icon,&but->backgroundOn);
+                            sendRequest(dev,usbFeatureType::featureButton,i,but->onCommand->text,but->icon,&but->backgroundOn);
                             locker.relock();
                             but->isOn=false;
                         }
                     }
                 }
-                dev.buttons = tempButtons;
+                dev->buttons = tempButtons;
             }
 
             // As the knobs can move very fast, only send every 100ms so the rig isn't overwhelmed
-            if (dev.lastusbController.msecsTo(QTime::currentTime()) >= 100 || dev.lastusbController > QTime::currentTime())
+            if (dev->lastusbController.msecsTo(QTime::currentTime()) >= 100 || dev->lastusbController > QTime::currentTime())
             {
-                if (dev.type.model == shuttleXpress || dev.type.model == shuttlePro2)
+                if (dev->type.model == shuttleXpress || dev->type.model == shuttlePro2)
                 {
-                    if (dev.shutpos > 0  && dev.shutpos < 0x08)
+                    if (dev->shutpos > 0  && dev->shutpos < 0x08)
                     {
-                        dev.shutMult = dev.shutpos;
-                        emit doShuttle(true, dev.shutMult);
-                        qDebug(logUsbControl()) << "Shuttle PLUS" << dev.shutMult;
+                        dev->shutMult = dev->shutpos;
+                        emit doShuttle(true, dev->shutMult);
+                        qDebug(logUsbControl()) << "Shuttle PLUS" << dev->shutMult;
                         
                     }
-                    else if (dev.shutpos > 0xEF) {
-                        dev.shutMult = abs(dev.shutpos - 0xff) + 1;
-                        emit doShuttle(false, dev.shutMult);
-                        qDebug(logUsbControl()) << "Shuttle MINUS" << dev.shutMult;
+                    else if (dev->shutpos > 0xEF) {
+                        dev->shutMult = abs(dev->shutpos - 0xff) + 1;
+                        emit doShuttle(false, dev->shutMult);
+                        qDebug(logUsbControl()) << "Shuttle MINUS" << dev->shutMult;
                     }
                 }
                 
-                for (unsigned char i = 0; i < dev.knobValues.size(); i++)
+                for (unsigned char i = 0; i < dev->knobValues.size(); i++)
                 {
                     auto kb = std::find_if(knobList->begin(), knobList->end(), [dev, i](const KNOB& k)
-                    { return (k.command && k.path == dev.path && k.page == dev.currentPage && k.num == i && dev.knobValues[i].value != dev.knobValues[i].previous); });
+                    { return (k.command && k.path == dev->path && k.page == dev->currentPage && k.num == i && dev->knobValues[i].value != dev->knobValues[i].previous); });
 
                     if (kb != knobList->end()) {
                         // sendCommand mustn't be deleted so we ensure it stays in-scope by declaring it private (we will only ever send one command).
                         sendCommand = *kb->command;
                         if (sendCommand.command != cmdSetFreq) {
-                            int tempVal = dev.knobValues[i].value * dev.sensitivity;
+                            int tempVal = dev->knobValues[i].value * dev->sensitivity;
                             tempVal = qMin(qMax(tempVal,0),255);
                             sendCommand.suffix = quint8(tempVal);
-                            dev.knobValues[i].value=tempVal/dev.sensitivity; // This ensures that dial can't go outside 0-255
+                            dev->knobValues[i].value=tempVal/dev->sensitivity; // This ensures that dial can't go outside 0-255
                             locker.unlock();
-                            dev.knobValues[i].name = kb->command->text;
-                            sendRequest(&dev,usbFeatureType::featureGraph,i,"");
+                            dev->knobValues[i].name = kb->command->text;
+                            sendRequest(dev,usbFeatureType::featureGraph,i,"");
                             locker.relock();
                         }
                         else
                         {
-                            sendCommand.value = dev.knobValues[i].value/dev.sensitivity;
+                            sendCommand.value = dev->knobValues[i].value/dev->sensitivity;
                         }
                         
                         emit button(&sendCommand);
 
                         if (sendCommand.command == cmdSetFreq) {
-                            dev.knobValues[i].value = 0;
+                            dev->knobValues[i].value = 0;
                         }
-                        dev.knobValues[i].previous=dev.knobValues[i].value;
+                        dev->knobValues[i].previous=dev->knobValues[i].value;
                     }
                 }
                 
-                dev.lastusbController = QTime::currentTime();
+                dev->lastusbController = QTime::currentTime();
             }
-            
+
         }
     }
     
@@ -801,18 +835,17 @@ void usbController::runTimer()
 void usbController::receivePTTStatus(bool on) {
     static QColor lastColour = currentColour;
     static bool ptt;
-    QMutexLocker locker(mutex);
 
-    for (USBDEVICE &dev: usbDevices) {
-        locker.unlock();
+    for (auto devIt = devices->begin(); devIt != devices->end(); devIt++)
+    {
+        auto dev = &devIt.value();
         if (on && !ptt) {
             lastColour = currentColour;
-            sendRequest(&dev,usbFeatureType::featureColor,0,QColor(255,0,0).name(QColor::HexArgb));
+            sendRequest(dev,usbFeatureType::featureColor,0,QColor(255,0,0).name(QColor::HexArgb));
         }
         else {
-            sendRequest(&dev,usbFeatureType::featureColor,0,lastColour.name(QColor::HexArgb));
+            sendRequest(dev,usbFeatureType::featureColor,0,lastColour.name(QColor::HexArgb));
         }
-        locker.relock();
     }
 
     ptt = on;
@@ -821,9 +854,10 @@ void usbController::receivePTTStatus(bool on) {
 void usbController::sendToLCD(QImage* img)
 {
 
-    for (USBDEVICE &dev: usbDevices)
+    for (auto devIt = devices->begin(); devIt != devices->end(); devIt++)
     {
-        sendRequest(&dev,usbFeatureType::featureLCD,0,"",img);
+        auto dev = &devIt.value();
+        sendRequest(dev,usbFeatureType::featureLCD,0,"",img);
     }
 }
 
@@ -838,8 +872,10 @@ void usbController::ledControl(bool on, unsigned char num)
     
     QMutexLocker locker(mutex);
 
-    for (USBDEVICE &dev: usbDevices) {
-        if (dev.connected && dev.type.model == RC28) {
+    for (auto devIt = devices->begin(); devIt != devices->end(); devIt++)
+    {
+        auto dev = &devIt.value();
+        if (dev->connected && dev->type.model == RC28) {
             QByteArray data(3, 0x0);
             data[1] = 0x01;
             static unsigned char ledNum = 0x07;
@@ -850,10 +886,10 @@ void usbController::ledControl(bool on, unsigned char num)
             
             data[2] = ledNum;
             
-            int res = hid_write(dev.handle, (const unsigned char*)data.constData(), data.size());
+            int res = hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
             
             if (res < 0) {
-                qDebug(logUsbControl()) << "Unable to write(), Error:" << hid_error(dev.handle);
+                qDebug(logUsbControl()) << "Unable to write(), Error:" << hid_error(dev->handle);
                 return;
             }            
         }
@@ -883,7 +919,6 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
     if (feature == usbFeatureType::featureSensitivity)
     {
         dev->sensitivity=val;
-        (*controllers)[dev->path].sensitivity = val;
         return;
     }
 
@@ -920,12 +955,12 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
             data[2] = (qint8)0x0a;
             data[3] = (qint8)0x01;
             data[4] = val;
-            (*controllers)[dev->path].brightness = val;
+            dev->brightness = val;
             break;
         case usbFeatureType::featureOrientation:
             data[1] = (qint8)0xb1;
             data[2] = (qint8)val+1;
-            (*controllers)[dev->path].orientation = val;
+            dev->orientation = val;
             break;
         case usbFeatureType::featureSpeed:
             data[1] = (qint8)0xb4;
@@ -933,7 +968,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
             data[3] = (qint8)0x01;
             data[4] = (qint8)0x01;
             data[5] = val+1;
-            (*controllers)[dev->path].speed = val;
+            dev->speed = val;
             break;
         case usbFeatureType::featureColor: {
             QColor col;
@@ -946,7 +981,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
             data[8] = (qint8)col.blue();
             if (val) {
                currentColour = col;
-               (*controllers)[dev->path].color=currentColour;
+               dev->color=currentColour;
             }
             break;
         }
@@ -968,7 +1003,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
             data[2] = (qint8)0x08;
             data[3] = (qint8)0x01;
             data[4] = val;
-            (*controllers)[dev->path].timeout = val;
+            dev->timeout = val;
             break;
         default:
             // Command not supported by this device so return.
@@ -1044,17 +1079,10 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
                 data[2] = val*33; // Stream Deck brightness is in %
             }
             res = hid_send_feature_report(dev->handle, (const unsigned char*)data.constData(), data.size());
-            (*controllers)[dev->path].brightness = val;
+            dev->brightness = val;
             break;
         case usbFeatureType::featureSensitivity:
             dev->sensitivity=val;
-            (*controllers)[dev->path].sensitivity = val;
-            break;
-        case usbFeatureType::featureColor:
-            if (val) {
-                currentColour.setNamedColor(text);
-                (*controllers)[dev->path].color=currentColour;
-            }
             break;
         case usbFeatureType::featureGraph:
         {
@@ -1064,11 +1092,11 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
                 image.fill(Qt::black);
                 QPainter paint(&image);
                 int x=qMin(190,(dev->knobValues[val].value * dev->sensitivity) * 190 / 255);
-                int perc=qMin(100,(dev->knobValues[val].value * dev->sensitivity) * 100 / 255);
-                paint.fillRect((200*val)+5,80,x,20, Qt::darkGreen);
+                paint.fillRect(5,5,x,20, Qt::darkGreen);
                 paint.setFont(QFont("times",10));
                 paint.setPen(Qt::white);
-                paint.drawText((200*val)+5,80,190,20, Qt::AlignCenter | Qt::AlignVCenter, QString("%0 %1%").arg(dev->knobValues[val].name).arg(perc));
+                int perc=qMin(100,(dev->knobValues[val].value * dev->sensitivity) * 100 / 255);
+                paint.drawText(5,5,190,20, Qt::AlignCenter | Qt::AlignVCenter, QString("%0 %1%").arg(dev->knobValues[val].name).arg(perc));
 
                 data2.clear();
                 QBuffer buffer(&data2);
@@ -1108,6 +1136,9 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
             break;
 
         }
+        case usbFeatureType::featureColor:
+            dev->color.setNamedColor(text);
+            // Fall through
         case usbFeatureType::featureOverlay:
         {
             if (dev->type.model == usbDeviceType::StreamDeckPlus)
@@ -1116,11 +1147,11 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
                 QPainter paint(&image);
                 if (val) {
                     paint.setFont(QFont("times",16));
-                    paint.fillRect(image.rect(), (*controllers)[dev->path].color);
+                    paint.fillRect(image.rect(), dev->color);
                     paint.drawText(image.rect(),Qt::AlignCenter | Qt::AlignVCenter, text);
                     QTimer::singleShot(val*1000, this, [=]() { sendRequest(dev,usbFeatureType::featureOverlay); });
                 } else {
-                    paint.fillRect(image.rect(), (*controllers)[dev->path].color);
+                    paint.fillRect(image.rect(), dev->color);
                 }
                 QBuffer buffer(&data2);
                 image.save(&buffer, "JPG");
@@ -1196,7 +1227,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
                     if (color != Q_NULLPTR)
                         butImage.fill(*color);
                     else
-                        butImage.fill((*controllers)[dev->path].color);
+                        butImage.fill(dev->color);
 
                     QPainter butPaint(&butImage);
 
@@ -1294,8 +1325,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 v
 void usbController::programDisable(USBDEVICE* dev, bool disabled)
 {
     dev->disabled = disabled;
-    (*controllers)[dev->path].disabled = disabled;
-    
+
     if (disabled)
     {
         // Disconnect the device:
@@ -1303,16 +1333,20 @@ void usbController::programDisable(USBDEVICE* dev, bool disabled)
             qInfo(logUsbControl()) << "Disconnecting device:" << dev->product;
             sendRequest(dev,usbFeatureType::featureOverlay,60,"Goodbye from wfview");
 
-            QMutexLocker locker(mutex);
-
             if (dev->type.model == RC28) {
                 ledControl(false, 3);
             }
+
+            QMutexLocker locker(mutex);
+
             hid_close(dev->handle);
             dev->connected=false;
             dev->handle=NULL;
         }
+    } else {
+        qInfo(logUsbControl()) << "Enabling device:" << dev->product;
     }
+    QTimer::singleShot(250, this, SLOT(run())); // Call run disconnect/reconnect after 250ms
 }
 
 
@@ -1584,22 +1618,25 @@ void usbController::loadCommands()
     commands.clear();
     int num = 0;
     // Important commands at the top!
-    commands.append(COMMAND(num++, "None", commandButton, cmdNone, 0x0));
-    commands.append(COMMAND(num++, "PTT On", commandButton, cmdSetPTT, 0x1));
-    commands.append(COMMAND(num++, "PTT Off", commandButton, cmdSetPTT, 0x0));
-    commands.append(COMMAND(num++, "PTT Toggle", commandButton, cmdPTTToggle, 0x0));
-    commands.append(COMMAND(num++, "VFOA", commandKnob, cmdSetFreq, 0x0));
-    commands.append(COMMAND(num++, "VFOB", commandKnob, cmdSetFreq, 0x1));
-    commands.append(COMMAND(num++, "Span/Step", commandKnob, cmdSeparator, 0x0));
-    commands.append(COMMAND(num++, "Tune", commandButton, cmdStartATU, 0x0));
-    commands.append(COMMAND(num++, "Span/Step", commandButton, cmdSeparator, 0x0));
-    commands.append(COMMAND(num++, "Step+", commandButton, cmdSetStepUp, 0x0));
-    commands.append(COMMAND(num++, "Step-", commandButton, cmdSetStepDown, 0x0));
-    commands.append(COMMAND(num++, "Span+", commandButton, cmdSetSpanUp, 0x0));
-    commands.append(COMMAND(num++, "Span-", commandButton, cmdSetSpanDown, 0x0));
-    commands.append(COMMAND(num++, "Modes", commandButton, cmdSeparator, 0x0));
-    commands.append(COMMAND(num++, "Mode+", commandButton, cmdSetModeUp, 0x0));
-    commands.append(COMMAND(num++, "Mode-", commandButton, cmdSetModeDown, 0x0));
+    commands.append(COMMAND(num++, "None", commandAny, cmdNone, (quint8)0x0));
+    commands.append(COMMAND(num++, "PTT On", commandButton, cmdSetPTT, (quint8)0x1));
+    commands.append(COMMAND(num++, "PTT Off", commandButton, cmdSetPTT, (quint8)0x0));
+    commands.append(COMMAND(num++, "Freq Down", commandButton, cmdSetFreq, (int)-1));
+    commands.append(COMMAND(num++, "Freq Up", commandButton, cmdSetFreq, (int)1));
+    commands.append(COMMAND(num++, "PTT Off", commandButton, cmdSetPTT, (quint8)0x0));
+    commands.append(COMMAND(num++, "PTT Toggle", commandButton, cmdPTTToggle, (quint8)0x0));
+    commands.append(COMMAND(num++, "VFOA", commandKnob, cmdSetFreq, (quint8)0x0));
+    commands.append(COMMAND(num++, "VFOB", commandKnob, cmdSetFreq, (quint8)0x1));
+    commands.append(COMMAND(num++, "Span/Step", commandKnob, cmdSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "Tune", commandButton, cmdStartATU, (quint8)0x0));
+    commands.append(COMMAND(num++, "Span/Step", commandButton, cmdSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "Step+", commandButton, cmdSetStepUp, (quint8)0x0));
+    commands.append(COMMAND(num++, "Step-", commandButton, cmdSetStepDown, (quint8)0x0));
+    commands.append(COMMAND(num++, "Span+", commandButton, cmdSetSpanUp, (quint8)0x0));
+    commands.append(COMMAND(num++, "Span-", commandButton, cmdSetSpanDown, (quint8)0x0));
+    commands.append(COMMAND(num++, "Modes", commandButton, cmdSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "Mode+", commandButton, cmdSetModeUp, (quint8)0x0));
+    commands.append(COMMAND(num++, "Mode-", commandButton, cmdSetModeDown, (quint8)0x0));
     commands.append(COMMAND(num++, "Mode LSB", commandButton, cmdSetMode, modeLSB));
     commands.append(COMMAND(num++, "Mode USB", commandButton, cmdSetMode, modeUSB));
     commands.append(COMMAND(num++, "Mode LSBD", commandButton, cmdSetMode, modeLSB_D));
@@ -1614,9 +1651,9 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Mode PSKR", commandButton, cmdSetMode, modePSK_R));
     commands.append(COMMAND(num++, "Mode DV", commandButton, cmdSetMode, modeDV));
     commands.append(COMMAND(num++, "Mode DD", commandButton, cmdSetMode, modeDD));
-    commands.append(COMMAND(num++, "Bands", commandButton, cmdSeparator, 0x0));
-    commands.append(COMMAND(num++, "Band+", commandButton, cmdSetBandUp, 0x0));
-    commands.append(COMMAND(num++, "Band-", commandButton, cmdSetBandDown, 0x0));
+    commands.append(COMMAND(num++, "Bands", commandButton, cmdSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "Band+", commandButton, cmdSetBandUp, (quint8)0x0));
+    commands.append(COMMAND(num++, "Band-", commandButton, cmdSetBandDown, (quint8)0x0));
     commands.append(COMMAND(num++, "Band 23cm", commandButton, cmdGetBandStackReg, band23cm));
     commands.append(COMMAND(num++, "Band 70cm", commandButton, cmdGetBandStackReg, band70cm));
     commands.append(COMMAND(num++, "Band 2m", commandButton, cmdGetBandStackReg, band2m));
@@ -1637,47 +1674,47 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Band 630m", commandButton, cmdGetBandStackReg, band630m));
     commands.append(COMMAND(num++, "Band 2200m", commandButton, cmdGetBandStackReg, band2200m));
     commands.append(COMMAND(num++, "Band GEN", commandButton, cmdGetBandStackReg, bandGen));
-    commands.append(COMMAND(num++, "NB/NR", commandButton, cmdSeparator, 0x0));
-    commands.append(COMMAND(num++, "NR On", commandButton, cmdSetNR, 0x01));
-    commands.append(COMMAND(num++, "NR Off", commandButton, cmdSetNR, 0x0));
-    commands.append(COMMAND(num++, "NB On", commandButton, cmdSetNB, 0x01));
-    commands.append(COMMAND(num++, "NB Off", commandButton, cmdSetNB, 0x0));
-    commands.append(COMMAND(num++, "Moni On", commandButton, cmdSetMonitor, 0x01));
-    commands.append(COMMAND(num++, "Moni Off", commandButton, cmdSetMonitor, 0x0));
-    commands.append(COMMAND(num++, "Comp On", commandButton, cmdSetComp, 0x01));
-    commands.append(COMMAND(num++, "Comp Off", commandButton, cmdSetComp, 0x0));
-    commands.append(COMMAND(num++, "Vox On", commandButton, cmdSetVox, 0x01));
-    commands.append(COMMAND(num++, "Vox Off", commandButton, cmdSetVox, 0x0));
-    commands.append(COMMAND(num++, "Split", commandButton, cmdNone, 0x0));
-    commands.append(COMMAND(num++, "Split On", commandButton, cmdSetQuickSplit, 0x01));
-    commands.append(COMMAND(num++, "Split Off", commandButton, cmdSetQuickSplit, 0x0));
-    commands.append(COMMAND(num++, "Swap VFO", commandButton, cmdVFOSwap, 0x0));
-    commands.append(COMMAND(num++, "Scope", commandButton, cmdNone, 0x0));
-    commands.append(COMMAND(num++, "Spectrum", commandButton, cmdLCDSpectrum, 0x0));
-    commands.append(COMMAND(num++, "Waterfall", commandButton, cmdLCDWaterfall, 0x0));
-    commands.append(COMMAND(num++, "Pages", commandButton, cmdSeparator, 0x0));
-    commands.append(COMMAND(num++, "Page Down", commandButton, cmdPageDown, 0x0));
-    commands.append(COMMAND(num++, "Page Up", commandButton, cmdPageUp, 0x0));
+    commands.append(COMMAND(num++, "NB/NR", commandButton, cmdSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "NR On", commandButton, cmdSetNR, (quint8)0x01));
+    commands.append(COMMAND(num++, "NR Off", commandButton, cmdSetNR, (quint8)0x0));
+    commands.append(COMMAND(num++, "NB On", commandButton, cmdSetNB, (quint8)0x01));
+    commands.append(COMMAND(num++, "NB Off", commandButton, cmdSetNB, (quint8)0x0));
+    commands.append(COMMAND(num++, "Moni On", commandButton, cmdSetMonitor, (quint8)0x01));
+    commands.append(COMMAND(num++, "Moni Off", commandButton, cmdSetMonitor, (quint8)0x0));
+    commands.append(COMMAND(num++, "Comp On", commandButton, cmdSetComp, (quint8)0x01));
+    commands.append(COMMAND(num++, "Comp Off", commandButton, cmdSetComp, (quint8)0x0));
+    commands.append(COMMAND(num++, "Vox On", commandButton, cmdSetVox, (quint8)0x01));
+    commands.append(COMMAND(num++, "Vox Off", commandButton, cmdSetVox, (quint8)0x0));
+    commands.append(COMMAND(num++, "Split", commandButton, cmdNone, (quint8)0x0));
+    commands.append(COMMAND(num++, "Split On", commandButton, cmdSetQuickSplit, (quint8)0x01));
+    commands.append(COMMAND(num++, "Split Off", commandButton, cmdSetQuickSplit, (quint8)0x0));
+    commands.append(COMMAND(num++, "Swap VFO", commandButton, cmdVFOSwap, (quint8)0x0));
+    commands.append(COMMAND(num++, "Scope", commandButton, cmdNone, (quint8)0x0));
+    commands.append(COMMAND(num++, "Spectrum", commandButton, cmdLCDSpectrum, (quint8)0x0));
+    commands.append(COMMAND(num++, "Waterfall", commandButton, cmdLCDWaterfall, (quint8)0x0));
+    commands.append(COMMAND(num++, "Pages", commandButton, cmdSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "Page Down", commandButton, cmdPageDown, (quint8)0x0));
+    commands.append(COMMAND(num++, "Page Up", commandButton, cmdPageUp, (quint8)0x0));
 
-    commands.append(COMMAND(num++, "AF Gain", commandKnob, cmdSetAfGain, cmdGetAfGain, 0xff));
-    commands.append(COMMAND(num++, "RF Gain", commandKnob, cmdSetRxRfGain, cmdGetRxGain,  0xff));
-    commands.append(COMMAND(num++, "TX Power", commandKnob, cmdSetTxPower, cmdGetTxPower, 0xff));
-    commands.append(COMMAND(num++, "Mic Gain", commandKnob, cmdSetMicGain, cmdGetMicGain, 0xff));
-    commands.append(COMMAND(num++, "Mod Level", commandKnob, cmdSetModLevel, cmdNone, 0xff));
-    commands.append(COMMAND(num++, "Squelch", commandKnob, cmdSetSql, cmdGetSql, 0xff));
-    commands.append(COMMAND(num++, "Monitor", commandKnob, cmdSetMonitorGain, cmdGetMonitorGain, 0xff));
-    commands.append(COMMAND(num++, "Compressor", commandKnob, cmdSetCompLevel, cmdGetCompLevel, 0xff));
-    commands.append(COMMAND(num++, "Vox Level", commandKnob, cmdSetVoxGain, cmdGetVoxGain, 0xff));
-    commands.append(COMMAND(num++, "Anti-Vox", commandKnob, cmdSetAntiVoxGain, cmdGetAntiVoxGain, 0xff));
-    commands.append(COMMAND(num++, "NB Level", commandKnob, cmdSetNBLevel, cmdGetNBLevel, 0xff));
-    commands.append(COMMAND(num++, "NR Level", commandKnob, cmdSetNRLevel, cmdGetNRLevel, 0xff));
-    commands.append(COMMAND(num++, "Span/Step", commandKnob, cmdSeparator, 0x0));
-    commands.append(COMMAND(num++, "IF Shift", commandKnob, cmdSetIFShift, cmdGetIFShift, 0xff));
-    commands.append(COMMAND(num++, "In PBT", commandKnob, cmdSetTPBFInner, cmdGetTPBFInner, 0xff));
-    commands.append(COMMAND(num++, "Out PBT", commandKnob, cmdSetTPBFOuter, cmdGetTPBFOuter, 0xff));
-    commands.append(COMMAND(num++, "Span/Step", commandKnob, cmdSeparator, 0x0));
-    commands.append(COMMAND(num++, "CW Pitch", commandKnob, cmdSetCwPitch, cmdGetCwPitch, 0xff));
-    commands.append(COMMAND(num++, "CW Speed", commandKnob, cmdSetKeySpeed, cmdGetKeySpeed, 0xff));
+    commands.append(COMMAND(num++, "AF Gain", commandKnob, cmdSetAfGain, cmdGetAfGain, (quint8)0xff));
+    commands.append(COMMAND(num++, "RF Gain", commandKnob, cmdSetRxRfGain, cmdGetRxGain,  (quint8)0xff));
+    commands.append(COMMAND(num++, "TX Power", commandKnob, cmdSetTxPower, cmdGetTxPower, (quint8)0xff));
+    commands.append(COMMAND(num++, "Mic Gain", commandKnob, cmdSetMicGain, cmdGetMicGain, (quint8)0xff));
+    commands.append(COMMAND(num++, "Mod Level", commandKnob, cmdSetModLevel, cmdNone, (quint8)0xff));
+    commands.append(COMMAND(num++, "Squelch", commandKnob, cmdSetSql, cmdGetSql, (quint8)0xff));
+    commands.append(COMMAND(num++, "Monitor", commandKnob, cmdSetMonitorGain, cmdGetMonitorGain, (quint8)0xff));
+    commands.append(COMMAND(num++, "Compressor", commandKnob, cmdSetCompLevel, cmdGetCompLevel, (quint8)0xff));
+    commands.append(COMMAND(num++, "Vox Level", commandKnob, cmdSetVoxGain, cmdGetVoxGain, (quint8)0xff));
+    commands.append(COMMAND(num++, "Anti-Vox", commandKnob, cmdSetAntiVoxGain, cmdGetAntiVoxGain, (quint8)0xff));
+    commands.append(COMMAND(num++, "NB Level", commandKnob, cmdSetNBLevel, cmdGetNBLevel, (quint8)0xff));
+    commands.append(COMMAND(num++, "NR Level", commandKnob, cmdSetNRLevel, cmdGetNRLevel, (quint8)0xff));
+    commands.append(COMMAND(num++, "Span/Step", commandKnob, cmdSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "IF Shift", commandKnob, cmdSetIFShift, cmdGetIFShift, (quint8)0xff));
+    commands.append(COMMAND(num++, "In PBT", commandKnob, cmdSetTPBFInner, cmdGetTPBFInner, (quint8)0xff));
+    commands.append(COMMAND(num++, "Out PBT", commandKnob, cmdSetTPBFOuter, cmdGetTPBFOuter, (quint8)0xff));
+    commands.append(COMMAND(num++, "Span/Step", commandKnob, cmdSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "CW Pitch", commandKnob, cmdSetCwPitch, cmdGetCwPitch, (quint8)0xff));
+    commands.append(COMMAND(num++, "CW Speed", commandKnob, cmdSetKeySpeed, cmdGetKeySpeed, (quint8)0xff));
 }
 
 
@@ -1688,33 +1725,11 @@ void usbController::programPages(USBDEVICE* dev, int val)
     if (dev->pages > val) {
         qInfo(logUsbControl()) << "Removing unused pages from " << dev->product;
         // Remove unneded pages
-#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-        auto bt = buttonList->begin();
-        while (bt != buttonList->end())
-        {
-            if (bt->devicePath == dev->path && bt->page > val) {
-                delete bt->onCommand;
-                delete bt->offCommand;
-                bt = buttonList->erase(bt);
-            }
-            else
-                ++bt;
-        }
-        auto kb = knobList->begin();
-        while (kb != knobList->end())
-        {
-            if (kb->devicePath == dev->path && kb->page > val) {
-                delete kb->command;
-                kb = knobList->erase(kb);
-            } else
-                ++kb;
-        }
-#else
+
         buttonList->erase(std::remove_if(buttonList->begin(), buttonList->end(), [val](auto bt) {
             return (bt.page>val); }),buttonList->end());
         knobList->erase(std::remove_if(knobList->begin(), knobList->end(), [val](auto kb) {
             return (kb.page>val); }),knobList->end());
-#endif
     }
     else if (dev->pages < val)
     {
@@ -1755,7 +1770,6 @@ void usbController::programPages(USBDEVICE* dev, int val)
         }
     }
     dev->pages = val;
-    (*controllers)[dev->path].pages = val;
 }
 
 
@@ -1813,8 +1827,10 @@ void usbController::receiveLevel(cmds cmd, unsigned char level)
     // Update knob if relevant, step through all devices
     QMutexLocker locker(mutex);
 
-    for (auto dev = usbDevices.begin(); dev != usbDevices.end(); dev++)
+    for (auto devIt = devices->begin(); devIt != devices->end(); devIt++)
     {
+        auto dev = &devIt.value();
+
         auto kb = std::find_if(knobList->begin(), knobList->end(), [dev, cmd](const KNOB& k)
         { return (k.command && dev->connected && k.path == dev->path && k.page == dev->currentPage && k.command->getCommand == cmd);});
         if (kb != knobList->end() && kb->num < dev->knobValues.size()) {
@@ -1823,6 +1839,7 @@ void usbController::receiveLevel(cmds cmd, unsigned char level)
             dev->knobValues[kb->num].value = level/dev->sensitivity;
             dev->knobValues[kb->num].previous = level/dev->sensitivity;
         }
+        ++devIt;
     }
 }
 
@@ -1831,104 +1848,127 @@ void usbController::backupController(QString file, QString path)
     QSettings settings = QSettings(file, QSettings::Format::IniFormat);
 
     qInfo(logUsbControl()) << "Backup of" << path << "to" << file;
+
+    settings.setValue("Version", QString(WFVIEW_VERSION));
     settings.beginGroup("Controller");
     QMutexLocker locker(mutex);
 
-    CONTROLLER cntrl = (*controllers)[path];
-    settings.setValue("Disabled", cntrl.disabled);
-    settings.setValue("Sensitivity", cntrl.sensitivity);
-    settings.setValue("Brightness", cntrl.brightness);
-    settings.setValue("Orientation", cntrl.orientation);
-    settings.setValue("Speed", cntrl.speed);
-    settings.setValue("Timeout", cntrl.timeout);
-    settings.setValue("Pages", cntrl.pages);
-    settings.setValue("Color", cntrl.color.name(QColor::HexArgb));
-    settings.setValue("LCD", cntrl.lcd);
-
-    int n=0;
-    settings.beginWriteArray("Buttons");
-    for (auto b = buttonList->begin(); b != buttonList->end(); b++)
+    auto devIt = devices->find(file);
+    if (devIt==devices->end())
     {
-        if (b->path == path)
+        qWarning(logUsbControl) << "Cannot find existing device in backupController(), aborting!";
+        return;
+    }
+    else
+    {
+        auto dev = &devIt.value();
+        settings.setValue("Model",dev->product);
+        settings.setValue("Disabled", dev->disabled);
+        settings.setValue("Sensitivity", dev->sensitivity);
+        settings.setValue("Brightness", dev->brightness);
+        settings.setValue("Orientation", dev->orientation);
+        settings.setValue("Speed", dev->speed);
+        settings.setValue("Timeout", dev->timeout);
+        settings.setValue("Pages", dev->pages);
+        settings.setValue("Color", dev->color.name(QColor::HexArgb));
+        settings.setValue("LCD", dev->lcd);
+
+        int n=0;
+        settings.beginWriteArray("Buttons");
+        for (auto b = buttonList->begin(); b != buttonList->end(); b++)
         {
-            settings.setArrayIndex(n);
-            settings.setValue("Page", b->page);
-            settings.setValue("Dev", b->dev);
-            settings.setValue("Num", b->num);
-            settings.setValue("Name", b->name);
-            settings.setValue("Left", b->pos.left());
-            settings.setValue("Top", b->pos.top());
-            settings.setValue("Width", b->pos.width());
-            settings.setValue("Height", b->pos.height());
-            settings.setValue("Colour", b->textColour.name(QColor::HexArgb));
-            settings.setValue("BackgroundOn", b->backgroundOn.name(QColor::HexArgb));
-            settings.setValue("BackgroundOff", b->backgroundOff.name(QColor::HexArgb));
-            if (b->icon != Q_NULLPTR) {
-                settings.setValue("Icon", *b->icon);
-                settings.setValue("IconName", b->iconName);
+            if (b->path == path)
+            {
+                settings.setArrayIndex(n);
+                settings.setValue("Page", b->page);
+                settings.setValue("Dev", b->dev);
+                settings.setValue("Num", b->num);
+                settings.setValue("Name", b->name);
+                settings.setValue("Left", b->pos.left());
+                settings.setValue("Top", b->pos.top());
+                settings.setValue("Width", b->pos.width());
+                settings.setValue("Height", b->pos.height());
+                settings.setValue("Colour", b->textColour.name(QColor::HexArgb));
+                settings.setValue("BackgroundOn", b->backgroundOn.name(QColor::HexArgb));
+                settings.setValue("BackgroundOff", b->backgroundOff.name(QColor::HexArgb));
+                if (b->icon != Q_NULLPTR) {
+                    settings.setValue("Icon", *b->icon);
+                    settings.setValue("IconName", b->iconName);
+                }
+                settings.setValue("Toggle", b->toggle);
+
+                if (b->onCommand != Q_NULLPTR)
+                    settings.setValue("OnCommand", b->onCommand->text);
+                if (b->offCommand != Q_NULLPTR)
+                    settings.setValue("OffCommand", b->offCommand->text);
+                ++n;
             }
-            settings.setValue("Toggle", b->toggle);
-
-            if (b->onCommand != Q_NULLPTR)
-                settings.setValue("OnCommand", b->onCommand->text);
-            if (b->offCommand != Q_NULLPTR)
-                settings.setValue("OffCommand", b->offCommand->text);
-            ++n;
         }
-    }
-    settings.endArray();
+        settings.endArray();
 
-    n = 0;
-    settings.beginWriteArray("Knobs");
-    for (auto k = knobList->begin(); k != knobList->end(); k++)
-    {
-        if (k->path == path)
+        n = 0;
+        settings.beginWriteArray("Knobs");
+        for (auto k = knobList->begin(); k != knobList->end(); k++)
         {
-            settings.setArrayIndex(n);
-            settings.setValue("Page", k->page);
-            settings.setValue("Dev", k->dev);
-            settings.setValue("Num", k->num);
-            settings.setValue("Left", k->pos.left());
-            settings.setValue("Top", k->pos.top());
-            settings.setValue("Width", k->pos.width());
-            settings.setValue("Height", k->pos.height());
-            settings.setValue("Colour", k->textColour.name());
-            if (k->command != Q_NULLPTR)
-                settings.setValue("Command", k->command->text);
-            ++n;
+            if (k->path == path)
+            {
+                settings.setArrayIndex(n);
+                settings.setValue("Page", k->page);
+                settings.setValue("Dev", k->dev);
+                settings.setValue("Num", k->num);
+                settings.setValue("Left", k->pos.left());
+                settings.setValue("Top", k->pos.top());
+                settings.setValue("Width", k->pos.width());
+                settings.setValue("Height", k->pos.height());
+                settings.setValue("Colour", k->textColour.name());
+                if (k->command != Q_NULLPTR)
+                    settings.setValue("Command", k->command->text);
+                ++n;
+            }
         }
-    }
 
-    settings.endArray();
-    settings.endGroup();
-    settings.sync();
+        settings.endArray();
+        settings.endGroup();
+        settings.sync();
+    }
 }
 
 void usbController::restoreController(QString file, QString path)
 {
-    CONTROLLER cntrl = (*controllers)[path];
-    USBDEVICE* dev = &usbDevices[path];
+
+    auto devIt = devices->find(path);
+    if (devIt==devices->end())
+    {
+        qWarning(logUsbControl) << "Cannot find existing device in restoreController(), aborting!";
+        return;
+    }
+
+    // If we are here, we have a valid device
+    auto dev = &devIt.value();
+
     QSettings settings = QSettings(file, QSettings::Format::IniFormat);
 
     qInfo(logUsbControl()) << "Restore of" << path << "from" << file;
     settings.beginGroup("Controller");
+
+    // Signal UI to remove existing device.
     emit removeDevice(dev);
 
     QMutexLocker locker(mutex);
 
-    // Remove buttons/knobs
+    dev->disabled = settings.value("Disabled", false).toBool();
+    dev->sensitivity = settings.value("Sensitivity", 1).toInt();
+    dev->pages = settings.value("Pages", 1).toInt();
+    dev->brightness = (quint8)settings.value("Brightness", 2).toInt();
+    dev->orientation = (quint8)settings.value("Orientation", 2).toInt();
+    dev->speed = (quint8)settings.value("Speed", 2).toInt();
+    dev->timeout = (quint8)settings.value("Timeout", 30).toInt();
+    dev->color.setNamedColor(settings.value("Color", QColor(Qt::white).name(QColor::HexArgb)).toString());
+    dev->lcd = (cmds)settings.value("LCD",0).toInt();
+
+    // Remove old buttons
     buttonList->erase(std::remove_if(buttonList->begin(), buttonList->end(), [path](const BUTTON& b)
         { return (b.path == path); }),buttonList->end());
-
-    cntrl.disabled = settings.value("Disabled", false).toBool();
-    cntrl.sensitivity = settings.value("Sensitivity", 1).toInt();
-    cntrl.pages = settings.value("Pages", 1).toInt();
-    cntrl.brightness = (quint8)settings.value("Brightness", 2).toInt();
-    cntrl.orientation = (quint8)settings.value("Orientation", 2).toInt();
-    cntrl.speed = (quint8)settings.value("Speed", 2).toInt();
-    cntrl.timeout = (quint8)settings.value("Timeout", 30).toInt();
-    cntrl.color.setNamedColor(settings.value("Color", QColor(Qt::white).name(QColor::HexArgb)).toString());
-    cntrl.lcd = (cmds)settings.value("LCD",0).toInt();
 
     int numButtons = settings.beginReadArray("Buttons");
     if (numButtons == 0) {
@@ -1964,6 +2004,8 @@ void usbController::restoreController(QString file, QString path)
         settings.endArray();
     }
 
+
+    // Remove old knobs
     knobList->erase(std::remove_if(knobList->begin(), knobList->end(), [path](const KNOB& k)
         { return (k.path == path); }),knobList->end());
 
@@ -1997,14 +2039,13 @@ void usbController::restoreController(QString file, QString path)
     settings.sync();
 
     qInfo(logUsbControl()) << "Disconnecting device" << dev->product;
-    emit removeDevice(dev);
     hid_close(dev->handle);
     dev->handle = NULL;
     dev->connected = false;
     dev->remove = true;
     dev->uiCreated = false;
     devicesConnected--;
-    QTimer::singleShot(250, this, SLOT(run()));
+    QTimer::singleShot(250, this, SLOT(run())); // Call run to cleanup connectons after 250ms
 }
 
 #endif

@@ -17,6 +17,9 @@ controllerSetup::controllerSetup(QWidget* parent) :
 
 controllerSetup::~controllerSetup()
 {
+    qInfo(logUsbControl()) << "Deleting controllerSetup() window";
+    delete noControllersText;
+    delete updateDialog;
     delete ui;
 }
 
@@ -32,17 +35,20 @@ void controllerSetup::on_tabWidget_currentChanged(int index)
         updateDialog->hide();
 }
 
-
-void controllerSetup::init()
+void controllerSetup::init(usbDevMap* dev, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut)
 {
+    // Store pointers to all current settings
+    devices = dev;
+    buttons = but;
+    knobs = kb;
+    commands = cmd;
+    mutex = mut;
 
     updateDialog = new QDialog(this);
     // Not sure if I like it Frameless or not?
     updateDialog->setWindowFlags(Qt::FramelessWindowHint | Qt::Dialog);
 
-    QGridLayout* udLayout = new QGridLayout;
-    updateDialog->setLayout(udLayout);
-    updateDialog->setBaseSize(1, 1);
+    QGridLayout* udLayout = new QGridLayout(updateDialog);
 
     onLabel = new QLabel("On");
     udLayout->addWidget(onLabel,0,0);
@@ -85,6 +91,30 @@ void controllerSetup::init()
 
     updateDialog->hide();
 
+    onEvent->clear();
+    offEvent->clear();
+    knobEvent->clear();
+
+    for (COMMAND& c : *commands) {
+        if (c.cmdType == commandButton || c.cmdType == commandAny) {
+            if (c.command == cmdSeparator) {
+                onEvent->insertSeparator(onEvent->count());
+                offEvent->insertSeparator(offEvent->count());
+
+            } else {
+                onEvent->addItem(c.text, c.index);
+                offEvent->addItem(c.text, c.index);
+            }
+        }
+        else if (c.cmdType == commandKnob || c.cmdType == commandAny) {
+            if (c.command == cmdSeparator) {
+                knobEvent->insertSeparator(knobEvent->count());
+            } else {
+                knobEvent->addItem(c.text, c.index);
+            }
+        }
+    }
+
     connect(offEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(offEventIndexChanged(int)));
     connect(onEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(onEventIndexChanged(int)));
     connect(knobEvent, SIGNAL(currentIndexChanged(int)), this, SLOT(knobEventIndexChanged(int)));
@@ -103,17 +133,18 @@ void controllerSetup::mousePressed(controllerScene* scene, QPoint p)
         
     QPoint gp = this->mapToGlobal(p);
 
+
     // Did the user click on a button?
-    auto b = std::find_if(buttons->begin(), buttons->end(), [p, this](BUTTON& b)
+    auto but = std::find_if(buttons->begin(), buttons->end(), [p, this](BUTTON& b)
     { return (b.parent != Q_NULLPTR && b.pos.contains(p) && b.page == b.parent->currentPage && ui->tabWidget->currentWidget()->objectName() == b.path ); });
 
-    if (b != buttons->end())
+    if (but != buttons->end())
     {
-        currentButton = b;
+        currentButton = but;
         currentKnob = Q_NULLPTR;
         qDebug() << "Button" << currentButton->num << "On Event" << currentButton->onCommand->text << "Off Event" << currentButton->offCommand->text;
 
-        updateDialog->setWindowTitle(QString("Update button %0").arg(b->num));
+        updateDialog->setWindowTitle(QString("Update button %0").arg(but->num));
 
         onEvent->blockSignals(true);
         onEvent->setCurrentIndex(onEvent->findData(currentButton->onCommand->index));
@@ -166,16 +197,16 @@ void controllerSetup::mousePressed(controllerScene* scene, QPoint p)
         updateDialog->raise();
     } else {
         // It wasn't a button so was it a knob?
-        auto k = std::find_if(knobs->begin(), knobs->end(), [p, this](KNOB& k)
+        auto kb = std::find_if(knobs->begin(), knobs->end(), [p, this](KNOB& k)
         { return (k.parent != Q_NULLPTR && k.pos.contains(p) && k.page == k.parent->currentPage && ui->tabWidget->currentWidget()->objectName() == k.path ); });
 
-        if (k != knobs->end())
+        if (kb != knobs->end())
         {
-            currentKnob = k;
+            currentKnob = kb;
             currentButton = Q_NULLPTR;
             qDebug() << "Knob" << currentKnob->num << "Event" << currentKnob->command->text;
 
-            updateDialog->setWindowTitle(QString("Update knob %0").arg(k->num));
+            updateDialog->setWindowTitle(QString("Update knob %0").arg(kb->num));
 
             knobEvent->blockSignals(true);
             knobEvent->setCurrentIndex(knobEvent->findData(currentKnob->command->index));
@@ -213,9 +244,7 @@ void controllerSetup::onEventIndexChanged(int index) {
     // If command is changed, delete current command and deep copy the new command
     if (currentButton != Q_NULLPTR && onEvent->currentData().toInt() < commands->size()) {
         QMutexLocker locker(mutex);
-        if (currentButton->onCommand)
-            delete currentButton->onCommand;
-        currentButton->onCommand = new COMMAND(commands->at(onEvent->currentData().toInt()));
+        currentButton->onCommand = &commands->at(onEvent->currentData().toInt());
         currentButton->onText->setPlainText(currentButton->onCommand->text);
         currentButton->onText->setPos(currentButton->pos.center().x() - currentButton->onText->boundingRect().width() / 2,
             (currentButton->pos.center().y() - currentButton->onText->boundingRect().height() / 2)-6);
@@ -230,9 +259,7 @@ void controllerSetup::offEventIndexChanged(int index) {
     // If command is changed, delete current command and deep copy the new command
     if (currentButton != Q_NULLPTR && offEvent->currentData().toInt() < commands->size()) {
         QMutexLocker locker(mutex);
-        if (currentButton->offCommand)
-            delete currentButton->offCommand;
-        currentButton->offCommand = new COMMAND(commands->at(offEvent->currentData().toInt()));
+        currentButton->offCommand = &commands->at(offEvent->currentData().toInt());
         currentButton->offText->setPlainText(currentButton->offCommand->text);
         currentButton->offText->setPos(currentButton->pos.center().x() - currentButton->offText->boundingRect().width() / 2,
             (currentButton->pos.center().y() - currentButton->offText->boundingRect().height() / 2)+6);
@@ -248,7 +275,7 @@ void controllerSetup::knobEventIndexChanged(int index) {
         QMutexLocker locker(mutex);
         if (currentKnob->command)
             delete currentKnob->command;
-        currentKnob->command = new COMMAND(commands->at(knobEvent->currentData().toInt()));
+        currentKnob->command = &commands->at(knobEvent->currentData().toInt());
         currentKnob->text->setPlainText(currentKnob->command->text);
         currentKnob->text->setPos(currentKnob->pos.center().x() - currentKnob->text->boundingRect().width() / 2,
             (currentKnob->pos.center().y() - currentKnob->text->boundingRect().height() / 2));
@@ -312,28 +339,108 @@ void controllerSetup::latchStateChanged(int state)
     }
 }
 
+void controllerSetup::deleteMyWidget(QWidget* widget) {
+    QLayout *layout = widget->layout();
+    if (widget->layout())
+    {
+        QLayoutItem* child;
+        while (nullptr != (child = layout->takeAt(0)))
+        {
+            if (child->layout())
+            {
+                QLayoutItem* child2;
+
+                while (nullptr != (child2 = child->layout()->takeAt(0)))
+                {
+                    if (child2->widget())
+                    {
+                        deleteMyWidget(child2->widget());
+                    }
+                    delete child2;
+                    child2 = Q_NULLPTR;
+                }
+            }
+            else if (child->widget())
+            {
+                deleteMyWidget(child->widget());
+            }
+            delete child;
+            child = Q_NULLPTR;
+        }
+    }
+    delete widget;
+}
+
 void controllerSetup::removeDevice(USBDEVICE* dev)
 {
     QMutexLocker locker(mutex);
 
-    int remove = -1;
+    /* We need to manually delete everything that has been created for this tab */
+    auto tab = tabs.find(dev->path);
+    if (tab == tabs.end())
+    {
+        qWarning(logUsbControl()) << "Cannot find tabContent for deleted tab" << dev->path;
+        return;
+    }
 
-    for (int i = 0; i < ui->tabWidget->count(); i++) {
-        auto widget = ui->tabWidget->widget(i);
-        if (widget->objectName() == dev->path) {
-            qInfo(logUsbControl()) << "Removing child widgets for" << dev->product;
-            qDeleteAll(widget->findChildren<QWidget *>("", Qt::FindDirectChildrenOnly));
-            remove = i;
-            //break;
+    for (auto b = buttons->begin();b != buttons->end(); b++)
+    {
+        if (b->parent == dev && b->page == dev->currentPage)
+        {
+            if (b->onText != Q_NULLPTR) {
+                tab.value()->scene->removeItem(b->onText);
+                delete b->onText;
+                b->onText = Q_NULLPTR;
+                b->onCommand = Q_NULLPTR;
+            }
+            if (b->offText != Q_NULLPTR) {
+                tab.value()->scene->removeItem(b->offText);
+                delete b->offText;
+                b->offText = Q_NULLPTR;
+                b->offCommand = Q_NULLPTR;
+            }
+            if (b->icon != Q_NULLPTR) {
+                delete b->icon;
+                b->icon=Q_NULLPTR;
+            }
         }
     }
 
-    if (remove != -1) {
-        qInfo(logUsbControl()) << "Removing tab" << dev->product;
-        //auto widget = ui->tabWidget->widget(remove);
-        ui->tabWidget->removeTab(remove);
-        //widget->deleteLater();
+    for (auto k = knobs->begin();k != knobs->end(); k++)
+    {
+        if (k->parent == dev && k->page == dev->currentPage)
+        {
+            if (k->text != Q_NULLPTR) {
+                tab.value()->scene->removeItem(k->text);
+                delete k->text;
+                k->text = Q_NULLPTR;
+                k->command = Q_NULLPTR;
+            }
+        }
     }
+
+
+    qDebug(logUsbControl()) << "Removing tab content" << dev->product;
+
+    if (tab.value()->bgImage != Q_NULLPTR) {
+        tab.value()->scene->removeItem(tab.value()->bgImage);
+        delete tab.value()->bgImage;
+    }
+    delete tab.value()->scene;
+
+    // Find the tab within the tabWidget
+    for (int i = 0; i < ui->tabWidget->count(); i++) {
+        auto widget = ui->tabWidget->widget(i);
+        if (widget->objectName() == dev->path) {
+            ui->tabWidget->removeTab(i);
+            break;
+        }
+    }
+
+    delete tab.value();
+    tabs.remove(dev->path);
+
+    // Hide the tabWidget if no tabs exist
     if (ui->tabWidget->count() == 0)
     {
         ui->tabWidget->hide();
@@ -342,13 +449,8 @@ void controllerSetup::removeDevice(USBDEVICE* dev)
     }
 }
 
-void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut)
+void controllerSetup::newDevice(USBDEVICE* dev)
 {
-    buttons = but;
-    knobs = kb;
-    commands = cmd;
-    mutex = mut;
-
     QMutexLocker locker(mutex);
 
     for (int i=0; i<ui->tabWidget->count();i++) {
@@ -359,262 +461,215 @@ void controllerSetup::newDevice(USBDEVICE* dev, CONTROLLER* cntrl, QVector<BUTTO
         }
     }
 
+    auto tab = tabs.find(dev->path);
+    if (tab != tabs.end())
+    {
+        qInfo(logUsbControl()) <<"Tab content for " << dev->product << "("<< dev->path << ") Already exists!";
+        return;
+    }
+
+
     qDebug(logUsbControl()) << "Adding new tab for" << dev->product;
     noControllersText->hide();
 
-    QWidget* tab = new QWidget();
-    tab->setObjectName(dev->path);
+    tabContent* c = new tabContent();
 
-    ui->tabWidget->addTab(tab,dev->product);
-    ui->tabWidget->show();
+    c->tab.setObjectName(dev->path);
+    ui->tabWidget->addTab(&c->tab,dev->product);
+    c->tab.setLayout(&c->mainLayout);
+    c->mainLayout.addLayout(&c->topLayout);
+    c->mainLayout.addWidget(&c->widget);
 
-    QVBoxLayout* mainlayout = new QVBoxLayout();
-    mainlayout->setContentsMargins(0,0,0,0);
-    tab->setLayout(mainlayout);
+    c->widget.setLayout(&c->layout);
+    c->layout.addLayout(&c->sensLayout);
 
 
-    QHBoxLayout* toplayout = new QHBoxLayout();
-    mainlayout->addLayout(toplayout);
-    toplayout->setContentsMargins(0,0,0,0);
+    c->topLayout.addWidget(&c->disabled);
+    c->disabled.setText("Disable");
+    connect(&c->disabled, qOverload<bool>(&QCheckBox::clicked),
+        [dev,this,c](bool checked) { this->disableClicked(dev,checked,&c->widget); });
+    c->disabled.setChecked(dev->disabled);
 
-    QWidget* widget = new QWidget();
-    mainlayout->addWidget(widget);
-    QVBoxLayout* layout = new QVBoxLayout(widget);
-    layout->setContentsMargins(0,0,0,0);
-
-    QCheckBox* disabled = new QCheckBox();
-    disabled->setText("Disable");
-    toplayout->addWidget(disabled);
-    dev->message = new QLabel();
     if (dev->connected) {
-        dev->message->setStyleSheet("QLabel { color : green; }");
-        dev->message->setText("Connected");
+        c->message.setStyleSheet("QLabel { color : green; }");
+        c->message.setText("Connected");
     } else {
-        dev->message->setStyleSheet("QLabel { color : red; }");
-        dev->message->setText("Not Connected");
+        c->message.setStyleSheet("QLabel { color : red; }");
+        c->message.setText("Not Connected");
     }
 
-    toplayout->addWidget(dev->message);
-    dev->message->setAlignment(Qt::AlignRight);
+    c->topLayout.addWidget(&c->message);
+    c->message.setAlignment(Qt::AlignRight);
 
-    connect(disabled, qOverload<bool>(&QCheckBox::clicked),
-        [dev,this,widget](bool checked) { this->disableClicked(dev,checked,widget); });
+    c->layout.addWidget(&c->view);
 
-    disabled->setChecked(dev->disabled);
+    c->page.setObjectName("Page SpinBox");
+    c->page.setValue(1);
+    c->page.setMinimum(1);
+    c->page.setMaximum(dev->pages);
+    c->page.setToolTip("Select current page to edit");
+    c->layout.addWidget(&c->page,0,Qt::AlignBottom | Qt::AlignRight);
+    dev->pageSpin = &c->page;
 
-    QGraphicsView *view = new QGraphicsView();
-    layout->addWidget(view);
-
-    QSpinBox *page = new QSpinBox();
-    page->setValue(1);
-    page->setMinimum(1);
-    page->setMaximum(dev->pages);
-    page->setToolTip("Select current page to edit");
-    layout->addWidget(page,0,Qt::AlignBottom | Qt::AlignRight);
-    dev->pageSpin = page;
-
-
-    QHBoxLayout* senslayout = new QHBoxLayout();
-    layout->addLayout(senslayout);
-    QLabel* senslabel = new QLabel("Sensitivity");
-    senslayout->addWidget(senslabel);
-    QSlider *sens = new QSlider();
-    sens->setMinimum(1);
-    sens->setMaximum(21);
-    sens->setOrientation(Qt::Horizontal);
-    sens->setInvertedAppearance(true);
-    senslayout->addWidget(sens);
-    sens->setValue(cntrl->sensitivity);
-    connect(sens, &QSlider::valueChanged,
+    c->sensLayout.addWidget(&c->sensLabel);
+    c->sens.setMinimum(1);
+    c->sens.setMaximum(21);
+    c->sens.setOrientation(Qt::Horizontal);
+    c->sens.setInvertedAppearance(true);
+    c->sensLayout.addWidget(&c->sens);
+    c->sens.setValue(dev->sensitivity);
+    connect(&c->sens, &QSlider::valueChanged,
         [dev,this](int val) { this->sensitivityMoved(dev,val); });
-
-    QImage image;
 
     switch (dev->type.model) {
         case shuttleXpress:
-            image.load(":/resources/shuttlexpress.png");
+            c->image.load(":/resources/shuttlexpress.png");
             break;
         case shuttlePro2:
-            image.load(":/resources/shuttlepro.png");
+            c->image.load(":/resources/shuttlepro.png");
             break;
         case RC28:
-            image.load(":/resources/rc28.png");
+            c->image.load(":/resources/rc28.png");
             break;
         case xBoxGamepad:
-            image.load(":/resources/xbox.png");
+            c->image.load(":/resources/xbox.png");
             break;
         case eCoderPlus:
-            image.load(":/resources/ecoder.png");
+            c->image.load(":/resources/ecoder.png");
             break;
         case QuickKeys:
-            image.load(":/resources/quickkeys.png");
+            c->image.load(":/resources/quickkeys.png");
             break;
         case StreamDeckOriginal:
         case StreamDeckOriginalV2:
         case StreamDeckOriginalMK2:
-            image.load(":/resources/streamdeck.png");
+            c->image.load(":/resources/streamdeck.png");
             break;
         case StreamDeckMini:
         case StreamDeckMiniV2:
-            image.load(":/resources/streamdeckmini.png");
+            c->image.load(":/resources/streamdeckmini.png");
             break;
         case StreamDeckXL:
         case StreamDeckXLV2:
-            image.load(":/resources/streamdeckxl.png");
+            c->image.load(":/resources/streamdeckxl.png");
             break;
         case StreamDeckPlus:
-            image.load(":/resources/streamdeckplus.png");
+            c->image.load(":/resources/streamdeckplus.png");
             break;
-        default:
-            //ui->graphicsView->setSceneRect(scene->itemsBoundingRect());
+        case StreamDeckPedal:
+            c->image.load(":/resources/streamdeckpedal.png");
+            break;
+            default:
             this->adjustSize();
             break;
     }
 
-    QGraphicsItem* bgImage = new QGraphicsPixmapItem(QPixmap::fromImage(image));
-    view->setMinimumSize(bgImage->boundingRect().width() + 2, bgImage->boundingRect().height() + 2);
+    c->bgImage = new QGraphicsPixmapItem(QPixmap::fromImage(c->image));
+    c->view.setMinimumSize(c->bgImage->boundingRect().width() + 2, c->bgImage->boundingRect().height() + 2);
+
+    ui->tabWidget->show();
+
 
     // This command causes the window to disappear in Linux?
 #if !defined(Q_OS_LINUX)
-    this->setMinimumSize(bgImage->boundingRect().width() + 2, bgImage->boundingRect().height() + 250);
+    this->setMinimumSize(c->bgImage->boundingRect().width() + 2, c->bgImage->boundingRect().height() + 250);
 #endif
 
-    controllerScene * scene = new controllerScene();
-    dev->scene = scene;
-    view->setScene(scene);
-    connect(scene, SIGNAL(mousePressed(controllerScene*,QPoint)), this, SLOT(mousePressed(controllerScene*,QPoint)));
-    scene->addItem(bgImage);
+    c->scene = new controllerScene();
+    c->view.setScene(c->scene);
+    connect(c->scene, SIGNAL(mousePressed(controllerScene*,QPoint)), this, SLOT(mousePressed(controllerScene*,QPoint)));
+    c->scene->addItem(c->bgImage);
 
+    c->layout.addLayout(&c->grid);
 
-    QGridLayout* grid = new QGridLayout();
-    layout->addLayout(grid);
-
-    QLabel* brightlabel = new QLabel("Brightness");
-    grid->addWidget(brightlabel,0,0);
-    QComboBox *brightness = new QComboBox();
-    brightness->addItem("Off");
-    brightness->addItem("Low");
-    brightness->addItem("Medium");
-    brightness->addItem("High");
-    brightness->setCurrentIndex(cntrl->brightness);
-    grid->addWidget(brightness,1,0);
-    connect(brightness, qOverload<int>(&QComboBox::currentIndexChanged),
+    c->grid.addWidget(&c->brightLabel,0,0);
+    c->brightness.addItem("Off");
+    c->brightness.addItem("Low");
+    c->brightness.addItem("Medium");
+    c->brightness.addItem("High");
+    c->brightness.setCurrentIndex(dev->brightness);
+    c->grid.addWidget(&c->brightness,1,0);
+    connect(&c->brightness, qOverload<int>(&QComboBox::currentIndexChanged),
         [dev,this](int index) { this->brightnessChanged(dev,index); });
 
-    QLabel* speedlabel = new QLabel("Speed");
-    grid->addWidget(speedlabel,0,1);
-    QComboBox *speed = new QComboBox();
-    speed->addItem("Fastest");
-    speed->addItem("Faster");
-    speed->addItem("Normal");
-    speed->addItem("Slower");
-    speed->addItem("Slowest");
-    speed->setCurrentIndex(cntrl->speed);
-    grid->addWidget(speed,1,1);
-    connect(speed, qOverload<int>(&QComboBox::currentIndexChanged),
+    c->grid.addWidget(&c->speedLabel,0,1);
+    c->speed.setObjectName("Speed");
+    c->speed.addItem("Fastest");
+    c->speed.addItem("Faster");
+    c->speed.addItem("Normal");
+    c->speed.addItem("Slower");
+    c->speed.addItem("Slowest");
+    c->speed.setCurrentIndex(dev->speed);
+    c->grid.addWidget(&c->speed,1,1);
+    connect(&c->speed, qOverload<int>(&QComboBox::currentIndexChanged),
         [dev,this](int index) { this->speedChanged(dev,index); });
 
-    QLabel* orientlabel = new QLabel("Orientation");
-    grid->addWidget(orientlabel,0,2);
-    QComboBox *orientation = new QComboBox();
-    orientation->addItem("Rotate 0");
-    orientation->addItem("Rotate 90");
-    orientation->addItem("Rotate 180");
-    orientation->addItem("Rotate 270");
-    orientation->setCurrentIndex(cntrl->orientation);
-    grid->addWidget(orientation,1,2);
-    connect(orientation, qOverload<int>(&QComboBox::currentIndexChanged),
+    c->grid.addWidget(&c->orientLabel,0,2);
+    c->orientation.addItem("Rotate 0");
+    c->orientation.addItem("Rotate 90");
+    c->orientation.addItem("Rotate 180");
+    c->orientation.addItem("Rotate 270");
+    c->orientation.setCurrentIndex(dev->orientation);
+    c->grid.addWidget(&c->orientation,1,2);
+    connect(&c->orientation, qOverload<int>(&QComboBox::currentIndexChanged),
         [dev,this](int index) { this->orientationChanged(dev,index); });
 
-    QLabel* colorlabel = new QLabel("Color");
-    grid->addWidget(colorlabel,0,3);
-    QPushButton* color = new QPushButton("Select");
-    grid->addWidget(color,1,3);
-    connect(color, &QPushButton::clicked,
-        [dev,this]() { this->colorPicker(dev); });
+    c->color.setText("Color");
+    c->grid.addWidget(&c->colorLabel,0,3);
+    c->color.setStyleSheet(QString("background-color: %1").arg(dev->color.name(QColor::HexArgb)));
+    c->grid.addWidget(&c->color,1,3);
+    connect(&c->color, &QPushButton::clicked,
+        [dev,c,this]() { this->colorPicker(dev,&c->color,dev->color); });
 
-    QLabel* timeoutlabel = new QLabel("Timeout");
-    grid->addWidget(timeoutlabel,0,4);
-    QSpinBox *timeout = new QSpinBox();
-    timeout->setValue(cntrl->timeout);
-    grid->addWidget(timeout,1,4);
-    connect(timeout, qOverload<int>(&QSpinBox::valueChanged),
+    c->timeoutLabel.setText("Timeout");
+    c->grid.addWidget(&c->timeoutLabel,0,4);
+    c->timeout.setValue(dev->timeout);
+    c->grid.addWidget(&c->timeout,1,4);
+    connect(&c->timeout, qOverload<int>(&QSpinBox::valueChanged),
         [dev,this](int index) { this->timeoutChanged(dev,index); });
 
-    QLabel* pageslabel = new QLabel("Pages");
-    grid->addWidget(pageslabel,0,5);
-    QSpinBox *pages = new QSpinBox();
-    pages->setValue(dev->pages);
-    pages->setMinimum(1);
-    grid->addWidget(pages,1,5);
-    connect(pages, qOverload<int>(&QSpinBox::valueChanged),
+    c->pagesLabel.setText("Pages");
+    c->grid.addWidget(&c->pagesLabel,0,5);
+    c->pages.setValue(dev->pages);
+    c->pages.setMinimum(1);
+    c->grid.addWidget(&c->pages,1,5);
+    connect(&c->pages, qOverload<int>(&QSpinBox::valueChanged),
         [dev,this](int index) { this->pagesChanged(dev,index); });
+
     for (int i=0;i<6;i++)
-        grid->setColumnStretch(i,1);
+        c->grid.setColumnStretch(i,1);
 
-    QLabel *helpText = new QLabel();
-    helpText->setText("<p><b>Button configuration:</b> Right-click on each button to configure it.</p>");
-    helpText->setAlignment(Qt::AlignCenter);
-    layout->addWidget(helpText);
+    c->helpText.setText("<p><b>Button configuration:</b> Right-click on each button to configure it.</p>");
+    c->helpText.setAlignment(Qt::AlignCenter);
+    c->layout.addWidget(&c->helpText);
 
-    onEvent->blockSignals(true);
-    offEvent->blockSignals(true);
-    knobEvent->blockSignals(true);
 
-    onEvent->clear();
-    offEvent->clear();
-    knobEvent->clear();
-
-    for (COMMAND& c : *commands) {
-        if (c.cmdType == commandButton || c.text == "None") {
-            if (c.command == cmdSeparator) {
-                onEvent->insertSeparator(onEvent->count());
-                offEvent->insertSeparator(offEvent->count());
-
-            } else {
-                onEvent->addItem(c.text, c.index);
-                offEvent->addItem(c.text, c.index);
-            }
-        }
-        else if (c.cmdType == commandKnob || c.text == "None") {
-            if (c.command == cmdSeparator) {
-                knobEvent->insertSeparator(knobEvent->count());
-            } else {
-                knobEvent->addItem(c.text, c.index);
-            }
-        }
-    }
-
-    onEvent->blockSignals(false);
-    offEvent->blockSignals(false);
-    knobEvent->blockSignals(false);
-
-    locker.unlock();
-    pageChanged(dev,1);
-    locker.relock();
-
-    view->setSceneRect(scene->itemsBoundingRect());
-
-    // Add comboboxes to scene after everything else.
+    c->view.setSceneRect(c->scene->itemsBoundingRect());
 
     // Attach pageChanged() here so we have access to all necessary vars
-    connect(page, qOverload<int>(&QSpinBox::valueChanged),
+    connect(&c->page, qOverload<int>(&QSpinBox::valueChanged),
         [dev, this](int index) { this->pageChanged(dev, index); });
 
 
     this->adjustSize();
 
     numTabs++;
+    tabs.insert(dev->path,c);
 
     dev->uiCreated = true;
 
     // Finally update the device with the default values
-    emit sendRequest(dev,usbFeatureType::featureSensitivity,cntrl->sensitivity);
-    emit sendRequest(dev,usbFeatureType::featureBrightness,cntrl->brightness);
-    emit sendRequest(dev,usbFeatureType::featureOrientation,cntrl->orientation);
-    emit sendRequest(dev,usbFeatureType::featureSpeed,cntrl->speed);
-    emit sendRequest(dev,usbFeatureType::featureTimeout,cntrl->timeout);
-    emit sendRequest(dev,usbFeatureType::featureColor,1,cntrl->color.name(QColor::HexArgb));
+    emit sendRequest(dev,usbFeatureType::featureSensitivity,dev->sensitivity);
+    emit sendRequest(dev,usbFeatureType::featureBrightness,dev->brightness);
+    emit sendRequest(dev,usbFeatureType::featureOrientation,dev->orientation);
+    emit sendRequest(dev,usbFeatureType::featureSpeed,dev->speed);
+    emit sendRequest(dev,usbFeatureType::featureTimeout,dev->timeout);
+    emit sendRequest(dev,usbFeatureType::featureColor,0,dev->color.name(QColor::HexArgb));
+
+    locker.unlock();
+
+    // pageChanged will update the buttons/knobs for the tab
+    pageChanged(dev,1);
 
 }
 
@@ -639,19 +694,18 @@ void controllerSetup::speedChanged(USBDEVICE* dev, int index)
     emit sendRequest(dev,usbFeatureType::featureSpeed,index);
 }
 
-void controllerSetup::colorPicker(USBDEVICE* dev)
+void controllerSetup::colorPicker(USBDEVICE* dev, QPushButton* btn, QColor current)
 {
     QColorDialog::ColorDialogOptions options;
     options.setFlag(QColorDialog::ShowAlphaChannel, false);
     options.setFlag(QColorDialog::DontUseNativeDialog, false);
-    QColor selColor = QColorDialog::getColor(initialColor, this, "Select Color", options);
+    QColor selColor = QColorDialog::getColor(current, this, "Select Color", options);
 
-    if(!selColor.isValid())
+    if(selColor.isValid())
     {
-        selColor = initialColor;
+        btn->setStyleSheet(QString("background-color: %1").arg(selColor.name(QColor::HexArgb)));
+        emit sendRequest(dev,usbFeatureType::featureColor,0,selColor.name(QColor::HexArgb));
     }
-    initialColor = selColor;
-    emit sendRequest(dev,usbFeatureType::featureColor,1,selColor.name(QColor::HexArgb));
 }
 
 void controllerSetup::timeoutChanged(USBDEVICE* dev, int val)
@@ -668,8 +722,14 @@ void controllerSetup::pagesChanged(USBDEVICE* dev, int val)
 
 void controllerSetup::pageChanged(USBDEVICE* dev, int val)
 {
-    if (dev->currentPage == val) // We haven't changed page!
+
+    auto tab = tabs.find(dev->path);
+    if (tab == tabs.end())
+    {
+        qWarning(logUsbControl()) << "Cannot find tabContent while changing page" << dev->path;
         return;
+    }
+
 
     if (val > dev->pages)
         val=1;
@@ -692,12 +752,12 @@ void controllerSetup::pageChanged(USBDEVICE* dev, int val)
             if (b->page == lastPage)
             {
                 if (b->onText != Q_NULLPTR) {
-                    dev->scene->removeItem(b->onText);
+                    tab.value()->scene->removeItem(b->onText);
                     delete b->onText;
                     b->onText = Q_NULLPTR;
                 }
                 if (b->offText != Q_NULLPTR) {
-                    dev->scene->removeItem(b->offText);
+                    tab.value()->scene->removeItem(b->offText);
                     delete b->offText;
                     b->offText = Q_NULLPTR;
                 }
@@ -706,14 +766,14 @@ void controllerSetup::pageChanged(USBDEVICE* dev, int val)
             {
                 b->onText = new QGraphicsTextItem(b->onCommand->text);
                 b->onText->setDefaultTextColor(b->textColour);
-                dev->scene->addItem(b->onText);
+                tab.value()->scene->addItem(b->onText);
                 b->onText->setPos(b->pos.center().x() - b->onText->boundingRect().width() / 2,
                     (b->pos.center().y() - b->onText->boundingRect().height() / 2) - 6);
                 emit sendRequest(dev,usbFeatureType::featureButton,b->num,b->onCommand->text,b->icon,&b->backgroundOn);
 
                 b->offText = new QGraphicsTextItem(b->offCommand->text);
                 b->offText->setDefaultTextColor(b->textColour);
-                dev->scene->addItem(b->offText);
+                tab.value()->scene->addItem(b->offText);
                 b->offText->setPos(b->pos.center().x() - b->offText->boundingRect().width() / 2,
                     (b->pos.center().y() - b->onText->boundingRect().height() / 2) + 6);
             }
@@ -727,7 +787,7 @@ void controllerSetup::pageChanged(USBDEVICE* dev, int val)
             if (k->page == lastPage)
             {
                 if (k->text) {
-                    dev->scene->removeItem(k->text);
+                    tab.value()->scene->removeItem(k->text);
                     delete k->text;
                     k->text = Q_NULLPTR;
                 }
@@ -736,7 +796,7 @@ void controllerSetup::pageChanged(USBDEVICE* dev, int val)
             {
                 k->text = new QGraphicsTextItem(k->command->text);
                 k->text->setDefaultTextColor(k->textColour);
-                dev->scene->addItem(k->text);
+                tab.value()->scene->addItem(k->text);
                 k->text->setPos(k->pos.center().x() - k->text->boundingRect().width() / 2,
                     (k->pos.center().y() - k->text->boundingRect().height() / 2));
             }
@@ -748,7 +808,9 @@ void controllerSetup::disableClicked(USBDEVICE* dev, bool clicked, QWidget* widg
 {
     // Disable checkbox has been clicked
     emit programDisable(dev, clicked);
+
     widget->setEnabled(!clicked);
+
 }
 
 void controllerSetup::setConnected(USBDEVICE* dev)
@@ -756,15 +818,16 @@ void controllerSetup::setConnected(USBDEVICE* dev)
     QMutexLocker locker(mutex);
 
 
-    if (dev->uiCreated)
+    auto tab = tabs.find(dev->path);
+    if (tab != tabs.end())
     {
         if (dev->connected)
         {
-           dev->message->setStyleSheet("QLabel { color : green; }");
-           dev->message->setText("Connected");
+           tab.value()->message.setStyleSheet("QLabel { color : green; }");
+           tab.value()->message.setText("Connected");
         } else {
-           dev->message->setStyleSheet("QLabel { color : red; }");
-           dev->message->setText("Not Connected");
+           tab.value()->message.setStyleSheet("QLabel { color : red; }");
+           tab.value()->message.setText("Not Connected");
         }
     }
 }
@@ -773,17 +836,60 @@ void controllerSetup::on_backupButton_clicked()
 {
     QString file = QFileDialog::getSaveFileName(this,"Select Backup Filename",".","Backup Files (*.ini)");
     if (!file.isEmpty()) {
-        QFileInfo info = QFileInfo(file);
-        emit backup(file, ui->tabWidget->currentWidget()->objectName());
+        QString path = ui->tabWidget->currentWidget()->objectName();
+        emit backup(file, path);
     }
 }
 
 void controllerSetup::on_restoreButton_clicked()
 {
+    QMutexLocker locker(mutex);
+
     QString file = QFileDialog::getOpenFileName(this,"Select Backup Filename",".","Backup Files (*.ini)");
     if (!file.isEmpty()) {
-        QFileInfo info = QFileInfo(file);
-        emit restore(file, ui->tabWidget->currentWidget()->objectName());
+        QString path = ui->tabWidget->currentWidget()->objectName();
+
+        auto devIt = devices->find(path);
+        if (devIt==devices->end())
+        {
+            qWarning(logUsbControl) << "on_restoreButton_clicked() Cannot find existing controller, aborting!";
+            return;
+        }
+        auto dev = &devIt.value();
+
+        QSettings* settings = new QSettings(file, QSettings::Format::IniFormat);
+        QString version = settings->value("Version", "").toString();
+        settings->beginGroup("Controller");
+        QString model = settings->value("Model","").toString();
+        delete settings;
+
+        if (model != dev->product) {
+            QMessageBox msgBox;
+            msgBox.setText("Stored controller does not match");
+            msgBox.setInformativeText(QString("Backup: %0 \nCurrent: %1\n\nThis will probably not work!").
+                           arg(model).arg(dev->product));
+            msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+            msgBox.setDefaultButton(QMessageBox::Cancel);
+            int ret= msgBox.exec();
+            if (ret == QMessageBox::Cancel) {
+                return;
+            }
+        }
+        if (version != QString(WFVIEW_VERSION))
+        {
+            QMessageBox msgBox;
+            msgBox.setText("Version mismatch");
+            msgBox.setInformativeText(QString("Backup was from a different version of wfview\nBackup: %0 \nCurrent: %1\n\nPlease verify compatibility").
+                           arg(version).arg(QString(WFVIEW_VERSION)));
+            msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+            msgBox.setDefaultButton(QMessageBox::Cancel);
+            int ret= msgBox.exec();
+            if (ret == QMessageBox::Cancel) {
+                return;
+            }
+        }
+
+        emit restore(file, path);
     }
 }
 
