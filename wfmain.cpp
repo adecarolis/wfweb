@@ -1878,6 +1878,7 @@ void wfmain::setDefPrefs()
     defPrefs.currentColorPresetNumber = 0;
     defPrefs.underlayMode = underlayNone;
     defPrefs.underlayBufferSize = 64;
+    defPrefs.wfEnable = 2;
     defPrefs.wfAntiAlias = false;
     defPrefs.wfInterpolate = true;
     defPrefs.stylesheetPath = QString("qdarkstyle/style.qss");
