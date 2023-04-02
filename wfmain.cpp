@@ -1947,6 +1947,8 @@ void wfmain::loadSettings()
     settings->beginGroup("Interface");
     prefs.useFullScreen = settings->value("UseFullScreen", defPrefs.useFullScreen).toBool();
     prefs.useSystemTheme = settings->value("UseSystemTheme", defPrefs.useSystemTheme).toBool();
+    prefs.wfEnable = settings->value("WFEnable", defPrefs.wfEnable).toInt();
+    ui->scopeEnableWFBtn->setCheckState(Qt::CheckState(prefs.wfEnable));
     prefs.wftheme = settings->value("WFTheme", defPrefs.wftheme).toInt();
     prefs.plotFloor = settings->value("plotFloor", defPrefs.plotFloor).toInt();
     prefs.plotCeiling = settings->value("plotCeiling", defPrefs.plotCeiling).toInt();
@@ -2790,6 +2792,7 @@ void wfmain::saveSettings()
     settings->beginGroup("Interface");
     settings->setValue("UseFullScreen", prefs.useFullScreen);
     settings->setValue("UseSystemTheme", prefs.useSystemTheme);
+    settings->setValue("WFEnable", prefs.wfEnable);
     settings->setValue("DrawPeaks", prefs.drawPeaks);
     settings->setValue("underlayMode", prefs.underlayMode);
     settings->setValue("underlayBufferSize", prefs.underlayBufferSize);
@@ -3079,6 +3082,7 @@ void wfmain::showHideSpectrum(bool show)
     ui->scopeBWCombo->setVisible(show);
     ui->scopeEdgeCombo->setVisible(show);
     ui->scopeEnableWFBtn->setVisible(show);
+    ui->scopeEnableWFBtn->setTristate(true);
     ui->scopeRefLevelSlider->setEnabled(show);
     ui->wfLengthSlider->setEnabled(show);
     ui->wfthemeCombo->setVisible(show);
@@ -3621,6 +3625,13 @@ void wfmain:: getInitialRigState()
         issueDelayedCommand(cmdGetSpectrumMode);
         issueDelayedCommand(cmdGetSpectrumSpan);
         issueDelayedCommand(cmdGetPassband);
+        if(ui->scopeEnableWFBtn->checkState() != Qt::Unchecked)
+        {
+            issueDelayedCommand(cmdSpecOn);
+        } else {
+            issueDelayedCommand(cmdSpecOff);
+        }
+
     }
 
     issueDelayedCommand(cmdNone);
@@ -5026,6 +5037,12 @@ void wfmain::changeTxBtn()
 
 void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq)
 {
+    if (ui->scopeEnableWFBtn->checkState()== Qt::PartiallyChecked)
+    {
+        return;
+    }
+
+
     if(!haveRigCaps)
     {
         qDebug(logSystem()) << "Spectrum received, but RigID incomplete.";
@@ -5681,14 +5698,17 @@ void wfmain::handlePlotScroll(QWheelEvent *we)
     handleWFScroll(we);
 }
 
-void wfmain::on_scopeEnableWFBtn_clicked(bool checked)
+void wfmain::on_scopeEnableWFBtn_stateChanged(int state)
 {
-    if(checked)
+    if (state == Qt::Unchecked)
     {
-        emit spectOutputEnable();
-    } else {
-        emit spectOutputDisable();
+        issueDelayedCommand(cmdSpecOff);
     }
+    else
+    {
+        issueDelayedCommand(cmdSpecOn);
+    }
+    prefs.wfEnable = state;
 }
 
 
@@ -7490,7 +7510,7 @@ void wfmain::powerRigOn()
     emit sendPowerOn();
 
     delayedCommand->setInterval(3000); // 3 seconds
-    if(ui->scopeEnableWFBtn->isChecked())
+    if(ui->scopeEnableWFBtn->checkState() != Qt::Unchecked)
     {
         issueDelayedCommand(cmdDispEnable);
         issueDelayedCommand(cmdQueNormalSpeed);
@@ -7498,6 +7518,7 @@ void wfmain::powerRigOn()
         issueDelayedCommand(cmdStartRegularPolling); // s-meter, etc
     } else {
         issueDelayedCommand(cmdQueNormalSpeed);
+        issueDelayedCommand(cmdSpecOff);
         issueDelayedCommand(cmdStartRegularPolling); // s-meter, etc
     }
     delayedCommand->start();

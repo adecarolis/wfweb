@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -159,10 +159,16 @@
           </item>
           <item>
            <widget class="QCheckBox" name="scopeEnableWFBtn">
+            <property name="toolTip">
+             <string>Checked=WF enable, Unchecked=WF disable, Partial=Enable WF but no local display</string>
+            </property>
             <property name="text">
              <string>Enable WF</string>
             </property>
             <property name="checked">
+             <bool>true</bool>
+            </property>
+            <property name="tristate">
              <bool>true</bool>
             </property>
            </widget>
@@ -3443,8 +3449,8 @@
                      <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>820</width>
-                      <height>302</height>
+                      <width>579</width>
+                      <height>254</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -5537,8 +5543,8 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="underlayButtonGroup"/>
   <buttongroup name="buttonGroup"/>
   <buttongroup name="pollingButtonGroup"/>
+  <buttongroup name="underlayButtonGroup"/>
  </buttongroups>
 </ui>
