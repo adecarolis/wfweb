@@ -542,7 +542,7 @@ private slots:
 
     void on_vspCombo_currentIndexChanged(int value);
 
-    void on_scopeEnableWFBtn_clicked(bool checked);
+    void on_scopeEnableWFBtn_stateChanged(int state);
 
     void on_sqlSlider_valueChanged(int value);
 

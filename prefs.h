@@ -17,6 +17,7 @@ struct preferences {
     // Interface:
     bool useFullScreen;
     bool useSystemTheme;
+    int wfEnable;
     bool drawPeaks;
     underlay_t underlayMode = underlayNone;
     int underlayBufferSize = 64;
