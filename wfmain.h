@@ -277,7 +277,7 @@ signals:
     void setClusterTimeout(int timeout);
     void setClusterSkimmerSpots(bool enable);
     void setFrequencyRange(double low, double high);
-    void sendControllerRequest(USBDEVICE* dev, usbFeatureType request, quint8 val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
+    void sendControllerRequest(USBDEVICE* dev, usbFeatureType request, int val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
 
 private slots:
     void setAudioDevicesUI();

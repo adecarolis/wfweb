@@ -174,7 +174,7 @@ enum cmds {
     // Below Only used for USB Controller at the moment.
     cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown, cmdSetStepUp, cmdSetStepDown,
     cmdSetSpanUp, cmdSetSpanDown, cmdIFFilterUp, cmdIFFilterDown, cmdPageDown, cmdPageUp,
-    cmdLCDWaterfall, cmdLCDSpectrum, cmdSeparator
+    cmdLCDWaterfall, cmdLCDSpectrum, cmdLCDNothing, cmdSeparator
 };
 
 struct commandtype {

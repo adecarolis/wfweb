@@ -2460,8 +2460,13 @@ void rigCommander::getRfGain()
 
 void rigCommander::getAfGain()
 {
-    QByteArray payload("\x14\x01");
-    prepDataAndSend(payload);
+    if (udp == Q_NULLPTR) {
+        QByteArray payload("\x14\x01");
+        prepDataAndSend(payload);
+    }
+    else {
+        emit haveAfGain(localVolume);
+    }
 }
 
 void rigCommander::getIFShift()

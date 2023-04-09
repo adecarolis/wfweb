@@ -21,6 +21,7 @@ controllerSetup::~controllerSetup()
     delete noControllersText;
     delete updateDialog;
     delete ui;
+
 }
 
 void controllerSetup::hideEvent(QHideEvent *event)
@@ -106,7 +107,7 @@ void controllerSetup::init(usbDevMap* dev, QVector<BUTTON>* but, QVector<KNOB>* 
                 offEvent->addItem(c.text, c.index);
             }
         }
-        else if (c.cmdType == commandKnob || c.cmdType == commandAny) {
+        if (c.cmdType == commandKnob || c.cmdType == commandAny) {
             if (c.command == cmdSeparator) {
                 knobEvent->insertSeparator(knobEvent->count());
             } else {
@@ -124,7 +125,7 @@ void controllerSetup::init(usbDevMap* dev, QVector<BUTTON>* but, QVector<KNOB>* 
     connect(buttonLatch, SIGNAL(stateChanged(int)), this, SLOT(latchStateChanged(int)));
 
 }
-void controllerSetup::mousePressed(controllerScene* scene, QPoint p)
+void controllerSetup::showMenu(controllerScene* scene, QPoint p)
 {
     Q_UNUSED (scene) // We might want it in the future?
 
@@ -245,11 +246,13 @@ void controllerSetup::onEventIndexChanged(int index) {
     if (currentButton != Q_NULLPTR && onEvent->currentData().toInt() < commands->size()) {
         QMutexLocker locker(mutex);
         currentButton->onCommand = &commands->at(onEvent->currentData().toInt());
-        currentButton->onText->setPlainText(currentButton->onCommand->text);
-        currentButton->onText->setPos(currentButton->pos.center().x() - currentButton->onText->boundingRect().width() / 2,
-            (currentButton->pos.center().y() - currentButton->onText->boundingRect().height() / 2)-6);
+        currentButton->text->setPlainText(currentButton->onCommand->text);
+        currentButton->text->setPos(currentButton->pos.center().x() - currentButton->text->boundingRect().width() / 2,
+            (currentButton->pos.center().y() - currentButton->text->boundingRect().height() / 2));
         // Signal that any button programming on the device should be completed.
-        emit sendRequest(currentButton->parent,usbFeatureType::featureButton,currentButton->num,currentButton->onCommand->text,Q_NULLPTR,&currentButton->backgroundOn);
+        if (currentButton->icon == Q_NULLPTR) {
+            emit sendRequest(currentButton->parent,usbFeatureType::featureButton,currentButton->num,currentButton->onCommand->text,Q_NULLPTR,&currentButton->backgroundOn);
+        }
     }
 }
 
@@ -260,9 +263,6 @@ void controllerSetup::offEventIndexChanged(int index) {
     if (currentButton != Q_NULLPTR && offEvent->currentData().toInt() < commands->size()) {
         QMutexLocker locker(mutex);
         currentButton->offCommand = &commands->at(offEvent->currentData().toInt());
-        currentButton->offText->setPlainText(currentButton->offCommand->text);
-        currentButton->offText->setPos(currentButton->pos.center().x() - currentButton->offText->boundingRect().width() / 2,
-            (currentButton->pos.center().y() - currentButton->offText->boundingRect().height() / 2)+6);
     }
 }
 
@@ -273,8 +273,6 @@ void controllerSetup::knobEventIndexChanged(int index) {
     // If command is changed, delete current command and deep copy the new command
     if (currentKnob != Q_NULLPTR && knobEvent->currentData().toInt() < commands->size()) {
         QMutexLocker locker(mutex);
-        if (currentKnob->command)
-            delete currentKnob->command;
         currentKnob->command = &commands->at(knobEvent->currentData().toInt());
         currentKnob->text->setPlainText(currentKnob->command->text);
         currentKnob->text->setPos(currentKnob->pos.center().x() - currentKnob->text->boundingRect().width() / 2,
@@ -295,6 +293,10 @@ void controllerSetup::buttonOnColorClicked()
     {
         QMutexLocker locker(mutex);
         currentButton->backgroundOn = selColor;
+        if (currentButton->graphics && currentButton->bgRect != Q_NULLPTR)
+        {
+            currentButton->bgRect->setBrush(currentButton->backgroundOn);
+        }
         buttonOnColor->setStyleSheet(QString("background-color: %1").arg(currentButton->backgroundOn.name(QColor::HexArgb)));
         emit sendRequest(currentButton->parent,usbFeatureType::featureButton,currentButton->num,currentButton->onCommand->text,currentButton->icon,&currentButton->backgroundOn);
     }
@@ -327,8 +329,16 @@ void controllerSetup::buttonIconClicked()
         if (currentButton->icon != Q_NULLPTR)
             delete currentButton->icon;
         currentButton->icon = new QImage(image.scaled(currentButton->parent->type.iconSize,currentButton->parent->type.iconSize));
-        emit sendRequest(currentButton->parent,usbFeatureType::featureButton,currentButton->num,currentButton->onCommand->text,currentButton->icon, &currentButton->backgroundOn);
+    } else {
+        if (currentButton->icon != Q_NULLPTR)
+        {
+            currentButton->iconName = "";
+            delete currentButton->icon;
+            currentButton->icon = Q_NULLPTR;
+        }
     }
+    iconLabel->setText(currentButton->iconName);
+    emit sendRequest(currentButton->parent,usbFeatureType::featureButton,currentButton->num,currentButton->onCommand->text,currentButton->icon, &currentButton->backgroundOn);
 }
 
 void controllerSetup::latchStateChanged(int state)
@@ -337,38 +347,6 @@ void controllerSetup::latchStateChanged(int state)
         QMutexLocker locker(mutex);
         currentButton->toggle=(int)state;
     }
-}
-
-void controllerSetup::deleteMyWidget(QWidget* widget) {
-    QLayout *layout = widget->layout();
-    if (widget->layout())
-    {
-        QLayoutItem* child;
-        while (nullptr != (child = layout->takeAt(0)))
-        {
-            if (child->layout())
-            {
-                QLayoutItem* child2;
-
-                while (nullptr != (child2 = child->layout()->takeAt(0)))
-                {
-                    if (child2->widget())
-                    {
-                        deleteMyWidget(child2->widget());
-                    }
-                    delete child2;
-                    child2 = Q_NULLPTR;
-                }
-            }
-            else if (child->widget())
-            {
-                deleteMyWidget(child->widget());
-            }
-            delete child;
-            child = Q_NULLPTR;
-        }
-    }
-    delete widget;
 }
 
 void controllerSetup::removeDevice(USBDEVICE* dev)
@@ -387,22 +365,23 @@ void controllerSetup::removeDevice(USBDEVICE* dev)
     {
         if (b->parent == dev && b->page == dev->currentPage)
         {
-            if (b->onText != Q_NULLPTR) {
-                tab.value()->scene->removeItem(b->onText);
-                delete b->onText;
-                b->onText = Q_NULLPTR;
-                b->onCommand = Q_NULLPTR;
+            if (b->text != Q_NULLPTR) {
+                tab.value()->scene->removeItem(b->text);
+                delete b->text;
+                b->text = Q_NULLPTR;
             }
-            if (b->offText != Q_NULLPTR) {
-                tab.value()->scene->removeItem(b->offText);
-                delete b->offText;
-                b->offText = Q_NULLPTR;
-                b->offCommand = Q_NULLPTR;
-            }
+            b->offCommand = Q_NULLPTR;
+            b->onCommand = Q_NULLPTR;
             if (b->icon != Q_NULLPTR) {
                 delete b->icon;
                 b->icon=Q_NULLPTR;
             }
+            if (b->bgRect != Q_NULLPTR) {
+                tab.value()->scene->removeItem(b->bgRect);
+                delete b->bgRect;
+                b->bgRect = Q_NULLPTR;
+            }
+
         }
     }
 
@@ -481,7 +460,6 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     c->mainLayout.addWidget(&c->widget);
 
     c->widget.setLayout(&c->layout);
-    c->layout.addLayout(&c->sensLayout);
 
 
     c->topLayout.addWidget(&c->disabled);
@@ -503,14 +481,9 @@ void controllerSetup::newDevice(USBDEVICE* dev)
 
     c->layout.addWidget(&c->view);
 
-    c->page.setObjectName("Page SpinBox");
-    c->page.setValue(1);
-    c->page.setMinimum(1);
-    c->page.setMaximum(dev->pages);
-    c->page.setToolTip("Select current page to edit");
-    c->layout.addWidget(&c->page,0,Qt::AlignBottom | Qt::AlignRight);
-    dev->pageSpin = &c->page;
 
+    c->layout.addLayout(&c->sensLayout);
+    c->sensLabel.setText("Sensitivity:");
     c->sensLayout.addWidget(&c->sensLabel);
     c->sens.setMinimum(1);
     c->sens.setMaximum(21);
@@ -520,6 +493,17 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     c->sens.setValue(dev->sensitivity);
     connect(&c->sens, &QSlider::valueChanged,
         [dev,this](int val) { this->sensitivityMoved(dev,val); });
+
+    c->pageLabel.setText("Page:");
+    c->sensLayout.addWidget(&c->pageLabel);
+    c->page.setObjectName("Page SpinBox");
+    c->page.setValue(1);
+    c->page.setMinimum(1);
+    c->page.setMaximum(dev->pages);
+    c->page.setToolTip("Select current page to edit");
+    c->sensLayout.addWidget(&c->page);
+
+    dev->pageSpin = &c->page;
 
     switch (dev->type.model) {
         case shuttleXpress:
@@ -577,11 +561,12 @@ void controllerSetup::newDevice(USBDEVICE* dev)
 
     c->scene = new controllerScene();
     c->view.setScene(c->scene);
-    connect(c->scene, SIGNAL(mousePressed(controllerScene*,QPoint)), this, SLOT(mousePressed(controllerScene*,QPoint)));
+    connect(c->scene, SIGNAL(showMenu(controllerScene*,QPoint)), this, SLOT(showMenu(controllerScene*,QPoint)));
     c->scene->addItem(c->bgImage);
 
     c->layout.addLayout(&c->grid);
 
+    c->brightLabel.setText("Brightness");
     c->grid.addWidget(&c->brightLabel,0,0);
     c->brightness.addItem("Off");
     c->brightness.addItem("Low");
@@ -592,6 +577,7 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     connect(&c->brightness, qOverload<int>(&QComboBox::currentIndexChanged),
         [dev,this](int index) { this->brightnessChanged(dev,index); });
 
+    c->speedLabel.setText("Speed");
     c->grid.addWidget(&c->speedLabel,0,1);
     c->speed.setObjectName("Speed");
     c->speed.addItem("Fastest");
@@ -604,6 +590,7 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     connect(&c->speed, qOverload<int>(&QComboBox::currentIndexChanged),
         [dev,this](int index) { this->speedChanged(dev,index); });
 
+    c->orientLabel.setText("Orientation");
     c->grid.addWidget(&c->orientLabel,0,2);
     c->orientation.addItem("Rotate 0");
     c->orientation.addItem("Rotate 90");
@@ -628,7 +615,7 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     connect(&c->timeout, qOverload<int>(&QSpinBox::valueChanged),
         [dev,this](int index) { this->timeoutChanged(dev,index); });
 
-    c->pagesLabel.setText("Pages");
+    c->pagesLabel.setText("Num Pages");
     c->grid.addWidget(&c->pagesLabel,0,5);
     c->pages.setValue(dev->pages);
     c->pages.setMinimum(1);
@@ -664,12 +651,11 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     emit sendRequest(dev,usbFeatureType::featureOrientation,dev->orientation);
     emit sendRequest(dev,usbFeatureType::featureSpeed,dev->speed);
     emit sendRequest(dev,usbFeatureType::featureTimeout,dev->timeout);
-    emit sendRequest(dev,usbFeatureType::featureColor,0,dev->color.name(QColor::HexArgb));
+    emit sendRequest(dev,usbFeatureType::featureColor,0,"", Q_NULLPTR, &dev->color);
 
-    locker.unlock();
 
-    // pageChanged will update the buttons/knobs for the tab
-    pageChanged(dev,1);
+    // pageChanged will update the buttons/knobs for the tab (using qTimer ensures mutex is unlocked first)
+    QTimer::singleShot(0, this, [=]() { pageChanged(dev,1); });
 
 }
 
@@ -704,7 +690,7 @@ void controllerSetup::colorPicker(USBDEVICE* dev, QPushButton* btn, QColor curre
     if(selColor.isValid())
     {
         btn->setStyleSheet(QString("background-color: %1").arg(selColor.name(QColor::HexArgb)));
-        emit sendRequest(dev,usbFeatureType::featureColor,0,selColor.name(QColor::HexArgb));
+        emit sendRequest(dev,usbFeatureType::featureColor,0, "", Q_NULLPTR, &selColor);
     }
 }
 
@@ -723,6 +709,8 @@ void controllerSetup::pagesChanged(USBDEVICE* dev, int val)
 void controllerSetup::pageChanged(USBDEVICE* dev, int val)
 {
 
+    //QMutexLocker locker(mutex); // Not sure why I can't take the mutex here?
+
     auto tab = tabs.find(dev->path);
     if (tab == tabs.end())
     {
@@ -738,8 +726,6 @@ void controllerSetup::pageChanged(USBDEVICE* dev, int val)
 
     updateDialog->hide(); // Hide the dialog if the page changes.
 
-    QMutexLocker locker(mutex);
-
     int lastPage = dev->currentPage;
     dev->currentPage=val;
     dev->pageSpin->setValue(val);
@@ -751,31 +737,31 @@ void controllerSetup::pageChanged(USBDEVICE* dev, int val)
         {
             if (b->page == lastPage)
             {
-                if (b->onText != Q_NULLPTR) {
-                    tab.value()->scene->removeItem(b->onText);
-                    delete b->onText;
-                    b->onText = Q_NULLPTR;
+                if (b->text != Q_NULLPTR) {
+                    tab.value()->scene->removeItem(b->text);
+                    delete b->text;
+                    b->text = Q_NULLPTR;
                 }
-                if (b->offText != Q_NULLPTR) {
-                    tab.value()->scene->removeItem(b->offText);
-                    delete b->offText;
-                    b->offText = Q_NULLPTR;
+                if (b->bgRect != Q_NULLPTR) {
+                    tab.value()->scene->removeItem(b->bgRect);
+                    delete b->bgRect;
+                    b->bgRect = Q_NULLPTR;
                 }
             }
-            else if (b->page == dev->currentPage)
+            if (b->page == dev->currentPage)
             {
-                b->onText = new QGraphicsTextItem(b->onCommand->text);
-                b->onText->setDefaultTextColor(b->textColour);
-                tab.value()->scene->addItem(b->onText);
-                b->onText->setPos(b->pos.center().x() - b->onText->boundingRect().width() / 2,
-                    (b->pos.center().y() - b->onText->boundingRect().height() / 2) - 6);
+                if (b->graphics)
+                {
+                    b->bgRect = new QGraphicsRectItem(b->pos);
+                    b->bgRect->setBrush(b->backgroundOn);
+                    tab.value()->scene->addItem(b->bgRect);
+                }
+                b->text = new QGraphicsTextItem(b->onCommand->text);
+                b->text->setDefaultTextColor(b->textColour);
+                tab.value()->scene->addItem(b->text);
+                b->text->setPos(b->pos.center().x() - b->text->boundingRect().width() / 2,
+                    (b->pos.center().y() - b->text->boundingRect().height() / 2));
                 emit sendRequest(dev,usbFeatureType::featureButton,b->num,b->onCommand->text,b->icon,&b->backgroundOn);
-
-                b->offText = new QGraphicsTextItem(b->offCommand->text);
-                b->offText->setDefaultTextColor(b->textColour);
-                tab.value()->scene->addItem(b->offText);
-                b->offText->setPos(b->pos.center().x() - b->offText->boundingRect().width() / 2,
-                    (b->pos.center().y() - b->onText->boundingRect().height() / 2) + 6);
             }
         }
     }
@@ -792,7 +778,7 @@ void controllerSetup::pageChanged(USBDEVICE* dev, int val)
                     k->text = Q_NULLPTR;
                 }
             }
-            else if (k->page == dev->currentPage)
+            if (k->page == dev->currentPage)
             {
                 k->text = new QGraphicsTextItem(k->command->text);
                 k->text->setDefaultTextColor(k->textColour);
@@ -836,8 +822,15 @@ void controllerSetup::on_backupButton_clicked()
 {
     QString file = QFileDialog::getSaveFileName(this,"Select Backup Filename",".","Backup Files (*.ini)");
     if (!file.isEmpty()) {
-        QString path = ui->tabWidget->currentWidget()->objectName();
-        emit backup(file, path);
+        auto devIt = devices->find(ui->tabWidget->currentWidget()->objectName());
+        if (devIt==devices->end())
+        {
+            qWarning(logUsbControl) << "on_restoreButton_clicked() Cannot find existing controller, aborting!";
+        }
+        else
+        {
+            emit backup(&devIt.value(), file);
+        }
     }
 }
 
@@ -888,8 +881,7 @@ void controllerSetup::on_restoreButton_clicked()
                 return;
             }
         }
-
-        emit restore(file, path);
+        emit restore(dev, file);
     }
 }
 

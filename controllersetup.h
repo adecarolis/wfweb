@@ -6,6 +6,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsTextItem>
 #include <QGraphicsPixmapItem>
+#include <QGraphicsRectItem>
 #include <QPoint>
 #include <QGraphicsSceneMouseEvent>
 #include <QVector>
@@ -39,17 +40,35 @@ class controllerScene : public QGraphicsScene
         QGraphicsLineItem* item = Q_NULLPTR;
 
 signals:
-    void mousePressed(controllerScene* scene, QPoint p);
+        void showMenu(controllerScene* scene, QPoint p);
+        void buttonAction(bool pressed, QPoint p);
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent* event) {
 
         if (event->button() == Qt::RightButton)
         {
-            emit mousePressed(this, event->scenePos().toPoint());
+            emit showMenu(this, event->scenePos().toPoint());
+        }
+        else if (event->button() == Qt::LeftButton)
+        {
+            // Simulate a button press
+            emit buttonAction(true,event->scenePos().toPoint());
         }
         else
         {
             QGraphicsScene::mousePressEvent(event);
+        }
+    }
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) {
+
+        if (event->button() == Qt::LeftButton)
+        {
+            // Simulate a button release
+            emit buttonAction(false,event->scenePos().toPoint());
+        }
+        else
+        {
+            QGraphicsScene::mouseReleaseEvent(event);
         }
     }
 };
@@ -64,6 +83,7 @@ struct tabContent {
     QCheckBox disabled;
     QLabel message;
     QGraphicsView view;
+    QLabel pageLabel;
     QSpinBox page;
     QHBoxLayout sensLayout;
     QLabel sensLabel;
@@ -103,17 +123,17 @@ public:
 
 signals:
     void started();
-    void sendRequest(USBDEVICE* dev, usbFeatureType request, quint8 val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
+    void sendRequest(USBDEVICE* dev, usbFeatureType request, int val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
     void programDisable(USBDEVICE* dev, bool disable);
     void programPages(USBDEVICE* dev, int pages);
-    void backup(QString file, QString path);
-    void restore(QString file, QString path);
+    void backup(USBDEVICE* dev, QString path);
+    void restore(USBDEVICE *dev, QString path);
 
 public slots:
     void init(usbDevMap* dev, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut);
     void newDevice(USBDEVICE* dev);
     void removeDevice(USBDEVICE* dev);
-    void mousePressed(controllerScene *scene,QPoint p);
+    void showMenu(controllerScene *scene,QPoint p);
     void onEventIndexChanged(int index);
     void offEventIndexChanged(int index);
     void knobEventIndexChanged(int index);
@@ -139,7 +159,6 @@ public slots:
 
 private:
 
-    void deleteMyWidget(QWidget *);
     usbDeviceType type = usbNone;
     Ui::controllerSetup* ui;
     QGraphicsTextItem* textItem;

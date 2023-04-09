@@ -163,9 +163,9 @@ struct COMMAND {
 struct BUTTON {
     BUTTON() {}
 
-    BUTTON(usbDeviceType dev, int num, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
-        dev(dev), num(num), name(""), pos(pos), textColour(textColour), onCommand(on), offCommand(off), on(onCommand->text), off(offCommand->text) {}
-    BUTTON(usbDeviceType dev,  QString name, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
+    BUTTON(usbDeviceType dev, int num, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off, bool graphics=false) :
+        dev(dev), num(num), name(""), pos(pos), textColour(textColour), onCommand(on), offCommand(off), on(onCommand->text), off(offCommand->text), graphics(graphics) {}
+    BUTTON(usbDeviceType dev, QString name, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
         dev(dev), num(-1), name(name), pos(pos), textColour(textColour), onCommand(on), offCommand(off), on(onCommand->text), off(offCommand->text) {}
 
     usbDeviceType dev;
@@ -177,8 +177,8 @@ struct BUTTON {
     QColor textColour;
     const COMMAND* onCommand = Q_NULLPTR;
     const COMMAND* offCommand = Q_NULLPTR;
-    QGraphicsTextItem* onText = Q_NULLPTR;
-    QGraphicsTextItem* offText = Q_NULLPTR;
+    QGraphicsRectItem* bgRect = Q_NULLPTR;
+    QGraphicsTextItem* text = Q_NULLPTR;
     QString on;
     QString off;
     QString path;
@@ -188,6 +188,7 @@ struct BUTTON {
     QImage* icon = Q_NULLPTR;
     bool toggle = false;
     bool isOn = false;
+    bool graphics = false;
 };
 
 
@@ -234,10 +235,10 @@ public slots:
     void programPages(USBDEVICE* dev, int pages);
     void programDisable(USBDEVICE* dev, bool disabled);
 
-    void sendRequest(USBDEVICE *dev, usbFeatureType feature, quint8 val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
+    void sendRequest(USBDEVICE *dev, usbFeatureType feature, int val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
     void sendToLCD(QImage *img);
-    void backupController(QString file, QString path);
-    void restoreController(QString file, QString path);
+    void backupController(USBDEVICE* dev, QString file);
+    void restoreController(USBDEVICE* dev, QString file);
 
 signals:
     void jogPlus();
@@ -268,7 +269,7 @@ private:
     QVector<KNOB> defaultKnobs;
     QVector<USBTYPE> knownDevices;
     QVector<COMMAND> commands;
-    usbDevMap* devices;
+    usbDevMap* devices;    
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QGamepad* gamepad=Q_NULLPTR;
@@ -280,6 +281,7 @@ private:
     QMutex* mutex=Q_NULLPTR;
     COMMAND sendCommand;
 
+    QTimer* dataTimer = Q_NULLPTR;
 protected:
 };
 

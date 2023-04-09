@@ -1715,16 +1715,16 @@ void wfmain::setupUsbControllerDevice()
     connect(usbControllerDev, SIGNAL(newDevice(USBDEVICE*)), usbWindow, SLOT(newDevice(USBDEVICE *)));
     usbControllerThread->start(QThread::LowestPriority);
     
-    connect(usbWindow, SIGNAL(sendRequest(USBDEVICE*, usbFeatureType, quint8, QString, QImage*, QColor *)), usbControllerDev, SLOT(sendRequest(USBDEVICE*, usbFeatureType, quint8, QString, QImage*, QColor *)));
-    connect(this, SIGNAL(sendControllerRequest(USBDEVICE*, usbFeatureType, quint8, QString, QImage*, QColor *)), usbControllerDev, SLOT(sendRequest(USBDEVICE*, usbFeatureType, quint8, QString, QImage*, QColor *)));
+    connect(usbWindow, SIGNAL(sendRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)), usbControllerDev, SLOT(sendRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)));
+    connect(this, SIGNAL(sendControllerRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)), usbControllerDev, SLOT(sendRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)));
     connect(usbWindow, SIGNAL(programPages(USBDEVICE*, int)), usbControllerDev, SLOT(programPages(USBDEVICE*, int)));
     connect(usbWindow, SIGNAL(programDisable(USBDEVICE*, bool)), usbControllerDev, SLOT(programDisable(USBDEVICE*, bool)));
     connect(this, SIGNAL(setPTT(bool)), usbControllerDev, SLOT(receivePTTStatus(bool)));
     connect(this, SIGNAL(sendLevel(cmds, unsigned char)), usbControllerDev, SLOT(receiveLevel(cmds, unsigned char)));
     connect(this, SIGNAL(initUsbController(QMutex*,usbDevMap*,QVector<BUTTON>*,QVector<KNOB>*)), usbControllerDev, SLOT(init(QMutex*,usbDevMap*,QVector<BUTTON>*,QVector<KNOB>*)));
     connect(this, SIGNAL(usbHotplug()), usbControllerDev, SLOT(run()));
-    connect(usbWindow, SIGNAL(backup(QString, QString)), usbControllerDev, SLOT(backupController(QString, QString)));
-    connect(usbWindow, SIGNAL(restore(QString, QString)), usbControllerDev, SLOT(restoreController(QString, QString)));
+    connect(usbWindow, SIGNAL(backup(USBDEVICE*, QString)), usbControllerDev, SLOT(backupController(USBDEVICE*, QString)));
+    connect(usbWindow, SIGNAL(restore(USBDEVICE*, QString)), usbControllerDev, SLOT(restoreController(USBDEVICE*, QString)));
 
 #endif
 }
@@ -2579,6 +2579,7 @@ void wfmain::loadSettings()
             }
             butt.on = settings->value("OnCommand", "None").toString();
             butt.off = settings->value("OffCommand", "None").toString();
+            butt.graphics = settings->value("Graphics", false).toBool();
             if (!butt.path.isEmpty())
                 usbButtons.append(butt);
         }
@@ -3091,6 +3092,7 @@ void wfmain::saveSettings()
             settings->setValue("OnCommand", usbButtons[nb].onCommand->text);
         if (usbButtons[nb].offCommand != Q_NULLPTR)
             settings->setValue("OffCommand", usbButtons[nb].offCommand->text);
+        settings->setValue("Graphics",usbButtons[nb].graphics);
     }
 
     settings->endArray();
