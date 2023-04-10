@@ -2573,10 +2573,12 @@ void wfmain::loadSettings()
             butt.backgroundOn.setNamedColor(settings->value("BackgroundOn", QColor(Qt::lightGray).name(QColor::HexArgb)).toString());
             butt.backgroundOff.setNamedColor(settings->value("BackgroundOff", QColor(Qt::blue).name(QColor::HexArgb)).toString());
             butt.toggle = settings->value("Toggle", false).toBool();
+#if (QT_VERSION > QT_VERSION_CHECK(6,0,0))
             if (settings->value("Icon",NULL) != NULL) {
                 butt.icon = new QImage(settings->value("Icon",NULL).value<QImage>());
                 butt.iconName = settings->value("IconName", "").toString();
             }
+#endif
             butt.on = settings->value("OnCommand", "None").toString();
             butt.off = settings->value("OffCommand", "None").toString();
             butt.graphics = settings->value("Graphics", false).toBool();
@@ -4275,6 +4277,7 @@ void wfmain::doCmd(cmds cmd)
             break;
         case cmdGetCompLevel:
             emit getCompLevel();
+            break;
         case cmdGetCwPitch:
             emit getCwPitch();
             break;

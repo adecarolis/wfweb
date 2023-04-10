@@ -1,6 +1,9 @@
-
 #if defined(USB_CONTROLLER)
 #include "usbcontroller.h"
+
+// We rely on being able to fallthrough case
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 
 #ifdef Q_OS_WIN
 #pragma comment (lib, "Setupapi.lib")
@@ -153,19 +156,14 @@ void usbController::run()
             USBDEVICE newDev;
             if (gamepad->name() == "Microsoft X-Box 360 pad 0")
             {
-                newdev->type.model = xBoxGamepad;
+                newDev.type.model = xBoxGamepad;
             }
             else {
-                newdev->type.model = unknownGamepad;
+                newDev.type.model = unknownGamepad;
             }
             
-            newdev->product = gamepad->name();
-            newdev->path = gamepad->name();
-            // Is this a new device? If so add it to usbDevices
-            // auto p = std::find_if(usbDevices.begin(),usbDevices.end(),[newDev](const USBDEVICE& dev) {return dev->path == newdev->path; });
-            //if (p == usbDevices.end()) {
-            //    usbDevices.append(newDev);
-            //}
+            newDev.product = gamepad->name();
+            newDev.path = gamepad->name();
             
             connect(gamepad, &QGamepad::buttonDownChanged, this, [this](bool pressed) {
                 qInfo(logUsbControl()) << "Button Down" << pressed;
@@ -246,20 +244,9 @@ void usbController::run()
             connect(gamepad, &QGamepad::buttonGuideChanged, this, [this](bool pressed) {
                 qInfo(logUsbControl()) << "Button Guide" << pressed;
             });
-            
-            if (!controllers->contains(gamepad->name())) {
-                controllers->insert(gamepad->name(),CONTROLLER());
-            }
-            
-            newdev->connected=true;
-            usbDevices.insert(newdev->path,newDev);
-            auto cntrlIt = controllers->find(newdev->path);
-            if (cntrlIt != controllers->end())
-            {
-                qWarning(logUsbControl()) << "Cannot find controller, something bad has happened...";
-                return;
-            }
-            CONTROLLER* cntrl = &cntrlIt.value();
+
+            newDev.connected=true;
+            devices->insert(newDev.path,newDev);
 
             emit newDevice(&newDev); // Let the UI know we have a new controller
         }
@@ -269,27 +256,7 @@ void usbController::run()
         gamepad = Q_NULLPTR;
     }
 #endif
-    
-    
-//#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-/*    auto it = devices->begin();
-    while (it != devices->end())
-    {
-        if (it.value().remove)
-        {
-            qInfo(logUsbControl()) << "Device has been removed, deleting from known devices" << it.value().product;
-            it = devices->erase(it);
-        }
-        else
-        {
-            ++it;
-        }
-    } */
-//#else
-    // Remove any devices from the list that are not connected (doesn't work on QT5!)
-//    usbDevices.erase(std::remove_if(usbDevices.begin(), usbDevices.end(), [](const USBDEVICE& dev)
-//        { if (dev->remove) qInfo(logUsbControl()) << "Removing device" << dev->product; return (dev->remove); }),usbDevices.end());
-//#endif
+
     struct hid_device_info* devs;
     devs = hid_enumerate(0x0, 0x0);
     // Step through all currenly connected devices and add any newly discovered ones to usbDevices.
@@ -1020,7 +987,6 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
     case StreamDeckMiniV2:
         data.resize(17);
         sdv1=true;
-        // Allow pass through.
         // Below are StreamDeck Generation 2 h/w
     case StreamDeckOriginalMK2:
     case StreamDeckOriginalV2:
@@ -1124,7 +1090,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
 
                 while (rem > 0)
                 {
-                    quint16 length = qMin(rem,dev->type.maxPayload-sizeof(h));
+                    quint16 length = qMin(quint16(rem),quint16(dev->type.maxPayload-sizeof(h)));
                     data.clear();
                     h.isLast = (quint8)(rem <= dev->type.maxPayload-sizeof(h) ? 1 : 0); // isLast ? 1 : 0,3
                     h.length = length;
@@ -1147,11 +1113,9 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
 
             }
             break;
-
         }
         case usbFeatureType::featureColor:
             dev->color = *color;
-            // Fall through
         case usbFeatureType::featureOverlay:
         {
             if (dev->type.model == usbDeviceType::StreamDeckPlus)
@@ -1170,7 +1134,6 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                 QBuffer buffer(&data2);
                 image.save(&buffer, "JPG");
             }
-            // Fall through
         }
         case usbFeatureType::featureLCD:
         {
@@ -1211,7 +1174,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
 
                 while (rem > 0)
                 {
-                    quint16 length = qMin(rem,dev->type.maxPayload-sizeof(h));
+                    quint16 length = qMin(quint16(rem),quint16(dev->type.maxPayload-sizeof(h)));
                     data.clear();
                     h.isLast = (quint8)(rem <= dev->type.maxPayload-sizeof(h) ? 1 : 0); // isLast ? 1 : 0,3
                     h.length = length;
@@ -1267,7 +1230,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                         h1.button = val;
                         while (rem > 0)
                         {
-                            quint16 length = qMin(rem,dev->type.maxPayload-sizeof(h1));
+                            quint16 length = qMin(quint16(rem),quint16(dev->type.maxPayload-sizeof(h1)));
                             data.clear();
                             h1.isLast = (quint8)(rem <= dev->type.maxPayload-sizeof(h1) ? 1 : 0); // isLast ? 1 : 0,3
                             h1.index = index;
@@ -1294,7 +1257,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                         h.button = val;
                         while (rem > 0)
                         {
-                            quint16 length = qMin(rem,dev->type.maxPayload-sizeof(h));
+                            quint16 length = qMin(quint16(rem),quint16(dev->type.maxPayload-sizeof(h)));
                             data.clear();
                             h.isLast = (quint8)(rem <= dev->type.maxPayload-sizeof(h) ? 1 : 0); // isLast ? 1 : 0,3
                             h.length = length;
@@ -1820,6 +1783,8 @@ void usbController::programPages(USBDEVICE* dev, int val)
 /* Functions below are for Gamepad controllers */
 void usbController::buttonState(QString name, bool val)
 {
+    Q_UNUSED(name)
+    Q_UNUSED(val)
     // Need to fix gamepad support
     /*
     for (BUTTON* but = buttonList->begin(); but != buttonList->end(); but++) {
@@ -2040,10 +2005,12 @@ void usbController::restoreController(USBDEVICE* dev, QString file)
             but.backgroundOn.setNamedColor(settings->value("BackgroundOn", QColor(Qt::lightGray).name(QColor::HexArgb)).toString());
             but.backgroundOff.setNamedColor(settings->value("BackgroundOff", QColor(Qt::blue).name(QColor::HexArgb)).toString());
             but.toggle = settings->value("Toggle", false).toBool();
+#if (QT_VERSION > QT_VERSION_CHECK(6,0,0))
             if (settings->value("Icon",NULL) != NULL) {
                 but.icon = new QImage(settings->value("Icon",NULL).value<QImage>());
                 but.iconName = settings->value("IconName", "").toString();
             }
+#endif
             but.on = settings->value("OnCommand", "None").toString();
             but.off = settings->value("OffCommand", "None").toString();
             but.graphics = settings->value("Graphics",false).toBool();
@@ -2113,4 +2080,5 @@ void usbController::restoreController(USBDEVICE* dev, QString file)
     QTimer::singleShot(250, this, SLOT(run())); // Call run to cleanup connectons after 250ms
 }
 
+#pragma GCC diagnostic pop
 #endif
