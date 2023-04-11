@@ -140,7 +140,7 @@ void usbController::run()
         return;
     }
 
-#ifdef Q_OS_WIN
+#ifdef USB_HOTPLUG
    qDebug(logUsbControl()) << "Re-enumerating USB devices due to program startup or hotplug event";
 #endif
 
@@ -452,7 +452,7 @@ void usbController::run()
         dataTimer->start(25);
     }
     
-#ifndef Q_OS_WIN
+#ifndef USB_HOTPLUG
     // Run the periodic timer to check for new devices    
     QTimer::singleShot(2000, this, SLOT(run()));
 #endif

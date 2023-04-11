@@ -84,6 +84,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<codecType>();
     qRegisterMetaType<errorType>();
     qRegisterMetaType<usbFeatureType>();
+    qRegisterMetaType<cmds>();
 
     haveRigCaps = false;
 
@@ -169,17 +170,38 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     amTransmitting = false;
 
+    connect(ui->txPowerSlider, &QSlider::sliderMoved,
+        [&](int value) {
+          QToolTip::showText(QCursor::pos(), QString("%1").arg(value*100/255), nullptr);
+        });
+
 #if !defined(USB_CONTROLLER)
     ui->enableUsbChk->setVisible(false);
     ui->usbControllerBtn->setVisible(false);
     ui->usbControllersResetBtn->setVisible(false);
     ui->usbResetLbl->setVisible(false);
+#else
+    #if defined(USB_HOTPLUG) && defined(Q_OS_LINUX)
+        uDev = udev_new();
+        if (!uDev)
+        {
+            qInfo(logUsbControl()) << "Cannot register udev, hotplug of USB devices is not available";
+            return;
+        }
+        uDevMonitor = udev_monitor_new_from_netlink(uDev, "udev");
+        if (!uDevMonitor)
+        {
+            qInfo(logUsbControl()) << "Cannot register udev_monitor, hotplug of USB devices is not available";
+            return;
+        }
+	int fd = udev_monitor_get_fd(uDevMonitor);
+        uDevNotifier = new QSocketNotifier(fd, QSocketNotifier::Read,this);
+	connect(uDevNotifier, SIGNAL(activated(int)), this, SLOT(uDevEvent()));
+        udev_monitor_enable_receiving(uDevMonitor);
+    #endif
 #endif
 
-    connect(ui->txPowerSlider, &QSlider::sliderMoved,
-        [&](int value) {
-          QToolTip::showText(QCursor::pos(), QString("%1").arg(value*100/255), nullptr);
-        });
+
 
 }
 
@@ -213,6 +235,13 @@ wfmain::~wfmain()
     if (usbControllerThread != Q_NULLPTR) {
         usbControllerThread->quit();
         usbControllerThread->wait();
+    }
+
+    if (uDevMonitor)
+    {
+        udev_monitor_unref(uDevMonitor);
+        udev_unref(uDev);
+        delete uDevNotifier;
     }
 #endif
 }
@@ -9569,12 +9598,15 @@ void wfmain::on_cwButton_clicked()
 }
 
 #ifdef USB_HOTPLUG
+
+
+#ifdef Q_OS_WINDOWS
 bool wfmain::nativeEvent(const QByteArray& eventType, void* message, qintptr* result)
 {
     Q_UNUSED(eventType);
     Q_UNUSED(result);
 
-    if (prefs.enableUSBControllers)
+    if (QDateTime::currentMSecsSinceEpoch() > lastUsbNotify + 10)
     {
         static bool created = false;
 
@@ -9602,6 +9634,7 @@ bool wfmain::nativeEvent(const QByteArray& eventType, void* message, qintptr* re
                 case DBT_DEVICEARRIVAL:
                 case DBT_DEVICEREMOVECOMPLETE:
                     emit usbHotplug();
+          	    lastUsbNotify = QDateTime::currentMSecsSinceEpoch();
                     break;
                 case DBT_DEVNODES_CHANGED:
                     break;
@@ -9618,4 +9651,23 @@ bool wfmain::nativeEvent(const QByteArray& eventType, void* message, qintptr* re
     }
     return false; // Process native events as normal
 }
+
+#elif defined(Q_OS_LINUX)
+
+void wfmain::uDevEvent()
+{
+    udev_device *dev = udev_monitor_receive_device(uDevMonitor);
+    if (dev)
+    {
+        const char* action = udev_device_get_action(dev);
+        if (action && strcmp(action, "add") == 0 && QDateTime::currentMSecsSinceEpoch() > lastUsbNotify + 10)
+        {
+            emit usbHotplug();
+	    lastUsbNotify = QDateTime::currentMSecsSinceEpoch();
+        }
+        udev_device_unref(dev);
+    }
+}
 #endif
+#endif
+

@@ -68,6 +68,10 @@
         #include <windows.h>
         #include <dbt.h>
         #define USB_HOTPLUG
+    #elif defined(Q_OS_LINUX)
+        #include <QSocketNotifier>
+        #include <libudev.h>
+        #define USB_HOTPLUG
     #endif
 #endif
 
@@ -88,8 +92,13 @@ public:
     void handleLogText(QString text);
 
 #ifdef USB_HOTPLUG
-protected:
-    virtual bool nativeEvent(const QByteArray& eventType, void* message, qintptr* result);
+    #if defined(Q_OS_WIN)
+        protected:
+            virtual bool nativeEvent(const QByteArray& eventType, void* message, qintptr* result);
+    #elif defined(Q_OS_LINUX)
+        private slots:
+           void uDevEvent();
+    #endif
 #endif
 
 signals:
@@ -1195,6 +1204,13 @@ private:
     QVector<KNOB> usbKnobs;
     usbDevMap usbDevices;
     QMutex usbMutex;
+    qint64 lastUsbNotify;
+
+    #if defined (Q_OS_LINUX)
+	struct udev* uDev = nullptr;
+        struct udev_monitor* uDevMonitor = nullptr;
+        QSocketNotifier* uDevNotifier = nullptr;
+    #endif
 #endif
 
     dxClusterClient* cluster = Q_NULLPTR;
@@ -1241,6 +1257,7 @@ Q_DECLARE_METATYPE(enum rptAccessTxRx)
 Q_DECLARE_METATYPE(struct rptrTone_t)
 Q_DECLARE_METATYPE(struct rptrAccessData_t)
 Q_DECLARE_METATYPE(enum usbFeatureType)
+Q_DECLARE_METATYPE(enum cmds)
 
 //void (*wfmain::logthistext)(QString text) = NULL;
 

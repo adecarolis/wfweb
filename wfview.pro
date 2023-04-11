@@ -51,7 +51,7 @@ macx:DEFINES += __MACOSX_CORE__
 !linux:HEADERS += ../rtaudio/RTAUdio.h
 !linux:INCLUDEPATH += ../rtaudio
 
-linux:LIBS += -lpulse -lpulse-simple -lrtaudio -lpthread
+linux:LIBS += -lpulse -lpulse-simple -lrtaudio -lpthread -ludev
 
 win32:INCLUDEPATH += ../portaudio/include
 !win32:LIBS += -lportaudio
