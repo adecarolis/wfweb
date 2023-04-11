@@ -129,6 +129,28 @@ When done, create a build area, clone the repo, build and install:
 
 wfview is now installed in /usr/local/bin
 
+
+Fedora 36:
+
+2023-04-11/Knud OZ1DGN
+
+
+Precondition:
+
+F36 KDE plasma desktop
+wfview 1.61 prebuild binary
+
+Install following packages:
+sudo dnf install qcustomplot-qt5 qt5-qtmultimedia qt5-qtserialport rtaudio portaudio hidapi qt5-qtgamepad
+
+sudo ln -s /usr/lib64/libqcustomplot-qt5.so.2 /usr/lib64/libqcustomplot.so.2
+
+Move /usr/share/wfview to /usr/local/share:
+
+sudo mv /usr/share/wfview/stylesheets/*  /usr/local/share/wfview
+
+
+
 # How to configure your RC-28 knob under Linux
 
 To use RC-28 knob you need to add udev rules, please execute as root:
