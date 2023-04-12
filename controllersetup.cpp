@@ -635,11 +635,6 @@ void controllerSetup::newDevice(USBDEVICE* dev)
 
     c->view.setSceneRect(c->scene->itemsBoundingRect());
 
-    // Attach pageChanged() here so we have access to all necessary vars
-    connect(&c->page, qOverload<int>(&QSpinBox::valueChanged),
-        [dev, this](int index) { this->pageChanged(dev, index); });
-
-
     this->adjustSize();
 
     numTabs++;
@@ -655,6 +650,11 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     emit sendRequest(dev,usbFeatureType::featureTimeout,dev->timeout);
     emit sendRequest(dev,usbFeatureType::featureColor,0,"", Q_NULLPTR, &dev->color);
 
+
+
+    // Attach pageChanged() here so we have access to all necessary vars
+    connect(&c->page, qOverload<int>(&QSpinBox::valueChanged),
+            [dev, this](int index) { this->pageChanged(dev, index); });
 
     // pageChanged will update the buttons/knobs for the tab (using qTimer ensures mutex is unlocked first)
     QTimer::singleShot(0, this, [=]() { pageChanged(dev,1); });
@@ -711,7 +711,7 @@ void controllerSetup::pagesChanged(USBDEVICE* dev, int val)
 void controllerSetup::pageChanged(USBDEVICE* dev, int val)
 {
 
-    //QMutexLocker locker(mutex); // Not sure why I can't take the mutex here?
+    QMutexLocker locker(mutex);
 
     auto tab = tabs.find(dev->path);
     if (tab == tabs.end())
@@ -729,7 +729,11 @@ void controllerSetup::pageChanged(USBDEVICE* dev, int val)
     updateDialog->hide(); // Hide the dialog if the page changes.
 
     dev->currentPage=val;
+
+    // Need to block signals so this isn't called recursively.
+    dev->pageSpin->blockSignals(true);
     dev->pageSpin->setValue(val);
+    dev->pageSpin->blockSignals(false);
 
     // (re)set button text
     for (auto b = buttons->begin();b != buttons->end(); b++)
