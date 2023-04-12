@@ -1204,7 +1204,7 @@ private:
     QVector<KNOB> usbKnobs;
     usbDevMap usbDevices;
     QMutex usbMutex;
-    qint64 lastUsbNotify;
+    qint64 lastUsbNotify=0;
 
     #if defined (Q_OS_LINUX)
 	struct udev* uDev = nullptr;

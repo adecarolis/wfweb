@@ -236,13 +236,14 @@ wfmain::~wfmain()
         usbControllerThread->quit();
         usbControllerThread->wait();
     }
-
-    if (uDevMonitor)
-    {
-        udev_monitor_unref(uDevMonitor);
-        udev_unref(uDev);
-        delete uDevNotifier;
-    }
+    #if defined(Q_OS_LINUX)
+        if (uDevMonitor)
+        {
+            udev_monitor_unref(uDevMonitor);
+            udev_unref(uDev);
+            delete uDevNotifier;
+        }
+    #endif
 #endif
 }
 

@@ -26,12 +26,14 @@ controllerSetup::~controllerSetup()
 
 void controllerSetup::hideEvent(QHideEvent *event)
 {
+    Q_UNUSED(event)
     qDebug(logUsbControl()) << "Controller window hideEvent()";
     updateDialog->hide();
 }
 
 void controllerSetup::on_tabWidget_currentChanged(int index)
 {
+    Q_UNUSED(index)
     if (updateDialog != Q_NULLPTR)
         updateDialog->hide();
 }
@@ -726,7 +728,6 @@ void controllerSetup::pageChanged(USBDEVICE* dev, int val)
 
     updateDialog->hide(); // Hide the dialog if the page changes.
 
-    int lastPage = dev->currentPage;
     dev->currentPage=val;
     dev->pageSpin->setValue(val);
 
@@ -735,18 +736,16 @@ void controllerSetup::pageChanged(USBDEVICE* dev, int val)
     {
         if (b->parent == dev)
         {
-            if (b->page == lastPage)
-            {
-                if (b->text != Q_NULLPTR) {
-                    tab.value()->scene->removeItem(b->text);
-                    delete b->text;
-                    b->text = Q_NULLPTR;
-                }
-                if (b->bgRect != Q_NULLPTR) {
-                    tab.value()->scene->removeItem(b->bgRect);
-                    delete b->bgRect;
-                    b->bgRect = Q_NULLPTR;
-                }
+            // Make sure we delete any other pages content and then update to latest.
+            if (b->text != Q_NULLPTR) {
+                tab.value()->scene->removeItem(b->text);
+                delete b->text;
+                b->text = Q_NULLPTR;
+            }
+            if (b->graphics && b->bgRect != Q_NULLPTR) {
+                tab.value()->scene->removeItem(b->bgRect);
+                delete b->bgRect;
+                b->bgRect = Q_NULLPTR;
             }
             if (b->page == dev->currentPage)
             {
@@ -770,13 +769,10 @@ void controllerSetup::pageChanged(USBDEVICE* dev, int val)
     for (auto k = knobs->begin();k != knobs->end(); k++)
     {
         if (k->parent == dev) {
-            if (k->page == lastPage)
-            {
-                if (k->text) {
-                    tab.value()->scene->removeItem(k->text);
-                    delete k->text;
-                    k->text = Q_NULLPTR;
-                }
+            if (k->text != Q_NULLPTR) {
+                tab.value()->scene->removeItem(k->text);
+                delete k->text;
+                k->text = Q_NULLPTR;
             }
             if (k->page == dev->currentPage)
             {

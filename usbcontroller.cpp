@@ -1572,19 +1572,19 @@ void usbController::loadButtons()
 void usbController::loadKnobs()
 {
     defaultKnobs.clear();
-    defaultKnobs.append(KNOB(shuttleXpress, 0, QRect(205, 189, 203, 203), Qt::green, &commands[4]));
-    defaultKnobs.append(KNOB(shuttlePro2, 0, QRect(104, 164, 124, 119), Qt::green, &commands[4]));
-    defaultKnobs.append(KNOB(RC28, 0, QRect(78, 128, 184, 168), Qt::green, &commands[4]));
-    defaultKnobs.append(KNOB(QuickKeys, 0, QRect(114, 130, 121, 43), Qt::green, &commands[4]));
+    defaultKnobs.append(KNOB(shuttleXpress, 0, QRect(205, 189, 203, 203), Qt::green, &commands[3]));
+    defaultKnobs.append(KNOB(shuttlePro2, 0, QRect(104, 164, 124, 119), Qt::green, &commands[3]));
+    defaultKnobs.append(KNOB(RC28, 0, QRect(78, 128, 184, 168), Qt::green, &commands[3]));
+    defaultKnobs.append(KNOB(QuickKeys, 0, QRect(114, 130, 121, 43), Qt::green, &commands[3]));
     
     // eCoder
-    defaultKnobs.append(KNOB(eCoderPlus, 0, QRect(173, 360, 205, 209), Qt::green, &commands[4]));
+    defaultKnobs.append(KNOB(eCoderPlus, 0, QRect(173, 360, 205, 209), Qt::green, &commands[3]));
     defaultKnobs.append(KNOB(eCoderPlus, 1, QRect(120, 153, 72, 27), Qt::green, &commands[0]));
     defaultKnobs.append(KNOB(eCoderPlus, 2, QRect(242, 153, 72, 27), Qt::green, &commands[0]));
     defaultKnobs.append(KNOB(eCoderPlus, 3, QRect(362, 153, 72, 27), Qt::green, &commands[0]));
 
     // StreamDeckPlus
-    defaultKnobs.append(KNOB(StreamDeckPlus, 0, QRect(74, 413, 64, 28), Qt::green, &commands[4]));
+    defaultKnobs.append(KNOB(StreamDeckPlus, 0, QRect(74, 413, 64, 28), Qt::green, &commands[3]));
     defaultKnobs.append(KNOB(StreamDeckPlus, 1, QRect(204, 413, 64, 28), Qt::green, &commands[0]));
     defaultKnobs.append(KNOB(StreamDeckPlus, 2, QRect(332, 413, 64, 28), Qt::green, &commands[0]));
     defaultKnobs.append(KNOB(StreamDeckPlus, 3, QRect(462, 413, 64, 28), Qt::green, &commands[0]));
@@ -1598,12 +1598,12 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "None", commandAny, cmdNone, (quint8)0x0));
     commands.append(COMMAND(num++, "PTT On", commandButton, cmdSetPTT, (quint8)0x1));
     commands.append(COMMAND(num++, "PTT Off", commandButton, cmdSetPTT, (quint8)0x0));
+    commands.append(COMMAND(num++, "VFOA", commandKnob, cmdSetFreq, (quint8)0x0));
+    commands.append(COMMAND(num++, "VFOB", commandKnob, cmdSetFreq, (quint8)0x1));
     commands.append(COMMAND(num++, "Freq Down", commandButton, cmdSetFreq, (int)-1));
     commands.append(COMMAND(num++, "Freq Up", commandButton, cmdSetFreq, (int)1));
     commands.append(COMMAND(num++, "PTT Off", commandButton, cmdSetPTT, (quint8)0x0));
     commands.append(COMMAND(num++, "PTT Toggle", commandButton, cmdPTTToggle, (quint8)0x0));
-    commands.append(COMMAND(num++, "VFOA", commandKnob, cmdSetFreq, (quint8)0x0));
-    commands.append(COMMAND(num++, "VFOB", commandKnob, cmdSetFreq, (quint8)0x1));
     commands.append(COMMAND(num++, "Span/Step", commandKnob, cmdSeparator, (quint8)0x0));
     commands.append(COMMAND(num++, "Tune", commandButton, cmdStartATU, (quint8)0x0));
     commands.append(COMMAND(num++, "Span/Step", commandButton, cmdSeparator, (quint8)0x0));
