@@ -114,9 +114,7 @@ void usbController::init(QMutex* mut,usbDevMap* devs ,QVector<BUTTON>* buts,QVec
             qInfo(logUsbControl()) << QString("Device found: (%0:%1) %2 manufacturer: (%3)%4 usage: 0x%5 usage_page 0x%6")
                                       .arg(devs->vendor_id, 4, 16, QChar('0'))
                                       .arg(devs->product_id, 4, 16, QChar('0'))
-                                      .arg(QString::fromWCharArray(devs->product_string))
-                                      .arg(QString::fromWCharArray(devs->product_string))
-                                      .arg(QString::fromWCharArray(devs->manufacturer_string))
+                                      .arg(QString::fromWCharArray(devs->product_string),QString::fromWCharArray(devs->product_string),QString::fromWCharArray(devs->manufacturer_string))
                                       .arg(devs->usage, 4, 16, QChar('0'))
                                       .arg(devs->usage_page, 4, 16, QChar('0'));
             devs = devs->next;
@@ -316,7 +314,7 @@ void usbController::run()
 
                 if (dev->handle)
                 {
-                    qInfo(logUsbControl()) << QString("Connected to device: %0 from %1 S/N %2").arg(dev->product).arg(dev->manufacturer).arg(dev->serial);
+                    qInfo(logUsbControl()) << QString("Connected to device: %0 from %1 S/N %2").arg(dev->product,dev->manufacturer,dev->serial);
                     hid_set_nonblocking(dev->handle, 1);
                     devicesConnected++;
                     dev->connected=true;
@@ -342,8 +340,7 @@ void usbController::run()
                 {
                     // This should only get displayed once if we fail to connect to a device
                     qInfo(logUsbControl()) << QString("Error connecting to  %0: %1")
-                                              .arg(dev->product)
-                                              .arg(QString::fromWCharArray(hid_error(dev->handle)));
+                                              .arg(dev->product,QString::fromWCharArray(hid_error(dev->handle)));
                 }
             }
 
@@ -363,7 +360,7 @@ void usbController::run()
                     { return (b.path == dev->path); });
                     if (bti == buttonList->end())
                     {
-                        // List doesn't contain any buttons for this device so add all existing buttons to the end of buttonList
+                        // List doesn't contain any buttons for this device so add default buttons to the end of buttonList
                         qInfo(logUsbControl()) << "No stored buttons found, loading defaults";
                         for (auto but=defaultButtons.begin();but!=defaultButtons.end();but++)
                         {
@@ -384,13 +381,13 @@ void usbController::run()
                         {
                             auto bon = std::find_if(commands.begin(), commands.end(), [but](const COMMAND& c) { return (c.text == but->on); });
                             if (bon != commands.end())
-                                but->onCommand = bon;
+                                but->onCommand = &(*bon);
                             else
                                 qWarning(logUsbControl()) << "On Command" << but->on << "not found";
 
                             auto boff = std::find_if(commands.begin(), commands.end(), [but](const COMMAND& c) { return (c.text == but->off); });
                             if (boff != commands.end())
-                                but->offCommand = boff;
+                                but->offCommand = &(*boff);
                             else
                                 qWarning(logUsbControl()) << "Off Command" << but->off << "not found";
 
@@ -423,7 +420,7 @@ void usbController::run()
                         {
                             auto k = std::find_if(commands.begin(), commands.end(), [kb](const COMMAND& c) { return (c.text == kb->cmd); });
                             if (k != commands.end())
-                                kb->command = k;
+                                kb->command = &(*k);
                             else
                                 qWarning(logUsbControl()) << "Knob Command" << kb->cmd << "not found";
 
@@ -971,7 +968,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                 data[0] = 0x05;
             }
             hid_get_feature_report(dev->handle,(unsigned char*)data.data(),(size_t)data.size());
-            qInfo(logUsbControl()) << QString("%0: Firmware = %1").arg(dev->product).arg(QString::fromLatin1(data.mid(2,12)));
+            qInfo(logUsbControl()) << QString("%0: Firmware = %1").arg(dev->product,QString::fromLatin1(data.mid(2,12)));
             break;
         case usbFeatureType::featureSerial:
             if (sdv1) {
@@ -980,7 +977,7 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
                 data[0] = 0x06;
             }
             hid_get_feature_report(dev->handle,(unsigned char*)data.data(),(size_t)data.size());
-            qInfo(logUsbControl()) << QString("%0: Serial Number = %1").arg(dev->product).arg(QString::fromLatin1(data.mid(5,8)));
+            qInfo(logUsbControl()) << QString("%0: Serial Number = %1").arg(dev->product,QString::fromLatin1(data.mid(5,8)));
             break;
         case usbFeatureType::featureReset:
             if (sdv1) {

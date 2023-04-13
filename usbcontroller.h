@@ -24,7 +24,7 @@
 #include <QBuffer>
 #include <QSettings>
 #include <QMessageBox>
-
+#include <memory>
 
 
 #if defined(USB_CONTROLLER) && QT_VERSION < QT_VERSION_CHECK(6,0,0)

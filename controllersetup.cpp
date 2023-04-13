@@ -143,7 +143,7 @@ void controllerSetup::showMenu(controllerScene* scene, QPoint p)
 
     if (but != buttons->end())
     {
-        currentButton = but;
+        currentButton = &(*but);
         currentKnob = Q_NULLPTR;
         qDebug() << "Button" << currentButton->num << "On Event" << currentButton->onCommand->text << "Off Event" << currentButton->offCommand->text;
 
@@ -205,7 +205,7 @@ void controllerSetup::showMenu(controllerScene* scene, QPoint p)
 
         if (kb != knobs->end())
         {
-            currentKnob = kb;
+            currentKnob = &(*kb);
             currentButton = Q_NULLPTR;
             qDebug() << "Knob" << currentKnob->num << "Event" << currentKnob->command->text;
 
@@ -914,8 +914,7 @@ void controllerSetup::on_restoreButton_clicked()
         if (model != dev->product) {
             QMessageBox msgBox;
             msgBox.setText("Stored controller does not match");
-            msgBox.setInformativeText(QString("Backup: %0 \nCurrent: %1\n\nThis will probably not work!").
-                           arg(model).arg(dev->product));
+            msgBox.setInformativeText(QString("Backup: %0 \nCurrent: %1\n\nThis will probably not work!").arg(model,dev->product));
             msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
             msgBox.setDefaultButton(QMessageBox::Cancel);
             int ret= msgBox.exec();
@@ -927,8 +926,7 @@ void controllerSetup::on_restoreButton_clicked()
         {
             QMessageBox msgBox;
             msgBox.setText("Version mismatch");
-            msgBox.setInformativeText(QString("Backup was from a different version of wfview\nBackup: %0 \nCurrent: %1\n\nPlease verify compatibility").
-                           arg(version).arg(QString(WFVIEW_VERSION)));
+            msgBox.setInformativeText(QString("Backup was from a different version of wfview\nBackup: %0 \nCurrent: %1\n\nPlease verify compatibility").arg(version, QString(WFVIEW_VERSION)));
             msgBox.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
             msgBox.setDefaultButton(QMessageBox::Cancel);
             int ret= msgBox.exec();
