@@ -1561,19 +1561,19 @@ void wfmain::setupKeyShortcuts()
     connect(keyF12, SIGNAL(activated()), this, SLOT(shortcutF12()));
 
     keyControlT = new QShortcut(this);
-    keyControlT->setKey(Qt::CTRL + Qt::Key_T);
+    keyControlT->setKey(Qt::CTRL | Qt::Key_T);
     connect(keyControlT, SIGNAL(activated()), this, SLOT(shortcutControlT()));
 
     keyControlR = new QShortcut(this);
-    keyControlR->setKey(Qt::CTRL + Qt::Key_R);
+    keyControlR->setKey(Qt::CTRL | Qt::Key_R);
     connect(keyControlR, SIGNAL(activated()), this, SLOT(shortcutControlR()));
 
     keyControlI = new QShortcut(this);
-    keyControlI->setKey(Qt::CTRL + Qt::Key_I);
+    keyControlI->setKey(Qt::CTRL | Qt::Key_I);
     connect(keyControlI, SIGNAL(activated()), this, SLOT(shortcutControlI()));
 
     keyControlU = new QShortcut(this);
-    keyControlU->setKey(Qt::CTRL + Qt::Key_U);
+    keyControlU->setKey(Qt::CTRL | Qt::Key_U);
     connect(keyControlU, SIGNAL(activated()), this, SLOT(shortcutControlU()));
 
     keyStar = new QShortcut(this);
@@ -1593,23 +1593,23 @@ void wfmain::setupKeyShortcuts()
     connect(keyPlus, SIGNAL(activated()), this, SLOT(shortcutPlus()));
 
     keyShiftMinus = new QShortcut(this);
-    keyShiftMinus->setKey(Qt::SHIFT + Qt::Key_Minus);
+    keyShiftMinus->setKey(Qt::SHIFT | Qt::Key_Minus);
     connect(keyShiftMinus, SIGNAL(activated()), this, SLOT(shortcutShiftMinus()));
 
     keyShiftPlus = new QShortcut(this);
-    keyShiftPlus->setKey(Qt::SHIFT + Qt::Key_Plus);
+    keyShiftPlus->setKey(Qt::SHIFT | Qt::Key_Plus);
     connect(keyShiftPlus, SIGNAL(activated()), this, SLOT(shortcutShiftPlus()));
 
     keyControlMinus = new QShortcut(this);
-    keyControlMinus->setKey(Qt::CTRL + Qt::Key_Minus);
+    keyControlMinus->setKey(Qt::CTRL | Qt::Key_Minus);
     connect(keyControlMinus, SIGNAL(activated()), this, SLOT(shortcutControlMinus()));
 
     keyControlPlus = new QShortcut(this);
-    keyControlPlus->setKey(Qt::CTRL + Qt::Key_Plus);
+    keyControlPlus->setKey(Qt::CTRL | Qt::Key_Plus);
     connect(keyControlPlus, SIGNAL(activated()), this, SLOT(shortcutControlPlus()));
 
     keyQuit = new QShortcut(this);
-    keyQuit->setKey(Qt::CTRL + Qt::Key_Q);
+    keyQuit->setKey(Qt::CTRL | Qt::Key_Q);
     connect(keyQuit, SIGNAL(activated()), this, SLOT(on_exitBtn_clicked()));
 
     keyPageUp = new QShortcut(this);
@@ -1647,7 +1647,7 @@ void wfmain::setupKeyShortcuts()
     });
 
     keyShiftK = new QShortcut(this);
-    keyShiftK->setKey(Qt::SHIFT + Qt::Key_K);
+    keyShiftK->setKey(Qt::SHIFT | Qt::Key_K);
     connect(keyShiftK, &QShortcut::activated,
             [=]() {
         if (freqLock) return;
@@ -1656,7 +1656,7 @@ void wfmain::setupKeyShortcuts()
 
 
     keyShiftJ = new QShortcut(this);
-    keyShiftJ->setKey(Qt::SHIFT + Qt::Key_J);
+    keyShiftJ->setKey(Qt::SHIFT | Qt::Key_J);
     connect(keyShiftJ, &QShortcut::activated,
             [=]() {
         if (freqLock) return;
@@ -1664,7 +1664,7 @@ void wfmain::setupKeyShortcuts()
     });
 
     keyControlK = new QShortcut(this);
-    keyControlK->setKey(Qt::CTRL + Qt::Key_K);
+    keyControlK->setKey(Qt::CTRL | Qt::Key_K);
     connect(keyControlK, &QShortcut::activated,
             [=]() {
         if (freqLock) return;
@@ -1673,7 +1673,7 @@ void wfmain::setupKeyShortcuts()
 
 
     keyControlJ = new QShortcut(this);
-    keyControlJ->setKey(Qt::CTRL + Qt::Key_J);
+    keyControlJ->setKey(Qt::CTRL | Qt::Key_J);
     connect(keyControlJ, &QShortcut::activated,
             [=]() {
         if (freqLock) return;
@@ -1715,9 +1715,9 @@ void wfmain::setupKeyShortcuts()
 
     keyDebug = new QShortcut(this);
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
-    keyDebug->setKey(Qt::CTRL + Qt::SHIFT + Qt::Key_D);
+    keyDebug->setKey(Qt::CTRL | Qt::SHIFT | Qt::Key_D);
 #else
-    keyDebug->setKey(Qt::CTRL + Qt::Key_D);
+    keyDebug->setKey(Qt::CTRL | Qt::Key_D);
 #endif
     connect(keyDebug, SIGNAL(activated()), this, SLOT(on_debugBtn_clicked()));
 }
@@ -5233,7 +5233,7 @@ void wfmain::receiveSpectrumData(QByteArray spectrum, double startFreq, double e
         return;
     }
 
-    QElapsedTimer performanceTimer;
+    //QElapsedTimer performanceTimer;
     bool updateRange = false;
 
     if((startFreq != oldLowerFreq) || (endFreq != oldUpperFreq))
@@ -9624,7 +9624,7 @@ bool wfmain::nativeEvent(const QByteArray& eventType, void* message, qintptr* re
                     NotificationFilter.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
                     NotificationFilter.dbcc_classguid = InterfaceClassGuid;
                     HWND hw = (HWND) this->effectiveWinId();   //Main window handle
-                    HDEVNOTIFY hDevNotify = RegisterDeviceNotification(hw,&NotificationFilter, DEVICE_NOTIFY_ALL_INTERFACE_CLASSES );
+                    RegisterDeviceNotification(hw,&NotificationFilter, DEVICE_NOTIFY_ALL_INTERFACE_CLASSES );
                     created = true;
                 }
                 break;
