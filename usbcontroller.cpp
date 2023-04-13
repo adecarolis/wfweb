@@ -1,10 +1,6 @@
 #if defined(USB_CONTROLLER)
 #include "usbcontroller.h"
 
-// We rely on being able to fallthrough case
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-
 #ifdef Q_OS_WIN
 #pragma comment (lib, "Setupapi.lib")
 #endif
@@ -50,7 +46,7 @@ usbController::~usbController()
             sendRequest(dev,usbFeatureType::featureOverlay,60,"Goodbye from wfview");
 
             if (dev->type.model == RC28) {
-                ledControl(false, 3);
+                sendRequest(dev,usbFeatureType::featureLEDControl,3,"off");
             }
             emit removeDevice(dev);
             hid_close(dev->handle);
@@ -261,7 +257,7 @@ void usbController::run()
     devs = hid_enumerate(0x0, 0x0);
     // Step through all currenly connected devices and add any newly discovered ones to usbDevices.
     while (devs) {
-        auto i = std::find_if(knownDevices.begin(), knownDevices.end(), [this,devs](const USBTYPE& d)
+        auto i = std::find_if(knownDevices.begin(), knownDevices.end(), [devs](const USBTYPE& d)
         { return ((devs->vendor_id == d.manufacturerId) && (devs->product_id == d.productId)
                         && (d.usage == 0x00 || devs->usage == d.usage)
                         && (d.usagePage == 0x00 || devs->usage_page == d.usagePage));});
@@ -327,10 +323,10 @@ void usbController::run()
 
                     if (dev->type.model == RC28)
                     {
-                        ledControl(false, 0);
-                        ledControl(false, 1);
-                        ledControl(false, 2);
-                        ledControl(true, 3);
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,0,"off"); });
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,1,"off"); });
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,2,"off"); });
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,3,"on"); });
                     }
                     else if (dev->type.model == QuickKeys)
                     {
@@ -830,40 +826,12 @@ void usbController::sendToLCD(QImage* img)
     }
 }
 
-/*
- * All functions below here are for specific controllers
-*/
 
-void usbController::ledControl(bool on, unsigned char num)
-{
-    // Currently this will act on ALL connected RC28 devices
-    // Not sure if this needs to change?
-    
-    QMutexLocker locker(mutex);
-
-    for (auto devIt = devices->begin(); devIt != devices->end(); devIt++)
-    {
-        auto dev = &devIt.value();
-        if (dev->connected && dev->type.model == RC28) {
-            QByteArray data(3, 0x0);
-            data[1] = 0x01;
-            static unsigned char ledNum = 0x07;
-            if (on)
-                ledNum &= ~(1UL << num);
-            else
-                ledNum |= 1UL << num;
-            
-            data[2] = ledNum;
-            
-            int res = hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
-            
-            if (res < 0) {
-                qDebug(logUsbControl()) << "Unable to write(), Error:" << hid_error(dev->handle);
-                return;
-            }            
-        }
-    }
-}
+// We rely on being able to fallthrough case
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
 
 /* This function will handle various commands for multiple models of controller
  *
@@ -871,7 +839,6 @@ void usbController::ledControl(bool on, unsigned char num)
  * featureInit, featureFirmware, featureSerial, featureButton, featureSensitivity, featureBrightness,
  * featureOrientation, featureSpeed, featureColor, featureOverlay, featureTimeout, featurePages, featureDisable
 */
-
 void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val, QString text, QImage* img, QColor* color)
 {
     if (dev == Q_NULLPTR || !dev->connected || dev->disabled || !dev->handle)
@@ -1281,15 +1248,27 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
         }
         break;
     case RC28:
+        data.resize(3);
+        memset(data.data(),0x0,data.size());
         switch (feature)
         {
         case usbFeatureType::featureFirmware:
             data[0] = 63;
             data[1] = 0x02;
-            hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
+            break;
+        case usbFeatureType::featureLEDControl:
+            data[1] = 0x01;
+            data[2] = 0x07;
+            if (text == "on")
+                data[2] &= ~(1UL << val);
+            else
+                data[2] |= 1UL << val;
+            break;
         default:
+            return; // No command
             break;
         }
+        res = hid_write(dev->handle, (const unsigned char*)data.constData(), data.size());
         break;
     default:
         break;
@@ -1298,6 +1277,11 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
     if (res == -1)
         qInfo(logUsbControl()) << "Command" << feature << "returned" << res;
 }
+
+// Don't allow fallthrough elsewhere in the file.
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 void usbController::programDisable(USBDEVICE* dev, bool disabled)
 {
@@ -1311,7 +1295,7 @@ void usbController::programDisable(USBDEVICE* dev, bool disabled)
             sendRequest(dev,usbFeatureType::featureOverlay,60,"Goodbye from wfview");
 
             if (dev->type.model == RC28) {
-                ledControl(false, 3);
+                sendRequest(dev,usbFeatureType::featureLEDControl,3,"off");
             }
 
             QMutexLocker locker(mutex);
@@ -2080,5 +2064,4 @@ void usbController::restoreController(USBDEVICE* dev, QString file)
     QTimer::singleShot(250, this, SLOT(run())); // Call run to cleanup connectons after 250ms
 }
 
-#pragma GCC diagnostic pop
 #endif

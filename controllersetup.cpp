@@ -496,6 +496,7 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     connect(&c->sens, &QSlider::valueChanged,
         [dev,this](int val) { this->sensitivityMoved(dev,val); });
 
+    c->sensLayout.addStretch(0);
     c->pageLabel.setText("Page:");
     c->sensLayout.addWidget(&c->pageLabel);
     c->page.setObjectName("Page SpinBox");
@@ -508,46 +509,46 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     dev->pageSpin = &c->page;
 
     switch (dev->type.model) {
-        case shuttleXpress:
-            c->image.load(":/resources/shuttlexpress.png");
-            break;
-        case shuttlePro2:
-            c->image.load(":/resources/shuttlepro.png");
-            break;
-        case RC28:
-            c->image.load(":/resources/rc28.png");
-            break;
-        case xBoxGamepad:
-            c->image.load(":/resources/xbox.png");
-            break;
-        case eCoderPlus:
-            c->image.load(":/resources/ecoder.png");
-            break;
-        case QuickKeys:
-            c->image.load(":/resources/quickkeys.png");
-            break;
-        case StreamDeckOriginal:
-        case StreamDeckOriginalV2:
-        case StreamDeckOriginalMK2:
-            c->image.load(":/resources/streamdeck.png");
-            break;
-        case StreamDeckMini:
-        case StreamDeckMiniV2:
-            c->image.load(":/resources/streamdeckmini.png");
-            break;
-        case StreamDeckXL:
-        case StreamDeckXLV2:
-            c->image.load(":/resources/streamdeckxl.png");
-            break;
-        case StreamDeckPlus:
-            c->image.load(":/resources/streamdeckplus.png");
-            break;
-        case StreamDeckPedal:
-            c->image.load(":/resources/streamdeckpedal.png");
-            break;
-            default:
-            this->adjustSize();
-            break;
+    case shuttleXpress:
+        c->image.load(":/resources/shuttlexpress.png");
+        break;
+    case shuttlePro2:
+        c->image.load(":/resources/shuttlepro.png");
+        break;
+    case RC28:
+        c->image.load(":/resources/rc28.png");
+        break;
+    case xBoxGamepad:
+        c->image.load(":/resources/xbox.png");
+        break;
+    case eCoderPlus:
+        c->image.load(":/resources/ecoder.png");
+        break;
+    case QuickKeys:
+        c->image.load(":/resources/quickkeys.png");
+        break;
+    case StreamDeckOriginal:
+    case StreamDeckOriginalV2:
+    case StreamDeckOriginalMK2:
+        c->image.load(":/resources/streamdeck.png");
+        break;
+    case StreamDeckMini:
+    case StreamDeckMiniV2:
+        c->image.load(":/resources/streamdeckmini.png");
+        break;
+    case StreamDeckXL:
+    case StreamDeckXLV2:
+        c->image.load(":/resources/streamdeckxl.png");
+        break;
+    case StreamDeckPlus:
+        c->image.load(":/resources/streamdeckplus.png");
+        break;
+    case StreamDeckPedal:
+        c->image.load(":/resources/streamdeckpedal.png");
+        break;
+    default:
+        this->adjustSize();
+        break;
     }
 
     c->bgImage = new QGraphicsPixmapItem(QPixmap::fromImage(c->image));
@@ -655,6 +656,60 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     // Attach pageChanged() here so we have access to all necessary vars
     connect(&c->page, qOverload<int>(&QSpinBox::valueChanged),
             [dev, this](int index) { this->pageChanged(dev, index); });
+
+// Hide all controls that are not relevant to this controller
+// We rely on being able to fallthrough case
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
+
+    switch (dev->type.model) {
+    case QuickKeys:
+        break;
+    case StreamDeckPedal:
+        c->sensLabel.setVisible(false);
+        c->sens.setVisible(false);
+    case shuttleXpress:
+    case shuttlePro2:
+    case RC28:
+    case xBoxGamepad:
+    case eCoderPlus:
+        c->brightLabel.setVisible(false);
+        c->speedLabel.setVisible(false);
+        c->timeoutLabel.setVisible(false);
+        c->orientLabel.setVisible(false);
+        c->brightness.setVisible(false);
+        c->speed.setVisible(false);
+        c->timeout.setVisible(false);
+        c->orientation.setVisible(false);
+        c->color.setVisible(false);
+        break;
+    case StreamDeckOriginal:
+    case StreamDeckOriginalV2:
+    case StreamDeckOriginalMK2:
+    case StreamDeckMini:
+    case StreamDeckMiniV2:
+    case StreamDeckXL:
+    case StreamDeckXLV2:
+        c->sensLabel.setVisible(false);
+        c->sens.setVisible(false); // No knobs!
+    case StreamDeckPlus:
+        c->speedLabel.setVisible(false);
+        c->timeoutLabel.setVisible(false);
+        c->orientLabel.setVisible(false);
+        c->speed.setVisible(false);
+        c->timeout.setVisible(false);
+        c->orientation.setVisible(false);
+        break;
+    default:
+        break;
+    }
+
+// Don't allow fallthrough elsewhere in the file.
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
     // pageChanged will update the buttons/knobs for the tab (using qTimer ensures mutex is unlocked first)
     QTimer::singleShot(0, this, [=]() { pageChanged(dev,1); });

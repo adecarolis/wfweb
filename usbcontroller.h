@@ -229,7 +229,6 @@ public slots:
     void init(QMutex* mut,usbDevMap* prefs ,QVector<BUTTON>* buts,QVector<KNOB>* knobs);
     void run();
     void runTimer();
-    void ledControl(bool on, unsigned char num);
     void receivePTTStatus(bool on);
     void receiveLevel(cmds cmd, unsigned char level);
     void programPages(USBDEVICE* dev, int pages);
