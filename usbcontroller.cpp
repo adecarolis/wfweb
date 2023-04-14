@@ -1257,9 +1257,9 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
             data[1] = 0x01;
             data[2] = 0x07;
             if (text == "on")
-                data[2] &= (qint8)~(1UL << val);
+                data[2] &= quint8(~(1UL << val));
             else
-                data[2] |= (qint8)1UL << val;
+                data[2] |= quint8(1UL << val);
             break;
         default:
             return; // No command
