@@ -33,9 +33,22 @@ void controllerSetup::hideEvent(QHideEvent *event)
 
 void controllerSetup::on_tabWidget_currentChanged(int index)
 {
-    Q_UNUSED(index)
+    if (ui->tabWidget->widget(index) != Q_NULLPTR) {
+        QWidget* widget = ui->tabWidget->widget(index);
+        QString path = ui->tabWidget->widget(index)->objectName();
+        auto tab = tabs.find(path);
+        if (tab != tabs.end())
+        {
+            tabContent* c = tab.value();
+            this->resize(this->sizeHint());
+            //this->resize(c->bgImage->boundingRect().width() + 20, c->bgImage->boundingRect().height() + 150);
+        }
+    }
+
     if (updateDialog != Q_NULLPTR)
         updateDialog->hide();
+
+
 }
 
 void controllerSetup::init(usbDevMap* dev, QVector<BUTTON>* but, QVector<KNOB>* kb, QVector<COMMAND>* cmd, QMutex* mut)
@@ -553,14 +566,8 @@ void controllerSetup::newDevice(USBDEVICE* dev)
 
     c->bgImage = new QGraphicsPixmapItem(QPixmap::fromImage(c->image));
     c->view.setMinimumSize(c->bgImage->boundingRect().width() + 2, c->bgImage->boundingRect().height() + 2);
-
     ui->tabWidget->show();
 
-
-    // This command causes the window to disappear in Linux?
-#if !defined(Q_OS_LINUX)
-    this->setMinimumSize(c->bgImage->boundingRect().width() + 2, c->bgImage->boundingRect().height() + 250);
-#endif
 
     c->scene = new controllerScene();
     c->view.setScene(c->scene);
