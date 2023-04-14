@@ -1256,11 +1256,11 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
         case usbFeatureType::featureLEDControl:
             data[1] = 0x01;
             data[2] = 0x07;
-            if (text == "on")
-                data[2] &= quint8(~(1UL << val));
-            else
-                data[2] |= quint8(1UL << val);
-            break;
+            //if (text == "on")
+                //data[2] &= quint8(~(1UL << val));
+            //else
+               // data[2] |= quint8(1UL << val);
+            //break;
         default:
             return; // No command
             break;
