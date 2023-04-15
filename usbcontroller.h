@@ -133,7 +133,7 @@ struct USBDEVICE {
     QGraphicsScene* scene = Q_NULLPTR;
     QSpinBox* pageSpin = Q_NULLPTR;
     QImage image;
-
+    quint8 ledStatus=0x07;
 };
 
 struct COMMAND {

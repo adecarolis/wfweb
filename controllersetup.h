@@ -75,36 +75,36 @@ protected:
 
 
 struct tabContent {
-    QWidget tab;
-    QVBoxLayout mainLayout;
-    QHBoxLayout topLayout;
-    QWidget widget;
-    QVBoxLayout layout;
-    QCheckBox disabled;
-    QLabel message;
-    QGraphicsView view;
-    QLabel pageLabel;
-    QSpinBox page;
-    QHBoxLayout sensLayout;
-    QLabel sensLabel;
-    QSlider sens;
-    QImage image;
+    QWidget* tab;
+    QVBoxLayout* mainLayout;
+    QHBoxLayout* topLayout;
+    QWidget* widget;
+    QVBoxLayout* layout;
+    QCheckBox* disabled;
+    QLabel* message;
+    QGraphicsView* view;
+    QLabel* pageLabel;
+    QSpinBox* page;
+    QHBoxLayout* sensLayout;
+    QLabel* sensLabel;
+    QSlider* sens;
+    QImage* image;
     QGraphicsItem* bgImage = Q_NULLPTR;
     controllerScene* scene = Q_NULLPTR;
-    QGridLayout grid;
-    QLabel brightLabel;
-    QComboBox brightness;
-    QLabel speedLabel;
-    QComboBox speed;
-    QLabel orientLabel;
-    QComboBox orientation;
-    QLabel colorLabel;
-    QPushButton color;
-    QLabel timeoutLabel;
-    QSpinBox timeout;
-    QLabel pagesLabel;
-    QSpinBox pages;
-    QLabel helpText;
+    QGridLayout* grid;
+    QLabel* brightLabel;
+    QComboBox* brightness;
+    QLabel* speedLabel;
+    QComboBox* speed;
+    QLabel* orientLabel;
+    QComboBox* orientation;
+    QLabel* colorLabel;
+    QPushButton* color;
+    QLabel* timeoutLabel;
+    QSpinBox* timeout;
+    QLabel* pagesLabel;
+    QSpinBox* pages;
+    QLabel* helpText;
 };
 
 

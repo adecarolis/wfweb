@@ -15,8 +15,7 @@ aboutbox::aboutbox(QWidget *parent) :
     ui->topText->setText("wfview version " + QString(WFVIEW_VERSION));
 
     QString head = QString("<html><head></head><body>");
-    QString copyright = QString("Copyright 2017-2022 Elliott H. Liggett, W6EL. All rights reserved.<br/>wfview source code is <a href=\"https://gitlab.com/eliggett/wfview/-/blob/master/LICENSE\">licensed</a> under the GNU GPLv3.");
-    QString nacode = QString("<br/><br/>Networking, audio, rigctl server, and much more written by Phil Taylor, M0VSE");
+    QString copyright = QString("Copyright 2017-2023 Elliott H. Liggett, W6EL and Phil E. Taylor, M0VSE. All rights reserved.<br/>wfview source code is <a href=\"https://gitlab.com/eliggett/wfview/-/blob/master/LICENSE\">licensed</a> under the GNU GPLv3.");
     QString scm = QString("<br/><br/>Source code and issues managed by Roeland Jansen, PA3MET");
     QString doctest = QString("<br/><br/>Testing and development mentorship from Jim Nijkamp, PA8E.");
 
@@ -86,7 +85,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
 
     // String it all together:
 
-    QString aboutText = head + copyright + "\n" + nacode + "\n" + scm + "\n" + doctest + dedication + wfviewcommunityack;
+    QString aboutText = head + copyright + "\n" + "\n" + scm + "\n" + doctest + dedication + wfviewcommunityack;
     aboutText.append(website + "\n" + donate + "\n"+ docs + support + contact +"\n");
     aboutText.append("\n" + ssCredit + "\n" + rsCredit + "\n");
 

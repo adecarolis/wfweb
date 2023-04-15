@@ -1729,32 +1729,35 @@ void wfmain::setupUsbControllerDevice()
     if (usbWindow == Q_NULLPTR) {
         usbWindow = new controllerSetup();
     }
+
     usbControllerDev = new usbController();
     usbControllerThread = new QThread(this);
+    usbControllerThread->setObjectName("usb()");
     usbControllerDev->moveToThread(usbControllerThread);
     connect(usbControllerThread, SIGNAL(started()), usbControllerDev, SLOT(run()));
     connect(usbControllerThread, SIGNAL(finished()), usbControllerDev, SLOT(deleteLater()));
+    connect(usbControllerThread, SIGNAL(finished()), usbWindow, SLOT(deleteLater())); // Delete window when controller is deleted
     connect(usbControllerDev, SIGNAL(sendJog(int)), this, SLOT(changeFrequency(int)));
     connect(usbControllerDev, SIGNAL(doShuttle(bool,unsigned char)), this, SLOT(doShuttle(bool,unsigned char)));
     connect(usbControllerDev, SIGNAL(button(const COMMAND*)), this, SLOT(buttonControl(const COMMAND*)));
     connect(usbControllerDev, SIGNAL(setBand(int)), this, SLOT(setBand(int)));
     connect(usbControllerDev, SIGNAL(removeDevice(USBDEVICE*)), usbWindow, SLOT(removeDevice(USBDEVICE*)));
     connect(usbControllerDev, SIGNAL(initUI(usbDevMap*, QVector<BUTTON>*, QVector<KNOB>*, QVector<COMMAND>*, QMutex*)), usbWindow, SLOT(init(usbDevMap*, QVector<BUTTON>*, QVector<KNOB>*, QVector<COMMAND>*, QMutex*)));
-    connect(usbControllerDev, SIGNAL(changePage(USBDEVICE*, int)), usbWindow, SLOT(pageChanged(USBDEVICE*, int)));
+    connect(usbControllerDev, SIGNAL(changePage(USBDEVICE*,int)), usbWindow, SLOT(pageChanged(USBDEVICE*,int)));
     connect(usbControllerDev, SIGNAL(setConnected(USBDEVICE*)), usbWindow, SLOT(setConnected(USBDEVICE*)));
-    connect(usbControllerDev, SIGNAL(newDevice(USBDEVICE*)), usbWindow, SLOT(newDevice(USBDEVICE *)));
+    connect(usbControllerDev, SIGNAL(newDevice(USBDEVICE*)), usbWindow, SLOT(newDevice(USBDEVICE*)));
     usbControllerThread->start(QThread::LowestPriority);
     
     connect(usbWindow, SIGNAL(sendRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)), usbControllerDev, SLOT(sendRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)));
     connect(this, SIGNAL(sendControllerRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)), usbControllerDev, SLOT(sendRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)));
-    connect(usbWindow, SIGNAL(programPages(USBDEVICE*, int)), usbControllerDev, SLOT(programPages(USBDEVICE*, int)));
-    connect(usbWindow, SIGNAL(programDisable(USBDEVICE*, bool)), usbControllerDev, SLOT(programDisable(USBDEVICE*, bool)));
+    connect(usbWindow, SIGNAL(programPages(USBDEVICE*,int)), usbControllerDev, SLOT(programPages(USBDEVICE*,int)));
+    connect(usbWindow, SIGNAL(programDisable(USBDEVICE*,bool)), usbControllerDev, SLOT(programDisable(USBDEVICE*,bool)));
     connect(this, SIGNAL(setPTT(bool)), usbControllerDev, SLOT(receivePTTStatus(bool)));
-    connect(this, SIGNAL(sendLevel(cmds, unsigned char)), usbControllerDev, SLOT(receiveLevel(cmds, unsigned char)));
+    connect(this, SIGNAL(sendLevel(cmds,unsigned char)), usbControllerDev, SLOT(receiveLevel(cmds,unsigned char)));
     connect(this, SIGNAL(initUsbController(QMutex*,usbDevMap*,QVector<BUTTON>*,QVector<KNOB>*)), usbControllerDev, SLOT(init(QMutex*,usbDevMap*,QVector<BUTTON>*,QVector<KNOB>*)));
     connect(this, SIGNAL(usbHotplug()), usbControllerDev, SLOT(run()));
-    connect(usbWindow, SIGNAL(backup(USBDEVICE*, QString)), usbControllerDev, SLOT(backupController(USBDEVICE*, QString)));
-    connect(usbWindow, SIGNAL(restore(USBDEVICE*, QString)), usbControllerDev, SLOT(restoreController(USBDEVICE*, QString)));
+    connect(usbWindow, SIGNAL(backup(USBDEVICE*,QString)), usbControllerDev, SLOT(backupController(USBDEVICE*,QString)));
+    connect(usbWindow, SIGNAL(restore(USBDEVICE*,QString)), usbControllerDev, SLOT(restoreController(USBDEVICE*,QString)));
 
 #endif
 }
@@ -9461,18 +9464,13 @@ void wfmain::on_enableUsbChk_clicked(bool checked)
         usbControllerThread->quit();
         usbControllerThread->wait();
         usbControllerThread = Q_NULLPTR;
+        usbWindow = Q_NULLPTR;
     }
 
     if (checked) {
         // Setup USB Controller
         setupUsbControllerDevice();
         emit initUsbController(&usbMutex,&usbDevices,&usbButtons,&usbKnobs);
-    }
-    else {
-        if (usbWindow != Q_NULLPTR) {
-            delete usbWindow;
-            usbWindow = Q_NULLPTR;
-        }
     }
 #endif
 }

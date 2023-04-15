@@ -18,11 +18,12 @@ usbController::usbController()
     loadKnobs();
 
     // This is a the "master" list of supported devices. Maybe move to settings at some point?
+    // usbDeviceType, manufacturer, product, usage, usagePage, butons, knobs, maxPayload, iconSize
     knownDevices.append(USBTYPE(shuttleXpress,0x0b33,0x0020,0x0000,0x0000,15,2,5,0));
     knownDevices.append(USBTYPE(shuttlePro2,0x0b33,0x0030,0x0000,0x0000,15,2,5,0));
     knownDevices.append(USBTYPE(shuttlePro2,0x0b33,0x0011,0x0000,0x0000,15,2,5,0)); // Actually a ShuttlePro but hopefully will work?
     knownDevices.append(USBTYPE(RC28,0x0c26,0x001e,0x0000,0x0000,3,1,64,0));
-    knownDevices.append(USBTYPE(eCoderPlus, 0x1fc9, 0x0003,0x0000,0x0000,16,4,32,0));
+    knownDevices.append(USBTYPE(eCoderPlus, 0x1fc9, 0x0003,0x0000,0x0000,22,4,32,0)); // Actually 20 but some bit0 and bit15 aren't used
     knownDevices.append(USBTYPE(QuickKeys, 0x28bd, 0x5202,0x0001,0xff0a,10,1,32,0));
     knownDevices.append(USBTYPE(StreamDeckMini, 0x0fd9, 0x0063, 0x0000, 0x0000,6,0,1024,80));
     knownDevices.append(USBTYPE(StreamDeckMiniV2, 0x0fd9, 0x0090, 0x0000, 0x0000,6,0,1024,80));
@@ -48,8 +49,12 @@ usbController::~usbController()
             if (dev->type.model == RC28) {
                 sendRequest(dev,usbFeatureType::featureLEDControl,3,"off");
             }
-            emit removeDevice(dev);
             hid_close(dev->handle);
+            dev->handle = NULL;
+            dev->connected = false;
+            dev->detected = false;
+            dev->uiCreated = false;
+            devicesConnected--;
         }
         ++devIt;
     }
@@ -1255,12 +1260,12 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
             break;
         case usbFeatureType::featureLEDControl:
             data[1] = 0x01;
-            data[2] = 0x07;
-            //if (text == "on")
-                //data[2] &= quint8(~(1UL << val));
-            //else
-               // data[2] |= quint8(1UL << val);
-            //break;
+            if (text == "on")
+                dev->ledStatus &= ~(1UL << val);
+            else
+                dev->ledStatus |= 1UL << val;
+            data[2] = dev->ledStatus;
+            break;
         default:
             return; // No command
             break;

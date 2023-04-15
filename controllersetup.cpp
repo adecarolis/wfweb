@@ -20,8 +20,19 @@ controllerSetup::~controllerSetup()
     qInfo(logUsbControl()) << "Deleting controllerSetup() window";
     delete noControllersText;
     delete updateDialog;
-    delete ui;
+    delete ui; // Will delete all content in all tabs
+    tabs.clear();
+    // Step through ALL buttons and knobs setting their text to NULL (just in case)
+    for (auto b = buttons->begin(); b != buttons->end(); b++)
+    {
+        b->text=Q_NULLPTR;
+        b->bgRect=Q_NULLPTR;
+    }
 
+    for (auto k= knobs->begin(); k != knobs->end(); k++)
+    {
+        k->text=Q_NULLPTR;
+    }
 }
 
 void controllerSetup::hideEvent(QHideEvent *event)
@@ -33,21 +44,20 @@ void controllerSetup::hideEvent(QHideEvent *event)
 
 void controllerSetup::on_tabWidget_currentChanged(int index)
 {
+    // We may get the indexChanged event before the tabWidget has been initialized
     if (ui->tabWidget->widget(index) != Q_NULLPTR) {
-        QWidget* widget = ui->tabWidget->widget(index);
         QString path = ui->tabWidget->widget(index)->objectName();
         auto tab = tabs.find(path);
         if (tab != tabs.end())
         {
-            tabContent* c = tab.value();
             this->resize(this->sizeHint());
-            //this->resize(c->bgImage->boundingRect().width() + 20, c->bgImage->boundingRect().height() + 150);
         }
     }
 
     if (updateDialog != Q_NULLPTR)
+    {
         updateDialog->hide();
-
+    }
 
 }
 
@@ -468,180 +478,193 @@ void controllerSetup::newDevice(USBDEVICE* dev)
 
     tabContent* c = new tabContent();
 
-    c->tab.setObjectName(dev->path);
-    ui->tabWidget->addTab(&c->tab,dev->product);
-    c->tab.setLayout(&c->mainLayout);
-    c->mainLayout.addLayout(&c->topLayout);
-    c->mainLayout.addWidget(&c->widget);
+    c->tab = new QWidget();
+    c->widget = new QWidget();
 
-    c->widget.setLayout(&c->layout);
+    c->tab->setObjectName(dev->path);
+    ui->tabWidget->addTab(c->tab,dev->product);
 
+    // Create the different layouts required
+    c->mainLayout = new QVBoxLayout(c->tab);
+    c->layout = new QVBoxLayout();
+    c->topLayout = new QHBoxLayout();
+    c->sensLayout = new QHBoxLayout();
+    c->grid = new QGridLayout();
 
-    c->topLayout.addWidget(&c->disabled);
-    c->disabled.setText("Disable");
-    connect(&c->disabled, qOverload<bool>(&QCheckBox::clicked),
-        [dev,this,c](bool checked) { this->disableClicked(dev,checked,&c->widget); });
-    c->disabled.setChecked(dev->disabled);
+    c->mainLayout->addLayout(c->topLayout);
+    c->mainLayout->addWidget(c->widget);
+    c->widget->setLayout(c->layout);
 
+    c->disabled = new QCheckBox("Disable");
+    c->topLayout->addWidget(c->disabled);
+    connect(c->disabled, qOverload<bool>(&QCheckBox::clicked),
+        [dev,this,c](bool checked) { this->disableClicked(dev,checked,c->widget); });
+    c->disabled->setChecked(dev->disabled);
+
+    c->message = new QLabel();
     if (dev->connected) {
-        c->message.setStyleSheet("QLabel { color : green; }");
-        c->message.setText("Connected");
+        c->message->setStyleSheet("QLabel { color : green; }");
+        c->message->setText("Connected");
     } else {
-        c->message.setStyleSheet("QLabel { color : red; }");
-        c->message.setText("Not Connected");
+        c->message->setStyleSheet("QLabel { color : red; }");
+        c->message->setText("Not Connected");
     }
+        c->topLayout->addWidget(c->message);
+    c->message->setAlignment(Qt::AlignRight);
 
-    c->topLayout.addWidget(&c->message);
-    c->message.setAlignment(Qt::AlignRight);
+    c->view = new QGraphicsView();
+    c->layout->addWidget(c->view);
 
-    c->layout.addWidget(&c->view);
-
-
-    c->layout.addLayout(&c->sensLayout);
-    c->sensLabel.setText("Sensitivity:");
-    c->sensLayout.addWidget(&c->sensLabel);
-    c->sens.setMinimum(1);
-    c->sens.setMaximum(21);
-    c->sens.setOrientation(Qt::Horizontal);
-    c->sens.setInvertedAppearance(true);
-    c->sensLayout.addWidget(&c->sens);
-    c->sens.setValue(dev->sensitivity);
-    connect(&c->sens, &QSlider::valueChanged,
+    c->layout->addLayout(c->sensLayout);
+    c->sensLabel = new QLabel("Sensitivity");
+    c->sensLayout->addWidget(c->sensLabel);
+    c->sens = new QSlider(Qt::Horizontal);
+    c->sens->setMinimum(1);
+    c->sens->setMaximum(21);
+    c->sens->setInvertedAppearance(true);
+    c->sensLayout->addWidget(c->sens);
+    c->sens->setValue(dev->sensitivity);
+    connect(c->sens, &QSlider::valueChanged,
         [dev,this](int val) { this->sensitivityMoved(dev,val); });
 
-    c->sensLayout.addStretch(0);
-    c->pageLabel.setText("Page:");
-    c->sensLayout.addWidget(&c->pageLabel);
-    c->page.setObjectName("Page SpinBox");
-    c->page.setValue(1);
-    c->page.setMinimum(1);
-    c->page.setMaximum(dev->pages);
-    c->page.setToolTip("Select current page to edit");
-    c->sensLayout.addWidget(&c->page);
+    c->sensLayout->addStretch(0);
 
-    dev->pageSpin = &c->page;
+    c->pageLabel = new QLabel("Page:");
+    c->sensLayout->addWidget(c->pageLabel);
+    c->page = new QSpinBox();
+    c->page->setValue(1);
+    c->page->setMinimum(1);
+    c->page->setMaximum(dev->pages);
+    c->page->setToolTip("Select current page to edit");
+    c->sensLayout->addWidget(c->page);
+    dev->pageSpin = c->page;
 
+    c->image = new QImage();
     switch (dev->type.model) {
     case shuttleXpress:
-        c->image.load(":/resources/shuttlexpress.png");
+        c->image->load(":/resources/shuttlexpress.png");
         break;
     case shuttlePro2:
-        c->image.load(":/resources/shuttlepro.png");
+        c->image->load(":/resources/shuttlepro.png");
         break;
     case RC28:
-        c->image.load(":/resources/rc28.png");
+        c->image->load(":/resources/rc28.png");
         break;
     case xBoxGamepad:
-        c->image.load(":/resources/xbox.png");
+        c->image->load(":/resources/xbox.png");
         break;
     case eCoderPlus:
-        c->image.load(":/resources/ecoder.png");
+        c->image->load(":/resources/ecoder.png");
         break;
     case QuickKeys:
-        c->image.load(":/resources/quickkeys.png");
+        c->image->load(":/resources/quickkeys.png");
         break;
     case StreamDeckOriginal:
     case StreamDeckOriginalV2:
     case StreamDeckOriginalMK2:
-        c->image.load(":/resources/streamdeck.png");
+        c->image->load(":/resources/streamdeck.png");
         break;
     case StreamDeckMini:
     case StreamDeckMiniV2:
-        c->image.load(":/resources/streamdeckmini.png");
+        c->image->load(":/resources/streamdeckmini.png");
         break;
     case StreamDeckXL:
     case StreamDeckXLV2:
-        c->image.load(":/resources/streamdeckxl.png");
+        c->image->load(":/resources/streamdeckxl.png");
         break;
     case StreamDeckPlus:
-        c->image.load(":/resources/streamdeckplus.png");
+        c->image->load(":/resources/streamdeckplus.png");
         break;
     case StreamDeckPedal:
-        c->image.load(":/resources/streamdeckpedal.png");
+        c->image->load(":/resources/streamdeckpedal.png");
         break;
     default:
         this->adjustSize();
         break;
     }
 
-    c->bgImage = new QGraphicsPixmapItem(QPixmap::fromImage(c->image));
-    c->view.setMinimumSize(c->bgImage->boundingRect().width() + 2, c->bgImage->boundingRect().height() + 2);
+    c->bgImage = new QGraphicsPixmapItem(QPixmap::fromImage(*c->image));
+    c->view->setMinimumSize(c->bgImage->boundingRect().width() + 2, c->bgImage->boundingRect().height() + 2);
     ui->tabWidget->show();
 
-
     c->scene = new controllerScene();
-    c->view.setScene(c->scene);
+    c->view->setScene(c->scene);
     connect(c->scene, SIGNAL(showMenu(controllerScene*,QPoint)), this, SLOT(showMenu(controllerScene*,QPoint)));
     c->scene->addItem(c->bgImage);
 
-    c->layout.addLayout(&c->grid);
 
-    c->brightLabel.setText("Brightness");
-    c->grid.addWidget(&c->brightLabel,0,0);
-    c->brightness.addItem("Off");
-    c->brightness.addItem("Low");
-    c->brightness.addItem("Medium");
-    c->brightness.addItem("High");
-    c->brightness.setCurrentIndex(dev->brightness);
-    c->grid.addWidget(&c->brightness,1,0);
-    connect(&c->brightness, qOverload<int>(&QComboBox::currentIndexChanged),
+    c->layout->addLayout(c->grid);
+
+    c->brightLabel = new QLabel("Brightness");
+    c->grid->addWidget(c->brightLabel,0,0);
+    c->brightness = new QComboBox();
+    c->brightness->addItem("Off");
+    c->brightness->addItem("Low");
+    c->brightness->addItem("Medium");
+    c->brightness->addItem("High");
+    c->brightness->setCurrentIndex(dev->brightness);
+    c->grid->addWidget(c->brightness,1,0);
+    connect(c->brightness, qOverload<int>(&QComboBox::currentIndexChanged),
         [dev,this](int index) { this->brightnessChanged(dev,index); });
 
-    c->speedLabel.setText("Speed");
-    c->grid.addWidget(&c->speedLabel,0,1);
-    c->speed.setObjectName("Speed");
-    c->speed.addItem("Fastest");
-    c->speed.addItem("Faster");
-    c->speed.addItem("Normal");
-    c->speed.addItem("Slower");
-    c->speed.addItem("Slowest");
-    c->speed.setCurrentIndex(dev->speed);
-    c->grid.addWidget(&c->speed,1,1);
-    connect(&c->speed, qOverload<int>(&QComboBox::currentIndexChanged),
+    c->speedLabel = new QLabel("Speed");
+    c->grid->addWidget(c->speedLabel,0,1);
+    c->speed = new QComboBox();
+    c->speed->addItem("Fastest");
+    c->speed->addItem("Faster");
+    c->speed->addItem("Normal");
+    c->speed->addItem("Slower");
+    c->speed->addItem("Slowest");
+    c->speed->setCurrentIndex(dev->speed);
+    c->grid->addWidget(c->speed,1,1);
+    connect(c->speed, qOverload<int>(&QComboBox::currentIndexChanged),
         [dev,this](int index) { this->speedChanged(dev,index); });
 
-    c->orientLabel.setText("Orientation");
-    c->grid.addWidget(&c->orientLabel,0,2);
-    c->orientation.addItem("Rotate 0");
-    c->orientation.addItem("Rotate 90");
-    c->orientation.addItem("Rotate 180");
-    c->orientation.addItem("Rotate 270");
-    c->orientation.setCurrentIndex(dev->orientation);
-    c->grid.addWidget(&c->orientation,1,2);
-    connect(&c->orientation, qOverload<int>(&QComboBox::currentIndexChanged),
+    c->orientLabel = new QLabel("Orientation");
+    c->grid->addWidget(c->orientLabel,0,2);
+    c->orientation = new QComboBox();
+    c->orientation->addItem("Rotate 0");
+    c->orientation->addItem("Rotate 90");
+    c->orientation->addItem("Rotate 180");
+    c->orientation->addItem("Rotate 270");
+    c->orientation->setCurrentIndex(dev->orientation);
+    c->grid->addWidget(c->orientation,1,2);
+    connect(c->orientation, qOverload<int>(&QComboBox::currentIndexChanged),
         [dev,this](int index) { this->orientationChanged(dev,index); });
 
-    c->color.setText("Color");
-    c->grid.addWidget(&c->colorLabel,0,3);
-    c->color.setStyleSheet(QString("background-color: %1").arg(dev->color.name(QColor::HexArgb)));
-    c->grid.addWidget(&c->color,1,3);
-    connect(&c->color, &QPushButton::clicked,
-        [dev,c,this]() { this->colorPicker(dev,&c->color,dev->color); });
+    c->color = new QPushButton("Color");
+    c->color->setStyleSheet(QString("background-color: %1").arg(dev->color.name(QColor::HexArgb)));
+    c->grid->addWidget(c->color,1,3);
+    connect(c->color, &QPushButton::clicked,
+        [dev,c,this]() { this->colorPicker(dev,c->color,dev->color); });
 
-    c->timeoutLabel.setText("Timeout");
-    c->grid.addWidget(&c->timeoutLabel,0,4);
-    c->timeout.setValue(dev->timeout);
-    c->grid.addWidget(&c->timeout,1,4);
-    connect(&c->timeout, qOverload<int>(&QSpinBox::valueChanged),
+    c->timeoutLabel = new QLabel("Timeout");
+    c->grid->addWidget(c->timeoutLabel,0,4);
+    c->timeout = new QSpinBox();
+    c->timeout->setValue(dev->timeout);
+    c->grid->addWidget(c->timeout,1,4);
+    connect(c->timeout, qOverload<int>(&QSpinBox::valueChanged),
         [dev,this](int index) { this->timeoutChanged(dev,index); });
 
-    c->pagesLabel.setText("Num Pages");
-    c->grid.addWidget(&c->pagesLabel,0,5);
-    c->pages.setValue(dev->pages);
-    c->pages.setMinimum(1);
-    c->grid.addWidget(&c->pages,1,5);
-    connect(&c->pages, qOverload<int>(&QSpinBox::valueChanged),
+    c->pagesLabel = new QLabel("Num Pages");
+    c->grid->addWidget(c->pagesLabel,0,5);
+    c->pages = new QSpinBox();
+    c->pages->setValue(dev->pages);
+    c->pages->setMinimum(1);
+    c->grid->addWidget(c->pages,1,5);
+    connect(c->pages, qOverload<int>(&QSpinBox::valueChanged),
         [dev,this](int index) { this->pagesChanged(dev,index); });
 
     for (int i=0;i<6;i++)
-        c->grid.setColumnStretch(i,1);
+        c->grid->setColumnStretch(i,1);
 
-    c->helpText.setText("<p><b>Button configuration:</b> Right-click on each button to configure it.</p>");
-    c->helpText.setAlignment(Qt::AlignCenter);
-    c->layout.addWidget(&c->helpText);
+    c->helpText = new QLabel();
+    c->helpText->setText("<p><b>Button configuration:</b> Right-click on each button to configure it.</p>");
+    c->helpText->setAlignment(Qt::AlignCenter);
+    c->layout->addWidget(c->helpText);
 
 
-    c->view.setSceneRect(c->scene->itemsBoundingRect());
+    c->view->setSceneRect(c->scene->itemsBoundingRect());
 
     this->adjustSize();
 
@@ -661,7 +684,7 @@ void controllerSetup::newDevice(USBDEVICE* dev)
 
 
     // Attach pageChanged() here so we have access to all necessary vars
-    connect(&c->page, qOverload<int>(&QSpinBox::valueChanged),
+    connect(c->page, qOverload<int>(&QSpinBox::valueChanged),
             [dev, this](int index) { this->pageChanged(dev, index); });
 
 // Hide all controls that are not relevant to this controller
@@ -675,22 +698,22 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     case QuickKeys:
         break;
     case StreamDeckPedal:
-        c->sensLabel.setVisible(false);
-        c->sens.setVisible(false);
+        c->sensLabel->setVisible(false);
+        c->sens->setVisible(false);
     case shuttleXpress:
     case shuttlePro2:
     case RC28:
     case xBoxGamepad:
     case eCoderPlus:
-        c->brightLabel.setVisible(false);
-        c->speedLabel.setVisible(false);
-        c->timeoutLabel.setVisible(false);
-        c->orientLabel.setVisible(false);
-        c->brightness.setVisible(false);
-        c->speed.setVisible(false);
-        c->timeout.setVisible(false);
-        c->orientation.setVisible(false);
-        c->color.setVisible(false);
+        c->brightLabel->setVisible(false);
+        c->speedLabel->setVisible(false);
+        c->timeoutLabel->setVisible(false);
+        c->orientLabel->setVisible(false);
+        c->brightness->setVisible(false);
+        c->speed->setVisible(false);
+        c->timeout->setVisible(false);
+        c->orientation->setVisible(false);
+        c->color->setVisible(false);
         break;
     case StreamDeckOriginal:
     case StreamDeckOriginalV2:
@@ -699,15 +722,15 @@ void controllerSetup::newDevice(USBDEVICE* dev)
     case StreamDeckMiniV2:
     case StreamDeckXL:
     case StreamDeckXLV2:
-        c->sensLabel.setVisible(false);
-        c->sens.setVisible(false); // No knobs!
+        c->sensLabel->setVisible(false);
+        c->sens->setVisible(false); // No knobs!
     case StreamDeckPlus:
-        c->speedLabel.setVisible(false);
-        c->timeoutLabel.setVisible(false);
-        c->orientLabel.setVisible(false);
-        c->speed.setVisible(false);
-        c->timeout.setVisible(false);
-        c->orientation.setVisible(false);
+        c->speedLabel->setVisible(false);
+        c->timeoutLabel->setVisible(false);
+        c->orientLabel->setVisible(false);
+        c->speed->setVisible(false);
+        c->timeout->setVisible(false);
+        c->orientation->setVisible(false);
         break;
     default:
         break;
@@ -871,11 +894,11 @@ void controllerSetup::setConnected(USBDEVICE* dev)
     {
         if (dev->connected)
         {
-           tab.value()->message.setStyleSheet("QLabel { color : green; }");
-           tab.value()->message.setText("Connected");
+            tab.value()->message->setStyleSheet("QLabel { color : green; }");
+            tab.value()->message->setText("Connected");
         } else {
-           tab.value()->message.setStyleSheet("QLabel { color : red; }");
-           tab.value()->message.setText("Not Connected");
+            tab.value()->message->setStyleSheet("QLabel { color : red; }");
+            tab.value()->message->setText("Not Connected");
         }
     }
 }
