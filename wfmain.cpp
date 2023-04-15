@@ -380,8 +380,8 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getVox()), rig, SLOT(getVox()));
     connect(this, SIGNAL(getMonitor()), rig, SLOT(getMonitor()));
     connect(this, SIGNAL(getCompressor()), rig, SLOT(getCompressor()));
-    connect(this, SIGNAL(getNb()), rig, SLOT(getNb()));
-    connect(this, SIGNAL(getNb()), rig, SLOT(getNr()));
+    connect(this, SIGNAL(getNB()), rig, SLOT(getNB()));
+    connect(this, SIGNAL(getNR()), rig, SLOT(getNR()));
 
     connect(this, SIGNAL(selectVFO(vfo_t)), rig, SLOT(selectVFO(vfo_t)));
     connect(this, SIGNAL(sendVFOSwap()), rig, SLOT(exchangeVFOs()));
@@ -428,7 +428,11 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveAntiVoxGain(unsigned char)), this, SLOT(receiveAntiVoxGain(unsigned char)));
     connect(rig, SIGNAL(haveNBLevel(unsigned char)), this, SLOT(receiveNBLevel(unsigned char)));
     connect(rig, SIGNAL(haveNRLevel(unsigned char)), this, SLOT(receiveNRLevel(unsigned char)));
-    connect(rig, SIGNAL(haveCompLevel(unsigned char)), this, SLOT(receiveCompLevel(unsigned char)));
+    connect(rig, SIGNAL(haveNB(bool)), this, SLOT(receiveNB(bool)));
+    connect(rig, SIGNAL(haveNR(bool)), this, SLOT(receiveNR(bool)));
+    connect(rig, SIGNAL(haveComp(bool)), this, SLOT(receiveComp(bool)));
+    connect(rig, SIGNAL(haveVox(bool)), this, SLOT(receiveVox(bool)));
+    connect(rig, SIGNAL(haveMonitor(bool)), this, SLOT(receiveMonitor(bool)));
 
     // Repeater, duplex, and split:
     connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
@@ -538,8 +542,8 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setVox(bool)), rig, SLOT(setVox(bool)));
     connect(this, SIGNAL(setMonitor(bool)), rig, SLOT(setMonitor(bool)));
     connect(this, SIGNAL(setCompressor(bool)), rig, SLOT(setCompressor(bool)));
-    connect(this, SIGNAL(setNb(bool)), rig, SLOT(setNb(bool)));
-    connect(this, SIGNAL(setNr(bool)), rig, SLOT(setNr(bool)));
+    connect(this, SIGNAL(setNB(bool)), rig, SLOT(setNB(bool)));
+    connect(this, SIGNAL(setNR(bool)), rig, SLOT(setNR(bool)));
 
     connect(this, SIGNAL(setPassband(quint16)), rig, SLOT(setPassband(quint16)));
 
@@ -1752,7 +1756,6 @@ void wfmain::setupUsbControllerDevice()
     connect(this, SIGNAL(sendControllerRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)), usbControllerDev, SLOT(sendRequest(USBDEVICE*, usbFeatureType, int, QString, QImage*, QColor *)));
     connect(usbWindow, SIGNAL(programPages(USBDEVICE*,int)), usbControllerDev, SLOT(programPages(USBDEVICE*,int)));
     connect(usbWindow, SIGNAL(programDisable(USBDEVICE*,bool)), usbControllerDev, SLOT(programDisable(USBDEVICE*,bool)));
-    connect(this, SIGNAL(setPTT(bool)), usbControllerDev, SLOT(receivePTTStatus(bool)));
     connect(this, SIGNAL(sendLevel(cmds,unsigned char)), usbControllerDev, SLOT(receiveLevel(cmds,unsigned char)));
     connect(this, SIGNAL(initUsbController(QMutex*,usbDevMap*,QVector<BUTTON>*,QVector<KNOB>*)), usbControllerDev, SLOT(init(QMutex*,usbDevMap*,QVector<BUTTON>*,QVector<KNOB>*)));
     connect(this, SIGNAL(usbHotplug()), usbControllerDev, SLOT(run()));
@@ -1765,7 +1768,6 @@ void wfmain::setupUsbControllerDevice()
 void wfmain::pttToggle(bool status)
 {
     // is it enabled?
-
     if (!ui->pttEnableChk->isChecked())
     {
         showStatusBarText("PTT is disabled, not sending command. Change under Settings tab.");
@@ -1926,6 +1928,11 @@ void wfmain::buttonControl(const COMMAND* cmd)
         qInfo(logUsbControl()) << "Command" << cmd->command << "Suffix" << cmd->suffix;
         issueCmdUniquePriority((cmds)cmd->command, cmd->suffix);
         break;
+    }
+
+    // Make sure we get status quickly
+    if (cmd->getCommand != cmdNone) {
+        issueDelayedCommand((cmds)cmd->getCommand);
     }
 }
 
@@ -2615,6 +2622,7 @@ void wfmain::loadSettings()
             butt.on = settings->value("OnCommand", "None").toString();
             butt.off = settings->value("OffCommand", "None").toString();
             butt.graphics = settings->value("Graphics", false).toBool();
+            butt.led = settings->value("Led", -1).toInt();
             if (!butt.path.isEmpty())
                 usbButtons.append(butt);
         }
@@ -3128,6 +3136,9 @@ void wfmain::saveSettings()
         if (usbButtons[nb].offCommand != Q_NULLPTR)
             settings->setValue("OffCommand", usbButtons[nb].offCommand->text);
         settings->setValue("Graphics",usbButtons[nb].graphics);
+        if (usbButtons[nb].led > -1) {
+            settings->setValue("Led", usbButtons[nb].led);
+        }
     }
 
     settings->endArray();
@@ -4197,13 +4208,13 @@ void wfmain::doCmd(commandtype cmddata)
         case cmdSetNB:
         {
             bool en = (*std::static_pointer_cast<bool>(data));
-            emit setNb(en);
+            emit setNB(en);
             break;
         }
         case cmdSetNR:
         {
             bool en = (*std::static_pointer_cast<bool>(data));
-            emit setNr(en);
+            emit setNR(en);
             break;
         }
 
@@ -4293,8 +4304,17 @@ void wfmain::doCmd(cmds cmd)
         case cmdGetPassband:
             emit getPassband();
             break;
+        case cmdGetMonitor:
+            emit getMonitor();
+            break;
         case cmdGetMonitorGain:
             emit getMonitorGain();
+            break;
+        case cmdGetComp:
+            emit getCompressor();
+            break;
+        case cmdGetVox:
+            emit getVox();
             break;
         case cmdGetVoxGain:
             emit getVoxGain();
@@ -4302,8 +4322,14 @@ void wfmain::doCmd(cmds cmd)
         case cmdGetAntiVoxGain:
             emit getAntiVoxGain();
             break;
+        case cmdGetNB:
+            emit getNB();
+            break;
         case cmdGetNBLevel:
             emit getNBLevel();
+            break;
+        case cmdGetNR:
+            emit getNR();
             break;
         case cmdGetNRLevel:
             emit getNRLevel();
@@ -5186,6 +5212,8 @@ void wfmain::receiveFreq(freqt freqStruct)
 
 void wfmain::receivePTTstatus(bool pttOn)
 {
+    emit sendLevel(cmdGetPTT,pttOn);
+
     // This is the only place where amTransmitting and the transmit button text should be changed:
     if (pttOn && !amTransmitting)
     {
@@ -7397,27 +7425,27 @@ void wfmain::receiveNRLevel(unsigned char level)
 
 void wfmain::receiveComp(bool en)
 {
-    Q_UNUSED(en);
+    emit sendLevel(cmdGetComp,en);
 }
 
 void wfmain::receiveMonitor(bool en)
 {
-    Q_UNUSED(en);
+    emit sendLevel(cmdGetMonitor,en);
 }
 
 void wfmain::receiveVox(bool en)
 {
-    Q_UNUSED(en);
+    emit sendLevel(cmdGetVox,en);
 }
 
 void wfmain::receiveNB(bool en)
 {
-    Q_UNUSED(en);
+    emit sendLevel(cmdGetNB,en);
 }
 
 void wfmain::receiveNR(bool en)
 {
-    Q_UNUSED(en);
+    emit sendLevel(cmdGetNR,en);
 }
 
 void wfmain::on_txPowerSlider_valueChanged(int value)

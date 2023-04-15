@@ -70,8 +70,8 @@ using namespace std;
 
 struct USBTYPE {
     USBTYPE() {}
-    USBTYPE(usbDeviceType model,quint32 manufacturerId, quint32 productId , quint32 usage, quint32 usagePage, int buttons, int knobs, int maxPayload, int iconSize) :
-        model(model), manufacturerId(manufacturerId), productId(productId), usage(usage), usagePage(usagePage), buttons(buttons), knobs(knobs),maxPayload(maxPayload), iconSize(iconSize) {}
+    USBTYPE(usbDeviceType model,quint32 manufacturerId, quint32 productId , quint32 usage, quint32 usagePage, int buttons, int knobs, int leds,  int maxPayload, int iconSize) :
+        model(model), manufacturerId(manufacturerId), productId(productId), usage(usage), usagePage(usagePage), buttons(buttons), knobs(knobs), leds(leds), maxPayload(maxPayload), iconSize(iconSize) {}
 
     usbDeviceType model = usbNone;
     quint32 manufacturerId=0;
@@ -80,6 +80,7 @@ struct USBTYPE {
     quint32 usagePage=0;
     int buttons=0;
     int knobs=0;
+    int leds=0;
     int maxPayload=0;
     int iconSize=0;
 };
@@ -123,6 +124,7 @@ struct USBDEVICE {
     quint32 buttons = 0;
     quint32 knobs = 0;
     QList<KNOBVALUE> knobValues;
+
     QTime lastusbController = QTime::currentTime();
     QByteArray lastData = QByteArray(8,0x0);
     unsigned char lastDialPos=0;
@@ -163,8 +165,8 @@ struct COMMAND {
 struct BUTTON {
     BUTTON() {}
 
-    BUTTON(usbDeviceType dev, int num, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off, bool graphics=false) :
-        dev(dev), num(num), name(""), pos(pos), textColour(textColour), onCommand(on), offCommand(off), on(onCommand->text), off(offCommand->text), graphics(graphics) {}
+    BUTTON(usbDeviceType dev, int num, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off, bool graphics=false, int led=-1) :
+        dev(dev), num(num), name(""), pos(pos), textColour(textColour), onCommand(on), offCommand(off), on(onCommand->text), off(offCommand->text), graphics(graphics), led(led){}
     BUTTON(usbDeviceType dev, QString name, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
         dev(dev), num(-1), name(name), pos(pos), textColour(textColour), onCommand(on), offCommand(off), on(onCommand->text), off(offCommand->text) {}
 
@@ -189,6 +191,7 @@ struct BUTTON {
     bool toggle = false;
     bool isOn = false;
     bool graphics = false;
+    int led = -1;
 };
 
 

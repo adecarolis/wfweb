@@ -18,22 +18,22 @@ usbController::usbController()
     loadKnobs();
 
     // This is a the "master" list of supported devices. Maybe move to settings at some point?
-    // usbDeviceType, manufacturer, product, usage, usagePage, butons, knobs, maxPayload, iconSize
-    knownDevices.append(USBTYPE(shuttleXpress,0x0b33,0x0020,0x0000,0x0000,15,2,5,0));
-    knownDevices.append(USBTYPE(shuttlePro2,0x0b33,0x0030,0x0000,0x0000,15,2,5,0));
-    knownDevices.append(USBTYPE(shuttlePro2,0x0b33,0x0011,0x0000,0x0000,15,2,5,0)); // Actually a ShuttlePro but hopefully will work?
-    knownDevices.append(USBTYPE(RC28,0x0c26,0x001e,0x0000,0x0000,3,1,64,0));
-    knownDevices.append(USBTYPE(eCoderPlus, 0x1fc9, 0x0003,0x0000,0x0000,22,4,32,0)); // Actually 20 but some bit0 and bit15 aren't used
-    knownDevices.append(USBTYPE(QuickKeys, 0x28bd, 0x5202,0x0001,0xff0a,10,1,32,0));
-    knownDevices.append(USBTYPE(StreamDeckMini, 0x0fd9, 0x0063, 0x0000, 0x0000,6,0,1024,80));
-    knownDevices.append(USBTYPE(StreamDeckMiniV2, 0x0fd9, 0x0090, 0x0000, 0x0000,6,0,1024,80));
-    knownDevices.append(USBTYPE(StreamDeckOriginal, 0x0fd9, 0x0060, 0x0000, 0x0000,15,0,8191,72));
-    knownDevices.append(USBTYPE(StreamDeckOriginalV2, 0x0fd9, 0x006d, 0x0000, 0x0000,15,0,1024,72));
-    knownDevices.append(USBTYPE(StreamDeckOriginalMK2, 0x0fd9, 0x0080, 0x0000, 0x0000,15,0,1024,72));
-    knownDevices.append(USBTYPE(StreamDeckXL, 0x0fd9, 0x006c, 0x0000, 0x0000,32,0,1024,96));
-    knownDevices.append(USBTYPE(StreamDeckXLV2, 0x0fd9, 0x008f, 0x0000, 0x0000,32,0,1024,96));
-    knownDevices.append(USBTYPE(StreamDeckPedal, 0x0fd9, 0x0086, 0x0000, 0x0000,3,0,1024,0));
-    knownDevices.append(USBTYPE(StreamDeckPlus, 0x0fd9, 0x0084, 0x0000, 0x0000,12,4,1024,120));
+    // usbDeviceType, manufacturer, product, usage, usagePage, butons, knobs, leds, maxPayload, iconSize
+    knownDevices.append(USBTYPE(shuttleXpress,0x0b33,0x0020,0x0000,0x0000,15,2,0,5,0));
+    knownDevices.append(USBTYPE(shuttlePro2,0x0b33,0x0030,0x0000,0x0000,15,2,0,5,0));
+    knownDevices.append(USBTYPE(shuttlePro2,0x0b33,0x0011,0x0000,0x0000,15,2,0,5,0)); // Actually a ShuttlePro but hopefully will work?
+    knownDevices.append(USBTYPE(RC28,0x0c26,0x001e,0x0000,0x0000,3,1,3,64,0));
+    knownDevices.append(USBTYPE(eCoderPlus, 0x1fc9, 0x0003,0x0000,0x0000,22,4,0,32,0)); // Actually 20 but some bit0 and bit15 aren't used
+    knownDevices.append(USBTYPE(QuickKeys, 0x28bd, 0x5202,0x0001,0xff0a,10,1,0,32,0));
+    knownDevices.append(USBTYPE(StreamDeckMini, 0x0fd9, 0x0063, 0x0000, 0x0000,6,0,0,1024,80));
+    knownDevices.append(USBTYPE(StreamDeckMiniV2, 0x0fd9, 0x0090, 0x0000, 0x0000,6,0,0,1024,80));
+    knownDevices.append(USBTYPE(StreamDeckOriginal, 0x0fd9, 0x0060, 0x0000, 0x0000,15,0,0,8191,72));
+    knownDevices.append(USBTYPE(StreamDeckOriginalV2, 0x0fd9, 0x006d, 0x0000, 0x0000,15,0,0,1024,72));
+    knownDevices.append(USBTYPE(StreamDeckOriginalMK2, 0x0fd9, 0x0080, 0x0000, 0x0000,15,0,0,1024,72));
+    knownDevices.append(USBTYPE(StreamDeckXL, 0x0fd9, 0x006c, 0x0000, 0x0000,32,0,0,1024,96));
+    knownDevices.append(USBTYPE(StreamDeckXLV2, 0x0fd9, 0x008f, 0x0000, 0x0000,32,0,0,1024,96));
+    knownDevices.append(USBTYPE(StreamDeckPedal, 0x0fd9, 0x0086, 0x0000, 0x0000,3,0,0,1024,0));
+    knownDevices.append(USBTYPE(StreamDeckPlus, 0x0fd9, 0x0084, 0x0000, 0x0000,12,4,0,1024,120));
 }
 
 usbController::~usbController()
@@ -47,7 +47,7 @@ usbController::~usbController()
             sendRequest(dev,usbFeatureType::featureOverlay,60,"Goodbye from wfview");
 
             if (dev->type.model == RC28) {
-                sendRequest(dev,usbFeatureType::featureLEDControl,3,"off");
+                sendRequest(dev,usbFeatureType::featureLEDControl,3,"0");
             }
             hid_close(dev->handle);
             dev->handle = NULL;
@@ -326,10 +326,10 @@ void usbController::run()
 
                     if (dev->type.model == RC28)
                     {
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,0,"off"); });
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,1,"off"); });
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,2,"off"); });
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,3,"on"); });
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,0,"0"); });
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,1,"0"); });
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,2,"0"); });
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,3,"1"); });
                     }
                     else if (dev->type.model == QuickKeys)
                     {
@@ -355,6 +355,7 @@ void usbController::run()
                 {
                     dev->knobValues.append(KNOBVALUE());
                 }
+
 
                 // Find our defaults/knobs/buttons for this controller:
                 // First see if we have any stored and add them to the list if not.
@@ -807,11 +808,11 @@ void usbController::receivePTTStatus(bool on) {
             if (on && !ptt) {
                 lastColour = currentColour;
                 QColor newColor = QColor(255,0,0);
-                sendRequest(dev,usbFeatureType::featureLEDControl,0,"on");
+                sendRequest(dev,usbFeatureType::featureLEDControl,0,"1");
                 sendRequest(dev,usbFeatureType::featureColor,0, "", Q_NULLPTR, &newColor);
             }
             else {
-                sendRequest(dev,usbFeatureType::featureLEDControl,0,"off");
+                sendRequest(dev,usbFeatureType::featureLEDControl,0,"0");
                 sendRequest(dev,usbFeatureType::featureColor,0, "", Q_NULLPTR, &lastColour);
             }
         }
@@ -1262,10 +1263,10 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
             break;
         case usbFeatureType::featureLEDControl:
             data[1] = 0x01;
-            if (text == "on")
-                dev->ledStatus &= ~(1UL << val);
-            else
+            if (text == "0")
                 dev->ledStatus |= 1UL << val;
+            else
+                dev->ledStatus &= ~(1UL << val);
             data[2] = dev->ledStatus;
             break;
         default:
@@ -1299,7 +1300,7 @@ void usbController::programDisable(USBDEVICE* dev, bool disabled)
             sendRequest(dev,usbFeatureType::featureOverlay,60,"Goodbye from wfview");
 
             if (dev->type.model == RC28) {
-                sendRequest(dev,usbFeatureType::featureLEDControl,3,"off");
+                sendRequest(dev,usbFeatureType::featureLEDControl,3,"0");
             }
 
             QMutexLocker locker(mutex);
@@ -1346,9 +1347,9 @@ void usbController::loadButtons()
     defaultButtons.append(BUTTON(shuttlePro2, 14, QRect(280, 195, 25, 80), Qt::red, &commands[0], &commands[0]));
     
     // RC28
-    defaultButtons.append(BUTTON(RC28, 0, QRect(52, 445, 238, 64), Qt::red, &commands[1], &commands[2])); // PTT On/OFF
-    defaultButtons.append(BUTTON(RC28, 1, QRect(52, 373, 98, 46), Qt::red, &commands[0], &commands[0]));
-    defaultButtons.append(BUTTON(RC28, 2, QRect(193, 373, 98, 46), Qt::red, &commands[0], &commands[0]));
+    defaultButtons.append(BUTTON(RC28, 0, QRect(52, 445, 238, 64), Qt::red, &commands[1], &commands[2],false,0)); // PTT On/OFF
+    defaultButtons.append(BUTTON(RC28, 1, QRect(52, 373, 98, 46), Qt::red, &commands[0], &commands[0],false,1));
+    defaultButtons.append(BUTTON(RC28, 2, QRect(193, 373, 98, 46), Qt::red, &commands[0], &commands[0],false,2));
     
     // Xbox Gamepad
     defaultButtons.append(BUTTON(xBoxGamepad, "UP", QRect(256, 229, 50, 50), Qt::red, &commands[0], &commands[0]));
@@ -1584,14 +1585,14 @@ void usbController::loadCommands()
     int num = 0;
     // Important commands at the top!
     commands.append(COMMAND(num++, "None", commandAny, cmdNone, (quint8)0x0));
-    commands.append(COMMAND(num++, "PTT On", commandButton, cmdSetPTT, (quint8)0x1));
-    commands.append(COMMAND(num++, "PTT Off", commandButton, cmdSetPTT, (quint8)0x0));
-    commands.append(COMMAND(num++, "VFOA", commandKnob, cmdSetFreq, (quint8)0x0));
-    commands.append(COMMAND(num++, "VFOB", commandKnob, cmdSetFreq, (quint8)0x1));
-    commands.append(COMMAND(num++, "Freq Down", commandButton, cmdSetFreq, (int)-1));
-    commands.append(COMMAND(num++, "Freq Up", commandButton, cmdSetFreq, (int)1));
-    commands.append(COMMAND(num++, "PTT Off", commandButton, cmdSetPTT, (quint8)0x0));
-    commands.append(COMMAND(num++, "PTT Toggle", commandButton, cmdPTTToggle, (quint8)0x0));
+    commands.append(COMMAND(num++, "PTT On", commandButton, cmdSetPTT, cmdGetPTT, (quint8)0x1));
+    commands.append(COMMAND(num++, "PTT Off", commandButton, cmdSetPTT, cmdGetPTT, (quint8)0x0));
+    commands.append(COMMAND(num++, "VFOA", commandKnob, cmdSetFreq, cmdGetFreq, (quint8)0x0));
+    commands.append(COMMAND(num++, "VFOB", commandKnob, cmdSetFreq, cmdGetFreq, (quint8)0x1));
+    commands.append(COMMAND(num++, "Freq Down", commandButton, cmdSetFreq, cmdGetFreq, (int)-1));
+    commands.append(COMMAND(num++, "Freq Up", commandButton, cmdSetFreq, cmdGetFreq, (int)1));
+    commands.append(COMMAND(num++, "PTT Off", commandButton, cmdSetPTT, cmdGetPTT, (quint8)0x0));
+    commands.append(COMMAND(num++, "PTT Toggle", commandButton, cmdPTTToggle, cmdGetPTT, (quint8)0x0));
     commands.append(COMMAND(num++, "Span/Step", commandKnob, cmdSeparator, (quint8)0x0));
     commands.append(COMMAND(num++, "Tune", commandButton, cmdStartATU, (quint8)0x0));
     commands.append(COMMAND(num++, "Span/Step", commandButton, cmdSeparator, (quint8)0x0));
@@ -1640,19 +1641,19 @@ void usbController::loadCommands()
     commands.append(COMMAND(num++, "Band 2200m", commandButton, cmdGetBandStackReg, band2200m));
     commands.append(COMMAND(num++, "Band GEN", commandButton, cmdGetBandStackReg, bandGen));
     commands.append(COMMAND(num++, "NB/NR", commandButton, cmdSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "NR On", commandButton, cmdSetNR, (quint8)0x01));
-    commands.append(COMMAND(num++, "NR Off", commandButton, cmdSetNR, (quint8)0x0));
-    commands.append(COMMAND(num++, "NB On", commandButton, cmdSetNB, (quint8)0x01));
-    commands.append(COMMAND(num++, "NB Off", commandButton, cmdSetNB, (quint8)0x0));
-    commands.append(COMMAND(num++, "Moni On", commandButton, cmdSetMonitor, (quint8)0x01));
-    commands.append(COMMAND(num++, "Moni Off", commandButton, cmdSetMonitor, (quint8)0x0));
-    commands.append(COMMAND(num++, "Comp On", commandButton, cmdSetComp, (quint8)0x01));
-    commands.append(COMMAND(num++, "Comp Off", commandButton, cmdSetComp, (quint8)0x0));
-    commands.append(COMMAND(num++, "Vox On", commandButton, cmdSetVox, (quint8)0x01));
-    commands.append(COMMAND(num++, "Vox Off", commandButton, cmdSetVox, (quint8)0x0));
+    commands.append(COMMAND(num++, "NR On", commandButton, cmdSetNR, cmdGetNR, (quint8)0x01));
+    commands.append(COMMAND(num++, "NR Off", commandButton, cmdSetNR, cmdGetNR, (quint8)0x0));
+    commands.append(COMMAND(num++, "NB On", commandButton, cmdSetNB, cmdGetNB, (quint8)0x01));
+    commands.append(COMMAND(num++, "NB Off", commandButton, cmdSetNB, cmdGetNB, (quint8)0x0));
+    commands.append(COMMAND(num++, "Moni On", commandButton, cmdSetMonitor, cmdGetMonitor, (quint8)0x01));
+    commands.append(COMMAND(num++, "Moni Off", commandButton, cmdSetMonitor, cmdGetMonitor, (quint8)0x0));
+    commands.append(COMMAND(num++, "Comp On", commandButton, cmdSetComp, cmdGetComp, (quint8)0x01));
+    commands.append(COMMAND(num++, "Comp Off", commandButton, cmdSetComp, cmdGetComp, (quint8)0x0));
+    commands.append(COMMAND(num++, "Vox On", commandButton, cmdSetVox, cmdGetVox, (quint8)0x01));
+    commands.append(COMMAND(num++, "Vox Off", commandButton, cmdSetVox, cmdGetVox, (quint8)0x0));
     commands.append(COMMAND(num++, "Split", commandButton, cmdNone, (quint8)0x0));
-    commands.append(COMMAND(num++, "Split On", commandButton, cmdSetQuickSplit, (quint8)0x01));
-    commands.append(COMMAND(num++, "Split Off", commandButton, cmdSetQuickSplit, (quint8)0x0));
+    commands.append(COMMAND(num++, "Split On", commandButton, cmdSetQuickSplit, cmdGetDuplexMode, (quint8)0x01));
+    commands.append(COMMAND(num++, "Split Off", commandButton, cmdSetQuickSplit, cmdGetDuplexMode, (quint8)0x0));
     commands.append(COMMAND(num++, "Swap VFO", commandButton, cmdVFOSwap, (quint8)0x0));
     commands.append(COMMAND(num++, "Scope", commandButton, cmdNone, (quint8)0x0));
     commands.append(COMMAND(num++, "Spectrum", commandButton, cmdLCDSpectrum, (quint8)0x0));
@@ -1828,12 +1829,18 @@ void usbController::receiveLevel(cmds cmd, unsigned char level)
         auto dev = &devIt.value();
 
         auto kb = std::find_if(knobList->begin(), knobList->end(), [dev, cmd](const KNOB& k)
-        { return (k.command && dev->connected && k.path == dev->path && k.page == dev->currentPage && k.command->getCommand == cmd);});
+                               { return (k.command && dev->connected && k.path == dev->path && k.page == dev->currentPage && k.command->getCommand == cmd);});
         if (kb != knobList->end() && kb->num < dev->knobValues.size()) {
             qInfo(logUsbControl()) << "Received value:" << level << "for knob" << kb->num;
             // Set both current and previous knobvalue to the received value
             dev->knobValues[kb->num].value = level/dev->sensitivity;
             dev->knobValues[kb->num].previous = level/dev->sensitivity;
+        }
+        auto bt = std::find_if(buttonList->begin(), buttonList->end(), [dev, cmd](const BUTTON& b)
+                               { return (b.onCommand && dev->connected && b.path == dev->path && b.page == dev->currentPage && b.onCommand->getCommand == cmd && b.led != -1);});
+        if (bt != buttonList->end() && bt->led < dev->type.leds) {
+            qInfo(logUsbControl()) << "Received value:" << level << "for led" << bt->led;
+            QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,bt->led,QString("%1").arg(level)); });
         }
     }
 }
@@ -1889,6 +1896,9 @@ void usbController::backupController(USBDEVICE* dev, QString file)
             if (b->offCommand != Q_NULLPTR)
                 settings->setValue("OffCommand", b->offCommand->text);
             settings->setValue("Graphics",b->graphics);
+            if (b->led > -1) {
+                settings->setValue("Led", b->led);
+            }
             ++n;
         }
     }
@@ -2002,6 +2012,7 @@ void usbController::restoreController(USBDEVICE* dev, QString file)
             but.on = settings->value("OnCommand", "None").toString();
             but.off = settings->value("OffCommand", "None").toString();
             but.graphics = settings->value("Graphics",false).toBool();
+            but.led = settings->value("Led", -1).toInt();
             but.path = dev->path;
             qInfo(logUsbControl()) << "Restoring button" << but.num << "On" << but.on << "Off" << but.off;
             buttonList->append(BUTTON(but));

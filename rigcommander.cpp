@@ -1889,7 +1889,7 @@ void rigCommander::parseLevels()
                 state.set(COMPLEVEL, level, false);
                 break;
             case '\x12':
-                // NB level - ignore for now
+                emit haveNB((bool)level);
                 state.set(NB, level, false);
                 break;
             case '\x15':
@@ -3075,9 +3075,11 @@ void rigCommander::parseRegister16()
             state.set(PREAMP, (quint8)payloadIn.at(2), false);
             break;
         case '\x22':
+            emit haveNB(payloadIn.at(2) != 0);
             state.set(NBFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x40':
+            emit haveNR(payloadIn.at(2) != 0);
             state.set(NRFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x41': // Auto notch
@@ -3104,12 +3106,15 @@ void rigCommander::parseRegister16()
             emit haveRptAccessMode(ra);
             break;
         case '\x44':
+            emit haveComp(payloadIn.at(2) != 0);
             state.set(COMPFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x45':
+            emit haveMonitor(payloadIn.at(2) != 0);
             state.set(MONFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x46':
+            emit haveVox(payloadIn.at(2) != 0);
             state.set(VOXFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x47':
@@ -4933,26 +4938,26 @@ void rigCommander::setAntenna(unsigned char ant, bool rx)
     prepDataAndSend(payload);
 }
 
-void rigCommander::setNb(bool enabled) {
+void rigCommander::setNB(bool enabled) {
     QByteArray payload("\x16\x22");
     payload.append((unsigned char)enabled);
     prepDataAndSend(payload);
 }
 
-void rigCommander::getNb()
+void rigCommander::getNB()
 {
     QByteArray payload;
     payload.setRawData("\x16\x22", 2);
     prepDataAndSend(payload);
 }
 
-void rigCommander::setNr(bool enabled) {
+void rigCommander::setNR(bool enabled) {
     QByteArray payload("\x16\x40");
     payload.append((unsigned char)enabled);
     prepDataAndSend(payload);
 }
 
-void rigCommander::getNr()
+void rigCommander::getNR()
 {
     QByteArray payload;
     payload.setRawData("\x16\x40", 2);
@@ -5346,15 +5351,15 @@ void rigCommander::stateUpdated()
                 break;
             case NBFUNC:
                 if (i.value()._valid) {
-                    setNb(state.getBool(NBFUNC));
+                    setNB(state.getBool(NBFUNC));
                 }
-                getNb();
+                getNB();
                 break;
             case NRFUNC:
                 if (i.value()._valid) {
-                    setNr(state.getBool(NRFUNC));
+                    setNR(state.getBool(NRFUNC));
                 }
-                getNr();
+                getNR();
                 break;
             case ANFFUNC:
                 if (i.value()._valid) {

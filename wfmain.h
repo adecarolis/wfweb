@@ -178,8 +178,8 @@ signals:
     void getVox();
     void getMonitor();
     void getCompressor();
-    void getNb();
-    void getNr();
+    void getNB();
+    void getNR();
 
     void getDashRatio();
     void getPskTone();
@@ -208,8 +208,8 @@ signals:
     void setVox(bool en);
     void setMonitor(bool en);
     void setCompressor(bool en);
-    void setNb(bool en);
-    void setNr(bool en);
+    void setNB(bool en);
+    void setNR(bool en);
 
     void setSpectrumRefLevel(int);
 

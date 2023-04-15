@@ -104,10 +104,10 @@ public slots:
     void setAttenuator(unsigned char att);
     void setPreamp(unsigned char pre);
     void setAntenna(unsigned char ant, bool rx);
-    void setNb(bool enabled);
-    void getNb();
-    void setNr(bool enabled);
-    void getNr();
+    void setNB(bool enabled);
+    void getNB();
+    void setNR(bool enabled);
+    void getNR();
     void setAutoNotch(bool enabled);
     void getAutoNotch();
     void setToneEnabled(bool enabled);
