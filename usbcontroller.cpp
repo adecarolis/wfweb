@@ -807,9 +807,11 @@ void usbController::receivePTTStatus(bool on) {
             if (on && !ptt) {
                 lastColour = currentColour;
                 QColor newColor = QColor(255,0,0);
+                sendRequest(dev,usbFeatureType::featureLEDControl,0,"on");
                 sendRequest(dev,usbFeatureType::featureColor,0, "", Q_NULLPTR, &newColor);
             }
             else {
+                sendRequest(dev,usbFeatureType::featureLEDControl,0,"off");
                 sendRequest(dev,usbFeatureType::featureColor,0, "", Q_NULLPTR, &lastColour);
             }
         }
