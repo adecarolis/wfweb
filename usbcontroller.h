@@ -165,7 +165,7 @@ struct COMMAND {
 struct BUTTON {
     BUTTON() {}
 
-    BUTTON(usbDeviceType dev, int num, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off, bool graphics=false, int led=-1) :
+    BUTTON(usbDeviceType dev, int num, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off, bool graphics=false, int led=0) :
         dev(dev), num(num), name(""), pos(pos), textColour(textColour), onCommand(on), offCommand(off), on(onCommand->text), off(offCommand->text), graphics(graphics), led(led){}
     BUTTON(usbDeviceType dev, QString name, QRect pos, const QColor textColour, COMMAND* on, COMMAND* off) :
         dev(dev), num(-1), name(name), pos(pos), textColour(textColour), onCommand(on), offCommand(off), on(onCommand->text), off(offCommand->text) {}
@@ -191,7 +191,7 @@ struct BUTTON {
     bool toggle = false;
     bool isOn = false;
     bool graphics = false;
-    int led = -1;
+    int led = 0;
 };
 
 

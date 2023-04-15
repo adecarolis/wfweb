@@ -94,12 +94,17 @@ void controllerSetup::init(usbDevMap* dev, QVector<BUTTON>* but, QVector<KNOB>* 
     udLayout->addWidget(knobEvent,2,1);
     knobLabel->setBuddy(knobEvent);
 
+    ledNumber = new QSpinBox();
+    ledNumber->setPrefix("LED: ");
+    ledNumber->setMinimum(0);
+    udLayout->addWidget(ledNumber,3,1);
+
     buttonLatch = new QCheckBox();
     buttonLatch->setText("Toggle");
-    udLayout->addWidget(buttonLatch,3,0);
+    udLayout->addWidget(buttonLatch,4,0);
 
     QHBoxLayout* colorLayout = new QHBoxLayout();
-    udLayout->addLayout(colorLayout,3,1);
+    udLayout->addLayout(colorLayout,4,1);
 
     buttonOnColor = new QPushButton("Color");
     colorLayout->addWidget(buttonOnColor);
@@ -108,11 +113,10 @@ void controllerSetup::init(usbDevMap* dev, QVector<BUTTON>* but, QVector<KNOB>* 
     colorLayout->addWidget(buttonOffColor);
 
     buttonIcon = new QPushButton("Icon");
-    udLayout->addWidget(buttonIcon,4,0);
+    udLayout->addWidget(buttonIcon,5,0);
     iconLabel = new QLabel("<None>");
-    udLayout->addWidget(iconLabel,4,1);
+    udLayout->addWidget(iconLabel,5,1);
     udLayout->setAlignment(iconLabel,Qt::AlignCenter);
-
     udLayout->setSizeConstraint(QLayout::SetFixedSize);
 
     updateDialog->hide();
@@ -148,8 +152,9 @@ void controllerSetup::init(usbDevMap* dev, QVector<BUTTON>* but, QVector<KNOB>* 
     connect(buttonOffColor, SIGNAL(clicked()), this, SLOT(buttonOffColorClicked()));
     connect(buttonIcon, SIGNAL(clicked()), this, SLOT(buttonIconClicked()));
     connect(buttonLatch, SIGNAL(stateChanged(int)), this, SLOT(latchStateChanged(int)));
-
+    connect(ledNumber, SIGNAL(valueChanged(int)), this, SLOT(ledNumberChanged(int)));
 }
+
 void controllerSetup::showMenu(controllerScene* scene, QPoint p)
 {
     Q_UNUSED (scene) // We might want it in the future?
@@ -191,8 +196,21 @@ void controllerSetup::showMenu(controllerScene* scene, QPoint p)
         buttonLatch->blockSignals(false);
         buttonLatch->show();
 
+        ledNumber->blockSignals(true);
+        ledNumber->setMaximum(currentButton->parent->type.leds);
+        ledNumber->setValue(currentButton->led);
+        ledNumber->blockSignals(false);
+
         switch (currentButton->parent->type.model)
         {
+        case RC28:
+        case eCoderPlus:
+            ledNumber->show();
+            buttonOnColor->hide();
+            buttonOffColor->hide();
+            buttonIcon->hide();
+            iconLabel->hide();
+            break;
         case StreamDeckMini:
         case StreamDeckMiniV2:
         case StreamDeckOriginal:
@@ -214,6 +232,7 @@ void controllerSetup::showMenu(controllerScene* scene, QPoint p)
             buttonOffColor->hide();
             buttonIcon->hide();
             iconLabel->hide();
+            ledNumber->hide();
             break;
         }
 
@@ -248,6 +267,7 @@ void controllerSetup::showMenu(controllerScene* scene, QPoint p)
             buttonOffColor->hide();
             buttonIcon->hide();
             iconLabel->hide();
+            ledNumber->hide();
 
             updateDialog->show();
             updateDialog->move(gp);
@@ -291,6 +311,12 @@ void controllerSetup::offEventIndexChanged(int index) {
     }
 }
 
+void controllerSetup::ledNumberChanged(int index) {
+    if (currentButton != Q_NULLPTR) {
+        QMutexLocker locker(mutex);
+        currentButton->led = index;
+    }
+}
 
 
 void controllerSetup::knobEventIndexChanged(int index) {

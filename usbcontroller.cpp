@@ -47,7 +47,7 @@ usbController::~usbController()
             sendRequest(dev,usbFeatureType::featureOverlay,60,"Goodbye from wfview");
 
             if (dev->type.model == RC28) {
-                sendRequest(dev,usbFeatureType::featureLEDControl,3,"0");
+                sendRequest(dev,usbFeatureType::featureLEDControl,4,"0");
             }
             hid_close(dev->handle);
             dev->handle = NULL;
@@ -326,10 +326,10 @@ void usbController::run()
 
                     if (dev->type.model == RC28)
                     {
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,0,"0"); });
                         QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,1,"0"); });
                         QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,2,"0"); });
-                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,3,"1"); });
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,3,"0"); });
+                        QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,4,"1"); });
                     }
                     else if (dev->type.model == QuickKeys)
                     {
@@ -808,11 +808,11 @@ void usbController::receivePTTStatus(bool on) {
             if (on && !ptt) {
                 lastColour = currentColour;
                 QColor newColor = QColor(255,0,0);
-                sendRequest(dev,usbFeatureType::featureLEDControl,0,"1");
+                sendRequest(dev,usbFeatureType::featureLEDControl,1,"1");
                 sendRequest(dev,usbFeatureType::featureColor,0, "", Q_NULLPTR, &newColor);
             }
             else {
-                sendRequest(dev,usbFeatureType::featureLEDControl,0,"0");
+                sendRequest(dev,usbFeatureType::featureLEDControl,1,"0");
                 sendRequest(dev,usbFeatureType::featureColor,0, "", Q_NULLPTR, &lastColour);
             }
         }
@@ -1264,9 +1264,9 @@ void usbController::sendRequest(USBDEVICE *dev, usbFeatureType feature, int val,
         case usbFeatureType::featureLEDControl:
             data[1] = 0x01;
             if (text == "0")
-                dev->ledStatus |= 1UL << val;
+                dev->ledStatus |= 1UL << (val-1);
             else
-                dev->ledStatus &= ~(1UL << val);
+                dev->ledStatus &= ~(1UL << (val-1));
             data[2] = dev->ledStatus;
             break;
         default:
@@ -1300,7 +1300,7 @@ void usbController::programDisable(USBDEVICE* dev, bool disabled)
             sendRequest(dev,usbFeatureType::featureOverlay,60,"Goodbye from wfview");
 
             if (dev->type.model == RC28) {
-                sendRequest(dev,usbFeatureType::featureLEDControl,3,"0");
+                sendRequest(dev,usbFeatureType::featureLEDControl,4,"1");
             }
 
             QMutexLocker locker(mutex);
@@ -1347,9 +1347,9 @@ void usbController::loadButtons()
     defaultButtons.append(BUTTON(shuttlePro2, 14, QRect(280, 195, 25, 80), Qt::red, &commands[0], &commands[0]));
     
     // RC28
-    defaultButtons.append(BUTTON(RC28, 0, QRect(52, 445, 238, 64), Qt::red, &commands[1], &commands[2],false,0)); // PTT On/OFF
-    defaultButtons.append(BUTTON(RC28, 1, QRect(52, 373, 98, 46), Qt::red, &commands[0], &commands[0],false,1));
-    defaultButtons.append(BUTTON(RC28, 2, QRect(193, 373, 98, 46), Qt::red, &commands[0], &commands[0],false,2));
+    defaultButtons.append(BUTTON(RC28, 0, QRect(52, 445, 238, 64), Qt::red, &commands[1], &commands[2],false,1)); // PTT On/OFF
+    defaultButtons.append(BUTTON(RC28, 1, QRect(52, 373, 98, 46), Qt::red, &commands[0], &commands[0],false,2));
+    defaultButtons.append(BUTTON(RC28, 2, QRect(193, 373, 98, 46), Qt::red, &commands[0], &commands[0],false,3));
     
     // Xbox Gamepad
     defaultButtons.append(BUTTON(xBoxGamepad, "UP", QRect(256, 229, 50, 50), Qt::red, &commands[0], &commands[0]));
@@ -1837,8 +1837,8 @@ void usbController::receiveLevel(cmds cmd, unsigned char level)
             dev->knobValues[kb->num].previous = level/dev->sensitivity;
         }
         auto bt = std::find_if(buttonList->begin(), buttonList->end(), [dev, cmd](const BUTTON& b)
-                               { return (b.onCommand && dev->connected && b.path == dev->path && b.page == dev->currentPage && b.onCommand->getCommand == cmd && b.led != -1);});
-        if (bt != buttonList->end() && bt->led < dev->type.leds) {
+                               { return (b.onCommand && dev->connected && b.path == dev->path && b.page == dev->currentPage && b.onCommand->getCommand == cmd && b.led != 0 &&  b.led <= dev->type.leds);});
+        if (bt != buttonList->end()) {
             qInfo(logUsbControl()) << "Received value:" << level << "for led" << bt->led;
             QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,bt->led,QString("%1").arg(level)); });
         }

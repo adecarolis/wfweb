@@ -2622,7 +2622,7 @@ void wfmain::loadSettings()
             butt.on = settings->value("OnCommand", "None").toString();
             butt.off = settings->value("OffCommand", "None").toString();
             butt.graphics = settings->value("Graphics", false).toBool();
-            butt.led = settings->value("Led", -1).toInt();
+            butt.led = settings->value("Led", 0).toInt();
             if (!butt.path.isEmpty())
                 usbButtons.append(butt);
         }
@@ -3136,7 +3136,7 @@ void wfmain::saveSettings()
         if (usbButtons[nb].offCommand != Q_NULLPTR)
             settings->setValue("OffCommand", usbButtons[nb].offCommand->text);
         settings->setValue("Graphics",usbButtons[nb].graphics);
-        if (usbButtons[nb].led > -1) {
+        if (usbButtons[nb].led) {
             settings->setValue("Led", usbButtons[nb].led);
         }
     }

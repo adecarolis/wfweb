@@ -137,6 +137,7 @@ public slots:
     void onEventIndexChanged(int index);
     void offEventIndexChanged(int index);
     void knobEventIndexChanged(int index);
+    void ledNumberChanged(int index);
     void sensitivityMoved(USBDEVICE* dev, int val);
     void brightnessChanged(USBDEVICE* dev, int index);
     void orientationChanged(USBDEVICE* dev, int index);
@@ -185,6 +186,7 @@ private:
     QCheckBox *buttonLatch;
     QPushButton* buttonIcon;
     QLabel* iconLabel;
+    QSpinBox* ledNumber;
 
     QString deviceName;
     QMutex* mutex;
