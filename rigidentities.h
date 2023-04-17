@@ -40,6 +40,7 @@ enum model_kind {
     model756pro = 0x5C,
     model756proii = 0x64,
     model756proiii = 0x6E,
+    model905 = 0xAC,
     model910h = 0x60,
     model9100 = 0x7C,
     modelUnknown = 0xFF
@@ -55,7 +56,12 @@ enum rigInput{ inputMic=0,
                inputUnknown=0xff
 };
 
-enum availableBands { band23cm=0,
+enum availableBands {
+                band3cm = 0,
+                band6cm,
+                band9cm,
+                band13cm,
+                band23cm,
                 band70cm,
                 band2m,
                 bandAir,
@@ -87,7 +93,10 @@ enum centerSpansType {
     cs250k = 6,
     cs500k = 7,
     cs1M = 8,
-    cs2p5M = 9
+    cs2p5M = 9,
+    cs5M = 10,
+    cs10M = 11,
+    cs25M = 12,
 };
 
 struct centerSpanData {
@@ -96,14 +105,14 @@ struct centerSpanData {
 };
 
 struct bandType {
-    bandType(availableBands band, quint32 lowFreq, quint32 highFreq, mode_kind defaultMode) :
+    bandType(availableBands band, quint64 lowFreq, quint64 highFreq, mode_kind defaultMode) :
         band(band), lowFreq(lowFreq), highFreq(highFreq), defaultMode(defaultMode) {}
 
     bandType() {}
 
     availableBands band;
-    quint32 lowFreq;
-    quint32 highFreq;
+    quint64 lowFreq;
+    quint64 highFreq;
     mode_kind defaultMode;
 };
 
@@ -161,7 +170,7 @@ struct rigCapabilities {
     std::vector <unsigned char> antennas;
     std::vector <centerSpanData> scopeCenterSpans;
     std::vector <bandType> bands;
-    unsigned char bsr[20] = {0};
+    unsigned char bsr[24] = {0};
 
     std::vector <mode_info> modes;
 

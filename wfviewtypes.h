@@ -48,6 +48,7 @@ enum mode_kind {
     modeLSB_D=0x80,
     modeUSB_D=0x81,
     modeDV=0x17,
+    modeATV=0x23,
     modeDD=0x27,
     modeWFM,
     modeS_AMD,

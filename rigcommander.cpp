@@ -3484,6 +3484,10 @@ void rigCommander::determineRigCaps()
     bandType bandDef4m = bandType(band4m, 70000000, 70500000, modeUSB);
     bandType bandDef70cm = bandType(band70cm, 420000000, 450000000, modeUSB);
     bandType bandDef23cm = bandType(band23cm, 1240000000, 1400000000, modeUSB);
+    bandType bandDef13cm = bandType(band13cm, 2300000000, 2450000000, modeUSB);
+    bandType bandDef9cm = bandType(band9cm, 3300000000, 3500000000, modeUSB);
+    bandType bandDef6cm = bandType(band6cm, 5650000000, 5925000000, modeUSB);
+    bandType bandDef3cm = bandType(band3cm, 10000000000, 10500000000, modeUSB);
 
     bandType bandDefAir(bandAir, 108000000, 137000000, modeAM);
     bandType bandDefWFM(bandWFM, 88000000, 108000000, modeWFM);
@@ -3678,6 +3682,55 @@ void rigCommander::determineRigCaps()
             rigCaps.hasAdvancedRptrToneCmds = true;
             rigCaps.hasQuickSplitCommand = true;
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x43");
+            break;
+        case model905:
+            rigCaps.modelName = QString("IC-905");
+            rigCaps.rigctlModel = 0;
+            rigCaps.hasSpectrum = true;
+            rigCaps.spectSeqMax = 11;
+            rigCaps.spectAmpMax = 160;
+            rigCaps.spectLenMax = 475;
+            rigCaps.inputs.append(inputLAN);
+            rigCaps.inputs.append(inputUSB);
+            rigCaps.hasLan = true;
+            rigCaps.hasEthernet = true;
+            rigCaps.hasWiFi = false;
+            rigCaps.hasDD = true;
+            rigCaps.hasDV = true;
+            rigCaps.hasCTCSS = true;
+            rigCaps.hasDTCS = true;
+            rigCaps.hasRepeaterModes = true;
+            rigCaps.hasTBPF = true;
+            rigCaps.attenuators.push_back('\x10');
+            rigCaps.preamps.push_back('\x01');
+            rigCaps.bands = standardVU;
+            rigCaps.bands.push_back(bandDef23cm);
+            rigCaps.bands.push_back(bandDef13cm);
+            rigCaps.bands.push_back(bandDef6cm);
+            rigCaps.bands.push_back(bandDef3cm);
+            rigCaps.bsr[band2m] = 0x01;
+            rigCaps.bsr[band70cm] = 0x02;
+            rigCaps.bsr[band23cm] = 0x03;
+            rigCaps.bsr[band13cm] = 0x04;
+            rigCaps.bsr[band6cm] = 0x05;
+            rigCaps.bsr[band3cm] = 0x06;
+            rigCaps.modes = commonModes;
+            rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeDV, 0x17, "DV"),
+                                                       createMode(modeDD, 0x22, "DD"),
+                                                       createMode(modeATV, 0x23, "ATV")
+                                                       });
+
+            rigCaps.scopeCenterSpans.insert(rigCaps.scopeCenterSpans.end(), {createScopeCenter(cs1M, "±1M"),
+                                                                             createScopeCenter(cs2p5M, "±2.5M"),
+                                                                             createScopeCenter(cs5M, "±5M"),
+                                                                             createScopeCenter(cs10M, "±10M"),
+                                                                             createScopeCenter(cs25M, "±25M")});
+            rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x42");
+            rigCaps.hasVFOMS = false;
+            rigCaps.hasVFOAB = true;
+            rigCaps.hasAdvancedRptrToneCmds = true;
+            rigCaps.hasQuickSplitCommand = true;
+            rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x46");
             break;
         case model910h:
             rigCaps.modelName = QString("IC-910H");
