@@ -2245,7 +2245,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>4</number>
+             <number>1</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -2995,6 +2995,13 @@
                   </property>
                  </spacer>
                 </item>
+                <item>
+                 <widget class="QPushButton" name="rigCreatorBtn">
+                  <property name="text">
+                   <string>Rig Creator</string>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </item>
               <item>
@@ -3444,7 +3451,7 @@
                       <x>0</x>
                       <y>0</y>
                       <width>820</width>
-                      <height>302</height>
+                      <height>298</height>
                      </rect>
                     </property>
                     <layout class="QGridLayout" name="gridLayout_2">
@@ -5538,7 +5545,7 @@
  <connections/>
  <buttongroups>
   <buttongroup name="underlayButtonGroup"/>
-  <buttongroup name="buttonGroup"/>
   <buttongroup name="pollingButtonGroup"/>
+  <buttongroup name="buttonGroup"/>
  </buttongroups>
 </ui>

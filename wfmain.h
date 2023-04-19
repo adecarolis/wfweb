@@ -51,6 +51,7 @@
 #include <qserialportinfo.h>
 #include "usbcontroller.h"
 #include "controllersetup.h"
+#include "rigcreator.h"
 
 #include <deque>
 #include <memory>
@@ -765,6 +766,8 @@ private slots:
 
     void on_cwButton_clicked();
 
+    void on_rigCreatorBtn_clicked();
+
 private:
     Ui::wfmain *ui;
     void closeEvent(QCloseEvent *event);
@@ -1106,6 +1109,7 @@ private:
     aboutbox *abtBox;
     selectRadio *selRad;
     loggingWindow *logWindow;
+    rigCreator *creator;
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;

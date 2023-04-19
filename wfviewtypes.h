@@ -169,8 +169,64 @@ enum cmds {
     cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
     cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW, cmdGetDashRatio, cmdSetDashRatio,
     cmdSetTime, cmdSetDate, cmdSetUTCOffset,
+    cmdGetTransceive, cmdSetTransceive,cmdGetPower,cmdSetPower,
     // Below Only used for USB Controller at the moment.
     cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown, cmdSetStepUp, cmdSetStepDown, cmdSetSpanUp, cmdSetSpanDown, cmdIFFilterUp, cmdIFFilterDown
+};
+
+
+// funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
+#define NUMFUNCS 70
+
+enum funcs {
+    funcPower, funcSpectrum, funcDisplay, funcSpectrumBounds,funcSpectrumMode, funcSpectrumEdge, funcSpectrumSpan,
+    funcSpectrumRef, funcVFO, funcSplit,
+    funcRigID, funcRigCIV, funcFreqGet, funcFreqSet, funcModeGet, funcModeSet,
+    funcDataMode, funcModeFilter, funcRit, funcRitValue,
+    funcRxGain, funcRxRfGain, funcAfGain,
+    funcSql, funcIFShift, funcTPBFInner,
+    funcTPBFOuter, funcPassband,
+    funcCwPitch, funcPskTone, funcRttyMark,
+    funcATU,
+    funcPTT,
+    funcTxPower, funcMicGain, funcModLevel,
+    funcSpectrumRefLevel, funcDuplexMode, funcModInput, funcModDataInput,
+    funcVdMeter, funcIdMeter, funcSMeter, funcCenterMeter, funcPowerMeter,
+    funcSWRMeter, funcALCMeter, funcCompMeter, funcTxRxMeter,
+    funcTone, funcTSQL, funcDTCS,
+    funcRptAccessMode,
+    funcRptDuplexOffset,
+    funcSelVFO, funcVFOSwap, funcVFOEqualAB, funcVFOEqualMS, funcQuickSplit,
+    funcPreamp, funcAttenuator, funcAntenna,
+    funcBandStackReg, funcKeySpeed, funcBreakMode, funcSendCW, funcDashRatio,
+    funcTime, funcDate, funcUTCOffset,
+    funcTransceive
+};
+
+
+static inline QString funcString[] {
+    "Power","Spectrum","Display","Spectrum Bounds","Spectrum Mode", "SpectrumEdge", "SpectrumSpan"
+    "SpectrumRef", "VFO", "Split",
+    "RigID", "RigCIV", "FreqGet", "FreqSet", "ModeGet", "ModeSet",
+    "DataMode", "ModeFilter", "Rit", "RitValue",
+    "RxGain", "RxRfGain", "AfGain",
+    "Sql", "IFShift", "TPBFInner",
+    "TPBFOuter", "Passband",
+    "CwPitch", "PskTone", "RttyMark",
+    "ATU",
+    "PTT",
+    "TxPower", "MicGain", "ModLevel",
+    "SpectrumRefLevel", "DuplexMode", "ModInput", "ModDataInput",
+    "VdMeter", "IdMeter", "SMeter", "CenterMeter", "PowerMeter",
+    "SWRMeter", "ALCMeter", "CompMeter", "TxRxMeter",
+    "Tone", "TSQL", "DTCS",
+    "RptAccessMode",
+    "RptDuplexOffset",
+    "SelVFO", "VFOSwap", "VFOEqualAB", "VFOEqualMS", "QuickSplit",
+    "Preamp", "Attenuator", "Antenna",
+    "BandStackReg", "KeySpeed", "BreakMode", "SendCW", "DashRatio",
+    "Time", "Date", "UTCOffset",
+    "Transceive"
 };
 
 struct commandtype {

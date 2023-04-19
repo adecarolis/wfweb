@@ -220,6 +220,8 @@ SOURCES += main.cpp\
     cwsender.cpp \
     cwsidetone.cpp \
     loggingwindow.cpp \
+    rigcreator.cpp \
+    tablewidget.cpp \
     wfmain.cpp \
     commhandler.cpp \
     rigcommander.cpp \
@@ -263,8 +265,10 @@ HEADERS  += wfmain.h \
     printhex.h \
     rigcommander.h \
     freqmemory.h \
+    rigcreator.h \
     rigidentities.h \
     sidebandchooser.h \
+    tablewidget.h \
     udpbase.h \
     udphandler.h \
     udpcivdata.h \
@@ -305,6 +309,7 @@ FORMS    += wfmain.ui \
     calibrationwindow.ui \
     cwsender.ui \
     loggingwindow.ui \
+    rigcreator.ui \
     satellitesetup.ui \
     selectradio.ui \
     repeatersetup.ui \

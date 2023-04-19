@@ -5,6 +5,7 @@
 #include <QString>
 #include <QList>
 #include <vector>
+#include <QHash>
 
 #include "freqmemory.h"
 #include "packettypes.h"
@@ -164,6 +165,7 @@ struct rigCapabilities {
     bool hasAdvancedRptrToneCmds = false;
     bool hasQuickSplitCommand = false;
     QByteArray quickSplitCommand;
+    QHash<funcs,QByteArray> commands;
 
     std::vector <unsigned char> attenuators;
     std::vector <unsigned char> preamps;

@@ -5,6 +5,7 @@
 #include "rigidentities.h"
 #include "logcategories.h"
 
+
 // This code is copyright 2017-2022 Elliott H. Liggett
 // All rights reserved
 
@@ -52,6 +53,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     shut = new controllerSetup();
     abtBox = new aboutbox();
     selRad = new selectRadio();
+    creator = new rigCreator();
 
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
     qRegisterMetaType<rigCapabilities>();
@@ -9331,6 +9333,11 @@ void wfmain::on_cwButton_clicked()
     cw->show();
     cw->raise();
     cw->activateWindow();
+}
+
+void wfmain::on_rigCreatorBtn_clicked()
+{
+    creator->show();
 }
 
 void wfmain::resetUsbButtons()
