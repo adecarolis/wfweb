@@ -148,16 +148,19 @@ struct timekind {
 };
 
 enum cmds {
-    cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdSetFreq, cmdGetMode, cmdSetMode,
+    cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetFreqB, cmdSetFreq, cmdGetMode, cmdSetMode,
     cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
     cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
-    cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetTPBFInner, cmdSetTPBFInner,
-    cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetPassband, cmdSetPassband,
+    cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetNRLevel, cmdSetNRLevel, cmdGetTPBFInner, cmdSetTPBFInner,
+    cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetPassband, cmdSetPassband, cmdGetNBLevel, cmdSetNBLevel,
+    cmdGetCompLevel, cmdSetCompLevel,
+    cmdGetMonitorGain, cmdSetMonitorGain, cmdGetVoxGain, cmdSetVoxGain, cmdGetAntiVoxGain, cmdSetAntiVoxGain,
     cmdGetCwPitch, cmdGetPskTone, cmdGetRttyMark, cmdSetCwPitch, cmdSetPskTone, cmdSetRttyMark,
+    cmdGetVox,cmdSetVox, cmdGetMonitor,cmdSetMonitor, cmdGetComp, cmdSetComp, cmdGetNB, cmdSetNB, cmdGetNR, cmdSetNR,
     cmdSetATU, cmdStartATU, cmdGetATUStatus,
     cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode,
     cmdGetPTT, cmdSetPTT,cmdPTTToggle,
-    cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdSetModLevel,
+    cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdGetModLevel, cmdSetModLevel,
     cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
     cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
     cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
@@ -171,7 +174,9 @@ enum cmds {
     cmdSetTime, cmdSetDate, cmdSetUTCOffset,
     cmdGetTransceive, cmdSetTransceive,cmdGetPower,cmdSetPower,
     // Below Only used for USB Controller at the moment.
-    cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown, cmdSetStepUp, cmdSetStepDown, cmdSetSpanUp, cmdSetSpanDown, cmdIFFilterUp, cmdIFFilterDown
+    cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown, cmdSetStepUp, cmdSetStepDown,
+    cmdSetSpanUp, cmdSetSpanDown, cmdIFFilterUp, cmdIFFilterDown, cmdPageDown, cmdPageUp,
+    cmdLCDWaterfall, cmdLCDSpectrum, cmdLCDNothing, cmdSeparator
 };
 
 
@@ -251,7 +256,14 @@ enum codecType { LPCM, PCMU, OPUS };
 
 enum passbandActions {passbandStatic, pbtInnerMove, pbtOuterMove, pbtMoving, passbandResizing};
 
-enum usbDeviceType { usbNone = 0, shuttleXpress, shuttlePro2, RC28, xBoxGamepad, unknownGamepad, eCoderPlus, QuickKeys};
-enum usbCommandType{ commandButton, commandKnob };
+enum usbDeviceType { usbNone = 0, shuttleXpress, shuttlePro2,
+                     RC28, xBoxGamepad, unknownGamepad, eCoderPlus, QuickKeys,
+                     StreamDeckMini,StreamDeckMiniV2,StreamDeckOriginal,StreamDeckOriginalV2,
+                     StreamDeckOriginalMK2,StreamDeckXL,StreamDeckXLV2,StreamDeckPedal, StreamDeckPlus
+                   };
+
+enum usbCommandType{ commandButton, commandKnob, commandAny };
+enum usbFeatureType { featureReset,featureResetKeys, featureEventsA, featureEventsB, featureFirmware, featureSerial, featureButton, featureSensitivity, featureBrightness,
+                      featureOrientation, featureSpeed, featureColor, featureOverlay, featureTimeout, featureLCD, featureGraph, featureLEDControl };
 
 #endif // WFVIEWTYPES_H

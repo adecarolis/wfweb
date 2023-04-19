@@ -21,7 +21,7 @@ contains(DEFINES,USB_CONTROLLER){
 TARGET = wfview
 TEMPLATE = app
 
-DEFINES += WFVIEW_VERSION=\\\"1.62\\\"
+DEFINES += WFVIEW_VERSION=\\\"1.63\\\"
 
 DEFINES += BUILD_WFVIEW
 
@@ -51,7 +51,7 @@ macx:DEFINES += __MACOSX_CORE__
 !linux:HEADERS += ../rtaudio/RTAUdio.h
 !linux:INCLUDEPATH += ../rtaudio
 
-linux:LIBS += -lpulse -lpulse-simple -lrtaudio -lpthread
+linux:LIBS += -lpulse -lpulse-simple -lrtaudio -lpthread -ludev
 
 win32:INCLUDEPATH += ../portaudio/include
 !win32:LIBS += -lportaudio
@@ -202,7 +202,7 @@ contains(DEFINES,USB_CONTROLLER){
 }
 
 !win32:LIBS += -L./ -l$$QCPLIB -lopus
-win32:LIBS += -l$$QCPLIB -lopus -lole32
+win32:LIBS += -l$$QCPLIB -lopus -lole32 -luser32
 
 
 #macx:SOURCES += ../qcustomplot/qcustomplot.cpp 

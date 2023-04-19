@@ -138,6 +138,9 @@ struct rigCapabilities {
     quint16 spectAmpMax;
     quint16 spectLenMax;
 
+    bool hasNB = false;
+    QByteArray nbCommand;
+
     bool hasDD;
     bool hasDV;
     bool hasATU;

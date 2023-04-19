@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>3</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -159,10 +159,16 @@
           </item>
           <item>
            <widget class="QCheckBox" name="scopeEnableWFBtn">
+            <property name="toolTip">
+             <string>Checked=WF enable, Unchecked=WF disable, Partial=Enable WF but no local display</string>
+            </property>
             <property name="text">
              <string>Enable WF</string>
             </property>
             <property name="checked">
+             <bool>true</bool>
+            </property>
+            <property name="tristate">
              <bool>true</bool>
             </property>
            </widget>
@@ -5022,7 +5028,7 @@
                    <string/>
                   </property>
                   <property name="text">
-                   <string>Setup USB Controller</string>
+                   <string>Setup USB Controllers</string>
                   </property>
                  </widget>
                 </item>
@@ -5040,23 +5046,16 @@
                  </spacer>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="usbButtonsResetBtn">
+                 <widget class="QPushButton" name="usbControllersResetBtn">
                   <property name="text">
-                   <string>Reset Buttons</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="usbCommandsResetBtn">
-                  <property name="text">
-                   <string>Reset Commands</string>
+                   <string>Reset Controllers</string>
                   </property>
                  </widget>
                 </item>
                 <item>
                  <widget class="QLabel" name="usbResetLbl">
                   <property name="text">
-                   <string>Only reset buttons/commands if you have issues. </string>
+                   <string>Reset all USB controllers to defaults (delete all knobs/buttons)</string>
                   </property>
                  </widget>
                 </item>
@@ -5544,8 +5543,8 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="underlayButtonGroup"/>
-  <buttongroup name="pollingButtonGroup"/>
   <buttongroup name="buttonGroup"/>
+  <buttongroup name="pollingButtonGroup"/>
+  <buttongroup name="underlayButtonGroup"/>
  </buttongroups>
 </ui>

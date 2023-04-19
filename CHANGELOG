@@ -1,3 +1,259 @@
+commit 375acead898ee98ca46bc9946d7338fa4630e719
+Merge: e274271 34655f6
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Wed Apr 19 07:36:20 2023 +0200
+
+    Merge branch 'multi-usb'
+
+commit e274271820f4562423a6cd89bfaa6033b9a4e609
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Apr 17 11:19:00 2023 +0100
+
+    Add support for IC-905
+
+commit 34655f63488d4b998255c4dfa5a03f96939d5a67
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Apr 15 21:13:43 2023 +0100
+
+    Allow user to select which LED is updated by the button.
+
+commit 8ad74ac7f66e4f2201751f6590431324c88df720
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Apr 15 20:13:20 2023 +0100
+
+    First step at improving LED support
+
+commit 5d897c127a1f066753834dc718f7adff7c72cadd
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Apr 15 11:34:41 2023 +0100
+
+    Make TX LED work on RC28
+
+commit 3c90a9363b994240ec8f8b6417b5db31839c97e6
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Apr 15 11:25:35 2023 +0100
+
+    Various fixes
+
+commit c392874b3b58bd90196f47b936ea54ac38cbc95f
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Apr 14 21:36:46 2023 +0100
+
+    Comment out RC28 LED for now.
+
+commit 7b101d5ad4c03082c5bcc2f0ca0c17ad80722434
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Apr 14 21:33:45 2023 +0100
+
+    Another attempt to fix for GCC
+
+commit 6a2e2024ef1e7cb8ea1b6641f751ecff5a404445
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Apr 14 21:03:15 2023 +0100
+
+    Fix compile error
+
+commit d941c831f357f294d29b6a39421e82f71d3810d4
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Apr 14 10:26:54 2023 +0100
+
+    Resize the controller display on tab change
+
+commit f35ac25ad35ac3e3736caf9db15051e61f20c748
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Apr 13 15:28:46 2023 +0100
+
+    Various other fixes
+
+commit 58f38c17357661333218fe8202c069760c3a13ca
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Apr 13 14:36:16 2023 +0100
+
+    Add RC28 LED Control to the features and disable controls that don't make sense
+
+commit 59bc2077e4e931293ffe2a0f262d99d2e07157ea
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Thu Apr 13 14:02:43 2023 +0100
+
+    Replace + with | in keyboard shortcuts
+
+commit 8b786c1821f80708a2726cd5369736d6f8ae8ca3
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Apr 12 11:14:40 2023 +0100
+
+    Fix recursive calling of pageChanged()
+
+commit 5ded2a0e79d88b4422bd782c6036f1effd72c089
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Apr 12 10:24:00 2023 +0100
+
+    Some more fixes
+
+commit c9300f4d865968d017626c3617350965e01ad465
+Author: M0VSE <phil@m0vse.uk>
+Date:   Tue Apr 11 20:25:29 2023 +0100
+
+    Add linux USB hotplug
+
+commit 1549819ad6890ec2a554575eddfe6caf3454cd94
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Tue Apr 11 19:17:11 2023 +0200
+
+    Fedora 36 instr. added 2023-04-11/Knud OZ1DGN
+
+commit 4874d70215b19bd8a4c6e14618b2a04e051030ce
+Author: M0VSE <phil@m0vse.uk>
+Date:   Mon Apr 10 13:46:29 2023 +0100
+
+    Fix linux compile
+
+commit d5f0e0f63c37eced89c70fc2bd65fbaddfa53434
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Apr 9 23:53:51 2023 +0100
+
+    Lots more features and other fixes
+
+commit 1da3696ba23ce5593c864beb365df23fa493aba0
+Merge: a0f3f7d 289170e
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Apr 3 14:31:48 2023 +0100
+
+    Merge branch 'tristate' into multi-usb
+
+commit 289170e22d8e1a0a8e09ad8000f8fc24126c5fb1
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Apr 2 21:11:14 2023 +0100
+
+    Enable wf by default
+
+commit ae0271c7f90d80233a1f3f2a2fce3116b12b34cc
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Apr 2 21:09:37 2023 +0100
+
+    Use tristate checkbox for Scope enable/disable (also add saving state)
+
+commit a0f3f7de07da006799cdbff86251ee7f8d29a739
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Apr 2 20:07:13 2023 +0100
+
+    More work, tidying and improving stablity
+
+commit 0304ac67f6a928624b1dd3850bab75525c4cbc9f
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Wed Mar 29 23:33:18 2023 +0100
+
+    Add backup/restore of button config
+
+commit 468cd2de0d716238fbb3f0f558a7e98f5b05ac6d
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Mar 28 21:58:46 2023 +0100
+
+    Add various commands, monitor, NB, NR etc.
+
+commit 592c583d19aef88941c039d7fa3df0e727f8b363
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Mar 28 19:07:54 2023 +0100
+
+    Add USB hotplug support in Windows
+
+commit cadf835d958050be5f7b58074c0e9f5f27cb065d
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Mar 27 12:38:01 2023 +0100
+
+    Receive current knob values from rig
+
+commit 75288b5e7826ca05fc32263163d03334ada1d29d
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Mar 26 23:23:40 2023 +0100
+
+    Allow storing of icons and various other fixes
+
+commit 6fd0d4e76310794a5b5a19d93bfcd3f890eb0ea0
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Mar 26 16:08:53 2023 +0100
+
+    various other fixes and stability improvements
+
+commit 03c45663dcc9c9b7eb2246d93ce0329c779b0d3b
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Mar 25 16:58:28 2023 +0000
+
+    Fix crash when clicking on a knob.
+
+commit ac582891886fd1706f0bf217a7b3b1e0d06bc20a
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Mar 25 09:09:42 2023 +0000
+
+    Initial support for Stream Deck Pro (other Stream Deck support to follow)
+
+commit d7ba3d9d9ac7f47709ba52c20bbce54b2ff920f1
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Mar 21 15:37:57 2023 +0000
+
+    Fix for wrong VFO being set on haveBandStackReg
+
+commit d1688a99c5207cacdc6f6d1025d36c8664afe58d
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Mar 21 13:24:48 2023 +0000
+
+    Fix controller setup window resizing
+
+commit a74f68d9d410f8531ec59fc19941c4626eccd758
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Tue Mar 21 13:17:35 2023 +0000
+
+    Various fixes
+
+commit f663550da77131ea8b70438d8c022114197752a6
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Mon Mar 20 15:37:11 2023 +0000
+
+    Set tab name correctly
+
+commit 9d63c5cb71ba226e1e0d6f92c18c4cb17b3271ff
+Author: M0VSE <phil@m0vse.uk>
+Date:   Mon Mar 20 15:32:04 2023 +0000
+
+    Fix window issue in linux
+
+commit eb65ae0b1ce8a190c734f62e803d5a6e0e108034
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Mar 18 16:38:24 2023 +0000
+
+    Various fixes
+    
+    Improve UI handling, add disable option
+
+commit 898d5960d8525184efc89bb4f26ce65c4e14c88d
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Mar 18 01:34:40 2023 +0000
+
+    Allow main knob to be used for other values than VFO
+
+commit a461babf73f156c08b83b9160098fb8f2a34f9ce
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sat Mar 18 00:17:33 2023 +0000
+
+    Fix warning
+
+commit 792fac11d67328d1443e591b25d4d70f96db12ef
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Fri Mar 17 23:35:40 2023 +0000
+
+    Support multiple USB controllers
+
+commit f3a25fade42ad6b99bbb3de033ccbfd6c40d86dc
+Author: Phil Taylor <phil@m0vse.uk>
+Date:   Sun Mar 12 18:25:17 2023 +0000
+
+    Remove unnecessary stepType setting from cwsender.ui
+
+commit 3fa14ebc37c4e6c2f9d5fba47103e293e0a96d51
+Author: Roeland Jansen <roeland.jansen69@gmail.com>
+Date:   Sun Mar 12 12:44:46 2023 +0100
+
+    v1.62 released; performance fix 9700 and cw sidetone
+
 commit 6049e1dee67e981625652b43492f1f2f6c8edac1
 Merge: e8ca39c 5328838
 Author: Roeland Jansen <roeland.jansen69@gmail.com>

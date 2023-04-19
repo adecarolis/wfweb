@@ -5,7 +5,9 @@ The following highlights are in this 1.6x-release since v1.60:
 +1.61		many small fixes for several platforms
 +1.62		cw side tone added
 		performance fix for 9700		
-	
++1.63		started adding IC-905 (obviously untested)
+		started multi-usb 
+
 Notes:
 
 - We know about high CPU usage on RPi.

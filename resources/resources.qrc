@@ -7,5 +7,10 @@
         <file>ecoder.png</file>
         <file>quickkeys.png</file>
         <file>xbox.png</file>
+        <file>streamdeck.png</file>
+        <file>streamdeckmini.png</file>
+        <file>streamdeckxl.png</file>
+        <file>streamdeckpedal.png</file>
+        <file>streamdeckplus.png</file>
     </qresource>
 </RCC>
