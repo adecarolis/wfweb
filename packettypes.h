@@ -399,6 +399,49 @@ typedef union capabilities_packet {
 } *capabilities_packet_t;
 
 
+typedef union streamdeck_image_header {
+    struct
+    {
+        quint8 cmd;
+        quint8 suffix;
+        quint8 button;
+        quint8 isLast;
+        quint16 length;
+        quint16 index;
+    };
+    char packet[8];
+} *streamdeck_image_header_t;
+
+typedef union streamdeck_v1_image_header {
+    struct
+    {
+        quint8 cmd;
+        quint8 suffix;
+        quint16 index;
+        quint8 isLast;
+        quint8 button;
+        quint8 unused[10];
+    };
+    char packet[16];
+} *streamdeck_v1_image_header_t;
+
+typedef union streamdeck_lcd_header {
+    struct
+    {
+        quint8 cmd;
+        quint8 suffix;
+        quint16 x;
+        quint16 y;
+        quint16 width;
+        quint16 height;
+        quint8 isLast;
+        quint16 index;
+        quint16 length;
+        quint8 unused;
+    };
+    char packet[16];
+} *streamdeck_lcd_header_t;
+
 
 #pragma pack(pop)
 

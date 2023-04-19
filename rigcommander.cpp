@@ -872,6 +872,18 @@ void rigCommander::setDataMode(bool dataOn, unsigned char filter)
     prepDataAndSend(payload);
 }
 
+void rigCommander::getFrequency(unsigned char vfo)
+{
+    if (rigCaps.hasVFOAB || rigCaps.hasVFOMS)
+    {
+        QByteArray payload("\x25");
+        payload.append(vfo);
+        prepDataAndSend(payload);
+    } else {
+        getFrequency();
+    }
+}
+
 void rigCommander::getFrequency()
 {
     // figure out frequency and then respond with haveFrequency();
@@ -1675,11 +1687,9 @@ void rigCommander::parseCommand()
             parseFrequency();
             break;
         case '\x25':
-            if((int)payloadIn[1] == 0)
-            {
-                emit haveFrequency(parseFrequency(payloadIn, 5));
-            }
-            break;
+            // Parse both VFOs
+            emit haveFrequency(parseFrequency(payloadIn, 5));
+        break;
         case '\x01':
             //qInfo(logRig()) << "Have mode data";
             this->parseMode();
@@ -1844,6 +1854,11 @@ void rigCommander::parseLevels()
                 emit haveTPBFOuter(level);
                 state.set(PBTOUT, level, false);
                 break;
+            case '\x06':
+                // NR Level
+                emit haveNRLevel(level);
+                state.set(NR, level, false);
+                break;
             case '\x09':
                 // CW Pitch
                 emit haveCwPitch(level);
@@ -1874,12 +1889,12 @@ void rigCommander::parseLevels()
                 state.set(COMPLEVEL, level, false);
                 break;
             case '\x12':
-                // NB level - ignore for now
+                emit haveNB((bool)level);
                 state.set(NB, level, false);
                 break;
             case '\x15':
                 // monitor level
-                emit haveMonitorLevel(level);
+                emit haveMonitorGain(level);
                 state.set(MONITORLEVEL, level, false);
                 break;
             case '\x16':
@@ -2399,9 +2414,9 @@ void rigCommander::setCompLevel(unsigned char compLevel)
     prepDataAndSend(payload);
 }
 
-void rigCommander::setMonitorLevel(unsigned char monitorLevel)
+void rigCommander::setMonitorGain(unsigned char monitorLevel)
 {
-    QByteArray payload("\x14\x0E");
+    QByteArray payload("\x14\x15");
     payload.append(bcdEncodeInt(monitorLevel));
     prepDataAndSend(payload);
 }
@@ -2420,6 +2435,22 @@ void rigCommander::setAntiVoxGain(unsigned char gain)
     prepDataAndSend(payload);
 }
 
+void rigCommander::setNBLevel(unsigned char level)
+{
+    if (rigCaps.hasNB) {
+        QByteArray payload(rigCaps.nbCommand);
+        payload.append(bcdEncodeInt(level));
+        prepDataAndSend(payload);
+    }
+}
+
+void rigCommander::setNRLevel(unsigned char level)
+{
+    QByteArray payload("\x14\x06");
+    payload.append(bcdEncodeInt(level));
+    prepDataAndSend(payload);
+}
+
 
 void rigCommander::getRfGain()
 {
@@ -2429,8 +2460,13 @@ void rigCommander::getRfGain()
 
 void rigCommander::getAfGain()
 {
-    QByteArray payload("\x14\x01");
-    prepDataAndSend(payload);
+    if (udp == Q_NULLPTR) {
+        QByteArray payload("\x14\x01");
+        prepDataAndSend(payload);
+    }
+    else {
+        emit haveAfGain(localVolume);
+    }
 }
 
 void rigCommander::getIFShift()
@@ -2475,7 +2511,7 @@ void rigCommander::getCompLevel()
     prepDataAndSend(payload);
 }
 
-void rigCommander::getMonitorLevel()
+void rigCommander::getMonitorGain()
 {
     QByteArray payload("\x14\x15");
     prepDataAndSend(payload);
@@ -2493,6 +2529,19 @@ void rigCommander::getAntiVoxGain()
     prepDataAndSend(payload);
 }
 
+void rigCommander::getNBLevel()
+{
+    if (rigCaps.hasNB) {
+        prepDataAndSend(rigCaps.nbCommand);
+    }
+}
+
+void rigCommander::getNRLevel()
+{
+    QByteArray payload("\x14\x06");
+    prepDataAndSend(payload);
+}
+
 void rigCommander::getLevels()
 {
     // Function to grab all levels
@@ -2502,7 +2551,7 @@ void rigCommander::getLevels()
     getTxLevel(); // 0x0A
     getMicGain(); // 0x0B
     getCompLevel(); // 0x0E
-//    getMonitorLevel(); // 0x15
+//    getMonitorGain(); // 0x15
 //    getVoxGain(); // 0x16
 //    getAntiVoxGain(); // 0x17
 }
@@ -3026,9 +3075,11 @@ void rigCommander::parseRegister16()
             state.set(PREAMP, (quint8)payloadIn.at(2), false);
             break;
         case '\x22':
+            emit haveNB(payloadIn.at(2) != 0);
             state.set(NBFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x40':
+            emit haveNR(payloadIn.at(2) != 0);
             state.set(NRFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x41': // Auto notch
@@ -3055,12 +3106,15 @@ void rigCommander::parseRegister16()
             emit haveRptAccessMode(ra);
             break;
         case '\x44':
+            emit haveComp(payloadIn.at(2) != 0);
             state.set(COMPFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x45':
+            emit haveMonitor(payloadIn.at(2) != 0);
             state.set(MONFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x46':
+            emit haveVox(payloadIn.at(2) != 0);
             state.set(VOXFUNC, payloadIn.at(2) != 0, false);
             break;
         case '\x47':
@@ -3103,6 +3157,10 @@ void rigCommander::parseBandStackReg()
     char regCode = payloadIn[3];
     freqt freqs = parseFrequency(payloadIn, 7);
     //float freq = (float)freqs.MHzDouble;
+
+    // The Band Stacking command returns the regCode in the position that VFO is expected.
+    // As BSR is always on the active VFO, just set that.
+    freqs.VFO = selVFO_t::activeVFO;
 
     bool dataOn = (payloadIn[11] & 0x10) >> 4; // not sure...
     char mode = payloadIn[9];
@@ -4644,6 +4702,7 @@ void rigCommander::parseFrequency()
     //    payloadIn[01] = ; //      . XX KHz
 
     // printHex(payloadIn, false, true);
+
     frequencyMhz = 0.0;
     if (payloadIn.length() == 7)
     {
@@ -4733,40 +4792,25 @@ freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
     // NOTE: This function was written on the IC-7300, which has no need for 100 MHz and 1 GHz.
     //       Therefore, this function has to go to position +1 to retrieve those numbers for the IC-9700.
 
-    // TODO: 64-bit value is incorrect, multiplying by wrong numbers.
-
-    float freq = 0.0;
-
     freqt freqs;
     freqs.MHzDouble = 0;
     freqs.Hz = 0;
 
-    // MHz:
-    freq += 100*(data[lastPosition+1] & 0x0f);
-    freq += (1000*((data[lastPosition+1] & 0xf0) >> 4));
-
-    freq += data[lastPosition] & 0x0f;
-    freq += 10*((data[lastPosition] & 0xf0) >> 4);
-
-    freqs.Hz += (data[lastPosition] & 0x0f) * 1E6;
-    freqs.Hz += ((data[lastPosition] & 0xf0) >> 4) * 1E6 *     10; //   10 MHz
-
+    // Does Frequency contain 100 MHz/1 GHz data?
     if(data.length() >= lastPosition+1)
     {
         freqs.Hz += (data[lastPosition+1] & 0x0f) * 1E6 *         100; //  100 MHz
         freqs.Hz += ((data[lastPosition+1] & 0xf0) >> 4) * 1E6 * 1000; // 1000 MHz
     }
 
+    // Does Frequency contain VFO data? (\x25 command)
+    if (lastPosition-4 >= 0 && (quint8)data[lastPosition-4] < 0x02)
+    {
+        freqs.VFO=(selVFO_t)(quint8)data[lastPosition-4];
+    }
 
-    // Hz:
-    freq += ((data[lastPosition-1] & 0xf0) >>4)/10.0 ;
-    freq += (data[lastPosition-1] & 0x0f) / 100.0;
-
-    freq += ((data[lastPosition-2] & 0xf0) >> 4) / 1000.0;
-    freq += (data[lastPosition-2] & 0x0f) / 10000.0;
-
-    freq += ((data[lastPosition-3] & 0xf0) >> 4) / 100000.0;
-    freq += (data[lastPosition-3] & 0x0f) / 1000000.0;
+    freqs.Hz += (data[lastPosition] & 0x0f) * 1E6;
+    freqs.Hz += ((data[lastPosition] & 0xf0) >> 4) * 1E6 *     10; //   10 MHz
 
     freqs.Hz += (data[lastPosition-1] & 0x0f) *          10E3; // 10 KHz
     freqs.Hz += ((data[lastPosition-1] & 0xf0) >> 4) *  100E3; // 100 KHz
@@ -4947,26 +4991,26 @@ void rigCommander::setAntenna(unsigned char ant, bool rx)
     prepDataAndSend(payload);
 }
 
-void rigCommander::setNb(bool enabled) {
+void rigCommander::setNB(bool enabled) {
     QByteArray payload("\x16\x22");
     payload.append((unsigned char)enabled);
     prepDataAndSend(payload);
 }
 
-void rigCommander::getNb()
+void rigCommander::getNB()
 {
     QByteArray payload;
     payload.setRawData("\x16\x22", 2);
     prepDataAndSend(payload);
 }
 
-void rigCommander::setNr(bool enabled) {
+void rigCommander::setNR(bool enabled) {
     QByteArray payload("\x16\x40");
     payload.append((unsigned char)enabled);
     prepDataAndSend(payload);
 }
 
-void rigCommander::getNr()
+void rigCommander::getNR()
 {
     QByteArray payload;
     payload.setRawData("\x16\x40", 2);
@@ -5342,9 +5386,9 @@ void rigCommander::stateUpdated()
                 break;
             case MONITORLEVEL:
                 if (i.value()._valid) {
-                    setMonitorLevel(state.getChar(MONITORLEVEL));
+                    setMonitorGain(state.getChar(MONITORLEVEL));
                 }
-                getMonitorLevel();
+                getMonitorGain();
                 break;
             case VOXGAIN:
                 if (i.value()._valid) {
@@ -5360,15 +5404,15 @@ void rigCommander::stateUpdated()
                 break;
             case NBFUNC:
                 if (i.value()._valid) {
-                    setNb(state.getBool(NBFUNC));
+                    setNB(state.getBool(NBFUNC));
                 }
-                getNb();
+                getNB();
                 break;
             case NRFUNC:
                 if (i.value()._valid) {
-                    setNr(state.getBool(NRFUNC));
+                    setNR(state.getBool(NRFUNC));
                 }
-                getNr();
+                getNR();
                 break;
             case ANFFUNC:
                 if (i.value()._valid) {

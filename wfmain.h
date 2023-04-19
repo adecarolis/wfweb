@@ -19,6 +19,7 @@
 #include <QMutexLocker>
 #include <QColorDialog>
 #include <QColor>
+#include <QMap>
 
 #include "logcategories.h"
 #include "wfviewtypes.h"
@@ -62,6 +63,18 @@
 #include "rtaudio/RtAudio.h"
 #endif
 
+#ifdef USB_CONTROLLER
+    #ifdef Q_OS_WIN
+        #include <windows.h>
+        #include <dbt.h>
+        #define USB_HOTPLUG
+    #elif defined(Q_OS_LINUX)
+        #include <QSocketNotifier>
+        #include <libudev.h>
+        #define USB_HOTPLUG
+    #endif
+#endif
+
 #define numColorPresetsTotal (5)
 
 namespace Ui {
@@ -78,7 +91,20 @@ public:
     static void messageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg);
     void handleLogText(QString text);
 
+#ifdef USB_HOTPLUG
+    #if defined(Q_OS_WIN)
+        protected:
+            virtual bool nativeEvent(const QByteArray& eventType, void* message, qintptr* result);
+    #elif defined(Q_OS_LINUX)
+        private slots:
+           void uDevEvent();
+    #endif
+#endif
+
 signals:
+    // Signal levels received to other parts of wfview
+    void sendLevel(cmds cmd, unsigned char level);
+    void usbHotplug();
     // Basic to rig:
     void setCIVAddr(unsigned char newRigCIVAddr);
     void setRigID(unsigned char rigID);
@@ -90,6 +116,7 @@ signals:
 
     // Frequency, mode, band:
     void getFrequency();
+    void getFrequency(unsigned char);
     void setFrequency(unsigned char vfo, freqt freq);
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
@@ -140,7 +167,20 @@ signals:
     void getModInputLevel(rigInput input);
     void getMeters(meterKind meter);
     void getPassband();
+    void getVoxGain();
+    void getAntiVoxGain();
+    void getMonitorGain();
+    void getNBLevel();
+    void getNRLevel();
+    void getCompLevel();
     void getCwPitch();
+
+    void getVox();
+    void getMonitor();
+    void getCompressor();
+    void getNB();
+    void getNR();
+
     void getDashRatio();
     void getPskTone();
     void getRttyMark();
@@ -159,9 +199,18 @@ signals:
     void setMicGain(unsigned char);
     void setCompLevel(unsigned char);
     void setTxPower(unsigned char);
-    void setMonitorLevel(unsigned char);
+    void setMonitorGain(unsigned char);
     void setVoxGain(unsigned char);
     void setAntiVoxGain(unsigned char);
+    void setNBLevel(unsigned char level);
+    void setNRLevel(unsigned char level);
+
+    void setVox(bool en);
+    void setMonitor(bool en);
+    void setCompressor(bool en);
+    void setNB(bool en);
+    void setNR(bool en);
+
     void setSpectrumRefLevel(int);
 
     void setModLevel(rigInput input, unsigned char level);
@@ -170,6 +219,7 @@ signals:
     void setACCBGain(unsigned char level);
     void setUSBGain(unsigned char level);
     void setLANGain(unsigned char level);
+
     void setPassband(quint16 pass);
 
     // PTT, ATU, ATT, Antenna, Preamp:
@@ -225,11 +275,7 @@ signals:
     void openShuttle();
     void requestRigState();
     void stateUpdated();
-    void initUsbController(int sens, QMutex* mutex);
-    void sendUsbControllerCommands(QVector<COMMAND>* cmds);
-    void sendUsbControllerButtons(QVector<BUTTON>* buts);
-    void sendUsbControllerKnobs(QVector<KNOB>* kbs);
-    void initUsbDefaults(quint8 bright, quint8 orient, quint8 speed, quint8 timeout, QColor color);
+    void initUsbController(QMutex* mutex,usbDevMap* devs ,QVector<BUTTON>* buts,QVector<KNOB>* knobs);
     void setClusterUdpPort(int port);
     void setClusterEnableUdp(bool udp);
     void setClusterEnableTcp(bool tcp);
@@ -240,6 +286,7 @@ signals:
     void setClusterTimeout(int timeout);
     void setClusterSkimmerSpots(bool enable);
     void setFrequencyRange(double low, double high);
+    void sendControllerRequest(USBDEVICE* dev, usbFeatureType request, int val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
 
 private slots:
     void setAudioDevicesUI();
@@ -299,9 +346,17 @@ private slots:
     void receiveModInput(rigInput input, bool dataOn);
     //void receiveDuplexMode(duplexMode dm);
     void receivePassband(quint16 pass);
+    void receiveMonitorGain(unsigned char pass);
+    void receiveNBLevel(unsigned char pass);
+    void receiveNRLevel(unsigned char pass);
     void receiveCwPitch(unsigned char pitch);
     void receiveTPBFInner(unsigned char level);
     void receiveTPBFOuter(unsigned char level);
+    void receiveVox(bool en);
+    void receiveMonitor(bool en);
+    void receiveComp(bool en);
+    void receiveNB(bool en);
+    void receiveNR(bool en);
 
     // Levels:
     void receiveRfGain(unsigned char level);
@@ -317,7 +372,6 @@ private slots:
     void receiveTxPower(unsigned char power);
     void receiveMicGain(unsigned char gain);
     void receiveCompLevel(unsigned char compLevel);
-    void receiveMonitorGain(unsigned char monitorGain);
     void receiveVoxGain(unsigned char voxGain);
     void receiveAntiVoxGain(unsigned char antiVoxGain);
     void receiveSpectrumRefLevel(int level);
@@ -354,8 +408,6 @@ private slots:
     void showStatusBarText(QString text);
     void receiveBaudRate(quint32 baudrate);
     void radioSelection(QList<radio_cap_packet> radios);
-    void receiveUsbSensitivity(int val);
-    void receiveUsbSettings(quint8 bright, quint8 orient, quint8 speed, quint8 timeout, QColor color);
 
 
     // Added for RC28/Shuttle support
@@ -405,8 +457,7 @@ private slots:
     void on_fEnterBtn_clicked();
     void on_usbControllerBtn_clicked();
 
-    void on_usbButtonsResetBtn_clicked();
-    void on_usbCommandsResetBtn_clicked();
+    void on_usbControllersResetBtn_clicked();
 
     void on_enableUsbChk_clicked(bool checked);
 
@@ -500,7 +551,7 @@ private slots:
 
     void on_vspCombo_currentIndexChanged(int value);
 
-    void on_scopeEnableWFBtn_clicked(bool checked);
+    void on_scopeEnableWFBtn_stateChanged(int state);
 
     void on_sqlSlider_valueChanged(int value);
 
@@ -926,6 +977,7 @@ private:
     double oldLowerFreq;
     double oldUpperFreq;
     freqt freq;
+    freqt freqb;
     float tsKnobMHz;
 
     unsigned char setModeVal=0;
@@ -1073,9 +1125,6 @@ private:
 
     void updateUsbButtons();
 
-    void resetUsbButtons();
-    void resetUsbKnobs();
-    void resetUsbCommands();
     int oldFreqDialVal;
 
     rigCapabilities rigCaps;
@@ -1102,7 +1151,7 @@ private:
     satelliteSetup *sat;
     transceiverAdjustments *trxadj;
     cwSender *cw;
-    controllerSetup* shut;
+    controllerSetup* usbWindow = Q_NULLPTR;
     aboutbox *abtBox;
     selectRadio *selRad;
     loggingWindow *logWindow;
@@ -1150,11 +1199,18 @@ private:
 #if defined (USB_CONTROLLER)
     usbController *usbControllerDev = Q_NULLPTR;
     QThread *usbControllerThread = Q_NULLPTR;
-    QString usbDeviceName;
-    QVector<COMMAND> usbCommands;
+    QString typeName;
     QVector<BUTTON> usbButtons;
     QVector<KNOB> usbKnobs;
+    usbDevMap usbDevices;
     QMutex usbMutex;
+    qint64 lastUsbNotify=0;
+
+    #if defined (Q_OS_LINUX)
+	struct udev* uDev = nullptr;
+        struct udev_monitor* uDevMonitor = nullptr;
+        QSocketNotifier* uDevNotifier = nullptr;
+    #endif
 #endif
 
     dxClusterClient* cluster = Q_NULLPTR;
@@ -1166,6 +1222,7 @@ private:
     QMutex clusterMutex;
     QColor clusterColor;
     audioDevices* audioDev = Q_NULLPTR;
+    QImage lcdImage;
 };
 
 Q_DECLARE_METATYPE(struct rigCapabilities)
@@ -1192,12 +1249,15 @@ Q_DECLARE_METATYPE(QVector <BUTTON>*)
 Q_DECLARE_METATYPE(QVector <KNOB>*)
 Q_DECLARE_METATYPE(QVector <COMMAND>*)
 Q_DECLARE_METATYPE(const COMMAND*)
+Q_DECLARE_METATYPE(const USBDEVICE*)
 Q_DECLARE_METATYPE(codecType)
 Q_DECLARE_METATYPE(errorType)
 Q_DECLARE_METATYPE(enum duplexMode)
 Q_DECLARE_METATYPE(enum rptAccessTxRx)
 Q_DECLARE_METATYPE(struct rptrTone_t)
 Q_DECLARE_METATYPE(struct rptrAccessData_t)
+Q_DECLARE_METATYPE(enum usbFeatureType)
+Q_DECLARE_METATYPE(enum cmds)
 
 //void (*wfmain::logthistext)(QString text) = NULL;
 
