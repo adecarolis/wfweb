@@ -31,11 +31,11 @@ void rigCreator::on_loadFile_clicked(bool clicked)
         dir.mkpath(appdata);
     }
 
-    if (!dir.exists("Rigs")) {
-        dir.mkdir("Rigs");
+    if (!dir.exists("rigs")) {
+        dir.mkdir("rigs");
     }
 
-    QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata+"/Rigs","Rig Files (*.rig)");
+    QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata+"/rigs","Rig Files (*.rig)");
     if (file.isEmpty())
     {
         return;
@@ -271,11 +271,11 @@ void rigCreator::on_saveFile_clicked(bool clicked)
         dir.mkpath(appdata);
     }
 
-    if (!dir.exists("Rigs")) {
-        dir.mkdir("Rigs");
+    if (!dir.exists("rigs")) {
+        dir.mkdir("rigs");
     }
 
-    QString file = QFileDialog::getSaveFileName(this,"Select Rig Filename",appdata+"/Rigs","Rig Files (*.rig)");
+    QString file = QFileDialog::getSaveFileName(this,"Select Rig Filename",appdata+"/rigs","Rig Files (*.rig)");
     if (file.isEmpty())
     {
         return;

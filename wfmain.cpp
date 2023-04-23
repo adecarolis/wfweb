@@ -92,7 +92,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     // We need to populate the last of rigs as early as possible so do it now
     QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir rigsDir(appdata+"/Rigs");
+    QDir rigsDir(appdata+"/rigs");
     if (!rigsDir.exists()) {
         qWarning() << "********* Rig directory does not exist ********";
     } else {
