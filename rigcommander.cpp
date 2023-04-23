@@ -41,12 +41,13 @@ rigCommander::~rigCommander()
 }
 
 
-void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
+void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
     // Keep in hex in the UI as is done with other CIV apps.
 
+    this->rigList = rigList;
     // civAddr = 0x94; // address of the radio. Decimal is 148.
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
     usingNativeLAN = false;
@@ -100,12 +101,13 @@ void rigCommander::commSetup(unsigned char rigCivAddr, QString rigSerialPort, qu
 
 }
 
-void rigCommander::commSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
+void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
 {
     // construct
     // TODO: Bring this parameter and the comm port from the UI.
     // Keep in hex in the UI as is done with other CIV apps.
 
+    this->rigList = rigList;
     // civAddr = 0x94; // address of the radio. Decimal is 148.
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
     usingNativeLAN = true;
@@ -345,9 +347,20 @@ void rigCommander::powerOn()
         payload.append("\xFE");
     }
 
-    payload.append(payloadPrefix); // FE FE 94 E1
-    payload.append("\x18\x01");
-    payload.append(payloadSuffix); // FD
+    auto it = rigCaps.commands.find(funcPower);
+    if (it != rigCaps.commands.end())
+    {
+        unsigned char cmd = 0x01;
+        QByteArray payload=it.value().data;
+        payload.append(cmd);
+        prepDataAndSend(payload);
+    } else {
+        // We may not know the command to turn the radio on so here it is:
+        payload.append(payloadPrefix); // FE FE 94 E1
+        payload.append("\x18\x01");
+        payload.append(payloadSuffix); // FD
+
+    }
 
     qDebug(logRig()) << "Power ON command in rigcommander to be sent to rig: ";
     printHex(payload);
@@ -358,17 +371,22 @@ void rigCommander::powerOn()
 
 void rigCommander::powerOff()
 {
-    if (rigCaps.commands.contains(funcPower)) {
-        QByteArray payload=rigCaps.commands.find(funcPower).value();
-		payload.append("\x00");
+    auto it = rigCaps.commands.find(funcPower);
+    if (it != rigCaps.commands.end())
+    {
+        unsigned char cmd = 0x00;
+        QByteArray payload=it.value().data;
+        payload.append(cmd);
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::enableSpectOutput()
 {
-    if (rigCaps.commands.contains(funcSpectrum)) {
-        QByteArray payload=rigCaps.commands.find(funcSpectrum).value();
+    auto it = rigCaps.commands.find(funcScopeWaveData);
+    if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
 		payload.append("\x01");
         prepDataAndSend(payload);
     }
@@ -376,8 +394,10 @@ void rigCommander::enableSpectOutput()
 
 void rigCommander::disableSpectOutput()
 {
-    if (rigCaps.commands.contains(funcSpectrum)) {
-        QByteArray payload=rigCaps.commands.find(funcSpectrum).value();
+    auto it = rigCaps.commands.find(funcScopeWaveData);
+    if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
 		payload.append("\x00");
         prepDataAndSend(payload);
     }
@@ -385,8 +405,10 @@ void rigCommander::disableSpectOutput()
 
 void rigCommander::enableSpectrumDisplay()
 {
-    if (rigCaps.commands.contains(funcDisplay)) {
-        QByteArray payload=rigCaps.commands.find(funcDisplay).value();
+    auto it = rigCaps.commands.find(funcScopeOnOff);
+    if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
 		payload.append("\x01");
         prepDataAndSend(payload);
     }
@@ -394,27 +416,50 @@ void rigCommander::enableSpectrumDisplay()
 
 void rigCommander::disableSpectrumDisplay()
 {
-    if (rigCaps.commands.contains(funcDisplay)) {
-        QByteArray payload=rigCaps.commands.find(funcDisplay).value();
-		payload.append("\x00");
+    auto it = rigCaps.commands.find(funcScopeOnOff);
+    if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append("\x00");
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setSpectrumBounds(double startFreq, double endFreq, unsigned char edgeNumber)
 {
+    unsigned char range = 1;
 
-    if (rigCaps.commands.contains(funcSpectrumBounds)) {
+    auto it = rigCaps.commands.find(funcScopeFixedFreq);
+    if (it != rigCaps.commands.end()) 
+	{
 		if((edgeNumber > 4) || (!edgeNumber))
 		{
 			return;
 		}
 
-		unsigned char freqRange = 1; // 1 = VHF, 2 = UHF, 3 = L-Band
+        // Each band should be configured with a maximum range, except for the ICR8600 which doesn't really have "bands"
+        for (bandType band: rigCaps.bands)
+        {
+            if (band.range != 0.0 && startFreq > band.range)
+                range++;
+        }
 
+        QByteArray payload=it.value().data;
+
+        payload.append(range);
+        payload.append(edgeNumber);
+        payload.append(makeFreqPayload(startFreq));
+        payload.append(makeFreqPayload(endFreq));
+
+        prepDataAndSend(payload);
+        qInfo(logRig()) << QString("Setting Fixed Range from: %0 to %1 edge %2 range %3").arg(startFreq).arg(endFreq).arg(edgeNumber).arg(range);
+    }
+
+        /*
 		// We should be able to remove this as well
 		switch(rigCaps.model)
 		{
+
 			case model9700:
 				if(startFreq > 148)
 				{
@@ -475,36 +520,31 @@ void rigCommander::setSpectrumBounds(double startFreq, double endFreq, unsigned 
 
 
 		}
-		QByteArray lowerEdge = makeFreqPayload(startFreq);
-		QByteArray higherEdge = makeFreqPayload(endFreq);
-
-
-        QByteArray payload=rigCaps.commands.find(funcSpectrumBounds).value();
-
-		payload.append(freqRange);
-		payload.append(edgeNumber);
-
-		payload.append(lowerEdge);
-		payload.append(higherEdge);
-
-		prepDataAndSend(payload);
 	}
+        */
 }
 
 void rigCommander::getScopeMode()
 {
     // center or fixed
-    if (rigCaps.commands.contains(funcSpectrumMode)) {
-        QByteArray payload=rigCaps.commands.find(funcSpectrumMode).value();
-        payload.append("\x00");
+    unsigned char vfo = 0x00; // Need to add multi VFO support
+    auto it = rigCaps.commands.find(funcScopeCenterFixed);
+    if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(vfo));
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getScopeEdge()
 {
-    if (rigCaps.commands.contains(funcSpectrumEdge)) {
-        QByteArray payload=rigCaps.commands.find(funcSpectrumEdge).value();
+    unsigned char vfo = 0x00; // Need to add multi VFO support
+    auto it = rigCaps.commands.find(funcScopeFixedEdge);
+    if (it != rigCaps.commands.end())
+	{
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(vfo));
         prepDataAndSend(payload);
     }
 }
@@ -512,9 +552,12 @@ void rigCommander::getScopeEdge()
 void rigCommander::setScopeEdge(char edge)
 {
     // 1 2 or 3
-    if (rigCaps.commands.contains(funcSpectrumEdge) && edge > 0 && edge <5) {
-        QByteArray payload=rigCaps.commands.find(funcSpectrumEdge).value();
-        payload.append("\x00");
+    unsigned char vfo = 0x00; // Need to add multi VFO support
+    auto it = rigCaps.commands.find(funcScopeFixedEdge);
+    if (it != rigCaps.commands.end() && edge > 0 && edge <5) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(vfo));
         payload.append(edge);
         prepDataAndSend(payload);
     }
@@ -527,8 +570,10 @@ void rigCommander::getScopeSpan()
 
 void rigCommander::getScopeSpan(bool isSub)
 {
-    if (rigCaps.commands.contains(funcSpectrumSpan)) {
-        QByteArray payload=rigCaps.commands.find(funcSpectrumSpan).value();
+    auto it = rigCaps.commands.find(funcScopeSpan);
+    if (it != rigCaps.commands.end())
+	{
+        QByteArray payload=it.value().data;
         payload.append(static_cast<unsigned char>(isSub));
         prepDataAndSend(payload);
     }
@@ -539,67 +584,37 @@ void rigCommander::setScopeSpan(char span)
     // See ICD, page 165, "19-12".
     // 2.5k = 0
     // 5k = 2, etc.
-    if((span <0 ) || (span >9))
-            return;
 
-    if (rigCaps.commands.contains(funcSpectrumSpan)) {
-        QByteArray payload=rigCaps.commands.find(funcSpectrumSpan).value();
-        payload.append("\x00");
-        prepDataAndSend(payload);
-        double freq; // MHz
-        // next 6 bytes are the frequency
-        switch(span)
+    unsigned char vfo = 0x0;
+    auto it = rigCaps.commands.find(funcScopeSpan);
+    if (it != rigCaps.commands.end())
+	{
+        QByteArray payload=it.value().data;
+        payload.append(vfo);
+        payload.append("\x00"); // 10Hz/1Hz
+        for (auto&& s: rigCaps.scopeCenterSpans)
         {
-        case 0:
-                // 2.5k
-                freq = 2.5E-3;
+            if (s.cstype == static_cast<centerSpansType>(span))
+            {
+                double freq = double(s.freq/1000000.0);
+                payload.append(makeFreqPayload(freq));
+                //qDebug(logRig()) << "Set Span for" << freq << "MHz" << "cmd:" << payload.toHex();
+                prepDataAndSend(payload);
                 break;
-        case 1:
-                // 5k
-                freq = 5.0E-3;
-                break;
-        case 2:
-                freq = 10.0E-3;
-                break;
-        case 3:
-                freq = 25.0E-3;
-                break;
-        case 4:
-                freq = 50.0E-3;
-                break;
-        case 5:
-                freq = 100.0E-3;
-                break;
-        case 6:
-                freq = 250.0E-3;
-                break;
-        case 7:
-                freq = 500.0E-3;
-                break;
-        case 8:
-                freq = 1000.0E-3;
-                break;
-        case 9:
-                freq = 2500.0E-3;
-                break;
-        default:
-                return;
-                break;
-        }
+            }
 
-        payload.append(makeFreqPayload(freq));
-        payload.append("\x00");
-        // printHex(payload, false, true);
-        prepDataAndSend(payload);
+        }
     }
 }
 
 void rigCommander::setSpectrumMode(spectrumMode spectMode)
 {
-    if (rigCaps.commands.contains(funcSpectrumMode)) {
-        QByteArray payload=rigCaps.commands.find(funcSpectrumMode).value();
-        payload.append("\x00");
-        prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcScopeCenterFixed);
+    unsigned char vfo = 0x0;
+    if (it != rigCaps.commands.end())
+	{
+        QByteArray payload=it.value().data;
+        payload.append(vfo);
         payload.append( static_cast<unsigned char>(spectMode) );
         prepDataAndSend(payload);
     }
@@ -612,8 +627,10 @@ void rigCommander::getSpectrumRefLevel()
 
 void rigCommander::getSpectrumRefLevel(unsigned char mainSub)
 {
-    if (rigCaps.commands.contains(funcSpectrumRefLevel)) {
-        QByteArray payload=rigCaps.commands.find(funcSpectrumRefLevel).value();
+    auto it = rigCaps.commands.find(funcScopeRef);
+    if (it != rigCaps.commands.end())
+	{
+        QByteArray payload=it.value().data;
         payload.append(mainSub);
         prepDataAndSend(payload);
     }
@@ -621,9 +638,12 @@ void rigCommander::getSpectrumRefLevel(unsigned char mainSub)
 
 void rigCommander::setSpectrumRefLevel(int level)
 {
-    if (rigCaps.commands.contains(funcSpectrumRefLevel)) {
-        QByteArray payload=rigCaps.commands.find(funcSpectrumRefLevel).value();
-        payload.append("\x00");
+    auto it = rigCaps.commands.find(funcScopeRef);
+    unsigned char vfo = 0x0;
+    if (it != rigCaps.commands.end())
+	{
+        QByteArray payload=it.value().data;
+        payload.append(vfo);
         prepDataAndSend(payload);
         QByteArray number;
         QByteArray pn;
@@ -649,30 +669,43 @@ void rigCommander::setSpectrumRefLevel(int level)
 
 void rigCommander::getSpectrumCenterMode()
 {
-    if (rigCaps.commands.contains(funcSpectrumMode)) {
-        QByteArray payload=rigCaps.commands.find(funcSpectrumMode).value();
+    auto it = rigCaps.commands.find(funcScopeCenterFixed);
+    if (it != rigCaps.commands.end())
+	{
+        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getSpectrumMode()
 {
-    if (rigCaps.commands.contains(funcSpectrumMode)) {
-        QByteArray payload=rigCaps.commands.find(funcSpectrumMode).value();
+    auto it = rigCaps.commands.find(funcScopeCenterFixed);
+    if (it != rigCaps.commands.end())
+	{
+        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setFrequency(unsigned char vfo, freqt freq)
 {
-    if (rigCaps.commands.contains(funcFreqSet)) {
-        QByteArray payload=rigCaps.commands.find(funcFreqSet).value();
-        // If get/set is the same command, we can add the vfo.
-        if (rigCaps.commands.find(funcFreqSet).value() == rigCaps.commands.find(funcFreqGet).value()) {
-            payload.append(vfo);
-        }
+    auto it = rigCaps.commands.find(funcFreq);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(vfo);
         payload.append(makeFreqPayload(freq));
         prepDataAndSend(payload);
+    }
+    else // Use the older FreqSet command
+    {
+		auto it = rigCaps.commands.find(funcFreqSet);
+		if (it != rigCaps.commands.end()) 
+		{
+			QByteArray payload=it.value().data;
+			payload.append(makeFreqPayload(freq));
+			prepDataAndSend(payload);
+		}
     }
 }
 
@@ -681,8 +714,10 @@ void rigCommander::selectVFO(vfo_t vfo)
     // Note, some radios use main/sub,
     // some use A/B,
     // and some appear to use both...
-    if (rigCaps.commands.contains(funcVFO)) {
-        QByteArray payload=rigCaps.commands.find(funcVFO).value();
+    auto it = rigCaps.commands.find(funcVFOSelect);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
         payload.append(static_cast<unsigned char>(vfo));
         prepDataAndSend(payload);
     }
@@ -690,18 +725,20 @@ void rigCommander::selectVFO(vfo_t vfo)
 
 void rigCommander::equalizeVFOsAB()
 {
-    if (rigCaps.commands.contains(funcVFO)) {
-        QByteArray payload=rigCaps.commands.find(funcVFO).value();
-        payload.append("\xa0");
+    auto it = rigCaps.commands.find(funcVFOSwap);
+ 	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::equalizeVFOsMS()
 {
-    if (rigCaps.commands.contains(funcVFO)) {
-        QByteArray payload=rigCaps.commands.find(funcVFO).value();
-        payload.append("\xB1");
+    auto it = rigCaps.commands.find(funcVFOEqualMS);
+    if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
@@ -710,9 +747,10 @@ void rigCommander::exchangeVFOs()
 {
     // NB: This command exchanges A-B or M-S
     // depending upon the radio.
-    if (rigCaps.commands.contains(funcVFO)) {
-        QByteArray payload=rigCaps.commands.find(funcVFO).value();
-        payload.append("\xB0");
+    auto it = rigCaps.commands.find(funcVFOSwap);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
@@ -764,309 +802,332 @@ QByteArray rigCommander::makeFreqPayload(double freq)
 
 void rigCommander::setRitEnable(bool ritEnabled)
 {
-    QByteArray payload;
-    if (rigCaps.commands.contains(funcRit)) {
-        QByteArray payload=rigCaps.commands.find(funcRit).value();
+    auto it = rigCaps.commands.find(funcRit);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
         payload.append(static_cast<unsigned char>(ritEnabled));
         prepDataAndSend(payload);
     }
-
-    if(ritEnabled)
-    {
-        payload.setRawData("\x21\x01\x01", 3);
-    } else {
-        payload.setRawData("\x21\x01\x00", 3);
-    }
-    prepDataAndSend(payload);
 }
 
 void rigCommander::getRitEnabled()
 {
-    QByteArray payload;
-    payload.setRawData("\x21\x01", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcRit);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getRitValue()
 {
-    QByteArray payload;
-    payload.setRawData("\x21\x00", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcRitValue);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setRitValue(int ritValue)
 {
-    QByteArray payload;
-    QByteArray freqBytes;
-    freqt f;
-
-    bool isNegative = false;
-    payload.setRawData("\x21\x00", 2);
-
-    if(ritValue < 0)
-    {
-        isNegative = true;
-        ritValue *= -1;
+    auto it = rigCaps.commands.find(funcRitValue);
+	if (it != rigCaps.commands.end()) 
+	{
+        bool isNegative = false;
+        if(ritValue < it.value().minVal)
+        {
+            isNegative = true;
+            ritValue *= -1;
+        }
+        else if (ritValue > it.value().maxVal) {
+            return;
+        }
+        QByteArray payload=it.value().data;
+        QByteArray freqBytes;
+        freqt f;
+        f.Hz = ritValue;
+        freqBytes = makeFreqPayload(f);
+        freqBytes.truncate(2);
+        payload.append(freqBytes);
+        payload.append(QByteArray(1,(char)isNegative));
+        prepDataAndSend(payload);
     }
-
-    if(ritValue > 9999)
-        return;
-
-    f.Hz = ritValue;
-
-    freqBytes = makeFreqPayload(f);
-
-    freqBytes.truncate(2);
-    payload.append(freqBytes);
-
-    payload.append(QByteArray(1,(char)isNegative));
-
-    prepDataAndSend(payload);
 }
 
 void rigCommander::setMode(mode_info m)
 {
-    QByteArray payload;
-
-    if (rigCaps.model == model706)
-    {
-        m.filter = '\x01';
-    }
-    if (m.mk == modeWFM)
+    if (m.mk == modeWFM) // FM only has a single filter (all other settings result in an error)
     {
         m.filter = '\x01';
     }
 
-    if(m.VFO==inactiveVFO)
-    {
-        payload.setRawData("\x26\x01", 2);
-    } else {
-        payload.setRawData("\x06", 1);
+    auto it = rigCaps.commands.find(funcMode);
+	if (it != rigCaps.commands.end()) 
+	{
+        // Mode with VFO and filter
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(m.VFO));
+        payload.append(m.reg);
+        payload.append(static_cast<unsigned char>(m.data)); // Not currently used (but could be!)
+        payload.append(m.filter);
+        prepDataAndSend(payload);
+
     }
-
-    payload.append(m.reg);
-    if(m.VFO==inactiveVFO)
-        payload.append("\x00", 1);
-
-    payload.append(m.filter);
-
-    prepDataAndSend(payload);
+    else 
+    {
+		auto it = rigCaps.commands.find(funcModeGet);
+		if (it != rigCaps.commands.end()) 
+		{
+			QByteArray payload=it.value().data;
+			payload.append(m.reg);
+			payload.append(m.filter);
+			prepDataAndSend(payload);
+		}
+    }
 }
 
 void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
 {
-    QByteArray payload;
-    if(mode < 0x22 + 1)
-    {
-        // mode command | filter
-        // 0x01 | Filter 01 automatically
-        // 0x04 | user-specififed 01, 02, 03 | note, is "read the current mode" on older rigs
-        // 0x06 | "default" filter is auto
-
-        payload.setRawData("\x06", 1); // cmd 06 needs filter specified
-        //payload.setRawData("\x04", 1); // cmd 04 will apply the default filter, but it seems to always pick FIL 02
-
-        payload.append(mode);
-        if(rigCaps.model==model706)
-        {
-            payload.append("\x01"); // "normal" on IC-706
-        } else {
-            if(mode == 0x06)
-            {
-                payload.append(0x01);
-            } else {
-                payload.append(modeFilter);
-            }
-        }
-
-        prepDataAndSend(payload);
-    }
+    mode_info m;
+    m.reg=mode;
+    m.VFO=selVFO_t::activeVFO;
+    m.filter=modeFilter;
+    setMode(m);
 }
 
 void rigCommander::setDataMode(bool dataOn, unsigned char filter)
 {
-    QByteArray payload;
-
-    payload.setRawData("\x1A\x06", 2);
-    if(dataOn)
-    {
-        payload.append("\x01", 1); // data mode on
-        payload.append(filter);
-
-    } else {
-        payload.append("\x00\x00", 2); // data mode off, bandwidth not defined per ICD.
-    }
-    prepDataAndSend(payload);
-}
-
-void rigCommander::getFrequency(unsigned char vfo)
-{
-    if (rigCaps.hasVFOAB || rigCaps.hasVFOMS)
-    {
-        QByteArray payload("\x25");
-        payload.append(vfo);
+    auto it = rigCaps.commands.find(funcDataMode);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(dataOn));
+        payload.append((dataOn) ? filter : 0x0); // if data mode off, bandwidth not defined per ICD.
         prepDataAndSend(payload);
-    } else {
-        getFrequency();
     }
 }
 
 void rigCommander::getFrequency()
 {
-    // figure out frequency and then respond with haveFrequency();
-    // send request to radio
-    // 1. make the data
-    QByteArray payload("\x03");
-    prepDataAndSend(payload);
+    getFrequency((unsigned char)0x0);
+}
+
+void rigCommander::getFrequency(unsigned char vfo)
+{
+    QByteArray payload;
+    auto it = rigCaps.commands.find(funcFreq);
+	if (it != rigCaps.commands.end()) 
+	{
+        payload=it.value().data;
+        payload.append(vfo);
+        prepDataAndSend(payload);
+    }
+    else
+    {
+		auto it = rigCaps.commands.find(funcFreqGet);
+		if (it != rigCaps.commands.end()) 
+		{
+			payload = it.value().data;
+			prepDataAndSend(payload);
+		}
+    }
 }
 
 void rigCommander::getMode()
 {
-    QByteArray payload("\x04");
-    prepDataAndSend(payload);
+    getMode((unsigned char)0x0);
+}
+void rigCommander::getMode(unsigned char vfo)
+{
+    auto it = rigCaps.commands.find(funcMode);
+	if (it != rigCaps.commands.end()) 
+	{
+        // Mode with VFO and filter
+        QByteArray payload=it.value().data;
+        payload.append(vfo); // Currently only VFOA/M;
+        prepDataAndSend(payload);
+    }
+    else
+    {
+		auto it = rigCaps.commands.find(funcModeSet);
+		if (it != rigCaps.commands.end()) 
+		{
+			QByteArray payload=it.value().data;
+			prepDataAndSend(payload);
+		}
+    }
 }
 
 void rigCommander::getDataMode()
 {
-    QByteArray payload("\x1A\x06");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcDataMode);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getSplit()
 {
-    QByteArray payload("\x0F");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcSplit);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setSplit(bool splitEnabled)
 {
-    QByteArray payload("\x0F");
-    payload.append((unsigned char)splitEnabled);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcSplit);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(splitEnabled));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setDuplexMode(duplexMode dm)
 {
-    QByteArray payload;
-    if(dm==dmDupAutoOff)
-    {
-        payload.setRawData("\x1A\x05\x00\x46\x00", 5);
-    } else if (dm==dmDupAutoOn)
-    {
-        payload.setRawData("\x1A\x05\x00\x46\x01", 5);
-    } else {
-        payload.setRawData("\x0F", 1);
-        payload.append((unsigned char) dm);
+    auto it = rigCaps.commands.find(funcDuplexMode);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(dm));
+        prepDataAndSend(payload);
     }
-    prepDataAndSend(payload);
+    else
+    {
+        setSplit(static_cast<unsigned char>(dm));
+    }
 }
 
 void rigCommander::getDuplexMode()
 {
-    QByteArray payload;
-
-    // Duplex mode:
-    payload.setRawData("\x0F", 1);
-    prepDataAndSend(payload);
-
-    // Auto Repeater Mode:
-    payload.setRawData("\x1A\x05\x00\x46", 4);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcDuplexMode);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
+    else
+    {
+        getSplit();
+    }
 }
 
 void rigCommander::setQuickSplit(bool qsOn)
 {
-    if(rigCaps.hasQuickSplitCommand)
-    {
-        QByteArray payload = rigCaps.quickSplitCommand;
-        payload.append((unsigned char)qsOn);
+    auto it = rigCaps.commands.find(funcQuickSplit);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(qsOn));
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setPassband(quint16 pass)
 {
-    QByteArray payload;
-    payload.setRawData("\x1A\x03", 2);
-
     /*
     * Passband is calculated as follows, if a higher than legal value is provided,
     * It will set passband to the maximum allowed for the particular mode.
-    * 
+    *
     * Mode                Data        Steps
     * SSB/CW/RTTY/PSK     0 to 9      50 ~ 500 Hz (50 Hz)
     * SSB/CW/PSK          10 to 40    600 Hz ~ 3.6 kHz (100 Hz)
     * RTTY                10 to 31    600 ~ 2.7 kHz (100 Hz)
     * AM                  0 to 49     200 Hz ~ 10.0 kHz (200 Hz)
     */
-    
-    unsigned char calc;
-    if (state.getChar(MODE) == modeAM) { // AM 0-49
 
-        calc = quint16((pass / 200) - 1);
-        if (calc > 49)
-            calc = 49;
-    }
-    else if (pass >= 600) // SSB/CW/PSK 10-40 (10-31 for RTTY)
-    {
-        calc = quint16((pass / 100) + 4);
-        if (((calc > 31) && (state.getChar(MODE) == modeRTTY || state.getChar(MODE) == modeRTTY_R)))
-        {
-            calc = 31;
-        } 
-        else if (calc > 40) {
-            calc = 40;
+    auto it = rigCaps.commands.find(funcPassband);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        unsigned char calc;
+        if (state.getChar(MODE) == modeAM) { // AM 0-49
+
+            calc = quint16((pass / 200) - 1);
+            if (calc > 49)
+                    calc = 49;
         }
-    }
-    else {  // SSB etc 0-9
-        calc = quint16((pass / 50) - 1);
-    }
-    
-    char tens = (calc / 10);
-    char units = (calc - (10 * tens));
+        else if (pass >= 600) // SSB/CW/PSK 10-40 (10-31 for RTTY)
+        {
+            calc = quint16((pass / 100) + 4);
+            if (((calc > 31) && (state.getChar(MODE) == modeRTTY || state.getChar(MODE) == modeRTTY_R)))
+            {
+                    calc = 31;
+            }
+            else if (calc > 40) {
+                    calc = 40;
+            }
+        }
+        else {  // SSB etc 0-9
+            calc = quint16((pass / 50) - 1);
+        }
 
-    char b1 = (units) | (tens << 4);
+        char tens = (calc / 10);
+        char units = (calc - (10 * tens));
 
-    payload.append(b1);
-    prepDataAndSend(payload);
+        char b1 = (units) | (tens << 4);
+
+        payload.append(b1);
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getPassband()
 {
-    QByteArray payload;
-    payload.setRawData("\x1A\x03", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcPassband);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getCwPitch()
 {
-    QByteArray payload;
-    payload.setRawData("\x14\x09", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcCwPitch);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setCwPitch(unsigned char pitch)
 {
-    QByteArray payload;
-    payload.setRawData("\x14\x09", 2);
-    payload.append(bcdEncodeInt(pitch));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcCwPitch);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(pitch));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getDashRatio()
 {
-    QByteArray payload;
-    if (rigCaps.commands.contains(funcDashRatio)) {
-        payload.append(rigCaps.commands.find(funcDashRatio).value());
+    auto it = rigCaps.commands.find(funcDashRatio);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setDashRatio(unsigned char ratio)
-{
-    QByteArray payload;
-    if (rigCaps.commands.contains(funcDashRatio)) {
-        payload.append(rigCaps.commands.find(funcDashRatio).value());
+{    
+    auto it = rigCaps.commands.find(funcDashRatio);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload = it.value().data;
         prepDataAndSend(payload);
         payload.append(bcdEncodeInt(ratio).at(1)); // Discard first byte
         prepDataAndSend(payload);
@@ -1075,39 +1136,54 @@ void rigCommander::setDashRatio(unsigned char ratio)
 
 void rigCommander::getPskTone()
 {
-    QByteArray payload;
-    payload.setRawData("\x1a\x05\x00\x44", 4);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcPskTone);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setPskTone(unsigned char tone)
 {
-    QByteArray payload;
-    payload.setRawData("\x1a\x05\x00\x44", 4);
-    payload.append(bcdEncodeInt(tone));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcPskTone);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(tone));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getRttyMark()
 {
-    QByteArray payload;
-    payload.setRawData("\x1a\x05\x00\x41", 4);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcRttyMark);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setRttyMark(unsigned char mark)
 {
-    QByteArray payload;
-    payload.setRawData("\x1a\x05\x00\x41", 4);
-    payload.append(bcdEncodeInt(mark));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcRttyMark);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(mark));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getTransmitFrequency()
 {
-    QByteArray payload;
-    payload.setRawData("\x1C\x03", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcTxFreq);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setTone(quint16 tone)
@@ -1119,22 +1195,21 @@ void rigCommander::setTone(quint16 tone)
 
 void rigCommander::setTone(rptrTone_t t)
 {
-    quint16 tone = t.tone;
-
-    QByteArray fenc = encodeTone(tone);
-
-    QByteArray payload;
-    payload.setRawData("\x1B\x00", 2);
-    payload.append(fenc);
-
-    if(t.useSecondaryVFO)
+	QByteArray payload;
+	auto it = rigCaps.commands.find(funcMainSubCmd);
+	if (it != rigCaps.commands.end()) 
     {
-        qDebug(logRig()) << "Sending TONE to secondary VFO";
-        payload.prepend("\x29\x01");
-        //printHex(payload);
-    }
+        payload.append(it.value().data);
+        payload.append(static_cast<unsigned char>(t.useSecondaryVFO));
+	}
 
-    prepDataAndSend(payload);
+    auto it2 = rigCaps.commands.find(funcTone);
+    if (it2 != rigCaps.commands.end())
+	{
+        payload.append(it2.value().data);
+        payload.append(encodeTone(t.tone));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setTSQL(quint16 t)
@@ -1146,37 +1221,32 @@ void rigCommander::setTSQL(quint16 t)
 
 void rigCommander::setTSQL(rptrTone_t t)
 {
-    quint16 tsql = t.tone;
-
-    QByteArray fenc = encodeTone(tsql);
-
-    QByteArray payload;
-    payload.setRawData("\x1B\x01", 2);
-    payload.append(fenc);
-
-    if(t.useSecondaryVFO)
+	QByteArray payload;
+	auto it = rigCaps.commands.find(funcMainSubCmd);
+	if (it != rigCaps.commands.end()) 
     {
-        qDebug(logRig()) << "Sending TSQL to secondary VFO";
-        payload.prepend("\x29\x01");
-        //printHex(payload);
+        payload.append(it.value().data);
+        payload.append(static_cast<unsigned char>(t.useSecondaryVFO));
+	}
+	
+    auto it2 = rigCaps.commands.find(funcTSQL);
+    if (it2 != rigCaps.commands.end())
+	{
+        QByteArray payload=it2.value().data;
+        payload.append(encodeTone(t.tone));
+        prepDataAndSend(payload);
     }
-
-    prepDataAndSend(payload);
 }
 
 void rigCommander::setDTCS(quint16 dcscode, bool tinv, bool rinv)
 {
-
-    QByteArray denc = encodeTone(dcscode, tinv, rinv);
-
-    QByteArray payload;
-    payload.setRawData("\x1B\x02", 2);
-    payload.append(denc);
-
-    //qInfo() << __func__ << "DTCS encoded payload: ";
-    //printHex(payload);
-
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcDTCS);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(encodeTone(dcscode, tinv, rinv));
+        prepDataAndSend(payload);
+    }
 }
 
 QByteArray rigCommander::encodeTone(quint16 tone)
@@ -1240,30 +1310,42 @@ quint16 rigCommander::decodeTone(QByteArray eTone, bool &tinv, bool &rinv)
 
 void rigCommander::getTone()
 {
-    QByteArray payload;
-    payload.setRawData("\x1B\x00", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcTone);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getTSQL()
 {
-    QByteArray payload;
-    payload.setRawData("\x1B\x01", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcTSQL);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getDTCS()
 {
-    QByteArray payload;
-    payload.setRawData("\x1B\x02", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcDTCS);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getRptAccessMode()
 {
-    QByteArray payload;
-    payload.setRawData("\x16\x5D", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcRptAccessMode);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setRptAccessMode(rptAccessTxRx ratr)
@@ -1278,12 +1360,24 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
     // NB: This function is the only recommended
     // function to be used for toggling tone and tone squelch.
 
-    QByteArray payload;
+	QByteArray payload;
+	auto it = rigCaps.commands.find(funcMainSubCmd);
+    if (it != rigCaps.commands.end())
+    {
+        payload.append(it.value().data);
+        payload.append(static_cast<unsigned char>(rd.useSecondaryVFO));
+	}
+
     if(rigCaps.hasAdvancedRptrToneCmds)
     {
         // IC-9700 basically
-        payload.setRawData("\x16\x5D", 2);
-        payload.append((unsigned char)rd.accessMode);
+		auto it = rigCaps.commands.find(funcRptAccessMode);
+		if (it != rigCaps.commands.end()) 
+        {
+            payload.append(it.value().data);
+			payload.append((unsigned char)rd.accessMode);
+			prepDataAndSend(payload);
+		}
     } else {
         // These radios either don't support DCS or
         // we just haven't added DCS yet.
@@ -1296,170 +1390,190 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
         switch(rd.accessMode)
         {
         case ratrNN:
+		{
             // No tone at all
             if(rd.turnOffTone)
             {
-                payload.append("\x16\x42\x00", 3); // TONE off
+				auto it = rigCaps.commands.find(funcTone);
+				if (it != rigCaps.commands.end()) 
+                {
+                    payload.append(it.value().data);
+                    payload.append('\x00');
+					prepDataAndSend(payload);
+				}
             } else if (rd.turnOffTSQL)
             {
-                payload.append("\x16\x43\x00", 3);  // TSQL off
+				auto it = rigCaps.commands.find(funcTSQL);
+				if (it != rigCaps.commands.end()) 
+                {
+                    payload.append(it.value().data);
+                    payload.append('\x00');
+					prepDataAndSend(payload);
+				}
             }
             break;
+		}
         case ratrTN:
-            // TONE on transmit only
-            payload.append("\x16\x42\x01", 3); // TONE on
+		{
+			auto it = rigCaps.commands.find(funcTone);
+			if (it != rigCaps.commands.end()) 
+            {
+                payload.append(it.value().data);
+				payload.append((unsigned char)0x1);
+				prepDataAndSend(payload);
+			}
             break;
-        case ratrTT:
-            // Tone on transmit and TSQL
-            payload.append("\x16\x43\x01", 3); // TSQL on
-            break;
+		}
+        case ratrTT: 
         case ratrNT:
-            // Tone squelch and no tone transmit:
-            payload.append("\x16\x43\x01", 3); // TSQL on, close enough here.
-            // payload.append("\x16\x42\x00", 3); // TONE off
+		{
+			auto it = rigCaps.commands.find(funcTSQL);
+			if (it != rigCaps.commands.end()) 
+            {
+                payload.append(it.value().data);
+				payload.append((unsigned char)0x1);
+				prepDataAndSend(payload);
+			}
             break;
+		}
         default:
             qWarning(logRig()) << "Cannot set tone mode" << (unsigned char)rd.accessMode << "on rig model" << rigCaps.modelName;
             return;
         }
     }
-
-    if(rd.useSecondaryVFO && rigCaps.hasSpecifyMainSubCmd)
-    {
-        payload.prepend("\x29\x01");
-    }
-    prepDataAndSend(payload);
 }
 
 void rigCommander::setRptDuplexOffset(freqt f)
 {
-    QByteArray payload;
-    payload.setRawData("\x0D", 1);
-    // get f, chop to 10 MHz
-    QByteArray freqPayload = makeFreqPayload(f);
-    payload.append(freqPayload.mid(1, 3));
-    //qInfo(logRig()) << "Here is potential repeater offset setting, not sending to radio:";
-    //printHexNow(payload, logRig());
-    //QString g = getHex(payload);
-    //qInfo(logRig()).noquote().nospace() << g;
-    prepDataAndSend(payload);
+	auto it = rigCaps.commands.find(funcRptDuplexOffset);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload = it.value().data;
+        payload.append(makeFreqPayload(f).mid(1,3));
+		prepDataAndSend(payload);
+	}
 }
 
 void rigCommander::getRptDuplexOffset()
 {
-    QByteArray payload;
-    payload.setRawData("\x0C", 1);
-    prepDataAndSend(payload);
+	auto it = rigCaps.commands.find(funcRptDuplexOffset);
+	if (it != rigCaps.commands.end()) 
+	{
+		QByteArray payload = it.value().data;
+		prepDataAndSend(payload);
+	}
 }
 
 void rigCommander::setIPP(bool enabled)
 {
-    QByteArray payload;
-    payload.setRawData("\x16\x65", 2);
-    if(enabled)
-    {
-        payload.append("\x01");
-    } else {
-        payload.append("\x00");
-    }
-    prepDataAndSend(payload);
+	auto it = rigCaps.commands.find(funcIPP);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload = it.value().data;
+        payload.append(static_cast<unsigned char>(enabled));
+		prepDataAndSend(payload);
+	}
 }
 
 void rigCommander::getIPP()
 {
-    QByteArray payload;
-    payload.setRawData("\x16\x65", 2);
-    prepDataAndSend(payload);
+	auto it = rigCaps.commands.find(funcIPP);
+	if (it != rigCaps.commands.end()) 
+	{
+		QByteArray payload = it.value().data;
+		prepDataAndSend(payload);
+	}
 }
 
 void rigCommander::setSatelliteMode(bool enabled)
 {
-    QByteArray payload;
-    payload.setRawData("\x16\x5A", 2);
-    if(enabled)
-    {
-        payload.append("\x01");
-    } else {
-        payload.append("\x00");
-    }
-    prepDataAndSend(payload);
+	auto it = rigCaps.commands.find(funcSatelliteMode);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload = it.value().data;
+        payload.append(static_cast<unsigned char>(enabled));
+		prepDataAndSend(payload);
+	}
 }
 
 void rigCommander::getSatelliteMode()
 {
-    QByteArray payload;
-    payload.setRawData("\x16\x5A", 2);
-    prepDataAndSend(payload);
+	auto it = rigCaps.commands.find(funcSatelliteMode);
+	if (it != rigCaps.commands.end()) 
+	{
+		QByteArray payload = it.value().data;
+		prepDataAndSend(payload);
+	}
+
 }
 
 void rigCommander::getPTT()
 {
-    //if(rigCaps.useRTSforPTT && !usingNativeLAN)
-    //{
-    //    emit havePTTStatus(comm->rtsStatus());
-    //} else {
-    QByteArray payload;
-    payload.setRawData("\x1C\x00", 2);
-    prepDataAndSend(payload);
-    //}
+    auto it = rigCaps.commands.find(funcTXStatus);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getBandStackReg(char band, char regCode)
 {
-    QByteArray payload("\x1A\x01");
-    payload.append(band); // [01 through 11]
-    payload.append(regCode); // [01...03]. 01 = latest, 03 = oldest
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcBandStackReg);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(band); // [01 through 11]
+        payload.append(regCode); // [01...03]. 01 = latest, 03 = oldest
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setPTT(bool pttOn)
 {
-    //bool pttAllowed = false;
-
     if(pttAllowed)
     {
-        QByteArray payload("\x1C\x00", 2);
-        payload.append((char)pttOn);
-        prepDataAndSend(payload);
+        auto it = rigCaps.commands.find(funcTXStatus);
+        if (it != rigCaps.commands.end())
+        {
+            QByteArray payload=it.value().data;
+            payload.append(static_cast<unsigned char>(pttOn));
+            prepDataAndSend(payload);
+        }
     }
 }
 
 void rigCommander::sendCW(QString textToSend)
 {
-    if(textToSend.length() >30)
-    {
-        qCritical(logRig()).nospace() << "Cannot send CW message, length > 30 characters (" << textToSend.length() << ")";
-        return;
-    }
-
-    QByteArray textData = textToSend.toLocal8Bit();
-    unsigned char p=0;
-    bool printout=false;
-    for(int c=0; c < textData.length(); c++)
-    {
-        p = textData.at(c);
-        if( ( (p >= 0x30) && (p <= 0x39) ) ||
-            ( (p >= 0x41) && (p <= 0x5A) ) ||
-            ( (p >= 0x61) && (p <= 0x7A) ) ||
-            (p==0x2F) || (p==0x3F) || (p==0x2E) ||
-            (p==0x2D) || (p==0x2C) || (p==0x3A) ||
-            (p==0x27) || (p==0x28) || (p==0x29) ||
-            (p==0x3D) || (p==0x2B) || (p==0x22) ||
-            (p==0x40) || (p==0x20) )
+	auto it = rigCaps.commands.find(funcSendCW);
+    if (it != rigCaps.commands.end() && pttAllowed && textToSend.length() <=30) 
+	{
+        QByteArray payload=it.value().data;
+        QByteArray textData = textToSend.toLocal8Bit();
+        unsigned char p=0;
+        bool printout=false;
+        for(int c=0; c < textData.length(); c++)
         {
-            // Allowed character, continue
-        } else {
-            qWarning(logRig()) << "Invalid character detected in CW message at position " << c << ", the character is " << textToSend.at(c);
-            printout = true;
-            textData[c] = 0x3F; // "?"
+            p = textData.at(c);
+            if( ( (p >= 0x30) && (p <= 0x39) ) ||
+                ( (p >= 0x41) && (p <= 0x5A) ) ||
+                ( (p >= 0x61) && (p <= 0x7A) ) ||
+                (p==0x2F) || (p==0x3F) || (p==0x2E) ||
+                (p==0x2D) || (p==0x2C) || (p==0x3A) ||
+                (p==0x27) || (p==0x28) || (p==0x29) ||
+                (p==0x3D) || (p==0x2B) || (p==0x22) ||
+                (p==0x40) || (p==0x20) )
+            {
+                // Allowed character, continue
+            } else {
+                qWarning(logRig()) << "Invalid character detected in CW message at position " << c << ", the character is " << textToSend.at(c);
+                printout = true;
+                textData[c] = 0x3F; // "?"
+            }
         }
-    }
-    if(printout)
-        printHex(textData);
+        if(printout)
+            printHex(textData);
 
-    if(pttAllowed)
-    {
-        QByteArray payload("\x17", 1);
         payload.append(textData);
         prepDataAndSend(payload);
     }
@@ -1468,9 +1582,13 @@ void rigCommander::sendCW(QString textToSend)
 
 void rigCommander::sendStopCW()
 {
-    QByteArray payload("\x17", 1);
-    payload.append("\xFF");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcSendCW);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append("\xFF");
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setCIVAddr(unsigned char civAddr)
@@ -1645,11 +1763,475 @@ void rigCommander::parseData(QByteArray dataInput)
 
 void rigCommander::parseCommand()
 {
+
+
     // note: data already is trimmed of the beginning FE FE E0 94 stuff.
+    if (!haveRigCaps)
+    {
+        if  (payloadIn[0] == '\x19') {
+            model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
+            rigCaps.modelID = payloadIn[2];
+            determineRigCaps();
+            qInfo(logRig()) << "Have rig ID: decimal: " << (unsigned int)rigCaps.modelID;
+        }
+        return; // We can't do anything else until we have a rig model.
+    }
+    QElapsedTimer performanceTimer;
+    performanceTimer.start();
 
-    bool isSpectrumData = payloadIn.startsWith(QByteArray().setRawData("\x27\x00", 2));
+    funcs func = funcNone;
 
-    if( (!isSpectrumData) && (payloadIn[00] != '\x15') )
+    // The majority of commands are single character so it makes sense to start there I think?
+    for (int i=1;i<=4;i++)
+    {
+        auto it = rigCaps.commandsReverse.find(payloadIn.left(i));
+        if (it != rigCaps.commandsReverse.end())
+        {
+            func = it.value();
+            break;
+        }
+    }
+
+ /*
+    QByteArray search = payloadIn.left(4); // Maximum length of command to search.
+
+    while (search.length()>0)
+    {
+        auto it = rigCaps.commandsReverse.find(search);
+        if (it != rigCaps.commandsReverse.end())
+        {
+            func = it.value();
+            break;
+        }
+        search.removeLast();
+    }
+*/
+
+    int currentParse=performanceTimer.nsecsElapsed();
+
+
+    if (!rigCaps.commands.contains(func)) {
+        qInfo(logRig()) << "Unsupported command received from rig" << funcString[func] << "Check rig file (" << payloadIn.toHex() << ")";
+        return;
+    }
+
+    switch (func)
+    {
+    case funcFreqGet:
+    case funcfreqTR:
+    case funcTxFreq:
+        parseFrequency();
+        break;
+    case funcFreq:
+        emit haveFrequency(parseFrequency(payloadIn, 5));
+        break;
+    case funcModeGet:
+    case funcModeTR:
+        parseMode();
+        break;
+    case funcMode:
+        if((int)payloadIn[1] == 0) // VFOA only currently
+        {
+             emit haveDataMode((bool)payloadIn[03]);
+             state.set(DATAMODE, (quint8)payloadIn[3], false);
+             this->parseMode();
+        }
+        break;
+    case funcRptDuplexOffset:
+        emit haveRptOffsetFrequency(parseFrequencyRptOffset(payloadIn));
+        break;
+    case funcDuplexMode:
+        emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
+        state.set(DUPLEX, (duplexMode)(unsigned char)payloadIn[1], false);
+        break;
+    case funcAttenuator:
+        emit haveAttenuator((unsigned char)payloadIn.at(1));
+        state.set(ATTENUATOR, (quint8)payloadIn[1], false);
+        break;
+    case funcAntenna:
+        emit haveAntenna((unsigned char)payloadIn.at(1), (bool)payloadIn.at(2));
+        state.set(ANTENNA, (quint8)payloadIn[1], false);
+        state.set(RXANTENNA, (bool)payloadIn[2], false);
+        break;
+    // Register 14 (levels) starts here:
+    //     unsigned char value = bcdHexToUChar(payloadIn[3], payloadIn[4]);
+    case funcAfGain:
+        if (udp == Q_NULLPTR) {
+             emit haveAfGain(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+             state.set(AFGAIN, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        } else {
+             state.set(AFGAIN, localVolume, false);
+        }
+        break;
+    case funcRfGain:
+        emit haveRfGain(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(RFGAIN, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcSql:
+        emit haveSql(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(SQUELCH, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcPBTInner:
+        emit haveTPBFInner(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(PBTIN, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcPBTOuter:
+        emit haveTPBFOuter(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(PBTOUT, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcIFShift:
+        emit haveIFShift(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        break;
+    case funcNRLevel:
+        emit haveNRLevel(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(NR, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+    case funcCwPitch:
+        emit haveCwPitch(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(CWPITCH, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcTxPower:
+        emit haveTxPower(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(RFPOWER, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcMicGain:
+        emit haveNRLevel(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(MICGAIN, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcKeySpeed:
+        emit haveKeySpeed(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(KEYSPD, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcNotch:
+        state.set(NOTCHF, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        // Not implemented
+        // emit haveNotch(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        break;
+    case funcCompLevel:
+        emit haveCompLevel(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(COMPLEVEL, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcNBLevel:
+        emit haveNBLevel(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(NB, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcMonitorGain:
+        emit haveMonitorGain(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(MONITORLEVEL, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcVoxGain:
+        emit haveVoxGain(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(VOXGAIN, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcAntiVoxGain:
+        emit haveAntiVoxGain(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(ANTIVOXGAIN, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    // 0x15 Meters
+    case funcNoiseLevel:
+        break;
+    case funcSMeter:
+        emit haveMeter(meterS,bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(SMETER, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcCenterMeter:
+        emit haveMeter(meterCenter,bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        break;
+    case funcPowerMeter:
+        emit haveMeter(meterPower,bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(POWERMETER, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcSWRMeter:
+        emit haveMeter(meterSWR,bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(SWRMETER, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcALCMeter:
+        emit haveMeter(meterALC,bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(ALCMETER, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcCompMeter:
+        emit haveMeter(meterComp,bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(COMPMETER, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcVdMeter:
+        emit haveMeter(meterVoltage,bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(VOLTAGEMETER, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcIdMeter:
+        emit haveMeter(meterCurrent,bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(CURRENTMETER, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    // 0x16 enable/disable functions:
+    case funcRptAccessMode:
+        emit haveRptAccessMode((rptAccessTxRx)payloadIn.at(2));
+        break;
+    case funcPreamp:
+        emit havePreamp((unsigned char)payloadIn.at(2));
+        state.set(PREAMP, (quint8)payloadIn.at(2), false);
+        break;
+    case funcNB:
+        emit haveNB(payloadIn.at(2) != 0);
+        state.set(NBFUNC, payloadIn.at(2) != 0, false);
+        break;
+    case funcNR:
+        emit haveNR(payloadIn.at(2) != 0);
+        state.set(NRFUNC, payloadIn.at(2) != 0, false);
+        break;
+    case funcAutoNotch:
+        state.set(ANFFUNC, payloadIn.at(2) != 0, false);
+        break;
+    case funcTone:
+    {
+        rptAccessTxRx ra;
+        if(payloadIn.at(2)==1)
+        {
+             ra = ratrTONEon;
+        } else {
+             ra = ratrTONEoff;
+        }
+        emit haveRptAccessMode(ra);
+        state.set(TONEFUNC, payloadIn.at(2) != 0, false);
+    }
+    case funcTSQL:
+    {
+        rptAccessTxRx ra;
+        if(payloadIn.at(2)==1)
+        {
+             ra = ratrTSQLon;
+        } else {
+             ra = ratrTSQLoff;
+        }
+        emit haveRptAccessMode(ra);
+        break;
+        state.set(TSQLFUNC, payloadIn.at(2) != 0, false);
+    }
+    case funcCompressor:
+        emit haveComp(payloadIn.at(2) != 0);
+        state.set(COMPFUNC, payloadIn.at(2) != 0, false);
+        break;
+    case funcMonitor:
+        emit haveMonitor(payloadIn.at(2) != 0);
+        state.set(MONFUNC, payloadIn.at(2) != 0, false);
+        break;
+    case funcVox:
+        emit haveVox(payloadIn.at(2) != 0);
+        state.set(VOXFUNC, payloadIn.at(2) != 0, false);
+        break;
+    case FuncBKIN:
+    {
+        if (payloadIn.at(2) == '\00') {
+             state.set(FBKINFUNC, false, false);
+             state.set(SBKINFUNC, false, false);
+        }
+        else if (payloadIn.at(2) == '\01') {
+             state.set(FBKINFUNC, false, false);
+             state.set(SBKINFUNC, true, false);
+
+        }
+        else if (payloadIn.at(2) == '\02') {
+             state.set(FBKINFUNC, true, false);
+             state.set(SBKINFUNC, false, false);
+        }
+        emit haveCWBreakMode(payloadIn.at(2));
+        break;
+    }
+    case funcManualNotch:
+        state.set(MNFUNC, payloadIn.at(2) != 0, false);
+        break;
+    case funcDialLock:
+        state.set(LOCKFUNC, payloadIn.at(2) != 0, false);
+        break;
+    // 0x19 should never appear
+    case funcTransceiverId:
+        model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
+        rigCaps.modelID = payloadIn[2];
+        determineRigCaps();
+        qInfo(logRig()) << "Have rig ID: decimal: " << (unsigned int)rigCaps.modelID;
+        break;
+    // 0x21 RIT:
+    case funcRitValue:
+    {
+        int ritHz = 0;
+        freqt f;
+        QByteArray longfreq;
+        longfreq = payloadIn.mid(2,2);
+        longfreq.append(QByteArray(3,'\x00'));
+        f = parseFrequency(longfreq, 3);
+        if(payloadIn.length() < 5)
+             break;
+        ritHz = f.Hz*((payloadIn.at(4)=='\x01')?-1:1);
+        emit haveRitFrequency(ritHz);
+        state.set(RITVALUE, ritHz, false);
+        break;
+    }
+    case funcRit:
+        emit haveRitEnabled(static_cast<bool>(payloadIn.at(02)));
+        state.set(RITFUNC, static_cast<bool>(payloadIn.at(02)), false);
+        break;
+    // 0x1a
+    case funcMemoryContents:
+        break;
+    case funcBandStackReg:
+        parseBandStackReg();
+        break;
+    case funcPassband:
+    {
+        quint16 calc;
+        quint8 pass = bcdHexToUChar((quint8)payloadIn[2]);
+        if (state.getChar(MODE) == modeAM) {
+             calc = 200 + (pass * 200);
+        }
+        else if (pass <= 10)
+        {
+             calc = 50 + (pass * 50);
+        }
+        else {
+             calc = 600 + ((pass - 10) * 100);
+        }
+        emit havePassband(calc);
+        state.set(PASSBAND, calc, false);
+        break;
+    }
+    case funcAGC:
+        state.set(AGC, (quint8)payloadIn[2], false);
+        break;
+    case funcDataMode:
+        emit haveDataMode((bool)payloadIn[03]);
+        state.set(DATAMODE, (quint8)payloadIn[3], false);
+        break;
+    case funcIPP:
+        break;
+    case funcAfMute:
+        state.set(MUTEFUNC, (quint8)payloadIn[2], false);
+        break;
+    // 0x1a 0x05 various registers!
+    case funcRefCoarse:
+        emit haveRefAdjustCourse(bcdHexToUChar(payloadIn[4],payloadIn[5]));
+        break;
+    case funcRefFine:
+        emit haveRefAdjustFine(bcdHexToUChar(payloadIn[4],payloadIn[5]));
+        break;
+    case funcACC1Gain:
+        emit haveACCGain(bcdHexToUChar(payloadIn[4],payloadIn[5]),5); // This might need some work?
+        break;
+    case funcUSBGain:
+        emit haveUSBGain(bcdHexToUChar(payloadIn[4],payloadIn[5]));
+        break;
+    case funcLANGain:
+        emit haveLANGain(bcdHexToUChar(payloadIn[4],payloadIn[5]));
+        break;
+    case funcModInput:
+        emit haveModInput(rigInput((inputTypes)bcdHexToUChar(payloadIn[4])),false);
+        break;
+    case funcModData1Input:
+        emit haveModInput(rigInput((inputTypes)bcdHexToUChar(payloadIn[4])),true);
+        break;
+    case funcModData2Input:
+        break;
+    case funcModData3Input:
+        break;
+    // 0x1b register
+    case funcRepeaterTone:
+        emit haveTone(decodeTone(payloadIn));
+        state.set(CTCSS, decodeTone(payloadIn), false);
+        break;
+    case funcRepeaterTSQL:
+        emit haveTSQL(decodeTone(payloadIn));
+        state.set(TSQL, decodeTone(payloadIn), false);
+        break;
+    case funcRepeaterDCS:
+    {
+        quint16 tone=0;
+        bool tinv = false;
+        bool rinv = false;
+        tone = decodeTone(payloadIn, tinv, rinv);
+        emit haveDTCS(tone, tinv, rinv);
+        state.set(DTCS, tone, false);
+        break;
+    }
+    case funcRepeaterCSQL:
+        emit haveTone(decodeTone(payloadIn));
+        state.set(CSQL, decodeTone(payloadIn), false);
+        break;
+    // 0x1c register
+    case funcTXStatus:
+        parsePTT();
+        break;
+    case funcATUStatus:
+        parseATU();
+        break;
+    // 0x27
+    case funcScopeData:
+        parseSpectrum();
+        break;
+    case funcScopeOnOff:
+        // confirming scope is on
+        state.set(SCOPEFUNC, (bool)payloadIn[2], true);
+        break;
+    case funcScopeWaveData:
+        // confirming output enabled/disabled of wf data.
+        break;
+    case funcScopeMainSub:
+        // This tells us whether we are receiving main or sub data
+        break;
+    case funcScopeSingleDual:
+        // This tells us whether we are receiving single or dual scopes
+        break;
+    case funcScopeCenterFixed:
+        // fixed or center
+        // [1] 0x14
+        // [2] 0x00
+        // [3] 0x00 (center), 0x01 (fixed), 0x02, 0x03
+        emit haveSpectrumMode(static_cast<spectrumMode>((unsigned char)payloadIn[3]));
+        break;
+    case funcScopeSpan:
+        // read span in center mode
+        // [1] 0x15
+        // [2] to [8] is span encoded as a frequency
+        emit haveScopeSpan(parseFrequency(payloadIn, 6), static_cast<bool>(payloadIn.at(2)));
+        break;
+    case funcScopeFixedEdge:
+        // read edge mode center in edge mode
+        // [1] 0x16
+        // [2] 0x01, 0x02, 0x03: Edge 1,2,3
+        emit haveScopeEdge((char)payloadIn[2]);
+        break;
+    case funcScopeHold:
+        // Hold status (only 9700?)
+        break;
+    case funcScopeRef:
+        // scope reference level
+        // [1] 0x19
+        // [2] 0x00
+        // [3] 10dB digit, 1dB digit
+        // [4] 0.1dB digit, 0
+        // [5] 0x00 = +, 0x01 = -
+        parseSpectrumRefLevel();
+        break;
+    case funcScopeSpeed:
+    case funcScopeDuringTX:
+    case funcScopeCenterFreq:
+    case funcScopeVBW:
+    case funcScopeEdgeFreq:
+    case funcScopeRBW:
+        break;
+    // 0x28
+    case funcVoiceTX:
+        break;
+    //0x29 - This appears to be undocumented but seems to allow certain commands to apply to main or sub VFO?
+    case funcMainSubCmd:
+        break;
+    case funcFB:
+        break;
+    case funcFA:
+        qInfo(logRig()) << "Error (FA) received from rig.";
+        printHex(payloadIn, false ,true);
+        break;
+    default:
+        // Unsupported/Unknown command
+        break;
+    }
+
+    if( (func != funcScopeData) && (payloadIn[00] != '\x15') )
     {
         // We do not log spectrum and meter data,
         // as they tend to clog up any useful logging.
@@ -1657,53 +2239,7 @@ void rigCommander::parseCommand()
         printHexNow(payloadIn, logRigTraffic());
     }
 
-    switch(payloadIn[00])
-    {
-
-        case 00:
-            // frequency data
-            parseFrequency();
-            break;
-        case 03:
-            parseFrequency();
-            break;
-        case '\x25':
-            // Parse both VFOs
-            emit haveFrequency(parseFrequency(payloadIn, 5));
-        break;
-        case '\x01':
-            //qInfo(logRig()) << "Have mode data";
-            this->parseMode();
-            break;
-        case '\x04':
-            //qInfo(logRig()) << "Have mode data";
-            this->parseMode();
-            break;
-        case '\x05':
-            //qInfo(logRig()) << "Have frequency data";
-            this->parseFrequency();
-            break;
-        case '\x06':
-            //qInfo(logRig()) << "Have mode data";
-            this->parseMode();
-            break;
-        case '\x0C':
-            //qDebug(logRig) << "Have 0x0C reply";
-            emit haveRptOffsetFrequency(parseFrequencyRptOffset(payloadIn));
-            break;
-        case '\x0F':
-            emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
-            state.set(DUPLEX, (duplexMode)(unsigned char)payloadIn[1], false);
-            break;
-        case '\x11':
-            emit haveAttenuator((unsigned char)payloadIn.at(1));
-            state.set(ATTENUATOR, (quint8)payloadIn[1], false);
-            break;
-        case '\x12':
-            emit haveAntenna((unsigned char)payloadIn.at(1), (bool)payloadIn.at(2));
-            state.set(ANTENNA, (quint8)payloadIn[1], false);
-            state.set(RXANTENNA, (bool)payloadIn[2], false);
-            break;
+    /*
         case '\x14':
             // read levels
             parseLevels();
@@ -1715,35 +2251,9 @@ void rigCommander::parseCommand()
         case '\x16':
             parseRegister16();
             break;
-        case '\x19':
-            // qInfo(logRig()) << "Have rig ID: " << (unsigned int)payloadIn[2];
-            // printHex(payloadIn, false, true);
-            model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
-            rigCaps.modelID = payloadIn[2];
-            determineRigCaps();
-            qInfo(logRig()) << "Have rig ID: decimal: " << (unsigned int)rigCaps.modelID;
-
-
-            break;
         case '\x21':
             // RIT and Delta TX:
             parseRegister21();
-            break;
-        case '\x26':
-            if((int)payloadIn[1] == 0)
-            {
-                // This works but LSB comes out as CW?
-                // Also, an opportunity to read the data mode
-                // payloadIn = payloadIn.right(3);
-                // this->parseMode();
-            }
-            break;
-        case '\x27':
-            // scope data
-            //qInfo(logRig()) << "Have scope data";
-            //printHex(payloadIn, false, true);
-            parseWFData();
-            //parseSpectrum();
             break;
         case '\x1A':
             if(payloadIn[01] == '\x05')
@@ -1777,7 +2287,26 @@ void rigCommander::parseCommand()
             break;
     }
     // is any payload left?
+*/
 
+
+    //int currentParse=performanceTimer.nsecsElapsed();
+    averageParseTime += currentParse;
+    if (lowParse > currentParse)
+        lowParse = currentParse;
+    else if (highParse < currentParse)
+        highParse = currentParse;
+
+    numParseSamples++;
+    if (lastParseReport.msecsTo(QTime::currentTime()) >= 10000)
+    {
+        qInfo(logRig()) << QString("10 second average command parse time %0 ns (low=%1, high=%2, num=%3:").arg(averageParseTime/numParseSamples).arg(lowParse).arg(highParse).arg(numParseSamples);
+        averageParseTime = 0;
+        numParseSamples = 0;
+        lowParse=9999;
+        highParse=0;
+        lastParseReport = QTime::currentTime();
+    }
 }
 
 void rigCommander::parseLevels()
@@ -1961,50 +2490,86 @@ void rigCommander::parseLevels()
 
 void rigCommander::setIFShift(unsigned char level)
 {
-    QByteArray payload("\x14\x07");
-    payload.append(bcdEncodeInt(level));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcIFShift);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(level));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setTPBFInner(unsigned char level)
 {
-    QByteArray payload("\x14\x07");
-    payload.append(bcdEncodeInt(level));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcPBTInner);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(level));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setTPBFOuter(unsigned char level)
 {
-    QByteArray payload("\x14\x08");
-    payload.append(bcdEncodeInt(level));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcPBTOuter);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(level));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setTxPower(unsigned char power)
 {
-    QByteArray payload("\x14\x0A");
-    payload.append(bcdEncodeInt(power));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcTxPower);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(power));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setMicGain(unsigned char gain)
 {
-    QByteArray payload("\x14\x0B");
-    payload.append(bcdEncodeInt(gain));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcMicGain);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(gain));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getModInput(bool dataOn)
 {
-    setModInput(inputMic, dataOn, true);
+    QByteArray payload;
+    if(dataOn)
+    {
+        auto it = rigCaps.commands.find(funcModInput);
+		if (it != rigCaps.commands.end()) 
+		{
+            payload=it.value().data;
+        }
+    }
+    else
+    {
+        auto it = rigCaps.commands.find(funcModData1Input);
+		if (it != rigCaps.commands.end()) 
+		{
+            payload=it.value().data;
+        }
+    }
+
+    if (!payload.isEmpty())
+    {
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setModInput(rigInput input, bool dataOn)
-{
-    setModInput(input, dataOn, false);
-}
-
-void rigCommander::setModInput(rigInput input, bool dataOn, bool isQuery)
 {
 //    The input enum is as follows:
 
@@ -2016,10 +2581,29 @@ void rigCommander::setModInput(rigInput input, bool dataOn, bool isQuery)
 //    inputACCB};
 
     QByteArray payload;
-    QByteArray inAsByte;
+    if(!dataOn)
+    {
+        auto it = rigCaps.commands.find(funcModInput);
+		if (it != rigCaps.commands.end()) 
+		{
+            payload=it.value().data;
+        }
+    }
+    else
+    {
+        auto it = rigCaps.commands.find(funcModData1Input);
+		if (it != rigCaps.commands.end()) 
+        {
+            payload=it.value().data;
+        }
+    }
 
-    if(isQuery)
-        input = inputMic;
+    if (!payload.isEmpty())
+    {
+        payload.append(input.type);
+        prepDataAndSend(payload);
+    }
+    /*
 
 
     switch(rigCaps.model)
@@ -2133,12 +2717,12 @@ void rigCommander::setModInput(rigInput input, bool dataOn, bool isQuery)
     }
 
     prepDataAndSend(payload);
-
+    */
 }
 
 void rigCommander::setModInputLevel(rigInput input, unsigned char level)
 {
-    switch(input)
+    switch(input.type)
     {
         case inputMic:
             setMicGain(level);
@@ -2171,21 +2755,29 @@ void rigCommander::setModInputLevel(rigInput input, unsigned char level)
 
 void rigCommander::setAfMute(bool gainOn)
 {
-    QByteArray payload("\x1a\x09");
-    payload.append((quint8)gainOn);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcAfMute);
+	if (it != rigCaps.commands.end()) 
+	{
+		QByteArray payload=it.value().data;
+		payload.append(static_cast<unsigned char>(gainOn));
+		prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setDialLock(bool lockOn)
 {
-    QByteArray payload("\x16\x50");
-    payload.append((quint8)lockOn);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcDialLock);
+	if (it != rigCaps.commands.end()) 
+	{
+		QByteArray payload=it.value().data;
+		payload.append(static_cast<unsigned char>(lockOn));
+		prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getModInputLevel(rigInput input)
 {
-    switch(input)
+    switch(input.type)
     {
         case inputMic:
             getMicGain();
@@ -2218,17 +2810,25 @@ void rigCommander::getModInputLevel(rigInput input)
 
 void rigCommander::getAfMute()
 {
-    QByteArray payload("\x1a\x09");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcAfMute);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getDialLock()
 {
-    QByteArray payload("\x16\x50");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcDialLock);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
-QByteArray rigCommander::getUSBAddr()
+QByteArray rigCommander::getUSBAddr() // Not Used
 {
     QByteArray payload;
 
@@ -2264,19 +2864,27 @@ QByteArray rigCommander::getUSBAddr()
 
 void rigCommander::getUSBGain()
 {
-    QByteArray payload = getUSBAddr();
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcUSBGain);
+	if (it != rigCaps.commands.end()) 
+	{
+		QByteArray payload=it.value().data;
+		prepDataAndSend(payload);
+    }
 }
 
 
 void rigCommander::setUSBGain(unsigned char gain)
 {
-    QByteArray payload = getUSBAddr();
-    payload.append(bcdEncodeInt(gain));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcUSBGain);
+	if (it != rigCaps.commands.end()) 
+	{
+		QByteArray payload=it.value().data;
+		payload.append(bcdEncodeInt(gain));
+		prepDataAndSend(payload);
+    }
 }
 
-QByteArray rigCommander::getLANAddr()
+QByteArray rigCommander::getLANAddr() // Not Used
 {
     QByteArray payload;
     switch(rigCaps.model)
@@ -2305,18 +2913,26 @@ QByteArray rigCommander::getLANAddr()
 
 void rigCommander::getLANGain()
 {
-    QByteArray payload = getLANAddr();
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcLANGain);
+	if (it != rigCaps.commands.end()) 
+	{
+		QByteArray payload=it.value().data;
+		prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setLANGain(unsigned char gain)
 {
-    QByteArray payload = getLANAddr();
-    payload.append(bcdEncodeInt(gain));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcLANGain);
+	if (it != rigCaps.commands.end()) 
+	{
+		QByteArray payload=it.value().data;
+		payload.append(bcdEncodeInt(gain));
+		prepDataAndSend(payload);
+    }
 }
 
-QByteArray rigCommander::getACCAddr(unsigned char ab)
+QByteArray rigCommander::getACCAddr(unsigned char ab) // Not Used
 {
     QByteArray payload;
 
@@ -2362,64 +2978,89 @@ QByteArray rigCommander::getACCAddr(unsigned char ab)
 
 void rigCommander::getACCGain()
 {
-    QByteArray payload = getACCAddr(0);
-    prepDataAndSend(payload);
+    getACCGain((unsigned char)0x0);
 }
 
 
 void rigCommander::getACCGain(unsigned char ab)
 {
-    QByteArray payload = getACCAddr(ab);
-    prepDataAndSend(payload);
+    funcs f=(ab == 0) ? funcACC1Gain :funcACC2Gain;
+    auto it = rigCaps.commands.find(f);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 
 void rigCommander::setACCGain(unsigned char gain)
 {
-    QByteArray payload = getACCAddr(0);
-    payload.append(bcdEncodeInt(gain));
-    prepDataAndSend(payload);
+    setACCGain(gain, (unsigned char)0x0);
 }
 
 void rigCommander::setACCGain(unsigned char gain, unsigned char ab)
 {
-    QByteArray payload = getACCAddr(ab);
-    payload.append(bcdEncodeInt(gain));
-    prepDataAndSend(payload);
+    funcs f=(ab == 0) ? funcACC1Gain :funcACC2Gain;
+    auto it = rigCaps.commands.find(f);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(gain));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setCompLevel(unsigned char compLevel)
 {
-    QByteArray payload("\x14\x0E");
-    payload.append(bcdEncodeInt(compLevel));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcCompLevel);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(compLevel));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setMonitorGain(unsigned char monitorLevel)
 {
-    QByteArray payload("\x14\x15");
-    payload.append(bcdEncodeInt(monitorLevel));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcMonitorGain);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(monitorLevel));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setVoxGain(unsigned char gain)
 {
-    QByteArray payload("\x14\x16");
-    payload.append(bcdEncodeInt(gain));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcVoxGain);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(gain));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setAntiVoxGain(unsigned char gain)
 {
-    QByteArray payload("\x14\x17");
-    payload.append(bcdEncodeInt(gain));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcAntiVoxGain);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(gain));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setNBLevel(unsigned char level)
 {
-    if (rigCaps.hasNB) {
-        QByteArray payload(rigCaps.nbCommand);
+    auto it = rigCaps.commands.find(funcNBLevel);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
         payload.append(bcdEncodeInt(level));
         prepDataAndSend(payload);
     }
@@ -2427,23 +3068,35 @@ void rigCommander::setNBLevel(unsigned char level)
 
 void rigCommander::setNRLevel(unsigned char level)
 {
-    QByteArray payload("\x14\x06");
-    payload.append(bcdEncodeInt(level));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcNRLevel);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(level));
+        prepDataAndSend(payload);
+    }
 }
 
 
 void rigCommander::getRfGain()
 {
-    QByteArray payload("\x14\x02");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcRfGain);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getAfGain()
 {
     if (udp == Q_NULLPTR) {
-        QByteArray payload("\x14\x01");
-        prepDataAndSend(payload);
+        auto it = rigCaps.commands.find(funcAfGain);
+		if (it != rigCaps.commands.end()) 
+		{
+			QByteArray payload=it.value().data;
+			prepDataAndSend(payload);
+		}
     }
     else {
         emit haveAfGain(localVolume);
@@ -2452,75 +3105,122 @@ void rigCommander::getAfGain()
 
 void rigCommander::getIFShift()
 {
-    QByteArray payload("\x14\x07");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcIFShift);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getTPBFInner()
 {
-    QByteArray payload("\x14\x07");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcPBTInner);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getTPBFOuter()
 {
-    QByteArray payload("\x14\x08");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcPBTOuter);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getSql()
 {
-    QByteArray payload("\x14\x03");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcSql);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getTxLevel()
 {
-    QByteArray payload("\x14\x0A");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcTxPower);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getMicGain()
 {
-    QByteArray payload("\x14\x0B");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcMicGain);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getCompLevel()
 {
-    QByteArray payload("\x14\x0E");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcCompLevel);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getMonitorGain()
 {
-    QByteArray payload("\x14\x15");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcMonitorGain);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getVoxGain()
 {
-    QByteArray payload("\x14\x16");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcVoxGain);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getAntiVoxGain()
 {
-    QByteArray payload("\x14\x17");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcAntiVoxGain);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getNBLevel()
 {
-    if (rigCaps.hasNB) {
-        prepDataAndSend(rigCaps.nbCommand);
+    auto it = rigCaps.commands.find(funcNBLevel);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getNRLevel()
 {
-    QByteArray payload("\x14\x06");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcNRLevel);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getLevels()
@@ -2572,67 +3272,118 @@ void rigCommander::getMeters(meterKind meter)
 
 void rigCommander::getSMeter()
 {
-    QByteArray payload("\x15\x02");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcSMeter);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getCenterMeter()
 {
-    QByteArray payload("\x15\x04");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcCenterMeter);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getRFPowerMeter()
 {
-    QByteArray payload("\x15\x11");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcPowerMeter);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getSWRMeter()
 {
-    QByteArray payload("\x15\x12");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcSWRMeter);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getALCMeter()
 {
-    QByteArray payload("\x15\x13");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcALCMeter);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getCompReductionMeter()
 {
-    QByteArray payload("\x15\x14");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcCompMeter);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getVdMeter()
 {
-    QByteArray payload("\x15\x15");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcVdMeter);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getIDMeter()
 {
-    QByteArray payload("\x15\x16");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcIdMeter);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 
 void rigCommander::setSquelch(unsigned char level)
 {
-    sendLevelCmd(0x03, level);
+    auto it = rigCaps.commands.find(funcSql);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(level));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setRfGain(unsigned char level)
 {
-    sendLevelCmd(0x02, level);
+    auto it = rigCaps.commands.find(funcRfGain);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(level));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setAfGain(unsigned char level)
 {
-    if (udp == Q_NULLPTR) {
-        sendLevelCmd(0x01, level);
+    if (udp == Q_NULLPTR)
+	{
+        auto it = rigCaps.commands.find(funcAfGain);
+		if (it != rigCaps.commands.end()) 
+		{
+            QByteArray payload=it.value().data;
+            payload.append(bcdEncodeInt(level));
+            prepDataAndSend(payload);
+        }
     }
     else {
         emit haveSetVolume(level);
@@ -2643,25 +3394,39 @@ void rigCommander::setAfGain(unsigned char level)
 void rigCommander::setRefAdjustCourse(unsigned char level)
 {
     // 1A 05 00 72 0000-0255
-    QByteArray payload;
-    payload.setRawData("\x1A\x05\x00\x72", 4);
-    payload.append(bcdEncodeInt((unsigned int)level));
-    prepDataAndSend(payload);
-
+    auto it = rigCaps.commands.find(funcRefCoarse);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt((unsigned int)level));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setRefAdjustFine(unsigned char level)
 {
-    qInfo(logRig()) << __FUNCTION__ << " level: " << level;
-    // 1A 05 00 73 0000-0255
-    QByteArray payload;
-    payload.setRawData("\x1A\x05\x00\x73", 4);
-    payload.append(bcdEncodeInt((unsigned int)level));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcRefFine);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt((unsigned int)level));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setTime(timekind t)
 {
+
+    auto it = rigCaps.commands.find(funcTime);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(convertNumberToHex(t.hours));
+        payload.append(convertNumberToHex(t.minutes));
+        prepDataAndSend(payload);
+    }
+
+/*
     QByteArray payload;
 
     switch(rigCaps.model)
@@ -2692,17 +3457,25 @@ void rigCommander::setTime(timekind t)
             break;
 
     }
-    payload.append(convertNumberToHex(t.hours));
-    payload.append(convertNumberToHex(t.minutes));
-    //qDebug(logRig()) << "Setting time to this: ";
-    //printHex(payload);
-    prepDataAndSend(payload);
+*/
 }
 
 void rigCommander::setDate(datekind d)
 {
-    QByteArray payload;
 
+    auto it = rigCaps.commands.find(funcDate);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        // YYYYMMDD
+        payload.append(convertNumberToHex(d.year/100)); // 20
+        payload.append(convertNumberToHex(d.year - 100*(d.year/100))); // 21
+        payload.append(convertNumberToHex(d.month));
+        payload.append(convertNumberToHex(d.day));
+        prepDataAndSend(payload);
+    }
+
+    /*
     switch(rigCaps.model)
     {
         case model705:
@@ -2731,20 +3504,22 @@ void rigCommander::setDate(datekind d)
             break;
 
     }
-    // YYYYMMDD
-    payload.append(convertNumberToHex(d.year/100)); // 20
-    payload.append(convertNumberToHex(d.year - 100*(d.year/100))); // 21
-    payload.append(convertNumberToHex(d.month));
-    payload.append(convertNumberToHex(d.day));
-    //qDebug(logRig()) << "Setting date to this: ";
-    //printHex(payload);
-    prepDataAndSend(payload);
+    */
 }
 
 void rigCommander::setUTCOffset(timekind t)
 {
-    QByteArray payload;
+    auto it = rigCaps.commands.find(funcDate);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        payload.append(convertNumberToHex(t.hours));
+        payload.append(convertNumberToHex(t.minutes));
+        payload.append((unsigned char)t.isMinus);
+        prepDataAndSend(payload);
+    }
 
+/*
     switch(rigCaps.model)
     {
         case model705:
@@ -2774,12 +3549,7 @@ void rigCommander::setUTCOffset(timekind t)
             break;
 
     }
-    payload.append(convertNumberToHex(t.hours));
-    payload.append(convertNumberToHex(t.minutes));
-    payload.append((unsigned char)t.isMinus);
-    //qDebug(logRig()) << "Setting UTC Offset to this: ";
-    //printHex(payload);
-    prepDataAndSend(payload);
+*/
 }
 
 unsigned char rigCommander::convertNumberToHex(unsigned char num)
@@ -2797,38 +3567,24 @@ unsigned char rigCommander::convertNumberToHex(unsigned char num)
     return result;
 }
 
-void rigCommander::sendLevelCmd(unsigned char levAddr, unsigned char level)
-{
-    QByteArray payload("\x14");
-    payload.append(levAddr);
-    // careful here. The value in the units and tens can't exceed 99.
-    // ie, can't do this: 01 f2
-    payload.append((int)level/100); // make sure it works with a zero
-    // convert the tens:
-    int tens = (level - 100*((int)level/100))/10;
-    // convert the units:
-    int units = level - 100*((int)level/100);
-    units = units - 10*((int)(units/10));
-    // combine and send:
-    payload.append((tens << 4) | (units) ); // make sure it works with a zero
-
-    prepDataAndSend(payload);
-}
-
 void rigCommander::getRefAdjustCourse()
 {
-    // 1A 05 00 72
-    QByteArray payload;
-    payload.setRawData("\x1A\x05\x00\x72", 4);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcRefCoarse);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getRefAdjustFine()
 {
-    // 1A 05 00 73
-    QByteArray payload;
-    payload.setRawData("\x1A\x05\x00\x73", 4);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcRefFine);
+	if (it != rigCaps.commands.end()) 
+	{
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::parseRegisters1C()
@@ -3182,7 +3938,7 @@ void rigCommander::parseDetailedRegisters1A05()
     int subcmd = bcdHexToUChar(payloadIn[3]) + (100*bcdHexToUChar(payloadIn[2]));
 
     rigInput input;
-    input = (rigInput)bcdHexToUChar(payloadIn[4]);
+    input.type = (inputTypes)bcdHexToUChar(payloadIn[4]);
     int inputRaw = bcdHexToUChar(payloadIn[4]);
 
     switch(rigCaps.model)
@@ -3501,140 +4257,219 @@ centerSpanData rigCommander::createScopeCenter(centerSpansType s, QString name)
 
 void rigCommander::determineRigCaps()
 {
-    //TODO: Determine available bands (low priority, rig will reject out of band requests anyway)
-
-    std::vector <bandType> standardHF;
-    std::vector <bandType> standardVU;
-
-    bandType bandDef6m = bandType(band6m, 50000000, 54000000, modeUSB);
-    bandType bandDef10m = bandType(band10m, 28000000, 29700000, modeUSB);
-    bandType bandDef12m = bandType(band12m, 24890000, 24990000, modeUSB);
-    bandType bandDef15m = bandType(band15m, 21000000, 21450000, modeUSB);
-    bandType bandDef17m = bandType(band17m, 18068000, 18168000, modeUSB);
-    bandType bandDef20m = bandType(band20m, 14000000, 14350000, modeUSB);
-    bandType bandDef30m = bandType(band30m, 10100000, 10150000, modeLSB);
-    bandType bandDef40m = bandType(band40m, 7000000, 7300000, modeLSB);
-    bandType bandDef60m = bandType(band60m, 5250000, 5450000, modeLSB);
-    bandType bandDef80m = bandType(band80m, 3500000, 4000000, modeLSB);
-    bandType bandDef160m = bandType(band160m, 1800000, 2000000, modeLSB);
-    bandType bandDef630m = bandType(band630m, 493000, 595000, modeLSB);
-    bandType bandDef2200m = bandType(band2200m, 135000, 138000, modeLSB);
-    bandType bandDef2m = bandType(band2m, 144000000, 148000000, modeUSB);
-    bandType bandDef4m = bandType(band4m, 70000000, 70500000, modeUSB);
-    bandType bandDef70cm = bandType(band70cm, 420000000, 450000000, modeUSB);
-    bandType bandDef23cm = bandType(band23cm, 1240000000, 1400000000, modeUSB);
-    bandType bandDef13cm = bandType(band13cm, 2300000000, 2450000000, modeUSB);
-    bandType bandDef9cm = bandType(band9cm, 3300000000, 3500000000, modeUSB);
-    bandType bandDef6cm = bandType(band6cm, 5650000000, 5925000000, modeUSB);
-    bandType bandDef3cm = bandType(band3cm, 10000000000, 10500000000, modeUSB);
-
-    bandType bandDefAir(bandAir, 108000000, 137000000, modeAM);
-    bandType bandDefWFM(bandWFM, 88000000, 108000000, modeWFM);
-    bandType bandDefGen(bandGen, 10000, 30000000, modeAM);
-
-
-    standardHF = { bandDef160m, bandDef80m, bandDef60m, bandDef40m, bandDef30m,
-        bandDef20m, bandDef17m, bandDef15m, bandDef12m, bandDef10m, bandDef6m };
-
-    standardVU = { bandDef2m, bandDef70cm };
-
-
-
-    std::vector <mode_info> commonModes;
-    commonModes = { createMode(modeLSB, 0x00, "LSB"), createMode(modeUSB, 0x01, "USB"),
-                    createMode(modeFM, 0x05, "FM"), createMode(modeAM, 0x02, "AM"),
-                    createMode(modeCW, 0x03, "CW"), createMode(modeCW_R, 0x07, "CW-R"),
-                    createMode(modeRTTY, 0x04, "RTTY"), createMode(modeRTTY_R, 0x08, "RTTY-R")
-                  };
-
-
-
-    rigCaps.model = model;
-    rigCaps.civ = incomingCIVAddr;
-
-    rigCaps.hasDD = false;
-    rigCaps.hasDV = false;
-    rigCaps.hasDataModes = true; // USB-D, LSB-D, etc
-    rigCaps.hasATU = false;
-
-    rigCaps.hasCTCSS = false;
-    rigCaps.hasDTCS = false;
-
-    rigCaps.hasTBPF = false;
-    rigCaps.hasIFShift = false;
-
-    rigCaps.spectSeqMax = 0;
-    rigCaps.spectAmpMax = 0;
-    rigCaps.spectLenMax = 0;
-    rigCaps.scopeCenterSpans = { createScopeCenter(cs2p5k, "±2.5k"), createScopeCenter(cs5k, "±5k"),
-                                 createScopeCenter(cs10k, "±10k"), createScopeCenter(cs25k, "±25k"),
-                                 createScopeCenter(cs50k, "±50k"), createScopeCenter(cs100k, "±100k"),
-                                 createScopeCenter(cs250k, "±250k"), createScopeCenter(cs500k, "±500k")
-                               };
-
-    
-    rigCaps.hasFDcomms = true; // false for older radios
-
-    // Clear inputs/preamps/attenuators lists in case we have re-connected.
+    // First clear all of the current settings
     rigCaps.preamps.clear();
     rigCaps.attenuators.clear();
     rigCaps.inputs.clear();
-    rigCaps.inputs.append(inputMic);
+    rigCaps.scopeCenterSpans.clear();
+    rigCaps.bands.clear();
+    rigCaps.modes.clear();
+    rigCaps.commands.clear();
+    rigCaps.commandsReverse.clear();
+    rigCaps.antennas.clear();
+    rigCaps.filters.clear();
+    // rigCaps.steps.clear();
 
-    rigCaps.hasAttenuator = true; // Verify that all recent rigs have attenuators
-    rigCaps.attenuators.push_back('\x00');
-    rigCaps.hasPreamp = true;
-    rigCaps.preamps.push_back('\x00');
+    // modelID should already be set!
+    while (!rigList.contains(rigCaps.modelID))
+    {
+        if (!rigCaps.modelID) {
+            qWarning(logRig()) << "No default rig definition found, cannot continue (sorry!)";
+            return;
+        }
+        // Unknown rig, load default
+        qInfo(logRig()) << QString("No rig definition found for CI-V address: 0x%0, using defaults (some functions may not be available)").arg(rigCaps.modelID,2,16);
+        rigCaps.modelID=0;
+    }
+    rigCaps.filename = rigList.find(rigCaps.modelID).value();
+    QSettings* settings = new QSettings(rigCaps.filename, QSettings::Format::IniFormat);
+    if (!settings->childGroups().contains("Rig"))
+    {
+        qWarning(logRig()) << rigCaps.filename << "Cannot be loaded!";
+        return;
+    }
+    settings->beginGroup("Rig");
+    // Populate rigcaps
 
-    rigCaps.hasAntennaSel = false;
-    rigCaps.hasRXAntenna = false;
+    rigCaps.modelName = settings->value("Model", "").toString();
+    qInfo(logRig()) << QString("Loading Rig: %0 from %1").arg(rigCaps.modelName,rigCaps.filename);
 
-    rigCaps.hasTransmit = true;
-    rigCaps.hasPTTCommand = true;
-    rigCaps.useRTSforPTT = false;
+    rigCaps.spectSeqMax = settings->value("SpectrumSeqMax",0).toUInt();
+    rigCaps.spectAmpMax = settings->value("SpectrumAmpMax",0).toUInt();
+    rigCaps.spectLenMax = settings->value("SpectrumLenMax",0).toUInt();
 
-    // Common, reasonable defaults for most supported HF rigs:
-    rigCaps.bsr[band160m] = 0x01;
-    rigCaps.bsr[band80m] = 0x02;
-    rigCaps.bsr[band40m] = 0x03;
-    rigCaps.bsr[band30m] = 0x04;
-    rigCaps.bsr[band20m] = 0x05;
-    rigCaps.bsr[band17m] = 0x06;
-    rigCaps.bsr[band15m] = 0x07;
-    rigCaps.bsr[band12m] = 0x08;
-    rigCaps.bsr[band10m] = 0x09;
-    rigCaps.bsr[band6m] = 0x10;
-    rigCaps.bsr[bandGen] = 0x11;
+    rigCaps.hasSpectrum = settings->value("HasSpectrum",false).toBool();
+    rigCaps.hasLan = settings->value("HasLAN",false).toBool();
+    rigCaps.hasEthernet = settings->value("HasEthernet",false).toBool();
+    rigCaps.hasWiFi = settings->value("HasWiFi",false).toBool();
+    rigCaps.hasATU = settings->value("HasATU",false).toBool();
+    rigCaps.hasCTCSS = settings->value("HasCTCSS",false).toBool();
+    rigCaps.hasDTCS = settings->value("HasDTCS",false).toBool();
+    rigCaps.hasAdvancedRptrToneCmds = settings->value("HasRepeaterTone",false).toBool();
+    rigCaps.hasRepeaterModes = settings->value("HasRepeaterMode",false).toBool();
+    rigCaps.hasTBPF = settings->value("HasTBPF",false).toBool();
+    rigCaps.hasVFOMS = settings->value("HasVFOMS",false).toBool();
+    rigCaps.hasVFOAB = settings->value("HasVFOAB",false).toBool();
+    rigCaps.hasQuickSplitCommand = settings->value("HasQuickSplit",false).toBool();
+    rigCaps.hasAntennaSel = settings->value("HasAntennaSel",false).toBool();
+    rigCaps.hasDD = settings->value("HasDD",false).toBool();
+    rigCaps.hasDV = settings->value("HasDV",false).toBool();
+    rigCaps.hasIFShift = settings->value("HasIFShift",false).toBool();
+    rigCaps.hasAttenuator = settings->value("HasAttenuator",false).toBool();
+    rigCaps.hasPreamp = settings->value("HasPreamp",false).toBool();
+    rigCaps.hasTransmit = settings->value("HasTransmit",false).toBool();
+    rigCaps.hasPTTCommand = settings->value("HasPTTCommand",false).toBool();
+    rigCaps.hasFDcomms = settings->value("HasFDComms",false).toBool();
+    rigCaps.useRTSforPTT = settings->value("UseRTSforPTT",false).toBool();
 
-    // Bands that seem to change with every model:
-    rigCaps.bsr[band2m] = 0x00;
-    rigCaps.bsr[band70cm] = 0x00;
-    rigCaps.bsr[band23cm] = 0x00;
+    // Temporary QList to hold the function string lookup // I would still like to find a better way of doing this!
+    QHash<QString, funcs> funcsLookup;
+    for (int i=0;i<NUMFUNCS;i++)
+    {
+        funcsLookup.insert(funcString[i].toUpper(), funcs(i));
+    }
 
-    // These bands generally aren't defined:
-    rigCaps.bsr[band4m] = 0x00;
-    rigCaps.bsr[band60m] = 0x00;
-    rigCaps.bsr[bandWFM] = 0x00;
-    rigCaps.bsr[bandAir] = 0x00;
-    rigCaps.bsr[band630m] = 0x00;
-    rigCaps.bsr[band2200m] = 0x00;
+    int numCommands = settings->beginReadArray("Commands");
+    if (numCommands == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numCommands; c++)
+        {
+            settings->setArrayIndex(c);
+            if (funcsLookup.contains(settings->value("Type", "****").toString().toUpper()))
+            {
+                funcs func = funcsLookup.find(settings->value("Type", "").toString().toUpper()).value();
+                rigCaps.commands.insert(func, funcType(func, funcString[int(func)],
+                                            QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),
+                                            settings->value("Min", 0).toInt(), settings->value("Max", 0).toInt()));
 
-    // Commands that are shared between most radios:
-    rigCaps.commands.insert(funcPower,QByteArrayLiteral("\x18"));
-    rigCaps.commands.insert(funcVFO,QByteArrayLiteral("\x07"));
-    rigCaps.commands.insert(funcRitValue,QByteArrayLiteral("\x21\x00"));
-    rigCaps.commands.insert(funcRit,QByteArrayLiteral("\x21\x01"));
-    rigCaps.commands.insert(funcFreqGet,QByteArrayLiteral("\x25")); // Single VFO \x00
-    rigCaps.commands.insert(funcFreqSet,QByteArrayLiteral("\x25")); // Single VFO \x03
-    rigCaps.commands.insert(funcModeGet,QByteArrayLiteral("\x26")); // Single VFO \x01
-    rigCaps.commands.insert(funcModeSet,QByteArrayLiteral("\x26")); // Single VFO \x06
-    rigCaps.commands.insert(funcDataMode,QByteArrayLiteral("\x1a\x06"));
-    rigCaps.commands.insert(funcSplit,QByteArrayLiteral("\x0f"));
-    rigCaps.commands.insert(funcDuplexMode,QByteArrayLiteral("\x1a\x05\x00\x46"));
-    rigCaps.commands.insert(funcPassband,QByteArrayLiteral("\x1a\x03"));
-    rigCaps.commands.insert(funcCwPitch,QByteArrayLiteral("\x14\x09"));
+                rigCaps.commandsReverse.insert(QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),func);
+            } else {
+                qInfo(logRig()) << "Function" << settings->value("Type", "").toString() << "Not Found!";
+            }
+        }
+        settings->endArray();
+    }
 
+    int numModes = settings->beginReadArray("Modes");
+    if (numModes == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numModes; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.modes.push_back(createMode(mode_kind(settings->value("Num", 0).toInt()),  settings->value("Num", 0).toInt(), settings->value("Name", "").toString()));
+        }
+        settings->endArray();
+    }
 
+    int numSpans = settings->beginReadArray("Spans");
+    if (numSpans == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numSpans; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.scopeCenterSpans.push_back(
+                centerSpanData(centerSpansType(settings->value("Num", 0).toInt()),  settings->value("Name", "").toString(), settings->value("Freq", 0).toUInt()));
+        }
+        settings->endArray();
+    }
+
+    int numInputs = settings->beginReadArray("Inputs");
+    if (numInputs == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numInputs; c++)
+        {
+            settings->setArrayIndex(c);
+            qInfo() << "Adding mod input" << settings->value("Name", "").toString() << settings->value("Num", 0).toInt() << "(" << c << "of" << numInputs << ")";
+            rigCaps.inputs.append(rigInput((inputTypes)settings->value("Num", 0).toInt(),settings->value("Name", "").toString()));
+        }
+        settings->endArray();
+    }
+
+    int numPreamps = settings->beginReadArray("Preamps");
+    if (numPreamps == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numPreamps; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.preamps.push_back((unsigned char)settings->value("Num", 0).toInt());
+        }
+        settings->endArray();
+    }
+
+    int numAntennas = settings->beginReadArray("Antennas");
+    if (numAntennas == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numAntennas; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.antennas.push_back((unsigned char)settings->value("Num", 0).toInt());
+        }
+        settings->endArray();
+    }
+
+    int numAttenuators = settings->beginReadArray("Attenuators");
+    if (numAttenuators == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numAttenuators; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.attenuators.push_back((unsigned char)settings->value("dB", 0).toString().toUInt(nullptr,16)); // Don't really care if it fails!
+        }
+        settings->endArray();
+    }
+
+    int numFilters = settings->beginReadArray("Filters");
+    if (numFilters == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numFilters; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.filters.push_back((unsigned char)settings->value("Num", 0).toInt());
+        }
+        settings->endArray();
+    }
+
+    int numBands = settings->beginReadArray("Bands");
+    if (numBands == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numBands; c++)
+        {
+            settings->setArrayIndex(c);
+            availableBands band =  availableBands(settings->value("Num", 0).toInt());
+            quint64 start = settings->value("Start", 0ULL).toULongLong();
+            quint64 end = settings->value("End", 0ULL).toULongLong();
+            int bsr = settings->value("BSR", 0).toInt();
+            double range = settings->value("Range", 0.0).toDouble();
+
+            rigCaps.bands.push_back(bandType(band,start,end,range));
+            rigCaps.bsr[band] = bsr;
+            qInfo(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << bsr;
+        }
+        settings->endArray();
+    }
+
+    settings->endGroup();
+    delete settings;
+
+    /*
     switch(model){
         case model7300:
             rigCaps.modelName = QString("IC-7300");
@@ -3654,18 +4489,17 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
-            rigCaps.bands = standardHF;
-            rigCaps.bands.insert(rigCaps.bands.end(), { bandDef4m, bandDef630m, bandDef2200m, bandDefGen });
-            rigCaps.modes = commonModes;
+           // rigCaps.bands = standardHF;
+           // rigCaps.bands.insert(rigCaps.bands.end(), { bandDef4m, bandDef630m, bandDef2200m, bandDefGen });
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x71");
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
             rigCaps.hasQuickSplitCommand = true;
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x30");
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x71"));
-            rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x30"));
-            rigCaps.commands.insert(funcDashRatio,QByteArrayLiteral("\x1a\x05\x01\x61"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x71"));
+            //rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x30"));
+            //rigCaps.commands.insert(funcDashRatio,QByteArrayLiteral("\x1a\x05\x01\x61"));
             break;
         case modelR8600:
             rigCaps.modelName = QString("IC-R8600");
@@ -3691,10 +4525,10 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x02');
             rigCaps.hasAntennaSel = true;
             rigCaps.antennas = {0x00, 0x01, 0x02};
-            rigCaps.bands = standardHF;
-            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
-            rigCaps.bands.insert(rigCaps.bands.end(), { bandDef23cm, bandDef4m, bandDef630m, bandDef2200m, bandDefGen });
-            rigCaps.modes = commonModes;
+           // rigCaps.bands = standardHF;
+           // rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+           // rigCaps.bands.insert(rigCaps.bands.end(), { bandDef23cm, bandDef4m, bandDef630m, bandDef2200m, bandDefGen });
+           // rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {
                                      createMode(modeWFM, 0x06, "WFM"), createMode(modeS_AMD, 0x11, "S-AM (D)"),
                                      createMode(modeS_AML, 0x14, "S-AM(L)"), createMode(modeS_AMU, 0x15, "S-AM(U)"),
@@ -3706,7 +4540,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasVFOMS = true; // not documented very well
             rigCaps.hasVFOAB = true; // so we just do both...
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x92"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x92"));
             break;
         case model9700:
             rigCaps.modelName = QString("IC-9700");
@@ -3729,12 +4563,12 @@ void rigCommander::determineRigCaps()
             rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x10');
             rigCaps.preamps.push_back('\x01');
-            rigCaps.bands = standardVU;
-            rigCaps.bands.push_back(bandDef23cm);
+            //rigCaps.bands = standardVU;
+            //rigCaps.bands.push_back(bandDef23cm);
             rigCaps.bsr[band23cm] = 0x03;
             rigCaps.bsr[band70cm] = 0x02;
             rigCaps.bsr[band2m] = 0x01;
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeDV, 0x17, "DV"),
                                                        createMode(modeDD, 0x22, "DD")});
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x27");
@@ -3744,9 +4578,9 @@ void rigCommander::determineRigCaps()
             rigCaps.hasQuickSplitCommand = true;
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x43");
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x01\x27"));
-            rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x43"));
-            rigCaps.commands.insert(funcDashRatio,QByteArrayLiteral("\x1a\x05\x02\x24"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x01\x27"));
+            //rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x43"));
+            //rigCaps.commands.insert(funcDashRatio,QByteArrayLiteral("\x1a\x05\x02\x24"));
             break;
         case model905:
             rigCaps.modelName = QString("IC-905");
@@ -3768,18 +4602,18 @@ void rigCommander::determineRigCaps()
             rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x10');
             rigCaps.preamps.push_back('\x01');
-            rigCaps.bands = standardVU;
-            rigCaps.bands.push_back(bandDef23cm);
-            rigCaps.bands.push_back(bandDef13cm);
-            rigCaps.bands.push_back(bandDef6cm);
-            rigCaps.bands.push_back(bandDef3cm);
+            //rigCaps.bands = standardVU;
+            //rigCaps.bands.push_back(bandDef23cm);
+            //rigCaps.bands.push_back(bandDef13cm);
+            //rigCaps.bands.push_back(bandDef6cm);
+           // rigCaps.bands.push_back(bandDef3cm);
             rigCaps.bsr[band2m] = 0x01;
             rigCaps.bsr[band70cm] = 0x02;
             rigCaps.bsr[band23cm] = 0x03;
             rigCaps.bsr[band13cm] = 0x04;
             rigCaps.bsr[band6cm] = 0x05;
             rigCaps.bsr[band3cm] = 0x06;
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeDV, 0x17, "DV"),
                                                        createMode(modeDD, 0x22, "DD"),
                                                        createMode(modeATV, 0x23, "ATV")
@@ -3797,9 +4631,9 @@ void rigCommander::determineRigCaps()
             rigCaps.hasQuickSplitCommand = true;
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x46");
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x01\x42"));
-            rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x46"));
-            rigCaps.commands.insert(funcDashRatio,QByteArrayLiteral("\x1a\x05\x02\x36"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x01\x42"));
+            //rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x46"));
+            //rigCaps.commands.insert(funcDashRatio,QByteArrayLiteral("\x1a\x05\x02\x36"));
             break;
         case model910h:
             rigCaps.modelName = QString("IC-910H");
@@ -3817,17 +4651,17 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = false;
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x10' , '\x20', '\x30'});
             rigCaps.preamps.push_back('\x01');
-            rigCaps.bands = standardVU;
-            rigCaps.bands.push_back(bandDef23cm);
+            //rigCaps.bands = standardVU;
+            //rigCaps.bands.push_back(bandDef23cm);
             rigCaps.bsr[band23cm] = 0x03;
             rigCaps.bsr[band70cm] = 0x02;
             rigCaps.bsr[band2m] = 0x01;
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x58");
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x58"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x58"));
             break;
         case model7600:
             rigCaps.modelName = QString("IC-7600");
@@ -3847,10 +4681,10 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.antennas = {0x00, 0x01};
-            rigCaps.bands = standardHF;
-            rigCaps.bands.push_back(bandDefGen);
+            //rigCaps.bands = standardHF;
+            //rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[bandGen] = 0x11;
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), { createMode(modePSK, 0x12, "PSK"),
                                                        createMode(modePSK_R, 0x13, "PSK-R") });
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x97");
@@ -3859,8 +4693,8 @@ void rigCommander::determineRigCaps()
             rigCaps.hasQuickSplitCommand = true;
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x64");
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x97"));
-            rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x64"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x97"));
+            //rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x64"));
             break;
         case model7610:
             rigCaps.modelName = QString("IC-7610");
@@ -3889,7 +4723,7 @@ void rigCommander::determineRigCaps()
             rigCaps.hasATU = true;
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), { bandDef630m, bandDef2200m, bandDefGen });
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), { createMode(modePSK, 0x12, "PSK"),
                                                        createMode(modePSK_R, 0x13, "PSK-R") });
             rigCaps.hasRXAntenna = true;
@@ -3899,11 +4733,7 @@ void rigCommander::determineRigCaps()
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x33");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = false;
-            // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x01\x12"));
-            rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x33"));
-            rigCaps.commands.insert(funcDashRatio,QByteArrayLiteral("\x1A\x05\x02\x28"));
-            break;
+            break;            
         case model7850:
             rigCaps.modelName = QString("IC-785x");
             rigCaps.rigctlModel = 3075;
@@ -3928,9 +4758,9 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x02');
             rigCaps.hasAntennaSel = true;
             rigCaps.antennas = {0x00, 0x01, 0x02, 0x03};
-            rigCaps.bands = standardHF;
-            rigCaps.bands.insert(rigCaps.bands.end(), { bandDef630m, bandDef2200m, bandDefGen });
-            rigCaps.modes = commonModes;
+            //rigCaps.bands = standardHF;
+            //rigCaps.bands.insert(rigCaps.bands.end(), { bandDef630m, bandDef2200m, bandDefGen });
+            //rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
                                                        createMode(modePSK_R, 0x13, "PSK-R")});
             rigCaps.hasRXAntenna = true;
@@ -3940,10 +4770,6 @@ void rigCommander::determineRigCaps()
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x01\x13");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = false;
-            // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x01\x55"));
-            rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x01\x13"));
-            rigCaps.commands.insert(funcDashRatio,QByteArrayLiteral("\x1A\x05\x02\x51"));
             break;
         case model705:
             rigCaps.modelName = QString("IC-705");
@@ -3967,15 +4793,15 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.insert(rigCaps.attenuators.end(),{ '\x10' , '\x20'});
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
-            rigCaps.bands = standardHF;
-            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
-            rigCaps.bands.insert(rigCaps.bands.end(), { bandDefAir, bandDefGen, bandDefWFM, bandDef630m, bandDef2200m });
+            //rigCaps.bands = standardHF;
+            //rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+            //rigCaps.bands.insert(rigCaps.bands.end(), { bandDefAir, bandDefGen, bandDefWFM, bandDef630m, bandDef2200m });
             rigCaps.bsr[band70cm] = 0x14;
             rigCaps.bsr[band2m] = 0x13;
             rigCaps.bsr[bandAir] = 0x12;
             rigCaps.bsr[bandWFM] = 0x11;
             rigCaps.bsr[bandGen] = 0x15;
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeWFM, 0x06, "WFM"),
                                                        createMode(modeDV, 0x17, "DV")});
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x01\x31");
@@ -3984,9 +4810,9 @@ void rigCommander::determineRigCaps()
             rigCaps.hasQuickSplitCommand = true;
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x45");
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x01\x31"));
-            rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x45"));
-            rigCaps.commands.insert(funcDashRatio,QByteArrayLiteral("\x1A\x05\x02\x52"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x01\x31"));
+            //rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x45"));
+            //rigCaps.commands.insert(funcDashRatio,QByteArrayLiteral("\x1A\x05\x02\x52"));
             break;
         case model7000:
             rigCaps.modelName = QString("IC-7000");
@@ -4003,21 +4829,21 @@ void rigCommander::determineRigCaps()
             rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x12');
             rigCaps.preamps.push_back('\x01');
-            rigCaps.bands = standardHF;
-            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
-            rigCaps.bands.push_back(bandDefGen);
+            //rigCaps.bands = standardHF;
+            //rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+            //rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[band2m] = 0x11;
             rigCaps.bsr[band70cm] = 0x12;
             rigCaps.bsr[bandGen] = 0x13;
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x92");
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
             rigCaps.hasQuickSplitCommand = true;
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x52");
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x92"));
-            rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x52"));
+            // rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x92"));
+            //rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x52"));
             break;
         case model7410:
             rigCaps.modelName = QString("IC-7410");
@@ -4036,18 +4862,18 @@ void rigCommander::determineRigCaps()
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
             rigCaps.antennas = {0x00, 0x01};
-            rigCaps.bands = standardHF;
-            rigCaps.bands.push_back(bandDefGen);
+            //rigCaps.bands = standardHF;
+            //rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[bandGen] = 0x11;
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x40");
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
             rigCaps.hasQuickSplitCommand = true;
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x11");
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x40"));
-            rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x11"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x40"));
+            //rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x11"));
             break;
         case model7100:
             rigCaps.modelName = QString("IC-7100");
@@ -4067,13 +4893,13 @@ void rigCommander::determineRigCaps()
             rigCaps.attenuators.push_back('\x12');
             rigCaps.preamps.push_back('\x01');
             rigCaps.preamps.push_back('\x02');
-            rigCaps.bands = standardHF;
-            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
-            rigCaps.bands.insert(rigCaps.bands.end(), { bandDef4m, bandDefGen});
+            //rigCaps.bands = standardHF;
+            //rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+            //rigCaps.bands.insert(rigCaps.bands.end(), { bandDef4m, bandDefGen});
             rigCaps.bsr[band2m] = 0x11;
             rigCaps.bsr[band70cm] = 0x12;
             rigCaps.bsr[bandGen] = 0x13;
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeWFM, 0x06, "WFM"),
                                                        createMode(modeDV, 0x17, "DV")});
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x95");
@@ -4082,9 +4908,9 @@ void rigCommander::determineRigCaps()
             rigCaps.hasQuickSplitCommand = true;
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x15");
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x95"));
-            rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x15"));
-            rigCaps.commands.insert(funcDashRatio,QByteArrayLiteral("\x1A\x05\x01\x35"));
+           // rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x95"));
+            //rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x15"));
+            //rigCaps.commands.insert(funcDashRatio,QByteArrayLiteral("\x1A\x05\x01\x35"));
 
             break;
         case model7200:
@@ -4103,18 +4929,18 @@ void rigCommander::determineRigCaps()
             rigCaps.hasTBPF = true;
             rigCaps.attenuators.push_back('\x20');
             rigCaps.preamps.push_back('\x01');
-            rigCaps.bands = standardHF;
-            rigCaps.bands.push_back(bandDefGen);
+            //rigCaps.bands = standardHF;
+            //rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[bandGen] = 0x11;
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x03\x48");
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
             rigCaps.hasQuickSplitCommand = true;
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x03\x18");
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x03\x48"));
-            rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x03\x18"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x03\x48"));
+            //rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x03\x18"));
             break;
         case model7700:
             rigCaps.modelName = QString("IC-7700");
@@ -4135,9 +4961,9 @@ void rigCommander::determineRigCaps()
             rigCaps.hasAntennaSel = true;
             rigCaps.antennas = {0x00, 0x01, 0x02, 0x03}; // not sure if 0x03 works
             rigCaps.hasATU = true;
-            rigCaps.bands = standardHF;
-            rigCaps.bands.insert(rigCaps.bands.end(), { bandDefGen, bandDef630m, bandDef2200m });
-            rigCaps.modes = commonModes;
+            //rigCaps.bands = standardHF;
+            //rigCaps.bands.insert(rigCaps.bands.end(), { bandDefGen, bandDef630m, bandDef2200m });
+            //rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modePSK, 0x12, "PSK"),
                                                        createMode(modePSK_R, 0x13, "PSK-R")});
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x95");
@@ -4146,9 +4972,9 @@ void rigCommander::determineRigCaps()
             rigCaps.hasQuickSplitCommand = true;
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x67");
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x95"));
-            rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x67"));
-            rigCaps.commands.insert(funcDashRatio,QByteArrayLiteral("\x1A\x05\x01\x34"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x95"));
+            //rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x67"));
+            //rigCaps.commands.insert(funcDashRatio,QByteArrayLiteral("\x1A\x05\x01\x34"));
             break;
         case model703:
             rigCaps.modelName = QString("IC-703");
@@ -4164,18 +4990,18 @@ void rigCommander::determineRigCaps()
             rigCaps.useRTSforPTT = true;
             rigCaps.hasDataModes = false;
             rigCaps.attenuators.push_back('\x20');
-            rigCaps.bands = standardHF;
-            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
-            rigCaps.bands.push_back(bandDefGen);
-            rigCaps.modes = commonModes;
+            //rigCaps.bands = standardHF;
+            //rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+            //rigCaps.bands.push_back(bandDefGen);
+            //rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), createMode(modeWFM, 0x06, "WFM"));
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
-            rigCaps.commands.insert(funcFreqGet,QByteArrayLiteral("\x00"));
-            rigCaps.commands.insert(funcFreqSet,QByteArrayLiteral("\x03"));
-            rigCaps.commands.insert(funcModeGet,QByteArrayLiteral("\x01"));
-            rigCaps.commands.insert(funcModeSet,QByteArrayLiteral("\x06"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
+            //rigCaps.commands.insert(funcFreqGet,QByteArrayLiteral("\x00"));
+            //rigCaps.commands.insert(funcFreqSet,QByteArrayLiteral("\x03"));
+            //rigCaps.commands.insert(funcModeGet,QByteArrayLiteral("\x01"));
+            //rigCaps.commands.insert(funcModeSet,QByteArrayLiteral("\x06"));
 
             break;
         case model706:
@@ -4192,20 +5018,20 @@ void rigCommander::determineRigCaps()
             rigCaps.useRTSforPTT = true;
             rigCaps.hasDataModes = false;
             rigCaps.attenuators.push_back('\x20');
-            rigCaps.bands = standardHF;
-            rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
-            rigCaps.bands.push_back(bandDefGen);
-            rigCaps.modes = commonModes;
+            //rigCaps.bands = standardHF;
+            //rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
+            //rigCaps.bands.push_back(bandDefGen);
+            //rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), createMode(modeWFM, 0x06, "WFM"));
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
-            rigCaps.commands.insert(funcFreqGet,QByteArrayLiteral("\x00"));
-            rigCaps.commands.insert(funcFreqSet,QByteArrayLiteral("\x03"));
-            rigCaps.commands.insert(funcModeGet,QByteArrayLiteral("\x01"));
-            rigCaps.commands.insert(funcModeSet,QByteArrayLiteral("\x06"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
+            //rigCaps.commands.insert(funcFreqGet,QByteArrayLiteral("\x00"));
+            //rigCaps.commands.insert(funcFreqSet,QByteArrayLiteral("\x03"));
+            //rigCaps.commands.insert(funcModeGet,QByteArrayLiteral("\x01"));
+            //rigCaps.commands.insert(funcModeSet,QByteArrayLiteral("\x06"));
             break;
         case model718:
             rigCaps.modelName = QString("IC-718");
@@ -4235,11 +5061,11 @@ void rigCommander::determineRigCaps()
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
-            rigCaps.commands.insert(funcFreqGet,QByteArrayLiteral("\x00"));
-            rigCaps.commands.insert(funcFreqSet,QByteArrayLiteral("\x03"));
-            rigCaps.commands.insert(funcModeGet,QByteArrayLiteral("\x01"));
-            rigCaps.commands.insert(funcModeSet,QByteArrayLiteral("\x06"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
+            //rigCaps.commands.insert(funcFreqGet,QByteArrayLiteral("\x00"));
+            //rigCaps.commands.insert(funcFreqSet,QByteArrayLiteral("\x03"));
+            //rigCaps.commands.insert(funcModeGet,QByteArrayLiteral("\x01"));
+            //rigCaps.commands.insert(funcModeSet,QByteArrayLiteral("\x06"));
             break;
         case model736:
             rigCaps.modelName = QString("IC-736");
@@ -4263,10 +5089,10 @@ void rigCommander::determineRigCaps()
                             };
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
-            rigCaps.commands.insert(funcFreqGet,QByteArrayLiteral("\x00"));
-            rigCaps.commands.insert(funcFreqSet,QByteArrayLiteral("\x03"));
-            rigCaps.commands.insert(funcModeGet,QByteArrayLiteral("\x01"));
-            rigCaps.commands.insert(funcModeSet,QByteArrayLiteral("\x06"));
+            //rigCaps.commands.insert(funcFreqGet,QByteArrayLiteral("\x00"));
+            //rigCaps.commands.insert(funcFreqSet,QByteArrayLiteral("\x03"));
+           // rigCaps.commands.insert(funcModeGet,QByteArrayLiteral("\x01"));
+            //rigCaps.commands.insert(funcModeSet,QByteArrayLiteral("\x06"));
             break;
         case model737:
             rigCaps.modelName = QString("IC-737");
@@ -4290,10 +5116,10 @@ void rigCommander::determineRigCaps()
                             };
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
-            rigCaps.commands.insert(funcFreqGet,QByteArrayLiteral("\x00"));
-            rigCaps.commands.insert(funcFreqSet,QByteArrayLiteral("\x03"));
-            rigCaps.commands.insert(funcModeGet,QByteArrayLiteral("\x01"));
-            rigCaps.commands.insert(funcModeSet,QByteArrayLiteral("\x06"));
+            //rigCaps.commands.insert(funcFreqGet,QByteArrayLiteral("\x00"));
+           // rigCaps.commands.insert(funcFreqSet,QByteArrayLiteral("\x03"));
+           // rigCaps.commands.insert(funcModeGet,QByteArrayLiteral("\x01"));
+           // rigCaps.commands.insert(funcModeSet,QByteArrayLiteral("\x06"));
             break;
         case model738:
             rigCaps.modelName = QString("IC-738");
@@ -4317,10 +5143,10 @@ void rigCommander::determineRigCaps()
                             };
             rigCaps.hasVFOMS = false;
             rigCaps.hasVFOAB = true;
-            rigCaps.commands.insert(funcFreqGet,QByteArrayLiteral("\x00"));
-            rigCaps.commands.insert(funcFreqSet,QByteArrayLiteral("\x03"));
-            rigCaps.commands.insert(funcModeGet,QByteArrayLiteral("\x01"));
-            rigCaps.commands.insert(funcModeSet,QByteArrayLiteral("\x06"));
+            //rigCaps.commands.insert(funcFreqGet,QByteArrayLiteral("\x00"));
+            //rigCaps.commands.insert(funcFreqSet,QByteArrayLiteral("\x03"));
+           // rigCaps.commands.insert(funcModeGet,QByteArrayLiteral("\x01"));
+           // rigCaps.commands.insert(funcModeSet,QByteArrayLiteral("\x06"));
             break;
         case model746:
             rigCaps.modelName = QString("IC-746");
@@ -4347,12 +5173,12 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(bandDef2m);
             rigCaps.bands.push_back(bandDefGen);
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = true;
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
             break;
         case model756:
             rigCaps.modelName = QString("IC-756");
@@ -4372,12 +5198,12 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[bandGen] = 0x11;
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = false;
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
+           // rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
             break;
         case model756pro:
             rigCaps.modelName = QString("IC-756 Pro");
@@ -4397,12 +5223,12 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[bandGen] = 0x11;
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = false;
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
             break;
         case model756proii:
             rigCaps.modelName = QString("IC-756 Pro II");
@@ -4422,15 +5248,15 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[bandGen] = 0x11;
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = false;
             rigCaps.hasQuickSplitCommand = true;
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x24");
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
-            rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x24"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
+           // rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x24"));
             break;
         case model756proiii:
             rigCaps.modelName = QString("IC-756 Pro III");
@@ -4450,15 +5276,15 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.push_back(bandDefGen);
             rigCaps.bsr[bandGen] = 0x11;
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = false;
             rigCaps.hasQuickSplitCommand = true;
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x24");
             // new functions
-            rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
-            rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x24"));
+            //rigCaps.commands.insert(funcTransceive,QByteArrayLiteral("\x1a\x05\x00\x00"));
+            //rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x24"));
             break;
         case model9100:
             rigCaps.modelName = QString("IC-9100");
@@ -4486,14 +5312,14 @@ void rigCommander::determineRigCaps()
             rigCaps.bsr[band70cm] = 0x12;
             rigCaps.bsr[band23cm] = 0x13;
             rigCaps.bsr[bandGen] = 0x14;
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.modes.insert(rigCaps.modes.end(), {createMode(modeDV, 0x17, "DV")});
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = true;
             rigCaps.hasQuickSplitCommand = true;
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x14");
             // new functions
-            rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x14"));
+            //rigCaps.commands.insert(funcQuickSplit,QByteArrayLiteral("\x1a\x05\x00\x14"));
             break;
         default:
             rigCaps.modelName = QString("IC-0x%1").arg(rigCaps.modelID, 2, 16);
@@ -4514,23 +5340,18 @@ void rigCommander::determineRigCaps()
             rigCaps.bands = standardHF;
             rigCaps.bands.insert(rigCaps.bands.end(), standardVU.begin(), standardVU.end());
             rigCaps.bands.insert(rigCaps.bands.end(), {bandDef23cm, bandDef4m, bandDef630m, bandDef2200m, bandDefGen});
-            rigCaps.modes = commonModes;
+            //rigCaps.modes = commonModes;
             rigCaps.transceiveCommand = QByteArrayLiteral("\x1a\x05\x00\x00");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = true;
             qInfo(logRig()) << "Found unknown rig: 0x" << QString("%1").arg(rigCaps.modelID, 2, 16);
             break;
     }
+    */
     haveRigCaps = true;
 
     if (rigCaps.hasSpectrum) {
-        rigCaps.commands.insert(funcDisplay,QByteArrayLiteral("\x27\x10"));
-        rigCaps.commands.insert(funcSpectrum,QByteArrayLiteral("\x27\x11"));
-        rigCaps.commands.insert(funcSpectrumMode,QByteArrayLiteral("\x27\x14"));
-        rigCaps.commands.insert(funcSpectrumSpan,QByteArrayLiteral("\x27\x15"));
-        rigCaps.commands.insert(funcSpectrumEdge,QByteArrayLiteral("\x27\x16"));
-        rigCaps.commands.insert(funcSpectrumRef,QByteArrayLiteral("\x27\x19"));
-        rigCaps.commands.insert(funcSpectrumBounds,QByteArrayLiteral("\x27\x1e"));
+
     }
 
     // Copy received guid so we can recognise this radio.
@@ -4753,12 +5574,10 @@ unsigned char rigCommander::bcdHexToUChar(unsigned char hundreds, unsigned char 
     // convert to uchar:
     // uchar: 123
 
-    //unsigned char thousands = ((hundreds & 0xf0)>>4);
     unsigned char rtnVal;
     rtnVal = (hundreds & 0x0f)*100;
     rtnVal += ((tensunits & 0xf0)>>4)*10;
     rtnVal += (tensunits & 0x0f);
-    //rtnVal += thousands * 1000;
 
     return rtnVal;
 }
@@ -4873,7 +5692,8 @@ freqt rigCommander::parseFrequencyRptOffset(QByteArray data)
     f.Hz += ((data[2] & 0xf0) >> 4) *  100E3; // 100 KHz
     f.Hz += (data[1] & 0x0f) *           100; // 100 Hz
     f.Hz += ((data[1] & 0xf0) >> 4) *   1000; // 1 KHz
-
+    f.MHzDouble = f.Hz/1000000.0;
+    f.VFO=activeVFO;
     return f;
 }
 
@@ -4929,14 +5749,23 @@ freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
 
 void rigCommander::parseMode()
 {
-    unsigned char filter;
-    if(payloadIn[2] != '\xFD')
+    unsigned char filter=0;
+    unsigned char mode=0;
+
+    if(payloadIn[0] == '\x26')
     {
-        filter = payloadIn[2];
+        // New format payload with mode+datamode+filter
+        mode = (unsigned char)payloadIn[2];
+        filter = (unsigned char)payloadIn[4];
     } else {
-        filter = 0;
+        if(payloadIn[2] != '\xFD')
+        {
+            filter = payloadIn[2];
+        } else {
+            filter = 0;
+        }
+        mode = (unsigned char)payloadIn[01];
     }
-    unsigned char mode = (unsigned char)payloadIn[01];
     emit haveMode(mode, filter);
     state.set(MODE,mode,false);
     state.set(FILTER, filter, false);
@@ -5023,237 +5852,346 @@ void rigCommander::parseMode()
 
 void rigCommander::startATU()
 {
-    QByteArray payload("\x1C\x01\x02");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcATUStatus);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(0x02));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setATU(bool enabled)
 {
-    QByteArray payload;
-
-    if(enabled)
+    auto it = rigCaps.commands.find(funcATUStatus);
+    if (it != rigCaps.commands.end())
     {
-        payload.setRawData("\x1C\x01\x01", 3);
-    } else {
-        payload.setRawData("\x1C\x01\x00", 3);
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(enabled));
+        prepDataAndSend(payload);
     }
-    prepDataAndSend(payload);
 }
 
 void rigCommander::getATUStatus()
 {
-    //qInfo(logRig()) << "Sending out for ATU status in RC.";
-    QByteArray payload("\x1C\x01");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcATUStatus);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getAttenuator()
 {
-    QByteArray payload("\x11");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcAttenuator);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getPreamp()
 {
-    QByteArray payload("\x16\x02");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcPreamp);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getAntenna()
 {
-    // This one might need some thought
-    // as it seems each antenna has to be checked.
-    // Maybe 0x12 alone will do it.
-    QByteArray payload("\x12");
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcAntenna);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setAttenuator(unsigned char att)
 {
-    QByteArray payload("\x11");
-    payload.append(att);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcAttenuator);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append(att);
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setPreamp(unsigned char pre)
 {
-    QByteArray payload("\x16\x02");
-    payload.append(pre);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcPreamp);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append(pre);
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setAntenna(unsigned char ant, bool rx)
 {
-    QByteArray payload("\x12");
-    payload.append(ant);
-    if (rigCaps.hasRXAntenna) {
-        payload.append((unsigned char)rx); // 0x00 = use for TX and RX
+    auto it = rigCaps.commands.find(funcAntenna);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append(ant);
+        if (rigCaps.commands.contains(funcRXAntenna)) {
+            payload.append(static_cast<unsigned char>(rx)); // 0x00 = use for TX and RX
+        }
+        prepDataAndSend(payload);
     }
-    prepDataAndSend(payload);
 }
 
 void rigCommander::setNB(bool enabled) {
-    QByteArray payload("\x16\x22");
-    payload.append((unsigned char)enabled);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcNB);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(enabled));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getNB()
 {
-    QByteArray payload;
-    payload.setRawData("\x16\x22", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcNB);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setNR(bool enabled) {
-    QByteArray payload("\x16\x40");
-    payload.append((unsigned char)enabled);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcNR);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(enabled));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getNR()
 {
-    QByteArray payload;
-    payload.setRawData("\x16\x40", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcNB);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setAutoNotch(bool enabled)
 {
-    QByteArray payload("\x16\x41");
-    payload.append((unsigned char)enabled);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcAutoNotch);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(enabled));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getAutoNotch()
 {
-    QByteArray payload;
-    payload.setRawData("\x16\x41", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcAutoNotch);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setToneEnabled(bool enabled)
 {
-    QByteArray payload("\x16\x42");
-    payload.append((unsigned char)enabled);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcTone);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(enabled));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getToneEnabled()
 {
-    QByteArray payload;
-    payload.setRawData("\x16\x42", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcTone);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setToneSql(bool enabled)
 {
-    QByteArray payload("\x16\x43");
-    payload.append((unsigned char)enabled);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcTSQL);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(enabled));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getToneSqlEnabled()
 {
-    QByteArray payload;
-    payload.setRawData("\x16\x43", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcTSQL);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setCompressor(bool enabled)
 {
-    QByteArray payload("\x16\x44");
-    payload.append((unsigned char)enabled);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcCompressor);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(enabled));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getCompressor()
 {
-    QByteArray payload;
-    payload.setRawData("\x16\x44", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcCompressor);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setMonitor(bool enabled)
 {
-    QByteArray payload("\x16\x45");
-    payload.append((unsigned char)enabled);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcMonitor);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(enabled));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getMonitor()
 {
-    QByteArray payload;
-    payload.setRawData("\x16\x45", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcMonitor);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setVox(bool enabled)
 {
-    QByteArray payload("\x16\x46");
-    payload.append((unsigned char)enabled);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcVox);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(enabled));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getVox()
 {
-    QByteArray payload;
-    payload.setRawData("\x16\x46", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcVox);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setBreakIn(unsigned char type) {
-    QByteArray payload("\x16\x47");
-    payload.append((unsigned char)type);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(FuncBKIN);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append(type);
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getBreakIn()
 {
-    QByteArray payload;
-    payload.setRawData("\x16\x47", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcVox);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setKeySpeed(unsigned char wpm)
 {
     // 0 = 6 WPM
     // 255 = 48 WPM
-
-    unsigned char wpmRadioSend = round((wpm-6) * (6.071));
-    //qInfo(logRig()) << "Setting keyspeed to " << wpm << "WPM, via command value" << wpmRadioSend;
-    QByteArray payload;
-    payload.setRawData("\x14\x0C", 2);
-    payload.append(bcdEncodeInt(wpmRadioSend));
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcKeySpeed);
+    if (it != rigCaps.commands.end())
+    {
+        unsigned char wpmRadioSend = round((wpm-6) * (6.071));
+        QByteArray payload=it.value().data;
+        payload.append(bcdEncodeInt(wpmRadioSend));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getKeySpeed()
 {
-    QByteArray payload;
-    payload.setRawData("\x14\x0C", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcKeySpeed);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setManualNotch(bool enabled)
 {
-    QByteArray payload("\x16\x48");
-    payload.append((unsigned char)enabled);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcManualNotch);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append(static_cast<unsigned char>(enabled));
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getManualNotch()
 {
-    QByteArray payload;
-    payload.setRawData("\x16\x48", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcManualNotch);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getRigID()
 {
-    QByteArray payload;
-    payload.setRawData("\x19\x00", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcRigID);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        prepDataAndSend(payload);
+    } else {
+        // If we haven't got this command yet, need to use the default one!
+        QByteArray payload = "\x19\x00";
+        prepDataAndSend(payload);
+    }
+
 }
 
 void rigCommander::setRigID(unsigned char rigID)
@@ -5286,23 +6224,35 @@ void rigCommander::changeLatency(const quint16 value)
 
 void rigCommander::sayAll()
 {
-    QByteArray payload;
-    payload.setRawData("\x13\x00", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcSpeech);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append('\x00');
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::sayFrequency()
 {
-    QByteArray payload;
-    payload.setRawData("\x13\x01", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcSpeech);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append('\x01');
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::sayMode()
 {
-    QByteArray payload;
-    payload.setRawData("\x13\x02", 2);
-    prepDataAndSend(payload);
+    auto it = rigCaps.commands.find(funcSpeech);
+    if (it != rigCaps.commands.end())
+    {
+        QByteArray payload=it.value().data;
+        payload.append('\x02');
+        prepDataAndSend(payload);
+    }
 }
 
 // Other:

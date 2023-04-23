@@ -267,8 +267,8 @@ signals:
     void sayFrequency();
     void sayMode();
     void sayAll();
-    void sendCommSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp, quint16 tcp, quint8 wf);
-    void sendCommSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
+    void sendCommSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp, quint16 tcp, quint8 wf);
+    void sendCommSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     void sendCloseComm();
     void sendChangeLatency(quint16 latency);
     void initServer();
@@ -576,7 +576,9 @@ private slots:
 
     void on_modInputCombo_activated(int index);
 
-    void on_modInputDataCombo_activated(int index);
+    void on_modInputData1Combo_activated(int index);
+    void on_modInputData2Combo_activated(int index);
+    void on_modInputData3Combo_activated(int index);
 
     void on_tuneLockChk_clicked(bool checked);
 
@@ -1130,6 +1132,7 @@ private:
 
     int oldFreqDialVal;
 
+    QHash<unsigned char,QString> rigList;
     rigCapabilities rigCaps;
     rigInput currentModSrc = inputUnknown;
     rigInput currentModDataSrc = inputUnknown;
@@ -1241,7 +1244,7 @@ Q_DECLARE_METATYPE(struct datekind)
 Q_DECLARE_METATYPE(struct networkStatus)
 Q_DECLARE_METATYPE(struct networkAudioLevels)
 Q_DECLARE_METATYPE(struct spotData)
-Q_DECLARE_METATYPE(enum rigInput)
+Q_DECLARE_METATYPE(struct rigInput)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
 Q_DECLARE_METATYPE(enum mode_kind)

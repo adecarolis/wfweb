@@ -9,14 +9,19 @@ tableWidget::tableWidget(QWidget *parent): QTableWidget(parent)
 
 void tableWidget::mouseReleaseEvent(QMouseEvent *event)
 {
-    QMenu menu;
-    QAction *add= menu.addAction("Add Item");
-    QAction *del = menu.addAction("Delete Item");
     if(event->button() == Qt::RightButton)
     {
+        QMenu menu;
+        QAction *insert= menu.addAction("Insert Item");
+        QAction *add= menu.addAction("Add Item");
+        QAction *del = menu.addAction("Delete Item");
         QAction *selectedAction = menu.exec(event->globalPosition().toPoint());
 
-        if(selectedAction == add)
+        if(selectedAction == insert)
+        {
+            this->insertRow(this->currentRow());
+        }
+        else if(selectedAction == add)
         {
             this->insertRow(this->rowCount());
         }
@@ -28,15 +33,18 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
 }
 
 
-tableCombobox::tableCombobox(QAbstractItemModel* model, QObject *parent)
+tableCombobox::tableCombobox(QAbstractItemModel* model, bool sort, QObject *parent)
     : QItemDelegate(parent), modelData(model)
 {
-
+    if (sort)
+        modelData->sort(0);
 }
 
 QWidget* tableCombobox::createEditor(QWidget *parent, const   QStyleOptionViewItem &option, const QModelIndex &index) const {
+    Q_UNUSED(index)
+    Q_UNUSED(option)
     QComboBox* comboBox = new QComboBox(parent);
-    comboBox->setModel(modelData);
+    comboBox->setModel(modelData);    
     return comboBox;
 }
 
@@ -56,6 +64,7 @@ void tableCombobox::setModelData(QWidget *editor, QAbstractItemModel *model,   c
 }
 
 void tableCombobox::updateEditorGeometry(QWidget *editor, const     QStyleOptionViewItem &option, const QModelIndex &index) const {
+    Q_UNUSED(index)
     editor->setGeometry(option.rect);
 }
 
@@ -68,6 +77,8 @@ tableCheckbox::tableCheckbox(QObject *parent)
 }
 
 QWidget* tableCheckbox::createEditor(QWidget *parent, const   QStyleOptionViewItem &option, const QModelIndex &index) const {
+    Q_UNUSED(index)
+    Q_UNUSED(option)
     QCheckBox* checkBox = new QCheckBox(parent);
     return checkBox;
 }
@@ -88,5 +99,6 @@ void tableCheckbox::setModelData(QWidget *editor, QAbstractItemModel *model,   c
 }
 
 void tableCheckbox::updateEditorGeometry(QWidget *editor, const     QStyleOptionViewItem &option, const QModelIndex &index) const {
+    Q_UNUSED(index)
     editor->setGeometry(option.rect);
 }

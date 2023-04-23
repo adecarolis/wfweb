@@ -5,6 +5,11 @@
 #include <QItemDelegate>
 #include <QStandardItem>
 #include <QStandardItemModel>
+#include <QFileDialog>
+#include <QSettings>
+#include <QMessageBox>
+#include <QHeaderView>
+#include <QStandardPaths>
 #include "wfviewtypes.h"
 #include "rigidentities.h"
 #include "tablewidget.h"

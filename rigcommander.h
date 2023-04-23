@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QMutexLocker>
+#include <QSettings>
 #include <QDebug>
 
 #include "wfviewtypes.h"
@@ -38,8 +39,8 @@ public:
 
 public slots:
     void process();
-    void commSetup(unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
-    void commSetup(unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
+    void commSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
+    void commSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     void closeComm();
     void stateUpdated();
     void setRTSforPTT(bool enabled);
@@ -79,6 +80,7 @@ public slots:
     void setMode(unsigned char mode, unsigned char modeFilter);
     void setMode(mode_info);
     void getMode();
+    void getMode(unsigned char vfo);
     void setDataMode(bool dataOn, unsigned char filter);
     void getDataMode();
     void getSplit();
@@ -429,11 +431,9 @@ private:
     void parsePTT();
     void parseATU();
     void parseLevels(); // register 0x14
-    void sendLevelCmd(unsigned char levAddr, unsigned char level);
     QByteArray getLANAddr();
     QByteArray getUSBAddr();
     QByteArray getACCAddr(unsigned char ab);
-    void setModInput(rigInput input, bool dataOn, bool isQuery);
     void sendDataOut();
     void prepDataAndSend(QByteArray data);
     void debugMe();
@@ -467,7 +467,7 @@ private:
     
     rigstate state;
 
-    bool haveRigCaps;
+    bool haveRigCaps=false;
     model_kind model;
     quint8 spectSeqMax;
     quint16 spectAmpMax;
@@ -500,7 +500,13 @@ private:
     QString serialPortError;
     unsigned char localVolume=0;
     quint8 guid[GUIDLEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+    QHash<unsigned char,QString> rigList;
 
+    quint64 averageParseTime=0;
+    int numParseSamples = 0;
+    int lowParse=9999;
+    int highParse=0;
+    QTime lastParseReport = QTime::currentTime();
 };
 
 #endif // RIGCOMMANDER_H

@@ -47,15 +47,29 @@ enum model_kind {
     modelUnknown = 0xFF
 };
 
-enum rigInput{ inputMic=0,
-               inputACC=1,
-               inputUSB=3,
-               inputLAN=5,
-               inputACCA,
-               inputACCB,
-               inputNone,
-               inputUnknown=0xff
+
+
+enum inputTypes{ inputMic=0,
+                  inputACC=1,
+                  inputMICACC=2,
+                  inputUSB=3,
+                  inputMICUSB=4,
+                  inputLAN=5,
+                  inputACCA=6,
+                  inputACCB=7,
+                  inputNone,
+                  inputUnknown=0xff
 };
+
+struct rigInput {
+    rigInput() {}
+    rigInput(inputTypes type) : type(type) {}
+    rigInput(inputTypes type, QString name) : type(type), name(name) {}
+    inputTypes type = inputNone;
+    QString name = "";
+};
+
+
 
 enum availableBands {
                 band3cm = 0,
@@ -101,20 +115,24 @@ enum centerSpansType {
 };
 
 struct centerSpanData {
+    centerSpanData() {}
+    centerSpanData(centerSpansType cstype, QString name, unsigned int freq) :
+        cstype(cstype), name(name), freq(freq) {}
     centerSpansType cstype;
     QString name;
+    unsigned int freq;
 };
 
 struct bandType {
-    bandType(availableBands band, quint64 lowFreq, quint64 highFreq, mode_kind defaultMode) :
-        band(band), lowFreq(lowFreq), highFreq(highFreq), defaultMode(defaultMode) {}
-
     bandType() {}
+    bandType(availableBands band, quint64 lowFreq, quint64 highFreq, double range) :
+        band(band), lowFreq(lowFreq), highFreq(highFreq), range(range) {}
 
     availableBands band;
     quint64 lowFreq;
     quint64 highFreq;
     mode_kind defaultMode;
+    double range;
 };
 
 model_kind determineRadioModel(unsigned char rigID);
@@ -122,7 +140,8 @@ model_kind determineRadioModel(unsigned char rigID);
 struct rigCapabilities {
     model_kind model;
     quint8 civ;
-    quint8 modelID;
+    quint8 modelID = 0;
+    QString filename;
     int rigctlModel;
     QString modelName;
 
@@ -168,13 +187,16 @@ struct rigCapabilities {
     bool hasAdvancedRptrToneCmds = false;
     bool hasQuickSplitCommand = false;
     QByteArray quickSplitCommand;
-    QHash<funcs,QByteArray> commands;
+    QHash<funcs,funcType> commands;
+    QHash<QByteArray,funcs> commandsReverse;
 
     std::vector <unsigned char> attenuators;
     std::vector <unsigned char> preamps;
     std::vector <unsigned char> antennas;
+    std::vector <unsigned char> filters;
     std::vector <centerSpanData> scopeCenterSpans;
     std::vector <bandType> bands;
+    std::vector <spanType> spans;
     unsigned char bsr[24] = {0};
 
     std::vector <mode_info> modes;

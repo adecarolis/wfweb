@@ -110,9 +110,9 @@ public:
     }
 
     void set(stateTypes s, rigInput x, bool u) {
-        if ((x != map[s]._value) && ((!u && !map[s]._updated) || (u))) {
+        if ((x.type != map[s]._value) && ((!u && !map[s]._updated) || (u))) {
             _mutex.lock();
-            map[s]._value = quint64(x);
+            map[s]._value = quint64(x.type);
             map[s]._valid = true;
             map[s]._updated = u;
             map[s]._dateUpdated = QDateTime::currentDateTime();
@@ -128,7 +128,7 @@ public:
     quint32 getUInt32(stateTypes s) { return quint32(map[s]._value); }
     quint64 getInt64(stateTypes s) { return map[s]._value; }
     duplexMode getDuplex(stateTypes s) { return duplexMode(map[s]._value); }
-    rigInput getInput(stateTypes s) { return rigInput(map[s]._value); }
+    rigInput getInput(stateTypes s) { return rigInput((inputTypes)map[s]._value); }
     QMap<stateTypes, value> map;
 
 

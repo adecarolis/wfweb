@@ -120,6 +120,7 @@ struct mode_info {
     unsigned char reg;
     unsigned char filter;
     selVFO_t VFO = activeVFO;
+    bool data = false;
     QString name;
 };
 
@@ -181,57 +182,75 @@ enum cmds {
 
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 70
+#define NUMFUNCS 133
 
-enum funcs {
-    funcPower, funcSpectrum, funcDisplay, funcSpectrumBounds,funcSpectrumMode, funcSpectrumEdge, funcSpectrumSpan,
-    funcSpectrumRef, funcVFO, funcSplit,
-    funcRigID, funcRigCIV, funcFreqGet, funcFreqSet, funcModeGet, funcModeSet,
-    funcDataMode, funcModeFilter, funcRit, funcRitValue,
-    funcRxGain, funcRxRfGain, funcAfGain,
-    funcSql, funcIFShift, funcTPBFInner,
-    funcTPBFOuter, funcPassband,
-    funcCwPitch, funcPskTone, funcRttyMark,
-    funcATU,
-    funcPTT,
-    funcTxPower, funcMicGain, funcModLevel,
-    funcSpectrumRefLevel, funcDuplexMode, funcModInput, funcModDataInput,
-    funcVdMeter, funcIdMeter, funcSMeter, funcCenterMeter, funcPowerMeter,
-    funcSWRMeter, funcALCMeter, funcCompMeter, funcTxRxMeter,
-    funcTone, funcTSQL, funcDTCS,
-    funcRptAccessMode,
-    funcRptDuplexOffset,
-    funcSelVFO, funcVFOSwap, funcVFOEqualAB, funcVFOEqualMS, funcQuickSplit,
-    funcPreamp, funcAttenuator, funcAntenna,
-    funcBandStackReg, funcKeySpeed, funcBreakMode, funcSendCW, funcDashRatio,
-    funcTime, funcDate, funcUTCOffset,
-    funcTransceive
+enum funcs { funcNone,
+    funcPower,              funcScopeData,          funcScopeOnOff,     funcScopeWaveData,  funcScopeMainSub,   funcScopeSingleDual,
+    funcScopeCenterFixed,   funcScopeSpan,          funcScopeEdgeFreq,  funcScopeHold,      funcScopeRef,       funcScopeSpeed,
+    funcScopeDuringTX,      funcScopeCenterFreq,    funcScopeFixedEdge, funcScopeVBW,       funcScopeFixedFreq, funcScopeRBW,
+    funcSplit,              funcRigID,              funcRigCIV,         funcFA,             funcFB,             funcNotch,
+    funcfreqTR,             funcFreq,               funcFreqGet,        funcFreqSet,        funcModeTR,         funcMode,
+    funcModeGet,            funcModeSet,            funcTuningStep,     funcDataMode,       funcModeFilter,     funcRit,
+    funcRitValue,           funcRfGain,             funcRxRfGain,       funcAfGain,         funcNRLevel,        funcSql,
+    funcIFShift,            funcPBTInner,           funcPBTOuter,       funcPassband,       funcCwPitch,        funcPskTone,
+    funcRttyMark,           funcATUStatus,          funcTXStatus,       funcTxPower,        funcMicGain,        funcModLevel,
+    funcSpeech,             funcDuplexMode,         funcModInput,       funcModData1Input,  funcModData2Input,  funcModData3Input,
+    funcVdMeter,            funcIdMeter,            funcSMeter,         funcCenterMeter,    funcPowerMeter,     funcSWRMeter,
+    funcALCMeter,           funcCompMeter,          funcTxRxMeter,      funcTone,           funcTSQL,           funcDTCS,
+    funcRptAccessMode,      funcRptDuplexOffset,    funcVFOSelect,      funcVFOSwap,        funcVFOEqualAB,     funcDualWatch,
+    funcVFOEqualMS,         funcQuickSplit,         funcPreamp,         funcAttenuator,     funcAntenna,        funcBandStackReg,
+    funcKeySpeed,           funcBreakMode,          funcSendCW,         funcDashRatio,      funcTime,           funcDate,
+    funcUTCOffset,          funcTransceive,         funcCompLevel,      funcBreakInDelay,   funcNBLevel,        funcMonitorGain,
+    funcVoxGain,            funcAntiVoxGain,        funcBrightLevel,    funcNB,             funcNR,            funcAutoNotch,
+    funcCompressor,         funcMonitor,            funcVox,            FuncBKIN,           funcDialLock,       funcDSPFilterType,
+    funcTransceiverId,      funcTxFreq,             funcAfMute,         funcUSBGain,        funcLANGain,        funcACC1Gain,
+    funcACC2Gain,           funcRefCoarse,          funcRefFine,        funcNoiseLevel,     funcMainSubCmd,     funcIPP,
+    funcSatelliteMode,      funcManualNotch,        funcMemoryContents, funcAGC,            funcRepeaterTone,   funcRepeaterTSQL,
+    funcRepeaterDCS,        funcRepeaterCSQL,       funcXFC,            funcCIVOutput,      funcRXAntenna,      funcVoiceTX
 };
 
+// Any changes to these strings WILL break rig definitions, add new ones to end. **Missing commas concatenate strings!**
+static QString funcString[] { "None",
+    "Power",                "Scope Data",           "Scope On/Off",     "Scope Wave Data",  "Scope Main/Sub",   "Scope Single/Dual",
+    "Scope Center/Fixed",   "Scope Span",           "Scope Edge Freq",  "Scope Hold",       "Scope Ref",        "Scope Speed",
+    "Scope During TX",      "Scope Center Freq",    "Scope Fixed Edge", "Scope VBW",        "Scope Fixed Freq", "Scope RBW",
+    "Split",                "Rig ID",               "Rig CIV",          "Command Error FA", "Command OK FB",    "Notch Filter",
+    "Freq (TRX)",           "Frequency (VFO)",      "Freq Get",         "Freq Set",         "Mode (TRX)",       "Mode (VFO)",
+    "Mode Get",             "Mode Set",             "Tuning Step",      "Data Mode",        "Mode Filter",      "RIT",
+    "RIT Value",            "RF Gain",              "Rx RF Gain",       "AF Gain",          "NR Level",         "Squelch",
+    "IF Shift",             "PBT Inner",            "PBT Outer",        "Passband",         "CW Pitch",         "PSK Tone",
+    "RTTY Mark",            "ATU Status",           "TX Status",        "Tx Power",         "Mic Gain",         "Mod Level",
+    "Speech",               "Duplex Mode",          "Mod Input",        "Mod DATA1 Input",  "Mod DATA2 Input",  "Mod DATA3 Input",
+    "Vd Meter",             "Id Meter",             "S Meter",          "Center Meter",     "Power Meter",      "SWR Meter",
+    "ALC Meter",            "Comp Meter",           "TxRx Meter",       "Tone",             "TSQL",             "DTCS",
+    "Rpt Access Mode",      "Rpt Duplex Offset",    "Select VFO",       "VFO Swap",         "VFO Equal AB",     "Dual Watch",
+    "VFO Equal MS",         "Quick Split",          "Preamp",           "Attenuator",       "Antenna",          "BandStack Reg",
+    "Key Speed",            "Break Mode",           "Send CW",          "Dash Ratio",       "Time",             "Date",
+    "UTC Offset",           "Transceive",           "Compressor Level", "Break-In Delay",   "NB Level",         "Monitor Gain",
+    "Vox Gain",             "Anti-Vox Gain",        "Brightness Level", "Noise Blanker",    "Noise Reduction",  "Auto Notch",
+    "Compressor",           "Monitor",              "Vox",              "Break-In",         "Dial Lock",        "DSP Filter Type",
+    "Transceiver ID",       "Transmit Frequency",   "AF Mute",          "USB Gain",         "LAN Gain",         "ACC1 Gain",
+    "ACC2 Gain",            "Adjust REF Coarse",    "Adjust Ref Fine",  "Noise Level",      "Specify Main Sub", "IPP",
+    "Satellite Mode",       "Manual Notch",         "Memory Contents",  "AGC Setting",      "Repeater Tone",    "Repeater TSQL",
+    "Repeater DCS",         "Repeater CSQL",        "XFC Status",       "CI-V Output",      "RX Antenna",       "Voice TX Memory"
+};
 
-static inline QString funcString[] {
-    "Power","Spectrum","Display","Spectrum Bounds","Spectrum Mode", "SpectrumEdge", "SpectrumSpan"
-    "SpectrumRef", "VFO", "Split",
-    "RigID", "RigCIV", "FreqGet", "FreqSet", "ModeGet", "ModeSet",
-    "DataMode", "ModeFilter", "Rit", "RitValue",
-    "RxGain", "RxRfGain", "AfGain",
-    "Sql", "IFShift", "TPBFInner",
-    "TPBFOuter", "Passband",
-    "CwPitch", "PskTone", "RttyMark",
-    "ATU",
-    "PTT",
-    "TxPower", "MicGain", "ModLevel",
-    "SpectrumRefLevel", "DuplexMode", "ModInput", "ModDataInput",
-    "VdMeter", "IdMeter", "SMeter", "CenterMeter", "PowerMeter",
-    "SWRMeter", "ALCMeter", "CompMeter", "TxRxMeter",
-    "Tone", "TSQL", "DTCS",
-    "RptAccessMode",
-    "RptDuplexOffset",
-    "SelVFO", "VFOSwap", "VFOEqualAB", "VFOEqualMS", "QuickSplit",
-    "Preamp", "Attenuator", "Antenna",
-    "BandStackReg", "KeySpeed", "BreakMode", "SendCW", "DashRatio",
-    "Time", "Date", "UTCOffset",
-    "Transceive"
+struct spanType {
+    spanType() {}
+    spanType(int num, QString name, unsigned int freq) : num(num), name(name), freq(freq) {}
+    int num;
+    QString name;
+    unsigned int freq;
+};
+
+struct funcType {
+    funcType() {}
+    funcType(funcs cmd, QString name, QByteArray data, int minVal, int maxVal) : cmd(cmd), name(name), data(data), minVal(minVal), maxVal(maxVal) {}
+    funcs cmd;
+    QString name;
+    QByteArray data;
+    int minVal;
+    int maxVal;
 };
 
 struct commandtype {

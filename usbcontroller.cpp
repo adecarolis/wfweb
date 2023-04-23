@@ -1831,7 +1831,7 @@ void usbController::receiveLevel(cmds cmd, unsigned char level)
         auto kb = std::find_if(knobList->begin(), knobList->end(), [dev, cmd](const KNOB& k)
                                { return (k.command && dev->connected && k.path == dev->path && k.page == dev->currentPage && k.command->getCommand == cmd);});
         if (kb != knobList->end() && kb->num < dev->knobValues.size()) {
-            qInfo(logUsbControl()) << "Received value:" << level << "for knob" << kb->num;
+            // qInfo(logUsbControl()) << "Received value:" << level << "for knob" << kb->num;
             // Set both current and previous knobvalue to the received value
             dev->knobValues[kb->num].value = level/dev->sensitivity;
             dev->knobValues[kb->num].previous = level/dev->sensitivity;
@@ -1839,7 +1839,7 @@ void usbController::receiveLevel(cmds cmd, unsigned char level)
         auto bt = std::find_if(buttonList->begin(), buttonList->end(), [dev, cmd](const BUTTON& b)
                                { return (b.onCommand && dev->connected && b.path == dev->path && b.page == dev->currentPage && b.onCommand->getCommand == cmd && b.led != 0 &&  b.led <= dev->type.leds);});
         if (bt != buttonList->end()) {
-            qInfo(logUsbControl()) << "Received value:" << level << "for led" << bt->led;
+            // qInfo(logUsbControl()) << "Received value:" << level << "for led" << bt->led;
             QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureLEDControl,bt->led,QString("%1").arg(level)); });
         }
     }
@@ -1996,9 +1996,9 @@ void usbController::restoreController(USBDEVICE* dev, QString file)
             but.num = settings->value("Num", 0).toInt();
             but.name = settings->value("Name", "").toString();
             but.pos = QRect(settings->value("Left", 0).toInt(),
-                settings->value("Top", 0).toInt(),
-                settings->value("Width", 0).toInt(),
-                settings->value("Height", 0).toInt());
+                            settings->value("Top", 0).toInt(),
+                            settings->value("Width", 0).toInt(),
+                            settings->value("Height", 0).toInt());
             but.textColour.setNamedColor(settings->value("Colour", QColor(Qt::white).name(QColor::HexArgb)).toString());
             but.backgroundOn.setNamedColor(settings->value("BackgroundOn", QColor(Qt::lightGray).name(QColor::HexArgb)).toString());
             but.backgroundOff.setNamedColor(settings->value("BackgroundOff", QColor(Qt::blue).name(QColor::HexArgb)).toString());

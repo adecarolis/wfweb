@@ -23,7 +23,7 @@ class tableCombobox : public QItemDelegate
 {
 
 public:
-    explicit tableCombobox(QAbstractItemModel* model, QObject *parent = 0);
+    explicit tableCombobox(QAbstractItemModel* model, bool sort=false, QObject *parent = 0);
     QWidget* createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
     void setEditorData(QWidget *combo, const QModelIndex &index) const override;
     void setModelData(QWidget *combo, QAbstractItemModel *model, const QModelIndex &index) const override;

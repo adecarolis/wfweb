@@ -90,6 +90,30 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     haveRigCaps = false;
 
+    // We need to populate the last of rigs as early as possible so do it now
+    QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir rigsDir(appdata+"/Rigs");
+    if (!rigsDir.exists()) {
+        qWarning() << "********* Rig directory does not exist ********";
+    } else {
+        QStringList rigs = rigsDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
+        foreach (QString rig, rigs) {
+            QSettings* rigSettings = new QSettings(rigsDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
+            if (!rigSettings->childGroups().contains("Rig"))
+            {
+                qWarning() << rig << "Does not seem to be a rig description file";
+                delete rigSettings;
+                continue;
+            }
+            rigSettings->beginGroup("Rig");
+            qDebug() << QString("Found Rig %0 with CI-V address of %1").arg(rigSettings->value("Model","").toString(), rigSettings->value("CIVAddress",0).toString());
+            this->rigList.insert(rigSettings->value("CIVAddress",0).toInt(),rigsDir.absoluteFilePath(rig));
+            rigSettings->endGroup();
+            delete rigSettings;
+        }
+    }
+
+
     setupKeyShortcuts();
 
     setupMainUI();
@@ -317,7 +341,7 @@ void wfmain::openRig()
         usingLAN = true;
         // We need to setup the tx/rx audio:
         udpPrefs.waterfallFormat = prefs.waterfallFormat;
-        emit sendCommSetup(prefs.radioCIVAddr, udpPrefs, rxSetup, txSetup, prefs.virtualSerialPort, prefs.tcpPort);
+        emit sendCommSetup(rigList, prefs.radioCIVAddr, udpPrefs, rxSetup, txSetup, prefs.virtualSerialPort, prefs.tcpPort);
     } else {
         ui->serialEnableBtn->setChecked(true);
         if( (prefs.serialPortRadio.toLower() == QString("auto")))
@@ -327,7 +351,7 @@ void wfmain::openRig()
             serialPortRig = prefs.serialPortRadio;
         }
         usingLAN = false;
-        emit sendCommSetup(prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort, prefs.tcpPort,prefs.waterfallFormat);
+        emit sendCommSetup(rigList, prefs.radioCIVAddr, serialPortRig, prefs.serialPortBaud,prefs.virtualSerialPort, prefs.tcpPort,prefs.waterfallFormat);
         ui->statusBar->showMessage(QString("Connecting to rig using serial port ").append(serialPortRig), 1000);
     }
 
@@ -680,8 +704,8 @@ void wfmain::makeRig()
         connect(rig, SIGNAL(setRadioUsage(quint8, quint8, QString, QString)), selRad, SLOT(setInUse(quint8, quint8, QString, QString)));
         connect(selRad, SIGNAL(selectedRadio(quint8)), rig, SLOT(setCurrentRadio(quint8)));
         // Rig comm setup:
-        connect(this, SIGNAL(sendCommSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)), rig, SLOT(commSetup(unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)));
-        connect(this, SIGNAL(sendCommSetup(unsigned char, QString, quint32,QString, quint16,quint8)), rig, SLOT(commSetup(unsigned char, QString, quint32,QString, quint16,quint8)));
+        connect(this, SIGNAL(sendCommSetup(QHash<unsigned char,QString>,unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)), rig, SLOT(commSetup(QHash<unsigned char,QString>,unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)));
+        connect(this, SIGNAL(sendCommSetup(QHash<unsigned char,QString>,unsigned char, QString, quint32,QString, quint16,quint8)), rig, SLOT(commSetup(QHash<unsigned char,QString>,unsigned char, QString, quint32,QString, quint16,quint8)));
         connect(this, SIGNAL(setRTSforPTT(bool)), rig, SLOT(setRTSforPTT(bool)));
 
         connect(rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));
@@ -4906,43 +4930,31 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         QString inName;
         // Clear input combos before adding known inputs.
         ui->modInputCombo->clear();
-        ui->modInputDataCombo->clear();
+        ui->modInputData1Combo->clear();
+        ui->modInputData2Combo->clear();
+        ui->modInputData3Combo->clear();
 
-        for(int i=0; i < rigCaps.inputs.length(); i++)
+        foreach (auto&& input, rigCaps.inputs)
         {
-            switch(rigCaps.inputs.at(i))
-            {
-                case inputMic:
-                    inName = "Mic";
-                    break;
-                case inputLAN:
-                    inName = "LAN";
-                    break;
-                case inputUSB:
-                    inName = "USB";
-                    break;
-                case inputACC:
-                    inName = "ACC";
-                    break;
-                case inputACCA:
-                    inName = "ACCA";
-                    break;
-                case inputACCB:
-                    inName = "ACCB";
-                    break;
-                default:
-                    inName = "Unknown";
-                    break;
-
-            }
-            ui->modInputCombo->addItem(inName, rigCaps.inputs.at(i));
-            ui->modInputDataCombo->addItem(inName, rigCaps.inputs.at(i));
+            qInfo() << "Adding mod input" << input.name << input.type;
+            ui->modInputCombo->addItem(input.name, input.type);
+            ui->modInputData1Combo->addItem(input.name, input.type);
+            ui->modInputData2Combo->addItem(input.name, input.type);
+            ui->modInputData3Combo->addItem(input.name, input.type);
         }
+
         if(rigCaps.inputs.length() == 0)
         {
             ui->modInputCombo->addItem("None", inputNone);
-            ui->modInputDataCombo->addItem("None", inputNone);
+            ui->modInputData1Combo->addItem("None", inputNone);
+            ui->modInputData2Combo->addItem("None", inputNone);
+            ui->modInputData3Combo->addItem("None", inputNone);
         }
+
+        ui->modInputData2ComboText->setVisible(false);
+        ui->modInputData3ComboText->setVisible(false);
+        ui->modInputData2Combo->setVisible(false);
+        ui->modInputData3Combo->setVisible(false);
 
         ui->attSelCombo->clear();
         if(rigCaps.hasAttenuator)
@@ -4983,7 +4995,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->antennaSelCombo->setDisabled(true);
         }
 
-        ui->rxAntennaCheck->setEnabled(rigCaps.hasRXAntenna);
+        ui->rxAntennaCheck->setEnabled(rigCaps.commands.contains(funcRXAntenna));
         ui->rxAntennaCheck->setChecked(false);
 
         ui->scopeBWCombo->blockSignals(true);
@@ -5074,7 +5086,7 @@ void wfmain::initPeriodicCommands()
         insertSlowPeriodicCommand(cmdGetPTT, 128);
     if(rigCaps.hasPreamp)
         insertSlowPeriodicCommand(cmdGetPreamp, 128);
-    if (rigCaps.hasRXAntenna) {
+    if (rigCaps.commands.contains(funcRXAntenna)) {
         insertSlowPeriodicCommand(cmdGetAntenna, 128);
     }
     insertSlowPeriodicCommand(cmdGetDuplexMode, 128); // split and repeater
@@ -6132,6 +6144,7 @@ void wfmain::on_goFreqBtn_clicked()
         m.mk = sidebandChooser::getMode(f, currentMode);
         m.reg = (unsigned char) m.mk;
         m.filter = ui->modeFilterCombo->currentData().toInt();
+        m.data = ui->dataModeBtn->isChecked();
 
         if((m.mk != currentMode) && !usingDataMode && prefs.automaticSidebandSwitching)
         {
@@ -6292,6 +6305,7 @@ void wfmain::changeMode(mode_kind mode, bool dataOn)
     mode_info m;
     m.filter = (unsigned char) filter;
     m.reg = (unsigned char) mode;
+    m.data = dataOn;
     issueCmd(cmdSetMode, m);
 
     currentMode = mode;
@@ -6332,6 +6346,7 @@ void wfmain::on_modeSelectCombo_activated(int index)
         currentMode = (mode_kind)newMode;
         mode.filter = filterSelection;
         mode.name = ui->modeSelectCombo->currentText(); // for debug
+        mode.data = ui->dataModeBtn->isChecked();
 
         for(unsigned int i=0; i < rigCaps.modes.size(); i++)
         {
@@ -7051,6 +7066,7 @@ void wfmain::on_modeFilterCombo_activated(int index)
             m.filter = (unsigned char)filterSelection;
             m.mk = (mode_kind)newMode;
             m.reg = newMode;
+            m.data = ui->dataModeBtn->isChecked();
             issueCmd(cmdSetMode, m);
 
             //emit setMode(newMode, (unsigned char)filterSelection);
@@ -7193,7 +7209,7 @@ void wfmain::receiveTxPower(unsigned char power)
 
 void wfmain::receiveMicGain(unsigned char gain)
 {
-    processModLevel(inputMic, gain);
+    processModLevel(rigInput(inputMic), gain);
     emit sendLevel(cmdGetMicGain,gain);
 }
 
@@ -7207,7 +7223,7 @@ void wfmain::processModLevel(rigInput source, unsigned char level)
         currentIn = currentModSrc;
     }
 
-    switch(source)
+    switch(source.type)
     {
         case inputMic:
             micGain = level;
@@ -7235,7 +7251,7 @@ void wfmain::processModLevel(rigInput source, unsigned char level)
         default:
             break;
     }
-    if(currentIn == source)
+    if(currentIn.type == source.type)
     {
         changeSliderQuietly(ui->micGainSlider, level);
         emit sendLevel(cmdGetModLevel,level);
@@ -7252,7 +7268,7 @@ void wfmain::receiveModInput(rigInput input, bool dataOn)
 
     if(dataOn)
     {
-        box = ui->modInputDataCombo;
+        box = ui->modInputData1Combo;
         currentModDataSrc = input;
         if(usingDataMode)
             foundCurrent = true;
@@ -7265,7 +7281,7 @@ void wfmain::receiveModInput(rigInput input, bool dataOn)
 
     for(int i=0; i < box->count(); i++)
     {
-        if(box->itemData(i).toInt() == (int)input)
+        if(box->itemData(i).toInt() == (int)input.type)
         {
             box->blockSignals(true);
             box->setCurrentIndex(i);
@@ -7279,7 +7295,7 @@ void wfmain::receiveModInput(rigInput input, bool dataOn)
         changeModLabel(input);
     }
     if(!found)
-        qInfo(logSystem()) << "Could not find modulation input: " << (int)input;
+        qInfo(logSystem()) << "Could not find modulation input: " << (int)input.type;
 }
 
 void wfmain::receiveACCGain(unsigned char level, unsigned char ab)
@@ -7474,8 +7490,8 @@ void wfmain::receiveSpectrumRefLevel(int level)
 
 void wfmain::on_modInputCombo_activated(int index)
 {
-    emit setModInput( (rigInput)ui->modInputCombo->currentData().toInt(), false );
-    currentModSrc = (rigInput)ui->modInputCombo->currentData().toInt();
+    emit setModInput( rigInput((inputTypes)ui->modInputCombo->currentData().toInt()), false );
+    currentModSrc = rigInput((inputTypes)ui->modInputCombo->currentData().toInt());
     issueDelayedCommand(cmdGetCurrentModLevel);
     if(!usingDataMode)
     {
@@ -7484,10 +7500,11 @@ void wfmain::on_modInputCombo_activated(int index)
     (void)index;
 }
 
-void wfmain::on_modInputDataCombo_activated(int index)
+void wfmain::on_modInputData1Combo_activated(int index)
 {
-    emit setModInput( (rigInput)ui->modInputDataCombo->currentData().toInt(), true );
-    currentModDataSrc = (rigInput)ui->modInputDataCombo->currentData().toInt();
+    emit setModInput( rigInput((inputTypes)ui->modInputData1Combo->currentData().toInt()), true );
+    currentModDataSrc = rigInput((inputTypes)ui->modInputData1Combo->currentData().toInt());
+
     issueDelayedCommand(cmdGetCurrentModLevel);
     if(usingDataMode)
     {
@@ -7495,6 +7512,19 @@ void wfmain::on_modInputDataCombo_activated(int index)
     }
     (void)index;
 }
+
+
+void wfmain::on_modInputData2Combo_activated(int index)
+{
+    (void)index;
+}
+
+
+void wfmain::on_modInputData3Combo_activated(int index)
+{
+    (void)index;
+}
+
 
 void wfmain::changeModLabelAndSlider(rigInput source)
 {
@@ -7508,41 +7538,33 @@ void wfmain::changeModLabel(rigInput input)
 
 void wfmain::changeModLabel(rigInput input, bool updateLevel)
 {
-    QString inputName;
     unsigned char gain = 0;
 
-    switch(input)
+    switch(input.type)
     {
         case inputMic:
-            inputName = "Mic";
             gain = micGain;
             break;
         case inputACC:
-            inputName = "ACC";
             gain = accGain;
             break;
         case inputACCA:
-            inputName = "ACCA";
             gain = accAGain;
             break;
         case inputACCB:
-            inputName = "ACCB";
             gain = accBGain;
             break;
         case inputUSB:
-            inputName = "USB";
             gain = usbGain;
             break;
         case inputLAN:
-            inputName = "LAN";
             gain = lanGain;
             break;
         default:
-            inputName = "UNK";
             gain=0;
             break;
     }
-    ui->modSliderLbl->setText(inputName);
+    ui->modSliderLbl->setText(input.name);
     if(updateLevel)
     {
         changeSliderQuietly(ui->micGainSlider, gain);
@@ -9631,7 +9653,6 @@ void wfmain::on_rigCreatorBtn_clicked()
     creator->show();
 }
 
-void wfmain::resetUsbButtons()
 #ifdef USB_HOTPLUG
 
 #ifdef Q_OS_WINDOWS

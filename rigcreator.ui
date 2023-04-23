@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>977</width>
-    <height>548</height>
+    <width>978</width>
+    <height>551</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,26 +16,13 @@
   <widget class="QWidget" name="horizontalLayoutWidget">
    <property name="geometry">
     <rect>
-     <x>10</x>
+     <x>800</x>
      <y>509</y>
-     <width>961</width>
+     <width>171</width>
      <height>41</height>
     </rect>
    </property>
    <layout class="QHBoxLayout" name="horizontalLayout">
-    <item>
-     <spacer name="horizontalSpacer">
-      <property name="orientation">
-       <enum>Qt::Horizontal</enum>
-      </property>
-      <property name="sizeHint" stdset="0">
-       <size>
-        <width>40</width>
-        <height>20</height>
-       </size>
-      </property>
-     </spacer>
-    </item>
     <item>
      <widget class="QDialogButtonBox" name="buttonBox">
       <property name="sizePolicy">
@@ -67,7 +54,7 @@
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_2">
       <item>
-       <widget class="QPushButton" name="loadFIle">
+       <widget class="QPushButton" name="loadFile">
         <property name="text">
          <string>Load File</string>
         </property>
@@ -122,12 +109,22 @@
       <item>
        <widget class="QLabel" name="label">
         <property name="text">
-         <string>Rig Model</string>
+         <string>Model</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QLineEdit" name="model"/>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_7">
+        <property name="text">
+         <string>C-IV Address</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="civAddress"/>
       </item>
       <item>
        <widget class="QLabel" name="label_2">
@@ -152,8 +149,8 @@
     <rect>
      <x>10</x>
      <y>60</y>
-     <width>171</width>
-     <height>411</height>
+     <width>131</width>
+     <height>321</height>
     </rect>
    </property>
    <property name="title">
@@ -164,8 +161,8 @@
      <rect>
       <x>10</x>
       <y>30</y>
-      <width>151</width>
-      <height>111</height>
+      <width>122</width>
+      <height>91</height>
      </rect>
     </property>
     <layout class="QFormLayout" name="formLayout_2">
@@ -217,9 +214,9 @@
     <property name="geometry">
      <rect>
       <x>0</x>
-      <y>160</y>
-      <width>171</width>
-      <height>251</height>
+      <y>120</y>
+      <width>131</width>
+      <height>201</height>
      </rect>
     </property>
     <property name="title">
@@ -230,8 +227,8 @@
       <rect>
        <x>0</x>
        <y>30</y>
-       <width>171</width>
-       <height>211</height>
+       <width>131</width>
+       <height>171</height>
       </rect>
      </property>
      <property name="sizePolicy">
@@ -241,16 +238,19 @@
       </sizepolicy>
      </property>
      <property name="alternatingRowColors">
-      <bool>false</bool>
+      <bool>true</bool>
+     </property>
+     <property name="sortingEnabled">
+      <bool>true</bool>
      </property>
      <property name="rowCount">
-      <number>8</number>
+      <number>0</number>
      </property>
      <attribute name="horizontalHeaderVisible">
       <bool>true</bool>
      </attribute>
      <attribute name="horizontalHeaderDefaultSectionSize">
-      <number>73</number>
+      <number>55</number>
      </attribute>
      <attribute name="verticalHeaderVisible">
       <bool>false</bool>
@@ -261,14 +261,6 @@
      <attribute name="verticalHeaderDefaultSectionSize">
       <number>24</number>
      </attribute>
-     <row/>
-     <row/>
-     <row/>
-     <row/>
-     <row/>
-     <row/>
-     <row/>
-     <row/>
      <column>
       <property name="text">
        <string>Num</string>
@@ -279,16 +271,21 @@
        <string>Name</string>
       </property>
      </column>
+     <column>
+      <property name="text">
+       <string>Freq</string>
+      </property>
+     </column>
     </widget>
    </widget>
   </widget>
   <widget class="QGroupBox" name="groupBox_2">
    <property name="geometry">
     <rect>
-     <x>230</x>
-     <y>370</y>
-     <width>171</width>
-     <height>111</height>
+     <x>160</x>
+     <y>390</y>
+     <width>91</width>
+     <height>151</height>
     </rect>
    </property>
    <property name="title">
@@ -299,8 +296,8 @@
      <rect>
       <x>0</x>
       <y>30</y>
-      <width>171</width>
-      <height>81</height>
+      <width>91</width>
+      <height>121</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -309,14 +306,20 @@
       <verstretch>0</verstretch>
      </sizepolicy>
     </property>
+    <property name="alternatingRowColors">
+     <bool>true</bool>
+    </property>
+    <property name="sortingEnabled">
+     <bool>true</bool>
+    </property>
     <property name="rowCount">
-     <number>4</number>
+     <number>0</number>
     </property>
     <attribute name="horizontalHeaderMinimumSectionSize">
      <number>20</number>
     </attribute>
     <attribute name="horizontalHeaderDefaultSectionSize">
-     <number>149</number>
+     <number>70</number>
     </attribute>
     <attribute name="verticalHeaderVisible">
      <bool>false</bool>
@@ -324,10 +327,6 @@
     <attribute name="verticalHeaderDefaultSectionSize">
      <number>24</number>
     </attribute>
-    <row/>
-    <row/>
-    <row/>
-    <row/>
     <column>
      <property name="text">
       <string>dB</string>
@@ -338,9 +337,9 @@
   <widget class="QGroupBox" name="groupBox_3">
    <property name="geometry">
     <rect>
-     <x>200</x>
+     <x>150</x>
      <y>60</y>
-     <width>151</width>
+     <width>161</width>
      <height>151</height>
     </rect>
    </property>
@@ -352,7 +351,7 @@
      <rect>
       <x>0</x>
       <y>30</y>
-      <width>151</width>
+      <width>161</width>
       <height>121</height>
      </rect>
     </property>
@@ -362,8 +361,17 @@
       <verstretch>0</verstretch>
      </sizepolicy>
     </property>
+    <property name="alternatingRowColors">
+     <bool>true</bool>
+    </property>
+    <property name="sortingEnabled">
+     <bool>true</bool>
+    </property>
     <property name="rowCount">
-     <number>4</number>
+     <number>0</number>
+    </property>
+    <property name="columnCount">
+     <number>2</number>
     </property>
     <attribute name="horizontalHeaderMinimumSectionSize">
      <number>0</number>
@@ -380,10 +388,6 @@
     <attribute name="verticalHeaderDefaultSectionSize">
      <number>20</number>
     </attribute>
-    <row/>
-    <row/>
-    <row/>
-    <row/>
     <column>
      <property name="text">
       <string>Num</string>
@@ -399,10 +403,10 @@
   <widget class="QGroupBox" name="groupBox_4">
    <property name="geometry">
     <rect>
-     <x>400</x>
-     <y>370</y>
-     <width>181</width>
-     <height>111</height>
+     <x>260</x>
+     <y>390</y>
+     <width>171</width>
+     <height>151</height>
     </rect>
    </property>
    <property name="title">
@@ -411,64 +415,10 @@
    <widget class="tableWidget" name="preamps">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>30</y>
-      <width>161</width>
-      <height>81</height>
-     </rect>
-    </property>
-    <property name="sizePolicy">
-     <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-      <horstretch>0</horstretch>
-      <verstretch>0</verstretch>
-     </sizepolicy>
-    </property>
-    <property name="rowCount">
-     <number>2</number>
-    </property>
-    <attribute name="horizontalHeaderMinimumSectionSize">
-     <number>0</number>
-    </attribute>
-    <attribute name="horizontalHeaderDefaultSectionSize">
-     <number>149</number>
-    </attribute>
-    <attribute name="verticalHeaderVisible">
-     <bool>false</bool>
-    </attribute>
-    <attribute name="verticalHeaderMinimumSectionSize">
-     <number>0</number>
-    </attribute>
-    <attribute name="verticalHeaderDefaultSectionSize">
-     <number>24</number>
-    </attribute>
-    <row/>
-    <row/>
-    <column>
-     <property name="text">
-      <string>dB</string>
-     </property>
-    </column>
-   </widget>
-  </widget>
-  <widget class="QGroupBox" name="groupBox_5">
-   <property name="geometry">
-    <rect>
-     <x>230</x>
-     <y>220</y>
-     <width>311</width>
-     <height>141</height>
-    </rect>
-   </property>
-   <property name="title">
-    <string>Bands</string>
-   </property>
-   <widget class="tableWidget" name="bands">
-    <property name="geometry">
-     <rect>
       <x>0</x>
       <y>30</y>
-      <width>311</width>
-      <height>111</height>
+      <width>171</width>
+      <height>121</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -477,12 +427,15 @@
       <verstretch>0</verstretch>
      </sizepolicy>
     </property>
-    <property name="rowCount">
-     <number>6</number>
+    <property name="alternatingRowColors">
+     <bool>true</bool>
     </property>
-    <attribute name="horizontalHeaderCascadingSectionResizes">
-     <bool>false</bool>
-    </attribute>
+    <property name="sortingEnabled">
+     <bool>true</bool>
+    </property>
+    <property name="rowCount">
+     <number>0</number>
+    </property>
     <attribute name="horizontalHeaderMinimumSectionSize">
      <number>0</number>
     </attribute>
@@ -493,17 +446,82 @@
      <bool>false</bool>
     </attribute>
     <attribute name="verticalHeaderMinimumSectionSize">
+     <number>0</number>
+    </attribute>
+    <attribute name="verticalHeaderDefaultSectionSize">
+     <number>24</number>
+    </attribute>
+    <column>
+     <property name="text">
+      <string>Num</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>Name</string>
+     </property>
+    </column>
+   </widget>
+  </widget>
+  <widget class="QGroupBox" name="groupBox_5">
+   <property name="geometry">
+    <rect>
+     <x>150</x>
+     <y>220</y>
+     <width>321</width>
+     <height>161</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>Bands</string>
+   </property>
+   <widget class="tableWidget" name="bands">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>30</y>
+      <width>321</width>
+      <height>131</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="alternatingRowColors">
+     <bool>true</bool>
+    </property>
+    <property name="sortingEnabled">
+     <bool>true</bool>
+    </property>
+    <property name="rowCount">
+     <number>0</number>
+    </property>
+    <attribute name="horizontalHeaderCascadingSectionResizes">
+     <bool>false</bool>
+    </attribute>
+    <attribute name="horizontalHeaderMinimumSectionSize">
+     <number>0</number>
+    </attribute>
+    <attribute name="horizontalHeaderDefaultSectionSize">
+     <number>50</number>
+    </attribute>
+    <attribute name="verticalHeaderVisible">
+     <bool>false</bool>
+    </attribute>
+    <attribute name="verticalHeaderMinimumSectionSize">
      <number>2</number>
     </attribute>
     <attribute name="verticalHeaderDefaultSectionSize">
      <number>20</number>
     </attribute>
-    <row/>
-    <row/>
-    <row/>
-    <row/>
-    <row/>
-    <row/>
+    <column>
+     <property name="text">
+      <string>Num</string>
+     </property>
+    </column>
     <column>
      <property name="text">
       <string>BSR</string>
@@ -516,12 +534,17 @@
     </column>
     <column>
      <property name="text">
-      <string>Low Freq</string>
+      <string>Start</string>
      </property>
     </column>
     <column>
      <property name="text">
-      <string>High Freq</string>
+      <string>End</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>Range</string>
      </property>
     </column>
    </widget>
@@ -529,22 +552,22 @@
   <widget class="QGroupBox" name="groupBox_6">
    <property name="geometry">
     <rect>
-     <x>600</x>
-     <y>220</y>
-     <width>171</width>
-     <height>111</height>
+     <x>320</x>
+     <y>60</y>
+     <width>151</width>
+     <height>151</height>
     </rect>
    </property>
    <property name="title">
     <string>Modes</string>
    </property>
-   <widget class="QTableWidget" name="modes">
+   <widget class="tableWidget" name="modes">
     <property name="geometry">
      <rect>
       <x>0</x>
       <y>30</y>
-      <width>171</width>
-      <height>81</height>
+      <width>151</width>
+      <height>121</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -553,14 +576,20 @@
       <verstretch>0</verstretch>
      </sizepolicy>
     </property>
+    <property name="alternatingRowColors">
+     <bool>true</bool>
+    </property>
+    <property name="sortingEnabled">
+     <bool>true</bool>
+    </property>
     <property name="rowCount">
-     <number>5</number>
+     <number>0</number>
     </property>
     <attribute name="horizontalHeaderMinimumSectionSize">
      <number>0</number>
     </attribute>
     <attribute name="horizontalHeaderDefaultSectionSize">
-     <number>73</number>
+     <number>65</number>
     </attribute>
     <attribute name="verticalHeaderVisible">
      <bool>false</bool>
@@ -571,11 +600,6 @@
     <attribute name="verticalHeaderDefaultSectionSize">
      <number>20</number>
     </attribute>
-    <row/>
-    <row/>
-    <row/>
-    <row/>
-    <row/>
     <column>
      <property name="text">
       <string>Num</string>
@@ -587,262 +611,14 @@
      </property>
     </column>
    </widget>
-   <widget class="QGroupBox" name="groupBox_13">
-    <property name="geometry">
-     <rect>
-      <x>70</x>
-      <y>110</y>
-      <width>171</width>
-      <height>111</height>
-     </rect>
-    </property>
-    <property name="title">
-     <string>Modes</string>
-    </property>
-    <widget class="QTableWidget" name="modes_5">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>30</y>
-       <width>171</width>
-       <height>81</height>
-      </rect>
-     </property>
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="rowCount">
-      <number>5</number>
-     </property>
-     <attribute name="horizontalHeaderMinimumSectionSize">
-      <number>0</number>
-     </attribute>
-     <attribute name="horizontalHeaderDefaultSectionSize">
-      <number>73</number>
-     </attribute>
-     <attribute name="verticalHeaderVisible">
-      <bool>false</bool>
-     </attribute>
-     <attribute name="verticalHeaderMinimumSectionSize">
-      <number>0</number>
-     </attribute>
-     <attribute name="verticalHeaderDefaultSectionSize">
-      <number>20</number>
-     </attribute>
-     <row/>
-     <row/>
-     <row/>
-     <row/>
-     <row/>
-     <column>
-      <property name="text">
-       <string>Num</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Name</string>
-      </property>
-     </column>
-    </widget>
-    <widget class="QGroupBox" name="groupBox_14">
-     <property name="geometry">
-      <rect>
-       <x>100</x>
-       <y>80</y>
-       <width>171</width>
-       <height>111</height>
-      </rect>
-     </property>
-     <property name="title">
-      <string>Modes</string>
-     </property>
-     <widget class="QTableWidget" name="modes_6">
-      <property name="geometry">
-       <rect>
-        <x>0</x>
-        <y>30</y>
-        <width>171</width>
-        <height>81</height>
-       </rect>
-      </property>
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="rowCount">
-       <number>5</number>
-      </property>
-      <attribute name="horizontalHeaderMinimumSectionSize">
-       <number>0</number>
-      </attribute>
-      <attribute name="horizontalHeaderDefaultSectionSize">
-       <number>73</number>
-      </attribute>
-      <attribute name="verticalHeaderVisible">
-       <bool>false</bool>
-      </attribute>
-      <attribute name="verticalHeaderMinimumSectionSize">
-       <number>0</number>
-      </attribute>
-      <attribute name="verticalHeaderDefaultSectionSize">
-       <number>20</number>
-      </attribute>
-      <row/>
-      <row/>
-      <row/>
-      <row/>
-      <row/>
-      <column>
-       <property name="text">
-        <string>Num</string>
-       </property>
-      </column>
-      <column>
-       <property name="text">
-        <string>Name</string>
-       </property>
-      </column>
-     </widget>
-    </widget>
-    <widget class="QGroupBox" name="groupBox_15">
-     <property name="geometry">
-      <rect>
-       <x>80</x>
-       <y>80</y>
-       <width>171</width>
-       <height>111</height>
-      </rect>
-     </property>
-     <property name="title">
-      <string>Modes</string>
-     </property>
-     <widget class="QTableWidget" name="modes_7">
-      <property name="geometry">
-       <rect>
-        <x>0</x>
-        <y>30</y>
-        <width>171</width>
-        <height>81</height>
-       </rect>
-      </property>
-      <property name="sizePolicy">
-       <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-        <horstretch>0</horstretch>
-        <verstretch>0</verstretch>
-       </sizepolicy>
-      </property>
-      <property name="rowCount">
-       <number>5</number>
-      </property>
-      <attribute name="horizontalHeaderMinimumSectionSize">
-       <number>0</number>
-      </attribute>
-      <attribute name="horizontalHeaderDefaultSectionSize">
-       <number>73</number>
-      </attribute>
-      <attribute name="verticalHeaderVisible">
-       <bool>false</bool>
-      </attribute>
-      <attribute name="verticalHeaderMinimumSectionSize">
-       <number>0</number>
-      </attribute>
-      <attribute name="verticalHeaderDefaultSectionSize">
-       <number>20</number>
-      </attribute>
-      <row/>
-      <row/>
-      <row/>
-      <row/>
-      <row/>
-      <column>
-       <property name="text">
-        <string>Num</string>
-       </property>
-      </column>
-      <column>
-       <property name="text">
-        <string>Name</string>
-       </property>
-      </column>
-     </widget>
-     <widget class="QGroupBox" name="groupBox_16">
-      <property name="geometry">
-       <rect>
-        <x>100</x>
-        <y>80</y>
-        <width>171</width>
-        <height>111</height>
-       </rect>
-      </property>
-      <property name="title">
-       <string>Modes</string>
-      </property>
-      <widget class="QTableWidget" name="modes_8">
-       <property name="geometry">
-        <rect>
-         <x>0</x>
-         <y>30</y>
-         <width>171</width>
-         <height>81</height>
-        </rect>
-       </property>
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="rowCount">
-        <number>5</number>
-       </property>
-       <attribute name="horizontalHeaderMinimumSectionSize">
-        <number>0</number>
-       </attribute>
-       <attribute name="horizontalHeaderDefaultSectionSize">
-        <number>73</number>
-       </attribute>
-       <attribute name="verticalHeaderVisible">
-        <bool>false</bool>
-       </attribute>
-       <attribute name="verticalHeaderMinimumSectionSize">
-        <number>0</number>
-       </attribute>
-       <attribute name="verticalHeaderDefaultSectionSize">
-        <number>20</number>
-       </attribute>
-       <row/>
-       <row/>
-       <row/>
-       <row/>
-       <row/>
-       <column>
-        <property name="text">
-         <string>Num</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Name</string>
-        </property>
-       </column>
-      </widget>
-     </widget>
-    </widget>
-   </widget>
   </widget>
   <widget class="QGroupBox" name="groupBox_8">
    <property name="geometry">
     <rect>
-     <x>380</x>
+     <x>480</x>
      <y>60</y>
-     <width>411</width>
-     <height>151</height>
+     <width>341</width>
+     <height>271</height>
     </rect>
    </property>
    <property name="title">
@@ -853,8 +629,8 @@
      <rect>
       <x>0</x>
       <y>30</y>
-      <width>411</width>
-      <height>121</height>
+      <width>341</width>
+      <height>241</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -863,8 +639,17 @@
       <verstretch>0</verstretch>
      </sizepolicy>
     </property>
+    <property name="alternatingRowColors">
+     <bool>true</bool>
+    </property>
+    <property name="sortingEnabled">
+     <bool>true</bool>
+    </property>
     <property name="rowCount">
-     <number>6</number>
+     <number>0</number>
+    </property>
+    <property name="columnCount">
+     <number>4</number>
     </property>
     <attribute name="horizontalHeaderCascadingSectionResizes">
      <bool>false</bool>
@@ -873,7 +658,7 @@
      <number>0</number>
     </attribute>
     <attribute name="horizontalHeaderDefaultSectionSize">
-     <number>140</number>
+     <number>76</number>
     </attribute>
     <attribute name="verticalHeaderVisible">
      <bool>false</bool>
@@ -884,20 +669,24 @@
     <attribute name="verticalHeaderDefaultSectionSize">
      <number>20</number>
     </attribute>
-    <row/>
-    <row/>
-    <row/>
-    <row/>
-    <row/>
-    <row/>
     <column>
      <property name="text">
-      <string>Type</string>
+      <string>Command</string>
      </property>
     </column>
     <column>
      <property name="text">
-      <string>Command String</string>
+      <string>String</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>Min</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>Max</string>
      </property>
     </column>
    </widget>
@@ -906,9 +695,9 @@
    <property name="geometry">
     <rect>
      <x>830</x>
-     <y>10</y>
+     <y>0</y>
      <width>141</width>
-     <height>461</height>
+     <height>501</height>
     </rect>
    </property>
    <property name="title">
@@ -940,7 +729,7 @@
      <string>Has LAN</string>
     </property>
    </widget>
-   <widget class="QCheckBox" name="hasEtherneet">
+   <widget class="QCheckBox" name="hasEthernet">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -1122,14 +911,105 @@
      <string>Has Repeater Mode</string>
     </property>
    </widget>
+   <widget class="QCheckBox" name="hasIFShift">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>350</y>
+      <width>111</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Has IF Shift</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="hasAttenuator">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>370</y>
+      <width>111</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Has Attenuator</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="hasPreamp">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>390</y>
+      <width>111</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Has Preamp</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="hasTransmit">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>410</y>
+      <width>111</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Has Transmit</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="hasPTTCommand">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>430</y>
+      <width>121</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Has PTT Command</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="useRTSforPTT">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>470</y>
+      <width>111</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Use RTS for PTT</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="hasFDComms">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>450</y>
+      <width>121</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>HasFDComms</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QGroupBox" name="groupBox_17">
    <property name="geometry">
     <rect>
-     <x>600</x>
-     <y>360</y>
+     <x>440</x>
+     <y>390</y>
      <width>171</width>
-     <height>121</height>
+     <height>151</height>
     </rect>
    </property>
    <property name="title">
@@ -1141,7 +1021,7 @@
       <x>0</x>
       <y>30</y>
       <width>171</width>
-      <height>91</height>
+      <height>121</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -1150,8 +1030,14 @@
       <verstretch>0</verstretch>
      </sizepolicy>
     </property>
+    <property name="alternatingRowColors">
+     <bool>true</bool>
+    </property>
+    <property name="sortingEnabled">
+     <bool>true</bool>
+    </property>
     <property name="rowCount">
-     <number>5</number>
+     <number>0</number>
     </property>
     <attribute name="horizontalHeaderMinimumSectionSize">
      <number>0</number>
@@ -1168,11 +1054,129 @@
     <attribute name="verticalHeaderDefaultSectionSize">
      <number>20</number>
     </attribute>
-    <row/>
-    <row/>
-    <row/>
-    <row/>
-    <row/>
+    <column>
+     <property name="text">
+      <string>Num</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>Name</string>
+     </property>
+    </column>
+   </widget>
+  </widget>
+  <widget class="QGroupBox" name="groupBox_10">
+   <property name="geometry">
+    <rect>
+     <x>620</x>
+     <y>340</y>
+     <width>171</width>
+     <height>201</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>Tuning Steps</string>
+   </property>
+   <widget class="tableWidget" name="tuningSteps">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>30</y>
+      <width>171</width>
+      <height>171</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="alternatingRowColors">
+     <bool>true</bool>
+    </property>
+    <property name="sortingEnabled">
+     <bool>true</bool>
+    </property>
+    <property name="rowCount">
+     <number>0</number>
+    </property>
+    <attribute name="horizontalHeaderMinimumSectionSize">
+     <number>0</number>
+    </attribute>
+    <attribute name="horizontalHeaderDefaultSectionSize">
+     <number>73</number>
+    </attribute>
+    <attribute name="verticalHeaderVisible">
+     <bool>false</bool>
+    </attribute>
+    <attribute name="verticalHeaderMinimumSectionSize">
+     <number>0</number>
+    </attribute>
+    <attribute name="verticalHeaderDefaultSectionSize">
+     <number>20</number>
+    </attribute>
+    <column>
+     <property name="text">
+      <string>Num</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>Hz</string>
+     </property>
+    </column>
+   </widget>
+  </widget>
+  <widget class="QGroupBox" name="groupBox_11">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>390</y>
+     <width>141</width>
+     <height>151</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>Flters</string>
+   </property>
+   <widget class="tableWidget" name="filters">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>30</y>
+      <width>141</width>
+      <height>121</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="alternatingRowColors">
+     <bool>true</bool>
+    </property>
+    <property name="sortingEnabled">
+     <bool>true</bool>
+    </property>
+    <property name="rowCount">
+     <number>0</number>
+    </property>
+    <attribute name="horizontalHeaderMinimumSectionSize">
+     <number>20</number>
+    </attribute>
+    <attribute name="horizontalHeaderDefaultSectionSize">
+     <number>60</number>
+    </attribute>
+    <attribute name="verticalHeaderVisible">
+     <bool>false</bool>
+    </attribute>
+    <attribute name="verticalHeaderDefaultSectionSize">
+     <number>24</number>
+    </attribute>
     <column>
      <property name="text">
       <string>Num</string>
