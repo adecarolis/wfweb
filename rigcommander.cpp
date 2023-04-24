@@ -859,9 +859,18 @@ void rigCommander::setRitValue(int ritValue)
 
 void rigCommander::setMode(mode_info m)
 {
-    if (m.mk == modeWFM) // FM only has a single filter (all other settings result in an error)
+    foreach (auto&& filter, rigCaps.filters)
     {
-        m.filter = '\x01';
+        if (filter.num == m.filter)
+        {
+            // Does this mode supports this filter?
+            if (!(filter.modes & (1 << m.reg)))
+            {
+                qInfo(logRig()) << "Filter" << m.filter << "not supported in mode" << m.name << "reg:" << m.reg << "modes:" << QString::number(filter.modes,16);
+                m.filter = '\x01'; // Set the default filter if not set
+            }
+            break;
+        }
     }
 
     auto it = rigCaps.commands.find(funcMode);
@@ -871,7 +880,7 @@ void rigCommander::setMode(mode_info m)
         QByteArray payload=it.value().data;
         payload.append(static_cast<unsigned char>(m.VFO));
         payload.append(m.reg);
-        payload.append(static_cast<unsigned char>(m.data)); // Not currently used (but could be!)
+        payload.append(static_cast<unsigned char>(m.data));
         payload.append(m.filter);
         prepDataAndSend(payload);
 
@@ -891,11 +900,17 @@ void rigCommander::setMode(mode_info m)
 
 void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
 {
-    mode_info m;
-    m.reg=mode;
-    m.VFO=selVFO_t::activeVFO;
-    m.filter=modeFilter;
-    setMode(m);
+    foreach (mode_info m, rigCaps.modes)
+    {
+        if (m.reg == mode)
+        {
+            mode_info mi = mode_info(m);
+            mi.filter = modeFilter;
+            mi.VFO=selVFO_t::activeVFO;
+            setMode(mi);
+            break;
+        }
+    }
 }
 
 void rigCommander::setDataMode(bool dataOn, unsigned char filter)
@@ -2142,6 +2157,9 @@ void rigCommander::parseCommand()
         break;
     case funcModData3Input:
         break;
+    case funcDashRatio:
+        emit haveDashRatio(bcdHexToUChar(payloadIn[4]));
+
     // 0x1b register
     case funcRepeaterTone:
         emit haveTone(decodeTone(payloadIn));
@@ -4425,7 +4443,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numFilters; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.filters.push_back((unsigned char)settings->value("Num", 0).toInt());
+            rigCaps.filters.push_back(filterType((unsigned char)settings->value("Num", 0).toInt(), settings->value("Name", "").toString(), settings->value("Modes", 0).toUInt()));
         }
         settings->endArray();
     }

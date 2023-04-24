@@ -610,6 +610,11 @@
       <string>Name</string>
      </property>
     </column>
+    <column>
+     <property name="text">
+      <string>BW</string>
+     </property>
+    </column>
    </widget>
   </widget>
   <widget class="QGroupBox" name="groupBox_8">
@@ -1185,6 +1190,11 @@
     <column>
      <property name="text">
       <string>Name</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>Modes</string>
      </property>
     </column>
    </widget>

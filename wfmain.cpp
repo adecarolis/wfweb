@@ -6139,17 +6139,24 @@ void wfmain::on_goFreqBtn_clicked()
     }
     if(ok)
     {
-        mode_info m;
         issueCmd(cmdSetFreq, f);
-        m.mk = sidebandChooser::getMode(f, currentMode);
-        m.reg = (unsigned char) m.mk;
-        m.filter = ui->modeFilterCombo->currentData().toInt();
-        m.data = ui->dataModeBtn->isChecked();
 
-        if((m.mk != currentMode) && !usingDataMode && prefs.automaticSidebandSwitching)
+        foreach (mode_info mi, rigCaps.modes)
         {
-            issueCmd(cmdSetMode, m);
-            currentMode = m.mk;
+            if (mi.reg == sidebandChooser::getMode(f, currentMode))
+            {
+                mode_info m = mode_info(mi);
+                m.filter = ui->modeFilterCombo->currentData().toInt();
+                m.data = ui->dataModeBtn->isChecked();
+                m.VFO=selVFO_t::activeVFO;
+                if((m.mk != currentMode) && !usingDataMode && prefs.automaticSidebandSwitching)
+                {
+                    issueCmd(cmdSetMode, m);
+                    issueDelayedCommand(cmdGetMode);
+                    currentMode = m.mk;
+                }
+                break;
+            }
         }
 
         f.MHzDouble = (float)f.Hz / 1E6;
@@ -6301,12 +6308,25 @@ void wfmain::changeMode(mode_kind mode)
 
 void wfmain::changeMode(mode_kind mode, bool dataOn)
 {
-    int filter = ui->modeFilterCombo->currentData().toInt();
-    mode_info m;
-    m.filter = (unsigned char) filter;
-    m.reg = (unsigned char) mode;
-    m.data = dataOn;
-    issueCmd(cmdSetMode, m);
+
+    foreach (mode_info mi, rigCaps.modes)
+    {
+        if (mi.mk == mode)
+        {
+            mode_info m;
+            m = mode_info(mi);
+            m.filter = ui->modeFilterCombo->currentData().toInt();
+            m.data = dataOn;
+            m.VFO=selVFO_t::activeVFO;
+            if((m.mk != currentMode) && !usingDataMode && prefs.automaticSidebandSwitching)
+            {
+                issueCmd(cmdSetMode, m);
+                currentMode = m.mk;
+                issueDelayedCommand(cmdGetMode);
+            }
+            break;
+        }
+    }
 
     currentMode = mode;
 
@@ -6330,10 +6350,8 @@ void wfmain::on_modeSelectCombo_activated(int index)
     // The "acticvated" signal means the user initiated a mode change.
     // This function is not called if code initiated the change.
 
-    mode_info mode;
     unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->itemData(index).toUInt());
     currentModeIndex = newMode;
-    mode.reg = newMode;
 
 
     int filterSelection = ui->modeFilterCombo->currentData().toInt();
@@ -6343,24 +6361,20 @@ void wfmain::on_modeSelectCombo_activated(int index)
         return;
     } else {
         //qInfo(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
-        currentMode = (mode_kind)newMode;
-        mode.filter = filterSelection;
-        mode.name = ui->modeSelectCombo->currentText(); // for debug
-        mode.data = ui->dataModeBtn->isChecked();
-
-        for(unsigned int i=0; i < rigCaps.modes.size(); i++)
+        foreach (mode_info mi, rigCaps.modes)
         {
-            if(rigCaps.modes.at(i).reg == newMode)
+            if (mi.mk == (mode_kind)newMode)
             {
-                mode.mk = rigCaps.modes.at(i).mk;
+                mode_info m = mode_info(mi);
+                m.filter = filterSelection;
+                m.data = ui->dataModeBtn->isChecked();
+                m.VFO=selVFO_t::activeVFO;
+                issueCmd(cmdSetMode, m);
+                currentMode = (mode_kind)newMode;
+                issueDelayedCommand(cmdGetMode);
                 break;
             }
         }
-
-        issueCmd(cmdSetMode, mode);
-        issueDelayedCommand(cmdGetMode);
-
-        //currentModeInfo = mode;
     }
 }
 
@@ -7046,7 +7060,6 @@ void wfmain::on_modeFilterCombo_activated(int index)
 {
 
     int filterSelection = ui->modeFilterCombo->itemData(index).toInt();
-    mode_info m;
     if(filterSelection == 99)
     {
         // TODO:
@@ -7063,13 +7076,19 @@ void wfmain::on_modeFilterCombo_activated(int index)
             emit setDataMode(true, (unsigned char)filterSelection);
             issueDelayedCommand(cmdSetDataModeOn);
         } else {
-            m.filter = (unsigned char)filterSelection;
-            m.mk = (mode_kind)newMode;
-            m.reg = newMode;
-            m.data = ui->dataModeBtn->isChecked();
-            issueCmd(cmdSetMode, m);
-
-            //emit setMode(newMode, (unsigned char)filterSelection);
+            foreach (mode_info mi, rigCaps.modes)
+            {
+                if (mi.mk == (mode_kind)newMode)
+                {
+                    mode_info m;
+                    m = mode_info(mi);
+                    m.filter = filterSelection;
+                    m.data = ui->dataModeBtn->isChecked();
+                    m.VFO=selVFO_t::activeVFO;
+                    issueCmd(cmdSetMode, m);
+                    break;
+                }
+            }
         }
     }
 

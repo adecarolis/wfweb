@@ -24,6 +24,9 @@ rigCreator::~rigCreator()
 void rigCreator::on_loadFile_clicked(bool clicked)
 {
     Q_UNUSED(clicked)
+
+    bool ok=false; // Used for number conversions;
+
     QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
 
     QDir dir(appdata);
@@ -174,6 +177,7 @@ void rigCreator::on_loadFile_clicked(bool clicked)
             ui->modes->insertRow(ui->modes->rowCount());
             ui->modes->model()->setData(ui->modes->model()->index(c,0),QString::number(settings->value("Num", 0).toInt()).rightJustified(2,'0'));
             ui->modes->model()->setData(ui->modes->model()->index(c,1),settings->value("Name", "").toString());
+            ui->modes->model()->setData(ui->modes->model()->index(c,2),settings->value("BW", 0).toString().toInt());
         }
         settings->endArray();
     }
@@ -253,6 +257,7 @@ void rigCreator::on_loadFile_clicked(bool clicked)
             ui->filters->insertRow(ui->filters->rowCount());
             ui->filters->model()->setData(ui->filters->model()->index(c,0),settings->value("Num", 0).toString());
             ui->filters->model()->setData(ui->filters->model()->index(c,1),settings->value("Name", "").toString());
+            ui->filters->model()->setData(ui->filters->model()->index(c,2),QString::number(settings->value("Modes", 0).toUInt(),16));
         }
         settings->endArray();
     }
@@ -265,6 +270,8 @@ void rigCreator::on_saveFile_clicked(bool clicked)
 {
     Q_UNUSED(clicked)
     QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+
+    bool ok=false; // Used for number conversions.
 
     QDir dir(appdata);
     if (!dir.exists()) {
@@ -282,7 +289,6 @@ void rigCreator::on_saveFile_clicked(bool clicked)
     }
 
     QSettings* settings = new QSettings(file, QSettings::Format::IniFormat);
-    bool ok=false;
 
     settings->setValue("Version", QString(WFVIEW_VERSION));
     settings->remove("Rig");
@@ -378,6 +384,7 @@ void rigCreator::on_saveFile_clicked(bool clicked)
         settings->setArrayIndex(n);
         settings->setValue("Num", (ui->modes->item(n,0) == NULL) ? 0 : ui->modes->item(n,0)->text().toInt());
         settings->setValue("Name",(ui->modes->item(n,1) == NULL) ? "" : ui->modes->item(n,1)->text());
+        settings->setValue("BW",(ui->modes->item(n,2) == NULL) ? 0 : ui->modes->item(n,2)->text().toInt());
     }
     settings->endArray();
 
@@ -427,6 +434,7 @@ void rigCreator::on_saveFile_clicked(bool clicked)
         settings->setArrayIndex(n);
         settings->setValue("Num",(ui->filters->item(n,0) == NULL) ? 0 :  ui->filters->item(n,0)->text().toInt());
         settings->setValue("Name",(ui->filters->item(n,1) == NULL) ? "" :  ui->filters->item(n,1)->text());
+        settings->setValue("Modes",(ui->filters->item(n,2) == NULL) ? 0 : ui->filters->item(n,2)->text().toUInt(&ok,16));
     }
     settings->endArray();
 

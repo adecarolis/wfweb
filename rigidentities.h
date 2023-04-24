@@ -135,6 +135,18 @@ struct bandType {
     double range;
 };
 
+struct filterType {
+    filterType() {}
+    filterType(unsigned char num, QString name, unsigned int modes) :
+        num(num), name(name), modes(modes) {}
+
+    unsigned char num;
+    QString name;
+    unsigned int modes;
+};
+
+
+
 model_kind determineRadioModel(unsigned char rigID);
 
 struct rigCapabilities {
@@ -193,7 +205,7 @@ struct rigCapabilities {
     std::vector <unsigned char> attenuators;
     std::vector <unsigned char> preamps;
     std::vector <unsigned char> antennas;
-    std::vector <unsigned char> filters;
+    std::vector <filterType> filters;
     std::vector <centerSpanData> scopeCenterSpans;
     std::vector <bandType> bands;
     std::vector <spanType> spans;
