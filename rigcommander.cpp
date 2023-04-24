@@ -1060,9 +1060,15 @@ void rigCommander::setPassband(quint16 pass)
     * AM                  0 to 49     200 Hz ~ 10.0 kHz (200 Hz)
     */
 
-    // Passband is fixed in FM mode
-    if (state.getChar(MODE) == modeFM) {
-        return;
+    // Passband may be fixed?
+    unsigned char mode = state.getChar(MODE);
+    foreach (mode_info m, rigCaps.modes)
+    {
+        if (m.reg == mode) {
+            if (!m.bw) {
+                return;
+            }
+        }
     }
 
     auto it = rigCaps.commands.find(funcPassband);
@@ -1103,10 +1109,17 @@ void rigCommander::setPassband(quint16 pass)
 
 void rigCommander::getPassband()
 {
-    // Passband is fixed in FM mode
-    if (state.getChar(MODE) == modeFM) {
-        return;
+    // Passband may be fixed?
+    unsigned char mode = state.getChar(MODE);
+    foreach (mode_info m, rigCaps.modes)
+    {
+        if (m.reg == mode) {
+            if (!m.bw) {
+                    return;
+            }
+        }
     }
+
     auto it = rigCaps.commands.find(funcPassband);
 	if (it != rigCaps.commands.end()) 
 	{
@@ -2483,10 +2496,17 @@ void rigCommander::setIFShift(unsigned char level)
 
 void rigCommander::setTPBFInner(unsigned char level)
 {
-    // Passband is fixed in FM mode
-    if (state.getChar(MODE) == modeFM) {
-        return;
+    // Passband may be fixed?
+    unsigned char mode = state.getChar(MODE);
+    foreach (mode_info m, rigCaps.modes)
+    {
+        if (m.reg == mode) {
+                if (!m.bw) {
+                    return;
+                }
+        }
     }
+
     auto it = rigCaps.commands.find(funcPBTInner);
 	if (it != rigCaps.commands.end()) 
 	{
@@ -2498,10 +2518,17 @@ void rigCommander::setTPBFInner(unsigned char level)
 
 void rigCommander::setTPBFOuter(unsigned char level)
 {
-    // Passband is fixed in FM mode
-    if (state.getChar(MODE) == modeFM) {
-        return;
+    // Passband may be fixed?
+    unsigned char mode = state.getChar(MODE);
+    foreach (mode_info m, rigCaps.modes)
+    {
+        if (m.reg == mode) {
+                if (!m.bw) {
+                    return;
+                }
+        }
     }
+
     auto it = rigCaps.commands.find(funcPBTOuter);
 	if (it != rigCaps.commands.end()) 
 	{
@@ -3105,9 +3132,15 @@ void rigCommander::getIFShift()
 
 void rigCommander::getTPBFInner()
 {
-    // Passband is fixed in FM mode
-    if (state.getChar(MODE) == modeFM) {
-        return;
+    // Passband may be fixed?
+    unsigned char mode = state.getChar(MODE);
+    foreach (mode_info m, rigCaps.modes)
+    {
+        if (m.reg == mode) {
+            if (!m.bw) {
+                    return;
+            }
+        }
     }
 
     auto it = rigCaps.commands.find(funcPBTInner);
@@ -3120,9 +3153,15 @@ void rigCommander::getTPBFInner()
 
 void rigCommander::getTPBFOuter()
 {
-    // Passband is fixed in FM mode
-    if (state.getChar(MODE) == modeFM) {
-        return;
+    // Passband may be fixed?
+    unsigned char mode = state.getChar(MODE);
+    foreach (mode_info m, rigCaps.modes)
+    {
+        if (m.reg == mode) {
+            if (!m.bw) {
+                    return;
+            }
+        }
     }
 
     auto it = rigCaps.commands.find(funcPBTOuter);
@@ -4241,12 +4280,13 @@ void rigCommander::parseWFData()
 }
 
 
-mode_info rigCommander::createMode(mode_kind m, unsigned char reg, QString name)
+mode_info rigCommander::createMode(mode_kind m, unsigned char reg, QString name, bool bw)
 {
     mode_info mode;
     mode.mk = m;
     mode.reg = reg;
     mode.name = name;
+    mode.bw = bw;
     return mode;
 }
 
@@ -4363,7 +4403,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numModes; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.modes.push_back(createMode(mode_kind(settings->value("Num", 0).toInt()),  settings->value("Num", 0).toInt(), settings->value("Name", "").toString()));
+            rigCaps.modes.push_back(createMode(mode_kind(settings->value("Num", 0).toInt()),  settings->value("Num", 0).toInt(), settings->value("Name", "").toString(), settings->value("BW", 0).toInt()!=0));
         }
         settings->endArray();
     }

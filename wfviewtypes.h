@@ -122,6 +122,7 @@ struct mode_info {
     selVFO_t VFO = activeVFO;
     bool data = false;
     QString name;
+    bool bw; // Can the bandwidth of the current filter be changed?
 };
 
 enum breakIn_t {
