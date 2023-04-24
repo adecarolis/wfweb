@@ -24,6 +24,8 @@
 // note: using a define because switch case doesn't even work with const unsigned char. Surprised me.
 #define compCivAddr 0xE1
 
+//#define DEBUG_PARSE // Enable to output Info messages every 10s with command parse timing.
+
 class rigCommander : public QObject
 {
     Q_OBJECT
@@ -502,11 +504,13 @@ private:
     quint8 guid[GUIDLEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
     QHash<unsigned char,QString> rigList;
 
+#ifdef DEBUG_PARSE
     quint64 averageParseTime=0;
     int numParseSamples = 0;
     int lowParse=9999;
     int highParse=0;
     QTime lastParseReport = QTime::currentTime();
+#endif
 };
 
 #endif // RIGCOMMANDER_H

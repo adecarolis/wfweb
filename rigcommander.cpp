@@ -5,7 +5,7 @@
 #include "logcategories.h"
 #include "printhex.h"
 
-// Copyright 2017-2020 Elliott H. Liggett
+// Copyright 2017-2023 Elliott H. Liggett W6EL and Phil E. Taylor M0VSE
 
 // This file parses data from the radio and also forms commands to the radio.
 // The radio physical interface is handled by the commHandler() instance "comm"
@@ -1045,6 +1045,11 @@ void rigCommander::setPassband(quint16 pass)
     * AM                  0 to 49     200 Hz ~ 10.0 kHz (200 Hz)
     */
 
+    // Passband is fixed in FM mode
+    if (state.getChar(MODE) == modeFM) {
+        return;
+    }
+
     auto it = rigCaps.commands.find(funcPassband);
 	if (it != rigCaps.commands.end()) 
 	{
@@ -1083,6 +1088,10 @@ void rigCommander::setPassband(quint16 pass)
 
 void rigCommander::getPassband()
 {
+    // Passband is fixed in FM mode
+    if (state.getChar(MODE) == modeFM) {
+        return;
+    }
     auto it = rigCaps.commands.find(funcPassband);
 	if (it != rigCaps.commands.end()) 
 	{
@@ -1203,7 +1212,7 @@ void rigCommander::setTone(rptrTone_t t)
         payload.append(static_cast<unsigned char>(t.useSecondaryVFO));
 	}
 
-    auto it2 = rigCaps.commands.find(funcTone);
+    auto it2 = rigCaps.commands.find(funcRepeaterTone);
     if (it2 != rigCaps.commands.end())
 	{
         payload.append(it2.value().data);
@@ -1229,7 +1238,7 @@ void rigCommander::setTSQL(rptrTone_t t)
         payload.append(static_cast<unsigned char>(t.useSecondaryVFO));
 	}
 	
-    auto it2 = rigCaps.commands.find(funcTSQL);
+    auto it2 = rigCaps.commands.find(funcRepeaterTSQL);
     if (it2 != rigCaps.commands.end())
 	{
         QByteArray payload=it2.value().data;
@@ -1240,7 +1249,7 @@ void rigCommander::setTSQL(rptrTone_t t)
 
 void rigCommander::setDTCS(quint16 dcscode, bool tinv, bool rinv)
 {
-    auto it = rigCaps.commands.find(funcDTCS);
+    auto it = rigCaps.commands.find(funcRepeaterDCS);
 	if (it != rigCaps.commands.end()) 
 	{
         QByteArray payload=it.value().data;
@@ -1776,12 +1785,15 @@ void rigCommander::parseCommand()
         }
         return; // We can't do anything else until we have a rig model.
     }
+
+#ifdef DEBUG_PARSE
     QElapsedTimer performanceTimer;
     performanceTimer.start();
+#endif
 
     funcs func = funcNone;
 
-    // The majority of commands are single character so it makes sense to start there I think?
+    // Many commands are single character so it makes sense to start there I think?
     for (int i=1;i<=4;i++)
     {
         auto it = rigCaps.commandsReverse.find(payloadIn.left(i));
@@ -1807,8 +1819,9 @@ void rigCommander::parseCommand()
     }
 */
 
+#ifdef DEBUG_PARSE
     int currentParse=performanceTimer.nsecsElapsed();
-
+#endif
 
     if (!rigCaps.commands.contains(func)) {
         qInfo(logRig()) << "Unsupported command received from rig" << funcString[func] << "Check rig file (" << payloadIn.toHex() << ")";
@@ -2227,7 +2240,7 @@ void rigCommander::parseCommand()
         printHex(payloadIn, false ,true);
         break;
     default:
-        // Unsupported/Unknown command
+        qWarning(logRig()) << "Unhandled command received from rig" << payloadIn.toHex() << "Contact support!";
         break;
     }
 
@@ -2239,58 +2252,8 @@ void rigCommander::parseCommand()
         printHexNow(payloadIn, logRigTraffic());
     }
 
-    /*
-        case '\x14':
-            // read levels
-            parseLevels();
-            break;
-        case '\x15':
-            // Metering such as s, power, etc
-            parseLevels();
-            break;
-        case '\x16':
-            parseRegister16();
-            break;
-        case '\x21':
-            // RIT and Delta TX:
-            parseRegister21();
-            break;
-        case '\x1A':
-            if(payloadIn[01] == '\x05')
-            {
-                parseDetailedRegisters1A05();
-            } else {
-                parseRegisters1A();
-            }
-            break;
-        case '\x1B':
-            parseRegister1B();
-            break;
-        case '\x1C':
-            parseRegisters1C();
-            break;
-        case '\xFB':
-            // Fine Business, ACK from rig.
-            break;
-        case '\xFA':
-            // error
 
-            qDebug(logRig()) << "Error (FA) received from rig.";
-            printHex(payloadIn, false ,true);
-            break;
-
-        default:
-            // This gets hit a lot when the pseudo-term is
-            // using commands wfview doesn't know yet.
-            // qInfo(logRig()) << "Have other data with cmd: " << std::hex << payloadIn[00];
-            // printHex(payloadIn, false, true);
-            break;
-    }
-    // is any payload left?
-*/
-
-
-    //int currentParse=performanceTimer.nsecsElapsed();
+#ifdef DEBUG_PARSE
     averageParseTime += currentParse;
     if (lowParse > currentParse)
         lowParse = currentParse;
@@ -2307,6 +2270,7 @@ void rigCommander::parseCommand()
         highParse=0;
         lastParseReport = QTime::currentTime();
     }
+#endif
 }
 
 void rigCommander::parseLevels()
@@ -2501,6 +2465,10 @@ void rigCommander::setIFShift(unsigned char level)
 
 void rigCommander::setTPBFInner(unsigned char level)
 {
+    // Passband is fixed in FM mode
+    if (state.getChar(MODE) == modeFM) {
+        return;
+    }
     auto it = rigCaps.commands.find(funcPBTInner);
 	if (it != rigCaps.commands.end()) 
 	{
@@ -2512,6 +2480,10 @@ void rigCommander::setTPBFInner(unsigned char level)
 
 void rigCommander::setTPBFOuter(unsigned char level)
 {
+    // Passband is fixed in FM mode
+    if (state.getChar(MODE) == modeFM) {
+        return;
+    }
     auto it = rigCaps.commands.find(funcPBTOuter);
 	if (it != rigCaps.commands.end()) 
 	{
@@ -3115,6 +3087,11 @@ void rigCommander::getIFShift()
 
 void rigCommander::getTPBFInner()
 {
+    // Passband is fixed in FM mode
+    if (state.getChar(MODE) == modeFM) {
+        return;
+    }
+
     auto it = rigCaps.commands.find(funcPBTInner);
 	if (it != rigCaps.commands.end()) 
 	{
@@ -3125,6 +3102,11 @@ void rigCommander::getTPBFInner()
 
 void rigCommander::getTPBFOuter()
 {
+    // Passband is fixed in FM mode
+    if (state.getChar(MODE) == modeFM) {
+        return;
+    }
+
     auto it = rigCaps.commands.find(funcPBTOuter);
 	if (it != rigCaps.commands.end()) 
 	{
@@ -3424,6 +3406,7 @@ void rigCommander::setTime(timekind t)
         payload.append(convertNumberToHex(t.hours));
         payload.append(convertNumberToHex(t.minutes));
         prepDataAndSend(payload);
+        qInfo(logRig()) << QString("Setting Time: %0:%1 (%3)").arg(t.hours).arg(t.minutes).arg(payload.toHex());
     }
 
 /*
@@ -3473,6 +3456,7 @@ void rigCommander::setDate(datekind d)
         payload.append(convertNumberToHex(d.month));
         payload.append(convertNumberToHex(d.day));
         prepDataAndSend(payload);
+        qInfo(logRig()) << QString("Setting Date: %0-%1-%2 (%3)").arg(d.year).arg(d.month).arg(d.day).arg(payload.toHex());
     }
 
     /*
@@ -3509,14 +3493,15 @@ void rigCommander::setDate(datekind d)
 
 void rigCommander::setUTCOffset(timekind t)
 {
-    auto it = rigCaps.commands.find(funcDate);
+    auto it = rigCaps.commands.find(funcUTCOffset);
 	if (it != rigCaps.commands.end()) 
 	{
         QByteArray payload=it.value().data;
         payload.append(convertNumberToHex(t.hours));
         payload.append(convertNumberToHex(t.minutes));
-        payload.append((unsigned char)t.isMinus);
+        payload.append(static_cast<unsigned char>(t.isMinus));
         prepDataAndSend(payload);
+        qInfo(logRig()) << QString("Setting UTC Offset: %0%1:%2 (%3)").arg((t.isMinus)?"-":"+").arg(t.hours).arg(t.minutes).arg(payload.toHex());
     }
 
 /*
