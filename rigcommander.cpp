@@ -319,6 +319,25 @@ void rigCommander::prepDataAndSend(QByteArray data)
     emit dataForComm(data);
 }
 
+bool rigCommander::getCommand(funcs func, QByteArray &payload, int value)
+{
+    // Value is set to -10000 by default as this should be outside any "real" values
+    auto it = rigCaps.commands.find(func);
+    if (it != rigCaps.commands.end())
+    {
+        if (value == -10000 || (value>=it.value().minVal && value <= it.value().maxVal))
+        {
+            payload.append(it.value().data);
+            return true;
+        }
+        else if (value != -10000)
+        {
+            qInfo(logRig()) << QString("Value %0 for %1 is outside of allowed range (%2-%3)").arg(value).arg(funcString[func]).arg(it.value().minVal).arg(it.value().maxVal);
+        }
+    }
+    return false;
+}
+
 void rigCommander::powerOn()
 {
     QByteArray payload;
@@ -347,19 +366,18 @@ void rigCommander::powerOn()
         payload.append("\xFE");
     }
 
-    auto it = rigCaps.commands.find(funcPower);
-    if (it != rigCaps.commands.end())
+    unsigned char cmd = 0x01;
+    if (getCommand(funcPower,payload,cmd))
     {
-        unsigned char cmd = 0x01;
-        QByteArray payload=it.value().data;
         payload.append(cmd);
         prepDataAndSend(payload);
-    } else {
+    }
+    else
+    {
         // We may not know the command to turn the radio on so here it is:
         payload.append(payloadPrefix); // FE FE 94 E1
         payload.append("\x18\x01");
         payload.append(payloadSuffix); // FD
-
     }
 
     qDebug(logRig()) << "Power ON command in rigcommander to be sent to rig: ";
@@ -371,11 +389,10 @@ void rigCommander::powerOn()
 
 void rigCommander::powerOff()
 {
-    auto it = rigCaps.commands.find(funcPower);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    unsigned char cmd = '\x00';
+    if (getCommand(funcPower,payload,cmd))
     {
-        unsigned char cmd = 0x00;
-        QByteArray payload=it.value().data;
         payload.append(cmd);
         prepDataAndSend(payload);
     }
@@ -383,44 +400,44 @@ void rigCommander::powerOff()
 
 void rigCommander::enableSpectOutput()
 {
-    auto it = rigCaps.commands.find(funcScopeWaveData);
-    if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-		payload.append("\x01");
+    QByteArray payload;
+    unsigned char cmd = '\x01';
+    if (getCommand(funcScopeWaveData,payload,cmd))
+    {
+        payload.append(cmd);
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::disableSpectOutput()
 {
-    auto it = rigCaps.commands.find(funcScopeWaveData);
-    if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-		payload.append("\x00");
+    QByteArray payload;
+    unsigned char cmd = '\x00';
+    if (getCommand(funcScopeWaveData,payload,cmd))
+    {
+        payload.append(cmd);
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::enableSpectrumDisplay()
 {
-    auto it = rigCaps.commands.find(funcScopeOnOff);
-    if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-		payload.append("\x01");
+    QByteArray payload;
+    unsigned char cmd = '\x01';
+    if (getCommand(funcScopeOnOff,payload,cmd))
+    {
+        payload.append(cmd);
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::disableSpectrumDisplay()
 {
-    auto it = rigCaps.commands.find(funcScopeOnOff);
-    if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        payload.append("\x00");
+    QByteArray payload;
+    unsigned char cmd = '\x00';
+    if (getCommand(funcScopeOnOff,payload,cmd))
+    {
+        payload.append(cmd);
         prepDataAndSend(payload);
     }
 }
@@ -429,22 +446,15 @@ void rigCommander::setSpectrumBounds(double startFreq, double endFreq, unsigned 
 {
     unsigned char range = 1;
 
-    auto it = rigCaps.commands.find(funcScopeFixedFreq);
-    if (it != rigCaps.commands.end()) 
-	{
-		if((edgeNumber > 4) || (!edgeNumber))
-		{
-			return;
-		}
-
+    QByteArray payload;
+    if (getCommand(funcScopeFixedFreq,payload,edgeNumber))
+    {
         // Each band should be configured with a maximum range, except for the ICR8600 which doesn't really have "bands"
         for (bandType band: rigCaps.bands)
         {
             if (band.range != 0.0 && startFreq > band.range)
                 range++;
         }
-
-        QByteArray payload=it.value().data;
 
         payload.append(range);
         payload.append(edgeNumber);
@@ -454,110 +464,39 @@ void rigCommander::setSpectrumBounds(double startFreq, double endFreq, unsigned 
         prepDataAndSend(payload);
         qInfo(logRig()) << QString("Setting Fixed Range from: %0 to %1 edge %2 range %3").arg(startFreq).arg(endFreq).arg(edgeNumber).arg(range);
     }
-
-        /*
-		// We should be able to remove this as well
-		switch(rigCaps.model)
-		{
-
-			case model9700:
-				if(startFreq > 148)
-				{
-					freqRange++;
-					if(startFreq > 450)
-					{
-						freqRange++;
-					}
-                }
-				break;
-			case model705:
-			case model7300:
-			case model7610:
-			case model7850:
-				// Some rigs do not go past 60 MHz, but we will not encounter
-				// requests for those ranges since they are derived from the rig's existing scope range.
-				// start value of freqRange is 1.
-				if(startFreq > 1.6)
-					freqRange++;
-				if(startFreq > 2.0)
-					freqRange++;
-				if(startFreq > 6.0)
-					freqRange++;
-				if(startFreq > 8.0)
-					freqRange++;
-				if(startFreq > 11.0)
-					freqRange++;
-				if(startFreq > 15.0)
-					freqRange++;
-				if(startFreq > 20.0)
-					freqRange++;
-				if(startFreq > 22.0)
-					freqRange++;
-				if(startFreq > 26.0)
-					freqRange++;
-				if(startFreq > 30.0)
-					freqRange++;
-				if(startFreq > 45.0)
-					freqRange++;
-				if(startFreq > 60.0)
-					freqRange++;
-				if(startFreq > 74.8)
-					freqRange++;
-				if(startFreq > 108.0)
-					freqRange++;
-				if(startFreq > 137.0)
-					freqRange++;
-				if(startFreq > 400.0)
-					freqRange++;
-				break;
-			case modelR8600:
-				freqRange = 1;
-				edgeNumber = 1;
-				break;
-			default:
-				return;
-				break;
-
-
-		}
-	}
-        */
 }
 
 void rigCommander::getScopeMode()
 {
     // center or fixed
-    unsigned char vfo = 0x00; // Need to add multi VFO support
-    auto it = rigCaps.commands.find(funcScopeCenterFixed);
-    if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        payload.append(static_cast<unsigned char>(vfo));
+    QByteArray payload;
+    unsigned char cmd = '\x00';
+    if (getCommand(funcScopeCenterFixed,payload,cmd))
+    {
+        payload.append(cmd);
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getScopeEdge()
 {
-    unsigned char vfo = 0x00; // Need to add multi VFO support
-    auto it = rigCaps.commands.find(funcScopeFixedEdge);
-    if (it != rigCaps.commands.end())
-	{
-        QByteArray payload=it.value().data;
-        payload.append(static_cast<unsigned char>(vfo));
+    QByteArray payload;
+    unsigned char cmd = '\x00';
+    if (getCommand(funcScopeFixedEdge,payload,cmd))
+    {
+        payload.append(cmd);
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setScopeEdge(char edge)
 {
-    // 1 2 or 3
-    unsigned char vfo = 0x00; // Need to add multi VFO support
-    auto it = rigCaps.commands.find(funcScopeFixedEdge);
-    if (it != rigCaps.commands.end() && edge > 0 && edge <5) 
-	{
-        QByteArray payload=it.value().data;
-        payload.append(static_cast<unsigned char>(vfo));
+    // 1 2 or 3 (check command definition)
+    QByteArray payload;
+    unsigned char vfo = '\x00';
+    if (getCommand(funcScopeFixedEdge,payload,edge))
+    {
+        payload.append(vfo);
         payload.append(edge);
         prepDataAndSend(payload);
     }
@@ -570,10 +509,9 @@ void rigCommander::getScopeSpan()
 
 void rigCommander::getScopeSpan(bool isSub)
 {
-    auto it = rigCaps.commands.find(funcScopeSpan);
-    if (it != rigCaps.commands.end())
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcScopeSpan,payload,static_cast<int>(isSub)))
+    {
         payload.append(static_cast<unsigned char>(isSub));
         prepDataAndSend(payload);
     }
@@ -585,11 +523,10 @@ void rigCommander::setScopeSpan(char span)
     // 2.5k = 0
     // 5k = 2, etc.
 
-    unsigned char vfo = 0x0;
-    auto it = rigCaps.commands.find(funcScopeSpan);
-    if (it != rigCaps.commands.end())
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    unsigned char vfo = '\x00';
+    if (getCommand(funcScopeSpan,payload,span))
+    {
         payload.append(vfo);
         payload.append("\x00"); // 10Hz/1Hz
         for (auto&& s: rigCaps.scopeCenterSpans)
@@ -609,13 +546,12 @@ void rigCommander::setScopeSpan(char span)
 
 void rigCommander::setSpectrumMode(spectrumMode spectMode)
 {
-    auto it = rigCaps.commands.find(funcScopeCenterFixed);
-    unsigned char vfo = 0x0;
-    if (it != rigCaps.commands.end())
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    unsigned char vfo = '\x00';
+    if (getCommand(funcScopeCenterFixed,payload,static_cast<int>(spectMode)))
+    {
         payload.append(vfo);
-        payload.append( static_cast<unsigned char>(spectMode) );
+        payload.append(static_cast<unsigned char>(spectMode) );
         prepDataAndSend(payload);
     }
 }
@@ -627,10 +563,9 @@ void rigCommander::getSpectrumRefLevel()
 
 void rigCommander::getSpectrumRefLevel(unsigned char mainSub)
 {
-    auto it = rigCaps.commands.find(funcScopeRef);
-    if (it != rigCaps.commands.end())
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcScopeRef,payload,static_cast<int>(mainSub)))
+    {
         payload.append(mainSub);
         prepDataAndSend(payload);
     }
@@ -638,74 +573,56 @@ void rigCommander::getSpectrumRefLevel(unsigned char mainSub)
 
 void rigCommander::setSpectrumRefLevel(int level)
 {
-    auto it = rigCaps.commands.find(funcScopeRef);
+    // -30 to +10
     unsigned char vfo = 0x0;
-    if (it != rigCaps.commands.end())
-	{
-        QByteArray payload=it.value().data;
-        payload.append(vfo);
-        prepDataAndSend(payload);
-        QByteArray number;
-        QByteArray pn;
-
-        if(level >= 0)
+    QByteArray payload;
+    if (getCommand(funcScopeRef,payload,level))
+    {
+        bool isNegative = false;
+        if(level < 0)
         {
-                pn.setRawData("\x00", 1);
-                number = bcdEncodeInt(level*10);
-        } else {
-                pn.setRawData("\x01", 1);
-                number = bcdEncodeInt( (-level)*10 );
+            isNegative = true;
+            level *= -1;
         }
-
-        payload.append(number);
-        payload.append(pn);
-
-        //qInfo(logRig()) << __func__ << ": scope reference number: " << number << ", PN to: " << pn;
-        //printHex(setting, false, true);
-
+        payload.append(vfo);
+        payload.append(bcdEncodeInt(level*10));
+        payload.append(static_cast<unsigned char>(isNegative));
         prepDataAndSend(payload);
     }
 }
 
+// Not used
 void rigCommander::getSpectrumCenterMode()
 {
-    auto it = rigCaps.commands.find(funcScopeCenterFixed);
-    if (it != rigCaps.commands.end())
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcScopeCenterFixed,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getSpectrumMode()
 {
-    auto it = rigCaps.commands.find(funcScopeCenterFixed);
-    if (it != rigCaps.commands.end())
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcScopeCenterFixed,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setFrequency(unsigned char vfo, freqt freq)
 {
-    auto it = rigCaps.commands.find(funcFreq);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcFreq,payload,vfo))
+    {
         payload.append(vfo);
         payload.append(makeFreqPayload(freq));
         prepDataAndSend(payload);
     }
-    else // Use the older FreqSet command
+    else if (getCommand(funcFreqSet,payload))
     {
-		auto it = rigCaps.commands.find(funcFreqSet);
-		if (it != rigCaps.commands.end()) 
-		{
-			QByteArray payload=it.value().data;
-			payload.append(makeFreqPayload(freq));
-			prepDataAndSend(payload);
-		}
+        payload.append(makeFreqPayload(freq));
+        prepDataAndSend(payload);
     }
 }
 
@@ -714,10 +631,9 @@ void rigCommander::selectVFO(vfo_t vfo)
     // Note, some radios use main/sub,
     // some use A/B,
     // and some appear to use both...
-    auto it = rigCaps.commands.find(funcVFOSelect);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcVFOSelect,payload,vfo))
+    {
         payload.append(static_cast<unsigned char>(vfo));
         prepDataAndSend(payload);
     }
@@ -725,20 +641,18 @@ void rigCommander::selectVFO(vfo_t vfo)
 
 void rigCommander::equalizeVFOsAB()
 {
-    auto it = rigCaps.commands.find(funcVFOSwap);
- 	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcVFOEqualAB,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::equalizeVFOsMS()
 {
-    auto it = rigCaps.commands.find(funcVFOEqualMS);
-    if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcVFOEqualMS,payload))
+    {
         prepDataAndSend(payload);
     }
 }
@@ -747,10 +661,9 @@ void rigCommander::exchangeVFOs()
 {
     // NB: This command exchanges A-B or M-S
     // depending upon the radio.
-    auto it = rigCaps.commands.find(funcVFOSwap);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcVFOSwap,payload))
+    {
         prepDataAndSend(payload);
     }
 }
@@ -802,10 +715,9 @@ QByteArray rigCommander::makeFreqPayload(double freq)
 
 void rigCommander::setRitEnable(bool ritEnabled)
 {
-    auto it = rigCaps.commands.find(funcRit);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcRit,payload),static_cast<int>(ritEnabled))
+    {
         payload.append(static_cast<unsigned char>(ritEnabled));
         prepDataAndSend(payload);
     }
@@ -813,39 +725,33 @@ void rigCommander::setRitEnable(bool ritEnabled)
 
 void rigCommander::getRitEnabled()
 {
-    auto it = rigCaps.commands.find(funcRit);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcRit,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getRitValue()
 {
-    auto it = rigCaps.commands.find(funcRitValue);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcRitValue,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setRitValue(int ritValue)
 {
-    auto it = rigCaps.commands.find(funcRitValue);
-	if (it != rigCaps.commands.end()) 
-	{
+    QByteArray payload;
+    if (getCommand(funcRitValue,payload,ritValue))
+    {
         bool isNegative = false;
-        if(ritValue < it.value().minVal)
+        if(ritValue < 0)
         {
             isNegative = true;
             ritValue *= -1;
         }
-        else if (ritValue > it.value().maxVal) {
-            return;
-        }
-        QByteArray payload=it.value().data;
         QByteArray freqBytes;
         freqt f;
         f.Hz = ritValue;
@@ -863,7 +769,7 @@ void rigCommander::setMode(mode_info m)
     {
         if (filter.num == m.filter)
         {
-            // Does this mode supports this filter?
+            // Does this mode support this filter?
             if (!(filter.modes & (1 << m.reg)))
             {
                 qInfo(logRig()) << "Filter" << m.filter << "not supported in mode" << m.name << "reg:" << m.reg << "modes:" << QString::number(filter.modes,16);
@@ -873,28 +779,20 @@ void rigCommander::setMode(mode_info m)
         }
     }
 
-    auto it = rigCaps.commands.find(funcMode);
-	if (it != rigCaps.commands.end()) 
-	{
-        // Mode with VFO and filter
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcMode,payload,m.reg))
+    {
         payload.append(static_cast<unsigned char>(m.VFO));
         payload.append(m.reg);
         payload.append(static_cast<unsigned char>(m.data));
         payload.append(m.filter);
         prepDataAndSend(payload);
-
     }
-    else 
+    else if (getCommand(funcModeSet,payload))
     {
-		auto it = rigCaps.commands.find(funcModeGet);
-		if (it != rigCaps.commands.end()) 
-		{
-			QByteArray payload=it.value().data;
-			payload.append(m.reg);
-			payload.append(m.filter);
-			prepDataAndSend(payload);
-		}
+        payload.append(m.reg);
+        payload.append(m.filter);
+        prepDataAndSend(payload);
     }
 }
 
@@ -915,10 +813,9 @@ void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
 
 void rigCommander::setDataMode(bool dataOn, unsigned char filter)
 {
-    auto it = rigCaps.commands.find(funcDataMode);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcDataMode,payload,static_cast<int>(dataOn)))
+    {
         payload.append(static_cast<unsigned char>(dataOn));
         payload.append((dataOn) ? filter : 0x0); // if data mode off, bandwidth not defined per ICD.
         prepDataAndSend(payload);
@@ -933,21 +830,14 @@ void rigCommander::getFrequency()
 void rigCommander::getFrequency(unsigned char vfo)
 {
     QByteArray payload;
-    auto it = rigCaps.commands.find(funcFreq);
-	if (it != rigCaps.commands.end()) 
-	{
-        payload=it.value().data;
+    if (getCommand(funcFreq,payload,vfo))
+    {
         payload.append(vfo);
         prepDataAndSend(payload);
     }
-    else
+    else if (getCommand(funcFreqSet,payload))
     {
-		auto it = rigCaps.commands.find(funcFreqGet);
-		if (it != rigCaps.commands.end()) 
-		{
-			payload = it.value().data;
-			prepDataAndSend(payload);
-		}
+        prepDataAndSend(payload);
     }
 }
 
@@ -957,77 +847,65 @@ void rigCommander::getMode()
 }
 void rigCommander::getMode(unsigned char vfo)
 {
-    auto it = rigCaps.commands.find(funcMode);
-	if (it != rigCaps.commands.end()) 
-	{
-        // Mode with VFO and filter
-        QByteArray payload=it.value().data;
-        payload.append(vfo); // Currently only VFOA/M;
+    QByteArray payload;
+    if (getCommand(funcMode,payload,vfo))
+    {
+        payload.append(vfo);
         prepDataAndSend(payload);
     }
-    else
+    else if (getCommand(funcModeSet,payload))
     {
-		auto it = rigCaps.commands.find(funcModeSet);
-		if (it != rigCaps.commands.end()) 
-		{
-			QByteArray payload=it.value().data;
-			prepDataAndSend(payload);
-		}
+        prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getDataMode()
 {
-    auto it = rigCaps.commands.find(funcDataMode);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcDataMode,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getSplit()
 {
-    auto it = rigCaps.commands.find(funcSplit);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcSplit,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setSplit(bool splitEnabled)
 {
-    auto it = rigCaps.commands.find(funcSplit);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        payload.append(static_cast<unsigned char>(splitEnabled));
+    QByteArray payload;
+    if (getCommand(funcSplit,payload,static_cast<int>(splitEnabled)))
+    {
         prepDataAndSend(payload);
+        payload.append(static_cast<unsigned char>(splitEnabled));
     }
 }
 
 void rigCommander::setDuplexMode(duplexMode dm)
 {
-    auto it = rigCaps.commands.find(funcDuplexMode);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        payload.append(static_cast<unsigned char>(dm));
+    QByteArray payload;
+    if (getCommand(funcDuplexMode,payload,static_cast<int>(dm)))
+    {
         prepDataAndSend(payload);
+        payload.append(static_cast<unsigned char>(dm));
     }
     else
     {
-        setSplit(static_cast<unsigned char>(dm));
+        setSplit(static_cast<bool>(dm));
     }
 }
 
 void rigCommander::getDuplexMode()
 {
-    auto it = rigCaps.commands.find(funcDuplexMode);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcDuplexMode,payload))
+    {
         prepDataAndSend(payload);
     }
     else
@@ -1038,12 +916,11 @@ void rigCommander::getDuplexMode()
 
 void rigCommander::setQuickSplit(bool qsOn)
 {
-    auto it = rigCaps.commands.find(funcQuickSplit);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        payload.append(static_cast<unsigned char>(qsOn));
+    QByteArray payload;
+    if (getCommand(funcQuickSplit,payload,static_cast<int>(qsOn)))
+    {
         prepDataAndSend(payload);
+        payload.append(static_cast<unsigned char>(qsOn));
     }
 }
 
@@ -1058,53 +935,50 @@ void rigCommander::setPassband(quint16 pass)
     * SSB/CW/PSK          10 to 40    600 Hz ~ 3.6 kHz (100 Hz)
     * RTTY                10 to 31    600 ~ 2.7 kHz (100 Hz)
     * AM                  0 to 49     200 Hz ~ 10.0 kHz (200 Hz)
+    * WFM                   NOT SUPPORTED
     */
 
     // Passband may be fixed?
     unsigned char mode = state.getChar(MODE);
     foreach (mode_info m, rigCaps.modes)
     {
-        if (m.reg == mode) {
-            if (!m.bw) {
-                return;
-            }
-        }
-    }
-
-    auto it = rigCaps.commands.find(funcPassband);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        unsigned char calc;
-        if (state.getChar(MODE) == modeAM) { // AM 0-49
-
-            calc = quint16((pass / 200) - 1);
-            if (calc > 49)
-                    calc = 49;
-        }
-        else if (pass >= 600) // SSB/CW/PSK 10-40 (10-31 for RTTY)
-        {
-            calc = quint16((pass / 100) + 4);
-            if (((calc > 31) && (state.getChar(MODE) == modeRTTY || state.getChar(MODE) == modeRTTY_R)))
+        if (m.reg == mode && m.bw) {
+            QByteArray payload;
+            if (getCommand(funcPassband,payload,pass))
             {
-                    calc = 31;
-            }
-            else if (calc > 40) {
-                    calc = 40;
+                unsigned char calc;
+                if (mode == modeAM) { // AM 0-49
+
+                    calc = quint16((pass / 200) - 1);
+                    if (calc > 49)
+                        calc = 49;
+                }
+                else if (pass >= 600) // SSB/CW/PSK 10-40 (10-31 for RTTY)
+                {
+                    calc = quint16((pass / 100) + 4);
+                    if (((calc > 31) && (mode == modeRTTY || mode == modeRTTY_R)))
+                    {
+                        calc = 31;
+                    }
+                    else if (calc > 40) {
+                        calc = 40;
+                    }
+                }
+                else {  // SSB etc 0-9
+                    calc = quint16((pass / 50) - 1);
+                }
+
+                char tens = (calc / 10);
+                char units = (calc - (10 * tens));
+
+                char b1 = (units) | (tens << 4);
+
+                payload.append(b1);
+                prepDataAndSend(payload);
             }
         }
-        else {  // SSB etc 0-9
-            calc = quint16((pass / 50) - 1);
-        }
-
-        char tens = (calc / 10);
-        char units = (calc - (10 * tens));
-
-        char b1 = (units) | (tens << 4);
-
-        payload.append(b1);
-        prepDataAndSend(payload);
     }
+
 }
 
 void rigCommander::getPassband()
@@ -1113,37 +987,31 @@ void rigCommander::getPassband()
     unsigned char mode = state.getChar(MODE);
     foreach (mode_info m, rigCaps.modes)
     {
-        if (m.reg == mode) {
-            if (!m.bw) {
-                    return;
+        if (m.reg == mode && m.bw)
+        {
+            QByteArray payload;
+            if (getCommand(funcPassband,payload))
+            {
+                prepDataAndSend(payload);
             }
         }
-    }
-
-    auto it = rigCaps.commands.find(funcPassband);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getCwPitch()
 {
-    auto it = rigCaps.commands.find(funcCwPitch);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcCwPitch,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setCwPitch(unsigned char pitch)
 {
-    auto it = rigCaps.commands.find(funcCwPitch);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcCwPitch,payload,pitch))
+    {
         payload.append(bcdEncodeInt(pitch));
         prepDataAndSend(payload);
     }
@@ -1151,74 +1019,67 @@ void rigCommander::setCwPitch(unsigned char pitch)
 
 void rigCommander::getDashRatio()
 {
-    auto it = rigCaps.commands.find(funcDashRatio);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcDashRatio,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setDashRatio(unsigned char ratio)
-{    
-    auto it = rigCaps.commands.find(funcDashRatio);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload = it.value().data;
-        prepDataAndSend(payload);
+{
+    QByteArray payload;
+    if (getCommand(funcDashRatio,payload,ratio))
+    {
         payload.append(bcdEncodeInt(ratio).at(1)); // Discard first byte
+        prepDataAndSend(payload);
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getPskTone()
 {
-    auto it = rigCaps.commands.find(funcPskTone);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcPskTone,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setPskTone(unsigned char tone)
 {
-    auto it = rigCaps.commands.find(funcPskTone);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        payload.append(bcdEncodeInt(tone));
+    QByteArray payload;
+    if (getCommand(funcPskTone,payload,tone))
+    {
         prepDataAndSend(payload);
+        payload.append(bcdEncodeInt(tone));
     }
 }
 
 void rigCommander::getRttyMark()
 {
-    auto it = rigCaps.commands.find(funcRttyMark);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcRttyMark,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setRttyMark(unsigned char mark)
 {
-    auto it = rigCaps.commands.find(funcRttyMark);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        payload.append(bcdEncodeInt(mark));
+    QByteArray payload;
+    if (getCommand(funcRttyMark,payload,mark))
+    {
         prepDataAndSend(payload);
+        payload.append(bcdEncodeInt(mark));
     }
 }
 
 void rigCommander::getTransmitFrequency()
 {
-    auto it = rigCaps.commands.find(funcTxFreq);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcTxFreq,payload))
+    {
         prepDataAndSend(payload);
     }
 }
@@ -1232,18 +1093,14 @@ void rigCommander::setTone(quint16 tone)
 
 void rigCommander::setTone(rptrTone_t t)
 {
-	QByteArray payload;
-	auto it = rigCaps.commands.find(funcMainSubCmd);
-	if (it != rigCaps.commands.end()) 
+    QByteArray payload;
+    if (getCommand(funcMainSubCmd,payload))
     {
-        payload.append(it.value().data);
         payload.append(static_cast<unsigned char>(t.useSecondaryVFO));
-	}
+    }
 
-    auto it2 = rigCaps.commands.find(funcRepeaterTone);
-    if (it2 != rigCaps.commands.end())
-	{
-        payload.append(it2.value().data);
+    if (getCommand(funcRepeaterTone,payload,static_cast<int>(t.tone)))
+    {
         payload.append(encodeTone(t.tone));
         prepDataAndSend(payload);
     }
@@ -1258,18 +1115,14 @@ void rigCommander::setTSQL(quint16 t)
 
 void rigCommander::setTSQL(rptrTone_t t)
 {
-	QByteArray payload;
-	auto it = rigCaps.commands.find(funcMainSubCmd);
-	if (it != rigCaps.commands.end()) 
+    QByteArray payload;
+    if (getCommand(funcMainSubCmd,payload))
     {
-        payload.append(it.value().data);
         payload.append(static_cast<unsigned char>(t.useSecondaryVFO));
-	}
-	
-    auto it2 = rigCaps.commands.find(funcRepeaterTSQL);
-    if (it2 != rigCaps.commands.end())
-	{
-        QByteArray payload=it2.value().data;
+    }
+
+    if (getCommand(funcRepeaterTSQL,payload,static_cast<int>(t.tone)))
+    {
         payload.append(encodeTone(t.tone));
         prepDataAndSend(payload);
     }
@@ -1277,10 +1130,9 @@ void rigCommander::setTSQL(rptrTone_t t)
 
 void rigCommander::setDTCS(quint16 dcscode, bool tinv, bool rinv)
 {
-    auto it = rigCaps.commands.find(funcRepeaterDCS);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcRepeaterDCS,payload,static_cast<int>(dcscode)))
+    {
         payload.append(encodeTone(dcscode, tinv, rinv));
         prepDataAndSend(payload);
     }
@@ -1347,40 +1199,36 @@ quint16 rigCommander::decodeTone(QByteArray eTone, bool &tinv, bool &rinv)
 
 void rigCommander::getTone()
 {
-    auto it = rigCaps.commands.find(funcTone);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcTone,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getTSQL()
 {
-    auto it = rigCaps.commands.find(funcTSQL);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcTSQL,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getDTCS()
 {
-    auto it = rigCaps.commands.find(funcDTCS);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcDTCS,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getRptAccessMode()
 {
-    auto it = rigCaps.commands.find(funcRptAccessMode);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcRptAccessMode,payload))
+    {
         prepDataAndSend(payload);
     }
 }
@@ -1397,82 +1245,64 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
     // NB: This function is the only recommended
     // function to be used for toggling tone and tone squelch.
 
-	QByteArray payload;
-	auto it = rigCaps.commands.find(funcMainSubCmd);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcMainSubCmd,payload))
     {
-        payload.append(it.value().data);
         payload.append(static_cast<unsigned char>(rd.useSecondaryVFO));
-	}
+    }
 
-    if(rigCaps.hasAdvancedRptrToneCmds)
+    if (getCommand(funcRptAccessMode,payload))
     {
-        // IC-9700 basically
-		auto it = rigCaps.commands.find(funcRptAccessMode);
-		if (it != rigCaps.commands.end()) 
-        {
-            payload.append(it.value().data);
-			payload.append((unsigned char)rd.accessMode);
-			prepDataAndSend(payload);
-		}
-    } else {
+        payload.append((unsigned char)rd.accessMode);
+        prepDataAndSend(payload);
+    }
+    else
+    {
         // These radios either don't support DCS or
         // we just haven't added DCS yet.
-
-        // 16 42 00 = TONE off
-        // 16 42 01 = TONE on
-        // 16 43 00 = TSQL off
-        // 16 43 01 = TSQL on
 
         switch(rd.accessMode)
         {
         case ratrNN:
-		{
+        {
             // No tone at all
             if(rd.turnOffTone)
             {
-				auto it = rigCaps.commands.find(funcTone);
-				if (it != rigCaps.commands.end()) 
+                if (getCommand(funcTone,payload))
                 {
-                    payload.append(it.value().data);
                     payload.append('\x00');
-					prepDataAndSend(payload);
-				}
-            } else if (rd.turnOffTSQL)
+                    prepDataAndSend(payload);
+                }
+            }
+            else if (rd.turnOffTSQL)
             {
-				auto it = rigCaps.commands.find(funcTSQL);
-				if (it != rigCaps.commands.end()) 
+                if (getCommand(funcTSQL,payload))
                 {
-                    payload.append(it.value().data);
                     payload.append('\x00');
-					prepDataAndSend(payload);
-				}
+                    prepDataAndSend(payload);
+                }
             }
             break;
-		}
+        }
         case ratrTN:
-		{
-			auto it = rigCaps.commands.find(funcTone);
-			if (it != rigCaps.commands.end()) 
+        {
+            if (getCommand(funcTone,payload))
             {
-                payload.append(it.value().data);
-				payload.append((unsigned char)0x1);
-				prepDataAndSend(payload);
-			}
+                payload.append('\x01');
+                prepDataAndSend(payload);
+            }
             break;
-		}
-        case ratrTT: 
+        }
+        case ratrTT:
         case ratrNT:
-		{
-			auto it = rigCaps.commands.find(funcTSQL);
-			if (it != rigCaps.commands.end()) 
+        {
+            if (getCommand(funcTSQL,payload))
             {
-                payload.append(it.value().data);
-				payload.append((unsigned char)0x1);
-				prepDataAndSend(payload);
-			}
+                payload.append('\x01');
+                prepDataAndSend(payload);
+            }
             break;
-		}
+        }
         default:
             qWarning(logRig()) << "Cannot set tone mode" << (unsigned char)rd.accessMode << "on rig model" << rigCaps.modelName;
             return;
@@ -1482,84 +1312,75 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
 
 void rigCommander::setRptDuplexOffset(freqt f)
 {
-	auto it = rigCaps.commands.find(funcRptDuplexOffset);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload = it.value().data;
+    QByteArray payload;
+    if (getCommand(funcRptDuplexOffset,payload))
+    {
         payload.append(makeFreqPayload(f).mid(1,3));
-		prepDataAndSend(payload);
-	}
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getRptDuplexOffset()
 {
-	auto it = rigCaps.commands.find(funcRptDuplexOffset);
-	if (it != rigCaps.commands.end()) 
-	{
-		QByteArray payload = it.value().data;
-		prepDataAndSend(payload);
-	}
+    QByteArray payload;
+    if (getCommand(funcRptDuplexOffset,payload))
+    {
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setIPP(bool enabled)
 {
-	auto it = rigCaps.commands.find(funcIPP);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload = it.value().data;
+    QByteArray payload;
+    if (getCommand(funcIPP,payload,static_cast<int>(enabled)))
+    {
         payload.append(static_cast<unsigned char>(enabled));
-		prepDataAndSend(payload);
-	}
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getIPP()
 {
-	auto it = rigCaps.commands.find(funcIPP);
-	if (it != rigCaps.commands.end()) 
-	{
-		QByteArray payload = it.value().data;
-		prepDataAndSend(payload);
-	}
+    QByteArray payload;
+    if (getCommand(funcIPP,payload))
+    {
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::setSatelliteMode(bool enabled)
 {
-	auto it = rigCaps.commands.find(funcSatelliteMode);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload = it.value().data;
+    QByteArray payload;
+    if (getCommand(funcSatelliteMode,payload,static_cast<int>(enabled)))
+    {
         payload.append(static_cast<unsigned char>(enabled));
-		prepDataAndSend(payload);
-	}
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getSatelliteMode()
 {
-	auto it = rigCaps.commands.find(funcSatelliteMode);
-	if (it != rigCaps.commands.end()) 
-	{
-		QByteArray payload = it.value().data;
-		prepDataAndSend(payload);
-	}
-
+    QByteArray payload;
+    if (getCommand(funcSatelliteMode,payload))
+    {
+        prepDataAndSend(payload);
+    }
 }
 
 void rigCommander::getPTT()
 {
-    auto it = rigCaps.commands.find(funcTXStatus);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcTXStatus,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getBandStackReg(char band, char regCode)
 {
-    auto it = rigCaps.commands.find(funcBandStackReg);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcBandStackReg,payload,band))
+    {
         payload.append(band); // [01 through 11]
         payload.append(regCode); // [01...03]. 01 = latest, 03 = oldest
         prepDataAndSend(payload);
@@ -1568,24 +1389,19 @@ void rigCommander::getBandStackReg(char band, char regCode)
 
 void rigCommander::setPTT(bool pttOn)
 {
-    if(pttAllowed)
+    QByteArray payload;
+    if (pttAllowed && getCommand(funcTXStatus,payload,static_cast<int>(pttOn)))
     {
-        auto it = rigCaps.commands.find(funcTXStatus);
-        if (it != rigCaps.commands.end())
-        {
-            QByteArray payload=it.value().data;
-            payload.append(static_cast<unsigned char>(pttOn));
-            prepDataAndSend(payload);
-        }
+        payload.append(static_cast<unsigned char>(pttOn));
+        prepDataAndSend(payload);
     }
 }
 
 void rigCommander::sendCW(QString textToSend)
 {
-	auto it = rigCaps.commands.find(funcSendCW);
-    if (it != rigCaps.commands.end() && pttAllowed && textToSend.length() <=30) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (pttAllowed && getCommand(funcSendCW,payload,textToSend.length()))
+    {
         QByteArray textData = textToSend.toLocal8Bit();
         unsigned char p=0;
         bool printout=false;
@@ -1614,15 +1430,13 @@ void rigCommander::sendCW(QString textToSend)
         payload.append(textData);
         prepDataAndSend(payload);
     }
-    // Does it need to end in "FF" or is that implicit at the end of a message?
 }
 
 void rigCommander::sendStopCW()
 {
-    auto it = rigCaps.commands.find(funcSendCW);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcSendCW,payload))
+    {
         payload.append("\xFF");
         prepDataAndSend(payload);
     }
@@ -2485,10 +2299,9 @@ void rigCommander::parseLevels()
 
 void rigCommander::setIFShift(unsigned char level)
 {
-    auto it = rigCaps.commands.find(funcIFShift);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcIFShift,payload,level))
+    {
         payload.append(bcdEncodeInt(level));
         prepDataAndSend(payload);
     }
@@ -2496,54 +2309,51 @@ void rigCommander::setIFShift(unsigned char level)
 
 void rigCommander::setTPBFInner(unsigned char level)
 {
+    QByteArray payload;
     // Passband may be fixed?
     unsigned char mode = state.getChar(MODE);
     foreach (mode_info m, rigCaps.modes)
     {
-        if (m.reg == mode) {
-                if (!m.bw) {
-                    return;
+        if (m.reg == mode)
+        {
+            if (m.bw)
+            {
+                if (getCommand(funcPBTInner,payload,level))
+                {
+                    payload.append(bcdEncodeInt(level));
+                    prepDataAndSend(payload);
                 }
+            }
         }
-    }
-
-    auto it = rigCaps.commands.find(funcPBTInner);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        payload.append(bcdEncodeInt(level));
-        prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setTPBFOuter(unsigned char level)
 {
+    QByteArray payload;
     // Passband may be fixed?
     unsigned char mode = state.getChar(MODE);
     foreach (mode_info m, rigCaps.modes)
     {
-        if (m.reg == mode) {
-                if (!m.bw) {
-                    return;
+        if (m.reg == mode)
+        {
+            if (m.bw)
+            {
+                if (getCommand(funcPBTOuter,payload,level))
+                {
+                    payload.append(bcdEncodeInt(level));
+                    prepDataAndSend(payload);
                 }
+            }
         }
-    }
-
-    auto it = rigCaps.commands.find(funcPBTOuter);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        payload.append(bcdEncodeInt(level));
-        prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setTxPower(unsigned char power)
 {
-    auto it = rigCaps.commands.find(funcTxPower);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcTxPower,payload,power))
+    {
         payload.append(bcdEncodeInt(power));
         prepDataAndSend(payload);
     }
@@ -2551,10 +2361,9 @@ void rigCommander::setTxPower(unsigned char power)
 
 void rigCommander::setMicGain(unsigned char gain)
 {
-    auto it = rigCaps.commands.find(funcMicGain);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcMicGain,payload,gain))
+    {
         payload.append(bcdEncodeInt(gain));
         prepDataAndSend(payload);
     }
@@ -2563,24 +2372,9 @@ void rigCommander::setMicGain(unsigned char gain)
 void rigCommander::getModInput(bool dataOn)
 {
     QByteArray payload;
-    if(dataOn)
-    {
-        auto it = rigCaps.commands.find(funcModInput);
-		if (it != rigCaps.commands.end()) 
-		{
-            payload=it.value().data;
-        }
-    }
-    else
-    {
-        auto it = rigCaps.commands.find(funcModData1Input);
-		if (it != rigCaps.commands.end()) 
-		{
-            payload=it.value().data;
-        }
-    }
+    funcs f=(dataOn) ? funcModData1Input :funcModInput;
 
-    if (!payload.isEmpty())
+    if (getCommand(f,payload))
     {
         prepDataAndSend(payload);
     }
@@ -2598,31 +2392,15 @@ void rigCommander::setModInput(rigInput input, bool dataOn)
 //    inputACCB};
 
     QByteArray payload;
-    if(!dataOn)
-    {
-        auto it = rigCaps.commands.find(funcModInput);
-		if (it != rigCaps.commands.end()) 
-		{
-            payload=it.value().data;
-        }
-    }
-    else
-    {
-        auto it = rigCaps.commands.find(funcModData1Input);
-		if (it != rigCaps.commands.end()) 
-        {
-            payload=it.value().data;
-        }
-    }
+    funcs f=(dataOn) ? funcModData1Input :funcModInput;
 
-    if (!payload.isEmpty())
+    if (getCommand(f,payload,input.type))
     {
         payload.append(input.type);
         prepDataAndSend(payload);
     }
+
     /*
-
-
     switch(rigCaps.model)
     {
         case model9700:
@@ -2772,23 +2550,21 @@ void rigCommander::setModInputLevel(rigInput input, unsigned char level)
 
 void rigCommander::setAfMute(bool gainOn)
 {
-    auto it = rigCaps.commands.find(funcAfMute);
-	if (it != rigCaps.commands.end()) 
-	{
-		QByteArray payload=it.value().data;
-		payload.append(static_cast<unsigned char>(gainOn));
-		prepDataAndSend(payload);
+    QByteArray payload;
+    if (getCommand(funcAfMute,payload,gainOn))
+    {
+            payload.append(static_cast<unsigned char>(gainOn));
+            prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setDialLock(bool lockOn)
 {
-    auto it = rigCaps.commands.find(funcDialLock);
-	if (it != rigCaps.commands.end()) 
-	{
-		QByteArray payload=it.value().data;
-		payload.append(static_cast<unsigned char>(lockOn));
-		prepDataAndSend(payload);
+    QByteArray payload;
+    if (getCommand(funcDialLock,payload,lockOn))
+    {
+            payload.append(static_cast<unsigned char>(lockOn));
+            prepDataAndSend(payload);
     }
 }
 
@@ -2827,20 +2603,18 @@ void rigCommander::getModInputLevel(rigInput input)
 
 void rigCommander::getAfMute()
 {
-    auto it = rigCaps.commands.find(funcAfMute);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcAfMute,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getDialLock()
 {
-    auto it = rigCaps.commands.find(funcDialLock);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcDialLock,payload))
+    {
         prepDataAndSend(payload);
     }
 }
@@ -2881,23 +2655,21 @@ QByteArray rigCommander::getUSBAddr() // Not Used
 
 void rigCommander::getUSBGain()
 {
-    auto it = rigCaps.commands.find(funcUSBGain);
-	if (it != rigCaps.commands.end()) 
-	{
-		QByteArray payload=it.value().data;
-		prepDataAndSend(payload);
+    QByteArray payload;
+    if (getCommand(funcUSBGain,payload))
+    {
+        prepDataAndSend(payload);
     }
 }
 
 
 void rigCommander::setUSBGain(unsigned char gain)
 {
-    auto it = rigCaps.commands.find(funcUSBGain);
-	if (it != rigCaps.commands.end()) 
-	{
-		QByteArray payload=it.value().data;
-		payload.append(bcdEncodeInt(gain));
-		prepDataAndSend(payload);
+    QByteArray payload;
+    if (getCommand(funcUSBGain,payload,gain))
+    {
+        payload.append(bcdEncodeInt(gain));
+        prepDataAndSend(payload);
     }
 }
 
@@ -2930,22 +2702,20 @@ QByteArray rigCommander::getLANAddr() // Not Used
 
 void rigCommander::getLANGain()
 {
-    auto it = rigCaps.commands.find(funcLANGain);
-	if (it != rigCaps.commands.end()) 
-	{
-		QByteArray payload=it.value().data;
-		prepDataAndSend(payload);
+    QByteArray payload;
+    if (getCommand(funcLANGain,payload))
+    {
+        prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setLANGain(unsigned char gain)
 {
-    auto it = rigCaps.commands.find(funcLANGain);
-	if (it != rigCaps.commands.end()) 
-	{
-		QByteArray payload=it.value().data;
-		payload.append(bcdEncodeInt(gain));
-		prepDataAndSend(payload);
+    QByteArray payload;
+    if (getCommand(funcLANGain,payload,gain))
+    {
+        payload.append(bcdEncodeInt(gain));
+        prepDataAndSend(payload);
     }
 }
 
@@ -3002,10 +2772,9 @@ void rigCommander::getACCGain()
 void rigCommander::getACCGain(unsigned char ab)
 {
     funcs f=(ab == 0) ? funcACC1Gain :funcACC2Gain;
-    auto it = rigCaps.commands.find(f);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(f,payload))
+    {
         prepDataAndSend(payload);
     }
 }
@@ -3019,10 +2788,9 @@ void rigCommander::setACCGain(unsigned char gain)
 void rigCommander::setACCGain(unsigned char gain, unsigned char ab)
 {
     funcs f=(ab == 0) ? funcACC1Gain :funcACC2Gain;
-    auto it = rigCaps.commands.find(f);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(f,payload,gain))
+    {
         payload.append(bcdEncodeInt(gain));
         prepDataAndSend(payload);
     }
@@ -3030,10 +2798,9 @@ void rigCommander::setACCGain(unsigned char gain, unsigned char ab)
 
 void rigCommander::setCompLevel(unsigned char compLevel)
 {
-    auto it = rigCaps.commands.find(funcCompLevel);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcCompLevel,payload,compLevel))
+    {
         payload.append(bcdEncodeInt(compLevel));
         prepDataAndSend(payload);
     }
@@ -3041,10 +2808,9 @@ void rigCommander::setCompLevel(unsigned char compLevel)
 
 void rigCommander::setMonitorGain(unsigned char monitorLevel)
 {
-    auto it = rigCaps.commands.find(funcMonitorGain);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcMonitorGain,payload,monitorLevel))
+    {
         payload.append(bcdEncodeInt(monitorLevel));
         prepDataAndSend(payload);
     }
@@ -3052,10 +2818,9 @@ void rigCommander::setMonitorGain(unsigned char monitorLevel)
 
 void rigCommander::setVoxGain(unsigned char gain)
 {
-    auto it = rigCaps.commands.find(funcVoxGain);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcVoxGain,payload,gain))
+    {
         payload.append(bcdEncodeInt(gain));
         prepDataAndSend(payload);
     }
@@ -3063,10 +2828,9 @@ void rigCommander::setVoxGain(unsigned char gain)
 
 void rigCommander::setAntiVoxGain(unsigned char gain)
 {
-    auto it = rigCaps.commands.find(funcAntiVoxGain);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcAntiVoxGain,payload,gain))
+    {
         payload.append(bcdEncodeInt(gain));
         prepDataAndSend(payload);
     }
@@ -3074,10 +2838,9 @@ void rigCommander::setAntiVoxGain(unsigned char gain)
 
 void rigCommander::setNBLevel(unsigned char level)
 {
-    auto it = rigCaps.commands.find(funcNBLevel);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcNBLevel,payload,level))
+    {
         payload.append(bcdEncodeInt(level));
         prepDataAndSend(payload);
     }
@@ -3085,10 +2848,9 @@ void rigCommander::setNBLevel(unsigned char level)
 
 void rigCommander::setNRLevel(unsigned char level)
 {
-    auto it = rigCaps.commands.find(funcNRLevel);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcNRLevel,payload,level))
+    {
         payload.append(bcdEncodeInt(level));
         prepDataAndSend(payload);
     }
@@ -3097,23 +2859,22 @@ void rigCommander::setNRLevel(unsigned char level)
 
 void rigCommander::getRfGain()
 {
-    auto it = rigCaps.commands.find(funcRfGain);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcRfGain,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getAfGain()
 {
-    if (udp == Q_NULLPTR) {
-        auto it = rigCaps.commands.find(funcAfGain);
-		if (it != rigCaps.commands.end()) 
-		{
-			QByteArray payload=it.value().data;
-			prepDataAndSend(payload);
-		}
+    if (udp == Q_NULLPTR)
+    {
+        QByteArray payload;
+        if (getCommand(funcAfGain,payload))
+        {
+            prepDataAndSend(payload);
+        }
     }
     else {
         emit haveAfGain(localVolume);
@@ -3122,10 +2883,9 @@ void rigCommander::getAfGain()
 
 void rigCommander::getIFShift()
 {
-    auto it = rigCaps.commands.find(funcIFShift);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcIFShift,payload))
+    {
         prepDataAndSend(payload);
     }
 }
@@ -3137,17 +2897,15 @@ void rigCommander::getTPBFInner()
     foreach (mode_info m, rigCaps.modes)
     {
         if (m.reg == mode) {
-            if (!m.bw) {
-                    return;
+            if (m.bw) {
+                QByteArray payload;
+                if (getCommand(funcPBTInner,payload))
+                {
+                    prepDataAndSend(payload);
+                }
+                break;
             }
         }
-    }
-
-    auto it = rigCaps.commands.find(funcPBTInner);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        prepDataAndSend(payload);
     }
 }
 
@@ -3158,106 +2916,95 @@ void rigCommander::getTPBFOuter()
     foreach (mode_info m, rigCaps.modes)
     {
         if (m.reg == mode) {
-            if (!m.bw) {
-                    return;
+            if (m.bw) {
+                QByteArray payload;
+                if (getCommand(funcPBTOuter,payload))
+                {
+                    prepDataAndSend(payload);
+                }
+                break;
             }
         }
-    }
-
-    auto it = rigCaps.commands.find(funcPBTOuter);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getSql()
 {
-    auto it = rigCaps.commands.find(funcSql);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcSql,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getTxLevel()
 {
-    auto it = rigCaps.commands.find(funcTxPower);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcTxPower,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getMicGain()
 {
-    auto it = rigCaps.commands.find(funcMicGain);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcMicGain,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getCompLevel()
 {
-    auto it = rigCaps.commands.find(funcCompLevel);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcCompLevel,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getMonitorGain()
 {
-    auto it = rigCaps.commands.find(funcMonitorGain);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcMonitorGain,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getVoxGain()
 {
-    auto it = rigCaps.commands.find(funcVoxGain);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcVoxGain,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getAntiVoxGain()
 {
-    auto it = rigCaps.commands.find(funcAntiVoxGain);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcAntiVoxGain,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getNBLevel()
 {
-    auto it = rigCaps.commands.find(funcNBLevel);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcNBLevel,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getNRLevel()
 {
-    auto it = rigCaps.commands.find(funcNRLevel);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcNRLevel,payload))
+    {
         prepDataAndSend(payload);
     }
 }
@@ -3311,80 +3058,72 @@ void rigCommander::getMeters(meterKind meter)
 
 void rigCommander::getSMeter()
 {
-    auto it = rigCaps.commands.find(funcSMeter);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcSMeter,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getCenterMeter()
 {
-    auto it = rigCaps.commands.find(funcCenterMeter);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcCenterMeter,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getRFPowerMeter()
 {
-    auto it = rigCaps.commands.find(funcPowerMeter);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcCenterMeter,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getSWRMeter()
 {
-    auto it = rigCaps.commands.find(funcSWRMeter);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcSWRMeter,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getALCMeter()
 {
-    auto it = rigCaps.commands.find(funcALCMeter);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcALCMeter,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getCompReductionMeter()
 {
-    auto it = rigCaps.commands.find(funcCompMeter);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcCompMeter,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getVdMeter()
 {
-    auto it = rigCaps.commands.find(funcVdMeter);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcVdMeter,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getIDMeter()
 {
-    auto it = rigCaps.commands.find(funcIdMeter);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcIdMeter,payload))
+    {
         prepDataAndSend(payload);
     }
 }
@@ -3392,10 +3131,9 @@ void rigCommander::getIDMeter()
 
 void rigCommander::setSquelch(unsigned char level)
 {
-    auto it = rigCaps.commands.find(funcSql);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcSql,payload,level))
+    {
         payload.append(bcdEncodeInt(level));
         prepDataAndSend(payload);
     }
@@ -3403,10 +3141,9 @@ void rigCommander::setSquelch(unsigned char level)
 
 void rigCommander::setRfGain(unsigned char level)
 {
-    auto it = rigCaps.commands.find(funcRfGain);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcRfGain,payload,level))
+    {
         payload.append(bcdEncodeInt(level));
         prepDataAndSend(payload);
     }
@@ -3415,11 +3152,10 @@ void rigCommander::setRfGain(unsigned char level)
 void rigCommander::setAfGain(unsigned char level)
 {
     if (udp == Q_NULLPTR)
-	{
-        auto it = rigCaps.commands.find(funcAfGain);
-		if (it != rigCaps.commands.end()) 
-		{
-            QByteArray payload=it.value().data;
+    {
+        QByteArray payload;
+        if (getCommand(funcAfGain,payload,level))
+        {
             payload.append(bcdEncodeInt(level));
             prepDataAndSend(payload);
         }
@@ -3433,33 +3169,29 @@ void rigCommander::setAfGain(unsigned char level)
 void rigCommander::setRefAdjustCourse(unsigned char level)
 {
     // 1A 05 00 72 0000-0255
-    auto it = rigCaps.commands.find(funcRefCoarse);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        payload.append(bcdEncodeInt((unsigned int)level));
+    QByteArray payload;
+    if (getCommand(funcRefCoarse,payload,level))
+    {
+        payload.append(bcdEncodeInt(level));
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setRefAdjustFine(unsigned char level)
 {
-    auto it = rigCaps.commands.find(funcRefFine);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        payload.append(bcdEncodeInt((unsigned int)level));
+    QByteArray payload;
+    if (getCommand(funcRefFine,payload,level))
+    {
+        payload.append(bcdEncodeInt(level));
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setTime(timekind t)
 {
-
-    auto it = rigCaps.commands.find(funcTime);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcTime,payload))
+    {
         payload.append(convertNumberToHex(t.hours));
         payload.append(convertNumberToHex(t.minutes));
         prepDataAndSend(payload);
@@ -3503,10 +3235,9 @@ void rigCommander::setTime(timekind t)
 void rigCommander::setDate(datekind d)
 {
 
-    auto it = rigCaps.commands.find(funcDate);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcDate,payload))
+    {
         // YYYYMMDD
         payload.append(convertNumberToHex(d.year/100)); // 20
         payload.append(convertNumberToHex(d.year - 100*(d.year/100))); // 21
@@ -3550,11 +3281,10 @@ void rigCommander::setDate(datekind d)
 
 void rigCommander::setUTCOffset(timekind t)
 {
-    auto it = rigCaps.commands.find(funcUTCOffset);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
-        payload.append(convertNumberToHex(t.hours));
+    QByteArray payload;
+    if (getCommand(funcUTCOffset,payload))
+    {
+        // YYYYMMDD
         payload.append(convertNumberToHex(t.minutes));
         payload.append(static_cast<unsigned char>(t.isMinus));
         prepDataAndSend(payload);
@@ -3611,20 +3341,18 @@ unsigned char rigCommander::convertNumberToHex(unsigned char num)
 
 void rigCommander::getRefAdjustCourse()
 {
-    auto it = rigCaps.commands.find(funcRefCoarse);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcRefCoarse,payload))
+    {
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getRefAdjustFine()
 {
-    auto it = rigCaps.commands.find(funcRefFine);
-	if (it != rigCaps.commands.end()) 
-	{
-        QByteArray payload=it.value().data;
+    QByteArray payload;
+    if (getCommand(funcRefFine,payload))
+    {
         prepDataAndSend(payload);
     }
 }
@@ -5895,10 +5623,9 @@ void rigCommander::parseMode()
 
 void rigCommander::startATU()
 {
-    auto it = rigCaps.commands.find(funcATUStatus);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcATUStatus,payload))
     {
-        QByteArray payload=it.value().data;
         payload.append(static_cast<unsigned char>(0x02));
         prepDataAndSend(payload);
     }
@@ -5906,10 +5633,9 @@ void rigCommander::startATU()
 
 void rigCommander::setATU(bool enabled)
 {
-    auto it = rigCaps.commands.find(funcATUStatus);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcATUStatus,payload,static_cast<int>(enabled)))
     {
-        QByteArray payload=it.value().data;
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
     }
@@ -5917,50 +5643,45 @@ void rigCommander::setATU(bool enabled)
 
 void rigCommander::getATUStatus()
 {
-    auto it = rigCaps.commands.find(funcATUStatus);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcATUStatus,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getAttenuator()
 {
-    auto it = rigCaps.commands.find(funcAttenuator);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcAttenuator,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getPreamp()
 {
-    auto it = rigCaps.commands.find(funcPreamp);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcPreamp,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getAntenna()
 {
-    auto it = rigCaps.commands.find(funcAntenna);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcAntenna,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setAttenuator(unsigned char att)
 {
-    auto it = rigCaps.commands.find(funcAttenuator);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcAttenuator,payload,att))
     {
-        QByteArray payload=it.value().data;
         payload.append(att);
         prepDataAndSend(payload);
     }
@@ -5968,10 +5689,9 @@ void rigCommander::setAttenuator(unsigned char att)
 
 void rigCommander::setPreamp(unsigned char pre)
 {
-    auto it = rigCaps.commands.find(funcPreamp);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcAttenuator,payload,pre))
     {
-        QByteArray payload=it.value().data;
         payload.append(pre);
         prepDataAndSend(payload);
     }
@@ -5979,10 +5699,9 @@ void rigCommander::setPreamp(unsigned char pre)
 
 void rigCommander::setAntenna(unsigned char ant, bool rx)
 {
-    auto it = rigCaps.commands.find(funcAntenna);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcAntenna,payload,ant))
     {
-        QByteArray payload=it.value().data;
         payload.append(ant);
         if (rigCaps.commands.contains(funcRXAntenna)) {
             payload.append(static_cast<unsigned char>(rx)); // 0x00 = use for TX and RX
@@ -5992,10 +5711,9 @@ void rigCommander::setAntenna(unsigned char ant, bool rx)
 }
 
 void rigCommander::setNB(bool enabled) {
-    auto it = rigCaps.commands.find(funcNB);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcNB,payload,static_cast<int>(enabled)))
     {
-        QByteArray payload=it.value().data;
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
     }
@@ -6003,19 +5721,17 @@ void rigCommander::setNB(bool enabled) {
 
 void rigCommander::getNB()
 {
-    auto it = rigCaps.commands.find(funcNB);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcNB,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setNR(bool enabled) {
-    auto it = rigCaps.commands.find(funcNR);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcNR,payload,static_cast<int>(enabled)))
     {
-        QByteArray payload=it.value().data;
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
     }
@@ -6023,20 +5739,18 @@ void rigCommander::setNR(bool enabled) {
 
 void rigCommander::getNR()
 {
-    auto it = rigCaps.commands.find(funcNB);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcNR,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setAutoNotch(bool enabled)
 {
-    auto it = rigCaps.commands.find(funcAutoNotch);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcAutoNotch,payload,static_cast<int>(enabled)))
     {
-        QByteArray payload=it.value().data;
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
     }
@@ -6044,20 +5758,18 @@ void rigCommander::setAutoNotch(bool enabled)
 
 void rigCommander::getAutoNotch()
 {
-    auto it = rigCaps.commands.find(funcAutoNotch);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcAutoNotch,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setToneEnabled(bool enabled)
 {
-    auto it = rigCaps.commands.find(funcTone);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcTone,payload,static_cast<int>(enabled)))
     {
-        QByteArray payload=it.value().data;
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
     }
@@ -6065,20 +5777,18 @@ void rigCommander::setToneEnabled(bool enabled)
 
 void rigCommander::getToneEnabled()
 {
-    auto it = rigCaps.commands.find(funcTone);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcTone,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setToneSql(bool enabled)
 {
-    auto it = rigCaps.commands.find(funcTSQL);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcTSQL,payload,static_cast<int>(enabled)))
     {
-        QByteArray payload=it.value().data;
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
     }
@@ -6086,20 +5796,18 @@ void rigCommander::setToneSql(bool enabled)
 
 void rigCommander::getToneSqlEnabled()
 {
-    auto it = rigCaps.commands.find(funcTSQL);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcTSQL,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setCompressor(bool enabled)
 {
-    auto it = rigCaps.commands.find(funcCompressor);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcCompressor,payload,static_cast<int>(enabled)))
     {
-        QByteArray payload=it.value().data;
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
     }
@@ -6107,20 +5815,18 @@ void rigCommander::setCompressor(bool enabled)
 
 void rigCommander::getCompressor()
 {
-    auto it = rigCaps.commands.find(funcCompressor);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcCompressor,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setMonitor(bool enabled)
 {
-    auto it = rigCaps.commands.find(funcMonitor);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcMonitor,payload,static_cast<int>(enabled)))
     {
-        QByteArray payload=it.value().data;
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
     }
@@ -6128,20 +5834,18 @@ void rigCommander::setMonitor(bool enabled)
 
 void rigCommander::getMonitor()
 {
-    auto it = rigCaps.commands.find(funcMonitor);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcMonitor,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setVox(bool enabled)
 {
-    auto it = rigCaps.commands.find(funcVox);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcVox,payload,static_cast<int>(enabled)))
     {
-        QByteArray payload=it.value().data;
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
     }
@@ -6149,19 +5853,18 @@ void rigCommander::setVox(bool enabled)
 
 void rigCommander::getVox()
 {
-    auto it = rigCaps.commands.find(funcVox);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcVox,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
-void rigCommander::setBreakIn(unsigned char type) {
-    auto it = rigCaps.commands.find(FuncBKIN);
-    if (it != rigCaps.commands.end())
+void rigCommander::setBreakIn(unsigned char type)
+{
+    QByteArray payload;
+    if (getCommand(FuncBKIN,payload,type))
     {
-        QByteArray payload=it.value().data;
         payload.append(type);
         prepDataAndSend(payload);
     }
@@ -6169,10 +5872,9 @@ void rigCommander::setBreakIn(unsigned char type) {
 
 void rigCommander::getBreakIn()
 {
-    auto it = rigCaps.commands.find(funcVox);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(FuncBKIN,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
@@ -6181,11 +5883,10 @@ void rigCommander::setKeySpeed(unsigned char wpm)
 {
     // 0 = 6 WPM
     // 255 = 48 WPM
-    auto it = rigCaps.commands.find(funcKeySpeed);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcKeySpeed,payload,wpm))
     {
         unsigned char wpmRadioSend = round((wpm-6) * (6.071));
-        QByteArray payload=it.value().data;
         payload.append(bcdEncodeInt(wpmRadioSend));
         prepDataAndSend(payload);
     }
@@ -6193,20 +5894,18 @@ void rigCommander::setKeySpeed(unsigned char wpm)
 
 void rigCommander::getKeySpeed()
 {
-    auto it = rigCaps.commands.find(funcKeySpeed);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcKeySpeed,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::setManualNotch(bool enabled)
 {
-    auto it = rigCaps.commands.find(funcManualNotch);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(FuncBKIN,payload,static_cast<int>(enabled)))
     {
-        QByteArray payload=it.value().data;
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
     }
@@ -6214,27 +5913,24 @@ void rigCommander::setManualNotch(bool enabled)
 
 void rigCommander::getManualNotch()
 {
-    auto it = rigCaps.commands.find(funcManualNotch);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcManualNotch,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::getRigID()
 {
-    auto it = rigCaps.commands.find(funcRigID);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    if (getCommand(funcRigID,payload))
     {
-        QByteArray payload=it.value().data;
         prepDataAndSend(payload);
     } else {
         // If we haven't got this command yet, need to use the default one!
         QByteArray payload = "\x19\x00";
         prepDataAndSend(payload);
     }
-
 }
 
 void rigCommander::setRigID(unsigned char rigID)
@@ -6267,33 +5963,33 @@ void rigCommander::changeLatency(const quint16 value)
 
 void rigCommander::sayAll()
 {
-    auto it = rigCaps.commands.find(funcSpeech);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    unsigned char cmd = 0x0;
+    if (getCommand(funcSpeech,payload,cmd))
     {
-        QByteArray payload=it.value().data;
-        payload.append('\x00');
+        payload.append(cmd);
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::sayFrequency()
 {
-    auto it = rigCaps.commands.find(funcSpeech);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    unsigned char cmd = 0x1;
+    if (getCommand(funcSpeech,payload,cmd))
     {
-        QByteArray payload=it.value().data;
-        payload.append('\x01');
+        payload.append(cmd);
         prepDataAndSend(payload);
     }
 }
 
 void rigCommander::sayMode()
 {
-    auto it = rigCaps.commands.find(funcSpeech);
-    if (it != rigCaps.commands.end())
+    QByteArray payload;
+    unsigned char cmd = 0x2;
+    if (getCommand(funcSpeech,payload,cmd))
     {
-        QByteArray payload=it.value().data;
-        payload.append('\x02');
+        payload.append(cmd);
         prepDataAndSend(payload);
     }
 }
