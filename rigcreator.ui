@@ -16,8 +16,8 @@
   <widget class="QWidget" name="horizontalLayoutWidget">
    <property name="geometry">
     <rect>
-     <x>800</x>
-     <y>509</y>
+     <x>810</x>
+     <y>0</y>
      <width>171</width>
      <height>41</height>
     </rect>
@@ -46,8 +46,8 @@
     <rect>
      <x>10</x>
      <y>10</y>
-     <width>811</width>
-     <height>41</height>
+     <width>741</width>
+     <height>31</height>
     </rect>
    </property>
    <layout class="QVBoxLayout" name="verticalLayout">
@@ -147,10 +147,10 @@
   <widget class="QGroupBox" name="groupBox">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>60</y>
-     <width>131</width>
-     <height>321</height>
+     <x>830</x>
+     <y>210</y>
+     <width>141</width>
+     <height>121</height>
     </rect>
    </property>
    <property name="title">
@@ -210,82 +210,14 @@
      </item>
     </layout>
    </widget>
-   <widget class="QGroupBox" name="groupBox_7">
-    <property name="geometry">
-     <rect>
-      <x>0</x>
-      <y>120</y>
-      <width>131</width>
-      <height>201</height>
-     </rect>
-    </property>
-    <property name="title">
-     <string>Spans</string>
-    </property>
-    <widget class="tableWidget" name="spans">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>30</y>
-       <width>131</width>
-       <height>171</height>
-      </rect>
-     </property>
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="alternatingRowColors">
-      <bool>true</bool>
-     </property>
-     <property name="sortingEnabled">
-      <bool>true</bool>
-     </property>
-     <property name="rowCount">
-      <number>0</number>
-     </property>
-     <attribute name="horizontalHeaderVisible">
-      <bool>true</bool>
-     </attribute>
-     <attribute name="horizontalHeaderDefaultSectionSize">
-      <number>55</number>
-     </attribute>
-     <attribute name="verticalHeaderVisible">
-      <bool>false</bool>
-     </attribute>
-     <attribute name="verticalHeaderMinimumSectionSize">
-      <number>0</number>
-     </attribute>
-     <attribute name="verticalHeaderDefaultSectionSize">
-      <number>24</number>
-     </attribute>
-     <column>
-      <property name="text">
-       <string>Num</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Name</string>
-      </property>
-     </column>
-     <column>
-      <property name="text">
-       <string>Freq</string>
-      </property>
-     </column>
-    </widget>
-   </widget>
   </widget>
   <widget class="QGroupBox" name="groupBox_2">
    <property name="geometry">
     <rect>
-     <x>160</x>
-     <y>390</y>
+     <x>380</x>
+     <y>220</y>
      <width>91</width>
-     <height>151</height>
+     <height>161</height>
     </rect>
    </property>
    <property name="title">
@@ -297,7 +229,7 @@
       <x>0</x>
       <y>30</y>
       <width>91</width>
-      <height>121</height>
+      <height>131</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -337,9 +269,9 @@
   <widget class="QGroupBox" name="groupBox_3">
    <property name="geometry">
     <rect>
-     <x>150</x>
+     <x>10</x>
      <y>60</y>
-     <width>161</width>
+     <width>141</width>
      <height>151</height>
     </rect>
    </property>
@@ -351,7 +283,7 @@
      <rect>
       <x>0</x>
       <y>30</y>
-      <width>161</width>
+      <width>141</width>
       <height>121</height>
      </rect>
     </property>
@@ -377,7 +309,7 @@
      <number>0</number>
     </attribute>
     <attribute name="horizontalHeaderDefaultSectionSize">
-     <number>73</number>
+     <number>60</number>
     </attribute>
     <attribute name="verticalHeaderVisible">
      <bool>false</bool>
@@ -403,7 +335,7 @@
   <widget class="QGroupBox" name="groupBox_4">
    <property name="geometry">
     <rect>
-     <x>260</x>
+     <x>10</x>
      <y>390</y>
      <width>171</width>
      <height>151</height>
@@ -466,9 +398,9 @@
   <widget class="QGroupBox" name="groupBox_5">
    <property name="geometry">
     <rect>
-     <x>150</x>
+     <x>10</x>
      <y>220</y>
-     <width>321</width>
+     <width>361</width>
      <height>161</height>
     </rect>
    </property>
@@ -480,7 +412,7 @@
      <rect>
       <x>0</x>
       <y>30</y>
-      <width>321</width>
+      <width>361</width>
       <height>131</height>
      </rect>
     </property>
@@ -506,7 +438,7 @@
      <number>0</number>
     </attribute>
     <attribute name="horizontalHeaderDefaultSectionSize">
-     <number>50</number>
+     <number>56</number>
     </attribute>
     <attribute name="verticalHeaderVisible">
      <bool>false</bool>
@@ -552,9 +484,9 @@
   <widget class="QGroupBox" name="groupBox_6">
    <property name="geometry">
     <rect>
-     <x>320</x>
+     <x>190</x>
      <y>60</y>
-     <width>151</width>
+     <width>241</width>
      <height>151</height>
     </rect>
    </property>
@@ -566,7 +498,7 @@
      <rect>
       <x>0</x>
       <y>30</y>
-      <width>151</width>
+      <width>241</width>
       <height>121</height>
      </rect>
     </property>
@@ -700,9 +632,9 @@
    <property name="geometry">
     <rect>
      <x>830</x>
-     <y>0</y>
+     <y>50</y>
      <width>141</width>
-     <height>501</height>
+     <height>151</height>
     </rect>
    </property>
    <property name="title">
@@ -760,206 +692,11 @@
      <string>Has WiFi</string>
     </property>
    </widget>
-   <widget class="QCheckBox" name="hasATU">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>110</y>
-      <width>101</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has ATU</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="hasCTCSS">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>130</y>
-      <width>101</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has CTCSS</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="hasTPBF">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>210</y>
-      <width>101</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has TPBF</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="hasVFOMS">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>230</y>
-      <width>101</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has VFO M/S</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="hasVFOAB">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>250</y>
-      <width>101</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has VFO A/B</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="hasQuickSplit">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>270</y>
-      <width>101</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has Quick Split</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="hasAntennaSel">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>290</y>
-      <width>111</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has Antenna Sel</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="hasDD">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>310</y>
-      <width>111</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has DD</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="hasDV">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>330</y>
-      <width>111</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has DV</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="hasRepeaterTone">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>170</y>
-      <width>121</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has Repeater Tone</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="hasDTCS">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>150</y>
-      <width>101</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has DTCS</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="hasRepeaterMode">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>190</y>
-      <width>121</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has Repeater Mode</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="hasIFShift">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>350</y>
-      <width>111</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has IF Shift</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="hasAttenuator">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>370</y>
-      <width>111</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has Attenuator</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="hasPreamp">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>390</y>
-      <width>111</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has Preamp</string>
-    </property>
-   </widget>
    <widget class="QCheckBox" name="hasTransmit">
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>410</y>
+      <y>110</y>
       <width>111</width>
       <height>20</height>
      </rect>
@@ -968,37 +705,11 @@
      <string>Has Transmit</string>
     </property>
    </widget>
-   <widget class="QCheckBox" name="hasPTTCommand">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>430</y>
-      <width>121</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Has PTT Command</string>
-    </property>
-   </widget>
-   <widget class="QCheckBox" name="useRTSforPTT">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>470</y>
-      <width>111</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Use RTS for PTT</string>
-    </property>
-   </widget>
    <widget class="QCheckBox" name="hasFDComms">
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>450</y>
+      <y>130</y>
       <width>121</width>
       <height>20</height>
      </rect>
@@ -1011,7 +722,7 @@
   <widget class="QGroupBox" name="groupBox_17">
    <property name="geometry">
     <rect>
-     <x>440</x>
+     <x>190</x>
      <y>390</y>
      <width>171</width>
      <height>151</height>
@@ -1074,7 +785,7 @@
   <widget class="QGroupBox" name="groupBox_10">
    <property name="geometry">
     <rect>
-     <x>620</x>
+     <x>580</x>
      <y>340</y>
      <width>171</width>
      <height>201</height>
@@ -1137,9 +848,9 @@
   <widget class="QGroupBox" name="groupBox_11">
    <property name="geometry">
     <rect>
-     <x>10</x>
+     <x>370</x>
      <y>390</y>
-     <width>141</width>
+     <width>201</width>
      <height>151</height>
     </rect>
    </property>
@@ -1151,7 +862,7 @@
      <rect>
       <x>0</x>
       <y>30</y>
-      <width>141</width>
+      <width>201</width>
       <height>121</height>
      </rect>
     </property>
@@ -1195,6 +906,74 @@
     <column>
      <property name="text">
       <string>Modes</string>
+     </property>
+    </column>
+   </widget>
+  </widget>
+  <widget class="QGroupBox" name="groupBox_7">
+   <property name="geometry">
+    <rect>
+     <x>760</x>
+     <y>340</y>
+     <width>211</width>
+     <height>201</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>Spans</string>
+   </property>
+   <widget class="tableWidget" name="spans">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>30</y>
+      <width>211</width>
+      <height>171</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="alternatingRowColors">
+     <bool>true</bool>
+    </property>
+    <property name="sortingEnabled">
+     <bool>true</bool>
+    </property>
+    <property name="rowCount">
+     <number>0</number>
+    </property>
+    <attribute name="horizontalHeaderVisible">
+     <bool>true</bool>
+    </attribute>
+    <attribute name="horizontalHeaderDefaultSectionSize">
+     <number>55</number>
+    </attribute>
+    <attribute name="verticalHeaderVisible">
+     <bool>false</bool>
+    </attribute>
+    <attribute name="verticalHeaderMinimumSectionSize">
+     <number>0</number>
+    </attribute>
+    <attribute name="verticalHeaderDefaultSectionSize">
+     <number>24</number>
+    </attribute>
+    <column>
+     <property name="text">
+      <string>Num</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>Name</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>Freq</string>
      </property>
     </column>
    </widget>

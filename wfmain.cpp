@@ -484,7 +484,7 @@ void wfmain::rigConnections()
     //connect(rpt, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
     connect(this->rpt, &repeaterSetup::getRptAccessMode,
             [=]() {
-            if(rigCaps.hasAdvancedRptrToneCmds) {
+            if (rigCaps.commands.contains(funcRptAccessMode)) {
                 issueDelayedCommand(cmdGetRptAccessMode);
             } else {
                 issueDelayedCommand(cmdGetToneEnabled);
@@ -3687,56 +3687,48 @@ void wfmain:: getInitialRigState()
         issueDelayedCommand(cmdGetDataMode);
         issueDelayedCommand(cmdGetModInput);
         issueDelayedCommand(cmdGetModDataInput);
+        issueDelayedCommand(cmdGetTxPower);
+        issueDelayedCommand(cmdGetCurrentModLevel); // level for currently selected mod sources
     }
     issueDelayedCommand(cmdGetRxGain);
     issueDelayedCommand(cmdGetAfGain);
     issueDelayedCommand(cmdGetSql);
-    
-    if (rigCaps.hasTransmit) 
-    {
-        issueDelayedCommand(cmdGetTxPower);
-        issueDelayedCommand(cmdGetCurrentModLevel); // level for currently selected mod sources
-    }
-    
-    issueDelayedCommand(cmdGetSpectrumRefLevel);
-    issueDelayedCommand(cmdGetDuplexMode);
+        
 
     if(rigCaps.hasSpectrum)
     {
         issueDelayedCommand(cmdDispEnable);
         issueDelayedCommand(cmdSpecOn);
+        issueDelayedCommand(cmdGetSpectrumRefLevel);
+        issueDelayedCommand(cmdGetDuplexMode);
     }
 
-    if (rigCaps.hasTransmit)
-    {
-        issueDelayedCommand(cmdGetModInput);
-        issueDelayedCommand(cmdGetModDataInput);
-    }
 
-    if(rigCaps.hasCTCSS)
+    if(rigCaps.commands.contains(funcTone))
     {
         issueDelayedCommand(cmdGetTone);
         issueDelayedCommand(cmdGetTSQL);
     }
-    if(rigCaps.hasDTCS)
+
+    if(rigCaps.commands.contains(funcTSQL))
     {
         issueDelayedCommand(cmdGetDTCS);
     }
 
-    if(rigCaps.hasCTCSS || rigCaps.hasDTCS)
+    if(rigCaps.commands.contains(funcRptAccessMode))
     {
         issueDelayedCommand(cmdGetRptAccessMode);
     }
 
-    if(rigCaps.hasAntennaSel)
+    if(rigCaps.commands.contains(funcAntenna))
     {
         issueDelayedCommand(cmdGetAntenna);
     }
-    if(rigCaps.hasAttenuator)
+    if(rigCaps.commands.contains(funcAttenuator))
     {
         issueDelayedCommand(cmdGetAttenuator);
     }
-    if(rigCaps.hasPreamp)
+    if(rigCaps.commands.contains(funcPreamp))
     {
         issueDelayedCommand(cmdGetPreamp);
     }
@@ -3744,9 +3736,12 @@ void wfmain:: getInitialRigState()
     issueDelayedCommand(cmdGetRitEnabled);
     issueDelayedCommand(cmdGetRitValue);
 
-    if(rigCaps.hasIFShift)
+    if(rigCaps.commands.contains(funcIFShift))
+    {
         issueDelayedCommand(cmdGetIFShift);
-    if(rigCaps.hasTBPF)
+    }
+
+    if(rigCaps.commands.contains(funcPBTInner) && rigCaps.commands.contains(funcPBTOuter))
     {
         issueDelayedCommand(cmdGetTPBFInner);
         issueDelayedCommand(cmdGetTPBFOuter);
@@ -3769,7 +3764,7 @@ void wfmain:: getInitialRigState()
     issueDelayedCommand(cmdNone);
     issueDelayedCommand(cmdStartRegularPolling);
 
-    if(rigCaps.hasATU)
+    if(rigCaps.commands.contains(funcATUStatus))
     {
         issueDelayedCommand(cmdGetATUStatus);
     }
@@ -4034,7 +4029,7 @@ void wfmain::doCmd(commandtype cmddata)
         case cmdSetRptAccessMode:
         {
             rptrAccessData_t rd = (*std::static_pointer_cast<rptrAccessData_t>(data));
-            if(rd.accessMode==ratrNN && !rigCaps.hasAdvancedRptrToneCmds)
+            if(rd.accessMode==ratrNN && !rigCaps.commands.contains(funcRptAccessMode))
             {
                 rd.usingSequence = true;
                 switch(rd.sequence)
@@ -4385,7 +4380,7 @@ void wfmain::doCmd(cmds cmd)
             emit getDTCS();
             break;
         case cmdGetRptAccessMode:
-            if(rigCaps.hasAdvancedRptrToneCmds) {
+            if(rigCaps.commands.contains(funcRptAccessMode)) {
                 emit getRptAccessMode();
             } else {
                 // Get both TONE and TSQL enabled status
@@ -4445,11 +4440,11 @@ void wfmain::doCmd(cmds cmd)
             emit getSpectrumRefLevel();
             break;
         case cmdGetATUStatus:
-            if(rigCaps.hasATU)
+            if(rigCaps.commands.contains(funcATUStatus))
                 emit getATUStatus();
             break;
         case cmdStartATU:
-            if(rigCaps.hasATU)
+            if(rigCaps.commands.contains(funcATUStatus))
                 emit startATU();
             break;
         case cmdGetAttenuator:
@@ -4957,7 +4952,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         ui->modInputData3Combo->setVisible(false);
 
         ui->attSelCombo->clear();
-        if(rigCaps.hasAttenuator)
+        if(rigCaps.commands.contains(funcAttenuator))
         {
             ui->attSelCombo->setDisabled(false);
             for(unsigned int i=0; i < rigCaps.attenuators.size(); i++)
@@ -4970,7 +4965,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         }
 
         ui->preampSelCombo->clear();
-        if(rigCaps.hasPreamp)
+        if(rigCaps.commands.contains(funcPreamp))
         {
             ui->preampSelCombo->setDisabled(false);
             for(unsigned int i=0; i < rigCaps.preamps.size(); i++)
@@ -4983,7 +4978,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         }
 
         ui->antennaSelCombo->clear();
-        if(rigCaps.hasAntennaSel)
+        if(rigCaps.commands.contains(funcAntenna))
         {
             ui->antennaSelCombo->setDisabled(false);
             for(unsigned int i=0; i < rigCaps.antennas.size(); i++)
@@ -5016,8 +5011,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         setBandButtons();
 
-        ui->tuneEnableChk->setEnabled(rigCaps.hasATU);
-        ui->tuneNowBtn->setEnabled(rigCaps.hasATU);
+        ui->tuneEnableChk->setEnabled(rigCaps.commands.contains(funcATUStatus));
+        ui->tuneNowBtn->setEnabled(rigCaps.commands.contains(funcATUStatus));
 
         ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
 
@@ -5071,7 +5066,7 @@ void wfmain::initPeriodicCommands()
 
     insertSlowPeriodicCommand(cmdGetFreq, 128);
 
-    if (rigCaps.hasVFOAB || rigCaps.hasVFOMS) {
+    if (rigCaps.commands.contains(funcVFOEqualAB) || rigCaps.commands.contains(funcVFOEqualMS)) {
         insertSlowPeriodicCommand(cmdGetFreqB, 128);
     }
 
@@ -5080,17 +5075,17 @@ void wfmain::initPeriodicCommands()
         insertSlowPeriodicCommand(cmdGetPTT, 128);
     insertSlowPeriodicCommand(cmdGetTxPower, 128);
     insertSlowPeriodicCommand(cmdGetRxGain, 128);
-    if(rigCaps.hasAttenuator)
+    if(rigCaps.commands.contains(funcAttenuator))
         insertSlowPeriodicCommand(cmdGetAttenuator, 128);
     if(rigCaps.hasTransmit)
         insertSlowPeriodicCommand(cmdGetPTT, 128);
-    if(rigCaps.hasPreamp)
+    if(rigCaps.commands.contains(funcPreamp))
         insertSlowPeriodicCommand(cmdGetPreamp, 128);
     if (rigCaps.commands.contains(funcRXAntenna)) {
         insertSlowPeriodicCommand(cmdGetAntenna, 128);
     }
     insertSlowPeriodicCommand(cmdGetDuplexMode, 128); // split and repeater
-    if(rigCaps.hasRepeaterModes)
+    if(rigCaps.commands.contains(funcRptAccessMode))
     {
         insertSlowPeriodicCommand(cmdGetRptDuplexOffset, 128);
     }

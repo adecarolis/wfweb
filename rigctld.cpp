@@ -410,7 +410,7 @@ void rigCtlClient::socketReadyRead()
         else if (command.length() > 1 && (command[0] == "T" || command[0] == "set_ptt"))
         {
             setCommand = true;
-            if (rigCaps.hasPTTCommand) {
+            if(rigCaps.commands.contains(funcTXStatus)) {
                 rigState->set(PTT, (bool)command[1].toInt(), true);
             }
             else
@@ -420,7 +420,7 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command[0] == "t" || command[0] == "get_ptt")
         {
-            if (rigCaps.hasPTTCommand) {
+            if(rigCaps.commands.contains(funcTXStatus)) {
                 QString resp;
                 if (longReply) {
                     resp.append(QString("PTT: "));
@@ -1344,7 +1344,7 @@ void rigCtlClient::socketReadyRead()
             response.append("10000");
             response.append("0");
             QString preamps="";
-            if (rigCaps.hasPreamp) {
+            if(rigCaps.commands.contains(funcPreamp)) {
                 for (quint8 pre : rigCaps.preamps)
                 {
                     if (pre == 0)
@@ -1360,7 +1360,7 @@ void rigCtlClient::socketReadyRead()
             response.append(preamps);
 
             QString attens = "";
-            if (rigCaps.hasAttenuator) {
+            if(rigCaps.commands.contains(funcAttenuator)) {
                 for (quint8 att : rigCaps.attenuators)
                 {
                     if (att == 0)
@@ -1435,7 +1435,7 @@ void rigCtlClient::socketReadyRead()
             {
                 response.append(QString("Rig type:\tReceiver"));
             }
-            if (rigCaps.hasPTTCommand) {
+            if(rigCaps.commands.contains(funcTXStatus)) {
                 response.append(QString("PTT type:\tRig capable"));
             }
             response.append(QString("DCD type:\tRig capable"));
@@ -1726,7 +1726,7 @@ quint8 rigCtlClient::getAntennas()
 quint64 rigCtlClient::getRadioModes(QString md) 
 {
     quint64 modes = 0;
-    for (mode_info mode : rigCaps.modes)
+    for (auto&& mode : rigCaps.modes)
     {
         for (int i = 0; mode_str[i].str[0] != '\0'; i++)
         {

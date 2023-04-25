@@ -183,7 +183,7 @@ enum cmds {
 
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 133
+#define NUMFUNCS 145
 
 enum funcs { funcNone,
     funcPower,              funcScopeData,          funcScopeOnOff,     funcScopeWaveData,  funcScopeMainSub,   funcScopeSingleDual,
@@ -198,16 +198,19 @@ enum funcs { funcNone,
     funcSpeech,             funcDuplexMode,         funcModInput,       funcModData1Input,  funcModData2Input,  funcModData3Input,
     funcVdMeter,            funcIdMeter,            funcSMeter,         funcCenterMeter,    funcPowerMeter,     funcSWRMeter,
     funcALCMeter,           funcCompMeter,          funcTxRxMeter,      funcTone,           funcTSQL,           funcDTCS,
-    funcRptAccessMode,      funcRptDuplexOffset,    funcVFOSelect,      funcVFOSwap,        funcVFOEqualAB,     funcDualWatch,
-    funcVFOEqualMS,         funcQuickSplit,         funcPreamp,         funcAttenuator,     funcAntenna,        funcBandStackReg,
+    funcRptAccessMode,      funcRptDuplexOffset,    funcVFOASelect,     funcVFOBSelect,     funcVFOSwap,        funcVFOEqualAB,
+    funcDualWatchOn,        funcDualWatchOff,       funcVFOEqualMS,     funcMemoryMode,     funcMemoryRead,     funcMemoryWrite,
+    funcMemoryToVFO,        funcMemoryClear,        funcReadOffsetFreq, funcWriteOffsetFreq,funcScanning,       funcVFOMainSelect,
+    funcVFOSubSelect,       funcQuickSplit,         funcPreamp,         funcAttenuator,     funcAntenna,        funcBandStackReg,
     funcKeySpeed,           funcBreakMode,          funcSendCW,         funcDashRatio,      funcTime,           funcDate,
     funcUTCOffset,          funcTransceive,         funcCompLevel,      funcBreakInDelay,   funcNBLevel,        funcMonitorGain,
-    funcVoxGain,            funcAntiVoxGain,        funcBrightLevel,    funcNB,             funcNR,            funcAutoNotch,
+    funcVoxGain,            funcAntiVoxGain,        funcBrightLevel,    funcNB,             funcNR,             funcAutoNotch,
     funcCompressor,         funcMonitor,            funcVox,            FuncBKIN,           funcDialLock,       funcDSPFilterType,
     funcTransceiverId,      funcTxFreq,             funcAfMute,         funcUSBGain,        funcLANGain,        funcACC1Gain,
     funcACC2Gain,           funcRefCoarse,          funcRefFine,        funcNoiseLevel,     funcMainSubCmd,     funcIPP,
     funcSatelliteMode,      funcManualNotch,        funcMemoryContents, funcAGC,            funcRepeaterTone,   funcRepeaterTSQL,
-    funcRepeaterDCS,        funcRepeaterCSQL,       funcXFC,            funcCIVOutput,      funcRXAntenna,      funcVoiceTX
+    funcRepeaterDCS,        funcRepeaterCSQL,       funcXFC,            funcCIVOutput,      funcRXAntenna,      funcVoiceTX,
+
 };
 
 // Any changes to these strings WILL break rig definitions, add new ones to end. **Missing commas concatenate strings!**
@@ -224,14 +227,16 @@ static QString funcString[] { "None",
     "Speech",               "Duplex Mode",          "Mod Input",        "Mod DATA1 Input",  "Mod DATA2 Input",  "Mod DATA3 Input",
     "Vd Meter",             "Id Meter",             "S Meter",          "Center Meter",     "Power Meter",      "SWR Meter",
     "ALC Meter",            "Comp Meter",           "TxRx Meter",       "Tone",             "TSQL",             "DTCS",
-    "Rpt Access Mode",      "Rpt Duplex Offset",    "Select VFO",       "VFO Swap",         "VFO Equal AB",     "Dual Watch",
-    "VFO Equal MS",         "Quick Split",          "Preamp",           "Attenuator",       "Antenna",          "BandStack Reg",
+    "Rpt Access Mode",      "Rpt Duplex Offset",    "VFO A Select",     "VFO B Select",     "VFO Swap",         "VFO Equal AB",
+    "VFO Dual Watch On",    "VFO Dual Watch Off",   "VFO Equal MS",     "Memory Mode",      "Memory Read",      "Memory Write",
+    "Memory to VFO",        "Memory Clear",         "Read Offset Freq", "Write Offset Freq","Scanning",         "VFO Main Select",
+    "VFO Sub Select",       "Quick Split",          "Preamp",           "Attenuator",       "Antenna",          "BandStack Reg",
     "Key Speed",            "Break Mode",           "Send CW",          "Dash Ratio",       "Time",             "Date",
     "UTC Offset",           "Transceive",           "Compressor Level", "Break-In Delay",   "NB Level",         "Monitor Gain",
     "Vox Gain",             "Anti-Vox Gain",        "Brightness Level", "Noise Blanker",    "Noise Reduction",  "Auto Notch",
     "Compressor",           "Monitor",              "Vox",              "Break-In",         "Dial Lock",        "DSP Filter Type",
     "Transceiver ID",       "Transmit Frequency",   "AF Mute",          "USB Gain",         "LAN Gain",         "ACC1 Gain",
-    "ACC2 Gain",            "Adjust REF Coarse",    "Adjust Ref Fine",  "Noise Level",      "Specify Main Sub", "IPP",
+    "ACC2 Gain",            "Adjust REF Coarse",    "Adjust Ref Fine",  "Noise Level",      "VFO Main/Sub",     "IPP",
     "Satellite Mode",       "Manual Notch",         "Memory Contents",  "AGC Setting",      "Repeater Tone",    "Repeater TSQL",
     "Repeater DCS",         "Repeater CSQL",        "XFC Status",       "CI-V Output",      "RX Antenna",       "Voice TX Memory"
 };

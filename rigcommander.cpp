@@ -327,6 +327,10 @@ bool rigCommander::getCommand(funcs func, QByteArray &payload, int value)
     {
         if (value == -10000 || (value>=it.value().minVal && value <= it.value().maxVal))
         {
+            if (value == -10000)
+                qDebug(logRig()) << QString("%0 with no value (get)").arg(funcString[func]);
+            else
+                qDebug(logRig()) << QString("%0 with value %1 (Range: %2-%3)").arg(funcString[func]).arg(value).arg(it.value().minVal).arg(it.value().maxVal);
             payload.append(it.value().data);
             return true;
         }
@@ -631,10 +635,11 @@ void rigCommander::selectVFO(vfo_t vfo)
     // Note, some radios use main/sub,
     // some use A/B,
     // and some appear to use both...
+    //    vfoA=0, vfoB=1,vfoMain = 0xD0,vfoSub = 0xD1
+    funcs f = (vfo == vfoA)?funcVFOASelect:(vfo == vfoB)?funcVFOBSelect:(vfo == vfoMain)?funcVFOMainSelect:funcVFOSubSelect;
     QByteArray payload;
-    if (getCommand(funcVFOSelect,payload,vfo))
+    if (getCommand(f,payload))
     {
-        payload.append(static_cast<unsigned char>(vfo));
         prepDataAndSend(payload);
     }
 }
@@ -882,8 +887,8 @@ void rigCommander::setSplit(bool splitEnabled)
     QByteArray payload;
     if (getCommand(funcSplit,payload,static_cast<int>(splitEnabled)))
     {
-        prepDataAndSend(payload);
         payload.append(static_cast<unsigned char>(splitEnabled));
+        prepDataAndSend(payload);
     }
 }
 
@@ -892,8 +897,8 @@ void rigCommander::setDuplexMode(duplexMode dm)
     QByteArray payload;
     if (getCommand(funcDuplexMode,payload,static_cast<int>(dm)))
     {
-        prepDataAndSend(payload);
         payload.append(static_cast<unsigned char>(dm));
+        prepDataAndSend(payload);
     }
     else
     {
@@ -919,8 +924,8 @@ void rigCommander::setQuickSplit(bool qsOn)
     QByteArray payload;
     if (getCommand(funcQuickSplit,payload,static_cast<int>(qsOn)))
     {
-        prepDataAndSend(payload);
         payload.append(static_cast<unsigned char>(qsOn));
+        prepDataAndSend(payload);
     }
 }
 
@@ -1032,7 +1037,6 @@ void rigCommander::setDashRatio(unsigned char ratio)
     if (getCommand(funcDashRatio,payload,ratio))
     {
         payload.append(bcdEncodeInt(ratio).at(1)); // Discard first byte
-        prepDataAndSend(payload);
         prepDataAndSend(payload);
     }
 }
@@ -1695,6 +1699,7 @@ void rigCommander::parseCommand()
     case funcRptDuplexOffset:
         emit haveRptOffsetFrequency(parseFrequencyRptOffset(payloadIn));
         break;
+    case funcSplit:
     case funcDuplexMode:
         emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
         state.set(DUPLEX, (duplexMode)(unsigned char)payloadIn[1], false);
@@ -1708,8 +1713,9 @@ void rigCommander::parseCommand()
         state.set(ANTENNA, (quint8)payloadIn[1], false);
         state.set(RXANTENNA, (bool)payloadIn[2], false);
         break;
+
+
     // Register 14 (levels) starts here:
-    //     unsigned char value = bcdHexToUChar(payloadIn[3], payloadIn[4]);
     case funcAfGain:
         if (udp == Q_NULLPTR) {
              emit haveAfGain(bcdHexToUChar(payloadIn[2],payloadIn[3]));
@@ -2162,7 +2168,7 @@ void rigCommander::parseLevels()
                 break;
             case '\x07':
                 // Twin BPF Inner, or, IF-Shift level
-                if(rigCaps.hasTBPF)
+                if(rigCaps.commands.contains(funcPBTInner))
                     emit haveTPBFInner(level);
                 else
                     emit haveIFShift(level);
@@ -4073,23 +4079,10 @@ void rigCommander::determineRigCaps()
     rigCaps.hasLan = settings->value("HasLAN",false).toBool();
     rigCaps.hasEthernet = settings->value("HasEthernet",false).toBool();
     rigCaps.hasWiFi = settings->value("HasWiFi",false).toBool();
-    rigCaps.hasATU = settings->value("HasATU",false).toBool();
-    rigCaps.hasCTCSS = settings->value("HasCTCSS",false).toBool();
-    rigCaps.hasDTCS = settings->value("HasDTCS",false).toBool();
-    rigCaps.hasAdvancedRptrToneCmds = settings->value("HasRepeaterTone",false).toBool();
-    rigCaps.hasRepeaterModes = settings->value("HasRepeaterMode",false).toBool();
-    rigCaps.hasTBPF = settings->value("HasTBPF",false).toBool();
-    rigCaps.hasVFOMS = settings->value("HasVFOMS",false).toBool();
-    rigCaps.hasVFOAB = settings->value("HasVFOAB",false).toBool();
     rigCaps.hasQuickSplitCommand = settings->value("HasQuickSplit",false).toBool();
-    rigCaps.hasAntennaSel = settings->value("HasAntennaSel",false).toBool();
     rigCaps.hasDD = settings->value("HasDD",false).toBool();
     rigCaps.hasDV = settings->value("HasDV",false).toBool();
-    rigCaps.hasIFShift = settings->value("HasIFShift",false).toBool();
-    rigCaps.hasAttenuator = settings->value("HasAttenuator",false).toBool();
-    rigCaps.hasPreamp = settings->value("HasPreamp",false).toBool();
     rigCaps.hasTransmit = settings->value("HasTransmit",false).toBool();
-    rigCaps.hasPTTCommand = settings->value("HasPTTCommand",false).toBool();
     rigCaps.hasFDcomms = settings->value("HasFDComms",false).toBool();
     rigCaps.useRTSforPTT = settings->value("UseRTSforPTT",false).toBool();
 
@@ -5121,9 +5114,6 @@ void rigCommander::determineRigCaps()
     */
     haveRigCaps = true;
 
-    if (rigCaps.hasSpectrum) {
-
-    }
 
     // Copy received guid so we can recognise this radio.
     memcpy(rigCaps.guid, this->guid, GUIDLEN);
@@ -5690,7 +5680,7 @@ void rigCommander::setAttenuator(unsigned char att)
 void rigCommander::setPreamp(unsigned char pre)
 {
     QByteArray payload;
-    if (getCommand(funcAttenuator,payload,pre))
+    if (getCommand(funcPreamp,payload,pre))
     {
         payload.append(pre);
         prepDataAndSend(payload);

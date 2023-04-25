@@ -52,10 +52,12 @@ void transceiverAdjustments::setMaxPassband(quint16 maxHzAllowed)
 
 void transceiverAdjustments::on_IFShiftSlider_valueChanged(int value)
 {
-    if(rigCaps.hasIFShift)
+    if(rigCaps.commands.contains(funcIFShift))
     {
-        emit setIFShift(value);
-    } else {
+        emit setIFShift(value);        
+    }
+    else
+    {
         unsigned char inner = ui->TPBFInnerSlider->value();
         unsigned char outer = ui->TPBFOuterSlider->value();
         int shift = value - previousIFShift;
@@ -81,16 +83,16 @@ void transceiverAdjustments::on_TPBFOuterSlider_valueChanged(int value)
 void transceiverAdjustments::setRig(rigCapabilities rig)
 {
     this->rigCaps = rig;
-    if(!rigCaps.hasIFShift)
+    if(rigCaps.commands.contains(funcIFShift))
         updateIFShift(128);
     //ui->IFShiftSlider->setVisible(rigCaps.hasIFShift);
     //ui->IFShiftLabel->setVisible(rigCaps.hasIFShift);
 
-    ui->TPBFInnerSlider->setVisible(rigCaps.hasTBPF);
-    ui->TPBFInnerLabel->setVisible(rigCaps.hasTBPF);
+    ui->TPBFInnerSlider->setVisible(rigCaps.commands.contains(funcPBTInner));
+    ui->TPBFInnerLabel->setVisible(rigCaps.commands.contains(funcPBTInner));
 
-    ui->TPBFOuterSlider->setVisible(rigCaps.hasTBPF);
-    ui->TPBFInnerLabel->setVisible(rigCaps.hasTBPF);
+    ui->TPBFOuterSlider->setVisible(rigCaps.commands.contains(funcPBTOuter));
+    ui->TPBFOuterLabel->setVisible(rigCaps.commands.contains(funcPBTOuter));
 
     haveRigCaps = true;
 }

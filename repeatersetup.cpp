@@ -31,7 +31,7 @@ void repeaterSetup::setRig(rigCapabilities inRig)
 {
     this->rig = inRig;
     haveRig = true;
-    if(rig.hasCTCSS)
+    if(rig.commands.contains(funcTone))
     {
         ui->rptToneCombo->setDisabled(false);
         ui->toneTone->setDisabled(false);
@@ -41,7 +41,7 @@ void repeaterSetup::setRig(rigCapabilities inRig)
         ui->toneTone->setDisabled(true);
         ui->toneTSQL->setDisabled(true);
     }
-    if(rig.hasDTCS)
+    if(rig.commands.contains(funcDTCS))
     {
         ui->rptDTCSCombo->setDisabled(false);
         ui->toneDTCS->setDisabled(false);
@@ -53,7 +53,7 @@ void repeaterSetup::setRig(rigCapabilities inRig)
         ui->rptDTCSInvertRx->setDisabled(true);
         ui->rptDTCSInvertTx->setDisabled(true);
     }
-    if(rig.hasVFOAB)
+    if(rig.commands.contains(funcVFOEqualAB))
     {
         ui->selABtn->setDisabled(false);
         ui->selBBtn->setDisabled(false);
@@ -65,7 +65,7 @@ void repeaterSetup::setRig(rigCapabilities inRig)
         ui->aEqBBtn->setDisabled(true);
         ui->swapABBtn->setDisabled(true);
     }
-    if(rig.hasVFOMS)
+    if(rig.commands.contains(funcVFOEqualMS))
     {
         ui->selMainBtn->setDisabled(false);
         ui->selSubBtn->setDisabled(false);
@@ -77,13 +77,14 @@ void repeaterSetup::setRig(rigCapabilities inRig)
         ui->mEqSBtn->setDisabled(true);
         ui->swapMSBtn->setDisabled(true);
     }
-    if(rig.hasVFOMS && rig.hasVFOAB)
+    if(rig.commands.contains(funcVFOEqualAB) && rig.commands.contains(funcVFOEqualMS))
     {
         // Rigs that have both AB and MS
         // do not have a swap AB command.
         ui->swapABBtn->setDisabled(true);
     }
-    if(rig.hasSpecifyMainSubCmd)
+    bool mainSub = rig.commands.contains(funcVFOMainSelect);
+    if(mainSub)
     {
         ui->setRptrSubVFOBtn->setEnabled(true);
         ui->setToneSubVFOBtn->setEnabled(true);
@@ -93,15 +94,16 @@ void repeaterSetup::setRig(rigCapabilities inRig)
         ui->setToneSubVFOBtn->setDisabled(true);
         ui->setSplitRptrToneChk->setDisabled(true);
     }
-    ui->rptAutoBtn->setEnabled(rig.hasRepeaterModes);
-    ui->rptDupMinusBtn->setEnabled(rig.hasRepeaterModes);
-    ui->rptDupPlusBtn->setEnabled(rig.hasRepeaterModes);
-    ui->rptSimplexBtn->setEnabled(rig.hasRepeaterModes);
-    ui->rptrOffsetEdit->setEnabled(rig.hasRepeaterModes);
-    ui->rptrOffsetSetBtn->setEnabled(rig.hasRepeaterModes);
-    ui->setToneSubVFOBtn->setEnabled(rig.hasSpecifyMainSubCmd);
-    ui->setRptrSubVFOBtn->setEnabled(rig.hasSpecifyMainSubCmd);
-    ui->quickSplitChk->setVisible(rig.hasQuickSplitCommand);
+    bool rpt = rig.commands.contains(funcRptAccessMode);
+    ui->rptAutoBtn->setEnabled(rpt);
+    ui->rptDupMinusBtn->setEnabled(rpt);
+    ui->rptDupPlusBtn->setEnabled(rpt);
+    ui->rptSimplexBtn->setEnabled(rpt);
+    ui->rptrOffsetEdit->setEnabled(rpt);
+    ui->rptrOffsetSetBtn->setEnabled(rpt);
+    ui->setToneSubVFOBtn->setEnabled(mainSub);
+    ui->setRptrSubVFOBtn->setEnabled(mainSub);
+    ui->quickSplitChk->setVisible(rig.commands.contains(funcQuickSplit));
 }
 
 void repeaterSetup::populateTones()
@@ -443,7 +445,7 @@ void repeaterSetup::showEvent(QShowEvent *event)
 {
     emit getDuplexMode();
     emit getSplitModeEnabled();
-    if(rig.hasRepeaterModes)
+    if(rig.commands.contains(funcRptAccessMode))
         emit getRptDuplexOffset();
     QMainWindow::showEvent(event);
     (void)event;
@@ -475,7 +477,7 @@ void repeaterSetup::on_rptSimplexBtn_clicked()
 {
     // Simplex
     emit setDuplexMode(dmSplitOff);
-    if(rig.hasRepeaterModes)
+    if(rig.commands.contains(funcRptAccessMode))
     {
         emit setDuplexMode(dmDupAutoOff);
         emit setDuplexMode(dmSimplex);
