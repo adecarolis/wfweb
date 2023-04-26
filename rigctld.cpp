@@ -410,7 +410,7 @@ void rigCtlClient::socketReadyRead()
         else if (command.length() > 1 && (command[0] == "T" || command[0] == "set_ptt"))
         {
             setCommand = true;
-            if(rigCaps.commands.contains(funcTXStatus)) {
+            if(rigCaps.commands.contains(funcTransceiverStatus)) {
                 rigState->set(PTT, (bool)command[1].toInt(), true);
             }
             else
@@ -420,7 +420,7 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command[0] == "t" || command[0] == "get_ptt")
         {
-            if(rigCaps.commands.contains(funcTXStatus)) {
+            if(rigCaps.commands.contains(funcTransceiverStatus)) {
                 QString resp;
                 if (longReply) {
                     resp.append(QString("PTT: "));
@@ -1435,7 +1435,7 @@ void rigCtlClient::socketReadyRead()
             {
                 response.append(QString("Rig type:\tReceiver"));
             }
-            if(rigCaps.commands.contains(funcTXStatus)) {
+            if(rigCaps.commands.contains(funcTransceiverStatus)) {
                 response.append(QString("PTT type:\tRig capable"));
             }
             response.append(QString("DCD type:\tRig capable"));

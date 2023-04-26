@@ -371,7 +371,7 @@ void rigCommander::powerOn()
     }
 
     unsigned char cmd = 0x01;
-    if (getCommand(funcPower,payload,cmd))
+    if (getCommand(funcRFPower,payload,cmd))
     {
         payload.append(cmd);
         prepDataAndSend(payload);
@@ -395,7 +395,7 @@ void rigCommander::powerOff()
 {
     QByteArray payload;
     unsigned char cmd = '\x00';
-    if (getCommand(funcPower,payload,cmd))
+    if (getCommand(funcRFPower,payload,cmd))
     {
         payload.append(cmd);
         prepDataAndSend(payload);
@@ -406,7 +406,7 @@ void rigCommander::enableSpectOutput()
 {
     QByteArray payload;
     unsigned char cmd = '\x01';
-    if (getCommand(funcScopeWaveData,payload,cmd))
+    if (getCommand(funcScopeDataOutput,payload,cmd))
     {
         payload.append(cmd);
         prepDataAndSend(payload);
@@ -417,7 +417,7 @@ void rigCommander::disableSpectOutput()
 {
     QByteArray payload;
     unsigned char cmd = '\x00';
-    if (getCommand(funcScopeWaveData,payload,cmd))
+    if (getCommand(funcScopeDataOutput,payload,cmd))
     {
         payload.append(cmd);
         prepDataAndSend(payload);
@@ -486,7 +486,7 @@ void rigCommander::getScopeEdge()
 {
     QByteArray payload;
     unsigned char cmd = '\x00';
-    if (getCommand(funcScopeFixedEdge,payload,cmd))
+    if (getCommand(funcScopeEdgeNumber,payload,cmd))
     {
         payload.append(cmd);
         prepDataAndSend(payload);
@@ -498,7 +498,7 @@ void rigCommander::setScopeEdge(char edge)
     // 1 2 or 3 (check command definition)
     QByteArray payload;
     unsigned char vfo = '\x00';
-    if (getCommand(funcScopeFixedEdge,payload,edge))
+    if (getCommand(funcScopeEdgeNumber,payload,edge))
     {
         payload.append(vfo);
         payload.append(edge);
@@ -514,7 +514,7 @@ void rigCommander::getScopeSpan()
 void rigCommander::getScopeSpan(bool isSub)
 {
     QByteArray payload;
-    if (getCommand(funcScopeSpan,payload,static_cast<int>(isSub)))
+    if (getCommand(funcScopeCenterSpan,payload,static_cast<int>(isSub)))
     {
         payload.append(static_cast<unsigned char>(isSub));
         prepDataAndSend(payload);
@@ -529,7 +529,7 @@ void rigCommander::setScopeSpan(char span)
 
     QByteArray payload;
     unsigned char vfo = '\x00';
-    if (getCommand(funcScopeSpan,payload,span))
+    if (getCommand(funcScopeCenterSpan,payload,span))
     {
         payload.append(vfo);
         payload.append("\x00"); // 10Hz/1Hz
@@ -617,7 +617,7 @@ void rigCommander::getSpectrumMode()
 void rigCommander::setFrequency(unsigned char vfo, freqt freq)
 {
     QByteArray payload;
-    if (getCommand(funcFreq,payload,vfo))
+    if (getCommand(funcMainSubFreq,payload,vfo))
     {
         payload.append(vfo);
         payload.append(makeFreqPayload(freq));
@@ -667,7 +667,11 @@ void rigCommander::exchangeVFOs()
     // NB: This command exchanges A-B or M-S
     // depending upon the radio.
     QByteArray payload;
-    if (getCommand(funcVFOSwap,payload))
+    if (getCommand(funcVFOSwapAB,payload))
+    {
+        prepDataAndSend(payload);
+    }
+    else if (getCommand(funcVFOSwapMS,payload))
     {
         prepDataAndSend(payload);
     }
@@ -721,7 +725,7 @@ QByteArray rigCommander::makeFreqPayload(double freq)
 void rigCommander::setRitEnable(bool ritEnabled)
 {
     QByteArray payload;
-    if (getCommand(funcRit,payload),static_cast<int>(ritEnabled))
+    if (getCommand(funcRitStatus,payload),static_cast<int>(ritEnabled))
     {
         payload.append(static_cast<unsigned char>(ritEnabled));
         prepDataAndSend(payload);
@@ -731,7 +735,7 @@ void rigCommander::setRitEnable(bool ritEnabled)
 void rigCommander::getRitEnabled()
 {
     QByteArray payload;
-    if (getCommand(funcRit,payload))
+    if (getCommand(funcRitStatus,payload))
     {
         prepDataAndSend(payload);
     }
@@ -740,7 +744,7 @@ void rigCommander::getRitEnabled()
 void rigCommander::getRitValue()
 {
     QByteArray payload;
-    if (getCommand(funcRitValue,payload))
+    if (getCommand(funcRITFreq,payload))
     {
         prepDataAndSend(payload);
     }
@@ -749,7 +753,7 @@ void rigCommander::getRitValue()
 void rigCommander::setRitValue(int ritValue)
 {
     QByteArray payload;
-    if (getCommand(funcRitValue,payload,ritValue))
+    if (getCommand(funcRITFreq,payload,ritValue))
     {
         bool isNegative = false;
         if(ritValue < 0)
@@ -785,7 +789,7 @@ void rigCommander::setMode(mode_info m)
     }
 
     QByteArray payload;
-    if (getCommand(funcMode,payload,m.reg))
+    if (getCommand(funcMainSubMode,payload,m.reg))
     {
         payload.append(static_cast<unsigned char>(m.VFO));
         payload.append(m.reg);
@@ -819,7 +823,7 @@ void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
 void rigCommander::setDataMode(bool dataOn, unsigned char filter)
 {
     QByteArray payload;
-    if (getCommand(funcDataMode,payload,static_cast<int>(dataOn)))
+    if (getCommand(funcDataModeWithFilter,payload,static_cast<int>(dataOn)))
     {
         payload.append(static_cast<unsigned char>(dataOn));
         payload.append((dataOn) ? filter : 0x0); // if data mode off, bandwidth not defined per ICD.
@@ -835,7 +839,7 @@ void rigCommander::getFrequency()
 void rigCommander::getFrequency(unsigned char vfo)
 {
     QByteArray payload;
-    if (getCommand(funcFreq,payload,vfo))
+    if (getCommand(funcMainSubFreq,payload,vfo))
     {
         payload.append(vfo);
         prepDataAndSend(payload);
@@ -853,7 +857,7 @@ void rigCommander::getMode()
 void rigCommander::getMode(unsigned char vfo)
 {
     QByteArray payload;
-    if (getCommand(funcMode,payload,vfo))
+    if (getCommand(funcMainSubMode,payload,vfo))
     {
         payload.append(vfo);
         prepDataAndSend(payload);
@@ -867,7 +871,7 @@ void rigCommander::getMode(unsigned char vfo)
 void rigCommander::getDataMode()
 {
     QByteArray payload;
-    if (getCommand(funcDataMode,payload))
+    if (getCommand(funcDataModeWithFilter,payload))
     {
         prepDataAndSend(payload);
     }
@@ -876,7 +880,7 @@ void rigCommander::getDataMode()
 void rigCommander::getSplit()
 {
     QByteArray payload;
-    if (getCommand(funcSplit,payload))
+    if (getCommand(funcSplitStatus,payload))
     {
         prepDataAndSend(payload);
     }
@@ -885,7 +889,7 @@ void rigCommander::getSplit()
 void rigCommander::setSplit(bool splitEnabled)
 {
     QByteArray payload;
-    if (getCommand(funcSplit,payload,static_cast<int>(splitEnabled)))
+    if (getCommand(funcSplitStatus,payload,static_cast<int>(splitEnabled)))
     {
         payload.append(static_cast<unsigned char>(splitEnabled));
         prepDataAndSend(payload);
@@ -895,7 +899,7 @@ void rigCommander::setSplit(bool splitEnabled)
 void rigCommander::setDuplexMode(duplexMode dm)
 {
     QByteArray payload;
-    if (getCommand(funcDuplexMode,payload,static_cast<int>(dm)))
+    if (getCommand(funcDuplexStatus,payload,static_cast<int>(dm)))
     {
         payload.append(static_cast<unsigned char>(dm));
         prepDataAndSend(payload);
@@ -909,7 +913,7 @@ void rigCommander::setDuplexMode(duplexMode dm)
 void rigCommander::getDuplexMode()
 {
     QByteArray payload;
-    if (getCommand(funcDuplexMode,payload))
+    if (getCommand(funcDuplexStatus,payload))
     {
         prepDataAndSend(payload);
     }
@@ -949,7 +953,7 @@ void rigCommander::setPassband(quint16 pass)
     {
         if (m.reg == mode && m.bw) {
             QByteArray payload;
-            if (getCommand(funcPassband,payload,pass))
+            if (getCommand(funcFilterWidth,payload,pass))
             {
                 unsigned char calc;
                 if (mode == modeAM) { // AM 0-49
@@ -995,7 +999,7 @@ void rigCommander::getPassband()
         if (m.reg == mode && m.bw)
         {
             QByteArray payload;
-            if (getCommand(funcPassband,payload))
+            if (getCommand(funcFilterWidth,payload))
             {
                 prepDataAndSend(payload);
             }
@@ -1044,7 +1048,7 @@ void rigCommander::setDashRatio(unsigned char ratio)
 void rigCommander::getPskTone()
 {
     QByteArray payload;
-    if (getCommand(funcPskTone,payload))
+    if (getCommand(funcPSKTone,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1053,7 +1057,7 @@ void rigCommander::getPskTone()
 void rigCommander::setPskTone(unsigned char tone)
 {
     QByteArray payload;
-    if (getCommand(funcPskTone,payload,tone))
+    if (getCommand(funcPSKTone,payload,tone))
     {
         prepDataAndSend(payload);
         payload.append(bcdEncodeInt(tone));
@@ -1063,7 +1067,7 @@ void rigCommander::setPskTone(unsigned char tone)
 void rigCommander::getRttyMark()
 {
     QByteArray payload;
-    if (getCommand(funcRttyMark,payload))
+    if (getCommand(funcRTTYMarkTone,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1072,7 +1076,7 @@ void rigCommander::getRttyMark()
 void rigCommander::setRttyMark(unsigned char mark)
 {
     QByteArray payload;
-    if (getCommand(funcRttyMark,payload,mark))
+    if (getCommand(funcRTTYMarkTone,payload,mark))
     {
         prepDataAndSend(payload);
         payload.append(bcdEncodeInt(mark));
@@ -1082,7 +1086,7 @@ void rigCommander::setRttyMark(unsigned char mark)
 void rigCommander::getTransmitFrequency()
 {
     QByteArray payload;
-    if (getCommand(funcTxFreq,payload))
+    if (getCommand(funcReadTXFreq,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1098,7 +1102,7 @@ void rigCommander::setTone(quint16 tone)
 void rigCommander::setTone(rptrTone_t t)
 {
     QByteArray payload;
-    if (getCommand(funcMainSubCmd,payload))
+    if (getCommand(funcMainSubPrefix,payload))
     {
         payload.append(static_cast<unsigned char>(t.useSecondaryVFO));
     }
@@ -1120,7 +1124,7 @@ void rigCommander::setTSQL(quint16 t)
 void rigCommander::setTSQL(rptrTone_t t)
 {
     QByteArray payload;
-    if (getCommand(funcMainSubCmd,payload))
+    if (getCommand(funcMainSubPrefix,payload))
     {
         payload.append(static_cast<unsigned char>(t.useSecondaryVFO));
     }
@@ -1135,7 +1139,7 @@ void rigCommander::setTSQL(rptrTone_t t)
 void rigCommander::setDTCS(quint16 dcscode, bool tinv, bool rinv)
 {
     QByteArray payload;
-    if (getCommand(funcRepeaterDCS,payload,static_cast<int>(dcscode)))
+    if (getCommand(funcDTCSStatus,payload,static_cast<int>(dcscode)))
     {
         payload.append(encodeTone(dcscode, tinv, rinv));
         prepDataAndSend(payload);
@@ -1204,7 +1208,7 @@ quint16 rigCommander::decodeTone(QByteArray eTone, bool &tinv, bool &rinv)
 void rigCommander::getTone()
 {
     QByteArray payload;
-    if (getCommand(funcTone,payload))
+    if (getCommand(funcToneStatus,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1213,7 +1217,7 @@ void rigCommander::getTone()
 void rigCommander::getTSQL()
 {
     QByteArray payload;
-    if (getCommand(funcTSQL,payload))
+    if (getCommand(funcTSQLStatus,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1222,7 +1226,7 @@ void rigCommander::getTSQL()
 void rigCommander::getDTCS()
 {
     QByteArray payload;
-    if (getCommand(funcDTCS,payload))
+    if (getCommand(funcDTCSStatus,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1231,7 +1235,7 @@ void rigCommander::getDTCS()
 void rigCommander::getRptAccessMode()
 {
     QByteArray payload;
-    if (getCommand(funcRptAccessMode,payload))
+    if (getCommand(funcToneSquelchType,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1250,12 +1254,12 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
     // function to be used for toggling tone and tone squelch.
 
     QByteArray payload;
-    if (getCommand(funcMainSubCmd,payload))
+    if (getCommand(funcMainSubPrefix,payload))
     {
         payload.append(static_cast<unsigned char>(rd.useSecondaryVFO));
     }
 
-    if (getCommand(funcRptAccessMode,payload))
+    if (getCommand(funcToneSquelchType,payload))
     {
         payload.append((unsigned char)rd.accessMode);
         prepDataAndSend(payload);
@@ -1272,7 +1276,7 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
             // No tone at all
             if(rd.turnOffTone)
             {
-                if (getCommand(funcTone,payload))
+                if (getCommand(funcToneStatus,payload))
                 {
                     payload.append('\x00');
                     prepDataAndSend(payload);
@@ -1280,7 +1284,7 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
             }
             else if (rd.turnOffTSQL)
             {
-                if (getCommand(funcTSQL,payload))
+                if (getCommand(funcTSQLStatus,payload))
                 {
                     payload.append('\x00');
                     prepDataAndSend(payload);
@@ -1290,7 +1294,7 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
         }
         case ratrTN:
         {
-            if (getCommand(funcTone,payload))
+            if (getCommand(funcToneStatus,payload))
             {
                 payload.append('\x01');
                 prepDataAndSend(payload);
@@ -1300,7 +1304,7 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
         case ratrTT:
         case ratrNT:
         {
-            if (getCommand(funcTSQL,payload))
+            if (getCommand(funcTSQLStatus,payload))
             {
                 payload.append('\x01');
                 prepDataAndSend(payload);
@@ -1317,7 +1321,7 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
 void rigCommander::setRptDuplexOffset(freqt f)
 {
     QByteArray payload;
-    if (getCommand(funcRptDuplexOffset,payload))
+    if (getCommand(funcSendFreqOffset,payload))
     {
         payload.append(makeFreqPayload(f).mid(1,3));
         prepDataAndSend(payload);
@@ -1327,7 +1331,7 @@ void rigCommander::setRptDuplexOffset(freqt f)
 void rigCommander::getRptDuplexOffset()
 {
     QByteArray payload;
-    if (getCommand(funcRptDuplexOffset,payload))
+    if (getCommand(funcReadFreqOffset,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1336,7 +1340,7 @@ void rigCommander::getRptDuplexOffset()
 void rigCommander::setIPP(bool enabled)
 {
     QByteArray payload;
-    if (getCommand(funcIPP,payload,static_cast<int>(enabled)))
+    if (getCommand(funcIPPlus,payload,static_cast<int>(enabled)))
     {
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
@@ -1346,7 +1350,7 @@ void rigCommander::setIPP(bool enabled)
 void rigCommander::getIPP()
 {
     QByteArray payload;
-    if (getCommand(funcIPP,payload))
+    if (getCommand(funcIPPlus,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1374,7 +1378,7 @@ void rigCommander::getSatelliteMode()
 void rigCommander::getPTT()
 {
     QByteArray payload;
-    if (getCommand(funcTXStatus,payload))
+    if (getCommand(funcTransceiverStatus,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1394,7 +1398,7 @@ void rigCommander::getBandStackReg(char band, char regCode)
 void rigCommander::setPTT(bool pttOn)
 {
     QByteArray payload;
-    if (pttAllowed && getCommand(funcTXStatus,payload,static_cast<int>(pttOn)))
+    if (pttAllowed && getCommand(funcTransceiverStatus,payload,static_cast<int>(pttOn)))
     {
         payload.append(static_cast<unsigned char>(pttOn));
         prepDataAndSend(payload);
@@ -1678,17 +1682,17 @@ void rigCommander::parseCommand()
     {
     case funcFreqGet:
     case funcfreqTR:
-    case funcTxFreq:
+    case funcReadTXFreq:
         parseFrequency();
         break;
-    case funcFreq:
+    case funcMainSubFreq:
         emit haveFrequency(parseFrequency(payloadIn, 5));
         break;
     case funcModeGet:
     case funcModeTR:
         parseMode();
         break;
-    case funcMode:
+    case funcMainSubMode:
         if((int)payloadIn[1] == 0) // VFOA only currently
         {
              emit haveDataMode((bool)payloadIn[03]);
@@ -1696,11 +1700,11 @@ void rigCommander::parseCommand()
              this->parseMode();
         }
         break;
-    case funcRptDuplexOffset:
+    case funcReadFreqOffset:
         emit haveRptOffsetFrequency(parseFrequencyRptOffset(payloadIn));
         break;
-    case funcSplit:
-    case funcDuplexMode:
+    case funcSplitStatus:
+    case funcDuplexStatus:
         emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
         state.set(DUPLEX, (duplexMode)(unsigned char)payloadIn[1], false);
         break;
@@ -1728,7 +1732,7 @@ void rigCommander::parseCommand()
         emit haveRfGain(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(RFGAIN, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         break;
-    case funcSql:
+    case funcSquelch:
         emit haveSql(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(SQUELCH, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         break;
@@ -1750,7 +1754,7 @@ void rigCommander::parseCommand()
         emit haveCwPitch(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(CWPITCH, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         break;
-    case funcTxPower:
+    case funcRFPower:
         emit haveTxPower(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(RFPOWER, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         break;
@@ -1762,12 +1766,12 @@ void rigCommander::parseCommand()
         emit haveKeySpeed(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(KEYSPD, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         break;
-    case funcNotch:
+    case funcNotchWidth:
         state.set(NOTCHF, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         // Not implemented
         // emit haveNotch(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         break;
-    case funcCompLevel:
+    case funcCompressorLevel:
         emit haveCompLevel(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(COMPLEVEL, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         break;
@@ -1788,7 +1792,9 @@ void rigCommander::parseCommand()
         state.set(ANTIVOXGAIN, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         break;
     // 0x15 Meters
-    case funcNoiseLevel:
+    case funcSMeterSqlStatus:
+    case funcOverflowStatus:
+    case funcVariousSql:
         break;
     case funcSMeter:
         emit haveMeter(meterS,bcdHexToUChar(payloadIn[2],payloadIn[3]));
@@ -1822,25 +1828,25 @@ void rigCommander::parseCommand()
         state.set(CURRENTMETER, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         break;
     // 0x16 enable/disable functions:
-    case funcRptAccessMode:
+    case funcToneStatus:
         emit haveRptAccessMode((rptAccessTxRx)payloadIn.at(2));
         break;
     case funcPreamp:
         emit havePreamp((unsigned char)payloadIn.at(2));
         state.set(PREAMP, (quint8)payloadIn.at(2), false);
         break;
-    case funcNB:
+    case funcNoiseBlanker:
         emit haveNB(payloadIn.at(2) != 0);
         state.set(NBFUNC, payloadIn.at(2) != 0, false);
         break;
-    case funcNR:
+    case funcNoiseReduction:
         emit haveNR(payloadIn.at(2) != 0);
         state.set(NRFUNC, payloadIn.at(2) != 0, false);
         break;
     case funcAutoNotch:
         state.set(ANFFUNC, payloadIn.at(2) != 0, false);
         break;
-    case funcTone:
+    case funcRepeaterTone:
     {
         rptAccessTxRx ra;
         if(payloadIn.at(2)==1)
@@ -1852,7 +1858,7 @@ void rigCommander::parseCommand()
         emit haveRptAccessMode(ra);
         state.set(TONEFUNC, payloadIn.at(2) != 0, false);
     }
-    case funcTSQL:
+    case funcRepeaterTSQL:
     {
         rptAccessTxRx ra;
         if(payloadIn.at(2)==1)
@@ -1877,7 +1883,7 @@ void rigCommander::parseCommand()
         emit haveVox(payloadIn.at(2) != 0);
         state.set(VOXFUNC, payloadIn.at(2) != 0, false);
         break;
-    case FuncBKIN:
+    case funcBreakIn:
     {
         if (payloadIn.at(2) == '\00') {
              state.set(FBKINFUNC, false, false);
@@ -1909,7 +1915,7 @@ void rigCommander::parseCommand()
         qInfo(logRig()) << "Have rig ID: decimal: " << (unsigned int)rigCaps.modelID;
         break;
     // 0x21 RIT:
-    case funcRitValue:
+    case funcRITFreq:
     {
         int ritHz = 0;
         freqt f;
@@ -1924,7 +1930,7 @@ void rigCommander::parseCommand()
         state.set(RITVALUE, ritHz, false);
         break;
     }
-    case funcRit:
+    case funcRitStatus:
         emit haveRitEnabled(static_cast<bool>(payloadIn.at(02)));
         state.set(RITFUNC, static_cast<bool>(payloadIn.at(02)), false);
         break;
@@ -1934,7 +1940,7 @@ void rigCommander::parseCommand()
     case funcBandStackReg:
         parseBandStackReg();
         break;
-    case funcPassband:
+    case funcFilterWidth:
     {
         quint16 calc;
         quint8 pass = bcdHexToUChar((quint8)payloadIn[2]);
@@ -1952,57 +1958,57 @@ void rigCommander::parseCommand()
         state.set(PASSBAND, calc, false);
         break;
     }
-    case funcAGC:
+    case funcAGCTime:
         state.set(AGC, (quint8)payloadIn[2], false);
         break;
-    case funcDataMode:
+    case funcDataModeWithFilter:
         emit haveDataMode((bool)payloadIn[03]);
         state.set(DATAMODE, (quint8)payloadIn[3], false);
         break;
-    case funcIPP:
+    case funcIPPlus:
         break;
-    case funcAfMute:
+    case funcAFMute:
         state.set(MUTEFUNC, (quint8)payloadIn[2], false);
         break;
     // 0x1a 0x05 various registers!
-    case funcRefCoarse:
+    case funcREFAdjust:
         emit haveRefAdjustCourse(bcdHexToUChar(payloadIn[4],payloadIn[5]));
         break;
-    case funcRefFine:
+    case funcREFAdjustFine:
         emit haveRefAdjustFine(bcdHexToUChar(payloadIn[4],payloadIn[5]));
         break;
-    case funcACC1Gain:
+    case funcACC1ModLevel:
         emit haveACCGain(bcdHexToUChar(payloadIn[4],payloadIn[5]),5); // This might need some work?
         break;
-    case funcUSBGain:
+    case funcUSBModLevel:
         emit haveUSBGain(bcdHexToUChar(payloadIn[4],payloadIn[5]));
         break;
-    case funcLANGain:
+    case funcLANModLevel:
         emit haveLANGain(bcdHexToUChar(payloadIn[4],payloadIn[5]));
         break;
-    case funcModInput:
+    case funcDATAOffMod:
         emit haveModInput(rigInput((inputTypes)bcdHexToUChar(payloadIn[4])),false);
         break;
-    case funcModData1Input:
+    case funcDATA1Mod:
         emit haveModInput(rigInput((inputTypes)bcdHexToUChar(payloadIn[4])),true);
         break;
-    case funcModData2Input:
+    case funcDATA2Mod:
         break;
-    case funcModData3Input:
+    case funcDATA3Mod:
         break;
     case funcDashRatio:
         emit haveDashRatio(bcdHexToUChar(payloadIn[4]));
 
     // 0x1b register
-    case funcRepeaterTone:
+    case funcToneFreq:
         emit haveTone(decodeTone(payloadIn));
         state.set(CTCSS, decodeTone(payloadIn), false);
         break;
-    case funcRepeaterTSQL:
+    case funcTSQLFreq:
         emit haveTSQL(decodeTone(payloadIn));
         state.set(TSQL, decodeTone(payloadIn), false);
         break;
-    case funcRepeaterDCS:
+    case funcDCSFreq:
     {
         quint16 tone=0;
         bool tinv = false;
@@ -2012,26 +2018,26 @@ void rigCommander::parseCommand()
         state.set(DTCS, tone, false);
         break;
     }
-    case funcRepeaterCSQL:
+    case funcCSQLSetting:
         emit haveTone(decodeTone(payloadIn));
         state.set(CSQL, decodeTone(payloadIn), false);
         break;
     // 0x1c register
-    case funcTXStatus:
+    case funcTransceiverStatus:
         parsePTT();
         break;
-    case funcATUStatus:
+    case funcTunerStatus:
         parseATU();
         break;
     // 0x27
-    case funcScopeData:
+    case funcScopeWaveData:
         parseSpectrum();
         break;
     case funcScopeOnOff:
         // confirming scope is on
         state.set(SCOPEFUNC, (bool)payloadIn[2], true);
         break;
-    case funcScopeWaveData:
+    case funcScopeDataOutput:
         // confirming output enabled/disabled of wf data.
         break;
     case funcScopeMainSub:
@@ -2047,13 +2053,13 @@ void rigCommander::parseCommand()
         // [3] 0x00 (center), 0x01 (fixed), 0x02, 0x03
         emit haveSpectrumMode(static_cast<spectrumMode>((unsigned char)payloadIn[3]));
         break;
-    case funcScopeSpan:
+    case funcScopeCenterSpan:
         // read span in center mode
         // [1] 0x15
         // [2] to [8] is span encoded as a frequency
         emit haveScopeSpan(parseFrequency(payloadIn, 6), static_cast<bool>(payloadIn.at(2)));
         break;
-    case funcScopeFixedEdge:
+    case funcScopeEdgeNumber:
         // read edge mode center in edge mode
         // [1] 0x16
         // [2] 0x01, 0x02, 0x03: Edge 1,2,3
@@ -2073,16 +2079,16 @@ void rigCommander::parseCommand()
         break;
     case funcScopeSpeed:
     case funcScopeDuringTX:
-    case funcScopeCenterFreq:
+    case funcScopeCenterType:
     case funcScopeVBW:
-    case funcScopeEdgeFreq:
+    case funcScopeFixedFreq:
     case funcScopeRBW:
         break;
     // 0x28
     case funcVoiceTX:
         break;
     //0x29 - This appears to be undocumented but seems to allow certain commands to apply to main or sub VFO?
-    case funcMainSubCmd:
+    case funcMainSubPrefix:
         break;
     case funcFB:
         break;
@@ -2095,7 +2101,7 @@ void rigCommander::parseCommand()
         break;
     }
 
-    if( (func != funcScopeData) && (payloadIn[00] != '\x15') )
+    if( (func != funcScopeWaveData) && (payloadIn[00] != '\x15') )
     {
         // We do not log spectrum and meter data,
         // as they tend to clog up any useful logging.
@@ -2358,7 +2364,7 @@ void rigCommander::setTPBFOuter(unsigned char level)
 void rigCommander::setTxPower(unsigned char power)
 {
     QByteArray payload;
-    if (getCommand(funcTxPower,payload,power))
+    if (getCommand(funcRFPower,payload,power))
     {
         payload.append(bcdEncodeInt(power));
         prepDataAndSend(payload);
@@ -2378,7 +2384,7 @@ void rigCommander::setMicGain(unsigned char gain)
 void rigCommander::getModInput(bool dataOn)
 {
     QByteArray payload;
-    funcs f=(dataOn) ? funcModData1Input :funcModInput;
+    funcs f=(dataOn) ? funcDATA1Mod :funcDATAOffMod;
 
     if (getCommand(f,payload))
     {
@@ -2398,7 +2404,7 @@ void rigCommander::setModInput(rigInput input, bool dataOn)
 //    inputACCB};
 
     QByteArray payload;
-    funcs f=(dataOn) ? funcModData1Input :funcModInput;
+    funcs f=(dataOn) ? funcDATA1Mod :funcDATAOffMod;
 
     if (getCommand(f,payload,input.type))
     {
@@ -2557,7 +2563,7 @@ void rigCommander::setModInputLevel(rigInput input, unsigned char level)
 void rigCommander::setAfMute(bool gainOn)
 {
     QByteArray payload;
-    if (getCommand(funcAfMute,payload,gainOn))
+    if (getCommand(funcAFMute,payload,gainOn))
     {
             payload.append(static_cast<unsigned char>(gainOn));
             prepDataAndSend(payload);
@@ -2610,7 +2616,7 @@ void rigCommander::getModInputLevel(rigInput input)
 void rigCommander::getAfMute()
 {
     QByteArray payload;
-    if (getCommand(funcAfMute,payload))
+    if (getCommand(funcAFMute,payload))
     {
         prepDataAndSend(payload);
     }
@@ -2662,7 +2668,7 @@ QByteArray rigCommander::getUSBAddr() // Not Used
 void rigCommander::getUSBGain()
 {
     QByteArray payload;
-    if (getCommand(funcUSBGain,payload))
+    if (getCommand(funcUSBModLevel,payload))
     {
         prepDataAndSend(payload);
     }
@@ -2672,7 +2678,7 @@ void rigCommander::getUSBGain()
 void rigCommander::setUSBGain(unsigned char gain)
 {
     QByteArray payload;
-    if (getCommand(funcUSBGain,payload,gain))
+    if (getCommand(funcUSBModLevel,payload,gain))
     {
         payload.append(bcdEncodeInt(gain));
         prepDataAndSend(payload);
@@ -2709,7 +2715,7 @@ QByteArray rigCommander::getLANAddr() // Not Used
 void rigCommander::getLANGain()
 {
     QByteArray payload;
-    if (getCommand(funcLANGain,payload))
+    if (getCommand(funcLANModLevel,payload))
     {
         prepDataAndSend(payload);
     }
@@ -2718,7 +2724,7 @@ void rigCommander::getLANGain()
 void rigCommander::setLANGain(unsigned char gain)
 {
     QByteArray payload;
-    if (getCommand(funcLANGain,payload,gain))
+    if (getCommand(funcLANModLevel,payload,gain))
     {
         payload.append(bcdEncodeInt(gain));
         prepDataAndSend(payload);
@@ -2777,7 +2783,7 @@ void rigCommander::getACCGain()
 
 void rigCommander::getACCGain(unsigned char ab)
 {
-    funcs f=(ab == 0) ? funcACC1Gain :funcACC2Gain;
+    funcs f=(ab == 0) ? funcACC1ModLevel :funcACC2ModLevel;
     QByteArray payload;
     if (getCommand(f,payload))
     {
@@ -2793,7 +2799,7 @@ void rigCommander::setACCGain(unsigned char gain)
 
 void rigCommander::setACCGain(unsigned char gain, unsigned char ab)
 {
-    funcs f=(ab == 0) ? funcACC1Gain :funcACC2Gain;
+    funcs f=(ab == 0) ? funcACC1ModLevel :funcACC2ModLevel;
     QByteArray payload;
     if (getCommand(f,payload,gain))
     {
@@ -2805,7 +2811,7 @@ void rigCommander::setACCGain(unsigned char gain, unsigned char ab)
 void rigCommander::setCompLevel(unsigned char compLevel)
 {
     QByteArray payload;
-    if (getCommand(funcCompLevel,payload,compLevel))
+    if (getCommand(funcCompressorLevel,payload,compLevel))
     {
         payload.append(bcdEncodeInt(compLevel));
         prepDataAndSend(payload);
@@ -2937,7 +2943,7 @@ void rigCommander::getTPBFOuter()
 void rigCommander::getSql()
 {
     QByteArray payload;
-    if (getCommand(funcSql,payload))
+    if (getCommand(funcSquelch,payload))
     {
         prepDataAndSend(payload);
     }
@@ -2946,7 +2952,7 @@ void rigCommander::getSql()
 void rigCommander::getTxLevel()
 {
     QByteArray payload;
-    if (getCommand(funcTxPower,payload))
+    if (getCommand(funcRFPower,payload))
     {
         prepDataAndSend(payload);
     }
@@ -2964,7 +2970,7 @@ void rigCommander::getMicGain()
 void rigCommander::getCompLevel()
 {
     QByteArray payload;
-    if (getCommand(funcCompLevel,payload))
+    if (getCommand(funcCompressorLevel,payload))
     {
         prepDataAndSend(payload);
     }
@@ -3138,7 +3144,7 @@ void rigCommander::getIDMeter()
 void rigCommander::setSquelch(unsigned char level)
 {
     QByteArray payload;
-    if (getCommand(funcSql,payload,level))
+    if (getCommand(funcSquelch,payload,level))
     {
         payload.append(bcdEncodeInt(level));
         prepDataAndSend(payload);
@@ -3176,7 +3182,7 @@ void rigCommander::setRefAdjustCourse(unsigned char level)
 {
     // 1A 05 00 72 0000-0255
     QByteArray payload;
-    if (getCommand(funcRefCoarse,payload,level))
+    if (getCommand(funcREFAdjust,payload,level))
     {
         payload.append(bcdEncodeInt(level));
         prepDataAndSend(payload);
@@ -3186,7 +3192,7 @@ void rigCommander::setRefAdjustCourse(unsigned char level)
 void rigCommander::setRefAdjustFine(unsigned char level)
 {
     QByteArray payload;
-    if (getCommand(funcRefFine,payload,level))
+    if (getCommand(funcREFAdjustFine,payload,level))
     {
         payload.append(bcdEncodeInt(level));
         prepDataAndSend(payload);
@@ -3348,7 +3354,7 @@ unsigned char rigCommander::convertNumberToHex(unsigned char num)
 void rigCommander::getRefAdjustCourse()
 {
     QByteArray payload;
-    if (getCommand(funcRefCoarse,payload))
+    if (getCommand(funcREFAdjust,payload))
     {
         prepDataAndSend(payload);
     }
@@ -3357,7 +3363,7 @@ void rigCommander::getRefAdjustCourse()
 void rigCommander::getRefAdjustFine()
 {
     QByteArray payload;
-    if (getCommand(funcRefFine,payload))
+    if (getCommand(funcREFAdjustFine,payload))
     {
         prepDataAndSend(payload);
     }
@@ -5614,7 +5620,7 @@ void rigCommander::parseMode()
 void rigCommander::startATU()
 {
     QByteArray payload;
-    if (getCommand(funcATUStatus,payload))
+    if (getCommand(funcTunerStatus,payload))
     {
         payload.append(static_cast<unsigned char>(0x02));
         prepDataAndSend(payload);
@@ -5624,7 +5630,7 @@ void rigCommander::startATU()
 void rigCommander::setATU(bool enabled)
 {
     QByteArray payload;
-    if (getCommand(funcATUStatus,payload,static_cast<int>(enabled)))
+    if (getCommand(funcTunerStatus,payload,static_cast<int>(enabled)))
     {
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
@@ -5634,7 +5640,7 @@ void rigCommander::setATU(bool enabled)
 void rigCommander::getATUStatus()
 {
     QByteArray payload;
-    if (getCommand(funcATUStatus,payload))
+    if (getCommand(funcTunerStatus,payload))
     {
         prepDataAndSend(payload);
     }
@@ -5702,7 +5708,7 @@ void rigCommander::setAntenna(unsigned char ant, bool rx)
 
 void rigCommander::setNB(bool enabled) {
     QByteArray payload;
-    if (getCommand(funcNB,payload,static_cast<int>(enabled)))
+    if (getCommand(funcNoiseBlanker,payload,static_cast<int>(enabled)))
     {
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
@@ -5712,7 +5718,7 @@ void rigCommander::setNB(bool enabled) {
 void rigCommander::getNB()
 {
     QByteArray payload;
-    if (getCommand(funcNB,payload))
+    if (getCommand(funcNoiseBlanker,payload))
     {
         prepDataAndSend(payload);
     }
@@ -5720,7 +5726,7 @@ void rigCommander::getNB()
 
 void rigCommander::setNR(bool enabled) {
     QByteArray payload;
-    if (getCommand(funcNR,payload,static_cast<int>(enabled)))
+    if (getCommand(funcNoiseReduction,payload,static_cast<int>(enabled)))
     {
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
@@ -5730,7 +5736,7 @@ void rigCommander::setNR(bool enabled) {
 void rigCommander::getNR()
 {
     QByteArray payload;
-    if (getCommand(funcNR,payload))
+    if (getCommand(funcNoiseReduction,payload))
     {
         prepDataAndSend(payload);
     }
@@ -5758,7 +5764,7 @@ void rigCommander::getAutoNotch()
 void rigCommander::setToneEnabled(bool enabled)
 {
     QByteArray payload;
-    if (getCommand(funcTone,payload,static_cast<int>(enabled)))
+    if (getCommand(funcToneStatus,payload,static_cast<int>(enabled)))
     {
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
@@ -5768,7 +5774,7 @@ void rigCommander::setToneEnabled(bool enabled)
 void rigCommander::getToneEnabled()
 {
     QByteArray payload;
-    if (getCommand(funcTone,payload))
+    if (getCommand(funcToneStatus,payload))
     {
         prepDataAndSend(payload);
     }
@@ -5777,7 +5783,7 @@ void rigCommander::getToneEnabled()
 void rigCommander::setToneSql(bool enabled)
 {
     QByteArray payload;
-    if (getCommand(funcTSQL,payload,static_cast<int>(enabled)))
+    if (getCommand(funcTSQLStatus,payload,static_cast<int>(enabled)))
     {
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
@@ -5787,7 +5793,7 @@ void rigCommander::setToneSql(bool enabled)
 void rigCommander::getToneSqlEnabled()
 {
     QByteArray payload;
-    if (getCommand(funcTSQL,payload))
+    if (getCommand(funcTSQLStatus,payload))
     {
         prepDataAndSend(payload);
     }
@@ -5853,7 +5859,7 @@ void rigCommander::getVox()
 void rigCommander::setBreakIn(unsigned char type)
 {
     QByteArray payload;
-    if (getCommand(FuncBKIN,payload,type))
+    if (getCommand(funcBreakIn,payload,type))
     {
         payload.append(type);
         prepDataAndSend(payload);
@@ -5863,7 +5869,7 @@ void rigCommander::setBreakIn(unsigned char type)
 void rigCommander::getBreakIn()
 {
     QByteArray payload;
-    if (getCommand(FuncBKIN,payload))
+    if (getCommand(funcBreakIn,payload))
     {
         prepDataAndSend(payload);
     }
@@ -5894,7 +5900,7 @@ void rigCommander::getKeySpeed()
 void rigCommander::setManualNotch(bool enabled)
 {
     QByteArray payload;
-    if (getCommand(FuncBKIN,payload,static_cast<int>(enabled)))
+    if (getCommand(funcManualNotch,payload,static_cast<int>(enabled)))
     {
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
@@ -5913,7 +5919,7 @@ void rigCommander::getManualNotch()
 void rigCommander::getRigID()
 {
     QByteArray payload;
-    if (getCommand(funcRigID,payload))
+    if (getCommand(funcTransceiverId,payload))
     {
         prepDataAndSend(payload);
     } else {

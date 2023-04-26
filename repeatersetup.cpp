@@ -31,7 +31,7 @@ void repeaterSetup::setRig(rigCapabilities inRig)
 {
     this->rig = inRig;
     haveRig = true;
-    if(rig.commands.contains(funcTone))
+    if(rig.commands.contains(funcToneSquelchType))
     {
         ui->rptToneCombo->setDisabled(false);
         ui->toneTone->setDisabled(false);
@@ -41,7 +41,7 @@ void repeaterSetup::setRig(rigCapabilities inRig)
         ui->toneTone->setDisabled(true);
         ui->toneTSQL->setDisabled(true);
     }
-    if(rig.commands.contains(funcDTCS))
+    if(rig.commands.contains(funcDTCSStatus))
     {
         ui->rptDTCSCombo->setDisabled(false);
         ui->toneDTCS->setDisabled(false);
@@ -94,7 +94,7 @@ void repeaterSetup::setRig(rigCapabilities inRig)
         ui->setToneSubVFOBtn->setDisabled(true);
         ui->setSplitRptrToneChk->setDisabled(true);
     }
-    bool rpt = rig.commands.contains(funcRptAccessMode);
+    bool rpt = rig.commands.contains(funcToneSquelchType);
     ui->rptAutoBtn->setEnabled(rpt);
     ui->rptDupMinusBtn->setEnabled(rpt);
     ui->rptDupPlusBtn->setEnabled(rpt);
@@ -445,7 +445,7 @@ void repeaterSetup::showEvent(QShowEvent *event)
 {
     emit getDuplexMode();
     emit getSplitModeEnabled();
-    if(rig.commands.contains(funcRptAccessMode))
+    if(rig.commands.contains(funcToneSquelchType))
         emit getRptDuplexOffset();
     QMainWindow::showEvent(event);
     (void)event;
@@ -477,7 +477,7 @@ void repeaterSetup::on_rptSimplexBtn_clicked()
 {
     // Simplex
     emit setDuplexMode(dmSplitOff);
-    if(rig.commands.contains(funcRptAccessMode))
+    if(rig.commands.contains(funcToneSquelchType))
     {
         emit setDuplexMode(dmDupAutoOff);
         emit setDuplexMode(dmSimplex);

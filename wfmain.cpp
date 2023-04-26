@@ -484,7 +484,7 @@ void wfmain::rigConnections()
     //connect(rpt, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
     connect(this->rpt, &repeaterSetup::getRptAccessMode,
             [=]() {
-            if (rigCaps.commands.contains(funcRptAccessMode)) {
+            if (rigCaps.commands.contains(funcToneSquelchType)) {
                 issueDelayedCommand(cmdGetRptAccessMode);
             } else {
                 issueDelayedCommand(cmdGetToneEnabled);
@@ -3704,18 +3704,18 @@ void wfmain:: getInitialRigState()
     }
 
 
-    if(rigCaps.commands.contains(funcTone))
+    if(rigCaps.commands.contains(funcToneStatus))
     {
         issueDelayedCommand(cmdGetTone);
         issueDelayedCommand(cmdGetTSQL);
     }
 
-    if(rigCaps.commands.contains(funcTSQL))
+    if(rigCaps.commands.contains(funcDTCSStatus))
     {
         issueDelayedCommand(cmdGetDTCS);
     }
 
-    if(rigCaps.commands.contains(funcRptAccessMode))
+    if(rigCaps.commands.contains(funcToneSquelchType))
     {
         issueDelayedCommand(cmdGetRptAccessMode);
     }
@@ -3764,7 +3764,7 @@ void wfmain:: getInitialRigState()
     issueDelayedCommand(cmdNone);
     issueDelayedCommand(cmdStartRegularPolling);
 
-    if(rigCaps.commands.contains(funcATUStatus))
+    if(rigCaps.commands.contains(funcTunerStatus))
     {
         issueDelayedCommand(cmdGetATUStatus);
     }
@@ -4029,7 +4029,7 @@ void wfmain::doCmd(commandtype cmddata)
         case cmdSetRptAccessMode:
         {
             rptrAccessData_t rd = (*std::static_pointer_cast<rptrAccessData_t>(data));
-            if(rd.accessMode==ratrNN && !rigCaps.commands.contains(funcRptAccessMode))
+            if(rd.accessMode==ratrNN && !rigCaps.commands.contains(funcToneSquelchType))
             {
                 rd.usingSequence = true;
                 switch(rd.sequence)
@@ -4380,7 +4380,7 @@ void wfmain::doCmd(cmds cmd)
             emit getDTCS();
             break;
         case cmdGetRptAccessMode:
-            if(rigCaps.commands.contains(funcRptAccessMode)) {
+            if(rigCaps.commands.contains(funcToneSquelchType)) {
                 emit getRptAccessMode();
             } else {
                 // Get both TONE and TSQL enabled status
@@ -4440,11 +4440,11 @@ void wfmain::doCmd(cmds cmd)
             emit getSpectrumRefLevel();
             break;
         case cmdGetATUStatus:
-            if(rigCaps.commands.contains(funcATUStatus))
+            if(rigCaps.commands.contains(funcTunerStatus))
                 emit getATUStatus();
             break;
         case cmdStartATU:
-            if(rigCaps.commands.contains(funcATUStatus))
+            if(rigCaps.commands.contains(funcTunerStatus))
                 emit startATU();
             break;
         case cmdGetAttenuator:
@@ -5011,8 +5011,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         setBandButtons();
 
-        ui->tuneEnableChk->setEnabled(rigCaps.commands.contains(funcATUStatus));
-        ui->tuneNowBtn->setEnabled(rigCaps.commands.contains(funcATUStatus));
+        ui->tuneEnableChk->setEnabled(rigCaps.commands.contains(funcTunerStatus));
+        ui->tuneNowBtn->setEnabled(rigCaps.commands.contains(funcTunerStatus));
 
         ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
 
@@ -5085,7 +5085,7 @@ void wfmain::initPeriodicCommands()
         insertSlowPeriodicCommand(cmdGetAntenna, 128);
     }
     insertSlowPeriodicCommand(cmdGetDuplexMode, 128); // split and repeater
-    if(rigCaps.commands.contains(funcRptAccessMode))
+    if(rigCaps.commands.contains(funcToneSquelchType))
     {
         insertSlowPeriodicCommand(cmdGetRptDuplexOffset, 128);
     }
