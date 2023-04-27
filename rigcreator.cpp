@@ -279,7 +279,7 @@ void rigCreator::loadRigFile(QString file)
             ui->filters->insertRow(ui->filters->rowCount());
             ui->filters->model()->setData(ui->filters->model()->index(c,0),settings->value("Num", 0).toString());
             ui->filters->model()->setData(ui->filters->model()->index(c,1),settings->value("Name", "").toString());
-            ui->filters->model()->setData(ui->filters->model()->index(c,2),QString::number(settings->value("Modes", 0).toUInt(),16));
+            ui->filters->model()->setData(ui->filters->model()->index(c,2),QString::number(settings->value("Modes", 0xffffffff).toUInt(),16));
         }
         settings->endArray();
     }
@@ -457,7 +457,7 @@ void rigCreator::saveRigFile(QString file)
         settings->setArrayIndex(n);
         settings->setValue("Num",(ui->filters->item(n,0) == NULL) ? 0 :  ui->filters->item(n,0)->text().toInt());
         settings->setValue("Name",(ui->filters->item(n,1) == NULL) ? "" :  ui->filters->item(n,1)->text());
-        settings->setValue("Modes",(ui->filters->item(n,2) == NULL) ? 0 : ui->filters->item(n,2)->text().toUInt(&ok,16));
+        settings->setValue("Modes",(ui->filters->item(n,2) == NULL) ? 0xffffffff : ui->filters->item(n,2)->text().toUInt(&ok,16));
     }
     settings->endArray();
 

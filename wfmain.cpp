@@ -7269,6 +7269,8 @@ void wfmain::processModLevel(inputTypes source, unsigned char level)
 
     switch(source)
     {
+        case inputMICACC:
+        case inputMICUSB:
         case inputMic:
             micGain = level;
             break;
@@ -7587,6 +7589,8 @@ void wfmain::changeModLabel(inputTypes input, bool updateLevel)
     switch(input)
     {
         case inputMic:
+        case inputMICACC:
+        case inputMICUSB:
             gain = micGain;
             break;
         case inputACC:

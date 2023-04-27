@@ -725,10 +725,11 @@ QByteArray rigCommander::makeFreqPayload(double freq)
 void rigCommander::setRitEnable(bool ritEnabled)
 {
     QByteArray payload;
-    if (getCommand(funcRitStatus,payload),static_cast<int>(ritEnabled))
+    if (getCommand(funcRitStatus,payload,static_cast<int>(ritEnabled)))
     {
         payload.append(static_cast<unsigned char>(ritEnabled));
         prepDataAndSend(payload);
+        qInfo() << "RIT" << ritEnabled << "HEX:" << payload.toHex();
     }
 }
 
