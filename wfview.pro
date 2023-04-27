@@ -138,8 +138,11 @@ macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 # CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 
 CONFIG(debug, release|debug) {
-  !win32: QCPLIB = qcustomplotd
-  win32: QCPLIB = qcustomplotd2
+  linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libQCustomPlotd.so/ {print \"-lQCustomPlotd\"}'")
+  linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libqcustomplotd2.so/ {print \"-lqcustomplotd2\"}'")
+  linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libqcustomplotd.so/ {print \"-lqcustomplotd\"}'")
+  macos:LIBS += -lqcustomplotd
+  win32:LIBS += -lqcustomplotd2
   win32 {
     contains(QMAKE_TARGET.arch, x86_64) {
       LIBS += -L../opus/win32/VS2015/x64/DebugDLL/
@@ -166,8 +169,11 @@ CONFIG(debug, release|debug) {
     }
   }
 } else {
-  !win32: QCPLIB = qcustomplot
-  win32: QCPLIB = qcustomplot2
+  linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libQCustomPlot.so/ {print \"-lQCustomPlot\"}'")
+  linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libqcustomplot2.so/ {print \"-lqcustomplot2\"}'")
+  linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libqcustomplot.so/ {print \"-lqcustomplot\"}'")
+  macos:LIBS += -lqcustomplot
+  win32:LIBS += -lqcustomplot2
   win32 {
     contains(QMAKE_TARGET.arch, x86_64) {
       LIBS += -L../opus/win32/VS2015/x64/ReleaseDLL/
@@ -196,14 +202,13 @@ CONFIG(debug, release|debug) {
 }
 
 contains(DEFINES,USB_CONTROLLER){
-    linux:LIBS += -L./ -l$$QCPLIB -lhidapi-libusb
+    linux:LIBS += -L./ -lhidapi-libusb
     macx:LIBS += -lhidapi
     win32:INCLUDEPATH += ../hidapi/hidapi
 }
 
-!win32:LIBS += -L./ -l$$QCPLIB -lopus
-win32:LIBS += -l$$QCPLIB -lopus -lole32 -luser32
-
+!win32:LIBS += -L./ -lopus
+win32:LIBS += -lopus -lole32 -luser32
 
 #macx:SOURCES += ../qcustomplot/qcustomplot.cpp 
 #macx:HEADERS += ../qcustomplot/qcustomplot.h
