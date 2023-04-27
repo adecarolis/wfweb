@@ -1,3 +1,6 @@
+#include <QDebug>
+#include "logcategories.h"
+
 #include "rigcreator.h"
 #include "ui_rigcreator.h"
 
@@ -24,29 +27,26 @@ rigCreator::~rigCreator()
 void rigCreator::on_defaultRigs_clicked(bool clicked)
 {
     Q_UNUSED(clicked)
-    QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir dir(appdata);
-    if (!dir.exists()) {
-        dir.mkpath(appdata);
-    }
 
-    if (!dir.exists("rigs")) {
-        dir.mkdir("rigs");
-    }
+#ifdef Q_OS_LINUX
+    QString appdata = "/usr/local/share/wfview/rigs";
+    QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata,"Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
+#else
+    QString appdata = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)+"/rigs";
+    QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata,"Rig Files (*.rig)");
+#endif
 
-    QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata+"/rigs","Rig Files (*.rig)");
     if (!file.isEmpty())
     {
         loadRigFile(file);
     }
-
 }
 
 void rigCreator::on_loadFile_clicked(bool clicked)
 {
     Q_UNUSED(clicked)
 #ifdef DEVMODE
-    QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QString appdata = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
 #else
     QString appdata = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)+"/wfview";
 #endif
@@ -59,7 +59,12 @@ void rigCreator::on_loadFile_clicked(bool clicked)
         dir.mkdir("rigs");
     }
 
+#ifdef Q_OS_LINUX
+    QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata+"/rigs","Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
+#else
     QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata+"/rigs","Rig Files (*.rig)");
+#endif
+
     if (!file.isEmpty())
     {
         loadRigFile(file);
@@ -281,7 +286,7 @@ void rigCreator::on_saveFile_clicked(bool clicked)
 {
     Q_UNUSED(clicked)
 #ifdef DEVMODE
-    QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QString appdata = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
 #else
     QString appdata = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)+"/wfview";
 #endif
@@ -296,7 +301,11 @@ void rigCreator::on_saveFile_clicked(bool clicked)
     }
 
     QFileInfo fileInfo(currentFile);
+#ifdef Q_OS_LINUX
+    QString file = QFileDialog::getSaveFileName(this,"Select Rig Filename",appdata+"/rigs/"+fileInfo.fileName(),"Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
+#else
     QString file = QFileDialog::getSaveFileName(this,"Select Rig Filename",appdata+"/rigs/"+fileInfo.fileName(),"Rig Files (*.rig)");
+#endif
 
     if (!file.isEmpty())
     {

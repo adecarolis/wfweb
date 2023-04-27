@@ -26,6 +26,8 @@
 
 //#define DEBUG_PARSE // Enable to output Info messages every 10s with command parse timing.
 
+typedef QHash<unsigned char, QString> rigTypedef;
+
 class rigCommander : public QObject
 {
     Q_OBJECT
@@ -41,8 +43,8 @@ public:
 
 public slots:
     void process();
-    void commSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
-    void commSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
+    void commSetup(rigTypedef rigList, unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp, quint16 tcp, quint8 wf);
+    void commSetup(rigTypedef rigList, unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     void closeComm();
     void stateUpdated();
     void setRTSforPTT(bool enabled);

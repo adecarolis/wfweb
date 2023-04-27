@@ -275,19 +275,8 @@ struct funcType {
     int maxVal;
 };
 
-enum argType {
-    argNone,
-    argChar,
-    argInt,
-    argByteArray,
-    argDouble,
-
-};
-
 struct commandtype {
     cmds cmd;
-    funcs func;
-
     std::shared_ptr<void> data;
 };
 

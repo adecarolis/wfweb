@@ -1,3 +1,5 @@
+#include <QDebug>
+#include "logcategories.h"
 
 #include "tablewidget.h"
 
@@ -15,7 +17,12 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
         QAction *insert= menu.addAction("Insert Item");
         QAction *add= menu.addAction("Add Item");
         QAction *del = menu.addAction("Delete Item");
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+        QAction *selectedAction = menu.exec(event->globalPos());
+#else
         QAction *selectedAction = menu.exec(event->globalPosition().toPoint());
+#endif
+
 
         if(selectedAction == insert)
         {

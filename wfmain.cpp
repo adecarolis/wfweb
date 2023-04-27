@@ -87,11 +87,17 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<errorType>();
     qRegisterMetaType<usbFeatureType>();
     qRegisterMetaType<cmds>();
+    qRegisterMetaType<rigTypedef>();
 
     haveRigCaps = false;
 
     // We need to populate the last of rigs as early as possible so do it now
+#ifdef Q_OS_LINUX
+    QString appdata = "/usr/local/share/wfview/rigs";
+#else
     QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)+"/rigs";
+#endif
+
     QDir rigsDir(appdata);
 
     if (!rigsDir.exists()) {
@@ -727,8 +733,8 @@ void wfmain::makeRig()
         connect(rig, SIGNAL(setRadioUsage(quint8, quint8, QString, QString)), selRad, SLOT(setInUse(quint8, quint8, QString, QString)));
         connect(selRad, SIGNAL(selectedRadio(quint8)), rig, SLOT(setCurrentRadio(quint8)));
         // Rig comm setup:
-        connect(this, SIGNAL(sendCommSetup(QHash<unsigned char,QString>,unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)), rig, SLOT(commSetup(QHash<unsigned char,QString>,unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)));
-        connect(this, SIGNAL(sendCommSetup(QHash<unsigned char,QString>,unsigned char, QString, quint32,QString, quint16,quint8)), rig, SLOT(commSetup(QHash<unsigned char,QString>,unsigned char, QString, quint32,QString, quint16,quint8)));
+        connect(this, SIGNAL(sendCommSetup(rigTypedef,unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)), rig, SLOT(commSetup(rigTypedef,unsigned char, udpPreferences, audioSetup, audioSetup, QString, quint16)));
+        connect(this, SIGNAL(sendCommSetup(rigTypedef,unsigned char, QString, quint32,QString, quint16,quint8)), rig, SLOT(commSetup(rigTypedef,unsigned char, QString, quint32,QString, quint16,quint8)));
         connect(this, SIGNAL(setRTSforPTT(bool)), rig, SLOT(setRTSforPTT(bool)));
 
         connect(rig, SIGNAL(haveBaudRate(quint32)), this, SLOT(receiveBaudRate(quint32)));

@@ -33,7 +33,7 @@ cp wfview.desktop /usr/share/applications/
 cp wfview.png /usr/share/pixmaps/
 mkdir -p /usr/share/wfview/stylesheets
 cp -r qdarkstyle /usr/share/wfview/stylesheets/
-
+cp -r rigs /usr/share/wfview/
 echo ""
 echo "Done!"
 

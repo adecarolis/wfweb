@@ -132,6 +132,10 @@ unix:stylesheets.files = qdarkstyle
 unix:stylesheets.path = $$PREFIX/share/wfview
 INSTALLS += stylesheets
 
+unix:rigs.files = rigs/*
+unix:rigs.path = $$PREFIX/share/wfview/rigs
+INSTALLS += rigs
+
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 
 # Do not do this, it will hang on start:

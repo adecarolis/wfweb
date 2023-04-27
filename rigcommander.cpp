@@ -539,7 +539,7 @@ void rigCommander::setScopeSpan(char span)
             {
                 double freq = double(s.freq/1000000.0);
                 payload.append(makeFreqPayload(freq));
-                //qDebug(logRig()) << "Set Span for" << freq << "MHz" << "cmd:" << payload.toHex();
+                //qDebug(logRig()) << "Set Span for" << freq << "MHz" << "cmd:";
                 prepDataAndSend(payload);
                 break;
             }
@@ -1754,6 +1754,7 @@ void rigCommander::parseCommand()
     case funcNRLevel:
         emit haveNRLevel(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(NR, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+	break;
     case funcPBTInner:
         emit haveTPBFInner(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(PBTIN, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
@@ -1881,6 +1882,7 @@ void rigCommander::parseCommand()
         }
         emit haveRptAccessMode(ra);
         state.set(TONEFUNC, payloadIn.at(2) != 0, false);
+        break;
     }
     case funcRepeaterTSQL:
     {
@@ -1892,8 +1894,8 @@ void rigCommander::parseCommand()
              ra = ratrTSQLoff;
         }
         emit haveRptAccessMode(ra);
-        break;
         state.set(TSQLFUNC, payloadIn.at(2) != 0, false);
+        break;
     }
     case funcRepeaterDTCS:
     case funcRepeaterCSQL:
@@ -2014,7 +2016,7 @@ void rigCommander::parseCommand()
         break;
     case funcDashRatio:
         emit haveDashRatio(bcdHexToUChar(payloadIn[4]));
-
+	break;
     // 0x1b register
     case funcToneFreq:
         emit haveTone(decodeTone(payloadIn));
@@ -3244,7 +3246,7 @@ void rigCommander::setTime(timekind t)
         payload.append(convertNumberToHex(t.hours));
         payload.append(convertNumberToHex(t.minutes));
         prepDataAndSend(payload);
-        qInfo(logRig()) << QString("Setting Time: %0:%1 (%3)").arg(t.hours).arg(t.minutes).arg(payload.toHex());
+        qInfo(logRig()) << QString("Setting Time: %0:%1").arg(t.hours).arg(t.minutes);
     }
 
 /*
@@ -3293,7 +3295,7 @@ void rigCommander::setDate(datekind d)
         payload.append(convertNumberToHex(d.month));
         payload.append(convertNumberToHex(d.day));
         prepDataAndSend(payload);
-        qInfo(logRig()) << QString("Setting Date: %0-%1-%2 (%3)").arg(d.year).arg(d.month).arg(d.day).arg(payload.toHex());
+        qInfo(logRig()) << QString("Setting Date: %0-%1-%2").arg(d.year).arg(d.month).arg(d.day);
     }
 
     /*
@@ -3337,7 +3339,7 @@ void rigCommander::setUTCOffset(timekind t)
         payload.append(convertNumberToHex(t.minutes));
         payload.append(static_cast<unsigned char>(t.isMinus));
         prepDataAndSend(payload);
-        qInfo(logRig()) << QString("Setting UTC Offset: %0%1:%2 (%3)").arg((t.isMinus)?"-":"+").arg(t.hours).arg(t.minutes).arg(payload.toHex());
+        qInfo(logRig()) << QString("Setting UTC Offset: %0%1:%2").arg((t.isMinus)?"-":"+").arg(t.hours).arg(t.minutes);
     }
 
 /*
@@ -3384,7 +3386,7 @@ unsigned char rigCommander::convertNumberToHex(unsigned char num)
     unsigned char result = 0;
     result =  (num/10) << 4;
     result |= (num - 10*(num/10));
-    qDebug(logRig()) << "Converting number: " << num << " to hex: " + QString("0x%1").arg(result, 2, 16, QChar('0'));
+    //qDebug(logRig()) << "Converting number: " << num << " to hex: " + QString("0x%1").arg(result, 2, 16, QChar('0');
     return result;
 }
 

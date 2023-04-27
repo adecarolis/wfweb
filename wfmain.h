@@ -267,8 +267,8 @@ signals:
     void sayFrequency();
     void sayMode();
     void sayAll();
-    void sendCommSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp, quint16 tcp, quint8 wf);
-    void sendCommSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
+    void sendCommSetup(rigTypedef rigList, unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate,QString vsp, quint16 tcp, quint8 wf);
+    void sendCommSetup(rigTypedef rigList, unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcp);
     void sendCloseComm();
     void sendChangeLatency(quint16 latency);
     void initServer();
@@ -1265,6 +1265,7 @@ Q_DECLARE_METATYPE(struct rptrTone_t)
 Q_DECLARE_METATYPE(struct rptrAccessData_t)
 Q_DECLARE_METATYPE(enum usbFeatureType)
 Q_DECLARE_METATYPE(enum cmds)
+Q_DECLARE_METATYPE(rigTypedef)
 
 //void (*wfmain::logthistext)(QString text) = NULL;
 
