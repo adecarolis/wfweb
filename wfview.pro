@@ -138,9 +138,9 @@ macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus
 # CONFIG(release, debug|release):DEFINES += QT_NO_DEBUG_OUTPUT
 
 CONFIG(debug, release|debug) {
-  linux:LIBS += $$system("ldconfig -p | awk '/libQCustomPlotd.so/ {print \"-lQCustomPlotd\"}'")
-  linux:LIBS += $$system("ldconfig -p | awk '/libqcustomplotd2.so/ {print \"-lqcustomplotd2\"}'")
-  linux:LIBS += $$system("ldconfig -p | awk '/libqcustomplotd.so/ {print \"-lqcustomplotd\"}'")
+  linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libQCustomPlotd.so/ {print \"-lQCustomPlotd\"}'")
+  linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libqcustomplotd2.so/ {print \"-lqcustomplotd2\"}'")
+  linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libqcustomplotd.so/ {print \"-lqcustomplotd\"}'")
   macos:LIBS += -lqcustomplotd
   win32:LIBS += -lqcustomplotd2
   win32 {
@@ -169,9 +169,9 @@ CONFIG(debug, release|debug) {
     }
   }
 } else {
-  linux:LIBS += $$system("ldconfig -p | awk '/libQCustomPlot.so/ {print \"-lQCustomPlot\"}'")
-  linux:LIBS += $$system("ldconfig -p | awk '/libqcustomplot2.so/ {print \"-lqcustomplot2\"}'")
-  linux:LIBS += $$system("ldconfig -p | awk '/libqcustomplot.so/ {print \"-lqcustomplot\"}'")
+  linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libQCustomPlot.so/ {print \"-lQCustomPlot\"}'")
+  linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libqcustomplot2.so/ {print \"-lqcustomplot2\"}'")
+  linux:LIBS += $$system("/sbin/ldconfig -p | awk '/libqcustomplot.so/ {print \"-lqcustomplot\"}'")
   macos:LIBS += -lqcustomplot
   win32:LIBS += -lqcustomplot2
   win32 {
