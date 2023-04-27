@@ -15,6 +15,8 @@
 #include "tablewidget.h"
 
 
+//#define DEVMODE
+
 namespace Ui {
 class rigCreator;
 }
@@ -30,6 +32,9 @@ public:
 private slots:
     void on_loadFile_clicked(bool clicked);
     void on_saveFile_clicked(bool clicked);
+    void on_defaultRigs_clicked(bool clicked);
+    void loadRigFile(QString filename);
+    void saveRigFile(QString filename);
 
 private:
     Ui::rigCreator *ui;
@@ -37,6 +42,7 @@ private:
     tableCombobox* commandsList;
     QStandardItemModel* commandsModel;
     QStandardItemModel* createModel(QString strings[]);
+    QString currentFile;
 
 };
 

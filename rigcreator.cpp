@@ -9,8 +9,8 @@ rigCreator::rigCreator(QWidget *parent) :
     commandsList = new tableCombobox(createModel(funcString),true,ui->commands);
     ui->commands->setItemDelegateForColumn(0, commandsList);
 
-    ui->commands->setColumnWidth(0,130);
-    ui->commands->setColumnWidth(1,90);
+    ui->commands->setColumnWidth(0,145);
+    ui->commands->setColumnWidth(1,125);
     ui->commands->setColumnWidth(2,50);
     ui->commands->setColumnWidth(3,50);
 
@@ -21,14 +21,10 @@ rigCreator::~rigCreator()
     delete ui;
 }
 
-void rigCreator::on_loadFile_clicked(bool clicked)
+void rigCreator::on_defaultRigs_clicked(bool clicked)
 {
     Q_UNUSED(clicked)
-
-    bool ok=false; // Used for number conversions;
-
     QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-
     QDir dir(appdata);
     if (!dir.exists()) {
         dir.mkpath(appdata);
@@ -39,10 +35,42 @@ void rigCreator::on_loadFile_clicked(bool clicked)
     }
 
     QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata+"/rigs","Rig Files (*.rig)");
-    if (file.isEmpty())
+    if (!file.isEmpty())
     {
-        return;
+        loadRigFile(file);
     }
+
+}
+
+void rigCreator::on_loadFile_clicked(bool clicked)
+{
+    Q_UNUSED(clicked)
+#ifdef DEVMODE
+    QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+#else
+    QString appdata = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)+"/wfview";
+#endif
+    QDir dir(appdata);
+    if (!dir.exists()) {
+        dir.mkpath(appdata);
+    }
+
+    if (!dir.exists("rigs")) {
+        dir.mkdir("rigs");
+    }
+
+    QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata+"/rigs","Rig Files (*.rig)");
+    if (!file.isEmpty())
+    {
+        loadRigFile(file);
+    }
+}
+
+
+void rigCreator::loadRigFile(QString file)
+{
+
+    this->currentFile = file;
     QSettings* settings = new QSettings(file, QSettings::Format::IniFormat);
 
     if (!settings->childGroups().contains("Rig"))
@@ -252,9 +280,11 @@ void rigCreator::on_loadFile_clicked(bool clicked)
 void rigCreator::on_saveFile_clicked(bool clicked)
 {
     Q_UNUSED(clicked)
+#ifdef DEVMODE
     QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-
-    bool ok=false; // Used for number conversions.
+#else
+    QString appdata = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)+"/wfview";
+#endif
 
     QDir dir(appdata);
     if (!dir.exists()) {
@@ -265,11 +295,19 @@ void rigCreator::on_saveFile_clicked(bool clicked)
         dir.mkdir("rigs");
     }
 
-    QString file = QFileDialog::getSaveFileName(this,"Select Rig Filename",appdata+"/rigs","Rig Files (*.rig)");
-    if (file.isEmpty())
+    QFileInfo fileInfo(currentFile);
+    QString file = QFileDialog::getSaveFileName(this,"Select Rig Filename",appdata+"/rigs/"+fileInfo.fileName(),"Rig Files (*.rig)");
+
+    if (!file.isEmpty())
     {
-        return;
+        saveRigFile(file);
     }
+}
+
+void rigCreator::saveRigFile(QString file)
+{
+
+    bool ok=false; // Used for number conversions.
 
     QSettings* settings = new QSettings(file, QSettings::Format::IniFormat);
 

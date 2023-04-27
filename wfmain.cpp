@@ -91,8 +91,9 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     haveRigCaps = false;
 
     // We need to populate the last of rigs as early as possible so do it now
-    QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDir rigsDir(appdata+"/rigs");
+    QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)+"/rigs";
+    QDir rigsDir(appdata);
+
     if (!rigsDir.exists()) {
         qWarning() << "********* Rig directory does not exist ********";
     } else {
@@ -107,7 +108,29 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
             }
             rigSettings->beginGroup("Rig");
             qDebug() << QString("Found Rig %0 with CI-V address of %1").arg(rigSettings->value("Model","").toString(), rigSettings->value("CIVAddress",0).toString());
+            // Any user modified rig files will override system provided ones.
             this->rigList.insert(rigSettings->value("CIVAddress",0).toInt(),rigsDir.absoluteFilePath(rig));
+            rigSettings->endGroup();
+            delete rigSettings;
+        }
+    }
+
+    QString docsdata = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)+"/wfview/rigs";
+    QDir docsDir(docsdata);
+    if (docsDir.exists()){
+        QStringList rigs = docsDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
+        foreach (QString rig, rigs) {
+            QSettings* rigSettings = new QSettings(docsDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
+            if (!rigSettings->childGroups().contains("Rig"))
+            {
+                qWarning() << rig << "Does not seem to be a rig description file";
+                delete rigSettings;
+                continue;
+            }
+            rigSettings->beginGroup("Rig");
+            qDebug() << QString("Found User Rig %0 with CI-V address of %1").arg(rigSettings->value("Model","").toString(), rigSettings->value("CIVAddress",0).toString());
+            // Any user modified rig files will override system provided ones.
+            this->rigList.insert(rigSettings->value("CIVAddress",0).toInt(),docsDir.absoluteFilePath(rig));
             rigSettings->endGroup();
             delete rigSettings;
         }
@@ -3704,13 +3727,13 @@ void wfmain:: getInitialRigState()
     }
 
 
-    if(rigCaps.commands.contains(funcToneStatus))
+    if(rigCaps.commands.contains(funcRepeaterTone))
     {
         issueDelayedCommand(cmdGetTone);
         issueDelayedCommand(cmdGetTSQL);
     }
 
-    if(rigCaps.commands.contains(funcDTCSStatus))
+    if(rigCaps.commands.contains(funcRepeaterDTCS))
     {
         issueDelayedCommand(cmdGetDTCS);
     }

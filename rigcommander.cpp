@@ -1139,7 +1139,7 @@ void rigCommander::setTSQL(rptrTone_t t)
 void rigCommander::setDTCS(quint16 dcscode, bool tinv, bool rinv)
 {
     QByteArray payload;
-    if (getCommand(funcDTCSStatus,payload,static_cast<int>(dcscode)))
+    if (getCommand(funcRepeaterDTCS,payload,static_cast<int>(dcscode)))
     {
         payload.append(encodeTone(dcscode, tinv, rinv));
         prepDataAndSend(payload);
@@ -1208,7 +1208,7 @@ quint16 rigCommander::decodeTone(QByteArray eTone, bool &tinv, bool &rinv)
 void rigCommander::getTone()
 {
     QByteArray payload;
-    if (getCommand(funcToneStatus,payload))
+    if (getCommand(funcRepeaterTone,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1217,7 +1217,7 @@ void rigCommander::getTone()
 void rigCommander::getTSQL()
 {
     QByteArray payload;
-    if (getCommand(funcTSQLStatus,payload))
+    if (getCommand(funcRepeaterTSQL,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1226,7 +1226,7 @@ void rigCommander::getTSQL()
 void rigCommander::getDTCS()
 {
     QByteArray payload;
-    if (getCommand(funcDTCSStatus,payload))
+    if (getCommand(funcRepeaterDTCS,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1276,7 +1276,7 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
             // No tone at all
             if(rd.turnOffTone)
             {
-                if (getCommand(funcToneStatus,payload))
+                if (getCommand(funcRepeaterTone,payload))
                 {
                     payload.append('\x00');
                     prepDataAndSend(payload);
@@ -1284,7 +1284,7 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
             }
             else if (rd.turnOffTSQL)
             {
-                if (getCommand(funcTSQLStatus,payload))
+                if (getCommand(funcRepeaterTSQL,payload))
                 {
                     payload.append('\x00');
                     prepDataAndSend(payload);
@@ -1294,7 +1294,7 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
         }
         case ratrTN:
         {
-            if (getCommand(funcToneStatus,payload))
+            if (getCommand(funcRepeaterTone,payload))
             {
                 payload.append('\x01');
                 prepDataAndSend(payload);
@@ -1304,7 +1304,7 @@ void rigCommander::setRptAccessMode(rptrAccessData_t rd)
         case ratrTT:
         case ratrNT:
         {
-            if (getCommand(funcTSQLStatus,payload))
+            if (getCommand(funcRepeaterTSQL,payload))
             {
                 payload.append('\x01');
                 prepDataAndSend(payload);
@@ -1685,6 +1685,9 @@ void rigCommander::parseCommand()
     case funcReadTXFreq:
         parseFrequency();
         break;
+    case funcVFODualWatch:
+        // Not currently used, but will report the current dual-watch status
+        break;
     case funcMainSubFreq:
         emit haveFrequency(parseFrequency(payloadIn, 5));
         break;
@@ -1700,6 +1703,14 @@ void rigCommander::parseCommand()
              this->parseMode();
         }
         break;
+    case funcMemoryContents:
+    case funcMemoryClear:
+    case funcMemoryKeyer:
+    case funcMemoryToVFO:
+    case funcMemoryWrite:
+        break;
+    case funcScanning:
+        break;
     case funcReadFreqOffset:
         emit haveRptOffsetFrequency(parseFrequencyRptOffset(payloadIn));
         break;
@@ -1708,6 +1719,9 @@ void rigCommander::parseCommand()
         emit haveDuplexMode((duplexMode)(unsigned char)payloadIn[1]);
         state.set(DUPLEX, (duplexMode)(unsigned char)payloadIn[1], false);
         break;
+    case funcTuningStep:
+        // We could use this to update the current tuning step from the radio
+        // although we use many more different steps!
     case funcAttenuator:
         emit haveAttenuator((unsigned char)payloadIn.at(1));
         state.set(ATTENUATOR, (quint8)payloadIn[1], false);
@@ -1717,8 +1731,7 @@ void rigCommander::parseCommand()
         state.set(ANTENNA, (quint8)payloadIn[1], false);
         state.set(RXANTENNA, (bool)payloadIn[2], false);
         break;
-
-
+    // Register 13 (speech) has no get values
     // Register 14 (levels) starts here:
     case funcAfGain:
         if (udp == Q_NULLPTR) {
@@ -1736,6 +1749,11 @@ void rigCommander::parseCommand()
         emit haveSql(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(SQUELCH, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         break;
+    case funcAPFLevel:
+        break;
+    case funcNRLevel:
+        emit haveNRLevel(bcdHexToUChar(payloadIn[2],payloadIn[3]));
+        state.set(NR, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
     case funcPBTInner:
         emit haveTPBFInner(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(PBTIN, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
@@ -1747,9 +1765,6 @@ void rigCommander::parseCommand()
     case funcIFShift:
         emit haveIFShift(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         break;
-    case funcNRLevel:
-        emit haveNRLevel(bcdHexToUChar(payloadIn[2],payloadIn[3]));
-        state.set(NR, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
     case funcCwPitch:
         emit haveCwPitch(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(CWPITCH, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
@@ -1766,7 +1781,7 @@ void rigCommander::parseCommand()
         emit haveKeySpeed(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(KEYSPD, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         break;
-    case funcNotchWidth:
+    case funcNotchFilter:
         state.set(NOTCHF, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         // Not implemented
         // emit haveNotch(bcdHexToUChar(payloadIn[2],payloadIn[3]));
@@ -1775,9 +1790,15 @@ void rigCommander::parseCommand()
         emit haveCompLevel(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(COMPLEVEL, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         break;
+    case funcBreakInDelay:
+        break;
     case funcNBLevel:
         emit haveNBLevel(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(NB, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcDigiSelShift:
+        break;
+    case funcDriveGain:
         break;
     case funcMonitorGain:
         emit haveMonitorGain(bcdHexToUChar(payloadIn[2],payloadIn[3]));
@@ -1793,12 +1814,13 @@ void rigCommander::parseCommand()
         break;
     // 0x15 Meters
     case funcSMeterSqlStatus:
-    case funcOverflowStatus:
-    case funcVariousSql:
         break;
     case funcSMeter:
         emit haveMeter(meterS,bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(SMETER, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
+        break;
+    case funcVariousSql:
+    case funcOverflowStatus:
         break;
     case funcCenterMeter:
         emit haveMeter(meterCenter,bcdHexToUChar(payloadIn[2],payloadIn[3]));
@@ -1828,16 +1850,18 @@ void rigCommander::parseCommand()
         state.set(CURRENTMETER, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         break;
     // 0x16 enable/disable functions:
-    case funcToneStatus:
-        emit haveRptAccessMode((rptAccessTxRx)payloadIn.at(2));
-        break;
     case funcPreamp:
         emit havePreamp((unsigned char)payloadIn.at(2));
         state.set(PREAMP, (quint8)payloadIn.at(2), false);
         break;
+    case funcAGCTime:
+        state.set(AGC, (quint8)payloadIn[2], false);
+        break;
     case funcNoiseBlanker:
         emit haveNB(payloadIn.at(2) != 0);
         state.set(NBFUNC, payloadIn.at(2) != 0, false);
+        break;
+    case funcAudioPeakFilter:
         break;
     case funcNoiseReduction:
         emit haveNR(payloadIn.at(2) != 0);
@@ -1871,6 +1895,9 @@ void rigCommander::parseCommand()
         break;
         state.set(TSQLFUNC, payloadIn.at(2) != 0, false);
     }
+    case funcRepeaterDTCS:
+    case funcRepeaterCSQL:
+        break;
     case funcCompressor:
         emit haveComp(payloadIn.at(2) != 0);
         state.set(COMPFUNC, payloadIn.at(2) != 0, false);
@@ -1904,39 +1931,33 @@ void rigCommander::parseCommand()
     case funcManualNotch:
         state.set(MNFUNC, payloadIn.at(2) != 0, false);
         break;
+    case funcDigiSel:
+        break;
+    case funcTwinPeakFilter:
+        break;
     case funcDialLock:
         state.set(LOCKFUNC, payloadIn.at(2) != 0, false);
         break;
-    // 0x19 should never appear
+    case funcRXAntenna:
+        break;
+    case funcDSPIFFilter:
+        break;
+    case funcNotchWidth:
+        break;
+    case funcSSBBandwidth:
+        break;
+    case funcMainSubTracking:
+    case funcIPPlus:
+        break;
+    // 0x17 is CW send and 0x18 is power control (no reply)
+    // 0x19 should never appear as we already have the rigID.
     case funcTransceiverId:
         model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
         rigCaps.modelID = payloadIn[2];
         determineRigCaps();
         qInfo(logRig()) << "Have rig ID: decimal: " << (unsigned int)rigCaps.modelID;
         break;
-    // 0x21 RIT:
-    case funcRITFreq:
-    {
-        int ritHz = 0;
-        freqt f;
-        QByteArray longfreq;
-        longfreq = payloadIn.mid(2,2);
-        longfreq.append(QByteArray(3,'\x00'));
-        f = parseFrequency(longfreq, 3);
-        if(payloadIn.length() < 5)
-             break;
-        ritHz = f.Hz*((payloadIn.at(4)=='\x01')?-1:1);
-        emit haveRitFrequency(ritHz);
-        state.set(RITVALUE, ritHz, false);
-        break;
-    }
-    case funcRitStatus:
-        emit haveRitEnabled(static_cast<bool>(payloadIn.at(02)));
-        state.set(RITFUNC, static_cast<bool>(payloadIn.at(02)), false);
-        break;
     // 0x1a
-    case funcMemoryContents:
-        break;
     case funcBandStackReg:
         parseBandStackReg();
         break;
@@ -1958,14 +1979,9 @@ void rigCommander::parseCommand()
         state.set(PASSBAND, calc, false);
         break;
     }
-    case funcAGCTime:
-        state.set(AGC, (quint8)payloadIn[2], false);
-        break;
     case funcDataModeWithFilter:
         emit haveDataMode((bool)payloadIn[03]);
         state.set(DATAMODE, (quint8)payloadIn[3], false);
-        break;
-    case funcIPPlus:
         break;
     case funcAFMute:
         state.set(MUTEFUNC, (quint8)payloadIn[2], false);
@@ -2029,6 +2045,26 @@ void rigCommander::parseCommand()
     case funcTunerStatus:
         parseATU();
         break;
+    // 0x21 RIT:
+    case funcRITFreq:
+    {
+        int ritHz = 0;
+        freqt f;
+        QByteArray longfreq;
+        longfreq = payloadIn.mid(2,2);
+        longfreq.append(QByteArray(3,'\x00'));
+        f = parseFrequency(longfreq, 3);
+        if(payloadIn.length() < 5)
+             break;
+        ritHz = f.Hz*((payloadIn.at(4)=='\x01')?-1:1);
+        emit haveRitFrequency(ritHz);
+        state.set(RITVALUE, ritHz, false);
+        break;
+    }
+    case funcRitStatus:
+        emit haveRitEnabled(static_cast<bool>(payloadIn.at(02)));
+        state.set(RITFUNC, static_cast<bool>(payloadIn.at(02)), false);
+        break;
     // 0x27
     case funcScopeWaveData:
         parseSpectrum();
@@ -2087,7 +2123,8 @@ void rigCommander::parseCommand()
     // 0x28
     case funcVoiceTX:
         break;
-    //0x29 - This appears to be undocumented but seems to allow certain commands to apply to main or sub VFO?
+    //0x29 - Prefix certain commands with this to get/set certain values without changing current VFO
+    // If we use it for get commands, need to parse the \x29\x<VFO> first.
     case funcMainSubPrefix:
         break;
     case funcFB:
@@ -5764,7 +5801,7 @@ void rigCommander::getAutoNotch()
 void rigCommander::setToneEnabled(bool enabled)
 {
     QByteArray payload;
-    if (getCommand(funcToneStatus,payload,static_cast<int>(enabled)))
+    if (getCommand(funcRepeaterTone,payload,static_cast<int>(enabled)))
     {
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
@@ -5774,7 +5811,7 @@ void rigCommander::setToneEnabled(bool enabled)
 void rigCommander::getToneEnabled()
 {
     QByteArray payload;
-    if (getCommand(funcToneStatus,payload))
+    if (getCommand(funcRepeaterTone,payload))
     {
         prepDataAndSend(payload);
     }
@@ -5783,7 +5820,7 @@ void rigCommander::getToneEnabled()
 void rigCommander::setToneSql(bool enabled)
 {
     QByteArray payload;
-    if (getCommand(funcTSQLStatus,payload,static_cast<int>(enabled)))
+    if (getCommand(funcRepeaterTSQL,payload,static_cast<int>(enabled)))
     {
         payload.append(static_cast<unsigned char>(enabled));
         prepDataAndSend(payload);
@@ -5793,7 +5830,7 @@ void rigCommander::setToneSql(bool enabled)
 void rigCommander::getToneSqlEnabled()
 {
     QByteArray payload;
-    if (getCommand(funcTSQLStatus,payload))
+    if (getCommand(funcRepeaterTSQL,payload))
     {
         prepDataAndSend(payload);
     }

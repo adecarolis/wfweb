@@ -41,7 +41,7 @@ void repeaterSetup::setRig(rigCapabilities inRig)
         ui->toneTone->setDisabled(true);
         ui->toneTSQL->setDisabled(true);
     }
-    if(rig.commands.contains(funcDTCSStatus))
+    if(rig.commands.contains(funcRepeaterDTCS))
     {
         ui->rptDTCSCombo->setDisabled(false);
         ui->toneDTCS->setDisabled(false);
