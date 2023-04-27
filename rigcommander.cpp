@@ -2005,10 +2005,10 @@ void rigCommander::parseCommand()
         emit haveLANGain(bcdHexToUChar(payloadIn[4],payloadIn[5]));
         break;
     case funcDATAOffMod:
-        emit haveModInput(rigInput((inputTypes)bcdHexToUChar(payloadIn[4])),false);
+        emit haveModInput((inputTypes)bcdHexToUChar(payloadIn[4]),false);
         break;
     case funcDATA1Mod:
-        emit haveModInput(rigInput((inputTypes)bcdHexToUChar(payloadIn[4])),true);
+        emit haveModInput((inputTypes)bcdHexToUChar(payloadIn[4]),true);
         break;
     case funcDATA2Mod:
         break;
@@ -2431,7 +2431,7 @@ void rigCommander::getModInput(bool dataOn)
     }
 }
 
-void rigCommander::setModInput(rigInput input, bool dataOn)
+void rigCommander::setModInput(inputTypes input, bool dataOn)
 {
 //    The input enum is as follows:
 
@@ -2445,9 +2445,9 @@ void rigCommander::setModInput(rigInput input, bool dataOn)
     QByteArray payload;
     funcs f=(dataOn) ? funcDATA1Mod :funcDATAOffMod;
 
-    if (getCommand(f,payload,input.type))
+    if (getCommand(f,payload,input))
     {
-        payload.append(input.type);
+        payload.append(input);
         prepDataAndSend(payload);
     }
 
@@ -2566,9 +2566,9 @@ void rigCommander::setModInput(rigInput input, bool dataOn)
     */
 }
 
-void rigCommander::setModInputLevel(rigInput input, unsigned char level)
+void rigCommander::setModInputLevel(inputTypes input, unsigned char level)
 {
-    switch(input.type)
+    switch(input)
     {
         case inputMic:
             setMicGain(level);
@@ -2619,9 +2619,9 @@ void rigCommander::setDialLock(bool lockOn)
     }
 }
 
-void rigCommander::getModInputLevel(rigInput input)
+void rigCommander::getModInputLevel(inputTypes input)
 {
-    switch(input.type)
+    switch(input)
     {
         case inputMic:
             getMicGain();
@@ -3758,8 +3758,7 @@ void rigCommander::parseDetailedRegisters1A05()
 
     int subcmd = bcdHexToUChar(payloadIn[3]) + (100*bcdHexToUChar(payloadIn[2]));
 
-    rigInput input;
-    input.type = (inputTypes)bcdHexToUChar(payloadIn[4]);
+    inputTypes input = (inputTypes)bcdHexToUChar(payloadIn[4]);
     int inputRaw = bcdHexToUChar(payloadIn[4]);
 
     switch(rigCaps.model)

@@ -129,7 +129,7 @@ signals:
     void setDataMode(bool dataOn, unsigned char filter);
     void getDataMode();
     void getModInput(bool dataOn);
-    void setModInput(rigInput input, bool dataOn);
+    void setModInput(inputTypes input, bool dataOn);
     void getBandStackReg(char band, char regCode);
     void getDebug();
     void getRitEnabled();
@@ -165,7 +165,7 @@ signals:
     void getTxPower();
     void getMicGain();
     void getSpectrumRefLevel();
-    void getModInputLevel(rigInput input);
+    void getModInputLevel(inputTypes input);
     void getMeters(meterKind meter);
     void getPassband();
     void getVoxGain();
@@ -214,7 +214,7 @@ signals:
 
     void setSpectrumRefLevel(int);
 
-    void setModLevel(rigInput input, unsigned char level);
+    void setModLevel(inputTypes input, unsigned char level);
     void setACCGain(unsigned char level);
     void setACCAGain(unsigned char level);
     void setACCBGain(unsigned char level);
@@ -344,7 +344,7 @@ private slots:
     void receiveBandStackReg(freqt f, char mode, char filter, bool dataOn); // freq, mode, (filter,) datamode
     void receiveRITStatus(bool ritEnabled);
     void receiveRITValue(int ritValHz);
-    void receiveModInput(rigInput input, bool dataOn);
+    void receiveModInput(inputTypes input, bool dataOn);
     //void receiveDuplexMode(duplexMode dm);
     void receivePassband(quint16 pass);
     void receiveMonitorGain(unsigned char pass);
@@ -1096,14 +1096,14 @@ private:
     void statusFromSliderPercent(QString name, int percentValue);
     void statusFromSliderRaw(QString name, int rawValue);
 
-    void processModLevel(rigInput source, unsigned char level);
+    void processModLevel(inputTypes source, unsigned char level);
 
     void processChangingCurrentModLevel(unsigned char level);
 
-    void changeModLabel(rigInput source);
-    void changeModLabel(rigInput source, bool updateLevel);
+    void changeModLabel(inputTypes source);
+    void changeModLabel(inputTypes source, bool updateLevel);
 
-    void changeModLabelAndSlider(rigInput source);
+    void changeModLabelAndSlider(inputTypes source);
 
     void initPeriodicCommands();
     // Fast command queue for S-Meter:
@@ -1134,8 +1134,8 @@ private:
 
     QHash<unsigned char,QString> rigList;
     rigCapabilities rigCaps;
-    rigInput currentModSrc = inputUnknown;
-    rigInput currentModDataSrc = inputUnknown;
+    inputTypes currentModSrc = inputUnknown;
+    inputTypes currentModDataSrc = inputUnknown;
     mode_kind currentMode = modeUSB;
     mode_info currentModeInfo;
 
@@ -1245,6 +1245,7 @@ Q_DECLARE_METATYPE(struct networkStatus)
 Q_DECLARE_METATYPE(struct networkAudioLevels)
 Q_DECLARE_METATYPE(struct spotData)
 Q_DECLARE_METATYPE(struct rigInput)
+Q_DECLARE_METATYPE(enum inputTypes)
 Q_DECLARE_METATYPE(enum meterKind)
 Q_DECLARE_METATYPE(enum spectrumMode)
 Q_DECLARE_METATYPE(enum mode_kind)

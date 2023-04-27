@@ -182,7 +182,7 @@ public slots:
     void getACCGain();
     void getACCGain(unsigned char ab);
     void getModInput(bool dataOn);
-    void getModInputLevel(rigInput input);
+    void getModInputLevel(inputTypes input);
     void getAfMute();
     void getDialLock();
 
@@ -203,8 +203,8 @@ public slots:
     void setMonitorGain(unsigned char monitorLevel);
     void setVoxGain(unsigned char gain);
     void setAntiVoxGain(unsigned char gain);
-    void setModInput(rigInput input, bool dataOn);
-    void setModInputLevel(rigInput input, unsigned char level);
+    void setModInput(inputTypes input, bool dataOn);
+    void setModInputLevel(inputTypes input, unsigned char level);
     void setAfMute(bool muteOn);
     void setDialLock(bool lockOn);
     void setNBLevel(unsigned char level);
@@ -352,11 +352,11 @@ signals:
     void haveNR(bool en);
 
     // Modulation source and gain:
-    void haveModInput(rigInput input, bool isData);
+    void haveModInput(inputTypes input, bool isData);
     void haveLANGain(unsigned char gain);
     void haveUSBGain(unsigned char gain);
     void haveACCGain(unsigned char gain, unsigned char ab);
-    void haveModSrcGain(rigInput input, unsigned char gain);
+    void haveModSrcGain(inputTypes input, unsigned char gain);
 
     // Meters:
     void haveMeter(meterKind meter, unsigned char level);

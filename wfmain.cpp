@@ -60,6 +60,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<rptAccessTxRx>();
     qRegisterMetaType<rptrAccessData_t>();
     qRegisterMetaType<rigInput>();
+    qRegisterMetaType<inputTypes>();
     qRegisterMetaType<meterKind>();
     qRegisterMetaType<spectrumMode>();
     qRegisterMetaType<freqt>();
@@ -95,7 +96,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 #ifdef Q_OS_LINUX
     QString appdata = "/usr/local/share/wfview/rigs";
 #else
-    QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)+"/rigs";
+    QString appdata = QCoreApplication::applicationDirPath()+"/rigs";
 #endif
 
     QDir rigsDir(appdata);
@@ -121,7 +122,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         }
     }
 
-    QString docsdata = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)+"/wfview/rigs";
+    QString docsdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)+"/rigs";
     QDir docsDir(docsdata);
     if (docsDir.exists()){
         QStringList rigs = docsDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
@@ -573,8 +574,8 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
 
     connect(this, SIGNAL(getModInput(bool)), rig, SLOT(getModInput(bool)));
-    connect(rig, SIGNAL(haveModInput(rigInput,bool)), this, SLOT(receiveModInput(rigInput, bool)));
-    connect(this, SIGNAL(setModInput(rigInput, bool)), rig, SLOT(setModInput(rigInput,bool)));
+    connect(rig, SIGNAL(haveModInput(inputTypes,bool)), this, SLOT(receiveModInput(inputTypes, bool)));
+    connect(this, SIGNAL(setModInput(inputTypes, bool)), rig, SLOT(setModInput(inputTypes,bool)));
 
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
     connect(rig, SIGNAL(haveSpectrumMode(spectrumMode)), this, SLOT(receiveSpectrumMode(spectrumMode)));
@@ -614,7 +615,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getTxPower()), rig, SLOT(getTxLevel()));
     connect(this, SIGNAL(getMicGain()), rig, SLOT(getMicGain()));
     connect(this, SIGNAL(getSpectrumRefLevel()), rig, SLOT(getSpectrumRefLevel()));
-    connect(this, SIGNAL(getModInputLevel(rigInput)), rig, SLOT(getModInputLevel(rigInput)));
+    connect(this, SIGNAL(getModInputLevel(inputTypes)), rig, SLOT(getModInputLevel(inputTypes)));
     connect(this, SIGNAL(getPassband()), rig, SLOT(getPassband()));
     connect(this, SIGNAL(getMonitorGain()), rig, SLOT(getMonitorGain()));
     connect(this, SIGNAL(getVoxGain()), rig, SLOT(getVoxGain()));
@@ -643,7 +644,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setVoxGain(unsigned char)), rig, SLOT(setVoxGain(unsigned char)));
     connect(this, SIGNAL(setAntiVoxGain(unsigned char)), rig, SLOT(setAntiVoxGain(unsigned char)));
     connect(this, SIGNAL(setSpectrumRefLevel(int)), rig, SLOT(setSpectrumRefLevel(int)));
-    connect(this, SIGNAL(setModLevel(rigInput, unsigned char)), rig, SLOT(setModInputLevel(rigInput, unsigned char)));
+    connect(this, SIGNAL(setModLevel(inputTypes, unsigned char)), rig, SLOT(setModInputLevel(inputTypes, unsigned char)));
     connect(this, SIGNAL(setNBLevel(unsigned char)), rig, SLOT(setNBLevel(unsigned char)));
     connect(this, SIGNAL(setNBLevel(unsigned char)), rig, SLOT(setNBLevel(unsigned char)));
 
@@ -4003,7 +4004,7 @@ void wfmain::doCmd(commandtype cmddata)
         case cmdSetModLevel:
         {
             unsigned char modlevel = (*std::static_pointer_cast<unsigned char>(data));
-            rigInput currentIn;
+            inputTypes currentIn;
             if(usingDataMode)
             {
                 currentIn = currentModDataSrc;
@@ -7252,13 +7253,13 @@ void wfmain::receiveTxPower(unsigned char power)
 
 void wfmain::receiveMicGain(unsigned char gain)
 {
-    processModLevel(rigInput(inputMic), gain);
+    processModLevel(inputTypes(inputMic), gain);
     emit sendLevel(cmdGetMicGain,gain);
 }
 
-void wfmain::processModLevel(rigInput source, unsigned char level)
+void wfmain::processModLevel(inputTypes source, unsigned char level)
 {
-    rigInput currentIn;
+    inputTypes currentIn;
     if(usingDataMode)
     {
         currentIn = currentModDataSrc;
@@ -7266,7 +7267,7 @@ void wfmain::processModLevel(rigInput source, unsigned char level)
         currentIn = currentModSrc;
     }
 
-    switch(source.type)
+    switch(source)
     {
         case inputMic:
             micGain = level;
@@ -7294,7 +7295,7 @@ void wfmain::processModLevel(rigInput source, unsigned char level)
         default:
             break;
     }
-    if(currentIn.type == source.type)
+    if(currentIn == source)
     {
         changeSliderQuietly(ui->micGainSlider, level);
         emit sendLevel(cmdGetModLevel,level);
@@ -7302,7 +7303,7 @@ void wfmain::processModLevel(rigInput source, unsigned char level)
 
 }
 
-void wfmain::receiveModInput(rigInput input, bool dataOn)
+void wfmain::receiveModInput(inputTypes input, bool dataOn)
 {
     QComboBox *box;
     QString inputName;
@@ -7324,7 +7325,7 @@ void wfmain::receiveModInput(rigInput input, bool dataOn)
 
     for(int i=0; i < box->count(); i++)
     {
-        if(box->itemData(i).toInt() == (int)input.type)
+        if(box->itemData(i).toInt() == (int)input)
         {
             box->blockSignals(true);
             box->setCurrentIndex(i);
@@ -7338,7 +7339,7 @@ void wfmain::receiveModInput(rigInput input, bool dataOn)
         changeModLabel(input);
     }
     if(!found)
-        qInfo(logSystem()) << "Could not find modulation input: " << (int)input.type;
+        qInfo(logSystem()) << "Could not find modulation input: " << (int)input;
 }
 
 void wfmain::receiveACCGain(unsigned char level, unsigned char ab)
@@ -7533,8 +7534,8 @@ void wfmain::receiveSpectrumRefLevel(int level)
 
 void wfmain::on_modInputCombo_activated(int index)
 {
-    emit setModInput( rigInput((inputTypes)ui->modInputCombo->currentData().toInt()), false );
-    currentModSrc = rigInput((inputTypes)ui->modInputCombo->currentData().toInt());
+    emit setModInput( inputTypes(ui->modInputCombo->currentData().toInt()), false );
+    currentModSrc = inputTypes(ui->modInputCombo->currentData().toInt());
     issueDelayedCommand(cmdGetCurrentModLevel);
     if(!usingDataMode)
     {
@@ -7545,8 +7546,8 @@ void wfmain::on_modInputCombo_activated(int index)
 
 void wfmain::on_modInputData1Combo_activated(int index)
 {
-    emit setModInput( rigInput((inputTypes)ui->modInputData1Combo->currentData().toInt()), true );
-    currentModDataSrc = rigInput((inputTypes)ui->modInputData1Combo->currentData().toInt());
+    emit setModInput( inputTypes(ui->modInputData1Combo->currentData().toInt()), true );
+    currentModDataSrc = inputTypes(ui->modInputData1Combo->currentData().toInt());
 
     issueDelayedCommand(cmdGetCurrentModLevel);
     if(usingDataMode)
@@ -7569,21 +7570,21 @@ void wfmain::on_modInputData3Combo_activated(int index)
 }
 
 
-void wfmain::changeModLabelAndSlider(rigInput source)
+void wfmain::changeModLabelAndSlider(inputTypes source)
 {
     changeModLabel(source, true);
 }
 
-void wfmain::changeModLabel(rigInput input)
+void wfmain::changeModLabel(inputTypes input)
 {
     changeModLabel(input, false);
 }
 
-void wfmain::changeModLabel(rigInput input, bool updateLevel)
+void wfmain::changeModLabel(inputTypes input, bool updateLevel)
 {
     unsigned char gain = 0;
 
-    switch(input.type)
+    switch(input)
     {
         case inputMic:
             gain = micGain;
@@ -7607,7 +7608,11 @@ void wfmain::changeModLabel(rigInput input, bool updateLevel)
             gain=0;
             break;
     }
-    ui->modSliderLbl->setText(input.name);
+    foreach (auto ip, rigCaps.inputs)
+    {
+        if (ip.type == input)
+            ui->modSliderLbl->setText(ip.name);
+    }
     if(updateLevel)
     {
         changeSliderQuietly(ui->micGainSlider, gain);
