@@ -435,7 +435,7 @@ private:
     void parsePTT();
     void parseATU();
     void parseLevels(); // register 0x14
-    bool getCommand(funcs func, QByteArray& payload, int value=-10000);
+    bool getCommand(funcs func, QByteArray& payload, int value=INT_MIN);
     QByteArray getLANAddr();
     QByteArray getUSBAddr();
     QByteArray getACCAddr(unsigned char ab);

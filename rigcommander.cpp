@@ -321,20 +321,20 @@ void rigCommander::prepDataAndSend(QByteArray data)
 
 bool rigCommander::getCommand(funcs func, QByteArray &payload, int value)
 {
-    // Value is set to -10000 by default as this should be outside any "real" values
+    // Value is set to INT_MIN by default as this should be outside any "real" values
     auto it = rigCaps.commands.find(func);
     if (it != rigCaps.commands.end())
     {
-        if (value == -10000 || (value>=it.value().minVal && value <= it.value().maxVal))
+        if (value == INT_MIN || (value>=it.value().minVal && value <= it.value().maxVal))
         {
-            if (value == -10000)
+            if (value == INT_MIN)
                 qDebug(logRig()) << QString("%0 with no value (get)").arg(funcString[func]);
             else
                 qDebug(logRig()) << QString("%0 with value %1 (Range: %2-%3)").arg(funcString[func]).arg(value).arg(it.value().minVal).arg(it.value().maxVal);
             payload.append(it.value().data);
             return true;
         }
-        else if (value != -10000)
+        else if (value != INT_MIN)
         {
             qInfo(logRig()) << QString("Value %0 for %1 is outside of allowed range (%2-%3)").arg(value).arg(funcString[func]).arg(it.value().minVal).arg(it.value().maxVal);
         }
@@ -729,7 +729,6 @@ void rigCommander::setRitEnable(bool ritEnabled)
     {
         payload.append(static_cast<unsigned char>(ritEnabled));
         prepDataAndSend(payload);
-        qInfo() << "RIT" << ritEnabled << "HEX:" << payload.toHex();
     }
 }
 
