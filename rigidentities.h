@@ -209,6 +209,7 @@ struct rigCapabilities {
     std::vector <centerSpanData> scopeCenterSpans;
     std::vector <bandType> bands;
     std::vector <spanType> spans;
+    std::vector <stepType> steps;
     unsigned char bsr[24] = {0};
 
     std::vector <mode_info> modes;

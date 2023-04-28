@@ -87,6 +87,8 @@ public slots:
     void getMode(unsigned char vfo);
     void setDataMode(bool dataOn, unsigned char filter);
     void getDataMode();
+    void getTuningStep();
+    void setTuningStep(unsigned char step);
     void getSplit();
     void setSplit(bool splitEnabled);
     void getBandStackReg(char band, char regCode);
@@ -321,6 +323,7 @@ signals:
     void haveCwPitch(unsigned char pitch);
     void havePskTone(unsigned char tone);
     void haveRttyMark(unsigned char mark);
+    void haveTuningStep(unsigned char step);
 
     // Repeater:
     void haveDuplexMode(duplexMode);

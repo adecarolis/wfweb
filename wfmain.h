@@ -136,6 +136,8 @@ signals:
     void getRitValue();
     void setRitValue(int ritValue);
     void setRitEnable(bool ritEnabled);
+    void getTuningStep();
+    void setTuningStep(unsigned char);
 
     // Repeater:
     void getDuplexMode();
@@ -358,6 +360,7 @@ private slots:
     void receiveComp(bool en);
     void receiveNB(bool en);
     void receiveNR(bool en);
+    void receiveTuningStep(unsigned char step);
 
     // Levels:
     void receiveRfGain(unsigned char level);

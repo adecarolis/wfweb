@@ -41,7 +41,7 @@ private:
     QMenu* context;
     tableCombobox* commandsList;
     QStandardItemModel* commandsModel;
-    QStandardItemModel* createModel(QString strings[]);
+    QStandardItemModel* createModel(QStandardItemModel* model, QString strings[]);
     QString currentFile;
 
 };

@@ -9,7 +9,8 @@ rigCreator::rigCreator(QWidget *parent) :
     ui(new Ui::rigCreator)
 {
     ui->setupUi(this);
-    commandsList = new tableCombobox(createModel(funcString),true,ui->commands);
+
+    commandsList = new tableCombobox(createModel(commandsModel, funcString),true,ui->commands);
     ui->commands->setItemDelegateForColumn(0, commandsList);
 
     ui->commands->setColumnWidth(0,145);
@@ -262,7 +263,8 @@ void rigCreator::loadRigFile(QString file)
             settings->setArrayIndex(c);
             ui->tuningSteps->insertRow(ui->tuningSteps->rowCount());
             ui->tuningSteps->model()->setData(ui->tuningSteps->model()->index(c,0),QString::number(settings->value("Num", 0ULL).toInt()).rightJustified(2,'0'));
-            ui->tuningSteps->model()->setData(ui->tuningSteps->model()->index(c,1),settings->value("Hz", 0ULL).toString());
+            ui->tuningSteps->model()->setData(ui->tuningSteps->model()->index(c,1),settings->value("Name", "").toString());
+            ui->tuningSteps->model()->setData(ui->tuningSteps->model()->index(c,2),settings->value("Hz", 0ULL).toString());
         }
         settings->endArray();
     }
@@ -446,7 +448,8 @@ void rigCreator::saveRigFile(QString file)
     {
         settings->setArrayIndex(n);
         settings->setValue("Num",(ui->tuningSteps->item(n,0) == NULL) ? 0 :  ui->tuningSteps->item(n,0)->text().toInt());
-        settings->setValue("Hz",(ui->tuningSteps->item(n,1) == NULL) ? 0ULL :  ui->tuningSteps->item(n,1)->text().toULongLong());
+        settings->setValue("Name",(ui->tuningSteps->item(n,1) == NULL) ? "" :  ui->tuningSteps->item(n,1)->text());
+        settings->setValue("Hz",(ui->tuningSteps->item(n,2) == NULL) ? 0ULL :  ui->tuningSteps->item(n,2)->text().toULongLong());
     }
     settings->endArray();
 
@@ -469,11 +472,12 @@ void rigCreator::saveRigFile(QString file)
 
 
 
-
-QStandardItemModel* rigCreator::createModel(QString strings[])
+// Create model for comboBox, takes un-initialized model object and populates it.
+// This will be deleted by the comboBox on destruction.
+QStandardItemModel* rigCreator::createModel(QStandardItemModel* model, QString strings[])
 {
 
-    commandsModel = new QStandardItemModel();
+    model = new QStandardItemModel();
 
     for (int i=0; i < NUMFUNCS;i++)
     {
@@ -483,9 +487,9 @@ QStandardItemModel* rigCreator::createModel(QString strings[])
         QList<QStandardItem*> row;
         row << itemName << itemId;
 
-        commandsModel->appendRow(row);
+        model->appendRow(row);
     }
 
-    return commandsModel;
+    return model;
 }
 

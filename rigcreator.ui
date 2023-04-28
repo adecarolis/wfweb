@@ -22,10 +22,10 @@
   <widget class="QWidget" name="horizontalLayoutWidget">
    <property name="geometry">
     <rect>
-     <x>810</x>
-     <y>0</y>
-     <width>171</width>
-     <height>41</height>
+     <x>890</x>
+     <y>10</y>
+     <width>81</width>
+     <height>31</height>
     </rect>
    </property>
    <layout class="QHBoxLayout" name="horizontalLayout">
@@ -41,7 +41,7 @@
        <enum>Qt::Horizontal</enum>
       </property>
       <property name="standardButtons">
-       <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+       <set>QDialogButtonBox::Ok</set>
       </property>
      </widget>
     </item>
@@ -50,9 +50,9 @@
   <widget class="QWidget" name="verticalLayoutWidget">
    <property name="geometry">
     <rect>
-     <x>10</x>
+     <x>7</x>
      <y>10</y>
-     <width>808</width>
+     <width>861</width>
      <height>31</height>
     </rect>
    </property>
@@ -283,9 +283,9 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>60</y>
+     <y>50</y>
      <width>151</width>
-     <height>151</height>
+     <height>161</height>
     </rect>
    </property>
    <property name="title">
@@ -297,7 +297,7 @@
       <x>0</x>
       <y>30</y>
       <width>151</width>
-      <height>121</height>
+      <height>131</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -350,7 +350,7 @@
     <rect>
      <x>10</x>
      <y>390</y>
-     <width>171</width>
+     <width>161</width>
      <height>151</height>
     </rect>
    </property>
@@ -362,7 +362,7 @@
      <rect>
       <x>0</x>
       <y>30</y>
-      <width>171</width>
+      <width>161</width>
       <height>121</height>
      </rect>
     </property>
@@ -451,7 +451,7 @@
      <number>0</number>
     </attribute>
     <attribute name="horizontalHeaderDefaultSectionSize">
-     <number>56</number>
+     <number>55</number>
     </attribute>
     <attribute name="verticalHeaderVisible">
      <bool>false</bool>
@@ -498,9 +498,9 @@
    <property name="geometry">
     <rect>
      <x>170</x>
-     <y>60</y>
+     <y>50</y>
      <width>261</width>
-     <height>151</height>
+     <height>161</height>
     </rect>
    </property>
    <property name="title">
@@ -512,7 +512,7 @@
       <x>0</x>
       <y>30</y>
       <width>261</width>
-      <height>121</height>
+      <height>131</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -566,9 +566,9 @@
    <property name="geometry">
     <rect>
      <x>440</x>
-     <y>60</y>
+     <y>50</y>
      <width>381</width>
-     <height>271</height>
+     <height>281</height>
     </rect>
    </property>
    <property name="title">
@@ -580,7 +580,7 @@
       <x>0</x>
       <y>30</y>
       <width>381</width>
-      <height>241</height>
+      <height>251</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -735,7 +735,7 @@
   <widget class="QGroupBox" name="groupBox_17">
    <property name="geometry">
     <rect>
-     <x>190</x>
+     <x>180</x>
      <y>390</y>
      <width>171</width>
      <height>151</height>
@@ -798,9 +798,9 @@
   <widget class="QGroupBox" name="groupBox_10">
    <property name="geometry">
     <rect>
-     <x>580</x>
+     <x>570</x>
      <y>340</y>
-     <width>171</width>
+     <width>191</width>
      <height>201</height>
     </rect>
    </property>
@@ -812,7 +812,7 @@
      <rect>
       <x>0</x>
       <y>30</y>
-      <width>171</width>
+      <width>191</width>
       <height>171</height>
      </rect>
     </property>
@@ -835,7 +835,7 @@
      <number>0</number>
     </attribute>
     <attribute name="horizontalHeaderDefaultSectionSize">
-     <number>73</number>
+     <number>55</number>
     </attribute>
     <attribute name="verticalHeaderVisible">
      <bool>false</bool>
@@ -853,6 +853,11 @@
     </column>
     <column>
      <property name="text">
+      <string>Name</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
       <string>Hz</string>
      </property>
     </column>
@@ -861,7 +866,7 @@
   <widget class="QGroupBox" name="groupBox_11">
    <property name="geometry">
     <rect>
-     <x>370</x>
+     <x>360</x>
      <y>390</y>
      <width>201</width>
      <height>151</height>
@@ -926,9 +931,9 @@
   <widget class="QGroupBox" name="groupBox_7">
    <property name="geometry">
     <rect>
-     <x>760</x>
+     <x>770</x>
      <y>340</y>
-     <width>211</width>
+     <width>191</width>
      <height>201</height>
     </rect>
    </property>
@@ -940,7 +945,7 @@
      <rect>
       <x>0</x>
       <y>30</y>
-      <width>211</width>
+      <width>191</width>
       <height>171</height>
      </rect>
     </property>

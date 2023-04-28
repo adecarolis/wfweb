@@ -877,6 +877,28 @@ void rigCommander::getDataMode()
     }
 }
 
+void rigCommander::getTuningStep()
+{
+    QByteArray payload;
+    if (getCommand(funcTuningStep,payload))
+    {
+        prepDataAndSend(payload);
+        qInfo() << "Getting tuning step";
+    }
+}
+
+void rigCommander::setTuningStep(unsigned char step)
+{
+    QByteArray payload;
+    if (getCommand(funcTuningStep,payload,static_cast<int>(step)))
+    {
+        payload.append(static_cast<unsigned char>(step));
+        prepDataAndSend(payload);
+        qInfo() << "Setting tuning step to" << step;
+    }
+}
+
+
 void rigCommander::getSplit()
 {
     QByteArray payload;
@@ -1722,6 +1744,7 @@ void rigCommander::parseCommand()
     case funcTuningStep:
         // We could use this to update the current tuning step from the radio
         // although we use many more different steps!
+        emit haveTuningStep((unsigned char)payloadIn[1]);
     case funcAttenuator:
         emit haveAttenuator((unsigned char)payloadIn.at(1));
         state.set(ATTENUATOR, (quint8)payloadIn[1], false);
@@ -4089,7 +4112,7 @@ void rigCommander::determineRigCaps()
     rigCaps.commandsReverse.clear();
     rigCaps.antennas.clear();
     rigCaps.filters.clear();
-    // rigCaps.steps.clear();
+    rigCaps.steps.clear();
 
     // modelID should already be set!
     while (!rigList.contains(rigCaps.modelID))
@@ -4195,8 +4218,20 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numInputs; c++)
         {
             settings->setArrayIndex(c);
-            qInfo() << "Adding mod input" << settings->value("Name", "").toString() << settings->value("Num", 0).toInt() << "(" << c << "of" << numInputs << ")";
             rigCaps.inputs.append(rigInput((inputTypes)settings->value("Num", 0).toInt(),settings->value("Name", "").toString()));
+        }
+        settings->endArray();
+    }
+
+    int numSteps = settings->beginReadArray("Tuning Steps");
+    if (numSteps == 0) {
+        settings->endArray();
+    }
+    else {
+        for (int c = 0; c < numSteps; c++)
+        {
+            settings->setArrayIndex(c);
+            rigCaps.steps.push_back(stepType(settings->value("Num", 0).toInt(),settings->value("Name", "").toString(),settings->value("Hz", 0ULL).toULongLong()));
         }
         settings->endArray();
     }

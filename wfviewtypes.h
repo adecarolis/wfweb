@@ -125,6 +125,7 @@ struct mode_info {
     bool bw; // Can the bandwidth of the current filter be changed?
 };
 
+
 enum breakIn_t {
     brkinOff  = 0x00,
     brkinSemi = 0x01,
@@ -155,7 +156,7 @@ enum cmds {
     cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
     cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetNRLevel, cmdSetNRLevel, cmdGetTPBFInner, cmdSetTPBFInner,
     cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetPassband, cmdSetPassband, cmdGetNBLevel, cmdSetNBLevel,
-    cmdGetCompLevel, cmdSetCompLevel,
+    cmdGetCompLevel, cmdSetCompLevel, cmdGetTuningStep, cmdSetTuningStep,
     cmdGetMonitorGain, cmdSetMonitorGain, cmdGetVoxGain, cmdSetVoxGain, cmdGetAntiVoxGain, cmdSetAntiVoxGain,
     cmdGetCwPitch, cmdGetPskTone, cmdGetRttyMark, cmdSetCwPitch, cmdSetPskTone, cmdSetRttyMark,
     cmdGetVox,cmdSetVox, cmdGetMonitor,cmdSetMonitor, cmdGetComp, cmdSetComp, cmdGetNB, cmdSetNB, cmdGetNR, cmdSetNR,
@@ -278,6 +279,14 @@ struct funcType {
 struct commandtype {
     cmds cmd;
     std::shared_ptr<void> data;
+};
+
+struct stepType {
+    stepType(){};
+    stepType(unsigned char num, QString name, quint64 hz) : num(num), name(name), hz(hz) {};
+    unsigned char num;
+    QString name;
+    quint64 hz;
 };
 
 struct errorType {

@@ -432,6 +432,9 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(havePTTStatus(bool)), this, SLOT(receivePTTstatus(bool)));
     connect(this, SIGNAL(setPTT(bool)), rig, SLOT(setPTT(bool)));
     connect(this, SIGNAL(getPTT()), rig, SLOT(getPTT()));
+    connect(rig, SIGNAL(haveTuningStep(unsigned char)), this, SLOT(receiveTuningStep(unsigned char)));
+    connect(this, SIGNAL(setTuningStep(unsigned char)), rig, SLOT(setTuningStep(unsigned char)));
+    connect(this, SIGNAL(getTuningStep()), rig, SLOT(getTuningStep()));
 
     connect(this, SIGNAL(getVox()), rig, SLOT(getVox()));
     connect(this, SIGNAL(getMonitor()), rig, SLOT(getMonitor()));
@@ -1072,43 +1075,10 @@ void wfmain::setupMainUI()
     ui->spectrumModeCombo->addItem("Scroll-C", (spectrumMode)spectModeScrollC);
     ui->spectrumModeCombo->addItem("Scroll-F", (spectrumMode)spectModeScrollF);
 
-    ui->modeSelectCombo->addItem("LSB",  0x00);
-    ui->modeSelectCombo->addItem("USB",  0x01);
-    ui->modeSelectCombo->addItem("FM",   0x05);
-    ui->modeSelectCombo->addItem("AM",   0x02);
-    ui->modeSelectCombo->addItem("CW",   0x03);
-    ui->modeSelectCombo->addItem("CW-R", 0x07);
-    ui->modeSelectCombo->addItem("RTTY", 0x04);
-    ui->modeSelectCombo->addItem("RTTY-R", 0x08);
-
-
     ui->modeFilterCombo->addItem("1", 1);
     ui->modeFilterCombo->addItem("2", 2);
     ui->modeFilterCombo->addItem("3", 3);
     ui->modeFilterCombo->addItem("Setup...", 99);
-
-    ui->tuningStepCombo->blockSignals(true);
-
-    ui->tuningStepCombo->addItem("1 Hz",      (unsigned int)       1);
-    ui->tuningStepCombo->addItem("10 Hz",     (unsigned int)      10);
-    ui->tuningStepCombo->addItem("100 Hz",    (unsigned int)     100);
-    ui->tuningStepCombo->addItem("500 Hz",    (unsigned int)     500);
-    ui->tuningStepCombo->addItem("1 kHz",     (unsigned int)    1000);
-    ui->tuningStepCombo->addItem("2.5 kHz",   (unsigned int)    2500);
-    ui->tuningStepCombo->addItem("5 kHz",     (unsigned int)    5000);
-    ui->tuningStepCombo->addItem("6.125 kHz", (unsigned int)    6125);	// PMR
-    ui->tuningStepCombo->addItem("8.333 kHz", (unsigned int)    8333);	// airband stepsize
-    ui->tuningStepCombo->addItem("9 kHz",     (unsigned int)    9000);	// European medium wave stepsize
-    ui->tuningStepCombo->addItem("10 kHz",    (unsigned int)   10000);
-    ui->tuningStepCombo->addItem("12.5 kHz",  (unsigned int)   12500);
-    ui->tuningStepCombo->addItem("25 kHz",    (unsigned int)   25000);
-    ui->tuningStepCombo->addItem("100 kHz",   (unsigned int)  100000);
-    ui->tuningStepCombo->addItem("250 kHz",   (unsigned int)  250000);
-    ui->tuningStepCombo->addItem("1 MHz",     (unsigned int) 1000000);  //for 23 cm and HF
-
-
-    ui->tuningStepCombo->setCurrentIndex(2);
-    ui->tuningStepCombo->blockSignals(false);
 
     ui->wfthemeCombo->addItem("Jet", QCPColorGradient::gpJet);
     ui->wfthemeCombo->addItem("Cold", QCPColorGradient::gpCold);
@@ -3495,6 +3465,12 @@ void wfmain::on_tuningStepCombo_currentIndexChanged(int index)
 
     tsWfScrollHz = ui->tuningStepCombo->itemData(index).toUInt();
     tsKnobHz = ui->tuningStepCombo->itemData(index).toUInt();
+    foreach (auto s, rigCaps.steps) {
+        if (tsWfScrollHz == s.hz)
+        {
+            issueCmdUniquePriority(cmdSetTuningStep, s.num);
+        }
+    }
 }
 
 quint64 wfmain::roundFrequency(quint64 frequency, unsigned int tsHz)
@@ -3733,6 +3709,10 @@ void wfmain:: getInitialRigState()
         issueDelayedCommand(cmdGetDuplexMode);
     }
 
+    if(rigCaps.commands.contains(funcTuningStep))
+    {
+        issueDelayedCommand(cmdGetTuningStep);
+    }
 
     if(rigCaps.commands.contains(funcRepeaterTone))
     {
@@ -3798,7 +3778,7 @@ void wfmain:: getInitialRigState()
     {
         issueDelayedCommand(cmdGetATUStatus);
     }
-    
+        
     delayedCommand->start();
 }
 
@@ -3975,6 +3955,12 @@ void wfmain::doCmd(commandtype cmddata)
         {
             mode_info m = (*std::static_pointer_cast<mode_info>(data));
             emit setMode(m);
+            break;
+        }
+        case cmdSetTuningStep:
+        {
+            unsigned char step = (*std::static_pointer_cast<unsigned char>(data));
+            emit setTuningStep(step);
             break;
         }
         case cmdSelVFO:
@@ -4306,6 +4292,9 @@ void wfmain::doCmd(cmds cmd)
             break;
         case cmdGetMode:
             emit getMode();
+            break;
+        case cmdGetTuningStep:
+            emit getTuningStep();
             break;
         case cmdVFOSwap:
             emit sendVFOSwap();
@@ -4932,17 +4921,27 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         trxadj->setRig(rigCaps);
 
         // Set the mode combo box up:
-
         ui->modeSelectCombo->blockSignals(true);
         ui->modeSelectCombo->clear();
 
-        for(unsigned int i=0; i < rigCaps.modes.size(); i++)
+        foreach (auto m, rigCaps.modes)
         {
-            ui->modeSelectCombo->addItem(rigCaps.modes.at(i).name,
-                                            rigCaps.modes.at(i).reg);
+            ui->modeSelectCombo->addItem(m.name, m.reg);
+        }
+        ui->modeSelectCombo->blockSignals(false);
+
+        // Set the tuning step combo box up:
+        ui->tuningStepCombo->blockSignals(true);
+        ui->tuningStepCombo->clear();
+        foreach (auto s, rigCaps.steps)
+        {
+            ui->tuningStepCombo->addItem(s.name, s.hz);
         }
 
-        ui->modeSelectCombo->blockSignals(false);
+        //ui->tuningStepCombo->setCurrentIndex(2);
+        ui->tuningStepCombo->blockSignals(false);
+
+
 
         if(rigCaps.model == model9700)
         {
@@ -7426,6 +7425,24 @@ void wfmain::receiveTPBFOuter(unsigned char level) {
     //qDebug() << "Outer" << level << "TPBFOuter" << TPBFOuter;
 }
 
+void wfmain::receiveTuningStep(unsigned char step)
+{
+    qInfo() << "Received tuning step" << step;
+    if (step > 0)
+    {
+        foreach (auto s, rigCaps.steps)
+        {
+            if (step == s.num) {
+                int find = ui->tuningStepCombo->findData(s.hz);
+                if (find != -1)
+                {
+                    ui->tuningStepCombo->setCurrentIndex(find);
+                }
+                break;
+            }
+        }
+    }
+}
 
 void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
 {
@@ -7486,6 +7503,7 @@ void wfmain::receiveNRLevel(unsigned char level)
 {
     emit sendLevel(cmdGetNRLevel,level);
 }
+
 
 void wfmain::receiveComp(bool en)
 {
