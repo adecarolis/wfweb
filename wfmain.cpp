@@ -92,23 +92,23 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     haveRigCaps = false;
 
-    // We need to populate the last of rigs as early as possible so do it now
-    QString appdata = QCoreApplication::applicationDirPath();
+    // We need to populate the list of rigs as early as possible so do it now
+    QString systemRigLocation = QCoreApplication::applicationDirPath();
 
 #ifdef Q_OS_LINUX
-    appdata += "/../share/wfview/rigs";
+    systemRigLocation += "/../share/wfview/rigs";
 #else
-    appdata +="/rigs";
+    systemRigLocation +="/rigs";
 #endif
 
-    QDir rigsDir(appdata);
+    QDir systemRigDir(systemRigLocation);
 
-    if (!rigsDir.exists()) {
+    if (!systemRigDir.exists()) {
         qWarning() << "********* Rig directory does not exist ********";
     } else {
-        QStringList rigs = rigsDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
+        QStringList rigs = systemRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
         foreach (QString rig, rigs) {
-            QSettings* rigSettings = new QSettings(rigsDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
+            QSettings* rigSettings = new QSettings(systemRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
             if (!rigSettings->childGroups().contains("Rig"))
             {
                 qWarning() << rig << "Does not seem to be a rig description file";
@@ -118,18 +118,18 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
             rigSettings->beginGroup("Rig");
             qDebug() << QString("Found Rig %0 with CI-V address of %1").arg(rigSettings->value("Model","").toString(), rigSettings->value("CIVAddress",0).toString());
             // Any user modified rig files will override system provided ones.
-            this->rigList.insert(rigSettings->value("CIVAddress",0).toInt(),rigsDir.absoluteFilePath(rig));
+            this->rigList.insert(rigSettings->value("CIVAddress",0).toInt(),systemRigDir.absoluteFilePath(rig));
             rigSettings->endGroup();
             delete rigSettings;
         }
     }
 
-    QString docsdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)+"/rigs";
-    QDir docsDir(docsdata);
-    if (docsDir.exists()){
-        QStringList rigs = docsDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
+    QString userRigLocation = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)+"/rigs";
+    QDir userRigDir(userRigLocation);
+    if (userRigDir.exists()){
+        QStringList rigs = userRigDir.entryList(QStringList() << "*.rig" << "*.RIG", QDir::Files);
         foreach (QString rig, rigs) {
-            QSettings* rigSettings = new QSettings(docsDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
+            QSettings* rigSettings = new QSettings(userRigDir.absoluteFilePath(rig), QSettings::Format::IniFormat);
             if (!rigSettings->childGroups().contains("Rig"))
             {
                 qWarning() << rig << "Does not seem to be a rig description file";
@@ -139,7 +139,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
             rigSettings->beginGroup("Rig");
             qDebug() << QString("Found User Rig %0 with CI-V address of %1").arg(rigSettings->value("Model","").toString(), rigSettings->value("CIVAddress",0).toString());
             // Any user modified rig files will override system provided ones.
-            this->rigList.insert(rigSettings->value("CIVAddress",0).toInt(),docsDir.absoluteFilePath(rig));
+            this->rigList.insert(rigSettings->value("CIVAddress",0).toInt(),userRigDir.absoluteFilePath(rig));
             rigSettings->endGroup();
             delete rigSettings;
         }
