@@ -1745,6 +1745,7 @@ void rigCommander::parseCommand()
         // We could use this to update the current tuning step from the radio
         // although we use many more different steps!
         emit haveTuningStep((unsigned char)payloadIn[1]);
+        break;
     case funcAttenuator:
         emit haveAttenuator((unsigned char)payloadIn.at(1));
         state.set(ATTENUATOR, (quint8)payloadIn[1], false);

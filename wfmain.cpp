@@ -93,10 +93,12 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     haveRigCaps = false;
 
     // We need to populate the last of rigs as early as possible so do it now
+    QString appdata = QCoreApplication::applicationDirPath();
+
 #ifdef Q_OS_LINUX
-    QString appdata = "/usr/local/share/wfview/rigs";
+    appdata += "/../share/wfview/rigs";
 #else
-    QString appdata = QCoreApplication::applicationDirPath()+"/rigs";
+    appdata +="/rigs";
 #endif
 
     QDir rigsDir(appdata);

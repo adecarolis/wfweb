@@ -14,9 +14,6 @@
 #include "rigidentities.h"
 #include "tablewidget.h"
 
-
-//#define DEVMODE
-
 namespace Ui {
 class rigCreator;
 }

@@ -29,12 +29,15 @@ void rigCreator::on_defaultRigs_clicked(bool clicked)
 {
     Q_UNUSED(clicked)
 
+
+     QString appdata = QCoreApplication::applicationDirPath();
+
 #ifdef Q_OS_LINUX
-    QString appdata = "/usr/local/share/wfview/rigs";
-    QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata,"Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
+     appdata += "/../share/wfview/rigs";
+     QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata,"Rig Files (*.rig)",nullptr,QFileDialog::DontUseNativeDialog);
 #else
-    QString appdata = QCoreApplication::applicationDirPath()+"/rigs";
-    QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata,"Rig Files (*.rig)");
+     appdata +="/rigs";
+     QString file = QFileDialog::getOpenFileName(this,"Select Rig Filename",appdata,"Rig Files (*.rig)");
 #endif
 
     if (!file.isEmpty())
@@ -46,17 +49,7 @@ void rigCreator::on_defaultRigs_clicked(bool clicked)
 void rigCreator::on_loadFile_clicked(bool clicked)
 {
     Q_UNUSED(clicked)
-#ifdef DEVMODE
-
-#ifdef Q_OS_LINUX
-    QString appdata = "/usr/local/share/wfview";
-#else
-    QString appdata = QCoreApplication::applicationDirPath();
-#endif
-
-#else
     QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-#endif
     QDir dir(appdata);
     if (!dir.exists()) {
         dir.mkpath(appdata);
@@ -293,15 +286,8 @@ void rigCreator::loadRigFile(QString file)
 void rigCreator::on_saveFile_clicked(bool clicked)
 {
     Q_UNUSED(clicked)
-#ifdef DEVMODE
-#ifdef Q_OS_LINUX
-    QString appdata = "/usr/local/share/wfview";
-#else
-    QString appdata = QCoreApplication::applicationDirPath();
-#endif
-#else
+
     QString appdata = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-#endif
 
     QDir dir(appdata);
     if (!dir.exists()) {
