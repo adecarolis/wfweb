@@ -789,7 +789,7 @@ void rigCommander::setMode(mode_info m)
     }
 
     QByteArray payload;
-    if (getCommand(funcMainSubMode,payload,m.reg))
+    if (getCommand(funcMainSubMode,payload,m.VFO))
     {
         payload.append(static_cast<unsigned char>(m.VFO));
         payload.append(m.reg);
@@ -1129,7 +1129,7 @@ void rigCommander::setTone(rptrTone_t t)
         payload.append(static_cast<unsigned char>(t.useSecondaryVFO));
     }
 
-    if (getCommand(funcRepeaterTone,payload,static_cast<int>(t.tone)))
+    if (getCommand(funcToneFreq,payload,static_cast<int>(t.tone)))
     {
         payload.append(encodeTone(t.tone));
         prepDataAndSend(payload);
@@ -1151,7 +1151,7 @@ void rigCommander::setTSQL(rptrTone_t t)
         payload.append(static_cast<unsigned char>(t.useSecondaryVFO));
     }
 
-    if (getCommand(funcRepeaterTSQL,payload,static_cast<int>(t.tone)))
+    if (getCommand(funcTSQLFreq,payload,static_cast<int>(t.tone)))
     {
         payload.append(encodeTone(t.tone));
         prepDataAndSend(payload);
@@ -1161,7 +1161,7 @@ void rigCommander::setTSQL(rptrTone_t t)
 void rigCommander::setDTCS(quint16 dcscode, bool tinv, bool rinv)
 {
     QByteArray payload;
-    if (getCommand(funcRepeaterDTCS,payload,static_cast<int>(dcscode)))
+    if (getCommand(funcDTCSCode,payload,static_cast<int>(dcscode)))
     {
         payload.append(encodeTone(dcscode, tinv, rinv));
         prepDataAndSend(payload);
@@ -1230,7 +1230,7 @@ quint16 rigCommander::decodeTone(QByteArray eTone, bool &tinv, bool &rinv)
 void rigCommander::getTone()
 {
     QByteArray payload;
-    if (getCommand(funcRepeaterTone,payload))
+    if (getCommand(funcToneFreq,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1239,7 +1239,7 @@ void rigCommander::getTone()
 void rigCommander::getTSQL()
 {
     QByteArray payload;
-    if (getCommand(funcRepeaterTSQL,payload))
+    if (getCommand(funcTSQLFreq,payload))
     {
         prepDataAndSend(payload);
     }
@@ -1248,7 +1248,7 @@ void rigCommander::getTSQL()
 void rigCommander::getDTCS()
 {
     QByteArray payload;
-    if (getCommand(funcRepeaterDTCS,payload))
+    if (getCommand(funcDTCSCode,payload))
     {
         prepDataAndSend(payload);
     }
