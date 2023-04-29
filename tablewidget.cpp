@@ -14,8 +14,9 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
     if(event->button() == Qt::RightButton)
     {
         QMenu menu;
-        QAction *insert= menu.addAction("Insert Item");
         QAction *add= menu.addAction("Add Item");
+        QAction *insert= menu.addAction("Insert Item");
+        QAction *clone= menu.addAction("Clone Item");
         QAction *del = menu.addAction("Delete Item");
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
         QAction *selectedAction = menu.exec(event->globalPos());
@@ -24,13 +25,21 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
 #endif
 
 
-        if(selectedAction == insert)
+        if(selectedAction == add)
+        {
+            this->insertRow(this->rowCount());
+        }
+        else if(selectedAction == insert)
         {
             this->insertRow(this->currentRow());
         }
-        else if(selectedAction == add)
+        else if( selectedAction == clone )
         {
-            this->insertRow(this->rowCount());
+            this->insertRow(this->currentRow());
+            for (int i=0;i<this->columnCount();i++)
+            {
+                if (this->item(currentRow(),i) != NULL) this->model()->setData(this->model()->index(this->currentRow()-1,i),this->item(this->currentRow(),i)->text());
+            }
         }
         else if( selectedAction == del )
         {
