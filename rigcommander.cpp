@@ -1973,6 +1973,9 @@ void rigCommander::parseCommand()
     case funcSSBBandwidth:
         break;
     case funcMainSubTracking:
+    case funcToneSquelchType:
+        emit haveRptAccessMode((rptAccessTxRx)payloadIn.at(2));
+        break;
     case funcIPPlus:
         break;
     // 0x17 is CW send and 0x18 is power control (no reply)
@@ -2050,7 +2053,7 @@ void rigCommander::parseCommand()
         emit haveTSQL(decodeTone(payloadIn));
         state.set(TSQL, decodeTone(payloadIn), false);
         break;
-    case funcDCSFreq:
+    case funcDTCSCode:
     {
         quint16 tone=0;
         bool tinv = false;
@@ -2060,7 +2063,7 @@ void rigCommander::parseCommand()
         state.set(DTCS, tone, false);
         break;
     }
-    case funcCSQLSetting:
+    case funcCSQLCode:
         emit haveTone(decodeTone(payloadIn));
         state.set(CSQL, decodeTone(payloadIn), false);
         break;

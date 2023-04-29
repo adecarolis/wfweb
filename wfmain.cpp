@@ -4574,7 +4574,7 @@ void wfmain::sendRadioCommandLoop()
                 cmds sCmd = slowPollCmdQueue[(slowCmdNum++)%nCmds];
                 doCmd(sCmd);
             }
-        } else if ((!rapidPollCmdQueue.empty()) && rapidPollCmdQueueEnabled)
+        } else if ((haveRigCaps && !rapidPollCmdQueue.empty()) && rapidPollCmdQueueEnabled)
         {
             int nrCmds = (int)rapidPollCmdQueue.size();
             cmds rCmd = rapidPollCmdQueue[(rapidCmdNum++)%nrCmds];

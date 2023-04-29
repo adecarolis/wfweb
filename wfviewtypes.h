@@ -184,7 +184,7 @@ enum cmds {
 
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 182
+#define NUMFUNCS 186
 
 enum funcs { funcNone,
 funcfreqTR,             funcModeTR,             funcBandEdgeFreq,           funcFreqGet,        	funcModeGet,        	funcFreqSet,			// \x00
@@ -211,13 +211,13 @@ funcUTCOffset,			funcCLOCK2,				funcCLOCK2UTCOffset,        funcCLOCK2Name,			fu
 funcScanResume,			funcRecorderMode,		funcRecorderTX,             funcRecorderRX,			funcRecorderSplit,		funcRecorderPTTAuto,
 funcRecorderPreRec,		funcRXAntConnector,		funcAntennaSelectMode,      funcNBDepth,			funcNBWidth,			funcVOXDelay,
 funcVOXVoiceDelay,		funcAPFType,			funcAPFTypeLevel,           funcPSKTone,            funcRTTYMarkTone,       funcDataModeWithFilter,
-funcAFMute,				funcToneFreq,           funcTSQLFreq,               funcDCSFreq,            funcCSQLSetting,        funcTransceiverStatus,
+funcAFMute,				funcToneFreq,           funcTSQLFreq,               funcDTCSCode,           funcCSQLCode,           funcTransceiverStatus,
 funcXFCStatus,			funcReadTXFreq,			funcCIVOutput,              funcReadTXFreqs,        funcReadUserTXFreqs,	funcUserTXBandEdgeFreq,
 funcRITFreq,			funcRitStatus,			funcRitTXStatus,            funcMainSubFreq,		funcMainSubMode,		funcScopeWaveData,
 funcScopeOnOff,			funcScopeDataOutput,	funcScopeMainSub,           funcScopeSingleDual,	funcScopeCenterFixed,	funcScopeCenterSpan,
 funcScopeEdgeNumber,  	funcScopeHold,      	funcScopeRef,               funcScopeSpeed,			funcScopeDuringTX,      funcScopeCenterType,
-funcScopeVBW,       	funcScopeFixedFreq, 	funcScopeRBW,               funcVoiceTX,			funcMainSubPrefix,		funcFA,
-funcFB
+funcScopeVBW,       	funcScopeFixedFreq, 	funcScopeRBW,               funcVoiceTX,			funcMainSubPrefix,		funcAFCSetting,
+funcGPSTXMode,          funcSatelliteMemory,    funcGPSPosition,            funcFA,                     funcFB
 };
              
 
@@ -247,13 +247,13 @@ static QString funcString[] { "None",
 "Scanning Resume",      "Recorder Mode",        "Recorder TX",              "Recorder RX",          "Recorder Split",       "Recorder PTT Auto",
 "Recorder Pre Rec",     "RX Ant Connector",     "Antenna Select Mode",      "NB Depth",             "NB Width",             "VOX Delay",
 "VOX Voice Delay",      "APF Type",             "APF Type Level",           "PSK Tone",             "RTTY Mark Tone",       "Data Mode Filter",
-"AF Mute Status",       "Tone Frequency",       "TSQL Frequency",           "DCS Frequency",        "CSQL Setting",         "Transceiver Status",
+"AF Mute Status",       "Tone Frequency",       "TSQL Frequency",           "DTCS Code/Polarity",   "CSQL Code",           "Transceiver Status",
 "XFC Status",           "Read TX Freq",         "CI-V Output",              "Read TX Freqs",        "Read User TX Freqs",   "User TX Band Edge Freq",
 "RIT Frequency",        "RIT Status",           "RIT TX Status",            "Main/Sub Freq",        "Main/Sub Mode",        "Scope Wave Data",
 "Scope On/Off",         "Scope Data Output",    "Scope Main/Sub",           "Scope Single/Dual",    "Scope Center Fixed",   "Scope Center Span",
 "Scope Edge Number",    "Scope Hold",           "Scope Ref",                "Scope Speed",          "Scope During TX",      "Scope Center Type",
-"Scope VBW",            "Scope Fixed Freq",     "Scope RBW",                "Voice TX",             "Main/Sub Prefix",      "Command Error FA",
-"Command OK FB"
+"Scope VBW",            "Scope Fixed Freq",     "Scope RBW",                "Voice TX",             "Main/Sub Prefix",      "AFC Function",
+"GPS TX Mode",          "Satellite Memory",     "GPS Position",             "Command Error FA",         "Command OK FB"
 };
 
 
