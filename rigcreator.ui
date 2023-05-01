@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Rig Creator</string>
   </property>
   <widget class="QWidget" name="horizontalLayoutWidget">
    <property name="geometry">
@@ -149,7 +149,7 @@
       <item>
        <widget class="QLineEdit" name="rigctldModel">
         <property name="inputMask">
-         <string>99999</string>
+         <string>9999</string>
         </property>
        </widget>
       </item>
@@ -254,6 +254,9 @@
     <property name="alternatingRowColors">
      <bool>true</bool>
     </property>
+    <property name="selectionMode">
+     <enum>QAbstractItemView::SingleSelection</enum>
+    </property>
     <property name="sortingEnabled">
      <bool>true</bool>
     </property>
@@ -308,6 +311,9 @@
     </property>
     <property name="alternatingRowColors">
      <bool>true</bool>
+    </property>
+    <property name="selectionMode">
+     <enum>QAbstractItemView::SingleSelection</enum>
     </property>
     <property name="sortingEnabled">
      <bool>true</bool>
@@ -375,6 +381,9 @@
     <property name="alternatingRowColors">
      <bool>true</bool>
     </property>
+    <property name="selectionMode">
+     <enum>QAbstractItemView::SingleSelection</enum>
+    </property>
     <property name="sortingEnabled">
      <bool>true</bool>
     </property>
@@ -437,6 +446,9 @@
     </property>
     <property name="alternatingRowColors">
      <bool>true</bool>
+    </property>
+    <property name="selectionMode">
+     <enum>QAbstractItemView::SingleSelection</enum>
     </property>
     <property name="sortingEnabled">
      <bool>true</bool>
@@ -524,6 +536,9 @@
     <property name="alternatingRowColors">
      <bool>true</bool>
     </property>
+    <property name="selectionMode">
+     <enum>QAbstractItemView::SingleSelection</enum>
+    </property>
     <property name="sortingEnabled">
      <bool>true</bool>
     </property>
@@ -568,7 +583,7 @@
      <x>440</x>
      <y>50</y>
      <width>381</width>
-     <height>281</height>
+     <height>231</height>
     </rect>
    </property>
    <property name="title">
@@ -580,7 +595,7 @@
       <x>0</x>
       <y>30</y>
       <width>381</width>
-      <height>251</height>
+      <height>201</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -591,6 +606,9 @@
     </property>
     <property name="alternatingRowColors">
      <bool>true</bool>
+    </property>
+    <property name="selectionMode">
+     <enum>QAbstractItemView::SingleSelection</enum>
     </property>
     <property name="sortingEnabled">
      <bool>true</bool>
@@ -762,6 +780,9 @@
     <property name="alternatingRowColors">
      <bool>true</bool>
     </property>
+    <property name="selectionMode">
+     <enum>QAbstractItemView::SingleSelection</enum>
+    </property>
     <property name="sortingEnabled">
      <bool>true</bool>
     </property>
@@ -799,9 +820,9 @@
    <property name="geometry">
     <rect>
      <x>570</x>
-     <y>340</y>
+     <y>290</y>
      <width>191</width>
-     <height>201</height>
+     <height>251</height>
     </rect>
    </property>
    <property name="title">
@@ -813,7 +834,7 @@
       <x>0</x>
       <y>30</y>
       <width>191</width>
-      <height>171</height>
+      <height>221</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -824,6 +845,9 @@
     </property>
     <property name="alternatingRowColors">
      <bool>true</bool>
+    </property>
+    <property name="selectionMode">
+     <enum>QAbstractItemView::MultiSelection</enum>
     </property>
     <property name="sortingEnabled">
      <bool>true</bool>
@@ -893,6 +917,9 @@
     <property name="alternatingRowColors">
      <bool>true</bool>
     </property>
+    <property name="selectionMode">
+     <enum>QAbstractItemView::SingleSelection</enum>
+    </property>
     <property name="sortingEnabled">
      <bool>true</bool>
     </property>
@@ -958,6 +985,9 @@
     <property name="alternatingRowColors">
      <bool>true</bool>
     </property>
+    <property name="selectionMode">
+     <enum>QAbstractItemView::SingleSelection</enum>
+    </property>
     <property name="sortingEnabled">
      <bool>true</bool>
     </property>
@@ -996,12 +1026,65 @@
     </column>
    </widget>
   </widget>
+  <widget class="QGroupBox" name="groupBox_12">
+   <property name="geometry">
+    <rect>
+     <x>440</x>
+     <y>290</y>
+     <width>120</width>
+     <height>91</height>
+    </rect>
+   </property>
+   <property name="title">
+    <string>Memories</string>
+   </property>
+   <widget class="QWidget" name="formLayoutWidget_2">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>31</y>
+      <width>101</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <layout class="QFormLayout" name="formLayout">
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_8">
+       <property name="text">
+        <string>Groups</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_9">
+       <property name="text">
+        <string>Mem</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="memGroups">
+       <property name="inputMask">
+        <string>999</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="memories">
+       <property name="inputMask">
+        <string>999</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
+  </widget>
  </widget>
  <customwidgets>
   <customwidget>
    <class>tableWidget</class>
    <extends>QTableWidget</extends>
-   <header>tablewidget.h</header>
+   <header location="global">tablewidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

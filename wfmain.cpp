@@ -89,6 +89,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<usbFeatureType>();
     qRegisterMetaType<cmds>();
     qRegisterMetaType<rigTypedef>();
+    qRegisterMetaType<memoryType>();
 
     haveRigCaps = false;
 
@@ -501,6 +502,12 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveDuplexMode(duplexMode)), rpt, SLOT(receiveDuplexMode(duplexMode)));
     connect(this, SIGNAL(getRptDuplexOffset()), rig, SLOT(getRptDuplexOffset()));
     connect(rig, SIGNAL(haveRptOffsetFrequency(freqt)), rpt, SLOT(handleRptOffsetFrequency(freqt)));
+
+    // Memories
+    connect(this, SIGNAL(getMemory(quint16)), rig, SLOT(getMemory(quint16)));
+    connect(this, SIGNAL(setMemory(memoryType)), rig, SLOT(setMemory(memoryType)));
+    connect(this, SIGNAL(clearMemory(quint16)), rig, SLOT(clearMemory(quint16)));
+    connect(this, SIGNAL(recallMemory(quint16)), rig, SLOT(recallMemory(quint16)));
 
     // These are the current tone frequency or DCS code selected:
     connect(rpt, SIGNAL(getTone()), rig, SLOT(getTone()));
@@ -4256,7 +4263,30 @@ void wfmain::doCmd(commandtype cmddata)
             emit setNR(en);
             break;
         }
-
+        case cmdSetMemory:
+        {
+            memoryType mem = (*std::static_pointer_cast<memoryType>(data));
+            emit setMemory(mem);
+            break;
+        }
+        case cmdGetMemory:
+        {
+            quint16 mem = (*std::static_pointer_cast<quint16>(data));
+            emit getMemory(mem);
+            break;
+        }
+        case cmdClearMemory:
+        {
+            quint16 mem = (*std::static_pointer_cast<quint16>(data));
+            emit clearMemory(mem);
+            break;
+        }
+        case cmdRecallMemory:
+        {
+            quint16 mem = (*std::static_pointer_cast<quint16>(data));
+            emit recallMemory(mem);
+            break;
+        }
         default:
             doCmd(cmd);
             break;
@@ -4764,6 +4794,14 @@ void wfmain::issueCmd(cmds cmd, QString s)
     commandtype cmddata;
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<QString>(new QString(s));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, memoryType m)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<memoryType>(new memoryType(m));
     delayedCmdQue.push_back(cmddata);
 }
 
@@ -9700,6 +9738,13 @@ void wfmain::connectionHandler(bool connect)
             ui->audioSystemServerCombo->setEnabled(true);
         }
     }
+
+    // Whatever happened, make sure we delete the memories window.
+    if (memWindow != Q_NULLPTR) {
+        delete memWindow;
+        memWindow = Q_NULLPTR;
+    }
+
 }
 
 void wfmain::on_autoSSBchk_clicked(bool checked)
@@ -9718,6 +9763,43 @@ void wfmain::on_cwButton_clicked()
     cw->show();
     cw->raise();
     cw->activateWindow();
+}
+
+void wfmain::on_memoriesBtn_clicked()
+{
+    if (haveRigCaps) {
+        if (memWindow == Q_NULLPTR) {
+            memWindow = new memories(rigCaps,this);
+            this->memWindow->connect(rig, SIGNAL(haveMemory(memoryType)), memWindow, SLOT(receiveMemory(memoryType)));
+
+            this->memWindow->connect(this->memWindow, &memories::getMemory, rig,
+                                     [=](const quint16 &mem) { issueCmd(cmdGetMemory, mem);});
+
+            this->memWindow->connect(this->memWindow, &memories::setMemory, rig,
+                                     [=](const memoryType &mem) { issueCmd(cmdSetMemory, mem);});
+
+            this->memWindow->connect(this->memWindow, &memories::clearMemory, rig,
+                                     [=](const quint16 &mem) { issueCmd(cmdClearMemory, mem);});
+
+            this->memWindow->connect(this->memWindow, &memories::recallMemory, rig,
+                    [=](const quint16 &mem) { issueCmd(cmdRecallMemory, mem);});
+            memWindow->populate(); // Call populate to get the initial memories
+        }
+        memWindow->show();
+    } else {
+        if (memWindow != Q_NULLPTR)
+        {
+            delete memWindow;
+            memWindow = Q_NULLPTR;
+        }
+    }
+}
+
+void wfmain::receiveMemory(memoryType mem)
+{
+    if (mem.memory < 4)
+        qInfo(logRig()) << "Received memory" << mem.channel << "Setting"  << mem.memory << "Name" << mem.name << "Freq" << mem.frequency.Hz << "Mode" << mem.mode;
+
 }
 
 void wfmain::on_rigCreatorBtn_clicked()

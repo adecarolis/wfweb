@@ -164,6 +164,10 @@ public slots:
     void getRptAccessMode();
     void setRptDuplexOffset(freqt f);
     void getRptDuplexOffset();
+    void getMemory(quint16 mem);
+    void setMemory(memoryType mem);
+    void clearMemory(quint16 mem);
+    void recallMemory(quint16 mem);
 
     // Get Levels:
     void getLevels(); // all supported levels
@@ -332,6 +336,7 @@ signals:
     void haveTSQL(quint16 tsql);
     void haveDTCS(quint16 dcscode, bool tinv, bool rinv);
     void haveRptOffsetFrequency(freqt f);
+    void haveMemory(memoryType mem);
 
     // Levels:
     void haveRfGain(unsigned char level);

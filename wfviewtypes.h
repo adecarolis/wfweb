@@ -176,6 +176,7 @@ enum cmds {
     cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW, cmdGetDashRatio, cmdSetDashRatio,
     cmdSetTime, cmdSetDate, cmdSetUTCOffset,
     cmdGetTransceive, cmdSetTransceive,cmdGetPower,cmdSetPower,
+    cmdGetMemory, cmdSetMemory, cmdClearMemory,cmdRecallMemory,
     // Below Only used for USB Controller at the moment.
     cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown, cmdSetStepUp, cmdSetStepDown,
     cmdSetSpanUp, cmdSetSpanDown, cmdIFFilterUp, cmdIFFilterDown, cmdPageDown, cmdPageUp,
@@ -299,6 +300,26 @@ struct errorType {
     bool alert;
     QString device;
     QString message;
+};
+
+struct memoryType{
+    quint16 channel=0;
+    quint8 memory=0;
+    freqt frequency;
+    mode_kind mode=mode_kind::modeLSB;
+    quint8 filter=0;
+    quint8 datamode=0;
+    duplexMode duplex=duplexMode::dmDupAutoOff;
+    quint8 tonemode;
+    quint16 tone=670;
+    quint16 tsql=670;
+    int dtcs=0;
+    bool dtcsp=false;
+    quint16 dsql=0;
+    char UR[8];
+    char R1[8];
+    char R2[8];
+    char name[16];
 };
 
 enum audioType {qtAudio,portAudio,rtAudio};

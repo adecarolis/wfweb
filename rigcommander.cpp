@@ -23,12 +23,14 @@
 
 rigCommander::rigCommander(QObject* parent) : QObject(parent)
 {
+
     qInfo(logRig()) << "creating instance of rigCommander()";
     state.set(SCOPEFUNC, true, false);
 }
 
 rigCommander::rigCommander(quint8 guid[GUIDLEN], QObject* parent) : QObject(parent)
 {
+
     qInfo(logRig()) << "creating instance of rigCommander()";
     state.set(SCOPEFUNC, true, false);
     memcpy(this->guid, guid, GUIDLEN);
@@ -1359,6 +1361,65 @@ void rigCommander::getRptDuplexOffset()
     }
 }
 
+
+void rigCommander::getMemory(quint16 mem)
+{
+    QByteArray payload;
+    if (getCommand(funcMemoryContents,payload))
+    {
+        payload.append(bcdEncodeInt(mem));
+        prepDataAndSend(payload);
+    }
+}
+
+void rigCommander::setMemory(memoryType mem)
+{
+
+    QByteArray payload;
+    char nul = 0x0;
+    if (getCommand(funcMemoryContents,payload))
+    {
+        // Parse the memory entry into a memoryType:
+        payload.append(bcdEncodeInt(mem.channel));
+        payload.append(mem.memory);
+        payload.append(makeFreqPayload(mem.frequency));
+        payload.append(mem.mode);
+        payload.append(mem.filter);
+        payload.append((mem.datamode << 4 & 0xf0) | (mem.tonemode & 0x0f));
+        payload.append(nul);
+        payload.append(bcdEncodeInt(mem.tone));
+        payload.append(nul);
+        payload.append(bcdEncodeInt(mem.tsql));
+        payload.append(QByteArray(mem.name).leftJustified(10,' '));
+        prepDataAndSend(payload);
+    }
+
+    qInfo(logRig()) << "Storing memory:" << mem.channel << "Name:" << mem.name;
+}
+
+void rigCommander::clearMemory(quint16 mem)
+{
+    QByteArray payload;
+    unsigned char cmd = '\xff';
+    if (getCommand(funcMemoryContents,payload))
+    {
+        payload.append(bcdEncodeInt(mem));
+        payload.append(cmd);
+        prepDataAndSend(payload);
+    }
+}
+
+void rigCommander::recallMemory(quint16 mem)
+{
+    QByteArray payload;
+    if (getCommand(funcMemoryMode,payload,mem))
+    {
+        payload.append(bcdEncodeInt(mem));
+        prepDataAndSend(payload);
+    }
+}
+
+
 void rigCommander::setIPP(bool enabled)
 {
     QByteArray payload;
@@ -1726,6 +1787,21 @@ void rigCommander::parseCommand()
         }
         break;
     case funcMemoryContents:
+    {
+        // Parse the memory entry into a memoryType:
+        memoryType mem;
+        mem.channel = bcdHexToUInt(payloadIn[2],payloadIn[3]);
+        mem.memory = payloadIn[4];
+        mem.frequency = parseFrequency(payloadIn,8);
+        mem.mode=(mode_kind)bcdHexToUChar(payloadIn[10]);
+        mem.filter=payloadIn[11];
+        mem.datamode=payloadIn[12]>>4 & 0x0f;
+        mem.tonemode=payloadIn[12] & 0x0f;
+        mem.tone = bcdHexToUInt(payloadIn[14],payloadIn[15]);
+        mem.tsql = bcdHexToUInt(payloadIn[17],payloadIn[18]);
+        strcpy_s(mem.name,payloadIn.mid(19,10));
+        emit haveMemory(mem);
+    }
     case funcMemoryClear:
     case funcMemoryKeyer:
     case funcMemoryToVFO:
@@ -4156,6 +4232,9 @@ void rigCommander::determineRigCaps()
     rigCaps.hasTransmit = settings->value("HasTransmit",false).toBool();
     rigCaps.hasFDcomms = settings->value("HasFDComms",false).toBool();
     rigCaps.useRTSforPTT = settings->value("UseRTSforPTT",false).toBool();
+
+    rigCaps.memGroups = settings->value("MemGroups",0).toUInt();
+    rigCaps.memories = settings->value("Memories",0).toUInt();
 
     // Temporary QList to hold the function string lookup // I would still like to find a better way of doing this!
     QHash<QString, funcs> funcsLookup;

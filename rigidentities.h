@@ -217,6 +217,8 @@ struct rigCapabilities {
     QByteArray transceiveCommand;
     quint8 guid[GUIDLEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
     quint32 baudRate;
+    quint16 memGroups;
+    quint16 memories;
 };
 
 

@@ -107,6 +107,9 @@ void rigCreator::loadRigFile(QString file)
     ui->hasTransmit->setChecked(settings->value("HasTransmit",false).toBool());
     ui->hasFDComms->setChecked(settings->value("HasFDComms",false).toBool());
 
+    ui->memGroups->setText(settings->value("MemGroups","0").toString());
+    ui->memories->setText(settings->value("Memories","0").toString());
+
     ui->commands->setRowCount(0);
     int numCommands = settings->beginReadArray("Commands");
     if (numCommands == 0) {
@@ -337,6 +340,10 @@ void rigCreator::saveRigFile(QString file)
     settings->setValue("HasWiFi",ui->hasWifi->isChecked());
     settings->setValue("HasTransmit",ui->hasTransmit->isChecked());
     settings->setValue("HasFDComms",ui->hasFDComms->isChecked());
+
+    settings->setValue("MemGroups",ui->memGroups->text().toInt());
+    settings->setValue("Memories",ui->memories->text().toInt());
+
 
     //settings->remove("Commands");
     settings->beginWriteArray("Commands");

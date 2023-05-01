@@ -233,6 +233,7 @@ SOURCES += main.cpp\
     cwsender.cpp \
     cwsidetone.cpp \
     loggingwindow.cpp \
+    memories.cpp \
     rigcreator.cpp \
     tablewidget.cpp \
     wfmain.cpp \
@@ -267,6 +268,74 @@ SOURCES += main.cpp\
     database.cpp \
     aboutbox.cpp \
     audiodevices.cpp
+
+HEADERS  += wfmain.h \
+    colorprefs.h \
+    commhandler.h \
+    cwsender.h \
+    cwsidetone.h \
+    loggingwindow.h \
+    memories.h \
+    prefs.h \
+    printhex.h \
+    rigcommander.h \
+    freqmemory.h \
+    rigcreator.h \
+    rigidentities.h \
+    sidebandchooser.h \
+    tablewidget.h \
+    udpbase.h \
+    udphandler.h \
+    udpcivdata.h \
+    udpaudio.h \
+    logcategories.h \
+    pahandler.h \
+    rthandler.h \
+    audiohandler.h \
+    audioconverter.h \
+    calibrationwindow.h \
+    satellitesetup.h \
+    udpserver.h \
+    packettypes.h \
+    meter.h \
+    qledlabel.h \
+    pttyhandler.h \
+    resampler/speex_resampler.h \
+    resampler/arch.h \
+    resampler/resample_sse.h \
+    repeatersetup.h \
+    repeaterattributes.h \
+    rigctld.h \
+    rigstate.h \
+    ulaw.h \
+    usbcontroller.h \
+    controllersetup.h \
+    transceiveradjustments.h \
+    audiotaper.h \
+    selectradio.h \
+    tcpserver.h \
+    cluster.h \
+    database.h \
+    aboutbox.h \
+    wfviewtypes.h \
+    audiodevices.h
+
+FORMS    += wfmain.ui \
+    calibrationwindow.ui \
+    cwsender.ui \
+    loggingwindow.ui \
+    memories.ui \
+    rigcreator.ui \
+    satellitesetup.ui \
+    selectradio.ui \
+    repeatersetup.ui \
+    transceiveradjustments.ui \
+    controllersetup.ui \
+    aboutbox.ui
+
+
+
+
 
 HEADERS  += wfmain.h \
     colorprefs.h \

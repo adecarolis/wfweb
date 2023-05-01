@@ -30,6 +30,7 @@
 #include "freqmemory.h"
 #include "rigidentities.h"
 #include "repeaterattributes.h"
+#include "memories.h"
 
 #include "packettypes.h"
 #include "calibrationwindow.h"
@@ -155,6 +156,10 @@ signals:
     void setTSQLEnabled(bool enabled);
     void setRptDuplexOffset(freqt f);
     void getRptDuplexOffset();
+    void setMemory(memoryType mem);
+    void getMemory(quint16 mem);
+    void recallMemory(quint16 mem);
+    void clearMemory(quint16 mem);
 
     // Level get:
     void getLevels(); // get all levels
@@ -361,6 +366,7 @@ private slots:
     void receiveNB(bool en);
     void receiveNR(bool en);
     void receiveTuningStep(unsigned char step);
+    void receiveMemory(memoryType mem);
 
     // Levels:
     void receiveRfGain(unsigned char level);
@@ -382,6 +388,7 @@ private slots:
     void receiveACCGain(unsigned char level, unsigned char ab);
     void receiveUSBGain(unsigned char level);
     void receiveLANGain(unsigned char level);
+
 
     // Meters:
     void receiveMeter(meterKind meter, unsigned char level);
@@ -652,6 +659,8 @@ private slots:
     void on_tcpServerPortTxt_editingFinished();
 
     void on_moreControlsBtn_clicked();
+
+    void on_memoriesBtn_clicked();
 
     void on_useCIVasRigIDChk_clicked(bool checked);
 
@@ -1014,6 +1023,7 @@ private:
     void issueCmd(cmds cmd, quint16 c);
     void issueCmd(cmds cmd, qint16 c);
     void issueCmd(cmds cmd, QString s);
+    void issueCmd(cmds cmd, memoryType s);
 
     // These commands pop_front and remove similar commands:
     void issueCmdUniquePriority(cmds cmd, bool b);
@@ -1223,6 +1233,7 @@ private:
     #endif
 #endif
 
+    memories* memWindow = Q_NULLPTR;
     dxClusterClient* cluster = Q_NULLPTR;
     QThread* clusterThread = Q_NULLPTR;
     QMap<QString, spotData*> clusterSpots;
@@ -1270,6 +1281,7 @@ Q_DECLARE_METATYPE(struct rptrAccessData_t)
 Q_DECLARE_METATYPE(enum usbFeatureType)
 Q_DECLARE_METATYPE(enum cmds)
 Q_DECLARE_METATYPE(rigTypedef)
+Q_DECLARE_METATYPE(struct memoryType)
 
 //void (*wfmain::logthistext)(QString text) = NULL;
 

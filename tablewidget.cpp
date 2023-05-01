@@ -28,10 +28,12 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
         if(selectedAction == add)
         {
             this->insertRow(this->rowCount());
+            emit rowAdded(this->rowCount()-1);
         }
         else if(selectedAction == insert)
         {
             this->insertRow(this->currentRow());
+            emit rowAdded(this->currentRow()-1);
         }
         else if( selectedAction == clone )
         {
@@ -40,9 +42,11 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
             {
                 if (this->item(currentRow(),i) != NULL) this->model()->setData(this->model()->index(this->currentRow()-1,i),this->item(this->currentRow(),i)->text());
             }
+            emit rowAdded(this->currentRow()-1);
         }
         else if( selectedAction == del )
         {
+            emit rowDeleted((this->item(this->currentRow(),1) == NULL) ? 0 : this->item(this->currentRow(),1)->text().toUInt());
             this->removeRow(this->currentRow());
         }
     }
@@ -59,24 +63,25 @@ tableCombobox::tableCombobox(QAbstractItemModel* model, bool sort, QObject *pare
 QWidget* tableCombobox::createEditor(QWidget *parent, const   QStyleOptionViewItem &option, const QModelIndex &index) const {
     Q_UNUSED(index)
     Q_UNUSED(option)
-    QComboBox* comboBox = new QComboBox(parent);
-    comboBox->setModel(modelData);    
-    return comboBox;
+    combo = new QComboBox(parent);
+    QObject::connect(combo,SIGNAL(currentIndexChanged(int)),this,SLOT(setData(int)));
+    combo->blockSignals(true);
+    combo->setModel(modelData);
+    combo->blockSignals(false);
+    return combo;
 }
 
 void tableCombobox::setEditorData(QWidget *editor, const QModelIndex &index) const {
     // update model widget
-    QString value = index.model()->data(index, Qt::EditRole).toString();
-    qDebug() << "Value:" << value;
-    QComboBox* comboBox = static_cast<QComboBox*>(editor);
-    comboBox->setCurrentIndex(comboBox->findText(value));
+    Q_UNUSED(editor)
+    combo->blockSignals(true);
+    QString text = index.model()->data( index, Qt::DisplayRole ).toString();
+    combo->setCurrentIndex(combo->findText(text));
+    combo->blockSignals(false);
 }
 
 void tableCombobox::setModelData(QWidget *editor, QAbstractItemModel *model,   const QModelIndex &index) const {
-    // store edited model data to model
-    QComboBox* comboBox = static_cast<QComboBox*>(editor);
-    QString value = comboBox->currentText();
-    model->setData(index, value, Qt::EditRole);
+    model->setData( index, combo->currentText() );
 }
 
 void tableCombobox::updateEditorGeometry(QWidget *editor, const     QStyleOptionViewItem &option, const QModelIndex &index) const {
@@ -84,6 +89,15 @@ void tableCombobox::updateEditorGeometry(QWidget *editor, const     QStyleOption
     editor->setGeometry(option.rect);
 }
 
+void tableCombobox::setData(int val)
+{
+    Q_UNUSED(val)
+
+    if (combo != Q_NULLPTR) {
+        emit commitData(combo);
+
+    }
+}
 
 
 tableCheckbox::tableCheckbox(QObject *parent)
@@ -111,7 +125,7 @@ void tableCheckbox::setModelData(QWidget *editor, QAbstractItemModel *model,   c
     // store edited model data to model
     QCheckBox* checkBox = static_cast<QCheckBox*>(editor);
     bool value = checkBox->isChecked();
-    model->setData(index, value, Qt::EditRole);
+    model->setData(index, value, Qt::EditRole);    
 }
 
 void tableCheckbox::updateEditorGeometry(QWidget *editor, const     QStyleOptionViewItem &option, const QModelIndex &index) const {
