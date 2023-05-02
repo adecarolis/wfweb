@@ -27,17 +27,21 @@ public:
 
 signals:
     void setMemory(memoryType mem);
-    void getMemory(quint16 mem);
-    void recallMemory(quint16 mem);
-    void clearMemory(quint16 mem);
-    void blockUpdates(bool block);
+    void getMemory(quint32 mem);
+    void recallMemory(quint32 mem);
+    void clearMemory(quint32 mem);
+    void memoryMode();
+    void vfoMode();
 
 
 private slots:
     void on_table_cellChanged(int row, int col);
+    void on_group_currentIndexChanged(int index);
+    void on_vfoMode_clicked();
+    void on_memoryMode_clicked();
     void receiveMemory(memoryType mem);
     void rowAdded(int row);
-    void rowDeleted(quint16 mem);
+    void rowDeleted(quint32 mem);
 
 private:
     int currentRow=-1;
@@ -52,41 +56,52 @@ private:
     QStringList filters;
     QStringList tones;
     QStringList toneModes;
+    QStringList dtsc;
+    QStringList dtcsp;
+    QStringList dsql;
 
     QStandardItemModel* memoryModel = Q_NULLPTR;
     QStandardItemModel* vfoModel = Q_NULLPTR;
-    QStandardItemModel* dataModel = Q_NULLPTR;
     QStandardItemModel* filterModel = Q_NULLPTR;
+    QStandardItemModel* dataModel = Q_NULLPTR;
+    QStandardItemModel* duplexModel = Q_NULLPTR;
     QStandardItemModel* toneModesModel = Q_NULLPTR;
+    QStandardItemModel* dsqlModel = Q_NULLPTR;
     QStandardItemModel* tonesModel = Q_NULLPTR;
     QStandardItemModel* tsqlModel = Q_NULLPTR;
+    QStandardItemModel* dtcspModel = Q_NULLPTR;
     QStandardItemModel* modesModel = Q_NULLPTR;
 
+    tableEditor* numEditor = Q_NULLPTR;
     tableCombobox* memoryList = Q_NULLPTR;
+    tableEditor* nameEditor = Q_NULLPTR;
     tableCombobox* vfoList = Q_NULLPTR;
-    tableCombobox* dataList = Q_NULLPTR;
+    tableEditor* freqEditor = Q_NULLPTR;
     tableCombobox* filterList = Q_NULLPTR;
+    tableCombobox* dataList = Q_NULLPTR;
+    tableCombobox* duplexList = Q_NULLPTR;
     tableCombobox* toneModesList = Q_NULLPTR;
+    tableCombobox* dsqlList = Q_NULLPTR;
     tableCombobox* tonesList = Q_NULLPTR;
     tableCombobox* tsqlList = Q_NULLPTR;
+    tableEditor* dtcsEditor = Q_NULLPTR;
+    tableCombobox* dtcspList = Q_NULLPTR;
     tableCombobox* modesList = Q_NULLPTR;
+    tableEditor* offsetEditor = Q_NULLPTR;
+    tableEditor* dvsqlEditor = Q_NULLPTR;
+    tableEditor* urEditor = Q_NULLPTR;
+    tableEditor* r1Editor = Q_NULLPTR;
+    tableEditor* r2Editor = Q_NULLPTR;
 
     rigCapabilities rigCaps;
 
     Ui::memories *ui;
     bool extended = false;
     enum columns {
-        //  0             1         2       3         4           5           6           7          8        9           10        11
-        //"Recall" << "Setting<< "Num" << "Name" << "Band" << "Channel" << "Mem" << "VFO" << "Frequency" << "Mode" << "Filter" << "Data" <<
-        //    12           13          14         15        16        17          18       19      20     21
-        // "Duplex" << "Tone Mode" << "DSQL" << "Tone" << "TSQL" << "DTCS" << "Offset" << "UR" << "R1" << "R2";
         columnRecall=0,
         columnNum,
         columnMemory,
         columnName,
-        columnBand,
-        columnChannel,
-        columnMem,
         columnVFO,
         columnFrequency,
         columnMode,
@@ -98,6 +113,8 @@ private:
         columnTone,
         columnTSQL,
         columnDTCS,
+        columnDTCSPolarity,
+        columnDVSquelch,
         columnOffset,
         columnUR,
         columnR1,

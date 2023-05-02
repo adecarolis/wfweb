@@ -1361,13 +1361,24 @@ void rigCommander::getRptDuplexOffset()
     }
 }
 
-
-void rigCommander::getMemory(quint16 mem)
+void rigCommander::setMemoryMode()
 {
     QByteArray payload;
-    if (getCommand(funcMemoryContents,payload))
+    if (getCommand(funcMemoryMode,payload))
     {
-        payload.append(bcdEncodeInt(mem));
+        prepDataAndSend(payload);
+    }
+}
+
+void rigCommander::getMemory(quint32 mem)
+{
+    QByteArray payload;
+    if (getCommand(funcMemoryContents,payload,mem & 0xffff))
+    {
+        if (rigCaps.memGroups>1) {
+            payload.append(quint8(mem >> 16) & 0xff);
+        }
+        payload.append(bcdEncodeInt(mem & 0xffff));
         prepDataAndSend(payload);
     }
 }
@@ -1379,42 +1390,73 @@ void rigCommander::setMemory(memoryType mem)
     char nul = 0x0;
     if (getCommand(funcMemoryContents,payload))
     {
-        // Parse the memory entry into a memoryType:
+        // Parse the memory entry into a memoryType.
+        // Format is different for radios with memory groups
+
+        qInfo() << "Mem" << mem.channel <<"Offset" <<mem.duplexOffset.Hz;
+        if (rigCaps.memGroups > 1) {
+            payload.append(mem.group);
+        }
+
         payload.append(bcdEncodeInt(mem.channel));
         payload.append(mem.memory);
         payload.append(makeFreqPayload(mem.frequency));
         payload.append(mem.mode);
         payload.append(mem.filter);
-        payload.append((mem.datamode << 4 & 0xf0) | (mem.tonemode & 0x0f));
+
+        if (rigCaps.memGroups > 1) {
+            payload.append(mem.datamode);
+            payload.append((mem.duplex << 4) | mem.tonemode);
+            payload.append(mem.dsql << 4);
+        }
+        else {
+            payload.append((mem.datamode << 4 & 0xf0) | (mem.tonemode & 0x0f));
+        }
+
         payload.append(nul);
         payload.append(bcdEncodeInt(mem.tone));
         payload.append(nul);
         payload.append(bcdEncodeInt(mem.tsql));
-        payload.append(QByteArray(mem.name).leftJustified(10,' '));
+
+        if (rigCaps.memGroups > 1) {
+            payload.append(mem.dtcsp);
+            payload.append(bcdEncodeInt(mem.dtcs));
+            payload.append(mem.dvsql);
+            payload.append(makeFreqPayload(mem.duplexOffset).mid(1,3));
+            payload.append(QByteArray(mem.UR).leftJustified(8,' '));
+            payload.append(QByteArray(mem.R1).leftJustified(8,' '));
+            payload.append(QByteArray(mem.R2).leftJustified(8,' '));
+            payload.append(QByteArray(mem.name).leftJustified(16,' '));
+        } else {
+            payload.append(QByteArray(mem.name).leftJustified(10,' '));
+        }
         prepDataAndSend(payload);
     }
 
     qInfo(logRig()) << "Storing memory:" << mem.channel << "Name:" << mem.name;
 }
 
-void rigCommander::clearMemory(quint16 mem)
+void rigCommander::clearMemory(quint32 mem)
 {
     QByteArray payload;
     unsigned char cmd = '\xff';
-    if (getCommand(funcMemoryContents,payload))
+    if (getCommand(funcMemoryContents,payload,mem & 0xffff))
     {
-        payload.append(bcdEncodeInt(mem));
+        if (rigCaps.memGroups>1) {
+            payload.append(quint8(mem >> 16) & 0xff);
+        }
+        payload.append(bcdEncodeInt(mem & 0xff));
         payload.append(cmd);
         prepDataAndSend(payload);
     }
 }
 
-void rigCommander::recallMemory(quint16 mem)
+void rigCommander::recallMemory(quint32 mem)
 {
     QByteArray payload;
-    if (getCommand(funcMemoryMode,payload,mem))
+    if (getCommand(funcMemoryMode,payload,mem & 0xffff))
     {
-        payload.append(bcdEncodeInt(mem));
+        payload.append(bcdEncodeInt(mem & 0xffff));
         prepDataAndSend(payload);
     }
 }
@@ -1790,16 +1832,43 @@ void rigCommander::parseCommand()
     {
         // Parse the memory entry into a memoryType:
         memoryType mem;
-        mem.channel = bcdHexToUInt(payloadIn[2],payloadIn[3]);
-        mem.memory = payloadIn[4];
-        mem.frequency = parseFrequency(payloadIn,8);
-        mem.mode=(mode_kind)bcdHexToUChar(payloadIn[10]);
-        mem.filter=payloadIn[11];
-        mem.datamode=payloadIn[12]>>4 & 0x0f;
-        mem.tonemode=payloadIn[12] & 0x0f;
-        mem.tone = bcdHexToUInt(payloadIn[14],payloadIn[15]);
-        mem.tsql = bcdHexToUInt(payloadIn[17],payloadIn[18]);
-        strcpy_s(mem.name,payloadIn.mid(19,10));
+        mem.frequency.Hz=0;
+        if (rigCaps.memGroups > 1)
+        {
+            mem.group = bcdHexToUChar(payloadIn[2]);
+            mem.channel = bcdHexToUInt(payloadIn[3],payloadIn[4]);
+            mem.memory = payloadIn[5] & 0xf;
+            mem.frequency = parseFrequency(payloadIn,9);
+            mem.mode=(mode_kind)bcdHexToUChar(payloadIn[11]);
+            mem.filter=payloadIn[12];
+            mem.datamode=payloadIn[13];
+            mem.duplex=duplexMode(payloadIn[14] >> 4 & 0x0f);
+            mem.tonemode=payloadIn[14] & 0x0f;
+            mem.dsql = (payloadIn[15] >> 4 & 0x0f);
+            // 16 is fixed 0x0;
+            mem.tone = bcdHexToUInt(payloadIn[17],payloadIn[18]);
+            // 19 is fixed 0x0;
+            mem.tsql = bcdHexToUInt(payloadIn[20],payloadIn[21]);
+            mem.dtcsp = payloadIn[22];
+            mem.dtcs = bcdHexToUInt(payloadIn[23],payloadIn[24]);
+            mem.dvsql = bcdHexToUChar(payloadIn[25]);
+            mem.duplexOffset = parseFrequencyRptOffset(payloadIn.mid(25,4)); // Ignore first byte
+            memcpy(mem.UR,payloadIn.mid(29,8),sizeof(mem.UR));
+            memcpy(mem.R1,payloadIn.mid(37,8),sizeof(mem.R1));
+            memcpy(mem.R2,payloadIn.mid(45,8),sizeof(mem.R2));
+            memcpy(mem.name,payloadIn.mid(53,16),sizeof(mem.name));
+        } else {
+            mem.channel = bcdHexToUInt(payloadIn[2],payloadIn[3]);
+            mem.memory = payloadIn[4];
+            mem.frequency = parseFrequency(payloadIn,8);
+            mem.mode=(mode_kind)bcdHexToUChar(payloadIn[10]);
+            mem.filter=payloadIn[11];
+            mem.datamode=payloadIn[12]>>4 & 0x0f;
+            mem.tonemode=payloadIn[12] & 0x0f;
+            mem.tone = bcdHexToUInt(payloadIn[14],payloadIn[15]);
+            mem.tsql = bcdHexToUInt(payloadIn[17],payloadIn[18]);
+            memcpy(mem.name,payloadIn.mid(19,10),sizeof(mem.name));
+        }
         emit haveMemory(mem);
     }
     case funcMemoryClear:

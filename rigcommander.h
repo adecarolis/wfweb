@@ -164,10 +164,11 @@ public slots:
     void getRptAccessMode();
     void setRptDuplexOffset(freqt f);
     void getRptDuplexOffset();
-    void getMemory(quint16 mem);
+    void setMemoryMode();
+    void getMemory(quint32 mem);
     void setMemory(memoryType mem);
-    void clearMemory(quint16 mem);
-    void recallMemory(quint16 mem);
+    void clearMemory(quint32 mem);
+    void recallMemory(quint32 mem);
 
     // Get Levels:
     void getLevels(); // all supported levels

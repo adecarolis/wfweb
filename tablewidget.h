@@ -9,6 +9,9 @@
 #include <QComboBox>
 #include <QCheckBox>
 #include <QRegularExpression>
+#include <QLineEdit>
+#include <QRegularExpressionValidator>
+#include <QRegularExpression>
 
 class tableWidget : public QTableWidget
 {
@@ -19,11 +22,25 @@ public:
 
 signals:
     void rowAdded(int row);
-    void rowDeleted(quint16 num);
+    void rowDeleted(quint32 num);
 
 protected:
     void mouseReleaseEvent(QMouseEvent *event);
 };
+
+
+class tableEditor : public QItemDelegate
+{
+    Q_OBJECT
+public:
+    explicit tableEditor(QRegularExpression validExp, QObject *parent = 0);
+    QWidget* createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+
+    mutable QLineEdit *edit;
+    mutable QRegularExpressionValidator *valid;
+    QRegularExpression validExp;
+};
+
 
 
 class tableCombobox : public QItemDelegate
@@ -40,11 +57,12 @@ public:
     mutable QComboBox *modelCombo = Q_NULLPTR;
 
 private slots:
-   void setData(int val);
+    void setData(int val);
 
 private:
     QAbstractItemModel* modelData;
 };
+
 
 class tableCheckbox : public QItemDelegate
 {

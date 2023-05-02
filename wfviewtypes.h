@@ -176,7 +176,7 @@ enum cmds {
     cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW, cmdGetDashRatio, cmdSetDashRatio,
     cmdSetTime, cmdSetDate, cmdSetUTCOffset,
     cmdGetTransceive, cmdSetTransceive,cmdGetPower,cmdSetPower,
-    cmdGetMemory, cmdSetMemory, cmdClearMemory,cmdRecallMemory,
+    cmdGetMemory, cmdSetMemory, cmdClearMemory,cmdRecallMemory, cmdSetVFOMode, cmdSetMemoryMode,
     // Below Only used for USB Controller at the moment.
     cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown, cmdSetStepUp, cmdSetStepDown,
     cmdSetSpanUp, cmdSetSpanDown, cmdIFFilterUp, cmdIFFilterDown, cmdPageDown, cmdPageUp,
@@ -218,7 +218,7 @@ funcRITFreq,			funcRitStatus,			funcRitTXStatus,            funcMainSubFreq,		fu
 funcScopeOnOff,			funcScopeDataOutput,	funcScopeMainSub,           funcScopeSingleDual,	funcScopeCenterFixed,	funcScopeCenterSpan,
 funcScopeEdgeNumber,  	funcScopeHold,      	funcScopeRef,               funcScopeSpeed,			funcScopeDuringTX,      funcScopeCenterType,
 funcScopeVBW,       	funcScopeFixedFreq, 	funcScopeRBW,               funcVoiceTX,			funcMainSubPrefix,		funcAFCSetting,
-funcGPSTXMode,          funcSatelliteMemory,    funcGPSPosition,            funcFA,                     funcFB
+funcGPSTXMode,          funcSatelliteMemory,    funcGPSPosition,            funcFA,                 funcFB
 };
              
 
@@ -254,7 +254,7 @@ static QString funcString[] { "None",
 "Scope On/Off",         "Scope Data Output",    "Scope Main/Sub",           "Scope Single/Dual",    "Scope Center Fixed",   "Scope Center Span",
 "Scope Edge Number",    "Scope Hold",           "Scope Ref",                "Scope Speed",          "Scope During TX",      "Scope Center Type",
 "Scope VBW",            "Scope Fixed Freq",     "Scope RBW",                "Voice TX",             "Main/Sub Prefix",      "AFC Function",
-"GPS TX Mode",          "Satellite Memory",     "GPS Position",             "Command Error FA",         "Command OK FB"
+"GPS TX Mode",          "Satellite Memory",     "GPS Position",             "Command Error FA",     "Command OK FB"
 };
 
 
@@ -303,23 +303,27 @@ struct errorType {
 };
 
 struct memoryType{
+    quint16 group=0;
     quint16 channel=0;
+    bool split=false;
     quint8 memory=0;
     freqt frequency;
     mode_kind mode=mode_kind::modeLSB;
     quint8 filter=0;
     quint8 datamode=0;
-    duplexMode duplex=duplexMode::dmDupAutoOff;
+    quint8 duplex=0;
     quint8 tonemode;
     quint16 tone=670;
     quint16 tsql=670;
+    quint8 dsql=0;
     int dtcs=0;
     bool dtcsp=false;
-    quint16 dsql=0;
-    char UR[8];
-    char R1[8];
-    char R2[8];
-    char name[16];
+    quint8 dvsql=0;
+    freqt duplexOffset;
+    char UR[9];
+    char R1[9];
+    char R2[9];
+    char name[17]; // 1 more than the absolute max
 };
 
 enum audioType {qtAudio,portAudio,rtAudio};

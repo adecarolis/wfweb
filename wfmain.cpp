@@ -504,10 +504,11 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveRptOffsetFrequency(freqt)), rpt, SLOT(handleRptOffsetFrequency(freqt)));
 
     // Memories
-    connect(this, SIGNAL(getMemory(quint16)), rig, SLOT(getMemory(quint16)));
+    connect(this, SIGNAL(setMemoryMode()), rig, SLOT(setMemoryMode()));
+    connect(this, SIGNAL(getMemory(quint32)), rig, SLOT(getMemory(quint32)));
     connect(this, SIGNAL(setMemory(memoryType)), rig, SLOT(setMemory(memoryType)));
-    connect(this, SIGNAL(clearMemory(quint16)), rig, SLOT(clearMemory(quint16)));
-    connect(this, SIGNAL(recallMemory(quint16)), rig, SLOT(recallMemory(quint16)));
+    connect(this, SIGNAL(clearMemory(quint32)), rig, SLOT(clearMemory(quint32)));
+    connect(this, SIGNAL(recallMemory(quint32)), rig, SLOT(recallMemory(quint32)));
 
     // These are the current tone frequency or DCS code selected:
     connect(rpt, SIGNAL(getTone()), rig, SLOT(getTone()));
@@ -4271,19 +4272,19 @@ void wfmain::doCmd(commandtype cmddata)
         }
         case cmdGetMemory:
         {
-            quint16 mem = (*std::static_pointer_cast<quint16>(data));
+            quint32 mem = (*std::static_pointer_cast<quint32>(data));
             emit getMemory(mem);
             break;
         }
         case cmdClearMemory:
         {
-            quint16 mem = (*std::static_pointer_cast<quint16>(data));
+            quint32 mem = (*std::static_pointer_cast<quint32>(data));
             emit clearMemory(mem);
             break;
         }
         case cmdRecallMemory:
         {
-            quint16 mem = (*std::static_pointer_cast<quint16>(data));
+            quint32 mem = (*std::static_pointer_cast<quint32>(data));
             emit recallMemory(mem);
             break;
         }
@@ -4561,6 +4562,9 @@ void wfmain::doCmd(cmds cmd)
         case cmdStopCW:
             emit stopCW();
             break;
+        case cmdSetMemoryMode:
+            emit setMemoryMode();
+            break;
         case cmdStartRegularPolling:
             runPeriodicCommands = true;
             break;
@@ -4786,6 +4790,14 @@ void wfmain::issueCmd(cmds cmd, qint16 c)
     commandtype cmddata;
     cmddata.cmd = cmd;
     cmddata.data = std::shared_ptr<qint16>(new qint16(c));
+    delayedCmdQue.push_back(cmddata);
+}
+
+void wfmain::issueCmd(cmds cmd, quint32 c)
+{
+    commandtype cmddata;
+    cmddata.cmd = cmd;
+    cmddata.data = std::shared_ptr<quint32>(new quint32(c));
     delayedCmdQue.push_back(cmddata);
 }
 
@@ -5136,8 +5148,11 @@ void wfmain::initPeriodicCommands()
     insertSlowPeriodicCommand(cmdGetFreq, 128);
 
     if (rigCaps.commands.contains(funcVFOEqualAB) || rigCaps.commands.contains(funcVFOEqualMS)) {
+        // We MUST be in VFO mode if issuing getFreqB command so force it.
+        issueCmd(cmdSelVFO, vfo_t::vfoA);
         insertSlowPeriodicCommand(cmdGetFreqB, 128);
     }
+
 
     insertSlowPeriodicCommand(cmdGetMode, 128);
     if(rigCaps.hasTransmit)
@@ -5252,12 +5267,17 @@ void wfmain::insertSlowPeriodicCommand(cmds cmd, unsigned char priority=100)
     // These commands are run every 20 "ticks" of the primary radio command loop
     // Basically 20 times less often than the standard periodic command
     qDebug() << "Inserting" << cmd << "To slow queue, priority" << priority << "len" << slowPollCmdQueue.size();
+
+    // It doesn't make sense to have the same command in the queue twice I think
+    removeSlowPeriodicCommand(cmd);
+
     if(priority < 10)
     {
         slowPollCmdQueue.push_front(cmd);
     } else {
         slowPollCmdQueue.push_back(cmd);
     }
+
     qDebug() << "Inserted" << cmd << "To slow queue, priority" << priority << "len" << slowPollCmdQueue.size();
 }
 
@@ -9773,16 +9793,26 @@ void wfmain::on_memoriesBtn_clicked()
             this->memWindow->connect(rig, SIGNAL(haveMemory(memoryType)), memWindow, SLOT(receiveMemory(memoryType)));
 
             this->memWindow->connect(this->memWindow, &memories::getMemory, rig,
-                                     [=](const quint16 &mem) { issueCmd(cmdGetMemory, mem);});
+                                     [=](const quint32 &mem) { issueCmd(cmdGetMemory, mem);});
 
             this->memWindow->connect(this->memWindow, &memories::setMemory, rig,
                                      [=](const memoryType &mem) { issueCmd(cmdSetMemory, mem);});
 
             this->memWindow->connect(this->memWindow, &memories::clearMemory, rig,
-                                     [=](const quint16 &mem) { issueCmd(cmdClearMemory, mem);});
+                                     [=](const quint32 &mem) { issueCmd(cmdClearMemory, mem);});
 
             this->memWindow->connect(this->memWindow, &memories::recallMemory, rig,
-                    [=](const quint16 &mem) { issueCmd(cmdRecallMemory, mem);});
+                                     [=](const quint16 &mem) { issueCmd(cmdRecallMemory, mem);});
+
+            this->memWindow->connect(this->memWindow, &memories::memoryMode, rig,
+                                     [=]() { issueDelayedCommand(cmdSetMemoryMode);
+                                             removeSlowPeriodicCommand(cmdGetFreqB);});
+
+            this->memWindow->connect(this->memWindow, &memories::vfoMode, rig,
+                                     [=]() { issueCmd(cmdSelVFO, vfo_t::vfoA);
+                                             insertSlowPeriodicCommand(cmdGetFreqB, 128);});
+
+
             memWindow->populate(); // Call populate to get the initial memories
         }
         memWindow->show();

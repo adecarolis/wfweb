@@ -157,9 +157,10 @@ signals:
     void setRptDuplexOffset(freqt f);
     void getRptDuplexOffset();
     void setMemory(memoryType mem);
-    void getMemory(quint16 mem);
-    void recallMemory(quint16 mem);
-    void clearMemory(quint16 mem);
+    void getMemory(quint32 mem);
+    void recallMemory(quint32 mem);
+    void clearMemory(quint32 mem);
+    void setMemoryMode();
 
     // Level get:
     void getLevels(); // get all levels
@@ -1021,6 +1022,7 @@ private:
     void issueCmd(cmds cmd, char c);
     void issueCmd(cmds cmd, bool b);
     void issueCmd(cmds cmd, quint16 c);
+    void issueCmd(cmds cmd, quint32 c);
     void issueCmd(cmds cmd, qint16 c);
     void issueCmd(cmds cmd, QString s);
     void issueCmd(cmds cmd, memoryType s);

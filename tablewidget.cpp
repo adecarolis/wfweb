@@ -27,22 +27,25 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
 
         if(selectedAction == add)
         {
+            int row=this->rowCount();
             this->insertRow(this->rowCount());
-            emit rowAdded(this->rowCount()-1);
+            emit rowAdded(row);
         }
         else if(selectedAction == insert)
         {
+            int row=this->currentRow();
             this->insertRow(this->currentRow());
-            emit rowAdded(this->currentRow()-1);
+            emit rowAdded(row);
         }
         else if( selectedAction == clone )
         {
+            int row=this->currentRow();
             this->insertRow(this->currentRow());
             for (int i=0;i<this->columnCount();i++)
             {
-                if (this->item(currentRow(),i) != NULL) this->model()->setData(this->model()->index(this->currentRow()-1,i),this->item(this->currentRow(),i)->text());
+                if (this->item(row+1,i) != NULL) this->model()->setData(this->model()->index(row,i),this->item(row+1,i)->text());
             }
-            emit rowAdded(this->currentRow()-1);
+            emit rowAdded(row);
         }
         else if( selectedAction == del )
         {
@@ -50,6 +53,24 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
             this->removeRow(this->currentRow());
         }
     }
+}
+
+
+tableEditor::tableEditor(QRegularExpression validExp, QObject *parent)
+    : QItemDelegate(parent), validExp(validExp)
+{
+}
+
+QWidget* tableEditor::createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const {
+    Q_UNUSED(index)
+    Q_UNUSED(option)
+    edit = new QLineEdit(parent);
+    if (validExp.isValid())
+    {
+        edit->setValidator(new QRegularExpressionValidator(validExp,edit));
+    }
+    edit->setFrame(false);
+    return edit ;
 }
 
 
