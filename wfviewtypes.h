@@ -317,13 +317,21 @@ struct memoryType{
     quint16 tsql=670;
     quint8 dsql=0;
     int dtcs=0;
-    bool dtcsp=false;
+    quint8 dtcsp=0;
     quint8 dvsql=0;
     freqt duplexOffset;
     char UR[9];
     char R1[9];
     char R2[9];
     char name[17]; // 1 more than the absolute max
+};
+
+
+struct memParserFormat{
+    memParserFormat(char spec, int pos, int len) : spec(spec), pos(pos), len(len) {};
+    char spec;
+    int pos;
+    int len;
 };
 
 enum audioType {qtAudio,portAudio,rtAudio};

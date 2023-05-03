@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QMutexLocker>
 #include <QSettings>
+#include <QRegularExpression>
 #include <QDebug>
 
 #include "wfviewtypes.h"
@@ -415,6 +416,7 @@ private:
     QByteArray bcdEncodeInt(unsigned int);
     void parseFrequency();
     freqt parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
+    freqt parseRawFrequency(QByteArray data); // supply index where Mhz is found
     freqt parseFrequencyRptOffset(QByteArray data);
     QByteArray makeFreqPayloadRptOffset(freqt freq);
     QByteArray makeFreqPayload(double frequency);
@@ -515,6 +517,10 @@ private:
     unsigned char localVolume=0;
     quint8 guid[GUIDLEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
     QHash<unsigned char,QString> rigList;
+
+    quint64 pow10[12] = {
+        1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000, 100000000000
+    };
 
 #ifdef DEBUG_PARSE
     quint64 averageParseTime=0;

@@ -219,6 +219,8 @@ struct rigCapabilities {
     quint32 baudRate;
     quint16 memGroups;
     quint16 memories;
+    QString memFormat;
+    QVector<memParserFormat> memParser;
 };
 
 

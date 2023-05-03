@@ -97,6 +97,7 @@ private:
 
     Ui::memories *ui;
     bool extended = false;
+
     enum columns {
         columnRecall=0,
         columnNum,

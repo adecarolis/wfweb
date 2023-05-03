@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>978</width>
-    <height>551</height>
+    <height>593</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -1043,8 +1043,8 @@
      <rect>
       <x>10</x>
       <y>31</y>
-      <width>101</width>
-      <height>51</height>
+      <width>108</width>
+      <height>52</height>
      </rect>
     </property>
     <layout class="QFormLayout" name="formLayout">
@@ -1078,6 +1078,28 @@
      </item>
     </layout>
    </widget>
+  </widget>
+  <widget class="QWidget" name="horizontalLayoutWidget_2">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>550</y>
+     <width>951</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <layout class="QHBoxLayout" name="horizontalLayout_3">
+    <item>
+     <widget class="QLabel" name="label_10">
+      <property name="text">
+       <string>Memory Format</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLineEdit" name="memoryFormat"/>
+    </item>
+   </layout>
   </widget>
  </widget>
  <customwidgets>

@@ -40,29 +40,103 @@ memories::memories(rigCapabilities rigCaps, QWidget *parent) :
             "Filter" << "Data" << "Duplex" << "Tone Mode" << "DSQL" << "Tone" << "TSQL" << "DTCS" <<"DTCS Pol" << "DV Sql" << "Offset" << "UR" << "R1" << "R2";
     ui->table->setHorizontalHeaderLabels(headers);
 
+    ui->groupLabel->hide();
+    ui->group->hide();
+    ui->vfoMode->hide();
+    ui->memoryMode->hide();
 
-    if (rigCaps.memGroups < 2) {
-        ui->table->hideColumn(columnDuplex);
-        ui->table->hideColumn(columnDSQL);
-        ui->table->hideColumn(columnDTCS);
-        ui->table->hideColumn(columnOffset);
-        ui->table->hideColumn(columnUR);
-        ui->table->hideColumn(columnR1);
-        ui->table->hideColumn(columnR2);
-    }
 
-    if (rigCaps.memGroups < 2) {
-        ui->groupLabel->hide();
-        ui->group->hide();
-        ui->vfoMode->hide();
-        ui->memoryMode->hide();
-    } else
+    // Hide all columns except recall
+    for (int i=1;i<ui->table->columnCount();i++)
     {
-        ui->groupLabel->show();
-        ui->group->show();
-        ui->vfoMode->show();
-        ui->memoryMode->show();
+        ui->table->hideColumn(i);
     }
+
+    foreach (auto parse, rigCaps.memParser) {
+        switch (parse.spec)
+        {
+        case 'a':
+            ui->groupLabel->show();
+            ui->group->show();
+            ui->vfoMode->show();
+            ui->memoryMode->show();
+            break;
+        case 'b':
+            ui->table->showColumn(columnNum);
+            break;
+        case 'c':
+            ui->table->showColumn(columnMemory);
+            break;
+        case 'd':
+            ui->table->showColumn(columnFrequency);
+            break;
+        case 'e':
+            ui->table->showColumn(columnMode);
+            break;
+        case 'f':
+            ui->table->showColumn(columnFilter);
+            break;
+        case 'g':
+            ui->table->showColumn(columnData);
+            break;
+        case 'h':
+            ui->table->showColumn(columnDuplex);
+            ui->table->showColumn(columnToneMode);
+            break;
+        case 'i':
+            ui->table->showColumn(columnData);
+            ui->table->showColumn(columnToneMode);
+            break;
+        case 'j':
+            ui->table->showColumn(columnDSQL);
+            break;
+        case 'k':
+            ui->table->showColumn(columnTone);
+            break;
+        case 'l':
+            ui->table->showColumn(columnTSQL);
+            break;
+        case 'm':
+            ui->table->showColumn(columnDTCSPolarity);
+            break;
+        case 'n':
+            ui->table->showColumn(columnDTCS);
+            break;
+        case 'o':
+            ui->table->showColumn(columnDVSquelch);
+            break;
+        case 'p':
+            ui->table->showColumn(columnOffset);
+            break;
+        case 'q':
+            ui->table->showColumn(columnUR);
+            break;
+        case 'r':
+            ui->table->showColumn(columnR1);
+            break;
+        case 's':
+            ui->table->showColumn(columnR2);
+            break;
+        case 't':
+            ui->table->showColumn(columnName);
+            break;
+        case 'u':
+            break;
+        case 'v':
+            break;
+        case 'w':
+            break;
+        case 'x':
+            break;
+        case 'y':
+            break;
+        case 'z':
+            break;
+        default:
+            break;
+        }
+    }
+
 
     ui->group->blockSignals(true);
     for (int i=1;i<=rigCaps.memGroups;i++) {
@@ -111,9 +185,9 @@ memories::memories(rigCapabilities rigCaps, QWidget *parent) :
     ui->table->setItemDelegateForColumn(columnNum, numEditor);
 
     if (rigCaps.memGroups>1)
-        nameEditor = new tableEditor(QRegularExpression("[0-9A-Za-z\/\ ]{0,16}$"),ui->table);
+        nameEditor = new tableEditor(QRegularExpression("[0-9A-Za-z\\/\\ ]{0,16}$"),ui->table);
     else
-        nameEditor = new tableEditor(QRegularExpression("[0-9A-Za-z\/\ ]{0,10}$"),ui->table);
+        nameEditor = new tableEditor(QRegularExpression("[0-9A-Za-z\\/\\ ]{0,10}$"),ui->table);
 
     ui->table->setItemDelegateForColumn(columnName, nameEditor);
 
@@ -163,13 +237,13 @@ memories::memories(rigCapabilities rigCaps, QWidget *parent) :
     dvsqlEditor = new tableEditor(QRegularExpression("[0-9]{0,2}"),ui->table);
     ui->table->setItemDelegateForColumn(columnDVSquelch, dvsqlEditor);
 
-    urEditor = new tableEditor(QRegularExpression("[0-9A-Z\/\ ]{0,8}$"),ui->table);
+    urEditor = new tableEditor(QRegularExpression("[0-9A-Z\\/\\ ]{0,8}$"),ui->table);
     ui->table->setItemDelegateForColumn(columnUR, urEditor);
 
-    r1Editor = new tableEditor(QRegularExpression("[0-9A-Z\/\ ]{0,8}$"),ui->table);
+    r1Editor = new tableEditor(QRegularExpression("[0-9A-Z\\/\\ ]{0,8}$"),ui->table);
     ui->table->setItemDelegateForColumn(columnR1, r1Editor);
 
-    r2Editor = new tableEditor(QRegularExpression("[0-9A-Z\/\ ]{0,8}$"),ui->table);
+    r2Editor = new tableEditor(QRegularExpression("[0-9A-Z\\/\\ ]{0,8}$"),ui->table);
     ui->table->setItemDelegateForColumn(columnR2, r2Editor);
 
     connect(ui->table,SIGNAL(rowAdded(int)),this,SLOT(rowAdded(int)));

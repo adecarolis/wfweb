@@ -17,6 +17,7 @@ HasTransmit=true
 HasFDComms=true
 MemGroups=3
 Memories=107
+MemFormat=%1.1a %2.2b %4.1c %5.5d %10.1e %11.1f %12.1g %13.1h %14.1j %15.3k %18.3l %21.1m %22.2n %24.1o %24.4p %28.8q %36.8r %44.8s %52.16t
 Commands\1\Type=ACC1 Mod Level
 Commands\1\String=\\x1a\\x05\\x01\\x12
 Commands\1\Min=0
