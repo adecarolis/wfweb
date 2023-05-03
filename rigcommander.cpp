@@ -1845,6 +1845,8 @@ void rigCommander::parseCommand()
         return;
     }
 
+    QVector<memParserFormat> memParser;
+
     switch (func)
     {
     case funcFreqGet:
@@ -1870,8 +1872,13 @@ void rigCommander::parseCommand()
              this->parseMode();
         }
         break;
+    case funcSatelliteMemory:
+        memParser=rigCaps.satParser;
     case funcMemoryContents:
     {
+        if (memParser.isEmpty()) {
+             memParser=rigCaps.memParser;
+        }
 
         // Parse the memory entry into a memoryType:
         memoryType mem;
@@ -1882,7 +1889,7 @@ void rigCommander::parseCommand()
             // 16 is fixed 0x0;
             // 19 is fixed 0x0;
         */
-        foreach (auto parse, rigCaps.memParser) {
+        foreach (auto parse, memParser) {
              QByteArray data = payloadIn.mid(offset+parse.pos,parse.len);
              switch (parse.spec)
              {
@@ -1964,44 +1971,6 @@ void rigCommander::parseCommand()
              }
         }
 
-        /*
-        if (rigCaps.memGroups > 1)
-        {
-            mem.group = bcdHexToUChar(payloadIn[2]);
-            mem.channel = bcdHexToUInt(payloadIn[3],payloadIn[4]);
-            mem.memory = payloadIn[5] & 0xf;
-            mem.frequency = parseFrequency(payloadIn,9);
-            mem.mode=(mode_kind)bcdHexToUChar(payloadIn[11]);
-            mem.filter=payloadIn[12];
-            mem.datamode=payloadIn[13];
-            mem.duplex=duplexMode(payloadIn[14] >> 4 & 0x0f);
-            mem.tonemode=payloadIn[14] & 0x0f;
-            mem.dsql = (payloadIn[15] >> 4 & 0x0f);
-            // 16 is fixed 0x0;
-            mem.tone = bcdHexToUInt(payloadIn[17],payloadIn[18]);
-            // 19 is fixed 0x0;
-            mem.tsql = bcdHexToUInt(payloadIn[20],payloadIn[21]);
-            mem.dtcsp = payloadIn[22];
-            mem.dtcs = bcdHexToUInt(payloadIn[23],payloadIn[24]);
-            mem.dvsql = bcdHexToUChar(payloadIn[25]);
-            mem.duplexOffset = parseFrequencyRptOffset(payloadIn.mid(25,4)); // Ignore first byte
-            memcpy(mem.UR,payloadIn.mid(29,8),sizeof(mem.UR));
-            memcpy(mem.R1,payloadIn.mid(37,8),sizeof(mem.R1));
-            memcpy(mem.R2,payloadIn.mid(45,8),sizeof(mem.R2));
-            memcpy(mem.name,payloadIn.mid(53,16),sizeof(mem.name));
-        } else {
-            mem.channel = bcdHexToUInt(payloadIn[2],payloadIn[3]);
-            mem.memory = payloadIn[4];
-            mem.frequency = parseFrequency(payloadIn,8);
-            mem.mode=(mode_kind)bcdHexToUChar(payloadIn[10]);
-            mem.filter=payloadIn[11];
-            mem.datamode=payloadIn[12]>>4 & 0x0f;
-            mem.tonemode=payloadIn[12] & 0x0f;
-            mem.tone = bcdHexToUInt(payloadIn[14],payloadIn[15]);
-            mem.tsql = bcdHexToUInt(payloadIn[17],payloadIn[18]);
-            memcpy(mem.name,payloadIn.mid(19,10),sizeof(mem.name));
-        }
-        */
         emit haveMemory(mem);
     }
     case funcMemoryClear:
@@ -4439,6 +4408,7 @@ void rigCommander::determineRigCaps()
     rigCaps.memGroups = settings->value("MemGroups",0).toUInt();
     rigCaps.memories = settings->value("Memories",0).toUInt();
     rigCaps.memFormat = settings->value("MemFormat","").toString();
+    rigCaps.satFormat = settings->value("SatFormat","").toString();
 
     // Temporary QList to hold the function string lookup // I would still like to find a better way of doing this!
     QHash<QString, funcs> funcsLookup;
@@ -4600,7 +4570,7 @@ void rigCommander::determineRigCaps()
     delete settings;
 
 
-    // Setup memory format.
+    // Setup memory formats.
     static QRegularExpression memFmtEx("%(?<flags>[-+#0])?(?<pos>\\d+|\\*)?(?:\\.(?<width>\\d+|\\*))?(?<spec>[abcdefghijklmnopqrstuvwxyz])");
     QRegularExpressionMatchIterator i = memFmtEx.globalMatch(rigCaps.memFormat);
 
@@ -4608,9 +4578,15 @@ void rigCommander::determineRigCaps()
         QRegularExpressionMatch qmatch = i.next();
         if (qmatch.hasCaptured("spec") && qmatch.hasCaptured("pos") && qmatch.hasCaptured("width")) {
             rigCaps.memParser.append(memParserFormat(qmatch.captured("spec").at(0).toLatin1(),qmatch.captured("pos").toInt(),qmatch.captured("width").toInt()));
-            qInfo() << QString("Captured: %0 pos: %1 len: %2").arg(rigCaps.memParser.at(rigCaps.memParser.size()-1).spec).
-                                                                arg(rigCaps.memParser.at(rigCaps.memParser.size()-1).pos).
-                                                                arg(rigCaps.memParser.at(rigCaps.memParser.size()-1).len);
+        }
+    }
+
+    QRegularExpressionMatchIterator i2 = memFmtEx.globalMatch(rigCaps.satFormat);
+
+    while (i2.hasNext()) {
+        QRegularExpressionMatch qmatch = i2.next();
+        if (qmatch.hasCaptured("spec") && qmatch.hasCaptured("pos") && qmatch.hasCaptured("width")) {
+            rigCaps.satParser.append(memParserFormat(qmatch.captured("spec").at(0).toLatin1(),qmatch.captured("pos").toInt(),qmatch.captured("width").toInt()));
         }
     }
 

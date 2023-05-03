@@ -45,103 +45,13 @@ memories::memories(rigCapabilities rigCaps, QWidget *parent) :
     ui->vfoMode->hide();
     ui->memoryMode->hide();
 
-
-    // Hide all columns except recall
-    for (int i=1;i<ui->table->columnCount();i++)
-    {
-        ui->table->hideColumn(i);
-    }
-
-    foreach (auto parse, rigCaps.memParser) {
-        switch (parse.spec)
-        {
-        case 'a':
-            ui->groupLabel->show();
-            ui->group->show();
-            ui->vfoMode->show();
-            ui->memoryMode->show();
-            break;
-        case 'b':
-            ui->table->showColumn(columnNum);
-            break;
-        case 'c':
-            ui->table->showColumn(columnMemory);
-            break;
-        case 'd':
-            ui->table->showColumn(columnFrequency);
-            break;
-        case 'e':
-            ui->table->showColumn(columnMode);
-            break;
-        case 'f':
-            ui->table->showColumn(columnFilter);
-            break;
-        case 'g':
-            ui->table->showColumn(columnData);
-            break;
-        case 'h':
-            ui->table->showColumn(columnDuplex);
-            ui->table->showColumn(columnToneMode);
-            break;
-        case 'i':
-            ui->table->showColumn(columnData);
-            ui->table->showColumn(columnToneMode);
-            break;
-        case 'j':
-            ui->table->showColumn(columnDSQL);
-            break;
-        case 'k':
-            ui->table->showColumn(columnTone);
-            break;
-        case 'l':
-            ui->table->showColumn(columnTSQL);
-            break;
-        case 'm':
-            ui->table->showColumn(columnDTCSPolarity);
-            break;
-        case 'n':
-            ui->table->showColumn(columnDTCS);
-            break;
-        case 'o':
-            ui->table->showColumn(columnDVSquelch);
-            break;
-        case 'p':
-            ui->table->showColumn(columnOffset);
-            break;
-        case 'q':
-            ui->table->showColumn(columnUR);
-            break;
-        case 'r':
-            ui->table->showColumn(columnR1);
-            break;
-        case 's':
-            ui->table->showColumn(columnR2);
-            break;
-        case 't':
-            ui->table->showColumn(columnName);
-            break;
-        case 'u':
-            break;
-        case 'v':
-            break;
-        case 'w':
-            break;
-        case 'x':
-            break;
-        case 'y':
-            break;
-        case 'z':
-            break;
-        default:
-            break;
-        }
-    }
-
-
     ui->group->blockSignals(true);
     for (int i=1;i<=rigCaps.memGroups;i++) {
 
         ui->group->addItem(QString("Group %0").arg(i,2,10,QChar('0')));
+    }
+    if (rigCaps.commands.contains(funcSatelliteMode)){
+        ui->group->addItem("Satellite");
     }
     ui->group->setCurrentIndex(-1);
     ui->group->blockSignals(false);
@@ -320,7 +230,9 @@ void memories::rowDeleted(quint32 mem)
 
 void memories::on_table_cellChanged(int row, int col)
 {
-    Q_UNUSED(col)
+    // If the import is updating a hidden column, ignore it.
+    if (ui->table->isColumnHidden(col))
+        return;
 
     if (row != currentRow || currentMemory == Q_NULLPTR)
     {
@@ -430,7 +342,7 @@ void memories::on_table_cellChanged(int row, int col)
     bool write=true;
     for (int f=1; f<ui->table->columnCount();f++)
     {
-        if (!ui->table->isColumnHidden(f) && (ui->table->item(row,f) == NULL))
+        if (!ui->table->isColumnHidden(f) && ui->table->item(row,f) == NULL)
             write=false;
     }
     if (write) {
@@ -446,6 +358,106 @@ void memories::on_group_currentIndexChanged(int index)
     ui->table->blockSignals(true);
     ui->table->setRowCount(0);
     ui->table->blockSignals(false);
+
+    // Hide all columns except recall
+    for (int i=1;i<ui->table->columnCount();i++)
+    {
+        ui->table->hideColumn(i);
+    }
+
+    QVector<memParserFormat> parser;
+
+    if (ui->group->currentText() == "Satellite") {
+        parser = rigCaps.memParser;
+    } else {
+        parser = rigCaps.satParser;
+    }
+
+    foreach (auto parse, parser) {
+        switch (parse.spec)
+        {
+        case 'a':
+            ui->groupLabel->show();
+            ui->group->show();
+            ui->vfoMode->show();
+            ui->memoryMode->show();
+            break;
+        case 'b':
+            ui->table->showColumn(columnNum);
+            break;
+        case 'c':
+            ui->table->showColumn(columnMemory);
+            break;
+        case 'd':
+            ui->table->showColumn(columnFrequency);
+            break;
+        case 'e':
+            ui->table->showColumn(columnMode);
+            break;
+        case 'f':
+            ui->table->showColumn(columnFilter);
+            break;
+        case 'g':
+            ui->table->showColumn(columnData);
+            break;
+        case 'h':
+            ui->table->showColumn(columnDuplex);
+            ui->table->showColumn(columnToneMode);
+            break;
+        case 'i':
+            ui->table->showColumn(columnData);
+            ui->table->showColumn(columnToneMode);
+            break;
+        case 'j':
+            ui->table->showColumn(columnDSQL);
+            break;
+        case 'k':
+            ui->table->showColumn(columnTone);
+            break;
+        case 'l':
+            ui->table->showColumn(columnTSQL);
+            break;
+        case 'm':
+            ui->table->showColumn(columnDTCSPolarity);
+            break;
+        case 'n':
+            ui->table->showColumn(columnDTCS);
+            break;
+        case 'o':
+            ui->table->showColumn(columnDVSquelch);
+            break;
+        case 'p':
+            ui->table->showColumn(columnOffset);
+            break;
+        case 'q':
+            ui->table->showColumn(columnUR);
+            break;
+        case 'r':
+            ui->table->showColumn(columnR1);
+            break;
+        case 's':
+            ui->table->showColumn(columnR2);
+            break;
+        case 't':
+            ui->table->showColumn(columnName);
+            break;
+        case 'u':
+            break;
+        case 'v':
+            break;
+        case 'w':
+            break;
+        case 'x':
+            break;
+        case 'y':
+            break;
+        case 'z':
+            break;
+        default:
+            break;
+        }
+    }
+
     for (quint16 m=1;m<=rigCaps.memories;m++)
     {
         if (rigCaps.memGroups>1)
@@ -608,4 +620,148 @@ QStandardItemModel* memories::createModel(QStandardItemModel* model, QStringList
     }
 
     return model;
+}
+
+
+void memories::on_csvImport_clicked()
+{
+    QString file = QFileDialog::getOpenFileName(this,"Select import filename","","CSV Files (*.csv)");
+
+    if (!file.isEmpty())
+    {
+        ui->table->sortByColumn(0,Qt::AscendingOrder); // Force natural order
+
+        QFile data(file);
+        if (!data.open(QIODevice::ReadOnly)) {
+            qInfo() << "Couldn't open file for .csv export" << data.errorString();
+            return;
+        }
+
+        QTextStream input(&data);
+        QStringList row;
+        int rows=0;
+        while (readCSVRow(input, &row)) {
+            qInfo() << row;
+            if (!rows++)
+                continue; // Skip the first row
+
+            int count=-1;
+            for(int i=0;i<ui->table->rowCount();i++) {
+                if (ui->table->item(i, 1)->text().toInt() == row[0].toInt()) {
+                    count=i;
+                    break;
+                }
+            }
+            if (count == -1)
+            {
+                // We need to add a new row
+                count = ui->table->rowCount();
+                ui->table->insertRow(count);
+                QPushButton* recall = new QPushButton("Recall");
+                ui->table->setCellWidget(count,columnRecall,recall);
+                connect(recall, &QPushButton::clicked, this,
+                        [=]() { qInfo() << "Recalling" << row[0].toInt(); emit recallMemory(quint32((ui->group->currentIndex()+1) << 16) | (row[0].toInt()));});
+            }
+            // count is now the row we need to work on.
+            for (int i=0; i<row.size();i++)
+            {
+                if (i < ui->table->columnCount()-1) {
+                    ui->table->model()->setData(ui->table->model()->index(count,i+1),QString(row[i]));
+                }
+            }
+        }
+    }
+}
+
+void memories::on_csvExport_clicked()
+{
+    QString file = QFileDialog::getSaveFileName(this,"Select export filename","","CSV Files (*.csv)");
+
+    if (!file.isEmpty())
+    {
+        ui->table->sortByColumn(0,Qt::AscendingOrder); // Force natural order
+
+        QFile data(file);
+        if (data.open(QFile::WriteOnly | QIODevice::Truncate)) {
+            QTextStream output(&data);
+            for(int i=2;i<ui->table->columnCount();i++) {
+                output << "\"" << ui->table->horizontalHeaderItem(i)->text() << "\"";
+                if (i < ui->table->columnCount()-1)
+                    output << ",";
+                else
+                    output << "\n";
+            }
+
+            for(int i=0;i<ui->table->rowCount();i++) {
+                for(int j=1;j<ui->table->columnCount();j++) {
+                    output << "\"" << ((ui->table->item(i,j) == NULL) ? " " : ui->table->item(i,j)->text().trimmed()) << "\"";
+                    if (j < ui->table->columnCount()-1)
+                        output << ",";
+                    else
+                        output << "\n";
+                }
+            }
+        }
+        data.close();
+    }
+}
+
+// Public Domain CSV parser from user iamantony
+// https://www.appsloveworld.com/cplus/100/37/parsing-through-a-csv-file-in-qt
+bool memories::readCSVRow(QTextStream &in, QStringList *row) {
+
+    static const int delta[][5] = {
+        //  ,    "   \n    ?  eof
+        {   1,   2,  -1,   0,  -1  }, // 0: parsing (store char)
+        {   1,   2,  -1,   0,  -1  }, // 1: parsing (store column)
+        {   3,   4,   3,   3,  -2  }, // 2: quote entered (no-op)
+        {   3,   4,   3,   3,  -2  }, // 3: parsing inside quotes (store char)
+        {   1,   3,  -1,   0,  -1  }, // 4: quote exited (no-op)
+        // -1: end of row, store column, success
+        // -2: eof inside quotes
+    };
+
+    row->clear();
+
+    if (in.atEnd())
+        return false;
+
+    int state = 0, t;
+    char ch;
+    QString cell;
+
+    while (state >= 0) {
+
+        if (in.atEnd())
+            t = 4;
+        else {
+            in >> ch;
+            if (ch == ',') t = 0;
+            else if (ch == '\"') t = 1;
+            else if (ch == '\n') t = 2;
+            else t = 3;
+        }
+
+        state = delta[state][t];
+
+        switch (state) {
+        case 0:
+        case 3:
+            cell += ch;
+            break;
+        case -1:
+        case 1:
+            row->append(cell);
+            cell = "";
+            break;
+        }
+
+    }
+
+    if (state == -2) {
+        qInfo() << "End-of-file found while inside quotes.";
+        return false;
+    }
+    return true;
+
 }

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>978</width>
-    <height>593</height>
+    <height>624</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -1079,25 +1079,43 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QWidget" name="horizontalLayoutWidget_2">
+  <widget class="QWidget" name="verticalLayoutWidget_2">
    <property name="geometry">
     <rect>
      <x>10</x>
      <y>550</y>
      <width>951</width>
-     <height>31</height>
+     <height>61</height>
     </rect>
    </property>
-   <layout class="QHBoxLayout" name="horizontalLayout_3">
+   <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
-     <widget class="QLabel" name="label_10">
-      <property name="text">
-       <string>Memory Format</string>
-      </property>
-     </widget>
+     <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <item>
+       <widget class="QLabel" name="label_10">
+        <property name="text">
+         <string>Main Memory Format</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="memoryFormat"/>
+      </item>
+     </layout>
     </item>
     <item>
-     <widget class="QLineEdit" name="memoryFormat"/>
+     <layout class="QHBoxLayout" name="horizontalLayout_4">
+      <item>
+       <widget class="QLabel" name="label_11">
+        <property name="text">
+         <string>Satellite Memory Format</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="satelliteFormat"/>
+      </item>
+     </layout>
     </item>
    </layout>
   </widget>

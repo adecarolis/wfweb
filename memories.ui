@@ -45,6 +45,33 @@
         </spacer>
        </item>
        <item>
+        <widget class="QPushButton" name="csvImport">
+         <property name="text">
+          <string>.csv Import</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="csvExport">
+         <property name="text">
+          <string>.csv Export</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
         <widget class="QPushButton" name="memoryMode">
          <property name="text">
           <string>Memory Mode</string>

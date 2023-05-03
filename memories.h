@@ -7,6 +7,7 @@
 #include <QStandardItemModel>
 #include <QHeaderView>
 #include <QPushButton>
+#include <QFileDialog>
 
 #include "tablewidget.h"
 #include "wfviewtypes.h"
@@ -39,6 +40,11 @@ private slots:
     void on_group_currentIndexChanged(int index);
     void on_vfoMode_clicked();
     void on_memoryMode_clicked();
+    void on_csvImport_clicked();
+    void on_csvExport_clicked();
+    bool readCSVRow (QTextStream &in, QStringList *row);
+
+
     void receiveMemory(memoryType mem);
     void rowAdded(int row);
     void rowDeleted(quint32 mem);
