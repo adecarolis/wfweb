@@ -102,6 +102,7 @@ void tableCombobox::setEditorData(QWidget *editor, const QModelIndex &index) con
 }
 
 void tableCombobox::setModelData(QWidget *editor, QAbstractItemModel *model,   const QModelIndex &index) const {
+    Q_UNUSED(editor)
     model->setData( index, combo->currentText() );
 }
 
