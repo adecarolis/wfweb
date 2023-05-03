@@ -113,7 +113,7 @@ void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char
     // civAddr = 0x94; // address of the radio. Decimal is 148.
     civAddr = rigCivAddr; // address of the radio. Decimal is 148.
     usingNativeLAN = true;
-    // -- 
+    // --
     setup();
     // ---
 
@@ -297,7 +297,7 @@ void rigCommander::findRigs()
     data.append(payloadSuffix);
 
     emit dataForComm(data);
-    // HACK for testing radios that do not respond to rig ID queries: 
+    // HACK for testing radios that do not respond to rig ID queries:
     //this->model = model736;
     //this->determineRigCaps();
     return;
@@ -1917,7 +1917,6 @@ void rigCommander::parseCommand()
              case 'h': // combined duplex and tonemode
                     mem.duplex=duplexMode(data[0] >> 4 & 0x0f);
                     mem.tonemode=data[0] & 0x0f;
-                    break;
              case 'i': // combined datamode and tonemode
                     mem.datamode=(data[0] >> 4 & 0x0f);
                     mem.tonemode=data[0] & 0x0f;
@@ -2026,7 +2025,7 @@ void rigCommander::parseCommand()
     case funcNRLevel:
         emit haveNRLevel(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(NR, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
-	break;
+    break;
     case funcPBTInner:
         emit haveTPBFInner(bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(PBTIN, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
@@ -2291,7 +2290,7 @@ void rigCommander::parseCommand()
         break;
     case funcDashRatio:
         emit haveDashRatio(bcdHexToUChar(payloadIn[4]));
-	break;
+    break;
     // 0x1b register
     case funcToneFreq:
         emit haveTone(decodeTone(payloadIn));
@@ -2483,7 +2482,7 @@ void rigCommander::parseLevels()
                 break;
             case '\x03':
                 // Squelch level
-                emit haveSql(level);                
+                emit haveSql(level);
                 state.set(SQUELCH, level, false);
                 break;
             case '\x07':
@@ -4577,10 +4576,7 @@ void rigCommander::determineRigCaps()
 
     while (i.hasNext()) {
         QRegularExpressionMatch qmatch = i.next();
-#if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
         if (qmatch.hasCaptured("spec") && qmatch.hasCaptured("pos") && qmatch.hasCaptured("width")) {
-#endif
-
             rigCaps.memParser.append(memParserFormat(qmatch.captured("spec").at(0).toLatin1(),qmatch.captured("pos").toInt(),qmatch.captured("width").toInt()));
         }
     }
@@ -4591,9 +4587,7 @@ void rigCommander::determineRigCaps()
         QRegularExpressionMatch qmatch = i2.next();
         if (qmatch.hasCaptured("spec") && qmatch.hasCaptured("pos") && qmatch.hasCaptured("width")) {
             rigCaps.satParser.append(memParserFormat(qmatch.captured("spec").at(0).toLatin1(),qmatch.captured("pos").toInt(),qmatch.captured("width").toInt()));
-#if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
         }
-#endif
     }
 
 
@@ -4861,7 +4855,7 @@ void rigCommander::determineRigCaps()
             rigCaps.quickSplitCommand = QByteArrayLiteral("\x1a\x05\x00\x33");
             rigCaps.hasVFOMS = true;
             rigCaps.hasVFOAB = false;
-            break;            
+            break;
         case model7850:
             rigCaps.modelName = QString("IC-785x");
             rigCaps.rigctlModel = 3075;
@@ -5787,14 +5781,14 @@ void rigCommander::parseFrequency()
     freq.Hz += ((payloadIn[03] & 0xf0) >> 4) * 100000;
 
     freq.MHzDouble = frequencyMhz;
-    
+
     if (state.getChar(CURRENTVFO) == 0) {
         state.set(VFOAFREQ, freq.Hz, false);
     }
     else {
         state.set(VFOBFREQ, freq.Hz, false);
     }
-    
+
     emit haveFrequency(freq);
 }
 
@@ -5916,8 +5910,8 @@ void rigCommander::parseMode()
     quint16 pass = 0;
 
     if (!state.isValid(PASSBAND)) {
- 
-        /*  We haven't got a valid passband from the rig so we 
+
+        /*  We haven't got a valid passband from the rig so we
             need to create a 'fake' one from default values
             This will be replaced with a valid one if we get it */
 
@@ -6784,7 +6778,7 @@ void rigCommander::stateUpdated()
              case TBURSTFUNC:
                  break;
              case TUNERFUNC:
-                 if (i.value()._valid) {  
+                 if (i.value()._valid) {
                      setATU(state.getBool(TUNERFUNC));
                  }
                  getATUStatus();

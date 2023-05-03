@@ -368,9 +368,9 @@ void memories::on_group_currentIndexChanged(int index)
     QVector<memParserFormat> parser;
 
     if (ui->group->currentText() == "Satellite") {
-        parser = rigCaps.memParser;
-    } else {
         parser = rigCaps.satParser;
+    } else {
+        parser = rigCaps.memParser;
     }
 
     foreach (auto parse, parser) {
