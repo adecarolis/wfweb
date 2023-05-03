@@ -2092,7 +2092,7 @@ void rigCommander::parseCommand()
         emit haveMeter(meterS,bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(SMETER, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         break;
-    case funcVariousSql: warning: ignoring old recipe for target
+    case funcVariousSql:
     case funcOverflowStatus:
         break;
     case funcCenterMeter:
