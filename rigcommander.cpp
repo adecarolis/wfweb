@@ -1917,6 +1917,7 @@ void rigCommander::parseCommand()
              case 'h': // combined duplex and tonemode
                     mem.duplex=duplexMode(data[0] >> 4 & 0x0f);
                     mem.tonemode=data[0] & 0x0f;
+                    break;
              case 'i': // combined datamode and tonemode
                     mem.datamode=(data[0] >> 4 & 0x0f);
                     mem.tonemode=data[0] & 0x0f;
@@ -2091,7 +2092,7 @@ void rigCommander::parseCommand()
         emit haveMeter(meterS,bcdHexToUChar(payloadIn[2],payloadIn[3]));
         state.set(SMETER, bcdHexToUChar(payloadIn[2],payloadIn[3]), false);
         break;
-    case funcVariousSql:
+    case funcVariousSql: warning: ignoring old recipe for target
     case funcOverflowStatus:
         break;
     case funcCenterMeter:
@@ -4576,7 +4577,10 @@ void rigCommander::determineRigCaps()
 
     while (i.hasNext()) {
         QRegularExpressionMatch qmatch = i.next();
+#if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
         if (qmatch.hasCaptured("spec") && qmatch.hasCaptured("pos") && qmatch.hasCaptured("width")) {
+#endif
+
             rigCaps.memParser.append(memParserFormat(qmatch.captured("spec").at(0).toLatin1(),qmatch.captured("pos").toInt(),qmatch.captured("width").toInt()));
         }
     }
@@ -4587,7 +4591,9 @@ void rigCommander::determineRigCaps()
         QRegularExpressionMatch qmatch = i2.next();
         if (qmatch.hasCaptured("spec") && qmatch.hasCaptured("pos") && qmatch.hasCaptured("width")) {
             rigCaps.satParser.append(memParserFormat(qmatch.captured("spec").at(0).toLatin1(),qmatch.captured("pos").toInt(),qmatch.captured("width").toInt()));
+#if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
         }
+#endif
     }
 
 
