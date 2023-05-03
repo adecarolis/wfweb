@@ -4573,14 +4573,17 @@ void rigCommander::determineRigCaps()
     // Setup memory formats.
     static QRegularExpression memFmtEx("%(?<flags>[-+#0])?(?<pos>\\d+|\\*)?(?:\\.(?<width>\\d+|\\*))?(?<spec>[abcdefghijklmnopqrstuvwxyz])");
     QRegularExpressionMatchIterator i = memFmtEx.globalMatch(rigCaps.memFormat);
-
     while (i.hasNext()) {
         QRegularExpressionMatch qmatch = i.next();
+
+#if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
         if (qmatch.hasCaptured("spec") && qmatch.hasCaptured("pos") && qmatch.hasCaptured("width")) {
+#endif
             rigCaps.memParser.append(memParserFormat(qmatch.captured("spec").at(0).toLatin1(),qmatch.captured("pos").toInt(),qmatch.captured("width").toInt()));
         }
+#if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
     }
-
+#endif
     QRegularExpressionMatchIterator i2 = memFmtEx.globalMatch(rigCaps.satFormat);
 
     while (i2.hasNext()) {
