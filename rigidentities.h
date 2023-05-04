@@ -221,6 +221,7 @@ struct rigCapabilities {
     quint16 memories;
     QString memFormat;
     QVector<memParserFormat> memParser;
+    quint16 satMemories;
     QString satFormat;
     QVector<memParserFormat> satParser;
 };

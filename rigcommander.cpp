@@ -1383,97 +1383,155 @@ void rigCommander::getMemory(quint32 mem)
     }
 }
 
+void rigCommander::getSatMemory(quint32 mem)
+{
+    QByteArray payload;
+    if (getCommand(funcSatelliteMemory,payload,mem & 0xffff))
+    {
+        payload.append(bcdEncodeInt(mem & 0xffff));
+        prepDataAndSend(payload);
+    }
+}
+
 void rigCommander::setMemory(memoryType mem)
 {
 
     QByteArray payload;
     char nul = 0x0;
-    if (getCommand(funcMemoryContents,payload,mem.channel))
+
+    QVector<memParserFormat> parser;
+
+    if (mem.sat && getCommand(funcSatelliteMemory,payload,mem.channel))
     {
-        // Format is different for all radios!
-        foreach (auto parse, rigCaps.memParser) {
-            switch (parse.spec)
-            {
-            case 'a':
-                payload.append(mem.group);
-                break;
-            case 'b':
-                payload.append(bcdEncodeInt(mem.channel));
-                break;
-            case 'c':
-                payload.append(mem.memory);
-                break;
-            case 'd':
-                payload.append(makeFreqPayload(mem.frequency));
-                break;
-            case 'e':
-                payload.append(mem.mode);
-                break;
-            case 'f':
-                payload.append(mem.filter);
-                break;
-            case 'g': // single datamode
-                payload.append(mem.datamode);
-                break;
-            case 'h': // combined duplex and tonemode
-                payload.append((mem.duplex << 4) | mem.tonemode);
-                break;
-            case 'i': // combined datamode and tonemode
-                payload.append((mem.datamode << 4 & 0xf0) | (mem.tonemode & 0x0f));
-                break;
-            case 'j':
-                payload.append(mem.dsql << 4);
-                break;
-            case 'k':
-                payload.append(nul);
-                payload.append(bcdEncodeInt(mem.tone));
-                break;
-            case 'l':
-                payload.append(nul);
-                payload.append(bcdEncodeInt(mem.tsql));
-                break;
-            case 'm':
-                payload.append(mem.dtcsp);
-                break;
-            case 'n':
-                payload.append(bcdEncodeInt(mem.dtcs));
-                break;
-            case 'o':
-                payload.append(mem.dvsql);
-                break;
-            case 'p':
-                payload.append(makeFreqPayload(mem.duplexOffset).mid(1,3));
-                break;
-            case 'q':
-                payload.append(QByteArray(mem.UR).leftJustified(parse.len,' '));
-                break;
-            case 'r':
-                payload.append(QByteArray(mem.R1).leftJustified(parse.len,' '));
-                break;
-            case 's':
-                payload.append(QByteArray(mem.R2).leftJustified(parse.len,' '));
-                break;
-            case 't':
-                payload.append(QByteArray(mem.name).leftJustified(parse.len,' '));
-                break;
-            case 'u':
-                break;
-            case 'v':
-                break;
-            case 'w':
-                break;
-            case 'x':
-                break;
-            case 'y':
-                break;
-            case 'z':
-                break;
-            default:
-                break;
-            }
-        }
-        prepDataAndSend(payload);
+        parser = rigCaps.satParser;
     }
+    else if (!mem.sat && getCommand(funcMemoryContents,payload,mem.channel))
+    {
+        parser = rigCaps.memParser;
+    } else {
+        // No supported commands
+        return;
+    }
+
+    // Format is different for all radios!
+    foreach (auto parse, parser) {
+        switch (parse.spec)
+        {
+        case 'a':
+            payload.append(mem.group);
+            break;
+        case 'b':
+            payload.append(bcdEncodeInt(mem.channel));
+            break;
+        case 'c':
+            payload.append(mem.scan);
+            break;
+        case 'd':
+            payload.append(makeFreqPayload(mem.frequency));
+            break;
+        case 'D':
+            payload.append(makeFreqPayload(mem.frequencyB));
+            break;
+        case 'e':
+            payload.append(mem.mode);
+            break;
+        case 'E':
+            payload.append(mem.modeB);
+            break;
+        case 'f':
+            payload.append(mem.filter);
+            break;
+        case 'F':
+            payload.append(mem.filterB);
+            break;
+        case 'g': // single datamode
+            payload.append(mem.datamode);
+            break;
+        case 'G':
+            payload.append(mem.datamodeB);
+            break;
+        case 'h': // combined duplex and tonemode
+            payload.append((mem.duplex << 4) | mem.tonemode);
+            break;
+        case 'i': // combined datamode and tonemode
+            payload.append((mem.datamode << 4 & 0xf0) | (mem.tonemode & 0x0f));
+            break;
+        case 'j': // tonemode
+            payload.append(mem.tonemode);
+            break;
+        case 'J':
+            payload.append(mem.tonemodeB);
+            break;
+        case 'k':
+            payload.append(mem.dsql << 4);
+            break;
+        case 'K':
+            payload.append(mem.dsqlB << 4);
+            break;
+        case 'l':
+            payload.append(nul);
+            payload.append(bcdEncodeInt(mem.tone));
+            break;
+        case 'L':
+            payload.append(nul);
+            payload.append(bcdEncodeInt(mem.toneB));
+            break;
+        case 'm':
+            payload.append(nul);
+            payload.append(bcdEncodeInt(mem.tsql));
+            break;
+        case 'M':
+            payload.append(nul);
+            payload.append(bcdEncodeInt(mem.tsqlB));
+            break;
+        case 'n':
+            payload.append((mem.dtcsp << 3 & 0x10) |  (mem.dtcsp & 0x01));
+            qInfo() << "DTCSP A" << (mem.dtcsp << 3 & 0x10) << "B" << (mem.dtcsp & 0x01) << "ORIG" << mem.dtcsp;
+            break;
+        case 'N':
+             payload.append((mem.dtcspB << 3 & 0x10) |  (mem.dtcspB & 0x01));
+            break;
+        case 'o':
+            payload.append(bcdEncodeInt(mem.dtcs));
+            break;
+        case 'O':
+            payload.append(bcdEncodeInt(mem.dtcsB));
+            break;
+        case 'p':
+            payload.append(mem.dvsql);
+            break;
+        case 'P':
+            payload.append(mem.dvsqlB);
+            break;
+        case 'q':
+            payload.append(makeFreqPayload(mem.duplexOffset).mid(1,3));
+            break;
+        case 'r':
+            payload.append(QByteArray(mem.UR).leftJustified(parse.len,' '));
+            break;
+        case 'R':
+            payload.append(QByteArray(mem.URB).leftJustified(parse.len,' '));
+            break;
+        case 's':
+            payload.append(QByteArray(mem.R1).leftJustified(parse.len,' '));
+            break;
+        case 'S':
+            payload.append(QByteArray(mem.R1B).leftJustified(parse.len,' '));
+            break;
+        case 't':
+            payload.append(QByteArray(mem.R2).leftJustified(parse.len,' '));
+            break;
+        case 'T':
+            payload.append(QByteArray(mem.R2B).leftJustified(parse.len,' '));
+            break;
+        case 'u':
+            payload.append(QByteArray(mem.name).leftJustified(parse.len,' '));
+            break;
+        default:
+            break;
+        }
+    }
+    prepDataAndSend(payload);
 
     qInfo(logRig()) << "Storing memory:" << mem.channel << "Name:" << mem.name;
 }
@@ -1876,101 +1934,144 @@ void rigCommander::parseCommand()
         memParser=rigCaps.satParser;
     case funcMemoryContents:
     {
+        memoryType mem;
         if (memParser.isEmpty()) {
              memParser=rigCaps.memParser;
+             mem.sat=false;
+        } else {
+             mem.sat=true;
         }
-
-        // Parse the memory entry into a memoryType:
-        memoryType mem;
+        // Parse the memory entry into a memoryType, set some defaults first.
         mem.frequency.Hz=0;
+        mem.frequencyB.Hz=0;
         mem.duplexOffset.Hz=0;
-        int offset = 1;
+        mem.scan=0;
         /*
             // 16 is fixed 0x0;
             // 19 is fixed 0x0;
         */
         foreach (auto parse, memParser) {
-             QByteArray data = payloadIn.mid(offset+parse.pos,parse.len);
+             QByteArray data = payloadIn.mid(parse.pos+1,parse.len);
              switch (parse.spec)
              {
              case 'a':
                     mem.group = bcdHexToUChar(data[0]);
                     break;
              case 'b':
-                    mem.channel = bcdHexToUInt(data[0],data[1]);
+                    mem.channel = bcdHexToUChar(data[0],data[1]);
                     break;
              case 'c':
-                    mem.memory = data[0];
+                    mem.scan = data[0];
                     break;
              case 'd':
-                    mem.frequency = parseRawFrequency(data);
+                    if (mem.sat && (quint8)data[0] == 0xff) {
+                        // Abort parsing, empty memory
+                        mem.scan = 0xff;
+                        emit haveMemory(mem);
+                        return;
+                    }
+                    mem.frequency.Hz = parseFreqDataToInt(data);
+                    break;
+             case 'D':
+                    mem.frequencyB.Hz = parseFreqDataToInt(data);
                     break;
              case 'e':
                     mem.mode=(mode_kind)bcdHexToUChar(data[0]);
                     break;
+             case 'E':
+                    mem.modeB=(mode_kind)bcdHexToUChar(data[0]);
+                    break;
              case 'f':
                     mem.filter=data[0];
+                    break;
+             case 'F':
+                    mem.filterB=data[0];
                     break;
              case 'g': // single datamode
                     mem.datamode=data[0];
                     break;
+             case 'G': // single datamode
+                    mem.datamodeB=data[0];
+                    break;
              case 'h': // combined duplex and tonemode
                     mem.duplex=duplexMode(data[0] >> 4 & 0x0f);
                     mem.tonemode=data[0] & 0x0f;
+                    break;
              case 'i': // combined datamode and tonemode
                     mem.datamode=(data[0] >> 4 & 0x0f);
                     mem.tonemode=data[0] & 0x0f;
                     break;
-             case 'j':
-                    mem.dsql = (data[0] >> 4 & 0x0f);
+             case 'j': // tonemode
+                    mem.tonemode=data[0] & 0x0f;
+                    break;
+             case 'J': // tonemode
+                    mem.tonemodeB=data[0] & 0x0f;
                     break;
              case 'k':
-                    mem.tone = bcdHexToUInt(data[1],data[2]); // First byte is not used
+                    mem.dsql = (data[0] >> 4 & 0x0f);
+                    break;
+             case 'K':
+                    mem.dsqlB = (data[0] >> 4 & 0x0f);
                     break;
              case 'l':
-                    mem.tsql = bcdHexToUInt(data[1],data[2]); // First byte is not used
+                    mem.tone = bcdHexToUInt(data[1],data[2]); // First byte is not used
+                    break;
+             case 'L':
+                    mem.toneB = bcdHexToUInt(data[1],data[2]); // First byte is not used
                     break;
              case 'm':
-                    mem.dtcsp = data[0];
+                    mem.tsql = bcdHexToUInt(data[1],data[2]); // First byte is not used
+                    break;
+             case 'M':
+                    mem.tsqlB = bcdHexToUInt(data[1],data[2]); // First byte is not used
                     break;
              case 'n':
-                    mem.dtcs = bcdHexToUInt(data[0],data[1]);
+                    mem.dtcsp = ((data[0] >> 3 & 0x02) | (data[0] & 0x01));
+                    break;
+             case 'N':
+                    mem.dtcspB = ((data[0] >> 3 & 0x10) | (data[0] & 0x01));
                     break;
              case 'o':
-                    mem.dvsql = bcdHexToUChar(data[0]);
+                    mem.dtcs = bcdHexToUInt(data[0],data[1]);
+                    break;
+             case 'O':
+                    mem.dtcsB = bcdHexToUInt(data[0],data[1]);
                     break;
              case 'p':
-                    mem.duplexOffset = parseRawFrequency(data);
+                    mem.dvsql = bcdHexToUInt(data[0],data[1]);
+                    break;
+             case 'P':
+                    mem.dvsqlB = bcdHexToUInt(data[0],data[1]);
                     break;
              case 'q':
-                    memcpy(mem.UR,data,sizeof(mem.UR));
+                    mem.duplexOffset.Hz = parseFreqDataToInt(data);
                     break;
              case 'r':
-                    memcpy(mem.R1,data,sizeof(mem.R1));
+                    memcpy(mem.UR,data,sizeof(mem.UR));
+                    break;
+             case 'R':
+                    memcpy(mem.URB,data,sizeof(mem.UR));
                     break;
              case 's':
-                    memcpy(mem.R2,data,sizeof(mem.R2));
+                    memcpy(mem.R1,data,sizeof(mem.R1));
+                    break;
+             case 'S':
+                    memcpy(mem.R1B,data,sizeof(mem.R1));
                     break;
              case 't':
-                    memcpy(mem.name,data,sizeof(mem.name));
+                    memcpy(mem.R2,data,sizeof(mem.R2));
+                    break;
+             case 'T':
+                    memcpy(mem.R2B,data,sizeof(mem.R2));
                     break;
              case 'u':
-                    break;
-             case 'v':
-                    break;
-             case 'w':
-                    break;
-             case 'x':
-                    break;
-             case 'y':
-                    break;
-             case 'z':
+                    memcpy(mem.name,data,sizeof(mem.name));
                     break;
              default:
+                    qInfo() << "Parser didn't match!";
                     break;
              }
         }
-
         emit haveMemory(mem);
     }
     case funcMemoryClear:
@@ -4365,6 +4466,7 @@ void rigCommander::determineRigCaps()
     rigCaps.filters.clear();
     rigCaps.steps.clear();
     rigCaps.memParser.clear();
+    rigCaps.satParser.clear();
 
     // modelID should already be set!
     while (!rigList.contains(rigCaps.modelID))
@@ -4408,6 +4510,7 @@ void rigCommander::determineRigCaps()
     rigCaps.memGroups = settings->value("MemGroups",0).toUInt();
     rigCaps.memories = settings->value("Memories",0).toUInt();
     rigCaps.memFormat = settings->value("MemFormat","").toString();
+    rigCaps.satMemories = settings->value("SatMemories",0).toUInt();
     rigCaps.satFormat = settings->value("SatFormat","").toString();
 
     // Temporary QList to hold the function string lookup // I would still like to find a better way of doing this!
@@ -4571,7 +4674,7 @@ void rigCommander::determineRigCaps()
 
 
     // Setup memory formats.
-    static QRegularExpression memFmtEx("%(?<flags>[-+#0])?(?<pos>\\d+|\\*)?(?:\\.(?<width>\\d+|\\*))?(?<spec>[abcdefghijklmnopqrstuvwxyz])");
+    static QRegularExpression memFmtEx("%(?<flags>[-+#0])?(?<pos>\\d+|\\*)?(?:\\.(?<width>\\d+|\\*))?(?<spec>[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ])");
     QRegularExpressionMatchIterator i = memFmtEx.globalMatch(rigCaps.memFormat);
     while (i.hasNext()) {
         QRegularExpressionMatch qmatch = i.next();
@@ -4584,13 +4687,18 @@ void rigCommander::determineRigCaps()
 #if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
     }
 #endif
+
     QRegularExpressionMatchIterator i2 = memFmtEx.globalMatch(rigCaps.satFormat);
 
     while (i2.hasNext()) {
         QRegularExpressionMatch qmatch = i2.next();
+#if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
         if (qmatch.hasCaptured("spec") && qmatch.hasCaptured("pos") && qmatch.hasCaptured("width")) {
+#endif
             rigCaps.satParser.append(memParserFormat(qmatch.captured("spec").at(0).toLatin1(),qmatch.captured("pos").toInt(),qmatch.captured("width").toInt()));
+#if (QT_VERSION >= QT_VERSION_CHECK(6,0,0))
         }
+#endif
     }
 
 
@@ -5869,22 +5977,19 @@ freqt rigCommander::parseFrequency(QByteArray data, unsigned char lastPosition)
 }
 
 
-freqt rigCommander::parseRawFrequency(QByteArray data)
+quint64 rigCommander::parseFreqDataToInt(QByteArray data)
 {
-    // Allow raw frequency data to be parsed with no bells and whistles (for memory use)
-    freqt freqs;
-    freqs.MHzDouble = 0;
-    freqs.VFO=selVFO_t::activeVFO;
-    freqs.Hz = 0;
+    // Allow raw data to be parsed. Use a lookup table (pow10) for speed
+    // Should support VERY large or VERY small numbers!
+    quint64 val=0;
 
     for (int i=0;i<data.size()*2;i=i+2)
     {
-        freqs.Hz += (data[i/2] & 0x0f) * pow10[i];
-        freqs.Hz += ((data[i/2] & 0xf0) >> 4) * (pow10[i+1]);
+        val += (data[i/2] & 0x0f) * pow10[i];
+        val += ((data[i/2] & 0xf0) >> 4) * (pow10[i+1]);
     }
 
-    freqs.MHzDouble = (double)(freqs.Hz / 1000000.0);
-    return freqs;
+    return val;
 }
 
 

@@ -158,9 +158,11 @@ signals:
     void getRptDuplexOffset();
     void setMemory(memoryType mem);
     void getMemory(quint32 mem);
+    void getSatMemory(quint32 mem);
     void recallMemory(quint32 mem);
     void clearMemory(quint32 mem);
     void setMemoryMode();
+    void setSatelliteMode(bool en);
 
     // Level get:
     void getLevels(); // get all levels

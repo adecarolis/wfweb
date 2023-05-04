@@ -167,6 +167,7 @@ public slots:
     void getRptDuplexOffset();
     void setMemoryMode();
     void getMemory(quint32 mem);
+    void getSatMemory(quint32 mem);
     void setMemory(memoryType mem);
     void clearMemory(quint32 mem);
     void recallMemory(quint32 mem);
@@ -416,7 +417,7 @@ private:
     QByteArray bcdEncodeInt(unsigned int);
     void parseFrequency();
     freqt parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
-    freqt parseRawFrequency(QByteArray data); // supply index where Mhz is found
+    quint64 parseFreqDataToInt(QByteArray data);
     freqt parseFrequencyRptOffset(QByteArray data);
     QByteArray makeFreqPayloadRptOffset(freqt freq);
     QByteArray makeFreqPayload(double frequency);

@@ -505,7 +505,9 @@ void wfmain::rigConnections()
 
     // Memories
     connect(this, SIGNAL(setMemoryMode()), rig, SLOT(setMemoryMode()));
+    connect(this, SIGNAL(setSatelliteMode(bool)), rig, SLOT(setSatelliteMode(bool)));
     connect(this, SIGNAL(getMemory(quint32)), rig, SLOT(getMemory(quint32)));
+    connect(this, SIGNAL(getSatMemory(quint32)), rig, SLOT(getSatMemory(quint32)));
     connect(this, SIGNAL(setMemory(memoryType)), rig, SLOT(setMemory(memoryType)));
     connect(this, SIGNAL(clearMemory(quint32)), rig, SLOT(clearMemory(quint32)));
     connect(this, SIGNAL(recallMemory(quint32)), rig, SLOT(recallMemory(quint32)));
@@ -4270,6 +4272,12 @@ void wfmain::doCmd(commandtype cmddata)
             emit setMemory(mem);
             break;
         }
+        case cmdGetSatMemory:
+        {
+            quint32 mem = (*std::static_pointer_cast<quint32>(data));
+            emit getSatMemory(mem);
+            break;
+        }
         case cmdGetMemory:
         {
             quint32 mem = (*std::static_pointer_cast<quint32>(data));
@@ -4286,6 +4294,12 @@ void wfmain::doCmd(commandtype cmddata)
         {
             quint32 mem = (*std::static_pointer_cast<quint32>(data));
             emit recallMemory(mem);
+            break;
+        }
+        case cmdSetSatelliteMode:
+        {
+            bool en = (*std::static_pointer_cast<bool>(data));
+            emit setSatelliteMode(en);
             break;
         }
         default:
@@ -9795,6 +9809,9 @@ void wfmain::on_memoriesBtn_clicked()
             this->memWindow->connect(this->memWindow, &memories::getMemory, rig,
                                      [=](const quint32 &mem) { issueCmd(cmdGetMemory, mem);});
 
+            this->memWindow->connect(this->memWindow, &memories::getSatMemory, rig,
+                                     [=](const quint32 &mem) { issueCmd(cmdGetSatMemory, mem);});
+
             this->memWindow->connect(this->memWindow, &memories::setMemory, rig,
                                      [=](const memoryType &mem) { issueCmd(cmdSetMemory, mem);});
 
@@ -9812,6 +9829,20 @@ void wfmain::on_memoriesBtn_clicked()
                                      [=]() { issueCmd(cmdSelVFO, vfo_t::vfoA);
                                              insertSlowPeriodicCommand(cmdGetFreqB, 128);});
 
+            this->memWindow->connect(this->memWindow, &memories::setSatelliteMode, rig,
+                                     [=](const bool &en) {
+                                         issueCmd(cmdSetSatelliteMode, en);
+                                         if (en) {
+                                             removeSlowPeriodicCommand(cmdGetMode);
+                                             removeSlowPeriodicCommand(cmdGetFreq);
+                                            removeSlowPeriodicCommand(cmdGetFreqB);
+                                         } else {
+                                            insertSlowPeriodicCommand(cmdGetMode,128);
+                                            insertSlowPeriodicCommand(cmdGetFreq,128);
+                                            insertSlowPeriodicCommand(cmdGetFreqB,128);
+                                         }
+                                     });
+
 
             memWindow->populate(); // Call populate to get the initial memories
         }
@@ -9827,9 +9858,7 @@ void wfmain::on_memoriesBtn_clicked()
 
 void wfmain::receiveMemory(memoryType mem)
 {
-    if (mem.memory < 4)
-        qInfo(logRig()) << "Received memory" << mem.channel << "Setting"  << mem.memory << "Name" << mem.name << "Freq" << mem.frequency.Hz << "Mode" << mem.mode;
-
+    Q_UNUSED(mem)
 }
 
 void wfmain::on_rigCreatorBtn_clicked()

@@ -176,7 +176,7 @@ enum cmds {
     cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW, cmdGetDashRatio, cmdSetDashRatio,
     cmdSetTime, cmdSetDate, cmdSetUTCOffset,
     cmdGetTransceive, cmdSetTransceive,cmdGetPower,cmdSetPower,
-    cmdGetMemory, cmdSetMemory, cmdClearMemory,cmdRecallMemory, cmdSetVFOMode, cmdSetMemoryMode,
+    cmdGetMemory, cmdGetSatMemory, cmdSetMemory, cmdClearMemory,cmdRecallMemory, cmdSetVFOMode, cmdSetMemoryMode, cmdSetSatelliteMode,
     // Below Only used for USB Controller at the moment.
     cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown, cmdSetStepUp, cmdSetStepDown,
     cmdSetSpanUp, cmdSetSpanDown, cmdIFFilterUp, cmdIFFilterDown, cmdPageDown, cmdPageUp,
@@ -306,24 +306,40 @@ struct memoryType{
     quint16 group=0;
     quint16 channel=0;
     bool split=false;
-    quint8 memory=0;
+    quint8 scan=0;
     freqt frequency;
+    freqt frequencyB;
     mode_kind mode=mode_kind::modeLSB;
+    mode_kind modeB=mode_kind::modeLSB;
     quint8 filter=0;
+    quint8 filterB=0;
     quint8 datamode=0;
+    quint8 datamodeB=0;
     quint8 duplex=0;
     quint8 tonemode;
+    quint8 tonemodeB;
     quint16 tone=670;
+    quint16 toneB=670;
     quint16 tsql=670;
+    quint16 tsqlB=670;
     quint8 dsql=0;
+    quint8 dsqlB=0;
     int dtcs=0;
+    int dtcsB=0;
     quint8 dtcsp=0;
+    quint8 dtcspB=0;
     quint8 dvsql=0;
+    quint8 dvsqlB=0;
     freqt duplexOffset;
     char UR[9];
+    char URB[9];
     char R1[9];
     char R2[9];
-    char name[17]; // 1 more than the absolute max
+    char R1B[9];
+    char R2B[9];
+    char name[24]; // 1 more than the absolute max
+    bool sat=false;
+
 };
 
 

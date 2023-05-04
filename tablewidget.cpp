@@ -97,7 +97,7 @@ void tableCombobox::setEditorData(QWidget *editor, const QModelIndex &index) con
     Q_UNUSED(editor)
     combo->blockSignals(true);
     QString text = index.model()->data( index, Qt::DisplayRole ).toString();
-    combo->setCurrentIndex(combo->findText(text));
+    combo->setCurrentIndex(combo->findText(text,Qt::MatchFixedString));
     combo->blockSignals(false);
 }
 

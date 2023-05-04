@@ -110,6 +110,7 @@ void rigCreator::loadRigFile(QString file)
     ui->memGroups->setText(settings->value("MemGroups","0").toString());
     ui->memories->setText(settings->value("Memories","0").toString());
     ui->memoryFormat->setText(settings->value("MemFormat","").toString());
+    ui->satMemories->setText(settings->value("SatMemories","0").toString());
     ui->satelliteFormat->setText(settings->value("SatFormat","").toString());
 
     ui->commands->setRowCount(0);
@@ -346,6 +347,7 @@ void rigCreator::saveRigFile(QString file)
     settings->setValue("MemGroups",ui->memGroups->text().toInt());
     settings->setValue("Memories",ui->memories->text().toInt());
     settings->setValue("MemFormat",ui->memoryFormat->text());
+    settings->setValue("SatMemories",ui->satMemories->text().toInt());
     settings->setValue("SatFormat",ui->satelliteFormat->text());
 
 

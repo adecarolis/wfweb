@@ -230,7 +230,7 @@
      <x>370</x>
      <y>220</y>
      <width>61</width>
-     <height>161</height>
+     <height>171</height>
     </rect>
    </property>
    <property name="title">
@@ -242,7 +242,7 @@
       <x>0</x>
       <y>30</y>
       <width>61</width>
-      <height>131</height>
+      <height>141</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -288,7 +288,7 @@
      <x>10</x>
      <y>50</y>
      <width>151</width>
-     <height>161</height>
+     <height>171</height>
     </rect>
    </property>
    <property name="title">
@@ -300,7 +300,7 @@
       <x>0</x>
       <y>30</y>
       <width>151</width>
-      <height>131</height>
+      <height>141</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -423,7 +423,7 @@
      <x>10</x>
      <y>220</y>
      <width>351</width>
-     <height>161</height>
+     <height>171</height>
     </rect>
    </property>
    <property name="title">
@@ -435,7 +435,7 @@
       <x>0</x>
       <y>30</y>
       <width>351</width>
-      <height>131</height>
+      <height>141</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -512,7 +512,7 @@
      <x>170</x>
      <y>50</y>
      <width>261</width>
-     <height>161</height>
+     <height>171</height>
     </rect>
    </property>
    <property name="title">
@@ -524,7 +524,7 @@
       <x>0</x>
       <y>30</y>
       <width>261</width>
-      <height>131</height>
+      <height>141</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -820,9 +820,9 @@
    <property name="geometry">
     <rect>
      <x>570</x>
-     <y>290</y>
+     <y>280</y>
      <width>191</width>
-     <height>251</height>
+     <height>261</height>
     </rect>
    </property>
    <property name="title">
@@ -834,7 +834,7 @@
       <x>0</x>
       <y>30</y>
       <width>191</width>
-      <height>221</height>
+      <height>231</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -959,9 +959,9 @@
    <property name="geometry">
     <rect>
      <x>770</x>
-     <y>340</y>
+     <y>330</y>
      <width>191</width>
-     <height>201</height>
+     <height>211</height>
     </rect>
    </property>
    <property name="title">
@@ -973,7 +973,7 @@
       <x>0</x>
       <y>30</y>
       <width>191</width>
-      <height>171</height>
+      <height>181</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -1030,9 +1030,9 @@
    <property name="geometry">
     <rect>
      <x>440</x>
-     <y>290</y>
+     <y>280</y>
      <width>120</width>
-     <height>91</height>
+     <height>111</height>
     </rect>
    </property>
    <property name="title">
@@ -1042,16 +1042,16 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>31</y>
-      <width>108</width>
-      <height>52</height>
+      <y>32</y>
+      <width>101</width>
+      <height>80</height>
      </rect>
     </property>
     <layout class="QFormLayout" name="formLayout">
      <item row="0" column="0">
       <widget class="QLabel" name="label_8">
        <property name="text">
-        <string>Groups</string>
+        <string>Grp</string>
        </property>
       </widget>
      </item>
@@ -1073,6 +1073,16 @@
       <widget class="QLineEdit" name="memories">
        <property name="inputMask">
         <string>999</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLineEdit" name="satMemories"/>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_12">
+       <property name="text">
+        <string>Sat</string>
        </property>
       </widget>
      </item>
