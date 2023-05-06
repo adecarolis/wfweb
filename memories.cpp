@@ -14,46 +14,15 @@ memories::memories(rigCapabilities rigCaps, QWidget *parent) :
     QStringList headers;
 
     /*
-       columnRecall=0,
-        columnNum,
-        columnScan,
-        columnName,
-        columnVFO,
-        columnFrequency,
-        columnMode,
-        columnFilter,
-        columnData,
-        columnDuplex,
-        columnToneMode,
-        columnDSQL,
-        columnTone,
-        columnTSQL,
-        columnDTCS,
-        columnDTCSPolarity,
-        columnOffset,
-        columnUR,
-        columnR1,
-        columnR2,
-        columnFrequencyB,
-        columnModeB,
-        columnFilterB,
-        columnDataB,
-        columnToneModeB,
-        columnDSQLB,
-        columnToneB,
-        columnTSQLB,
-        columnDTCSPolarityB,
-        columnDTCSB,
-        columnDVSquelchB,
-        columnURB,
-        columnR1B,
-        columnR2B,
 
+        columnRecall=0, columnNum,columnSplit,columnScan,columnFrequency,columnMode,columnFilter,columnData,columnDuplex,columnToneMode,columnDSQL,columnTone,columnTSQL,columnDTCS,
+        columnDTCSPolarity,columnDVSquelch,columnOffset,columnUR,columnR1,columnR2,columnFrequencyB,columnModeB,columnFilterB,columnDataB,columnDuplexB,columnToneModeB, columnDSQLB
+        columnToneB,columnTSQLB,columnDTCSB,columnDTCSPolarityB,columnDVSquelchB,columnOffsetB,columnURB,columnR1B,columnR2B,columnName,
      */
 
-    headers << "" << "Num" << "Scan" << "Name" << "VFO" << "Freq" << "Mode" << "Data" << "Filter" << "Duplex" << "Tn Mode" << "Tone" << "TSQL" <<
-        "DTCS" << "DTCS Pol" << "DSQL" << "DV Sql" << "Offset" << "UR" << "R1" << "R2" << "Freq B" << "Mode B"  << "Data B" << "Filter B" <<
-        "Tn Mode B" << "Tone B" << "TSQL B" << "DTCSP B" << "DTCS B" << "DSQL B" << "DV Sql B" << "UR B" << "R1 B" << "R2 B";
+    headers << "" << "Num" << "Name" << "Split" << "Scan" << "Freq" << "Mode" << "Filter" << "Data" <<"Duplex" << "Tn Mode" << "DSQL" << "Tone" << "TSQL" <<
+        "DTCS" << "DTCS Pol" << "DV Sql" << "Offset" << "UR" << "R1" << "R2" << "Freq B" << "Mode B" << "Filter B" << "Data B" << "Duplex B" <<
+        "Tn Mode B" << "DSQL B" << "Tone B" << "TSQL B" << "DTCS B" << "DTCSP B" << "DV Sql B" << "Offset B" << "UR B" << "R1 B" << "R2 B";
 
     ui->table->setHorizontalHeaderLabels(headers);
 
@@ -61,19 +30,23 @@ memories::memories(rigCapabilities rigCaps, QWidget *parent) :
     ui->group->hide();
     ui->vfoMode->hide();
     ui->memoryMode->hide();
+    ui->loadingMemories->setVisible(false);
+    ui->loadingMemories->setStyleSheet("QLabel {color: #ff0000}");
 
     ui->group->blockSignals(true);
-    for (int i=1;i<=rigCaps.memGroups;i++) {
+    for (int i=rigCaps.memStart;i<=rigCaps.memGroups;i++) {
 
         ui->group->addItem(QString("Group %0").arg(i,2,10,QChar('0')),i);
     }
-    if (rigCaps.commands.contains(funcSatelliteMode)){
+    if (rigCaps.satMemories && rigCaps.commands.contains(funcSatelliteMode)){
         ui->group->addItem("Satellite",200);
     }
     ui->group->setCurrentIndex(-1);
     ui->group->blockSignals(false);
 
+
     scan = QStringList({"OFF","*1","*2","*3"});
+    split = QStringList({"OFF","ON"});
 
     dataModes = QStringList({"OFF","DATA1"});
     if (rigCaps.commands.contains(funcDATA2Mod))
@@ -110,112 +83,6 @@ memories::memories(rigCapabilities rigCaps, QWidget *parent) :
         modes.append(mode.name);
     }
 
-    numEditor = new tableEditor(QRegularExpression("[0-9]{0,3}"),ui->table);
-    ui->table->setItemDelegateForColumn(columnNum, numEditor);
-
-    if (rigCaps.memGroups>1)
-        nameEditor = new tableEditor(QRegularExpression("[0-9A-Za-z\\/\\ ]{0,16}$"),ui->table);
-    else
-        nameEditor = new tableEditor(QRegularExpression("[0-9A-Za-z\\/\\ ]{0,10}$"),ui->table);
-
-    ui->table->setItemDelegateForColumn(columnName, nameEditor);
-
-    scanList = new tableCombobox(createModel(scanModel, scan),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnScan, scanList);
-
-    vfoList = new tableCombobox(createModel(vfoModel, VFO),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnVFO, vfoList);
-
-    freqEditor = new tableEditor(QRegularExpression("[0-9.]{0,10}"),ui->table);
-    ui->table->setItemDelegateForColumn(columnFrequency, freqEditor);
-
-    freqEditorB = new tableEditor(QRegularExpression("[0-9.]{0,10}"),ui->table);
-    ui->table->setItemDelegateForColumn(columnFrequencyB, freqEditorB);
-
-    modesList = new tableCombobox(createModel(modesModel, modes),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnMode, modesList);
-
-    modesListB = new tableCombobox(createModel(modesModelB, modes),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnModeB, modesListB);
-
-    dataList = new tableCombobox(createModel(dataModel, dataModes),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnData, dataList);
-
-    dataListB = new tableCombobox(createModel(dataModelB, dataModes),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnDataB, dataListB);
-
-    filterList = new tableCombobox(createModel(filterModel, filters),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnFilter, filterList);
-
-    filterListB = new tableCombobox(createModel(filterModelB, filters),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnFilterB, filterListB);
-
-    duplexList = new tableCombobox(createModel(duplexModel, duplexModes),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnDuplex, duplexList);
-
-    toneModesList = new tableCombobox(createModel(toneModesModel, toneModes),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnToneMode, toneModesList);
-
-    toneModesListB = new tableCombobox(createModel(toneModesModelB, toneModes),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnToneModeB, toneModesListB);
-
-    tonesList = new tableCombobox(createModel(tonesModel, tones),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnTone, tonesList);
-
-    tonesListB = new tableCombobox(createModel(tonesModelB, tones),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnToneB, tonesListB);
-
-    tsqlList = new tableCombobox(createModel(tsqlModel, tones),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnTSQL, tsqlList);
-
-    tsqlListB = new tableCombobox(createModel(tsqlModelB, tones),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnTSQLB, tsqlListB);
-
-    dsqlList = new tableCombobox(createModel(dsqlModel, dsql),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnDSQL, dsqlList);
-
-    dsqlListB = new tableCombobox(createModel(dsqlModelB, dsql),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnDSQLB, dsqlListB);
-
-    dtcspList = new tableCombobox(createModel(dtcspModel, dtcsp),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnDTCSPolarity, dtcspList);
-
-    dtcsList = new tableCombobox(createModel(dtcsModel, dtcs),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnDTCS, dtcsList);
-
-    dtcspListB = new tableCombobox(createModel(dtcspModelB, dtcsp),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnDTCSPolarityB, dtcspListB);
-
-    dtcsListB = new tableCombobox(createModel(dtcsModel, dtcs),false,ui->table);
-    ui->table->setItemDelegateForColumn(columnDTCSB, dtcsList);
-
-    offsetEditor = new tableEditor(QRegularExpression("[0-9]{0,7}"),ui->table);
-    ui->table->setItemDelegateForColumn(columnOffset, offsetEditor);
-
-    dvsqlEditor = new tableEditor(QRegularExpression("[0-9]{0,2}"),ui->table);
-    ui->table->setItemDelegateForColumn(columnDVSquelch, dvsqlEditor);
-
-    dvsqlEditorB = new tableEditor(QRegularExpression("[0-9]{0,2}"),ui->table);
-    ui->table->setItemDelegateForColumn(columnDVSquelchB, dvsqlEditorB);
-
-    urEditor = new tableEditor(QRegularExpression("[0-9A-Z\\/\\ ]{0,8}$"),ui->table);
-    ui->table->setItemDelegateForColumn(columnUR, urEditor);
-
-    urEditorB = new tableEditor(QRegularExpression("[0-9A-Z\\/\\ ]{0,8}$"),ui->table);
-    ui->table->setItemDelegateForColumn(columnURB, urEditorB);
-
-    r1Editor = new tableEditor(QRegularExpression("[0-9A-Z\\/\\ ]{0,8}$"),ui->table);
-    ui->table->setItemDelegateForColumn(columnR1, r1Editor);
-
-    r1EditorB = new tableEditor(QRegularExpression("[0-9A-Z\\/\\ ]{0,8}$"),ui->table);
-    ui->table->setItemDelegateForColumn(columnR1B, r1EditorB);
-
-    r2Editor = new tableEditor(QRegularExpression("[0-9A-Z\\/\\ ]{0,8}$"),ui->table);
-    ui->table->setItemDelegateForColumn(columnR2, r2Editor);
-
-    r2EditorB = new tableEditor(QRegularExpression("[0-9A-Z\\/\\ ]{0,8}$"),ui->table);
-    ui->table->setItemDelegateForColumn(columnR2B, r2EditorB);
-
     connect(ui->table,SIGNAL(rowAdded(int)),this,SLOT(rowAdded(int)));
     connect(ui->table,SIGNAL(rowDeleted(quint32)),this,SLOT(rowDeleted(quint32)));
     connect(&timeoutTimer, SIGNAL(timeout()), this, SLOT(timeout()));
@@ -239,16 +106,15 @@ memories::~memories()
 void memories::rowAdded(int row)
 {
     // Find the next available memory number:
-    qInfo() << "Row Added" << row;
 
-    quint32 num=1;
+    quint32 num=rigCaps.memStart;
 
-    /* This feels unnecessarily complicated, but here we:
+    /* This feels unnecessarily complicated, but here we are:
         * Set the memory number to 1
         * create a vector of all current memory numbers (ignoring any that are NULL)
         * If empty use 1 as the memory number
         * if not, sort it into numerical order
-        * check if there is a gap (use that if there is)
+        * check if there is a gap using adjacent_find iterator (use that if there is)
         * If not, go back to previous, check we haven't exceeded the total allowed and if not add 1 to previous
         * If no empty memories available, log a warning and quit
     */
@@ -286,12 +152,13 @@ void memories::rowAdded(int row)
     QPushButton* recall = new QPushButton("Recall");
     ui->table->setCellWidget(row,columnRecall,recall);
     connect(recall, &QPushButton::clicked, this,
-            [=]() { qInfo() << "Recalling" << num; emit recallMemory(num);});
+            [=]() { qInfo() << "Recalling" << num; emit recallMemory((quint32((ui->group->currentData().toUInt() << 16) | num)));});
     ui->table->model()->setData(ui->table->model()->index(row,columnNum),QString::number(num).rightJustified(3,'0'));
     // Set default values (where possible) for all other values:
+    if (ui->table->item(row,columnSplit) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnSplit),split[0]);
     if (ui->table->item(row,columnScan) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnScan),scan[0]);
-    if (ui->table->item(row,columnVFO) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnVFO),VFO[0]);
     if (ui->table->item(row,columnData) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnData),dataModes[0]);
+    if (ui->table->item(row,columnFilter) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnFilter),filters[0]);
     if (ui->table->item(row,columnDuplex) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDuplex),duplexModes[0]);
     if (ui->table->item(row,columnToneMode) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnToneMode),toneModes[0]);
     if (ui->table->item(row,columnDSQL) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDSQL),dsql[0]);
@@ -300,24 +167,28 @@ void memories::rowAdded(int row)
     if (ui->table->item(row,columnDTCSPolarity) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDTCSPolarity),dtcsp[0]);
     if (ui->table->item(row,columnDTCS) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDTCS),dtcs[0]);
     if (ui->table->item(row,columnDVSquelch) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDVSquelch),"00");
-    if (ui->table->item(row,columnOffset) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnOffset),"0");
-    if (ui->table->item(row,columnUR) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnUR),"        ");
+    if (ui->table->item(row,columnOffset) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnOffset),"0.000");
+    if (ui->table->item(row,columnUR) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnUR),"CQCQCQ  ");
     if (ui->table->item(row,columnR1) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnR1),"        ");
     if (ui->table->item(row,columnR2) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnR2),"        ");
     if (ui->table->item(row,columnDataB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDataB),dataModes[0]);
+    if (ui->table->item(row,columnFilterB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnFilterB),filters[0]);
     if (ui->table->item(row,columnToneModeB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnToneModeB),toneModes[0]);
+    if (ui->table->item(row,columnDSQLB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDSQLB),dsql[0]);
     if (ui->table->item(row,columnToneB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnToneB),tones[0]);
     if (ui->table->item(row,columnTSQLB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnTSQLB),tones[0]);
     if (ui->table->item(row,columnDTCSPolarityB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDTCSPolarityB),dtcsp[0]);
     if (ui->table->item(row,columnDTCSB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDTCSB),dtcs[0]);
     if (ui->table->item(row,columnDVSquelchB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDVSquelchB),"00");
-    if (ui->table->item(row,columnURB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnURB),"        ");
+    if (ui->table->item(row,columnOffsetB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnOffsetB),"0.000");
+    if (ui->table->item(row,columnDuplexB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDuplexB),duplexModes[0]);
+    if (ui->table->item(row,columnURB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnURB),"CQCQCQ  ");
     if (ui->table->item(row,columnR1B) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnR1B),"        ");
     if (ui->table->item(row,columnR2B) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnR2B),"        ");
-
     ui->table->item(row,columnNum)->setFlags(ui->table->item(row,columnNum)->flags() | Qt::ItemIsEditable);
-
     ui->table->blockSignals(false);
+
+    on_table_cellChanged(row,columnNum); // Force an attempt to store this row.
 }
 
 void memories::rowDeleted(quint32 mem)
@@ -325,7 +196,7 @@ void memories::rowDeleted(quint32 mem)
 {
     if (mem && mem <= rigCaps.memories) {
         qInfo() << "Mem Deleted" << mem;
-        emit clearMemory(mem);
+        emit clearMemory((quint32((ui->group->currentData().toInt() << 16) | mem)));
     }
 }
 
@@ -353,6 +224,54 @@ void memories::on_table_cellChanged(int row, int col)
         currentMemory->sat=true;
     }
 
+    ui->table->blockSignals(true);
+
+    switch (col)
+    {
+    case columnFrequency:
+        if (ui->table->item(row,columnFrequencyB) == NULL)
+            ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),ui->table->item(row,columnFrequency)->text());
+        break;
+    case columnFrequencyB:
+        if (ui->table->item(row,columnFrequency) == NULL)
+            ui->table->model()->setData(ui->table->model()->index(row,columnFrequency),ui->table->item(row,columnFrequencyB)->text());
+        break;
+    case columnMode:
+        if (ui->table->item(row,columnModeB) == NULL)
+            ui->table->model()->setData(ui->table->model()->index(row,columnModeB),ui->table->item(row,columnMode)->text());
+        break;
+    case columnModeB:
+        if (ui->table->item(row,columnMode) == NULL)
+            ui->table->model()->setData(ui->table->model()->index(row,columnMode),ui->table->item(row,columnModeB)->text());
+        break;
+    case columnDuplex:
+        ui->table->model()->setData(ui->table->model()->index(row,columnDuplexB),ui->table->item(row,columnDuplex)->text());
+        break;
+    case columnDuplexB:
+        ui->table->model()->setData(ui->table->model()->index(row,columnDuplex),ui->table->item(row,columnDuplexB)->text());
+        break;
+//    case columnOffset:
+//        ui->table->model()->setData(ui->table->model()->index(row,columnOffsetB),ui->table->item(row,columnOffset)->text());
+//        break;
+//    case columnOffsetB:
+//        ui->table->model()->setData(ui->table->model()->index(row,columnOffset),ui->table->item(row,columnOffsetB)->text());
+//        break;
+    default:
+        break;
+    }
+
+    ui->table->blockSignals(false);
+
+    // The table shouldn't be updated below
+
+    for (quint8 f=0;f<split.size();f++)
+    {
+        if ((ui->table->item(row,columnSplit) == NULL) ? false : ui->table->item(row,columnSplit)->text().toUpper()==split[f].toUpper()) {
+            currentMemory->split=f;
+            break;
+        }
+    }
+
     for (quint8 f=0;f<scan.size();f++)
     {
         if ((ui->table->item(row,columnScan) == NULL) ? false : ui->table->item(row,columnScan)->text().toUpper()==scan[f].toUpper()) {
@@ -360,15 +279,6 @@ void memories::on_table_cellChanged(int row, int col)
             break;
         }
     }
-
-    for (quint8 f=0;f<VFO.size();f++)
-    {
-        if ((ui->table->item(row,columnVFO) == NULL) ? false : ui->table->item(row,columnVFO)->text().toUpper()==VFO[f].toUpper()) {
-            currentMemory->frequency.VFO=(selVFO_t)f;
-            break;
-        }
-    }
-
     currentMemory->frequency.Hz = (ui->table->item(row,columnFrequency) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequency)->text().toDouble()*1000000.0);
     currentMemory->frequencyB.Hz = (ui->table->item(row,columnFrequencyB) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequencyB)->text().toDouble()*1000000.0);
 
@@ -405,8 +315,11 @@ void memories::on_table_cellChanged(int row, int col)
     {
         if ((ui->table->item(row,columnDuplex) == NULL) ? false : ui->table->item(row,columnDuplex)->text()==duplexModes[f]) {
             currentMemory->duplex=f;
-            break;
         }
+        if ((ui->table->item(row,columnDuplexB) == NULL) ? false : ui->table->item(row,columnDuplexB)->text()==duplexModes[f]) {
+            currentMemory->duplexB=f;
+        }
+
     }
 
     for (quint8 f=0;f<toneModes.size();f++)
@@ -451,20 +364,25 @@ void memories::on_table_cellChanged(int row, int col)
     currentMemory->dvsql = (ui->table->item(row,columnDVSquelch) == NULL) ? 0 : int(ui->table->item(row,columnDVSquelch)->text().toUInt());
     currentMemory->dvsqlB = (ui->table->item(row,columnDVSquelchB) == NULL) ? 0 : int(ui->table->item(row,columnDVSquelchB)->text().toUInt());
 
-    currentMemory->duplexOffset.Hz = (ui->table->item(row,columnOffset) == NULL) ? 0 : int(ui->table->item(row,columnOffset)->text().toULongLong());
-    currentMemory->duplexOffset.MHzDouble=currentMemory->duplexOffset.Hz/1000000.0;
+    currentMemory->duplexOffset.MHzDouble = (ui->table->item(row,columnOffset) == NULL) ? 0.0 : ui->table->item(row,columnOffset)->text().toDouble();
+    currentMemory->duplexOffset.Hz=currentMemory->duplexOffset.MHzDouble*1000000.0;
     currentMemory->duplexOffset.VFO=selVFO_t::activeVFO;
 
-    memcpy(currentMemory->UR,((ui->table->item(row,columnUR) == NULL) ? "" : ui->table->item(row,columnUR)->text()).trimmed().toStdString().c_str(),8);
-    memcpy(currentMemory->URB,((ui->table->item(row,columnURB) == NULL) ? "" : ui->table->item(row,columnURB)->text()).trimmed().toStdString().c_str(),8);
+    currentMemory->duplexOffsetB.MHzDouble = (ui->table->item(row,columnOffsetB) == NULL) ? 0.0 : ui->table->item(row,columnOffsetB)->text().toDouble();
+    currentMemory->duplexOffsetB.Hz=currentMemory->duplexOffsetB.MHzDouble*1000000.0;
+    currentMemory->duplexOffsetB.VFO=selVFO_t::activeVFO;
 
-    memcpy(currentMemory->R1,((ui->table->item(row,columnR1) == NULL) ? "" : ui->table->item(row,columnR1)->text()).trimmed().toStdString().c_str(),8);
-    memcpy(currentMemory->R1B,((ui->table->item(row,columnR1B) == NULL) ? "" : ui->table->item(row,columnR1B)->text()).trimmed().toStdString().c_str(),8);
 
-    memcpy(currentMemory->R2,((ui->table->item(row,columnR2) == NULL) ? "" : ui->table->item(row,columnR2)->text()).trimmed().toStdString().c_str(),8);
-    memcpy(currentMemory->R2B,((ui->table->item(row,columnR2B) == NULL) ? "" : ui->table->item(row,columnR2B)->text()).trimmed().toStdString().c_str(),8);
+    memcpy(currentMemory->UR,((ui->table->item(row,columnUR) == NULL) ? "" : ui->table->item(row,columnUR)->text()).toStdString().c_str(),8);
+    memcpy(currentMemory->URB,((ui->table->item(row,columnURB) == NULL) ? "" : ui->table->item(row,columnURB)->text()).toStdString().c_str(),8);
 
-    memcpy(currentMemory->name,((ui->table->item(row,columnName) == NULL) ? "" : ui->table->item(row,columnName)->text()).trimmed().toStdString().c_str(),16);
+    memcpy(currentMemory->R1,((ui->table->item(row,columnR1) == NULL) ? "" : ui->table->item(row,columnR1)->text()).toStdString().c_str(),8);
+    memcpy(currentMemory->R1B,((ui->table->item(row,columnR1B) == NULL) ? "" : ui->table->item(row,columnR1B)->text()).toStdString().c_str(),8);
+
+    memcpy(currentMemory->R2,((ui->table->item(row,columnR2) == NULL) ? "" : ui->table->item(row,columnR2)->text()).toStdString().c_str(),8);
+    memcpy(currentMemory->R2B,((ui->table->item(row,columnR2B) == NULL) ? "" : ui->table->item(row,columnR2B)->text()).toStdString().c_str(),8);
+
+    memcpy(currentMemory->name,((ui->table->item(row,columnName) == NULL) ? "" : ui->table->item(row,columnName)->text()).toStdString().c_str(),16);
 
     // Only write the memory if ALL values are non-null
     bool write=true;
@@ -475,6 +393,7 @@ void memories::on_table_cellChanged(int row, int col)
     }
     if (write) {
         emit setMemory(*currentMemory);
+        qInfo() << "Sending memory, group:" << currentMemory->group << "channel" << currentMemory->channel;
         // Set number to not be editable once written. Not sure why but this crashes?
         //ui->table->item(row,columnNum)->setFlags(ui->table->item(row,columnNum)->flags() & (~Qt::ItemIsEditable));
     }
@@ -482,12 +401,16 @@ void memories::on_table_cellChanged(int row, int col)
 
 void memories::on_group_currentIndexChanged(int index)
 {
+    Q_UNUSED(index)
+
     timeoutTimer.start(MEMORY_TIMEOUT);
 
+    ui->loadingMemories->setVisible(true);
     ui->group->setEnabled(false);
     ui->table->blockSignals(true);
     ui->table->setRowCount(0);
     ui->table->blockSignals(false);
+
 
     // Hide all columns except recall
     for (int i=1;i<ui->table->columnCount();i++)
@@ -505,6 +428,8 @@ void memories::on_group_currentIndexChanged(int index)
         parser = rigCaps.memParser;
     }
 
+    int visibleRows=1;
+
     foreach (auto parse, parser) {
         switch (parse.spec)
         {
@@ -515,133 +440,414 @@ void memories::on_group_currentIndexChanged(int index)
             ui->memoryMode->show();
             break;
         case 'b':
+            if (numEditor != Q_NULLPTR)
+                delete numEditor;
+            numEditor = new tableEditor(QRegularExpression("[0-9]{0,3}"),ui->table);
+            ui->table->setItemDelegateForColumn(columnNum, numEditor);
             ui->table->showColumn(columnNum);
+            visibleRows++;
             break;
         case 'c':
+            if (scanList != Q_NULLPTR)
+                delete scanList;
+            scanList = new tableCombobox(createModel(scanModel, scan),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnScan, scanList);
+
             ui->table->showColumn(columnScan);
+            visibleRows++;
             break;
         case 'd':
+            if (freqEditor != Q_NULLPTR)
+                delete freqEditor;
+            freqEditor = new tableEditor(QRegularExpression("[0-9.]{0,10}"),ui->table);
+            ui->table->setItemDelegateForColumn(columnFrequency, freqEditor);
+
             ui->table->showColumn(columnFrequency);
+            visibleRows++;
             break;
         case 'D':
+            if (freqEditorB != Q_NULLPTR)
+                delete freqEditorB;
+            freqEditorB = new tableEditor(QRegularExpression("[0-9.]{0,10}"),ui->table);
+            ui->table->setItemDelegateForColumn(columnFrequencyB, freqEditorB);
+
             ui->table->showColumn(columnFrequencyB);
+            visibleRows++;
             break;
         case 'e':
+            if (modesList != Q_NULLPTR)
+                delete modesList;
+            modesList = new tableCombobox(createModel(modesModel, modes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnMode, modesList);
+
             ui->table->showColumn(columnMode);
+            visibleRows++;
             break;
         case 'E':
+            if (modesListB != Q_NULLPTR)
+                delete modesListB;
+            modesListB = new tableCombobox(createModel(modesModelB, modes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnModeB, modesListB);
+
             ui->table->showColumn(columnModeB);
+            visibleRows++;
             break;
         case 'f':
+            if (filterList != Q_NULLPTR)
+                delete filterList;
+            filterList = new tableCombobox(createModel(filterModel, filters),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnFilter, filterList);
+
             ui->table->showColumn(columnFilter);
+            visibleRows++;
             break;
         case 'F':
+            if (filterListB != Q_NULLPTR)
+                delete filterListB;
+            filterListB = new tableCombobox(createModel(filterModelB, filters),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnFilterB, filterListB);
+
             ui->table->showColumn(columnFilterB);
+            visibleRows++;
             break;
         case 'g':
+            if (dataList != Q_NULLPTR)
+                delete dataList;
+            dataList = new tableCombobox(createModel(dataModel, dataModes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnData, dataList);
+
             ui->table->showColumn(columnData);
+            visibleRows++;
             break;
         case 'G':
+            if (dataListB != Q_NULLPTR)
+                delete dataListB;
+            dataListB = new tableCombobox(createModel(dataModelB, dataModes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDataB, dataListB);
+
             ui->table->showColumn(columnDataB);
+            visibleRows++;
             break;
         case 'h':
+            if (duplexListB != Q_NULLPTR)
+                delete duplexListB;
+            duplexList = new tableCombobox(createModel(duplexModel, duplexModes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDuplex, duplexList);
+
+            if (toneModesList != Q_NULLPTR)
+                delete toneModesList;
+            toneModesList = new tableCombobox(createModel(toneModesModel, toneModes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnToneMode, toneModesList);
+
             ui->table->showColumn(columnDuplex);
             ui->table->showColumn(columnToneMode);
+            visibleRows++;
+            visibleRows++;
+            break;
+        case 'H':
+            if (duplexListB != Q_NULLPTR)
+                delete duplexListB;
+            duplexListB = new tableCombobox(createModel(duplexModelB, duplexModes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDuplexB, duplexListB);
+
+            if (toneModesListB != Q_NULLPTR)
+                delete toneModesListB;
+            toneModesListB = new tableCombobox(createModel(toneModesModelB, toneModes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnToneModeB, toneModesListB);
+
+            ui->table->showColumn(columnDuplexB);
+            ui->table->showColumn(columnToneModeB);
+            visibleRows++;
+            visibleRows++;
             break;
         case 'i':
+            if (dataList != Q_NULLPTR)
+                delete dataList;
+            dataList = new tableCombobox(createModel(dataModel, dataModes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnData, dataList);
+
+            if (toneModesList != Q_NULLPTR)
+                delete toneModesList;
+            toneModesList = new tableCombobox(createModel(toneModesModel, toneModes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnToneMode, toneModesList);
+
             ui->table->showColumn(columnData);
             ui->table->showColumn(columnToneMode);
+            visibleRows++;
+            visibleRows++;
+            break;
+        case 'I':
+            if (dataListB != Q_NULLPTR)
+                delete dataListB;
+            dataListB = new tableCombobox(createModel(dataModelB, dataModes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDataB, dataListB);
+
+            if (toneModesListB != Q_NULLPTR)
+                delete toneModesListB;
+            toneModesListB = new tableCombobox(createModel(toneModesModelB, toneModes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnToneModeB, toneModesListB);
+
+            ui->table->showColumn(columnDataB);
+            ui->table->showColumn(columnToneModeB);
+            visibleRows++;
+            visibleRows++;
             break;
         case 'j':
+            if (toneModesList != Q_NULLPTR)
+                delete toneModesList;
+            toneModesList = new tableCombobox(createModel(toneModesModel, toneModes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnToneMode, toneModesList);
+
             ui->table->showColumn(columnToneMode);
+            visibleRows++;
             break;
         case 'J':
+            if (toneModesListB != Q_NULLPTR)
+                delete toneModesListB;
+            toneModesListB = new tableCombobox(createModel(toneModesModelB, toneModes),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnToneModeB, toneModesListB);
+
             ui->table->showColumn(columnToneModeB);
+            visibleRows++;
             break;
         case 'k':
+            if (dsqlList != Q_NULLPTR)
+                delete dsqlList;
+            dsqlList = new tableCombobox(createModel(dsqlModel, dsql),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDSQL, dsqlList);
+
             ui->table->showColumn(columnDSQL);
+            visibleRows++;
             break;
         case 'K':
+            if (dsqlListB != Q_NULLPTR)
+                delete dsqlListB;
+            dsqlListB = new tableCombobox(createModel(dsqlModelB, dsql),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDSQLB, dsqlListB);
+
             ui->table->showColumn(columnDSQLB);
+            visibleRows++;
             break;
         case 'l':
+            if (tonesList != Q_NULLPTR)
+                delete tonesList;
+            tonesList = new tableCombobox(createModel(tonesModel, tones),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnTone, tonesList);
+
             ui->table->showColumn(columnTone);
+            visibleRows++;
             break;
         case 'L':
+            if (tonesListB != Q_NULLPTR)
+                delete tonesListB;
+            tonesListB = new tableCombobox(createModel(tonesModelB, tones),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnToneB, tonesListB);
+
             ui->table->showColumn(columnToneB);
+            visibleRows++;
             break;
         case 'm':
+            if (tsqlList != Q_NULLPTR)
+                delete tsqlList;
+            tsqlList = new tableCombobox(createModel(tsqlModel, tones),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnTSQL, tsqlList);
+
             ui->table->showColumn(columnTSQL);
+            visibleRows++;
             break;
         case 'M':
+            if (tsqlListB != Q_NULLPTR)
+                delete tsqlListB;
+            tsqlListB = new tableCombobox(createModel(tsqlModelB, tones),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnTSQLB, tsqlListB);
+
             ui->table->showColumn(columnTSQLB);
+            visibleRows++;
             break;
         case 'n':
+            if (dtcspList != Q_NULLPTR)
+                delete dtcspList;
+            dtcspList = new tableCombobox(createModel(dtcspModel, dtcsp),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDTCSPolarity, dtcspList);
+
             ui->table->showColumn(columnDTCSPolarity);
+            visibleRows++;
             break;
         case 'N':
+            if (dtcspListB != Q_NULLPTR)
+                delete dtcspListB;
+            dtcspListB = new tableCombobox(createModel(dtcspModelB, dtcsp),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDTCSPolarityB, dtcspListB);
+
             ui->table->showColumn(columnDTCSPolarityB);
+            visibleRows++;
             break;
         case 'o':
+            if (dtcsList != Q_NULLPTR)
+                delete dtcsList;
+            dtcsList = new tableCombobox(createModel(dtcsModel, dtcs),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDTCS, dtcsList);
+
             ui->table->showColumn(columnDTCS);
+            visibleRows++;
             break;
         case 'O':
+            if (dtcsListB != Q_NULLPTR)
+                delete dtcsListB;
+            dtcsListB = new tableCombobox(createModel(dtcsModel, dtcs),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnDTCSB, dtcsList);
+
             ui->table->showColumn(columnDTCSB);
+            visibleRows++;
             break;
         case 'p':
+            if (dvsqlEditor != Q_NULLPTR)
+                delete dvsqlEditor;
+            dvsqlEditor = new tableEditor(QRegularExpression("[0-9]{0,2}"),ui->table);
+            ui->table->setItemDelegateForColumn(columnDVSquelch, dvsqlEditor);
+
             ui->table->showColumn(columnDVSquelch);
+            visibleRows++;
             break;
         case 'P':
+            if (dvsqlEditorB != Q_NULLPTR)
+                delete dvsqlEditorB;
+            dvsqlEditorB = new tableEditor(QRegularExpression("[0-9]{0,2}"),ui->table);
+            ui->table->setItemDelegateForColumn(columnDVSquelchB, dvsqlEditorB);
+
             ui->table->showColumn(columnDVSquelchB);
+            visibleRows++;
             break;
         case 'q':
+            if (offsetEditor != Q_NULLPTR)
+                delete offsetEditor;
+            offsetEditor = new tableEditor(QRegularExpression("[0-9.]{0,7}"),ui->table);
+            ui->table->setItemDelegateForColumn(columnOffset, offsetEditor);
+
             ui->table->showColumn(columnOffset);
+            visibleRows++;
+            break;
+        case 'Q':
+            if (offsetEditorB != Q_NULLPTR)
+                delete offsetEditorB;
+            offsetEditorB = new tableEditor(QRegularExpression("[0-9.]{0,7}"),ui->table);
+            ui->table->setItemDelegateForColumn(columnOffsetB, offsetEditorB);
+
+            ui->table->showColumn(columnOffsetB);
+            visibleRows++;
             break;
         case 'r':
+            if (urEditor != Q_NULLPTR)
+                delete urEditor;
+            urEditor = new tableEditor(QRegularExpression("[0-9A-Z\\/\\ ]{0,8}$"),ui->table);
+            ui->table->setItemDelegateForColumn(columnUR, urEditor);
+
             ui->table->showColumn(columnUR);
+            visibleRows++;
             break;
         case 'R':
+            if (urEditorB != Q_NULLPTR)
+                delete urEditorB;
+            urEditorB = new tableEditor(QRegularExpression("[0-9A-Z\\/\\ ]{0,8}$"),ui->table);
+            ui->table->setItemDelegateForColumn(columnURB, urEditorB);
+
             ui->table->showColumn(columnURB);
+            visibleRows++;
             break;
         case 's':
+            if (r1Editor != Q_NULLPTR)
+                delete r1Editor;
+            r1Editor = new tableEditor(QRegularExpression("[0-9A-Z\\/\\ ]{0,8}$"),ui->table);
+            ui->table->setItemDelegateForColumn(columnR1, r1Editor);
+
             ui->table->showColumn(columnR1);
+            visibleRows++;
             break;
         case 'S':
+            if (r1EditorB != Q_NULLPTR)
+                delete r1EditorB;
+            r1EditorB = new tableEditor(QRegularExpression("[0-9A-Z\\/\\ ]{0,8}$"),ui->table);
+            ui->table->setItemDelegateForColumn(columnR1B, r1EditorB);
+
             ui->table->showColumn(columnR1B);
+            visibleRows++;
             break;
         case 't':
+            if (r2Editor != Q_NULLPTR)
+                delete r2Editor;
+            r2Editor = new tableEditor(QRegularExpression("[0-9A-Z\\/\\ ]{0,8}$"),ui->table);
+            ui->table->setItemDelegateForColumn(columnR2, r2Editor);
+
             ui->table->showColumn(columnR2);
+            visibleRows++;
             break;
         case 'T':
+            if (r2EditorB != Q_NULLPTR)
+                delete r2EditorB;
+            r2EditorB = new tableEditor(QRegularExpression("[0-9A-Z\\/\\ ]{0,8}$"),ui->table);
+            ui->table->setItemDelegateForColumn(columnR2B, r2EditorB);
+
             ui->table->showColumn(columnR2B);
+            visibleRows++;
             break;
         case 'u':
             ui->table->showColumn(columnName);
+            if (nameEditor != Q_NULLPTR)
+                delete nameEditor;
+            nameEditor = new tableEditor(QRegularExpression(QString("[0-9A-Za-z\\/\\ .-_^#]{0,%0}$").arg(parse.len)),ui->table);
+            ui->table->setItemDelegateForColumn(columnName, nameEditor);
+
+            visibleRows++;
+            break;
+        case 'v':
+            if (splitList != Q_NULLPTR)
+                delete splitList;
+            splitList = new tableCombobox(createModel(splitModel, split),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnSplit, splitList);
+
+            if (scanList != Q_NULLPTR)
+                delete scanList;
+            scanList = new tableCombobox(createModel(scanModel, scan),false,ui->table);
+            ui->table->setItemDelegateForColumn(columnScan, scanList);
+
+            ui->table->showColumn(columnSplit);
+            ui->table->showColumn(columnScan);
+
+            visibleRows++;
+            visibleRows++;
             break;
         default:
             break;
         }
     }
 
-    if (ui->group->currentData().toInt()==200) {
+    if (visibleRows > 15) {
         ui->table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    } else
+    }
+    else
     {
         ui->table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     }
 
     if (ui->group->currentData().toInt() == 200) {
-        for (quint16 m=1;m<=rigCaps.satMemories;m++)
+        for (quint16 m=rigCaps.memStart;m<=rigCaps.satMemories;m++)
         {
             emit getSatMemory(quint32(m & 0xffff));
         }
     } else {
-        for (quint16 m=1;m<=rigCaps.memories;m++)
+        // Is the current group attached to a particular band?
+                foreach (auto band, rigCaps.bands)
         {
-            if (rigCaps.memGroups>1)
-                emit getMemory(quint32((index+1)<<16) | (m & 0xffff));
-            else
-                emit getMemory(quint32(m & 0xffff));
+            if (band.memGroup==ui->group->currentData().toInt())
+            {
+                emit setBand(band.band);
+            }
+        }
+
+
+        for (quint16 m=rigCaps.memStart;m<=rigCaps.memories;m++)
+        {
+            emit getMemory(quint32((ui->group->currentData().toInt())<<16) | (m & 0xffff));
         }
     }
 }
@@ -659,50 +865,66 @@ void memories::on_memoryMode_clicked()
 
 void memories::receiveMemory(memoryType mem)
 {
-    timeoutTimer.start(MEMORY_TIMEOUT);
+    if (timeoutTimer.isActive()) {
+        timeoutTimer.start(MEMORY_TIMEOUT);
+    }
+    int row=-1;
+
+    for (int n = 0; n<ui->table->rowCount();n++)
+    {
+        if (ui->table->item(n,columnNum) != NULL && ui->table->item(n,columnNum)->text().toInt() == mem.channel && mem.group == ui->group->currentData().toInt()) {
+
+            row = n;
+            break;
+        }
+    }
 
     if (mem.scan < 4) {
         ui->table->blockSignals(true);
-        qInfo(logRig()) << "Received memory" << mem.channel << "Scan"  << mem.scan << "Name" << mem.name << "Freq" << mem.frequency.Hz << "Mode" << mem.mode;
 
-        int row=-1;
-        for (int n = 0; n<ui->table->rowCount();n++)
-        {
-            if (ui->table->item(n,0) != NULL && ui->table->item(n,0)->text().toInt() == mem.channel) {
-                row = n;
-                break;
-            }
-        }
         if (row == -1) {
             ui->table->insertRow(ui->table->rowCount());
             row=ui->table->rowCount()-1;
+            QPushButton* recall = new QPushButton("Recall");
+            ui->table->setCellWidget(row,columnRecall,recall);
+            connect(recall, &QPushButton::clicked, this,
+                    [=]() { qInfo() << "Recalling" << mem.channel; emit recallMemory((quint32((ui->group->currentData().toUInt() << 16) | mem.channel)));});
         }
-
-        QPushButton* recall = new QPushButton("Recall");
-        ui->table->setCellWidget(row,columnRecall,recall);        
-        connect(recall, &QPushButton::clicked, this,
-                [=]() { qInfo() << "Recalling" << mem.channel; emit recallMemory(mem.channel);});
 
         ui->table->model()->setData(ui->table->model()->index(row,columnNum),QString::number(mem.channel & 0xffff).rightJustified(3,'0'));
         ui->table->item(row,columnNum)->setFlags(ui->table->item(row,columnNum)->flags() & (~Qt::ItemIsEditable));
+        ui->table->item(row,columnNum)->setBackground(Qt::transparent);
 
         // Set every combobox to default value first:
+        if (ui->table->item(row,columnSplit) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnSplit),split[0]);
         if (ui->table->item(row,columnScan) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnScan),scan[0]);
-        if (ui->table->item(row,columnVFO) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnVFO),VFO[0]);
+        if (ui->table->item(row,columnFilter) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnFilter),filters[0]);
+        if (ui->table->item(row,columnFilterB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnFilterB),filters[0]);
         if (ui->table->item(row,columnData) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnData),dataModes[0]);
         if (ui->table->item(row,columnDuplex) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDuplex),duplexModes[0]);
+        if (ui->table->item(row,columnDuplexB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDuplexB),duplexModes[0]);
         if (ui->table->item(row,columnToneMode) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnToneMode),toneModes[0]);
         if (ui->table->item(row,columnDSQL) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDSQL),dsql[0]);
         if (ui->table->item(row,columnTone) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnTone),tones[0]);
         if (ui->table->item(row,columnTSQL) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnTSQL),tones[0]);
         if (ui->table->item(row,columnDTCSPolarity) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDTCSPolarity),dtcsp[0]);
         if (ui->table->item(row,columnDTCS) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDTCS),dtcs[0]);
+        if (ui->table->item(row,columnFilterB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnFilterB),filters[0]);
         if (ui->table->item(row,columnDataB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDataB),dataModes[0]);
         if (ui->table->item(row,columnToneModeB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnToneModeB),toneModes[0]);
+        if (ui->table->item(row,columnDSQLB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDSQLB),dsql[0]);
         if (ui->table->item(row,columnToneB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnToneB),tones[0]);
         if (ui->table->item(row,columnTSQLB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnTSQLB),tones[0]);
         if (ui->table->item(row,columnDTCSPolarityB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDTCSPolarityB),dtcsp[0]);
         if (ui->table->item(row,columnDTCSB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDTCSB),dtcs[0]);
+
+        for (int f=0;f<split.size();f++)
+        {
+            if (f==mem.split) {
+                ui->table->model()->setData(ui->table->model()->index(row,columnSplit),split[f]);
+                break;
+            }
+        }
 
         for (int f=0;f<scan.size();f++)
         {
@@ -712,19 +934,12 @@ void memories::receiveMemory(memoryType mem)
             }
         }
 
-        for (int f=0;f<VFO.size();f++)
-        {
-            if (f==mem.frequency.VFO) {
-                ui->table->model()->setData(ui->table->model()->index(row,columnVFO),VFO[f]);
-                break;
-            }
-        }
-
         ui->table->model()->setData(ui->table->model()->index(row,columnFrequency),QString::number(double(mem.frequency.Hz/1000000.0),'f',3));
         ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),QString::number(double(mem.frequencyB.Hz/1000000.0),'f',3));
 
         foreach (auto mode, rigCaps.modes){
             if (mode.reg == mem.mode) {
+
                 ui->table->model()->setData(ui->table->model()->index(row,columnMode),mode.name);
             }
             if (mode.reg == mem.modeB) {
@@ -752,11 +967,13 @@ void memories::receiveMemory(memoryType mem)
             }
         }
 
-        for (int f=0;f<duplexModes.size();f++)
+        for (quint8 f=0;f<duplexModes.size();f++)
         {
             if (f==mem.duplex) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnDuplex),duplexModes[f]);
-                break;
+            }
+            if (f==mem.duplexB) {
+                ui->table->model()->setData(ui->table->model()->index(row,columnDuplexB),duplexModes[f]);
             }
         }
 
@@ -809,7 +1026,8 @@ void memories::receiveMemory(memoryType mem)
             }
         }
 
-        ui->table->model()->setData(ui->table->model()->index(row,columnOffset),QString::number(mem.duplexOffset.Hz));
+        ui->table->model()->setData(ui->table->model()->index(row,columnOffset),QString::number(double(mem.duplexOffset.Hz/10000.0),'f',3));
+        ui->table->model()->setData(ui->table->model()->index(row,columnOffsetB),QString::number(double(mem.duplexOffsetB.Hz/10000.0),'f',3));
 
         ui->table->model()->setData(ui->table->model()->index(row,columnUR),QString(mem.UR));
         ui->table->model()->setData(ui->table->model()->index(row,columnURB),QString(mem.URB));
@@ -824,19 +1042,28 @@ void memories::receiveMemory(memoryType mem)
 
         ui->table->blockSignals(false);
     }
+    else if (row != -1)
+    {
+        // Check if we already have this memory as it might have failed to write?
+        ui->loadingMemories->setStyleSheet("QLabel {color: #ff0000}");
+        ui->table->item(row,columnNum)->setBackground(Qt::red);
+    }
 
     // If this is the last channel, re-enable the group combo.
     if (mem.channel == rigCaps.memories || (mem.sat && mem.channel == rigCaps.satMemories)) {
         timeoutTimer.stop();
         ui->group->setEnabled(true);
+        ui->loadingMemories->setVisible(false);
     }
 }
 
 void memories::timeout()
 {
-    QMessageBox::information(this,"Timeout", "Timeout receiving memories, check rig connection", QMessageBox::Ok);
+    ui->loadingMemories->setVisible(false);
     timeoutTimer.stop();
     ui->group->setEnabled(true);
+
+    QMessageBox::information(this,"Timeout", "Timeout receiving memories, check rig connection", QMessageBox::Ok);
 }
 
 QStandardItemModel* memories::createModel(QStandardItemModel* model, QStringList strings)
@@ -872,6 +1099,14 @@ void memories::on_csvImport_clicked()
             return;
         }
 
+        int lastcol=0;
+
+        for (int i=0;i<ui->table->columnCount();i++)
+        {
+            if (!ui->table->isColumnHidden(i))
+                lastcol=i;
+        }
+
         QTextStream input(&data);
         QStringList row;
         int rows=0;
@@ -895,7 +1130,7 @@ void memories::on_csvImport_clicked()
                 QPushButton* recall = new QPushButton("Recall");
                 ui->table->setCellWidget(rownum,columnRecall,recall);
                 connect(recall, &QPushButton::clicked, this,
-                        [=]() { qInfo() << "Recalling" << row[0].toInt(); emit recallMemory(row[0].toInt());});
+                        [=]() { qInfo() << "Recalling" << row[0].toInt(); emit recallMemory((quint32((ui->group->currentData().toUInt() << 16) | row[0].toInt())));});
             }
             // rownum is now the row we need to work on.
 
@@ -909,12 +1144,17 @@ void memories::on_csvImport_clicked()
                 }
 
                 // Stop blocking signals for last column (should force it to be sent to rig)
-                if (i == row.size()-1)
-                    ui->table->blockSignals(false);
 
                 if (colnum < ui->table->columnCount())
                 {
-                    QString data = QString(row[i]).trimmed();
+                    QString data = row[i];
+                    for (int n= data.size(); n<=0; --n)
+                    {
+                        if (!data.at(n).isSpace()) {
+                            data.truncate(n+1);
+                            break;
+                        }
+                    }
                     switch (colnum)
                     {
                     // special cases:
@@ -936,9 +1176,16 @@ void memories::on_csvImport_clicked()
                     case columnTSQLB:
                         if (data.endsWith("Hz")) data=data.mid(0,data.length()-2);
                         break;
+                    case columnFilter:
+                    case columnFilterB:
+                        if (!data.startsWith("FIL")) data = "FIL"+data;
+                        break;
                     default:
                         break;
                     }
+
+                    if (colnum == lastcol)
+                        ui->table->blockSignals(false);
 
                     ui->table->model()->setData(ui->table->model()->index(rownum,colnum),data);
                     colnum++;
@@ -974,7 +1221,7 @@ void memories::on_csvExport_clicked()
                 for(int j=1;j<ui->table->columnCount();j++) {
                     if (!ui->table->isColumnHidden(j))
                     {
-                        output << "\"" << ((ui->table->item(i,j) == NULL) ? "" : ui->table->item(i,j)->text().trimmed()) << "\"";
+                        output << "\"" << ((ui->table->item(i,j) == NULL) ? "" : ui->table->item(i,j)->text()) << "\"";
                         if (j < ui->table->columnCount()-1)
                             output << ",";
                         else

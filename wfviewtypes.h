@@ -185,7 +185,7 @@ enum cmds {
 
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 186
+#define NUMFUNCS 187
 
 enum funcs { funcNone,
 funcfreqTR,             funcModeTR,             funcBandEdgeFreq,           funcFreqGet,        	funcModeGet,        	funcFreqSet,			// \x00
@@ -218,7 +218,7 @@ funcRITFreq,			funcRitStatus,			funcRitTXStatus,            funcMainSubFreq,		fu
 funcScopeOnOff,			funcScopeDataOutput,	funcScopeMainSub,           funcScopeSingleDual,	funcScopeCenterFixed,	funcScopeCenterSpan,
 funcScopeEdgeNumber,  	funcScopeHold,      	funcScopeRef,               funcScopeSpeed,			funcScopeDuringTX,      funcScopeCenterType,
 funcScopeVBW,       	funcScopeFixedFreq, 	funcScopeRBW,               funcVoiceTX,			funcMainSubPrefix,		funcAFCSetting,
-funcGPSTXMode,          funcSatelliteMemory,    funcGPSPosition,            funcFA,                 funcFB
+funcGPSTXMode,          funcSatelliteMemory,    funcGPSPosition,            funcMemoryGroup,        funcFA,                 funcFB
 };
              
 
@@ -254,7 +254,7 @@ static QString funcString[] { "None",
 "Scope On/Off",         "Scope Data Output",    "Scope Main/Sub",           "Scope Single/Dual",    "Scope Center Fixed",   "Scope Center Span",
 "Scope Edge Number",    "Scope Hold",           "Scope Ref",                "Scope Speed",          "Scope During TX",      "Scope Center Type",
 "Scope VBW",            "Scope Fixed Freq",     "Scope RBW",                "Voice TX",             "Main/Sub Prefix",      "AFC Function",
-"GPS TX Mode",          "Satellite Memory",     "GPS Position",             "Command Error FA",     "Command OK FB"
+"GPS TX Mode",          "Satellite Memory",     "GPS Position",             "Memory Group",         "Command Error FA",     "Command OK FB"
 };
 
 
@@ -305,17 +305,18 @@ struct errorType {
 struct memoryType{
     quint16 group=0;
     quint16 channel=0;
-    bool split=false;
+    quint8 split=0;
     quint8 scan=0;
     freqt frequency;
     freqt frequencyB;
-    mode_kind mode=mode_kind::modeLSB;
-    mode_kind modeB=mode_kind::modeLSB;
+    quint8 mode=0;
+    quint8 modeB=0;
     quint8 filter=0;
     quint8 filterB=0;
     quint8 datamode=0;
     quint8 datamodeB=0;
     quint8 duplex=0;
+    quint8 duplexB=0;
     quint8 tonemode;
     quint8 tonemodeB;
     quint16 tone=670;
@@ -331,6 +332,7 @@ struct memoryType{
     quint8 dvsql=0;
     quint8 dvsqlB=0;
     freqt duplexOffset;
+    freqt duplexOffsetB;
     char UR[9];
     char URB[9];
     char R1[9];

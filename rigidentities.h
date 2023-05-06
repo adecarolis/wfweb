@@ -73,29 +73,29 @@ struct rigInput {
 
 enum availableBands {
                 band3cm = 0,
-                band6cm,
-                band9cm,
-                band13cm,
-                band23cm,
-                band70cm,
-                band2m,
-                bandAir,
-                bandWFM,
-                band4m,
-                band6m,
-                band10m,
-                band12m,
-                band15m,
-                band17m,
-                band20m,
-                band30m,
-                band40m,
-                band60m,
-                band80m,
-                band160m,
-                band630m,
-                band2200m,
-                bandGen
+                band6cm,   //1
+                band9cm,   //2
+                band13cm,  //3
+                band23cm,  //4
+                band70cm,  //5
+                band2m,    //6
+                bandAir,    //7
+                bandWFM,    //8
+                band4m,     //9
+                band6m,     //10
+                band10m,    //11
+                band12m,    //12
+                band15m,    //13
+                band17m,    //14
+                band20m,    //15
+                band30m,    //16
+                band40m,    //17
+                band60m,    //18
+                band80m,    //19
+                band160m,   //20
+                band630m,   //21
+                band2200m,  //22
+                bandGen     //23
 };
 
 enum centerSpansType {
@@ -117,7 +117,7 @@ enum centerSpansType {
 struct centerSpanData {
     centerSpanData() {}
     centerSpanData(centerSpansType cstype, QString name, unsigned int freq) :
-        cstype(cstype), name(name), freq(freq) {}
+        cstype(cstype), name(name), freq(freq){}
     centerSpansType cstype;
     QString name;
     unsigned int freq;
@@ -125,14 +125,15 @@ struct centerSpanData {
 
 struct bandType {
     bandType() {}
-    bandType(availableBands band, quint64 lowFreq, quint64 highFreq, double range) :
-        band(band), lowFreq(lowFreq), highFreq(highFreq), range(range) {}
+    bandType(availableBands band, quint64 lowFreq, quint64 highFreq, double range, int memGroup) :
+        band(band), lowFreq(lowFreq), highFreq(highFreq), range(range), memGroup(memGroup) {}
 
     availableBands band;
     quint64 lowFreq;
     quint64 highFreq;
     mode_kind defaultMode;
     double range;
+    int memGroup;
 };
 
 struct filterType {
@@ -219,6 +220,7 @@ struct rigCapabilities {
     quint32 baudRate;
     quint16 memGroups;
     quint16 memories;
+    quint16 memStart;
     QString memFormat;
     QVector<memParserFormat> memParser;
     quint16 satMemories;

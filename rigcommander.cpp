@@ -1373,10 +1373,25 @@ void rigCommander::setMemoryMode()
 void rigCommander::getMemory(quint32 mem)
 {
     QByteArray payload;
+
     if (getCommand(funcMemoryContents,payload,mem & 0xffff))
     {
-        if (rigCaps.memGroups>1) {
-            payload.append(quint8(mem >> 16) & 0xff);
+        // Format is different for all radios!
+        foreach (auto parse, rigCaps.memParser) {
+            switch (parse.spec)
+            {
+            case 'a':
+                if (parse.len == 1) {
+                    payload.append(quint8(mem >> 16) & 0xff);
+                }
+                else if (parse.len == 2)
+                {
+                    payload.append(bcdEncodeInt(mem >> 16 & 0xffff));
+                }
+                break;
+            default:
+                break;
+            }
         }
         payload.append(bcdEncodeInt(mem & 0xffff));
         prepDataAndSend(payload);
@@ -1418,7 +1433,13 @@ void rigCommander::setMemory(memoryType mem)
         switch (parse.spec)
         {
         case 'a':
-            payload.append(mem.group);
+            if (parse.len == 1) {
+                payload.append(mem.group);
+            }
+            else if (parse.len == 2)
+            {
+                payload.append(bcdEncodeInt(mem.group));
+            }
             break;
         case 'b':
             payload.append(bcdEncodeInt(mem.channel));
@@ -1433,10 +1454,10 @@ void rigCommander::setMemory(memoryType mem)
             payload.append(makeFreqPayload(mem.frequencyB));
             break;
         case 'e':
-            payload.append(mem.mode);
+            payload.append(bcdEncodeInt(mem.mode).at(1));
             break;
         case 'E':
-            payload.append(mem.modeB);
+            payload.append(bcdEncodeInt(mem.modeB).at(1));
             break;
         case 'f':
             payload.append(mem.filter);
@@ -1452,6 +1473,9 @@ void rigCommander::setMemory(memoryType mem)
             break;
         case 'h': // combined duplex and tonemode
             payload.append((mem.duplex << 4) | mem.tonemode);
+            break;
+        case 'H': // combined duplex and tonemode
+            payload.append((mem.duplexB << 4) | mem.tonemodeB);
             break;
         case 'i': // combined datamode and tonemode
             payload.append((mem.datamode << 4 & 0xf0) | (mem.tonemode & 0x0f));
@@ -1486,7 +1510,6 @@ void rigCommander::setMemory(memoryType mem)
             break;
         case 'n':
             payload.append((mem.dtcsp << 3 & 0x10) |  (mem.dtcsp & 0x01));
-            qInfo() << "DTCSP A" << (mem.dtcsp << 3 & 0x10) << "B" << (mem.dtcsp & 0x01) << "ORIG" << mem.dtcsp;
             break;
         case 'N':
              payload.append((mem.dtcspB << 3 & 0x10) |  (mem.dtcspB & 0x01));
@@ -1505,6 +1528,9 @@ void rigCommander::setMemory(memoryType mem)
             break;
         case 'q':
             payload.append(makeFreqPayload(mem.duplexOffset).mid(1,3));
+            break;
+        case 'Q':
+            payload.append(makeFreqPayload(mem.duplexOffsetB).mid(1,3));
             break;
         case 'r':
             payload.append(QByteArray(mem.UR).leftJustified(parse.len,' '));
@@ -1527,6 +1553,10 @@ void rigCommander::setMemory(memoryType mem)
         case 'u':
             payload.append(QByteArray(mem.name).leftJustified(parse.len,' '));
             break;
+        case 'v': // combined split and scan
+            payload.append(quint8((mem.split << 4 & 0xf0) | (mem.scan & 0x0f)));
+            break;
+
         default:
             break;
         }
@@ -1540,25 +1570,70 @@ void rigCommander::clearMemory(quint32 mem)
 {
     QByteArray payload;
     unsigned char cmd = '\xff';
+
+    qInfo(logRig()) << "Attempting to delete memory " << (mem & 0xffff) << "from group" << quint32(mem >> 16 & 0xffff);
     if (getCommand(funcMemoryContents,payload,mem & 0xffff))
     {
-        if (rigCaps.memGroups>1) {
-            payload.append(quint8(mem >> 16) & 0xff);
+        // Format is different for all radios!
+        foreach (auto parse, rigCaps.memParser) {
+            switch (parse.spec)
+            {
+            case 'a':
+                if (parse.len == 1)
+                {
+                    payload.append(quint8(mem >> 16) & 0xff);
+                }
+                else if (parse.len ==2)
+                {
+                    payload.append(bcdEncodeInt(mem >> 16 & 0xffff));
+                }
+                break;
+            default:
+                break;
+            }
         }
-        payload.append(bcdEncodeInt(mem & 0xff));
+        payload.append(bcdEncodeInt(mem & 0xffff));
         payload.append(cmd);
         prepDataAndSend(payload);
     }
+
 }
 
 void rigCommander::recallMemory(quint32 mem)
 {
     QByteArray payload;
+
+    qInfo(logRig()) << "Attempting to recall memory " << (mem & 0xffff) << "from group" << quint32(mem >> 16 & 0xffff);
+    if (getCommand(funcMemoryGroup,payload,mem & 0xffff))
+    {
+        // Format is different for all radios!
+        foreach (auto parse, rigCaps.memParser) {
+            switch (parse.spec)
+            {
+            case 'a':
+                if (parse.len == 1)
+                {
+                    payload.append(quint8(mem >> 16) & 0xff);
+                }
+                else if (parse.len ==2)
+                {
+                    payload.append(bcdEncodeInt(mem >> 16 & 0xffff));
+                }
+                break;
+            default:
+                break;
+            }
+        }
+        prepDataAndSend(payload);
+    }
+
+    payload.clear();
     if (getCommand(funcMemoryMode,payload,mem & 0xffff))
     {
         payload.append(bcdEncodeInt(mem & 0xffff));
         prepDataAndSend(payload);
     }
+
 }
 
 
@@ -1868,8 +1943,9 @@ void rigCommander::parseCommand()
 
     funcs func = funcNone;
 
-    // Many commands are single character so it makes sense to start there I think?
-    for (int i=1;i<=4;i++)
+    // As some commands bave both single and multi-byte options, start at 4 characters and work down to 1.
+    // This is quite wasteful as many commands are single-byte, but I can't think of an easier way?
+    for (int i=4;i>0;i--)
     {
         auto it = rigCaps.commandsReverse.find(payloadIn.left(i));
         if (it != rigCaps.commandsReverse.end())
@@ -1878,21 +1954,6 @@ void rigCommander::parseCommand()
             break;
         }
     }
-
- /*
-    QByteArray search = payloadIn.left(4); // Maximum length of command to search.
-
-    while (search.length()>0)
-    {
-        auto it = rigCaps.commandsReverse.find(search);
-        if (it != rigCaps.commandsReverse.end())
-        {
-            func = it.value();
-            break;
-        }
-        search.removeLast();
-    }
-*/
 
 #ifdef DEBUG_PARSE
     int currentParse=performanceTimer.nsecsElapsed();
@@ -1941,10 +2002,7 @@ void rigCommander::parseCommand()
         } else {
              mem.sat=true;
         }
-        // Parse the memory entry into a memoryType, set some defaults first.
-        mem.frequency.Hz=0;
-        mem.frequencyB.Hz=0;
-        mem.duplexOffset.Hz=0;
+        // Parse the memory entry into a memoryType
         mem.scan=0;
         /*
             // 16 is fixed 0x0;
@@ -1955,10 +2013,17 @@ void rigCommander::parseCommand()
              switch (parse.spec)
              {
              case 'a':
-                    mem.group = bcdHexToUChar(data[0]);
+                    if (parse.len == 1) {
+                        mem.group = bcdHexToUChar(data[0]);
+                    }
+                    else
+                    {
+                        mem.group = bcdHexToUChar(data[0],data[1]);
+                    }
                     break;
              case 'b':
                     mem.channel = bcdHexToUChar(data[0],data[1]);
+
                     break;
              case 'c':
                     mem.scan = data[0];
@@ -1976,10 +2041,10 @@ void rigCommander::parseCommand()
                     mem.frequencyB.Hz = parseFreqDataToInt(data);
                     break;
              case 'e':
-                    mem.mode=(mode_kind)bcdHexToUChar(data[0]);
+                    mem.mode=bcdHexToUChar(data[0]);
                     break;
              case 'E':
-                    mem.modeB=(mode_kind)bcdHexToUChar(data[0]);
+                    mem.modeB=bcdHexToUChar(data[0]);
                     break;
              case 'f':
                     mem.filter=data[0];
@@ -1994,12 +2059,20 @@ void rigCommander::parseCommand()
                     mem.datamodeB=data[0];
                     break;
              case 'h': // combined duplex and tonemode
-                    mem.duplex=duplexMode(data[0] >> 4 & 0x0f);
-                    mem.tonemode=data[0] & 0x0f;
+                    mem.duplex=duplexMode(quint8(data[0] >> 4 & 0x0f));
+                    mem.tonemode=quint8(quint8(data[0] & 0x0f));
+                    break;
+             case 'H': // combined duplex and tonemodeB
+                    mem.duplexB=duplexMode((data[0] >> 4 & 0x0f));
+                    mem.tonemodeB=data[0] & 0x0f;
                     break;
              case 'i': // combined datamode and tonemode
-                    mem.datamode=(data[0] >> 4 & 0x0f);
+                    mem.datamode=(quint8(data[0] >> 4 & 0x0f));
                     mem.tonemode=data[0] & 0x0f;
+                    break;
+             case 'I': // combined datamode and tonemode
+                    mem.datamodeB=(quint8(data[0] >> 4 & 0x0f));
+                    mem.tonemodeB=data[0] & 0x0f;
                     break;
              case 'j': // tonemode
                     mem.tonemode=data[0] & 0x0f;
@@ -2008,10 +2081,10 @@ void rigCommander::parseCommand()
                     mem.tonemodeB=data[0] & 0x0f;
                     break;
              case 'k':
-                    mem.dsql = (data[0] >> 4 & 0x0f);
+                    mem.dsql = (quint8(data[0] >> 4 & 0x0f));
                     break;
              case 'K':
-                    mem.dsqlB = (data[0] >> 4 & 0x0f);
+                    mem.dsqlB = (quint8(data[0] >> 4 & 0x0f));
                     break;
              case 'l':
                     mem.tone = bcdHexToUInt(data[1],data[2]); // First byte is not used
@@ -2026,10 +2099,10 @@ void rigCommander::parseCommand()
                     mem.tsqlB = bcdHexToUInt(data[1],data[2]); // First byte is not used
                     break;
              case 'n':
-                    mem.dtcsp = ((data[0] >> 3 & 0x02) | (data[0] & 0x01));
+                    mem.dtcsp = (quint8(data[0] >> 3 & 0x02) | quint8(data[0] & 0x01));
                     break;
              case 'N':
-                    mem.dtcspB = ((data[0] >> 3 & 0x10) | (data[0] & 0x01));
+                    mem.dtcspB = (quint8(data[0] >> 3 & 0x10) | quint8(data[0] & 0x01));
                     break;
              case 'o':
                     mem.dtcs = bcdHexToUInt(data[0],data[1]);
@@ -2045,6 +2118,9 @@ void rigCommander::parseCommand()
                     break;
              case 'q':
                     mem.duplexOffset.Hz = parseFreqDataToInt(data);
+                    break;
+             case 'Q':
+                    mem.duplexOffsetB.Hz = parseFreqDataToInt(data);
                     break;
              case 'r':
                     memcpy(mem.UR,data,sizeof(mem.UR));
@@ -2067,8 +2143,13 @@ void rigCommander::parseCommand()
              case 'u':
                     memcpy(mem.name,data,sizeof(mem.name));
                     break;
+             case 'v': // combined split and scan
+                    mem.split= quint8(data[0] >> 4 & 0x0f);
+                    mem.scan = quint8(data[0] & 0x0f);
+                    break;
+
              default:
-                    qInfo() << "Parser didn't match!";
+                    qInfo() << "Parser didn't match!" << "spec:" << parse.spec << "pos:" << parse.pos << "len" << parse.len;
                     break;
              }
         }
@@ -4509,6 +4590,7 @@ void rigCommander::determineRigCaps()
 
     rigCaps.memGroups = settings->value("MemGroups",0).toUInt();
     rigCaps.memories = settings->value("Memories",0).toUInt();
+    rigCaps.memStart = settings->value("MemStart",1).toUInt();
     rigCaps.memFormat = settings->value("MemFormat","").toString();
     rigCaps.satMemories = settings->value("SatMemories",0).toUInt();
     rigCaps.satFormat = settings->value("SatFormat","").toString();
@@ -4661,8 +4743,9 @@ void rigCommander::determineRigCaps()
             quint64 end = settings->value("End", 0ULL).toULongLong();
             int bsr = settings->value("BSR", 0).toInt();
             double range = settings->value("Range", 0.0).toDouble();
+            int memGroup = settings->value("MemoryGroup", -1).toInt();
 
-            rigCaps.bands.push_back(bandType(band,start,end,range));
+            rigCaps.bands.push_back(bandType(band,start,end,range,memGroup));
             rigCaps.bsr[band] = bsr;
             qInfo(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << bsr;
         }

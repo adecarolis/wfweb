@@ -463,7 +463,7 @@
      <number>0</number>
     </attribute>
     <attribute name="horizontalHeaderDefaultSectionSize">
-     <number>55</number>
+     <number>47</number>
     </attribute>
     <attribute name="verticalHeaderVisible">
      <bool>false</bool>
@@ -502,6 +502,11 @@
     <column>
      <property name="text">
       <string>Range</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>Mem</string>
      </property>
     </column>
    </widget>
@@ -891,9 +896,9 @@
    <property name="geometry">
     <rect>
      <x>360</x>
-     <y>390</y>
+     <y>420</y>
      <width>201</width>
-     <height>151</height>
+     <height>121</height>
     </rect>
    </property>
    <property name="title">
@@ -905,7 +910,7 @@
       <x>0</x>
       <y>30</y>
       <width>201</width>
-      <height>121</height>
+      <height>91</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -930,7 +935,7 @@
      <number>20</number>
     </attribute>
     <attribute name="horizontalHeaderDefaultSectionSize">
-     <number>60</number>
+     <number>58</number>
     </attribute>
     <attribute name="verticalHeaderVisible">
      <bool>false</bool>
@@ -1032,7 +1037,7 @@
      <x>440</x>
      <y>280</y>
      <width>120</width>
-     <height>111</height>
+     <height>141</height>
     </rect>
    </property>
    <property name="title">
@@ -1041,10 +1046,10 @@
    <widget class="QWidget" name="formLayoutWidget_2">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>32</y>
-      <width>101</width>
-      <height>80</height>
+      <x>0</x>
+      <y>30</y>
+      <width>119</width>
+      <height>111</height>
      </rect>
     </property>
     <layout class="QFormLayout" name="formLayout">
@@ -1077,12 +1082,30 @@
       </widget>
      </item>
      <item row="2" column="1">
-      <widget class="QLineEdit" name="satMemories"/>
+      <widget class="QLineEdit" name="satMemories">
+       <property name="inputMask">
+        <string>999</string>
+       </property>
+      </widget>
      </item>
      <item row="2" column="0">
       <widget class="QLabel" name="label_12">
        <property name="text">
         <string>Sat</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_13">
+       <property name="text">
+        <string>Start</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLineEdit" name="memStart">
+       <property name="inputMask">
+        <string>999</string>
        </property>
       </widget>
      </item>

@@ -109,6 +109,7 @@ void rigCreator::loadRigFile(QString file)
 
     ui->memGroups->setText(settings->value("MemGroups","0").toString());
     ui->memories->setText(settings->value("Memories","0").toString());
+    ui->memStart->setText(settings->value("MemStart","1").toString());
     ui->memoryFormat->setText(settings->value("MemFormat","").toString());
     ui->satMemories->setText(settings->value("SatMemories","0").toString());
     ui->satelliteFormat->setText(settings->value("SatFormat","").toString());
@@ -183,6 +184,7 @@ void rigCreator::loadRigFile(QString file)
             ui->bands->model()->setData(ui->bands->model()->index(c,3),settings->value("Start", 0ULL).toString());
             ui->bands->model()->setData(ui->bands->model()->index(c,4),settings->value("End", 0ULL).toString());
             ui->bands->model()->setData(ui->bands->model()->index(c,5),settings->value("Range", 0.0).toString());
+            ui->bands->model()->setData(ui->bands->model()->index(c,6),settings->value("MemoryGroup", -1).toString());
         }
         settings->endArray();
     }
@@ -346,6 +348,7 @@ void rigCreator::saveRigFile(QString file)
 
     settings->setValue("MemGroups",ui->memGroups->text().toInt());
     settings->setValue("Memories",ui->memories->text().toInt());
+    settings->setValue("MemStart",ui->memStart->text().toInt());
     settings->setValue("MemFormat",ui->memoryFormat->text());
     settings->setValue("SatMemories",ui->satMemories->text().toInt());
     settings->setValue("SatFormat",ui->satelliteFormat->text());
@@ -397,6 +400,7 @@ void rigCreator::saveRigFile(QString file)
         settings->setValue("Start", (ui->bands->item(n,3) == NULL) ? 0ULL : ui->bands->item(n,3)->text().toULongLong() );
         settings->setValue("End", (ui->bands->item(n,4) == NULL) ? 0ULL : ui->bands->item(n,4)->text().toULongLong() );
         settings->setValue("Range", (ui->bands->item(n,5) == NULL) ? 0.0 : ui->bands->item(n,5)->text().toDouble() );
+        settings->setValue("MemoryGroup", (ui->bands->item(n,6) == NULL) ? -1 : ui->bands->item(n,6)->text().toInt() );
     }
     settings->endArray();
 

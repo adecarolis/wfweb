@@ -39,6 +39,7 @@ signals:
     void clearMemory(quint32 mem);
     void memoryMode();
     void vfoMode();
+    void setBand(char band);
 
 
 private slots:
@@ -64,6 +65,7 @@ private:
 
     QStandardItemModel* createModel(QStandardItemModel* model, QStringList strings);
 
+    QStringList split;
     QStringList scan;
     QStringList VFO;
     QStringList duplexModes;
@@ -92,8 +94,8 @@ private:
         columnR1B,
         columnR2B,
     */
+    QStandardItemModel* splitModel = Q_NULLPTR;
     QStandardItemModel* scanModel = Q_NULLPTR;
-    QStandardItemModel* vfoModel = Q_NULLPTR;
     QStandardItemModel* filterModel = Q_NULLPTR;
     QStandardItemModel* dataModel = Q_NULLPTR;
     QStandardItemModel* modesModel = Q_NULLPTR;
@@ -105,20 +107,22 @@ private:
     QStandardItemModel* dtcspModel = Q_NULLPTR;
     QStandardItemModel* dtcsModel = Q_NULLPTR;
 
-    QStandardItemModel* filterModelB = Q_NULLPTR;
     QStandardItemModel* modesModelB = Q_NULLPTR;
+    QStandardItemModel* filterModelB = Q_NULLPTR;
     QStandardItemModel* dataModelB = Q_NULLPTR;
     QStandardItemModel* toneModesModelB = Q_NULLPTR;
     QStandardItemModel* dsqlModelB = Q_NULLPTR;
     QStandardItemModel* tonesModelB = Q_NULLPTR;
     QStandardItemModel* tsqlModelB = Q_NULLPTR;
     QStandardItemModel* dtcspModelB = Q_NULLPTR;
+    QStandardItemModel* duplexModelB = Q_NULLPTR;
     QStandardItemModel* dtcsModelB = Q_NULLPTR;
 
+
     tableEditor* numEditor = Q_NULLPTR;
+    tableCombobox* splitList = Q_NULLPTR;
     tableCombobox* scanList = Q_NULLPTR;
     tableEditor* nameEditor = Q_NULLPTR;
-    tableCombobox* vfoList = Q_NULLPTR;
     tableEditor* freqEditor = Q_NULLPTR;
     tableCombobox* filterList = Q_NULLPTR;
     tableCombobox* dataList = Q_NULLPTR;
@@ -146,6 +150,7 @@ private:
     tableCombobox* dtcsListB = Q_NULLPTR;
     tableCombobox* dtcspListB = Q_NULLPTR;
     tableCombobox* modesListB = Q_NULLPTR;
+    tableCombobox* duplexListB = Q_NULLPTR;
     tableEditor* offsetEditorB = Q_NULLPTR;
     tableEditor* dvsqlEditorB = Q_NULLPTR;
     tableEditor* urEditorB = Q_NULLPTR;
@@ -160,20 +165,20 @@ private:
     enum columns {
         columnRecall=0,
         columnNum,
-        columnScan,
         columnName,
-        columnVFO,
+        columnSplit,
+        columnScan,
         columnFrequency,
         columnMode,
-        columnData,
         columnFilter,
+        columnData,
         columnDuplex,
         columnToneMode,
+        columnDSQL,
         columnTone,
         columnTSQL,
         columnDTCS,
         columnDTCSPolarity,
-        columnDSQL,
         columnDVSquelch,
         columnOffset,
         columnUR,
@@ -181,15 +186,17 @@ private:
         columnR2,
         columnFrequencyB,
         columnModeB,
-        columnDataB,
         columnFilterB,
+        columnDataB,
+        columnDuplexB,
         columnToneModeB,
+        columnDSQLB,
         columnToneB,
         columnTSQLB,
         columnDTCSB,
         columnDTCSPolarityB,
-        columnDSQLB,
         columnDVSquelchB,
+        columnOffsetB,
         columnURB,
         columnR1B,
         columnR2B,

@@ -9813,13 +9813,19 @@ void wfmain::on_memoriesBtn_clicked()
                                      [=](const quint32 &mem) { issueCmd(cmdGetSatMemory, mem);});
 
             this->memWindow->connect(this->memWindow, &memories::setMemory, rig,
-                                     [=](const memoryType &mem) { issueCmd(cmdSetMemory, mem);});
+                                     [=](const memoryType &mem) {
+                                         issueCmd(cmdSetMemory, mem);
+                                         issueCmd(cmdGetMemory, quint32((mem.group << 16) | (mem.channel & 0xffff)));
+                                     });
 
             this->memWindow->connect(this->memWindow, &memories::clearMemory, rig,
                                      [=](const quint32 &mem) { issueCmd(cmdClearMemory, mem);});
 
             this->memWindow->connect(this->memWindow, &memories::recallMemory, rig,
-                                     [=](const quint16 &mem) { issueCmd(cmdRecallMemory, mem);});
+                                     [=](const quint32 &mem) { issueCmd(cmdRecallMemory, mem);});
+
+            this->memWindow->connect(this->memWindow, &memories::setBand, rig,
+                                     [=](const char &band) { issueCmd(cmdGetBandStackReg, band);});
 
             this->memWindow->connect(this->memWindow, &memories::memoryMode, rig,
                                      [=]() { issueDelayedCommand(cmdSetMemoryMode);
