@@ -6081,7 +6081,8 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
             {
                 // Matching mode
                 newMode=m;
-                qInfo(logSystem()) << __func__ << "Received new mode " << QString::number((uint)mode,16) << "(" << newMode.name << ")";
+                newMode.filter=filter;
+                qInfo(logSystem()) << __func__ << "Received new mode " << QString::number((uint)newMode.mk,16) << "(" << newMode.name << ") filter" << newMode.filter ;
 
                 quint16 maxPassbandHz = 0;
                 switch (newMode.mk) {
@@ -6149,7 +6150,6 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
                 }
 
                 currentModeInfo = newMode;
-                currentModeInfo.filter = filter;
 
                 rpt->handleUpdateCurrentMainMode(currentModeInfo);
                 cw->handleCurrentModeUpdate(currentModeInfo.mk);
@@ -6169,7 +6169,7 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
             }
         }
         // If we got here, we didn't find a matching mode
-        qCritical(logSystem()) << __func__ << "Invalid mode " << mode << " received. ";
+        qCritical(logSystem()) << __func__ << "Invalid mode " << mode << " received, check rig description file";
     }
 }
 
@@ -6453,7 +6453,6 @@ void wfmain::on_modeSelectCombo_activated(int index)
                 m.filter = filterSelection;
                 m.data = ui->dataModeBtn->isChecked();
                 m.VFO=selVFO_t::activeVFO;
-                currentModeInfo = m; // This will be reset by the rig if invalid.
                 issueCmd(cmdSetMode, m);
                 issueDelayedCommand(cmdGetMode);
                 break;
