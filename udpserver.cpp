@@ -73,20 +73,47 @@ void udpServer::init()
     civId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (config->civPort & 0xffff);
     audioId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (config->audioPort & 0xffff);
 
-    qInfo(logUdpServer()) << "Server Binding Control to: " << config->controlPort;
     udpControl = new QUdpSocket(this);
-    udpControl->bind(config->controlPort);
-    QUdpSocket::connect(udpControl, &QUdpSocket::readyRead, this, &udpServer::controlReceived);
 
-    qInfo(logUdpServer()) << "Server Binding CIV to: " << config->civPort;
+    if (!udpControl->bind(config->controlPort))
+    {
+        // We couldn't bind to the selected port.
+        qCritical(logUdp()) << "**** Unable to bind to UDP Control port" << config->controlPort << "Cannot continue! ****";
+        return;
+    }
+    else
+    {
+        qInfo(logUdpServer()) << "Server Bound Control to: " << config->controlPort;
+        QUdpSocket::connect(udpControl, &QUdpSocket::readyRead, this, &udpServer::controlReceived);
+    }
+
     udpCiv = new QUdpSocket(this);
-    udpCiv->bind(config->civPort);
-    QUdpSocket::connect(udpCiv, &QUdpSocket::readyRead, this, &udpServer::civReceived);
 
-    qInfo(logUdpServer()) << "Server Binding Audio to: " << config->audioPort;
+    if (!udpCiv->bind(config->civPort))
+    {
+        // We couldn't bind to the selected port.
+        qCritical(logUdp()) << "**** Unable to bind to UDP CI-V port" << config->civPort << "Cannot continue! ****";
+        return;
+    }
+    else
+    {
+        qInfo(logUdpServer()) << "Server Bound CI-V to: " << config->civPort;
+        QUdpSocket::connect(udpCiv, &QUdpSocket::readyRead, this, &udpServer::civReceived);
+    }
+
     udpAudio = new QUdpSocket(this);
-    udpAudio->bind(config->audioPort);
-    QUdpSocket::connect(udpAudio, &QUdpSocket::readyRead, this, &udpServer::audioReceived);
+
+    if (!udpAudio->bind(config->audioPort))
+    {
+        // We couldn't bind to the selected port.
+        qCritical(logUdp()) << "**** Unable to bind to UDP Audio port" << config->audioPort << "Cannot continue! ****";
+        return;
+    }
+    else
+    {
+        qInfo(logUdpServer()) << "Server Bound Audio to: " << config->audioPort;
+        QUdpSocket::connect(udpAudio, &QUdpSocket::readyRead, this, &udpServer::audioReceived);
+    }
 
     wdTimer = new QTimer();
     connect(wdTimer, &QTimer::timeout, this, &udpServer::watchdog);

@@ -22,10 +22,10 @@
   <widget class="QWidget" name="horizontalLayoutWidget">
    <property name="geometry">
     <rect>
-     <x>890</x>
+     <x>900</x>
      <y>10</y>
      <width>81</width>
-     <height>31</height>
+     <height>41</height>
     </rect>
    </property>
    <layout class="QHBoxLayout" name="horizontalLayout">
@@ -38,7 +38,7 @@
        </sizepolicy>
       </property>
       <property name="orientation">
-       <enum>Qt::Horizontal</enum>
+       <enum>Qt::Vertical</enum>
       </property>
       <property name="standardButtons">
        <set>QDialogButtonBox::Ok</set>
@@ -554,7 +554,7 @@
      <number>0</number>
     </attribute>
     <attribute name="horizontalHeaderDefaultSectionSize">
-     <number>65</number>
+     <number>60</number>
     </attribute>
     <attribute name="verticalHeaderVisible">
      <bool>false</bool>
@@ -568,6 +568,11 @@
     <column>
      <property name="text">
       <string>Num</string>
+     </property>
+    </column>
+    <column>
+     <property name="text">
+      <string>Reg</string>
      </property>
     </column>
     <column>
@@ -1132,7 +1137,11 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="memoryFormat"/>
+       <widget class="QLineEdit" name="memoryFormat">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format %&amp;lt;start&amp;gt;.&amp;lt;len&amp;gt;&amp;lt;specifier&amp;gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;specifier from list below:&lt;/p&gt;&lt;p&gt;a = Group&lt;/p&gt;&lt;p&gt;b = Num&lt;/p&gt;&lt;p&gt;c = Scan&lt;/p&gt;&lt;p&gt;d = Scan/Split&lt;/p&gt;&lt;p&gt;e = VFO A		E = VFO B&lt;/p&gt;&lt;p&gt;f = Frequency A 	F = Frequency B&lt;/p&gt;&lt;p&gt;g = Mode A		G = Mode B&lt;/p&gt;&lt;p&gt;h = Filter 		H = Filter B&lt;/p&gt;&lt;p&gt;i = Data 		I = Data B&lt;/p&gt;&lt;p&gt;j = Duplex/Tonemode A	J = Duplex B/Tonemode B&lt;/p&gt;&lt;p&gt;k = Data/Tonemode A	K = Data B/Tonemode B&lt;/p&gt;&lt;p&gt;l = Tonemode A	L = Tonemode B&lt;/p&gt;&lt;p&gt;m = DSQL A 		M = DSQL B&lt;/p&gt;&lt;p&gt;n = Tone type A	N = Tone type B&lt;/p&gt;&lt;p&gt;o = TSQL A		O = TSQL B&lt;/p&gt;&lt;p&gt;p = DTCS Polarity A 	P = DTCS Polarity B&lt;/p&gt;&lt;p&gt;q = DTCS A		Q = DTCS B&lt;/p&gt;&lt;p&gt;r = DV Squelch A 	R = DV Squelch B&lt;/p&gt;&lt;p&gt;s = Duplex Offset A 	S = Duplex Offset B&lt;/p&gt;&lt;p&gt;t = DV UR A		T = DV UR B&lt;/p&gt;&lt;p&gt;u = DV R1 A		U = DV R1 B&lt;/p&gt;&lt;p&gt;v = DV R2 A 		V = DV R2 B&lt;/p&gt;&lt;p&gt;z = Memory Name&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </item>
@@ -1146,7 +1155,11 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="satelliteFormat"/>
+       <widget class="QLineEdit" name="satelliteFormat">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format %&amp;lt;start&amp;gt;.&amp;lt;len&amp;gt;&amp;lt;specifier&amp;gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;specifier from list below:&lt;/p&gt;&lt;p&gt;a = Group&lt;/p&gt;&lt;p&gt;b = Num&lt;/p&gt;&lt;p&gt;c = Scan&lt;/p&gt;&lt;p&gt;d = Scan/Split&lt;/p&gt;&lt;p&gt;e = VFO A		E = VFO B&lt;/p&gt;&lt;p&gt;f = Frequency A 	F = Frequency B&lt;/p&gt;&lt;p&gt;g = Mode A		G = Mode B&lt;/p&gt;&lt;p&gt;h = Filter 		H = Filter B&lt;/p&gt;&lt;p&gt;i = Data 		I = Data B&lt;/p&gt;&lt;p&gt;j = Duplex/Tonemode A	J = Duplex B/Tonemode B&lt;/p&gt;&lt;p&gt;k = Data/Tonemode A	K = Data B/Tonemode B&lt;/p&gt;&lt;p&gt;l = Tonemode A	L = Tonemode B&lt;/p&gt;&lt;p&gt;m = DSQL A 		M = DSQL B&lt;/p&gt;&lt;p&gt;n = Tone type A	N = Tone type B&lt;/p&gt;&lt;p&gt;o = TSQL A		O = TSQL B&lt;/p&gt;&lt;p&gt;p = DTCS Polarity A 	P = DTCS Polarity B&lt;/p&gt;&lt;p&gt;q = DTCS A		Q = DTCS B&lt;/p&gt;&lt;p&gt;r = DV Squelch A 	R = DV Squelch B&lt;/p&gt;&lt;p&gt;s = Duplex Offset A 	S = Duplex Offset B&lt;/p&gt;&lt;p&gt;t = DV UR A		T = DV UR B&lt;/p&gt;&lt;p&gt;u = DV R1 A		U = DV R1 B&lt;/p&gt;&lt;p&gt;v = DV R2 A 		V = DV R2 B&lt;/p&gt;&lt;p&gt;z = Memory Name&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </item>

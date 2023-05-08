@@ -1169,16 +1169,16 @@ private:
     unsigned char lanGain=0;
 
     // Widgets and Special Windows:
-    calibrationWindow *cal;
-    repeaterSetup *rpt;
-    satelliteSetup *sat;
-    transceiverAdjustments *trxadj;
-    cwSender *cw;
+    calibrationWindow *cal = Q_NULLPTR;
+    repeaterSetup *rpt = Q_NULLPTR;
+    satelliteSetup *sat = Q_NULLPTR;
+    transceiverAdjustments *trxadj = Q_NULLPTR;
+    cwSender *cw = Q_NULLPTR;
     controllerSetup* usbWindow = Q_NULLPTR;
-    aboutbox *abtBox;
-    selectRadio *selRad;
-    loggingWindow *logWindow;
-    rigCreator *creator;
+    aboutbox *abtBox = Q_NULLPTR;
+    selectRadio *selRad = Q_NULLPTR;
+    loggingWindow *logWindow = Q_NULLPTR;
+    rigCreator *creator = Q_NULLPTR;
 
     udpServer* udp = Q_NULLPTR;
     rigCtlD* rigCtl = Q_NULLPTR;

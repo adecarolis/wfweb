@@ -18,7 +18,7 @@
     <item>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="mainTab">
        <attribute name="title">
@@ -2258,7 +2258,7 @@
           <item>
            <widget class="QStackedWidget" name="settingsStack">
             <property name="currentIndex">
-             <number>2</number>
+             <number>0</number>
             </property>
             <widget class="QWidget" name="radioAccess">
              <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -2377,17 +2377,37 @@
                  </widget>
                 </item>
                 <item>
-                 <spacer name="horizontalSpacer_2">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                 <widget class="QGroupBox" name="groupBox_11">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
                   </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
+                  <property name="title">
+                   <string>Information</string>
                   </property>
-                 </spacer>
+                  <property name="checkable">
+                   <bool>false</bool>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_19">
+                   <item>
+                    <layout class="QVBoxLayout" name="verticalLayout_22">
+                     <item>
+                      <widget class="QLabel" name="label_53">
+                       <property name="text">
+                        <string>Audio controls on this page are ONLY for network radios
+Please use the &quot;Radio Server&quot; page to select server audio</string>
+                       </property>
+                       <property name="alignment">
+                        <set>Qt::AlignCenter</set>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
                 </item>
                </layout>
               </item>
@@ -5570,8 +5590,8 @@
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="pollingButtonGroup"/>
   <buttongroup name="buttonGroup"/>
+  <buttongroup name="pollingButtonGroup"/>
   <buttongroup name="underlayButtonGroup"/>
  </buttongroups>
 </ui>

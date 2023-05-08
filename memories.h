@@ -15,7 +15,7 @@
 #include "wfviewtypes.h"
 #include "rigidentities.h"
 
-#define MEMORY_TIMEOUT 10000
+#define MEMORY_TIMEOUT 1000
 
 namespace Ui {
 class memories;
@@ -61,13 +61,16 @@ private slots:
 private:
     int currentRow=-1;
     memoryType* currentMemory = Q_NULLPTR;
+    int groupMemories=0;
+    quint32 lastMemoryRequested=0;
     QTimer timeoutTimer;
+    int timeoutCount=0;
 
     QStandardItemModel* createModel(QStandardItemModel* model, QStringList strings);
 
     QStringList split;
     QStringList scan;
-    QStringList VFO;
+    QStringList vfos;
     QStringList duplexModes;
     QStringList modes;
     QStringList dataModes;
@@ -97,6 +100,7 @@ private:
     QStandardItemModel* splitModel = Q_NULLPTR;
     QStandardItemModel* scanModel = Q_NULLPTR;
     QStandardItemModel* filterModel = Q_NULLPTR;
+    QStandardItemModel* vfoModel = Q_NULLPTR;
     QStandardItemModel* dataModel = Q_NULLPTR;
     QStandardItemModel* modesModel = Q_NULLPTR;
     QStandardItemModel* duplexModel = Q_NULLPTR;
@@ -107,6 +111,7 @@ private:
     QStandardItemModel* dtcspModel = Q_NULLPTR;
     QStandardItemModel* dtcsModel = Q_NULLPTR;
 
+    QStandardItemModel* vfoModelB = Q_NULLPTR;
     QStandardItemModel* modesModelB = Q_NULLPTR;
     QStandardItemModel* filterModelB = Q_NULLPTR;
     QStandardItemModel* dataModelB = Q_NULLPTR;
@@ -122,6 +127,7 @@ private:
     tableEditor* numEditor = Q_NULLPTR;
     tableCombobox* splitList = Q_NULLPTR;
     tableCombobox* scanList = Q_NULLPTR;
+    tableCombobox* vfoList = Q_NULLPTR;
     tableEditor* nameEditor = Q_NULLPTR;
     tableEditor* freqEditor = Q_NULLPTR;
     tableCombobox* filterList = Q_NULLPTR;
@@ -140,6 +146,7 @@ private:
     tableEditor* r1Editor = Q_NULLPTR;
     tableEditor* r2Editor = Q_NULLPTR;
 
+    tableCombobox* vfoListB = Q_NULLPTR;
     tableEditor* freqEditorB = Q_NULLPTR;
     tableCombobox* filterListB = Q_NULLPTR;
     tableCombobox* dataListB = Q_NULLPTR;
@@ -168,6 +175,7 @@ private:
         columnName,
         columnSplit,
         columnScan,
+        columnVFO,
         columnFrequency,
         columnMode,
         columnFilter,
@@ -184,6 +192,7 @@ private:
         columnUR,
         columnR1,
         columnR2,
+        columnVFOB,
         columnFrequencyB,
         columnModeB,
         columnFilterB,

@@ -35,30 +35,31 @@ enum spectrumMode {
 };
 
 enum mode_kind {
-    modeLSB=0x00,
-    modeUSB=0x01,
-    modeAM=0x02,
-    modeCW=0x03,
-    modeRTTY=0x04,
-    modeFM=0x05,
-    modeCW_R=0x07,
-    modeRTTY_R=0x08,
-    modePSK = 0x12,
-    modePSK_R = 0x13,
-    modeLSB_D=0x80,
-    modeUSB_D=0x81,
-    modeDV=0x17,
-    modeATV=0x23,
-    modeDD=0x27,
-    modeWFM,
-    modeS_AMD,
-    modeS_AML,
-    modeS_AMU,
-    modeP25,
-    modedPMR,
-    modeNXDN_VN,
-    modeNXDN_N,
-    modeDCR
+    modeLSB=0,          //0
+    modeUSB,            //1
+    modeAM,             //2
+    modeCW,             //3
+    modeRTTY,           //4
+    modeFM,             //5
+    modeCW_R,           //6
+    modeRTTY_R,         //7
+    modePSK,            //8
+    modePSK_R,          //9
+    modeLSB_D,          //10
+    modeUSB_D,          //11
+    modeDV,             //12
+    modeATV,            //13
+    modeDD,             //14
+    modeWFM,            //15
+    modeS_AMD,          //16
+    modeS_AML,          //17
+    modeS_AMU,          //18
+    modeP25,            //19
+    modedPMR,           //20
+    modeNXDN_VN,        //21
+    modeNXDN_N,         //22
+    modeDCR,            //23
+    modeUnknown         //24
 };
 
 enum selVFO_t {
@@ -116,6 +117,8 @@ struct rptrAccessData_t {
 };
 
 struct mode_info {
+    mode_info() {};
+    mode_info(mode_kind mk, quint8 reg, QString name, bool bw): mk(mk), reg(reg), name(name),bw(bw) {};
     mode_kind mk;
     unsigned char reg;
     unsigned char filter;
@@ -307,6 +310,8 @@ struct memoryType{
     quint16 channel=0;
     quint8 split=0;
     quint8 scan=0;
+    quint8 vfo=0;
+    quint8 vfoB=0;
     freqt frequency;
     freqt frequencyB;
     quint8 mode=0;
@@ -317,8 +322,8 @@ struct memoryType{
     quint8 datamodeB=0;
     quint8 duplex=0;
     quint8 duplexB=0;
-    quint8 tonemode;
-    quint8 tonemodeB;
+    quint8 tonemode=0;
+    quint8 tonemodeB=0;
     quint16 tone=670;
     quint16 toneB=670;
     quint16 tsql=670;

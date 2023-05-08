@@ -36,10 +36,11 @@ private slots:
     void receiveDataIn(); // from physical port
     void receiveDataFromUserToRig(const QByteArray &data);
     void debugThis();
+    void setHalfDuplex(bool en);
 
 signals:
     void haveTextMessage(QString message); // status, debug only
-    void sendDataOutToPort(const QByteArray &writeData); // not used
+    void sendDataOutToPort(const QByteArray &writeData); // used to re-send data
     void haveDataFromPort(QByteArray data); // emit this when we have data, connect to rigcommander
     void havePortError(errorType err);
     void haveStatusUpdate(const QString text);
@@ -58,6 +59,8 @@ private:
     QByteArray outPortData;
     QByteArray inPortData;
     QByteArray previousSent;
+    bool halfDuplex;
+    QMutex duplexMutex;
 
     //QDataStream outStream;
     //QDataStream inStream;

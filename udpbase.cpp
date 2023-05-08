@@ -5,15 +5,22 @@ void udpBase::init(quint16 lport)
 {
     //timeStarted.start();
     udp = new QUdpSocket(this);
-    udp->bind(lport); // Bind to random port.
-    localPort = udp->localPort();
-    qInfo(logUdp()) << "UDP Stream bound to local port:" << localPort << " remote port:" << port;
-    uint32_t addr = localIP.toIPv4Address();
-    myId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (localPort & 0xffff);
+    if (!udp->bind(lport))
+    {
+        // We couldn't bind to the selected random port.
+        qCritical(logUdp()) << "**** Unable to bind to UDP port" << lport << "Cannot continue! ****";
+    }
+    else
+    {
+        localPort = udp->localPort();
+        qInfo(logUdp()) << "UDP Stream bound to local port:" << localPort << " remote port:" << port;
+        uint32_t addr = localIP.toIPv4Address();
+        myId = (addr >> 8 & 0xff) << 24 | (addr & 0xff) << 16 | (localPort & 0xffff);
 
-    retransmitTimer = new QTimer();
-    connect(retransmitTimer, &QTimer::timeout, this, &udpBase::sendRetransmitRequest);
-    retransmitTimer->start(RETRANSMIT_PERIOD);
+        retransmitTimer = new QTimer();
+        connect(retransmitTimer, &QTimer::timeout, this, &udpBase::sendRetransmitRequest);
+        retransmitTimer->start(RETRANSMIT_PERIOD);
+    }
 }
 
 udpBase::~udpBase()

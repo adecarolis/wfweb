@@ -87,7 +87,7 @@
           </palette>
          </property>
          <property name="text">
-          <string>Loading Memories</string>
+          <string>Loading Memories (this may take a while!)</string>
          </property>
         </widget>
        </item>

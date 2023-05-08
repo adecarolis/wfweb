@@ -297,6 +297,7 @@ signals:
     void haveNetworkAudioLevels(const networkAudioLevels l);
     void dataForComm(const QByteArray &outData);
     void toggleRTS(bool rtsOn);
+    void setHalfDuplex(bool en);
 
     // UDP:
     void haveChangeLatency(quint16 value);
@@ -433,7 +434,7 @@ private:
     unsigned char audioLevelTxMean[50];
     unsigned char audioLevelTxPeak[50];
 
-    void parseMode();
+    void parseMode(quint8 mode, quint8 filter);
     void parseSpectrum();
     void parseWFData();
     void parseSpectrumRefLevel();

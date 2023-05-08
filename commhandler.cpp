@@ -15,7 +15,7 @@ commHandler::commHandler(QObject* parent) : QObject(parent)
     stopbits = 1;
     portName = "/dev/ttyUSB0";
     this->PTTviaRTS = false;
-
+    this->halfDuplex=false;
     init();
 }
 
@@ -25,7 +25,6 @@ commHandler::commHandler(QString portName, quint32 baudRate, quint8 wfFormat, QO
     // grab baud rate and other comm port details
     // if they need to be changed later, please
     // destroy this and create a new one.
-
 
     if (wfFormat == 1) { // Single waterfall packet
         combineWf = true;
@@ -64,6 +63,8 @@ void commHandler::init()
 #else
     connect(port, SIGNAL(errorOccurred(QSerialPort::SerialPortError)), this, SLOT(handleError(QSerialPort::SerialPortError)));
 #endif
+
+    connect(this, SIGNAL(sendDataOutToPort(const QByteArray&)),this,SLOT(sendDataOut(const QByteArray &)));
     lastDataReceived = QTime::currentTime();
 }
 
@@ -74,6 +75,12 @@ commHandler::~commHandler()
         this->closePort();
     }
     delete port;
+}
+
+void commHandler::setHalfDuplex(bool en)
+{
+    halfDuplex=en;
+    qInfo(logSerial()) << "Setting half duplex comms: " << ((en) ? "Enabled":"Disabled");
 }
 
 void commHandler::setupComm()
@@ -91,6 +98,11 @@ void commHandler::receiveDataFromUserToRig(const QByteArray &data)
 
 void commHandler::sendDataOut(const QByteArray &writeData)
 {
+    if (halfDuplex)
+    {
+        QMutexLocker locker(&duplexMutex);
+    }
+
     // Recycle port to attempt reconnection.
     if (lastDataReceived.msecsTo(QTime::currentTime()) > 2000) {
         qDebug(logSerial()) << "Serial port error? Attempting reconnect...";
@@ -162,6 +174,10 @@ void commHandler::sendDataOut(const QByteArray &writeData)
 
 void commHandler::receiveDataIn()
 {
+    if (halfDuplex)
+    {
+        QMutexLocker locker(&duplexMutex);
+    }
     // connected to comm port data signal
 
     // Here we get a little specific to CIV radios
@@ -174,10 +190,10 @@ void commHandler::receiveDataIn()
 
     if (inPortData.startsWith("\xFC\xFC\xFC\xFC\xFC"))
     {
-        // Colission detected by remote end, re-send previous command.
+        // Collision detected by remote end, re-send previous command.
         qInfo(logSerial()) << "Collision detected by remote, resending previous command";
         port->commitTransaction();
-        sendDataOut(previousSent);
+        emit sendDataOutToPort(previousSent);
         return;
     }
 

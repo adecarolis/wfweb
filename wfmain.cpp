@@ -52,7 +52,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     cw = new cwSender();
     abtBox = new aboutbox();
     selRad = new selectRadio();
-    creator = new rigCreator();
 
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
     qRegisterMetaType<rigCapabilities>();
@@ -1305,8 +1304,8 @@ void wfmain::updateSizes(int tabIndex)
             ui->tabWidget->widget(0)->setMaximumSize(ui->tabWidget->widget(0)->minimumSizeHint());
             ui->tabWidget->widget(0)->adjustSize(); // tab
             this->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-            this->setMaximumSize(QSize(940,350));
-            this->setMinimumSize(QSize(940,350));
+            this->setMaximumSize(QSize(940,380));
+            this->setMinimumSize(QSize(940,380));
 
             resize(minimumSize());
             adjustSize(); // main window
@@ -2166,7 +2165,6 @@ void wfmain::loadSettings()
     }
     prefs.CIVisRadioModel = (bool)settings->value("CIVisRadioModel", defPrefs.CIVisRadioModel).toBool();
     prefs.forceRTSasPTT = (bool)settings->value("ForceRTSasPTT", defPrefs.forceRTSasPTT).toBool();
-
     ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
 
     prefs.serialPortRadio = settings->value("SerialPortRadio", defPrefs.serialPortRadio).toString();
@@ -2248,6 +2246,10 @@ void wfmain::loadSettings()
     ui->serverRXAudioInputCombo->setEnabled(!prefs.enableLAN);
     ui->serverTXAudioOutputCombo->setEnabled(!prefs.enableLAN);
     ui->audioSystemServerCombo->setEnabled(!prefs.enableLAN);
+
+    // If LAN is not enabled, disable local audio input/output
+    ui->audioOutputCombo->setEnabled(prefs.enableLAN);
+    ui->audioInputCombo->setEnabled(prefs.enableLAN);
 
     ui->baudRateCombo->setEnabled(!prefs.enableLAN);
     ui->serialDeviceListCombo->setEnabled(!prefs.enableLAN);
@@ -3792,6 +3794,7 @@ void wfmain:: getInitialRigState()
     }
         
     delayedCommand->start();
+
 }
 
 void wfmain::showStatusBarText(QString text)
@@ -4992,7 +4995,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         foreach (auto m, rigCaps.modes)
         {
-            ui->modeSelectCombo->addItem(m.name, m.reg);
+            ui->modeSelectCombo->addItem(m.name, m.mk);
         }
         ui->modeSelectCombo->blockSignals(false);
 
@@ -5108,6 +5111,8 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
 
         ui->tuneEnableChk->setEnabled(rigCaps.commands.contains(funcTunerStatus));
         ui->tuneNowBtn->setEnabled(rigCaps.commands.contains(funcTunerStatus));
+
+        ui->memoriesBtn->setEnabled(rigCaps.commands.contains(funcMemoryContents));
 
         ui->useRTSforPTTchk->setChecked(prefs.forceRTSasPTT);
 
@@ -6065,118 +6070,105 @@ void wfmain::on_scopeEnableWFBtn_stateChanged(int state)
 
 void wfmain::receiveMode(unsigned char mode, unsigned char filter)
 {
-    //qInfo(logSystem()) << __func__ << "Received mode " << mode << " current mode: " << currentModeIndex;
 
-    bool found=false;
-
-    if(mode < 0x23)
+    // Update mode information if mode/filter has changed
+    if (currentModeInfo.reg != mode || currentModeInfo.filter != filter)
     {
-
-        // Update mode information if mode/filter has changed
-        if (currentModeInfo.mk != (mode_kind)mode || currentModeInfo.filter != filter)
+        mode_info newMode;
+        foreach (auto m, rigCaps.modes)
         {
-
-            // Remove all "Slow" commands (they will be added later if needed)
-
-            quint16 maxPassbandHz = 0;
-            switch ((mode_kind)mode) {
-            case modeFM:
-                if (filter == 1)
-                    passbandWidth = 0.015;
-                else if (filter == 2)
-                    passbandWidth = 0.010;
-                else
-                    passbandWidth = 0.007;
-                passbandCenterFrequency = 0.0;
-                maxPassbandHz = 10E3;
-                removePeriodicRapidCmd(cmdGetPassband);
-                removePeriodicRapidCmd(cmdGetTPBFInner);
-                removePeriodicRapidCmd(cmdGetTPBFOuter);
-                break;
-            case modeCW:
-            case modeCW_R:
-                insertPeriodicRapidCmdUnique(cmdGetCwPitch);
-                insertPeriodicRapidCmdUnique(cmdGetDashRatio);
-                insertPeriodicRapidCmdUnique(cmdGetKeySpeed);
-                maxPassbandHz = 3600;
-                break;
-            case modeAM:
-                passbandCenterFrequency = 0.0;
-                maxPassbandHz = 10E3;
-                break;
-            case modeLSB:
-            case modeUSB:
-                passbandCenterFrequency = 0.0015;
-                maxPassbandHz = 3600;
-                break;
-            default:
-                passbandCenterFrequency = 0.0;
-                maxPassbandHz = 3600;
-                break;
-            }
-
-            if ((mode_kind)mode != modeFM && currentModeInfo.mk == modeFM)
+            if (m.reg == mode)
             {
-                /* mode was FM but now isn't so insert commands */
-                insertPeriodicRapidCmdUnique(cmdGetPassband);
-                insertPeriodicRapidCmdUnique(cmdGetTPBFInner);
-                insertPeriodicRapidCmdUnique(cmdGetTPBFOuter);
-            }
+                // Matching mode
+                newMode=m;
+                qInfo(logSystem()) << __func__ << "Received new mode " << QString::number((uint)mode,16) << "(" << newMode.name << ")";
 
-
-            if (((mode_kind)mode != modeCW && (mode_kind)mode != modeCW_R) && (currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R))
-            {
-                /* mode was CW/CWR but now isn't so remove CW commands */
-                removePeriodicRapidCmd(cmdGetCwPitch);
-                removePeriodicRapidCmd(cmdGetDashRatio);
-                removePeriodicRapidCmd(cmdGetKeySpeed);
-            }
-
-            for (int i = 0; i < ui->modeSelectCombo->count(); i++)
-            {
-                if (ui->modeSelectCombo->itemData(i).toInt() == mode)
-                {
-                    ui->modeSelectCombo->blockSignals(true);
-                    ui->modeSelectCombo->setCurrentIndex(i);
-                    ui->modeSelectCombo->blockSignals(false);
-                    found = true;
+                quint16 maxPassbandHz = 0;
+                switch (newMode.mk) {
+                case modeFM:
+                case modeDV:
+                case modeDD:
+                    if (filter == 1)
+                        passbandWidth = 0.015;
+                    else if (filter == 2)
+                        passbandWidth = 0.010;
+                    else
+                        passbandWidth = 0.007;
+                    passbandCenterFrequency = 0.0;
+                    maxPassbandHz = 10E3;
+                    removePeriodicRapidCmd(cmdGetPassband);
+                    removePeriodicRapidCmd(cmdGetTPBFInner);
+                    removePeriodicRapidCmd(cmdGetTPBFOuter);
+                    break;
+                case modeCW:
+                case modeCW_R:
+                    insertPeriodicRapidCmdUnique(cmdGetCwPitch);
+                    insertPeriodicRapidCmdUnique(cmdGetDashRatio);
+                    insertPeriodicRapidCmdUnique(cmdGetKeySpeed);
+                    maxPassbandHz = 3600;
+                    break;
+                case modeAM:
+                    passbandCenterFrequency = 0.0;
+                    maxPassbandHz = 10E3;
+                    break;
+                case modeLSB:
+                case modeUSB:
+                    passbandCenterFrequency = 0.0015;
+                    maxPassbandHz = 3600;
+                    break;
+                default:
+                    passbandCenterFrequency = 0.0;
+                    maxPassbandHz = 3600;
+                    break;
                 }
-            }
 
-            if ((filter) && (filter < 4)) {
-                ui->modeFilterCombo->blockSignals(true);
-                ui->modeFilterCombo->setCurrentIndex(filter - 1);
-                ui->modeFilterCombo->blockSignals(false);
-            }
+                if ((newMode.mk != modeFM && newMode.mk != modeDV && newMode.mk != modeDD )
+                    && (currentModeInfo.mk == modeFM || currentModeInfo.mk == modeDV || currentModeInfo.mk == modeDD))
+                {
+                    /* mode was FM or DV/DD but now isn't so insert commands */
+                    insertPeriodicRapidCmdUnique(cmdGetPassband);
+                    insertPeriodicRapidCmdUnique(cmdGetTPBFInner);
+                    insertPeriodicRapidCmdUnique(cmdGetTPBFOuter);
+                }
 
-            currentModeIndex = mode;
-            currentModeInfo.mk = (mode_kind)mode;
-            currentMode = (mode_kind)mode;
-            currentModeInfo.filter = filter;
-            currentModeInfo.reg = mode;
-            rpt->handleUpdateCurrentMainMode(currentModeInfo);
-            cw->handleCurrentModeUpdate(currentMode);
-            if (!found)
-            {
-                qWarning(logSystem()) << __func__ << "Received mode " << mode << " but could not match to any index within the modeSelectCombo. ";
-                return;
-            }
 
-            if (maxPassbandHz != 0)
-            {
-                trxadj->setMaxPassband(maxPassbandHz);
-            }
-            
-            // Note: we need to know if the DATA mode is active to reach mode-D
-            // some kind of queued query:
-            if (rigCaps.hasDataModes && rigCaps.hasTransmit)
-            {
-                issueDelayedCommand(cmdGetDataMode);
-            }
+                if ((newMode.mk != modeCW && newMode.mk != modeCW_R) && (newMode.mk == modeCW || newMode.mk == modeCW_R))
+                {
+                    /* mode was CW/CWR but now isn't so remove CW commands */
+                    removePeriodicRapidCmd(cmdGetCwPitch);
+                    removePeriodicRapidCmd(cmdGetDashRatio);
+                    removePeriodicRapidCmd(cmdGetKeySpeed);
+                }
 
+                ui->modeSelectCombo->setCurrentIndex(ui->modeSelectCombo->findData(newMode.mk));
+
+                if ((filter) && (filter < 4)) {
+                    ui->modeFilterCombo->blockSignals(true);
+                    ui->modeFilterCombo->setCurrentIndex(filter - 1);
+                    ui->modeFilterCombo->blockSignals(false);
+                }
+
+                currentModeInfo = newMode;
+                currentModeInfo.filter = filter;
+
+                rpt->handleUpdateCurrentMainMode(currentModeInfo);
+                cw->handleCurrentModeUpdate(currentModeInfo.mk);
+
+                if (maxPassbandHz != 0)
+                {
+                    trxadj->setMaxPassband(maxPassbandHz);
+                }
+
+                // Note: we need to know if the DATA mode is active to reach mode-D
+                // some kind of queued query:
+                if (rigCaps.hasDataModes && rigCaps.hasTransmit)
+                {
+                    issueDelayedCommand(cmdGetDataMode);
+                }
+                return; // We have nothing more to process
+            }
         }
-
-    } else {
+        // If we got here, we didn't find a matching mode
         qCritical(logSystem()) << __func__ << "Invalid mode " << mode << " received. ";
     }
 }
@@ -6241,17 +6233,16 @@ void wfmain::on_goFreqBtn_clicked()
 
         foreach (mode_info mi, rigCaps.modes)
         {
-            if (mi.reg == sidebandChooser::getMode(f, currentMode))
+            if (mi.reg == sidebandChooser::getMode(f, currentModeInfo.mk))
             {
                 mode_info m = mode_info(mi);
                 m.filter = ui->modeFilterCombo->currentData().toInt();
                 m.data = ui->dataModeBtn->isChecked();
                 m.VFO=selVFO_t::activeVFO;
-                if((m.mk != currentMode) && !usingDataMode && prefs.automaticSidebandSwitching)
+                if((m.mk != currentModeInfo.mk) && !usingDataMode && prefs.automaticSidebandSwitching)
                 {
                     issueCmd(cmdSetMode, m);
                     issueDelayedCommand(cmdGetMode);
-                    currentMode = m.mk;
                 }
                 break;
             }
@@ -6416,17 +6407,14 @@ void wfmain::changeMode(mode_kind mode, bool dataOn)
             m.filter = ui->modeFilterCombo->currentData().toInt();
             m.data = dataOn;
             m.VFO=selVFO_t::activeVFO;
-            if((m.mk != currentMode) && !usingDataMode && prefs.automaticSidebandSwitching)
+            if((m.mk != currentModeInfo.mk) && !usingDataMode && prefs.automaticSidebandSwitching)
             {
                 issueCmd(cmdSetMode, m);
-                currentMode = m.mk;
                 issueDelayedCommand(cmdGetMode);
             }
             break;
         }
     }
-
-    currentMode = mode;
 
     if(dataOn && (!usingDataMode))
     {
@@ -6445,12 +6433,10 @@ void wfmain::changeMode(mode_kind mode, bool dataOn)
 
 void wfmain::on_modeSelectCombo_activated(int index)
 {
-    // The "acticvated" signal means the user initiated a mode change.
+    // The "activated" signal means the user initiated a mode change.
     // This function is not called if code initiated the change.
 
     unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->itemData(index).toUInt());
-    currentModeIndex = newMode;
-
 
     int filterSelection = ui->modeFilterCombo->currentData().toInt();
     if(filterSelection == 99)
@@ -6467,8 +6453,8 @@ void wfmain::on_modeSelectCombo_activated(int index)
                 m.filter = filterSelection;
                 m.data = ui->dataModeBtn->isChecked();
                 m.VFO=selVFO_t::activeVFO;
+                currentModeInfo = m; // This will be reset by the rig if invalid.
                 issueCmd(cmdSetMode, m);
-                currentMode = (mode_kind)newMode;
                 issueDelayedCommand(cmdGetMode);
                 break;
             }
@@ -6606,7 +6592,7 @@ void wfmain::on_band4mbtn_clicked()
 {
     // There isn't a BSR for this one:
     freqt f;
-    if ((currentMode == modeAM) || (currentMode == modeFM))
+    if ((currentModeInfo.mk == modeAM) || (currentModeInfo.mk == modeFM))
     {
         f.Hz = (70.260) * 1E6;
     } else {
@@ -7168,7 +7154,6 @@ void wfmain::on_modeFilterCombo_activated(int index)
 
     } else {
         unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->currentData().toUInt());
-        currentModeIndex = newMode; // we track this for other functions
         if(ui->dataModeBtn->isChecked())
         {
             emit setDataMode(true, (unsigned char)filterSelection);
@@ -7893,7 +7878,7 @@ void wfmain::calculateTimingParameters()
     {
         delayedCommand->setInterval( msMinTiming); // 20 byte message
     } else {
-        delayedCommand->setInterval( msMinTiming * 3); // 20 byte message
+        delayedCommand->setInterval( msMinTiming * 4); // Multiply by 4 to allow rigMemories to be received.
     }
 
 
@@ -9869,6 +9854,20 @@ void wfmain::receiveMemory(memoryType mem)
 
 void wfmain::on_rigCreatorBtn_clicked()
 {
+    if(creator == Q_NULLPTR)
+    {
+        creator = new rigCreator();
+    } else {
+        if (creator->isVisible())
+        {
+            creator->raise();
+        }
+        else
+        {
+            delete creator;
+            creator = new rigCreator();
+        }
+    }
     creator->show();
 }
 
