@@ -898,7 +898,7 @@ void memories::on_group_currentIndexChanged(int index)
 
         lastMemoryRequested = quint32((ui->group->currentData().toInt())<<16) | (rigCaps.memStart & 0xffff);
         emit getMemory(lastMemoryRequested);
-    }    
+    }
 }
 
 void memories::on_vfoMode_clicked()
@@ -933,6 +933,7 @@ void memories::receiveMemory(memoryType mem)
     }
 
     timeoutCount=0; // We have received a memory, so set the timeout to zero.
+    int validData=0;
 
     // Now process the incoming memory
     int row=-1;
@@ -953,6 +954,7 @@ void memories::receiveMemory(memoryType mem)
             ui->table->insertRow(ui->table->rowCount());
             row=ui->table->rowCount()-1;
             QPushButton* recall = new QPushButton("Recall");
+            validData++;
             ui->table->setCellWidget(row,columnRecall,recall);
             connect(recall, &QPushButton::clicked, this,
                     [=]() { qInfo() << "Recalling" << mem.channel; emit recallMemory((quint32((ui->group->currentData().toUInt() << 16) | mem.channel)));});
@@ -961,8 +963,11 @@ void memories::receiveMemory(memoryType mem)
         ui->table->model()->setData(ui->table->model()->index(row,columnNum),QString::number(mem.channel & 0xffff).rightJustified(3,'0'));
         ui->table->item(row,columnNum)->setFlags(ui->table->item(row,columnNum)->flags() & (~Qt::ItemIsEditable));
         ui->table->item(row,columnNum)->setBackground(Qt::transparent);
+        validData++;
+
 
         // Set every combobox to default value first:
+/*
         if (ui->table->item(row,columnSplit) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnSplit),split[0]);
         if (ui->table->item(row,columnScan) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnScan),scan[0]);
         if (ui->table->item(row,columnFilter) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnFilter),filters[0]);
@@ -984,33 +989,40 @@ void memories::receiveMemory(memoryType mem)
         if (ui->table->item(row,columnTSQLB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnTSQLB),tones[0]);
         if (ui->table->item(row,columnDTCSPolarityB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDTCSPolarityB),dtcsp[0]);
         if (ui->table->item(row,columnDTCSB) == NULL) ui->table->model()->setData(ui->table->model()->index(row,columnDTCSB),dtcs[0]);
+*/
 
         for (int f=0;f<split.size();f++)
         {
             if (f==mem.split) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnSplit),split[f]);
+                validData++;
                 break;
             }
-        }
+        }        
 
         for (int f=0;f<scan.size();f++)
         {
             if (f==mem.scan) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnScan),scan[f]);
+                validData++;
                 break;
             }
         }
 
         ui->table->model()->setData(ui->table->model()->index(row,columnFrequency),QString::number(double(mem.frequency.Hz/1000000.0),'f',3));
+        validData++;
+
         ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),QString::number(double(mem.frequencyB.Hz/1000000.0),'f',3));
+        validData++;
 
         foreach (auto mode, rigCaps.modes){
             if (mode.reg == mem.mode) {
-
                 ui->table->model()->setData(ui->table->model()->index(row,columnMode),mode.name);
+                validData++;
             }
             if (mode.reg == mem.modeB) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnModeB),mode.name);
+                validData++;
             }
         }
 
@@ -1018,9 +1030,11 @@ void memories::receiveMemory(memoryType mem)
         {
             if (f==mem.datamode) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnData),dataModes[f]);
+                validData++;
             }
             if (f==mem.datamodeB) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnDataB),dataModes[f]);
+                validData++;
             }
         }
 
@@ -1028,9 +1042,11 @@ void memories::receiveMemory(memoryType mem)
         {
             if (f==mem.filter-1) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnFilter),filters[f]);
+                validData++;
             }
             if (f==mem.filterB-1) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnFilterB),filters[f]);
+                validData++;
             }
         }
 
@@ -1038,9 +1054,11 @@ void memories::receiveMemory(memoryType mem)
         {
             if (f==mem.duplex) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnDuplex),duplexModes[f]);
+                validData++;
             }
             if (f==mem.duplexB) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnDuplexB),duplexModes[f]);
+                validData++;
             }
         }
 
@@ -1048,9 +1066,11 @@ void memories::receiveMemory(memoryType mem)
         {
             if (f==mem.tonemode) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnToneMode),toneModes[f]);
+                validData++;
             }
             if (f==mem.tonemodeB) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnToneModeB),toneModes[f]);
+                validData++;
             }
         }
 
@@ -1058,28 +1078,41 @@ void memories::receiveMemory(memoryType mem)
         {
             if (f==mem.dsql) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnDSQL),dsql[f]);
+                validData++;
             }
             if (f==mem.dsqlB) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnDSQLB),dsql[f]);
+                validData++;
             }
         }
 
         ui->table->model()->setData(ui->table->model()->index(row,columnTone),QString::number((float)mem.tone/10,'f',1));
+        validData++;
+
         ui->table->model()->setData(ui->table->model()->index(row,columnToneB),QString::number((float)mem.toneB/10,'f',1));
+        validData++;
 
         ui->table->model()->setData(ui->table->model()->index(row,columnTSQL),QString::number((float)mem.tsql/10,'f',1));
+        validData++;
+
         ui->table->model()->setData(ui->table->model()->index(row,columnTSQLB),QString::number((float)mem.tsqlB/10,'f',1));
+        validData++;
 
         ui->table->model()->setData(ui->table->model()->index(row,columnDVSquelch),QString::number(mem.dvsql).rightJustified(2,'0'));
+        validData++;
+
         ui->table->model()->setData(ui->table->model()->index(row,columnDVSquelchB),QString::number(mem.dvsqlB).rightJustified(2,'0'));
+        validData++;
 
         for (int f=0;f<dtcsp.size();f++)
         {
             if (f==mem.dtcsp) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnDTCSPolarity),dtcsp[f]);
+                validData++;
             }
             if (f==mem.dtcspB) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnDTCSPolarityB),dtcsp[f]);
+                validData++;
             }
         }
 
@@ -1087,27 +1120,86 @@ void memories::receiveMemory(memoryType mem)
         {
             if (dtcs[f].toInt()==mem.dtcs) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnDTCS),dtcs[f]);
+                validData++;
             }
             if (dtcs[f].toInt()==mem.dtcsB) {
                 ui->table->model()->setData(ui->table->model()->index(row,columnDTCSB),dtcs[f]);
+                validData++;
             }
         }
 
         ui->table->model()->setData(ui->table->model()->index(row,columnOffset),QString::number(double(mem.duplexOffset.Hz/10000.0),'f',3));
+        validData++;
+
         ui->table->model()->setData(ui->table->model()->index(row,columnOffsetB),QString::number(double(mem.duplexOffsetB.Hz/10000.0),'f',3));
+        validData++;
 
-        ui->table->model()->setData(ui->table->model()->index(row,columnUR),QString(mem.UR));
-        ui->table->model()->setData(ui->table->model()->index(row,columnURB),QString(mem.URB));
+        if (checkASCII(mem.UR)) {
+            ui->table->model()->setData(ui->table->model()->index(row,columnUR),QString(mem.UR));
+            validData++;
+        } else
+            qInfo() << "Invalid data in ur";
 
-        ui->table->model()->setData(ui->table->model()->index(row,columnR1),QString(mem.R1));
-        ui->table->model()->setData(ui->table->model()->index(row,columnR1B),QString(mem.R1B));
+        if (checkASCII(mem.URB)) {
+            ui->table->model()->setData(ui->table->model()->index(row,columnURB),QString(mem.URB));
+            validData++;
+        } else
+            qInfo() << "Invalid data in urb";
 
-        ui->table->model()->setData(ui->table->model()->index(row,columnR2),QString(mem.R2));
-        ui->table->model()->setData(ui->table->model()->index(row,columnR2B),QString(mem.R2B));
 
-        ui->table->model()->setData(ui->table->model()->index(row,columnName),QString(mem.name));
+        if (checkASCII(mem.R1)) {
+            ui->table->model()->setData(ui->table->model()->index(row,columnR1),QString(mem.R1));
+            validData++;
+        } else
+            qInfo() << "Invalid data in r1";
+
+
+        if (checkASCII(mem.R1B)) {
+            ui->table->model()->setData(ui->table->model()->index(row,columnR1B),QString(mem.R1B));
+            validData++;
+        } else
+            qInfo() << "Invalid data in r1b";
+
+
+        if (checkASCII(mem.R2)) {
+            ui->table->model()->setData(ui->table->model()->index(row,columnR2),QString(mem.R2));
+            validData++;
+        } else
+            qInfo() << "Invalid data in r2";
+
+
+        if (checkASCII(mem.R2B)) {
+            ui->table->model()->setData(ui->table->model()->index(row,columnR2B),QString(mem.R2B));
+            validData++;
+        } else
+            qInfo() << "Invalid data in r2b";
+
+
+        if (checkASCII(mem.name)) {
+            ui->table->model()->setData(ui->table->model()->index(row,columnName),QString(mem.name));
+            validData++;
+        } else
+            qInfo() << "Invalid data in name";
+
 
         ui->table->blockSignals(false);
+
+        int visibleColumns=0;
+
+        for (int i=0;i<ui->table->columnCount();i++)
+        {
+            if (!ui->table->isColumnHidden(i))
+                visibleColumns++;
+        }
+
+        if (validData < visibleColumns-1) {
+            qInfo(logRig()) << "Memory" << mem.channel << "Received valid data for" << validData << "columns, " << "expected" << visibleColumns << "requesting again";
+            if (mem.sat)
+                emit getSatMemory(mem.channel & 0xffff);
+            else
+                emit getMemory(quint32((ui->group->currentData().toInt())<<16) | (mem.channel & 0xffff));
+        }
+
     }
     else if (row != -1)
     {
@@ -1117,6 +1209,14 @@ void memories::receiveMemory(memoryType mem)
     }
 
 }
+
+bool memories::checkASCII(QString str)
+{
+    static QRegularExpression exp = QRegularExpression(QStringLiteral("[^\\x{0000}-\\x{007F}]"));
+    bool containsNonASCII = str.contains(exp);
+    return !containsNonASCII;
+}
+
 
 void memories::timeout()
 {

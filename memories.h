@@ -66,6 +66,8 @@ private:
     QTimer timeoutTimer;
     int timeoutCount=0;
 
+    bool checkASCII(QString str);
+
     QStandardItemModel* createModel(QStandardItemModel* model, QStringList strings);
 
     QStringList split;

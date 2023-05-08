@@ -37,6 +37,7 @@ private slots:
     void receiveDataFromUserToRig(const QByteArray &data);
     void debugThis();
     void setHalfDuplex(bool en);
+    void sendDataOut(const QByteArray &writeData); // out to radio
 
 signals:
     void haveTextMessage(QString message); // status, debug only
@@ -51,7 +52,6 @@ private:
     void closePort();
 
 
-    void sendDataOut(const QByteArray &writeData); // out to radio
     void debugMe();
     void hexPrint();
 
