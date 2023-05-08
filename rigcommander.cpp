@@ -1456,8 +1456,10 @@ void rigCommander::setMemory(memoryType mem)
             break;
         case 'e':
             payload.append(mem.vfo);
+            break;
         case 'E':
             payload.append(mem.vfoB);
+            break;
         case 'f':
             payload.append(makeFreqPayload(mem.frequency));
             break;
@@ -2024,6 +2026,10 @@ void rigCommander::parseCommand()
         state.set(FILTER, filter, false);
         break;
     }
+#if defined __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#endif
     case funcSatelliteMemory:
         memParser=rigCaps.satParser;
     case funcMemoryContents:
@@ -2203,6 +2209,9 @@ void rigCommander::parseCommand()
         }
         emit haveMemory(mem);
     }
+#if defined __GNUC__
+#pragma GCC diagnostic pop
+#endif
     case funcMemoryClear:
     case funcMemoryKeyer:
     case funcMemoryToVFO:

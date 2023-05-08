@@ -61,7 +61,7 @@ private slots:
 private:
     int currentRow=-1;
     memoryType* currentMemory = Q_NULLPTR;
-    int groupMemories=0;
+    quint32 groupMemories=0;
     quint32 lastMemoryRequested=0;
     QTimer timeoutTimer;
     int timeoutCount=0;
