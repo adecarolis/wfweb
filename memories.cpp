@@ -121,13 +121,13 @@ void memories::rowAdded(int row)
         * If no empty memories available, log a warning and quit
     */
 
-    std::vector<int> rows;
+    std::vector<quint16> rows;
     ui->table->blockSignals(true);
     for (int i=0;i < ui->table->rowCount();i++)
     {
         if (ui->table->item(i,columnNum) != NULL)
         {
-            rows.push_back(ui->table->item(i,columnNum)->text().toInt());
+            rows.push_back(ui->table->item(i,columnNum)->text().toUInt());
         }
     }
 
