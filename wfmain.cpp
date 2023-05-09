@@ -9778,7 +9778,8 @@ void wfmain::on_memoriesBtn_clicked()
 {
     if (haveRigCaps) {
         if (memWindow == Q_NULLPTR) {
-            memWindow = new memories(rigCaps,this);
+            // Add slowload option for background loading.
+            memWindow = new memories(rigCaps,false,this);
             this->memWindow->connect(rig, SIGNAL(haveMemory(memoryType)), memWindow, SLOT(receiveMemory(memoryType)));
 
             this->memWindow->connect(this->memWindow, &memories::getMemory, rig,
@@ -9847,6 +9848,11 @@ void wfmain::receiveMemory(memoryType mem)
 
 void wfmain::on_rigCreatorBtn_clicked()
 {
+    rigCreator* create = new rigCreator();
+    create->setAttribute(Qt::WA_DeleteOnClose);
+    create->show();
+
+    /*
     if(creator == Q_NULLPTR)
     {
         creator = new rigCreator();
@@ -9862,6 +9868,7 @@ void wfmain::on_rigCreatorBtn_clicked()
         }
     }
     creator->show();
+*/
 }
 
 #ifdef USB_HOTPLUG

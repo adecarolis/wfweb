@@ -305,7 +305,8 @@ struct errorType {
     QString message;
 };
 
-struct memoryType{
+
+struct memoryType {
     quint16 group=0;
     quint16 channel=0;
     quint8 split=0;
@@ -346,7 +347,7 @@ struct memoryType{
     char R2B[9];
     char name[24]; // 1 more than the absolute max
     bool sat=false;
-
+    bool del=false;
 };
 
 

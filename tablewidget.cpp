@@ -40,12 +40,13 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
         else if( selectedAction == clone )
         {
             int row=this->currentRow();
-            this->insertRow(this->currentRow());
+            int rown=this->rowCount();
+            this->insertRow(this->rowCount());
             for (int i=0;i<this->columnCount();i++)
             {
-                if (this->item(row+1,i) != NULL) this->model()->setData(this->model()->index(row,i),this->item(row+1,i)->text());
+                if (this->item(row,i) != NULL) this->model()->setData(this->model()->index(rown,i),this->item(row,i)->text());
             }
-            emit rowAdded(row);
+            emit rowAdded(rown);
         }
         else if( selectedAction == del )
         {

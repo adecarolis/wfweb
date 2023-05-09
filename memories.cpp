@@ -4,8 +4,9 @@
 #include "memories.h"
 #include "ui_memories.h"
 
-memories::memories(rigCapabilities rigCaps, QWidget *parent) :
+memories::memories(rigCapabilities rigCaps, bool slowLoad, QWidget *parent) :
     QDialog(parent),
+    slowLoad(slowLoad),
     rigCaps(rigCaps),
     ui(new Ui::memories)
 {
@@ -24,6 +25,41 @@ memories::memories(rigCapabilities rigCaps, QWidget *parent) :
         "DTCS" << "DTCS Pol" << "DV Sql" << "Offset" << "UR" << "R1" << "R2" << "VFO B" << "Freq B" << "Mode B" << "Filter B" << "Data B" << "Duplex B" <<
         "Tn Mode B" << "DSQL B" << "Tone B" << "TSQL B" << "DTCS B" << "DTCSP B" << "DV Sql B" << "Offset B" << "UR B" << "R1 B" << "R2 B";
 
+    scan << "OFF" << "*1" << "*2" << "*3";
+
+    split << "OFF" << "ON";
+
+    dataModes << "OFF" << "DATA1";
+    if (rigCaps.commands.contains(funcDATA2Mod))
+        dataModes.append("DATA2");
+    if (rigCaps.commands.contains(funcDATA3Mod))
+        dataModes.append("DATA3");
+
+    filters << "FIL1" << "FIL2" << "FIL3";
+
+    duplexModes << "OFF" << "DUP-" << "DUP+" << "RPS";
+
+    toneModes << "OFF" << "TONE" << "TSQL";
+    if (rigCaps.commands.contains(funcRepeaterDTCS))
+        toneModes.append("DTCS");
+
+
+    tones << "67.0" << "69.3" << "71.9" << "74.4" << "77.0" << "79.7" << "82.5" << "85.4" << "88.5" << "91.5" << "94.8" << "97.4" << "100.0" << "103.5" << "107.2" << "110.9" << "114.8" <<
+        "118.8" << "123.0" << "127.3" << "131.8" << "136.5" << "141.3" << "146.2" << "151.4" << "156.7" << "159.8" << "162.2" << "165.5" << "167.9" << "171.3" << "173.8" << "177.3" << "179.9" <<
+        "183.5" << "186.2" << "189.9" << "192.8" << "196.6" << "199.5" << "203.5" << "206.5" <<"210.7" << "218.1" << "225.7" << "229.1" << "233.6" << "241.8" << "250.3" << "254.1";
+
+    dtcs << "023" << "025" << "026" << "031" << "032" << "036" << "043" << "047" << "051" << "053" << "054" << "065" << "071" << "072" << "073" << "074" << "114" << "115" << "116" << "122" <<
+        "125" << "131" << "132" << "134" << "143" << "145" << "152" << "155" << "156" << "162" << "165" << "172" << "174" << "205" << "212" << "223" << "225" << "226" << "243" << "244" <<
+        "245" << "246" << "251" << "252" << "255" << "261" << "263" << "265" << "266" << "271" << "274" << "306" << "311" << "315" << "325" << "331" << "332" << "343" << "346" << "351" <<
+        "356" << "364" << "365" << "371" << "411" << "412" << "413" << "423" << "431" << "432" << "445" << "446" << "452" << "454" << "455" << "462" << "464" << "465" << "466" << "503" <<
+        "506" << "516" << "523" << "526" << "532" << "546" << "565" <<"606" << "612" << "624" << "627" << "631" << "632" << "654" << "662" << "664" << "703" << "712" << "723" << "731" <<
+        "732" << "734" << "743" << "754";
+
+    dsql << "OFF" << "DSQL" << "CSQL";
+
+    dtcsp << "BOTH N" << "N/R" << "R/N" << "BOTH R";
+
+
     ui->table->setHorizontalHeaderLabels(headers);
 
     ui->groupLabel->hide();
@@ -38,9 +74,11 @@ memories::memories(rigCapabilities rigCaps, QWidget *parent) :
 
         ui->group->addItem(QString("Group %0").arg(i,2,10,QChar('0')),i);
     }
+
     if (rigCaps.satMemories && rigCaps.commands.contains(funcSatelliteMode)){
-        ui->group->addItem("Satellite",200);
+        ui->group->addItem("Satellite",MEMORY_SATGROUP);
     }
+
     ui->group->setCurrentIndex(-1);
     ui->group->blockSignals(false);
 
@@ -49,45 +87,15 @@ memories::memories(rigCapabilities rigCaps, QWidget *parent) :
         dvsql.append(QString::number(i).rightJustified(2,'0'));
     }
 
-    scan = QStringList({"OFF","*1","*2","*3"});
-    split = QStringList({"OFF","ON"});
-
-    dataModes = QStringList({"OFF","DATA1"});
-    if (rigCaps.commands.contains(funcDATA2Mod))
-        dataModes.append("DATA2");
-    if (rigCaps.commands.contains(funcDATA3Mod))
-        dataModes.append("DATA3");
-
-    filters = QStringList({"FIL1","FIL2","FIL3"});
-
-    duplexModes = QStringList({"OFF","DUP-","DUP+","RPS"});
-
-    toneModes = QStringList({"OFF","TONE","TSQL"});
-    if (rigCaps.commands.contains(funcRepeaterDTCS))
-        toneModes.append("DTCS");
-
-    tones = QStringList({"67.0","69.3","71.9","74.4","77.0","79.7","82.5","85.4","88.5","91.5","94.8","97.4","100.0","103.5","107.2","110.9","114.8","118.8","123.0","127.3","131.8","136.5",
-                  "141.3","146.2","151.4","156.7","159.8","162.2","165.5","167.9","171.3","173.8","177.3","179.9","183.5","186.2","189.9","192.8","196.6","199.5","203.5","206.5",
-                  "210.7","218.1","225.7","229.1","233.6","241.8","250.3","254.1"});
-
-    dtcs = QStringList({"023","025","026","031","032","036","043","047","051","053","054","065","071","072","073","074","114","115","116","122","125","131","132","134","143","145","152","155","156","162","165",
-                        "172","174","205","212","223","225","226","243","244","245","246","251","252","255","261","263","265","266","271","274","306","311","315","325","331","332","343","346",
-                        "351","356","364","365","371","411","412","413","423","431","432","445","446","452","454","455","462","464","465","466","503","506","516","523","526","532","546","565",
-                        "606","612","624","627","631","632","654","662","664","703","712","723","731","732","734","743","754"});
-
     if (rigCaps.commands.contains(funcVFOEqualAB)) {
-        vfos = QStringList({"VFOA","VFOB"});
+        vfos << "VFOA" << "VFOB";
     } else if (rigCaps.commands.contains(funcVFOEqualMS)) {
-        vfos = QStringList({"MAIN","SUB"});
+        vfos << "MAIN" << "SUB";
     }
 
     foreach (auto mode, rigCaps.modes){
         modes.append(mode.name);
     }
-
-    dsql = QStringList({"OFF","DSQL","CSQL"});
-
-    dtcsp = QStringList({"BOTH N","N/R","R/N","BOTH R"});
 
     connect(ui->table,SIGNAL(rowAdded(int)),this,SLOT(rowAdded(int)));
     connect(ui->table,SIGNAL(rowDeleted(quint32)),this,SLOT(rowDeleted(quint32)));
@@ -142,7 +150,7 @@ void memories::rowAdded(int row)
         if (i == rows.end())
         {
             // No gaps found so work on highest value found
-            if ((ui->group->currentData().toInt() != 200 && rows.back() < groupMemories-1) || (ui->group->currentData().toInt() == 200 && rows.back() < rigCaps.satMemories-1))
+            if ((ui->group->currentData().toInt() != 200 && rows.back() < groupMemories-1) || (ui->group->currentData().toInt() == MEMORY_SATGROUP && rows.back() < rigCaps.satMemories-1))
             {
                 num = rows.back() + 1;
             }
@@ -201,9 +209,18 @@ void memories::rowAdded(int row)
 void memories::rowDeleted(quint32 mem)
 
 {
-    if (mem && mem <= rigCaps.memories) {
+    if (mem >= rigCaps.memStart && mem <= rigCaps.memories) {
         qInfo() << "Mem Deleted" << mem;
-        emit clearMemory((quint32((ui->group->currentData().toInt() << 16) | mem)));
+        memoryType currentMemory;
+        if (ui->group->currentData().toInt() == MEMORY_SATGROUP)
+        {
+            currentMemory.sat=true;
+        }
+
+        currentMemory.group=ui->group->currentData().toInt();
+        currentMemory.channel = mem;
+        currentMemory.del = true;
+        emit setMemory(currentMemory);
     }
 }
 
@@ -213,22 +230,12 @@ void memories::on_table_cellChanged(int row, int col)
     if (ui->table->isColumnHidden(col))
         return;
 
-    if (row != currentRow || currentMemory == Q_NULLPTR)
-    {
-        if (currentMemory != Q_NULLPTR)
-        {
-            delete currentMemory;
-            currentMemory = Q_NULLPTR;
-        }
-        currentMemory = new memoryType();
-        currentRow = row;
-    }
+    memoryType currentMemory;
+    currentMemory.group = ui->group->currentData().toInt();
+    currentMemory.channel = (ui->table->item(row,columnNum) == NULL) ? 0 : ui->table->item(row,columnNum)->text().toInt();
 
-    currentMemory->group = ui->group->currentData().toInt();
-    currentMemory->channel = (ui->table->item(row,columnNum) == NULL) ? 0 : ui->table->item(row,columnNum)->text().toInt();
-
-    if (currentMemory->group==200) {
-        currentMemory->sat=true;
+    if (currentMemory.group == MEMORY_SATGROUP) {
+        currentMemory.sat=true;
     }
 
     ui->table->blockSignals(true);
@@ -280,112 +287,112 @@ void memories::on_table_cellChanged(int row, int col)
     // The table shouldn't be updated below, simply queried for data.
 
     if (!ui->table->isColumnHidden(columnSplit) && ui->table->item(row,columnSplit) != NULL) {
-        currentMemory->split = split.indexOf(ui->table->item(row,columnSplit)->text().toUpper());
+        currentMemory.split = split.indexOf(ui->table->item(row,columnSplit)->text().toUpper());
     }
 
     if (!ui->table->isColumnHidden(columnScan) && ui->table->item(row,columnScan) != NULL) {
-        currentMemory->scan = scan.indexOf(ui->table->item(row,columnScan)->text().toUpper());
+        currentMemory.scan = scan.indexOf(ui->table->item(row,columnScan)->text().toUpper());
     }
 
     if (!ui->table->isColumnHidden(columnVFO) && ui->table->item(row,columnVFO) != NULL) {
-        currentMemory->vfo = vfos.indexOf(ui->table->item(row,columnVFO)->text().toUpper());
+        currentMemory.vfo = vfos.indexOf(ui->table->item(row,columnVFO)->text().toUpper());
     }
 
     if (!ui->table->isColumnHidden(columnVFOB) && ui->table->item(row,columnVFOB) != NULL) {
-        currentMemory->vfoB = vfos.indexOf(ui->table->item(row,columnVFOB)->text().toUpper());
+        currentMemory.vfoB = vfos.indexOf(ui->table->item(row,columnVFOB)->text().toUpper());
     }
 
-    currentMemory->frequency.Hz = (ui->table->item(row,columnFrequency) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequency)->text().toDouble()*1000000.0);
-    currentMemory->frequencyB.Hz = (ui->table->item(row,columnFrequencyB) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequencyB)->text().toDouble()*1000000.0);
+    currentMemory.frequency.Hz = (ui->table->item(row,columnFrequency) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequency)->text().toDouble()*1000000.0);
+    currentMemory.frequencyB.Hz = (ui->table->item(row,columnFrequencyB) == NULL) ? 0 : quint64(ui->table->item(row,columnFrequencyB)->text().toDouble()*1000000.0);
 
     foreach (auto m, rigCaps.modes){
         if (!ui->table->isColumnHidden(columnMode) && ui->table->item(row,columnMode) != NULL && ui->table->item(row,columnMode)->text()==m.name) {
-            currentMemory->mode=m.reg;
+            currentMemory.mode=m.reg;
         }
         if (!ui->table->isColumnHidden(columnModeB) && ui->table->item(row,columnModeB) != NULL && ui->table->item(row,columnModeB)->text()==m.name) {
-            currentMemory->modeB=m.reg;
+            currentMemory.modeB=m.reg;
         }
     }
 
     if (!ui->table->isColumnHidden(columnData) && ui->table->item(row,columnData) != NULL) {
-        currentMemory->datamode = dataModes.indexOf(ui->table->item(row,columnData)->text().toUpper());
+        currentMemory.datamode = dataModes.indexOf(ui->table->item(row,columnData)->text().toUpper());
     }
 
     if (!ui->table->isColumnHidden(columnDataB) && ui->table->item(row,columnDataB) != NULL) {
-        currentMemory->datamodeB = dataModes.indexOf(ui->table->item(row,columnDataB)->text().toUpper());
+        currentMemory.datamodeB = dataModes.indexOf(ui->table->item(row,columnDataB)->text().toUpper());
     }
 
     if (!ui->table->isColumnHidden(columnFilter) && ui->table->item(row,columnFilter) != NULL) {
-        currentMemory->filter = filters.indexOf(ui->table->item(row,columnFilter)->text().toUpper())+1;
+        currentMemory.filter = filters.indexOf(ui->table->item(row,columnFilter)->text().toUpper())+1;
     }
 
     if (!ui->table->isColumnHidden(columnFilterB) && ui->table->item(row,columnFilterB) != NULL) {
-        currentMemory->filterB = filters.indexOf(ui->table->item(row,columnFilterB)->text().toUpper())+1;
+        currentMemory.filterB = filters.indexOf(ui->table->item(row,columnFilterB)->text().toUpper())+1;
     }
 
     if (!ui->table->isColumnHidden(columnDuplex) && ui->table->item(row,columnDuplex) != NULL) {
-        currentMemory->duplex = duplexModes.indexOf(ui->table->item(row,columnDuplex)->text().toUpper());
+        currentMemory.duplex = duplexModes.indexOf(ui->table->item(row,columnDuplex)->text().toUpper());
     }
 
     if (!ui->table->isColumnHidden(columnDuplexB) && ui->table->item(row,columnDuplexB) != NULL) {
-        currentMemory->duplexB = duplexModes.indexOf(ui->table->item(row,columnDuplexB)->text().toUpper());
+        currentMemory.duplexB = duplexModes.indexOf(ui->table->item(row,columnDuplexB)->text().toUpper());
     }
 
     if (!ui->table->isColumnHidden(columnToneMode) && ui->table->item(row,columnToneMode) != NULL) {
-        currentMemory->tonemode = toneModes.indexOf(ui->table->item(row,columnToneMode)->text().toUpper());
+        currentMemory.tonemode = toneModes.indexOf(ui->table->item(row,columnToneMode)->text().toUpper());
     }
 
     if (!ui->table->isColumnHidden(columnToneModeB) && ui->table->item(row,columnToneModeB) != NULL) {
-        currentMemory->tonemodeB = toneModes.indexOf(ui->table->item(row,columnToneModeB)->text().toUpper());
+        currentMemory.tonemodeB = toneModes.indexOf(ui->table->item(row,columnToneModeB)->text().toUpper());
     }
 
     if (!ui->table->isColumnHidden(columnDSQL) && ui->table->item(row,columnDSQL) != NULL) {
-        currentMemory->dsql = dsql.indexOf(ui->table->item(row,columnDSQL)->text().toUpper());
+        currentMemory.dsql = dsql.indexOf(ui->table->item(row,columnDSQL)->text().toUpper());
     }
 
     if (!ui->table->isColumnHidden(columnDSQLB) && ui->table->item(row,columnDSQLB) != NULL) {
-        currentMemory->dsqlB = dsql.indexOf(ui->table->item(row,columnDSQLB)->text().toUpper());
+        currentMemory.dsqlB = dsql.indexOf(ui->table->item(row,columnDSQLB)->text().toUpper());
     }
 
-    currentMemory->tone = (ui->table->item(row,columnTone) == NULL) ? 670 : int(ui->table->item(row,columnTone)->text().toFloat()*10.0);
-    currentMemory->toneB = (ui->table->item(row,columnToneB) == NULL) ? 670 : int(ui->table->item(row,columnToneB)->text().toFloat()*10.0);
+    currentMemory.tone = (ui->table->item(row,columnTone) == NULL) ? 670 : int(ui->table->item(row,columnTone)->text().toFloat()*10.0);
+    currentMemory.toneB = (ui->table->item(row,columnToneB) == NULL) ? 670 : int(ui->table->item(row,columnToneB)->text().toFloat()*10.0);
 
-    currentMemory->tsql = (ui->table->item(row,columnTSQL) == NULL) ? 670 : int(ui->table->item(row,columnTSQL)->text().toFloat()*10.0);
-    currentMemory->tsqlB = (ui->table->item(row,columnTSQLB) == NULL) ? 670 : int(ui->table->item(row,columnTSQLB)->text().toFloat()*10.0);
+    currentMemory.tsql = (ui->table->item(row,columnTSQL) == NULL) ? 670 : int(ui->table->item(row,columnTSQL)->text().toFloat()*10.0);
+    currentMemory.tsqlB = (ui->table->item(row,columnTSQLB) == NULL) ? 670 : int(ui->table->item(row,columnTSQLB)->text().toFloat()*10.0);
 
-    currentMemory->dtcs = (ui->table->item(row,columnDTCS) == NULL) ? 23 : int(ui->table->item(row,columnDTCS)->text().toUInt());
-    currentMemory->dtcsB = (ui->table->item(row,columnDTCSB) == NULL) ? 23 : int(ui->table->item(row,columnDTCSB)->text().toUInt());
+    currentMemory.dtcs = (ui->table->item(row,columnDTCS) == NULL) ? 23 : int(ui->table->item(row,columnDTCS)->text().toUInt());
+    currentMemory.dtcsB = (ui->table->item(row,columnDTCSB) == NULL) ? 23 : int(ui->table->item(row,columnDTCSB)->text().toUInt());
 
     if (!ui->table->isColumnHidden(columnDTCSPolarity) && ui->table->item(row,columnDTCSPolarity) != NULL) {
-        currentMemory->dtcsp = dtcsp.indexOf(ui->table->item(row,columnDTCSPolarity)->text().toUpper());
+        currentMemory.dtcsp = dtcsp.indexOf(ui->table->item(row,columnDTCSPolarity)->text().toUpper());
     }
 
     if (!ui->table->isColumnHidden(columnDTCSPolarityB) && ui->table->item(row,columnDTCSPolarityB) != NULL) {
-        currentMemory->dtcspB = dtcsp.indexOf(ui->table->item(row,columnDTCSPolarityB)->text().toUpper());
+        currentMemory.dtcspB = dtcsp.indexOf(ui->table->item(row,columnDTCSPolarityB)->text().toUpper());
     }
 
-    currentMemory->dvsql = (ui->table->item(row,columnDVSquelch) == NULL) ? 0 : int(ui->table->item(row,columnDVSquelch)->text().toUInt());
-    currentMemory->dvsqlB = (ui->table->item(row,columnDVSquelchB) == NULL) ? 0 : int(ui->table->item(row,columnDVSquelchB)->text().toUInt());
+    currentMemory.dvsql = (ui->table->item(row,columnDVSquelch) == NULL) ? 0 : int(ui->table->item(row,columnDVSquelch)->text().toUInt());
+    currentMemory.dvsqlB = (ui->table->item(row,columnDVSquelchB) == NULL) ? 0 : int(ui->table->item(row,columnDVSquelchB)->text().toUInt());
 
-    currentMemory->duplexOffset.MHzDouble = (ui->table->item(row,columnOffset) == NULL) ? 0.0 : ui->table->item(row,columnOffset)->text().toDouble();
-    currentMemory->duplexOffset.Hz=currentMemory->duplexOffset.MHzDouble*1000000.0;
-    currentMemory->duplexOffset.VFO=selVFO_t::activeVFO;
+    currentMemory.duplexOffset.MHzDouble = (ui->table->item(row,columnOffset) == NULL) ? 0.0 : ui->table->item(row,columnOffset)->text().toDouble();
+    currentMemory.duplexOffset.Hz=currentMemory.duplexOffset.MHzDouble*1000000.0;
+    currentMemory.duplexOffset.VFO=selVFO_t::activeVFO;
 
-    currentMemory->duplexOffsetB.MHzDouble = (ui->table->item(row,columnOffsetB) == NULL) ? 0.0 : ui->table->item(row,columnOffsetB)->text().toDouble();
-    currentMemory->duplexOffsetB.Hz=currentMemory->duplexOffsetB.MHzDouble*1000000.0;
-    currentMemory->duplexOffsetB.VFO=selVFO_t::activeVFO;
+    currentMemory.duplexOffsetB.MHzDouble = (ui->table->item(row,columnOffsetB) == NULL) ? 0.0 : ui->table->item(row,columnOffsetB)->text().toDouble();
+    currentMemory.duplexOffsetB.Hz=currentMemory.duplexOffsetB.MHzDouble*1000000.0;
+    currentMemory.duplexOffsetB.VFO=selVFO_t::activeVFO;
 
 
-    memcpy(currentMemory->UR,((ui->table->item(row,columnUR) == NULL) ? "" : ui->table->item(row,columnUR)->text()).toStdString().c_str(),8);
-    memcpy(currentMemory->URB,((ui->table->item(row,columnURB) == NULL) ? "" : ui->table->item(row,columnURB)->text()).toStdString().c_str(),8);
+    memcpy(currentMemory.UR,((ui->table->item(row,columnUR) == NULL) ? "" : ui->table->item(row,columnUR)->text()).toStdString().c_str(),8);
+    memcpy(currentMemory.URB,((ui->table->item(row,columnURB) == NULL) ? "" : ui->table->item(row,columnURB)->text()).toStdString().c_str(),8);
 
-    memcpy(currentMemory->R1,((ui->table->item(row,columnR1) == NULL) ? "" : ui->table->item(row,columnR1)->text()).toStdString().c_str(),8);
-    memcpy(currentMemory->R1B,((ui->table->item(row,columnR1B) == NULL) ? "" : ui->table->item(row,columnR1B)->text()).toStdString().c_str(),8);
+    memcpy(currentMemory.R1,((ui->table->item(row,columnR1) == NULL) ? "" : ui->table->item(row,columnR1)->text()).toStdString().c_str(),8);
+    memcpy(currentMemory.R1B,((ui->table->item(row,columnR1B) == NULL) ? "" : ui->table->item(row,columnR1B)->text()).toStdString().c_str(),8);
 
-    memcpy(currentMemory->R2,((ui->table->item(row,columnR2) == NULL) ? "" : ui->table->item(row,columnR2)->text()).toStdString().c_str(),8);
-    memcpy(currentMemory->R2B,((ui->table->item(row,columnR2B) == NULL) ? "" : ui->table->item(row,columnR2B)->text()).toStdString().c_str(),8);
+    memcpy(currentMemory.R2,((ui->table->item(row,columnR2) == NULL) ? "" : ui->table->item(row,columnR2)->text()).toStdString().c_str(),8);
+    memcpy(currentMemory.R2B,((ui->table->item(row,columnR2B) == NULL) ? "" : ui->table->item(row,columnR2B)->text()).toStdString().c_str(),8);
 
-    memcpy(currentMemory->name,((ui->table->item(row,columnName) == NULL) ? "" : ui->table->item(row,columnName)->text()).toStdString().c_str(),16);
+    memcpy(currentMemory.name,((ui->table->item(row,columnName) == NULL) ? "" : ui->table->item(row,columnName)->text()).toStdString().c_str(),16);
 
     // Only write the memory if ALL values are non-null
     bool write=true;
@@ -395,9 +402,9 @@ void memories::on_table_cellChanged(int row, int col)
             write=false;
     }
     if (write) {
-        emit setMemory(*currentMemory);
+        emit setMemory(currentMemory);
 
-        qInfo() << "Sending memory, group:" << currentMemory->group << "channel" << currentMemory->channel;
+        qInfo() << "Sending memory, group:" << currentMemory.group << "channel" << currentMemory.channel;
         // Set number to not be editable once written. Not sure why but this crashes?
         //ui->table->item(row,columnNum)->setFlags(ui->table->item(row,columnNum)->flags() & (~Qt::ItemIsEditable));
     }
@@ -413,9 +420,9 @@ void memories::on_group_currentIndexChanged(int index)
     visibleColumns=1;
 
     // Special case for group 100 on the IC705!
-    if (ui->group->currentData().toInt() == 200)
+    if (ui->group->currentData().toInt() ==  MEMORY_SATGROUP)
         groupMemories=rigCaps.satMemories;
-    else if (ui->group->currentData().toInt() == 100)
+    else if (ui->group->currentData().toInt() == MEMORY_SHORTGROUP)
         groupMemories=3;
     else
         groupMemories=rigCaps.memories;
@@ -436,7 +443,7 @@ void memories::on_group_currentIndexChanged(int index)
 
     QVector<memParserFormat> parser;
 
-    if (ui->group->currentData().toInt() == 200) {
+    if (ui->group->currentData().toInt() == MEMORY_SATGROUP) {
         emit setSatelliteMode(true);
         parser = rigCaps.satParser;
     } else {
@@ -861,22 +868,29 @@ void memories::on_group_currentIndexChanged(int index)
         ui->table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     }
 
-    if (ui->group->currentData().toInt() == 200) {
+    if (ui->group->currentData().toInt() == MEMORY_SATGROUP) {
 
-          lastMemoryRequested = rigCaps.memStart;
-          emit getSatMemory(lastMemoryRequested);
-    } else {
-        // Is the current group attached to a particular band?
-        foreach (auto band, rigCaps.bands)
-        {
-            if (band.memGroup==ui->group->currentData().toInt())
-            {
-                emit setBand(band.band);
-            }
+        lastMemoryRequested = rigCaps.memStart;
+        if (slowLoad) {
+            QTimer::singleShot(MEMORY_SLOWLOAD, this, [this]{ emit getSatMemory(lastMemoryRequested); });
+        } else {
+            emit getSatMemory(lastMemoryRequested);
         }
-
+    } else {
         lastMemoryRequested = quint32((ui->group->currentData().toInt())<<16) | (rigCaps.memStart & 0xffff);
-        emit getMemory(lastMemoryRequested);
+        if (slowLoad) {
+            QTimer::singleShot(MEMORY_SLOWLOAD, this, [this]{ emit getMemory(lastMemoryRequested); });
+        } else {
+            // Is the current group attached to a particular band?
+            foreach (auto band, rigCaps.bands)
+            {
+                if (band.memGroup==ui->group->currentData().toInt())
+                {
+                    emit setBand(band.band);
+                }
+            }
+            emit getMemory(lastMemoryRequested);
+        }
     }
 }
 
@@ -908,7 +922,8 @@ void memories::receiveMemory(memoryType mem)
         timeoutTimer.stop();
         ui->group->setEnabled(true);
         ui->loadingMemories->setVisible(false);
-        ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
+        if (!ui->disableEditing->isChecked())
+            ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
     }
 
     timeoutCount=0; // We have received a memory, so set the timeout to zero.
@@ -920,8 +935,8 @@ void memories::receiveMemory(memoryType mem)
 
     for (int n = 0; n<ui->table->rowCount();n++)
     {
-        if (ui->table->item(n,columnNum) != NULL && ui->table->item(n,columnNum)->text().toInt() == mem.channel && mem.group == ui->group->currentData().toInt()) {
-
+        if (ui->table->item(n,columnNum) != NULL && ui->table->item(n,columnNum)->text().toInt() == mem.channel && (rigCaps.memGroups < 2 || mem.sat || mem.group == ui->group->currentData().toInt()))
+        {
             row = n;
             break;
         }
@@ -955,7 +970,7 @@ void memories::receiveMemory(memoryType mem)
         ui->table->model()->setData(ui->table->model()->index(row,columnFrequencyB),QString::number(double(mem.frequencyB.Hz/1000000.0),'f',3));
         validData++;
 
-        for (int i=0;i<rigCaps.modes.size();i++)
+        for (uint i=0;i<rigCaps.modes.size();i++)
         {
             if (mem.mode == rigCaps.modes[i].reg)
                 validData += updateCombo(modes,row,columnMode,i);
@@ -1133,7 +1148,7 @@ void memories::timeout()
     if (timeoutCount < 10 )
     {
         qInfo(logRig()) << "Timeout receiving memory:" << (lastMemoryRequested & 0xffff) << "in group" << (lastMemoryRequested >> 16 & 0xffff);
-        if (ui->group->currentData().toInt() == 200)
+        if (ui->group->currentData().toInt() == MEMORY_SATGROUP)
             emit getSatMemory(lastMemoryRequested);
         else
             emit getMemory(lastMemoryRequested);
@@ -1144,7 +1159,8 @@ void memories::timeout()
         ui->loadingMemories->setVisible(false);
         timeoutTimer.stop();
         ui->group->setEnabled(true);
-        ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
+        if (!ui->disableEditing->isChecked())
+            ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
 
         QMessageBox::information(this,"Timeout", "Timeout receiving memories, check rig connection", QMessageBox::Ok);
     }
@@ -1376,4 +1392,12 @@ bool memories::readCSVRow(QTextStream &in, QStringList *row) {
     }
     return true;
 
+}
+
+void memories::on_disableEditing_toggled(bool dis)
+{
+    if (dis)
+        ui->table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    else
+        ui->table->setEditTriggers(QAbstractItemView::DoubleClicked);
 }

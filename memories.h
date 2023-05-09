@@ -16,6 +16,9 @@
 #include "rigidentities.h"
 
 #define MEMORY_TIMEOUT 1000
+#define MEMORY_SLOWLOAD 500
+#define MEMORY_SATGROUP 200
+#define MEMORY_SHORTGROUP 100
 
 namespace Ui {
 class memories;
@@ -26,7 +29,7 @@ class memories : public QDialog
     Q_OBJECT
 
 public:
-    explicit memories(rigCapabilities rigCaps,QWidget *parent = nullptr);
+    explicit memories(rigCapabilities rigCaps,bool slowLoad=false,QWidget *parent = nullptr);
     ~memories();
     void populate();
 
@@ -37,6 +40,7 @@ signals:
     void getSatMemory(quint32 mem);
     void recallMemory(quint32 mem);
     void clearMemory(quint32 mem);
+    void clearSatMemory(quint32 mem);
     void memoryMode();
     void vfoMode();
     void setBand(char band);
@@ -49,6 +53,7 @@ private slots:
     void on_memoryMode_clicked();
     void on_csvImport_clicked();
     void on_csvExport_clicked();
+    void on_disableEditing_toggled(bool dis);
     bool readCSVRow (QTextStream &in, QStringList *row);
 
 
@@ -59,14 +64,13 @@ private slots:
     void timeout();
 
 private:
-    int currentRow=-1;
-    memoryType* currentMemory = Q_NULLPTR;
     quint32 groupMemories=0;
     quint32 lastMemoryRequested=0;
     QTimer timeoutTimer;
     int timeoutCount=0;
     int retries=0;
     int visibleColumns=1;
+    bool slowLoad=false;
 
     bool checkASCII(QString str);
 

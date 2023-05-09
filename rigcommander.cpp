@@ -1411,12 +1411,14 @@ void rigCommander::getSatMemory(quint32 mem)
     }
 }
 
+
 void rigCommander::setMemory(memoryType mem)
 {
 
+    bool finished=false;
     QByteArray payload;
     char nul = 0x0;
-
+    char ffchar = 0xff;
     QVector<memParserFormat> parser;
 
     if (mem.sat && getCommand(funcSatelliteMemory,payload,mem.channel))
@@ -1448,7 +1450,14 @@ void rigCommander::setMemory(memoryType mem)
             payload.append(bcdEncodeInt(mem.channel));
             break;
         case 'c':
-            payload.append(mem.scan);
+            // Are we deleting the memory?
+            if (mem.del) {
+                payload.append(ffchar);
+                finished=true;
+                break;
+            } else {
+                payload.append(mem.scan);
+            }
             break;
         case 'd': // combined split and scan
             payload.append(quint8((mem.split << 4 & 0xf0) | (mem.scan & 0x0f)));
@@ -1460,7 +1469,13 @@ void rigCommander::setMemory(memoryType mem)
             payload.append(mem.vfoB);
             break;
         case 'f':
-            payload.append(makeFreqPayload(mem.frequency));
+            if (mem.del) {
+                payload.append(ffchar);
+                finished=true;
+                break;
+            } else {
+                payload.append(makeFreqPayload(mem.frequency));
+            }
             break;
         case 'F':
             payload.append(makeFreqPayload(mem.frequencyB));
@@ -1548,33 +1563,38 @@ void rigCommander::setMemory(memoryType mem)
             payload.append(makeFreqPayload(mem.duplexOffsetB).mid(1,3));
             break;
         case 't':
-            payload.append(QByteArray(mem.UR).leftJustified(parse.len,' '));
+            payload.append(QByteArray(mem.UR).leftJustified(parse.len,' ',true));
             break;
         case 'T':
-            payload.append(QByteArray(mem.URB).leftJustified(parse.len,' '));
+            payload.append(QByteArray(mem.URB).leftJustified(parse.len,' ',true));
             break;
         case 'u':
-            payload.append(QByteArray(mem.R1).leftJustified(parse.len,' '));
+            payload.append(QByteArray(mem.R1).leftJustified(parse.len,' ',true));
             break;
         case 'U':
-            payload.append(QByteArray(mem.R1B).leftJustified(parse.len,' '));
+            payload.append(QByteArray(mem.R1B).leftJustified(parse.len,' ',true));
             break;
         case 'v':
-            payload.append(QByteArray(mem.R2).leftJustified(parse.len,' '));
+            payload.append(QByteArray(mem.R2).leftJustified(parse.len,' ',true));
             break;
         case 'V':
-            payload.append(QByteArray(mem.R2B).leftJustified(parse.len,' '));
+            payload.append(QByteArray(mem.R2B).leftJustified(parse.len,' ',true));
             break;
         case 'z':
-            payload.append(QByteArray(mem.name).leftJustified(parse.len,' '));
+            payload.append(QByteArray(mem.name).leftJustified(parse.len,' ',true));
             break;
         default:
             break;
         }
+        if (finished)
+            break;
     }
     prepDataAndSend(payload);
 
-    qInfo(logRig()) << "Storing memory:" << mem.channel << "Name:" << mem.name;
+    if (mem.del)
+        qInfo(logRig()) << "Deleting memory:" << mem.channel;
+    else
+        qInfo(logRig()) << "Storing memory:" << mem.channel << "Name:" << mem.name;
 }
 
 void rigCommander::clearMemory(quint32 mem)

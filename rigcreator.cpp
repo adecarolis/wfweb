@@ -10,6 +10,7 @@ rigCreator::rigCreator(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    qInfo() << "Creating instance of rigCreator()";
     commandsList = new tableCombobox(createModel(commandsModel, funcString),true,ui->commands);
     ui->commands->setItemDelegateForColumn(0, commandsList);
 
@@ -22,6 +23,7 @@ rigCreator::rigCreator(QWidget *parent) :
 
 rigCreator::~rigCreator()
 {
+    qInfo() << "Deleting instance of rigCreator()";
     delete ui;
 }
 
