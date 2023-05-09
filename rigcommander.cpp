@@ -377,7 +377,7 @@ void rigCommander::powerOn()
     }
 
     unsigned char cmd = 0x01;
-    if (getCommand(funcRFPower,payload,cmd))
+    if (getCommand(funcPowerControl,payload,cmd))
     {
         payload.append(cmd);
         prepDataAndSend(payload);
@@ -401,7 +401,7 @@ void rigCommander::powerOff()
 {
     QByteArray payload;
     unsigned char cmd = '\x00';
-    if (getCommand(funcRFPower,payload,cmd))
+    if (getCommand(funcPowerControl,payload,cmd))
     {
         payload.append(cmd);
         prepDataAndSend(payload);
