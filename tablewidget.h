@@ -33,12 +33,11 @@ class tableEditor : public QItemDelegate
 {
     Q_OBJECT
 public:
-    explicit tableEditor(QRegularExpression validExp, QObject *parent = 0);
+    explicit tableEditor(QString validExp = "", QObject *parent = 0);
     QWidget* createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
 
     mutable QLineEdit *edit;
-    mutable QRegularExpressionValidator *valid;
-    QRegularExpression validExp;
+    QString validExp;
 };
 
 

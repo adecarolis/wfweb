@@ -146,7 +146,13 @@ struct filterType {
     unsigned int modes;
 };
 
-
+struct genericType {
+    genericType() {}
+    genericType(unsigned char num, QString name) :
+        num(num), name(name) {}
+    unsigned char num;
+    QString name;
+};
 
 model_kind determineRadioModel(unsigned char rigID);
 
@@ -204,8 +210,8 @@ struct rigCapabilities {
     QHash<QByteArray,funcs> commandsReverse;
 
     std::vector <unsigned char> attenuators;
-    std::vector <unsigned char> preamps;
-    std::vector <unsigned char> antennas;
+    std::vector <genericType> preamps;
+    std::vector <genericType> antennas;
     std::vector <filterType> filters;
     std::vector <centerSpanData> scopeCenterSpans;
     std::vector <bandType> bands;

@@ -900,7 +900,6 @@ void rigCommander::setTuningStep(unsigned char step)
     {
         payload.append(static_cast<unsigned char>(step));
         prepDataAndSend(payload);
-        qInfo() << "Setting tuning step to" << step;
     }
 }
 
@@ -1701,7 +1700,7 @@ void rigCommander::getBandStackReg(char band, char regCode)
     QByteArray payload;
     if (getCommand(funcBandStackReg,payload,band))
     {
-        payload.append(band); // [01 through 11]
+        payload.append(band);
         payload.append(regCode); // [01...03]. 01 = latest, 03 = oldest
         prepDataAndSend(payload);
     }
@@ -4675,7 +4674,7 @@ void rigCommander::determineRigCaps()
                 funcs func = funcsLookup.find(settings->value("Type", "").toString().toUpper()).value();
                 rigCaps.commands.insert(func, funcType(func, funcString[int(func)],
                                             QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),
-                                            settings->value("Min", 0).toInt(), settings->value("Max", 0).toInt()));
+                                                       settings->value("Min", 0).toString().toInt(), settings->value("Max", 0).toString().toInt()));
 
                 rigCaps.commandsReverse.insert(QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),func);
             } else {
@@ -4694,7 +4693,7 @@ void rigCommander::determineRigCaps()
         {
             settings->setArrayIndex(c);
             rigCaps.modes.push_back(mode_info(mode_kind(settings->value("Num", 0).toUInt()),
-                                              settings->value("Reg", 0).toString().toUInt(nullptr,16), settings->value("Name", "").toString(), settings->value("BW", 0).toBool()));
+                                              settings->value("Reg", 0).toString().toUInt(), settings->value("Name", "").toString(), settings->value("BW", 0).toBool()));
         }
         settings->endArray();
     }
@@ -4708,7 +4707,7 @@ void rigCommander::determineRigCaps()
         {
             settings->setArrayIndex(c);
             rigCaps.scopeCenterSpans.push_back(
-                centerSpanData(centerSpansType(settings->value("Num", 0).toInt()),  settings->value("Name", "").toString(), settings->value("Freq", 0).toUInt()));
+                centerSpanData(centerSpansType(settings->value("Num", 0).toString().toUInt()),  settings->value("Name", "").toString(), settings->value("Freq", 0).toUInt()));
         }
         settings->endArray();
     }
@@ -4721,7 +4720,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numInputs; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.inputs.append(rigInput((inputTypes)settings->value("Num", 0).toInt(),settings->value("Name", "").toString()));
+            rigCaps.inputs.append(rigInput((inputTypes)settings->value("Num", 0).toString().toUInt(nullptr,16),settings->value("Name", "").toString()));
         }
         settings->endArray();
     }
@@ -4734,7 +4733,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numSteps; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.steps.push_back(stepType(settings->value("Num", 0).toInt(),settings->value("Name", "").toString(),settings->value("Hz", 0ULL).toULongLong()));
+            rigCaps.steps.push_back(stepType(settings->value("Num", 0).toString().toUInt(),settings->value("Name", "").toString(),settings->value("Hz", 0ULL).toULongLong()));
         }
         settings->endArray();
     }
@@ -4747,7 +4746,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numPreamps; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.preamps.push_back((unsigned char)settings->value("Num", 0).toInt());
+            rigCaps.preamps.push_back(genericType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", 0).toString()));
         }
         settings->endArray();
     }
@@ -4760,7 +4759,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numAntennas; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.antennas.push_back((unsigned char)settings->value("Num", 0).toInt());
+            rigCaps.antennas.push_back(genericType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", 0).toString()));
         }
         settings->endArray();
     }
@@ -4773,7 +4772,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numAttenuators; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.attenuators.push_back((unsigned char)settings->value("dB", 0).toString().toUInt(nullptr,16)); // Don't really care if it fails!
+            rigCaps.attenuators.push_back((unsigned char)settings->value("dB", 0).toUInt());
         }
         settings->endArray();
     }
@@ -4786,7 +4785,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numFilters; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.filters.push_back(filterType((unsigned char)settings->value("Num", 0).toInt(), settings->value("Name", "").toString(), settings->value("Modes", 0).toUInt()));
+            rigCaps.filters.push_back(filterType(settings->value("Num", 0).toString().toUInt(), settings->value("Name", "").toString(), settings->value("Modes", 0).toUInt()));
         }
         settings->endArray();
     }
@@ -4808,7 +4807,7 @@ void rigCommander::determineRigCaps()
 
             rigCaps.bands.push_back(bandType(band,start,end,range,memGroup));
             rigCaps.bsr[band] = bsr;
-            qInfo(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << bsr;
+            qInfo(logRig()) << "Adding Band " << band << "Start" << start << "End" << end << "BSR" << QString::number(bsr,16);
         }
         settings->endArray();
     }

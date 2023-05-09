@@ -330,8 +330,8 @@ struct memoryType{
     quint16 tsqlB=670;
     quint8 dsql=0;
     quint8 dsqlB=0;
-    int dtcs=0;
-    int dtcsB=0;
+    quint16 dtcs=0;
+    quint16 dtcsB=0;
     quint8 dtcsp=0;
     quint8 dtcspB=0;
     quint8 dvsql=0;

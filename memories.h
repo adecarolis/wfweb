@@ -65,6 +65,8 @@ private:
     quint32 lastMemoryRequested=0;
     QTimer timeoutTimer;
     int timeoutCount=0;
+    int retries=0;
+    int visibleColumns=1;
 
     bool checkASCII(QString str);
 
@@ -82,6 +84,7 @@ private:
     QStringList dtcs;
     QStringList dtcsp;
     QStringList dsql;
+    QStringList dvsql;
 
     /*
         columnFrequencyB,
@@ -112,6 +115,7 @@ private:
     QStandardItemModel* tsqlModel = Q_NULLPTR;
     QStandardItemModel* dtcspModel = Q_NULLPTR;
     QStandardItemModel* dtcsModel = Q_NULLPTR;
+    QStandardItemModel* dvsqlModel = Q_NULLPTR;
 
     QStandardItemModel* vfoModelB = Q_NULLPTR;
     QStandardItemModel* modesModelB = Q_NULLPTR;
@@ -124,6 +128,7 @@ private:
     QStandardItemModel* dtcspModelB = Q_NULLPTR;
     QStandardItemModel* duplexModelB = Q_NULLPTR;
     QStandardItemModel* dtcsModelB = Q_NULLPTR;
+    QStandardItemModel* dvsqlModelB = Q_NULLPTR;
 
 
     tableEditor* numEditor = Q_NULLPTR;
@@ -143,7 +148,7 @@ private:
     tableCombobox* dtcspList = Q_NULLPTR;
     tableCombobox* modesList = Q_NULLPTR;
     tableEditor* offsetEditor = Q_NULLPTR;
-    tableEditor* dvsqlEditor = Q_NULLPTR;
+    tableCombobox* dvsqlList = Q_NULLPTR;
     tableEditor* urEditor = Q_NULLPTR;
     tableEditor* r1Editor = Q_NULLPTR;
     tableEditor* r2Editor = Q_NULLPTR;
@@ -161,7 +166,7 @@ private:
     tableCombobox* modesListB = Q_NULLPTR;
     tableCombobox* duplexListB = Q_NULLPTR;
     tableEditor* offsetEditorB = Q_NULLPTR;
-    tableEditor* dvsqlEditorB = Q_NULLPTR;
+    tableCombobox* dvsqlListB = Q_NULLPTR;
     tableEditor* urEditorB = Q_NULLPTR;
     tableEditor* r1EditorB = Q_NULLPTR;
     tableEditor* r2EditorB = Q_NULLPTR;
@@ -211,8 +216,12 @@ private:
         columnURB,
         columnR1B,
         columnR2B,
-        totalColumns
+        totalColumns        
     };
+
+    int updateCombo(QStringList& combo, int row, columns column, unsigned char data);
+    int updateCombo(QStringList& combo, int row, columns column, QString data);
+
 };
 
 #endif // MEMORIES_H

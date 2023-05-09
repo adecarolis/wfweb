@@ -56,7 +56,7 @@ void tableWidget::mouseReleaseEvent(QMouseEvent *event)
 }
 
 
-tableEditor::tableEditor(QRegularExpression validExp, QObject *parent)
+tableEditor::tableEditor(QString validExp, QObject *parent)
     : QItemDelegate(parent), validExp(validExp)
 {
 }
@@ -65,9 +65,9 @@ QWidget* tableEditor::createEditor(QWidget *parent, const QStyleOptionViewItem &
     Q_UNUSED(index)
     Q_UNUSED(option)
     edit = new QLineEdit(parent);
-    if (validExp.isValid())
+    if (!validExp.isEmpty())
     {
-        edit->setValidator(new QRegularExpressionValidator(validExp,edit));
+        edit->setInputMask(validExp);
     }
     edit->setFrame(false);
     return edit ;

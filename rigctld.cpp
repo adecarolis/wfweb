@@ -1345,11 +1345,11 @@ void rigCtlClient::socketReadyRead()
             response.append("0");
             QString preamps="";
             if(rigCaps.commands.contains(funcPreamp)) {
-                for (quint8 pre : rigCaps.preamps)
+                foreach (auto pre, rigCaps.preamps)
                 {
-                    if (pre == 0)
+                    if (pre.num == 0)
                         continue;
-                    preamps.append(QString("%1 ").arg(pre*10));
+                    preamps.append(QString("%1 ").arg(pre.num*10,0,16));
                 }
                 if (preamps.endsWith(" "))
                     preamps.chop(1);
@@ -1361,7 +1361,7 @@ void rigCtlClient::socketReadyRead()
 
             QString attens = "";
             if(rigCaps.commands.contains(funcAttenuator)) {
-                for (quint8 att : rigCaps.attenuators)
+                for (auto att : rigCaps.attenuators)
                 {
                     if (att == 0)
                         continue;
@@ -1716,9 +1716,9 @@ quint8 rigCtlClient::getMode(QString modeString) {
 quint8 rigCtlClient::getAntennas()
 {
     quint8 ant=0;
-    for (quint8 i : rigCaps.antennas)
+    for (auto i : rigCaps.antennas)
     {
-        ant |= 1<<i;
+        ant |= 1<<i.num;
     }
     return ant;
 }

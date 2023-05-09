@@ -5007,7 +5007,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->tuningStepCombo->addItem(s.name, s.hz);
         }
 
-        //ui->tuningStepCombo->setCurrentIndex(2);
+        ui->tuningStepCombo->setCurrentIndex(2);
         ui->tuningStepCombo->blockSignals(false);
 
 
@@ -5020,7 +5020,6 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
             ui->satOpsBtn->setDisabled(true);
             ui->adjRefBtn->setDisabled(true);
         }
-        QString inName;
         // Clear input combos before adding known inputs.
         ui->modInputCombo->clear();
         ui->modInputData1Combo->clear();
@@ -5053,10 +5052,9 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         if(rigCaps.commands.contains(funcAttenuator))
         {
             ui->attSelCombo->setDisabled(false);
-            for(unsigned int i=0; i < rigCaps.attenuators.size(); i++)
+            foreach (auto att, rigCaps.attenuators)
             {
-                inName = (i==0)?QString("0dB"):QString("-%1 dB").arg(rigCaps.attenuators.at(i), 0, 16);
-                ui->attSelCombo->addItem(inName, rigCaps.attenuators.at(i));
+                ui->attSelCombo->addItem(((att == 0) ? QString("0 dB") : QString("-%1 dB").arg(att,2,16)),att);
             }
         } else {
             ui->attSelCombo->setDisabled(true);
@@ -5066,10 +5064,9 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         if(rigCaps.commands.contains(funcPreamp))
         {
             ui->preampSelCombo->setDisabled(false);
-            for(unsigned int i=0; i < rigCaps.preamps.size(); i++)
+            foreach (auto pre, rigCaps.preamps)
             {
-                inName = (i==0)?QString("Disabled"):QString("Pre #%1").arg(rigCaps.preamps.at(i), 0, 16);
-                ui->preampSelCombo->addItem(inName, rigCaps.preamps.at(i));
+                ui->preampSelCombo->addItem(pre.name, pre.num);
             }
         } else {
             ui->preampSelCombo->setDisabled(true);
@@ -5079,10 +5076,9 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         if(rigCaps.commands.contains(funcAntenna))
         {
             ui->antennaSelCombo->setDisabled(false);
-            for(unsigned int i=0; i < rigCaps.antennas.size(); i++)
+            foreach (auto ant, rigCaps.antennas)
             {
-                inName = QString("%1").arg(rigCaps.antennas.at(i)+1, 0, 16);		// adding 1 to have the combobox start with ant 1 instead of 0
-                ui->antennaSelCombo->addItem(inName, rigCaps.antennas.at(i));
+                ui->antennaSelCombo->addItem(ant.name,ant.num);
             }
         } else {
             ui->antennaSelCombo->setDisabled(true);
@@ -7485,17 +7481,12 @@ void wfmain::receiveTPBFOuter(unsigned char level) {
 
 void wfmain::receiveTuningStep(unsigned char step)
 {
-    qInfo() << "Received tuning step" << step;
     if (step > 0)
     {
         foreach (auto s, rigCaps.steps)
         {
             if (step == s.num) {
-                int find = ui->tuningStepCombo->findData(s.hz);
-                if (find != -1)
-                {
-                    ui->tuningStepCombo->setCurrentIndex(find);
-                }
+                ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->findData(s.hz));
                 break;
             }
         }
@@ -9799,7 +9790,10 @@ void wfmain::on_memoriesBtn_clicked()
             this->memWindow->connect(this->memWindow, &memories::setMemory, rig,
                                      [=](const memoryType &mem) {
                                          issueCmd(cmdSetMemory, mem);
-                                         issueCmd(cmdGetMemory, quint32((mem.group << 16) | (mem.channel & 0xffff)));
+                                         if (mem.sat)
+                                            issueCmd(cmdGetSatMemory, quint32(mem.channel & 0xffff));
+                                         else
+                                            issueCmd(cmdGetMemory, quint32((mem.group << 16) | (mem.channel & 0xffff)));
                                      });
 
             this->memWindow->connect(this->memWindow, &memories::clearMemory, rig,
@@ -9816,20 +9810,20 @@ void wfmain::on_memoriesBtn_clicked()
                                              removeSlowPeriodicCommand(cmdGetFreqB);});
 
             this->memWindow->connect(this->memWindow, &memories::vfoMode, rig,
-                                     [=]() { issueCmd(cmdSelVFO, vfo_t::vfoA);
-                                             insertSlowPeriodicCommand(cmdGetFreqB, 128);});
+                                     [this]() { issueCmd(cmdSelVFO, vfo_t::vfoA);
+                                             if (rigCaps.commands.contains(funcVFOBSelect)) insertSlowPeriodicCommand(cmdGetFreqB, 128);});
 
             this->memWindow->connect(this->memWindow, &memories::setSatelliteMode, rig,
-                                     [=](const bool &en) {
+                                     [this](const bool &en) {
                                          issueCmd(cmdSetSatelliteMode, en);
                                          if (en) {
                                              removeSlowPeriodicCommand(cmdGetMode);
                                              removeSlowPeriodicCommand(cmdGetFreq);
-                                            removeSlowPeriodicCommand(cmdGetFreqB);
+                                             removeSlowPeriodicCommand(cmdGetFreqB);
                                          } else {
                                             insertSlowPeriodicCommand(cmdGetMode,128);
                                             insertSlowPeriodicCommand(cmdGetFreq,128);
-                                            insertSlowPeriodicCommand(cmdGetFreqB,128);
+                                            if (rigCaps.commands.contains(funcVFOBSelect)) insertSlowPeriodicCommand(cmdGetFreqB,128);
                                          }
                                      });
 

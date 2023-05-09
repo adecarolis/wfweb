@@ -127,8 +127,8 @@ void rigCreator::loadRigFile(QString file)
             ui->commands->insertRow(ui->commands->rowCount());
             ui->commands->model()->setData(ui->commands->model()->index(c,0),settings->value("Type", "").toString());
             ui->commands->model()->setData(ui->commands->model()->index(c,1),settings->value("String", "").toString());
-            ui->commands->model()->setData(ui->commands->model()->index(c,2),settings->value("Min", 0).toInt());
-            ui->commands->model()->setData(ui->commands->model()->index(c,3),settings->value("Max", 0).toInt());
+            ui->commands->model()->setData(ui->commands->model()->index(c,2),QString::number(settings->value("Min", 0).toInt(),16));
+            ui->commands->model()->setData(ui->commands->model()->index(c,3),QString::number(settings->value("Max", 0).toInt(),16));
 
         }
         settings->endArray();
@@ -145,7 +145,7 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->spans->insertRow(ui->spans->rowCount());
-            ui->spans->model()->setData(ui->spans->model()->index(c,0),QString::number(settings->value("Num", 0).toInt()).rightJustified(2,'0'));
+            ui->spans->model()->setData(ui->spans->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
             ui->spans->model()->setData(ui->spans->model()->index(c,1),settings->value("Name", "").toString());
             ui->spans->model()->setData(ui->spans->model()->index(c,2),settings->value("Freq", 0U).toUInt());
 
@@ -164,7 +164,7 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->inputs->insertRow(ui->inputs->rowCount());
-            ui->inputs->model()->setData(ui->inputs->model()->index(c,0),QString::number(settings->value("Num", 0).toInt()).rightJustified(2,'0'));
+            ui->inputs->model()->setData(ui->inputs->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt(),16).rightJustified(2,'0'));
             ui->inputs->model()->setData(ui->inputs->model()->index(c,1),settings->value("Name", "").toString());
 
         }
@@ -182,8 +182,8 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->bands->insertRow(ui->bands->rowCount());
-            ui->bands->model()->setData(ui->bands->model()->index(c,0),QString::number(settings->value("Num", 0).toInt()).rightJustified(2,'0'));
-            ui->bands->model()->setData(ui->bands->model()->index(c,1),settings->value("BSR", 0).toString());
+            ui->bands->model()->setData(ui->bands->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
+            ui->bands->model()->setData(ui->bands->model()->index(c,1),QString::number(settings->value("BSR", 0).toUInt(),16).rightJustified(2,'0'));
             ui->bands->model()->setData(ui->bands->model()->index(c,2),settings->value("Name", "").toString());
             ui->bands->model()->setData(ui->bands->model()->index(c,3),settings->value("Start", 0ULL).toString());
             ui->bands->model()->setData(ui->bands->model()->index(c,4),settings->value("End", 0ULL).toString());
@@ -204,8 +204,8 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->modes->insertRow(ui->modes->rowCount());
-            ui->modes->model()->setData(ui->modes->model()->index(c,0),QString::number(settings->value("Num", 0).toInt()).rightJustified(2,'0'));
-            ui->modes->model()->setData(ui->modes->model()->index(c,1),QString::number(settings->value("Reg", 0).toInt()).rightJustified(2,'0'));
+            ui->modes->model()->setData(ui->modes->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
+            ui->modes->model()->setData(ui->modes->model()->index(c,1),QString::number(settings->value("Reg", 0).toUInt(),16).rightJustified(2,'0'));
             ui->modes->model()->setData(ui->modes->model()->index(c,2),settings->value("Name", "").toString());
             ui->modes->model()->setData(ui->modes->model()->index(c,3),settings->value("BW", 0).toString().toInt());
         }
@@ -223,7 +223,7 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->attenuators->insertRow(ui->attenuators->rowCount());
-            ui->attenuators->model()->setData(ui->attenuators->model()->index(c,0),QString::number(settings->value("dB", 0).toInt()).rightJustified(2,'0'));
+            ui->attenuators->model()->setData(ui->attenuators->model()->index(c,0),QString::number(settings->value("dB", 0).toUInt(),16).rightJustified(2,'0'));
         }
         settings->endArray();
     }
@@ -239,7 +239,7 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->preamps->insertRow(ui->preamps->rowCount());
-            ui->preamps->model()->setData(ui->preamps->model()->index(c,0),QString::number(settings->value("Num", 0).toInt()).rightJustified(2,'0'));
+            ui->preamps->model()->setData(ui->preamps->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt(),16).rightJustified(2,'0'));
             ui->preamps->model()->setData(ui->preamps->model()->index(c,1),settings->value("Name", "").toString());
         }
         settings->endArray();
@@ -256,7 +256,7 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->antennas->insertRow(ui->antennas->rowCount());
-            ui->antennas->model()->setData(ui->antennas->model()->index(c,0),settings->value("Num", 0).toString());
+            ui->antennas->model()->setData(ui->antennas->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt(),16).rightJustified(2,'0'));
             ui->antennas->model()->setData(ui->antennas->model()->index(c,1),settings->value("Name", "").toString());
         }
         settings->endArray();
@@ -273,7 +273,7 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->tuningSteps->insertRow(ui->tuningSteps->rowCount());
-            ui->tuningSteps->model()->setData(ui->tuningSteps->model()->index(c,0),QString::number(settings->value("Num", 0ULL).toInt()).rightJustified(2,'0'));
+            ui->tuningSteps->model()->setData(ui->tuningSteps->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt(),16).rightJustified(2,'0'));
             ui->tuningSteps->model()->setData(ui->tuningSteps->model()->index(c,1),settings->value("Name", "").toString());
             ui->tuningSteps->model()->setData(ui->tuningSteps->model()->index(c,2),settings->value("Hz", 0ULL).toString());
         }
@@ -333,8 +333,6 @@ void rigCreator::on_saveFile_clicked(bool clicked)
 void rigCreator::saveRigFile(QString file)
 {
 
-    bool ok=false; // Used for number conversions.
-
     QSettings* settings = new QSettings(file, QSettings::Format::IniFormat);
 
     settings->setValue("Version", QString(WFVIEW_VERSION));
@@ -344,7 +342,7 @@ void rigCreator::saveRigFile(QString file)
 
     settings->setValue("Manufacturer",ui->manufacturer->currentText());
     settings->setValue("Model",ui->model->text());
-    settings->setValue("CIVAddress",ui->civAddress->text().toInt(&ok,16));
+    settings->setValue("CIVAddress",ui->civAddress->text().toInt(nullptr,16));
     settings->setValue("RigCtlDModel",ui->rigctldModel->text().toInt());
     settings->setValue("SpectrumSeqMax",ui->seqMax->text().toInt());
     settings->setValue("SpectrumAmpMax",ui->ampMax->text().toInt());
@@ -372,8 +370,8 @@ void rigCreator::saveRigFile(QString file)
         settings->setArrayIndex(n);
         settings->setValue("Type", (ui->commands->item(n,0) == NULL) ? "" : ui->commands->item(n,0)->text());
         settings->setValue("String", (ui->commands->item(n,1) == NULL) ? "" : ui->commands->item(n,1)->text());
-        settings->setValue("Min", (ui->commands->item(n,2) == NULL) ? 0 : ui->commands->item(n,2)->text().toInt());
-        settings->setValue("Max", (ui->commands->item(n,3) == NULL) ? 0 : ui->commands->item(n,3)->text().toInt());
+        settings->setValue("Min", (ui->commands->item(n,2) == NULL) ? 0 : ui->commands->item(n,2)->text().toInt(nullptr,16));
+        settings->setValue("Max", (ui->commands->item(n,3) == NULL) ? 0 : ui->commands->item(n,3)->text().toInt(nullptr,16));
     }
     settings->endArray();
 
@@ -383,7 +381,7 @@ void rigCreator::saveRigFile(QString file)
     for (int n = 0; n<ui->spans->rowCount();n++)
     {
         settings->setArrayIndex(n);
-        settings->setValue("Num", (ui->spans->item(n,0) == NULL) ? 0 : ui->spans->item(n,0)->text().toInt());
+        settings->setValue("Num", (ui->spans->item(n,0) == NULL) ? 0 : ui->spans->item(n,0)->text().toUInt(nullptr,16));
         settings->setValue("Name",(ui->spans->item(n,1) == NULL) ? "" : ui->spans->item(n,1)->text());
         settings->setValue("Freq",(ui->spans->item(n,2) == NULL) ? 0U : ui->spans->item(n,2)->text().toUInt());
     }
@@ -395,7 +393,7 @@ void rigCreator::saveRigFile(QString file)
     for (int n = 0; n<ui->inputs->rowCount();n++)
     {
         settings->setArrayIndex(n);
-        settings->setValue("Num", (ui->inputs->item(n,0) == NULL) ? 0 : ui->inputs->item(n,0)->text().toInt());
+        settings->setValue("Num", (ui->inputs->item(n,0) == NULL) ? 0 : ui->inputs->item(n,0)->text().toUInt(nullptr,16));
         settings->setValue("Name", (ui->inputs->item(n,1) == NULL) ? "" : ui->inputs->item(n,1)->text());
     }
     settings->endArray();
@@ -405,8 +403,8 @@ void rigCreator::saveRigFile(QString file)
     for (int n = 0; n<ui->bands->rowCount();n++)
     {
         settings->setArrayIndex(n);
-        settings->setValue("Num", (ui->bands->item(n,0) == NULL) ? 0 : ui->bands->item(n,0)->text().toInt() );
-        settings->setValue("BSR", (ui->bands->item(n,1) == NULL) ? 0 : ui->bands->item(n,1)->text().toInt() );
+        settings->setValue("Num", (ui->bands->item(n,0) == NULL) ? 0 : ui->bands->item(n,0)->text().toUInt() );
+        settings->setValue("BSR", (ui->bands->item(n,1) == NULL) ? 0 : ui->bands->item(n,1)->text().toUInt(nullptr,16) );
         settings->setValue("Name", (ui->bands->item(n,2) == NULL) ? "" : ui->bands->item(n,2)->text());
         settings->setValue("Start", (ui->bands->item(n,3) == NULL) ? 0ULL : ui->bands->item(n,3)->text().toULongLong() );
         settings->setValue("End", (ui->bands->item(n,4) == NULL) ? 0ULL : ui->bands->item(n,4)->text().toULongLong() );
@@ -421,8 +419,8 @@ void rigCreator::saveRigFile(QString file)
     for (int n = 0; n<ui->modes->rowCount();n++)
     {
         settings->setArrayIndex(n);
-        settings->setValue("Num", (ui->modes->item(n,0) == NULL) ? 0 : ui->modes->item(n,0)->text().toInt());
-        settings->setValue("Reg", (ui->modes->item(n,1) == NULL) ? 0 : ui->modes->item(n,1)->text().toInt());
+        settings->setValue("Num", (ui->modes->item(n,0) == NULL) ? 0 : ui->modes->item(n,0)->text().toUInt());
+        settings->setValue("Reg", (ui->modes->item(n,1) == NULL) ? 0 : ui->modes->item(n,1)->text().toInt(nullptr,16));
         settings->setValue("Name",(ui->modes->item(n,2) == NULL) ? "" : ui->modes->item(n,2)->text());
         settings->setValue("BW",(ui->modes->item(n,3) == NULL) ? 0 : ui->modes->item(n,3)->text().toInt());
     }
@@ -433,7 +431,7 @@ void rigCreator::saveRigFile(QString file)
     for (int n = 0; n<ui->attenuators->rowCount();n++)
     {
         settings->setArrayIndex(n);
-        settings->setValue("dB",(ui->attenuators->item(n,0) == NULL) ? 0 :  ui->attenuators->item(n,0)->text().toInt());
+        settings->setValue("dB",(ui->attenuators->item(n,0) == NULL) ? 0 :  ui->attenuators->item(n,0)->text().toUInt(nullptr,16));
     }
     settings->endArray();
 
@@ -442,7 +440,7 @@ void rigCreator::saveRigFile(QString file)
     for (int n = 0; n<ui->preamps->rowCount();n++)
     {
         settings->setArrayIndex(n);
-        settings->setValue("Num",(ui->preamps->item(n,0) == NULL) ? 0 :  ui->preamps->item(n,0)->text().toInt());
+        settings->setValue("Num",(ui->preamps->item(n,0) == NULL) ? 0 :  ui->preamps->item(n,0)->text().toUInt(nullptr,16));
         settings->setValue("Name",(ui->preamps->item(n,1) == NULL) ? "" :  ui->preamps->item(n,1)->text());
     }
     settings->endArray();
@@ -452,7 +450,7 @@ void rigCreator::saveRigFile(QString file)
     for (int n = 0; n<ui->antennas->rowCount();n++)
     {
         settings->setArrayIndex(n);
-        settings->setValue("Num",(ui->antennas->item(n,0) == NULL) ? 0 :  ui->antennas->item(n,0)->text().toInt());
+        settings->setValue("Num",(ui->antennas->item(n,0) == NULL) ? 0 :  ui->antennas->item(n,0)->text().toUInt(nullptr,16));
         settings->setValue("Name",(ui->antennas->item(n,1) == NULL) ? "" :  ui->antennas->item(n,1)->text());
     }
     settings->endArray();
@@ -462,7 +460,7 @@ void rigCreator::saveRigFile(QString file)
     for (int n = 0; n<ui->tuningSteps->rowCount();n++)
     {
         settings->setArrayIndex(n);
-        settings->setValue("Num",(ui->tuningSteps->item(n,0) == NULL) ? 0 :  ui->tuningSteps->item(n,0)->text().toInt());
+        settings->setValue("Num",(ui->tuningSteps->item(n,0) == NULL) ? 0 :  ui->tuningSteps->item(n,0)->text().toUInt(nullptr,16));
         settings->setValue("Name",(ui->tuningSteps->item(n,1) == NULL) ? "" :  ui->tuningSteps->item(n,1)->text());
         settings->setValue("Hz",(ui->tuningSteps->item(n,2) == NULL) ? 0ULL :  ui->tuningSteps->item(n,2)->text().toULongLong());
     }
@@ -473,9 +471,9 @@ void rigCreator::saveRigFile(QString file)
     for (int n = 0; n<ui->filters->rowCount();n++)
     {
         settings->setArrayIndex(n);
-        settings->setValue("Num",(ui->filters->item(n,0) == NULL) ? 0 :  ui->filters->item(n,0)->text().toInt());
+        settings->setValue("Num",(ui->filters->item(n,0) == NULL) ? 0 :  ui->filters->item(n,0)->text().toUInt(nullptr,16));
         settings->setValue("Name",(ui->filters->item(n,1) == NULL) ? "" :  ui->filters->item(n,1)->text());
-        settings->setValue("Modes",(ui->filters->item(n,2) == NULL) ? 0xffffffff : ui->filters->item(n,2)->text().toUInt(&ok,16));
+        settings->setValue("Modes",(ui->filters->item(n,2) == NULL) ? 0xffffffff : ui->filters->item(n,2)->text().toUInt(nullptr,16));
     }
     settings->endArray();
 
