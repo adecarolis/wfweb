@@ -353,6 +353,7 @@ void rigCommander::powerOn()
     QByteArray payload;
 
     int numFE=150;
+
     switch (this->rigBaudRate) {
     case 57600:
         numFE = 75;
@@ -376,16 +377,17 @@ void rigCommander::powerOn()
         payload.append("\xFE");
     }
 
+
     unsigned char cmd = 0x01;
+    payload.append(payloadPrefix);
     if (getCommand(funcPowerControl,payload,cmd))
     {
         payload.append(cmd);
-        prepDataAndSend(payload);
+        payload.append(payloadSuffix); // FD
     }
     else
     {
         // We may not know the command to turn the radio on so here it is:
-        payload.append(payloadPrefix); // FE FE 94 E1
         payload.append("\x18\x01");
         payload.append(payloadSuffix); // FD
     }
