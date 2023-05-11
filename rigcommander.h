@@ -15,6 +15,7 @@
 #include "repeaterattributes.h"
 #include "freqmemory.h"
 #include "tcpserver.h"
+#include "cachingqueue.h"
 
 #include "rigstate.h"
 
@@ -288,6 +289,7 @@ public slots:
     void setCurrentRadio(quint8 radio);
     void sendState();
     void getDebug();
+    void receiveCommand(queueItemType type, funcs func, QVariant value);
 
 signals:
     // Communication:
@@ -408,13 +410,14 @@ signals:
     void finished();
 
 private:
-    void setup();
+    void commonSetup();
     QByteArray stripData(const QByteArray &data, unsigned char cutPosition);
     void parseData(QByteArray data); // new data come here
     void parseCommand(); // Entry point for complete commands
     unsigned char bcdHexToUChar(unsigned char in);
     unsigned char bcdHexToUChar(unsigned char hundreds, unsigned char tensunits);
     unsigned int bcdHexToUInt(unsigned char hundreds, unsigned char tensunits);
+    QByteArray bcdEncodeChar(unsigned char num);
     QByteArray bcdEncodeInt(unsigned int);
     void parseFrequency();
     freqt parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
@@ -428,6 +431,8 @@ private:
     unsigned char convertNumberToHex(unsigned char num);
     quint16 decodeTone(QByteArray eTone);
     quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
+    uchar makeFilterWidth(ushort width);
+
 
     unsigned char audioLevelRxMean[50];
     unsigned char audioLevelRxPeak[50];
@@ -523,6 +528,8 @@ private:
     quint64 pow10[12] = {
         1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000, 100000000000
     };
+
+    cachingQueue* queue;
 
 #ifdef DEBUG_PARSE
     quint64 averageParseTime=0;

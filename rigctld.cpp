@@ -100,6 +100,7 @@ void rigCtlD::receiveRigCaps(rigCapabilities caps)
 rigCtlClient::rigCtlClient(int socketId, rigCapabilities caps, rigstate* state, rigCtlD* parent) : QObject(parent)
 {
 
+    queue = cachingQueue::getInstance(this);
     commandBuffer.clear();
     sessionId = socketId;
     rigCaps = caps;

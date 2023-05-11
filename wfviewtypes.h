@@ -188,7 +188,7 @@ enum cmds {
 
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 187
+#define NUMFUNCS 188
 
 enum funcs { funcNone,
 funcfreqTR,             funcModeTR,             funcBandEdgeFreq,           funcFreqGet,        	funcModeGet,        	funcFreqSet,			// \x00
@@ -221,7 +221,8 @@ funcRITFreq,			funcRitStatus,			funcRitTXStatus,            funcMainSubFreq,		fu
 funcScopeOnOff,			funcScopeDataOutput,	funcScopeMainSub,           funcScopeSingleDual,	funcScopeCenterFixed,	funcScopeCenterSpan,
 funcScopeEdgeNumber,  	funcScopeHold,      	funcScopeRef,               funcScopeSpeed,			funcScopeDuringTX,      funcScopeCenterType,
 funcScopeVBW,       	funcScopeFixedFreq, 	funcScopeRBW,               funcVoiceTX,			funcMainSubPrefix,		funcAFCSetting,
-funcGPSTXMode,          funcSatelliteMemory,    funcGPSPosition,            funcMemoryGroup,        funcFA,                 funcFB
+funcGPSTXMode,          funcSatelliteMemory,    funcGPSPosition,            funcMemoryGroup,        funcSelectVFO,          funcFA,
+funcFB
 };
              
 
@@ -257,7 +258,8 @@ static QString funcString[] { "None",
 "Scope On/Off",         "Scope Data Output",    "Scope Main/Sub",           "Scope Single/Dual",    "Scope Center Fixed",   "Scope Center Span",
 "Scope Edge Number",    "Scope Hold",           "Scope Ref",                "Scope Speed",          "Scope During TX",      "Scope Center Type",
 "Scope VBW",            "Scope Fixed Freq",     "Scope RBW",                "Voice TX",             "Main/Sub Prefix",      "AFC Function",
-"GPS TX Mode",          "Satellite Memory",     "GPS Position",             "Memory Group",         "Command Error FA",     "Command OK FB"
+"GPS TX Mode",          "Satellite Memory",     "GPS Position",             "Memory Group",         "(int)Select VFO",      "Command Error FA",
+"Command OK FB"
 };
 
 

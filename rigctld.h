@@ -19,6 +19,7 @@
 #include <typeindex>
 
 #include "rigcommander.h"
+#include "cachingqueue.h"
 #include "rigstate.h"
 
 #define CONSTANT_64BIT_FLAG(BIT) (1ull << (BIT))
@@ -399,6 +400,7 @@ protected:
     QString commandBuffer;
 
 private:
+    cachingQueue* queue;
     rigCapabilities rigCaps;
     rigstate* rigState = Q_NULLPTR;
     rigCtlD* parent;

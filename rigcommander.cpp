@@ -25,6 +25,7 @@ rigCommander::rigCommander(QObject* parent) : QObject(parent)
 {
 
     qInfo(logRig()) << "creating instance of rigCommander()";
+
     state.set(SCOPEFUNC, true, false);
 }
 
@@ -34,6 +35,7 @@ rigCommander::rigCommander(quint8 guid[GUIDLEN], QObject* parent) : QObject(pare
     qInfo(logRig()) << "creating instance of rigCommander()";
     state.set(SCOPEFUNC, true, false);
     memcpy(this->guid, guid, GUIDLEN);
+    // Add some commands that is a minimum for rig detection
 }
 
 rigCommander::~rigCommander()
@@ -46,18 +48,12 @@ rigCommander::~rigCommander()
 void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
 {
     // construct
+
     // TODO: Bring this parameter and the comm port from the UI.
     // Keep in hex in the UI as is done with other CIV apps.
-
     this->rigList = rigList;
-    // civAddr = 0x94; // address of the radio. Decimal is 148.
-    civAddr = rigCivAddr; // address of the radio. Decimal is 148.
+    civAddr = rigCivAddr; // address of the radio.
     usingNativeLAN = false;
-
-    //qInfo(logRig()) << "Opening connection to Rig:" << QString("0x%1").arg((unsigned char)rigCivAddr,0,16) << "on serial port" << rigSerialPort << "at baud rate" << rigBaudRate ;
-    // ---
-    setup();
-    // ---
 
     this->rigSerialPort = rigSerialPort;
     this->rigBaudRate = rigBaudRate;
@@ -102,9 +98,7 @@ void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char
 
     connect(this, SIGNAL(discoveredRigID(rigCapabilities)), ptty, SLOT(receiveFoundRigID(rigCapabilities)));
 
-    emit commReady();
-    sendState(); // Send current rig state to rigctld
-
+    commonSetup();
 }
 
 void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char rigCivAddr, udpPreferences prefs, audioSetup rxSetup, audioSetup txSetup, QString vsp, quint16 tcpPort)
@@ -114,12 +108,8 @@ void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char
     // Keep in hex in the UI as is done with other CIV apps.
 
     this->rigList = rigList;
-    // civAddr = 0x94; // address of the radio. Decimal is 148.
-    civAddr = rigCivAddr; // address of the radio. Decimal is 148.
+    civAddr = rigCivAddr; // address of the radio
     usingNativeLAN = true;
-    // --
-    setup();
-    // ---
 
 
     if (udp == Q_NULLPTR) {
@@ -188,14 +178,10 @@ void rigCommander::commSetup(QHash<unsigned char,QString> rigList, unsigned char
         connect(this, SIGNAL(selectedRadio(quint8)), udp, SLOT(setCurrentRadio(quint8)));
         emit haveAfGain(rxSetup.localAFgain);
         localVolume = rxSetup.localAFgain;
+
     }
 
-    // data from the comm port to the program:
-
-    emit commReady();
-    sendState(); // Send current rig state to rigctld
-
-    pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
+    commonSetup();
 
 }
 
@@ -219,19 +205,33 @@ void rigCommander::closeComm()
     ptty = Q_NULLPTR;
 }
 
-void rigCommander::setup()
+void rigCommander::commonSetup()
 {
+
     // common elements between the two constructors go here:
     setCIVAddr(civAddr);
     spectSeqMax = 0; // this is now set after rig ID determined
 
     payloadSuffix = QByteArray("\xFD");
 
-    lookingForRig = false;
+    lookingForRig = true;
     foundRig = false;
+
+    rigCaps.commands.clear();
+    rigCaps.commandsReverse.clear();
+    rigCaps.commands.insert(funcTransceiverId,funcType(funcTransceiverId, QString("Transceiver ID"),QByteArrayLiteral("\x19\x00"),0,0));
+    rigCaps.commandsReverse.insert(QByteArrayLiteral("\x19\x00"),funcTransceiverId);
+
+    queue = cachingQueue::getInstance(this);
+    connect(queue,SIGNAL(haveCommand(queueItemType,funcs,QVariant)),this,SLOT(receiveCommand(queueItemType, funcs,QVariant)));
+
     oldScopeMode = spectModeUnknown;
 
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.
+
+    emit commReady();
+    sendState(); // Send current rig state to rigctld
+
 }
 
 
@@ -308,20 +308,16 @@ void rigCommander::findRigs()
 }
 
 void rigCommander::prepDataAndSend(QByteArray data)
-{
+{    
     data.prepend(payloadPrefix);
-    //printHex(data, false, true);
     data.append(payloadSuffix);
 
     if(data[4] != '\x15')
     {
         // We don't print out requests for meter levels
         qDebug(logRigTraffic()) << "Final payload in rig commander to be sent to rig: ";
-        //printHex(data);
-        //printHex(data, logRigTraffic());
         printHexNow(data, logRigTraffic());
     }
-
     emit dataForComm(data);
 }
 
@@ -372,11 +368,12 @@ void rigCommander::powerOn()
         break;
     }
 
-    for(int i=0; i < numFE; i++)
-    {
-        payload.append("\xFE");
+    if (!usingNativeLAN || !rigCaps.hasLan) {
+        for(int i=0; i < numFE; i++)
+        {
+            payload.append("\xFE");
+        }
     }
-
 
     unsigned char cmd = 0x01;
     payload.append(payloadPrefix);
@@ -1420,7 +1417,7 @@ void rigCommander::setMemory(memoryType mem)
     bool finished=false;
     QByteArray payload;
     char nul = 0x0;
-    char ffchar = 0xff;
+    uchar ffchar = 0xff;
     QVector<memParserFormat> parser;
 
     if (mem.sat && getCommand(funcSatelliteMemory,payload,mem.channel))
@@ -1957,17 +1954,6 @@ void rigCommander::parseCommand()
 {
 
 
-    // note: data already is trimmed of the beginning FE FE E0 94 stuff.
-    if (!haveRigCaps)
-    {
-        if  (payloadIn[0] == '\x19') {
-            model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
-            rigCaps.modelID = payloadIn[2];
-            determineRigCaps();
-            qInfo(logRig()) << "Have rig ID: decimal: " << (unsigned int)rigCaps.modelID;
-        }
-        return; // We can't do anything else until we have a rig model.
-    }
 
 #ifdef DEBUG_PARSE
     QElapsedTimer performanceTimer;
@@ -2486,12 +2472,12 @@ void rigCommander::parseCommand()
     case funcIPPlus:
         break;
     // 0x17 is CW send and 0x18 is power control (no reply)
-    // 0x19 should never appear as we already have the rigID.
+    // 0x19 it automatically added.
     case funcTransceiverId:
         model = determineRadioModel(payloadIn[2]); // verify this is the model not the CIV
         rigCaps.modelID = payloadIn[2];
         determineRigCaps();
-        qInfo(logRig()) << "Have rig ID: decimal: " << (unsigned int)rigCaps.modelID;
+        qInfo(logRig()) << "Have rig ID: " << QString::number(rigCaps.modelID,16);
         break;
     // 0x1a
     case funcBandStackReg:
@@ -4694,11 +4680,11 @@ void rigCommander::determineRigCaps()
             if (funcsLookup.contains(settings->value("Type", "****").toString().toUpper()))
             {
                 funcs func = funcsLookup.find(settings->value("Type", "").toString().toUpper()).value();
-                rigCaps.commands.insert(func, funcType(func, funcString[int(func)],
-                                            QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),
-                                                       settings->value("Min", 0).toString().toInt(), settings->value("Max", 0).toString().toInt()));
+                            rigCaps.commands.insert(func, funcType(func, funcString[int(func)],
+                                                                   QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),
+                                                                   settings->value("Min", 0).toString().toInt(), settings->value("Max", 0).toString().toInt()));
 
-                rigCaps.commandsReverse.insert(QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),func);
+                            rigCaps.commandsReverse.insert(QByteArray::fromHex(settings->value("String", "").toString().toUtf8()),func);
             } else {
                 qInfo(logRig()) << "Function" << settings->value("Type", "").toString() << "Not Found!";
             }
@@ -6003,6 +5989,30 @@ QByteArray rigCommander::bcdEncodeInt(unsigned int num)
     return result;
 }
 
+QByteArray rigCommander::bcdEncodeChar(unsigned char num)
+{
+    if(num > 99)
+    {
+        qInfo(logRig()) << __FUNCTION__ << "Error, number is too big for two-digit conversion: " << num;
+        return QByteArray();
+    }
+
+    uchar tens = num / 10;
+    uchar units = num - (10*tens);
+
+    uchar b0 = units | (tens << 4);
+
+    //qInfo(logRig()) << __FUNCTION__ << " encoding value " << num << " as hex:";
+    //printHex(QByteArray(b0), false, true);
+    //printHex(QByteArray(b1), false, true);
+
+    QByteArray result;
+    result.append(b0);
+    return result;
+}
+
+
+
 void rigCommander::parseFrequency()
 {
     freqt freq;
@@ -7110,8 +7120,135 @@ quint8* rigCommander::getGUID() {
     return guid;
 }
 
+uchar rigCommander::makeFilterWidth(ushort pass)
+{
+    unsigned char mode = state.getChar(MODE);
+    uchar payload=0;
 
+    foreach (mode_info m, rigCaps.modes)
+    {
+        if (m.reg == mode && m.bw) {
+            uchar calc;
+            if (mode == modeAM) { // AM 0-49
 
+                 calc = quint16((pass / 200) - 1);
+                 if (calc > 49)
+                    calc = 49;
+            }
+            else if (pass >= 600) // SSB/CW/PSK 10-40 (10-31 for RTTY)
+            {
+                 calc = quint16((pass / 100) + 4);
+                 if (((calc > 31) && (mode == modeRTTY || mode == modeRTTY_R)))
+                 {
+                    calc = 31;
+                 }
+                 else if (calc > 40) {
+                    calc = 40;
+                 }
+            }
+            else {  // SSB etc 0-9
+                 calc = quint16((pass / 50) - 1);
+            }
+
+            uchar tens = (calc / 10);
+            uchar units = (calc - (10 * tens));
+            payload = (units) | (tens << 4);
+        }
+    }
+    return payload;
+}
+
+void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value)
+{
+    //qInfo() << "Got command:" << funcString[func];
+    int val=INT_MIN;
+    if (value.isValid()) {
+        val = value.value<int>() & 0xffff;
+        //qInfo(logRig()) << "Got value" << QString(value.typeName());
+    }
+
+    if (func == funcSelectVFO) {
+        // Special command
+        vfo_t vfo = value.value<vfo_t>();
+        func = (vfo == vfoA)?funcVFOASelect:(vfo == vfoB)?funcVFOBSelect:(vfo == vfoMain)?funcVFOMainSelect:funcVFOSubSelect;
+        value.clear();
+    }
+
+    QByteArray payload;
+    if (getCommand(func,payload,val))
+    {
+        if (value.isValid())
+        {
+
+            if (!strcmp(value.typeName(),"bool"))
+            {
+                 payload.append(value.value<bool>());
+            }
+            else if (!strcmp(value.typeName(),"uchar"))
+            {
+                 payload.append(bcdEncodeChar(value.value<uchar>()));
+            }
+            else if (!strcmp(value.typeName(),"ushort"))
+            {
+                if (func == funcFilterWidth)
+                    payload.append(makeFilterWidth(value.value<ushort>()));
+                else
+                    payload.append(bcdEncodeInt(value.value<ushort>()));
+            }
+            else if (!strcmp(value.typeName(),"uint") && (func == funcMemoryContents || func == funcMemoryMode))
+            {
+                // Format is different for all radios!
+                foreach (auto parse, rigCaps.memParser) {
+                    // If "a" exists, break out of the loop as soon as we have the value.
+                    if (parse.spec == 'a') {
+                        if (parse.len == 1) {
+                            payload.append(bcdEncodeChar(value.value<uint>() >> 16 & 0xff));
+                        }
+                        else if (parse.len == 2)
+                        {
+                            payload.append(bcdEncodeInt(value.value<uint>() >> 16 & 0xffff));
+                        }
+                        break;
+                    }
+                }
+                payload.append(bcdEncodeInt(value.value<uint>() & 0xffff));
+            }
+            else if (!strcmp(value.typeName(),"mode_info"))
+            {
+                if (func == funcDataModeWithFilter)
+                {
+                    payload.append(value.value<mode_info>().data);
+                    if (value.value<mode_info>().data)
+                       payload.append(value.value<mode_info>().filter);
+                } else {
+                    payload.append(value.value<mode_info>().reg);
+                    payload.append(value.value<mode_info>().filter);
+                }
+            }
+            else if(!strcmp(value.typeName(),"freqt"))
+            {
+                if (func == funcMainSubFreq) {
+                    payload.append(value.value<freqt>().VFO);
+                }
+
+                if (func == funcSendFreqOffset) {
+                    payload.append(makeFreqPayload(value.value<freqt>()).mid(1,3));
+                } else {
+                    payload.append(makeFreqPayload(value.value<freqt>()));
+                }
+            }
+            else
+            {
+                qInfo(logRig()) << "Got unknown value type" << QString(value.typeName());
+            }
+        }
+        prepDataAndSend(payload);
+    }
+    else
+    {
+        qInfo() << "cachingQueue(): unimplemented command" << funcString[func];
+    }
+}
 
 
 

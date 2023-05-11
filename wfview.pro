@@ -230,6 +230,7 @@ win32:INCLUDEPATH += ../qcustomplot
 INCLUDEPATH += resampler
 
 SOURCES += main.cpp\
+    cachingqueue.cpp \
     cwsender.cpp \
     cwsidetone.cpp \
     loggingwindow.cpp \
@@ -270,6 +271,7 @@ SOURCES += main.cpp\
     audiodevices.cpp
 
 HEADERS  += wfmain.h \
+    cachingqueue.h \
     colorprefs.h \
     commhandler.h \
     cwsender.h \

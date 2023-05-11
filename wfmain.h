@@ -54,6 +54,7 @@
 #include "usbcontroller.h"
 #include "controllersetup.h"
 #include "rigcreator.h"
+#include "cachingqueue.h"
 
 #include <deque>
 #include <memory>
@@ -1048,6 +1049,7 @@ private:
     bool runPeriodicCommands;
     bool usingLAN = false;
 
+    cachingQueue* queue;
     // Radio time sync:
     QTimer *timeSync;
     bool waitingToSetTimeDate;
@@ -1143,7 +1145,7 @@ private:
 
     void connectionHandler(bool connect);
 
-    cmds meterKindToMeterCommand(meterKind m);
+    funcs meterKindToMeterCommand(meterKind m);
 
     void updateUsbButtons();
 
@@ -1219,6 +1221,8 @@ private:
 
     SERVERCONFIG serverConfig;
     void serverAddUserLine(const QString& user, const QString& pass, const int& type);
+
+    funcs getInputTypeCommand(inputTypes input);
 
 #if defined (USB_CONTROLLER)
     usbController *usbControllerDev = Q_NULLPTR;

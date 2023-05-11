@@ -92,6 +92,8 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     haveRigCaps = false;
 
+    queue = cachingQueue::getInstance(this);
+
     // We need to populate the list of rigs as early as possible so do it now
     QString systemRigLocation = QCoreApplication::applicationDirPath();
 
@@ -258,7 +260,6 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
         udev_monitor_enable_receiving(uDevMonitor);
     #endif
 #endif
-
 
 
 }
@@ -516,47 +517,39 @@ void wfmain::rigConnections()
     connect(rpt, SIGNAL(getTSQL()), rig, SLOT(getTSQL()));
     connect(rpt, SIGNAL(getDTCS()), rig, SLOT(getDTCS()));
 
-    connect(this->rpt, &repeaterSetup::setTone,
-            [=](const rptrTone_t &t) { issueCmd(cmdSetTone, t);});
+    connect(this->rpt, &repeaterSetup::setTone, this->rig,
+            [=](const rptrTone_t &t) { queue->add(priorityImmediate,queueItem(funcToneFreq,QVariant::fromValue<rptrTone_t>(t),false));});
 
-    connect(this->rpt, &repeaterSetup::setTSQL,
-            [=](const rptrTone_t &t) { issueCmd(cmdSetTSQL, t);});
+    connect(this->rpt, &repeaterSetup::setTSQL, this->rig,
+            [=](const rptrTone_t &t) { queue->add(priorityImmediate,queueItem(funcTSQLFreq,QVariant::fromValue<rptrTone_t>(t),false));});
 
-    // TODO: struct with the DCS components and command queue entry
-    connect(rpt, SIGNAL(setDTCS(quint16,bool,bool)), rig, SLOT(setDTCS(quint16,bool,bool)));
-
-    //connect(rpt, SIGNAL(getRptAccessMode()), rig, SLOT(getRptAccessMode()));
-    connect(this->rpt, &repeaterSetup::getRptAccessMode,
+    connect(this->rpt, &repeaterSetup::getRptAccessMode, this->rig,
             [=]() {
             if (rigCaps.commands.contains(funcToneSquelchType)) {
-                issueDelayedCommand(cmdGetRptAccessMode);
+                queue->add(priorityImmediate,funcToneSquelchType);
             } else {
-                issueDelayedCommand(cmdGetToneEnabled);
-                issueDelayedCommand(cmdGetTSQLEnabled);
+                queue->add(priorityImmediate,funcRepeaterTone);
+                queue->add(priorityImmediate,funcRepeaterTSQL);
             }
     });
 
-    connect(this->rpt, &repeaterSetup::setQuickSplit,
+    connect(this->rpt, &repeaterSetup::setQuickSplit, this->rig,
             [=](const bool &qsEnabled) {
-        issueCmd(cmdSetQuickSplit, qsEnabled);
+            queue->add(priorityImmediate,queueItem(funcQuickSplit,QVariant::fromValue<bool>(qsEnabled)));
     });
 
-    connect(this, SIGNAL(setQuickSplit(bool)), rig, SLOT(setQuickSplit(bool)));
-
-    connect(this->rpt, &repeaterSetup::setRptAccessMode,
+    connect(this->rpt, &repeaterSetup::setRptAccessMode, this->rig,
             [=](const rptrAccessData_t &rd) {
-            issueCmd(cmdSetRptAccessMode, rd);
-    });
+                queue->add(priorityImmediate,queueItem(funcToneSquelchType,QVariant::fromValue<rptrAccessData_t>(rd),false));
+        });
 
-    connect(this, SIGNAL(setRepeaterAccessMode(rptrAccessData_t)), rig, SLOT(setRptAccessMode(rptrAccessData_t)));
-    connect(this, SIGNAL(setTone(rptrTone_t)), rig, SLOT(setTone(rptrTone_t)));
 
     connect(rig, SIGNAL(haveTone(quint16)), rpt, SLOT(handleTone(quint16)));
     connect(rig, SIGNAL(haveTSQL(quint16)), rpt, SLOT(handleTSQL(quint16)));
     connect(rig, SIGNAL(haveDTCS(quint16,bool,bool)), rpt, SLOT(handleDTCS(quint16,bool,bool)));
     connect(rig, SIGNAL(haveRptAccessMode(rptAccessTxRx)), rpt, SLOT(handleRptAccessMode(rptAccessTxRx)));
 
-    connect(this->rig, &rigCommander::haveDuplexMode,
+    connect(this->rig, &rigCommander::haveDuplexMode, this->rpt,
             [=](const duplexMode &dm) {
                 if(dm==dmSplitOn)
                     this->splitModeEnabled = true;
@@ -567,22 +560,22 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(getToneEnabled()), rig, SLOT(getToneEnabled()));
     connect(this, SIGNAL(getTSQLEnabled()), rig, SLOT(getToneSqlEnabled()));
 
-    connect(this->rpt, &repeaterSetup::setTransmitFrequency,
-            [=](const freqt &transmitFreq) { issueCmdUniquePriority(cmdSetFreq, transmitFreq);});
-    connect(this->rpt, &repeaterSetup::setTransmitMode,
-            [=](const mode_info &transmitMode) { issueCmd(cmdSetMode, transmitMode);});
-    connect(this->rpt, &repeaterSetup::selectVFO,
-            [=](const vfo_t &v) { issueCmd(cmdSelVFO, v);});
-    connect(this->rpt, &repeaterSetup::equalizeVFOsAB,
-            [=]() { issueDelayedCommand(cmdVFOEqualAB);});
-    connect(this->rpt, &repeaterSetup::equalizeVFOsMS,
-            [=]() { issueDelayedCommand(cmdVFOEqualMS);});
-    connect(this->rpt, &repeaterSetup::swapVFOs,
-            [=]() { issueDelayedCommand(cmdVFOSwap);});
-    connect(this->rpt, &repeaterSetup::setRptDuplexOffset,
-            [=](const freqt &fOffset) { issueCmd(cmdSetRptDuplexOffset, fOffset);});
-    connect(this->rpt, &repeaterSetup::getRptDuplexOffset,
-            [=]() { issueDelayedCommand(cmdGetRptDuplexOffset);});
+    connect(this->rpt, &repeaterSetup::setTransmitFrequency, this->rig,
+            [=](const freqt &transmitFreq) { queue->add(priorityImmediate,queueItem(funcFreqSet,QVariant::fromValue<freqt>(transmitFreq),false));});
+    connect(this->rpt, &repeaterSetup::setTransmitMode, this->rig,
+            [=](const mode_info &transmitMode) {  queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<mode_info>(transmitMode),false));});
+    connect(this->rpt, &repeaterSetup::selectVFO, this->rig,
+            [=](const vfo_t &v) { queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(v),false));});
+    connect(this->rpt, &repeaterSetup::equalizeVFOsAB, this->rig,
+            [=]() { queue->add(priorityImmediate,funcVFOEqualAB);});
+    connect(this->rpt, &repeaterSetup::equalizeVFOsMS, this->rig,
+            [=]() {  queue->add(priorityImmediate,funcVFOEqualMS);});
+    connect(this->rpt, &repeaterSetup::swapVFOs, this->rig,
+            [=]() {  queue->add(priorityImmediate,funcVFOSwapMS);});
+    connect(this->rpt, &repeaterSetup::setRptDuplexOffset, this->rig,
+            [=](const freqt &fOffset) { queue->add(priorityImmediate,queueItem(funcSendFreqOffset,QVariant::fromValue<freqt>(fOffset),false));});
+    connect(this->rpt, &repeaterSetup::getRptDuplexOffset, this->rig,
+            [=]() {  queue->add(priorityImmediate,funcReadFreqOffset);});
 
     connect(this, SIGNAL(setRptDuplexOffset(freqt)), rig, SLOT(setRptDuplexOffset(freqt)));
     connect(this, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
@@ -879,9 +872,12 @@ void wfmain::receiveCommReady()
         // tell rigCommander to broadcast a request for all rig IDs.
         // qInfo(logSystem()) << "Beginning search from wfview for rigCIV (auto-detection broadcast)";
         ui->statusBar->showMessage(QString("Searching CI-V bus for connected radios."), 1000);
-        emit getRigCIV();
-        issueDelayedCommand(cmdGetRigCIV);
-        delayedCommand->start();
+
+        //emit getRigCIV();
+        //queue->add(priorityImmediate,funcTransceiverId,false);
+        queue->add(priorityImmediate,funcTransceiverId,true);
+        //issueDelayedCommand(cmdGetRigCIV);
+        //delayedCommand->start();
     } else {
         // don't bother, they told us the CIV they want, stick with it.
         // We still query the rigID to find the model, but at least we know the CIV.
@@ -894,9 +890,12 @@ void wfmain::receiveCommReady()
             emit setRigID(prefs.radioCIVAddr);
         } else {
             emit setCIVAddr(prefs.radioCIVAddr);
-            emit getRigID();
-            issueDelayedCommand(cmdGetRigID);
-            delayedCommand->start();
+            //emit getRigCIV();
+            //queue->add(priorityImmediate,funcTransceiverId,false);
+            queue->add(priorityImmediate,funcTransceiverId,true);
+            //emit getRigID();
+            //issueDelayedCommand(cmdGetRigID);
+            //delayedCommand->start();
         }
     }
 }
@@ -908,16 +907,18 @@ void wfmain::receiveFoundRigID(rigCapabilities rigCaps)
     //now we know what the rig ID is:
     //qInfo(logSystem()) << "In wfview, we now have a reply to our request for rig identity sent to CIV BROADCAST.";
 
-    if(rig->usingLAN())
-    {
-        usingLAN = true;
-    } else {
-        usingLAN = false;
-    }
+    //if(rig->usingLAN())
+    //{
+    //    usingLAN = true;
+    //} else {
+    //    usingLAN = false;
+   // }
 
     receiveRigID(rigCaps);
+
     getInitialRigState();
 
+    initPeriodicCommands();
     return;
 }
 
@@ -1200,73 +1201,86 @@ void wfmain::setupMainUI()
     connect(ui->tabWidget, SIGNAL(currentChanged(int)), this, SLOT(updateSizes(int)));
 
     connect(
-                ui->txPowerSlider, &QSlider::valueChanged,
+                ui->txPowerSlider, &QSlider::valueChanged, this,
                 [=](const int &newValue) { statusFromSliderPercent("Tx Power", newValue);}
     );
 
     connect(
-                ui->rfGainSlider, &QSlider::valueChanged,
+                ui->rfGainSlider, &QSlider::valueChanged, this,
                 [=](const int &newValue) { statusFromSliderPercent("RF Gain", newValue);}
     );
 
     connect(
-                ui->afGainSlider, &QSlider::valueChanged,
+                ui->afGainSlider, &QSlider::valueChanged, this,
                 [=](const int &newValue) { statusFromSliderPercent("AF Gain", newValue);}
     );
 
     connect(
-                ui->micGainSlider, &QSlider::valueChanged,
+                ui->micGainSlider, &QSlider::valueChanged, this,
                 [=](const int &newValue) { statusFromSliderPercent("TX Audio Gain", newValue);}
     );
 
     connect(
-                ui->sqlSlider, &QSlider::valueChanged,
+                ui->sqlSlider, &QSlider::valueChanged, this,
                 [=](const int &newValue) { statusFromSliderPercent("Squelch", newValue);}
     );
 
     // -200 0 +200.. take log?
     connect(
-                ui->scopeRefLevelSlider, &QSlider::valueChanged,
+                ui->scopeRefLevelSlider, &QSlider::valueChanged, this,
                 [=](const int &newValue) { statusFromSliderRaw("Scope Ref Level", newValue);}
     );
 
     connect(
-                ui->wfLengthSlider, &QSlider::valueChanged,
+                ui->wfLengthSlider, &QSlider::valueChanged, this,
                 [=](const int &newValue) { statusFromSliderRaw("Waterfall Length", newValue);}
     );
 
-    connect(this->trxadj, &transceiverAdjustments::setIFShift,
-            [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetIFShift, newValue);}
-    );
+    connect(this->trxadj, &transceiverAdjustments::setIFShift, this, [=](const unsigned char &newValue) {
+        queue->add(priorityImmediate,queueItem(funcIFShift,QVariant::fromValue<uint>(newValue)));
+    });
 
-    connect(this->trxadj, &transceiverAdjustments::setTPBFInner,
-            [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetTPBFInner, newValue);}
-    );
+    connect(this->trxadj, &transceiverAdjustments::setTPBFInner, this, [=](const unsigned char &newValue) {
+        queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<uchar>(newValue)));
+    });
 
-    connect(this->trxadj, &transceiverAdjustments::setTPBFOuter,
-            [=](const unsigned char &newValue) { issueCmdUniquePriority(cmdSetTPBFOuter, newValue);}
-    );
-    connect(this->trxadj, &transceiverAdjustments::setPassband,
-            [=](const quint16 &passbandHz) { issueCmdUniquePriority(cmdSetPassband, passbandHz);}
-    );
+    connect(this->trxadj, &transceiverAdjustments::setTPBFOuter, this, [=](const unsigned char &newValue) {
+        queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<uint>(newValue)));
+    });
+    connect(this->trxadj, &transceiverAdjustments::setPassband, this, [=](const quint16 &passbandHz) {
+        queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<uint>(passbandHz)));
+    });
 
-    connect(this->cw, &cwSender::sendCW,
-            [=](const QString &cwMessage) { issueCmd(cmdSendCW, cwMessage);});
-    connect(this->cw, &cwSender::stopCW,
-            [=]() { issueDelayedCommand(cmdStopCW);});
-    connect(this->cw, &cwSender::setBreakInMode,
-            [=](const unsigned char &bmode) { issueCmd(cmdSetBreakMode, bmode);});
-    connect(this->cw, &cwSender::setKeySpeed,
-        [=](const unsigned char& wpm) { issueCmd(cmdSetKeySpeed, wpm); });
-    connect(this->cw, &cwSender::setDashRatio,
-        [=](const unsigned char& ratio) { issueCmd(cmdSetDashRatio, ratio); });
-    connect(this->cw, &cwSender::setPitch,
-        [=](const unsigned char& pitch) { issueCmd(cmdSetCwPitch, pitch); });
-    connect(this->cw, &cwSender::getCWSettings,
-        [=]() { issueDelayedCommand(cmdGetKeySpeed);
-        issueDelayedCommand(cmdGetBreakMode);
-        issueDelayedCommand(cmdGetCwPitch);
-        issueDelayedCommand(cmdGetDashRatio); });
+    connect(this->cw, &cwSender::sendCW, this, [=](const QString &cwMessage) {
+        queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<QString>(cwMessage)));
+    });
+
+    connect(this->cw, &cwSender::stopCW, this, [=]() {
+        queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<uchar>(0xff)));
+    });
+
+    connect(this->cw, &cwSender::setBreakInMode, this, [=](const unsigned char &bmode) {
+        queue->add(priorityImmediate,queueItem(funcBreakIn,QVariant::fromValue<uchar>(bmode)));
+    });
+
+    connect(this->cw, &cwSender::setKeySpeed, this, [=](const unsigned char& wpm) {
+        queue->add(priorityImmediate,queueItem(funcKeySpeed,QVariant::fromValue<ushort>(wpm)));
+    });
+
+    connect(this->cw, &cwSender::setDashRatio, this, [=](const unsigned char& ratio) {
+        queue->add(priorityImmediate,queueItem(funcDashRatio,QVariant::fromValue<uchar>(ratio)));
+    });
+
+    connect(this->cw, &cwSender::setPitch, this, [=](const unsigned char& pitch) {
+        queue->add(priorityImmediate,queueItem(funcSendCW,QVariant::fromValue<ushort>(pitch)));
+    });
+
+    connect(this->cw, &cwSender::getCWSettings, this, [=]() {
+        queue->add(priorityImmediate,funcKeySpeed);
+        queue->add(priorityImmediate,funcBreakIn);
+        queue->add(priorityImmediate,funcCwPitch);
+        queue->add(priorityImmediate,funcDashRatio);
+    });
 }
 
 void wfmain::prepareSettingsWindow()
@@ -1358,6 +1372,7 @@ void wfmain::setInitialTiming()
     delayedCmdIntervalSerial_ms = 100; // interval for regular delayed commands, including initial rig/UI state queries
     delayedCmdStartupInterval_ms = 250; // interval for rigID polling
     delayedCommand = new QTimer(this);
+    queue->interval(delayedCmdStartupInterval_ms);
     delayedCommand->setInterval(delayedCmdStartupInterval_ms); // 250ms until we find rig civ and id, then 100ms.
     delayedCommand->setSingleShot(false);
     connect(delayedCommand, SIGNAL(timeout()), this, SLOT(sendRadioCommandLoop()));
@@ -1734,7 +1749,7 @@ void wfmain::setupKeyShortcuts()
         freq.Hz = f.Hz;
         freq.MHzDouble = f.MHzDouble;
         setUIFreq();
-        issueCmd(cmdSetFreq, f);
+        queue->add(priorityImmediate,queueItem(funcFreqSet,QVariant::fromValue<freqt>(f)));
     });
 
     // L = Up
@@ -1751,7 +1766,7 @@ void wfmain::setupKeyShortcuts()
         freq.Hz = f.Hz;
         freq.MHzDouble = f.MHzDouble;
         setUIFreq();
-        issueCmd(cmdSetFreq, f);
+        queue->add(priorityImmediate,queueItem(funcFreqSet,QVariant::fromValue<freqt>(f)));
     });
 
     keyDebug = new QShortcut(this);
@@ -1952,7 +1967,8 @@ void wfmain::buttonControl(const COMMAND* cmd)
         }
         f.MHzDouble = f.Hz / (double)1E6;
         f.VFO=(selVFO_t)cmd->suffix;
-        issueCmdUniquePriority((cmds)cmd->command, f);
+        queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+        //issueCmdUniquePriority((cmds)cmd->command, f);
         if (!cmd->suffix) {
             freq = f;
             ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
@@ -1992,7 +2008,9 @@ void wfmain::changeFrequency(int value) {
     f.Hz = roundFrequencyWithStep(freq.Hz, value, tsWfScrollHz);
     f.MHzDouble = f.Hz / (double)1E6;
     freq = f;
-    issueCmdUniquePriority(cmdSetFreq, f);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+
+    //issueCmdUniquePriority(cmdSetFreq, f);
     ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
 }
 
@@ -3418,7 +3436,7 @@ void wfmain::shortcutControlT()
 void wfmain::shortcutControlR()
 {
     // Receive
-    issueCmdUniquePriority(cmdSetPTT, false);
+    queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false)));
     pttTimer->stop();
 }
 
@@ -3482,7 +3500,7 @@ void wfmain::on_tuningStepCombo_currentIndexChanged(int index)
     foreach (auto s, rigCaps.steps) {
         if (tsWfScrollHz == s.hz)
         {
-            issueCmdUniquePriority(cmdSetTuningStep, s.num);
+            queue->add(priorityImmediate,queueItem(funcTuningStep,QVariant::fromValue<uchar>(s.num),false));
         }
     }
 }
@@ -3530,7 +3548,9 @@ void wfmain::shortcutMinus()
     freq.MHzDouble = f.MHzDouble;
     setUIFreq();
     //issueCmd(cmdSetFreq, f);
-    issueCmdUniquePriority(cmdSetFreq, f);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+
+    //issueCmdUniquePriority(cmdSetFreq, f);
     //issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -3545,7 +3565,8 @@ void wfmain::shortcutPlus()
     freq.MHzDouble = f.MHzDouble;
     setUIFreq();
     //issueCmd(cmdSetFreq, f);
-    issueCmdUniquePriority(cmdSetFreq, f);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+    //issueCmdUniquePriority(cmdSetFreq, f);
     //issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -3558,8 +3579,10 @@ void wfmain::shortcutStepMinus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+    //queue->add(priorityImmediate,funcFreqGet);
+    //issueCmd(cmdSetFreq, f);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutStepPlus()
@@ -3571,8 +3594,9 @@ void wfmain::shortcutStepPlus()
 
     f.MHzDouble = f.Hz / (double)1E6;
     setUIFreq();
-    issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+    //issueCmd(cmdSetFreq, f);
+    //issueDelayedCommandUnique(cmdGetFreq);
 }
 
 void wfmain::shortcutShiftMinus()
@@ -3586,7 +3610,8 @@ void wfmain::shortcutShiftMinus()
     freq.MHzDouble = f.MHzDouble;
     setUIFreq();
     //emit setFrequency(0,f);
-    issueCmd(cmdSetFreq, f);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+    //issueCmd(cmdSetFreq, f);
     //issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -3601,7 +3626,8 @@ void wfmain::shortcutShiftPlus()
     freq.MHzDouble = f.MHzDouble;
     setUIFreq();
     //emit setFrequency(0,f);
-    issueCmd(cmdSetFreq, f);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+    //issueCmd(cmdSetFreq, f);
     //issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -3615,7 +3641,8 @@ void wfmain::shortcutControlMinus()
     freq.Hz = f.Hz;
     freq.MHzDouble = f.MHzDouble;
     setUIFreq();
-    issueCmd(cmdSetFreq, f);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+    //issueCmd(cmdSetFreq, f);
     //issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -3629,7 +3656,8 @@ void wfmain::shortcutControlPlus()
     freq.Hz = f.Hz;
     freq.MHzDouble = f.MHzDouble;
     setUIFreq();
-    issueCmd(cmdSetFreq, f);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+    //issueCmd(cmdSetFreq, f);
     //issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -3643,7 +3671,8 @@ void wfmain::shortcutPageUp()
     freq.Hz = f.Hz;
     freq.MHzDouble = f.MHzDouble;
     setUIFreq();
-    issueCmd(cmdSetFreq, f);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+    //issueCmd(cmdSetFreq, f);
     //issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -3657,7 +3686,8 @@ void wfmain::shortcutPageDown()
     freq.Hz = f.Hz;
     freq.MHzDouble = f.MHzDouble;
     setUIFreq();
-    issueCmd(cmdSetFreq, f);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+    //issueCmd(cmdSetFreq, f);
     //issueDelayedCommandUnique(cmdGetFreq);
 }
 
@@ -3685,6 +3715,44 @@ void wfmain::setUIFreq()
     setUIFreq(freq.MHzDouble);
 }
 
+funcs wfmain::getInputTypeCommand(inputTypes input)
+{
+    funcs func;
+
+    switch(input)
+    {
+    case inputMic:
+        func = funcMicGain;
+        break;
+
+    case inputACCA:
+        func = funcACC1ModLevel;
+        break;
+
+    case inputACCB:
+        func = funcACC2ModLevel;
+        break;
+
+    case inputACC:
+        func = funcACC1ModLevel;
+        break;
+
+    case inputUSB:
+        func = funcUSBModLevel;
+        break;
+
+    case inputLAN:
+        func = funcLANModLevel;
+        break;
+
+    default:
+        func = funcNone;
+        break;
+    }
+    return func;
+}
+
+
 void wfmain:: getInitialRigState()
 {
     // Initial list of queries to the radio.
@@ -3693,107 +3761,106 @@ void wfmain:: getInitialRigState()
     // the polling interval is set at 200ms. Faster is possible but slower
     // computers will glitch occasionally.
 
-    issueDelayedCommand(cmdGetFreq);
-    issueDelayedCommand(cmdGetMode);
+    queue->del(funcTransceiverId); // This command is no longer required
 
-    issueDelayedCommand(cmdNone);
-
-    issueDelayedCommand(cmdGetFreq);
-    issueDelayedCommand(cmdGetMode);
+    queue->add(priorityImmediate,funcFreqGet);
+    queue->add(priorityImmediate,funcModeGet);
 
     // From left to right in the UI:
     if (rigCaps.hasTransmit) 
     {
-        issueDelayedCommand(cmdGetDataMode);
-        issueDelayedCommand(cmdGetModInput);
-        issueDelayedCommand(cmdGetModDataInput);
-        issueDelayedCommand(cmdGetTxPower);
-        issueDelayedCommand(cmdGetCurrentModLevel); // level for currently selected mod sources
+        queue->add(priorityImmediate,funcDataModeWithFilter);
+        queue->add(priorityImmediate,funcDATAOffMod);
+        queue->add(priorityImmediate,funcDATA1Mod);
+        queue->add(priorityImmediate,funcRFPower);
+        queue->add(priorityImmediate,getInputTypeCommand(currentModSrc));
+        queue->add(priorityImmediate,getInputTypeCommand(currentModDataSrc));
     }
-    issueDelayedCommand(cmdGetRxGain);
-    issueDelayedCommand(cmdGetAfGain);
-    issueDelayedCommand(cmdGetSql);
-        
+
+    queue->add(priorityImmediate,funcRfGain);
+    queue->add(priorityImmediate,funcAfGain);
+    queue->add(priorityImmediate,funcSquelch);
+
 
     if(rigCaps.hasSpectrum)
     {
-        issueDelayedCommand(cmdDispEnable);
-        issueDelayedCommand(cmdSpecOn);
-        issueDelayedCommand(cmdGetSpectrumRefLevel);
-        issueDelayedCommand(cmdGetDuplexMode);
+
+        if(ui->scopeEnableWFBtn->checkState() == Qt::Unchecked)
+        {
+            queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(0)),false));
+        }
+        else if (ui->scopeEnableWFBtn->checkState() == Qt::PartiallyChecked)
+        {
+            queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(0)),false));
+            queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
+        }
+        else
+        {
+            queue->add(priorityImmediate,queueItem(funcScopeDataOutput,QVariant::fromValue(quint8(1)),false));
+            queue->add(priorityImmediate,queueItem(funcScopeOnOff,QVariant::fromValue(quint8(1)),false));
+        }
+        queue->add(priorityImmediate,funcScopeRef,false);
+        queue->add(priorityImmediate,funcScopeCenterFixed,false);
+        queue->add(priorityImmediate,funcScopeCenterSpan,false);
+        queue->add(priorityImmediate,funcDuplexStatus,false);
+        queue->add(priorityImmediate,funcFilterWidth,false);
     }
 
     if(rigCaps.commands.contains(funcTuningStep))
     {
-        issueDelayedCommand(cmdGetTuningStep);
+        queue->add(priorityImmediate,funcTuningStep,false);
     }
 
     if(rigCaps.commands.contains(funcRepeaterTone))
     {
-        issueDelayedCommand(cmdGetTone);
-        issueDelayedCommand(cmdGetTSQL);
+        queue->add(priorityImmediate,funcRepeaterTone,false);
+        queue->add(priorityImmediate,funcRepeaterTSQL,false);
     }
 
     if(rigCaps.commands.contains(funcRepeaterDTCS))
     {
-        issueDelayedCommand(cmdGetDTCS);
+        queue->add(priorityImmediate,funcRepeaterDTCS,false);
     }
 
     if(rigCaps.commands.contains(funcToneSquelchType))
     {
-        issueDelayedCommand(cmdGetRptAccessMode);
+        queue->add(priorityImmediate,funcToneSquelchType,false);
     }
 
     if(rigCaps.commands.contains(funcAntenna))
     {
-        issueDelayedCommand(cmdGetAntenna);
+        queue->add(priorityImmediate,funcAntenna,false);
     }
     if(rigCaps.commands.contains(funcAttenuator))
     {
-        issueDelayedCommand(cmdGetAttenuator);
+        queue->add(priorityImmediate,funcAttenuator,false);
     }
     if(rigCaps.commands.contains(funcPreamp))
     {
-        issueDelayedCommand(cmdGetPreamp);
+        queue->add(priorityImmediate,funcPreamp,false);
     }
 
-    issueDelayedCommand(cmdGetRitEnabled);
-    issueDelayedCommand(cmdGetRitValue);
+    if (rigCaps.commands.contains(funcRitStatus))
+    {
+        queue->add(priorityImmediate,funcRITFreq,false);
+        queue->add(priorityImmediate,funcRitStatus,false);
+    }
 
     if(rigCaps.commands.contains(funcIFShift))
     {
-        issueDelayedCommand(cmdGetIFShift);
+        queue->add(priorityImmediate,funcIFShift,false);
     }
 
     if(rigCaps.commands.contains(funcPBTInner) && rigCaps.commands.contains(funcPBTOuter))
     {
-        issueDelayedCommand(cmdGetTPBFInner);
-        issueDelayedCommand(cmdGetTPBFOuter);
+        queue->add(priorityImmediate,funcPBTInner,false);
+        queue->add(priorityImmediate,funcPBTOuter,false);
     }
-
-    if(rigCaps.hasSpectrum)
-    {
-        issueDelayedCommand(cmdGetSpectrumMode);
-        issueDelayedCommand(cmdGetSpectrumSpan);
-        issueDelayedCommand(cmdGetPassband);
-        if(ui->scopeEnableWFBtn->checkState() != Qt::Unchecked)
-        {
-            issueDelayedCommand(cmdSpecOn);
-        } else {
-            issueDelayedCommand(cmdSpecOff);
-        }
-
-    }
-
-    issueDelayedCommand(cmdNone);
-    issueDelayedCommand(cmdStartRegularPolling);
 
     if(rigCaps.commands.contains(funcTunerStatus))
     {
-        issueDelayedCommand(cmdGetATUStatus);
+        queue->add(priorityImmediate,funcTunerStatus,false);
     }
-        
-    delayedCommand->start();
 
 }
 
@@ -3952,654 +4019,12 @@ void wfmain::setDefaultColors(int presetNumber)
 
 void wfmain::doCmd(commandtype cmddata)
 {
-    cmds cmd = cmddata.cmd;
-    std::shared_ptr<void> data = cmddata.data;
-
-    // This switch is for commands with parameters.
-    // the "default" for non-parameter commands is to call doCmd(cmd).
-    switch (cmd)
-    {
-        case cmdSetFreq:
-        {
-        lastFreqCmdTime_ms = QDateTime::currentMSecsSinceEpoch();
-            freqt f = (*std::static_pointer_cast<freqt>(data));
-            emit setFrequency(f.VFO,f);
-            break;
-        }
-        case cmdSetMode:
-        {
-            mode_info m = (*std::static_pointer_cast<mode_info>(data));
-            emit setMode(m);
-            break;
-        }
-        case cmdSetTuningStep:
-        {
-            unsigned char step = (*std::static_pointer_cast<unsigned char>(data));
-            emit setTuningStep(step);
-            break;
-        }
-        case cmdSelVFO:
-        {
-            vfo_t v = (*std::static_pointer_cast<vfo_t>(data));
-            emit selectVFO(v);
-            break;
-        }
-        case cmdSetTxPower:
-        {
-            unsigned char txpower = (*std::static_pointer_cast<unsigned char>(data));
-            emit setTxPower(txpower);
-            break;
-        }
-        case cmdSetMicGain:
-        {
-            unsigned char micgain = (*std::static_pointer_cast<unsigned char>(data));
-            emit setTxPower(micgain);
-            break;
-        }
-        case cmdSetRxRfGain:
-        {
-            unsigned char rfgain = (*std::static_pointer_cast<unsigned char>(data));
-            emit setRfGain(rfgain);
-            break;
-        }
-        case cmdSetModLevel:
-        {
-            unsigned char modlevel = (*std::static_pointer_cast<unsigned char>(data));
-            inputTypes currentIn;
-            if(usingDataMode)
-            {
-                currentIn = currentModDataSrc;
-            } else {
-                currentIn = currentModSrc;
-            }
-            emit setModLevel(currentIn, modlevel);
-            break;
-        }
-        case cmdSetAfGain:
-        {
-            unsigned char afgain = (*std::static_pointer_cast<unsigned char>(data));
-            emit setAfGain(afgain);
-            break;
-        }
-        case cmdSetSql:
-        {
-            unsigned char sqlLevel = (*std::static_pointer_cast<unsigned char>(data));
-            emit setSql(sqlLevel);
-            break;
-        }
-        case cmdSetIFShift:
-        {
-            unsigned char IFShiftLevel = (*std::static_pointer_cast<unsigned char>(data));
-            emit setIFShift(IFShiftLevel);
-            break;
-        }
-        case cmdSetTPBFInner:
-        {
-            unsigned char innterLevel = (*std::static_pointer_cast<unsigned char>(data));
-            emit setTPBFInner(innterLevel);
-            break;
-        }
-        case cmdSetTPBFOuter:
-        {
-            unsigned char outerLevel = (*std::static_pointer_cast<unsigned char>(data));
-            emit setTPBFOuter(outerLevel);
-            break;
-        }
-        case cmdSetTone:
-        {
-            rptrTone_t t = (*std::static_pointer_cast<rptrTone_t>(data));
-            emit setTone(t);
-            break;
-        }
-        case cmdSetTSQL:
-        {
-            rptrTone_t t = (*std::static_pointer_cast<rptrTone_t>(data));
-            emit setTSQL(t);
-            break;
-        }
-        case cmdSetRptAccessMode:
-        {
-            rptrAccessData_t rd = (*std::static_pointer_cast<rptrAccessData_t>(data));
-            if(rd.accessMode==ratrNN && !rigCaps.commands.contains(funcToneSquelchType))
-            {
-                rd.usingSequence = true;
-                switch(rd.sequence)
-                {
-                case 0:
-                    rd.turnOffTone = true;
-                    rd.turnOffTSQL = false;
-                    break;
-                case 1:
-                    rd.turnOffTSQL = true;
-                    rd.turnOffTone = false;
-                    break;
-                default:
-                    break;
-                }
-            }
-            emit setRepeaterAccessMode(rd);
-            rd.sequence++;
-
-            if(rd.sequence == 1)
-                issueCmd(cmdSetRptAccessMode, rd);
-
-            break;
-        }
-        case cmdSetToneEnabled:
-        {
-            // This command is not aware of which VFO to use
-            bool toneEnabled = (*std::static_pointer_cast<bool>(data));
-            emit setToneEnabled(toneEnabled);
-            break;
-        }
-        case cmdSetTSQLEnabled:
-        {
-            // This command is not aware of which VFO to use
-            bool toneEnabled = (*std::static_pointer_cast<bool>(data));
-            emit setTSQLEnabled(toneEnabled);
-            break;
-        }
-        case cmdSetRptDuplexOffset:
-        {
-            freqt f = (*std::static_pointer_cast<freqt>(data));
-            emit setRptDuplexOffset(f);
-            break;
-        }
-        case cmdSetQuickSplit:
-        {
-            bool qsEnabled = (*std::static_pointer_cast<bool>(data));
-            emit setQuickSplit(qsEnabled);
-            break;
-        }
-        case cmdSetPTT:
-        {
-            bool pttrequest = (*std::static_pointer_cast<bool>(data));
-            emit setPTT(pttrequest);
-
-            ui->meter2Widget->clearMeterOnPTTtoggle();
-            if (pttrequest)
-            {
-                ui->meterSPoWidget->setMeterType(meterPower);
-            }
-            else {
-                ui->meterSPoWidget->setMeterType(meterS);
-            }
-            break;
-        }
-        case cmdPTTToggle:
-        {
-            bool pttrequest = !amTransmitting;
-            emit setPTT(pttrequest);
-            ui->meter2Widget->clearMeterOnPTTtoggle();
-            if (pttrequest)
-            {
-                ui->meterSPoWidget->setMeterType(meterPower);
-            }
-            else {
-                ui->meterSPoWidget->setMeterType(meterS);
-            }
-            break;
-        }
-        case cmdSendCW:
-        {
-            QString messageText = (*std::static_pointer_cast<QString>(data));
-            emit sendCW(messageText);
-            break;
-        }
-        case cmdSetBreakMode:
-        {
-            unsigned char bmode = (*std::static_pointer_cast<unsigned char>(data));
-            emit setCWBreakMode(bmode);
-            break;
-        }
-        case cmdSetKeySpeed:
-        {
-            unsigned char wpm = (*std::static_pointer_cast<unsigned char>(data));
-            emit setKeySpeed(wpm);
-            break;
-        }
-        case cmdSetCwPitch:
-        {
-            unsigned char pitch = (*std::static_pointer_cast<unsigned char>(data));
-            emit setCwPitch(pitch);
-            break;
-        }
-        case cmdSetDashRatio:
-        {
-            unsigned char ratio = (*std::static_pointer_cast<unsigned char>(data));
-            emit setDashRatio(ratio);
-            break;
-        }
-        case cmdSetATU:
-        {
-            bool atuOn = (*std::static_pointer_cast<bool>(data));
-            emit setATU(atuOn);
-            break;
-        }
-        case cmdSetUTCOffset:
-        {
-            timekind u = (*std::static_pointer_cast<timekind>(data));
-            emit setUTCOffset(u);
-            break;
-        }
-        case cmdSetTime:
-        {
-            timekind t = (*std::static_pointer_cast<timekind>(data));
-            emit setTime(t);
-            break;
-        }
-        case cmdSetDate:
-        {
-            datekind d = (*std::static_pointer_cast<datekind>(data));
-            emit setDate(d);
-            break;
-        }
-        case cmdGetBandStackReg:
-        {
-            char band = (*std::static_pointer_cast<char>(data));
-            lastRequestedBand = (availableBands)band;
-            bandStkBand = rigCaps.bsr[(availableBands)band]; // 23cm Needs fixing
-            bandStkRegCode = ui->bandStkPopdown->currentIndex() + 1;
-            emit getBandStackReg(bandStkBand, bandStkRegCode);
-            break;
-        }
-        case cmdSetPassband:
-        {
-            quint16 pass = (*std::static_pointer_cast<quint16>(data));
-            emit setPassband(pass);
-            break;
-        }
-        case cmdSetMonitorGain:
-        {
-            quint16 gain = (*std::static_pointer_cast<quint16>(data));
-            emit setMonitorGain(gain);
-            break;
-        }
-        case cmdSetVoxGain:
-        {
-            quint16 gain = (*std::static_pointer_cast<quint16>(data));
-            emit setVoxGain(gain);
-            break;
-        }
-        case cmdSetAntiVoxGain:
-        {
-            quint16 gain = (*std::static_pointer_cast<quint16>(data));
-            emit setAntiVoxGain(gain);
-            break;
-        }
-        case cmdSetNBLevel:
-        {
-            quint16 level = (*std::static_pointer_cast<quint16>(data));
-            emit setNBLevel(level);
-            break;
-        }
-        case cmdSetNRLevel:
-        {
-            quint16 level = (*std::static_pointer_cast<quint16>(data));
-            emit setNRLevel(level);
-            break;
-        }
-        case cmdSetMonitor:
-        {
-            bool en = (*std::static_pointer_cast<bool>(data));
-            emit setMonitor(en);
-            break;
-        }
-        case cmdSetVox:
-        {
-            bool en = (*std::static_pointer_cast<bool>(data));
-            emit setVox(en);
-            break;
-        }
-        case cmdSetComp:
-        {
-            bool en = (*std::static_pointer_cast<quint16>(data));
-            emit setCompressor(en);
-            break;
-        }
-        case cmdSetNB:
-        {
-            bool en = (*std::static_pointer_cast<bool>(data));
-            emit setNB(en);
-            break;
-        }
-        case cmdSetNR:
-        {
-            bool en = (*std::static_pointer_cast<bool>(data));
-            emit setNR(en);
-            break;
-        }
-        case cmdSetMemory:
-        {
-            memoryType mem = (*std::static_pointer_cast<memoryType>(data));
-            emit setMemory(mem);
-            break;
-        }
-        case cmdGetSatMemory:
-        {
-            quint32 mem = (*std::static_pointer_cast<quint32>(data));
-            emit getSatMemory(mem);
-            break;
-        }
-        case cmdGetMemory:
-        {
-            quint32 mem = (*std::static_pointer_cast<quint32>(data));
-            emit getMemory(mem);
-            break;
-        }
-        case cmdClearMemory:
-        {
-            quint32 mem = (*std::static_pointer_cast<quint32>(data));
-            emit clearMemory(mem);
-            break;
-        }
-        case cmdRecallMemory:
-        {
-            quint32 mem = (*std::static_pointer_cast<quint32>(data));
-            emit recallMemory(mem);
-            break;
-        }
-        case cmdSetSatelliteMode:
-        {
-            bool en = (*std::static_pointer_cast<bool>(data));
-            emit setSatelliteMode(en);
-            break;
-        }
-        default:
-            doCmd(cmd);
-            break;
-    }
+    qInfo(logSystem()) << __PRETTY_FUNCTION__ << "WARNING: deprecated function, cmd:" << (unsigned int)cmddata.cmd;
 }
 
 void wfmain::doCmd(cmds cmd)
 {
-    // Use this function to take action upon a command.
-    switch(cmd)
-    {
-        case cmdNone:
-            //qInfo(logSystem()) << "NOOP";
-            break;
-        case cmdGetRigID:
-            if(!haveRigCaps)
-            {
-                emit getRigID();
-                issueDelayedCommand(cmdGetRigID);
-            }
-        break;
-        case cmdGetRigCIV:
-            // if(!know rig civ already)
-            if(!haveRigCaps)
-            {
-                emit getRigCIV();
-                issueDelayedCommand(cmdGetRigCIV); // This way, we stay here until we get an answer.
-            }
-            break;
-        case cmdGetFreq:
-            emit getFrequency();
-            break;
-        case cmdGetFreqB:
-            emit getFrequency((unsigned char)1);
-            break;
-        case cmdGetMode:
-            emit getMode();
-            break;
-        case cmdGetTuningStep:
-            emit getTuningStep();
-            break;
-        case cmdVFOSwap:
-            emit sendVFOSwap();
-            break;
-        case cmdVFOEqualAB:
-            emit sendVFOEqualAB();
-            break;
-        case cmdVFOEqualMS:
-            emit sendVFOEqualMS();
-            break;
-        case cmdGetDataMode:
-            if(rigCaps.hasDataModes)
-                emit getDataMode();
-            break;
-        case cmdSetModeFilter:
-            emit setMode(setModeVal, setFilterVal);
-            break;
-        case cmdSetDataModeOff:
-            emit setDataMode(false, (unsigned char)ui->modeFilterCombo->currentData().toInt());
-            break;
-        case cmdSetDataModeOn:
-            emit setDataMode(true, (unsigned char)ui->modeFilterCombo->currentData().toInt());
-            break;
-        case cmdGetRitEnabled:
-            emit getRitEnabled();
-            break;
-        case cmdGetRitValue:
-            emit getRitValue();
-            break;
-        case cmdGetModInput:
-            emit getModInput(false);
-            break;
-        case cmdGetModDataInput:
-            emit getModInput(true);
-            break;
-        case cmdGetCurrentModLevel:
-            // TODO: Add delay between these queries
-            emit getModInputLevel(currentModSrc);
-            emit getModInputLevel(currentModDataSrc);
-            break;
-        case cmdGetDuplexMode:
-            emit getDuplexMode();
-            break;
-        case cmdGetRptDuplexOffset:
-            emit getRptDuplexOffset();
-            break;
-        case cmdGetPassband:
-            emit getPassband();
-            break;
-        case cmdGetMonitor:
-            emit getMonitor();
-            break;
-        case cmdGetMonitorGain:
-            emit getMonitorGain();
-            break;
-        case cmdGetComp:
-            emit getCompressor();
-            break;
-        case cmdGetVox:
-            emit getVox();
-            break;
-        case cmdGetVoxGain:
-            emit getVoxGain();
-            break;
-        case cmdGetAntiVoxGain:
-            emit getAntiVoxGain();
-            break;
-        case cmdGetNB:
-            emit getNB();
-            break;
-        case cmdGetNBLevel:
-            emit getNBLevel();
-            break;
-        case cmdGetNR:
-            emit getNR();
-            break;
-        case cmdGetNRLevel:
-            emit getNRLevel();
-            break;
-        case cmdGetCompLevel:
-            emit getCompLevel();
-            break;
-        case cmdGetCwPitch:
-            emit getCwPitch();
-            break;
-        case cmdGetDashRatio:
-            emit getDashRatio();
-            break;
-        case cmdGetPskTone:
-            emit getPskTone();
-            break;
-        case cmdGetRttyMark:
-            emit getRttyMark();
-            break;
-        case cmdGetTone:
-            emit getTone();
-            break;
-        case cmdGetTSQL:
-            emit getTSQL();
-            break;
-        case cmdGetDTCS:
-            emit getDTCS();
-            break;
-        case cmdGetRptAccessMode:
-            if(rigCaps.commands.contains(funcToneSquelchType)) {
-                emit getRptAccessMode();
-            } else {
-                // Get both TONE and TSQL enabled status
-                emit getToneEnabled();
-                issueDelayedCommand(cmdGetTSQLEnabled);
-            }
-            break;
-        case cmdGetToneEnabled:
-            emit getToneEnabled();
-            break;
-        case cmdGetTSQLEnabled:
-            emit getTSQLEnabled();
-            break;
-        case cmdDispEnable:
-            emit scopeDisplayEnable();
-            break;
-        case cmdDispDisable:
-            emit scopeDisplayDisable();
-            break;
-        case cmdGetSpectrumMode:
-            emit getScopeMode();
-            break;
-        case cmdGetSpectrumSpan:
-            emit getScopeSpan();
-            break;
-        case cmdSpecOn:
-            emit spectOutputEnable();
-            break;
-        case cmdSpecOff:
-            emit spectOutputDisable();
-            break;
-        case cmdGetRxGain:
-            emit getRfGain();
-            break;
-        case cmdGetAfGain:
-            emit getAfGain();
-            break;
-        case cmdGetSql:
-            emit getSql();
-            break;
-        case cmdGetIFShift:
-            emit getIfShift();
-            break;
-        case cmdGetTPBFInner:
-            emit getTPBFInner();
-            break;
-        case cmdGetTPBFOuter:
-            emit getTPBFOuter();
-            break;
-        case cmdGetTxPower:
-            emit getTxPower();
-            break;
-        case cmdGetMicGain:
-            emit getMicGain();
-            break;
-        case cmdGetSpectrumRefLevel:
-            emit getSpectrumRefLevel();
-            break;
-        case cmdGetATUStatus:
-            if(rigCaps.commands.contains(funcTunerStatus))
-                emit getATUStatus();
-            break;
-        case cmdStartATU:
-            if(rigCaps.commands.contains(funcTunerStatus))
-                emit startATU();
-            break;
-        case cmdGetAttenuator:
-            emit getAttenuator();
-            break;
-        case cmdGetPreamp:
-            emit getPreamp();
-            break;
-        case cmdGetAntenna:
-            emit getAntenna();
-            break;
-        case cmdScopeCenterMode:
-            emit setScopeMode(spectModeCenter);
-            break;
-        case cmdScopeFixedMode:
-            emit setScopeMode(spectModeFixed);
-            break;
-        case cmdGetPTT:
-            emit getPTT();
-            break;
-        case cmdGetTxRxMeter:
-            if(amTransmitting)
-                emit getMeters(meterPower);
-            else
-                emit getMeters(meterS);
-            break;
-        case cmdGetSMeter:
-            if(!amTransmitting)
-                emit getMeters(meterS);
-            break;
-        case cmdGetCenterMeter:
-            if(!amTransmitting)
-                emit getMeters(meterCenter);
-            break;
-        case cmdGetPowerMeter:
-            if(amTransmitting)
-                emit getMeters(meterPower);
-            break;
-        case cmdGetSWRMeter:
-            if(amTransmitting)
-                emit getMeters(meterSWR);
-            break;
-        case cmdGetIdMeter:
-            emit getMeters(meterCurrent);
-            break;
-        case cmdGetVdMeter:
-            emit getMeters(meterVoltage);
-            break;
-        case cmdGetALCMeter:
-            if(amTransmitting)
-                    emit getMeters(meterALC);
-            break;
-        case cmdGetCompMeter:
-            if(amTransmitting)
-                emit getMeters(meterComp);
-            break;
-        case cmdGetKeySpeed:
-            emit getKeySpeed();
-            break;
-        case cmdGetBreakMode:
-            emit getCWBreakMode();
-            break;
-        case cmdStopCW:
-            emit stopCW();
-            break;
-        case cmdSetMemoryMode:
-            emit setMemoryMode();
-            break;
-        case cmdStartRegularPolling:
-            runPeriodicCommands = true;
-            break;
-        case cmdStopRegularPolling:
-            runPeriodicCommands = false;
-            break;
-        case cmdQueNormalSpeed:
-            if(usingLAN)
-            {
-                delayedCommand->setInterval(delayedCmdIntervalLAN_ms);
-            } else {
-                delayedCommand->setInterval(delayedCmdIntervalSerial_ms);
-            }
-            break;
-        default:
-            qInfo(logSystem()) << __PRETTY_FUNCTION__ << "WARNING: Command fell through of type: " << (unsigned int)cmd;
-            break;
-    }
+    qInfo(logSystem()) << __PRETTY_FUNCTION__ << "WARNING: deprecated function, cmd:" << (unsigned int)cmd;
 }
 
 
@@ -5126,8 +4551,6 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // Adding these here because clearly at this point we have valid
         // rig comms. In the future, we should establish comms and then
         // do all the initial grabs. For now, this hack of adding them here and there:
-        issueDelayedCommand(cmdGetFreq);
-        issueDelayedCommand(cmdGetMode);
         // recalculate command timing now that we know the rig better:
         if(prefs.polling_ms != 0)
         {
@@ -5135,7 +4558,6 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         } else {
             calculateTimingParameters();
         }
-        initPeriodicCommands();
         
         // Set the second meter here as I suspect we need to be connected for it to work?
         for (int i = 0; i < ui->meter2selectionCombo->count(); i++)
@@ -5158,46 +4580,51 @@ void wfmain::initPeriodicCommands()
     // The commands are run using a timer,
     // and the timer is started by the delayed command cmdStartPeriodicTimer.
 
-    insertPeriodicCommand(cmdGetTxRxMeter, 128);
-
-    insertSlowPeriodicCommand(cmdGetFreq, 128);
-
-    if (rigCaps.commands.contains(funcVFOEqualAB) || rigCaps.commands.contains(funcVFOEqualMS)) {
-        // We MUST be in VFO mode if issuing getFreqB command so force it.
-        issueCmd(cmdSelVFO, vfo_t::vfoA);
-        insertSlowPeriodicCommand(cmdGetFreqB, 128);
-    }
-
-
-    insertSlowPeriodicCommand(cmdGetMode, 128);
-    if(rigCaps.hasTransmit)
-        insertSlowPeriodicCommand(cmdGetPTT, 128);
-    insertSlowPeriodicCommand(cmdGetTxPower, 128);
-    insertSlowPeriodicCommand(cmdGetRxGain, 128);
-    if(rigCaps.commands.contains(funcAttenuator))
-        insertSlowPeriodicCommand(cmdGetAttenuator, 128);
-    if(rigCaps.hasTransmit)
-        insertSlowPeriodicCommand(cmdGetPTT, 128);
-    if(rigCaps.commands.contains(funcPreamp))
-        insertSlowPeriodicCommand(cmdGetPreamp, 128);
-    if (rigCaps.commands.contains(funcRXAntenna)) {
-        insertSlowPeriodicCommand(cmdGetAntenna, 128);
-    }
-    insertSlowPeriodicCommand(cmdGetDuplexMode, 128); // split and repeater
-    if(rigCaps.commands.contains(funcToneSquelchType))
+    if (rigCaps.commands.contains(funcMainSubFreq))
     {
-        insertSlowPeriodicCommand(cmdGetRptDuplexOffset, 128);
+        queue->add(priorityMedium,queueItem(funcMainSubFreq,QVariant::fromValue(quint8(0)),true));
+
+        if (rigCaps.commands.contains(funcVFOEqualAB) || rigCaps.commands.contains(funcVFOEqualMS))
+        {
+            queue->add(priorityMedium,queueItem(funcMainSubFreq,QVariant::fromValue(quint8(1)),true));
+        }
     }
+    else
+    {
+        queue->add(priorityMedium,funcFreqGet,true);
+    }
+
+
+    queue->add(priorityMediumHigh,funcModeGet,true);
+
+    if(rigCaps.hasTransmit)
+        queue->add(priorityHigh,funcTransceiverStatus,true);
+
+
+    queue->add(priorityHigh,funcRFPower,true);
+    queue->add(priorityHigh,funcRfGain,true);
+
+    if(rigCaps.commands.contains(funcAttenuator))
+        queue->add(priorityMediumLow,funcAttenuator,true);
+
+    if(rigCaps.commands.contains(funcPreamp))
+        queue->add(priorityMediumLow,funcPreamp,true);
+
+    if (rigCaps.commands.contains(funcRXAntenna))
+        queue->add(priorityMediumLow,funcRXAntenna,true);
+
+    if (rigCaps.commands.contains(funcDuplexStatus))
+        queue->add(priorityMediumLow,funcDuplexStatus,true);
+
+    if(rigCaps.commands.contains(funcToneSquelchType))
+        queue->add(priorityMediumLow,funcToneSquelchType,true);
 
     rapidPollCmdQueueEnabled = false;
     rapidPollCmdQueue.clear();
-    rapidPollCmdQueueEnabled = true;
+    //rapidPollCmdQueueEnabled = true;
 
-    if (rigCaps.hasSpectrum) {
-        insertPeriodicRapidCmdUnique(cmdGetTPBFInner);
-        insertPeriodicRapidCmdUnique(cmdGetTPBFOuter);
-        insertPeriodicRapidCmdUnique(cmdGetPassband);
-    }
+    queue->add(priorityHighest,queueItem(funcSMeter,true));
+
 }
 
 void wfmain::insertPeriodicRapidCmd(cmds cmd)
@@ -5708,7 +5135,9 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
             freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
 
             //emit setFrequency(0,freq);
-            issueCmd(cmdSetFreq, freqGo);
+            queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(freqGo),false));
+
+            //issueCmd(cmdSetFreq, freqGo);
             freq = freqGo;
             setUIFreq();
             //issueDelayedCommand(cmdGetFreq);
@@ -5720,10 +5149,14 @@ void wfmain::handlePlotDoubleClick(QMouseEvent *me)
         if (rectItem != nullptr) {
             double pbFreq = (pbtDefault / passbandWidth) * 127.0;
             qint16 newFreq = pbFreq + 128;
-            issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
-            issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
-            issueDelayedCommandUnique(cmdGetTPBFInner);
-            issueDelayedCommandUnique(cmdGetTPBFOuter);
+            queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<uchar>(newFreq),false));
+            queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<uchar>(newFreq),false));
+            queue->add(priorityHighest,funcPBTInner);
+            queue->add(priorityHighest,funcPBTOuter);
+            //issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
+            //issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
+            //issueDelayedCommandUnique(cmdGetTPBFInner);
+            //issueDelayedCommandUnique(cmdGetTPBFOuter);
 
         }
     }
@@ -5746,7 +5179,9 @@ void wfmain::handleWFDoubleClick(QMouseEvent *me)
         freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
 
         //emit setFrequency(0,freq);
-        issueCmd(cmdSetFreq, freqGo);
+        queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(freqGo),false));
+
+        //issueCmd(cmdSetFreq, freqGo);
         freq = freqGo;
         setUIFreq();
         showStatusBarText(QString("Going to %1 MHz").arg(x));
@@ -5782,7 +5217,9 @@ void wfmain::handlePlotClick(QMouseEvent* me)
                 freqt freqGo;
                 freqGo.Hz = (spot.value()->frequency) * 1E6;
                 freqGo.MHzDouble = spot.value()->frequency;
-                issueCmdUniquePriority(cmdSetFreq, freqGo);
+                queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(freqGo),false));
+
+                //issueCmdUniquePriority(cmdSetFreq, freqGo);
             }
         }
         else if (passbandAction == passbandStatic && rectItem != nullptr)
@@ -5923,8 +5360,9 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
             else {
                 pb = passbandIndicator->bottomRight->coords().x() - plot->xAxis->pixelToCoord(cursor);
             }
-            issueCmdUniquePriority(cmdSetPassband, (quint16)(pb * 1000000));
-            issueDelayedCommandUnique(cmdGetPassband);
+            queue->add(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(pb * 1000000),false));
+            queue->add(priorityHighest,funcFilterWidth);
+            //issueDelayedCommandUnique(cmdGetPassband);
             lastFreq = movedFrequency;
         }
     }
@@ -5946,10 +5384,14 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
                 qDebug() << QString("Moving passband by %1 Hz (Inner %2) (Outer %3) Mode:%4").arg((qint16)(movedFrequency * 1000000))
                     .arg(newInFreq).arg(newOutFreq).arg(currentModeInfo.mk);
 
-                issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newInFreq);
-                issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newOutFreq);
-                issueDelayedCommandUnique(cmdGetTPBFInner);
-                issueDelayedCommandUnique(cmdGetTPBFOuter);
+                queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<uchar>(newInFreq),false));
+                queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<uchar>(newOutFreq),false));
+                //issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newInFreq);
+                //issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newOutFreq);
+                queue->add(priorityHighest,funcPBTInner);
+                queue->add(priorityHighest,funcPBTOuter);
+                //issueDelayedCommandUnique(cmdGetTPBFInner);
+                //issueDelayedCommandUnique(cmdGetTPBFOuter);
             }
             lastFreq = movedFrequency;
         }
@@ -5960,8 +5402,10 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
             double pbFreq = ((double)(TPBFInner + movedFrequency) / passbandWidth) * 127.0;
             qint16 newFreq = pbFreq + 128;
             if (newFreq >= 0 && newFreq <= 255) {
-                issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
-                issueDelayedCommandUnique(cmdGetTPBFInner);
+                queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<uchar>(newFreq),false));
+                queue->add(priorityHighest,funcPBTInner);
+                //issueCmdUniquePriority(cmdSetTPBFInner, (unsigned char)newFreq);
+                //issueDelayedCommandUnique(cmdGetTPBFInner);
             }
             lastFreq = movedFrequency;
         }
@@ -5972,8 +5416,10 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
             double pbFreq = ((double)(TPBFOuter + movedFrequency) / passbandWidth) * 127.0;
             qint16 newFreq = pbFreq + 128;
             if (newFreq >= 0 && newFreq <= 255) {
-                issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
-                issueDelayedCommandUnique(cmdGetTPBFOuter);
+                queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<uchar>(newFreq),false));
+                //issueCmdUniquePriority(cmdSetTPBFOuter, (unsigned char)newFreq);
+                //issueDelayedCommandUnique(cmdGetTPBFOuter);
+                queue->add(priorityHighest,funcPBTOuter);
             }
             lastFreq = movedFrequency;
         }
@@ -5985,10 +5431,12 @@ void wfmain::handlePlotMouseMove(QMouseEvent* me)
         if( (( delta < -0.0001 ) || (delta > 0.0001)) && ((delta < 0.501) && (delta > -0.501)) )
         {
             freqt freqGo;
+            freqGo.VFO = activeVFO;
             freqGo.Hz = (freq.MHzDouble + delta) * 1E6;
             //freqGo.Hz = roundFrequency(freqGo.Hz, tsWfScrollHz);
             freqGo.MHzDouble = (float)freqGo.Hz / 1E6;
-            issueCmdUniquePriority(cmdSetFreq, freqGo);
+            queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(freqGo),false));
+            //issueCmdUniquePriority(cmdSetFreq, freqGo);
         }
     } else {
         setCursor(Qt::ArrowCursor);
@@ -6039,7 +5487,9 @@ void wfmain::handleWFScroll(QWheelEvent *we)
     freq = f;
 
     //emit setFrequency(0,f);
-    issueCmdUniquePriority(cmdSetFreq, f);
+    //issueCmdUniquePriority(cmdSetFreq, f);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+
     ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
     //issueDelayedCommandUnique(cmdGetFreq);
 }
@@ -6093,15 +5543,22 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
                         passbandWidth = 0.007;
                     passbandCenterFrequency = 0.0;
                     maxPassbandHz = 10E3;
-                    removePeriodicRapidCmd(cmdGetPassband);
-                    removePeriodicRapidCmd(cmdGetTPBFInner);
-                    removePeriodicRapidCmd(cmdGetTPBFOuter);
+                    queue->del(funcPBTInner);
+                    queue->del(funcPBTOuter);
+                    queue->del(funcFilterWidth);
+
+                    //removePeriodicRapidCmd(cmdGetPassband);
+                    //removePeriodicRapidCmd(cmdGetTPBFInner);
+                    //removePeriodicRapidCmd(cmdGetTPBFOuter);
                     break;
                 case modeCW:
                 case modeCW_R:
-                    insertPeriodicRapidCmdUnique(cmdGetCwPitch);
-                    insertPeriodicRapidCmdUnique(cmdGetDashRatio);
-                    insertPeriodicRapidCmdUnique(cmdGetKeySpeed);
+                    //insertPeriodicRapidCmdUnique(cmdGetCwPitch);
+                    //insertPeriodicRapidCmdUnique(cmdGetDashRatio);
+                    //insertPeriodicRapidCmdUnique(cmdGetKeySpeed);
+                    queue->addUnique(priorityHigh,queueItem(funcCwPitch,true));
+                    queue->addUnique(priorityHigh,queueItem(funcDashRatio,true));
+                    queue->addUnique(priorityHigh,queueItem(funcKeySpeed,true));
                     maxPassbandHz = 3600;
                     break;
                 case modeAM:
@@ -6119,22 +5576,28 @@ void wfmain::receiveMode(unsigned char mode, unsigned char filter)
                     break;
                 }
 
-                if ((newMode.mk != modeFM && newMode.mk != modeDV && newMode.mk != modeDD )
-                    && (currentModeInfo.mk == modeFM || currentModeInfo.mk == modeDV || currentModeInfo.mk == modeDD))
+                if ((newMode.mk != modeFM && newMode.mk != modeDV && newMode.mk != modeDD ))
                 {
                     /* mode was FM or DV/DD but now isn't so insert commands */
-                    insertPeriodicRapidCmdUnique(cmdGetPassband);
-                    insertPeriodicRapidCmdUnique(cmdGetTPBFInner);
-                    insertPeriodicRapidCmdUnique(cmdGetTPBFOuter);
+                    queue->addUnique(priorityHigh,queueItem(funcPBTInner,true));
+                    queue->addUnique(priorityHigh,queueItem(funcPBTOuter,true));
+                    queue->addUnique(priorityHigh,queueItem(funcFilterWidth,true));
+
+                    //insertPeriodicRapidCmdUnique(cmdGetPassband);
+                    //insertPeriodicRapidCmdUnique(cmdGetTPBFInner);
+                    //insertPeriodicRapidCmdUnique(cmdGetTPBFOuter);
                 }
 
 
-                if ((newMode.mk != modeCW && newMode.mk != modeCW_R) && (newMode.mk == modeCW || newMode.mk == modeCW_R))
+                if ((newMode.mk != modeCW && newMode.mk != modeCW_R) && (currentModeInfo.mk == modeCW || currentModeInfo.mk == modeCW_R))
                 {
                     /* mode was CW/CWR but now isn't so remove CW commands */
-                    removePeriodicRapidCmd(cmdGetCwPitch);
-                    removePeriodicRapidCmd(cmdGetDashRatio);
-                    removePeriodicRapidCmd(cmdGetKeySpeed);
+                    //removePeriodicRapidCmd(cmdGetCwPitch);
+                    //removePeriodicRapidCmd(cmdGetDashRatio);
+                    //removePeriodicRapidCmd(cmdGetKeySpeed);
+                    queue->del(funcCwPitch);
+                    queue->del(funcDashRatio);
+                    queue->del(funcKeySpeed);
                 }
 
                 ui->modeSelectCombo->setCurrentIndex(ui->modeSelectCombo->findData(newMode.mk));
@@ -6225,7 +5688,9 @@ void wfmain::on_goFreqBtn_clicked()
     }
     if(ok)
     {
-        issueCmd(cmdSetFreq, f);
+        queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+
+        //issueCmd(cmdSetFreq, f);
 
         foreach (mode_info mi, rigCaps.modes)
         {
@@ -6237,8 +5702,10 @@ void wfmain::on_goFreqBtn_clicked()
                 m.VFO=selVFO_t::activeVFO;
                 if((m.mk != currentModeInfo.mk) && !usingDataMode && prefs.automaticSidebandSwitching)
                 {
-                    issueCmd(cmdSetMode, m);
-                    issueDelayedCommand(cmdGetMode);
+                    queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<mode_info>(m),false));
+                    queue->add(priorityImmediate,funcModeGet,false);
+                    //issueCmd(cmdSetMode, m);
+                    //issueDelayedCommand(cmdGetMode);
                 }
                 break;
             }
@@ -6449,8 +5916,8 @@ void wfmain::on_modeSelectCombo_activated(int index)
                 m.filter = filterSelection;
                 m.data = ui->dataModeBtn->isChecked();
                 m.VFO=selVFO_t::activeVFO;
-                issueCmd(cmdSetMode, m);
-                issueDelayedCommand(cmdGetMode);
+                queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<mode_info>(m),false));
+                queue->add(priorityHigh,funcModeGet,false);
                 break;
             }
         }
@@ -6504,7 +5971,9 @@ void wfmain::on_freqDial_valueChanged(int value)
         freq = f;
         oldFreqDialVal = value;
         ui->freqLabel->setText(QString("%1").arg(f.MHzDouble, 0, 'f'));
-        issueCmdUniquePriority(cmdSetFreq, f);
+        queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+
+        //issueCmdUniquePriority(cmdSetFreq, f);
     } else {
         ui->freqDial->blockSignals(true);
         ui->freqDial->setValue(oldFreqDialVal);
@@ -6519,7 +5988,9 @@ void wfmain::receiveBandStackReg(freqt freqGo, char mode, char filter, bool data
 
     qInfo(logSystem()) << __func__ << "BSR received into main: Freq: " << freqGo.Hz << ", mode: " << (unsigned int)mode << ", filter: " << (unsigned int)filter << ", data mode: " << dataOn;
     //emit setFrequency(0,freq);
-    issueCmd(cmdSetFreq, freqGo);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(freqGo),false));
+
+    //issueCmd(cmdSetFreq, freqGo);
     setModeVal = (unsigned char) mode;
     setFilterVal = (unsigned char) filter;
 
@@ -6529,9 +6000,11 @@ void wfmain::receiveBandStackReg(freqt freqGo, char mode, char filter, bool data
 
     if(dataOn)
     {
-        issueDelayedCommand(cmdSetDataModeOn);
+        queue->add(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue<quint8>(1),false));
+        //issueDelayedCommand(cmdSetDataModeOn);
     } else {
-        issueDelayedCommand(cmdSetDataModeOff);
+        queue->add(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue<quint8>(0),false));
+        //issueDelayedCommand(cmdSetDataModeOff);
     }
     //issueDelayedCommand(cmdGetFreq);
     //issueDelayedCommand(cmdGetMode);
@@ -6549,7 +6022,9 @@ void wfmain::bandStackBtnClick()
 
 void wfmain::setBand(int band)
 {
-    issueCmdUniquePriority(cmdGetBandStackReg, (char)band);
+    queue->add(priorityImmediate,queueItem(funcBandStackReg,QVariant::fromValue<uchar>(band),false));
+
+    //issueCmdUniquePriority(cmdGetBandStackReg, (char)band);
     //bandStackBtnClick();
 }
 
@@ -6587,15 +6062,19 @@ void wfmain::on_band4mbtn_clicked()
 {
     // There isn't a BSR for this one:
     freqt f;
+    f.VFO = activeVFO;
     if ((currentModeInfo.mk == modeAM) || (currentModeInfo.mk == modeFM))
     {
         f.Hz = (70.260) * 1E6;
     } else {
         f.Hz = (70.200) * 1E6;
     }
-    issueCmd(cmdSetFreq, f);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+
+    //issueCmd(cmdSetFreq, f);
     //emit setFrequency(0,f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
+    queue->add(priorityImmediate,funcFreqGet);
     ui->tabWidget->setCurrentIndex(0);
 }
 
@@ -6660,9 +6139,11 @@ void wfmain::on_band60mbtn_clicked()
     // clutter the UI with 60M channel buttons...
     freqt f;
     f.Hz = (5.3305) * 1E6;
-    issueCmd(cmdSetFreq, f);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+    queue->add(priorityImmediate,funcFreqGet);
+    //issueCmd(cmdSetFreq, f);
     //emit setFrequency(0,f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    //issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
 }
 
@@ -6683,8 +6164,10 @@ void wfmain::on_band630mbtn_clicked()
     freqt f;
     f.Hz = 475 * 1E3;
     //emit setFrequency(0,f);
-    issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+    queue->add(priorityImmediate,funcFreqGet);
+    //issueCmd(cmdSetFreq, f);
+    //issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
 }
 
@@ -6693,8 +6176,10 @@ void wfmain::on_band2200mbtn_clicked()
     freqt f;
     f.Hz = 136 * 1E3;
     //emit setFrequency(0,f);
-    issueCmd(cmdSetFreq, f);
-    issueDelayedCommandUnique(cmdGetFreq);
+    queue->add(priorityImmediate,queueItem(funcMainSubFreq,QVariant::fromValue<freqt>(f),false));
+    queue->add(priorityImmediate,funcFreqGet);
+    //issueCmd(cmdSetFreq, f);
+    //issueDelayedCommandUnique(cmdGetFreq);
     ui->tabWidget->setCurrentIndex(0);
 }
 
@@ -6768,17 +6253,20 @@ void wfmain::on_fRclBtn_clicked()
 
 void wfmain::on_rfGainSlider_valueChanged(int value)
 {
-    issueCmdUniquePriority(cmdSetRxRfGain, (unsigned char) value);
+    queue->addUnique(priorityImmediate,queueItem(funcRfGain,QVariant::fromValue<ushort>(value)));
+
+    //issueCmdUniquePriority(cmdSetRxRfGain, (unsigned char) value);
 }
 
 void wfmain::on_afGainSlider_valueChanged(int value)
 {
-    issueCmdUniquePriority(cmdSetAfGain, (unsigned char)value);
     if(usingLAN)
     {
         rxSetup.localAFgain = (unsigned char)(value);
         prefs.localAFgain = (unsigned char)(value);
         emit sendLevel(cmdGetAfGain,value);
+    } else {
+        queue->addUnique(priorityImmediate,queueItem(funcAfGain,QVariant::fromValue<ushort>(value)));
     }
 }
 
@@ -6833,7 +6321,8 @@ void wfmain::on_tuneNowBtn_clicked()
 
 void wfmain::on_tuneEnableChk_clicked(bool checked)
 {
-    issueCmd(cmdSetATU, checked);
+    queue->addUnique(priorityImmediate,queueItem(funcTunerStatus,QVariant::fromValue<bool>(checked)));
+
     if(checked)
     {
         showStatusBarText("Turning on ATU");
@@ -6860,30 +6349,33 @@ void wfmain::on_pttOnBtn_clicked()
 
     // Are we already PTT? Not a big deal, just send again anyway.
     showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
-    issueCmdUniquePriority(cmdSetPTT, true);
+    //issueCmdUniquePriority(cmdSetPTT, true);
+    queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(true),false));
 
     // send PTT
     // Start 3 minute timer
     pttTimer->start();
-    issueDelayedCommand(cmdGetPTT);
+    //issueDelayedCommand(cmdGetPTT);
 }
 
 void wfmain::on_pttOffBtn_clicked()
 {
     // Send the PTT OFF command (more than once?)
     showStatusBarText("Sending PTT OFF command");
-    issueCmdUniquePriority(cmdSetPTT, false);
+    queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false));
+    //issueCmdUniquePriority(cmdSetPTT, false);
 
     // Stop the 3 min timer
     pttTimer->stop();
-    issueDelayedCommand(cmdGetPTT);
+    //issueDelayedCommand(cmdGetPTT);
 }
 
 void wfmain::handlePttLimit()
 {
     // transmission time exceeded!
     showStatusBarText("Transmit timeout at 3 minutes. Sending PTT OFF command now.");
-    issueDelayedCommand(cmdGetPTT);
+    //queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false));
+    //issueDelayedCommand(cmdGetPTT);
 }
 
 void wfmain::on_saveSettingsBtn_clicked()
@@ -7117,22 +6609,27 @@ void wfmain::on_connectBtn_clicked()
 
 void wfmain::on_sqlSlider_valueChanged(int value)
 {
-    issueCmd(cmdSetSql, (unsigned char)value);
-    //emit setSql((unsigned char)value);
+    queue->addUnique(priorityImmediate,queueItem(funcSquelch,QVariant::fromValue<ushort>(value)));
 }
 // These three are from the transceiver adjustment window:
 void wfmain::changeIFShift(unsigned char level)
 {
     //issueCmd(cmdSetIFShift, level);
-    issueCmdUniquePriority(cmdSetIFShift, level);
+    queue->add(priorityImmediate,queueItem(funcFilterWidth,QVariant::fromValue<ushort>(level),false));
+
+    //issueCmdUniquePriority(cmdSetIFShift, level);
 }
 void wfmain::changeTPBFInner(unsigned char level)
 {
-    issueCmdUniquePriority(cmdSetTPBFInner, level);
+    queue->add(priorityImmediate,queueItem(funcPBTInner,QVariant::fromValue<uchar>(level)));
+
+    //issueCmdUniquePriority(cmdSetTPBFInner, level);
 }
 void wfmain::changeTPBFOuter(unsigned char level)
 {
-    issueCmdUniquePriority(cmdSetTPBFOuter, level);
+    queue->add(priorityImmediate,queueItem(funcPBTOuter,QVariant::fromValue<uchar>(level)));
+
+    //issueCmdUniquePriority(cmdSetTPBFOuter, level);
 }
 
 void wfmain::on_modeFilterCombo_activated(int index)
@@ -7163,7 +6660,8 @@ void wfmain::on_modeFilterCombo_activated(int index)
                     m.filter = filterSelection;
                     m.data = ui->dataModeBtn->isChecked();
                     m.VFO=selVFO_t::activeVFO;
-                    issueCmd(cmdSetMode, m);
+                    queue->add(priorityImmediate, queueItem(funcModeSet,QVariant::fromValue<mode_info>(m),false));
+                    //issueCmd(cmdSetMode, m);
                     break;
                 }
             }
@@ -7174,7 +6672,13 @@ void wfmain::on_modeFilterCombo_activated(int index)
 
 void wfmain::on_dataModeBtn_toggled(bool checked)
 {
-    emit setDataMode(checked, (unsigned char)ui->modeFilterCombo->currentData().toInt());
+
+    mode_info m;
+    m.filter = ui->modeFilterCombo->currentData().toInt();
+    m.data = checked;
+
+    queue->add(priorityImmediate, queueItem(funcDataModeWithFilter,QVariant::fromValue<mode_info>(m)));
+    //emit setDataMode(checked, (unsigned char)ui->modeFilterCombo->currentData().toInt());
     usingDataMode = checked;
     if(usingDataMode)
     {
@@ -7197,19 +6701,26 @@ void wfmain::on_transmitBtn_clicked()
 
         // Are we already PTT? Not a big deal, just send again anyway.
         showStatusBarText("Sending PTT ON command. Use Control-R to receive.");
-        issueCmdUniquePriority(cmdSetPTT, true);
+        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(true),false));
+
+        //issueCmdUniquePriority(cmdSetPTT, true);
         // send PTT
         // Start 3 minute timer
         pttTimer->start();
-        issueDelayedCommand(cmdGetPTT);
+
+        //issueDelayedCommand(cmdGetPTT);
         //changeTxBtn();
 
     } else {
         // Currently transmitting
-        issueCmdUniquePriority(cmdSetPTT, false);
+        queue->add(priorityImmediate,queueItem(funcTransceiverStatus,QVariant::fromValue<bool>(false),false));
+
+        //issueCmdUniquePriority(cmdSetPTT, false);
         pttTimer->stop();
-        issueDelayedCommand(cmdGetPTT);
+        //issueDelayedCommand(cmdGetPTT);
+
     }
+    queue->add(priorityHighest,funcTransceiverStatus);
 }
 
 void wfmain::on_adjRefBtn_clicked()
@@ -7274,9 +6785,10 @@ void wfmain::setRadioTimeDateSend()
 
     showStatusBarText(QString("Setting time, date, and UTC offset for radio now."));
 
-    issueCmd(cmdSetTime, timesetpoint);
-    issueCmd(cmdSetDate, datesetpoint);
-    issueCmd(cmdSetUTCOffset, utcsetting);
+    queue->add(priorityImmediate,queueItem(funcUTCOffset,QVariant::fromValue<timekind>(utcsetting)));
+    queue->add(priorityImmediate,queueItem(funcTime,QVariant::fromValue<timekind>(timesetpoint)));
+    queue->add(priorityImmediate,queueItem(funcDate,QVariant::fromValue<datekind>(datesetpoint)));
+
     waitingToSetTimeDate = false;
 }
 
@@ -7581,7 +7093,9 @@ void wfmain::receiveNR(bool en)
 
 void wfmain::on_txPowerSlider_valueChanged(int value)
 {
-    issueCmdUniquePriority(cmdSetTxPower, (unsigned char)value);
+    queue->add(priorityImmediate,queueItem(funcRFPower,QVariant::fromValue<uchar>(value),false));
+
+    //issueCmdUniquePriority(cmdSetTxPower, (unsigned char)value);
     //emit setTxPower(value);
 }
 
@@ -7693,11 +7207,48 @@ void wfmain::changeModLabel(inputTypes input, bool updateLevel)
 void wfmain::processChangingCurrentModLevel(unsigned char level)
 {
     // slider moved, so find the current mod and issue the level set command.
-    issueCmd(cmdSetModLevel, level);
+
+    rigInput currentIn;
+    if(usingDataMode)
+    {
+        currentIn = currentModDataSrc;
+    } else {
+        currentIn = currentModSrc;
+    }
+
+    funcs f = funcNone;
+    switch (currentIn.type)
+    {
+    case inputACC:
+    case inputACCA:
+        f = funcACC1ModLevel;
+        break;
+    case inputACCB:
+        f = funcACC2ModLevel;
+        break;
+    case inputMic:
+    case inputMICACC:
+    case inputMICUSB:
+        f = funcMicGain;
+        break;
+    case inputLAN:
+        f = funcLANModLevel;
+        break;
+    case inputUSB:
+        f = funcUSBModLevel;
+        break;
+    default:
+        f = funcNone;
+
+    }
+
+    queue->add(priorityImmediate,queueItem(f,QVariant::fromValue<ushort>(level)));
 }
 
 void wfmain::on_tuneLockChk_clicked(bool checked)
 {
+
+
     freqLock = checked;
 }
 
@@ -7752,16 +7303,14 @@ void wfmain::on_rptSetupBtn_clicked()
 
 void wfmain::on_attSelCombo_activated(int index)
 {
-    unsigned char att = (unsigned char)ui->attSelCombo->itemData(index).toInt();
-    emit setAttenuator(att);
-    issueDelayedCommand(cmdGetPreamp);
+    queue->add(priorityImmediate,queueItem(funcAttenuator,QVariant::fromValue<uchar>(ui->attSelCombo->itemData(index).toInt()),false));
+    queue->add(priorityHigh,funcPreamp,false);
 }
 
 void wfmain::on_preampSelCombo_activated(int index)
 {
-    unsigned char pre = (unsigned char)ui->preampSelCombo->itemData(index).toInt();
-    emit setPreamp(pre);
-    issueDelayedCommand(cmdGetAttenuator);
+    queue->add(priorityImmediate,queueItem(funcPreamp,QVariant::fromValue<uchar>(ui->preampSelCombo->itemData(index).toInt()),false));
+    queue->add(priorityHigh,funcAttenuator,false);
 }
 
 void wfmain::on_antennaSelCombo_activated(int index)
@@ -7867,8 +7416,10 @@ void wfmain::calculateTimingParameters()
     if(haveRigCaps && rigCaps.hasFDcomms)
     {
         delayedCommand->setInterval( msMinTiming); // 20 byte message
+        queue->interval(msMinTiming);
     } else {
         delayedCommand->setInterval( msMinTiming * 4); // Multiply by 4 to allow rigMemories to be received.
+        queue->interval(msMinTiming * 4);
     }
 
 
@@ -7937,6 +7488,7 @@ void wfmain::on_rigPowerOffBtn_clicked()
 
 void wfmain::powerRigOn()
 {
+
     emit sendPowerOn();
 
     delayedCommand->setInterval(3000); // 3 seconds
@@ -7952,12 +7504,14 @@ void wfmain::powerRigOn()
         issueDelayedCommand(cmdStartRegularPolling); // s-meter, etc
     }
     delayedCommand->start();
+    calculateTimingParameters(); // Set queue interval
+
 }
 
 void wfmain::powerRigOff()
 {
     delayedCommand->stop();
-    delayedCmdQue.clear();
+    queue->interval(0);
 
     emit sendPowerOff();
 }
@@ -8172,40 +7726,41 @@ void wfmain::on_wfInterpolateChk_clicked(bool checked)
     prefs.wfInterpolate = checked;
 }
 
-cmds wfmain::meterKindToMeterCommand(meterKind m)
+funcs wfmain::meterKindToMeterCommand(meterKind m)
 {
-    cmds c;
+    funcs c;
     switch(m)
     {
-        case meterNone:
-            c = cmdNone;
+
+    case meterNone:
+            c = funcNone;
             break;
         case meterS:
-            c = cmdGetSMeter;
+            c = funcSMeter;
             break;
         case meterCenter:
-            c = cmdGetCenterMeter;
+            c = funcCenterMeter;
             break;
         case meterPower:
-            c = cmdGetPowerMeter;
+            c = funcPowerMeter;
             break;
         case meterSWR:
-            c = cmdGetSWRMeter;
+            c = funcSWRMeter;
             break;
         case meterALC:
-            c = cmdGetALCMeter;
+            c = funcALCMeter;
             break;
         case meterComp:
-            c = cmdGetCompMeter;
+            c = funcCompMeter;
             break;
         case meterCurrent:
-            c = cmdGetIdMeter;
+            c = funcIdMeter;
             break;
         case meterVoltage:
-            c = cmdGetVdMeter;
+            c = funcVdMeter;
             break;
         default:
-            c = cmdNone;
+            c = funcNone;
             break;
     }
 
@@ -8222,10 +7777,13 @@ void wfmain::on_meter2selectionCombo_activated(int index)
     if(newMeterType == oldMeterType)
         return;
 
-    cmds newCmd = meterKindToMeterCommand(newMeterType);
-    cmds oldCmd = meterKindToMeterCommand(oldMeterType);
+    funcs newCmd = meterKindToMeterCommand(newMeterType);
+    funcs oldCmd = meterKindToMeterCommand(oldMeterType);
 
-    removePeriodicCommand(oldCmd);
+    //removePeriodicCommand(oldCmd);
+    if (oldCmd != funcSMeter)
+        queue->del(oldCmd);
+
 
     if(newMeterType==meterNone)
     {
@@ -8235,7 +7793,8 @@ void wfmain::on_meter2selectionCombo_activated(int index)
         ui->meter2Widget->show();
         ui->meter2Widget->setMeterType(newMeterType);
         if((newMeterType!=meterRxAudio) && (newMeterType!=meterTxMod) && (newMeterType!=meterAudio))
-            insertPeriodicCommandUnique(newCmd);
+            queue->add(priorityHigh,queueItem(newCmd,true));
+            //insertPeriodicCommandUnique(newCmd);
     }
     prefs.meter2Type = newMeterType;
 
@@ -9712,6 +9271,7 @@ void wfmain::on_pollTimeMsSpin_valueChanged(int timing_ms)
 
 void wfmain::changePollTiming(int timing_ms, bool setUI)
 {
+    queue->interval(timing_ms);
     delayedCommand->setInterval(timing_ms);
     qInfo(logSystem()) << "User changed radio polling interval to " << timing_ms << "ms.";
     showStatusBarText("User changed radio polling interval to " + QString("%1").arg(timing_ms) + "ms.");
@@ -9783,31 +9343,31 @@ void wfmain::on_memoriesBtn_clicked()
             this->memWindow->connect(rig, SIGNAL(haveMemory(memoryType)), memWindow, SLOT(receiveMemory(memoryType)));
 
             this->memWindow->connect(this->memWindow, &memories::getMemory, rig,
-                                     [=](const quint32 &mem) { issueCmd(cmdGetMemory, mem);});
+                                     [=](const quint32 &mem) { queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(mem)));});
 
             this->memWindow->connect(this->memWindow, &memories::getSatMemory, rig,
-                                     [=](const quint32 &mem) { issueCmd(cmdGetSatMemory, mem);});
+                                     [=](const quint32 &mem) { queue->add(priorityImmediate,queueItem(funcSatelliteMemory,QVariant::fromValue<ushort>(mem & 0xffff)));});
 
             this->memWindow->connect(this->memWindow, &memories::setMemory, rig,
                                      [=](const memoryType &mem) {
                                          issueCmd(cmdSetMemory, mem);
                                          if (mem.sat)
-                                            issueCmd(cmdGetSatMemory, quint32(mem.channel & 0xffff));
+                                            queue->add(priorityImmediate,queueItem(funcSatelliteMemory,QVariant::fromValue<ushort>(mem.channel & 0xffff)));
                                          else
-                                            issueCmd(cmdGetMemory, quint32((mem.group << 16) | (mem.channel & 0xffff)));
+                                            queue->add(priorityImmediate,queueItem(funcMemoryContents,QVariant::fromValue<uint>(uint((mem.group << 16) | (mem.channel & 0xffff)))));
                                      });
 
             this->memWindow->connect(this->memWindow, &memories::clearMemory, rig,
                                      [=](const quint32 &mem) { issueCmd(cmdClearMemory, mem);});
 
             this->memWindow->connect(this->memWindow, &memories::recallMemory, rig,
-                                     [=](const quint32 &mem) { issueCmd(cmdRecallMemory, mem);});
+                                     [=](const quint32 &mem) { queue->add(priorityImmediate,queueItem(funcMemoryMode,QVariant::fromValue<uint>(mem))); });
 
             this->memWindow->connect(this->memWindow, &memories::setBand, rig,
-                                     [=](const char &band) { issueCmd(cmdGetBandStackReg, band);});
+                                     [=](const char &band) { queue->add(priorityImmediate,queueItem(funcBandStackReg,QVariant::fromValue<uchar>(band)));});
 
             this->memWindow->connect(this->memWindow, &memories::memoryMode, rig,
-                                     [=]() { issueDelayedCommand(cmdSetMemoryMode);
+                                     [=]() { queue->add(priorityImmediate,funcMemoryMode);
                                              removeSlowPeriodicCommand(cmdGetFreqB);});
 
             this->memWindow->connect(this->memWindow, &memories::vfoMode, rig,
