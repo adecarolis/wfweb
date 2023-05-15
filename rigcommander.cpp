@@ -2300,7 +2300,7 @@ void rigCommander::parseCommand()
     case funcScopeCenterSpan:
     {
         freqt f = parseFrequency(payloadIn, 6);
-        f.VFO = static_cast<selVFO_t>(payloadIn[2]);
+        f.VFO = static_cast<selVFO_t>((uchar)payloadIn[2]);
         value.setValue(f);
         // read span in center mode
         // [1] 0x15

@@ -6455,7 +6455,7 @@ void wfmain::receiveTuningStep(unsigned char step)
     {
         foreach (auto s, rigCaps.steps)
         {
-            if (step == s.num && ui->tuningStepCombo->currentData().toInt() != s.hz) {
+            if (step == s.num && ui->tuningStepCombo->currentData().toUInt() != s.hz) {
                 qInfo(logSystem()) << QString("Received new Tuning Step %0").arg(s.name);
                 ui->tuningStepCombo->setCurrentIndex(ui->tuningStepCombo->findData(s.hz));
                 break;

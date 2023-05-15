@@ -9,11 +9,9 @@
 #include "cachingqueue.h"
 
 cachingQueue* cachingQueue::instance{};
-QMutex cachingQueue::mutex;
 
 cachingQueue *cachingQueue::getInstance(QObject* parent)
 {
-    QMutexLocker locker = QMutexLocker(&mutex);
     if (instance == Q_NULLPTR)
     {
         instance = new cachingQueue(parent);

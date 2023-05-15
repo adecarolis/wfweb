@@ -10,7 +10,6 @@
 #include <QVariant>
 #include <QQueue>
 #include <QRect>
-#include <atomic>
 #include <QWaitCondition>
 #include <QDateTime>
 
@@ -67,7 +66,7 @@ private:
 
     static cachingQueue *instance;
 
-    static QMutex mutex;
+    QMutex mutex;
 
     QMultiMap <queuePriority,queueItem> queue;
     QMap<funcs,cacheItem> cache;
@@ -79,7 +78,7 @@ private:
 
 
     // Various other values
-    std::atomic<bool> aborted=false;
+    bool aborted=false;
     QWaitCondition waiting;
     quint64 queueInterval=0; // Don't start the timer!
 
