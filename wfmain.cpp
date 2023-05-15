@@ -91,6 +91,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<memoryType>();
     qRegisterMetaType<antennaInfo>();
     qRegisterMetaType<scopeData>();
+    qRegisterMetaType<queueItemType>();
 
     haveRigCaps = false;
 

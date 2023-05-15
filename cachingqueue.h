@@ -111,4 +111,5 @@ public:
     void unlockMutex();
 };
 
+Q_DECLARE_METATYPE(queueItemType)
 #endif // CACHINGQUEUE_H
