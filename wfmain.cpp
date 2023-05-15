@@ -6777,14 +6777,18 @@ void wfmain::on_preampSelCombo_activated(int index)
 
 void wfmain::on_antennaSelCombo_activated(int index)
 {
-    unsigned char ant = (unsigned char)ui->antennaSelCombo->itemData(index).toInt();
-    emit setAntenna(ant,ui->rxAntennaCheck->isChecked());
+    antennaInfo ant;
+    ant.antenna = (unsigned char)ui->antennaSelCombo->itemData(index).toInt();
+    ant.rx = ui->rxAntennaCheck->isChecked();
+    queue->add(priorityImmediate,queueItem(funcAntenna,QVariant::fromValue<antennaInfo>(ant),false));
 }
 
 void wfmain::on_rxAntennaCheck_clicked(bool value)
 {
-    unsigned char ant = (unsigned char)ui->antennaSelCombo->itemData(ui->antennaSelCombo->currentIndex()).toInt();
-    emit setAntenna(ant, value);
+    antennaInfo ant;
+    ant.antenna = (unsigned char)ui->antennaSelCombo->currentData().toInt();
+    ant.rx = value;
+    queue->add(priorityImmediate,queueItem(funcAntenna,QVariant::fromValue<antennaInfo>(ant),false));
 }
 void wfmain::on_wfthemeCombo_activated(int index)
 {
