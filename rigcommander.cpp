@@ -225,7 +225,6 @@ void rigCommander::commonSetup()
 
     queue = cachingQueue::getInstance(this);
     connect(queue,SIGNAL(haveCommand(queueItemType,funcs,QVariant)),this,SLOT(receiveCommand(queueItemType, funcs,QVariant)));
-    connect(this,SIGNAL(haveReceivedValue(funcs,QVariant)),queue,SLOT(receiveValue(funcs,qVariant)));
     oldScopeMode = spectModeUnknown;
 
     pttAllowed = true; // This is for developing, set to false for "safe" debugging. Set to true for deployment.

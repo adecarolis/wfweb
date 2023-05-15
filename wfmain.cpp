@@ -87,6 +87,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<errorType>();
     qRegisterMetaType<usbFeatureType>();
     qRegisterMetaType<cmds>();
+    qRegisterMetaType<funcs>();
     qRegisterMetaType<rigTypedef>();
     qRegisterMetaType<memoryType>();
     qRegisterMetaType<antennaInfo>();
