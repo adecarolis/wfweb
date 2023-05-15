@@ -33,7 +33,6 @@ struct queueItem {
     queueItem (funcs command) : type(queueCommandGet), command(command) {};
     queueItem (funcs command, QVariant param) : type(queueCommandSet), command(command), param(param) {};
     queueItem (queueItemType type, funcs command, QVariant param) : type(type), command(command), param(param) {};
-    queuePriority priority;
     queueItemType type = queueCommandNone;
     funcs command = funcNone;
     QVariant param=QVariant();

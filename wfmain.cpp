@@ -68,10 +68,10 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<mode_info>();
     qRegisterMetaType<mode_kind>();
     qRegisterMetaType<audioPacket>();
-    qRegisterMetaType <audioSetup>();
-    qRegisterMetaType <SERVERCONFIG>();
-    qRegisterMetaType <timekind>();
-    qRegisterMetaType <datekind>();
+    qRegisterMetaType<audioSetup>();
+    qRegisterMetaType<SERVERCONFIG>();
+    qRegisterMetaType<timekind>();
+    qRegisterMetaType<datekind>();
     qRegisterMetaType<rigstate*>();
     qRegisterMetaType<QList<radio_cap_packet>>();
     qRegisterMetaType<QVector<BUTTON>*>();

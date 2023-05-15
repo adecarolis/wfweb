@@ -176,7 +176,7 @@ void cachingQueue::del(funcs func)
 #else
     auto it(queue.begin());
     while (it != queue.end()) {
-        if (it.value().command == item.command)
+        if (it.value().command == func)
             it = queue.erase(it);
         else
             it++;
@@ -191,7 +191,7 @@ queuePriority cachingQueue::isRecurring(funcs func)
     auto rec = std::find_if(queue.begin(), queue.end(), [func](const queueItem& c) {  return (c.command == func && c.recurring); });
     if (rec != queue.end())
     {
-        return rec.value().priority;
+        return rec.key();
     }
     return queuePriority::priorityNone;
 }
