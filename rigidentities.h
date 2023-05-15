@@ -136,7 +136,7 @@ struct bandType {
     availableBands band;
     quint64 lowFreq;
     quint64 highFreq;
-    mode_kind defaultMode;
+    mode_t defaultMode;
     double range;
     int memGroup;
 };
@@ -224,7 +224,7 @@ struct rigCapabilities {
     std::vector <stepType> steps;
     unsigned char bsr[24] = {0};
 
-    std::vector <mode_info> modes;
+    std::vector <modeInfo> modes;
 
     QByteArray transceiveCommand;
     quint8 guid[GUIDLEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
@@ -239,5 +239,12 @@ struct rigCapabilities {
     QVector<memParserFormat> satParser;
 };
 
+Q_DECLARE_METATYPE(rigCapabilities)
+Q_DECLARE_METATYPE(modeInfo)
+Q_DECLARE_METATYPE(rigInput)
+Q_DECLARE_METATYPE(filterType)
+Q_DECLARE_METATYPE(inputTypes)
+Q_DECLARE_METATYPE(genericType)
+Q_DECLARE_METATYPE(bandType)
 
 #endif // RIGIDENTITIES_H

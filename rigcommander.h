@@ -61,9 +61,9 @@ public slots:
     void enableSpectrumDisplay();
     void disableSpectrumDisplay();
     void setSpectrumBounds(double startFreq, double endFreq, unsigned char edgeNumber);
-    void setSpectrumMode(spectrumMode spectMode);
+    void setspectrumMode_t(spectrumMode_t spectMode);
     void getSpectrumCenterMode();
-    void getSpectrumMode();
+    void getspectrumMode_t();
     void setSpectrumRefLevel(int level);
     void getSpectrumRefLevel();
     void getSpectrumRefLevel(unsigned char mainSub);
@@ -84,7 +84,7 @@ public slots:
     void equalizeVFOsMS();
     void exchangeVFOs();
     void setMode(unsigned char mode, unsigned char modeFilter);
-    void setMode(mode_info);
+    void setMode(modeInfo);
     void getMode();
     void getMode(unsigned char vfo);
     void setDataMode(bool dataOn, unsigned char filter);
@@ -149,7 +149,7 @@ public slots:
     void setRttyMark(unsigned char mark);
 
     // Repeater:
-    void setDuplexMode(duplexMode dm);
+    void setDuplexMode(duplexMode_t dm);
     void getDuplexMode();
     void setQuickSplit(bool qsOn);
     void getTransmitFrequency();
@@ -161,8 +161,8 @@ public slots:
     void getTone();
     void setDTCS(quint16 dcscode, bool tinv, bool rinv);
     void getDTCS();
-    void setRptAccessMode(rptAccessTxRx ratr);
-    void setRptAccessMode(rptrAccessData_t ratr);
+    void setRptAccessMode(rptAccessTxRx_t ratr);
+    void setRptAccessMode(rptrAccessData ratr);
     void getRptAccessMode();
     void setRptDuplexOffset(freqt f);
     void getRptDuplexOffset();
@@ -243,7 +243,7 @@ public slots:
     void getCompReductionMeter();
     void getVdMeter();
     void getIDMeter();
-    void getMeters(meterKind meter); // all supported meters per transmit or receive
+    void getMeters(meter_t meter); // all supported meters per transmit or receive
 
     // Rig ID and CIV:
     void getRigID();
@@ -312,7 +312,7 @@ signals:
     void haveSpectrumData(QByteArray spectrum, double startFreq, double endFreq); // pass along data to UI
     void haveSpectrumBounds();
     void haveScopeSpan(freqt span, bool isSub);
-    void haveSpectrumMode(spectrumMode spectmode);
+    void havespectrumMode_t(spectrumMode_t spectmode);
     void haveScopeEdge(char edge);
     void haveSpectrumRefLevel(int level);
     void haveScopeOutOfRange(bool outOfRange);
@@ -335,8 +335,8 @@ signals:
     void haveTuningStep(unsigned char step);
 
     // Repeater:
-    void haveDuplexMode(duplexMode);
-    void haveRptAccessMode(rptAccessTxRx ratr);
+    void haveDuplexMode(duplexMode_t);
+    void haveRptAccessMode(rptAccessTxRx_t ratr);
     void haveTone(quint16 tone);
     void haveTSQL(quint16 tsql);
     void haveDTCS(quint16 dcscode, bool tinv, bool rinv);
@@ -372,7 +372,7 @@ signals:
     void haveModSrcGain(inputTypes input, unsigned char gain);
 
     // Meters:
-    void haveMeter(meterKind meter, unsigned char level);
+    void haveMeter(meter_t meter, unsigned char level);
     void haveSMeter(unsigned char level);
     void haveRFMeter(unsigned char level);
     void haveSWRMeter(unsigned char);
@@ -441,7 +441,7 @@ private:
     unsigned char audioLevelTxMean[50];
     unsigned char audioLevelTxPeak[50];
 
-    mode_info parseMode(quint8 mode, quint8 filter);
+    modeInfo parseMode(quint8 mode, quint8 filter);
     bool parseSpectrum(scopeData& d);
     void parseWFData();
     void parseSpectrumRefLevel();
@@ -464,7 +464,7 @@ private:
     void debugMe();
     void printHex(const QByteArray &pdata);
     void printHex(const QByteArray &pdata, bool printVert, bool printHoriz);
-    mode_info createMode(mode_kind m, unsigned char reg, QString name, bool bw);
+    modeInfo createMode(mode_t m, unsigned char reg, QString name, bool bw);
     centerSpanData createScopeCenter(centerSpansType s, QString name);
 
     commHandler* comm = Q_NULLPTR;
@@ -497,7 +497,7 @@ private:
     quint8 spectSeqMax;
     quint16 spectAmpMax;
     quint16 spectLenMax;
-    spectrumMode oldScopeMode;
+    spectrumMode_t oldScopeMode;
     bool wasOutOfRange = false;
 
     bool usingNativeLAN; // indicates using OEM LAN connection (705,7610,9700,7850)

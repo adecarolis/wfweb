@@ -2,6 +2,7 @@
 #ifndef WFVIEWTYPES_H
 #define WFVIEWTYPES_H
 
+#include <QObject>
 #include <QString>
 #include <QtGlobal>
 #include <stdint.h>
@@ -9,7 +10,7 @@
 
 enum underlay_t { underlayNone, underlayPeakHold, underlayPeakBuffer, underlayAverageBuffer };
 
-enum meterKind {
+enum meter_t {
     meterNone=0,
     meterS,
     meterCenter,
@@ -26,7 +27,7 @@ enum meterKind {
     meterLatency
 };
 
-enum spectrumMode {
+enum spectrumMode_t {
     spectModeCenter=0x00,
     spectModeFixed=0x01,
     spectModeScrollC=0x02,
@@ -34,7 +35,7 @@ enum spectrumMode {
     spectModeUnknown=0xff
 };
 
-enum mode_kind {
+enum mode_t {
     modeLSB=0,          //0
     modeUSB,            //1
     modeAM,             //2
@@ -79,7 +80,7 @@ struct rptrTone_t {
     bool useSecondaryVFO = false;
 };
 
-enum duplexMode {
+enum duplexMode_t {
     dmSplitOff=0x00,
     dmSplitOn=0x01,
     dmSimplex=0x10,
@@ -92,7 +93,7 @@ enum duplexMode {
 
 // Here, T=tone, D=DCS, N=none
 // And the naming convention order is Transmit Receive
-enum rptAccessTxRx {
+enum rptAccessTxRx_t {
     ratrNN=0x00,
     ratrTN=0x01, // "TONE" (T only)
     ratrNT=0x02, // "TSQL" (R only)
@@ -107,8 +108,8 @@ enum rptAccessTxRx {
     ratrTSQLon
 };
 
-struct rptrAccessData_t {
-    rptAccessTxRx accessMode = ratrNN;
+struct rptrAccessData {
+    rptAccessTxRx_t accessMode = ratrNN;
     bool useSecondaryVFO = false;
     bool turnOffTone = false;
     bool turnOffTSQL = false;
@@ -116,10 +117,10 @@ struct rptrAccessData_t {
     int sequence = 0;
 };
 
-struct mode_info {
-    mode_info () {};
-    mode_info(mode_kind mk, quint8 reg, QString name, bool bw): mk(mk), reg(reg), name(name),bw(bw) {};
-    mode_kind mk=modeUnknown;
+struct modeInfo {
+    modeInfo () {};
+    modeInfo(mode_t mk, quint8 reg, QString name, bool bw): mk(mk), reg(reg), name(name),bw(bw) {};
+    mode_t mk=modeUnknown;
     unsigned char reg=99;
     unsigned char filter=1; // Default filter is always 1
     selVFO_t VFO = activeVFO;
@@ -185,7 +186,7 @@ cmdGetMonitorGain, cmdSetMonitorGain, cmdGetVoxGain, cmdSetVoxGain, cmdGetAntiVo
 cmdGetCwPitch, cmdGetPskTone, cmdGetRttyMark, cmdSetCwPitch, cmdSetPskTone, cmdSetRttyMark,
 cmdGetVox,cmdSetVox, cmdGetMonitor,cmdSetMonitor, cmdGetComp, cmdSetComp, cmdGetNB, cmdSetNB, cmdGetNR, cmdSetNR,
 cmdSetATU, cmdStartATU, cmdGetATUStatus,
-cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode,
+cmdGetspectrumMode_t, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode,
 cmdGetPTT, cmdSetPTT,cmdPTTToggle,
 cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdGetModLevel, cmdSetModLevel,
 cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
@@ -399,5 +400,23 @@ enum usbDeviceType { usbNone = 0, shuttleXpress, shuttlePro2,
 enum usbCommandType{ commandButton, commandKnob, commandAny };
 enum usbFeatureType { featureReset,featureResetKeys, featureEventsA, featureEventsB, featureFirmware, featureSerial, featureButton, featureSensitivity, featureBrightness,
                       featureOrientation, featureSpeed, featureColor, featureOverlay, featureTimeout, featureLCD, featureGraph, featureLEDControl };
+
+
+Q_DECLARE_METATYPE(freqt)
+Q_DECLARE_METATYPE(spectrumMode_t)
+Q_DECLARE_METATYPE(mode_t)
+Q_DECLARE_METATYPE(vfo_t)
+Q_DECLARE_METATYPE(duplexMode_t)
+Q_DECLARE_METATYPE(rptAccessTxRx_t)
+Q_DECLARE_METATYPE(rptrTone_t)
+Q_DECLARE_METATYPE(rptrAccessData)
+Q_DECLARE_METATYPE(usbFeatureType)
+Q_DECLARE_METATYPE(cmds)
+Q_DECLARE_METATYPE(memoryType)
+Q_DECLARE_METATYPE(antennaInfo)
+Q_DECLARE_METATYPE(scopeData)
+Q_DECLARE_METATYPE(timekind)
+Q_DECLARE_METATYPE(datekind)
+Q_DECLARE_METATYPE(meter_t)
 
 #endif // WFVIEWTYPES_H

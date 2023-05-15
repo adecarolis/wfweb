@@ -55,18 +55,18 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
 
     qRegisterMetaType<udpPreferences>(); // Needs to be registered early.
     qRegisterMetaType<rigCapabilities>();
-    qRegisterMetaType<duplexMode>();
-    qRegisterMetaType<rptAccessTxRx>();
-    qRegisterMetaType<rptrAccessData_t>();
+    qRegisterMetaType<duplexMode_t>();
+    qRegisterMetaType<rptAccessTxRx_t>();
+    qRegisterMetaType<rptrAccessData>();
     qRegisterMetaType<rigInput>();
     qRegisterMetaType<inputTypes>();
-    qRegisterMetaType<meterKind>();
-    qRegisterMetaType<spectrumMode>();
+    qRegisterMetaType<meter_t>();
+    qRegisterMetaType<spectrumMode_t>();
     qRegisterMetaType<freqt>();
     qRegisterMetaType<vfo_t>();
     qRegisterMetaType<rptrTone_t>();
-    qRegisterMetaType<mode_info>();
-    qRegisterMetaType<mode_kind>();
+    qRegisterMetaType<modeInfo>();
+    qRegisterMetaType<mode_t>();
     qRegisterMetaType<audioPacket>();
     qRegisterMetaType<audioSetup>();
     qRegisterMetaType<SERVERCONFIG>();
@@ -502,8 +502,8 @@ void wfmain::rigConnections()
 
     // Repeater, duplex, and split:
     connect(rpt, SIGNAL(getDuplexMode()), rig, SLOT(getDuplexMode()));
-    connect(rpt, SIGNAL(setDuplexMode(duplexMode)), rig, SLOT(setDuplexMode(duplexMode)));
-    connect(rig, SIGNAL(haveDuplexMode(duplexMode)), rpt, SLOT(receiveDuplexMode(duplexMode)));
+    connect(rpt, SIGNAL(setDuplexMode(duplexMode_t)), rig, SLOT(setDuplexMode(duplexMode_t)));
+    connect(rig, SIGNAL(haveDuplexMode(duplexMode_t)), rpt, SLOT(receiveDuplexMode(duplexMode_t)));
     //connect(this, SIGNAL(getRptDuplexOffset()), rig, SLOT(getRptDuplexOffset()));
     connect(rig, SIGNAL(haveRptOffsetFrequency(freqt)), rpt, SLOT(handleRptOffsetFrequency(freqt)));
 
@@ -543,18 +543,18 @@ void wfmain::rigConnections()
     });
 
     connect(this->rpt, &repeaterSetup::setRptAccessMode, this->rig,
-            [=](const rptrAccessData_t &rd) {
-                queue->add(priorityImmediate,queueItem(funcToneSquelchType,QVariant::fromValue<rptrAccessData_t>(rd),false));
+            [=](const rptrAccessData &rd) {
+                queue->add(priorityImmediate,queueItem(funcToneSquelchType,QVariant::fromValue<rptrAccessData>(rd),false));
         });
 
 
     connect(rig, SIGNAL(haveTone(quint16)), rpt, SLOT(handleTone(quint16)));
     connect(rig, SIGNAL(haveTSQL(quint16)), rpt, SLOT(handleTSQL(quint16)));
     connect(rig, SIGNAL(haveDTCS(quint16,bool,bool)), rpt, SLOT(handleDTCS(quint16,bool,bool)));
-    connect(rig, SIGNAL(haveRptAccessMode(rptAccessTxRx)), rpt, SLOT(handleRptAccessMode(rptAccessTxRx)));
+    connect(rig, SIGNAL(haveRptAccessMode(rptAccessTxRx_t)), rpt, SLOT(handleRptAccessMode(rptAccessTxRx_t)));
 
     connect(this->rig, &rigCommander::haveDuplexMode, this->rpt,
-            [=](const duplexMode &dm) {
+            [=](const duplexMode_t &dm) {
                 if(dm==dmSplitOn)
                     this->splitModeEnabled = true;
                 else
@@ -567,7 +567,7 @@ void wfmain::rigConnections()
     connect(this->rpt, &repeaterSetup::setTransmitFrequency, this->rig,
             [=](const freqt &transmitFreq) { queue->add(priorityImmediate,queueItem(funcFreqSet,QVariant::fromValue<freqt>(transmitFreq),false));});
     connect(this->rpt, &repeaterSetup::setTransmitMode, this->rig,
-            [=](const mode_info &transmitMode) {  queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<mode_info>(transmitMode),false));});
+            [=](const modeInfo &transmitMode) {  queue->add(priorityImmediate,queueItem(funcModeSet,QVariant::fromValue<modeInfo>(transmitMode),false));});
     connect(this->rpt, &repeaterSetup::selectVFO, this->rig,
             [=](const vfo_t &v) { queue->add(priorityImmediate,queueItem(funcSelectVFO,QVariant::fromValue<vfo_t>(v),false));});
     connect(this->rpt, &repeaterSetup::equalizeVFOsAB, this->rig,
@@ -591,9 +591,9 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setModInput(inputTypes, bool)), rig, SLOT(setModInput(inputTypes,bool)));
 
     connect(rig, SIGNAL(haveSpectrumData(QByteArray, double, double)), this, SLOT(receiveSpectrumData(QByteArray, double, double)));
-    connect(rig, SIGNAL(haveSpectrumMode(spectrumMode)), this, SLOT(receiveSpectrumMode(spectrumMode)));
+    connect(rig, SIGNAL(havespectrumMode_t(spectrumMode_t)), this, SLOT(receivespectrumMode_t(spectrumMode_t)));
     connect(rig, SIGNAL(haveScopeOutOfRange(bool)), this, SLOT(handleScopeOutOfRange(bool)));
-    connect(this, SIGNAL(setScopeMode(spectrumMode)), rig, SLOT(setSpectrumMode(spectrumMode)));
+    connect(this, SIGNAL(setScopeMode(spectrumMode_t)), rig, SLOT(setspectrumMode_t(spectrumMode_t)));
     connect(this, SIGNAL(getScopeMode()), rig, SLOT(getScopeMode()));
 
     connect(this, SIGNAL(setFrequency(unsigned char, freqt)), rig, SLOT(setFrequency(unsigned char, freqt)));
@@ -606,7 +606,7 @@ void wfmain::rigConnections()
     connect(this, SIGNAL(setScopeFixedEdge(double,double,unsigned char)), rig, SLOT(setSpectrumBounds(double,double,unsigned char)));
 
     connect(this, SIGNAL(setMode(unsigned char, unsigned char)), rig, SLOT(setMode(unsigned char, unsigned char)));
-    connect(this, SIGNAL(setMode(mode_info)), rig, SLOT(setMode(mode_info)));
+    connect(this, SIGNAL(setMode(modeInfo)), rig, SLOT(setMode(modeInfo)));
 
     connect(this, SIGNAL(setVox(bool)), rig, SLOT(setVox(bool)));
     connect(this, SIGNAL(setMonitor(bool)), rig, SLOT(setMonitor(bool)));
@@ -677,8 +677,8 @@ void wfmain::rigConnections()
     connect(rig, SIGNAL(haveLANGain(unsigned char)), this, SLOT(receiveLANGain(unsigned char)));
 
     //Metering:
-    connect(this, SIGNAL(getMeters(meterKind)), rig, SLOT(getMeters(meterKind)));
-    connect(rig, SIGNAL(haveMeter(meterKind,unsigned char)), this, SLOT(receiveMeter(meterKind,unsigned char)));
+    connect(this, SIGNAL(getMeters(meter_t)), rig, SLOT(getMeters(meter_t)));
+    connect(rig, SIGNAL(haveMeter(meter_t,unsigned char)), this, SLOT(receiveMeter(meter_t,unsigned char)));
 
     // Rig and ATU info:
     connect(this, SIGNAL(startATU()), rig, SLOT(startATU()));
@@ -947,7 +947,7 @@ void wfmain::receiveStatusUpdate(networkStatus status)
 void wfmain::receiveNetworkAudioLevels(networkAudioLevels l)
 {
     /*
-    meterKind m2mtr = ui->meter2Widget->getMeterType();
+    meter_t m2mtr = ui->meter2Widget->getMeterType();
 
     if(m2mtr == meterAudio)
     {
@@ -969,7 +969,7 @@ void wfmain::receiveNetworkAudioLevels(networkAudioLevels l)
     */
 
 
-    meterKind m = meterNone;
+    meter_t m = meterNone;
     if(l.haveRxLevels)
     {
         m = meterRxAudio;
@@ -1081,10 +1081,10 @@ void wfmain::setupMainUI()
     ui->baudRateCombo->insertItem(8, QString("1200"), 1200);
     ui->baudRateCombo->insertItem(9, QString("300"), 300);
 
-    ui->spectrumModeCombo->addItem("Center", (spectrumMode)spectModeCenter);
-    ui->spectrumModeCombo->addItem("Fixed", (spectrumMode)spectModeFixed);
-    ui->spectrumModeCombo->addItem("Scroll-C", (spectrumMode)spectModeScrollC);
-    ui->spectrumModeCombo->addItem("Scroll-F", (spectrumMode)spectModeScrollF);
+    ui->spectrumMode_tCombo->addItem("Center", (spectrumMode_t)spectModeCenter);
+    ui->spectrumMode_tCombo->addItem("Fixed", (spectrumMode_t)spectModeFixed);
+    ui->spectrumMode_tCombo->addItem("Scroll-C", (spectrumMode_t)spectModeScrollC);
+    ui->spectrumMode_tCombo->addItem("Scroll-F", (spectrumMode_t)spectModeScrollF);
 
     ui->modeFilterCombo->addItem("1", 1);
     ui->modeFilterCombo->addItem("2", 2);
@@ -2124,7 +2124,7 @@ void wfmain::loadSettings()
     setWindowState(Qt::WindowActive); // Works around QT bug to returns window+keyboard focus.
     prefs.confirmExit = settings->value("ConfirmExit", defPrefs.confirmExit).toBool();
     prefs.confirmPowerOff = settings->value("ConfirmPowerOff", defPrefs.confirmPowerOff).toBool();
-    prefs.meter2Type = static_cast<meterKind>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
+    prefs.meter2Type = static_cast<meter_t>(settings->value("Meter2Type", defPrefs.meter2Type).toInt());
     prefs.clickDragTuningEnable = settings->value("ClickDragTuning", false).toBool();
     ui->clickDragTuningEnableChk->setChecked(prefs.clickDragTuningEnable);
     settings->endGroup();
@@ -2522,7 +2522,7 @@ void wfmain::loadSettings()
 
         if (isSet)
         {
-            mem.setPreset(chan, freq, (mode_kind)mode);
+            mem.setPreset(chan, freq, (mode_t)mode);
         }
     }
 
@@ -3257,7 +3257,7 @@ void wfmain::showHideSpectrum(bool show)
 
     // Controls:
     ui->spectrumGroupBox->setVisible(show);
-    ui->spectrumModeCombo->setVisible(show);
+    ui->spectrumMode_tCombo->setVisible(show);
     ui->scopeBWCombo->setVisible(show);
     ui->scopeEdgeCombo->setVisible(show);
     ui->scopeEnableWFBtn->setVisible(show);
@@ -4257,7 +4257,7 @@ void wfmain::receiveRigID(rigCapabilities rigCaps)
         // Set the second meter here as I suspect we need to be connected for it to work?
         for (int i = 0; i < ui->meter2selectionCombo->count(); i++)
         {
-            if (static_cast<meterKind>(ui->meter2selectionCombo->itemData(i).toInt()) == prefs.meter2Type)
+            if (static_cast<meter_t>(ui->meter2selectionCombo->itemData(i).toInt()) == prefs.meter2Type)
             {
                 // I thought that setCurrentIndex() would call the activated() function for the combobox
                 // but it doesn't, so call it manually.
@@ -4681,15 +4681,15 @@ void wfmain::computePlasma()
     plasmaMutex.unlock();
 }
 
-void wfmain::receiveSpectrumMode(spectrumMode spectMode)
+void wfmain::receivespectrumMode_t(spectrumMode_t spectMode)
 {
-    for (int i = 0; i < ui->spectrumModeCombo->count(); i++)
+    for (int i = 0; i < ui->spectrumMode_tCombo->count(); i++)
     {
-        if (static_cast<spectrumMode>(ui->spectrumModeCombo->itemData(i).toInt()) == spectMode)
+        if (static_cast<spectrumMode_t>(ui->spectrumMode_tCombo->itemData(i).toInt()) == spectMode)
         {
-            ui->spectrumModeCombo->blockSignals(true);
-            ui->spectrumModeCombo->setCurrentIndex(i);
-            ui->spectrumModeCombo->blockSignals(false);
+            ui->spectrumMode_tCombo->blockSignals(true);
+            ui->spectrumMode_tCombo->setCurrentIndex(i);
+            ui->spectrumMode_tCombo->blockSignals(false);
         }
     }
     setUISpectrumControlsToMode(spectMode);
@@ -5079,7 +5079,7 @@ void wfmain::on_scopeEnableWFBtn_stateChanged(int state)
 
 
 
-void wfmain::receiveMode(mode_info mode)
+void wfmain::receiveMode(modeInfo mode)
 {
     // Update mode information if mode/filter has changed
     if ((mode.VFO == activeVFO) && (currentModeInfo.reg != mode.reg || currentModeInfo.filter != mode.filter || currentModeInfo.data != mode.data))
@@ -5237,17 +5237,17 @@ void wfmain::on_goFreqBtn_clicked()
     {
         queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedFreq)?funcSelectedFreq:funcFreqSet),QVariant::fromValue<freqt>(f),false));
 
-        foreach (mode_info mi, rigCaps.modes)
+        foreach (modeInfo mi, rigCaps.modes)
         {
             if (mi.reg == sidebandChooser::getMode(f, currentModeInfo.mk))
             {
-                mode_info m = mode_info(mi);
+                modeInfo m = modeInfo(mi);
                 m.filter = ui->modeFilterCombo->currentData().toInt();
                 m.data = usingDataMode;
                 m.VFO=selVFO_t::activeVFO;
                 if((m.mk != currentModeInfo.mk) && prefs.automaticSidebandSwitching)
                 {
-                    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),QVariant::fromValue<mode_info>(m),false));
+                    queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),QVariant::fromValue<modeInfo>(m),false));
                 }
                 break;
             }
@@ -5343,14 +5343,14 @@ void wfmain::on_fCEbtn_clicked()
     freqTextSelected = false;
 }
 
-void wfmain::on_spectrumModeCombo_currentIndexChanged(int index)
+void wfmain::on_spectrumMode_tCombo_currentIndexChanged(int index)
 {
-    spectrumMode smode = static_cast<spectrumMode>(ui->spectrumModeCombo->itemData(index).toInt());
+    spectrumMode_t smode = static_cast<spectrumMode_t>(ui->spectrumMode_tCombo->itemData(index).toInt());
     emit setScopeMode(smode);
     setUISpectrumControlsToMode(smode);
 }
 
-void wfmain::setUISpectrumControlsToMode(spectrumMode smode)
+void wfmain::setUISpectrumControlsToMode(spectrumMode_t smode)
 {
     if((smode==spectModeCenter) || (smode==spectModeScrollC))
     {
@@ -5388,35 +5388,35 @@ void wfmain::on_scopeEdgeCombo_currentIndexChanged(int index)
     emit setScopeEdge((char)index+1);
 }
 
-void wfmain::changeMode(mode_kind mode)
+void wfmain::changeMode(mode_t mode)
 {
     bool dataOn = false;
     if(((unsigned char) mode >> 4) == 0x08)
     {
         dataOn = true;
-        mode = (mode_kind)((int)mode & 0x0f);
+        mode = (mode_t)((int)mode & 0x0f);
     }
 
     changeMode(mode, dataOn);
 }
 
-void wfmain::changeMode(mode_kind mode, unsigned char data)
+void wfmain::changeMode(mode_t mode, unsigned char data)
 {
 
-    foreach (mode_info mi, rigCaps.modes)
+    foreach (modeInfo mi, rigCaps.modes)
     {
         if (mi.mk == mode)
         {
-            mode_info m;
-            m = mode_info(mi);
+            modeInfo m;
+            m = modeInfo(mi);
             m.filter = ui->modeFilterCombo->currentData().toInt();
             m.data = data;
             m.VFO=selVFO_t::activeVFO;
             if((m.mk != currentModeInfo.mk) && prefs.automaticSidebandSwitching)
             {
-                queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),QVariant::fromValue<mode_info>(m),false));
+                queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),QVariant::fromValue<modeInfo>(m),false));
                 if (!rigCaps.commands.contains(funcSelectedMode))
-                    queue->add(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue<mode_info>(m),false));
+                    queue->add(priorityImmediate,queueItem(funcDataModeWithFilter,QVariant::fromValue<modeInfo>(m),false));
             }
             break;
         }
@@ -5442,15 +5442,15 @@ void wfmain::on_modeSelectCombo_activated(int index)
         return;
     } else {
         //qInfo(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
-        foreach (mode_info mi, rigCaps.modes)
+        foreach (modeInfo mi, rigCaps.modes)
         {
-            if (mi.mk == (mode_kind)newMode)
+            if (mi.mk == (mode_t)newMode)
             {
-                mode_info m = mode_info(mi);
+                modeInfo m = modeInfo(mi);
                 m.filter = filterSelection;
                 m.data = usingDataMode;
                 m.VFO=selVFO_t::activeVFO;
-                queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<mode_info>(m),false));
+                queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<modeInfo>(m),false));
                 queue->add(priorityImmediate,(rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeGet),false);
                 break;
             }
@@ -5532,8 +5532,8 @@ void wfmain::receiveBandStackReg(freqt freqGo, char mode, char filter, bool data
         if (md.reg == mode) {
             md.filter=filter;
             md.data=dataOn;
-            queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<mode_info>(md),false));
-            queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),QVariant::fromValue<mode_info>(md),false));
+            queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<modeInfo>(md),false));
+            queue->add(priorityImmediate,queueItem((rigCaps.commands.contains(funcSelectedMode)?funcNone:funcDataModeWithFilter),QVariant::fromValue<modeInfo>(md),false));
             receiveMode(md); // update UI
             break;
         }
@@ -5729,7 +5729,7 @@ void wfmain::on_fStoBtn_clicked()
     if(ok && (preset_number >= 0) && (preset_number < 100))
     {
         // TODO: keep an enum around with the current mode
-        mem.setPreset(preset_number, freq.MHzDouble, (mode_kind)ui->modeSelectCombo->currentData().toInt() );
+        mem.setPreset(preset_number, freq.MHzDouble, (mode_t)ui->modeSelectCombo->currentData().toInt() );
         showStatusBarText( QString("Storing frequency %1 to memory location %2").arg( freq.MHzDouble ).arg(preset_number) );
     } else {
         showStatusBarText(QString("Could not store preset to %1. Valid preset numbers are 0 to 99").arg(preset_number));
@@ -6154,16 +6154,16 @@ void wfmain::on_modeFilterCombo_activated(int index)
 
     } else {
         unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->currentData().toUInt());
-        foreach (mode_info mi, rigCaps.modes)
+        foreach (modeInfo mi, rigCaps.modes)
         {
-            if (mi.mk == (mode_kind)newMode)
+            if (mi.mk == (mode_t)newMode)
             {
-                mode_info m;
-                m = mode_info(mi);
+                modeInfo m;
+                m = modeInfo(mi);
                 m.filter = filterSelection;
                 m.data = usingDataMode;
                 m.VFO=selVFO_t::activeVFO;
-                queue->add(priorityImmediate, queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<mode_info>(m),false));
+                queue->add(priorityImmediate, queueItem((rigCaps.commands.contains(funcSelectedMode)?funcSelectedMode:funcModeSet),QVariant::fromValue<modeInfo>(m),false));
                 break;
             }
         }
@@ -6174,11 +6174,11 @@ void wfmain::on_modeFilterCombo_activated(int index)
 void wfmain::on_datamodeCombo_activated(int index)
 {
 
-    mode_info m;
+    modeInfo m;
     m.filter = ui->modeFilterCombo->currentData().toInt();
     m.data = index;
 
-    queue->add(priorityImmediate, queueItem(funcDataModeWithFilter,QVariant::fromValue<mode_info>(m)));
+    queue->add(priorityImmediate, queueItem(funcDataModeWithFilter,QVariant::fromValue<modeInfo>(m)));
 
     usingDataMode = index;
     if(usingDataMode == 0) {
@@ -6464,7 +6464,7 @@ void wfmain::receiveTuningStep(unsigned char step)
     }
 }
 
-void wfmain::receiveMeter(meterKind inMeter, unsigned char level)
+void wfmain::receiveMeter(meter_t inMeter, unsigned char level)
 {
 
     switch(inMeter)
@@ -7184,7 +7184,7 @@ void wfmain::on_wfInterpolateChk_clicked(bool checked)
     prefs.wfInterpolate = checked;
 }
 
-funcs wfmain::meterKindToMeterCommand(meterKind m)
+funcs wfmain::meter_tToMeterCommand(meter_t m)
 {
     funcs c;
     switch(m)
@@ -7228,15 +7228,15 @@ funcs wfmain::meterKindToMeterCommand(meterKind m)
 
 void wfmain::on_meter2selectionCombo_activated(int index)
 {
-    meterKind newMeterType;
-    meterKind oldMeterType;
-    newMeterType = static_cast<meterKind>(ui->meter2selectionCombo->currentData().toInt());
+    meter_t newMeterType;
+    meter_t oldMeterType;
+    newMeterType = static_cast<meter_t>(ui->meter2selectionCombo->currentData().toInt());
     oldMeterType = ui->meter2Widget->getMeterType();
     if(newMeterType == oldMeterType)
         return;
 
-    funcs newCmd = meterKindToMeterCommand(newMeterType);
-    funcs oldCmd = meterKindToMeterCommand(oldMeterType);
+    funcs newCmd = meter_tToMeterCommand(newMeterType);
+    funcs oldCmd = meter_tToMeterCommand(oldMeterType);
 
     //removePeriodicCommand(oldCmd);
     if (oldCmd != funcSMeter && oldCmd != funcNone)
@@ -8999,7 +8999,7 @@ void wfmain::receiveValue(cacheItem val){
     case funcModeTR:
     case funcSelectedMode:
     case funcUnselectedMode:
-        receiveMode(val.value.value<mode_info>());
+        receiveMode(val.value.value<modeInfo>());
         break;
     case funcSatelliteMemory:
     case funcMemoryContents:
@@ -9087,32 +9087,32 @@ void wfmain::receiveValue(cacheItem val){
     case funcSMeterSqlStatus:
         break;
     case funcSMeter:
-        receiveMeter(meterKind::meterS,val.value.value<uchar>());
+        receiveMeter(meter_t::meterS,val.value.value<uchar>());
         break;
     case funcVariousSql:
         break;
     case funcOverflowStatus:
         break;
     case funcCenterMeter:
-        receiveMeter(meterKind::meterCenter,val.value.value<uchar>());
+        receiveMeter(meter_t::meterCenter,val.value.value<uchar>());
         break;
     case funcPowerMeter:
-        receiveMeter(meterKind::meterPower,val.value.value<uchar>());
+        receiveMeter(meter_t::meterPower,val.value.value<uchar>());
         break;
     case funcSWRMeter:
-        receiveMeter(meterKind::meterSWR,val.value.value<uchar>());
+        receiveMeter(meter_t::meterSWR,val.value.value<uchar>());
         break;
     case funcALCMeter:
-        receiveMeter(meterKind::meterALC,val.value.value<uchar>());
+        receiveMeter(meter_t::meterALC,val.value.value<uchar>());
         break;
     case funcCompMeter:
-        receiveMeter(meterKind::meterComp,val.value.value<uchar>());
+        receiveMeter(meter_t::meterComp,val.value.value<uchar>());
         break;
     case funcVdMeter:
-        receiveMeter(meterKind::meterVoltage,val.value.value<uchar>());
+        receiveMeter(meter_t::meterVoltage,val.value.value<uchar>());
         break;
     case funcIdMeter:
-        receiveMeter(meterKind::meterCurrent,val.value.value<uchar>());
+        receiveMeter(meter_t::meterCurrent,val.value.value<uchar>());
         break;
     // 0x16 enable/disable functions:
     case funcPreamp:
@@ -9179,7 +9179,7 @@ void wfmain::receiveValue(cacheItem val){
         receivePassband(val.value.value<ushort>());
         break;
     case funcDataModeWithFilter:
-        receiveDataModeStatus(val.value.value<mode_info>().data,val.value.value<mode_info>().filter);
+        receiveDataModeStatus(val.value.value<modeInfo>().data,val.value.value<modeInfo>().filter);
         break;
     case funcAFMute:
         break;

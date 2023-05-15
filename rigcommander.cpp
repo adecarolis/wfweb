@@ -554,7 +554,7 @@ void rigCommander::setScopeSpan(char span)
     }
 }
 
-void rigCommander::setSpectrumMode(spectrumMode spectMode)
+void rigCommander::setspectrumMode_t(spectrumMode_t spectMode)
 {
     QByteArray payload;
     unsigned char vfo = '\x00';
@@ -611,7 +611,7 @@ void rigCommander::getSpectrumCenterMode()
     }
 }
 
-void rigCommander::getSpectrumMode()
+void rigCommander::getspectrumMode_t()
 {
     QByteArray payload;
     if (getCommand(funcScopeCenterFixed,payload))
@@ -786,7 +786,7 @@ void rigCommander::setRitValue(int ritValue)
     }
 }
 
-void rigCommander::setMode(mode_info m)
+void rigCommander::setMode(modeInfo m)
 {
     foreach (auto&& filter, rigCaps.filters)
     {
@@ -831,11 +831,11 @@ void rigCommander::setMode(mode_info m)
 
 void rigCommander::setMode(unsigned char mode, unsigned char modeFilter)
 {
-    foreach (mode_info m, rigCaps.modes)
+    foreach (modeInfo m, rigCaps.modes)
     {
         if (m.reg == mode)
         {
-            mode_info mi = mode_info(m);
+            modeInfo mi = modeInfo(m);
             mi.filter = modeFilter;
             mi.VFO=selVFO_t::activeVFO;
             setMode(mi);
@@ -948,7 +948,7 @@ void rigCommander::setSplit(bool splitEnabled)
     }
 }
 
-void rigCommander::setDuplexMode(duplexMode dm)
+void rigCommander::setDuplexMode(duplexMode_t dm)
 {
     QByteArray payload;
     if (getCommand(funcDuplexStatus,payload,static_cast<int>(dm)))
@@ -1001,7 +1001,7 @@ void rigCommander::setPassband(quint16 pass)
 
     // Passband may be fixed?
     unsigned char mode = state.getChar(MODE);
-    foreach (mode_info m, rigCaps.modes)
+    foreach (modeInfo m, rigCaps.modes)
     {
         if (m.reg == mode && m.bw) {
             QByteArray payload;
@@ -1046,7 +1046,7 @@ void rigCommander::getPassband()
 {
     // Passband may be fixed?
     unsigned char mode = state.getChar(MODE);
-    foreach (mode_info m, rigCaps.modes)
+    foreach (modeInfo m, rigCaps.modes)
     {
         if (m.reg == mode && m.bw)
         {
@@ -1287,14 +1287,14 @@ void rigCommander::getRptAccessMode()
     }
 }
 
-void rigCommander::setRptAccessMode(rptAccessTxRx ratr)
+void rigCommander::setRptAccessMode(rptAccessTxRx_t ratr)
 {
-    rptrAccessData_t rd;
+    rptrAccessData rd;
     rd.accessMode = ratr;
     setRptAccessMode(rd);
 }
 
-void rigCommander::setRptAccessMode(rptrAccessData_t rd)
+void rigCommander::setRptAccessMode(rptrAccessData rd)
 {
     // NB: This function is the only recommended
     // function to be used for toggling tone and tone squelch.
@@ -2019,7 +2019,7 @@ void rigCommander::parseCommand()
     case funcModeGet:
     case funcModeTR:
     {
-        mode_info m;
+        modeInfo m;
         m = parseMode(payloadIn[1], m.filter);
         if(payloadIn[2] != '\xFD')
         {
@@ -2033,7 +2033,7 @@ void rigCommander::parseCommand()
     case funcSelectedMode:
     case funcUnselectedMode:
     {
-        mode_info m;
+        modeInfo m;
         // New format payload with mode+datamode+filter
         m = parseMode(uchar(payloadIn[2]), uchar(payloadIn[4]));
         m.data = bool(payloadIn[3]);
@@ -2162,7 +2162,7 @@ void rigCommander::parseCommand()
         break;        
     case funcMainSubTracking:
     case funcToneSquelchType:
-        emit haveRptAccessMode((rptAccessTxRx)payloadIn.at(2));
+        emit haveRptAccessMode((rptAccessTxRx_t)payloadIn.at(2));
         break;
     case funcIPPlus:
         break;
@@ -2198,11 +2198,11 @@ void rigCommander::parseCommand()
     }
     case funcDataModeWithFilter:
     {
-        mode_info m;
+        modeInfo m;
         m.data = static_cast<uchar>(payloadIn[2]);
         if (payloadIn[3] != '\xfd')
             m.filter = static_cast<uchar>(payloadIn[3]);
-        value.setValue(static_cast<mode_info>(m));
+        value.setValue(static_cast<modeInfo>(m));
         break;
     }
     case funcAFMute:
@@ -2294,8 +2294,8 @@ void rigCommander::parseCommand()
         // [1] 0x14
         // [2] 0x00
         // [3] 0x00 (center), 0x01 (fixed), 0x02, 0x03
-        value.setValue(static_cast<spectrumMode>(uchar(payloadIn[3])));
-        //emit haveSpectrumMode(static_cast<spectrumMode>((unsigned char)payloadIn[3]));
+        value.setValue(static_cast<spectrumMode_t>(uchar(payloadIn[3])));
+        //emit havespectrumMode_t(static_cast<spectrumMode_t>((unsigned char)payloadIn[3]));
         break;
     case funcScopeCenterSpan:
     {
@@ -2471,11 +2471,11 @@ bool rigCommander::parseMemory(QVector<memParserFormat>* memParser, memoryType* 
              mem->datamodeB=data[0];
              break;
         case 'j': // combined duplex and tonemode
-             mem->duplex=duplexMode(quint8(data[0] >> 4 & 0x0f));
+             mem->duplex=duplexMode_t(quint8(data[0] >> 4 & 0x0f));
              mem->tonemode=quint8(quint8(data[0] & 0x0f));
              break;
         case 'J': // combined duplex and tonemodeB
-             mem->duplexB=duplexMode((data[0] >> 4 & 0x0f));
+             mem->duplexB=duplexMode_t((data[0] >> 4 & 0x0f));
              mem->tonemodeB=data[0] & 0x0f;
              break;
         case 'k': // combined datamode and tonemode
@@ -2760,7 +2760,7 @@ void rigCommander::setPBTInner(unsigned char level)
     QByteArray payload;
     // Passband may be fixed?
     unsigned char mode = state.getChar(MODE);
-    foreach (mode_info m, rigCaps.modes)
+    foreach (modeInfo m, rigCaps.modes)
     {
         if (m.reg == mode)
         {
@@ -2781,7 +2781,7 @@ void rigCommander::setPBTOuter(unsigned char level)
     QByteArray payload;
     // Passband may be fixed?
     unsigned char mode = state.getChar(MODE);
-    foreach (mode_info m, rigCaps.modes)
+    foreach (modeInfo m, rigCaps.modes)
     {
         if (m.reg == mode)
         {
@@ -3334,7 +3334,7 @@ void rigCommander::getPBTInner()
 {
     // Passband may be fixed?
     unsigned char mode = state.getChar(MODE);
-    foreach (mode_info m, rigCaps.modes)
+    foreach (modeInfo m, rigCaps.modes)
     {
         if (m.reg == mode) {
             if (m.bw) {
@@ -3353,7 +3353,7 @@ void rigCommander::getPBTOuter()
 {
     // Passband may be fixed?
     unsigned char mode = state.getChar(MODE);
-    foreach (mode_info m, rigCaps.modes)
+    foreach (modeInfo m, rigCaps.modes)
     {
         if (m.reg == mode) {
             if (m.bw) {
@@ -3463,7 +3463,7 @@ void rigCommander::getLevels()
 //    getAntiVoxGain(); // 0x17
 }
 
-void rigCommander::getMeters(meterKind meter)
+void rigCommander::getMeters(meter_t meter)
 {
     switch(meter)
     {
@@ -4273,9 +4273,9 @@ void rigCommander::parseWFData()
 }
 
 
-mode_info rigCommander::createMode(mode_kind m, unsigned char reg, QString name, bool bw)
+modeInfo rigCommander::createMode(mode_t m, unsigned char reg, QString name, bool bw)
 {
-    mode_info mode;
+    modeInfo mode;
     mode.mk = m;
     mode.reg = reg;
     mode.name = name;
@@ -4395,7 +4395,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numModes; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.modes.push_back(mode_info(mode_kind(settings->value("Num", 0).toUInt()),
+            rigCaps.modes.push_back(modeInfo(mode_t(settings->value("Num", 0).toUInt()),
                 settings->value("Reg", 0).toString().toUInt(nullptr,16), settings->value("Name", "").toString(), settings->value("BW", 0).toBool()));
         }
         settings->endArray();
@@ -5536,7 +5536,7 @@ bool rigCommander::parseSpectrum(scopeData& d)
     if ((sequence == 1) && (sequence < rigCaps.spectSeqMax))
     {
 
-        spectrumMode scopeMode = (spectrumMode)bcdHexToUChar(payloadIn[05]); // 0=center, 1=fixed
+        spectrumMode_t scopeMode = (spectrumMode_t)bcdHexToUChar(payloadIn[05]); // 0=center, 1=fixed
 
         if(scopeMode != oldScopeMode)
         {
@@ -5546,7 +5546,7 @@ bool rigCommander::parseSpectrum(scopeData& d)
             // 0x01 Fixed
             // 0x02 Scroll-C
             // 0x03 Scroll-F
-            emit haveSpectrumMode(scopeMode);
+            emit havespectrumMode_t(scopeMode);
             oldScopeMode = scopeMode;
         }
 
@@ -5864,15 +5864,15 @@ quint64 rigCommander::parseFreqDataToInt(QByteArray data)
 }
 
 
-mode_info rigCommander::parseMode(quint8 mode, quint8 filter)
+modeInfo rigCommander::parseMode(quint8 mode, quint8 filter)
 {
-    mode_info mi;
+    modeInfo mi;
     bool found=false;
     foreach (auto& m, rigCaps.modes)
     {
         if (m.reg == mode)
         {
-            mi = mode_info(m);
+            mi = modeInfo(m);
             found = true;
             break;
         }
@@ -6835,7 +6835,7 @@ uchar rigCommander::makeFilterWidth(ushort pass)
     unsigned char mode = state.getChar(MODE);
     uchar payload=0;
 
-    foreach (mode_info m, rigCaps.modes)
+    foreach (modeInfo m, rigCaps.modes)
     {
         if (m.reg == mode && m.bw) {
             uchar calc;
@@ -6925,18 +6925,18 @@ void rigCommander::receiveCommand(queueItemType type, funcs func, QVariant value
                 }
                 payload.append(bcdEncodeInt(value.value<uint>() & 0xffff));
             }
-            else if (!strcmp(value.typeName(),"mode_info"))
+            else if (!strcmp(value.typeName(),"modeInfo"))
             {
                 if (func == funcDataModeWithFilter)
                 {
-                    payload.append(value.value<mode_info>().data);
-                    if (value.value<mode_info>().data != 0)
-                       payload.append(value.value<mode_info>().filter);
+                    payload.append(value.value<modeInfo>().data);
+                    if (value.value<modeInfo>().data != 0)
+                       payload.append(value.value<modeInfo>().filter);
                 } else {
-                    payload.append(value.value<mode_info>().reg);
+                    payload.append(value.value<modeInfo>().reg);
                     if (func == funcSelectedMode || func == funcUnselectedMode)
-                       payload.append(value.value<mode_info>().data);
-                    payload.append(value.value<mode_info>().filter);
+                       payload.append(value.value<modeInfo>().data);
+                    payload.append(value.value<modeInfo>().filter);
                 }
             }
             else if(!strcmp(value.typeName(),"freqt"))

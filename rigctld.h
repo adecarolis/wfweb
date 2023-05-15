@@ -344,7 +344,7 @@ signals:
     void setDataMode(bool dataOn, quint8 modeFilter);
     void setVFO(quint8 vfo);
     void setSplit(quint8 split);
-    void setDuplexMode(duplexMode dm);
+    void setDuplexMode(duplexMode_t dm);
     void stateUpdated();
     // Power
     void sendPowerOn();

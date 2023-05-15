@@ -267,7 +267,7 @@ void rigCtlClient::socketReadyRead()
 
             if (passband > 0)
             {
-                switch ((mode_kind)getMode(mode)) {
+                switch ((mode_t)getMode(mode)) {
 
                 case modeAM:
                     if (passband > 6000) {
@@ -1204,7 +1204,7 @@ void rigCtlClient::socketReadyRead()
         }
         else if (command.length() > 0 && (command[0] == '\xf5' || command[0] == "get_rig_info"))
         {
-            duplexMode split = rigState->getDuplex(DUPLEX);
+            duplexMode_t split = rigState->getDuplex(DUPLEX);
             quint8 rxa = 1;
             quint8 txa = split == 0;
             quint8 rxb = !rxa;

@@ -68,7 +68,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QComboBox" name="spectrumModeCombo">
+           <widget class="QComboBox" name="spectrumMode_tCombo">
             <property name="accessibleName">
              <string>Spectrum Mode</string>
             </property>

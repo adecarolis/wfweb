@@ -101,7 +101,7 @@ void meter::clearMeter()
     update();
 }
 
-void meter::setMeterType(meterKind type)
+void meter::setMeterType(meter_t type)
 {
     if(type == meterType)
         return;
@@ -111,7 +111,7 @@ void meter::setMeterType(meterKind type)
     this->clearMeter();
 }
 
-meterKind meter::getMeterType()
+meter_t meter::getMeterType()
 {
     return meterType;
 }

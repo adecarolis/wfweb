@@ -28,10 +28,10 @@ public slots:
     void setLevel(int current);
     void clearMeterOnPTTtoggle();
     void clearMeter();
-    void setMeterType(meterKind type);
+    void setMeterType(meter_t type);
     void setMeterShortString(QString);
     QString getMeterShortString();
-    meterKind getMeterType();
+    meter_t getMeterType();
     void setColors(QColor current, QColor peakScale, QColor peakLevel,
                    QColor average, QColor lowLine,
                    QColor lowText);
@@ -39,7 +39,7 @@ public slots:
 
 private:
     //QPainter painter;
-    meterKind meterType;
+    meter_t meterType;
     QString meterShortString;
     int fontSize = 10;
     int length=30;

@@ -53,7 +53,7 @@ public slots:
     void handleDashRatio(unsigned char ratio);
     void handlePitch(unsigned char pitch);
     void handleBreakInMode(unsigned char b);
-    void handleCurrentModeUpdate(mode_kind mode);
+    void handleCurrentModeUpdate(mode_t mode);
 
 private slots:
     void on_sendBtn_clicked();
@@ -104,7 +104,7 @@ private:
     QString macroText[11];
     int sequenceNumber = 1;
     int lastSentPos = 0;
-    mode_kind currentMode;
+    mode_t currentMode;
     int sidetoneLevel=0;
     void processMacroButton(int buttonNumber, QPushButton *btn);
     void runMacroButton(int buttonNumber);

@@ -109,7 +109,7 @@ void cwSender::handleBreakInMode(unsigned char b)
     }
 }
 
-void cwSender::handleCurrentModeUpdate(mode_kind mode)
+void cwSender::handleCurrentModeUpdate(mode_t mode)
 {
     this->currentMode = mode;
     if( (currentMode==modeCW) || (currentMode==modeCW_R) )

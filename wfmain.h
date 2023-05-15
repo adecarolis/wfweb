@@ -124,7 +124,7 @@ signals:
     void setFrequency(unsigned char vfo, freqt freq);
     void getMode();
     void setMode(unsigned char modeIndex, unsigned char modeFilter);
-    void setMode(mode_info);
+    void setMode(modeInfo);
     void selectVFO(vfo_t vfo);
     void sendVFOSwap();
     void sendVFOEqualAB();
@@ -149,7 +149,7 @@ signals:
     void getTSQL();
     void getDTCS();
     void getRptAccessMode();
-    void setRepeaterAccessMode(rptrAccessData_t rd);
+    void setRepeaterAccessMode(rptrAccessData rd);
     void setTone(rptrTone_t t);
     void setTSQL(rptrTone_t t);
     void getToneEnabled();
@@ -178,7 +178,7 @@ signals:
     void getMicGain();
     void getSpectrumRefLevel();
     void getModInputLevel(inputTypes input);
-    void getMeters(meterKind meter);
+    void getMeters(meter_t meter);
     void getPassband();
     void getVoxGain();
     void getAntiVoxGain();
@@ -269,7 +269,7 @@ signals:
     void spectOutputDisable();
     void scopeDisplayEnable();
     void scopeDisplayDisable();
-    void setScopeMode(spectrumMode spectMode);
+    void setScopeMode(spectrumMode_t spectMode);
     void setScopeSpan(char span);
     void setScopeEdge(char edge);
     void setScopeFixedEdge(double startFreq, double endFreq, unsigned char edgeNumber);
@@ -350,9 +350,9 @@ private slots:
 
     void receiveCommReady();
     void receiveFreq(freqt);
-    void receiveMode(mode_info mode);
+    void receiveMode(modeInfo mode);
     void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);
-    void receiveSpectrumMode(spectrumMode spectMode);
+    void receivespectrumMode_t(spectrumMode_t spectMode);
     void receiveSpectrumSpan(freqt freqspan, bool isSub);
     void handleScopeOutOfRange(bool outOfRange);
     void receivePTTstatus(bool pttOn);
@@ -361,7 +361,7 @@ private slots:
     void receiveRITStatus(bool ritEnabled);
     void receiveRITValue(int ritValHz);
     void receiveModInput(rigInput input, unsigned char data);
-    //void receiveDuplexMode(duplexMode dm);
+    //void receiveDuplexMode(duplexMode_t dm);
     void receivePassband(quint16 pass);
     void receiveMonitorGain(unsigned char pass);
     void receiveNBLevel(unsigned char pass);
@@ -394,7 +394,7 @@ private slots:
     void receiveSpectrumRefLevel(int level);
 
     // Meters:
-    void receiveMeter(meterKind meter, unsigned char level);
+    void receiveMeter(meter_t meter, unsigned char level);
 //    void receiveSMeter(unsigned char level);
 //    void receivePowerMeter(unsigned char level);
 //    void receiveALCMeter(unsigned char level);
@@ -598,7 +598,7 @@ private slots:
 
     void on_tuneLockChk_clicked(bool checked);
 
-    void on_spectrumModeCombo_currentIndexChanged(int index);
+    void on_spectrumMode_tCombo_currentIndexChanged(int index);
 
     void on_serialEnableBtn_clicked(bool checked);
 
@@ -995,7 +995,7 @@ private:
     bool onFullscreen;
     bool freqTextSelected;
     void checkFreqSel();
-    void setUISpectrumControlsToMode(spectrumMode smode);
+    void setUISpectrumControlsToMode(spectrumMode_t smode);
 
     double oldLowerFreq;
     double oldUpperFreq;
@@ -1091,12 +1091,12 @@ private:
 
     void changeModLabelAndSlider(rigInput source);
 
-    void changeMode(mode_kind mode);
-    void changeMode(mode_kind mode, unsigned char data);
+    void changeMode(mode_t mode);
+    void changeMode(mode_t mode, unsigned char data);
 
     void connectionHandler(bool connect);
 
-    funcs meterKindToMeterCommand(meterKind m);
+    funcs meter_tToMeterCommand(meter_t m);
 
     void updateUsbButtons();
 
@@ -1110,8 +1110,8 @@ private:
     rigInput currentModData2Src = rigInput(inputUnknown);
     rigInput currentModData3Src = rigInput(inputUnknown);
 
-    mode_kind currentMode = modeUnknown;
-    mode_info currentModeInfo = mode_info();
+    mode_t currentMode = modeUnknown;
+    modeInfo currentModeInfo = modeInfo();
 
     bool haveRigCaps;
     bool amTransmitting = false;
@@ -1201,44 +1201,22 @@ private:
     QImage lcdImage;
 };
 
-Q_DECLARE_METATYPE(struct rigCapabilities)
-Q_DECLARE_METATYPE(struct freqt)
-Q_DECLARE_METATYPE(struct mode_info)
-Q_DECLARE_METATYPE(struct udpPreferences)
-Q_DECLARE_METATYPE(struct audioPacket)
-Q_DECLARE_METATYPE(struct audioSetup)
-Q_DECLARE_METATYPE(struct SERVERCONFIG)
-Q_DECLARE_METATYPE(struct timekind)
-Q_DECLARE_METATYPE(struct datekind)
-Q_DECLARE_METATYPE(struct networkStatus)
-Q_DECLARE_METATYPE(struct networkAudioLevels)
-Q_DECLARE_METATYPE(struct spotData)
-Q_DECLARE_METATYPE(struct rigInput)
-Q_DECLARE_METATYPE(enum inputTypes)
-Q_DECLARE_METATYPE(enum meterKind)
-Q_DECLARE_METATYPE(enum spectrumMode)
-Q_DECLARE_METATYPE(enum mode_kind)
-Q_DECLARE_METATYPE(enum vfo_t)
-Q_DECLARE_METATYPE(QList<radio_cap_packet>)
-Q_DECLARE_METATYPE(QList<spotData>)
+Q_DECLARE_METATYPE(udpPreferences)
+Q_DECLARE_METATYPE(audioPacket)
+Q_DECLARE_METATYPE(audioSetup)
+Q_DECLARE_METATYPE(SERVERCONFIG)
+Q_DECLARE_METATYPE(networkStatus)
+Q_DECLARE_METATYPE(networkAudioLevels)
+Q_DECLARE_METATYPE(spotData)
+Q_DECLARE_METATYPE(radio_cap_packet)
 Q_DECLARE_METATYPE(rigstate*)
-Q_DECLARE_METATYPE(QVector <BUTTON>*)
-Q_DECLARE_METATYPE(QVector <KNOB>*)
-Q_DECLARE_METATYPE(QVector <COMMAND>*)
-Q_DECLARE_METATYPE(const COMMAND*)
-Q_DECLARE_METATYPE(const USBDEVICE*)
+Q_DECLARE_METATYPE(BUTTON)
+Q_DECLARE_METATYPE(KNOB)
+Q_DECLARE_METATYPE(COMMAND)
+Q_DECLARE_METATYPE(USBDEVICE)
 Q_DECLARE_METATYPE(codecType)
 Q_DECLARE_METATYPE(errorType)
-Q_DECLARE_METATYPE(enum duplexMode)
-Q_DECLARE_METATYPE(enum rptAccessTxRx)
-Q_DECLARE_METATYPE(struct rptrTone_t)
-Q_DECLARE_METATYPE(struct rptrAccessData_t)
-Q_DECLARE_METATYPE(enum usbFeatureType)
-Q_DECLARE_METATYPE(enum cmds)
 Q_DECLARE_METATYPE(rigTypedef)
-Q_DECLARE_METATYPE(struct memoryType)
-Q_DECLARE_METATYPE(struct antennaInfo)
-Q_DECLARE_METATYPE(struct scopeData)
 
 //void (*wfmain::logthistext)(QString text) = NULL;
 

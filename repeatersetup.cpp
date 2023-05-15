@@ -275,7 +275,7 @@ void repeaterSetup::populateDTCS()
     ui->rptDTCSCombo->addItem("754", quint16(754));
 }
 
-void repeaterSetup::receiveDuplexMode(duplexMode dm)
+void repeaterSetup::receiveDuplexMode(duplexMode_t dm)
 {
     currentdm = dm;
     ui->splitEnableChk->blockSignals(true);
@@ -314,7 +314,7 @@ void repeaterSetup::receiveDuplexMode(duplexMode dm)
     ui->splitEnableChk->blockSignals(false);
 }
 
-void repeaterSetup::handleRptAccessMode(rptAccessTxRx tmode)
+void repeaterSetup::handleRptAccessMode(rptAccessTxRx_t tmode)
 {
     // ratrXY
     // X = Transmit (T)one or (N)one or (D)CS
@@ -406,7 +406,7 @@ void repeaterSetup::handleUpdateCurrentMainFrequency(freqt mainfreq)
     this->currentMainFrequency = mainfreq;
 }
 
-void repeaterSetup::handleUpdateCurrentMainMode(mode_info m)
+void repeaterSetup::handleUpdateCurrentMainMode(modeInfo m)
 {
     // Used to set the secondary VFO to the same mode
     // (generally FM)
@@ -542,8 +542,8 @@ void repeaterSetup::on_rptDTCSCombo_activated(int index)
 
 void repeaterSetup::on_toneNone_clicked()
 {
-    rptAccessTxRx rm;
-    rptrAccessData_t rd;
+    rptAccessTxRx_t rm;
+    rptrAccessData rd;
     rm = ratrNN;
     rd.accessMode = rm;
     emit setRptAccessMode(rd);
@@ -558,8 +558,8 @@ void repeaterSetup::on_toneNone_clicked()
 
 void repeaterSetup::on_toneTone_clicked()
 {
-    rptAccessTxRx rm;
-    rptrAccessData_t rd;
+    rptAccessTxRx_t rm;
+    rptrAccessData rd;
     rm = ratrTN;
     rd.accessMode = rm;
     rptrTone_t rt;
@@ -580,8 +580,8 @@ void repeaterSetup::on_toneTone_clicked()
 
 void repeaterSetup::on_toneTSQL_clicked()
 {
-    rptAccessTxRx rm;
-    rptrAccessData_t rd;
+    rptAccessTxRx_t rm;
+    rptrAccessData rd;
     rm = ratrTT;
     rptrTone_t rt;
     rt.tone = (quint16)ui->rptToneCombo->currentData().toUInt();
@@ -601,7 +601,7 @@ void repeaterSetup::on_toneTSQL_clicked()
 
 void repeaterSetup::on_toneDTCS_clicked()
 {
-    rptrAccessData_t rd;
+    rptrAccessData rd;
     quint16 dcode=0;
 
     rd.accessMode = ratrDD;
@@ -795,7 +795,7 @@ void repeaterSetup::on_setRptrSubVFOBtn_clicked()
 {
     // Perhaps not needed
     // Set the secondary VFO to the selected repeater mode
-    rptrAccessData_t rd;
+    rptrAccessData rd;
     rd.useSecondaryVFO = true;
 
     if(ui->toneTone->isChecked())

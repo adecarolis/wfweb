@@ -22,14 +22,14 @@ public:
 
 signals:
     void getDuplexMode();
-    void setDuplexMode(duplexMode dm);
+    void setDuplexMode(duplexMode_t dm);
     void setTone(rptrTone_t tone);
     void setTSQL(rptrTone_t tsql);
     void setDTCS(quint16 dcode, bool tinv, bool rinv);
     void getTone();
     void getTSQL();
     void getDTCS();
-    void setRptAccessMode(rptrAccessData_t rd);
+    void setRptAccessMode(rptrAccessData rd);
     void getRptAccessMode();
     void setRptDuplexOffset(freqt f);
     void getRptDuplexOffset();
@@ -37,10 +37,10 @@ signals:
     void getSplitModeEnabled();
     void setQuickSplit(bool qsOn);
     void getTransmitFrequency();
-    // Use the duplexMode to communicate split.
+    // Use the duplexMode_t to communicate split.
     // void setSplitModeEnabled(bool splitEnabled);
     void setTransmitFrequency(freqt transmitFreq);
-    void setTransmitMode(mode_info m);
+    void setTransmitMode(modeInfo m);
     // VFO:
     void selectVFO(vfo_t v); // A,B,M,S
     void equalizeVFOsAB();
@@ -48,15 +48,15 @@ signals:
     void swapVFOs();
 
 public slots:
-    void receiveDuplexMode(duplexMode dm);
-    void handleRptAccessMode(rptAccessTxRx tmode);
+    void receiveDuplexMode(duplexMode_t dm);
+    void handleRptAccessMode(rptAccessTxRx_t tmode);
     void handleTone(quint16 tone);
     void handleTSQL(quint16 tsql);
     void handleDTCS(quint16 dcscode, bool tinv, bool rinv);
     // void handleSplitMode(bool splitEnabled);
     // void handleSplitFrequency(freqt transmitFreq);
     void handleUpdateCurrentMainFrequency(freqt mainfreq);
-    void handleUpdateCurrentMainMode(mode_info m);
+    void handleUpdateCurrentMainMode(modeInfo m);
     void handleTransmitStatus(bool amTransmitting);
     void handleRptOffsetFrequency(freqt f);
 
@@ -121,9 +121,9 @@ private:
 
     rigCapabilities rig;
     bool haveRig = false;
-    duplexMode currentdm;
-    mode_info currentModeMain;
-    mode_info modeTransmitVFO;
+    duplexMode_t currentdm;
+    modeInfo currentModeMain;
+    modeInfo modeTransmitVFO;
     freqt currentOffset;
     bool usedPlusSplit = false;
     bool amTransmitting = false;

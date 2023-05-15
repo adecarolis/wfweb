@@ -98,8 +98,8 @@ public:
             _mutex.unlock();
         }
     }
-    void set(stateTypes s, duplexMode x, bool u) {
-        if ((x != (duplexMode)map[s]._value) && ((!u && !map[s]._updated) || (u))) {
+    void set(stateTypes s, duplexMode_t x, bool u) {
+        if ((x != (duplexMode_t)map[s]._value) && ((!u && !map[s]._updated) || (u))) {
             _mutex.lock();
             map[s]._value = quint64(x);
             map[s]._valid = true;
@@ -127,7 +127,7 @@ public:
     qint32 getInt32(stateTypes s) { return qint32(map[s]._value); }
     quint32 getUInt32(stateTypes s) { return quint32(map[s]._value); }
     quint64 getInt64(stateTypes s) { return map[s]._value; }
-    duplexMode getDuplex(stateTypes s) { return duplexMode(map[s]._value); }
+    duplexMode_t getDuplex(stateTypes s) { return duplexMode_t(map[s]._value); }
     inputTypes getInput(stateTypes s) { return inputTypes(map[s]._value); }
     QMap<stateTypes, value> map;
 

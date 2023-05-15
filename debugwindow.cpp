@@ -117,9 +117,9 @@ QString debugWindow::getValue(QVariant val)
         {
             value = QString("Gr: %0 Me: %1").arg(val.value<uint>() >> 16 & 0xffff).arg(val.value<uint>() & 0xffff);
         }
-        else if (!strcmp(val.typeName(),"mode_info"))
+        else if (!strcmp(val.typeName(),"modeInfo"))
         {
-            mode_info mi = val.value<mode_info>();
+            modeInfo mi = val.value<modeInfo>();
             value = QString("%0(V:%1) D:%2 F%3").arg(mi.name).arg(mi.VFO).arg(mi.data).arg(mi.filter);
         }
         else if(!strcmp(val.typeName(),"freqt"))

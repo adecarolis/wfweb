@@ -30,7 +30,7 @@ struct preferences {
     unsigned int wflength;
     bool confirmExit;
     bool confirmPowerOff;
-    meterKind meter2Type;
+    meter_t meter2Type;
     bool clickDragTuningEnable;
 
     // Radio:
