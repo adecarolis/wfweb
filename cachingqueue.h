@@ -5,14 +5,17 @@
 #include <QThread>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QMap>
 #include <QMultiMap>
 #include <QVariant>
+#include <QQueue>
 #include <QRect>
 #include <atomic>
 #include <QWaitCondition>
+#include <QDateTime>
 
 #include "wfviewtypes.h"
-
+#include "rigidentities.h"
 
 enum queuePriority {
     // Use prime numbers for priority, so that each queue is processed
@@ -31,11 +34,21 @@ struct queueItem {
     queueItem (funcs command) : type(queueCommandGet), command(command) {};
     queueItem (funcs command, QVariant param) : type(queueCommandSet), command(command), param(param) {};
     queueItem (queueItemType type, funcs command, QVariant param) : type(type), command(command), param(param) {};
-
+    queuePriority priority;
     queueItemType type = queueCommandNone;
     funcs command = funcNone;
-    QVariant param;
+    QVariant param=QVariant();
     bool recurring = false;
+};
+
+struct cacheItem {
+    cacheItem () {};
+    cacheItem (funcs command, QVariant value) : command(command), value(value) {};
+
+    funcs command = funcNone;
+    QDateTime req=QDateTime();
+    QDateTime reply=QDateTime();
+    QVariant value=QVariant();
 };
 
 class cachingQueue : public QThread
@@ -44,24 +57,34 @@ class cachingQueue : public QThread
 
 signals:
     void haveCommand(queueItemType type, funcs func, QVariant param);
+    void sendValue(cacheItem item);
+
+public slots:
+    // Can be called directly or via emit.
+    void receiveValue(funcs func, QVariant value);
 
 private:
+
     static cachingQueue *instance;
+
     static QMutex mutex;
+
     QMultiMap <queuePriority,queueItem> queue;
-    QHash<funcs,QVariant> cache;
+    QMap<funcs,cacheItem> cache;
+    QQueue<cacheItem> items;
 
     // Command to set cache value
     void setCache(funcs func, QVariant val);
-    // Various commands to get cache value
-    QVariant getCache(funcs func);
-    bool getCache(funcs func, quint8& val);
-    bool getCache(funcs func, quint16& val);
-    bool getCache(funcs func, quint32& val);
+    queuePriority isRecurring(funcs func);
+
+
+    // Various other values
     std::atomic<bool> aborted=false;
     QWaitCondition waiting;
-    void run();
     quint64 queueInterval=0; // Don't start the timer!
+
+    // Functions
+    void run();
 
 protected:
     cachingQueue(QObject* parent = Q_NULLPTR) : QThread(parent) {};
@@ -74,11 +97,19 @@ public:
     static cachingQueue *getInstance(QObject* parent = Q_NULLPTR);
     void message(QString msg);
     void add(queuePriority prio ,funcs func, bool recurring=false);
-    void add(queuePriority,queueItem);
-    void addUnique(queuePriority,queueItem);
+    void add(queuePriority prio,queueItem item);
+    void addUnique(queuePriority prio ,funcs func, bool recurring=false);
+    void addUnique(queuePriority prio,queueItem item);
     void del(funcs func);
     void clear();
     void interval(quint64 val);
+    void updateCache(bool reply, funcs func, QVariant value=QVariant());
+
+    cacheItem getCache(funcs func);
+
+    QMap<funcs,cacheItem> getCacheItems();
+    QMultiMap <queuePriority,queueItem> getQueueItems();
+    void unlockMutex();
 };
 
 #endif // CACHINGQUEUE_H

@@ -42,13 +42,12 @@ void cachingQueue::run()
 
     QDeadlineTimer deadline(queueInterval);
     QMutexLocker locker(&mutex);
-    int counter=0;
+    quint64 counter=0; // Will run for many years!
     while (!aborted)
     {
         if (!waiting.wait(&mutex, deadline.remainingTime()))
         {
             // Time to process the queue - mutex is locked
-            //qInfo("Deadline!");
             queuePriority prio = priorityImmediate;
 
             // priorityNone=0, priorityImmediate=1, priorityHighest=2, priorityHigh=3, priorityMediumHigh=5, priorityMedium=7, priorityMediumLow=11, priorityLow=19, priorityLowest=23
@@ -69,12 +68,12 @@ void cachingQueue::run()
                     prio = priorityLow;
                 else if (counter % priorityLowest == 0)
                     prio = priorityLowest;
-            }
+            }            
             counter++;
             auto it = queue.find(prio);
             if (it != queue.end())
             {
-                queueItem item = it.value();
+                auto item = it.value();
 
                 emit haveCommand(item.type, item.command,item.param);
 
@@ -82,8 +81,10 @@ void cachingQueue::run()
                 while (it.key()==prio)
                     it++;
                 // Add it back into the queue
-                if (item.recurring)
+                if (item.recurring) {
                     queue.insert(it,prio,item);
+                    updateCache(false,item.command);
+                }
             }
 
             QCoreApplication::processEvents();
@@ -91,8 +92,10 @@ void cachingQueue::run()
 
         }
         else if (!aborted) {
-            // We have been woken by a command that needs immediate attention (mutex is locked)
-            qInfo("Message Received");
+            // Mutex is locked
+            while (!items.isEmpty()) {
+                emit sendValue(items.dequeue());
+            }
         }
     }
 }
@@ -106,24 +109,53 @@ void cachingQueue::interval(quint64 val)
 
 void cachingQueue::add(queuePriority prio ,funcs func, bool recurring)
 {
-    QMutexLocker locker(&mutex);
-    queue.insert(prio, queueItem(func,recurring));
-    if (recurring) qInfo() << "adding" << funcString[func] << "recurring" << recurring << "priority" << prio;
+    queueItem q(func,recurring);
+    add(prio,q);
 }
 
 void cachingQueue::add(queuePriority prio ,queueItem item)
 {
-    QMutexLocker locker(&mutex);
-    queue.insert(prio, item);
-    if (item.recurring) qInfo() << "adding" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio;
+    if (item.command != funcNone)
+    {
+        QMutexLocker locker(&mutex);
+        if (!item.recurring || isRecurring(item.command) != prio)
+        {
+            if (item.recurring && prio == queuePriority::priorityImmediate) {
+                qWarning() << "Warning, cannot add recurring command with immediate priority!" << funcString[item.command];
+            } else {
+                queue.insert(prio, item);
+                updateCache(false,item.command,item.param);
+                if (item.recurring) qInfo() << "adding" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio;
+            }
+        }
+    }
 }
+
+void cachingQueue::addUnique(queuePriority prio ,funcs func, bool recurring)
+{
+    queueItem q(func,recurring);
+    addUnique(prio,q);
+}
+
+
 
 void cachingQueue::addUnique(queuePriority prio ,queueItem item)
 {
-    QMutexLocker locker(&mutex);
-    queue.erase(std::remove_if(queue.begin(), queue.end(), [item](const queueItem& c) {  return (c.command == item.command); }), queue.end());
-    queue.insert(prio, item);
-    if (item.recurring) qInfo() << "adding" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio;
+    if (item.command != funcNone)
+    {
+        QMutexLocker locker(&mutex);
+        if (!item.recurring || isRecurring(item.command) != prio)
+        {
+            if (item.recurring && prio == queuePriority::priorityImmediate) {
+                qWarning() << "Warning, cannot add unique recurring command with immediate priority!" << funcString[item.command];
+            } else {
+                queue.erase(std::remove_if(queue.begin(), queue.end(), [item](const queueItem& c) {  return (c.command == item.command && c.recurring == item.recurring); }), queue.end());
+                queue.insert(prio, item);
+                updateCache(false,item.command,item.param);
+                if (item.recurring) qInfo() << "adding" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio;
+            }
+        }
+    }
 }
 
 void cachingQueue::del(funcs func)
@@ -131,6 +163,17 @@ void cachingQueue::del(funcs func)
     QMutexLocker locker(&mutex);
     queue.erase(std::remove_if(queue.begin(), queue.end(), [func](const queueItem& c) {  return (c.command == func); }), queue.end());
     qInfo() << "deleting" << funcString[func];
+}
+
+queuePriority cachingQueue::isRecurring(funcs func)
+{
+    // Does NOT lock the mutex
+    auto rec = std::find_if(queue.begin(), queue.end(), [func](const queueItem& c) {  return (c.command == func && c.recurring); });
+    if (rec != queue.end())
+    {
+        return rec.value().priority;
+    }
+    return queuePriority::priorityNone;
 }
 
 void cachingQueue::clear()
@@ -144,49 +187,67 @@ void cachingQueue::message(QString msg)
     waiting.wakeOne();
 }
 
-
-void cachingQueue::setCache(funcs func, QVariant val)
+void cachingQueue::receiveValue(funcs func, QVariant value)
 {
-    QMutexLocker locker = QMutexLocker(&mutex);
-    cache.insert(func,val);
+    QMutexLocker locker(&mutex);
+    cacheItem c = cacheItem(func,value);
+    items.enqueue(c);
+    updateCache(true,func,value);
+    waiting.wakeOne();
+}
+
+void cachingQueue::updateCache(bool reply, funcs func, QVariant value)
+{
+    // Mutex MUST be locked by the calling function.
+    auto cv = cache.find(func);
+    if (cv != cache.end()) {
+        if (reply) {
+            cv->reply = QDateTime::currentDateTime();
+            cv->value = value;
+        } else {
+            cv->req = QDateTime::currentDateTime();
+        }
+        return;
+    }
+
+    cacheItem c;
+    c.command = func;
+    if (reply) {
+        c.reply = QDateTime::currentDateTime();
+        c.value = value;
+    } else {
+        c.req = QDateTime::currentDateTime();
+    }
+    cache.insert(func,c);
 }
 
 
-QVariant cachingQueue::getCache(funcs func)
+cacheItem cachingQueue::getCache(funcs func)
 {
-    QMutexLocker locker = QMutexLocker(&mutex);
+    QMutexLocker locker(&mutex);
     auto it = cache.find(func);
     if (it != cache.end())
     {
         return it.value();
     }
-    return NULL;
+    return cacheItem();
 }
 
-bool cachingQueue::getCache(funcs func, quint8& val)
+//Calling function MUST call unlockMutex() once finished with data
+QMap<funcs,cacheItem> cachingQueue::getCacheItems()
 {
-    QVariant variant = getCache(func);
-    if (variant.isNull())
-        return false;
-    val=variant.toUInt();
-    return true;
+    mutex.lock();
+    return cache;
 }
 
-bool cachingQueue::getCache(funcs func, quint16& val)
+//Calling function MUST call unlockMutex() once finished with data
+QMultiMap <queuePriority,queueItem> cachingQueue::getQueueItems()
 {
-    QVariant variant = getCache(func);
-    if (variant.isNull())
-        return false;
-    val=variant.toUInt();
-    return true;
+    mutex.lock();
+    return queue;
 }
 
-bool cachingQueue::getCache(funcs func, quint32& val)
+void cachingQueue::unlockMutex()
 {
-    QVariant variant = getCache(func);
-    if (variant.isNull())
-        return false;
-    val=variant.toUInt();
-    return true;
+    mutex.unlock();
 }
-

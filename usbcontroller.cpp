@@ -680,14 +680,14 @@ void usbController::runTimer()
                             qDebug(logUsbControl()) << QString("On Button event for button %0: %1").arg(but->num).arg(but->onCommand->text);
                             if (but->onCommand->command == cmdPageUp)
                                 emit changePage(dev, dev->currentPage+1);
-                            else if (but->onCommand->command == cmdPageDown)
+                            else if (but->onCommand->command == funcPageDown)
                                 emit changePage(dev, dev->currentPage-1);
-                            else if (but->onCommand->command == cmdLCDSpectrum)
-                                dev->lcd = cmdLCDSpectrum;
-                            else if (but->onCommand->command == cmdLCDWaterfall)
-                                dev->lcd = cmdLCDWaterfall;
-                            else if (but->onCommand->command == cmdLCDNothing) {
-                                dev->lcd = cmdLCDNothing;
+                            else if (but->onCommand->command == funcLCDSpectrum)
+                                dev->lcd = funcLCDSpectrum;
+                            else if (but->onCommand->command == funcLCDWaterfall)
+                                dev->lcd = funcLCDWaterfall;
+                            else if (but->onCommand->command == funcLCDNothing) {
+                                dev->lcd = funcLCDNothing;
                                 QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureColor,i,"",Q_NULLPTR, &dev->color); });
                             }else {
                                 emit button(but->onCommand);
@@ -701,16 +701,16 @@ void usbController::runTimer()
                         else if ((but->toggle && but->isOn) && ((tempButtons >> i & 1) && !(dev->buttons >> i & 1)))
                         {
                             qDebug(logUsbControl()) << QString("Off Button (toggle) event for button %0: %1").arg(but->num).arg(but->onCommand->text);
-                            if (but->offCommand->command == cmdPageUp)
+                            if (but->offCommand->command == funcPageUp)
                                 emit changePage(dev, dev->currentPage+1);
-                            else if (but->offCommand->command == cmdPageDown)
+                            else if (but->offCommand->command == funcPageDown)
                                 emit changePage(dev, dev->currentPage-1);
-                            else if (but->offCommand->command == cmdLCDSpectrum)
-                                dev->lcd = cmdLCDSpectrum;
-                            else if (but->offCommand->command == cmdLCDWaterfall)
-                                dev->lcd = cmdLCDWaterfall;
-                            else if (but->offCommand->command == cmdLCDNothing) {
-                                dev->lcd = cmdLCDNothing;
+                            else if (but->offCommand->command == funcLCDSpectrum)
+                                dev->lcd = funcLCDSpectrum;
+                            else if (but->offCommand->command == funcLCDWaterfall)
+                                dev->lcd = funcLCDWaterfall;
+                            else if (but->offCommand->command == funcLCDNothing) {
+                                dev->lcd = funcLCDNothing;
                                 QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureColor,i,"",Q_NULLPTR, &dev->color); });
                             } else {
                                 emit button(but->offCommand);
@@ -720,13 +720,13 @@ void usbController::runTimer()
                         }
                         else if ((!but->toggle && but->isOn) && ((dev->buttons >> i & 1) && !(tempButtons >> i & 1)))
                         {
-                            if (but->offCommand->command == cmdLCDSpectrum)
-                                dev->lcd = cmdLCDSpectrum;
-                            else if (but->offCommand->command == cmdLCDWaterfall)
-                                dev->lcd = cmdLCDWaterfall;
-                            else if (but->offCommand->command == cmdLCDNothing) {
+                            if (but->offCommand->command == funcLCDSpectrum)
+                                dev->lcd = funcLCDSpectrum;
+                            else if (but->offCommand->command == funcLCDWaterfall)
+                                dev->lcd = funcLCDWaterfall;
+                            else if (but->offCommand->command == funcLCDNothing) {
                                 QTimer::singleShot(0, this, [=]() { sendRequest(dev,usbFeatureType::featureColor,i,"",Q_NULLPTR, &dev->color); });
-                                dev->lcd = cmdLCDNothing;
+                                dev->lcd = funcLCDNothing;
                             } else
                             {
                                 qDebug(logUsbControl()) << QString("Off Button event for button %0: %1").arg(but->num).arg(but->offCommand->text);
@@ -1585,103 +1585,105 @@ void usbController::loadCommands()
     int num = 0;
     // Important commands at the top!
     commands.append(COMMAND(num++, "None", commandAny, cmdNone, (quint8)0x0));
-    commands.append(COMMAND(num++, "PTT On", commandButton, cmdSetPTT, cmdGetPTT, (quint8)0x1));
-    commands.append(COMMAND(num++, "PTT Off", commandButton, cmdSetPTT, cmdGetPTT, (quint8)0x0));
-    commands.append(COMMAND(num++, "VFOA", commandKnob, cmdSetFreq, cmdGetFreq, (quint8)0x0));
-    commands.append(COMMAND(num++, "VFOB", commandKnob, cmdSetFreq, cmdGetFreq, (quint8)0x1));
-    commands.append(COMMAND(num++, "Freq Down", commandButton, cmdSetFreq, cmdGetFreq, (int)-1));
-    commands.append(COMMAND(num++, "Freq Up", commandButton, cmdSetFreq, cmdGetFreq, (int)1));
-    commands.append(COMMAND(num++, "PTT Off", commandButton, cmdSetPTT, cmdGetPTT, (quint8)0x0));
-    commands.append(COMMAND(num++, "PTT Toggle", commandButton, cmdPTTToggle, cmdGetPTT, (quint8)0x0));
-    commands.append(COMMAND(num++, "Span/Step", commandKnob, cmdSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Tune", commandButton, cmdStartATU, (quint8)0x0));
-    commands.append(COMMAND(num++, "Span/Step", commandButton, cmdSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Step+", commandButton, cmdSetStepUp, (quint8)0x0));
-    commands.append(COMMAND(num++, "Step-", commandButton, cmdSetStepDown, (quint8)0x0));
-    commands.append(COMMAND(num++, "Span+", commandButton, cmdSetSpanUp, (quint8)0x0));
-    commands.append(COMMAND(num++, "Span-", commandButton, cmdSetSpanDown, (quint8)0x0));
-    commands.append(COMMAND(num++, "Modes", commandButton, cmdSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Mode+", commandButton, cmdSetModeUp, (quint8)0x0));
-    commands.append(COMMAND(num++, "Mode-", commandButton, cmdSetModeDown, (quint8)0x0));
-    commands.append(COMMAND(num++, "Mode LSB", commandButton, cmdSetMode, modeLSB));
-    commands.append(COMMAND(num++, "Mode USB", commandButton, cmdSetMode, modeUSB));
-    commands.append(COMMAND(num++, "Mode LSBD", commandButton, cmdSetMode, modeLSB_D));
-    commands.append(COMMAND(num++, "Mode USBD", commandButton, cmdSetMode, modeUSB_D));
-    commands.append(COMMAND(num++, "Mode CW", commandButton, cmdSetMode, modeCW));
-    commands.append(COMMAND(num++, "Mode CWR", commandButton, cmdSetMode, modeCW_R));
-    commands.append(COMMAND(num++, "Mode FM", commandButton, cmdSetMode, modeFM));
-    commands.append(COMMAND(num++, "Mode AM", commandButton, cmdSetMode, modeAM));
-    commands.append(COMMAND(num++, "Mode RTTY", commandButton, cmdSetMode, modeRTTY));
-    commands.append(COMMAND(num++, "Mode RTTYR", commandButton, cmdSetMode, modeRTTY_R));
-    commands.append(COMMAND(num++, "Mode PSK", commandButton, cmdSetMode, modePSK));
-    commands.append(COMMAND(num++, "Mode PSKR", commandButton, cmdSetMode, modePSK_R));
-    commands.append(COMMAND(num++, "Mode DV", commandButton, cmdSetMode, modeDV));
-    commands.append(COMMAND(num++, "Mode DD", commandButton, cmdSetMode, modeDD));
-    commands.append(COMMAND(num++, "Bands", commandButton, cmdSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Band+", commandButton, cmdSetBandUp, (quint8)0x0));
-    commands.append(COMMAND(num++, "Band-", commandButton, cmdSetBandDown, (quint8)0x0));
-    commands.append(COMMAND(num++, "Band 23cm", commandButton, cmdGetBandStackReg, band23cm));
-    commands.append(COMMAND(num++, "Band 70cm", commandButton, cmdGetBandStackReg, band70cm));
-    commands.append(COMMAND(num++, "Band 2m", commandButton, cmdGetBandStackReg, band2m));
-    commands.append(COMMAND(num++, "Band AIR", commandButton, cmdGetBandStackReg, bandAir));
-    commands.append(COMMAND(num++, "Band WFM", commandButton, cmdGetBandStackReg, bandWFM));
-    commands.append(COMMAND(num++, "Band 4m", commandButton, cmdGetBandStackReg, band4m));
-    commands.append(COMMAND(num++, "Band 6m", commandButton, cmdGetBandStackReg, band6m));
-    commands.append(COMMAND(num++, "Band 10m", commandButton, cmdGetBandStackReg, band10m));
-    commands.append(COMMAND(num++, "Band 12m", commandButton, cmdGetBandStackReg, band12m));
-    commands.append(COMMAND(num++, "Band 15m", commandButton, cmdGetBandStackReg, band15m));
-    commands.append(COMMAND(num++, "Band 17m", commandButton, cmdGetBandStackReg, band17m));
-    commands.append(COMMAND(num++, "Band 20m", commandButton, cmdGetBandStackReg, band20m));
-    commands.append(COMMAND(num++, "Band 30m", commandButton, cmdGetBandStackReg, band30m));
-    commands.append(COMMAND(num++, "Band 40m", commandButton, cmdGetBandStackReg, band40m));
-    commands.append(COMMAND(num++, "Band 60m", commandButton, cmdGetBandStackReg, band60m));
-    commands.append(COMMAND(num++, "Band 80m", commandButton, cmdGetBandStackReg, band80m));
-    commands.append(COMMAND(num++, "Band 160m", commandButton, cmdGetBandStackReg, band160m));
-    commands.append(COMMAND(num++, "Band 630m", commandButton, cmdGetBandStackReg, band630m));
-    commands.append(COMMAND(num++, "Band 2200m", commandButton, cmdGetBandStackReg, band2200m));
-    commands.append(COMMAND(num++, "Band GEN", commandButton, cmdGetBandStackReg, bandGen));
-    commands.append(COMMAND(num++, "NB/NR", commandButton, cmdSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "NR On", commandButton, cmdSetNR, cmdGetNR, (quint8)0x01));
-    commands.append(COMMAND(num++, "NR Off", commandButton, cmdSetNR, cmdGetNR, (quint8)0x0));
-    commands.append(COMMAND(num++, "NB On", commandButton, cmdSetNB, cmdGetNB, (quint8)0x01));
-    commands.append(COMMAND(num++, "NB Off", commandButton, cmdSetNB, cmdGetNB, (quint8)0x0));
-    commands.append(COMMAND(num++, "Moni On", commandButton, cmdSetMonitor, cmdGetMonitor, (quint8)0x01));
-    commands.append(COMMAND(num++, "Moni Off", commandButton, cmdSetMonitor, cmdGetMonitor, (quint8)0x0));
-    commands.append(COMMAND(num++, "Comp On", commandButton, cmdSetComp, cmdGetComp, (quint8)0x01));
-    commands.append(COMMAND(num++, "Comp Off", commandButton, cmdSetComp, cmdGetComp, (quint8)0x0));
-    commands.append(COMMAND(num++, "Vox On", commandButton, cmdSetVox, cmdGetVox, (quint8)0x01));
-    commands.append(COMMAND(num++, "Vox Off", commandButton, cmdSetVox, cmdGetVox, (quint8)0x0));
-    commands.append(COMMAND(num++, "Split", commandButton, cmdNone, (quint8)0x0));
-    commands.append(COMMAND(num++, "Split On", commandButton, cmdSetQuickSplit, cmdGetDuplexMode, (quint8)0x01));
-    commands.append(COMMAND(num++, "Split Off", commandButton, cmdSetQuickSplit, cmdGetDuplexMode, (quint8)0x0));
-    commands.append(COMMAND(num++, "Swap VFO", commandButton, cmdVFOSwap, (quint8)0x0));
-    commands.append(COMMAND(num++, "Scope", commandButton, cmdNone, (quint8)0x0));
-    commands.append(COMMAND(num++, "Spectrum", commandButton, cmdLCDSpectrum, (quint8)0x0));
-    commands.append(COMMAND(num++, "Waterfall", commandButton, cmdLCDWaterfall, (quint8)0x0));
-    commands.append(COMMAND(num++, "No Display", commandButton, cmdLCDNothing, (quint8)0x0));
+    commands.append(COMMAND(num++, "PTT On", commandButton, funcTransceiverStatus, funcTransceiverStatus, (quint8)0x1));
+    commands.append(COMMAND(num++, "PTT Off", commandButton, funcTransceiverStatus, funcTransceiverStatus, (quint8)0x0));
+    commands.append(COMMAND(num++, "VFOA", commandKnob, funcFreqSet, funcFreqSet, (quint8)0x0));
+    commands.append(COMMAND(num++, "VFOB", commandKnob, funcFreqSet, funcFreqSet, (quint8)0x1));
+    commands.append(COMMAND(num++, "Freq Down", commandButton, funcFreqSet, funcFreqSet, (int)-1));
+    commands.append(COMMAND(num++, "Freq Up", commandButton, funcFreqSet, funcFreqSet, (int)1));
+    commands.append(COMMAND(num++, "PTT Off", commandButton, funcTransceiverStatus, funcTransceiverStatus, (quint8)0x0));
+    commands.append(COMMAND(num++, "PTT Toggle", commandButton, funcTransceiverStatus, funcTransceiverStatus, (quint8)0x0));
+    commands.append(COMMAND(num++, "Span/Step", commandKnob, funcSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "Tune", commandButton, funcTunerStatus, (quint8)0x0));
+    commands.append(COMMAND(num++, "Span/Step", commandButton, funcSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "Step+", commandButton, funcTuningStep, 100));
+    commands.append(COMMAND(num++, "Step-", commandButton, funcTuningStep, -100));
+    commands.append(COMMAND(num++, "Span+", commandButton, funcScopeCenterSpan, 100));
+    commands.append(COMMAND(num++, "Span-", commandButton, funcScopeCenterSpan, -100));
+    commands.append(COMMAND(num++, "Modes", commandButton, funcSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "Mode+", commandButton, funcModeSet, 100));
+    commands.append(COMMAND(num++, "Mode-", commandButton, funcModeSet, -100));
+    commands.append(COMMAND(num++, "Mode LSB", commandButton, funcModeSet, modeLSB));
+    commands.append(COMMAND(num++, "Mode USB", commandButton, funcModeSet, modeUSB));
+    commands.append(COMMAND(num++, "Mode LSBD", commandButton, funcModeSet, modeLSB_D));
+    commands.append(COMMAND(num++, "Mode USBD", commandButton, funcModeSet, modeUSB_D));
+    commands.append(COMMAND(num++, "Mode CW", commandButton, funcModeSet, modeCW));
+    commands.append(COMMAND(num++, "Mode CWR", commandButton, funcModeSet, modeCW_R));
+    commands.append(COMMAND(num++, "Mode FM", commandButton, funcModeSet, modeFM));
+    commands.append(COMMAND(num++, "Mode AM", commandButton, funcModeSet, modeAM));
+    commands.append(COMMAND(num++, "Mode RTTY", commandButton, funcModeSet, modeRTTY));
+    commands.append(COMMAND(num++, "Mode RTTYR", commandButton, funcModeSet, modeRTTY_R));
+    commands.append(COMMAND(num++, "Mode PSK", commandButton, funcModeSet, modePSK));
+    commands.append(COMMAND(num++, "Mode PSKR", commandButton, funcModeSet, modePSK_R));
+    commands.append(COMMAND(num++, "Mode DV", commandButton, funcModeSet, modeDV));
+    commands.append(COMMAND(num++, "Mode DD", commandButton, funcModeSet, modeDD));
+    commands.append(COMMAND(num++, "Bands", commandButton, funcSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "Band+", commandButton, funcBandStackReg, 100));
+    commands.append(COMMAND(num++, "Band-", commandButton, funcBandStackReg, -100));
+    commands.append(COMMAND(num++, "Band 23cm", commandButton, funcBandStackReg, band23cm));
+    commands.append(COMMAND(num++, "Band 70cm", commandButton, funcBandStackReg, band70cm));
+    commands.append(COMMAND(num++, "Band 2m", commandButton, funcBandStackReg, band2m));
+    commands.append(COMMAND(num++, "Band AIR", commandButton, funcBandStackReg, bandAir));
+    commands.append(COMMAND(num++, "Band WFM", commandButton, funcBandStackReg, bandWFM));
+    commands.append(COMMAND(num++, "Band 4m", commandButton, funcBandStackReg, band4m));
+    commands.append(COMMAND(num++, "Band 6m", commandButton, funcBandStackReg, band6m));
+    commands.append(COMMAND(num++, "Band 10m", commandButton, funcBandStackReg, band10m));
+    commands.append(COMMAND(num++, "Band 12m", commandButton, funcBandStackReg, band12m));
+    commands.append(COMMAND(num++, "Band 15m", commandButton, funcBandStackReg, band15m));
+    commands.append(COMMAND(num++, "Band 17m", commandButton, funcBandStackReg, band17m));
+    commands.append(COMMAND(num++, "Band 20m", commandButton, funcBandStackReg, band20m));
+    commands.append(COMMAND(num++, "Band 30m", commandButton, funcBandStackReg, band30m));
+    commands.append(COMMAND(num++, "Band 40m", commandButton, funcBandStackReg, band40m));
+    commands.append(COMMAND(num++, "Band 60m", commandButton, funcBandStackReg, band60m));
+    commands.append(COMMAND(num++, "Band 80m", commandButton, funcBandStackReg, band80m));
+    commands.append(COMMAND(num++, "Band 160m", commandButton, funcBandStackReg, band160m));
+    commands.append(COMMAND(num++, "Band 630m", commandButton, funcBandStackReg, band630m));
+    commands.append(COMMAND(num++, "Band 2200m", commandButton, funcBandStackReg, band2200m));
+    commands.append(COMMAND(num++, "Band GEN", commandButton, funcBandStackReg, bandGen));
+    commands.append(COMMAND(num++, "NB/NR", commandButton, funcSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "NR On", commandButton, funcNoiseReduction, cmdGetNR, (quint8)0x01));
+    commands.append(COMMAND(num++, "NR Off", commandButton, funcNoiseReduction, cmdGetNR, (quint8)0x0));
+    commands.append(COMMAND(num++, "NB On", commandButton, funcNoiseBlanker, cmdGetNB, (quint8)0x01));
+    commands.append(COMMAND(num++, "NB Off", commandButton, funcNoiseBlanker, cmdGetNB, (quint8)0x0));
+    commands.append(COMMAND(num++, "Moni On", commandButton, funcMonitor, cmdGetMonitor, (quint8)0x01));
+    commands.append(COMMAND(num++, "Moni Off", commandButton, funcMonitor, cmdGetMonitor, (quint8)0x0));
+    commands.append(COMMAND(num++, "Comp On", commandButton, funcCompressor, cmdGetComp, (quint8)0x01));
+    commands.append(COMMAND(num++, "Comp Off", commandButton, funcCompressor, cmdGetComp, (quint8)0x0));
+    commands.append(COMMAND(num++, "Vox On", commandButton, funcVox, cmdGetVox, (quint8)0x01));
+    commands.append(COMMAND(num++, "Vox Off", commandButton, funcVox, cmdGetVox, (quint8)0x0));
+    commands.append(COMMAND(num++, "Split", commandButton, funcSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "Split On", commandButton, funcQuickSplit, cmdGetDuplexMode, (quint8)0x01));
+    commands.append(COMMAND(num++, "Split Off", commandButton, funcQuickSplit, cmdGetDuplexMode, (quint8)0x0));
+    commands.append(COMMAND(num++, "Swap VFO AB", commandButton, funcVFOSwapAB, (quint8)0x0));
+    commands.append(COMMAND(num++, "Swap VFO MS", commandButton, funcVFOSwapMS, (quint8)0x0));
+    commands.append(COMMAND(num++, "Scope", commandButton, funcSeparator, (quint8)0x0));
+    commands.append(COMMAND(num++, "Spectrum", commandButton, funcLCDSpectrum, (quint8)0x0));
+    commands.append(COMMAND(num++, "Waterfall", commandButton, funcLCDWaterfall, (quint8)0x0));
+    commands.append(COMMAND(num++, "No Display", commandButton, funcLCDNothing, (quint8)0x0));
     commands.append(COMMAND(num++, "Pages", commandButton, cmdSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "Page Down", commandButton, cmdPageDown, (quint8)0x0));
-    commands.append(COMMAND(num++, "Page Up", commandButton, cmdPageUp, (quint8)0x0));
+    commands.append(COMMAND(num++, "Page Down", commandButton, funcPageDown, (quint8)0x0));
+    commands.append(COMMAND(num++, "Page Up", commandButton, funcPageUp, (quint8)0x0));
 
-    commands.append(COMMAND(num++, "AF Gain", commandKnob, cmdSetAfGain, cmdGetAfGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "RF Gain", commandKnob, cmdSetRxRfGain, cmdGetRxGain,  (quint8)0xff));
-    commands.append(COMMAND(num++, "TX Power", commandKnob, cmdSetTxPower, cmdGetTxPower, (quint8)0xff));
-    commands.append(COMMAND(num++, "Mic Gain", commandKnob, cmdSetMicGain, cmdGetMicGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "Mod Level", commandKnob, cmdSetModLevel, cmdNone, (quint8)0xff));
-    commands.append(COMMAND(num++, "Squelch", commandKnob, cmdSetSql, cmdGetSql, (quint8)0xff));
-    commands.append(COMMAND(num++, "Monitor", commandKnob, cmdSetMonitorGain, cmdGetMonitorGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "Compressor", commandKnob, cmdSetCompLevel, cmdGetCompLevel, (quint8)0xff));
-    commands.append(COMMAND(num++, "Vox Level", commandKnob, cmdSetVoxGain, cmdGetVoxGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "Anti-Vox", commandKnob, cmdSetAntiVoxGain, cmdGetAntiVoxGain, (quint8)0xff));
-    commands.append(COMMAND(num++, "NB Level", commandKnob, cmdSetNBLevel, cmdGetNBLevel, (quint8)0xff));
-    commands.append(COMMAND(num++, "NR Level", commandKnob, cmdSetNRLevel, cmdGetNRLevel, (quint8)0xff));
+    commands.append(COMMAND(num++, "AF Gain", commandKnob, funcAfGain, funcAfGain, (quint8)0xff));
+    commands.append(COMMAND(num++, "RF Gain", commandKnob, funcRfGain, funcRfGain,  (quint8)0xff));
+    commands.append(COMMAND(num++, "TX Power", commandKnob, funcRFPower, funcRFPower, (quint8)0xff));
+    commands.append(COMMAND(num++, "Mic Gain", commandKnob, funcMicGain, funcMicGain, (quint8)0xff));
+    commands.append(COMMAND(num++, "Mod Level", commandKnob, funcDATAOffMod, funcDATAOffMod, (quint8)0xff));
+    commands.append(COMMAND(num++, "Data Mod", commandKnob, funcDATAOffMod, funcDATAOffMod, (quint8)0xff));
+    commands.append(COMMAND(num++, "Squelch", commandKnob, funcSquelch, funcSquelch, (quint8)0xff));
+    commands.append(COMMAND(num++, "Monitor", commandKnob, funcMonitorGain, funcMonitorGain, (quint8)0xff));
+    commands.append(COMMAND(num++, "Compressor", commandKnob, funcCompressorLevel, funcCompressorLevel, (quint8)0xff));
+    commands.append(COMMAND(num++, "Vox Level", commandKnob, funcVoxGain, funcVoxGain, (quint8)0xff));
+    commands.append(COMMAND(num++, "Anti-Vox", commandKnob, funcAntiVoxGain, funcAntiVoxGain, (quint8)0xff));
+    commands.append(COMMAND(num++, "NB Level", commandKnob, funcNBLevel, funcNBLevel, (quint8)0xff));
+    commands.append(COMMAND(num++, "NR Level", commandKnob, funcNRLevel, funcNRLevel, (quint8)0xff));
     commands.append(COMMAND(num++, "Span/Step", commandKnob, cmdSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "IF Shift", commandKnob, cmdSetIFShift, cmdGetIFShift, (quint8)0xff));
-    commands.append(COMMAND(num++, "In PBT", commandKnob, cmdSetTPBFInner, cmdGetTPBFInner, (quint8)0xff));
-    commands.append(COMMAND(num++, "Out PBT", commandKnob, cmdSetTPBFOuter, cmdGetTPBFOuter, (quint8)0xff));
+    commands.append(COMMAND(num++, "IF Shift", commandKnob, funcIFShift, funcIFShift, (quint8)0xff));
+    commands.append(COMMAND(num++, "In PBT", commandKnob, funcPBTInner, funcPBTInner, (quint8)0xff));
+    commands.append(COMMAND(num++, "Out PBT", commandKnob, funcPBTOuter, funcPBTOuter, (quint8)0xff));
     commands.append(COMMAND(num++, "Span/Step", commandKnob, cmdSeparator, (quint8)0x0));
-    commands.append(COMMAND(num++, "CW Pitch", commandKnob, cmdSetCwPitch, cmdGetCwPitch, (quint8)0xff));
-    commands.append(COMMAND(num++, "CW Speed", commandKnob, cmdSetKeySpeed, cmdGetKeySpeed, (quint8)0xff));
+    commands.append(COMMAND(num++, "CW Pitch", commandKnob, funcCwPitch, funcCwPitch, (quint8)0xff));
+    commands.append(COMMAND(num++, "CW Speed", commandKnob, funcKeySpeed, funcKeySpeed, (quint8)0xff));
 }
 
 
@@ -1951,7 +1953,7 @@ void usbController::restoreController(USBDEVICE* dev, QString file)
     dev->speed = (quint8)settings->value("Speed", 2).toInt();
     dev->timeout = (quint8)settings->value("Timeout", 30).toInt();
     dev->color.setNamedColor(settings->value("Color", QColor(Qt::white).name(QColor::HexArgb)).toString());
-    dev->lcd = (cmds)settings->value("LCD",0).toInt();
+    dev->lcd = (funcs)settings->value("LCD",0).toInt();
 
     qInfo(logUsbControl()) << "Restore of" << dev->product << "path" << dev->path << "from" << file;
 

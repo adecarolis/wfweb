@@ -233,6 +233,7 @@ SOURCES += main.cpp\
     cachingqueue.cpp \
     cwsender.cpp \
     cwsidetone.cpp \
+    debugwindow.cpp \
     loggingwindow.cpp \
     memories.cpp \
     rigcreator.cpp \
@@ -276,6 +277,7 @@ HEADERS  += wfmain.h \
     commhandler.h \
     cwsender.h \
     cwsidetone.h \
+    debugwindow.h \
     loggingwindow.h \
     memories.h \
     prefs.h \
@@ -325,6 +327,7 @@ HEADERS  += wfmain.h \
 FORMS    += wfmain.ui \
     calibrationwindow.ui \
     cwsender.ui \
+    debugwindow.ui \
     loggingwindow.ui \
     memories.ui \
     rigcreator.ui \

@@ -58,26 +58,26 @@ void transceiverAdjustments::on_IFShiftSlider_valueChanged(int value)
     }
     else
     {
-        unsigned char inner = ui->TPBFInnerSlider->value();
-        unsigned char outer = ui->TPBFOuterSlider->value();
+        unsigned char inner = ui->PBTInnerSlider->value();
+        unsigned char outer = ui->PBTOuterSlider->value();
         int shift = value - previousIFShift;
         inner = qMax( 0, qMin(255,int (inner + shift)) );
         outer = qMax( 0, qMin(255,int (outer + shift)) );
 
-        ui->TPBFInnerSlider->setValue(inner);
-        ui->TPBFOuterSlider->setValue(outer);
+        ui->PBTInnerSlider->setValue(inner);
+        ui->PBTOuterSlider->setValue(outer);
         previousIFShift = value;
     }
 }
 
-void transceiverAdjustments::on_TPBFInnerSlider_valueChanged(int value)
+void transceiverAdjustments::on_PBTInnerSlider_valueChanged(int value)
 {
-    emit setTPBFInner(value);
+    emit setPBTInner(value);
 }
 
-void transceiverAdjustments::on_TPBFOuterSlider_valueChanged(int value)
+void transceiverAdjustments::on_PBTOuterSlider_valueChanged(int value)
 {
-    emit setTPBFOuter(value);
+    emit setPBTOuter(value);
 }
 
 void transceiverAdjustments::setRig(rigCapabilities rig)
@@ -88,11 +88,11 @@ void transceiverAdjustments::setRig(rigCapabilities rig)
     //ui->IFShiftSlider->setVisible(rigCaps.hasIFShift);
     //ui->IFShiftLabel->setVisible(rigCaps.hasIFShift);
 
-    ui->TPBFInnerSlider->setVisible(rigCaps.commands.contains(funcPBTInner));
-    ui->TPBFInnerLabel->setVisible(rigCaps.commands.contains(funcPBTInner));
+    ui->PBTInnerSlider->setVisible(rigCaps.commands.contains(funcPBTInner));
+    ui->PBTInnerLabel->setVisible(rigCaps.commands.contains(funcPBTInner));
 
-    ui->TPBFOuterSlider->setVisible(rigCaps.commands.contains(funcPBTOuter));
-    ui->TPBFOuterLabel->setVisible(rigCaps.commands.contains(funcPBTOuter));
+    ui->PBTOuterSlider->setVisible(rigCaps.commands.contains(funcPBTOuter));
+    ui->PBTOuterLabel->setVisible(rigCaps.commands.contains(funcPBTOuter));
 
     haveRigCaps = true;
 }
@@ -105,18 +105,18 @@ void transceiverAdjustments::updateIFShift(unsigned char level)
     ui->IFShiftSlider->blockSignals(false);
 }
 
-void transceiverAdjustments::updateTPBFInner(unsigned char level)
+void transceiverAdjustments::updatePBTInner(unsigned char level)
 {
-    ui->TPBFInnerSlider->blockSignals(true);
-    ui->TPBFInnerSlider->setValue(level);
-    ui->TPBFInnerSlider->blockSignals(false);
+    ui->PBTInnerSlider->blockSignals(true);
+    ui->PBTInnerSlider->setValue(level);
+    ui->PBTInnerSlider->blockSignals(false);
 }
 
-void transceiverAdjustments::updateTPBFOuter(unsigned char level)
+void transceiverAdjustments::updatePBTOuter(unsigned char level)
 {
-    ui->TPBFOuterSlider->blockSignals(true);
-    ui->TPBFOuterSlider->setValue(level);
-    ui->TPBFOuterSlider->blockSignals(false);
+    ui->PBTOuterSlider->blockSignals(true);
+    ui->PBTOuterSlider->setValue(level);
+    ui->PBTOuterSlider->blockSignals(false);
 }
 
 void transceiverAdjustments::updatePassband(quint16 passbandHz)
@@ -137,8 +137,8 @@ void transceiverAdjustments::updatePassband(quint16 passbandHz)
 
 void transceiverAdjustments::on_resetPBTbtn_clicked()
 {
-    ui->TPBFInnerSlider->setValue(128);
-    ui->TPBFOuterSlider->setValue(128);
+    ui->PBTInnerSlider->setValue(128);
+    ui->PBTOuterSlider->setValue(128);
     ui->IFShiftSlider->blockSignals(true);
     ui->IFShiftSlider->setValue(128);
     ui->IFShiftSlider->blockSignals(false);

@@ -108,7 +108,7 @@ struct USBDEVICE {
     quint8 brightness=2;
     quint8 orientation=0;
     QColor color=Qt::darkGray;
-    cmds lcd=cmdNone;
+    funcs lcd=funcNone;
 
     hid_device* handle = NULL;
     QString product = "";
@@ -154,8 +154,8 @@ struct COMMAND {
     int index=0;
     QString text;
     usbCommandType cmdType = commandButton;
-    int command=0;
-    int getCommand=0;
+    int command=funcNone;
+    int getCommand=funcNone;
     unsigned char suffix=0x0;
     int value=0;
     availableBands band=bandGen;

@@ -48,6 +48,7 @@
 #include "cluster.h"
 #include "audiodevices.h"
 #include "sidebandchooser.h"
+#include "debugWindow.h"
 
 #include <qcustomplot.h>
 #include <qserialportinfo.h>
@@ -171,8 +172,8 @@ signals:
     void getAfGain();
     void getSql();
     void getIfShift();
-    void getTPBFInner();
-    void getTPBFOuter();
+    void getPBTInner();
+    void getPBTOuter();
     void getTxPower();
     void getMicGain();
     void getSpectrumRefLevel();
@@ -202,12 +203,12 @@ signals:
     void setAfGain(unsigned char level);
     void setSql(unsigned char level);
     void setIFShift(unsigned char level);
-    void setTPBFInner(unsigned char level);
-    void setTPBFOuter(unsigned char level);
+    void setPBTInner(unsigned char level);
+    void setPBTOuter(unsigned char level);
   
     void setIFShiftWindow(unsigned char level);
-    void setTPBFInnerWindow(unsigned char level);
-    void setTPBFOuterWindow(unsigned char level);
+    void setPBTInnerWindow(unsigned char level);
+    void setPBTOuterWindow(unsigned char level);
     void setMicGain(unsigned char);
     void setCompLevel(unsigned char);
     void setTxPower(unsigned char);
@@ -300,7 +301,11 @@ signals:
     void setFrequencyRange(double low, double high);
     void sendControllerRequest(USBDEVICE* dev, usbFeatureType request, int val=0, QString text="", QImage* img=Q_NULLPTR, QColor* color=Q_NULLPTR);
 
+    // Signals to forward incoming data onto other areas
+    void haveMemory(memoryType mem);
+
 private slots:
+    void receiveValue(cacheItem val);
     void setAudioDevicesUI();
     void updateSizes(int tabIndex);
     void shortcutF1();
@@ -345,54 +350,48 @@ private slots:
 
     void receiveCommReady();
     void receiveFreq(freqt);
-    void receiveMode(unsigned char mode, unsigned char filter);
+    void receiveMode(mode_info mode);
     void receiveSpectrumData(QByteArray spectrum, double startFreq, double endFreq);
     void receiveSpectrumMode(spectrumMode spectMode);
     void receiveSpectrumSpan(freqt freqspan, bool isSub);
     void handleScopeOutOfRange(bool outOfRange);
     void receivePTTstatus(bool pttOn);
-    void receiveDataModeStatus(bool dataOn);
+    void receiveDataModeStatus(unsigned char data, unsigned char filter);
     void receiveBandStackReg(freqt f, char mode, char filter, bool dataOn); // freq, mode, (filter,) datamode
     void receiveRITStatus(bool ritEnabled);
     void receiveRITValue(int ritValHz);
-    void receiveModInput(inputTypes input, bool dataOn);
+    void receiveModInput(rigInput input, unsigned char data);
     //void receiveDuplexMode(duplexMode dm);
     void receivePassband(quint16 pass);
     void receiveMonitorGain(unsigned char pass);
     void receiveNBLevel(unsigned char pass);
     void receiveNRLevel(unsigned char pass);
     void receiveCwPitch(unsigned char pitch);
-    void receiveTPBFInner(unsigned char level);
-    void receiveTPBFOuter(unsigned char level);
+    void receivePBTInner(unsigned char level);
+    void receivePBTOuter(unsigned char level);
     void receiveVox(bool en);
     void receiveMonitor(bool en);
     void receiveComp(bool en);
     void receiveNB(bool en);
     void receiveNR(bool en);
     void receiveTuningStep(unsigned char step);
-    void receiveMemory(memoryType mem);
 
     // Levels:
     void receiveRfGain(unsigned char level);
     void receiveAfGain(unsigned char level);
     void receiveSql(unsigned char level);
     void receiveIFShift(unsigned char level);
-    void receiveTBPFInner(unsigned char level);
-    void receiveTBPFOuter(unsigned char level);
+
     // 'change' from data in transceiver controls window:
     void changeIFShift(unsigned char level);
-    void changeTPBFInner(unsigned char level);
-    void changeTPBFOuter(unsigned char level);
+    void changePBTInner(unsigned char level);
+    void changePBTOuter(unsigned char level);
     void receiveTxPower(unsigned char power);
     void receiveMicGain(unsigned char gain);
     void receiveCompLevel(unsigned char compLevel);
     void receiveVoxGain(unsigned char voxGain);
     void receiveAntiVoxGain(unsigned char antiVoxGain);
     void receiveSpectrumRefLevel(int level);
-    void receiveACCGain(unsigned char level, unsigned char ab);
-    void receiveUSBGain(unsigned char level);
-    void receiveLANGain(unsigned char level);
-
 
     // Meters:
     void receiveMeter(meterKind meter, unsigned char level);
@@ -419,7 +418,6 @@ private slots:
     void handleWFDoubleClick(QMouseEvent *);
     void handleWFScroll(QWheelEvent *);
     void handlePlotScroll(QWheelEvent *);
-    void sendRadioCommandLoop();
     void showStatusBarText(QString text);
     void receiveBaudRate(quint32 baudrate);
     void radioSelection(QList<radio_cap_packet> radios);
@@ -518,6 +516,10 @@ private slots:
 
     void on_afGainSlider_valueChanged(int value);
 
+    void on_monitorSlider_valueChanged(int value);
+
+    void on_monitorCheck_clicked(bool checked);
+
     void on_tuneNowBtn_clicked();
 
     void on_tuneEnableChk_clicked(bool checked);
@@ -572,7 +574,7 @@ private slots:
 
     void on_modeFilterCombo_activated(int index);
 
-    void on_dataModeBtn_toggled(bool checked);
+    void on_datamodeCombo_activated(int index);
 
     void on_transmitBtn_clicked();
 
@@ -1003,43 +1005,6 @@ private:
 
     unsigned char setModeVal=0;
     unsigned char setFilterVal=0;
-
-    std::deque <commandtype> delayedCmdQue; // rapid commands from user interaction
-    std::deque <cmds> periodicCmdQueue; // rapid que for metering
-    std::deque <cmds> slowPollCmdQueue; // slow, regular checking for UI sync
-    std::deque <cmds> rapidPollCmdQueue; // rapid regular polling for non-meter actions
-    void doCmd(cmds cmd);
-    void doCmd(commandtype cmddata);
-
-    bool rapidPollCmdQueueEnabled = false;
-
-    void issueCmd(cmds cmd, freqt f);
-    void issueCmd(cmds cmd, mode_info m);
-    void issueCmd(cmds cmd, vfo_t v);
-    void issueCmd(cmds cmd, rptrTone_t t);
-    void issueCmd(cmds cmd, rptrAccessData_t rd);
-    void issueCmd(cmds cmd, timekind t);
-    void issueCmd(cmds cmd, datekind d);
-    void issueCmd(cmds cmd, int i);
-    void issueCmd(cmds cmd, unsigned char c);
-    void issueCmd(cmds cmd, char c);
-    void issueCmd(cmds cmd, bool b);
-    void issueCmd(cmds cmd, quint16 c);
-    void issueCmd(cmds cmd, quint32 c);
-    void issueCmd(cmds cmd, qint16 c);
-    void issueCmd(cmds cmd, QString s);
-    void issueCmd(cmds cmd, memoryType s);
-
-    // These commands pop_front and remove similar commands:
-    void issueCmdUniquePriority(cmds cmd, bool b);
-    void issueCmdUniquePriority(cmds cmd, unsigned char c);
-    void issueCmdUniquePriority(cmds cmd, char c);
-    void issueCmdUniquePriority(cmds cmd, freqt f);
-    void issueCmdUniquePriority(cmds cmd, quint16 c);
-    void issueCmdUniquePriority(cmds cmd, qint16 c);
-
-    void removeSimilarCommand(cmds cmd);
-
     qint64 lastFreqCmdTime_ms;
 
     int pCmdNum = 0;
@@ -1091,6 +1056,11 @@ private:
     void setColorButtonOperations(QColor *colorStore, QLineEdit *e, QLedLabel *d);
     void setColorLineEditOperations(QColor *colorStore, QLineEdit *e, QLedLabel *d);
 
+    void calculateTimingParameters();
+    void initPeriodicCommands();
+    void changePollTiming(int timing_ms, bool setUI=false);
+
+
     void detachSettingsTab();
     void reattachSettingsTab();
     void prepareSettingsWindow();
@@ -1108,9 +1078,6 @@ private:
     void setUIFreq();
 
     void changeTxBtn();
-    void issueDelayedCommand(cmds cmd);
-    void issueDelayedCommandPriority(cmds cmd);
-    void issueDelayedCommandUnique(cmds cmd);
     void changeSliderQuietly(QSlider *slider, int value);
     void statusFromSliderPercent(QString name, int percentValue);
     void statusFromSliderRaw(QString name, int rawValue);
@@ -1119,29 +1086,13 @@ private:
 
     void processChangingCurrentModLevel(unsigned char level);
 
-    void changeModLabel(inputTypes source);
-    void changeModLabel(inputTypes source, bool updateLevel);
+    void changeModLabel(rigInput source);
+    void changeModLabel(rigInput source, bool updateLevel);
 
-    void changeModLabelAndSlider(inputTypes source);
-
-    void initPeriodicCommands();
-    // Fast command queue for S-Meter:
-    void insertPeriodicCommand(cmds cmd, unsigned char priority);
-    void insertPeriodicCommandUnique(cmds cmd);
-    void removePeriodicCommand(cmds cmd);
-    // Fast command queue for other functions:
-    void insertPeriodicRapidCmd(cmds cmd);
-    void insertPeriodicRapidCmdUnique(cmds cmd);
-    void removePeriodicRapidCmd(cmds cmd);
-
-
-    void insertSlowPeriodicCommand(cmds cmd, unsigned char priority);
-    void removeSlowPeriodicCommand(cmds cmd);
-    void calculateTimingParameters();
-    void changePollTiming(int timing_ms, bool setUI=false);
+    void changeModLabelAndSlider(rigInput source);
 
     void changeMode(mode_kind mode);
-    void changeMode(mode_kind mode, bool dataOn);
+    void changeMode(mode_kind mode, unsigned char data);
 
     void connectionHandler(bool connect);
 
@@ -1153,22 +1104,19 @@ private:
 
     QHash<unsigned char,QString> rigList;
     rigCapabilities rigCaps;
-    inputTypes currentModSrc = inputUnknown;
-    inputTypes currentModDataSrc = inputUnknown;
-    mode_kind currentMode = modeUSB;
-    mode_info currentModeInfo;
+
+    rigInput currentModDataOffSrc = rigInput(inputUnknown);
+    rigInput currentModData1Src = rigInput(inputUnknown);
+    rigInput currentModData2Src = rigInput(inputUnknown);
+    rigInput currentModData3Src = rigInput(inputUnknown);
+
+    mode_kind currentMode = modeUnknown;
+    mode_info currentModeInfo = mode_info();
 
     bool haveRigCaps;
     bool amTransmitting = false;
     bool splitModeEnabled = false;
-    bool usingDataMode = false;
-
-    unsigned char micGain=0;
-    unsigned char accAGain=0;
-    unsigned char accBGain=0;
-    unsigned char accGain=0;
-    unsigned char usbGain=0;
-    unsigned char lanGain=0;
+    unsigned char usingDataMode = 99; // Set to invalid value initially
 
     // Widgets and Special Windows:
     calibrationWindow *cal = Q_NULLPTR;
@@ -1211,8 +1159,8 @@ private:
     rigstate* rigState = Q_NULLPTR;
 
     passbandActions passbandAction = passbandStatic;
-    double TPBFInner = 0.0;
-    double TPBFOuter = 0.0;
+    double PBTInner = 0.0;
+    double PBTOuter = 0.0;
     double passbandCenterFrequency = 0.0;
     double pbtDefault = 0.0;
     quint16 cwPitch = 600;
@@ -1240,7 +1188,6 @@ private:
         QSocketNotifier* uDevNotifier = nullptr;
     #endif
 #endif
-
     memories* memWindow = Q_NULLPTR;
     dxClusterClient* cluster = Q_NULLPTR;
     QThread* clusterThread = Q_NULLPTR;
@@ -1290,6 +1237,8 @@ Q_DECLARE_METATYPE(enum usbFeatureType)
 Q_DECLARE_METATYPE(enum cmds)
 Q_DECLARE_METATYPE(rigTypedef)
 Q_DECLARE_METATYPE(struct memoryType)
+Q_DECLARE_METATYPE(struct antennaInfo)
+Q_DECLARE_METATYPE(struct scopeData)
 
 //void (*wfmain::logthistext)(QString text) = NULL;
 

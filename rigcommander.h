@@ -169,7 +169,6 @@ public slots:
     void setMemoryMode();
     void getMemory(quint32 mem);
     void getSatMemory(quint32 mem);
-    void setMemory(memoryType mem);
     void clearMemory(quint32 mem);
     void recallMemory(quint32 mem);
 
@@ -179,8 +178,8 @@ public slots:
     void getAfGain();
     void getSql();
     void getIFShift();
-    void getTPBFInner();
-    void getTPBFOuter();
+    void getPBTInner();
+    void getPBTOuter();
     void getTxLevel();
     void getMicGain();
     void getCompLevel();
@@ -201,8 +200,8 @@ public slots:
     void setRfGain(unsigned char level);
     void setAfGain(unsigned char level);
     void setIFShift(unsigned char level);
-    void setTPBFInner(unsigned char level);
-    void setTPBFOuter(unsigned char level);
+    void setPBTInner(unsigned char level);
+    void setPBTOuter(unsigned char level);
     void setTxPower(unsigned char power);
     void setMicGain(unsigned char gain);
     void setUSBGain(unsigned char gain);
@@ -348,8 +347,8 @@ signals:
     void haveRfGain(unsigned char level);
     void haveAfGain(unsigned char level);
     void haveSql(unsigned char level);
-    void haveTPBFInner(unsigned char level);
-    void haveTPBFOuter(unsigned char level);
+    void havePBTInner(unsigned char level);
+    void havePBTOuter(unsigned char level);
     void haveIFShift(unsigned char level);
     void haveTxPower(unsigned char level);
     void haveMicGain(unsigned char level);
@@ -408,6 +407,7 @@ signals:
     void selectedRadio(quint8 radio);
     void getMoreDebug();
     void finished();
+    void haveReceivedValue(funcs func, QVariant value);
 
 private:
     void commonSetup();
@@ -419,18 +419,20 @@ private:
     unsigned int bcdHexToUInt(unsigned char hundreds, unsigned char tensunits);
     QByteArray bcdEncodeChar(unsigned char num);
     QByteArray bcdEncodeInt(unsigned int);
-    void parseFrequency();
+    QByteArray setMemory(memoryType mem);
+    freqt parseFrequency();
     freqt parseFrequency(QByteArray data, unsigned char lastPosition); // supply index where Mhz is found
     quint64 parseFreqDataToInt(QByteArray data);
     freqt parseFrequencyRptOffset(QByteArray data);
+    bool parseMemory(QVector<memParserFormat>* memParser, memoryType* mem);
     QByteArray makeFreqPayloadRptOffset(freqt freq);
     QByteArray makeFreqPayload(double frequency);
     QByteArray makeFreqPayload(freqt freq);
     QByteArray encodeTone(quint16 tone, bool tinv, bool rinv);
     QByteArray encodeTone(quint16 tone);
     unsigned char convertNumberToHex(unsigned char num);
-    quint16 decodeTone(QByteArray eTone);
-    quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
+    toneInfo decodeTone(QByteArray eTone);
+    //quint16 decodeTone(QByteArray eTone, bool &tinv, bool &rinv);
     uchar makeFilterWidth(ushort width);
 
 
@@ -439,8 +441,8 @@ private:
     unsigned char audioLevelTxMean[50];
     unsigned char audioLevelTxPeak[50];
 
-    void parseMode(quint8 mode, quint8 filter);
-    void parseSpectrum();
+    mode_info parseMode(quint8 mode, quint8 filter);
+    bool parseSpectrum(scopeData& d);
     void parseWFData();
     void parseSpectrumRefLevel();
     void parseDetailedRegisters1A05();

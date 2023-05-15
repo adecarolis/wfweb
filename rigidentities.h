@@ -50,13 +50,16 @@ enum model_kind {
 
 
 enum inputTypes{ inputMic=0,
-                  inputACC=1,
-                  inputMICACC=2,
+                  inputACCA=1,
+                  inputACCB=2,
                   inputUSB=3,
-                  inputMICUSB=4,
-                  inputLAN=5,
-                  inputACCA=6,
-                  inputACCB=7,
+                  inputLAN=4,
+                  inputMICACCA=5,
+                  inputMICACCB=6,
+                  inputACCAACCB=7,
+                  inputMICACCAACCB=8,
+                  inputSPDIF=9,
+                  inputMICUSB=10,
                   inputNone,
                   inputUnknown=0xff
 };
@@ -64,9 +67,11 @@ enum inputTypes{ inputMic=0,
 struct rigInput {
     rigInput() {}
     rigInput(inputTypes type) : type(type) {}
-    rigInput(inputTypes type, QString name) : type(type), name(name) {}
-    inputTypes type = inputNone;
+    rigInput(inputTypes type, uchar reg, QString name) : type(type), reg(reg), name(name) {}
+    inputTypes type = inputUnknown;
+    uchar reg = 0;
     QString name = "";
+    uchar level = 0;
 };
 
 

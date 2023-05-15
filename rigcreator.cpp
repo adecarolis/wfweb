@@ -166,9 +166,9 @@ void rigCreator::loadRigFile(QString file)
         {
             settings->setArrayIndex(c);
             ui->inputs->insertRow(ui->inputs->rowCount());
-            ui->inputs->model()->setData(ui->inputs->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt(),16).rightJustified(2,'0'));
-            ui->inputs->model()->setData(ui->inputs->model()->index(c,1),settings->value("Name", "").toString());
-
+            ui->inputs->model()->setData(ui->inputs->model()->index(c,0),QString::number(settings->value("Num", 0).toUInt()).rightJustified(2,'0'));
+            ui->inputs->model()->setData(ui->inputs->model()->index(c,1),QString::number(settings->value("Reg", 0).toUInt(),16).rightJustified(2,'0'));
+            ui->inputs->model()->setData(ui->inputs->model()->index(c,2),settings->value("Name", "").toString());
         }
         settings->endArray();
     }
@@ -395,8 +395,9 @@ void rigCreator::saveRigFile(QString file)
     for (int n = 0; n<ui->inputs->rowCount();n++)
     {
         settings->setArrayIndex(n);
-        settings->setValue("Num", (ui->inputs->item(n,0) == NULL) ? 0 : ui->inputs->item(n,0)->text().toUInt(nullptr,16));
-        settings->setValue("Name", (ui->inputs->item(n,1) == NULL) ? "" : ui->inputs->item(n,1)->text());
+        settings->setValue("Num", (ui->inputs->item(n,0) == NULL) ? 0 : ui->inputs->item(n,0)->text().toUInt());
+        settings->setValue("Reg", (ui->inputs->item(n,1) == NULL) ? 0 : ui->inputs->item(n,1)->text().toUInt(nullptr,16));
+        settings->setValue("Name", (ui->inputs->item(n,2) == NULL) ? "" : ui->inputs->item(n,2)->text());
     }
     settings->endArray();
 
@@ -496,13 +497,15 @@ QStandardItemModel* rigCreator::createModel(QStandardItemModel* model, QString s
 
     for (int i=0; i < NUMFUNCS;i++)
     {
-        QStandardItem *itemName = new QStandardItem(strings[i]);
-        QStandardItem *itemId = new QStandardItem(i);
+        if (!strings[i].startsWith('-')) {
+            QStandardItem *itemName = new QStandardItem(strings[i]);
+            QStandardItem *itemId = new QStandardItem(i);
 
-        QList<QStandardItem*> row;
-        row << itemName << itemId;
+            QList<QStandardItem*> row;
+            row << itemName << itemId;
 
-        model->appendRow(row);
+            model->appendRow(row);
+        }
     }
 
     return model;

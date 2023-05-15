@@ -26,24 +26,24 @@ public:
 
 signals:
     void setIFShift(unsigned char level);
-    void setTPBFInner(unsigned char level);
-    void setTPBFOuter(unsigned char level);
+    void setPBTInner(unsigned char level);
+    void setPBTOuter(unsigned char level);
     void setPassband(quint16 passbandHz);
 
 public slots:
     void setRig(rigCapabilities rig);
     void updateIFShift(unsigned char level);
-    void updateTPBFInner(unsigned char level);
-    void updateTPBFOuter(unsigned char level);
+    void updatePBTInner(unsigned char level);
+    void updatePBTOuter(unsigned char level);
     void updatePassband(quint16 passbandHz);
 
 private slots:
 
     void on_IFShiftSlider_valueChanged(int value);
 
-    void on_TPBFInnerSlider_valueChanged(int value);
+    void on_PBTInnerSlider_valueChanged(int value);
 
-    void on_TPBFOuterSlider_valueChanged(int value);
+    void on_PBTOuterSlider_valueChanged(int value);
 
     void on_resetPBTbtn_clicked();
 

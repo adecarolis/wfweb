@@ -117,17 +117,38 @@ struct rptrAccessData_t {
 };
 
 struct mode_info {
-    mode_info() {};
+    mode_info () {};
     mode_info(mode_kind mk, quint8 reg, QString name, bool bw): mk(mk), reg(reg), name(name),bw(bw) {};
-    mode_kind mk;
-    unsigned char reg;
-    unsigned char filter;
+    mode_kind mk=modeUnknown;
+    unsigned char reg=99;
+    unsigned char filter=1; // Default filter is always 1
     selVFO_t VFO = activeVFO;
-    bool data = false;
-    QString name;
-    bool bw; // Can the bandwidth of the current filter be changed?
+    unsigned char data = 0;
+    QString name="";
+    bool bw=false; // Can the bandwidth of the current filter be changed?
+    quint16 pass = 0;
 };
 
+struct antennaInfo {
+    quint8 antenna;
+    bool rx;
+};
+
+struct scopeData {
+    bool valid=false;
+    QByteArray data;
+    bool mainSub;
+    uchar mode;
+    bool oor;
+    double startFreq;
+    double endFreq;
+};
+
+struct toneInfo {
+    quint16 tone=0;
+    bool tinv=false;
+    bool rinv=false;
+};
 
 enum breakIn_t {
     brkinOff  = 0x00,
@@ -154,41 +175,41 @@ struct timekind {
 };
 
 enum cmds {
-    cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetFreqB, cmdSetFreq, cmdGetMode, cmdSetMode,
-    cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
-    cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
-    cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetNRLevel, cmdSetNRLevel, cmdGetTPBFInner, cmdSetTPBFInner,
-    cmdGetTPBFOuter, cmdSetTPBFOuter, cmdGetPassband, cmdSetPassband, cmdGetNBLevel, cmdSetNBLevel,
-    cmdGetCompLevel, cmdSetCompLevel, cmdGetTuningStep, cmdSetTuningStep,
-    cmdGetMonitorGain, cmdSetMonitorGain, cmdGetVoxGain, cmdSetVoxGain, cmdGetAntiVoxGain, cmdSetAntiVoxGain,
-    cmdGetCwPitch, cmdGetPskTone, cmdGetRttyMark, cmdSetCwPitch, cmdSetPskTone, cmdSetRttyMark,
-    cmdGetVox,cmdSetVox, cmdGetMonitor,cmdSetMonitor, cmdGetComp, cmdSetComp, cmdGetNB, cmdSetNB, cmdGetNR, cmdSetNR,
-    cmdSetATU, cmdStartATU, cmdGetATUStatus,
-    cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode,
-    cmdGetPTT, cmdSetPTT,cmdPTTToggle,
-    cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdGetModLevel, cmdSetModLevel,
-    cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
-    cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
-    cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
-    cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
-    cmdGetTone, cmdGetTSQL, cmdGetToneEnabled, cmdGetTSQLEnabled, cmdGetDTCS,
-    cmdSetToneEnabled, cmdSetTSQLEnabled, cmdGetRptAccessMode, cmdSetTone, cmdSetTSQL,
-    cmdSetRptAccessMode, cmdSetRptDuplexOffset, cmdGetRptDuplexOffset,
-    cmdSelVFO, cmdVFOSwap, cmdVFOEqualAB, cmdVFOEqualMS, cmdSetQuickSplit,
-    cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
-    cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW, cmdGetDashRatio, cmdSetDashRatio,
-    cmdSetTime, cmdSetDate, cmdSetUTCOffset,
-    cmdGetTransceive, cmdSetTransceive,cmdGetPower,cmdSetPower,
-    cmdGetMemory, cmdGetSatMemory, cmdSetMemory, cmdClearMemory,cmdRecallMemory, cmdSetVFOMode, cmdSetMemoryMode, cmdSetSatelliteMode,
-    // Below Only used for USB Controller at the moment.
-    cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown, cmdSetStepUp, cmdSetStepDown,
-    cmdSetSpanUp, cmdSetSpanDown, cmdIFFilterUp, cmdIFFilterDown, cmdPageDown, cmdPageUp,
-    cmdLCDWaterfall, cmdLCDSpectrum, cmdLCDNothing, cmdSeparator
+cmdNone, cmdGetRigID, cmdGetRigCIV, cmdGetFreq, cmdGetFreqB, cmdSetFreq, cmdGetMode, cmdSetMode,
+cmdGetDataMode, cmdSetModeFilter, cmdSetDataModeOn, cmdSetDataModeOff, cmdGetRitEnabled, cmdGetRitValue,
+cmdSpecOn, cmdSpecOff, cmdDispEnable, cmdDispDisable, cmdGetRxGain, cmdSetRxRfGain, cmdGetAfGain, cmdSetAfGain,
+cmdGetSql, cmdSetSql, cmdGetIFShift, cmdSetIFShift, cmdGetNRLevel, cmdSetNRLevel, cmdGetPBTInner, cmdSetPBTInner,
+cmdGetPBTOuter, cmdSetPBTOuter, cmdGetPassband, cmdSetPassband, cmdGetNBLevel, cmdSetNBLevel,
+cmdGetCompLevel, cmdSetCompLevel, cmdGetTuningStep, cmdSetTuningStep,
+cmdGetMonitorGain, cmdSetMonitorGain, cmdGetVoxGain, cmdSetVoxGain, cmdGetAntiVoxGain, cmdSetAntiVoxGain,
+cmdGetCwPitch, cmdGetPskTone, cmdGetRttyMark, cmdSetCwPitch, cmdSetPskTone, cmdSetRttyMark,
+cmdGetVox,cmdSetVox, cmdGetMonitor,cmdSetMonitor, cmdGetComp, cmdSetComp, cmdGetNB, cmdSetNB, cmdGetNR, cmdSetNR,
+cmdSetATU, cmdStartATU, cmdGetATUStatus,
+cmdGetSpectrumMode, cmdGetSpectrumSpan, cmdScopeCenterMode, cmdScopeFixedMode,
+cmdGetPTT, cmdSetPTT,cmdPTTToggle,
+cmdGetTxPower, cmdSetTxPower, cmdGetMicGain, cmdSetMicGain, cmdGetModLevel, cmdSetModLevel,
+cmdGetSpectrumRefLevel, cmdGetDuplexMode, cmdGetModInput, cmdGetModDataInput,
+cmdGetCurrentModLevel, cmdStartRegularPolling, cmdStopRegularPolling, cmdQueNormalSpeed,
+cmdGetVdMeter, cmdGetIdMeter, cmdGetSMeter, cmdGetCenterMeter, cmdGetPowerMeter,
+cmdGetSWRMeter, cmdGetALCMeter, cmdGetCompMeter, cmdGetTxRxMeter,
+cmdGetTone, cmdGetTSQL, cmdGetToneEnabled, cmdGetTSQLEnabled, cmdGetDTCS,
+cmdSetToneEnabled, cmdSetTSQLEnabled, cmdGetRptAccessMode, cmdSetTone, cmdSetTSQL,
+cmdSetRptAccessMode, cmdSetRptDuplexOffset, cmdGetRptDuplexOffset,
+cmdSelVFO, cmdVFOSwap, cmdVFOEqualAB, cmdVFOEqualMS, cmdSetQuickSplit,
+cmdGetPreamp, cmdGetAttenuator, cmdGetAntenna,
+cmdGetBandStackReg, cmdGetKeySpeed, cmdSetKeySpeed, cmdGetBreakMode, cmdSetBreakMode, cmdSendCW, cmdStopCW, cmdGetDashRatio, cmdSetDashRatio,
+cmdSetTime, cmdSetDate, cmdSetUTCOffset,
+cmdGetTransceive, cmdSetTransceive,cmdGetPower,cmdSetPower,
+cmdGetMemory, cmdGetSatMemory, cmdSetMemory, cmdClearMemory,cmdRecallMemory, cmdSetVFOMode, cmdSetMemoryMode, cmdSetSatelliteMode,
+// Below Only used for USB Controller at the moment.
+cmdSetBandUp, cmdSetBandDown, cmdSetModeUp, cmdSetModeDown, cmdSetStepUp, cmdSetStepDown,
+cmdSetSpanUp, cmdSetSpanDown, cmdIFFilterUp, cmdIFFilterDown, cmdPageDown, cmdPageUp,
+cmdLCDWaterfall, cmdLCDSpectrum, cmdLCDNothing, cmdSeparator
 };
 
 
 // funcs and funcString MUST match exactly (and NUMFUNCS must be updated)
-#define NUMFUNCS 188
+#define NUMFUNCS 197
 
 enum funcs { funcNone,
 funcfreqTR,             funcModeTR,             funcBandEdgeFreq,           funcFreqGet,        	funcModeGet,        	funcFreqSet,			// \x00
@@ -209,7 +230,7 @@ funcDSPIFFilter,		funcNotchWidth,         funcSSBBandwidth,           funcMainSu
 funcToneSquelchType,    funcIPPlus,				funcSendCW,                 funcPowerControl,		funcTransceiverId,		funcFilterWidth,
 funcMemoryContents,		funcBandStackReg,		funcMemoryKeyer,            funcIFFilterWidth,      funcQuickDualWatch,		funcQuickSplit,
 funcAutoRepeater,		funcTunerStatus,		funcTransverter,            funcTransverterOffset,  funcLockFunction,		funcREFAdjust,
-funcREFAdjustFine,		funcACC1ModLevel,		funcACC2ModLevel,           funcUSBModLevel,		funcLANModLevel,		funcDATAOffMod,
+funcREFAdjustFine,		funcACCAModLevel,		funcACCBModLevel,           funcUSBModLevel,		funcLANModLevel,		funcSPDIFModLevel,       funcDATAOffMod,
 funcDATA1Mod,			funcDATA2Mod,			funcDATA3Mod,               funcCIVTransceive,		funcTime,           	funcDate,
 funcUTCOffset,			funcCLOCK2,				funcCLOCK2UTCOffset,        funcCLOCK2Name,			funcDashRatio,			funcScanSpeed,
 funcScanResume,			funcRecorderMode,		funcRecorderTX,             funcRecorderRX,			funcRecorderSplit,		funcRecorderPTTAuto,
@@ -217,14 +238,16 @@ funcRecorderPreRec,		funcRXAntConnector,		funcAntennaSelectMode,      funcNBDept
 funcVOXVoiceDelay,		funcAPFType,			funcAPFTypeLevel,           funcPSKTone,            funcRTTYMarkTone,       funcDataModeWithFilter,
 funcAFMute,				funcToneFreq,           funcTSQLFreq,               funcDTCSCode,           funcCSQLCode,           funcTransceiverStatus,
 funcXFCStatus,			funcReadTXFreq,			funcCIVOutput,              funcReadTXFreqs,        funcReadUserTXFreqs,	funcUserTXBandEdgeFreq,
-funcRITFreq,			funcRitStatus,			funcRitTXStatus,            funcMainSubFreq,		funcMainSubMode,		funcScopeWaveData,
+funcRITFreq,			funcRitStatus,			funcRitTXStatus,            funcSelectedFreq,       funcSelectedMode,       funcUnselectedFreq,
+funcUnselectedMode,     funcScopeWaveData,
 funcScopeOnOff,			funcScopeDataOutput,	funcScopeMainSub,           funcScopeSingleDual,	funcScopeCenterFixed,	funcScopeCenterSpan,
 funcScopeEdgeNumber,  	funcScopeHold,      	funcScopeRef,               funcScopeSpeed,			funcScopeDuringTX,      funcScopeCenterType,
 funcScopeVBW,       	funcScopeFixedFreq, 	funcScopeRBW,               funcVoiceTX,			funcMainSubPrefix,		funcAFCSetting,
-funcGPSTXMode,          funcSatelliteMemory,    funcGPSPosition,            funcMemoryGroup,        funcSelectVFO,          funcFA,
+funcGPSTXMode,          funcSatelliteMemory,    funcGPSPosition,            funcMemoryGroup,        funcSelectVFO,          funcSeparator,
+funcLCDWaterfall,       funcLCDSpectrum,        funcLCDNothing,             funcPageUp,             funcPageDown,           funcFA,
 funcFB
 };
-             
+
 
 // Any changes to these strings WILL break rig definitions, add new ones to end. **Missing commas concatenate strings!**
 static QString funcString[] { "None",
@@ -246,19 +269,21 @@ static QString funcString[] { "None",
 "Tone Squelch Type",    "IP Plus Status",       "Send CW",                  "Power Control",        "Transceiver ID",       "Filter Width",
 "Memory Contents",      "Band Stacking Reg",    "Memory Keyer",             "IF Filter Width",      "Quick Dual Watch",     "Quick Split",
 "Auto Repeater Mode",   "Tuner/ATU Status",     "Transverter Function",     "Transverter Offset",   "Lock Function",        "REF Adjust",
-"REF Adjust Fine",      "ACC1 Mod Level",       "ACC2 Mod Level",           "USB Mod Level",        "LAN Mod Level",        "Data Off Mod Input",
+"REF Adjust Fine",      "ACC1 Mod Level",       "ACC2 Mod Level",           "USB Mod Level",        "LAN Mod Level",        "SPDIF Mod Level", "Data Off Mod Input",
 "DATA1 Mod Input",      "DATA2 Mod Input",  	"DATA3 Mod Input",          "CIV Transceive",       "System Time",          "System Date",
 "UTC Offset",           "CLOCK2 Setting",       "CLOCK2 UTC Offset",        "CLOCK 2 Name",         "Dash Ratio",           "Scanning Speed",
 "Scanning Resume",      "Recorder Mode",        "Recorder TX",              "Recorder RX",          "Recorder Split",       "Recorder PTT Auto",
 "Recorder Pre Rec",     "RX Ant Connector",     "Antenna Select Mode",      "NB Depth",             "NB Width",             "VOX Delay",
 "VOX Voice Delay",      "APF Type",             "APF Type Level",           "PSK Tone",             "RTTY Mark Tone",       "Data Mode Filter",
-"AF Mute Status",       "Tone Frequency",       "TSQL Frequency",           "DTCS Code/Polarity",   "CSQL Code",           "Transceiver Status",
+"AF Mute Status",       "Tone Frequency",       "TSQL Frequency",           "DTCS Code/Polarity",   "CSQL Code",            "Transceiver Status",
 "XFC Status",           "Read TX Freq",         "CI-V Output",              "Read TX Freqs",        "Read User TX Freqs",   "User TX Band Edge Freq",
-"RIT Frequency",        "RIT Status",           "RIT TX Status",            "Main/Sub Freq",        "Main/Sub Mode",        "Scope Wave Data",
+"RIT Frequency",        "RIT Status",           "RIT TX Status",            "Selected Freq",        "Selected Mode",        "Unselected Freq",
+"Unselected Mode",      "Scope Wave Data",
 "Scope On/Off",         "Scope Data Output",    "Scope Main/Sub",           "Scope Single/Dual",    "Scope Center Fixed",   "Scope Center Span",
 "Scope Edge Number",    "Scope Hold",           "Scope Ref",                "Scope Speed",          "Scope During TX",      "Scope Center Type",
 "Scope VBW",            "Scope Fixed Freq",     "Scope RBW",                "Voice TX",             "Main/Sub Prefix",      "AFC Function",
-"GPS TX Mode",          "Satellite Memory",     "GPS Position",             "Memory Group",         "(int)Select VFO",      "Command Error FA",
+"GPS TX Mode",          "Satellite Memory",     "GPS Position",             "Memory Group",         "-Select VFO",          "-Seperator",
+"-LCD Waterfall",       "-LCD Spectrum",        "-LCD Nothing",             "-Page Up",             "-Page Down",           "Command Error FA",
 "Command OK FB"
 };
 
