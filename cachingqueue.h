@@ -112,4 +112,6 @@ public:
 };
 
 Q_DECLARE_METATYPE(queueItemType)
+Q_DECLARE_METATYPE(queueItem)
+Q_DECLARE_METATYPE(cacheItem)
 #endif // CACHINGQUEUE_H
