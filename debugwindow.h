@@ -9,7 +9,7 @@
 #include <QTimer>
 
 #include "cachingqueue.h"
-#include "wfmain.h"
+#include "wfviewtypes.h"
 
 namespace Ui {
 class debugWindow;
