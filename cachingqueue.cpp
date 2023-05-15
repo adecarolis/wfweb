@@ -9,9 +9,11 @@
 #include "cachingqueue.h"
 
 cachingQueue* cachingQueue::instance{};
+QMutex cachingQueue::instanceMutex;
 
 cachingQueue *cachingQueue::getInstance(QObject* parent)
 {
+    QMutexLocker locker(&instanceMutex);
     if (instance == Q_NULLPTR)
     {
         instance = new cachingQueue(parent);
@@ -147,7 +149,17 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
             if (item.recurring && prio == queuePriority::priorityImmediate) {
                 qWarning() << "Warning, cannot add unique recurring command with immediate priority!" << funcString[item.command];
             } else {
+#if (QT_VERSION > QT_VERSION_CHECK(6,0,0))
                 queue.erase(std::remove_if(queue.begin(), queue.end(), [item](const queueItem& c) {  return (c.command == item.command && c.recurring == item.recurring); }), queue.end());
+#else
+                auto it(queue.begin());
+                while (it != queue.end()) {
+                    if (it.value().command == item.command && it.value().recurring == item.recurring)
+                        it = queue.erase(it);
+                    else
+                        it++;
+                }
+#endif
                 queue.insert(prio, item);
                 updateCache(false,item.command,item.param);
                 if (item.recurring) qInfo() << "adding" << funcString[item.command] << "recurring" << item.recurring << "priority" << prio;
@@ -159,7 +171,17 @@ void cachingQueue::addUnique(queuePriority prio ,queueItem item)
 void cachingQueue::del(funcs func)
 {
     QMutexLocker locker(&mutex);
+#if (QT_VERSION > QT_VERSION_CHECK(6,0,0))
     queue.erase(std::remove_if(queue.begin(), queue.end(), [func](const queueItem& c) {  return (c.command == func); }), queue.end());
+#else
+    auto it(queue.begin());
+    while (it != queue.end()) {
+        if (it.value().command == item.command)
+            it = queue.erase(it);
+        else
+            it++;
+    }
+#endif
     qInfo() << "deleting" << funcString[func];
 }
 

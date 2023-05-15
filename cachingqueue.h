@@ -65,6 +65,7 @@ public slots:
 private:
 
     static cachingQueue *instance;
+    static QMutex instanceMutex;
 
     QMutex mutex;
 
