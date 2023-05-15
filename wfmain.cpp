@@ -66,7 +66,7 @@ wfmain::wfmain(const QString settingsFile, const QString logFile, bool debugMode
     qRegisterMetaType<vfo_t>();
     qRegisterMetaType<rptrTone_t>();
     qRegisterMetaType<modeInfo>();
-    qRegisterMetaType<mode_t>();
+    qRegisterMetaType<rigMode_t>();
     qRegisterMetaType<audioPacket>();
     qRegisterMetaType<audioSetup>();
     qRegisterMetaType<SERVERCONFIG>();
@@ -2522,7 +2522,7 @@ void wfmain::loadSettings()
 
         if (isSet)
         {
-            mem.setPreset(chan, freq, (mode_t)mode);
+            mem.setPreset(chan, freq, (rigMode_t)mode);
         }
     }
 
@@ -5388,19 +5388,19 @@ void wfmain::on_scopeEdgeCombo_currentIndexChanged(int index)
     emit setScopeEdge((char)index+1);
 }
 
-void wfmain::changeMode(mode_t mode)
+void wfmain::changeMode(rigMode_t mode)
 {
     bool dataOn = false;
     if(((unsigned char) mode >> 4) == 0x08)
     {
         dataOn = true;
-        mode = (mode_t)((int)mode & 0x0f);
+        mode = (rigMode_t)((int)mode & 0x0f);
     }
 
     changeMode(mode, dataOn);
 }
 
-void wfmain::changeMode(mode_t mode, unsigned char data)
+void wfmain::changeMode(rigMode_t mode, unsigned char data)
 {
 
     foreach (modeInfo mi, rigCaps.modes)
@@ -5444,7 +5444,7 @@ void wfmain::on_modeSelectCombo_activated(int index)
         //qInfo(logSystem()) << __func__ << " at index " << index << " has newMode: " << newMode;
         foreach (modeInfo mi, rigCaps.modes)
         {
-            if (mi.mk == (mode_t)newMode)
+            if (mi.mk == (rigMode_t)newMode)
             {
                 modeInfo m = modeInfo(mi);
                 m.filter = filterSelection;
@@ -5729,7 +5729,7 @@ void wfmain::on_fStoBtn_clicked()
     if(ok && (preset_number >= 0) && (preset_number < 100))
     {
         // TODO: keep an enum around with the current mode
-        mem.setPreset(preset_number, freq.MHzDouble, (mode_t)ui->modeSelectCombo->currentData().toInt() );
+        mem.setPreset(preset_number, freq.MHzDouble, (rigMode_t)ui->modeSelectCombo->currentData().toInt() );
         showStatusBarText( QString("Storing frequency %1 to memory location %2").arg( freq.MHzDouble ).arg(preset_number) );
     } else {
         showStatusBarText(QString("Could not store preset to %1. Valid preset numbers are 0 to 99").arg(preset_number));
@@ -6156,7 +6156,7 @@ void wfmain::on_modeFilterCombo_activated(int index)
         unsigned char newMode = static_cast<unsigned char>(ui->modeSelectCombo->currentData().toUInt());
         foreach (modeInfo mi, rigCaps.modes)
         {
-            if (mi.mk == (mode_t)newMode)
+            if (mi.mk == (rigMode_t)newMode)
             {
                 modeInfo m;
                 m = modeInfo(mi);

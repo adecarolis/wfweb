@@ -136,7 +136,7 @@ struct bandType {
     availableBands band;
     quint64 lowFreq;
     quint64 highFreq;
-    mode_t defaultMode;
+    rigMode_t defaultMode;
     double range;
     int memGroup;
 };

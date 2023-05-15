@@ -4273,7 +4273,7 @@ void rigCommander::parseWFData()
 }
 
 
-modeInfo rigCommander::createMode(mode_t m, unsigned char reg, QString name, bool bw)
+modeInfo rigCommander::createMode(rigMode_t m, unsigned char reg, QString name, bool bw)
 {
     modeInfo mode;
     mode.mk = m;
@@ -4395,7 +4395,7 @@ void rigCommander::determineRigCaps()
         for (int c = 0; c < numModes; c++)
         {
             settings->setArrayIndex(c);
-            rigCaps.modes.push_back(modeInfo(mode_t(settings->value("Num", 0).toUInt()),
+            rigCaps.modes.push_back(modeInfo(rigMode_t(settings->value("Num", 0).toUInt()),
                 settings->value("Reg", 0).toString().toUInt(nullptr,16), settings->value("Name", "").toString(), settings->value("BW", 0).toBool()));
         }
         settings->endArray();

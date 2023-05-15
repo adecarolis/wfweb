@@ -8,7 +8,7 @@ class sidebandChooser
 public:
     sidebandChooser();
 
-    static inline mode_t getMode(freqt f, mode_t currentMode = modeUSB) {
+    static inline rigMode_t getMode(freqt f, rigMode_t currentMode = modeUSB) {
 
         if((currentMode == modeLSB) || (currentMode == modeUSB) )
         {

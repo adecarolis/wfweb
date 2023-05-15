@@ -1091,8 +1091,8 @@ private:
 
     void changeModLabelAndSlider(rigInput source);
 
-    void changeMode(mode_t mode);
-    void changeMode(mode_t mode, unsigned char data);
+    void changeMode(rigMode_t mode);
+    void changeMode(rigMode_t mode, unsigned char data);
 
     void connectionHandler(bool connect);
 
@@ -1110,7 +1110,7 @@ private:
     rigInput currentModData2Src = rigInput(inputUnknown);
     rigInput currentModData3Src = rigInput(inputUnknown);
 
-    mode_t currentMode = modeUnknown;
+    rigMode_t currentMode = modeUnknown;
     modeInfo currentModeInfo = modeInfo();
 
     bool haveRigCaps;

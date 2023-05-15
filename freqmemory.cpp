@@ -25,7 +25,7 @@ void freqMemory::initializePresets()
     }
 }
 
-void freqMemory::setPreset(unsigned int index, double frequency, mode_t mode)
+void freqMemory::setPreset(unsigned int index, double frequency, rigMode_t mode)
 {
     if(index <= maxIndex)
     {

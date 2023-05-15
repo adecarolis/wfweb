@@ -267,7 +267,7 @@ void rigCtlClient::socketReadyRead()
 
             if (passband > 0)
             {
-                switch ((mode_t)getMode(mode)) {
+                switch ((rigMode_t)getMode(mode)) {
 
                 case modeAM:
                     if (passband > 6000) {

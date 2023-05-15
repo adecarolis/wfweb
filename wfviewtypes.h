@@ -35,7 +35,7 @@ enum spectrumMode_t {
     spectModeUnknown=0xff
 };
 
-enum mode_t {
+enum rigMode_t {
     modeLSB=0,          //0
     modeUSB,            //1
     modeAM,             //2
@@ -119,8 +119,8 @@ struct rptrAccessData {
 
 struct modeInfo {
     modeInfo () {};
-    modeInfo(mode_t mk, quint8 reg, QString name, bool bw): mk(mk), reg(reg), name(name),bw(bw) {};
-    mode_t mk=modeUnknown;
+    modeInfo(rigMode_t mk, quint8 reg, QString name, bool bw): mk(mk), reg(reg), name(name),bw(bw) {};
+    rigMode_t mk=modeUnknown;
     unsigned char reg=99;
     unsigned char filter=1; // Default filter is always 1
     selVFO_t VFO = activeVFO;
@@ -404,7 +404,7 @@ enum usbFeatureType { featureReset,featureResetKeys, featureEventsA, featureEven
 
 Q_DECLARE_METATYPE(freqt)
 Q_DECLARE_METATYPE(spectrumMode_t)
-Q_DECLARE_METATYPE(mode_t)
+Q_DECLARE_METATYPE(rigMode_t)
 Q_DECLARE_METATYPE(vfo_t)
 Q_DECLARE_METATYPE(duplexMode_t)
 Q_DECLARE_METATYPE(rptAccessTxRx_t)
